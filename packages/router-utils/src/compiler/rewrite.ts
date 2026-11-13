@@ -193,13 +193,6 @@ export interface Placeholder extends Edit {
   body: ReadonlyArray<PlaceFrag>
 }
 
-/** Server-only source text a client compile removes (`RewriteSet.serverOnly`). */
-export interface ServerOnlyText {
-  range: Range
-  /** What the text is, for the server-code check's message ("the server function's handler"). */
-  subject: string
-}
-
 /**
  * A range of the region tree: the module, a sub-region, the range of
  * planner edits, or several of them (one node per range). Nodes nest or are
@@ -687,8 +680,6 @@ export class RewriteSet {
   readonly places: Array<Placeholder> = []
   readonly generated: Array<GeneratedUnit> = []
   readonly claims = new Map<RegionId, RegionClaim>()
-  /** The server-only text a client compile removes (what the server-code check reads). */
-  readonly serverOnlyText: Array<ServerOnlyText> = []
   /** The node of each claim. */
   readonly claimNodes = new Map<RegionClaim, RangeNode>()
   /** The nodes holding two items or more: edits, placeholders, a claim (`checkConflicts`). */
@@ -769,29 +760,6 @@ export class RewriteSet {
     this.regions.mark(node)
     this.places.push(p)
     this.bump()
-  }
-
-  /**
-   * Server-only text of a client compile: what the server-code check reads
-   * (`server-code.ts`), replaced in every output by `placeholder` when given
-   * (else erased by another edit: an isomorphic call's `.server()`
-   * implementation).
-   */
-  serverOnly(text: {
-    range: Range
-    subject: string
-    by: string
-    placeholder?: ReadonlyArray<PlaceFrag>
-  }): void {
-    this.serverOnlyText.push({ range: text.range, subject: text.subject })
-    if (text.placeholder !== undefined) {
-      this.placeholder({
-        range: text.range,
-        body: text.placeholder,
-        scope: 'all-outputs',
-        by: text.by,
-      })
-    }
   }
 
   private add(edit: Edit): void {

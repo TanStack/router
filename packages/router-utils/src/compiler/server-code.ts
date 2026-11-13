@@ -1,35 +1,94 @@
 /**
- * The server-code check (R132): no output of a compile holds text a planner
- * recorded as server-only (`RewriteSet.serverOnly`: a server fn's handler, a
- * `.server()` implementation, a `createServerOnlyFn` body, a validator, a
- * route option the router planner erases, in a client compile). It reads the emitted segments, the derived outputs
- * included: a slice of the source over a recorded range, or text standing
- * for source inside one (a reference rendered for its output). Positions,
- * not strings, so formatting and identical text elsewhere play no part.
+ * The server-code check (R132): no output of a client compile holds text the
+ * planners' recognisers call server-only (a server fn's handler or
+ * validator, a middleware's `.server()` implementation or validator, an
+ * isomorphic fn's `.server()` implementation, a `createServerOnlyFn` body; a
+ * route option in `deleteNodes`).
  *
- * A safety net under the planners, not a mechanism: each recorded range is
- * also removed by the planner that records it, so the check fires only on a
- * compiler bug. It fails the module (an error in users' runs, a throw under
- * the self-checks); it can go once the compiler has no holes left for it to
- * catch.
+ * What it is: a redundancy net under the planners. Each planner that has
+ * server-only text says what it is with its `Planner.serverCode` recorder,
+ * which reads the planner's own recognition (Start's analysis, the router's
+ * recognised route options) and nothing the planner decided: the analysis
+ * says what is server-only, the planner what replaces it, and this module
+ * compares the two on the emitted segments, the derived outputs included
+ * (a slice of the source over a recorded range, or text standing for
+ * source inside one: a reference rendered for its output). Positions, not
+ * strings, so formatting and identical text elsewhere play no part.
+ *
+ * Why it exists: a planner that skips a recognised site (a `continue`
+ * between recognition and erasure, an edit scoped to one output while
+ * another renders the text) would otherwise ship server code silently. It
+ * cannot see recognition failures (a builder the analysis does not follow),
+ * declarations only server code reads, imports of server-only modules or
+ * route options the router cannot read. A compile that already holds an
+ * error is not checked: it fails anyway (a refused chain keeps its text).
+ * A hit fails the module: an error in users' runs, a throw under the
+ * self-checks.
+ *
+ * It is meant to be removed a couple of months after the release, once the
+ * compiler's exhaustiveness is trusted (nothing left for it to catch in
+ * users' reports). It costs about 1.5 % of a React client compile (a second
+ * route recognition per client route module).
+ *
+ * How to remove it, in one deletion: this module and its tests
+ * (`tests/server-code.test.ts`), its call in `pipeline.ts`,
+ * `Planner.serverCode` (`host.ts`), the `ServerOnlyText` export of
+ * `index.ts` and its paragraph in `README.md`; then the recorders and their
+ * one-line hooks: `start-plugin-core/src/planners/server-code.ts`
+ * (`startEnvPlanner`) and `router-plugin/src/planners/server-code.ts`
+ * (`routerPlanner`), and the check's error rows
+ * (`start-plugin-core/tests/planners/route-server-options.test.ts`).
+ * `start-plugin-core/tests/integration/start-build-server-code-check-unchecked.test.ts`
+ * stays (the client holds none of the text, check or no check): only its
+ * header comment names the check. No planner reads anything of it.
  */
 import { SELF_CHECKS } from './self-checks'
 import type { Diagnostic } from './diagnostics'
-import type { EmitPlan, OutputRecipe } from './plan'
-import type { ServerOnlyText } from './rewrite'
+import type { Planner } from './host'
+import type { EmitPlan, EnvInfo, OutputRecipe, PlanContext } from './plan'
+import type { Range } from './header'
+
+/** Server-only source text of a client compile (`Planner.serverCode`). */
+export interface ServerOnlyText {
+  range: Range
+  /** What the text is, for the message ("the server function's handler"). */
+  subject: string
+}
 
 /**
- * Checks every output of `plan` against `texts`: a hit throws under the
- * self-checks, else adds an error for the module (`tag` with its space,
+ * Checks every output of a client compile's `plan` against the server-only
+ * text its planners' recorders find (each reads its planner's view of the
+ * final plan, `contextOf`; what it reports is dropped): a hit throws under
+ * the self-checks, else adds an error for the module (`tag` with its space,
  * `file` as messages name it), one per recorded text.
  */
 export function checkServerCode(
-  texts: ReadonlyArray<ServerOnlyText>,
+  planners: ReadonlyArray<Planner>,
+  contextOf: (planner: Planner) => PlanContext,
   plan: EmitPlan,
+  env: EnvInfo,
   canonicalId: string,
   tag: string,
   file: string,
 ): void {
+  if (
+    env.type !== 'client' ||
+    plan.diagnostics.some((d) => d.severity === 'error')
+  ) {
+    return
+  }
+  const texts: Array<ServerOnlyText> = []
+  for (const p of planners) {
+    if (p.serverCode) {
+      texts.push(
+        ...p.serverCode({
+          ...contextOf(p),
+          diagnostic: () => {},
+          liveDiagnostic: () => {},
+        }),
+      )
+    }
+  }
   if (texts.length === 0) {
     return
   }
