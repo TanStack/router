@@ -8,10 +8,11 @@
  * never reuses an earlier build's routes: two builds in one process, with a
  * route file added between them, each generate the tree of their own files,
  * whether the config file gives each build new plugin objects or a program
- * passes the same ones inline. Vite 6 and 7 are aliased packages
+ * passes the same ones inline. A watch build follows route files created
+ * while it watches. Vite 6 and 7 are aliased packages
  * (`@tanstack/compiler-vite-versions`); the suite's own is Vite 8.
  */
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, onTestFinished, test, vi } from 'vitest'
@@ -34,6 +35,60 @@ type Vite = Pick<typeof ViteModule, 'createBuilder' | 'createServer'>
 
 const route = (path: string) =>
   `${head}export const Route = createFileRoute('${path}')({})\n`
+
+/** What `builder.build` returns in watch mode, as every version has it. */
+interface Watcher {
+  on: (
+    event: 'event',
+    listener: (event: { code: string; error?: Error }) => void,
+  ) => void
+  close: () => Promise<void>
+}
+
+/**
+ * Builds every environment of `builder` in watch mode (closed when the test
+ * finishes); `ended(env)` resolves at the next build of `env` that ends.
+ */
+async function watchBuild(builder: ViteModule.ViteBuilder) {
+  const waiting = new Map<string, Array<() => void>>()
+  const watch = async (
+    name: string,
+    environment: ViteModule.BuildEnvironment,
+  ) => {
+    const watcher = (await builder.build(environment)) as unknown as Watcher
+    onTestFinished(() => watcher.close())
+    watcher.on('event', (event) => {
+      if (event.code === 'END' || event.code === 'ERROR') {
+        for (const resolve of waiting.get(name)?.splice(0) ?? []) {
+          resolve()
+        }
+      }
+    })
+  }
+  const ended = (name: string) =>
+    new Promise<void>((resolve) => {
+      waiting.set(name, [...(waiting.get(name) ?? []), resolve])
+    })
+  for (const [name, environment] of Object.entries(builder.environments)) {
+    const first = ended(name)
+    await watch(name, environment)
+    await first
+  }
+  return { ended }
+}
+
+/** The text of the files of `dir` (recursively). */
+async function output(dir: string): Promise<string> {
+  const entries = await readdir(dir, { recursive: true, withFileTypes: true })
+  const texts = await Promise.all(
+    entries
+      .filter((entry) => entry.isFile())
+      .map((entry) =>
+        readFile(path.join(entry.parentPath, entry.name), 'utf8'),
+      ),
+  )
+  return texts.join('\n')
+}
 
 /** The routes a generated tree file declares (`'/'`, `'/about'`). */
 async function treeRoutes(root: string) {
@@ -174,6 +229,45 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
     expect(app.generations()).toBe(1)
     expect(await treeRoutes(app.root)).toEqual(['/'])
   }, 60_000)
+
+  // Source: review round 2 F3-1 (Vite's watcher reports the files of the
+  // bundle only: the created route file never joined the tree, not even at
+  // a later rebuild)
+  test.each([
+    { plugins: 'the config file', inline: false },
+    { plugins: 'inline plugins', inline: true },
+  ])(
+    'round 2 F3-1: a watch build with $plugins follows a route file created while it watches',
+    async ({ inline }) => {
+      const { createBuilder } = await vite()
+      const app = await routerApp(major)
+      const builder = await createBuilder(
+        app.buildConfig({
+          build: { watch: {}, rollupOptions: { external: [/^@tanstack\//] } },
+          ...(inline && { configFile: false, plugins: app.plugins() }),
+        }),
+      )
+      const { ended } = await watchBuild(builder)
+      const rebuilt = Promise.all([ended('client'), ended('ssr')])
+      await writeFile(
+        path.join(app.root, 'routes/later.tsx'),
+        `${head}export const Route = createFileRoute('/later')({ loader: () => 'MARK_LATER' })\n`,
+      )
+      // (bounded: without a rebuild, the tree and output below tell)
+      await Promise.race([
+        rebuilt,
+        new Promise((resolve) => setTimeout(resolve, 20_000)),
+      ])
+      expect(await treeRoutes(app.root)).toEqual(['/', '/later'])
+      expect(await output(path.join(app.root, 'dist/client'))).toContain(
+        'MARK_LATER',
+      )
+      expect(await output(path.join(app.root, 'dist/ssr'))).toContain(
+        'MARK_LATER',
+      )
+    },
+    60_000,
+  )
 
   test('a dev server generates the route tree once', async () => {
     const { createServer } = await vite()
