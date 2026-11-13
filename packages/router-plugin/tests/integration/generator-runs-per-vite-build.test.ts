@@ -14,7 +14,7 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { viteVersions } from '@tanstack/compiler-vite-versions'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import { tanstackRouter } from '../../src/vite'
@@ -195,6 +195,31 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
     await writeFile(path.join(app.root, 'routes/about.tsx'), route('/about'))
     await (await createBuilder(app.buildConfig())).buildApp()
     expect(await treeRoutes(app.root)).toEqual(['/', '/about'])
+  }, 60_000)
+
+  // Source: review round 1 F5-4 (each config resolution's generation
+  // printed the generator's warnings again: three lines in one build)
+  test('round 1 F5-4: builds given the same plugin objects inline print a generator warning once each', async () => {
+    const { createBuilder } = await vite()
+    const app = await routerApp(major)
+    await writeFile(
+      path.join(app.root, 'routes/about.tsx'),
+      `${head}const id = '/about'\nexport const Route = createFileRoute(id)({})\n`,
+    )
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    onTestFinished(() => warn.mockRestore())
+    const printed = () =>
+      warn.mock.calls.filter((args) =>
+        String(args[0]).includes('not a string literal'),
+      ).length
+    const config = app.buildConfig({
+      configFile: false,
+      plugins: app.plugins(),
+    })
+    await (await createBuilder(config)).buildApp()
+    expect(printed()).toBe(1)
+    await (await createBuilder(config)).buildApp()
+    expect(printed()).toBe(2)
   }, 60_000)
 
   test('a second build given the same plugin objects inline generates the routes added since the first', async () => {

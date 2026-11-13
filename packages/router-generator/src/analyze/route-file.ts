@@ -1,7 +1,7 @@
 import { parse } from 'yuku'
 import { unwrap } from 'yuku/utils'
 import { lit } from '../print/style'
-import { propertyKeyName, routeCallOf } from './route-call'
+import { propertyKeyName, routeCallOf, stringLiteralOf } from './route-call'
 import type {
   ForeignRoute,
   RouteCall,
@@ -191,15 +191,6 @@ function headerInsertOffset(file: SourceFile) {
   return file.source.length
 }
 
-function isStringLiteral(node: Node | undefined): node is Node & {
-  value: string
-} {
-  return (
-    node?.type === 'Literal' &&
-    typeof (node as { value: unknown }).value === 'string'
-  )
-}
-
 /**
  * Reads a route file and computes the edits that keep it up (SPEC J1.1,
  * J1.2): the id argument of its Route's constructor call, the constructor
@@ -223,7 +214,7 @@ export function analyzeRouteFile(
   }
   if (call.kind === 'foreign') {
     // Not a route this file creates (re-exported, imported, destructured,
-    // the app's own route helper...): left as it is.
+    // code-based, the app's own route helper...): left as it is.
     return {
       kind: 'route',
       output: null,
@@ -251,7 +242,9 @@ export function analyzeRouteFile(
     idCall &&
     call.constructor !== 'createRootRouteWithContext'
   ) {
-    const idArg = idCall.arguments[0]
+    // (parentheses and TypeScript assertions around the id stay as written)
+    const idArg = unwrap(idCall.arguments[0])
+    const literal = stringLiteralOf(idArg)
     if (!idArg) {
       // `createFileRoute()`: the id goes between the parentheses
       splices.push({
@@ -259,12 +252,12 @@ export function analyzeRouteFile(
         end: idCall.end - 1,
         text: lit(expected.routeId, expected.style.quote),
       })
-    } else if (isStringLiteral(idArg)) {
-      if (idArg.value !== expected.routeId) {
+    } else if (literal) {
+      if (literal.value !== expected.routeId) {
         splices.push({
-          start: idArg.start,
-          end: idArg.end,
-          text: lit(expected.routeId, quoteOf(idArg)),
+          start: literal.start,
+          end: literal.end,
+          text: lit(expected.routeId, quoteOf(literal)),
         })
       }
     } else if (
@@ -374,8 +367,8 @@ function foreignCallDiagnostics(
   if (reason.kind !== 'no-options' && reason.kind !== 'type-only') {
     return []
   }
-  const idArg = reason.idCall?.arguments[0]
-  if (!isStringLiteral(idArg) || idArg.value === expected.routeId) {
+  const idArg = stringLiteralOf(reason.idCall?.arguments[0])
+  if (!idArg || idArg.value === expected.routeId) {
     return []
   }
   const name = calleeName(reason.callee)

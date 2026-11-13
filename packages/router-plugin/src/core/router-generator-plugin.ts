@@ -2,6 +2,7 @@ import { isAbsolute, normalize, relative } from 'node:path'
 import {
   Generator,
   createGeneratorSession,
+  logging,
   resolveConfigPath,
 } from '@tanstack/router-generator'
 import { getConfig } from './config'
@@ -29,6 +30,13 @@ export function createRouterGeneratorPlugin(
   let watching = false
   /** Vite: the config resolution under way was given this plugin (its `config` ran). */
   let submitted = false
+  /**
+   * Vite build: the warnings the generations of the build's config
+   * resolutions printed, so each prints once per build (plugin objects
+   * passed inline are given to the top-level resolution and to each
+   * environment's, and generate in each). The build's start ends them.
+   */
+  let printed: Set<string> | undefined
   const session = createGeneratorSession({
     generator: () => generator,
     publish: (routesByFile, failure) => {
@@ -45,9 +53,21 @@ export function createRouterGeneratorPlugin(
     } else {
       userConfig = getConfig(options, ROOT)
     }
+    const logger = logging({ disabled: userConfig.disableLogging })
     generator = new Generator({
       config: userConfig,
       root: ROOT,
+      logger: {
+        ...logger,
+        warn: (...args) => {
+          const text = args.join(' ')
+          if (printed?.has(text)) {
+            return
+          }
+          printed?.add(text)
+          logger.warn(...args)
+        },
+      },
     })
   }
 
@@ -68,6 +88,9 @@ export function createRouterGeneratorPlugin(
   return {
     name: 'tanstack:router-generator',
     enforce: 'pre',
+    buildStart() {
+      printed = undefined
+    },
     async watchChange(id, { event }) {
       if (isConfigFile(id)) {
         initConfigAndGenerator()
@@ -101,6 +124,9 @@ export function createRouterGeneratorPlugin(
           return
         }
         submitted = false
+        if (config.command === 'build') {
+          printed ??= new Set()
+        }
         initConfigAndGenerator({ root: config.root })
         await (config.command === 'build' && !config.build.watch
           ? session.build()
