@@ -459,6 +459,17 @@ export function collectLocalBindingsFromStatement(
   }
 }
 
+/**
+ * `export { a as b } from './x'` and `export * as ns from './x'` do not create
+ * a local binding, so the binding that stands in for them is keyed by the
+ * exported name, which is unique within a module. Keying by the imported name
+ * would let two re-exports of the same name from different sources overwrite
+ * each other. The prefix keeps the key from clashing with a real identifier.
+ */
+function getReExportBindingKey(exported: string): string {
+  return `re-export:${exported}`
+}
+
 export function extractModuleInfoFromAst(ast: t.File): ExtractedModuleInfo {
   const bindings = new Map<string, ModuleInfoBinding>()
   const exportMap = new Map<string, string>()
@@ -507,27 +518,29 @@ export function extractModuleInfoFromAst(ast: t.File): ExtractedModuleInfo {
       }
 
       for (const specifier of node.specifiers) {
-        if (t.isExportNamespaceSpecifier(specifier)) {
+        if (t.isExportNamespaceSpecifier(specifier) && node.source) {
           const exported = getModuleExportName(specifier.exported)
-          exportMap.set(exported, exported)
-          if (node.source) {
-            bindings.set(exported, {
-              type: 'import',
-              source: node.source.value,
-              importedName: '*',
-            })
-          }
+          const key = getReExportBindingKey(exported)
+          bindings.set(key, {
+            type: 'import',
+            source: node.source.value,
+            importedName: '*',
+          })
+          exportMap.set(exported, key)
         } else if (t.isExportSpecifier(specifier)) {
           const local = getModuleExportName(specifier.local)
           const exported = getModuleExportName(specifier.exported)
-          exportMap.set(exported, local)
 
           if (node.source) {
-            bindings.set(local, {
+            const key = getReExportBindingKey(exported)
+            bindings.set(key, {
               type: 'import',
               source: node.source.value,
               importedName: local,
             })
+            exportMap.set(exported, key)
+          } else {
+            exportMap.set(exported, local)
           }
         }
       }
@@ -836,7 +849,13 @@ export function retainModuleLevelDeclarations(
       return declaration.declarations.length > 0
     }
 
-    if (t.isFunctionDeclaration(declaration) && declaration.id) {
+    // Overload signatures travel with the function they describe, so that
+    // the shared module exports the same signature set as the source.
+    if (
+      (t.isFunctionDeclaration(declaration) ||
+        t.isTSDeclareFunction(declaration)) &&
+      declaration.id
+    ) {
       return bindingsToKeep.has(declaration.id.name)
     }
 
