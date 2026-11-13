@@ -5,7 +5,7 @@ import {
   createInlineCssStyleAsset,
   getStylesheetHref,
 } from '../manifest'
-import { decodePath } from '../utils'
+import { decodePath, normalizeSearchEncoding } from '../utils'
 import { createSieveCache } from '../sieve-cache'
 import { rootRouteId } from '../root'
 import { _getRenderedMatches } from '../load-client'
@@ -685,12 +685,8 @@ export function getNormalizedURL(url: string | URL, base?: string | URL) {
       ? rawUrl.pathname.replace(/^\/+/, '/')
       : rawUrl.pathname,
   )
-  const searchParams = new URLSearchParams(rawUrl.search)
   const normalizedHref =
-    decodedPathname +
-    (searchParams.size > 0 ? '?' : '') +
-    searchParams.toString() +
-    rawUrl.hash
+    decodedPathname + normalizeSearchEncoding(rawUrl.search) + rawUrl.hash
 
   return {
     url: new URL(normalizedHref, rawUrl.origin),

@@ -700,6 +700,28 @@ export function decodePath(path: string) {
   return result
 }
 
+// The server rewrites every request query through URLSearchParams, so "," and
+// "%2C" or "+" and "%20" reach the router in one spelling. Use this to compare
+// a href with such a request: both sides must be in the same form.
+export function normalizeSearchEncoding(search: string) {
+  const params = new URLSearchParams(search)
+  return params.size > 0 ? `?${params}` : ''
+}
+
+export function normalizeHrefSearchEncoding(href: string) {
+  const hashIndex = href.indexOf('#')
+  const end = hashIndex === -1 ? href.length : hashIndex
+  const searchIndex = href.indexOf('?')
+  if (searchIndex === -1 || searchIndex > end) {
+    return href
+  }
+  return (
+    href.slice(0, searchIndex) +
+    normalizeSearchEncoding(href.slice(searchIndex, end)) +
+    href.slice(end)
+  )
+}
+
 /**
  * Encodes a path the same way `new URL()` would, but without the overhead of full URL parsing.
  *
