@@ -1072,3 +1072,35 @@ test('CatchBoundary tracks reset keys while healthy', () => {
   rerender(<App />)
   expect(screen.getByText('Caught error')).toBeInTheDocument()
 })
+
+test('errored match renders errorComponent directly on client without throwing during hydration or render', async () => {
+  const rootRoute = createRootRoute({
+    component: () => <Outlet />,
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    loader: () => {
+      throw new Error('loader failed')
+    },
+    errorComponent: ({ error, reset }) => (
+      <div>
+        <p role="alert">Error: {(error as Error).message}</p>
+        <button onClick={() => reset()}>Retry</button>
+      </div>
+    ),
+    component: () => <div>Success</div>,
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute])
+  const testRouter = createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  await testRouter.load()
+
+  expect(() => render(<RouterProvider router={testRouter} />)).not.toThrow()
+  expect(screen.getByRole('alert')).toHaveTextContent('Error: loader failed')
+})
