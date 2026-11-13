@@ -8692,6 +8692,26 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     },
   )
 
+  // the route options' declaration writing a binding at load (a component
+  // value `(n = 5, () => …)`) joins its cluster too, but is no unused
+  // declaration: exported, holding the options (spelling-variants suites,
+  // code-splitter-value-own-writes `flags`)
+  it('reports no binding the route options use as kept by their declaration', async () => {
+    const code = dedent(`
+      import { createFileRoute } from 'toy-router'
+      let n = 1
+      export const Route = createFileRoute('/')({
+        loader: () => flags,
+        component: (n = 5, () => flags),
+      })
+      const flags = [n]
+    `)
+    const r = await report(code, ['loader', 'component'])
+    expect(
+      r.diagnostics.filter((d) => d.code === 'eager-split:written'),
+    ).toEqual([])
+  })
+
   // what the route module reads of `k` only before the statement, at load,
   // does not see it: the statement runs in the code that needs `d`
   it('a binding the route module keeps that a statement changes after the route module read it', async () => {
