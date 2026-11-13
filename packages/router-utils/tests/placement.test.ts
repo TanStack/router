@@ -8586,6 +8586,14 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     )
     expect(r.diagnostics[0]!.message).toContain(cause)
   }
+  /** The end of the `written` message when code the route module keeps sees what the statement changes: no move keeps what that code sees. */
+  const seenBy = (code: string, reader: string) =>
+    `, which the route module's code uses on line ${lineOf(code, reader)}; moving or deleting that statement would change what that code sees.`
+
+  // the statement changes `k`, which the loader reads: run in the code
+  // that needs `d`, it would change `k` later than the loader reads it, so
+  // no move is offered (the statement puts `d` in `k`; `d` loads with the
+  // route module)
   it('a binding the route module keeps that one call also changes', async () => {
     const statement = 'k.link(d)'
     const options = 'loader: () => k, component: () => d'
@@ -8593,26 +8601,13 @@ describe('eager-split:written: why a statement that changes it stays', () => {
       `const k = make()\nconst d = make()\n${statement}`,
       options,
     )
-    const r = await report(code)
     written(
-      r,
+      await report(code),
       code,
       'd',
       statement,
-      'which uses it, stays there: it also changes `k`, which the route module keeps',
+      `which uses it, stays there: it also changes \`k\`${seenBy(code, 'loader')}`,
     )
-    expect(r.diagnostics[0]!.message).toContain(
-      'run that statement in the code that needs it',
-    )
-    // the fix: the call in the code that needs `d`
-    const f = await report(
-      route(
-        'const k = make()\nconst d = make()',
-        'loader: () => k, component: () => (k.link(d), d)',
-      ),
-    )
-    expect(f.diagnostics).toEqual([])
-    expect(f.chunks.component).toContain('const d = make()')
   })
 
   // a method the mutation model knows (`Set.add`, `Array.push`, `Map.set`)
@@ -8631,23 +8626,13 @@ describe('eager-split:written: why a statement that changes it stays', () => {
         `const k = ${init}\nconst d = make()\n${statement}`,
         options,
       )
-      const r = await report(code)
       written(
-        r,
+        await report(code),
         code,
         'd',
         statement,
-        'which uses it, stays there: it also changes `k`, which the route module keeps; run that statement in the code that needs it, so `d` can load with the split `component`.',
+        `which uses it, stays there: it also changes \`k\`${seenBy(code, 'loader')}`,
       )
-      // the fix: the call in the code that needs `d`
-      const f = await report(
-        route(
-          `const k = ${init}\nconst d = make()`,
-          `loader: () => k, component: () => (${statement}, d)`,
-        ),
-      )
-      expect(f.diagnostics).toEqual([])
-      expect(f.chunks.component).toContain('const d = make()')
     },
   )
 
@@ -8671,24 +8656,67 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     async (_, decls, statement, extract) => {
       const options = 'loader: () => k, component: () => d'
       const code = route(`${decls}\n${statement}`, options)
-      const r = await report(code, undefined, {}, extract)
       written(
-        r,
+        await report(code, undefined, {}, extract),
         code,
         'd',
         statement,
-        'which uses it, stays there: it also changes `k`, which the route module keeps; run that statement in the code that needs it, so `d` can load with the split `component`.',
+        `which uses it, stays there: it also changes \`k\`${seenBy(code, 'loader')}`,
       )
-      // the fix: the call in the code that needs `d`
-      const f = await report(
-        route(decls, `loader: () => k, component: () => (${statement}, d)`),
-        undefined,
-        {},
-        extract,
-      )
-      expect(f.diagnostics).toEqual([])
     },
   )
+
+  // an unused declaration calling the method (`const n = k.add(d).size`)
+  // is such a statement too: it was silent with a known method, and its
+  // twin with an unknown one asked to delete it, which changes `k` for the
+  // loader as moving it does
+  it.each([
+    ['a known method', 'new Set()', 'k.add(d)'],
+    ['an unknown call', 'make()', 'k.link(d)'],
+  ])(
+    'a binding the route module keeps that an unused declaration changes with %s',
+    async (_, init, call) => {
+      const statement = `n = ${call}.size`
+      const options = 'beforeLoad: () => k.size, component: () => d'
+      const code = route(
+        `const k = ${init}\nconst d = make()\nconst ${statement}`,
+        options,
+      )
+      written(
+        await report(code),
+        code,
+        'd',
+        statement,
+        `which uses it, stays there: it also changes \`k\`${seenBy(code, 'beforeLoad')}`,
+      )
+    },
+  )
+
+  // what the route module reads of `k` only before the statement, at load,
+  // does not see it: the statement runs in the code that needs `d`
+  it('a binding the route module keeps that a statement changes after the route module read it', async () => {
+    const options = 'loader: () => n, component: () => d'
+    const code = route(
+      'const k = new Set()\nconst n = k.size\nconst d = make()\nk.add(d)',
+      options,
+    )
+    written(
+      await report(code),
+      code,
+      'd',
+      'k.add(d)',
+      'which uses it, stays there: it also changes `k`, which the route module keeps; run that statement in the code that needs it, so `d` can load with the split `component`.',
+    )
+    // the fix: the call in the code that needs `d`
+    const f = await report(
+      route(
+        'const k = new Set()\nconst n = k.size\nconst d = make()',
+        'loader: () => n, component: () => (k.add(d), d)',
+      ),
+    )
+    expect(f.diagnostics).toEqual([])
+    expect(f.chunks.component).toContain('const d = make()')
+  })
 
   it('a binding the route module keeps that the statement only uses', async () => {
     const statement = 'table.setup(cfg)'
@@ -8892,8 +8920,8 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     expect(f.env).not.toContain('const a = make()')
   })
 
-  // (one expression writing both: run in the code that needs `a`, as a
-  // call changing both is)
+  // one expression writing both: the loader reads `k`, so no move is
+  // offered, as for a call changing both
   it('a binding the route module keeps one expression also writes', async () => {
     const statement = 'a.v = k.v = 1'
     const options = 'loader: () => k, component: () => a'
@@ -8906,16 +8934,8 @@ describe('eager-split:written: why a statement that changes it stays', () => {
       code,
       'a',
       statement,
-      'it also changes `k`, which the route module keeps; run that statement in the code that needs it',
+      `which changes it, stays there: it also changes \`k\`${seenBy(code, 'loader')}`,
     )
-    const f = await report(
-      route(
-        'const a = make()\nconst k = make()',
-        'loader: () => k, component: () => ((a.v = k.v = 1), a)',
-      ),
-    )
-    expect(f.diagnostics).toEqual([])
-    expect(f.chunks.component).toContain('const a = make()')
   })
 
   // the statement's own callback changes a binding another declaration
