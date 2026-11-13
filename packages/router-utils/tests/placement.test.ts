@@ -7073,8 +7073,126 @@ describe('language operations are no effect (rule L)', () => {
       expect(r.env).toContain('const r11 = [h6.c.v]\no0.v = 5')
       const kept = r.main?.diagnostics ?? []
       expect(kept).toMatchObject([{ code: 'eager-split:state' }])
+      // (the move names the holder `r11` reads `o0` through: left behind,
+      // the new module would import it back from the route module)
       expect(kept[0]!.message).toContain(
-        '`r11` in /app/route.tsx stays in the route module because it uses `o0` when the module loads, and the module writes `o0`',
+        '`r11` in /app/route.tsx stays in the route module because it uses `o0` when the module loads, and the module writes `o0` then (line 6); move `r11`, `o0`, `h6` and the statements writing them when the module loads to their own module, so `r11` can load with the split `component`.',
+      )
+    },
+  )
+
+  // the move a `state` report offers works when applied: it names what the
+  // moved code reads when the module loads, what reads a moved binding
+  // before a moved write, and the code assigning a moved binding (an
+  // imported binding is read-only); when that needs what the route module
+  // keeps, no move is offered (guarantee 13)
+  const stateMessage = async (decls: string, options: string, after = '') => {
+    const r = await split(
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        ${decls}
+        export const Route = createFileRoute('/x')({
+          ${options}
+        })
+        ${after}
+      `),
+    )
+    const kept = r.main?.diagnostics ?? []
+    expect(kept).toMatchObject([{ code: 'eager-split:state' }])
+    return kept[0]!.message
+  }
+  it.each([
+    [
+      'what reads a moved binding before its write',
+      dedent(`
+        const o0 = { v: 1 }
+        const snap = o0.v
+        const h6 = { c: o0 }
+        const r11 = [h6.c.v]
+        o0.v = 5
+      `),
+      'loader: () => snap,\n          component: function Page() { h6.c.v = 12; return [r11, snap] },',
+      'move `r11`, `o0`, `snap`, `h6` and the statements writing them when the module loads to their own module, so `r11` can load',
+    ],
+    [
+      'a statement reading a moved binding before its write',
+      dedent(`
+        const o0 = { v: 1 }
+        console.log(o0.v)
+        const h6 = { c: o0 }
+        const r11 = [h6.c.v]
+        o0.v = 5
+      `),
+      'loader: () => o0,\n          component: function Page() { h6.c.v = 12; return r11 },',
+      'move `r11`, `o0`, `h6`, the statement on line 3 and the statements writing them when the module loads to their own module, so `r11` can load',
+    ],
+    [
+      'a function it calls and what that reads',
+      dedent(`
+        const o0 = { v: 1 }
+        const cfg = { k: 2 }
+        function get() { return cfg.k }
+        const r11 = [o0.v, get()]
+        o0.v = 5
+      `),
+      'loader: () => o0,\n          component: () => r11,',
+      'move `r11`, `o0`, `cfg`, `get` and the statements writing them when the module loads to their own module, so `r11` can load',
+    ],
+    [
+      'the function assigning a moved binding',
+      dedent(`
+        let o0 = { v: 1 }
+        const h6 = { c: o0 }
+        const r11 = [h6.c.v]
+        function reset() { o0 = { v: 0 } }
+      `),
+      'loader: () => { reset(); return o0 },\n          component: () => r11,',
+      'use `o0` inside the code that needs it, or move `r11`, `o0`, `h6` and `reset` to their own module, so `r11` can load',
+    ],
+    [
+      'a holder (a write at an unknown time)',
+      dedent(`
+        const o0 = { v: 1 }
+        const h6 = { c: o0 }
+        const r11 = [h6.c.v]
+      `),
+      'loader: () => { o0.v = 7; return o0 },\n          component: () => r11,',
+      'use `o0` inside the code that needs it, or move `r11`, `o0` and `h6` to their own module, so `r11` can load',
+    ],
+  ])(
+    'offers a move of a read before a write that names %s',
+    async (_, decls, options, fix) => {
+      expect(await stateMessage(decls, options)).toContain(fix)
+    },
+  )
+
+  it.each([
+    [
+      'reads the route when it loads',
+      'const o0 = { v: 1 }\n        const h6 = { c: o0 }',
+      'loader: () => o0,\n          component: function Page() { h6.c.v = 12; return r11 },',
+      dedent(`
+        const r11 = [h6.c.v, Route.options]
+        o0.v = 5
+      `),
+      "`r11` in /app/route.tsx stays in the route module because it uses `o0` when the module loads, and the module writes `o0` then (line 9); it can't move to a module of its own: that module would also need `Route`, which stays in the route module.",
+    ],
+    [
+      'reads a binding a route option assigns',
+      dedent(`
+        let o0 = { v: 1 }
+        const h6 = { c: o0 }
+        const r11 = [h6.c.v]
+      `),
+      'loader: () => { o0 = { v: 0 }; return o0 },\n          component: () => r11,',
+      '',
+      '`r11` in /app/route.tsx stays in the route module because it uses `o0` when the module loads, and the module writes `o0`; use `o0` inside the code that needs it, so `r11` can load with the split `component`.',
+    ],
+  ])(
+    'offers no move of a read before a write when it %s',
+    async (_, decls, options, after, message) => {
+      expect(await stateMessage(decls, options, after)).toBe(
+        `[tanstack-router] ${message}`,
       )
     },
   )
