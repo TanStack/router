@@ -746,17 +746,28 @@ export function keptDeclarations(
       // and the objects those hold), its own cluster aside
       const changes = events.unitChanges(id)
       const followed = new Set(changes.clusters)
+      /** Whether the env module uses `ref` outside the joined statements, `x` and what `within` allows (`cl`'s other code does: its declaration). */
+      const usedByEnv = (
+        ref: ClassifiedRef,
+        x: ClusterId,
+        within: (z: ClusterId) => boolean,
+      ) => {
+        if (inJoined(ref)) {
+          return false
+        }
+        const z = clusterOfRef(ref)
+        return z === cl.id
+          ? NEED_KINDS.has(ref.kind)
+          : z !== x &&
+              !(z !== undefined && within(z)) &&
+              usedAt(ref, x) === 'env'
+      }
       /** Whether nothing the env module evaluates uses `y`'s bindings but the statement and what it follows. */
       const onlyFollowed = (y: ClusterId) =>
         [...clusters[y]!.declares].every((s) =>
-          t1.refs.refsOf(s).every((ref) => {
-            const z = clusterOfRef(ref)
-            return (
-              inJoined(ref) ||
-              (z !== undefined && followed.has(z)) ||
-              usedAt(ref, y) !== 'env'
-            )
-          }),
+          t1.refs
+            .refsOf(s)
+            .every((ref) => !usedByEnv(ref, y, (z) => followed.has(z))),
         )
       const reported: Array<KeptDeclaration> = []
       for (const x of changes.clusters) {
@@ -772,15 +783,12 @@ export function keptDeclarations(
           // (another binding the statement follows that the env module
           // uses keeps it there anyway)
           ![...xc.declares].every((s) =>
-            t1.refs.refsOf(s).every((ref) => {
-              const z = clusterOfRef(ref)
-              return (
-                inJoined(ref) ||
-                z === x ||
-                (z !== undefined && followed.has(z) && onlyFollowed(z)) ||
-                usedAt(ref, x) !== 'env'
-              )
-            }),
+            t1.refs
+              .refsOf(s)
+              .every(
+                (ref) =>
+                  !usedByEnv(ref, x, (z) => followed.has(z) && onlyFollowed(z)),
+              ),
           )
         ) {
           continue
