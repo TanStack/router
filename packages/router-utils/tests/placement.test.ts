@@ -758,23 +758,25 @@ describe("an extracted export's module is a destination", () => {
     )
     expect(r2).toMatchObject([{ code: 'eager-export:state' }])
     expect(r2[0]!.message).toContain(
-      'stays in the route module because it uses `F0` when it loads, and the route module writes `F0` then (line 8), so it loads with the route module instead of with that code. Move it, `F0` and the statements writing them when the module loads to their own module and import them from there.',
+      'stays in the route module because it uses `F0` when it loads, and the route module writes `F0` then (line 8), so it loads with the route module instead of with that code. Move it, `F0`, `on`, `r3`, `l5` and the statements writing them when the module loads to their own module and import them from there.',
     )
-    // the fix: `F0`, its write and `r2` in a module of their own
+    // the fix: `F0`, its write, `r2` and what reads `F0` before the write
+    // (`r3` hands `r2` to a call, `l5` names `F0`) with what that reads
+    // (`on`) in a module of their own
     const fixed = new MemoryHost({
       files: {
         '/app/own.ts': dedent(`
-          export const F0 = () => 2
+          import { snap } from './lib'
+          const on = true
+          const F0 = () => 2
           export const r2 = 'p' in F0
+          export const r3 = snap(r2)
+          export const l5 = on ? F0 : null
           F0.v = [12]
         `),
         '/app/route.tsx': dedent(`
           import { createFileRoute } from 'toy-router'
-          import { snap } from './lib'
-          import { F0, r2 } from './own'
-          const on = true
-          const r3 = snap(r2)
-          const l5 = on ? F0 : null
+          import { l5, r2, r3 } from './own'
           export const Route = createFileRoute('/')({
             loader: () => r3,
             component: () => [r2, r3, l5, r9],
@@ -5619,7 +5621,7 @@ describe('what an evaluation runs: one walk for every rule', () => {
       },
     ])
     expect(r.kept[0]!.message).toBe(
-      '[tanstack-router] The export `initial` of /app/route.tsx is used only by the split `component`, but stays in the route module because it uses `n` when it loads, and the route module writes `n`, so it loads with the route module instead of with that code. Use `n` inside the code that needs it, or move both to their own module and import them from there.',
+      '[tanstack-router] The export `initial` of /app/route.tsx is used only by the split `component`, but stays in the route module because it uses `n` when it loads, and the route module writes `n`, so it loads with the route module instead of with that code. Use `n` inside the code that needs it, or move it, `n` and `inc` to their own module and import them from there.',
     )
   })
 
@@ -10066,7 +10068,9 @@ describe('calls whose result the router calls later (R152)', () => {
 
   // every other call reads as before: a function handed to it may run when
   // it does, which the message says. A wrapped component used only as a
-  // JSX tag is one of them (R152 holds route option values only)
+  // JSX tag is one of them (R152 holds route option values only). The move
+  // takes the function it hands along (the new module would import it
+  // back)
   it.each([
     [
       'inline',
@@ -10075,6 +10079,7 @@ describe('calls whose result the router calls later (R152)', () => {
       'save',
       'f',
       '() => save',
+      'both',
     ],
     [
       'named',
@@ -10083,6 +10088,7 @@ describe('calls whose result the router calls later (R152)', () => {
       'save',
       'f',
       '() => save',
+      '`save`, `seen` and `compute`',
     ],
     [
       'named inside an object',
@@ -10091,6 +10097,7 @@ describe('calls whose result the router calls later (R152)', () => {
       'save',
       'f',
       '() => save',
+      '`save`, `seen` and `compute`',
     ],
     [
       'a wrapped component used as a JSX tag',
@@ -10099,10 +10106,11 @@ describe('calls whose result the router calls later (R152)', () => {
       'Card',
       'hoc',
       'function Page() { return <Card /> }',
+      'both',
     ],
   ])(
     'keeps a declaration handing a function reading written state to a call the router does not call later, saying it may use it (%s)',
-    async (_, decls, decl, name, callee, component) => {
+    async (_, decls, decl, name, callee, component, moved) => {
       const code = route(
         `${seen}\n${decls}${decl}`,
         `${loader}\ncomponent: ${component},`,
@@ -10119,7 +10127,7 @@ describe('calls whose result the router calls later (R152)', () => {
         },
       ])
       expect(kept[0]!.message).toBe(
-        `[tanstack-router] \`${name}\` in /app/route.tsx stays in the route module because it may use \`seen\` when the module loads (the function is handed to \`${callee}\`), and the module writes \`seen\`; move both to their own module, so \`${name}\` can load with the split \`component\`.`,
+        `[tanstack-router] \`${name}\` in /app/route.tsx stays in the route module because it may use \`seen\` when the module loads (the function is handed to \`${callee}\`), and the module writes \`seen\`; move ${moved} to their own module, so \`${name}\` can load with the split \`component\`.`,
       )
     },
   )

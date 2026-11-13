@@ -132,6 +132,21 @@ export interface Events {
   ) => Pin | undefined
   /** Another cluster than `c` whose evaluation touches `sym` when the module loads, the first one, if any (who reads what `c`'s own code writes later). */
   loadToucher: (sym: SymbolId, c: ClusterId) => ClusterId | undefined
+  /**
+   * What moves with cluster `c` and binding `sym` to a module of their own,
+   * which evaluates before the env module's body (the move a `state` report
+   * offers): what they touch when the module loads (left behind, that
+   * module would import it back from the env module: a cycle), the code
+   * writing a moved binding when the module loads or assigning it at any
+   * time (an imported binding is read-only), and what touches a moved
+   * binding when the module loads before one of its writes then (moved, the
+   * write would run first: O). `syms`: the moved bindings (of an import,
+   * the ones reached).
+   */
+  movedWith: (
+    c: ClusterId,
+    sym: SymbolId,
+  ) => { clusters: Set<ClusterId>; syms: Set<SymbolId> }
   /** T: the first non-copyable binding of a cluster `kept` says the env module keeps that `c` reads at its evaluation, if any (one of the source before a generated one). */
   readsKept: (
     c: ClusterId,
@@ -440,6 +455,73 @@ export function eventTable(
       true,
     )
     return found
+  }
+
+  function movedWith(
+    c: ClusterId,
+    sym: SymbolId,
+  ): { clusters: Set<ClusterId>; syms: Set<SymbolId> } {
+    const moved = new Set<ClusterId>()
+    const syms = new Set<SymbolId>()
+    const queue: Array<ClusterId> = []
+    const pending: Array<SymbolId> = [sym]
+    const enter = (d: ClusterId) => {
+      if (moved.has(d)) {
+        return
+      }
+      moved.add(d)
+      queue.push(d)
+      // (an import moves only the bindings reached: every module imports
+      // its own)
+      if (clusters[d]!.kind !== 'import') {
+        pending.push(...clusters[d]!.declares)
+      }
+    }
+    enter(c)
+    const home = clusterOfSym.get(sym)
+    if (home !== undefined) {
+      enter(home)
+    }
+    while (queue.length > 0 || pending.length > 0) {
+      const d = queue.pop()
+      if (d !== undefined) {
+        touches(d, (t) => {
+          enter(t.cluster)
+          pending.push(t.sym)
+          return false
+        })
+        continue
+      }
+      const s = pending.pop()!
+      if (syms.has(s)) {
+        continue
+      }
+      syms.add(s)
+      let last = -1
+      for (const w of writesOfSym.get(s) ?? []) {
+        if (!w.live || (!w.eager && w.member)) {
+          continue
+        }
+        if (w.eager) {
+          last = Math.max(last, w.at)
+        }
+        const wc = w.owner === null ? undefined : clusterOfRegion.get(w.owner)
+        if (wc !== undefined) {
+          enter(wc)
+        }
+      }
+      if (last >= 0) {
+        for (const d2 of touchersOf(s)) {
+          if (
+            !moved.has(d2) &&
+            touches(d2, (t) => t.sym === s && t.at < last)
+          ) {
+            enter(d2)
+          }
+        }
+      }
+    }
+    return { clusters: moved, syms }
   }
 
   const isStatic = (o: OutputId | undefined) =>
@@ -815,6 +897,7 @@ export function eventTable(
     statementChanges,
     lazyConflict,
     loadToucher: (sym, c) => touchersOf(sym).find((d) => d !== c),
+    movedWith,
     readsKept,
     writeConflict,
     fallbacks,
