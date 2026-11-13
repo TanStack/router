@@ -13,7 +13,14 @@
  *   `UI?.Widget`); the suggested fix, rendering it inside `<ClientOnly>`
  *   (React and Solid, `<UI.Widget />` for a namespace member), builds, and
  *   the server output has none of the component;
- * - a module importing both markers fails at the second marker.
+ * - a module importing both markers fails at the second marker;
+ * - a `require()` of a denied file is reported at the call, as the import it
+ *   is (review round 2 F4-1: Rsbuild and Vite named it an import another
+ *   plugin added, without a position); its fix, the call inside
+ *   `createServerOnlyFn` or a server function's handler, keeps the file out of
+ *   the client; a webpack context written through a cast of `import.meta`
+ *   (Rsbuild) is reported at the context, and narrowing its `regExp` leaves
+ *   the file out.
  */
 import { describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
@@ -100,6 +107,98 @@ export const read = () => Object.keys(modules)
       expect(build.client.where('MARK_DB')).toBe('nowhere')
       const { result } = await build.client.run('return entry.read()')
       expect(result).toEqual(['./lib/util.ts'])
+    },
+    timeout,
+  )
+
+  const required = (load: string) => ({
+    'src/lib/db.server.ts': db,
+    'src/entry.ts': `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
+declare const require: any
+export const load = ${load}
+`,
+  })
+  /** No report of `error` names a cause other than the importer's own code. */
+  const noAddedImport = (error: { diagnostics?: Array<{ text: string }> }) =>
+    expect(
+      (error.diagnostics ?? []).filter((d) =>
+        d.text.includes('another plugin'),
+      ),
+    ).toEqual([])
+
+  test(
+    'round 2 F4-1: a require() of a denied file fails the build at the call, as the import it is',
+    async () => {
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files: required(`() => require('./lib/db.server').db()`),
+          entry: 'src/entry.ts',
+        }),
+      )
+      expectViolationsAt(error, [
+        { environment: 'client', use: 'src/entry.ts:3:27' },
+      ])
+      noAddedImport(error)
+    },
+    timeout,
+  )
+
+  test.each([
+    [
+      'createServerOnlyFn',
+      `createServerOnlyFn(() => require('./lib/db.server').db())`,
+    ],
+    [
+      "a server function's handler",
+      `createServerFn().handler(async () => require('./lib/db.server').db())`,
+    ],
+  ])(
+    'round 2 F4-1: the require() inside %s builds, and the client has none of the file',
+    async (_, load) => {
+      const build = await buildStart({
+        bundler,
+        files: required(load),
+        entry: 'src/entry.ts',
+      })
+      expect(build.violations).toEqual([])
+      expect(build.client.where('MARK_DB')).toBe('nowhere')
+      expect(build.ssr.where('MARK_DB')).not.toBe('nowhere')
+    },
+    timeout,
+  )
+
+  const context = (regExp: string) => ({
+    'src/lib/db.server.ts': db,
+    'src/lib/util.ts': `export const util = () => 'util'\n`,
+    'src/entry.ts': `const ctx = (import.meta as any).webpackContext('./lib', { recursive: false, regExp: ${regExp} })
+export const read = () => ctx.keys()
+`,
+  })
+
+  test.runIf(bundler === 'rsbuild')(
+    'round 2 F4-1: a webpack context through a cast of import.meta fails the build at the context, and a narrower regExp leaves the file out',
+    async () => {
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files: context('/\\.ts$/'),
+          entry: 'src/entry.ts',
+        }),
+      )
+      expectViolationsAt(error, [
+        { environment: 'client', use: 'src/entry.ts:1:14' },
+      ])
+      noAddedImport(error)
+      const build = await buildStart({
+        bundler,
+        files: context('/util\\.ts$/'),
+        entry: 'src/entry.ts',
+      })
+      expect(build.violations).toEqual([])
+      expect(build.client.where('MARK_DB')).toBe('nowhere')
+      const { result } = await build.client.run('return entry.read()')
+      expect(result).toEqual(['./util.ts'])
     },
     timeout,
   )
