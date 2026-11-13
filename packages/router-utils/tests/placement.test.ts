@@ -8818,6 +8818,36 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     },
   )
 
+  // the same for an exported binding (it was not reported: the pass
+  // skipped exported clusters)
+  it('a binding the route module keeps a statement also writes, the other one exported', async () => {
+    const statement = 'if (on) { a.v = 1; k.v = 2 }'
+    const options = 'loader: () => k, component: () => a'
+    const code = route(
+      `export const a = make()\nconst k = make()\n${statement}`,
+      options,
+    )
+    written(
+      await report(code, undefined, {}, true),
+      code,
+      'a',
+      statement,
+      'it also changes `k`, which the route module keeps; change `k` in a statement of its own',
+    )
+    // the fix
+    const f = await report(
+      route(
+        'export const a = make()\nconst k = make()\nif (on) { a.v = 1 }\nif (on) { k.v = 2 }',
+        options,
+      ),
+      undefined,
+      {},
+      true,
+    )
+    expect(f.diagnostics).toEqual([])
+    expect(f.env).not.toContain('const a = make()')
+  })
+
   // (one expression writing both: run in the code that needs `a`, as a
   // call changing both is)
   it('a binding the route module keeps one expression also writes', async () => {
