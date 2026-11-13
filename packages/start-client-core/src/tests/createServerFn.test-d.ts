@@ -16,6 +16,10 @@ import type {
   CustomFetch,
   ServerFnReturnType,
 } from '../createServerFn'
+import type {
+  AnyFunctionMiddleware,
+  AnyRequestMiddleware,
+} from '../createMiddleware'
 
 test('createServerFn without middleware', () => {
   expectTypeOf(createServerFn()).toHaveProperty('handler')
@@ -1013,4 +1017,36 @@ test('createServerFn respects TsrSerializable', () => {
   expectTypeOf(fn1()).toEqualTypeOf<
     Promise<{ nested: { custom: MyCustomTypeSerializable } }>
   >()
+})
+
+test('createServerFn builder options are read-only and keep their types when read', () => {
+  const middleware = createMiddleware({ type: 'function' }).server(({ next }) =>
+    next(),
+  )
+  const base = createServerFn({ method: 'POST' })
+  const withMiddleware = base.middleware([middleware])
+  const withValidator = withMiddleware.validator(
+    (input: { a: string }) => input,
+  )
+
+  expectTypeOf(base.options.method).toEqualTypeOf<'POST'>()
+  const { method } = withValidator.options
+  expectTypeOf(method).toEqualTypeOf<'POST'>()
+  expectTypeOf(withMiddleware.options.middleware).toEqualTypeOf<
+    ReadonlyArray<AnyFunctionMiddleware | AnyRequestMiddleware> | undefined
+  >()
+
+  const options = withValidator.options
+  // @ts-expect-error a builder's options are read-only
+  withValidator.options.method = options.method
+  // @ts-expect-error a builder's options are read-only
+  withValidator.options.validator = options.validator
+  // @ts-expect-error a builder's options are read-only
+  withValidator.options.middleware = options.middleware
+  // @ts-expect-error a builder's options are read-only
+  withValidator.options.serverFn = options.serverFn
+  // @ts-expect-error a builder's options are read-only
+  withValidator.options.strict = options.strict
+  // @ts-expect-error a builder's options are read-only
+  withValidator.options = options
 })

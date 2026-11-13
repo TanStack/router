@@ -88,7 +88,9 @@ Application code uses the public URL in both cases; test setup enables mocking.
 The inferred build target uses standard production inputs and explicit mode-
 specific outputs (`dist-<toolchain>-<mode>`). Mode env values are passed through
 the target command env, so they do not need to be duplicated as target input
-env hashes.
+env hashes. The one variable from outside, `TSR_COMPILER_VERIFY` (CI turns the
+compiler's self-checks on), is an input of every inferred target through the
+`compilerSelfChecks` named input in `nx.json`.
 
 Because of this, Playwright `webServer.command` should only start the app.
 

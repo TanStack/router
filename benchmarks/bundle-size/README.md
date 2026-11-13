@@ -170,3 +170,20 @@ The measurement script supports optional interfaces for historical backfilling:
 
 These are intended for one-off scripts that replay historical commits and append results to the same history dataset shape used for chart generation.
 If `--append-history` points at a `data.js` file, output is written as `window.BENCHMARK_DATA = ...` for direct GitHub Pages compatibility.
+
+## Server Output
+
+`scripts/benchmarks/bundle-size/server.mjs` builds the Start scenarios with
+their server environment (`measure.mjs` builds the client only) and reports
+server bytes (total, entry chunk), the chunks and modules loaded for a first
+request to `/`, and cold start time (process spawn → first SSR response):
+
+```bash
+node scripts/benchmarks/bundle-size/server.mjs --repo-root . \
+  --dist-dir benchmarks/bundle-size/dist-server --build \
+  --maps-dist-dir benchmarks/bundle-size/dist-server-maps --build-maps \
+  --out server.json [--baseline <other server.json>]
+```
+
+To compare checkouts, run it with `--repo-root <other checkout>` and dist
+directories inside that checkout (chunks resolve their externals from there).

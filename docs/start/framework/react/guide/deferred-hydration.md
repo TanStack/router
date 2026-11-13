@@ -190,6 +190,13 @@ By default, `Hydrate` splits the children into a generated child chunk:
 
 This delays both hydration work and child JavaScript loading.
 
+The compiler splits a `Hydrate` imported from `@tanstack/react-start`, directly
+or through your app's own modules re-exporting it under the name `Hydrate`
+(`export { Hydrate } from '@tanstack/react-start'`, `export *`, a namespace
+import). A re-export under another name (`export { Hydrate as Lazy }`) or from
+an installed package still defers hydration, but its children load with the
+page.
+
 Set `split={false}` when the child code is small or already needed elsewhere,
 and you only want to delay hydration work:
 
@@ -699,12 +706,17 @@ such as `split={shouldSplit}` cannot be used to opt out at compile time.
 
 These patterns cannot be split:
 
-| Pattern                                  | Why it is rejected                                                                 | What to do instead                                                                   |
-| ---------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Function-as-children                     | The compiler cannot move a render function and preserve the expected call pattern. | Use `split={false}` or move the rendered UI into a child component.                  |
-| Hook calls directly inside extracted JSX | Moving that JSX would move where the hook executes.                                | Move the hook call into a component inside the boundary, then render that component. |
-| `this` captures                          | Extracted function components cannot safely preserve class instance context.       | Wrap the UI in a function component or use `split={false}`.                          |
-| `super` captures                         | Extracted function components cannot preserve superclass access.                   | Wrap the UI in a function component or use `split={false}`.                          |
+| Pattern                                                                  | Why it is rejected                                                                                                           | What to do instead                                                                                                                       |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Function-as-children                                                     | The compiler cannot move a render function and preserve the expected call pattern.                                           | Use `split={false}` or move the rendered UI into a child component.                                                                      |
+| Hook calls directly inside extracted JSX                                 | Moving that JSX would move where the hook executes.                                                                          | Move the hook call into a component inside the boundary, then render that component.                                                     |
+| A function inside the boundary reading a `let` the component reassigns   | The extracted children receive the variable's value when the boundary renders: the function would not see later assignments. | Keep the value in a ref (`const timer = useRef()`, read and assign `timer.current`), or use `split={false}`.                             |
+| Assigning a local of the component inside the boundary (`count++`)       | The extracted children receive the local's value, not the variable.                                                          | Move the variable and the code that assigns it into a component inside the boundary, or use `split={false}`.                             |
+| Assigning a module-level variable the rest of the module also uses       | Extracted code cannot assign a binding it imports.                                                                           | Move the code that assigns it into a component defined outside the boundary and render that component inside it, or use `split={false}`. |
+| Reading at module evaluation a binding that later top-level code changes | Extraction would change the order of evaluation.                                                                             | Use `split={false}`.                                                                                                                     |
+| `await` or `yield` directly inside the boundary                          | The extracted children render in a synchronous component.                                                                    | Compute the value before the boundary, or use `split={false}`.                                                                           |
+| `this` or `new.target` captures                                          | Extracted function components cannot safely preserve class instance or constructor context.                                  | Wrap the UI in a function component or use `split={false}`.                                                                              |
+| `super` captures                                                         | Extracted function components cannot preserve superclass access.                                                             | Wrap the UI in a function component or use `split={false}`.                                                                              |
 
 This fails because `useThing()` would be moved into the generated component:
 

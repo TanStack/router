@@ -28,6 +28,7 @@ import type {
   AssignAllServerFnContext,
   IntersectAllValidatorInputs,
   IntersectAllValidatorOutputs,
+  ReadonlyBuilderOptions,
 } from './createMiddleware'
 
 export type ServerFnStrict = boolean | { input?: boolean; output?: boolean }
@@ -152,6 +153,12 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
           const result = await executeMiddleware(resolvedMiddleware, 'client', {
             ...extractedFn,
             ...newOptions,
+            // During SSR the caller can hold the provider's extractedFn (full
+            // ServerFnMeta); client middleware only ever sees the id
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- isServer is only known outside development
+            ...((isServer ?? typeof window === 'undefined')
+              ? { serverFnMeta: { id: extractedFn.serverFnMeta.id } }
+              : {}),
             data: opts?.data,
             headers: opts?.headers,
             signal: opts?.signal,
@@ -750,13 +757,15 @@ export interface ServerFnBuilder<
   >(
     options?: ServerFnOptions<TNewMethod, TNewStrict>,
   ): ServerFnBuilder<TRegister, TNewMethod, TNewStrict>
-  options: ServerFnBaseOptions<
-    TRegister,
-    TMethod,
-    unknown,
-    undefined,
-    undefined,
-    TStrict
+  readonly options: ReadonlyBuilderOptions<
+    ServerFnBaseOptions<
+      TRegister,
+      TMethod,
+      unknown,
+      undefined,
+      undefined,
+      TStrict
+    >
   >
 }
 
@@ -776,13 +785,15 @@ export interface ServerFnWithTypes<
     TResponse,
     TStrict
   >
-  options: ServerFnBaseOptions<
-    TRegister,
-    TMethod,
-    unknown,
-    undefined,
-    undefined,
-    TStrict
+  readonly options: ReadonlyBuilderOptions<
+    ServerFnBaseOptions<
+      TRegister,
+      TMethod,
+      unknown,
+      undefined,
+      undefined,
+      TStrict
+    >
   >
   [TSS_SERVER_FUNCTION_FACTORY]: true
 }

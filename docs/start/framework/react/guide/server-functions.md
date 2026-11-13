@@ -76,6 +76,9 @@ Call server functions from:
 - **Other server functions** - Compose server logic
 - **Event handlers** - Handle form submissions, clicks, etc.
 
+> [!NOTE]
+> In production builds, only server functions that client code imports can be called over HTTP. A server function that only server code calls (for example another server function's handler or a server route) is not exposed as an endpoint, and neither is one that is only returned to the client as data: production answers a call to it with HTTP 500 and `Server function info not found for <id>`. The dev server still answers such calls, and logs a warning once per function, so you see it before production refuses it.
+
 ```tsx
 // In a route loader
 export const Route = createFileRoute('/posts')({
@@ -149,6 +152,8 @@ function UserProfile({ id }) {
 
 The build process replaces server function implementations with RPC stubs in client bundles. The actual server code never reaches the browser.
 
+An import that asks the bundler to skip its configured processing is the exception, on purpose: a text import (`'./users.functions?raw'`) gives the file's text, and on Rsbuild a webpack inline-loader prefix that disables the configured loaders (`'!!./users.functions'`, `'-!./users.functions'`) loads the module uncompiled, its handlers included. Use them only on files that hold nothing server-only. Import protection still checks such imports of a `.server` file.
+
 > [!WARNING]
 > Avoid dynamic imports for server functions:
 >
@@ -156,6 +161,10 @@ The build process replaces server function implementations with RPC stubs in cli
 > // ❌ Can cause bundler issues
 > const { getUser } = await import('~/utils/users.functions')
 > ```
+
+### Server Functions in Packages
+
+A package of your app (a workspace package or an installed one) can export server functions: the build compiles it like your own code. List `@tanstack/react-start` in the package's `peerDependencies`, so that the app installs one copy of Start, the version it chose. A package that lists Start under `dependencies` is compiled too.
 
 ## Parameters & Validation
 
@@ -418,12 +427,17 @@ Handle request cancellation with `AbortSignal` for long-running operations.
 
 Server functions are addressed by a generated, stable function ID under the hood. These IDs are embedded into the client/SSR builds and used by the server to locate and import the correct module at runtime.
 
-By default, IDs are SHA256 hashes of the same seed to keep bundles compact and avoid leaking file paths.
-If two server functions end up with the same ID (including when using a custom generator), the system de-duplicates by appending an incrementing suffix like `_1`, `_2`, etc.
+By default, IDs are SHA256 hashes (64 hex digits) of the file and function name, to avoid leaking file paths.
+If two server functions end up with the same ID (including when using a custom generator), the system de-duplicates by appending an incrementing suffix like `_1`, `_2`, etc., numbered in build order: the functions client code references first, then server-only ones (with RSC, the server build comes first), each group by file path, then by source order within a file.
 
 Customization:
 
 You can customize function ID generation for the production build by providing a `generateFunctionId` function when configuring the TanStack Start build tool plugin.
+
+The generator receives:
+
+- `filename`: the file's path relative to the project root, e.g. `src/routes/users.tsx`.
+- `functionName`: the server function's variable name followed by `_createServerFn_handler`, e.g. `getUser_createServerFn_handler`. When a file uses the same name for more than one server function, the later ones, in source order, get `_1`, `_2`, … (as before, a numbered name keeps only ASCII letters, digits, `_` and `$` and loses a leading or trailing `_`: a second `_under` gets `under_createServerFn_handler_1`). A server function that isn't declared as a variable takes the name it's assigned to (an object property, a class field), `default` for `export default`, and `fn` otherwise. A name that isn't a JavaScript identifier (a string property key) has `_` for each character other than ASCII letters, digits, `_` and `$`. A non-ASCII identifier is kept as is, so replace its characters before embedding `functionName` in an ID.
 
 Return `undefined` (or an empty string) to use the default ID. Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
 

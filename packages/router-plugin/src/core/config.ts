@@ -3,6 +3,7 @@ import {
   configSchema as generatorConfigSchema,
   getConfig as getGeneratorConfig,
 } from '@tanstack/router-generator'
+import { splitRouteIdentNodes } from './constants'
 import type {
   CreateFileRoute,
   RegisteredRouter,
@@ -10,35 +11,42 @@ import type {
 } from '@tanstack/router-core'
 import type { CodeSplitGroupings } from './constants'
 
-export const splitGroupingsSchema = z
-  .array(
-    z.array(
-      z.union([
-        z.literal('loader'),
-        z.literal('component'),
-        z.literal('pendingComponent'),
-        z.literal('errorComponent'),
-        z.literal('notFoundComponent'),
-      ]),
-    ),
-    {
-      message:
-        "  Must be an Array of Arrays containing the split groupings. i.e. [['component'], ['pendingComponent'], ['errorComponent', 'notFoundComponent']]",
-    },
-  )
-  .superRefine((val, ctx) => {
-    const flattened = val.flat()
-    const unique = [...new Set(flattened)]
+/** What a value given as split groupings must be (`must be …`). */
+export const GROUPINGS_SHAPE =
+  "an array of groups, each an array of option names (`[['component'], ['errorComponent', 'notFoundComponent']]`)"
 
-    // Elements must be unique,
-    // ie. this shouldn't be allows [['component'], ['component', 'loader']]
-    if (unique.length !== flattened.length) {
-      ctx.addIssue({
-        code: 'custom',
-        message:
-          "  Split groupings must be unique and not repeated. i.e. i.e. [['component'], ['pendingComponent'], ['errorComponent', 'notFoundComponent']]." +
-          `\n  You input was: ${JSON.stringify(val)}.`,
-      })
+/**
+ * What is wrong with a value given as split groupings, worded for the user
+ * (`… is not an option that can be split …`), or null when it is valid.
+ */
+export function groupingsProblem(value: unknown): string | null {
+  if (!Array.isArray(value) || !value.every((g) => Array.isArray(g))) {
+    return `must be ${GROUPINGS_SHAPE}`
+  }
+  const seen = new Set<unknown>()
+  for (const group of value as Array<Array<unknown>>) {
+    for (const key of group) {
+      if (
+        typeof key !== 'string' ||
+        !(splitRouteIdentNodes as ReadonlyArray<string>).includes(key)
+      ) {
+        return `${JSON.stringify(key)} is not an option that can be split (${splitRouteIdentNodes.join(', ')})`
+      }
+      if (seen.has(key)) {
+        return `lists "${key}" twice: each option may be in one group only`
+      }
+      seen.add(key)
+    }
+  }
+  return null
+}
+
+const splitGroupingsSchema = z
+  .custom<CodeSplitGroupings>(() => true)
+  .superRefine((value, ctx) => {
+    const problem = groupingsProblem(value)
+    if (problem !== null) {
+      ctx.addIssue({ code: 'custom', message: problem })
     }
   })
 
@@ -56,7 +64,7 @@ export type CodeSplittingOptions = {
 
   /**
    * The default/global configuration to control your code splitting behavior per route.
-   * @default [['component'],['pendingComponent'],['errorComponent'],['notFoundComponent']]
+   * @default [['component'],['errorComponent'],['notFoundComponent']]
    */
   defaultBehavior?: CodeSplitGroupings
 
@@ -90,8 +98,16 @@ export type DeletableNodes = FileRouteKeys | (string & {})
 
 export const configSchema = generatorConfigSchema.extend({
   codeSplittingOptions: z
-    .custom<CodeSplittingOptions>((v) => {
-      return codeSplittingOptionsSchema.parse(v)
+    .custom<CodeSplittingOptions>(() => true)
+    .superRefine((value, ctx) => {
+      const res = codeSplittingOptionsSchema.safeParse(value)
+      for (const issue of res.success ? [] : res.error.issues) {
+        ctx.addIssue({
+          code: 'custom',
+          message: issue.message,
+          path: issue.path,
+        })
+      }
     })
     .optional(),
   plugin: z
@@ -108,9 +124,49 @@ export const configSchema = generatorConfigSchema.extend({
 export const getConfig = (inlineConfig: Partial<Config>, root: string) => {
   const config = getGeneratorConfig(inlineConfig, root)
 
-  return configSchema.parse({ ...inlineConfig, ...config })
+  const res = configSchema.safeParse({ ...inlineConfig, ...config })
+  if (!res.success) {
+    throw configError(res.error.issues)
+  }
+  return res.data
+}
+
+/**
+ * The plugin options' problems as one error naming each option
+ * (`codeSplittingOptions.defaultBehavior: "compnent" is not an option that
+ * can be split (…)`), its message as its stack: a user error, not ours.
+ */
+function configError(
+  issues: ReadonlyArray<{ path: ReadonlyArray<PropertyKey>; message: string }>,
+): Error {
+  const lines = issues.map((issue) => {
+    const at = issue.path.map(String).join('.')
+    return `  ${at === '' ? '' : `${at}: `}${issue.message}`
+  })
+  const error = new Error(
+    `[tanstack-router] Invalid router plugin options:\n${lines.join('\n')}`,
+  )
+  error.stack = error.message
+  return error
 }
 
 export type Config = z.infer<typeof configSchema>
 export type ConfigInput = z.input<typeof configSchema>
 export type ConfigOutput = z.output<typeof configSchema>
+
+/**
+ * The options of a code-splitter plugin used alone
+ * (`tanStackRouterCodeSplitter`, `TanStackRouterCodeSplitter{Rspack,Webpack}`):
+ * it always splits, as it did before `autoCodeSplitting` reached the
+ * compiler (`autoCodeSplitting` selects the splitter in `tanstackRouter`).
+ */
+export function splitterOptions<T>(options: T): T {
+  if (typeof options === 'function') {
+    const read = options as () => Partial<Config>
+    return (() => ({ ...read(), autoCodeSplitting: true })) as T
+  }
+  return {
+    ...(options as Partial<Config> | undefined),
+    autoCodeSplitting: true,
+  } as T
+}

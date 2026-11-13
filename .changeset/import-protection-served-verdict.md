@@ -1,0 +1,5 @@
+---
+'@tanstack/start-plugin-core': patch
+---
+
+Import protection: a denied file compiled under its own id is real or mocked for every importer at once, and that choice now depends on its static importers only (real when an exempt importer imports it), not on the order the bundler compiles them in. What was served is recorded when it is served, and every report reads that record: a file an exempt importer gets for real is no longer reported as "mocked" (nor fails an `error` build) when a pattern import (`import.meta.glob`, `import.meta.webpackContext`) also reaches it, and the warning about a denied file whose every importer is unchecked prints whenever that file was served its mock. Rsbuild builds the file again in the same compilation when what it was served no longer matches its importers: an exempt importer compiled after the file gets the real module, a persistent cache no longer restores the real module after its exempt import was removed, a dev edit that removes the exempt import serves the mock without a restart, and a warm build with `allowImport` builds again only the modules whose answer changed.

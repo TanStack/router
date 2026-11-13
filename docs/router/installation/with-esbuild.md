@@ -69,7 +69,9 @@ Or, you can clone our [Quickstart Esbuild example](https://github.com/TanStack/r
 Now that you've added the plugin to your Esbuild configuration, you're all set to start using file-based routing with TanStack Router.
 
 > [!NOTE]
-> Automatic code splitting is not available with Esbuild: the plugin throws an error when `autoCodeSplitting` is `true`. Route generation works as usual. To split routes, use [manual code splitting](../guide/code-splitting.md) or another bundler.
+> Automatic code splitting is not available with Esbuild: the plugin throws an error when `autoCodeSplitting` is `true`. To split routes, use [manual code splitting](../guide/code-splitting.md) or another bundler.
+
+The plugin generates the route tree when a build starts, and again at every rebuild (in watch mode, `ctx.watch()`, for instance). Esbuild watches only the files of the bundle and tells plugins of no other file: a route file you create joins the route tree at the next rebuild (save a file of the bundle). To regenerate on every route file change, run [`tsr watch`](./with-router-cli.md) next to Esbuild.
 
 ## Ignoring the generated route tree file
 

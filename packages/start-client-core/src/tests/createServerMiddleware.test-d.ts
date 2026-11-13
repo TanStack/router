@@ -823,3 +823,55 @@ test('createMiddleware with type request can return sync Response', () => {
     })
   })
 })
+
+test('createMiddleware builder options are read-only and keep their types when read', () => {
+  const first = createMiddleware({ type: 'function' }).server(({ next }) =>
+    next(),
+  )
+  const functionMiddleware = createMiddleware({ type: 'function' })
+    .middleware([first])
+    .validator((input: { a: string }) => input)
+    .client(({ next }) => next())
+    .server(({ next }) => next())
+
+  expectTypeOf(functionMiddleware.options.middleware).toEqualTypeOf<
+    readonly [typeof first] | undefined
+  >()
+  const { validator } = functionMiddleware.options
+  expectTypeOf(validator).toEqualTypeOf<
+    | ConstrainValidator<{}, 'GET', (input: { a: string }) => { a: string }>
+    | undefined
+  >()
+
+  const options = functionMiddleware.options
+  // @ts-expect-error a builder's options are read-only
+  functionMiddleware.options.middleware = options.middleware
+  // @ts-expect-error a builder's options are read-only
+  functionMiddleware.options.validator = options.validator
+  // @ts-expect-error a builder's options are read-only
+  functionMiddleware.options.client = options.client
+  // @ts-expect-error a builder's options are read-only
+  functionMiddleware.options.server = options.server
+  // @ts-expect-error a builder's options are read-only
+  functionMiddleware.options = options
+
+  const list = [first]
+  const fromList = createMiddleware({ type: 'function' }).middleware(list)
+  expectTypeOf(fromList.options.middleware).toEqualTypeOf<
+    ReadonlyArray<typeof first> | undefined
+  >()
+  // @ts-expect-error a builder's middleware list is read-only
+  fromList.options.middleware?.push(first)
+
+  const requestMiddleware = createMiddleware()
+    .middleware([createMiddleware().server(({ next }) => next())])
+    .server(({ next }) => next())
+
+  const requestOptions = requestMiddleware.options
+  // @ts-expect-error a builder's options are read-only
+  requestMiddleware.options.middleware = requestOptions.middleware
+  // @ts-expect-error a builder's options are read-only
+  requestMiddleware.options.server = requestOptions.server
+  // @ts-expect-error a builder's options are read-only
+  requestMiddleware.options = requestOptions
+})

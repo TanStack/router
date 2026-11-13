@@ -1,6 +1,6 @@
-import { tsrSplit } from '@tanstack/router-plugin'
 import { tssHydrate } from '../hydration-constants'
 import { getCssAssetSource } from '../start-manifest-plugin/inlineCss'
+import { isRouteSplitQuery } from '../start-manifest-plugin/routeChunks'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
 import type {
@@ -29,7 +29,7 @@ function toPosixPath(filePath: string): string {
  * Extract route file paths from rspack module identifiers.
  *
  * In rspack, module identifiers contain query params similar to Vite's moduleIds.
- * We look for the `tsr-split` query to identify route-split chunks.
+ * A route's chunks hold one of its split groups (`isRouteSplitQuery`).
  */
 function getRouteFilePathsFromModules(
   modules: Array<RspackModule>,
@@ -50,9 +50,9 @@ function getRouteFilePathsFromModules(
     const queryIndex = resourcePart.indexOf('?')
     if (queryIndex < 0) continue
 
-    const query = resourcePart.slice(queryIndex + 1)
-    if (!query.includes(tsrSplit)) continue
-    if (!new URLSearchParams(query).has(tsrSplit)) continue
+    if (!isRouteSplitQuery(resourcePart.slice(queryIndex + 1))) {
+      continue
+    }
 
     const nameForCondition = mod.nameForCondition()
 

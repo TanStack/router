@@ -1,0 +1,926 @@
+import { describe, expect, it } from 'vitest'
+import { invalidate } from '../src/compiler'
+import {
+  MemoryHost,
+  dedent,
+  envInfo,
+  staleAfter,
+  toyEnvPlanner,
+  toySplitPlanner,
+} from './helpers'
+import type { EdgeRecord, Planner, PolicyContext } from '../src/compiler'
+import type { Lang } from '../src/compiler/identity'
+
+/** A tier-0 policy planner that records every output's edges and its policy context. */
+function edgeRecorder(
+  onPolicy?: (edges: Array<EdgeRecord>, ctx: PolicyContext) => void,
+): Planner & { edges: Record<string, Array<EdgeRecord>> } {
+  const edges: Record<string, Array<EdgeRecord>> = {}
+  return {
+    name: 'edge-recorder',
+    tier: 0,
+    edges,
+    gate: (t0) => t0.hasImportOrExport || t0.dynamicEdges.length > 0,
+    plan() {},
+    policy(_plan, output, outputEdges, ctx) {
+      edges[output] = outputEdges.map((e) => ({ ...e }))
+      onPolicy?.(outputEdges, ctx)
+      return Promise.resolve()
+    },
+  }
+}
+
+const byspec = (edges: Array<EdgeRecord>) =>
+  Object.fromEntries(
+    edges.map((e) => [`${e.form} ${e.specifier}`, [e.kind, e.names]]),
+  )
+
+describe('edge names (J6)', () => {
+  const source = dedent(`
+    import { used, typeOnlyUse, unused } from './a'
+    import * as ns from './b'
+    import * as opaque from './c'
+    import def from './d'
+    import { reexported } from './e'
+    import type { T } from './f'
+    import './g'
+    export { reexported }
+    export const run = (x: typeOnlyUse) => used() + ns.one + ns['two'] + <ns.Three /> + def
+    export const leak = opaque
+    export type U = T
+  `)
+
+  it('J6-only tier: names are the specifiers used as values; namespaces list their member reads', async () => {
+    const host = new MemoryHost({ files: { '/app/m.tsx': source } })
+    const rec = edgeRecorder()
+    await host.compile('/app/m.tsx', [rec])
+    expect(byspec(rec.edges.env!)).toEqual({
+      'static ./a': ['binding', ['used']],
+      'static ./b': ['binding', ['one', 'two', 'Three']],
+      'static ./c': ['binding', ['*']],
+      'static ./d': ['binding', ['default']],
+      'static ./e': ['binding', ['reexported']],
+      'bare ./g': ['evaluation', []],
+    })
+  })
+
+  it('an import used only in types or not at all is an evaluation edge', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/m.ts': dedent(`
+          import { A } from './types'
+          import { B } from './unused'
+          export const f = (a: A) => a
+        `),
+      },
+    })
+    const rec = edgeRecorder()
+    await host.compile('/app/m.ts', [rec])
+    expect(byspec(rec.edges.env!)).toEqual({
+      'static ./types': ['evaluation', []],
+      'static ./unused': ['evaluation', []],
+    })
+  })
+
+  it('tier 1: names ignore uses inside erased ranges and keep `export { x }`', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/m.ts': dedent(`
+          import { wrapServer } from 'toy-start'
+          import * as ns from './secret.server'
+          import { kept } from './kept'
+          export { kept }
+          export const fn = wrapServer(() => ns.handlerOnly())
+          export const read = () => ns.everywhere
+        `),
+      },
+    })
+    const rec = edgeRecorder()
+    await host.compile('/app/m.ts', [toyEnvPlanner(), rec])
+    const edges = byspec(rec.edges.env!)
+    expect(edges['static ./secret.server']).toEqual(['binding', ['everywhere']])
+    expect(edges['static ./kept']).toEqual(['binding', ['kept']])
+  })
+
+  // the output prints the statement anew with the specifiers it keeps: the
+  // import is still an edge of the output, named by what it keeps, and a
+  // substitution reaches its specifier
+  it.each([
+    [
+      'named',
+      `import { handlerOnly, everywhere } from './x'`,
+      `import { everywhere } from './y'`,
+      ['everywhere'],
+    ],
+    [
+      'default and named',
+      `import handlerOnly, { everywhere } from './x'`,
+      `import { everywhere } from './y'`,
+      ['everywhere'],
+    ],
+    [
+      'named and default',
+      `import everywhere, { handlerOnly } from './x'`,
+      `import everywhere from './y'`,
+      ['default'],
+    ],
+    [
+      'default and namespace',
+      `import handlerOnly, * as everywhere from './x'`,
+      `import * as everywhere from './y'`,
+      ['*'],
+    ],
+    [
+      'named and type',
+      `import { type T, handlerOnly, everywhere } from './x'`,
+      `import { type T, everywhere } from './y'`,
+      ['everywhere'],
+    ],
+    [
+      'string-named',
+      `import { 'a-b' as handlerOnly, 'c-d' as everywhere } from './x'`,
+      `import { 'c-d' as everywhere } from './y'`,
+      ['c-d'],
+    ],
+    [
+      'named, commented',
+      `import { handlerOnly /* a */, /* b */ everywhere } /* c */ from /* d */ './x' /* e */`,
+      `import { everywhere } from './y' /* e */`,
+      ['everywhere'],
+    ],
+    [
+      'named, with attributes',
+      `import { handlerOnly, everywhere } from './x' assert { type: 'json' }`,
+      `import { everywhere } from './y' with { type: 'json' }`,
+      ['everywhere'],
+    ],
+  ])(
+    'tier 1: an import (%s) whose other specifiers the output prunes is an edge, substituted',
+    async (_shape, statement, printed, names) => {
+      const host = new MemoryHost({
+        files: {
+          '/app/m.ts': dedent(`
+            import { wrapServer } from 'toy-start'
+            ${statement}
+            export const fn = wrapServer(() => handlerOnly())
+            export const read = () => everywhere
+          `),
+        },
+      })
+      const rec = edgeRecorder((edges, ctx) => {
+        const x = edges.find((e) => e.specifier === './x')
+        if (x) {
+          ctx.substitute(x.edgeKey, './y')
+        }
+      })
+      const out = await host.compile('/app/m.ts', [toyEnvPlanner(), rec])
+      expect(byspec(rec.edges.env!)['static ./x']).toEqual(['binding', names])
+      expect(out!.code).toContain(printed)
+      expect(out!.code).not.toContain(`'./x'`)
+    },
+  )
+
+  it('tier 1: an import kept whole and one kept in part are one edge, substituted at both', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/m.ts': dedent(`
+          import { wrapServer } from 'toy-start'
+          import { handlerOnly, a } from './x'
+          import { b } from './x'
+          export const fn = wrapServer(() => handlerOnly())
+          export const read = () => a + b
+        `),
+      },
+    })
+    const rec = edgeRecorder((edges, ctx) => {
+      ctx.substitute(edges.find((e) => e.specifier === './x')!.edgeKey, './y')
+    })
+    const out = await host.compile('/app/m.ts', [toyEnvPlanner(), rec])
+    const [x, ...others] = rec.edges.env!.filter((e) => e.specifier === './x')
+    expect(others).toEqual([])
+    expect([x!.kind, x!.names, x!.locations.length]).toEqual([
+      'binding',
+      ['a', 'b'],
+      2,
+    ])
+    expect(out!.code).toContain(
+      `import { a } from './y'\nimport { b } from './y'`,
+    )
+  })
+
+  // a route module whose split option reads one specifier of an import and
+  // whose kept options read another: each output is an edge of the import
+  // with what it reads, and both are substituted
+  it('tier 1: a route module and its split chunk each keep part of an import', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/route.tsx': dedent(`
+          import { createFileRoute } from 'toy-router'
+          import { inChunk, inRoute, unused } from './x'
+          export const Route = createFileRoute('/')({
+            component: () => inChunk,
+            loader: () => inRoute,
+          })
+        `),
+      },
+    })
+    const rec = edgeRecorder((edges, ctx) => {
+      const x = edges.find((e) => e.specifier === './x')
+      if (x) {
+        ctx.substitute(x.edgeKey, './y')
+      }
+    })
+    const planners = [toySplitPlanner(), rec]
+    const route = await host.compile('/app/route.tsx', planners)
+    const chunk = await host.compile(
+      '/app/route.tsx?tsr-split=component',
+      planners,
+    )
+    const { env, ...derived } = rec.edges
+    expect(byspec(env!)['static ./x']).toEqual(['binding', ['inRoute']])
+    expect(
+      Object.values(derived).map((edges) => byspec(edges)['static ./x']),
+    ).toEqual([['binding', ['inChunk']]])
+    expect(route!.code).toContain(`import { inRoute, unused } from './y'`)
+    expect(chunk!.code).toContain(`import { inChunk } from './y'`)
+  })
+
+  // Both tiers build an output's edges alike: a planned module (Tier 1) and
+  // one only the edge planner reads (Tier 0, its source as written)
+  const tiers = {
+    'J6-only tier': (rec: Planner) => [rec],
+    'tier 1': (rec: Planner) => [toyEnvPlanner(), rec],
+  }
+
+  // classic-runtime JSX (and no pragma, with a `React` binding: the
+  // TypeScript transforms keep it) calls its factory: a read of the binding
+  it.each(Object.entries(tiers))(
+    '%s: an import read only as the JSX factory is a binding edge naming it',
+    async (_tier, planners) => {
+      const code = dedent(`
+        import { wrapServer } from 'toy-start'
+        import React from './react'
+        import { h } from './h'
+        import { Fragment } from './fragment'
+        export const fn = wrapServer(() => 1)
+        export const view = () => <p />
+      `)
+      const host = new MemoryHost({
+        files: {
+          '/app/auto.tsx': code,
+          '/app/fragment.tsx': code.replace('<p />', '<></>'),
+          '/app/classic.tsx': `/** @jsx h */\n/** @jsxFrag Fragment */\n${code.replace('<p />', '<><p /></>')}`,
+          // (an element before a fragment: two bindings, both read)
+          '/app/classic-el-first.tsx': `/** @jsx h */\n/** @jsxFrag Fragment */\n${code}export const frag = () => <></>\n`,
+        },
+      })
+      let rec = edgeRecorder()
+      await host.compile('/app/auto.tsx', planners(rec))
+      expect(byspec(rec.edges.env!)).toMatchObject({
+        'static ./react': ['binding', ['default']],
+        'static ./h': ['evaluation', []],
+      })
+      // (a fragment reads the same binding)
+      rec = edgeRecorder()
+      await host.compile('/app/fragment.tsx', planners(rec))
+      expect(byspec(rec.edges.env!)).toMatchObject({
+        'static ./react': ['binding', ['default']],
+      })
+      rec = edgeRecorder()
+      await host.compile('/app/classic.tsx', planners(rec))
+      expect(byspec(rec.edges.env!)).toMatchObject({
+        'static ./react': ['evaluation', []],
+        'static ./h': ['binding', ['h']],
+        'static ./fragment': ['binding', ['Fragment']],
+      })
+      rec = edgeRecorder()
+      await host.compile('/app/classic-el-first.tsx', planners(rec))
+      expect(byspec(rec.edges.env!)).toMatchObject({
+        'static ./h': ['binding', ['h']],
+        'static ./fragment': ['binding', ['Fragment']],
+      })
+    },
+  )
+
+  // a report points at an import that reads the binding: not at one with
+  // type specifiers only, which TypeScript erases
+  it.each(Object.entries(tiers))(
+    '%s: a merged edge is located first at an import reading a binding',
+    async (_tier, planners) => {
+      const code = dedent(`
+        import { wrapServer } from 'toy-start'
+        import { type T } from './x'
+        import { v } from './x'
+        export const fn = wrapServer(() => 1)
+        export const read = (t: T) => v
+      `)
+      const host = new MemoryHost({ files: { '/app/m.ts': code } })
+      const rec = edgeRecorder()
+      await host.compile('/app/m.ts', planners(rec))
+      const [x] = rec.edges.env!.filter((e) => e.specifier === './x')
+      expect(x!.kind).toBe('binding')
+      expect(x!.locations[0]).toEqual({
+        range: {
+          start: code.lastIndexOf("'./x'"),
+          end: code.lastIndexOf("'./x'") + 5,
+        },
+      })
+    },
+  )
+
+  // one record per logical edge: repeated statements add their locations
+  // and names, and a substitution replaces every one of them
+  it.each(Object.entries(tiers))(
+    '%s: one record per edge, substituted at every location',
+    async (_tier, planners) => {
+      const code = dedent(`
+        import { wrapServer } from 'toy-start'
+        import { a } from './x'
+        import { b } from './x'
+        import './x'
+        export const fn = wrapServer(() => 1)
+        export const read = () => a + b
+      `)
+      const host = new MemoryHost({ files: { '/app/m.ts': code } })
+      const rec = edgeRecorder((edges, ctx) => {
+        const x = edges.find(
+          (e) => e.form === 'static' && e.specifier === './x',
+        )
+        ctx.substitute(x!.edgeKey, './y')
+      })
+      const out = await host.compile('/app/m.ts', planners(rec))
+      const x = rec.edges.env!.filter((e) => e.specifier === './x')
+      expect(
+        x.map((e) => [e.form, e.kind, e.names, e.locations.length]),
+      ).toEqual([
+        ['static', 'binding', ['a', 'b'], 2],
+        ['bare', 'evaluation', [], 1],
+      ])
+      expect(out!.code).toContain(
+        `import { a } from './y'\nimport { b } from './y'\nimport './x'`,
+      )
+    },
+  )
+})
+
+describe('require edge names (J6.3)', () => {
+  // a mock of a denied CommonJS or unknown target owns the names the
+  // importer reads: the keys it destructures, the members it reads of the
+  // binding or of the call; `'*'` when the result escapes
+  it('records the names a require() result is read by', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/m.ts': dedent(`
+          const { secret, token: t } = require('./a.server')
+          const b = require('./b.server')
+          const c = require('./c.server')
+          const d = require('./d.server').only
+          const e = require('./e.server')
+          export const run = () => secret + t + b.one + b['two'] + d + e()
+          export const leak = c
+          export const later = () => import('./f.server')
+        `),
+      },
+    })
+    const rec = edgeRecorder()
+    await host.compile('/app/m.ts', [rec])
+    const edges = byspec(rec.edges.env!)
+    expect(edges['require ./a.server']).toEqual([
+      'evaluation',
+      ['secret', 'token'],
+    ])
+    expect(edges['require ./b.server']).toEqual(['evaluation', ['one', 'two']])
+    expect(edges['require ./c.server']).toEqual(['evaluation', ['*']])
+    expect(edges['require ./d.server']).toEqual(['evaluation', ['only']])
+    expect(edges['require ./e.server']).toEqual(['evaluation', ['*']])
+    expect(edges['dynamic ./f.server']).toEqual(['evaluation', []])
+  })
+})
+
+describe('dynamic edges (J6.3)', () => {
+  // an output's edges are the imports its code holds: a dynamic import in
+  // code another output renders (a split component) or no output renders
+  // (erased) is no edge of it
+  it('a dynamic import is an edge of the outputs rendering its call only', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/route.tsx': dedent(`
+          import { createFileRoute } from 'toy-router'
+          import { wrapServer } from 'toy-start'
+          const loadWidget = () => import('./widget.client')
+          export const fn = wrapServer(() => import('./handler.server'))
+          export const Route = createFileRoute('/')({
+            component: () => [loadWidget(), import('./inline.client')],
+            loader: () => import('./data'),
+          })
+        `),
+      },
+    })
+    // the source edges (the split's own generated import left out)
+    const specifiers = (edges: Array<EdgeRecord> | undefined) =>
+      (edges ?? [])
+        .filter((e) => e.form === 'dynamic' && e.provenance.origin === 'source')
+        .map((e) => e.specifier)
+    for (const type of ['client', 'server'] as const) {
+      const rec = edgeRecorder()
+      const planners = [toySplitPlanner(), toyEnvPlanner(), rec]
+      const env = envInfo({ name: type, type })
+      await host.compile('/app/route.tsx', planners, { env })
+      await host.compile('/app/route.tsx?tsr-split=component', planners, {
+        env,
+      })
+      const { env: envEdges, ...derived } = rec.edges
+      expect(specifiers(envEdges)).toEqual(
+        type === 'server' ? ['./handler.server', './data'] : ['./data'],
+      )
+      expect(Object.values(derived).map(specifiers)).toEqual([
+        ['./widget.client', './inline.client'],
+      ])
+    }
+  })
+})
+
+describe('policy context', () => {
+  it('gives the input text and reads the input map only when asked', async () => {
+    const host = new MemoryHost({
+      files: { '/app/m.ts': `import { a } from './a'\nexport const b = a\n` },
+    })
+    let reads = 0
+    const map = {
+      version: 3,
+      sources: ['m.mdx'],
+      names: [],
+      mappings: 'AAAA',
+    }
+    const seen: Array<string> = []
+    const lazy = edgeRecorder((_edges, ctx) => {
+      seen.push(ctx.code)
+    })
+    await host.compile('/app/m.ts', [lazy], {
+      inputMap: () => {
+        reads++
+        return map
+      },
+    })
+    expect(seen).toEqual([`import { a } from './a'\nexport const b = a\n`])
+    expect(reads).toBe(0)
+
+    const eager = edgeRecorder((_edges, ctx) => {
+      expect(ctx.inputMap()).toBe(map)
+      expect(ctx.inputMap()).toBe(map)
+    })
+    await host.compile('/app/m.ts', [eager], {
+      config: { configKey: 'other', perPlanner: {} },
+      inputMap: () => {
+        reads++
+        return map
+      },
+    })
+    expect(reads).toBe(1)
+  })
+
+  it('substitutes a specifier containing quotes and line terminators as a valid literal', async () => {
+    const host = new MemoryHost({
+      files: { '/app/m.ts': `import { a } from './a'\nexport const b = a\n` },
+    })
+    const planner: Planner = {
+      ...edgeRecorder(),
+      policy(_plan, _output, edges, ctx) {
+        ctx.substitute(edges[0]!.edgeKey, `x'y\u2028z`)
+        return Promise.resolve()
+      },
+    }
+    const out = await host.compile('/app/m.ts', [planner])
+    expect(out!.code).toContain(`from 'x\\'y\\u2028z'`)
+  })
+
+  // An edit that keeps an import but splits its specifier over two slices
+  // leaves no slice holding the literal: substituting it must fail the
+  // compile, never print the original specifier (a denied import kept).
+  it('fails a substitution whose specifier no slice holds whole', async () => {
+    const code = `import { a } from './a.server'\nexport const b = a\n`
+    const host = new MemoryHost({ files: { '/app/m.ts': code } })
+    const end = code.indexOf("'./a.server'") + "'./a.server'".length
+    const mid = code.indexOf('a.server')
+    const splitter: Planner = {
+      name: 'splitter',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        ctx.rewrites.edit({
+          range: { start: 0, end },
+          body: [
+            { k: 'slice', range: { start: 0, end: mid } },
+            { k: 'slice', range: { start: mid, end } },
+          ],
+          by: 'splitter',
+        })
+      },
+    }
+    const policy: Planner = {
+      ...edgeRecorder(),
+      policy(_plan, _output, edges, ctx) {
+        ctx.substitute(edges[0]!.edgeKey, 'mock:a')
+        return Promise.resolve()
+      },
+    }
+    await expect(host.compile('/app/m.ts', [splitter, policy])).rejects.toThrow(
+      /\/app\/m\.ts:1:19/,
+    )
+  })
+})
+
+describe('target facts', () => {
+  it('list evaluated imports, star re-exports and the module format', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/t.ts': dedent(`
+          import type { T } from './types'
+          import { type U } from './types2'
+          import { used } from './dep'
+          import './effect'
+          export * from './star'
+          export { x } from './named'
+          export type { V } from './types3'
+          export const own = 1
+          export default own
+        `),
+        '/app/c.cjs': `module.exports = { a: 1 }\n`,
+        '/app/barrel.ts': `export * from './a'\nexport { b } from './b'\nimport './c'\nexport const d = 1\n`,
+        '/app/fx.ts': `export * from './a'\nglobalThis.x = 1\n`,
+      },
+    })
+    const t = await host.rawFacts.get('/app/t.ts', 'client')
+    expect(t.targetFacts).toMatchObject({
+      exists: true,
+      exportNames: ['default', 'own', 'x'],
+      stars: ['./star'],
+      imports: ['./dep', './effect', './star', './named'],
+      esm: true,
+    })
+    // module loading is no effect of the module's own code (consumers follow
+    // `imports`)
+    const barrel = await host.rawFacts.get('/app/barrel.ts', 'client')
+    expect(barrel.targetFacts).toMatchObject({
+      imports: ['./c', './a', './b'],
+      codeEffects: { client: false, server: false },
+    })
+    const fx = await host.rawFacts.get('/app/fx.ts', 'client')
+    expect(fx.targetFacts.codeEffects).toEqual({ client: true, server: true })
+    const c = await host.rawFacts.get('/app/c.cjs', 'client')
+    expect(c.targetFacts.esm).toBe(false)
+    const missing = await host.rawFacts.get('/app/none.ts', 'client')
+    expect(missing.targetFacts).toMatchObject({ exists: false, esm: false })
+  })
+})
+
+describe('target markers', () => {
+  /** Reads the marker of every edge's target, as a marker-only file rule does. */
+  const markerPolicy = (): Planner => ({
+    name: 'marker-reader',
+    tier: 0,
+    gate: (t0) => t0.hasImportOrExport,
+    plan() {},
+    async policy(_plan, _output, edges, ctx) {
+      for (const e of edges) {
+        const id = await ctx.resolve(e.specifier)
+        if (id) {
+          await ctx.targetMarker(id)
+        }
+      }
+    },
+  })
+
+  it("re-plans an importer that read only a target's marker when the marker changes, not when its imports or exports do", async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/a.ts': `import { b } from './b'\nexport const a = () => b()\n`,
+        '/app/b.ts': `import { v } from './c'\nexport const b = () => v\n`,
+        '/app/c.ts': `export const v = 1\n`,
+        '/app/d.ts': `export const v = 2\n`,
+      },
+    })
+    const planners = [markerPolicy()]
+    const env = envInfo({ type: 'client' })
+    await host.compile('/app/a.ts', planners, { env })
+    const edit = async (code: string) => {
+      host.write('/app/b.ts', code)
+      const res = await staleAfter(
+        host.caches,
+        { path: '/app/b.ts', kind: 'change' },
+        host,
+      )
+      return res
+    }
+
+    expect(
+      await edit(
+        `import { v } from './d'\nexport const b = () => v\nexport const more = 1\n`,
+      ),
+    ).toEqual([])
+    expect(
+      await edit(
+        `import 'server-only'\nimport { v } from './d'\nexport const b = () => v\n`,
+      ),
+    ).toEqual(['/app/a.ts'])
+  })
+})
+
+describe('markers', () => {
+  it('a transform and a raw read of a module agree on its marker', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/m.ts': `import 'start/server-only'\nexport const a = 1\n`,
+      },
+      markerSpecifiers: { 'start/server-only': 'server-only' },
+    })
+    let marker: unknown
+    const rec: Planner = {
+      ...edgeRecorder(),
+      policy(plan) {
+        marker = plan.facts.marker
+        return Promise.resolve()
+      },
+    }
+    await host.compile('/app/m.ts', [rec])
+    expect(marker).toBe('server-only')
+    const raw = await host.rawFacts.get('/app/m.ts', 'client')
+    expect(raw.targetFacts.marker).toBe('server-only')
+  })
+})
+
+/** A tier-0 policy that denies edges resolving to a `.server` file (J6 in miniature) and logs its verdicts. */
+function denyServer(verdicts: Array<string>): Planner {
+  return {
+    name: 'deny-server',
+    tier: 0,
+    gate: (t0) => t0.hasImportOrExport,
+    plan() {},
+    async policy(_plan, _output, edges, ctx) {
+      for (const e of edges) {
+        const target = await ctx.resolve(e.specifier)
+        if (target !== null) {
+          await ctx.targetFacts(target)
+        }
+        const verdict =
+          target === null
+            ? 'unresolved'
+            : target.includes('.server')
+              ? 'denied'
+              : 'allowed'
+        verdicts.push(`${ctx.identity.canonicalId} ${e.specifier} ${verdict}`)
+        if (verdict === 'denied') {
+          ctx.substitute(e.edgeKey, `mock:${e.specifier}`)
+        }
+      }
+    },
+  }
+}
+
+describe('unresolved resolutions (J6.13)', () => {
+  const importer = `import { s } from './secret.server'\nexport const x = s\n`
+  const key = (canonicalId: string, env = 'client') => ({
+    env,
+    canonicalId,
+    configKey: 'cfg',
+  })
+
+  // A file event or a registry publication runs the invalidation, with nobody
+  // to answer a rejection: what can't be checked counts as stale, and the next
+  // compile asks the resolver again and reports what it says.
+  it('counts a plan stale when its resolution throws during an invalidation', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/a.ts': importer,
+        '/app/secret.server.ts': `export const s = 1\n`,
+      },
+    })
+    const planners = [denyServer([])]
+    await host.compile('/app/a.ts', planners)
+    host.write('/app/other.ts', `export {}\n`)
+    await invalidate(host.caches, { path: '/app/other.ts', kind: 'add' }, host)
+    const errors: Array<unknown> = []
+    const failing = {
+      rawFacts: host.rawFacts,
+      resolve: () => Promise.reject(new Error('resolver failed')),
+      onInvalidationError: (error: unknown) => errors.push(error),
+    }
+    const res = await staleAfter(
+      host.caches,
+      { path: '/app/secret.server.ts', kind: 'registry' },
+      failing,
+    )
+    // (a registry change stales its own file too)
+    expect(res).toEqual(['/app/a.ts', '/app/secret.server.ts'])
+    expect(errors).toEqual([new Error('resolver failed')])
+    expect(host.caches.plans.get('client')!.get(key('/app/a.ts'))).toBeNull()
+  })
+
+  // `imports` and `exports` decide what a specifier resolves to, as a
+  // tsconfig's `paths` do, and any file event may hide a creation: the
+  // answers of the memo and the plans' resolutions don't outlive a file
+  // event. Each file's creation was seen first.
+  it.each([
+    ['change', '/app/package.json'],
+    ['add', '/app/package.json'],
+    ['change', '/app/tsconfig.json'],
+    ['change', '/app/tsconfig.app.json'],
+    ['change', '/app/jsconfig.json'],
+    ['change', '/app/other.ts'],
+  ] as const)('a %s of %s re-asks the resolver', async (kind, path) => {
+    let target = '/app/one.server.ts'
+    const host = new MemoryHost({
+      files: {
+        '/app/a.ts': `import { s } from '#lib'\nexport const x = s\n`,
+        '/app/one.server.ts': `export const s = 1\n`,
+        '/app/two.ts': `export const s = 2\n`,
+        '/app/other.ts': `export {}\n`,
+      },
+      resolve: () => target,
+    })
+    const planners = [denyServer([])]
+    await invalidate(host.caches, { path, kind: 'add' }, host)
+    const before = await host.compile('/app/a.ts', planners)
+    expect(before!.code).toContain(`mock:#lib`)
+    target = '/app/two.ts'
+    await invalidate(host.caches, { path, kind }, host)
+    const after = await host.compile('/app/a.ts', planners)
+    expect(after!.code).not.toContain('mock:#lib')
+  })
+
+  it('re-plans an importer when its denied target is deleted and recreated', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/a.ts': importer,
+        '/app/secret.server.ts': `export const s = 1\n`,
+      },
+    })
+    const verdicts: Array<string> = []
+    const planners = [denyServer(verdicts)]
+    const first = await host.compile('/app/a.ts', planners)
+    expect(first!.code).toContain(`from 'mock:./secret.server'`)
+
+    // a resolved target deleted: its path is a dependency of the importer
+    delete host.files['/app/secret.server.ts']
+    const removed = await staleAfter(
+      host.caches,
+      { path: '/app/secret.server.ts', kind: 'unlink' },
+      host,
+    )
+    expect(removed).toEqual(['/app/a.ts'])
+    const second = await host.compile('/app/a.ts', planners)
+    expect(second!.code).toContain(`from './secret.server'`)
+
+    // an unrelated add re-resolves the failed resolution, which still fails
+    host.write('/app/other.ts', `export {}\n`)
+    const unrelated = await staleAfter(
+      host.caches,
+      { path: '/app/other.ts', kind: 'add' },
+      host,
+    )
+    expect(unrelated).toEqual([])
+    expect(
+      host.caches.plans.get('client')!.get(key('/app/a.ts')),
+    ).not.toBeNull()
+
+    // the target recreated: the failed resolution now resolves
+    host.write('/app/secret.server.ts', `export const s = 2\n`)
+    const added = await staleAfter(
+      host.caches,
+      { path: '/app/secret.server.ts', kind: 'add' },
+      host,
+    )
+    expect(added).toEqual(['/app/a.ts'])
+    const third = await host.compile('/app/a.ts', planners)
+    expect(third!.code).toContain(`from 'mock:./secret.server'`)
+    expect(verdicts).toEqual([
+      '/app/a.ts ./secret.server denied',
+      '/app/a.ts ./secret.server unresolved',
+      '/app/a.ts ./secret.server denied',
+    ])
+  })
+
+  it('re-resolves each failed resolution once per event, in every env', async () => {
+    const host = new MemoryHost({
+      files: { '/app/a.ts': importer, '/app/b.ts': importer },
+    })
+    const planners = [denyServer([])]
+    const server = envInfo({ name: 'ssr', type: 'server' })
+    for (const id of ['/app/a.ts', '/app/b.ts']) {
+      await host.compile(id, planners)
+      await host.compile(id, planners, { env: server })
+    }
+    host.write('/app/secret.server.ts', `export const s = 1\n`)
+    host.resolveCalls.length = 0
+    await invalidate(
+      host.caches,
+      { path: '/app/secret.server.ts', kind: 'add' },
+      host,
+    )
+    for (const env of ['client', 'ssr']) {
+      expect(host.caches.stale.take(env)).toEqual(['/app/a.ts', '/app/b.ts'])
+    }
+    expect(host.resolveCalls).toHaveLength(4)
+    // a plain change re-resolves nothing
+    host.resolveCalls.length = 0
+    await invalidate(
+      host.caches,
+      { path: '/app/other.ts', kind: 'change' },
+      host,
+    )
+    expect(host.resolveCalls).toEqual([])
+  })
+
+  it('re-resolves the failed resolutions of a plan that also depends on the added path', async () => {
+    // './x' always resolves to its path; './y' resolves once './x' exists (a redirecting resolver)
+    const host = new MemoryHost({
+      files: {
+        '/app/a.ts': `import { x } from './x'\nimport { y } from './y.server'\nexport const z = x + y\n`,
+        '/app/y.server.ts': `export const y = 1\n`,
+      },
+      resolve: (spec, _importer, files) =>
+        spec === './x'
+          ? '/app/x.ts'
+          : spec === './y.server' && '/app/x.ts' in files
+            ? '/app/y.server.ts'
+            : null,
+    })
+    // resolution fingerprints only: the path bucket of '/app/x.ts' stays current
+    const resolveOnly: Planner = {
+      ...edgeRecorder(),
+      async policy(_plan, _output, edges, ctx) {
+        for (const e of edges) {
+          await ctx.resolve(e.specifier)
+        }
+      },
+    }
+    await host.compile('/app/a.ts', [resolveOnly])
+    host.write('/app/x.ts', `export const x = 1\n`)
+    const r = await staleAfter(
+      host.caches,
+      { path: '/app/x.ts', kind: 'add' },
+      host,
+    )
+    expect(r).toEqual(['/app/a.ts'])
+  })
+
+  it('forgets the failed resolutions of an evicted plan', async () => {
+    const host = new MemoryHost({ files: { '/app/a.ts': importer } })
+    await host.compile('/app/a.ts', [denyServer([])])
+    host.write('/app/a.ts', `export const x = 1\n`)
+    await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+    await host.compile('/app/a.ts', [denyServer([])])
+    host.write('/app/secret.server.ts', `export const s = 1\n`)
+    host.resolveCalls.length = 0
+    const r = await staleAfter(
+      host.caches,
+      { path: '/app/secret.server.ts', kind: 'add' },
+      host,
+    )
+    expect(r).toEqual([])
+    expect(host.resolveCalls).toEqual([])
+  })
+})
+
+describe('language override (non-JS ids compiled as JS)', () => {
+  const vueJs = `import { s } from './secret.server'\nconst n: number = 1\nexport default { s, n }\n`
+
+  function tier1Probe(runs: Array<string>): Planner {
+    return {
+      name: 'tier1-probe',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        runs.push(ctx.identity.canonicalId)
+      },
+    }
+  }
+
+  it('compiles a non-JS id with Tier 0 planners only', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/Comp.vue': vueJs,
+        '/app/secret.server.ts': `export const s = 1\n`,
+      },
+    })
+    const verdicts: Array<string> = []
+    const runs: Array<string> = []
+    const planners = [tier1Probe(runs), denyServer(verdicts)]
+    expect(await host.compile('/app/Comp.vue', planners)).toBeNull()
+    const out = await host.compile('/app/Comp.vue', planners, { lang: 'ts' })
+    expect(out!.code).toBe(
+      vueJs.replace(`'./secret.server'`, `'mock:./secret.server'`),
+    )
+    expect(verdicts).toEqual(['/app/Comp.vue ./secret.server denied'])
+    expect(runs).toEqual([])
+  })
+
+  it('ignores the override for a JS/TS id', async () => {
+    const host = new MemoryHost({ files: { '/app/m.ts': vueJs } })
+    const runs: Array<string> = []
+    const lang: Lang = 'js'
+    const out = await host.compile('/app/m.ts', [tier1Probe(runs)], { lang })
+    expect(out!.diagnostics).toEqual([])
+    expect(runs).toEqual(['/app/m.ts'])
+  })
+})

@@ -56,7 +56,7 @@ export const configSchema = baseConfigSchema.extend({
     .transform((v) =>
       typeof v === 'string' ? (v.startsWith('.') ? v : `.${v}`) : v,
     ),
-  enableRouteTreeFormatting: z.boolean().optional().default(true),
+  enableRouteTreeFormatting: z.boolean().optional().default(false),
   routeTreeFileFooter: z
     .union([
       z.array(z.string()).optional().default([]),

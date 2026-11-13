@@ -1,0 +1,585 @@
+/**
+ * Start's Vite host of the compiler core (see the core's README.md,
+ * "Hosts"): one `enforce: 'pre'` plugin per Start env compiling every id it is
+ * handed text for through ONE `compileModule` (env and derived ids alike)
+ * with the planners in the core's fixed order — `start-env`, `hydrate`,
+ * `rsc-css`, `router`, `import-edges` — the one
+ * invalidation operation on `hotUpdate`, the server-fn registry shared by
+ * the envs, the dev lookup and production resolver modules, the custom-id
+ * patching at `renderChunk`, and import protection's host side (edge
+ * modules, dev reports, build witness and reports, the late pass for non-JS
+ * importers).
+ *
+ * The plugins share one `ViteCompilerState` (`compiler-state.ts`: the
+ * options, and the session of each build run or dev server with the hooks'
+ * state). This file holds the run plugin and each environment's compiler
+ * plugin; beside it: `invalidation.ts` (file events), `handler-reach.ts`
+ * (the RSC provider's handler reach), `late-pass-plugin.ts` and
+ * `server-fn-plugins.ts` (dev lookup, forward, resolver).
+ */
+import {
+  ASSET_QUERY_RE,
+  OWNED_QUERY_RE,
+  OutputBuilder,
+  SAME_FILE_SPECIFIER_RE,
+  SourceText,
+  identify,
+  invalidate,
+  isAssetId,
+  isFinalBuild,
+  loadDerivedSource,
+  normalizePath,
+  resolveSameFileSpecifier,
+  rollupEntryModuleIds,
+  staleHotUpdate,
+  takeStaleModules,
+  warnEagerExports,
+  watchDependencies,
+  watchLoadedFile,
+  withOwnSourcesNamedByFile,
+} from '@tanstack/router-utils/compiler'
+import { TRANSFORM_ID_REGEX } from '../constants'
+import { isVueSfc } from '../compiler/vue'
+import { resolveViteEdgeModuleId } from '../import-protection/edge-modules'
+import { viteDevGraphView } from '../import-protection/graph-trace'
+import { heldIn } from '../import-protection/session'
+import {
+  readRolldownWitness,
+  rolldownGraphView,
+} from '../import-protection/witness'
+import {
+  inputMapOf,
+  optimizedDependency,
+  watchesSentinel,
+} from './compiler-state'
+import { compileHandlerReach } from './handler-reach'
+import {
+  buildInvalidationHosts,
+  changeKindOf,
+  invalidateFor,
+} from './invalidation'
+import { ASSET_FILE_RE, latePassPlugin } from './late-pass-plugin'
+import {
+  devLookupPlugin,
+  forwardPlugin,
+  resolverPlugin,
+} from './server-fn-plugins'
+import type {
+  InputSourceMap,
+  InvalidateChange,
+} from '@tanstack/router-utils/compiler'
+import type { DevEnvironment, Plugin, PluginOption } from 'vite'
+import type { ViteCompilerState, ViteStartEnvironment } from './compiler-state'
+
+/** A transform hook's handler (shared by the compiler's two transform hooks of an environment). */
+type TransformHandler = Extract<
+  NonNullable<Plugin['transform']>,
+  { handler: unknown }
+>['handler']
+
+/** Specifiers of import protection's edge modules. */
+const IP_SPECIFIER_RE = /tanstack-start-ip:/
+
+export function startCompilerPlugin(state: ViteCompilerState): PluginOption {
+  return [
+    runPlugin(state),
+    ...state.opts.environments.flatMap((env) => envCompilerPlugins(state, env)),
+    latePassPlugin(state),
+    devLookupPlugin(state),
+    forwardPlugin(state),
+    resolverPlugin(state),
+  ]
+}
+
+/**
+ * The transform filters of the resolved config, and the session of a
+ * builder's run: Start's `buildApp` comes before any other (plugin-rsc's and
+ * nitro's build the environments; Start's own config `buildApp` too).
+ */
+function runPlugin(state: ViteCompilerState): Plugin {
+  return {
+    name: 'tanstack-start:compiler:run',
+    // `build --watch`: a server environment watches the sentinel
+    configEnvironment(name, config) {
+      return state.envOf(name)?.type === 'server'
+        ? (watchesSentinel(config.build?.watch) ?? undefined)
+        : undefined
+    },
+    configResolved(config) {
+      state.configure(config)
+    },
+    buildApp: {
+      order: 'pre',
+      handler(builder) {
+        state.sessionOfRun(builder.environments, builder.config, null)
+        return Promise.resolve()
+      },
+    },
+  }
+}
+
+/** An environment's compiler plugin, and the one of its dependency scripts. */
+function envCompilerPlugins(
+  state: ViteCompilerState,
+  env: ViteStartEnvironment,
+): Array<Plugin> {
+  const watches = env.name === state.watchingEnv
+  const compileTransform: TransformHandler = async function (code, id) {
+    const identity = identify(id)
+    const s = state.sessionOf(this.environment)
+    if (identity.lang === null || !s.start.compiles(identity.path, code)) {
+      return null
+    }
+    const environment = this.environment
+    let inputMap: InputSourceMap | null | undefined
+    const readInputMap = () =>
+      inputMap === undefined
+        ? (inputMap = inputMapOf(this, code, identity.path))
+        : inputMap
+    const out = await s.start.compile(
+      {
+        id,
+        code,
+        env,
+        inputMap: readInputMap,
+        wantMap:
+          s.start.opts.mode === 'dev' ||
+          environment.config.build.sourcemap !== false,
+      },
+      state.hostFor(
+        s,
+        this.environment,
+        (source, imp, options) => this.resolve(source, imp, options),
+        id,
+      ),
+    )
+    if (!out) {
+      return null
+    }
+    watchDependencies(this, out.dependencies, normalizePath(identity.path))
+    state.reportDiagnostics(
+      s,
+      this,
+      out,
+      identity.path,
+      code,
+      env.type,
+      // a Vue SFC's script block, Vue's output
+      isVueSfc(identity.path) ? readInputMap : undefined,
+    )
+    let mock = state.afterCompile(s, env, id, out, (error) => this.error(error))
+    if (mock instanceof Promise) {
+      mock = await mock
+    }
+    if (mock) {
+      return { code: mock.code, map: null }
+    }
+    if (identity.derived === null && out.code === code) {
+      return null
+    }
+    return {
+      code: out.code,
+      map: out.map as never,
+      // an extracted export's module runs nothing of its own (the router
+      // plugin's hosts' rule)
+      moduleSideEffects:
+        identity.derived?.kind === 'export' ? false : undefined,
+    }
+  }
+  const plugin: Plugin = {
+    name: `tanstack-start:compiler:${env.name}`,
+    enforce: 'pre',
+    perEnvironmentWatchChangeDuringDev: watches,
+    applyToEnvironment(e) {
+      return e.name === env.name
+    },
+    configureServer(viteServer) {
+      const s = state.sessionOfRun(
+        viteServer.environments,
+        viteServer.config,
+        viteServer,
+      )
+      const environment = viteServer.environments[env.name]
+      if (environment) {
+        // (its modules: a registry change stales its file here whether or
+        // not a plan of it exists)
+        s.start.caches.stale.track(env.name)
+        // each environment loads the virtual ids it resolved (Vite runs a
+        // plugin's `buildStart` only for the client environment in dev)
+        s.virtualLoaders.set(env.name, async (id) => {
+          const loaded = await environment.pluginContainer.load(id)
+          if (loaded === null || loaded === undefined) {
+            return null
+          }
+          return typeof loaded === 'string' ? loaded : loaded.code
+        })
+      }
+      if (s.start.ip && environment) {
+        const ipEnv = s.start.ip.env(env.name, env.type)
+        const entries = state.entriesOf(s)
+        ipEnv.graph = viteDevGraphView(environment.moduleGraph, (id) =>
+          entries.has(id),
+        )
+        const reporter = ipEnv.useDevReporter({
+          warn: (message) => environment.logger.warn(message),
+        })
+        s.disposers.push(() => reporter.close())
+      }
+    },
+    async buildStart() {
+      const s = state.sessionOf(this.environment)
+      if (this.environment.mode === 'build') {
+        s.virtualLoaders.set(
+          env.name,
+          async (id) => (await this.load({ id })).code,
+        )
+      }
+      if (this.environment.mode === 'build' && this.meta.watchMode) {
+        s.start.ip?.env(env.name, env.type).beginBuild()
+        // a file event's invalidation asks this environment's resolutions
+        // with its resolver; the build embeds the client build afresh, and
+        // compiles every module again (Rolldown's watch rebuilds run every
+        // `load` and `transform`): its stale set is built
+        s.resolvers.set(env.name, (source, importer, options) =>
+          this.resolve(source, importer, options),
+        )
+        s.embedded.delete(env.name)
+        s.watching.add(env.name)
+        s.start.caches.stale.take(env.name, { held: true })
+      }
+      if (this.environment.mode === 'build' && env.type === 'client') {
+        if (!this.meta.watchMode) {
+          // a new build: the registry of the previous one is gone (the
+          // client builds first; under RSC the rsc provider built before
+          // it and allocated its entries first: deterministic, not
+          // client-first). A rebuild of `build --watch` keeps it: the
+          // server environment rebuilds at the same time and reads it,
+          // while the compiles replace their modules' functions (a
+          // deleted file's leave at `watchChange`)
+          s.start.registry.clear()
+        }
+        // one warning per file per run
+        s.start.warnings.reset()
+      }
+      if (
+        this.environment.mode === 'build' &&
+        this.environment.config.build.write !== false &&
+        state.isSeparateProvider(env)
+      ) {
+        await compileHandlerReach(
+          s,
+          env,
+          state.hostFor(s, this.environment, (source, imp, options) =>
+            this.resolve(source, imp, options),
+          ),
+        )
+      }
+    },
+    closeWatcher() {
+      state.closeWatcher(this.environment)
+    },
+    buildEnd() {
+      if (this.environment.mode !== 'build' || !this.meta.watchMode) {
+        return
+      }
+      const s = state.sessionOf(this.environment)
+      // an importer this rebuild no longer holds asks for nothing (its
+      // module is not compiled again: its records would stay)
+      s.start.ip?.env(env.name, env.type).hold(heldIn(this.getModuleIds()))
+      if (env.type === 'client') {
+        // a rebuild keeps the registry (a new build cleared it): the
+        // functions the client references are those of the modules this
+        // build bundles (the server's resolver gates on them)
+        const graph = new Set<string>()
+        for (const id of this.getModuleIds()) {
+          graph.add(identify(id).canonicalId)
+        }
+        s.start.registry.retain(env.name, graph)
+      }
+    },
+    /**
+     * A build that writes its bundle (not a scan: plugin-rsc analyses the
+     * rsc and ssr environments with `write: false` first and builds them
+     * again) outside watch mode is the environment's last: its compiler
+     * state is released before the next environment builds. What later
+     * environments read stays in the session: the server-fn registry and id
+     * allocator, the raw facts, the warnings ledger. A dev server calls it
+     * when it closes (or restarts).
+     */
+    closeBundle() {
+      if (this.environment.mode !== 'build') {
+        state.closeServer(this.environment)
+      } else if (isFinalBuild(this.environment.config.build)) {
+        state.sessionOf(this.environment).start.release(env.name)
+      }
+    },
+    resolveId: {
+      filter: { id: [SAME_FILE_SPECIFIER_RE, IP_SPECIFIER_RE] },
+      handler(source, importer) {
+        const edge = resolveViteEdgeModuleId(source)
+        if (edge !== null) {
+          // an importer's request for an edge module comes from its
+          // transformed code (import analysis, or Rolldown): the import
+          // survived the TypeScript transform, and `allowImport` decides
+          // before the module loads; a pending violation it does not allow
+          // is reported, and `error` fails the importer's import analysis
+          const ip =
+            importer === undefined
+              ? null
+              : state.sessionOf(this.environment).start.ip
+          const ipEnv = ip?.env(env.name, env.type) ?? null
+          const confirmation = ipEnv?.confirm(edge) ?? null
+          if (confirmation === null) {
+            return edge
+          }
+          return confirmation.then((error) => {
+            if (error) {
+              throw error
+            }
+            // an allowed import of a pre-bundled dependency gets its bundle,
+            // as its other importers do (a re-export of its source entry
+            // would load a second copy, without Vite's CommonJS interop)
+            const target = ipEnv!.allowedTarget(edge)
+            const served =
+              target === null
+                ? target
+                : optimizedDependency(this.environment, target)
+            return served !== null && served !== target ? served : edge
+          })
+        }
+        return resolveSameFileSpecifier(source, importer)
+      },
+    },
+    load: {
+      filter: {
+        id: [IP_SPECIFIER_RE, OWNED_QUERY_RE, ASSET_QUERY_RE, ASSET_FILE_RE],
+      },
+      async handler(id) {
+        const s = state.sessionOf(this.environment)
+        if (IP_SPECIFIER_RE.test(id)) {
+          const load = s.start.ip?.load(id)
+          return load
+            ? { code: load.code, moduleSideEffects: load.moduleSideEffects }
+            : null
+        }
+        if (isAssetId(id) || ASSET_FILE_RE.test(id)) {
+          // never compiled (the transform filters exclude it), and an
+          // import the compiler does not read may have brought it here:
+          // a denied file's text is served as its mock
+          const out = await s.start.assetOutput(env, id)
+          const mock =
+            out &&
+            (await state.afterCompile(s, env, id, out, (error) =>
+              this.error(error),
+            ))
+          if (!mock) {
+            return null
+          }
+          watchLoadedFile(this, identify(id).path)
+          // (Vite's JSON plugin parses what a `.json` loads as)
+          return { code: id.endsWith('.json') ? '{}' : mock.code }
+        }
+        return loadDerivedSource(this, id)
+      },
+    },
+    transform: {
+      filter: {
+        id: {
+          include: TRANSFORM_ID_REGEX,
+          exclude: state.ownExclude,
+        },
+      },
+      handler: compileTransform,
+    },
+    /**
+     * Design 3's hook: the event's invalidation, then the environment's
+     * stale set (the dependents found stale, and what entered it since its
+     * last take: a failed hit's file, a compile overtaken by saves, a
+     * registry change) handed to Vite with the event's own modules. A
+     * creation takes the paths held since a removal (their modules would
+     * not compile while the file was missing). A path that enters the set
+     * after the take waits for the next event's hook.
+     */
+    hotUpdate(ctx) {
+      const s = state.sessionOf(this.environment)
+      const environment = this.environment as DevEnvironment
+      // the file's path once, as every module id and compiler key holds it
+      const change = {
+        path: normalizePath(ctx.file),
+        kind: changeKindOf(ctx.type),
+      } as const
+      return staleHotUpdate(
+        environment,
+        s.start.caches,
+        change,
+        ctx.modules,
+        () => invalidateFor(state, s, environment, change),
+      )
+    },
+    // The one invalidation of a file event. Bundled dev, and a dev server
+    // without HMR (`server.hmr: false`, as Vitest's): every environment's
+    // stale set is taken (Vite's `hotUpdate` is not called there; the
+    // watching environment's hook does it). `build --watch`: each
+    // environment's watcher reports the files it bundles, and the rebuild
+    // compiles their dependents again, against the caches the invalidation
+    // left
+    async watchChange(id, event) {
+      const environment = this.environment
+      const s = state.sessionOf(environment)
+      if (
+        environment.mode === 'dev' &&
+        !(watches && (s.bundledDev || s.server?.config.server.hmr === false))
+      ) {
+        return
+      }
+      // the file's path once, as every module id and compiler key holds it
+      // (Rolldown reports its watcher's native path: backslashes on Windows)
+      const change: InvalidateChange = {
+        path: normalizePath(id),
+        kind: changeKindOf(event.event),
+      }
+      if (change.path === s.sentinel) {
+        // ours (the client build a server build embeds), not a source
+        return
+      }
+      if (environment.mode !== 'dev') {
+        await invalidate(
+          s.start.caches,
+          change,
+          buildInvalidationHosts(state, s, environment, (source, importer) =>
+            this.resolve(source, importer, { skipSelf: true }),
+          ),
+        )
+        return
+      }
+      await invalidateFor(state, s, environment, change)
+      const environments = s.server
+        ? Object.values(s.server.environments).filter((e) =>
+            state.envNames.has(e.name),
+          )
+        : [environment]
+      for (const each of environments) {
+        takeStaleModules(s.start.caches, each, change.kind === 'add')
+      }
+    },
+    // a derived output's map names its file, not `route.tsx?tsr-split=…`,
+    // `?tss-serverfn-split`, …
+    outputOptions(options) {
+      return withOwnSourcesNamedByFile(options)
+    },
+    renderChunk(code, chunk) {
+      const s = state.sessionOf(this.environment)
+      if (!s.start.allocator || !code.includes('__TSS_FN_ID_')) {
+        return null
+      }
+      const { allocator, errors, warnings } = s.start.allocateIds(env.type)
+      if (errors.length > 0) {
+        this.error({ message: errors.join('\n') })
+      }
+      for (const warning of warnings) {
+        this.warn(warning)
+      }
+      const patched = allocator.patch(code)
+      if (patched.missing.length > 0) {
+        this.error({
+          message: `Server function ids could not be resolved in ${chunk.fileName}: ${patched.missing.join(', ')}`,
+        })
+      }
+      const source = new SourceText(code)
+      const builder = new OutputBuilder(source, chunk.fileName, { map: true })
+      let pos = 0
+      for (const e of patched.edits) {
+        if (e.start > pos) {
+          builder.copy(pos, e.start)
+        }
+        builder.text(e.text)
+        pos = e.end
+      }
+      if (pos < code.length) {
+        builder.copy(pos, code.length)
+      }
+      const built = builder.finish()
+      return { code: built.code, map: built.map as never }
+    },
+    /**
+     * Import protection's build reports: the edge modules that survived
+     * tree-shaking → `onViolation` once per import → the build's errors and
+     * warnings.
+     */
+    async generateBundle(_options, bundle) {
+      if (this.environment.mode !== 'build') {
+        return
+      }
+      const s = state.sessionOf(this.environment)
+      if (env.type === 'client') {
+        // an extracted-export output an entry chunk (or a chunk it imports
+        // statically) holds is eager whatever the splitter did: say so
+        // once per file and export (J2.8)
+        warnEagerExports(
+          rollupEntryModuleIds(bundle as never),
+          'rollup',
+          s.start.warnings,
+          (m) => this.warn(m),
+          (id) => this.getModuleInfo(id)?.importers ?? [],
+          {
+            root: s.start.opts.root,
+            routeTree:
+              state.opts.getConfig().startConfig.router.generatedRouteTree,
+          },
+        )
+      }
+      if (!s.start.ip) {
+        return
+      }
+      const ipEnv = s.start.ip.env(env.name, env.type)
+      const live = readRolldownWitness(bundle as never, ipEnv.witness())
+      const reports = await ipEnv.surviving(
+        live,
+        rolldownGraphView((id) => this.getModuleInfo(id)),
+        // (a denied file served as it was compiled first is reported: a
+        // build compiles it once)
+        (id) => this.getModuleInfo(id) !== null,
+        (id) => renderedIn(bundle, id),
+      )
+      // every report first: the build fails once, with all of its errors
+      const errors: Array<string> = []
+      for (const report of reports) {
+        if (report.severity === 'error') {
+          errors.push(report.message)
+        } else {
+          this.warn(report.message)
+        }
+      }
+      if (errors.length > 0) {
+        this.error(errors.join('\n'))
+      }
+    },
+  }
+  return [
+    plugin,
+    {
+      // dependency scripts: only those whose text names what the compiler
+      // recognises reach the compiler (most of a dependency graph never
+      // crosses into JavaScript)
+      name: `tanstack-start:compiler:${env.name}:dependencies`,
+      enforce: 'pre',
+      applyToEnvironment(e) {
+        return e.name === env.name
+      },
+      transform: { filter: state.dependencyFilter, handler: compileTransform },
+    },
+  ]
+}
+
+/** Whether a module's code is in a chunk of the bundle (tree-shaking kept some of it). */
+function renderedIn(bundle: Record<string, unknown>, id: string): boolean {
+  for (const output of Object.values(bundle)) {
+    const modules = (
+      output as { modules?: Record<string, { renderedLength: number }> }
+    ).modules
+    if ((modules?.[id]?.renderedLength ?? 0) > 0) {
+      return true
+    }
+  }
+  return false
+}

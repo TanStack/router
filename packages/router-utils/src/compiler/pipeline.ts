@@ -1,0 +1,874 @@
+/**
+ * `compileModule()` — phases A–D with the restart loop (README.md,
+ * "Pipeline"). A: identify, validated cache lookup, parse (Tier 0), gates,
+ * prefetch. B: synchronous planning and freeze. C: per-output edge policy,
+ * snapshot validation, publication. D: emission on demand.
+ */
+import {
+  deriveId,
+  edgeKeyOf,
+  identify,
+  isCommonJsPath,
+  langFromId,
+  revision,
+} from './identity'
+import { parseModule } from './source'
+import { ModuleAnalysis } from './analysis'
+import { AnalysisPlan } from './plan'
+import {
+  DependencyLedger,
+  EXTERNAL_RESOLUTION,
+  StaleSets,
+  fingerprintsCurrent,
+} from './cache'
+import { emitRecipe, substituteSpecifier } from './emit'
+import { dedupeEdges, sourceEdges, wholeModule } from './edges'
+import { SourceText } from './output-builder'
+import { displayPath } from './diagnostics'
+import { ExportResolver } from './resolve'
+import {
+  dependencyPaths,
+  fingerprintSourceFor,
+  planCacheFor,
+  resolveForAnalysis,
+} from './host'
+import { isVirtualId } from './facts'
+import { registerCompilerStats } from './stats'
+import { exportKeyOf, summaryDigest } from './summary'
+import { SELF_CHECKS, invariantDiagnostic } from './self-checks'
+import { verifyPlan } from './verify'
+import { checkServerCode } from './server-code'
+import type { CacheEntry, Settled } from './cache'
+import type { Diagnostic } from './diagnostics'
+import type {
+  EmitPlan,
+  EnvInfo,
+  FallbackRecord,
+  OutputRecipe,
+  PlanContext,
+} from './plan'
+import type { PlanKey, SourceIdentity } from './identity'
+import type { InvariantViolation } from './self-checks'
+import type { OutputId } from './rewrite'
+import type {
+  CompileInput,
+  CompileOutput,
+  CompilerCaches,
+  HostServices,
+  InputSourceMap,
+  Planner,
+  PlannerPrefetches,
+  PolicyContext,
+  PrefetchContext,
+} from './host'
+
+const MAX_ATTEMPTS = 3
+
+/** The caches of one compiler session; `label` names them in `compilerStats()`. */
+export function createCompilerCaches(
+  rawFacts: HostServices['rawFacts'],
+  label = 'compiler',
+  opts: { removed?: (path: string) => void } = {},
+): CompilerCaches {
+  const invalidations = new Map<string, Promise<unknown>>()
+  const caches: CompilerCaches = {
+    plans: new Map(),
+    rawFacts,
+    fileSetVersion: 0,
+    stale: new StaleSets(),
+    invalidations,
+    removed: opts.removed,
+    settled: async () => {
+      while (invalidations.size > 0) {
+        await Promise.allSettled([...invalidations.values()])
+      }
+    },
+  }
+  registerCompilerStats(label, caches, readCacheStats)
+  return caches
+}
+
+function readCacheStats(c: CompilerCaches) {
+  const withBytes = process.env.TSR_COMPILER_STATS_BYTES !== '0'
+  const out: Record<string, number> = {
+    ...c.rawFacts.stats(withBytes),
+    ...c.stale.stats(),
+    invalidationsRunning: c.invalidations.size,
+  }
+  for (const plans of c.plans.values()) {
+    for (const [k, v] of Object.entries(plans.stats(withBytes))) {
+      out[k] = (out[k] ?? 0) + v
+    }
+  }
+  return out
+}
+
+type AttemptResult =
+  | Exclude<Settled, { kind: 'plan' }>
+  | { kind: 'plan'; plan: EmitPlan }
+
+/**
+ * Compiles one host id. Returns null when untouched (every gate failed,
+ * non-ESM, non-JS id). For a derived id whose plan has no such output the
+ * code is `export {}\n`.
+ */
+export async function compileModule(
+  input: CompileInput,
+  host: HostServices,
+  caches: CompilerCaches,
+): Promise<CompileOutput | null> {
+  const own = identify(input.id)
+  // a non-JS id whose code reaches us as JS (`.vue`, `.mdx`) compiles with
+  // Tier 0 only, or in place (`inPlace`)
+  const tier0Only = own.lang === null && input.inPlace !== true
+  const identity =
+    own.lang === null && input.lang ? { ...own, lang: input.lang } : own
+  if (identity.lang === null) {
+    return null
+  }
+  const env = input.env
+  const cache = planCacheFor(caches, env.name)
+  const key: PlanKey = {
+    env: env.name,
+    canonicalId: identity.canonicalId,
+    configKey: input.config.configKey,
+  }
+  const rev = revision(input.code)
+  const requested = outputOf(identity)
+  // the request's text is the key's latest from its arrival on: a request
+  // of another text arriving later supersedes it, whatever this one waits on
+  // (the key stays live until it ends, so its latest revision stays known)
+  cache.begin(key, rev)
+  try {
+    return await answer(
+      input,
+      identity,
+      tier0Only,
+      host,
+      caches,
+      key,
+      rev,
+      requested,
+    )
+  } finally {
+    cache.end(key)
+  }
+}
+
+/** The output of a request of `key` at revision `rev`, from a validated plan hit, a compile in flight or its own compile. */
+async function answer(
+  input: CompileInput,
+  identity: SourceIdentity,
+  tier0Only: boolean,
+  host: HostServices,
+  caches: CompilerCaches,
+  key: PlanKey,
+  rev: string,
+  requested: OutputId,
+): Promise<CompileOutput | null> {
+  const env = input.env
+  const cache = planCacheFor(caches, env.name)
+  const note = await textDiffers(
+    cache.get(key),
+    rev,
+    requested,
+    identity,
+    env,
+    host,
+  )
+  const noted = <T extends CompileOutput | null>(out: T): T =>
+    note && out ? { ...out, diagnostics: [...out.diagnostics, note] } : out
+
+  for (;;) {
+    const hit = cache.lookup(key, rev)
+    if (hit) {
+      const src = fingerprintSourceFor(caches, host, env.name)
+      // what was validated at the current versions stands (not asked again)
+      const fileSetVersion = caches.fileSetVersion
+      const factsVersion = caches.rawFacts.version
+      const valid = await fingerprintsCurrent(hit.plan.dependencies, src, {
+        resolutions: hit.resolvedAt === fileSetVersion,
+        facts: hit.factsAt === factsVersion,
+      })
+      if (cache.lookup(key, rev) === hit) {
+        if (valid) {
+          hit.resolvedAt = fileSetVersion
+          hit.factsAt = factsVersion
+          cache.counters.planHits++
+          return noted(emitFrom(hit, requested, input, caches))
+        }
+        cache.delete(key)
+        cache.bump(key)
+        // this request compiles the file again; its other outputs, which
+        // the bundler holds from the plan, follow
+        caches.stale.add(env.name, identity.path)
+        if (caches.invalidations.size === 0) {
+          // `invalidate()` checks every fact again, and leaves resolutions
+          // and route-registry digests to the next request
+          const factsHeld = await fingerprintsCurrent(
+            hit.plan.dependencies.filter(
+              (fp) => fp.kind !== 'resolution' && fp.kind !== 'route-registry',
+            ),
+            src,
+            { resolutions: true, facts: false },
+          )
+          cache.counters[factsHeld ? 'lazyHits' : 'staleHits']++
+        }
+      }
+      // evicted, or evicted and published again, meanwhile: look again
+      continue
+    }
+    const flight = cache.flight(key)
+    if (flight && flight.revision === rev) {
+      // another request of this text is compiling it: its outcome answers this request too
+      const settled = await flight.settled.catch(() => null)
+      if (settled) {
+        return noted(emitSettled(settled, requested, input, caches))
+      }
+      // it threw: its request reports the error, this one compiles on its own
+      continue
+    }
+    const record = {
+      revision: rev,
+      settled: settle(input, identity, tier0Only, host, caches, key, rev),
+    }
+    cache.fly(key, record)
+    try {
+      return noted(emitSettled(await record.settled, requested, input, caches))
+    } finally {
+      cache.land(key, record)
+    }
+  }
+}
+
+function outputOf(identity: SourceIdentity): OutputId {
+  return identity.derived
+    ? `derived:${deriveId(identity.canonicalId, identity.derived)}`
+    : 'env'
+}
+
+/** How long before a dev compile a file must have been saved for that compile to have read it. */
+const DEV_READ_WINDOW_MS = 2_000
+
+/**
+ * The warning when another output of this file was compiled from another text
+ * while the file stayed as it was: a plugin before the compiler handled the
+ * ids differently, typically an id filter anchored with `$` that skips the
+ * query of a derived id. Each id compiles from its own text, so their plans
+ * can place one binding differently. A save between the two explains a
+ * difference too, and that is what the file's modification time rules out; in
+ * dev the window leaves room for a text read just before a save. A plan
+ * compiled for this output says nothing (no other id's text), and the cost is
+ * one comparison per compile, plus a `stat` when the texts differ.
+ */
+async function textDiffers(
+  previous: CacheEntry | null,
+  rev: string,
+  requested: OutputId,
+  identity: SourceIdentity,
+  env: CompileInput['env'],
+  host: HostServices,
+): Promise<Diagnostic | null> {
+  if (
+    !previous ||
+    previous.revision === rev ||
+    previous.compiledFor === requested ||
+    !host.modifiedAt
+  ) {
+    return null
+  }
+  const modifiedAt = await host.modifiedAt(identity.path)
+  const settled = env.mode === 'dev' ? DEV_READ_WINDOW_MS : 0
+  if (modifiedAt === null || modifiedAt + settled > previous.compiledAt) {
+    return null
+  }
+  return {
+    severity: 'warning',
+    by: 'core',
+    code: 'input-text-differs',
+    message: `${tagOf(host)}${displayPath(identity.path, host.root)} reaches the compiler with different code under its module ids: a plugin that runs before the compiler transforms only some of them (an id filter ending in \`$\` skips ids with a query, such as the route's split chunks), so they are compiled from different code and can disagree at runtime. Let that plugin's id filter accept ids with a query (\`/\\.tsx(\\?|$)/\`).`,
+  }
+}
+
+/**
+ * Compiles a key at one revision: attempts until one is published or
+ * superseded by a newer revision. An attempt whose dependencies changed
+ * underneath it (snapshot validation, a generation bump) is retried, up to
+ * `MAX_ATTEMPTS`.
+ */
+async function settle(
+  input: CompileInput,
+  identity: SourceIdentity,
+  tier0Only: boolean,
+  host: HostServices,
+  caches: CompilerCaches,
+  key: PlanKey,
+  rev: string,
+): Promise<Settled> {
+  const cache = planCacheFor(caches, key.env)
+  // (the request that started it keeps the key live: `compileModule`)
+  let overtaken!: CacheEntry
+  // every attempt compiles the text this compile was given
+  const compiledAt = Date.now()
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const generation = cache.generation(key)
+    const fileSetVersion = caches.fileSetVersion
+    const factsVersion = caches.rawFacts.version
+    const ledger = new DependencyLedger(key, cache.dependents)
+    const result = await runAttempt(
+      input,
+      identity,
+      tier0Only,
+      host,
+      caches,
+      ledger,
+      rev,
+    )
+    if (result.kind !== 'plan') {
+      if (cache.latestRevision(key) === rev) {
+        // the file's text has no plan: the plan of its old text goes with
+        // its rows (a later event of what that text read reports nothing)
+        const old = cache.get(key)
+        if (old && old.revision !== rev) {
+          cache.delete(key)
+        }
+      }
+      return result
+    }
+    const entry: CacheEntry = {
+      key,
+      revision: rev,
+      generation,
+      plan: result.plan,
+      resolvedAt: fileSetVersion,
+      factsAt: factsVersion,
+      compiledFor: outputOf(identity),
+      compiledAt,
+    }
+    entry.plan.dependencies = ledger.published()
+    const src = fingerprintSourceFor(caches, host, key.env)
+    // the snapshot: whether every fact the attempt recorded is still
+    // current. Standing answers (no file event applied, no raw fact went
+    // stale since the attempt started) are not asked again; once a file
+    // event ran since, the resolutions are asked again (no event restarts
+    // the attempt for a failed one), until a check overlaps no event
+    let snapshotOk: boolean
+    for (let standingAt = fileSetVersion; ; ) {
+      const checkedAt = caches.fileSetVersion
+      snapshotOk = await fingerprintsCurrent(entry.plan.dependencies, src, {
+        resolutions: checkedAt === standingAt,
+        facts: caches.rawFacts.version === factsVersion,
+      })
+      if (!snapshotOk || caches.fileSetVersion === checkedAt) {
+        break
+      }
+      standingAt = checkedAt
+    }
+    if (snapshotOk && cache.generation(key) === generation) {
+      if (cache.set(entry)) {
+        ledger.publish()
+      }
+      return { kind: 'plan', entry }
+    }
+    if (cache.latestRevision(key) !== rev) {
+      // superseded by a newer save: this text is stale; never publish, but answer its requests
+      return { kind: 'plan', entry }
+    }
+    overtaken = entry
+  }
+  // Every attempt was overtaken (a save storm, a checkout touching several
+  // dependencies): the last plan answers without being published, so the
+  // next request compiles afresh, and the file enters its stale set: the
+  // host has its modules built again (Rsbuild and webpack at once, Vite
+  // with the next file event's hot update)
+  caches.stale.add(key.env, identity.path)
+  return { kind: 'plan', entry: overtaken }
+}
+
+/** A request's output from what the compile of its text settled on. */
+function emitSettled(
+  settled: Settled,
+  requested: OutputId,
+  input: CompileInput,
+  caches: CompilerCaches,
+): CompileOutput | null {
+  if (settled.kind === 'untouched') {
+    return null
+  }
+  if (settled.kind === 'parse-error') {
+    return {
+      code: input.code,
+      map: null,
+      facts: { marker: null, planners: {} },
+      diagnostics: settled.diagnostics,
+      dependencies: [],
+      persisted: null,
+      output: requested,
+    }
+  }
+  return emitFrom(settled.entry, requested, input, caches)
+}
+
+/** Emits the requested output from a frozen plan (never memoised: emission costs microseconds). */
+function emitFrom(
+  entry: CacheEntry,
+  requested: OutputId,
+  input: CompileInput,
+  caches: CompilerCaches,
+): CompileOutput {
+  const plan = entry.plan
+  const recipe = plan.outputs[requested]
+  const emitted = recipe
+    ? requested === 'env' && isIdentityRecipe(recipe, input.code)
+      ? // every host passes an unchanged env module through (no map read):
+        // no builder run and no word-level map over the whole text
+        { code: input.code, map: null }
+      : emitRecipe(
+          recipe,
+          new SourceText(input.code, { lines: input.lines }),
+          input.wantMap,
+        )
+    : { code: 'export {}\n', map: null }
+  return {
+    code: emitted.code,
+    map: emitted.map,
+    facts: plan.facts,
+    diagnostics: plan.diagnostics,
+    // only the webpack-family hosts read them, once per compile: computed on demand
+    get dependencies() {
+      return [...dependencyPaths(plan.dependencies, caches)]
+    },
+    persisted: { key: entry.key, dependencies: plan.dependencies },
+    output: requested,
+  }
+}
+
+/** Whether emitting `recipe` over `code` yields `code` itself (slices covering the whole text). */
+function isIdentityRecipe(recipe: OutputRecipe, code: string): boolean {
+  let at = 0
+  for (const seg of recipe.segments) {
+    if (seg.k !== 'slice' || seg.start !== at) {
+      return false
+    }
+    at = seg.end
+  }
+  return at === code.length
+}
+
+async function runAttempt(
+  input: CompileInput,
+  identity: SourceIdentity,
+  tier0Only: boolean,
+  host: HostServices,
+  caches: CompilerCaches,
+  ledger: DependencyLedger,
+  rev: string,
+): Promise<AttemptResult> {
+  const env = input.env
+  const parsed = parseModule(input.code, {
+    lang: identity.lang!,
+    path: identity.path,
+    sourceType: isCommonJsPath(identity.path) ? 'commonjs' : undefined,
+  })
+  if (!parsed.ok) {
+    return { kind: 'parse-error', diagnostics: parsed.diagnostics }
+  }
+  const t0 = new ModuleAnalysis(parsed.file, parsed.source, {
+    path: identity.path,
+    markerSpecifiers: host.rawFacts.markerSpecifiers,
+    recognizer: host.rawFacts.recognizer,
+    env: env.type,
+  })
+  const cjs = t0.sourceType !== 'module' || isCommonJsPath(identity.path)
+  const gateCtx = (p: Planner) => ({
+    identity,
+    config: input.config.perPlanner[p.name],
+  })
+  let planners = input.planners.filter((p) => p.gate(t0, gateCtx(p)))
+  if (cjs || tier0Only) {
+    planners = planners.filter((p) => p.tier === 0)
+  }
+  const displayFile = displayPath(identity.path, host.root)
+  if (planners.length === 0) {
+    return { kind: 'untouched' }
+  }
+
+  // ---- A: prefetch -----------------------------------------------------------
+  const prefetched = new Map<string, unknown>()
+  const resolveFrom = async (
+    specifier: string,
+    importer: string,
+  ): Promise<string | null> => {
+    // one answer per attempt: the ledger's recorded resolution is reused
+    const known = ledger.resolved(env.name, importer, specifier)
+    if (known !== undefined) {
+      return known === EXTERNAL_RESOLUTION ? null : known
+    }
+    const resolved = await resolveForAnalysis(
+      caches,
+      host,
+      env.name,
+      importer,
+      specifier,
+    )
+    if (env.mode === 'dev' && importer === identity.canonicalId) {
+      // a dev server's pending requests get in between the resolutions of
+      // the module's own imports, as they did while every resolution was
+      // resolver I/O: an analysis answered from the memo in microtasks
+      // alone makes a server function call during an edit wait for the
+      // whole update (+3 ms). Following another module's re-exports (a
+      // barrel) gives no turn: one per re-export only slowed a barrel-heavy
+      // dev compile by a fifth
+      await new Promise((turn) => setImmediate(turn))
+    }
+    ledger.record({
+      kind: 'resolution',
+      env: env.name,
+      importer,
+      specifier,
+      resolved,
+    })
+    // an external has nothing readable behind it
+    return resolved === EXTERNAL_RESOLUTION ? null : resolved
+  }
+  /** A wait on a module's raw facts (`HostServices.awaitVirtual`). */
+  const awaitFacts = <T>(canonicalId: string, read: Promise<T>): Promise<T> =>
+    host.awaitVirtual && isVirtualId(canonicalId)
+      ? host.awaitVirtual(canonicalId, read)
+      : read
+  const rawFactsOf = (canonicalId: string) =>
+    awaitFacts(canonicalId, host.rawFacts.get(canonicalId, env.name))
+  const summaryOf = async (canonicalId: string) => {
+    const facts = await rawFactsOf(canonicalId)
+    ledger.record({
+      kind: 'summary',
+      canonicalId,
+      digest: facts.summary ? summaryDigest(facts.summary) : null,
+    })
+    return facts.summary
+  }
+  // a lookup depends on the export it reads, not on the module's others
+  const exportOf = async (canonicalId: string, name: string) => {
+    const { summary } = await rawFactsOf(canonicalId)
+    if (summary === null) {
+      ledger.record({ kind: 'summary', canonicalId, digest: null })
+    } else {
+      ledger.recordExport(canonicalId, name, exportKeyOf(summary, name))
+    }
+    return summary
+  }
+  const targetFactsOf = async (canonicalId: string) => {
+    const facts = await awaitFacts(
+      canonicalId,
+      host.rawFacts.getTarget(canonicalId, env.name),
+    )
+    ledger.record({
+      kind: 'target-facts',
+      canonicalId,
+      digest: facts.targetFacts.digest,
+    })
+    return facts.targetFacts
+  }
+  const targetMarkerOf = async (canonicalId: string) => {
+    const marker = await awaitFacts(
+      canonicalId,
+      host.rawFacts.marker(canonicalId, env.name),
+    )
+    ledger.record({ kind: 'target-marker', canonicalId, marker })
+    return marker
+  }
+  const resolver = new ExportResolver({
+    summaryOf,
+    exportOf,
+    starsOf: (canonicalId, summary) =>
+      ledger.recordStars(canonicalId, summary.stars),
+    readableOf: async (canonicalId) => {
+      const { summary } = await rawFactsOf(canonicalId)
+      if (summary === null) {
+        ledger.record({ kind: 'summary', canonicalId, digest: null })
+      }
+      return summary !== null
+    },
+    resolveSpecifier: (spec, importer) => resolveFrom(spec, importer),
+  })
+  const withdrawn = new Set<string>()
+  await Promise.all(
+    planners.map(async (p) => {
+      if (!p.prefetch) {
+        return
+      }
+      const ctx: PrefetchContext = {
+        identity,
+        host,
+        ledger,
+        resolver,
+        resolve: (spec) => resolveFrom(spec, identity.canonicalId),
+        resolveFrom,
+        set: (data) => prefetched.set(p.name, data),
+      }
+      if ((await p.prefetch(t0, ctx)) === false) {
+        withdrawn.add(p.name)
+      }
+    }),
+  )
+  if (withdrawn.size > 0) {
+    // a withdrawn planner keeps its recorded dependencies: the (possibly verbatim)
+    // plan is cached, so a dependency change can bring the module back
+    planners = planners.filter((p) => !withdrawn.has(p.name))
+  }
+
+  // ---- B: planning (sync) ------------------------------------------------------
+  const tier1Needed = planners.some((p) => p.tier === 1)
+  let emitPlan: EmitPlan
+  if (!tier1Needed) {
+    emitPlan = tier0Plan(t0, identity, env, rev)
+  } else {
+    // Planning rounds: the core reports the regions a split would break
+    // (a chunk writing a binding the route module reads, a relocated read
+    // of mutated state, …) and the planners re-plan with them kept in
+    // place. A kept region can free the next one (a chain of writers), so
+    // the rounds continue until no new region is reported; each round keeps
+    // at least one more region of the module, so they end within the
+    // number of regions. Past that bound (a planner registering new regions
+    // every round) the module is planned with every sub-region kept in
+    // place (every sub-region of every round), which is always correct,
+    // and a warning says so. The bound is the region count after the first
+    // round, so a planner registering a new region every round cannot move
+    // it out of reach.
+    let fallbacks: Array<FallbackRecord> = []
+    let plan!: AnalysisPlan
+    let bound = 0
+    /** The sub-regions of the rounds so far, by range and kind (each plan has its own regions). */
+    const subRegions = new Map<string, FallbackRecord>()
+    for (let round = 0; ; round++) {
+      plan = planRound(
+        t0,
+        identity,
+        env,
+        prefetched,
+        fallbacks,
+        planners,
+        input,
+        displayFile,
+      )
+      const fresh = plan
+        .fallbackRecords()
+        .filter(
+          (f) =>
+            !fallbacks.some(
+              (g) =>
+                g.range.start === f.range.start && g.range.end === f.range.end,
+            ),
+        )
+      if (round === 0) {
+        bound = plan.regions.regions.length
+      }
+      if (fresh.length === 0) {
+        break
+      }
+      for (const r of plan.regions.regions) {
+        const key = `${r.range.start}:${r.range.end}:${r.kind}`
+        if (r.kind !== 'unit' && !subRegions.has(key)) {
+          subRegions.set(key, {
+            range: r.range,
+            kind: r.kind,
+            reason: 'exhausted',
+          })
+        }
+      }
+      if (round >= bound) {
+        fallbacks = [...subRegions.values()]
+        plan = planRound(
+          t0,
+          identity,
+          env,
+          prefetched,
+          fallbacks,
+          planners,
+          input,
+          displayFile,
+        )
+        plan.diagnostic({
+          severity: 'warning',
+          message: `${tagOf(host)}The compiler could not settle which parts of ${displayFile} can be split, so nothing of it is split.`,
+          range: fresh[0]!.range,
+          by: 'core',
+          code: 'fallback-rounds-exhausted',
+        })
+        break
+      }
+      fallbacks = [...fallbacks, ...fresh]
+    }
+    // a violated invariant of the plan the module is compiled with, whatever
+    // fallbacks it keeps (only when the run reports it: our test runs throw
+    // at the check): one diagnostic for the module
+    const report = (v: InvariantViolation) =>
+      invariantDiagnostic(tagOf(host), displayFile, v)
+    const violation = plan.placement?.check()
+    if (violation !== undefined) {
+      plan.diagnostic(report(violation))
+    }
+    emitPlan = plan.freeze(rev)
+    if (langFromId(input.id) === null && plan.outputs.size > 1) {
+      throw new Error(
+        `A plan of ${identity.path}, whose code is no JS/TS of its own, declared a derived output (it would load the file)`,
+      )
+    }
+    checkServerCode(
+      planners,
+      (p) => withConfig(plan, input.config.perPlanner[p.name]),
+      emitPlan,
+      env,
+      identity.canonicalId,
+      tagOf(host),
+      displayFile,
+    )
+    if (SELF_CHECKS) {
+      verifyPlan(plan, emitPlan, input.code, identity)
+    }
+  }
+  // ---- C: per-output edge policy (async) ----------------------------------------
+  let inputMap: InputSourceMap | null | undefined
+  const readInputMap = (): InputSourceMap | null => {
+    if (inputMap === undefined) {
+      inputMap =
+        typeof input.inputMap === 'function'
+          ? input.inputMap()
+          : (input.inputMap ?? null)
+    }
+    return inputMap
+  }
+  for (const output of Object.keys(emitPlan.outputs) as Array<OutputId>) {
+    const recipe = emitPlan.outputs[output]!
+    const importerId = recipe.derivedId ?? identity.canonicalId
+    for (const p of planners) {
+      if (!p.policy) {
+        continue
+      }
+      const ctx: PolicyContext = {
+        identity,
+        env,
+        host,
+        code: input.code,
+        analysis: t0,
+        inputMap: readInputMap,
+        resolve: (spec, importer) => resolveFrom(spec, importer ?? importerId),
+        targetFacts: targetFactsOf,
+        targetMarker: targetMarkerOf,
+        substitute: (edgeKey, specifier) => {
+          // one record per logical edge, with every location of it
+          const edge = emitPlan.edges[output]?.find(
+            (e) => e.edgeKey === edgeKey,
+          )
+          if (edge) {
+            substituteSpecifier(recipe, edge, specifier, input.code)
+          }
+        },
+        diagnostic: (d) => emitPlan.diagnostics.push(d),
+      }
+      await p.policy(emitPlan, output, emitPlan.edges[output] ?? [], ctx)
+    }
+  }
+  return { kind: 'plan', plan: emitPlan }
+}
+
+/** J6-only tier: the env output is the source verbatim with its edges. */
+function tier0Plan(
+  t0: ModuleAnalysis,
+  identity: SourceIdentity,
+  env: EnvInfo,
+  rev: string,
+): EmitPlan {
+  const code = t0.source.code
+  const segments: EmitPlan['outputs'][string]['segments'] = [
+    { k: 'slice', start: 0, end: code.length },
+  ]
+  const edgeKey = (raw: string, form: string) =>
+    edgeKeyOf(env.name, env.layer, identity.canonicalId, raw, form)
+  const edges: EmitPlan['edges'] = {
+    env: dedupeEdges(
+      sourceEdges(t0, edgeKey, identity.canonicalId, wholeModule(t0)),
+    ),
+  }
+  return {
+    revision: rev,
+    outputs: {
+      env: {
+        kind: 'env',
+        derivedId: null,
+        mapSource: identity.path,
+        segments,
+      },
+    },
+    edges,
+    facts: { marker: t0.markers, planners: {} },
+    dependencies: [],
+    diagnostics: [],
+  }
+}
+
+/** One planning round: every planner's `plan` on a fresh plan, in order, then placement. */
+function planRound(
+  t0: ModuleAnalysis,
+  identity: SourceIdentity,
+  env: EnvInfo,
+  prefetched: ReadonlyMap<string, unknown>,
+  fallbacks: ReadonlyArray<FallbackRecord>,
+  planners: ReadonlyArray<Planner>,
+  input: CompileInput,
+  displayFile: string,
+): AnalysisPlan {
+  const plan = new AnalysisPlan(
+    t0,
+    identity,
+    env,
+    // each planner stored its own entry under its name (`PrefetchContext.set`)
+    prefetched as PlannerPrefetches,
+    fallbacks,
+    displayFile,
+  )
+  for (const p of planners) {
+    p.plan(withConfig(plan, input.config.perPlanner[p.name]))
+  }
+  plan.resolve()
+  return plan
+}
+
+/** A planner's view of the plan with its own config. */
+function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
+  return {
+    analysis: plan.analysis,
+    t1: plan.t1,
+    identity: plan.identity,
+    displayPath: plan.displayPath,
+    env: plan.env,
+    config,
+    rewrites: plan.rewrites,
+    names: plan.names,
+    symbols: plan.symbols,
+    prefetched: plan.prefetched,
+    fallbackAt: (range, kind) => plan.fallbackAt(range, kind),
+    region: (range, kind) => plan.region(range, kind),
+    calledLater: (range) => plan.calledLater(range),
+    declareOutput: (spec) => plan.declareOutput(spec),
+    addRoot: (output, root) => plan.addRoot(output, root),
+    extractExport: (sym, exportName) => plan.extractExport(sym, exportName),
+    keep: (sym) => plan.keep(sym),
+    setRouteModule: () => plan.setRouteModule(),
+    describeModule: (words) => plan.describeModule(words),
+    liveness: (output) => plan.liveness(output),
+    nameOf: (sym) => plan.nameOf(sym),
+    glueExportName: (sym) => plan.glueExportName(sym),
+    tagGlueExports: (tag) => plan.tagGlueExports(tag),
+    renameRefs: (sym, to, by, except) => plan.renameRefs(sym, to, by, except),
+    setFacts: (planner, data) => plan.setFacts(planner, data),
+    diagnostic: (d) => plan.diagnostic(d),
+    liveDiagnostic: (d, when) => plan.liveDiagnostic(d, when),
+    edgeKey: (raw, form, origin) => plan.edgeKey(raw, form, origin),
+  }
+}
+
+/** The prefix of the core's own messages (`HostServices.tag`), with its space. */
+function tagOf(host: HostServices): string {
+  return host.tag === undefined ? '' : `${host.tag} `
+}

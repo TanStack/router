@@ -1,0 +1,215 @@
+/**
+ * Modules an Rspack child compiler of the client builds: what a service
+ * worker or worker plugin does (workbox's `InjectManifest`,
+ * `worker-rspack-loader`): `compilation.createChildCompiler` with its own
+ * entry, run during the client compilation, its assets emitted with the
+ * client's. The child compiler takes the client's module rules, so Start
+ * compiles its modules as client modules: a server function becomes its
+ * client call, which the server serves, and import protection judges their
+ * imports (SPEC J4.1, J6): a denied import fails the build (a child
+ * compiler cannot load Start's mocks).
+ */
+import fs from 'node:fs'
+import path from 'node:path'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  StartBuildError,
+  buildStart,
+  callByIdExports,
+  callByIdPrelude,
+} from '../../build-harness'
+import type { StartBuild } from '../../build-harness'
+import type { Rspack } from '@rsbuild/core'
+
+const timeout = 60_000
+
+/**
+ * The app's own Rspack plugin of the client environment: builds `src/worker.ts` in a child compiler
+ * of the client compilation, emitted as `worker.js` with the client's
+ * assets (Rspack's public plugin API, as a worker or service-worker plugin
+ * uses it).
+ */
+const workerPlugin = {
+  apply(compiler: Rspack.Compiler) {
+    compiler.hooks.make.tapPromise('app:worker', (compilation) => {
+      const child = compilation.createChildCompiler(
+        'app-worker',
+        { filename: 'worker.js', chunkFilename: 'worker-[name].js' },
+        [
+          new compiler.rspack.EntryPlugin(compiler.context, './src/worker.ts', {
+            name: 'worker',
+          }),
+          new compiler.rspack.webworker.WebWorkerTemplatePlugin(),
+        ],
+      )
+      return new Promise<void>((resolve, reject) => {
+        child.runAsChild((error) => (error ? reject(error) : resolve()))
+      })
+    })
+  },
+}
+
+const files = {
+  'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+import { secret } from './db.server'
+export const readSecret = createServerFn().handler(() => 'MARK_HANDLER:' + secret())
+`,
+  'src/db.server.ts': `export const secret = () => 'MARK_DB_SECRET'
+`,
+  'src/worker.ts': `import { readSecret } from './fns'
+self.onmessage = () => {
+  self.postMessage(readSecret.url)
+}
+`,
+  'src/entry.ts': `export const ready = true
+`,
+  'src/ssr-entry.ts': callByIdExports,
+}
+
+describe('Rsbuild build: modules of a child compiler of the client', () => {
+  let build: StartBuild
+  let dispose: (() => Promise<void>) | undefined
+  beforeAll(async () => {
+    build = await buildStart({
+      bundler: 'rsbuild',
+      files,
+      entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+      rsbuildConfig: {
+        environments: {
+          client: { tools: { rspack: { plugins: [workerPlugin] } } },
+        },
+      },
+      registerCleanup: (cleanup) => {
+        dispose = cleanup
+      },
+    })
+  }, timeout)
+  afterAll(() => dispose?.())
+
+  const workerCode = () =>
+    fs.readFileSync(path.join(build.client.outDir, 'worker.js'), 'utf8')
+
+  test(
+    'a server function in a worker is its client call: no handler, no server module',
+    () => {
+      const code = workerCode()
+      expect(code).not.toContain('MARK_HANDLER')
+      expect(code).not.toContain('MARK_DB_SECRET')
+    },
+    timeout,
+  )
+
+  test(
+    'the worker calls the server function, which runs on the server',
+    async () => {
+      const url = (
+        await build.client.run(`const worker = new Worker('/worker.js')
+return await new Promise((resolve, reject) => {
+  worker.onmessage = (event) => resolve(event.data)
+  worker.onerror = (event) => reject(new Error(event.message))
+  worker.postMessage(null)
+})`)
+      ).result
+      const { result } = await build.ssr.run(
+        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+      )
+      expect(result).toBe('MARK_HANDLER:MARK_DB_SECRET')
+    },
+    timeout,
+  )
+})
+
+describe('Rsbuild build: import protection in a child compiler of the client', () => {
+  const protectedFiles = {
+    'src/db.server.ts': `export const secret = () => 'MARK_DB_SECRET'
+`,
+    'src/worker.ts': `import { secret } from './db.server'
+self.onmessage = () => {
+  self.postMessage(secret())
+}
+`,
+    'src/entry.ts': `export const ready = true
+`,
+  }
+  const config = {
+    bundler: 'rsbuild' as const,
+    files: protectedFiles,
+    entry: 'src/entry.ts',
+    rsbuildConfig: {
+      environments: {
+        client: { tools: { rspack: { plugins: [workerPlugin] } } },
+      },
+    },
+  }
+
+  // A worker's module gets no mock (Start cannot serve one to a child
+  // compiler) and no `allowImport` answer: the build fails at the import,
+  // which is reported as a violation of the worker, whatever the behavior
+  // (ruling of review round 3, F1).
+  test.each(['mock', 'error'] as const)(
+    'a worker importing a .server file fails the build at the import, reported as its violation (%s)',
+    async (behavior) => {
+      const built = await buildStart({
+        ...config,
+        start: { importProtection: { behavior } },
+      }).catch((error: unknown) => error)
+      expect(built, 'the build fails').toBeInstanceOf(StartBuildError)
+      const error = built as StartBuildError
+      expectDiagnostic(error.diagnostics, {
+        severity: 'error',
+        file: 'src/worker.ts',
+        root: error.root,
+        position: { line: 1 },
+      })
+      expect(
+        error.violations.map((v) => ({
+          env: v.env,
+          type: v.type,
+          specifier: v.specifier,
+          importer: path.relative(error.root, v.importer),
+        })),
+      ).toEqual([
+        {
+          env: 'client',
+          type: 'file',
+          specifier: './db.server',
+          importer: path.join('src', 'worker.ts'),
+        },
+      ])
+    },
+    timeout,
+  )
+
+  test(
+    'a worker reaching a .server file through a pattern import fails the build, naming the file',
+    async () => {
+      const built = await buildStart({
+        ...config,
+        files: {
+          'src/server/db.server.ts': `export const secret = () => 'MARK_DB_SECRET'
+`,
+          'src/worker.ts': `const modules = import.meta.webpackContext('./server', { regExp: /\\.ts$/ })
+self.onmessage = () => {
+  self.postMessage(modules.keys().map((key) => modules(key).secret()))
+}
+`,
+          'src/entry.ts': `export const ready = true
+`,
+        },
+        start: { importProtection: { behavior: 'mock' } },
+      }).catch((error: unknown) => error)
+      expect(built, 'the build fails').toBeInstanceOf(StartBuildError)
+      const error = built as StartBuildError
+      expectDiagnostic(error.diagnostics, {
+        severity: 'error',
+        file: 'src/server/db.server.ts',
+        root: error.root,
+      })
+      expect(
+        error.violations.map((v) => path.relative(error.root, v.importer)),
+      ).toEqual([path.join('src', 'server', 'db.server.ts')])
+    },
+    timeout,
+  )
+})

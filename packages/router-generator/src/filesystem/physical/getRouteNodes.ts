@@ -15,7 +15,9 @@ import {
 import { getRouteNodes as getRouteNodesVirtual } from '../virtual/getRouteNodes'
 import { loadConfigFile } from '../virtual/loadConfigFile'
 import { logging } from '../../logger'
+import { routeOptionPieces, routePieces } from '../../types'
 import { rootPathId } from './rootPathId'
+import type { Logger } from '../../logger'
 import type {
   VirtualRootRoute,
   VirtualRouteSubtreeConfig,
@@ -25,7 +27,7 @@ import type { Config } from '../../config'
 
 /**
  * Pre-compiled segment regexes for matching token patterns against route segments.
- * These are created once (in Generator constructor) and passed through to avoid
+ * These are created once per scan (`scanRoutes`) and passed through to avoid
  * repeated regex compilation during route crawling.
  */
 export interface TokenRegexBundle {
@@ -53,19 +55,23 @@ export async function getRouteNodes(
   >,
   root: string,
   tokenRegexes: TokenRegexBundle,
+  logger: Logger = logging({ disabled: config.disableLogging }),
 ): Promise<GetRouteNodesResult> {
   const { routeFilePrefix, routeFileIgnorePrefix, routeFileIgnorePattern } =
     config
 
-  const logger = logging({ disabled: config.disableLogging })
   const routeFileIgnoreRegExp = new RegExp(routeFileIgnorePattern ?? '', 'g')
 
   const routeNodes: Array<RouteNode> = []
   const allPhysicalDirectories: Array<string> = []
 
-  async function recurse(dir: string) {
+  async function recurse(dir: string): Promise<Array<RouteNode>> {
     const fullDir = path.resolve(config.routesDirectory, dir)
-    let dirList = await fsp.readdir(fullDir, { withFileTypes: true })
+    // Sorted by name: the scan's output order is the same whatever order the
+    // filesystem lists entries in (SPEC J1.5).
+    let dirList = (await fsp.readdir(fullDir, { withFileTypes: true })).sort(
+      (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
+    )
 
     dirList = dirList.filter((d) => {
       if (
@@ -121,6 +127,7 @@ export async function getRouteNodes(
           },
           root,
           tokenRegexes,
+          logger,
         )
       allPhysicalDirectories.push(...physicalDirectories)
       virtualRouteNodes.forEach((node) => {
@@ -158,18 +165,18 @@ export async function getRouteNodes(
         delete node._virtualParentRoutePath
       })
 
-      routeNodes.push(...virtualRouteNodes)
-
-      return
+      return virtualRouteNodes
     }
 
-    await Promise.all(
-      dirList.map(async (dirent) => {
+    // Entries are scanned concurrently; each one's nodes are collected in
+    // its own slot and appended in directory order.
+    const nodesByEntry = await Promise.all(
+      dirList.map(async (dirent): Promise<Array<RouteNode>> => {
         const fullPath = replaceBackslash(path.join(fullDir, dirent.name))
         const relativePath = path.posix.join(dir, dirent.name)
 
         if (dirent.isDirectory()) {
-          await recurse(relativePath)
+          return recurse(relativePath)
         } else if (fullPath.match(/\.(tsx|ts|jsx|js|vue)$/)) {
           const filePath = replaceBackslash(path.join(dir, dirent.name))
           const filePathNoExt = removeExt(filePath)
@@ -190,7 +197,7 @@ export async function getRouteNodes(
           }
 
           if (disallowedRouteGroupConfiguration.test(dirent.name)) {
-            const errorMessage = `A route configuration for a route group was found at \`${filePath}\`. This is not supported. Did you mean to use a layout/pathless route instead?`
+            const errorMessage = `A route configuration for a route group was found at \`${fullPath}\`. This is not supported. Did you mean to use a layout/pathless route instead?`
             logger.error(`ERROR: ${errorMessage}`)
             throw new Error(errorMessage)
           }
@@ -217,25 +224,26 @@ export async function getRouteNodes(
             routeType = 'pathless_layout'
           }
 
+          // A `.lazy.vue` single-file component is the lazily loaded
+          // component of its route (its default export), not a lazy route
+          // module (SPEC J1.17).
+          const isVueFile = filePath.endsWith('.vue')
+          if (isVueFile && routeType === 'lazy') {
+            routeType = 'component'
+          }
+
           // Only show deprecation warning for .tsx/.ts files, not .vue files
           // Vue files using .component.vue is the Vue-native way
-          const isVueFile = filePath.endsWith('.vue')
           if (!isVueFile) {
-            ;(
-              [
-                ['component', 'component'],
-                ['errorComponent', 'errorComponent'],
-                ['notFoundComponent', 'notFoundComponent'],
-                ['pendingComponent', 'pendingComponent'],
-                ['loader', 'loader'],
-              ] satisfies Array<[FsRouteType, string]>
-            ).forEach(([matcher, type]) => {
-              if (routeType === matcher) {
-                logger.warn(
-                  `WARNING: The \`.${type}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
-                )
-              }
-            })
+            if (
+              (routeOptionPieces as ReadonlyArray<FsRouteType>).includes(
+                routeType,
+              )
+            ) {
+              logger.warn(
+                `WARNING: The \`.${routeType}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
+              )
+            }
           }
 
           // Get the last segment of originalRoutePath to check for escaping
@@ -246,21 +254,11 @@ export async function getRouteNodes(
           const { routeTokenSegmentRegex, indexTokenSegmentRegex } =
             tokenRegexes
 
-          // List of special suffixes that can be escaped
-          const specialSuffixes = [
-            'component',
-            'errorComponent',
-            'notFoundComponent',
-            'pendingComponent',
-            'loader',
-            'lazy',
-          ]
-
           const routePathSegments = routePath.split('/').filter(Boolean)
           const lastRouteSegment =
             routePathSegments[routePathSegments.length - 1] || ''
 
-          const suffixToStrip = specialSuffixes.find((suffix) => {
+          const suffixToStrip = routePieces.find((suffix) => {
             const endsWithSuffix = routePath.endsWith(`/${suffix}`)
             // A suffix is escaped if wrapped in brackets in the original: [lazy] means literal "lazy"
             const isEscaped =
@@ -282,16 +280,35 @@ export async function getRouteNodes(
             routeTokenSegmentRegex.test(lastRouteSegment) &&
             !isRouteTokenEscaped
 
-          if (suffixToStrip || shouldStripRouteToken) {
-            const stripSegment = suffixToStrip ?? lastRouteSegment
+          const stripLastSegment = (segment: string) => {
             routePath = routePath.replace(
-              new RegExp(`/${escapeRegExp(stripSegment)}$`),
+              new RegExp(`/${escapeRegExp(segment)}$`),
               '',
             )
             originalRoutePath = originalRoutePath.replace(
-              new RegExp(`/${escapeRegExp(stripSegment)}$`),
+              new RegExp(`/${escapeRegExp(segment)}$`),
               '',
             )
+          }
+
+          if (suffixToStrip) {
+            stripLastSegment(suffixToStrip)
+            // A piece of a directory route (`posts/route.component.vue`)
+            // belongs to the route itself: its route token goes too.
+            const originalSegmentsAfter = originalRoutePath
+              .split('/')
+              .filter(Boolean)
+            const lastOriginalAfter =
+              originalSegmentsAfter[originalSegmentsAfter.length - 1] || ''
+            const lastAfter = routePath.split('/').filter(Boolean).pop() || ''
+            if (
+              routeTokenSegmentRegex.test(lastAfter) &&
+              lastOriginalAfter === lastAfter
+            ) {
+              stripLastSegment(lastAfter)
+            }
+          } else if (shouldStripRouteToken) {
+            stripLastSegment(lastRouteSegment)
           }
 
           // Check if the index token should be treated specially or as a literal path
@@ -335,41 +352,36 @@ export async function getRouteNodes(
             }
           }
 
-          routeNodes.push({
-            filePath,
-            fullPath,
-            routePath,
-            variableName,
-            _fsRouteType: routeType,
-            originalRoutePath,
-            _routePathSegmentMetadata: createRoutePathSegmentMetadata(
+          return [
+            {
+              filePath,
+              fullPath,
               routePath,
+              variableName,
+              _fsRouteType: routeType,
               originalRoutePath,
-            ),
-          })
+              _routePathSegmentMetadata: createRoutePathSegmentMetadata(
+                routePath,
+                originalRoutePath,
+              ),
+            },
+          ]
         }
+        return []
       }),
     )
 
-    return routeNodes
+    return nodesByEntry.flat()
   }
 
-  await recurse('./')
+  routeNodes.push(...(await recurse('./')))
 
-  // Find the root route node - prefer the actual route file over component/loader files
+  // Find the root route node - prefer the actual route file over component/loader files,
+  // and the routes directory's own `__root` file over a `__root/` directory's route file
   const rootRouteNode =
-    routeNodes.find(
-      (d) =>
-        d.routePath === `/${rootPathId}` &&
-        ![
-          'component',
-          'errorComponent',
-          'notFoundComponent',
-          'pendingComponent',
-          'loader',
-          'lazy',
-        ].includes(d._fsRouteType),
-    ) ?? routeNodes.find((d) => d.routePath === `/${rootPathId}`)
+    routeNodes.find((d) => isRootRouteFile(d) && !d.filePath.includes('/')) ??
+    routeNodes.find(isRootRouteFile) ??
+    routeNodes.find((d) => d.routePath === `/${rootPathId}`)
   if (rootRouteNode) {
     rootRouteNode._fsRouteType = '__root'
     rootRouteNode.variableName = 'root'
@@ -383,6 +395,17 @@ export async function getRouteNodes(
 }
 
 /**
+ * Whether a scanned file is a root route file: a `__root` route file, not
+ * one of the root route's pieces (`__root.component.tsx`, ...).
+ */
+export function isRootRouteFile(node: RouteNode) {
+  return (
+    node.routePath === `/${rootPathId}` &&
+    !(routePieces as ReadonlyArray<FsRouteType>).includes(node._fsRouteType)
+  )
+}
+
+/**
  * Determines the metadata for a given route path based on the provided configuration.
  *
  * @param routePath - The determined initial routePath (with brackets removed).
@@ -390,7 +413,7 @@ export async function getRouteNodes(
  * @param tokenRegexes - Pre-compiled token regexes for matching.
  * @returns An object containing the type of the route and the variable name derived from the route path.
  */
-export function getRouteMeta(
+function getRouteMeta(
   routePath: string,
   originalRoutePath: string,
   tokenRegexes: TokenRegexBundle,
@@ -441,36 +464,12 @@ export function getRouteMeta(
   if (routeTokenSegmentRegex.test(lastRouteSegment) && !isRouteTokenEscaped) {
     // layout routes, i.e `/foo/route.tsx` or `/foo/_layout/route.tsx`
     fsRouteType = 'layout'
-  } else if (routePath.endsWith('/lazy') && !isSuffixEscaped('lazy')) {
-    // lazy routes, i.e. `/foo.lazy.tsx`
-    fsRouteType = 'lazy'
-  } else if (routePath.endsWith('/loader') && !isSuffixEscaped('loader')) {
-    // loader routes, i.e. `/foo.loader.tsx`
-    fsRouteType = 'loader'
-  } else if (
-    routePath.endsWith('/component') &&
-    !isSuffixEscaped('component')
-  ) {
-    // component routes, i.e. `/foo.component.tsx`
-    fsRouteType = 'component'
-  } else if (
-    routePath.endsWith('/pendingComponent') &&
-    !isSuffixEscaped('pendingComponent')
-  ) {
-    // pending component routes, i.e. `/foo.pendingComponent.tsx`
-    fsRouteType = 'pendingComponent'
-  } else if (
-    routePath.endsWith('/errorComponent') &&
-    !isSuffixEscaped('errorComponent')
-  ) {
-    // error component routes, i.e. `/foo.errorComponent.tsx`
-    fsRouteType = 'errorComponent'
-  } else if (
-    routePath.endsWith('/notFoundComponent') &&
-    !isSuffixEscaped('notFoundComponent')
-  ) {
-    // not found component routes, i.e. `/foo.notFoundComponent.tsx`
-    fsRouteType = 'notFoundComponent'
+  } else {
+    // a piece, i.e. `/foo.lazy.tsx`, `/foo.component.tsx`
+    fsRouteType =
+      routePieces.find(
+        (piece) => routePath.endsWith(`/${piece}`) && !isSuffixEscaped(piece),
+      ) ?? fsRouteType
   }
 
   // Use originalRoutePath for variable name when any segment is fully

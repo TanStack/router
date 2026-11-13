@@ -1,8 +1,14 @@
 import { Dynamic } from 'solid-js/web'
-import { lazy } from 'solid-js'
+import { createSignal, lazy } from 'solid-js'
 import { isModuleNotFoundError } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
+import { lazyRouteComponentHot } from '@tanstack/router-core/hmr'
+import type { LazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import type { AsyncRouteComponent } from './route'
+
+type SolidLazyRouteComponentHot = LazyRouteComponentHot & {
+  read: () => any
+}
 
 export function lazyRouteComponent<
   T extends Record<string, any>,
@@ -20,8 +26,15 @@ export function lazyRouteComponent<
   const load = () => {
     if (!loadPromise) {
       error = undefined
-      loadPromise = importer()
-        .then((res) => {
+      const promise = (loadPromise = importer()
+        .then((res): any => {
+          // A hot update replaced this load: settle with the newer one.
+          if (
+            process.env.NODE_ENV !== 'production' &&
+            loadPromise !== promise
+          ) {
+            return loadPromise
+          }
           // Resolved clients have no preload work; SSR can reuse the import.
           if (!(isServer ?? typeof window === 'undefined')) {
             loadPromise = undefined
@@ -30,10 +43,16 @@ export function lazyRouteComponent<
           comp = res[exportName ?? 'default']
           return comp
         })
-        .catch((err) => {
+        .catch((err): any => {
+          if (
+            process.env.NODE_ENV !== 'production' &&
+            loadPromise !== promise
+          ) {
+            return loadPromise
+          }
           loadPromise = undefined
           error = err
-        })
+        }))
     }
 
     return loadPromise
@@ -86,6 +105,14 @@ export function lazyRouteComponent<
       throw error
     }
 
+    if (process.env.NODE_ENV !== 'production') {
+      const hot: SolidLazyRouteComponentHot | undefined = (Lazy as any).__tsrHot
+      if (hot) {
+        // Read through the hot slot so a hot swap re-renders in place.
+        return <Dynamic component={hot.read()} {...props} />
+      }
+    }
+
     return <Dynamic component={comp} {...props} />
   }
 
@@ -100,6 +127,43 @@ export function lazyRouteComponent<
   })
 
   ;(Lazy as any).preload = load
+
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    !(isServer ?? typeof window === 'undefined')
+  ) {
+    const [version, setVersion] = createSignal(0)
+    ;(Lazy as any).__tsrHot = lazyRouteComponentHot(
+      importer,
+      exportName as string | undefined,
+      {
+        retarget: (nextImporter, nextExportName) => {
+          importer = nextImporter as () => Promise<T>
+          exportName = nextExportName as TKey | undefined
+          return comp !== undefined || loadPromise !== undefined || !!error
+        },
+        pending: () => loadPromise,
+        setPending: (promise) => {
+          loadPromise = promise
+        },
+        held: () => comp,
+        settle: (next, nextError) => {
+          comp = next
+          error = nextError
+          setVersion((v) => v + 1)
+        },
+      },
+      {
+        read: () => {
+          version()
+          if (error) {
+            throw error
+          }
+          return comp
+        },
+      },
+    )
+  }
 
   return Lazy as any
 }

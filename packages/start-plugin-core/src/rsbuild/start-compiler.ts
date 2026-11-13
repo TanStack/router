@@ -1,0 +1,243 @@
+/**
+ * Registers Start's compiler on Rsbuild: the shared session,
+ * one `pre` loader rule per Start environment (every JS/TS id, env and
+ * derived alike), the late `post` pass over the JS output of other module
+ * types (and of a Vue SFC's script block: `vue.ts`), the `sideEffects: false` rules for
+ * extracted-export outputs and the import-protection runtime, the host
+ * plugin of each environment compiler, the generator session and the
+ * client route tree transform.
+ */
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import {
+  ASSET_QUERY_RE,
+  EXTRACTED_EXPORT_QUERY_RE,
+  identify,
+} from '@tanstack/router-utils/compiler'
+import { ownFileRule } from '../import-protection/rules'
+import { StartRsbuildCompilerSession } from './compiler-session'
+import { createStartHostPlugin } from './host-plugin'
+import { createRsbuildRouteGenerator } from './router-generator'
+import { vueScriptBlockRule } from './vue'
+import { RSBUILD_ENVIRONMENT_NAMES, RSBUILD_RSC_LAYERS } from './planning'
+import type { TransformImportRule } from './compiler-session'
+import type { StartCompilerEnvironment } from '../compiler/session'
+import type { TanStackStartRsbuildInputConfig } from './schema'
+import type { TanStackStartRsbuildPluginCoreOptions } from './types'
+import type { GetConfigFn } from '../types'
+import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
+
+const currentDir = path.dirname(fileURLToPath(import.meta.url))
+const loaderPath = path.resolve(currentDir, 'compiler-loader.js')
+const assetLoaderPath = path.resolve(currentDir, 'asset-query-loader.js')
+
+/** JS/TS module paths (the query is not part of a rule's `test`). */
+const JS_FILE_RE = /\.[cm]?[jt]sx?$/
+/** Module types whose JavaScript output other loaders produce (the late pass). */
+const LATE_PASS_RE = /\.(?:vue|svelte|mdx?|astro|marko)$/i
+
+interface RegisterStartCompilerOptions {
+  getConfig: GetConfigFn
+  corePluginOpts: TanStackStartRsbuildPluginCoreOptions
+  startPluginOpts: TanStackStartRsbuildInputConfig
+  environments: Array<StartCompilerEnvironment>
+  /** Writes a virtual module file of an environment (import-protection edge modules). */
+  writeVirtualModule: (envName: string, file: string, content: string) => void
+  /** The resolver virtual module content changed (after a `finishMake` replay). */
+  onServerFnsChange: () => void
+  /** Whether a path is an app entry (import protection: a marked entry is its own violation). */
+  isEntry: (path: string) => boolean
+}
+
+interface RegisteredStartCompiler {
+  /** The session of the current compiler, once the first environment's Rspack config is built. */
+  session: () => StartRsbuildCompilerSession | null
+  resolverModule: () => string
+}
+
+export function registerStartCompiler(
+  api: RsbuildPluginAPI,
+  opts: RegisterStartCompilerOptions,
+): RegisteredStartCompiler {
+  const dev = api.context.action === 'dev'
+  const rscEnabled = opts.corePluginOpts.rsc !== undefined
+  /**
+   * The session of the compiler being configured, or of the last one
+   * created: one per Rspack compiler of this Rsbuild instance (a `build()`
+   * or a dev server; `build()` again configures a new compiler), whose
+   * environments' configs it is built into. What a compiler compiled and
+   * learned dies with it.
+   */
+  let session: StartRsbuildCompilerSession | null = null
+  /** Whether the compiler of `session` was created: the next configs are another compiler's. */
+  let created = false
+  api.onAfterCreateCompiler(() => {
+    created = true
+  })
+
+  const generator = createRsbuildRouteGenerator({
+    getConfig: opts.getConfig,
+    corePluginOpts: opts.corePluginOpts,
+    startPluginOpts: opts.startPluginOpts,
+  })
+  const configuredSession = (): StartRsbuildCompilerSession => {
+    if (session && !created) {
+      return session
+    }
+    created = false
+    const { startConfig, resolvedStartConfig } = opts.getConfig()
+    session = new StartRsbuildCompilerSession({
+      framework: opts.corePluginOpts.framework,
+      mode: dev ? 'dev' : 'build',
+      root: resolvedStartConfig.root,
+      srcDirectory: resolvedStartConfig.srcDirectory,
+      environments: opts.environments,
+      rsc: opts.corePluginOpts.rsc,
+      rscLayer: rscEnabled ? RSBUILD_RSC_LAYERS.rsc : undefined,
+      generateFunctionId: opts.startPluginOpts.serverFns?.generateFunctionId,
+      codeSplittingOptions: startConfig.router.codeSplittingOptions,
+      importProtection: startConfig.importProtection,
+      routes: generator.routes,
+      isEntry: opts.isEntry,
+    })
+    return session
+  }
+
+  // the client's route tree without its server-only routes (J2.15)
+  api.transform(
+    {
+      test: (resource: string) =>
+        path.normalize(resource) === generator.clientRouteTree.path(),
+      environments: [RSBUILD_ENVIRONMENT_NAMES.client],
+      order: 'pre',
+    },
+    () => generator.clientRouteTree.code(),
+  )
+
+  api.modifyRspackConfig((config, utils) => {
+    const environment = opts.environments.find(
+      (env) => env.name === utils.environment.name,
+    )
+    if (!environment) {
+      return
+    }
+    const s = configuredSession()
+    s.env(environment.name).transformImport = transformImportRules(
+      utils.environment.config.source.transformImport,
+    )
+    const rules = (config.module.rules ??= [])
+    const loaderRules: Array<Rspack.RuleSetRule> = [
+      {
+        test: JS_FILE_RE,
+        enforce: 'pre',
+        use: [
+          { loader: loaderPath, options: { environment: environment.name } },
+        ],
+      },
+      // extracted-export outputs of the route splitter are side-effect free (Rspack
+      // matches the regex against the query with its leading `?`)
+      {
+        test: JS_FILE_RE,
+        resourceQuery: EXTRACTED_EXPORT_QUERY_RE,
+        sideEffects: false,
+      },
+    ]
+    // the late pass (import protection and start-env)
+    const lateUse = {
+      loader: loaderPath,
+      options: { environment: environment.name, pass: 'late' },
+    }
+    loaderRules.push(
+      { test: LATE_PASS_RE, enforce: 'post', use: [lateUse] },
+      // Vue SFC script blocks under vue-loader's inline match resource
+      vueScriptBlockRule(lateUse),
+    )
+    if (s.start.ip) {
+      loaderRules.push(
+        // the import-protection runtime only; edge modules are analysed by the bundler
+        {
+          test: /[\\/]import-protection[\\/][^\\/]+[\\/]runtime\.mjs$/,
+          sideEffects: false,
+        },
+        // an edge module is JavaScript whatever the importer's import attributes say of the
+        // module it stands in for (`with { type: 'json' }` would make Rspack parse it as JSON)
+        {
+          test: /[\\/]import-protection[\\/][^\\/]+[\\/]edge\.[^\\/]+\.mjs$/,
+          type: 'javascript/esm',
+          // Rspack builds an edge module only for an import its importer kept
+          // after SWC: `allowImport` decides, and a pending violation is confirmed
+          use:
+            dev || s.start.ip.config.allowImport
+              ? [
+                  {
+                    loader: loaderPath,
+                    options: { environment: environment.name, pass: 'edge' },
+                  },
+                ]
+              : [],
+        },
+      )
+    }
+    rules.unshift(...loaderRules)
+    const { ip } = s.start
+    if (ip && environment.type === 'client') {
+      // an asset no compile reads gets its verdict first; only one that can be
+      // denied meets the loader. Last in the list: a rule's index is part of
+      // every module id it matches
+      const resource = (file: string) =>
+        identify(file).lang !== null ||
+        (!file.startsWith('data:') &&
+          ownFileRule(ip.config, 'client', file) !== null)
+      const use = [
+        {
+          loader: assetLoaderPath,
+          options: { environment: environment.name, pass: 'asset' },
+        },
+      ]
+      rules.push(
+        { resourceQuery: ASSET_QUERY_RE, resource, enforce: 'pre', use },
+        // `new URL('./x.txt', import.meta.url)`
+        {
+          dependency: 'url',
+          exclude: JS_FILE_RE,
+          resource,
+          enforce: 'pre',
+          use,
+        },
+      )
+    }
+    config.plugins.push(
+      createStartHostPlugin({
+        session: s,
+        environment,
+        rspack: utils.rspack,
+        writeVirtualModule: (file, content) =>
+          opts.writeVirtualModule(environment.name, file, content),
+        generator,
+        clientRouteTree:
+          environment.type === 'client' ? generator.clientRouteTree : undefined,
+        onServerFnsReplayed: opts.onServerFnsChange,
+        onDevCompileDone: dev ? api.onDevCompileDone : undefined,
+      }),
+    )
+  })
+
+  return {
+    session: () => session,
+    resolverModule: () => (session ?? configuredSession()).resolverModule(),
+  }
+}
+
+/** The array form of `source.transformImport` (a function form is applied to no imports). */
+function transformImportRules(value: unknown): Array<TransformImportRule> {
+  const list = typeof value === 'function' ? value([]) : value
+  if (!Array.isArray(list)) {
+    return []
+  }
+  return list.filter(
+    (rule): rule is TransformImportRule =>
+      !!rule &&
+      typeof rule === 'object' &&
+      typeof rule.libraryName === 'string',
+  )
+}

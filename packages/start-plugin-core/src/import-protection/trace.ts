@@ -1,76 +1,19 @@
-import { getOrCreate, relativizePath } from './utils'
-
-export interface TraceEdge {
-  importer: string
-  specifier?: string
-}
-
-/**
- * Per-environment reverse import graph.
- * Maps a resolved module id to the set of modules that import it.
- */
-export class ImportGraph {
-  /**
-   * resolvedId -> Map<importer, specifier>
-   *
-   * We use a Map instead of a Set of objects so edges dedupe correctly.
-   */
-  readonly reverseEdges: Map<string, Map<string, string | undefined>> =
-    new Map()
-
-  /**
-   * Forward-edge index: importer -> Set<resolvedId>.
-   *
-   * Maintained alongside reverseEdges so that {@link invalidate} can remove
-   * all outgoing edges for a file in O(outgoing-edges) instead of scanning
-   * every reverse-edge map in the graph.
-   */
-  private readonly forwardEdges: Map<string, Set<string>> = new Map()
-
-  readonly entries: Set<string> = new Set()
-
-  addEdge(resolved: string, importer: string, specifier?: string): void {
-    getOrCreate(this.reverseEdges, resolved, () => new Map()).set(
-      importer,
-      specifier,
-    )
-    getOrCreate(this.forwardEdges, importer, () => new Set()).add(resolved)
-  }
-
-  /** Convenience for tests/debugging. */
-  getEdges(resolved: string): Set<TraceEdge> | undefined {
-    const importers = this.reverseEdges.get(resolved)
-    if (!importers) return undefined
-    const out = new Set<TraceEdge>()
-    for (const [importer, specifier] of importers) {
-      out.add({ importer, specifier })
-    }
-    return out
-  }
-
-  addEntry(id: string): void {
-    this.entries.add(id)
-  }
-
-  clear(): void {
-    this.reverseEdges.clear()
-    this.forwardEdges.clear()
-    this.entries.clear()
-  }
-
-  invalidate(id: string): void {
-    // Remove all outgoing edges (id as importer) using the forward index.
-    const targets = this.forwardEdges.get(id)
-    if (targets) {
-      for (const resolved of targets) {
-        this.reverseEdges.get(resolved)?.delete(id)
-      }
-      this.forwardEdges.delete(id)
-    }
-    // Remove as a target (id as resolved module)
-    this.reverseEdges.delete(id)
-  }
-}
+import path from 'node:path'
+import { identify } from '@tanstack/router-utils/compiler'
+import { Locator } from './locate'
+import {
+  findPatternImport,
+  mayHavePatternImport,
+  relativeSpecifier,
+} from './pattern-imports'
+import { importerInScope } from './rules'
+import { relativizePath } from './utils'
+import type { ImportProtectionConfig } from './config'
+import type { CodeFrame, OriginalLocation } from './locate'
+import type { SourceReader, Trace } from './graph-trace'
+import type { PatternImport } from './pattern-imports'
+import type { EdgeViolation, ReportedInfo } from './violations'
+import type { CompileStartFrameworkOptions } from '../types'
 
 export interface TraceStep {
   file: string
@@ -83,76 +26,6 @@ export interface Loc {
   file?: string
   line: number
   column: number
-}
-
-/**
- * BFS from a node upward through reverse edges to find the shortest
- * path to an entry module.
- */
-export function buildTrace(
-  graph: ImportGraph,
-  startNode: string,
-  maxDepth: number = 20,
-): Array<TraceStep> {
-  // BFS upward (startNode -> importers -> ...)
-  const visited = new Set<string>([startNode])
-  const depthByNode = new Map<string, number>([[startNode, 0]])
-
-  // For any importer we visit, store the "down" link back toward startNode.
-  // importer --(specifier)--> next
-  const down = new Map<string, { next: string; specifier?: string }>()
-
-  const queue: Array<string> = [startNode]
-  let qi = 0
-
-  let root: string | null = null
-
-  while (qi < queue.length) {
-    const node = queue[qi++]!
-    const depth = depthByNode.get(node)!
-    const importers = graph.reverseEdges.get(node)
-
-    if (node !== startNode) {
-      const isEntry =
-        graph.entries.has(node) || !importers || importers.size === 0
-      if (isEntry) {
-        root = node
-        break
-      }
-    }
-
-    if (depth >= maxDepth) {
-      continue
-    }
-
-    if (!importers || importers.size === 0) {
-      continue
-    }
-
-    for (const [importer, specifier] of importers) {
-      if (visited.has(importer)) continue
-      visited.add(importer)
-      depthByNode.set(importer, depth + 1)
-      down.set(importer, { next: node, specifier })
-      queue.push(importer)
-    }
-  }
-
-  // Best-effort: if we never found a root, just start from the original node.
-  if (!root) {
-    root = startNode
-  }
-
-  const trace: Array<TraceStep> = []
-  let current = root
-  for (let i = 0; i <= maxDepth + 1; i++) {
-    const link = down.get(current)
-    trace.push({ file: current, specifier: link?.specifier })
-    if (!link) break
-    current = link.next
-  }
-
-  return trace
 }
 
 export interface ViolationInfo {
@@ -175,6 +48,14 @@ export interface ViolationInfo {
 }
 
 /**
+ * What `allowImport` receives. It runs while the build still loads modules:
+ * no `trace` (the graph is not finished) and no `snippet` (source rendered for
+ * a report). `importerLoc` is absent for an importer a persistent cache
+ * restored whose record is not read yet.
+ */
+export type AllowImportInfo = Omit<ViolationInfo, 'trace' | 'snippet'>
+
+/**
  * Suggestion strings for server-only code leaking into client environments.
  * Used by both `formatViolation` (terminal) and runtime mock modules (browser).
  */
@@ -182,103 +63,718 @@ export const CLIENT_ENV_SUGGESTIONS = [
   'Use createServerFn().handler(() => ...) to keep the logic on the server and call it from the client via an RPC bridge',
   'Use createServerOnlyFn(() => ...) to mark it as server-only (it will throw if accidentally called from the client)',
   'Use createIsomorphicFn().client(() => ...).server(() => ...) to provide separate client and server implementations',
-  'Move the server-only import out of this file into a separate .server.ts module that is not imported by any client code',
+  'Split the file: move the code that uses this import into a .server.ts module, and import that module only from server code (server functions, server routes, middleware .server())',
 ] as const
+
+/** Client-only code on the server, used as a function (not rendered as a component). */
+const SERVER_FN_SUGGESTIONS = [
+  'If it runs only in the browser (an effect, an event handler), wrap it in createClientOnlyFn(() => ...): it throws if called on the server, including while rendering on the server',
+  'Use createIsomorphicFn().client(() => ...).server(() => ...) to provide separate client and server implementations',
+  'Split the file: move the code that uses this import into a .client.ts module, and import that module only from client code',
+] as const
+
+/** A mocked module that is its own violation (the mock runtime: its importer is not known there). */
+export const PATTERN_IMPORT_SUGGESTION =
+  "Exclude it from the pattern import that matches it (for import.meta.glob, a negative pattern: '!' and the file's path relative to the importer), or move the file out of the directory the pattern reads. If another plugin added the import (an auto-import), keep it from adding the file and import what you need yourself where import protection checks it"
+
+const quoted = (s: string) =>
+  `'${s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
+
+/** The router package a framework's `<ClientOnly>` comes from. */
+const routerPackage = (framework: CompileStartFrameworkOptions) =>
+  `@tanstack/${framework}-router`
+
+/** The `<ClientOnly>` suggestion for an import that may be a component (not known from its use). */
+const clientOnlySuggestion = (framework: CompileStartFrameworkOptions) =>
+  `If it is a component, render it inside <ClientOnly fallback={...}>...</ClientOnly> (from ${routerPackage(framework)}): the server renders the fallback, the browser the component after hydration`
 
 /**
- * Suggestion strings for client-only code leaking into server environments.
- * The JSX-specific suggestion is conditionally prepended by `formatViolation`.
+ * A component a Vue template renders: `<ClientOnly>` in a template keeps the
+ * import on the server, so the component is loaded in the browser only too
+ * (`createClientOnlyFn` around its `import()`, which the server never calls
+ * inside `<ClientOnly>`).
  */
-export const SERVER_ENV_SUGGESTIONS = [
-  'Use createClientOnlyFn(() => ...) to mark it as client-only (returns undefined on the server)',
-  'Use createIsomorphicFn().client(() => ...).server(() => ...) to provide separate client and server implementations',
-  'Move the client-only import out of this file into a separate .client.ts module that is not imported by any server code',
-] as const
+const vueComponentSuggestion = (name: string, specifier: string) =>
+  `If it is a component of the template, load it in the browser only and render it inside <ClientOnly>: const ${name} = defineAsyncComponent(createClientOnlyFn(() => import(${quoted(specifier)}))) in the script (defineAsyncComponent from vue, createClientOnlyFn from @tanstack/vue-start), and <ClientOnly><${name} /></ClientOnly> in the template (from @tanstack/vue-router)`
 
-export function formatViolation(info: ViolationInfo, root: string): string {
+/** Where the mock runtime puts the denied import's specifier (`serverEnvSuggestions`). */
+export const SPECIFIER_SLOT = '__SPECIFIER__'
+
+/**
+ * Suggestion strings for client-only code leaking into server environments,
+ * when how the import is used is not known (the mock runtime, a Vue
+ * template): a component is rendered inside `<ClientOnly>`, a function
+ * wrapped in `createClientOnlyFn`.
+ */
+export function serverEnvSuggestions(
+  framework: CompileStartFrameworkOptions,
+): Array<string> {
+  return [
+    clientOnlySuggestion(framework),
+    ...(framework === 'vue'
+      ? [vueComponentSuggestion('Component', SPECIFIER_SLOT)]
+      : []),
+    ...SERVER_FN_SUGGESTIONS,
+  ]
+}
+
+/** What formatting a report reads besides the violation: the configuration, raw sources (markers, pattern imports), the framework. */
+export interface ReportContext {
+  config: ImportProtectionConfig
+  readSource: SourceReader
+  framework: CompileStartFrameworkOptions
+}
+
+/**
+ * What `find` finds in the raw text of `file` (an offset and a value),
+ * located: the 1-based position of the offset and its code frame.
+ */
+function locateIn<T>(
+  readSource: SourceReader,
+  file: string,
+  find: (text: string) => { offset: number; value: T } | null,
+): { loc: OriginalLocation | null; frame: CodeFrame | null; value: T } | null {
+  const text = readSource(file)
+  const found = text === null ? null : find(text)
+  if (text === null || found === null) {
+    return null
+  }
+  const locator = new Locator(text, file, () => null)
+  const loc = locator.at(found.offset)
+  return { loc, frame: loc && locator.frame(loc), value: found.value }
+}
+
+/** The marker import that restricts `file` (the kind a violation in `envType` is denied by), with its line. */
+function markerOf(
+  ctx: ReportContext,
+  file: string,
+  envType: 'client' | 'server',
+): { specifier: string; line: number | null } | null {
+  const kind = envType === 'client' ? 'server-only' : 'client-only'
+  const specifiers = Object.entries(ctx.config.markerSpecifiers)
+    .filter(([, k]) => k === kind)
+    .map(([s]) => s)
+  const site = locateIn(ctx.readSource, file, (text) => {
+    let best: { offset: number; value: string } | null = null
+    for (const s of specifiers) {
+      for (const quote of ["'", '"']) {
+        const i = text.indexOf(`${quote}${s}${quote}`)
+        if (i >= 0 && (best === null || i < best.offset)) {
+          best = { offset: i, value: s }
+        }
+      }
+    }
+    return best
+  })
+  return site && { specifier: site.value, line: site.loc?.line ?? null }
+}
+
+function deniedBy(info: ViolationInfo, ctx: ReportContext): string {
+  if (info.type !== 'marker') {
+    return `  Denied by ${info.type} pattern: ${String(info.pattern)}`
+  }
+  // the marked module: the import's target, or an entry whose own marker denies it
+  const marked = info.resolved ?? info.importer
+  const marker = markerOf(ctx, identify(marked).path, info.envType)
+  const restricted = info.envType === 'client' ? 'the server' : 'the client'
+  return marker
+    ? `  Denied by marker: ${relativizePath(marked, ctx.config.root)} imports "${marker.specifier}"${marker.line !== null ? ` (line ${marker.line})` : ''}, which restricts it to ${restricted}`
+    : `  Denied by marker: ${relativizePath(marked, ctx.config.root)} is restricted to ${restricted}`
+}
+
+/**
+ * A build's warning (not a violation): a denied file served as its mock to
+ * importers import protection does not check (KNOWN-BUGS.md, R89).
+ */
+export function formatUncheckedImporters(
+  info: ViolationInfo,
+  importers: Array<string>,
+  ctx: ReportContext,
+): string {
+  const root = ctx.config.root
+  const denied = identify(info.resolved ?? info.importer).path
+  return [
+    ``,
+    `[import-protection] Denied file mocked in ${info.envType} environment, for importers that are not checked`,
+    ``,
+    deniedBy(info, ctx),
+    `  Denied file: ${relativizePath(info.importer, root)}`,
+    `  Importers (exempt by exclude/ignoreImporters, or outside include/srcDirectory):`,
+    ...importers.map((file) => {
+      const site = reachOf(ctx, file, denied)
+      // (an exempt importer's plain import gets the real module: say why this one does not)
+      return `    - ${site.found ? reachLine(site, ctx) : relativizePath(file, root)}`
+    }),
+    ``,
+    `  Not a violation: these importers get the mock, so nothing of the file ships to the ${info.envType}.`,
+    `    - If they should be checked, move them inside srcDirectory/include (or out of exclude/ignoreImporters)`,
+    `    - If they need the real module, import the file statically from a module that exclude/ignoreImporters exempts inside the scope: the file then ships to the ${info.envType}`,
+    ``,
+  ].join('\n')
+}
+
+/**
+ * A Vite build's report of a denied file whose order of compiles decides
+ * what every importer gets (design 4 closing follow-up): an importer needs
+ * it as it is (`needers`, exempt or outside the scope; none: an import
+ * `allowImport` allowed) and others reach it through an import the compiler
+ * does not read (`others`: an exempt pattern import, an import another
+ * plugin added). The build compiles it once, for whichever import came
+ * first, and reports the shape whatever it `served`, so the outcome does not
+ * depend on the order. `stale` (`served: 'real'`, no needer): a watch rebuild
+ * compiled it while an import that needed it still existed.
+ */
+export function formatServedMismatch(
+  info: ViolationInfo,
+  served: 'mock' | 'real',
+  needers: Array<string> | 'stale',
+  others: Array<string>,
+  ctx: ReportContext,
+): string {
+  const root = ctx.config.root
   const rel = (p: string) => relativizePath(p, root)
-
-  const relLoc = (p: string, loc?: Loc) => {
-    const r = rel(p)
-    const file = loc?.file ? rel(loc.file) : r
-    return loc ? `${file}:${loc.line}:${loc.column}` : r
+  const denied = identify(info.resolved ?? info.importer).path
+  const list = (files: Array<string>) => files.map((f) => `    - ${rel(f)}`)
+  const lines = [``]
+  if (needers === 'stale') {
+    lines.push(
+      `[import-protection] Denied file kept as it is in ${info.envType} environment, though no importer needs it any more`,
+      ``,
+      deniedBy(info, ctx),
+      `  Denied file: ${rel(denied)}`,
+      ...(others.length > 0 ? [`  Reached by:`, ...list(others)] : []),
+      ``,
+      `  The watch rebuild compiled this file while an import that needed it as it is still existed: it ships to the ${info.envType} as it is.`,
+      ``,
+      `  Suggestions:`,
+      `    - Save any file this build bundles: the next rebuild compiles the file again, as its mock`,
+      ``,
+    )
+    return lines.join('\n')
   }
-
-  const relTraceStep = (step: TraceStep): string => {
-    const file = rel(step.file)
-    if (step.line == null) return file
-    const col = step.column ?? 1
-    return `${file}:${step.line}:${col}`
+  // how each importer that is not a needer reaches the file
+  const sites = others.map((o) => reachOf(ctx, o, denied))
+  const unread =
+    sites[0]?.cause === 'added'
+      ? 'one another plugin added'
+      : sites[0]?.found?.kind === 'require()'
+        ? 'a require()'
+        : 'a pattern import'
+  lines.push(
+    served === 'mock'
+      ? `[import-protection] Denied file mocked in ${info.envType} environment, for an importer that needs it as it is`
+      : `[import-protection] Denied file kept as it is in ${info.envType} environment, for an import that does not ask for it`,
+    ``,
+    deniedBy(info, ctx),
+    `  Denied file: ${rel(denied)}`,
+    ...(needers.length > 0
+      ? [
+          `  Needed as it is by (exempt by exclude/ignoreImporters, or outside include/srcDirectory):`,
+          ...list(needers),
+        ]
+      : [`  Needed as it is by: an import that allowImport allowed`]),
+    ...(sites.length > 0
+      ? [
+          `  Also reached by:`,
+          ...sites.map((x) => `    - ${reachLine(x, ctx)}`),
+        ]
+      : []),
+    ``,
+    `  The build compiles each module once and serves it to every importer as it compiled it first: for an import it does not read (${unread}), every importer gets the mock; for the import that needs it, every importer gets it as it is.${served === 'mock' ? ' Here every importer got the mock.' : ` Here every importer got it as it is: it ships to the ${info.envType}.`} The build reports this either way, so its outcome does not depend on the order.`,
+    ``,
+    `  Suggestions:`,
+  )
+  // the fix of the first importer that brought it
+  const site = sites.find((x) => x.found) ?? sites[0] ?? null
+  for (const s of patternSuggestions(
+    denied,
+    site,
+    'build',
+    info.envType,
+    root,
+  )) {
+    lines.push(`    - ${s}`)
   }
+  lines.push(
+    `    - Or, if the file should not ship to the ${info.envType}, narrow ${needers.length > 0 ? `the exemption (exclude/ignoreImporters) so that it no longer covers ${needers.map(rel).join(', ')}` : 'allowImport'}: every importer then gets the mock`,
+    ``,
+  )
+  return lines.join('\n')
+}
+
+/**
+ * R147: a denied file one importer needs as it is (`needers`: exempt or
+ * outside the scope; `allowed`: an import `allowImport` allowed, or
+ * `elsewhere`, one of another environment of this type) and checked
+ * importers reach itself (`checked`: a pattern import, an import another
+ * plugin added). One of the imports is a mistake: a build fails whichever
+ * was served; a dev server says so and serves it as the ledger says
+ * (`served`).
+ */
+export function formatServedConflict(
+  info: ViolationInfo,
+  demand: {
+    needers: Array<string>
+    allowed: Array<string>
+    elsewhere: boolean
+  },
+  checked: Array<string>,
+  served: 'mock' | 'real',
+  ctx: ReportContext,
+): string {
+  const root = ctx.config.root
+  const rel = (p: string) => relativizePath(p, root)
+  const denied = identify(info.resolved ?? info.importer).path
+  const sites = checked.map((importer) => reachOf(ctx, importer, denied))
+  const exempt = demand.needers.filter((f) => !demand.allowed.includes(f))
+  const lines = [
+    ``,
+    `[import-protection] Denied file needed as it is by one importer and reached by a checked importer in ${info.envType} environment`,
+    ``,
+    deniedBy(info, ctx),
+    `  Denied file: ${rel(denied)}`,
+    `  Needed as it is by:`,
+    ...exempt.map(
+      (f) =>
+        `    - ${rel(f)} (exempt by exclude/ignoreImporters, or outside include/srcDirectory)`,
+    ),
+    ...demand.allowed.map(
+      (f) => `    - ${rel(f)} (an import allowImport allowed)`,
+    ),
+    ...(demand.elsewhere
+      ? [
+          `    - an import allowImport allowed in another ${info.envType} environment`,
+        ]
+      : []),
+    `  Reached by checked importers, which would get it as it is:`,
+    ...sites.map((x) => `    - ${reachLine(x, ctx)}`),
+    ``,
+    `  A file is served once, as its mock or as it is, to every importer that reaches it: one of these imports is a mistake. ${
+      ctx.config.mode === 'build'
+        ? 'The build fails whichever was served.'
+        : `The dev server serves it ${served === 'real' ? 'as it is' : 'as its mock'} meanwhile; a build fails.`
+    }`,
+    ``,
+    `  Suggestions:`,
+  ]
+  const first = sites.find((x) => x.found) ?? sites[0]
+  if (first) {
+    for (const s of patternSuggestions(
+      denied,
+      first,
+      'build',
+      info.envType,
+      root,
+    )) {
+      lines.push(`    - If ${rel(first.importer)} should not load it: ${s}`)
+    }
+  }
+  const needing = [...exempt, ...demand.allowed].map(rel)
+  lines.push(
+    `    - If it should not ship to the ${info.envType}: narrow ${exempt.length > 0 ? 'the exemption (exclude/ignoreImporters)' : ''}${exempt.length > 0 && demand.allowed.length > 0 ? ' and ' : ''}${demand.allowed.length > 0 || demand.elsewhere ? 'allowImport' : ''} so that it no longer covers ${needing.length > 0 ? needing.join(', ') : 'that import'}: the checked importers then get the mock, reported`,
+    ``,
+  )
+  return lines.join('\n')
+}
+
+/**
+ * How an importer that does not import a denied file plainly reaches it:
+ * its pattern import, located; else an import another plugin's transform
+ * added (its source has no pattern import) or a pattern import it could
+ * not locate.
+ */
+function reachOf(
+  ctx: ReportContext,
+  importer: string,
+  denied: string,
+): PatternSite {
+  const hit = locateIn(ctx.readSource, importer, (text) => {
+    const found = findPatternImport(text, importer, denied, ctx.config.root)
+    return found && { offset: found.offset, value: found }
+  })
+  if (hit) {
+    return {
+      importer,
+      found: hit.value,
+      cause: 'pattern',
+      loc: hit.loc,
+      frame: hit.frame,
+    }
+  }
+  const text = ctx.readSource(importer)
+  return {
+    importer,
+    found: null,
+    cause: text !== null && !mayHavePatternImport(text) ? 'added' : 'pattern',
+    loc: null,
+    frame: null,
+  }
+}
+
+/** An importer's line in a report: where and how it reaches the file (`reachOf`). */
+function reachLine(site: PatternSite, ctx: ReportContext): string {
+  const rel = relativizePath(site.importer, ctx.config.root)
+  if (site.found) {
+    const at = site.loc ? `${rel}:${site.loc.line}:${site.loc.column}` : rel
+    if (site.found.kind === 'require()') {
+      return `${at}, through ${requireText(site.found)}, which import protection does not read`
+    }
+    const kind =
+      site.found.kind === 'import()'
+        ? 'an import() with a variable path'
+        : site.found.kind
+    return `${at}, through ${kind}: a pattern import, which import protection does not read`
+  }
+  return site.cause === 'added'
+    ? `${rel}, through an import its source does not have (another plugin's transform added it)`
+    : `${rel}, through a pattern import, which import protection does not read`
+}
+
+/** A `require()` as written (`require("./db.server")`). */
+const requireText = (found: PatternImport) =>
+  `require(${JSON.stringify(found.specifier)})`
+
+/** Where a pattern import matched the denied file (`formatViolation`). */
+interface PatternSite {
+  importer: string
+  found: PatternImport | null
+  /**
+   * What brought the file: a pattern import; an import another plugin's
+   * transform added (a checked importer whose source has no pattern
+   * import); or an importer import protection does not check.
+   */
+  cause: 'pattern' | 'added' | 'unchecked'
+  loc: OriginalLocation | null
+  frame: CodeFrame | null
+}
+
+/** `PatternSite.cause` of an importer that imports the denied file itself (`direct`). */
+function causeOf(
+  ctx: ReportContext,
+  importer: string,
+  found: PatternImport | null,
+  direct: boolean,
+): PatternSite['cause'] {
+  if (found !== null) {
+    return 'pattern'
+  }
+  if (!importerInScope(ctx.config, importer)) {
+    return 'unchecked'
+  }
+  if (!direct) {
+    return 'pattern'
+  }
+  const text = ctx.readSource(importer)
+  return text !== null && !mayHavePatternImport(text) ? 'added' : 'pattern'
+}
+
+/**
+ * The pattern import of a module that is its own violation: a build's
+ * importer (`EdgeViolation.pattern`, located when it was recorded), or, in
+ * dev, the importer the graph knows, the trace's step before the module.
+ */
+function patternSiteOf(
+  v: EdgeViolation,
+  info: ViolationInfo,
+  trace: Trace,
+  ctx: ReportContext,
+): PatternSite | null {
+  if (v.pattern !== undefined) {
+    return {
+      importer: info.importer,
+      found: v.pattern,
+      cause: causeOf(ctx, info.importer, v.pattern, true),
+      loc: v.loc,
+      frame: v.snippet,
+    }
+  }
+  const denied = info.resolved ?? info.importer
+  let at = trace.steps.length - 1
+  while (
+    at >= 0 &&
+    (identify(trace.steps[at]!.file).path === denied ||
+      !isAppFile(trace.steps[at]!.file, ctx.config.root))
+  ) {
+    at--
+  }
+  const before = trace.steps[at]
+  if (!v.self || !before) {
+    return null
+  }
+  // (a virtual or a package's module between them imports the file)
+  const direct = identify(trace.steps[at + 1]?.file ?? '').path === denied
+  const importer = identify(before.file).path
+  const site = locateIn(ctx.readSource, importer, (text) => {
+    const found = findPatternImport(text, importer, denied, ctx.config.root)
+    return found && { offset: found.offset, value: found }
+  })
+  const found = site?.value ?? null
+  return {
+    importer,
+    found,
+    cause: causeOf(ctx, importer, found, direct),
+    loc: site?.loc ?? null,
+    frame: site?.frame ?? null,
+  }
+}
+
+/** The fix of a pattern import that matched a denied file: leave the file out of the pattern. */
+function patternSuggestions(
+  denied: string,
+  site: PatternSite | null,
+  mode: 'dev' | 'build',
+  envType: 'client' | 'server',
+  root: string,
+): Array<string> {
+  if (site?.cause === 'unchecked') {
+    return [
+      `If ${relativizePath(site.importer, root)} should be checked, move it inside srcDirectory/include (or out of exclude/ignoreImporters)`,
+      `If it needs the real module, import the file statically from a module that exclude/ignoreImporters exempts inside the scope: the file then ships to the ${envType}`,
+    ]
+  }
+  if (site?.cause === 'added') {
+    return [
+      `Keep the plugin that adds this import to ${relativizePath(site.importer, root)} (an auto-import, for example) from adding ${path.posix.basename(denied)}, and import what the code needs yourself inside ${envType === 'client' ? 'a createServerFn or createServerOnlyFn' : 'createClientOnlyFn or <ClientOnly>'}, where import protection checks it`,
+    ]
+  }
+  if (!site?.found) {
+    return [
+      `Exclude it from the pattern import that matches it (for import.meta.glob, add a negative pattern such as '!./${path.posix.basename(denied)}', relative to the importer), or move the file out of the directory the pattern reads`,
+      ...(mode === 'dev'
+        ? [
+            'If nothing imports it (a server.warmup glob requested it), the environment gets its mock and nothing of the file ships',
+          ]
+        : []),
+    ]
+  }
+  // (a require() of its path is the import it is: a plain import's fixes,
+  // which leave the call out of the environment's code)
+  if (site.found.kind === 'require()') {
+    return envType === 'client'
+      ? [...CLIENT_ENV_SUGGESTIONS]
+      : [...SERVER_FN_SUGGESTIONS]
+  }
+  const exclusion = `!${relativeSpecifier(site.importer, denied)}`
+  switch (site.found.kind) {
+    case 'import.meta.glob':
+      return [
+        site.found.patterns
+          ? `Exclude it from the pattern: import.meta.glob([${[...site.found.patterns, exclusion].map(quoted).join(', ')}], ...)`
+          : `Exclude it from the pattern with a negative pattern: ${quoted(exclusion)}`,
+        'Or move the file out of the directory the pattern reads',
+      ]
+    case 'import.meta.webpackContext':
+    case 'require.context':
+      return [
+        `Narrow the context's regExp so it does not match ${path.posix.basename(denied)}, or move the file out of the directory the context reads`,
+      ]
+    case 'import()':
+      return [
+        'Move the file out of the directory that import() reads, or import the modules it needs by name',
+      ]
+  }
+}
+
+/** The fix of client-only code a server renders as a component (`EdgeViolation.rendered`). */
+function renderedSuggestion(
+  v: EdgeViolation,
+  ctx: ReportContext,
+): Array<string> {
+  const r = v.rendered!
+  const where = r.at
+    ? ` (${relativizePath(r.at.file, ctx.config.root)}:${r.at.line}:${r.at.column})`
+    : ''
+  const from = `ClientOnly from ${routerPackage(ctx.framework)}`
+  return r.via === 'jsx'
+    ? [
+        `<${r.name}> renders it on the server${where}: render it inside <ClientOnly fallback={...}><${r.name} /></ClientOnly> (${from}), so the server renders the fallback and the browser the component after hydration`,
+      ]
+    : [
+        `The route option ${r.key}: ${r.name} renders it on the server${where}: write ${r.key}: () => <ClientOnly fallback={...}><${r.name} /></ClientOnly> (${from}), so the server renders the fallback and the browser the component after hydration`,
+      ]
+}
+
+function suggestionsOf(
+  v: EdgeViolation,
+  info: ViolationInfo,
+  ctx: ReportContext,
+  site: PatternSite | null,
+): Array<string> {
+  if (v.self || v.pattern !== undefined) {
+    return patternSuggestions(
+      identify(info.resolved ?? info.importer).path,
+      site,
+      ctx.config.mode,
+      info.envType,
+      ctx.config.root,
+    )
+  }
+  const barrel = v.reexport
+    ? [
+        `This module re-exports it (export ... from): split the barrel, so ${info.envType} code imports a module without this re-export (see "Mixed Barrels" in the import protection guide)${ctx.config.mode === 'dev' ? '. A build leaves the re-export out while nothing uses it; the dev server serves the whole module' : ''}`,
+      ]
+    : []
+  if (v.reexport && ctx.config.mode === 'dev') {
+    return barrel
+  }
+  if (info.envType === 'client') {
+    return [...barrel, ...CLIENT_ENV_SUGGESTIONS]
+  }
+  if (v.rendered) {
+    return [...barrel, ...renderedSuggestion(v, ctx)]
+  }
+  // a Vue template's components are no JSX of the script: how it is used is unknown
+  return v.binding !== undefined
+    ? [
+        ...barrel,
+        vueComponentSuggestion(v.binding, info.specifier),
+        ...SERVER_FN_SUGGESTIONS,
+      ]
+    : [...barrel, ...SERVER_FN_SUGGESTIONS]
+}
+
+/** Whether a trace step's file is the app's own: under `root`, not in a package's directory there. */
+function isAppFile(file: string, root: string): boolean {
+  const prefix = root.endsWith('/') ? root : `${root}/`
+  return (
+    file.startsWith(prefix) &&
+    !`/${file.slice(prefix.length)}`.includes('/node_modules/')
+  )
+}
+
+/**
+ * The steps a report prints: from the first file of the app (the framework's
+ * own entry modules left out; every step when none is the app's), each file
+ * once in a row (a route module and its split module), cut at
+ * `maxTraceDepth` on the entry side. The first app module reached from an
+ * entry is where the app's code starts: its entry.
+ */
+function printedSteps(
+  trace: Trace,
+  root: string,
+  maxDepth: number,
+): { steps: Array<TraceStep>; first: number; entry: boolean } {
+  const start = Math.max(
+    0,
+    trace.steps.findIndex((s) => isAppFile(s.file, root)),
+  )
+  const steps = trace.steps
+    .slice(start)
+    .filter((s, i, all) => all[i + 1]?.file !== s.file)
+  const keep = Math.max(1, maxDepth + 1)
+  const cut = Math.max(0, steps.length - keep)
+  return {
+    steps: steps.slice(cut),
+    first: cut + 1,
+    entry: trace.fromEntry && cut === 0,
+  }
+}
+
+export function formatViolation(
+  v: EdgeViolation,
+  info: ReportedInfo,
+  ctx: ReportContext,
+  /** The importer is a module of a child compiler (`ImportProtectionEnv.childCompilerRequest`). */
+  opts: { childCompiler?: boolean } = {},
+): string {
+  const { root } = ctx.config
+  const rel = (p: string) => relativizePath(p, root)
+  const at = (file: string, loc: { line: number; column: number } | null) =>
+    loc ? `${rel(file)}:${loc.line}:${loc.column}` : rel(file)
+  const trace = info.freezeTrace()
+  const site = patternSiteOf(v, info, trace, ctx)
 
   const lines: Array<string> = []
   lines.push(``)
-  lines.push(`[import-protection] Import denied in ${info.envType} environment`)
+  lines.push(
+    `[import-protection] Import ${info.behavior === 'mock' ? 'mocked' : 'denied'} in ${info.envType} environment`,
+  )
   lines.push(``)
+  lines.push(deniedBy(info, ctx))
 
-  if (info.type === 'specifier') {
-    lines.push(`  Denied by specifier pattern: ${String(info.pattern)}`)
-  } else if (info.type === 'file') {
-    lines.push(`  Denied by file pattern: ${String(info.pattern)}`)
-  } else {
+  if (v.self || v.pattern !== undefined) {
+    lines.push(`  Denied file: ${rel(info.resolved ?? info.importer)}`)
     lines.push(
-      `  Denied by marker: module is restricted to the opposite environment`,
+      site?.found?.kind === 'require()'
+        ? `  Imported by: ${at(site.importer, site.loc)}, through ${requireText(site.found)}`
+        : site?.found
+          ? `  Matched by: ${site.found.kind === 'import()' ? 'an import() with a variable path' : site.found.kind} in ${at(site.importer, site.loc)}`
+          : site?.cause === 'unchecked'
+            ? `  Imported by: ${rel(site.importer)}, which import protection does not check (outside srcDirectory/include, or exempt by exclude/ignoreImporters)`
+            : site?.cause === 'added'
+              ? `  Imported by: ${rel(site.importer)}, through an import its source does not have (another plugin's transform added it)`
+              : site
+                ? `  Matched by: a pattern import in ${rel(site.importer)} (import.meta.glob, an import() with a variable path, import.meta.webpackContext)`
+                : `  Loaded by an import the compiler does not read: a pattern import (import.meta.glob, an import() with a variable path, import.meta.webpackContext), an import another plugin added, or a request of the file itself (a server.warmup glob)`,
+    )
+  } else {
+    const loc = info.importerLoc
+    lines.push(
+      `  Importer: ${loc ? at(loc.file ?? info.importer, loc) : rel(info.importer)}`,
+    )
+    lines.push(`  Import: "${rel(info.specifier)}"`)
+    if (info.resolved) {
+      lines.push(`  Resolved: ${rel(info.resolved)}`)
+    }
+  }
+  if (opts.childCompiler) {
+    lines.push(
+      `  Built by: a child compiler (a worker or service-worker plugin), which cannot load the mock of a denied import: it fails the build whatever the behavior, and allowImport is not asked`,
     )
   }
 
-  lines.push(`  Importer: ${relLoc(info.importer, info.importerLoc)}`)
-  lines.push(`  Import: "${rel(info.specifier)}"`)
-  if (info.resolved) {
-    lines.push(`  Resolved: ${rel(info.resolved)}`)
-  }
-
-  if (info.trace.length > 0) {
+  const printed = printedSteps(trace, root, ctx.config.maxTraceDepth)
+  // a lone step is the importer the lines above name: the graph knew nothing more
+  if (printed.steps.length > 1) {
     lines.push(``)
     lines.push(`  Trace:`)
-    for (let i = 0; i < info.trace.length; i++) {
-      const step = info.trace[i]!
-      const isEntry = i === 0
-      const tag = isEntry ? ' (entry)' : ''
-      const spec = step.specifier ? ` (import "${rel(step.specifier)}")` : ''
-      lines.push(`    ${i + 1}. ${relTraceStep(step)}${tag}${spec}`)
+    if (printed.first > 1) {
+      lines.push(
+        `    ... ${printed.first - 1} earlier step${printed.first > 2 ? 's' : ''} (raise importProtection.maxTraceDepth to see them)`,
+      )
     }
+    printed.steps.forEach((step, i) => {
+      const last = i === printed.steps.length - 1
+      let loc =
+        step.line != null ? { line: step.line, column: step.column ?? 1 } : null
+      let spec = step.specifier ? ` (import "${step.specifier}")` : ''
+      const file = identify(step.file).path
+      if (
+        site &&
+        file === site.importer &&
+        (v.pattern !== undefined || !last)
+      ) {
+        // the step of the pattern import's importer: the call, not a specifier
+        loc = site.loc
+        spec = !site.found
+          ? ''
+          : site.found.kind === 'require()'
+            ? ` (${requireText(site.found)})`
+            : ` (${site.found.kind === 'import()' ? 'an import() with a variable path' : site.found.kind})`
+      } else if (v.self && last) {
+        spec = ''
+      }
+      const tag = i === 0 && printed.entry ? ' (entry)' : ''
+      lines.push(`    ${printed.first + i}. ${at(step.file, loc)}${tag}${spec}`)
+    })
   }
 
-  if (info.snippet) {
+  const frame = info.snippet ?? site?.frame ?? null
+  if (frame) {
     lines.push(``)
     lines.push(`  Code:`)
-    for (const snippetLine of info.snippet.lines) {
+    for (const snippetLine of frame.lines) {
       lines.push(snippetLine)
     }
     lines.push(``)
-    lines.push(`  ${rel(info.snippet.location)}`)
+    lines.push(`  ${rel(frame.location)}`)
   }
 
   lines.push(``)
-
-  // Add suggestions
-  if (info.envType === 'client') {
-    lines.push(`  Suggestions:`)
-    for (const s of CLIENT_ENV_SUGGESTIONS) {
-      lines.push(`    - ${s}`)
-    }
-  } else {
-    const snippetText = info.snippet?.lines.join('\n') ?? ''
-    const looksLikeJsx =
-      /<[A-Z]/.test(snippetText) ||
-      (/\{.*\(.*\).*\}/.test(snippetText) && /</.test(snippetText))
-
-    lines.push(`  Suggestions:`)
-    if (looksLikeJsx) {
-      lines.push(
-        `    - Wrap the JSX in <ClientOnly fallback={<Loading />}>...</ClientOnly> so it only renders in the browser after hydration`,
-      )
-    }
-    for (const s of SERVER_ENV_SUGGESTIONS) {
-      lines.push(`    - ${s}`)
-    }
+  lines.push(`  Suggestions:`)
+  for (const s of suggestionsOf(v, info, ctx, site)) {
+    lines.push(`    - ${s}`)
   }
-
   lines.push(``)
   return lines.join('\n')
 }

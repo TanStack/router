@@ -4,7 +4,6 @@ import type { Pattern } from './utils'
 
 export interface CompiledMatcher {
   pattern: Pattern
-  literal?: string
   test: (value: string) => boolean
 }
 
@@ -33,11 +32,7 @@ export function compileMatcher(pattern: Pattern): CompiledMatcher {
   }
 
   if (isLiteralMatcherPattern(pattern)) {
-    return {
-      pattern,
-      literal: pattern,
-      test: (value: string) => value === pattern,
-    }
+    return { pattern, test: (value: string) => value === pattern }
   }
 
   const isMatch = picomatch(pattern, { dot: true })

@@ -1,0 +1,315 @@
+/**
+ * Placement, stage 7: what each output contains and imports. A cluster is
+ * included in its home; a copy goes where it is rooted and follows its
+ * readers; a provider output includes everything it reaches. Every output
+ * imports what it reads from the cluster's home, which exports it; the
+ * TypeScript-only specifiers follow their statement's value specifiers.
+ */
+import { invariantViolated } from '../self-checks'
+import {
+  clusterRange,
+  describeCluster,
+  isDuplicable,
+  namesOf,
+} from './clusters'
+import type { ClusterGraph, ClusterId } from './clusters'
+import type { InvariantViolation } from '../self-checks'
+import type { ReadIndex } from './reads'
+import type { Roots } from './settle'
+import type { Homes } from './homes'
+import type { SymbolId } from '../symbols'
+import type { UnitId } from '../units'
+import type { OutputId } from '../rewrite'
+import type { ExtractedExport, PlacementInput } from '../reach'
+
+export interface Inclusion {
+  /** Clusters each output contains (homed or duplicated). */
+  included: Map<OutputId, Set<ClusterId>>
+  /** o → (home output → symbols o imports from it). */
+  imports: Map<OutputId, Map<OutputId, Set<SymbolId>>>
+  /** Symbols each output must export for other outputs. */
+  exportsNeeded: Map<OutputId, Set<SymbolId>>
+  /** Type units the env module drops; every other type unit stays there, whatever its cluster. */
+  droppedTypeUnits: Set<UnitId>
+  /** The first violated invariant (only when the run warns: `self-checks.ts`). */
+  violation: InvariantViolation | undefined
+}
+
+export function includeAndImport(
+  input: PlacementInput,
+  graph: ClusterGraph,
+  reads: ReadIndex,
+  roots: Roots,
+  homes: Homes,
+  extracted: ReadonlyArray<ExtractedExport>,
+): Inclusion {
+  const { t1, outputs, routeModule } = input
+  const { units, items, refs, symbols } = t1
+  const { clusters, clusterOfRegion, clusterOfSym } = graph
+  const { envRoots, derivedRoots, derivedReach, copied, pinned } = roots
+  const { home, created, derivedNeeders } = homes
+  /** The extracted module a copied export is imported from by another static output (a chunk copies it). */
+  const staticHomeOf = (d: ClusterId, o: OutputId): OutputId | undefined => {
+    if (!copied.has(d) || outputs.get(o)?.kind !== 'export') {
+      return undefined
+    }
+    const own = pinned.get(d)
+    return own === undefined || own === o ? undefined : own
+  }
+
+  const allOutputs: Array<OutputId> = [
+    'env',
+    ...[...outputs.keys()].filter((o) => o !== 'env'),
+    ...created.map((c) => c.id),
+  ]
+  const included = new Map<OutputId, Set<ClusterId>>()
+  for (const o of allOutputs) {
+    included.set(o, new Set())
+  }
+  for (const cl of clusters) {
+    const h = home.get(cl.id)!
+    if (h === 'removed') {
+      continue
+    }
+    if (h === 'duplicate') {
+      // a copy goes where it is rooted, and follows its direct readers (below): a needer that
+      // reaches it only through a cluster it imports from elsewhere does not copy it
+      if (envRoots.has(cl.id)) {
+        included.get('env')!.add(cl.id)
+      }
+      for (const o of derivedNeeders[cl.id]!) {
+        if (derivedRoots.get(o)?.has(cl.id)) {
+          included.get(o)!.add(cl.id)
+        }
+      }
+      continue
+    }
+    included.get(h)!.add(cl.id)
+  }
+  // a provider output is the module's own instance in another layer or environment
+  // (J4.14): it includes every cluster its roots reach, the env-homed ones
+  // as copies, instead of importing them from the env module (whose server fns are stubs)
+  for (const [o, decl] of outputs) {
+    if (decl.kind !== 'provider') {
+      continue
+    }
+    const inc = included.get(o)!
+    for (const c of derivedReach.get(o) ?? []) {
+      if (home.get(c) !== 'removed') {
+        inc.add(c)
+      }
+    }
+  }
+  // duplicated clusters follow their readers into every output that includes
+  // a reader (each round adds a copy somewhere, so the rounds end)
+  for (;;) {
+    let changed = false
+    for (const o of allOutputs) {
+      const inc = included.get(o)!
+      for (const c of [...inc]) {
+        const { syms } = reads.clusterReads(c, o, true)
+        for (const s of syms) {
+          const d = clusterOfSym.get(s)
+          if (
+            d !== undefined &&
+            !inc.has(d) &&
+            home.get(d) === 'duplicate' &&
+            staticHomeOf(d, o) === undefined
+          ) {
+            inc.add(d)
+            changed = true
+          }
+        }
+      }
+    }
+    if (!changed) {
+      break
+    }
+  }
+
+  // ---- TypeScript-only specifiers: they follow their statement's value specifiers ----
+  /**
+   * Whether a type unit stays in the env module. Type units stay as written
+   * whatever their cluster (`import type { X }` next to a value `X` that
+   * moves stays type-only), except the TypeScript-only forms (an inline
+   * `type` specifier, an `export { X }` of a type-only binding): they
+   * follow the value specifiers of their statement.
+   */
+  const typeUnitStays = (u: UnitId): boolean => {
+    const unit = units[u]!
+    const inlineImportSpecifier =
+      unit.importIndex !== null &&
+      (items[unit.item]!.node as { importKind?: string }).importKind !== 'type'
+    const typeOnlyExportSpecifier =
+      unit.node.type === 'ExportSpecifier' && unit.node.exportKind !== 'type'
+    if (!inlineImportSpecifier && !typeOnlyExportSpecifier) {
+      return true
+    }
+    if (routeModule) {
+      // the statement leaves with its value specifiers (an inline `type`
+      // specifier alone keeps loading the module under
+      // verbatimModuleSyntax); a type-only `export { X }` names nothing at
+      // run time
+      return false
+    }
+    if (inlineImportSpecifier) {
+      return items[unit.item]!.units.some((sibling) => {
+        const su = units[sibling]!
+        const c = clusterOfRegion.get(su.region)
+        return (
+          su.kind !== 'type' && c !== undefined && included.get('env')!.has(c)
+        )
+      })
+    }
+    // `export { X }` of a type-only binding: leaves with the inline type
+    // import specifiers declaring `X` when they left
+    const ref = refs
+      .refsIn(unit.range)
+      .find((r) => r.kind === 'exportSpecifier')
+    const decls =
+      ref === undefined ? [] : (t1.declaringUnits.get(ref.sym) ?? [])
+    return (
+      decls.length === 0 ||
+      decls.some((d) => units[d]!.kind !== 'type' || typeUnitStays(d))
+    )
+  }
+  const droppedTypeUnits = new Set<UnitId>()
+  units.forEach((unit, u) => {
+    if (unit.kind === 'type' && !typeUnitStays(u)) {
+      droppedTypeUnits.add(u)
+    }
+  })
+  // Invariants (`self-checks.ts`: they throw in our tests and warn
+  // elsewhere). They exist to catch compiler bugs and can go once we trust
+  // the compiler's exhaustiveness.
+  let violation: InvariantViolation | undefined
+  // A declaration with an identity (an object, array, class, call result,
+  // regex, a function used as a constructor or sentinel) or a written one
+  // exists once: in at most one output that imports from the env module (a
+  // provider output copies). Whatever placement duplicates is functions and
+  // primitives nothing writes (`isDuplicable`): the copy of an extracted
+  // export, the duplicate home and the copies following readers all decide
+  // with it; this counts the result. One pass counts each cluster's holders;
+  // only a cluster held twice is judged.
+  let duplicates = false
+  for (const h of home.values()) {
+    if (h === 'duplicate') {
+      duplicates = true
+      break
+    }
+  }
+  if (duplicates) {
+    const holders = new Uint32Array(clusters.length)
+    for (const [o, set] of included) {
+      if (outputs.get(o)?.kind === 'provider') {
+        continue
+      }
+      for (const c of set) {
+        holders[c]!++
+      }
+    }
+    const liveInEnv = (ref: { range: { start: number } }) =>
+      !graph.viewOf('env').isErasedAt(ref.range.start)
+    for (const cl of clusters) {
+      if (
+        holders[cl.id]! > 1 &&
+        cl.kind === 'declaration' &&
+        !isDuplicable(cl, t1, liveInEnv)
+      ) {
+        const outs = [...included]
+          .filter(
+            ([o, set]) => set.has(cl.id) && outputs.get(o)?.kind !== 'provider',
+          )
+          .map(([o]) => o)
+        violation = invariantViolated({
+          effect: `${namesOf(input, cl) ?? 'a value'} may exist twice, with separate state in two chunks`,
+          detail: `placement: ${describeCluster(input, cl)}, an identity or state, is declared in ${outs.length} outputs: ${outs.join(', ')}`,
+          range: clusterRange(input, cl),
+        })
+        break
+      }
+    }
+  }
+  // ---- imports and the exports they need -----------------------------------
+  const imports = new Map<OutputId, Map<OutputId, Set<SymbolId>>>()
+  const exportsNeeded = new Map<OutputId, Set<SymbolId>>()
+  const exportOf = (h: OutputId): Set<SymbolId> => {
+    let ex = exportsNeeded.get(h)
+    if (!ex) {
+      ex = new Set()
+      exportsNeeded.set(h, ex)
+    }
+    return ex
+  }
+  for (const o of allOutputs) {
+    const inc = included.get(o)!
+    const map = new Map<OutputId, Set<SymbolId>>()
+    imports.set(o, map)
+    const wanted: Array<SymbolId> = []
+    for (const c of inc) {
+      for (const s of reads.clusterReads(c, o, true).syms) {
+        wanted.push(s)
+      }
+    }
+    // a root homed elsewhere is imported by the output that rooted it (a
+    // joined follower is rooted in each output only to be placed: each
+    // imports what it reads, recheck finding 8)
+    for (const c of derivedRoots.get(o) ?? []) {
+      if (!inc.has(c) && !roots.joined.has(c)) {
+        for (const s of clusters[c]!.declares) {
+          wanted.push(s)
+        }
+      }
+    }
+    for (const s of wanted) {
+      if (!symbols.isModuleLevel(s)) {
+        continue
+      }
+      const d = clusterOfSym.get(s)
+      if (d === undefined || inc.has(d)) {
+        continue
+      }
+      // a copied export another extracted module reads is imported from its
+      // own module there (static to static, one instance for importers); the
+      // chunks copy it
+      const homed = home.get(d)
+      const h = homed === 'duplicate' ? staticHomeOf(d, o) : homed
+      if (h === undefined || h === 'removed' || h === o) {
+        continue
+      }
+      let set = map.get(h)
+      if (!set) {
+        set = new Set()
+        map.set(h, set)
+      }
+      set.add(s)
+      exportOf(h).add(s)
+    }
+  }
+  for (const e of extracted) {
+    const ex = exportOf(e.output)
+    for (const s of e.syms) {
+      ex.add(s)
+    }
+  }
+
+  // ---- units for the env module's readers ------------------------------------
+  // each derived output importing a binding of the env module other than
+  // `besides` holds a copy; the unit reads only its own imports, so the
+  // imports above stand
+  for (const g of input.rewrites.generated) {
+    if (typeof g.home !== 'object') {
+      continue
+    }
+    const { besides } = g.home
+    const c = graph.clusterOfGen.get(g.id)!
+    for (const [o, from] of imports) {
+      const fromEnv = o === 'env' ? undefined : from.get('env')
+      if (fromEnv && [...fromEnv].some((s) => !besides.includes(s))) {
+        included.get(o)!.add(c)
+      }
+    }
+  }
+
+  return { included, imports, exportsNeeded, droppedTypeUnits, violation }
+}

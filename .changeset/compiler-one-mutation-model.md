@@ -1,0 +1,7 @@
+---
+'@tanstack/router-utils': patch
+'@tanstack/router-plugin': patch
+'@tanstack/start-plugin-core': patch
+---
+
+Route code splitting and Start's environment separation decide from one model of what writes a module's bindings. A value computed when the route module loads from a binding some function writes later (`const initial = [n]` next to `function inc() { n++ }`, a snapshot taken by an immediately invoked function, a call reading a member of an object a function mutates) keeps the value the source computed: it stays in the route module and the split chunks import it, instead of being recomputed when the chunk loads. An option value that reads such a binding is kept in place. The route's option values must be pure for declarations only the component reads to move into its chunk: an impure option (`validateSearch: makeSchema()`) now runs after the declarations before it, as in the source. A chain of components each writing a module binding the previous one reads no longer produces a chunk assigning a binding it imports (a `TypeError` at render): re-planning continues until every such option is kept in place. A server-only initialiser that a server function handler only assigns leaves the client with the handler. Nested server functions are no longer hoisted when they read a module binding something mutates. `TSR_COMPILER_VERIFY=1` re-parses every emitted output and fails the compile on a broken one (the test suites set it).

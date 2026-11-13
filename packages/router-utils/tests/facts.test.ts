@@ -1,0 +1,829 @@
+import { describe, expect, it } from 'vitest'
+import { walk } from 'yuku'
+import {
+  EMPTY_RECOGNIZER,
+  RawFactsCache,
+  unwrapExpression,
+} from '../src/compiler'
+import { summaryDigest } from '../src/compiler/summary'
+import { MemoryHost, envInfo } from './helpers'
+import type { Planner, RecognizerTable } from '../src/compiler'
+import type { RawFacts } from '../src/compiler/facts'
+
+describe('RawFactsCache', () => {
+  it('counts no entry stale once a marker scan has read the file again', async () => {
+    const cache = new RawFactsCache({
+      readFile: () => Promise.resolve('export const a = 1\n'),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    await cache.marker('/app/a.ts', 'client')
+    cache.markStale('/app/a.ts')
+    await cache.marker('/app/a.ts', 'client')
+    expect(cache.stats(false)).toMatchObject({
+      rawFactsMarkerless: 1,
+      rawFactsStale: 0,
+    })
+  })
+
+  it('does not publish a read in flight when the file changes meanwhile', async () => {
+    let text = 'export const a = 1\n'
+    let release: (() => void) | null = null
+    const cache = new RawFactsCache({
+      readFile: () =>
+        new Promise<string>((resolve) => {
+          const current = text
+          release = () => resolve(current)
+        }),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    const first = cache.get('/app/a.ts', 'client')
+    // the file changes while the first read is pending; the host reports it
+    text = 'export const b = 2\n'
+    cache.markStale('/app/a.ts')
+    release!()
+    await first
+    // the next read sees the new text, not the superseded read's
+    const second: Promise<unknown> = cache.get('/app/a.ts', 'client')
+    release!()
+    const facts = (await second) as RawFacts
+    const superseded = await first
+    expect(superseded.targetFacts.exportNames).toEqual(['a'])
+    expect(facts.targetFacts.exportNames).toEqual(['b'])
+    // the cache holds the second read's facts, current
+    expect(await cache.get('/app/a.ts', 'client')).toBe(facts)
+    expect(cache.stats(false)).toMatchObject({ rawFactsStale: 0 })
+  })
+
+  it('does not publish a marker scan in flight when the file changes meanwhile', async () => {
+    let text = 'export const a = 1\n'
+    const pending: { release?: () => void } = {}
+    let block = true
+    const cache = new RawFactsCache({
+      readFile: () => {
+        const current = text
+        if (!block) {
+          return Promise.resolve(current)
+        }
+        block = false
+        return new Promise<string>((resolve) => {
+          pending.release = () => resolve(current)
+        })
+      },
+      loadVirtual: () => Promise.resolve(null),
+    })
+    const first = cache.marker('/app/a.ts', 'client')
+    while (!pending.release) {
+      await new Promise((resolve) => setImmediate(resolve))
+    }
+    // the file gains a marker while the scan is pending; the host reports it
+    text = `import 'server-only'\nexport const a = 1\n`
+    cache.markStale('/app/a.ts')
+    pending.release()
+    expect(await first).toBe(null)
+    // the superseded scan is no answer for the new text
+    expect(await cache.marker('/app/a.ts', 'client')).toBe('server-only')
+    expect(cache.stats(false)).toMatchObject({ rawFactsMarkerless: 0 })
+  })
+
+  it('marker(): a target without a marker literal is answered from its text, parsed only when its facts are asked', async () => {
+    const files: Record<string, string> = {
+      '/app/a.ts': `export const a = 1\n`,
+      '/app/s.ts': `import 'server-only'\nexport const s = 1\n`,
+      '/app/c.ts': `export const c = 'client-only'\n`,
+      '/app/n.ts': `import x from 'client-only'\nexport const n = x\n`,
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    expect(await cache.marker('/app/a.ts', 'client')).toBe(null)
+    expect(await cache.marker('/app/missing.ts', 'client')).toBe(null)
+    expect(cache.stats(false)).toMatchObject({
+      rawFacts: 1,
+      rawFactsMarkerless: 1,
+      factsReads: 2,
+    })
+    // the literal is there: parsed, and an import of the marker is the marker
+    expect(await cache.marker('/app/s.ts', 'client')).toBe('server-only')
+    expect(await cache.marker('/app/n.ts', 'client')).toBe('client-only')
+    // the literal is there but it is not an import: no marker (the parse decides)
+    expect(await cache.marker('/app/c.ts', 'client')).toBe(null)
+    expect(cache.stats(false)).toMatchObject({
+      rawFacts: 4,
+      rawFactsMarkerless: 1,
+    })
+    // asked again: no read (and a parsed target was read once: its marker
+    // scan and its facts share the read)
+    await cache.marker('/app/a.ts', 'client')
+    await cache.marker('/app/s.ts', 'client')
+    expect(cache.stats(false).factsReads).toBe(5)
+    // the full facts of a scanned target are built when asked, once
+    const facts = await cache.get('/app/a.ts', 'client')
+    expect(Object.keys(facts.summary!.exports)).toEqual(['a'])
+    expect(cache.stats(false)).toMatchObject({
+      rawFactsMarkerless: 0,
+      factsReads: 6,
+    })
+    // a change makes the next question read again
+    files['/app/a.ts'] = `import 'server-only'\nexport const a = 2\n`
+    cache.markStale('/app/a.ts')
+    expect(await cache.marker('/app/a.ts', 'client')).toBe('server-only')
+  })
+
+  it('an opaque module is not parsed: no summary, its marker from the text, target facts when asked', async () => {
+    const files: Record<string, string> = {
+      '/app/node_modules/lib/index.js': `export const lib = () => 1\n`,
+      '/app/node_modules/marked/index.js': `import 'server-only'\nexport const m = 1\n`,
+      '/app/src/a.ts': `export const a = 1\n`,
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+      opaque: (path) => path.includes('/node_modules/'),
+    })
+    const lib = await cache.get('/app/node_modules/lib/index.js', 'client')
+    expect(lib.opaque).toBe(true)
+    expect(lib.summary).toBe(null)
+    expect(await cache.marker('/app/node_modules/lib/index.js', 'client')).toBe(
+      null,
+    )
+    expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactsOpaque: 1 })
+    // a mock of it asks for its target facts: parsed then, and kept; the
+    // module stays opaque to the summaries (its summary stays null: no plan
+    // that summarised the package is evicted by the question)
+    const target = await cache.getTarget(
+      '/app/node_modules/lib/index.js',
+      'client',
+    )
+    expect(target.opaque).toBeUndefined()
+    expect(target.targetFacts.exportNames).toEqual(['lib'])
+    expect(
+      (await cache.get('/app/node_modules/lib/index.js', 'client')).summary,
+    ).toBe(null)
+    expect(
+      await cache.targetDigestOf('/app/node_modules/lib/index.js', 'client'),
+    ).toBe(target.targetFacts.digest)
+    expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactsOpaque: 0 })
+    // a marker literal is never opaque: the marker is a parse's finding
+    expect(
+      await cache.marker('/app/node_modules/marked/index.js', 'client'),
+    ).toBe('server-only')
+    expect(
+      (await cache.get('/app/node_modules/marked/index.js', 'client')).opaque,
+    ).toBeUndefined()
+    // the app's own modules are never opaque
+    expect((await cache.get('/app/src/a.ts', 'client')).opaque).toBeUndefined()
+  })
+
+  it('a change or deletion of a file reaches every identity at its path, and the bookkeeping is bounded by the live files', async () => {
+    const files: Record<string, string> = {
+      '/app/a.ts': 'export const a = 1\n',
+      '/app/b.ts': 'export const b = 1\n',
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p.split('?')[0]!] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    await cache.get('/app/a.ts', 'client')
+    await cache.get('/app/a.ts?flavour=b', 'client')
+    await cache.get('/app/b.ts', 'client')
+    expect(cache.stats(false)).toMatchObject({ rawFacts: 3, rawFactPaths: 2 })
+    cache.markStale('/app/a.ts')
+    // both identities at the path are stale, b is not
+    expect(cache.stats(false)).toMatchObject({ rawFacts: 3, rawFactsStale: 2 })
+    cache.forget('/app/a.ts')
+    expect(cache.stats(false)).toMatchObject({
+      rawFacts: 1,
+      rawFactPaths: 1,
+      rawFactsStale: 0,
+    })
+    // a missing file's facts are not kept either
+    await cache.get('/app/missing.ts', 'client')
+    expect(cache.stats(false)).toMatchObject({ rawFacts: 1, rawFactPaths: 1 })
+    cache.retain(() => false)
+    expect(cache.stats(false)).toMatchObject({ rawFacts: 0, rawFactPaths: 0 })
+  })
+})
+
+describe('facts of a module that is not JavaScript', () => {
+  it('are never read from its file: an asset, a stylesheet or a `?url` import is no module of ours', async () => {
+    const read: Array<string> = []
+    const loaded: Array<[string, string]> = []
+    const cache = new RawFactsCache({
+      readFile: (p) => {
+        read.push(p)
+        return Promise.resolve('export const a = 1\n')
+      },
+      loadVirtual: (id, env) => {
+        loaded.push([id, env])
+        return Promise.resolve('export const v = 1\n')
+      },
+    })
+    for (const id of [
+      '/app/node_modules/esbuild-wasm/esbuild.wasm?url',
+      '/app/styles.css',
+      '/app/data.ts?raw',
+    ]) {
+      const facts = await cache.get(id, 'client')
+      expect(facts.summary).toBeNull()
+      expect(facts.targetFacts).toMatchObject({
+        exists: true,
+        esm: false,
+        codeEffects: { client: true, server: true },
+        exportNames: [],
+      })
+    }
+    expect(read).toEqual([])
+    // a module that is JavaScript is read, a virtual one loaded by the
+    // environment asking (the one that resolved it)
+    expect((await cache.get('/app/a.ts', 'client')).summary).not.toBeNull()
+    expect((await cache.get('\0virtual:thing', 'ssr')).summary).not.toBeNull()
+    expect(read).toEqual(['/app/a.ts'])
+    expect(loaded).toEqual([['\0virtual:thing', 'ssr']])
+    expect(cache.stats(false)).toMatchObject({ factsReads: 2 })
+  })
+})
+
+describe('target facts of a marked module', () => {
+  it('does not count a marker import as an evaluation edge', async () => {
+    const files: Record<string, string> = {
+      '/app/marked.ts': `import '@tanstack/react-start/server-only'\nexport const secret = () => 'MARK_SECRET'\n`,
+      '/app/effects.ts': `import './side-effect'\nexport const x = 1\n`,
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+      markerSpecifiers: {
+        '@tanstack/react-start/server-only': 'server-only',
+        '@tanstack/react-start/client-only': 'client-only',
+      },
+    })
+    const marked = await cache.get('/app/marked.ts', 'client')
+    expect(marked.targetFacts.marker).toBe('server-only')
+    expect(marked.targetFacts.imports).toEqual([])
+    // a bare import of anything else still is
+    const effects = await cache.get('/app/effects.ts', 'client')
+    expect(effects.targetFacts.imports).toEqual(['./side-effect'])
+  })
+})
+
+describe('target facts of an opaque module', () => {
+  it('are the parsed ones even when a read of the module is in flight (a change raced the question)', async () => {
+    const files: Record<string, string> = {
+      '/app/node_modules/lib/index.js': `export const lib = () => 1\n`,
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+      opaque: (path) => path.includes('/node_modules/'),
+    })
+    await cache.get('/app/node_modules/lib/index.js', 'client')
+    cache.markStale('/app/node_modules/lib/index.js')
+    // the facts are re-read (opaque again) while a mock asks for the target facts
+    const [, target] = await Promise.all([
+      cache.get('/app/node_modules/lib/index.js', 'client'),
+      cache.getTarget('/app/node_modules/lib/index.js', 'client'),
+    ])
+    expect(target.targetFacts.exportNames).toEqual(['lib'])
+    expect(
+      (await cache.getTarget('/app/node_modules/lib/index.js', 'client'))
+        .targetFacts.exportNames,
+    ).toEqual(['lib'])
+  })
+})
+
+describe('target facts: own effects', () => {
+  // `#__NO_SIDE_EFFECTS__` on a callee the module declares counts whatever
+  // the order of the declaration and the call (function declarations are
+  // hoisted); Tier 0 and the unit model classify the same statement alike
+  it('count a call of a `#__NO_SIDE_EFFECTS__` callee declared before or after it as pure', async () => {
+    const files: Record<string, string> = {
+      '/app/before.ts': `/* #__NO_SIDE_EFFECTS__ */ function make(s) { return s }\nexport const schema = make({})\n`,
+      '/app/after.ts': `export const schema = make({})\n/* #__NO_SIDE_EFFECTS__ */ function make(s) { return s }\n`,
+      '/app/plain.ts': `export const schema = make({})\nfunction make(s) { return s }\n`,
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    expect(
+      (await cache.get('/app/before.ts', 'client')).targetFacts,
+    ).toMatchObject({
+      codeEffects: { client: false, server: false },
+    })
+    expect(
+      (await cache.get('/app/after.ts', 'client')).targetFacts,
+    ).toMatchObject({
+      codeEffects: { client: false, server: false },
+    })
+    expect(
+      (await cache.get('/app/plain.ts', 'client')).targetFacts,
+    ).toMatchObject({
+      codeEffects: { client: true, server: true },
+    })
+  })
+})
+
+// whether a call is an effect is a fact of the module (placement asked it
+// through two split options until R151 gave both cases one shared module)
+describe('target facts: what stays an effect', () => {
+  const recognizer = {
+    ...EMPTY_RECOGNIZER,
+    pureCalls: { 'toy-router': new Set(['getRouteApi']) },
+  }
+  const effectful = async (files: Record<string, string>, path: string) => {
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+      recognizer,
+    })
+    return (await cache.get(path, 'client')).targetFacts.codeEffects.client
+  }
+  // a known package's pure call with an impure argument, a call of
+  // another export, of a default import that is no namespace, of a
+  // module's own function of that name: effects; the plain call is none
+  it.each([
+    [
+      'an impure argument',
+      "import { getRouteApi } from 'toy-router'\nimport { id } from './lib'\nexport const { useParams } = getRouteApi(id())",
+      true,
+    ],
+    [
+      'another export',
+      "import { useRouteApi } from 'toy-router'\nexport const { useParams } = useRouteApi('/x')",
+      true,
+    ],
+    [
+      'a default import of a package not listed',
+      "import R from 'toy-router'\nexport const { useParams } = R.getRouteApi('/x')",
+      true,
+    ],
+    [
+      "a module's own function",
+      "import { getRouteApi } from './lib'\nexport const { useParams } = getRouteApi('/x')",
+      true,
+    ],
+    [
+      'the pure call (control)',
+      "import { getRouteApi } from 'toy-router'\nexport const { useParams } = getRouteApi('/x')",
+      false,
+    ],
+  ])('a known pure call: %s', async (_, code, effect) => {
+    expect(await effectful({ '/app/m.ts': code }, '/app/m.ts')).toBe(effect)
+  })
+
+  // `#__NO_SIDE_EFFECTS__` before the statement annotates a `const`'s
+  // first function only (neither Rollup nor esbuild reads it otherwise)
+  it.each([
+    ['a `let`', '/* #__NO_SIDE_EFFECTS__ */ let type = (shape) => shape', true],
+    [
+      'a later declarator',
+      '/* #__NO_SIDE_EFFECTS__ */ const x = 1, type = (shape) => shape',
+      true,
+    ],
+    [
+      'a `const` (control)',
+      '/* #__NO_SIDE_EFFECTS__ */ const type = (shape) => shape',
+      false,
+    ],
+  ])(
+    'reads no #__NO_SIDE_EFFECTS__ before the statement for %s',
+    async (_, declaration, effect) => {
+      const code = `${declaration}\nexport const schema = type({ 'a?': 'string' })\n`
+      expect(await effectful({ '/app/m.ts': code }, '/app/m.ts')).toBe(effect)
+    },
+  )
+})
+
+describe('target facts: builder chains per environment', () => {
+  const table: RecognizerTable = {
+    factories: {
+      'toy-start': {
+        createServerFn: 'serverFn',
+        createIsomorphicFn: 'isoFn',
+        createServerOnlyFn: 'serverOnly',
+        createStart: 'start',
+      },
+    },
+    builderKinds: new Set(['serverFn', 'isoFn']),
+    terminal: { serverFn: 'serverFn', isoFn: 'isoFn' },
+    envOnlyKinds: { serverOnly: 'server' },
+    builderLinks: {
+      serverFn: { middleware: 'both', validator: 'server', handler: 'server' },
+      isoFn: { server: 'server', client: 'client' },
+    },
+  }
+  const head = `import { createIsomorphicFn, createServerFn, createServerOnlyFn, createStart } from 'toy-start'
+import * as Toy from 'toy-start'
+import { track } from './track'
+`
+  const none = { client: false, server: false }
+  const all = { client: true, server: true }
+  it.each([
+    [
+      'a chain with pure arguments',
+      `export const fn = createServerFn({ method: 'POST' }).middleware([]).handler(async () => 1)`,
+      none,
+    ],
+    [
+      'a chain in an object literal and a default export',
+      `export const fns = { a: createServerFn().handler(() => 1) }\nexport default createIsomorphicFn().server(() => 1)`,
+      none,
+    ],
+    [
+      'a namespace member factory',
+      `export const fn = Toy.createServerFn().handler(() => 1)`,
+      none,
+    ],
+    [
+      'a validator and a handler built by calls (the client erases them)',
+      `export const fn = createServerFn().validator(track()).handler(track())`,
+      { client: false, server: true },
+    ],
+    [
+      'a server-only fn of a call',
+      `export const so = createServerOnlyFn(track())`,
+      { client: false, server: true },
+    ],
+    [
+      'a client implementation built by a call (the server erases it)',
+      `export const iso = createIsomorphicFn().server(() => 1).client(track())`,
+      { client: true, server: false },
+    ],
+    [
+      'a builder in a const, extended',
+      `const base = createServerFn().middleware([])\nexport const a = base.handler(() => 1)\nexport const b = base.validator(track()).handler(() => 2)`,
+      { client: false, server: true },
+    ],
+    [
+      'a builder const read before its declaration',
+      `export const a = base.handler(() => 1)\nconst base = createServerFn()`,
+      all,
+    ],
+    [
+      'an argument every environment keeps built by a call',
+      `export const fn = createServerFn().middleware([track()]).handler(() => 1)`,
+      all,
+    ],
+    [
+      'a method the kind has not',
+      `export const fn = createIsomorphicFn().handler(() => 1)`,
+      all,
+    ],
+    [
+      'an unknown method',
+      `export const fn = (createServerFn() as any).other(() => 1)`,
+      all,
+    ],
+    [
+      'a factory of no builder',
+      `export const start = createStart(() => ({}))`,
+      all,
+    ],
+    [
+      'a TS namespace shadowing a factory',
+      `namespace N {\n  const createServerFn = () => ({ handler: (f: unknown) => f })\n  export const fn = createServerFn().handler(track())\n}`,
+      all,
+    ],
+    [
+      'a namespace member factory of no builder',
+      `export const start = Toy.createStart(() => ({}))`,
+      all,
+    ],
+    [
+      'a real effect next to a chain',
+      `;(globalThis as any).x = 1\nexport const fn = createServerFn().handler(() => 1)`,
+      all,
+    ],
+    [
+      'top-level await',
+      `const conn = await Promise.resolve(1)\nexport const fn = createServerFn().handler(() => conn)`,
+      all,
+    ],
+  ])('%s', async (_, code, codeEffects) => {
+    const files: Record<string, string> = {
+      '/app/m.ts': head + code + '\n',
+      '/app/track.ts': 'export const track = () => () => 1\n',
+    }
+    const cache = (recognizer?: RecognizerTable) =>
+      new RawFactsCache({
+        readFile: (p) => Promise.resolve(files[p] ?? null),
+        loadVirtual: () => Promise.resolve(null),
+        recognizer,
+      })
+    expect(
+      (await cache(table).get('/app/m.ts', 'client')).targetFacts.codeEffects,
+    ).toEqual(codeEffects)
+    // without the builder links, every chain is a call: an effect
+    expect(
+      (
+        await cache({ ...table, builderLinks: undefined }).get(
+          '/app/m.ts',
+          'client',
+        )
+      ).targetFacts.codeEffects,
+    ).toEqual(all)
+  })
+
+  // What only an erased argument reads goes with it: the client compile
+  // orphans it (an import, a const, a function), so its effects and its
+  // module's evaluation do not count there.
+  const erasedCases = [
+    {
+      name: 'an import only a handler reads',
+      code: `export const fn = createServerFn().handler(async () => track())`,
+      codeEffects: none,
+      erased: { client: ['./track'], server: [] },
+    },
+    {
+      name: 'a schema const only a validator reads',
+      code: `const Input = track()\nexport const fn = createServerFn().validator(Input).handler(() => 1)`,
+      codeEffects: { client: false, server: true },
+      erased: { client: ['./track'], server: [] },
+    },
+    {
+      name: 'a function only a handler reads',
+      code: `function q() { return track() }\nexport const fn = createServerFn().handler(q)`,
+      codeEffects: none,
+      erased: { client: ['./track'], server: [] },
+    },
+    {
+      name: 'a const a kept export also reads',
+      code: `const Input = track()\nexport const v = () => Input\nexport const fn = createServerFn().validator(Input).handler(() => 1)`,
+      codeEffects: all,
+      erased: { client: [], server: [] },
+    },
+    {
+      name: 'an exported const only a validator reads',
+      code: `export const Input = track()\nexport const fn = createServerFn().validator(Input).handler(() => 1)`,
+      codeEffects: all,
+      erased: { client: [], server: [] },
+    },
+    {
+      name: 'an awaited const only a handler reads',
+      code: `const conn = await Promise.resolve(track)\nexport const fn = createServerFn().handler(() => conn)`,
+      codeEffects: all,
+      erased: { client: [], server: [] },
+    },
+    {
+      name: 'an import only a function nothing else reads, read by the handler too',
+      code: `function unused() { return track() }\nexport const fn = createServerFn().handler(async () => 1)`,
+      codeEffects: none,
+      erased: { client: [], server: [] },
+    },
+    {
+      name: 'a cycle of functions only each other reads, one of them read by the handler',
+      code: `function a() { return b() }\nfunction b() { return a() + track() }\nexport const fn = createServerFn().handler(a)`,
+      codeEffects: none,
+      erased: { client: ['./track'], server: [] },
+    },
+    {
+      name: 'an import a dead cycle reads',
+      code: `function a() { return b() }\nfunction b() { return a() + track() }\nexport const fn = createServerFn().handler(async () => 1)`,
+      codeEffects: none,
+      erased: { client: [], server: [] },
+    },
+    {
+      name: 'an argument after the handler (the compile keeps it)',
+      code: `export const fn = (createServerFn() as any).handler(async () => 1, track())`,
+      codeEffects: all,
+      erased: { client: [], server: [] },
+    },
+    {
+      name: 'a link after the handler (a server fn has none)',
+      code: `export const fn = (createServerFn().handler(() => 1) as any).handler(() => 2)`,
+      codeEffects: all,
+      erased: { client: [], server: [] },
+    },
+    {
+      name: 'a link of a const holding a server fn',
+      code: `const f = createServerFn().handler(() => 1)\nexport const g = (f as any).validator((d: unknown) => d)`,
+      codeEffects: all,
+      erased: { client: [], server: [] },
+    },
+    {
+      name: 'an import only a handler reads, the factory imported under another name',
+      code: `import { createServerFn as csf } from 'toy-start'\nexport const fn = csf().handler(async () => track())`,
+      codeEffects: none,
+      erased: { client: ['./track'], server: [] },
+    },
+  ]
+  it.each(erasedCases)('$name', async ({ code, codeEffects, erased }) => {
+    const files: Record<string, string> = {
+      '/app/m.ts': head + code + '\n',
+      '/app/track.ts': 'export const track = () => () => 1\n',
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+      recognizer: table,
+    })
+    const { targetFacts } = await cache.get('/app/m.ts', 'client')
+    expect({
+      codeEffects: targetFacts.codeEffects,
+      erasedImports: targetFacts.erasedImports ?? { client: [], server: [] },
+    }).toEqual({ codeEffects, erasedImports: erased })
+  })
+
+  // Q3 (review of 2026-11-10, F1): raw facts decide what a compile erases
+  // on their own (`erasedBindings`), placement decides it by provenance.
+  // Every import the facts call erased must be one the compile of that
+  // environment drops, or import protection reads no effect where the
+  // compile keeps one.
+  const serverParts: Planner = {
+    name: 'toy-server-fn',
+    tier: 1,
+    gate: () => true,
+    plan(ctx) {
+      const factories = new Set(
+        ctx.analysis.imports
+          .filter((i) => i.specifier === 'toy-start')
+          .flatMap((i) => i.specifiers)
+          .filter((sp) => sp.imported === 'createServerFn')
+          .map((sp) => ctx.symbols.name(sp.local)),
+      )
+      walk(ctx.analysis.file.program, {
+        enter: (n) => {
+          if (
+            n.type !== 'CallExpression' ||
+            n.callee.type !== 'MemberExpression' ||
+            n.callee.property.type !== 'Identifier' ||
+            (n.callee.property.name !== 'handler' &&
+              n.callee.property.name !== 'validator')
+          ) {
+            return
+          }
+          // a link of a chain the module's `createServerFn` starts
+          let root = unwrapExpression(n.callee.object)
+          while (
+            root.type === 'CallExpression' &&
+            root.callee.type === 'MemberExpression'
+          ) {
+            root = unwrapExpression(root.callee.object)
+          }
+          if (
+            root.type !== 'CallExpression' ||
+            root.callee.type !== 'Identifier' ||
+            !factories.has(root.callee.name)
+          ) {
+            return
+          }
+          for (const arg of n.arguments) {
+            ctx.rewrites.edit({
+              range: { start: arg.start, end: arg.end },
+              body: [{ k: 'text', parts: ['undefined'] }],
+              by: 'toy-server-fn',
+            })
+          }
+        },
+      })
+    },
+  }
+  it.each(erasedCases)(
+    '$name: the client compile drops every import the facts call erased',
+    async ({ code }) => {
+      const host = new MemoryHost({
+        files: {
+          '/app/m.ts': head + code + '\n',
+          '/app/track.ts': 'export const track = () => () => 1\n',
+        },
+        recognizer: table,
+      })
+      const { targetFacts } = await host.rawFacts.get('/app/m.ts', 'client')
+      const out = await host.compile('/app/m.ts', [serverParts], {
+        env: envInfo({ type: 'client', name: 'client' }),
+      })
+      const imported = new Set(
+        [...out!.code.matchAll(/from '([^']+)'/g)].map((m) => m[1]!),
+      )
+      for (const specifier of targetFacts.erasedImports?.client ?? []) {
+        expect(imported.has(specifier), specifier).toBe(false)
+      }
+    },
+  )
+})
+
+describe('target facts: lazy imports', () => {
+  it('lists the literal specifiers of import() and require() apart from the evaluation edges', async () => {
+    const files: Record<string, string> = {
+      '/app/a.ts': `import { b } from './b'
+export const load = () => import('./panel')
+export const other = () => import(/* webpackChunkName: "x" */ './other')
+export const dyn = (name: string) => import(name)
+export const cjs = () => require('./legacy')
+export const value = b
+`,
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    const facts = await cache.get('/app/a.ts', 'client')
+    expect(facts.targetFacts.imports).toEqual(['./b'])
+    expect(facts.targetFacts.lazyImports).toEqual([
+      './panel',
+      './other',
+      './legacy',
+    ])
+  })
+})
+
+describe('facts of a file that stops parsing', () => {
+  it('keeps the last facts the file parsed to, until it parses again', async () => {
+    const files: Record<string, string> = {
+      '/app/a.ts': 'export const a = 1\n',
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    const parsed = await cache.get('/app/a.ts', 'client')
+    expect(parsed.targetFacts.exportNames).toEqual(['a'])
+    // the file is saved half-written: it does not parse
+    files['/app/a.ts'] = 'export const a = 1\nconst = ;\n'
+    cache.markStale('/app/a.ts')
+    const broken = await cache.get('/app/a.ts', 'client')
+    expect(broken.targetFacts.digest).toBe(parsed.targetFacts.digest)
+    expect(summaryDigest(broken.summary!)).toBe(summaryDigest(parsed.summary!))
+    expect(cache.stats(false)).toMatchObject({ rawFactsStale: 0 })
+    // parsing again with other exports: the facts follow the file
+    files['/app/a.ts'] = 'export const b = 1\n'
+    cache.markStale('/app/a.ts')
+    const fixed = await cache.get('/app/a.ts', 'client')
+    expect(fixed.targetFacts.exportNames).toEqual(['b'])
+    expect(fixed.targetFacts.digest).not.toBe(parsed.targetFacts.digest)
+  })
+
+  it('a file that never parsed has unknown facts', async () => {
+    const cache = new RawFactsCache({
+      readFile: () => Promise.resolve('const = ;\n'),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    const facts = await cache.get('/app/a.ts', 'client')
+    expect(facts.summary).toBeNull()
+    expect(facts.targetFacts.esm).toBe(false)
+  })
+})
+
+describe('facts of a file saved in place (truncated, then written)', () => {
+  it('reads the written text when the write comes a moment after the truncation', async () => {
+    const files: Record<string, string> = {
+      '/app/a.ts': 'export const a = 1\n',
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    await cache.get('/app/a.ts', 'client')
+    // the watcher reports the truncation; the write follows
+    files['/app/a.ts'] = ''
+    cache.markStale('/app/a.ts')
+    const read = cache.get('/app/a.ts', 'client')
+    setTimeout(() => {
+      files['/app/a.ts'] = 'export const b = 1\n'
+    }, 15)
+    expect((await read).targetFacts.exportNames).toEqual(['b'])
+  })
+
+  it('reads an empty module once a file that held one stays empty', async () => {
+    const files: Record<string, string> = {
+      '/app/a.ts': 'export const a = 1\n',
+    }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+    })
+    await cache.get('/app/a.ts', 'client')
+    files['/app/a.ts'] = ''
+    cache.markStale('/app/a.ts')
+    const emptied = await cache.get('/app/a.ts', 'client')
+    files['/app/b.ts'] = ''
+    const empty = await cache.get('/app/b.ts', 'client')
+    expect(emptied.targetFacts.exportNames).toEqual([])
+    expect(emptied.targetFacts.digest).toBe(empty.targetFacts.digest)
+  })
+
+  it('reads the marker of the written text, or none once the file stays empty', async () => {
+    const marked = `import '@tanstack/react-start/server-only'\nexport const a = 1\n`
+    const files: Record<string, string> = { '/app/a.ts': marked }
+    const cache = new RawFactsCache({
+      readFile: (p) => Promise.resolve(files[p] ?? null),
+      loadVirtual: () => Promise.resolve(null),
+      markerSpecifiers: {
+        '@tanstack/react-start/server-only': 'server-only',
+      },
+    })
+    expect(await cache.marker('/app/a.ts', 'client')).toBe('server-only')
+    // the file event asks the marker while the file is empty
+    files['/app/a.ts'] = ''
+    cache.markStale('/app/a.ts')
+    const saved = cache.marker('/app/a.ts', 'client')
+    setTimeout(() => {
+      files['/app/a.ts'] = `${marked}export const b = 2\n`
+    }, 15)
+    expect(await saved).toBe('server-only')
+    files['/app/a.ts'] = ''
+    cache.markStale('/app/a.ts')
+    expect(await cache.marker('/app/a.ts', 'client')).toBeNull()
+  })
+})

@@ -5,15 +5,12 @@
 **/coverage
 **/dist
 pnpm-lock.yaml
-**/snapshots
 **/.vercel
 **/.output
 **/node_modules
 node_modules
 
 **/test-results
-**/tests/generator/file-modification/routes/(test)/*
-**/tests/generator/**/routeTree*.snapshot.ts
 /.nx/workspace-data
 **/src/routeTree.gen.ts
 packages/router-plugin/tests/**/test-files/**

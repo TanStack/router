@@ -3,7 +3,9 @@ import type { ModifyRspackConfigFn, Rspack } from '@rsbuild/core'
 
 type RspackConfig = Parameters<ModifyRspackConfigFn>[0]
 type RspackRule = Rspack.RuleSetRule
-type Falsy = false | 0 | '' | null | undefined
+type RspackUseItem = Rspack.RuleSetUseItem
+/** A `use` item that names a loader (Rspack skips falsy items). */
+type RspackLoader = Exclude<RspackUseItem, false | '' | 0 | null | undefined>
 
 /**
  * Walk the rspack config's module.rules and inject
@@ -22,26 +24,20 @@ export function enableSwcReactServerComponents(
   const isRspackRule = (
     rule: NonNullable<RspackConfig['module']['rules']>[number],
   ): rule is RspackRule => !!rule && rule !== '...'
-  const getRuleLoaders = (rule: RspackRule) => {
+  const getRuleLoaders = (rule: RspackRule): Array<RspackLoader> => {
     const { use } = rule
-    if (!use) {
+    if (!use || typeof use === 'function') {
       return []
     }
 
-    const loaders =
-      typeof use === 'function' ? [] : Array.isArray(use) ? use : [use]
-    // Rspack allows falsy entries in `use` for conditionally disabled loaders.
-    return loaders.filter(
-      (loader): loader is Exclude<typeof loader, Falsy> => !!loader,
+    return (Array.isArray(use) ? use : [use]).filter(
+      (loader): loader is RspackLoader => !!loader,
     )
   }
-  const getLoaderPath = (
-    loader: ReturnType<typeof getRuleLoaders>[number],
-  ): string | undefined => (typeof loader === 'string' ? loader : loader.loader)
-  const cloneLoader = (
-    loader: ReturnType<typeof getRuleLoaders>[number],
-  ): ReturnType<typeof getRuleLoaders>[number] => {
-    if (typeof loader === 'string') {
+  const getLoaderPath = (loader: RspackLoader): string | undefined =>
+    typeof loader === 'string' ? loader : loader.loader
+  const cloneLoader = (loader: RspackUseItem): RspackUseItem => {
+    if (!loader || typeof loader === 'string') {
       return loader
     }
 
@@ -72,9 +68,7 @@ export function enableSwcReactServerComponents(
     }
 
     if (Array.isArray(use)) {
-      return use.map((loader) =>
-        loader ? cloneLoader(loader) : loader,
-      ) as RspackRule['use']
+      return use.map((loader) => cloneLoader(loader)) as RspackRule['use']
     }
 
     return cloneLoader(use) as RspackRule['use']

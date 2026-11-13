@@ -1,8 +1,18 @@
 import * as React from 'react'
 import { isModuleNotFoundError } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
+import { lazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import { reactUse } from './utils'
+import type { LazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import type { AsyncRouteComponent } from './route'
+
+// eslint-disable-next-line prefer-const -- Must be `let` to prevent bundler constant-folding
+let USE_SYNC_EXTERNAL_STORE = 'useSyncExternalStore'
+
+type ReactLazyRouteComponentHot = LazyRouteComponentHot & {
+  subscribe: (listener: () => void) => () => void
+  getVersion: () => number
+}
 
 /**
  * Wrap a dynamic import to create a route component that supports
@@ -29,8 +39,15 @@ export function lazyRouteComponent<
   const load = () => {
     if (!loadPromise) {
       error = undefined
-      loadPromise = importer()
-        .then((res) => {
+      const promise = (loadPromise = importer()
+        .then((res): any => {
+          // A hot update replaced this load: settle with the newer one.
+          if (
+            process.env.NODE_ENV !== 'production' &&
+            loadPromise !== promise
+          ) {
+            return loadPromise
+          }
           // Resolved clients have no preload work; SSR can reuse the import.
           if (!(isServer ?? typeof window === 'undefined')) {
             loadPromise = undefined
@@ -38,18 +55,41 @@ export function lazyRouteComponent<
           }
           comp = res[exportName ?? 'default']
         })
-        .catch((err) => {
+        .catch((err): any => {
+          if (
+            process.env.NODE_ENV !== 'production' &&
+            loadPromise !== promise
+          ) {
+            return loadPromise
+          }
           loadPromise = undefined
           // We don't want an error thrown from preload in this case, because
           // there's nothing we want to do about module not found during preload.
           // Record the error, the rest is handled during the render path.
           error = err
-        })
+        }))
     }
 
     return loadPromise
   }
   const lazyComp = function Lazy(props: any) {
+    if (process.env.NODE_ENV !== 'production') {
+      const hot: ReactLazyRouteComponentHot | undefined = (lazyComp as any)
+        .__tsrHot
+      if (hot) {
+        // The slot exists on the client only and never changes, so the hook
+        // order is stable. A hot swap re-renders through this subscription.
+        // (looked up by a dynamic key, as `reactUse` is: React's
+        // react-server build has no `useSyncExternalStore`, and webpack and
+        // Rspack refuse a static read of a missing export in the RSC layer)
+        ;(React as any)[USE_SYNC_EXTERNAL_STORE](
+          hot.subscribe,
+          hot.getVersion,
+          hot.getVersion,
+        )
+      }
+    }
+
     if (error) {
       // A missing module can mean that a newer deployment replaced the URL.
       // Reload only for the error that is still current at render time, so a
@@ -82,6 +122,43 @@ export function lazyRouteComponent<
   }
 
   ;(lazyComp as any).preload = load
+
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    !(isServer ?? typeof window === 'undefined')
+  ) {
+    let version = 0
+    const listeners = new Set<() => void>()
+    ;(lazyComp as any).__tsrHot = lazyRouteComponentHot(
+      importer,
+      exportName as string | undefined,
+      {
+        retarget: (nextImporter, nextExportName) => {
+          importer = nextImporter as () => Promise<T>
+          exportName = nextExportName as TKey | undefined
+          return comp !== undefined || loadPromise !== undefined || !!error
+        },
+        pending: () => loadPromise,
+        setPending: (promise) => {
+          loadPromise = promise
+        },
+        held: () => comp,
+        settle: (next, nextError) => {
+          comp = next
+          error = nextError
+          version++
+          listeners.forEach((listener) => listener())
+        },
+      },
+      {
+        subscribe: (listener: () => void) => {
+          listeners.add(listener)
+          return () => listeners.delete(listener)
+        },
+        getVersion: () => version,
+      },
+    )
+  }
 
   return lazyComp as any
 }

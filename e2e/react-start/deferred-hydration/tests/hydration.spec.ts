@@ -1,6 +1,5 @@
 import { expect } from '@playwright/test'
 import { createHmrFileEditor, test } from '@tanstack/router-e2e-utils'
-import crypto from 'node:crypto'
 import path from 'node:path'
 import type { APIRequestContext, Page } from '@playwright/test'
 
@@ -30,36 +29,49 @@ const componentsRouteEditor = createHmrFileEditor({
   normalizeSource: (_fileKey, source) => normalizeComponentsRouteSource(source),
 })
 
-function getVisibleHydrateVirtualPath() {
-  const normalizedSourcePath = path
-    .relative(process.cwd(), componentsRouteFile)
-    .replaceAll('\\', '/')
-  const sourceHash = crypto
-    .createHash('sha1')
-    .update(normalizedSourcePath)
-    .digest('hex')
-    .slice(0, 10)
-  const params = new URLSearchParams()
-  params.set('tss-hydrate', `0_${sourceHash}`)
+const componentsRouteUrl = `/${path
+  .relative(process.cwd(), componentsRouteFile)
+  .replaceAll('\\', '/')}`
 
-  return `${componentsRouteFile}?${params.toString()}`
+// Which dev modules (split chunks, Hydrate children, shared chunks) hold the
+// edited code is compiler-internal, so follow the route's own derived
+// modules from the route module instead of guessing an id
+async function readComponentsRouteDevModules(request: APIRequestContext) {
+  const pending = [componentsRouteUrl]
+  const seen = new Set(pending)
+  const texts: Array<string> = []
+  while (pending.length > 0) {
+    const url = pending.shift()!
+    const response = await request.get(url)
+    const text = await response.text()
+    if (!response.ok()) {
+      throw new Error(`${response.status()} ${url}: ${text.slice(0, 240)}`)
+    }
+    texts.push(text)
+    for (const match of text.matchAll(
+      /["'](\/[^"'?]*\/routes\/components\.tsx\?[^"']+)["']/g,
+    )) {
+      const next = match[1]!
+      if (!seen.has(next)) {
+        seen.add(next)
+        pending.push(next)
+      }
+    }
+  }
+  return texts
 }
 
 async function waitForVisibleHydrateVirtualModule(page: Page, marker: string) {
-  const virtualPath = getVisibleHydrateVirtualPath()
-
   await expect
     .poll(
       async () => {
         try {
-          const response = await page.request.get(virtualPath)
-          const text = await response.text()
-
-          if (response.ok() && text.includes(marker)) {
+          const texts = await readComponentsRouteDevModules(page.request)
+          if (texts.some((text) => text.includes(marker))) {
             return 'ready'
           }
 
-          return `${response.status()} ${text.slice(0, 240)}`
+          return `marker not found in ${texts.length} modules`
         } catch (error) {
           return String(error)
         }

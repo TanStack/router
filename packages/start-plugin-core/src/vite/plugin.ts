@@ -1,6 +1,7 @@
 import { realpathSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { crawlFrameworkPkgs } from 'vitefu'
+import { createRouterPluginContext } from '@tanstack/router-plugin/context'
 import {
   applyResolvedBaseAndOutput,
   applyResolvedRouterBasepath,
@@ -12,14 +13,15 @@ import {
   normalizePublicBase,
   shouldRewriteDevBasepath,
 } from '../planning'
-import { importProtectionPlugin } from './import-protection-plugin/plugin'
-import { startCompilerPlugin } from './start-compiler-plugin/plugin'
+import { startCompilerPlugin } from './compiler-plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
 import {
   buildStartViteEnvironments,
+  composeOnwarn,
   createViteConfigPlan,
   createViteDefineConfig,
   createViteResolvedEntryAliases,
+  isStartPackage,
 } from './planning'
 import { devServerPlugin } from './dev-server-plugin/plugin'
 import { previewServerPlugin } from './preview-server-plugin/plugin'
@@ -37,6 +39,9 @@ import {
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
 import { serializationAdaptersPlugin } from './serialization-adapters-plugin'
+import { ViteCompilerState } from './compiler-state'
+import type { ViteStartEnvironment } from './compiler-state'
+import type { OnwarnLike } from './planning'
 import type {
   TanStackStartVitePluginCoreOptions,
   ViteRscForwardSsrResolverStrategy,
@@ -56,18 +61,15 @@ export function tanStackStartVite(
     parseConfig: parseStartConfig,
   })
   const { getConfig, resolvedStartConfig } = configContext
+  // the generator's registry, read by the compiler's router planner
+  const routerPluginContext = createRouterPluginContext()
   const serverFnProviderEnv = corePluginOpts.providerEnvironmentName
-  const ssrIsProvider = corePluginOpts.ssrIsProvider
 
   // When the router basepath and vite base are misaligned during dev,
   // we install a URL rewrite middleware instead of erroring.
   let needsDevBaseRewrite = false
 
-  const environments: Array<{
-    name: string
-    type: 'client' | 'server'
-    getServerFnById?: string
-  }> = [
+  const environments: Array<ViteStartEnvironment> = [
     { name: START_ENVIRONMENT_NAMES.client, type: 'client' },
     {
       name: START_ENVIRONMENT_NAMES.server,
@@ -87,6 +89,18 @@ export function tanStackStartVite(
       type: 'server',
     })
   }
+  // the compiler's state of each run (its sessions), shared with the start
+  // manifest: the client build the server embeds
+  const compiler = new ViteCompilerState({
+    framework: corePluginOpts.framework,
+    environments,
+    generateFunctionId: normalizedStartPluginOpts.serverFns?.generateFunctionId,
+    rsc: corePluginOpts.rsc,
+    providerEnvName: serverFnProviderEnv,
+    getConfig,
+    routerPluginContext,
+    resolveEntries: () => configContext.resolveEntries(),
+  })
   return [
     {
       name: 'tanstack-start-core:config',
@@ -135,12 +149,20 @@ export function tanStackStartVite(
         const startPackageName =
           `@tanstack/${corePluginOpts.framework}-start` as const
 
-        // crawl packages that have start in "peerDependencies"
+        // crawl packages that use Start: Start in "peerDependencies", or in
+        // "dependencies" (Start's own packages aside: `resolve.noExternal`
+        // bundles them already). The server bundles them (`ssr.noExternal`):
+        // the compiler must transform their Start APIs, which Node would
+        // load uncompiled.
         // see https://github.com/svitejs/vitefu/blob/d8d82fa121e3b2215ba437107093c77bde51b63b/src/index.js#L95-L101
 
         // this is currently uncached; could be implemented similarly as vite handles lock file changes
         // see https://github.com/vitejs/vite/blob/557f797d29422027e8c451ca50dd84bf8c41b5f0/packages/vite/src/node/optimizer/index.ts#L1282
 
+        const namesStart = (deps: unknown) =>
+          typeof deps === 'object' &&
+          deps !== null &&
+          (startPackageName in deps || '@tanstack/start-client-core' in deps)
         const crawlFrameworkPkgsResult = await crawlFrameworkPkgs({
           // (the configured root, which can be relative: resolved as Vite does,
           // then physical, as Vite resolves the app's imports from there)
@@ -149,18 +171,11 @@ export function tanStackStartVite(
           ),
           isBuild: command === 'build',
           isFrameworkPkgByJson(pkgJson) {
-            const peerDependencies = pkgJson['peerDependencies']
-
-            if (peerDependencies) {
-              if (
-                startPackageName in peerDependencies ||
-                '@tanstack/start-client-core' in peerDependencies
-              ) {
-                return true
-              }
-            }
-
-            return false
+            return (
+              namesStart(pkgJson['peerDependencies']) ||
+              (namesStart(pkgJson['dependencies']) &&
+                !isStartPackage(pkgJson['name']))
+            )
           },
         })
 
@@ -182,6 +197,16 @@ export function tanStackStartVite(
           appType: viteConfig.appType ?? 'custom',
           environments: viteConfigPlan.environments,
           resolve: viteConfigPlan.resolve,
+          build: {
+            rolldownOptions: {
+              // the server-fn resolver's lazy imports are no chunking mistake
+              onwarn: composeOnwarn(
+                viteConfig.build?.rolldownOptions?.onwarn as
+                  | OnwarnLike
+                  | undefined,
+              ),
+            },
+          },
           define: createViteDefineConfig({
             command,
             mode: viteConfig.mode,
@@ -204,10 +229,37 @@ export function tanStackStartVite(
               await buildStartViteEnvironments({
                 builder,
                 providerEnvironmentName: serverFnProviderEnv,
-                ssrIsProvider,
+                followWatcher: (environment, watcher) =>
+                  compiler.followWatcher(environment, watcher),
               })
             },
           },
+        }
+      },
+      configResolved(config) {
+        // Both plugins are `pre`, so the app's order decides: listed first,
+        // vite-plugin-solid's dev transform wraps every component for its
+        // hot updates before Start's compiler reads the route module, and
+        // the dev client keeps route components out of the split the server
+        // makes (a hydration mismatch). React's and Vue's plugins transform
+        // after Start's in either order.
+        if (corePluginOpts.framework !== 'solid') {
+          return
+        }
+        const solidIndex = config.plugins.findIndex((p) => p.name === 'solid')
+        const startIndex = config.plugins.findIndex(
+          (p) => p.name === 'tanstack-start-core:config',
+        )
+        if (solidIndex !== -1 && solidIndex < startIndex) {
+          throw new Error(
+            `[tanstack-start] Plugin order error: 'vite-plugin-solid' is placed before '@tanstack/solid-start'.\n\n` +
+              `The TanStack Start plugin must come BEFORE vite-plugin-solid.\n\n` +
+              `Please update your Vite config:\n\n` +
+              `  plugins: [\n` +
+              `    tanstackStart(),\n` +
+              `    solid({ ssr: true }),\n` +
+              `  ]\n`,
+          )
         }
       },
     },
@@ -215,29 +267,16 @@ export function tanStackStartVite(
       getConfig,
       postServerBuild,
     }),
-    // Server function plugin handles:
-    // 1. Identifying createServerFn().handler() calls
-    // 2. Extracting server functions to separate modules
-    // 3. Replacing call sites with RPC stubs
-    // 4. Generating the server function manifest
-    // Also handles createIsomorphicFn, createServerOnlyFn, createClientOnlyFn, createMiddleware
-    startCompilerPlugin({
-      framework: corePluginOpts.framework,
-      environments,
-      generateFunctionId:
-        normalizedStartPluginOpts.serverFns?.generateFunctionId,
-      compilerTransforms: corePluginOpts.compilerTransforms,
-      serverFnProviderModuleDirectives:
-        corePluginOpts.serverFnProviderModuleDirectives,
-      providerEnvName: serverFnProviderEnv,
-    }),
-    importProtectionPlugin({
+    // The compiler: one compile per (environment, module) running Start's
+    // environment separation, server functions, <Hydrate>, RSC CSS, the
+    // router's splitting and HMR, and import protection
+    startCompilerPlugin(compiler),
+    tanStackStartRouter(
+      normalizedStartPluginOpts,
       getConfig,
-      framework: corePluginOpts.framework,
-      environments,
-      providerEnvName: serverFnProviderEnv,
-    }),
-    tanStackStartRouter(normalizedStartPluginOpts, getConfig, corePluginOpts),
+      corePluginOpts,
+      routerPluginContext,
+    ),
     loadEnvPlugin(),
     createDevClientEntryPlugin({
       framework: corePluginOpts.framework,
@@ -245,6 +284,8 @@ export function tanStackStartVite(
     }),
     startManifestPlugin({
       getConfig,
+      // the client build of each run, which the server embeds
+      clientBuilds: compiler,
     }),
     // When the vite base and router basepath are misaligned (e.g. base: '/_ui/', basepath: '/'),
     // install a middleware that rewrites incoming request URLs to prepend the vite base prefix.

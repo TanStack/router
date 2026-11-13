@@ -1,2 +1,3 @@
-// @ts-nocheck
-export const Route = createFileRoute()
+import { createRootRoute } from '@tanstack/react-router'
+
+export const Route = createRootRoute()

@@ -61,6 +61,8 @@ Generates the routes for a project based on the provided configuration.
 tsr generate
 ```
 
+When the route tree cannot be generated (a route file that does not parse, two route files for one route, two routes with one path), `tsr generate` exits with an error naming the files and leaves the route tree on disk as it was. A build with the bundler plugins fails the same way.
+
 ## Using the `watch` command
 
 Continuously watches the specified directories and regenerates routes as needed.
@@ -70,6 +72,8 @@ Continuously watches the specified directories and regenerates routes as needed.
 ```sh
 tsr watch
 ```
+
+In watch mode, and in the dev servers of the bundler plugins, such an error is printed and the route tree keeps its last good version until the files are fixed.
 
 With file-based routing enabled, whenever you start your application in development mode, TanStack Router will watch your configured `routesDirectory` and generate your route tree whenever a file is added, removed, or changed.
 

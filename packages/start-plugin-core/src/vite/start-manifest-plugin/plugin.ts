@@ -1,6 +1,6 @@
 import { joinURL } from 'ufo'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
-import { rootRouteId } from '@tanstack/router-core'
+import { rootRouteId } from '@tanstack/router-core/tooling'
 import { DEV_CLIENT_ENTRY, START_ENVIRONMENT_NAMES } from '../../constants'
 import {
   buildStartManifest,
@@ -8,7 +8,8 @@ import {
 } from '../../start-manifest-plugin/manifestBuilder'
 import { createVirtualModule } from '../createVirtualModule'
 import { normalizeViteClientBuild } from './normalized-client-build'
-import type { GetConfigFn, NormalizedClientBuild } from '../../types'
+import type { ClientBuilds, ClientManifest } from '../compiler-state'
+import type { GetConfigFn } from '../../types'
 import type { PluginOption, Rollup } from 'vite'
 
 type StartManifestEnvironment = {
@@ -20,9 +21,12 @@ type StartManifestEnvironment = {
 
 export function startManifestPlugin(opts: {
   getConfig: GetConfigFn
+  /**
+   * The client build of each run (the compiler's sessions): the capture
+   * publishes it, the server's manifest module embeds it.
+   */
+  clientBuilds: ClientBuilds
 }): PluginOption {
-  let clientBuild: NormalizedClientBuild | undefined
-  let cssCodeSplitDisabledFileName: string | undefined
   let devClientRuntime: string | undefined
 
   return [
@@ -46,15 +50,16 @@ export function startManifestPlugin(opts: {
             `Unexpected environment for client build capture: ${this.environment.name}`,
           )
         }
-
-        clientBuild = normalizeViteClientBuild(
-          bundle,
-          opts.getConfig().startConfig.server.build.inlineCss.enabled,
-        )
-        cssCodeSplitDisabledFileName = getAssetFileNameByName(
-          bundle,
-          'style.css',
-        )
+        opts.clientBuilds.publishClientBuild(this.environment, {
+          clientBuild: normalizeViteClientBuild(
+            bundle,
+            opts.getConfig().startConfig.server.build.inlineCss.enabled,
+          ),
+          cssCodeSplitDisabledFileName: getAssetFileNameByName(
+            bundle,
+            'style.css',
+          ),
+        })
       },
     },
     createVirtualModule({
@@ -62,7 +67,7 @@ export function startManifestPlugin(opts: {
       moduleId: VIRTUAL_MODULES.startManifest,
       enforce: 'pre',
       load() {
-        const { resolvedStartConfig, startConfig } = opts.getConfig()
+        const { resolvedStartConfig } = opts.getConfig()
         const clientEntry = getDevClientEntry({
           basePath: resolvedStartConfig.basePaths.publicBase,
           bundledDev: isClientBundledDev(this.environment),
@@ -76,29 +81,44 @@ export function startManifestPlugin(opts: {
           return getEmptyStartManifestModule(clientEntry, devClientRuntime)
         }
 
-        const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
-        // TODO this needs further discussion with vite-rsc, this is a temporary workaround
-        // If the client bundle isn't available yet (e.g., during RSC scan builds),
-        // return a dummy manifest. The real manifest will be generated in the actual build.
-        if (!clientBuild) {
-          return getEmptyStartManifestModule(clientEntry)
-        }
-        const startManifest = buildStartManifest({
-          clientBuild,
-          routeTreeRoutes,
-          basePath: resolvedStartConfig.basePaths.publicBase,
-          inlineCss: startConfig.server.build.inlineCss,
-          additionalRouteAssets: getViteAdditionalRouteAssets({
-            cssCodeSplitDisabledFileName,
-            basePath: resolvedStartConfig.basePaths.publicBase,
-            cssCodeSplit: this.environment.config.build.cssCodeSplit,
-          }),
-        })
-
-        return `export const tsrStartManifest = () => (${serializeStartManifest(startManifest)})`
+        const environment = this.environment
+        return opts.clientBuilds
+          .embedClientBuild(this)
+          .then((record) =>
+            manifestModule(environment, clientEntry, record?.manifest),
+          )
       },
     }),
   ]
+
+  function manifestModule(
+    environment: { config: { build: { cssCodeSplit?: boolean } } },
+    clientEntry: string,
+    manifest: ClientManifest | undefined,
+  ) {
+    const { resolvedStartConfig, startConfig } = opts.getConfig()
+    const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
+    // TODO this needs further discussion with vite-rsc, this is a temporary workaround
+    // If the client bundle isn't available yet (e.g., during RSC scan builds),
+    // return a dummy manifest. The real manifest will be generated in the actual build.
+    if (!manifest) {
+      return getEmptyStartManifestModule(clientEntry)
+    }
+    const { clientBuild, cssCodeSplitDisabledFileName } = manifest
+    const startManifest = buildStartManifest({
+      clientBuild,
+      routeTreeRoutes,
+      basePath: resolvedStartConfig.basePaths.publicBase,
+      inlineCss: startConfig.server.build.inlineCss,
+      additionalRouteAssets: getViteAdditionalRouteAssets({
+        cssCodeSplitDisabledFileName,
+        basePath: resolvedStartConfig.basePaths.publicBase,
+        cssCodeSplit: environment.config.build.cssCodeSplit,
+      }),
+    })
+
+    return `export const tsrStartManifest = () => (${serializeStartManifest(startManifest)})`
+  }
 }
 
 function getViteAdditionalRouteAssets(options: {

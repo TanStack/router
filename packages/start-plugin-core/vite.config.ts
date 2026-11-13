@@ -1,37 +1,181 @@
+import { existsSync } from 'node:fs'
+import path from 'node:path'
+import os from 'node:os'
+import { fileURLToPath } from 'node:url'
 import { configDefaults, defineConfig, mergeConfig } from 'vitest/config'
+import type { TestProjectInlineConfiguration } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
 import packageJson from './package.json'
+// Main's tests of features that are not compilers (Start manifest, sitemap,
+// prerender, config schema, entries, build output, dev styles), at main's
+// paths and unchanged: `test:noncompiler` runs them; the compiler test
+// projects and ESLint leave them out. Paths relative to `tests/`.
+import noncompilerTests from './tests/noncompiler-tests.json' with { type: 'json' }
 
-/** The build output (`dist`) of this package and `@tanstack/react-start`. */
-const builtStartPackages =
-  /\/packages\/(?:start-plugin-core|react-start)\/dist\//
+/**
+ * Slow-tier tests that read process-global state (the compiler's stats knob,
+ * `TSR_COMPILER_STATS`; the self-checks switch, `TSR_COMPILER_VERIFY`, read
+ * once when the compiler loads): each runs in a process of its own (project
+ * `integration-alone`), as a state an earlier file left in a shared process
+ * would count too (Vite 8 keeps the plugins of every finished build and
+ * closed server, and so their Start sessions, alive: Rolldown's native
+ * plugins hold Vite's callbacks strongly, and those reach the plugins again).
+ */
+const aloneTests = [
+  'integration/start-build-environment-release.test.ts',
+  'integration/start-build-compile-scope.test.ts',
+  'integration/start-dev-cache-dir.test.ts',
+  'integration/start-build-split-wrapped-values-unchecked.test.ts',
+  'integration/start-build-server-code-check-unchecked.test.ts',
+  'integration/start-build-extracted-export-server-fn-unchecked.test.ts',
+  'integration/rsbuild/dev-created-deleted-stats.test.ts',
+]
+
+/** This package's build output (`dist`), as its `exports` name it. */
+const builtPackage = new RegExp(
+  `^${path.join(path.dirname(fileURLToPath(import.meta.url)), 'dist').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`,
+)
+
+/**
+ * The slow-tier files the other platforms run (`test:integration:smoke`,
+ * `.github/workflows/compiler-platforms.yml`): whole files, so a test
+ * renamed inside one stays in the set. Paths relative to `tests/`; a file
+ * renamed or deleted fails every Vitest run until this list names it again.
+ */
+const smokeTests = [
+  'integration/importProtection/build.test.ts',
+  'integration/start-compose-project-path.test.ts',
+  'integration/start-build-unparsed-module.test.ts',
+  // dev on macOS and Windows (phase 6 decision): a file removed and written
+  // back on an Rsbuild dev server, and file events through Vite's dev
+  // server (this list runs without a browser: the page test of the latter
+  // is `start-dev-freshness-page.test.ts`)
+  'integration/rsbuild/dev-file-back.test.ts',
+  'integration/start-dev-freshness.test.ts',
+]
+if (process.env.VITEST) {
+  const testsDir = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    'tests',
+  )
+  for (const file of smokeTests) {
+    if (!existsSync(path.join(testsDir, file))) {
+      throw new Error(
+        `vite.config.ts: the smoke test file tests/${file} does not exist; update \`smokeTests\``,
+      )
+    }
+  }
+}
+
+/** The slow tier (`test:integration`): real builds, Rsbuild dev servers, child Node runs and browsers. */
+const integrationProject = {
+  extends: true,
+  test: {
+    name: 'integration',
+    // A test process keeps its modules (and its browser) across test
+    // files; the setup file gives each file the environment it
+    // started with (see `test-scope-setup`)
+    isolate: false,
+    include: ['integration/**/*.test.ts'],
+    exclude: [...configDefaults.exclude, 'integration/pages/**', ...aloneTests],
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
+    // The tests import this package's built public entries
+    // (`@tanstack/start-plugin-core/vite`, `/rsbuild`): Node loads
+    // them, as it loads an installed package, so the plugin and the
+    // loaders Rspack loads from the same `dist` share one module
+    // instance.
+    server: { deps: { external: [builtPackage] } },
+  },
+} satisfies TestProjectInlineConfiguration
 
 const config = defineConfig({
   test: {
     name: packageJson.name,
     dir: './tests',
     watch: false,
+    // At most 4 test processes per Vitest run (measured), fewer on a small
+    // machine (half its logical CPUs, at least one): each runs real bundlers,
+    // dev servers and its own browser. Nx runs this tier alone on its machine
+    // (`parallelism: false` in package.json), but more workers still add swap
+    // and load flakes, not speed, and on a CI agent with 2 or 4 CPUs four of
+    // them time out. `--maxWorkers` on the command line still overrides it.
+    maxWorkers: Math.min(
+      4,
+      Math.max(1, Math.floor(os.availableParallelism() / 2)),
+    ),
+    reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
+    globalSetup: ['@tanstack/compiler-test-utils/run-directory'],
+    setupFiles: [
+      '@tanstack/compiler-test-utils/test-scope-setup',
+      '@tanstack/compiler-test-utils/pins-setup',
+    ],
     projects: [
       {
-        // `test:unit`
         extends: true,
         test: {
-          name: 'unit',
-          exclude: [...configDefaults.exclude, 'integration/**'],
+          name: 'noncompiler',
+          include: noncompilerTests,
           typecheck: { enabled: true },
         },
       },
       {
-        // `test:integration`: real builds and dev servers of Start apps
-        // (`tests/integration/start-app.ts`), with the built Start packages.
-        // Node loads them, as it loads an installed package, so the plugin
-        // and the loaders Rspack loads from the same `dist` share one module
-        // instance.
+        // Fast tier (`test:unit`): compiles and evaluates in process; a Vite
+        // dev server in middleware mode is allowed.
         extends: true,
         test: {
-          name: 'integration',
-          include: ['integration/**/*.test.ts'],
-          server: { deps: { external: [builtStartPackages] } },
+          name: 'unit',
+          // A test process keeps its browser and the hosts a file gives
+          // back for later files (`useStartHost`; see `start-host.ts`)
+          isolate: false,
+          exclude: [
+            ...configDefaults.exclude,
+            'integration/**',
+            ...noncompilerTests,
+          ],
+          typecheck: { enabled: true },
+        },
+      },
+      integrationProject,
+      {
+        // `smokeTests` alone, as the slow tier runs them
+        ...integrationProject,
+        test: {
+          ...integrationProject.test,
+          name: 'integration-smoke',
+          include: smokeTests,
+          exclude: [...configDefaults.exclude],
+        },
+      },
+      {
+        // Slow tier too (`test:integration` runs it): `aloneTests`, each
+        // file in a new process (`isolate: true`).
+        extends: true,
+        test: {
+          name: 'integration-alone',
+          include: aloneTests,
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
+          server: { deps: { external: [builtPackage] } },
+        },
+      },
+      {
+        // Slow tier too (`test:integration` runs both projects): `<Hydrate>`
+        // cases rendered and hydrated in pages of the Start host
+        // (`render.ts`), as the fast tier runs them, whose cost does not fit
+        // the fast tier. The tests of a file run concurrently: each
+        // case has its own directory of the file's host, and each page run
+        // holds one of the host's pages alone (`start-host.ts`). A test
+        // process keeps its browser and the hosts a file gives back for
+        // later files (`isolate: false`).
+        extends: true,
+        test: {
+          name: 'integration-pages',
+          include: ['integration/pages/**/*.test.ts'],
+          sequence: { concurrent: true },
+          isolate: false,
+          testTimeout: 30_000,
+          hookTimeout: 60_000,
         },
       },
     ],
@@ -48,8 +192,8 @@ export default mergeConfig(
       './src/vite/index.ts',
       './src/rsbuild/index.ts',
       './src/rsbuild/types.ts',
-      './src/rsbuild/import-protection-loader.ts',
-      './src/rsbuild/start-compiler-metadata-loader.ts',
+      './src/rsbuild/compiler-loader.ts',
+      './src/rsbuild/asset-query-loader.ts',
     ],
     srcDir: './src',
     outDir: './dist',
