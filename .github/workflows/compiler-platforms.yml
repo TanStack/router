@@ -7,8 +7,11 @@ name: Compiler Platforms
 # (test:integration:smoke: real Vite, Rspack, webpack and Rsbuild builds,
 # including apps under paths with `#`, `%`, spaces and non-ASCII characters,
 # modules the compiler cannot parse, and the split-module ids and import
-# specifiers apps' chunk naming reads, one module per route file) and a Vite and Rsbuild production
-# build on the other platforms we ship to. The rest of the slow tier
+# specifiers apps' chunk naming reads, one module per route file, and an
+# Rsbuild dev server's file removal and return) and a Vite and Rsbuild
+# production build on the other platforms we ship to; on Linux arm64 the two
+# builds again with the compiler's self-checks off (users' mode), under the
+# app's e2e spec. The rest of the slow tier
 # (test:integration) runs on Linux x64 in the main PR workflow.
 #
 # Chromium: Playwright's own build on the glibc platforms; Alpine (musl) has
@@ -143,5 +146,17 @@ jobs:
           TSR_COMPILER_VERIFY: '1'
         run: >-
           pnpm nx run-many --targets=build:vite:ssr,build:rsbuild:ssr
+          --projects=tanstack-react-start-e2e-basic
+          --skip-nx-cache --outputStyle=static
+      - name: Production builds in users' mode, with the e2e spec
+        # The same two builds as users run the compiler (self-checks off: a
+        # violated internal invariant warns instead of throwing) and the PR
+        # workflow's Playwright spec of the app against them. One platform:
+        # the mode does not depend on it (about 4 min).
+        if: ${{ matrix.os == 'ubuntu-24.04-arm' }}
+        env:
+          TSR_COMPILER_VERIFY: '0'
+        run: >-
+          pnpm nx run-many --targets=test:e2e--vite-ssr,test:e2e--rsbuild-ssr
           --projects=tanstack-react-start-e2e-basic
           --skip-nx-cache --outputStyle=static
