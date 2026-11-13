@@ -128,9 +128,30 @@ export function createRouterGeneratorPlugin(
           printed ??= new Set()
         }
         initConfigAndGenerator({ root: config.root })
-        await (config.command === 'build' && !config.build.watch
-          ? session.build()
-          : session.run())
+        if (config.command !== 'build') {
+          await session.run()
+        } else if (
+          config.build.watch ||
+          Object.values(config.environments).some(
+            (environment) => environment.build.watch,
+          )
+        ) {
+          // An environment of the build watches (its own `build.watch`, or
+          // the top level's it inherits). Rolldown's and Rollup's watchers
+          // report the files of the bundle only (`watchChange`): route files
+          // created, or outside the bundle, come from the generator's own
+          // watcher, whose route tree makes the build compile again. Its
+          // first run generates the tree. (A plugin object passed inline
+          // generates in each resolution: the new generator gets a new
+          // watcher.)
+          await session.close()
+          await session.watch()
+        } else {
+          await session.build()
+        }
+      },
+      closeWatcher() {
+        void session.close()
       },
       configureServer(server) {
         // Vite's watcher reports the files under its root (watchChange);

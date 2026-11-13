@@ -340,7 +340,9 @@ export interface StartBuildOptions {
    * applies these app file edits (`null` deletes a file) once the first
    * build is done, and describes the rebuild they cause (its errors
    * reject; what the first build reported is `StartBuild.firstBuild`).
-   * Vite: the edits are files the builds' watchers report. A list of steps
+   * Vite: each edit is a file the builds' watchers report, or one a build
+   * that began after the edit bundles (a file no build held, e.g. a route
+   * file created: the route tree imports it). A list of steps
    * applies each in turn and describes the rebuilds of the last one: an
    * earlier step's builds may fail.
    */
@@ -1125,7 +1127,8 @@ async function buildWithVite(
  * environment's watcher reported a file (`watchChange`: an edited file, or
  * any other file it watches, e.g. one a plugin wrote meanwhile). The edits
  * written since the last settle are settled once every edited file was
- * reported, every environment that reported a file ended such a build, the
+ * reported or bundled by a build that began after it was written (a file
+ * no build held, which no watcher reports), every environment that reported a file ended such a build, the
  * environments the step rebuilds by cause did (`WatchStep.rebuilds`: what
  * each environment's builds emit tells which builds moved its output), and
  * no watcher reported anything, began or ended a build for `quietMs` (a
@@ -1152,8 +1155,10 @@ function trackViteWatch() {
   }
   const environments = new Map<string, EnvironmentBuilds>()
   const watchers: Array<Rolldown.RolldownWatcher> = []
-  /** The files edited since the last settle (absolute) and whether a watcher reported each. */
+  /** The files edited since the last settle (absolute) and whether a watcher reported each, or a build read it. */
   let edited = new Map<string, boolean>()
+  /** When the last edits were written (`performance.now()`). */
+  let writtenAt = 0
   /** The environments that read a file since the last settle. */
   const readers = new Set<EnvironmentBuilds>()
   /** When a watcher last reported a file, or began or ended a build. */
@@ -1237,6 +1242,18 @@ function trackViteWatch() {
       state.owed = false
       state.began = lastActivity = performance.now()
     },
+    buildEnd() {
+      if (builds(this.environment.name).began < writtenAt) {
+        return
+      }
+      for (const id of this.getModuleIds()) {
+        const file = path.resolve(id.split('?')[0]!)
+        if (edited.get(file) === false) {
+          edited.set(file, true)
+          changed()
+        }
+      }
+    },
     writeBundle(_options, bundle) {
       const state = builds(this.environment.name)
       const hash = createHash('sha1')
@@ -1282,6 +1299,7 @@ function trackViteWatch() {
           await writeFile(absolute, content)
         }
       }
+      writtenAt = performance.now()
     },
     /**
      * Waits until the edits written since the last settle are settled
