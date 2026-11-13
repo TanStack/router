@@ -536,7 +536,13 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     // (a link on a `const` holding a writing builder is a member write of
     // it: R139, `linkedBuilder`)
     const kind = writeKind(ref)
-    if (kind === null || !declMember.has(ref.sym)) {
+    // (a member write through a local name writes only what it may hold:
+    // `function set(o) { o.v = 1 }` with `set(cfg)`, `objectsWrittenBy`)
+    const own = declMember.has(ref.sym)
+    if (
+      kind === null ||
+      (!own && (kind !== 'member' || t1.symbols.isModuleLevel(ref.sym)))
+    ) {
       continue
     }
     const owner = evaluationAt(ref.range)
@@ -553,10 +559,12 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
       augment: false,
       member: kind === 'member',
     }
-    addWrite(row)
+    if (own) {
+      addWrite(row)
+    }
     // a member write through a name that may hold other bindings' objects
-    // writes each of them (`alias.v = 1`, `holder.c.v = 1`: the mutation
-    // model's `objectsWrittenBy`)
+    // writes each of them (`alias.v = 1`, `holder.c.v = 1`, `o.v = 1` in
+    // `function set(o)`: the mutation model's `objectsWrittenBy`)
     if (kind === 'member' && ref.kind === 'value') {
       for (const s of t1.mutation.objectsWrittenBy(ref)) {
         if (declMember.has(s)) {

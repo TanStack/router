@@ -204,6 +204,13 @@ extends Z`, directly or through what they carry) share the module of the first i
   declaration does not create its value (`const alias = cfg; alias.v = 1`, `let cur = cfg`) or through a nested
   member (`holder.c.v = 1`, `holder[0].push(x)`) writes whatever that value may hold: it is a write of each of
   those bindings too (`cfg`), ordered against every read of them and joining their cluster when it runs at load.
+  A local name holds what its value comes from (`localValue`): its initialiser and assignments, the elements a
+  `for…of` loop runs over, the module's thrown values for a `catch` parameter, and for a parameter its default and
+  the arguments of the calls that may reach its function (`handedTo`: a callee naming a value that holds it,
+  `set(cfg)`, `api.set(cfg)`, `set.call(null, cfg)`, `new Store().apply(cfg)`; for a call it is handed to,
+  `[cfg].forEach(fn)`, the call's other arguments and receiver). So `function set(o) { o.v = 1 }` with `set(cfg)`
+  writes `cfg` when it runs; it writes only the argument's own object when every argument creates one
+  (`set({ ...cfg })`). A write through `arguments` is not seen (it has no binding).
   One owner answers both sides: the mutation model (`visitValues`, `objectsWrittenBy`). A method nested in an object argument
   (`defineComponent({ setup() {} })`) and a function it only holds (`const api = { getCached }`) run nothing, and a
   function declaration evaluates nothing. A claimed
@@ -225,7 +232,11 @@ extends Z`, directly or through what they carry) share the module of the first i
   with the first chunk importing it once nothing imports it through the route file); an option value that reads
   one is kept in place (`ordered-effect`), unless that write is only its output's code (a function only that
   output holds) and the binding is confined there, the rule for an option value's writes at load (it evaluates in
-  that output, and nothing else anywhere touches it). A write only an evaluation's own text makes (a function it
+  that output, and nothing else anywhere touches it). A member write in a function of the module that an
+  evaluation calls when it loads (`component: withLog(Page)`, `withLog` pushing to `hits`; what that body calls too;
+  not a function only handed to a call) is that evaluation's write at load (`ran`), judged as one written inline:
+  the option value stays unless the binding goes with it, and a declaration making it may take a lazy slot only
+  where that binding evaluates (an assignment there joins the binding's cluster already). A write only an evaluation's own text makes (a function it
   passes to a call: `memo(function Page() { didInit = true })`, in an option value or a declaration alike), of a
   binding nothing else touches when the module loads, pins neither: it runs only through what that evaluation
   returns, never before it (`ownLate`). An effectful,
