@@ -902,6 +902,14 @@ describe("an extracted export's module is a destination", () => {
     expect(kept[1]!.message).toContain(
       '`l4` in /app/route.tsx stays in the route module because the statement on line 6, which uses it, stays there: it also uses `Ex2`, which the split `component` uses',
     )
+    // the move takes the statement writing `l4` when the module loads (left
+    // behind, it would assign an import)
+    expect(kept[0]!.message).toContain(
+      '; move `Ex2`, `l4`, that statement and the statements writing them when the module loads to their own module, so `Ex2` can load',
+    )
+    expect(kept[1]!.message).toContain(
+      '; move `l4`, `Ex2`, that statement and the statements writing them when the module loads to their own module, so `l4` can load',
+    )
   })
 
   it('keeps all of it in the route module as written in dev', async () => {
@@ -8629,6 +8637,32 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     )
     expect(f.diagnostics).toEqual([])
     expect(f.env).not.toContain('own')
+  })
+
+  // the move takes what the binding reads when the module loads: left in
+  // the route module, the new module (which the route module imports to
+  // re-export the export) would import it back, a cycle
+  it('code that runs later changing an export reading another binding when the module loads', async () => {
+    const statement = "Sentry.setContext('flags', flags)"
+    const options = 'component: () => { flags.base = 1; return flags }'
+    const code = route(
+      `const prefix = { p: 'x' }\nexport const flags = { beta: false, p: prefix.p }\n${statement}`,
+      options,
+    )
+    const r = await report(code, undefined, {}, true)
+    written(r, code, 'flags', statement, 'code that runs later changes it too')
+    expect(r.diagnostics[0]!.message).toContain(
+      '; move `flags`, `prefix` and the statements using them when the module loads to their own module, so `flags` can load',
+    )
+    const f = await report(
+      route("import { flags } from './flags'\nexport { flags }", options),
+      undefined,
+      {
+        '/app/flags.ts': `import * as Sentry from '@sentry/react'\nconst prefix = { p: 'x' }\nexport const flags = { beta: false, p: prefix.p }\n${statement}\n`,
+      },
+      true,
+    )
+    expect(f.diagnostics).toEqual([])
   })
 
   // an import a statement changes is no declaration of the module: the
