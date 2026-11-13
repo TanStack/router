@@ -72,7 +72,7 @@ CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle
 - In router-plugin and start-plugin-core, Nx's `test:integration` runs the tier as shards
   (`test:integration--shard-<i>-of-<n>`, Vitest `--shard`), one after another on a machine and spread over CI's agents;
   each shard is cached on its own. `test:integration:whole` runs the tier in one Vitest run: use it for a file filter
-  (`-- tests/integration/foo.test.ts`; `test:integration` ignores arguments) and for budget measurements.
+  (`-- tests/integration/foo.test.ts`; `test:integration` ignores arguments) and for per-file time measurements.
 - Slow tier: at most two `test:integration` runs on the machine at once:
   `until [ "$(pgrep -fc '[v]itest --project integration')" -lt 2 ]; do sleep 30; done`. A whole-oracle run takes the
   machine: start it when none runs (`-lt 1`).
@@ -90,18 +90,18 @@ CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle
 
 ## Budgets
 
-`test-budgets.json`: per package and tier, a target and a hard limit at 4 workers; 15 s per slow-tier file; 10 s from
-edit to result for one fast-tier file. `src/budget-reporter.ts` reports after every run. To enforce, run a whole tier
-on a quiet machine (1-minute load below 4, no other test run):
+`test-budgets.json`: 15 s per slow-tier file and 10 s from edit to result for one fast-tier file, at 4 workers. Whole
+tiers have no budget: CI's shard times are the number that costs (a file over 15 s is what makes a shard uneven).
+`src/budget-reporter.ts` reports after every run (each tier's time, the slowest slow-tier file). To enforce the limits,
+run on a quiet machine (1-minute load below 4, no other test run):
 
 ```sh
 COMPILER_TEST_BUDGETS=strict CI=1 NX_DAEMON=false pnpm nx run <project>:test:integration:whole --outputStyle=stream --skipRemoteCache --skip-nx-cache
 ```
 
-(`test:integration:whole` where the package has CI shards, `test:integration` elsewhere; a shard is a partial run, which
-gets no tier budget.) A run with a failed test or file is not a measurement. A tier over budget is fixed (shared hosts,
-bounded pages, moving page tests to `integration-pages`), not re-budgeted or sharded: the CI shards cut CI's wall time
-and never count as a measurement.
+(`test:integration:whole` where the package has CI shards, `test:integration` elsewhere.) A run with a failed test or
+file is not a measurement. A file over the limit is fixed (shared hosts, bounded pages, moving page tests to
+`integration-pages`, or split by test into files of its own), not exempted.
 
 ## Setup facts
 
