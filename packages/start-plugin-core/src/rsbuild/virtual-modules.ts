@@ -292,6 +292,7 @@ export function registerVirtualModules(
   let clientBuild: NormalizedClientBuild | undefined
   let lastDevManifestContent: string | undefined
   let devManifestWriteCount = 0
+  let devManifestRoutes: typeof globalThis.TSS_ROUTES_MANIFEST | undefined
   const lastResolverContentByEnvironment: Record<string, string | undefined> =
     {}
   const resolverWriteCountByEnvironment: Record<string, number> = {}
@@ -580,11 +581,19 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
     },
 
     updateManifest(newClientBuild: NormalizedClientBuild) {
+      if (
+        isDev &&
+        newClientBuild === clientBuild &&
+        globalThis.TSS_ROUTES_MANIFEST === devManifestRoutes
+      ) {
+        return
+      }
       clientBuild = newClientBuild
       if (!isDev) {
         return
       }
 
+      devManifestRoutes = globalThis.TSS_ROUTES_MANIFEST
       // Safe to call getConfig() here — runs after client build
       const { resolvedStartConfig } = opts.getConfig()
       const content = `export const tsrStartManifest = () => (${serializeStartManifestData(
