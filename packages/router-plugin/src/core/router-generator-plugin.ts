@@ -27,6 +27,8 @@ export function createRouterGeneratorPlugin(
   let watchOutsideRoot: (() => void) | undefined
   /** Rspack/webpack watch mode: the generator's own watcher reports every route file event. */
   let watching = false
+  /** Vite: the config resolution under way was given this plugin (its `config` ran). */
+  let submitted = false
   const session = createGeneratorSession({
     generator: () => generator,
     publish: (routesByFile, failure) => {
@@ -84,7 +86,21 @@ export function createRouterGeneratorPlugin(
       watchOutsideRoot?.()
     },
     vite: {
+      config() {
+        submitted = true
+      },
       async configResolved(config) {
+        if (config.command === 'build' && !submitted) {
+          // Vite shared this plugin into an environment's config resolution
+          // of the same build (`builder.sharedPlugins`): it ran `config` on
+          // the plugins that resolution was given (the config file's new
+          // ones), then swapped in the top-level ones. The top-level
+          // resolution generated the tree: same root and options, no file
+          // event in between. A plugin object passed inline is given to
+          // every resolution, and generates in each.
+          return
+        }
+        submitted = false
         initConfigAndGenerator({ root: config.root })
         await (config.command === 'build' && !config.build.watch
           ? session.build()
