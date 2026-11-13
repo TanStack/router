@@ -219,6 +219,7 @@ function computeDynamicImports(chunk: RspackCompilationChunk): Array<string> {
 function computeStaticDependencyChunks(
   compilation: RspackCompilation,
   chunk: RspackCompilationChunk,
+  chunksOfModule: (module: RspackModule) => Array<RspackCompilationChunk>,
 ): Array<RspackCompilationChunk> {
   const importedChunks: Array<RspackCompilationChunk> = []
   const seen = new Set<RspackCompilationChunk>([chunk])
@@ -258,20 +259,28 @@ function computeStaticDependencyChunks(
   }
   availableChunks ??= new Set()
 
+  // Every connection to a module adds the same chunks, so a module counts
+  // once, from its first active connection (an inactive one adds nothing and
+  // leaves the module to a later active one).
+  const counted = new Set<RspackModule>()
   for (const module of modules) {
     for (const dependency of module.dependencies) {
       const connection = compilation.moduleGraph.getConnection(dependency)
       const importedModule = connection?.module
-      if (!connection || !importedModule || localModules.has(importedModule)) {
+      if (
+        !connection ||
+        !importedModule ||
+        localModules.has(importedModule) ||
+        counted.has(importedModule)
+      ) {
         continue
       }
       if (connection.getActiveState(runtime) === false) {
         continue
       }
+      counted.add(importedModule)
 
-      for (const importedChunk of compilation.chunkGraph.getModuleChunksIterable(
-        importedModule,
-      )) {
+      for (const importedChunk of chunksOfModule(importedModule)) {
         if (availableChunks.has(importedChunk) && !seen.has(importedChunk)) {
           seen.add(importedChunk)
           importedChunks.push(importedChunk)
@@ -290,17 +299,34 @@ type GetStaticDependencyChunks = (
 /**
  * Memoize static dependency resolution per chunk. Every chunk is resolved once
  * for its own `imports`, and CSS-only chunks are resolved again from each
- * importer that reaches them.
+ * importer that reaches them. A module's chunks are read once, for every chunk
+ * that imports it. Both memos live as long as the resolver, which is created
+ * per normalized compilation.
  */
 function createStaticDependencyChunkResolver(
   compilation: RspackCompilation,
 ): GetStaticDependencyChunks {
   const cache = new Map<RspackCompilationChunk, Array<RspackCompilationChunk>>()
+  const moduleChunks = new Map<RspackModule, Array<RspackCompilationChunk>>()
+  const chunksOfModule = (module: RspackModule) => {
+    let chunks = moduleChunks.get(module)
+    if (!chunks) {
+      chunks = Array.from(
+        compilation.chunkGraph.getModuleChunksIterable(module),
+      )
+      moduleChunks.set(module, chunks)
+    }
+    return chunks
+  }
 
   return (chunk) => {
     let importedChunks = cache.get(chunk)
     if (!importedChunks) {
-      importedChunks = computeStaticDependencyChunks(compilation, chunk)
+      importedChunks = computeStaticDependencyChunks(
+        compilation,
+        chunk,
+        chunksOfModule,
+      )
       cache.set(chunk, importedChunks)
     }
     return importedChunks
