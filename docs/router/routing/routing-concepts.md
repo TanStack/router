@@ -336,6 +336,8 @@ Layout routes are used to wrap child routes with additional components and logic
 - Providing shared context to all child routes
 - And more!
 
+> **Note:** A layout route's component must render `<Outlet />` for its child routes to appear. If you scaffold route files with the CLI — for example `posts.tsx` alongside `posts/$postId.tsx` — the generated component renders a page by default. Add `<Outlet />` inside it so child routes like `/posts/$postId` can render.
+
 Let's take a look at an example layout route called `app.tsx`:
 
 ```
