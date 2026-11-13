@@ -1,5 +1,6 @@
 export { createStartHandler } from './createStartHandler'
 export type { CreateStartHandlerOptions } from './createStartHandler'
+export type { RenderTraceContext, RequestTraceContext } from './tracing'
 
 export type {
   TransformAssets,
