@@ -291,11 +291,10 @@ export function eventTable(
   }
 
   /*
-   * What no round changes of `c`'s evaluation, walked once per cluster,
-   * up to the first touch of a binding written outside it at an unknown
-   * time (V, which ends the walk): the first one a write at load after it
-   * orders (O's reader); and per written binding, its first and last
-   * touch.
+   * What no round changes of `c`'s evaluation, walked once per cluster:
+   * its first touch of a binding written outside it at an unknown time
+   * (V); before it, the first one a write at load after it orders (O's
+   * reader); and per written binding, its first and last touch.
    */
   interface Facts {
     late: Pin | null
@@ -330,12 +329,16 @@ export function eventTable(
       }
       lastSpan!.first = Math.min(lastSpan!.first, t.at)
       lastSpan!.last = Math.max(lastSpan!.last, t.at)
+      // (the walk goes on past V: a cluster V pins may still take the slot
+      // its later writers run in, recheck ruling C, and O then compares
+      // every span with the writes at load: round tools class A)
+      if (found.late !== null) {
+        return false
+      }
       const w = graph.lateWrite(t.sym, c)
       if (w !== undefined && !ownLate(c, t.sym)) {
-        // V ends the walk: such a cluster takes no slot, so nothing asks
-        // the rest of its spans
         found.late = statePin(c, t, w)
-        return true
+        return false
       }
       if (found.later === null) {
         const l = graph.laterWrite(t.sym, t.at, c)

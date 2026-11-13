@@ -85,9 +85,9 @@ export function settleRoots(
   const movable = new Set<ClusterId>()
   /** The slots of the last round: where each cluster leaving the env module evaluates (`solveSlots`). */
   const slots = new Map<ClusterId, OutputId>()
-  /** Where a cluster evaluates for O: its slot, an extracted candidate's module, else in the env module (it stays there, or homes place it: judged as staying). */
+  /** Where a cluster evaluates for O: its slot, an extracted candidate's module or the one it is a member of, else in the env module (it stays there, or homes place it: judged as staying). */
   const slotOf = (d: ClusterId): OutputId =>
-    slots.get(d) ?? remaining.get(d)?.output ?? 'env'
+    slots.get(d) ?? remaining.get(d)?.output ?? members.get(d) ?? 'env'
   const pins = new Map<ClusterId, Pin>()
   const needs = (c: ClusterId) => derivedNeeds(input, derivedReach, c)
   /** T against the current roots: `c` reads at its evaluation what the env module keeps. */
@@ -389,8 +389,10 @@ export function settleRoots(
   }
   /**
    * Keeps follower `c` in the env module, recording why for the report
-   * (`kept.ts`): a `written` pin as is, V's (code that runs later writes
-   * what it uses) as `written` with that write's position.
+   * (`kept.ts`): a `written` pin as is, O's (a write at load it is ordered
+   * against evaluates elsewhere) as `written` naming that binding and the
+   * output the write evaluates in, V's (code that runs later writes what it
+   * uses) as `written` with that write's position.
    */
   const keepFollower = (c: ClusterId, pin: Pin): void => {
     envRoots.add(c)
@@ -399,6 +401,30 @@ export function settleRoots(
     } else if (pin.reason === 'state' && pin.other !== undefined) {
       const sym = pin.binding
       const d = sym === undefined ? undefined : graph.clusterOfSym.get(sym)
+      // O: the write at load it is ordered against evaluates in another
+      // output, which it would read out of order: it uses that binding
+      // there
+      const at = pin.other.at
+      const load =
+        sym === undefined
+          ? undefined
+          : graph.writesOfSym.get(sym)?.find((w) => w.at === at && w.eager)
+      if (load !== undefined) {
+        const wc =
+          load.owner === null
+            ? undefined
+            : graph.clusterOfRegion.get(load.owner)
+        const where = wc === undefined ? 'env' : slotOf(wc)
+        seeds.stayPins.set(
+          c,
+          stayPin(
+            c,
+            d === undefined || d === c ? null : d,
+            where === 'env' ? undefined : where,
+          ),
+        )
+        return
+      }
       // the later write another statement makes, if one does (a function
       // the statement itself hands to a call is its own)
       const other =
@@ -1055,6 +1081,32 @@ export function settleRoots(
     }
     solveSlots()
     let changed = false
+    // a member reading, at load, what a write at load in another output
+    // changes (O: in the route module or a chunk, which its module may
+    // evaluate before; in another extracted module it imports, which
+    // evaluates first, after the read in the source: round tools class B)
+    // stays, judged on this round's slots, an env root from then on; a
+    // follower with the binding it uses there (no module serves both,
+    // class C)
+    for (const [m, to] of members) {
+      const pin = events.writeConflict(m, to, slotOf)
+      if (pin === undefined) {
+        continue
+      }
+      members.delete(m)
+      pinned.delete(m)
+      derivedRoots.get(to)?.delete(m)
+      if (followers.has(m)) {
+        keepFollower(m, pin)
+      } else {
+        envRoots.add(m)
+        if (needs(m)) {
+          pinnedNeeded.set(m, pin)
+        }
+      }
+      derivedStale = true
+      changed = true
+    }
     // a joined follower one of whose bindings came to stay stays with it
     for (const [c, to] of joined) {
       const d = followed(c).find(
