@@ -8,6 +8,7 @@
 import {
   existsSync,
   lstatSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   rmSync,
@@ -902,28 +903,62 @@ export { label } from './client-only'
   )
 
   // A sandbox whose temporary directory does not exist (or isn't usable):
-  // the build goes on, as without a watch.
+  // the build goes on, as without a watch, and its warning says what the
+  // server's documents may name then and how to fix it. A client plugin
+  // whose `watchChange` takes its time: the client's build of a save both
+  // environments bundle starts after the server's build embedded the
+  // client build, and only the client-build file rebuilds the server.
   // Source: design 3 final review, finding 1 (resolving the missing
-  // directory threw in a server module's `load`: the server's build failed).
+  // directory threw in a server module's `load`: the server's build
+  // failed); CI flake of 2026-11-13 (the warning offered a save of a file
+  // the server bundles as the fix: when the client's build of that save
+  // started after the server's, the document kept the client's older files).
   test(
-    'a temporary directory that does not exist: the watch build succeeds and a save rebuilds both environments',
+    'a temporary directory that does not exist: the watch build succeeds and warns, a save rebuilds both environments; with the directory made, the server follows the client',
     async () => {
-      const missing = path.join(runDirectory(), 'no-such-tmpdir')
-      const build = await withTemporaryDirectory(missing, () =>
+      const slowClient: Plugin = {
+        name: 'test:slow-client-watch-change',
+        async watchChange() {
+          if (this.environment.name === 'client') {
+            await new Promise((resolve) => setTimeout(resolve, 500))
+          }
+        },
+      }
+      const save = () =>
         buildStart({
           bundler: 'vite',
           files: pageApp,
           entry: pageEntry,
+          viteConfig: { plugins: [slowClient] },
           watchEdits: { 'src/routes/index.tsx': index('MARK_EDIT') },
-        }),
+        })
+      const missing = path.join(
+        mkdtempSync(path.join(runDirectory(), 'tmpdir-')),
+        'missing',
       )
+      const build = await withTemporaryDirectory(missing, save)
       expect(
         build.firstBuild.filter(({ severity }) => severity === 'error'),
       ).toEqual([])
+      const warnings = build.firstBuild.filter(({ text }) =>
+        text.includes(missing),
+      )
+      expect(warnings.map(({ severity }) => severity)).toEqual(['warning'])
+      expect(warnings[0]!.text).toContain(
+        `After a save, the server's documents may keep naming the client's older files: always for a file only the client bundles, and for a file both bundle when the client's build of it starts after the server's. Make sure ${missing} exists and is writable, or set TMPDIR to a writable directory, and restart the watch build.`,
+      )
       expect(build.client.where('MARK_EDIT')).not.toBe('nowhere')
-      const { html } = await documentOf(build)
-      expect(html).toContain('MARK_EDIT')
-      await expectLastClientBuild(build)
+      expect((await documentOf(build)).html).toContain('MARK_EDIT')
+
+      // the warning's fix: the directory made, the watch build restarted
+      mkdirSync(missing)
+      const fixed = await withTemporaryDirectory(missing, save)
+      expect(
+        fixed.firstBuild.filter(({ text }) => text.includes(missing)),
+      ).toEqual([])
+      expect(fixed.client.where('MARK_EDIT')).not.toBe('nowhere')
+      expect((await documentOf(fixed)).html).toContain('MARK_EDIT')
+      await expectLastClientBuild(fixed)
     },
     timeout,
   )

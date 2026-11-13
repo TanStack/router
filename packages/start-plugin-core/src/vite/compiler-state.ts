@@ -207,8 +207,10 @@ export function inputMapOf(
  * that no `build.watch.exclude` of the app's directories hides it from the
  * server's watcher (Rolldown applies the filter to the files a `load` adds);
  * a `build.watch.include` takes it in (`watchesSentinel`). Null: the
- * temporary directory is unusable (warned): a client-only save leaves the
- * server's build as it is.
+ * temporary directory is unusable (warned): no client build rebuilds the
+ * server. A save only the client bundles leaves the server's build as it is,
+ * and so does one both bundle when the server's build embeds before the
+ * client's build of it began (`clientBuilding` is not set yet).
  */
 function makeSentinel(digest: string, environment: Environment): string | null {
   try {
@@ -222,7 +224,7 @@ function makeSentinel(digest: string, environment: Environment): string | null {
     return sentinel
   } catch (error) {
     environment.logger.warn(
-      `[tanstack-start] a save of a file only the client bundles will not rebuild the server: making a directory in ${tmpdir()} failed (${String(error)}). Save a file the server bundles to rebuild it.`,
+      `[tanstack-start] the server build will not follow the client's builds: making a directory in ${tmpdir()} failed (${String(error)}). After a save, the server's documents may keep naming the client's older files: always for a file only the client bundles, and for a file both bundle when the client's build of it starts after the server's. Make sure ${tmpdir()} exists and is writable, or set TMPDIR to a writable directory, and restart the watch build.`,
     )
     return null
   }
@@ -838,7 +840,7 @@ function writeSentinel(
     writeFileSync(sentinel, digest)
   } catch (error) {
     environment.logger.warn(
-      `[tanstack-start] the server build may embed an older client build: writing ${sentinel} failed (${String(error)}). Save a file the server bundles to rebuild it.`,
+      `[tanstack-start] the server build no longer follows the client's builds: writing ${sentinel} failed (${String(error)}). The server's documents may keep naming the client's older files; restart the watch build.`,
     )
   }
 }
