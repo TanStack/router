@@ -10,7 +10,11 @@ import {
 } from '../../src/rsbuild/normalized-client-build'
 import { buildStartManifest } from '../../src/start-manifest-plugin/manifestBuilder'
 import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
-import type { GetConfigFn, NormalizedClientBuild } from '../../src/types'
+import type {
+  GetConfigFn,
+  NormalizedClientBuild,
+  NormalizedClientChunk,
+} from '../../src/types'
 
 async function buildClientFixture(
   files: Record<string, string>,
@@ -121,30 +125,267 @@ function makeWindowsCompilation(readCss: () => string | Uint8Array) {
     { name: 'root.css', source: { source: readCss } },
     { name: 'posts.css', source: { source: readCss } },
   ]
+  const routeModule = {
+    dependencies: [],
+    identifier: () =>
+      'builtin:swc-loader??ruleSet[0]!C:\\app\\src\\routes\\posts.tsx?tsr-split=component',
+    nameForCondition: () => 'C:\\app\\src\\routes\\posts.tsx',
+  }
   const compilation = {
     entrypoints: new Map([['index', { chunks: [entryChunk] }]]),
     chunks: new Set([entryChunk, routeChunk]),
+    modules: new Set([routeModule]),
     moduleGraph: { getConnection: () => undefined },
     chunkGraph: {
       getModuleChunksIterable: () => [],
       getChunkModules: (chunk: unknown) =>
-        chunk === routeChunk
-          ? [
-              {
-                dependencies: [],
-                identifier: () =>
-                  'builtin:swc-loader??ruleSet[0]!C:\\app\\src\\routes\\posts.tsx?tsr-split=component',
-                nameForCondition: () => 'C:\\app\\src\\routes\\posts.tsx',
-              },
-            ]
-          : [],
+        chunk === routeChunk ? [routeModule] : [],
+      getModuleChunks: (module: unknown) =>
+        module === routeModule ? [routeChunk] : [],
     },
     getAssets,
   } as unknown as Rspack.Compilation
   return compilation
 }
 
+type MockChunk = {
+  name: string
+  files: Set<string>
+  auxiliaryFiles: Set<string>
+  groupsIterable: Set<MockChunkGroup>
+  runtime: Set<string>
+}
+type MockChunkGroup = {
+  chunks: Array<MockChunk>
+  childrenIterable: Set<MockChunkGroup>
+  getParents: () => Array<MockChunkGroup>
+}
+
+// The entry group lazy-loads the posts and about routes, which share a chunk.
+// The posts route lazy-loads the post route, which contains a hydration island.
+function makeChunkGraph() {
+  const chunk = (
+    name: string,
+    files: Array<string>,
+    auxiliaryFiles: Array<string> = [],
+  ): MockChunk => ({
+    name,
+    files: new Set(files),
+    auxiliaryFiles: new Set(auxiliaryFiles),
+    groupsIterable: new Set(),
+    runtime: new Set(['index']),
+  })
+  const group = (
+    chunks: Array<MockChunk>,
+    children: Array<MockChunkGroup> = [],
+  ): MockChunkGroup => {
+    const chunkGroup = {
+      chunks,
+      childrenIterable: new Set(children),
+      getParents: () => [],
+    }
+    for (const member of chunks) {
+      member.groupsIterable.add(chunkGroup)
+    }
+    return chunkGroup
+  }
+
+  const index = chunk('index', [
+    'index.js',
+    'index.abc123.hot-update.js',
+    'root.css',
+  ])
+  const vendor = chunk('vendor', ['vendor.js'])
+  const shared = chunk('shared', ['shared.js', 'shared.abc123.hot-update.js'])
+  const posts = chunk('posts', ['posts.js'], ['posts.css'])
+  const about = chunk('about', ['about.js'])
+  const post = chunk('post', ['post.js'])
+  const postGroup = group([post])
+  const postsGroup = group([shared, posts], [postGroup])
+  const aboutGroup = group([shared, about])
+  const entryGroup = group([vendor, index], [postsGroup, aboutGroup])
+
+  const sharedDependency = {}
+  const sharedModule = { identifier: () => '/shared.ts', dependencies: [] }
+  const moduleChunks = new Map<object, Array<MockChunk>>([
+    [
+      {
+        identifier: () => '/routes/posts.tsx?tsr-split=component',
+        nameForCondition: () => '/routes/posts.tsx',
+        dependencies: [sharedDependency],
+      },
+      [posts],
+    ],
+    [
+      {
+        identifier: () => '/islands/counter.tsx?tss-hydrate=counter',
+        dependencies: [],
+      },
+      [post],
+    ],
+    [sharedModule, [shared]],
+  ])
+  const getChunkModules = vi.fn((target: MockChunk) =>
+    Array.from(moduleChunks.keys()).filter((mod) =>
+      moduleChunks.get(mod)!.includes(target),
+    ),
+  )
+  const chunks = [index, vendor, shared, posts, about, post]
+  const compilation = {
+    entrypoints: new Map([['index', entryGroup]]),
+    chunks: new Set(chunks),
+    modules: new Set(moduleChunks.keys()),
+    moduleGraph: {
+      getConnection: (dependency: object) =>
+        dependency === sharedDependency
+          ? { module: sharedModule, getActiveState: () => true }
+          : undefined,
+    },
+    chunkGraph: {
+      getChunkModules,
+      getModuleChunks: (mod: object) => moduleChunks.get(mod) ?? [],
+      getModuleChunksIterable: (mod: object) => moduleChunks.get(mod) ?? [],
+    },
+  } as unknown as Rspack.Compilation
+
+  return {
+    compilation,
+    getChunkModules,
+    graphObjects: [...chunks, postGroup, postsGroup, aboutGroup, entryGroup],
+  }
+}
+
+// Counts reads of the chunk and chunk group properties that build a new
+// collection on every read in Rspack. Returns the highest count for any one
+// property of any one object.
+function trackGraphPropertyReads(graphObjects: Array<object>) {
+  let maxReads = 0
+  for (const graphObject of graphObjects) {
+    for (const key of [
+      'files',
+      'auxiliaryFiles',
+      'groupsIterable',
+      'chunks',
+      'childrenIterable',
+    ]) {
+      if (!(key in graphObject)) {
+        continue
+      }
+      const value: unknown = Reflect.get(graphObject, key)
+      let reads = 0
+      Object.defineProperty(graphObject, key, {
+        get() {
+          reads += 1
+          maxReads = Math.max(maxReads, reads)
+          return value
+        },
+      })
+    }
+  }
+  return () => maxReads
+}
+
+function expectedChunk(
+  fileName: string,
+  fields: Partial<NormalizedClientChunk> = {},
+): NormalizedClientChunk {
+  return {
+    fileName,
+    isEntry: false,
+    imports: [],
+    dynamicImports: [],
+    css: [],
+    routeFilePaths: [],
+    hydrationIds: [],
+    ...fields,
+  }
+}
+
 describe('normalizeRspackClientBuild', () => {
+  test('lists static and dynamic imports in first-seen order', () => {
+    const { compilation } = makeChunkGraph()
+    const clientBuild = normalizeRspackClientBuild(compilation)
+    const lazyRoutes = ['shared.js', 'posts.js', 'about.js']
+
+    expect(clientBuild.entryChunkFileName).toBe('index.js')
+    expect(Array.from(clientBuild.chunksByFileName.values())).toEqual([
+      expectedChunk('index.js', {
+        isEntry: true,
+        imports: ['vendor.js'],
+        dynamicImports: lazyRoutes,
+        css: ['root.css'],
+      }),
+      expectedChunk('vendor.js', {
+        dynamicImports: lazyRoutes,
+      }),
+      expectedChunk('shared.js', {
+        dynamicImports: ['post.js'],
+      }),
+      expectedChunk('posts.js', {
+        imports: ['shared.js'],
+        dynamicImports: ['post.js'],
+        css: ['posts.css'],
+        routeFilePaths: ['/routes/posts.tsx'],
+      }),
+      expectedChunk('about.js'),
+      expectedChunk('post.js', { hydrationIds: ['counter'] }),
+    ])
+  })
+
+  test('reads untagged chunk modules only for static dependencies', () => {
+    const { compilation, getChunkModules } = makeChunkGraph()
+    normalizeRspackClientBuild(compilation)
+
+    const reads = new Map<string, number>()
+    for (const [chunk] of getChunkModules.mock.calls) {
+      reads.set(chunk.name, (reads.get(chunk.name) ?? 0) + 1)
+    }
+    expect(reads).toEqual(
+      new Map([
+        ['index', 1],
+        ['vendor', 1],
+        ['shared', 1],
+        ['posts', expect.any(Number)],
+        ['about', 1],
+        ['post', expect.any(Number)],
+      ]),
+    )
+    expect(reads.get('posts')).toBeLessThanOrEqual(2)
+    expect(reads.get('post')).toBeLessThanOrEqual(2)
+  })
+
+  test('reads each chunk and chunk group property at most once', () => {
+    const { compilation, graphObjects } = makeChunkGraph()
+    const maxReads = trackGraphPropertyReads(graphObjects)
+    normalizeRspackClientBuild(compilation)
+
+    // 1, not 0, also confirms the read counters were installed.
+    expect(maxReads()).toBe(1)
+  })
+
+  test('retains route and hydration metadata from concatenated inner modules', async () => {
+    const { clientBuild, directory } = await buildClientFixture(
+      {
+        'index.js': `globalThis.load = () => import(/* webpackChunkName: "wrapper" */ './wrapper.js')`,
+        'wrapper.js': `
+          import { route } from './route.js?tsr-split=component'
+          import { island } from './island.js?tss-hydrate=counter'
+          globalThis.values = [route(), island()]
+        `,
+        'route.js': `export const route = () => Math.random()`,
+        'island.js': `export const island = () => Math.random()`,
+      },
+      { optimization: { concatenateModules: true } },
+    )
+
+    expect(
+      clientBuild.chunksByFileName.get('wrapper.js')?.routeFilePaths,
+    ).toEqual([join(directory, 'route.js')])
+    expect(
+      clientBuild.chunksByFileName.get('wrapper.js')?.hydrationIds,
+    ).toEqual(['counter'])
+  })
+
   test.each(
     ['shared', 'none', 'css-module', 'css-only'].flatMap((extraction) =>
       [false, true].flatMap((concatenateModules) =>
