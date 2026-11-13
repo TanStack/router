@@ -1,9 +1,10 @@
 /**
  * The pattern import that brought a denied file into an environment
  * (`import.meta.glob`, `import.meta.webpackContext`, `require.context`, an
- * `import()` with a variable path): the compiler reads none of them, so a
- * report finds the call in the importer's raw text when it is printed (a rare
- * path: nothing of it is computed while compiling).
+ * `import()` with a variable path), or the `require()` of its path: the
+ * compiler reads none of them, so a report finds the call in the importer's
+ * raw text when it is printed (a rare path: nothing of it is computed while
+ * compiling).
  */
 import path from 'node:path'
 import picomatch from 'picomatch'
@@ -13,6 +14,8 @@ export type PatternImportKind =
   | 'import.meta.webpackContext'
   | 'require.context'
   | 'import()'
+  /** A `require()` of a literal path (no pattern: Rolldown and Rspack bundle it as an import). */
+  | 'require()'
 
 export interface PatternImport {
   kind: PatternImportKind
@@ -24,29 +27,59 @@ export interface PatternImport {
    * (no alias, no `base` option): the patterns a negative pattern extends.
    */
   patterns: Array<string> | null
+  /** `require()`: the path it requires, as written. */
+  specifier?: string
 }
 
 /** A comment or a string literal's comment-free form (`/*…*\/`, `//…`). */
 const COMMENT = String.raw`\/\*[\s\S]*?\*\/`
+/** `name`, or `name` in a TypeScript assertion (`(import.meta as any)`): the bundler reads the stripped code. */
+const asserted = (name: string) =>
+  String.raw`(?:${name}|\(\s*${name}\s*(?:!\s*)?(?:(?:as|satisfies)\s+[^()]*)?\))`
+/** A string literal (its text is group 1 or 2). */
+const LITERAL = String.raw`(?:'([^'\n]*)'|"([^"\n]*)")`
+const PATTERN_SOURCE = [
+  String.raw`${asserted(String.raw`import\.meta`)}\s*\.\s*glob\b`,
+  String.raw`${asserted(String.raw`import\.meta`)}\s*\.\s*webpackContext\s*\(`,
+  String.raw`${asserted('require')}\s*\.\s*context\s*\(`,
+  // an import() whose path has a variable part: a template literal or a concatenation
+  String.raw`import\s*\(\s*(?:${COMMENT}\s*)*(?:\x60|(?:'[^'\n]*'|"[^"\n]*")\s*\+)`,
+].join('|')
+/** The pattern imports, and a require() of a literal path (not a member: `module.require`). */
 const CALL_RE = new RegExp(
-  [
-    String.raw`import\.meta\.glob\b`,
-    String.raw`import\.meta\.webpackContext\s*\(`,
-    String.raw`require\.context\s*\(`,
-    // an import() whose path has a variable part: a template literal or a concatenation
-    String.raw`import\s*\(\s*(?:${COMMENT}\s*)*(?:\x60|(?:'[^'\n]*'|"[^"\n]*")\s*\+)`,
-  ].join('|'),
+  String.raw`${PATTERN_SOURCE}|(?<![.\w$])require\s*\(\s*${LITERAL}\s*\)`,
   'g',
 )
 
 function kindOf(call: string): PatternImportKind {
-  return call.startsWith('import.meta.glob')
+  return /\.\s*glob$/.test(call)
     ? 'import.meta.glob'
-    : call.startsWith('import.meta.webpackContext')
+    : /\.\s*webpackContext\s*\($/.test(call)
       ? 'import.meta.webpackContext'
-      : call.startsWith('require')
+      : /\.\s*context\s*\($/.test(call)
         ? 'require.context'
-        : 'import()'
+        : call.startsWith('import')
+          ? 'import()'
+          : 'require()'
+}
+
+/**
+ * Whether `specifier`, required from `importer`, may be `file`: a relative
+ * path naming it (with or without its extension, or its directory's index);
+ * another (an alias, a package) naming its file name.
+ */
+function mayRequire(specifier: string, importer: string, file: string) {
+  const names = (base: string) => {
+    const rest = file.slice(base.length)
+    return (
+      file.startsWith(base) &&
+      (rest === '' || /^(?:\/index)?\.[^./]+$/.test(rest))
+    )
+  }
+  return /^\.\.?\//.test(specifier)
+    ? names(path.posix.resolve(path.posix.dirname(importer), specifier))
+    : names(`${path.posix.dirname(file)}/${path.posix.basename(specifier)}`) &&
+        !specifier.endsWith('/')
 }
 
 /**
@@ -216,10 +249,11 @@ function globMatches(
 
 /**
  * The pattern import of `importer` (its raw text) that reached `file`: the
- * literal glob whose patterns match it, else the first call that may have
- * (a glob whose patterns are not plain, a webpack context, an `import()` with
- * a variable path). A literal glob that does not match it is never named.
- * Null when there is none.
+ * literal glob whose patterns match it, or the `require()` of its path, else
+ * the first call that may have (a glob whose patterns are not plain, a webpack
+ * context, an `import()` with a variable path). A literal glob that does not
+ * match it, or a `require()` of another path, is never named. Null when there
+ * is none.
  */
 export function findPatternImport(
   text: string,
@@ -235,6 +269,15 @@ export function findPatternImport(
       continue
     }
     const kind = kindOf(m[0])
+    // (at `import.meta` or `require` in an assertion, not at its parenthesis)
+    const offset = m.index + m[0].search(/[^\s(]/)
+    if (kind === 'require()') {
+      const specifier = m[1] ?? m[2]!
+      if (mayRequire(specifier, importer, file)) {
+        return { kind, offset, patterns: null, specifier }
+      }
+      continue
+    }
     let patterns: Array<string> | null = null
     if (kind === 'import.meta.glob') {
       const open = skipSpace(
@@ -247,12 +290,12 @@ export function findPatternImport(
       patterns = globPatterns(text, open)
       if (patterns) {
         if (globMatches(patterns, importer, file, root)) {
-          return { kind, offset: m.index, patterns }
+          return { kind, offset, patterns }
         }
         continue
       }
     }
-    candidate ??= { kind, offset: m.index, patterns: null }
+    candidate ??= { kind, offset, patterns: null }
   }
   return candidate
 }
@@ -269,7 +312,7 @@ const REQUIRE_VARIABLE_RE = new RegExp(
  * reached a file through an import another plugin's transform added to it.
  */
 export function mayHavePatternImport(text: string): boolean {
-  return new RegExp(CALL_RE.source).test(text) || REQUIRE_VARIABLE_RE.test(text)
+  return new RegExp(PATTERN_SOURCE).test(text) || REQUIRE_VARIABLE_RE.test(text)
 }
 
 /** `file` as a specifier relative to `importer` (`./x.ts`, `../lib/x.ts`). */

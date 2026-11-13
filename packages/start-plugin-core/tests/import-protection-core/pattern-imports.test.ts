@@ -100,6 +100,48 @@ describe('findPatternImport', () => {
     expect(find("const m = () => import('./x.ts')\n")).toBeNull()
   })
 
+  // review round 2 F4-1: Rspack reads `import.meta` in an assertion as it
+  // is (the TypeScript is stripped first); a report named it an import
+  // another plugin added
+  test('a call on import.meta or require in a TypeScript assertion, named at import.meta', () => {
+    for (const call of [
+      "(import.meta as any).webpackContext('./', { regExp: /\\.ts$/ })",
+      "( import.meta as unknown as { webpackContext: Function } ).webpackContext('./')",
+      "(import.meta satisfies object).glob('./*.ts')",
+      "(require as any).context('./', false, /\\.ts$/)",
+    ]) {
+      const text = `const a = 1\nexport const ctx = ${call}\n`
+      expect(find(text)?.offset).toBe(text.search(/import\.meta|require/))
+    }
+  })
+
+  // review round 2 F4-1: a require() of the file is the import it is (Rolldown
+  // and Rspack bundle it); a require() of another path is never named
+  test('a require() of the file, by a relative path, an alias or its directory', () => {
+    const text =
+      "const a = require('./other')\nconst b = require('./secret.server')\n"
+    expect(find(text)).toEqual({
+      kind: 'require()',
+      offset: text.lastIndexOf('require'),
+      patterns: null,
+      specifier: './secret.server',
+    })
+    expect(find("require('./secret.server.ts')")?.kind).toBe('require()')
+    expect(find("require('~/routes/secret.server')")?.kind).toBe('require()')
+    expect(find('require("../lib")', '/app/src/lib/index.ts')?.specifier).toBe(
+      '../lib',
+    )
+    for (const other of [
+      "require('./other')",
+      "require('./secret')",
+      "require('./secret.server/x')",
+      "module.require('./secret.server')",
+      "// require('./secret.server')",
+    ]) {
+      expect(find(other)).toBeNull()
+    }
+  })
+
   test('line endings and a second text are independent of the first', () => {
     const crlf = "const a = 1\r\nimport.meta.glob('./*.ts')\r\n"
     expect(find(crlf)?.offset).toBe(crlf.indexOf('import.meta'))
