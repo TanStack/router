@@ -738,6 +738,69 @@ export { label } from './client-only'
     timeout,
   )
 
+  // A client-only save, saved again unchanged once the server's rebuild
+  // began (held at its end until the client began the build of it): the
+  // client's last build emits what the one before it emitted, so the
+  // server's rebuild already embeds it.
+  // Source: CI flake of 2026-11-13 (2a70e00673, c152d92c05): under load
+  // Rolldown reported one save of `client-only.ts` to the client's watcher
+  // twice, the second report queued during the client's rebuild; the
+  // client built again after the server's rebuild began, with the same
+  // output, and the harness waited for a server build begun after it.
+  test(
+    "a client-only save the client builds again, unchanged, after the server's rebuild began: the server's rebuild settles the save",
+    async () => {
+      let serverStarts = 0
+      let clientStarts = 0
+      let clientStartsAtServerRebuild = -1
+      let clientRebuilding!: () => void
+      const clientRebuilt = new Promise<void>(
+        (resolve) => (clientRebuilding = resolve),
+      )
+      const resave: Plugin = {
+        name: 'test:resave-during-server-rebuild',
+        async buildStart() {
+          if (this.environment.name === 'client') {
+            clientStarts++
+            if (
+              clientStartsAtServerRebuild >= 0 &&
+              clientStarts > clientStartsAtServerRebuild
+            ) {
+              clientRebuilding()
+            }
+          } else if (this.environment.name === 'ssr' && ++serverStarts === 2) {
+            clientStartsAtServerRebuild = clientStarts
+            const { writeFile } = await import('node:fs/promises')
+            await writeFile(
+              path.join(this.environment.config.root, 'src/client-only.ts'),
+              clientOnlyEdit['src/client-only.ts'],
+            )
+          }
+        },
+        async buildEnd() {
+          if (this.environment.name === 'ssr' && serverStarts === 2) {
+            // (a guard: the hold ends without the client's build too)
+            const timer = setTimeout(clientRebuilding, 10_000)
+            await clientRebuilt
+            clearTimeout(timer)
+          }
+        },
+      }
+      const build = await buildStart({
+        bundler: 'vite',
+        files: pageApp,
+        entry: pageEntry,
+        viteConfig: { plugins: [resave] },
+        watchEdits: clientOnlySave,
+      })
+      // the client began a build after the server's rebuild began
+      expect(clientStarts).toBeGreaterThan(clientStartsAtServerRebuild)
+      expect(build.client.where('MARK_EDIT')).not.toBe('nowhere')
+      await expectLastClientBuild(build)
+    },
+    timeout,
+  )
+
   // The app's cache directory (`node_modules/.vite`) is removed while the
   // watch runs, then a module only the client bundles is saved.
   // Source: design 3 step 5 review, finding 4 (the client's build wrote a
