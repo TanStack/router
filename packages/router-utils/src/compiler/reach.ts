@@ -132,7 +132,7 @@ export interface KeptDeclaration {
   range: { start: number; end: number }
   /** The lazy outputs that need it. */
   needers: Array<OutputId>
-  /** `written`: where it is written. */
+  /** `written`: where it is written; `state`: where the module writes `read` when it loads (O; none: later, V). */
   at?: number
   /** `state`, `reads`: the binding it reads; `written`: the binding the statement also changes, which keeps it. */
   read?: SymbolId

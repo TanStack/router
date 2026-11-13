@@ -69,8 +69,12 @@ export function keptDeclarations(
   const pairOf = (pin: Pin): Partial<KeptDeclaration> => {
     const other = pin.other
     return {
+      // (`state`: only a write when the module loads, O, has a place in
+      // that order to name; one at an unknown time, V, has none)
       ...(other !== undefined &&
-        pin.reason === 'written' && {
+        (pin.reason === 'written' ||
+          (pin.reason === 'state' &&
+            graph.writes.some((w) => w.at === other.at && w.eager))) && {
           at: other.at,
         }),
       ...(pin.binding !== undefined && { read: pin.binding }),
@@ -584,21 +588,72 @@ export function keptDeclarations(
       (c) => !causes.has(c) && !statements.has(c) && !gluesCauses(c),
     ),
   )
-  for (const [c, pin] of causes) {
+  /**
+   * The cluster declaring what an export cancelled because it reads it
+   * (`reads`) reads: the export stays only for it, so it keeps nothing by
+   * a cause of its own, and when a reported cause keeps that cluster, the
+   * export is that cause's cascade (moving the cause frees both). A cause
+   * kept because the exports' modules would share it (`shared`) stays for
+   * them: they are its cause.
+   */
+  const readOf = (c: ClusterId): ClusterId | undefined => {
+    const pin = causes.get(c)!
+    return exported.has(c) &&
+      pin.reason === 'reads' &&
+      pin.binding !== undefined
+      ? clusterOfSym.get(pin.binding)
+      : undefined
+  }
+  /** Each cause's reports (none: a cascade, or what the env module needs anyway). */
+  const reports = new Map<ClusterId, Array<KeptDeclaration>>()
+  function reportsOf(c: ClusterId): Array<KeptDeclaration> {
+    const known = reports.get(c)
+    if (known !== undefined) {
+      return known
+    }
+    // (an export reading another export cancelled the same way is judged
+    // after it; one reading back is not a cascade)
+    reports.set(c, [])
+    const out = reportOf(c)
+    reports.set(c, out)
+    return out
+  }
+  function reportOf(c: ClusterId): Array<KeptDeclaration> {
+    const pin = causes.get(c)!
     if (envOwn.has(c)) {
-      continue
+      return []
     }
-    // an exported cause stays for its own effects or writes, whoever reads it
-    let cascade = false
-    for (const d of exported.has(c) ? [] : (reachedFrom.get(c) ?? [])) {
-      // (the statement's own cluster reads what it keeps: no cascade)
-      if (d !== mirrored.get(c) && !reachOf.get(c)!.has(d)) {
-        cascade = true
-        break
+    const read = readOf(c)
+    if (read !== undefined) {
+      if (
+        !envOwn.has(read) &&
+        [...causes.keys()].some(
+          (d) =>
+            d !== c &&
+            causes.get(d)!.reason !== 'shared' &&
+            // (another such export keeps only itself)
+            (d === read ||
+              (readOf(d) === undefined && reachOf.get(d)!.has(read))) &&
+            reportsOf(d).length > 0,
+        )
+      ) {
+        return []
       }
-    }
-    if (cascade) {
-      continue
+    } else if (!exported.has(c)) {
+      // an exported cause stays for its own effects or writes, whoever
+      // reads it
+      for (const d of reachedFrom.get(c) ?? []) {
+        // (the statement's own cluster reads what it keeps; an export
+        // cancelled because it reads what a cause keeps keeps nothing but
+        // what its module would share: no cascade)
+        if (
+          d !== mirrored.get(c) &&
+          (readOf(d) === undefined || pin.reason === 'shared') &&
+          !reachOf.get(c)!.has(d)
+        ) {
+          return []
+        }
+      }
     }
     const cl = clusters[c]!
     const exports = exported.get(c)
@@ -606,8 +661,9 @@ export function keptDeclarations(
       // one per exported binding (a destructuring declares several), each
       // with its own reason
       const needers = lazyNeeders(c)
+      const out: Array<KeptDeclaration> = []
       for (const { sym, pin: own } of exports) {
-        kept.push({
+        out.push({
           syms: [sym],
           exported: true,
           reason: own.reason,
@@ -616,7 +672,7 @@ export function keptDeclarations(
           ...pairOf(own),
         })
       }
-      continue
+      return out
     }
     // split code only: a chunk or a Hydrate chunk (an extracted export's
     // module, a server-function provider are not split code)
@@ -637,20 +693,25 @@ export function keptDeclarations(
     // (`needers`: an effect several outputs need stays only beside an
     // extracted module or a provider, no split code alone, R151)
     if (other || needers.length === 0 || pin.reason === 'needers') {
-      continue
+      return []
     }
     // (an import joined to the cluster is no declaration to report)
     const syms = [...cl.declares].filter(
       (s) => symbols.isModuleLevel(s) && !symbols.isImport(s),
     )
-    kept.push({
-      syms,
-      exported: false,
-      reason: pin.reason,
-      range: declaringRange(cl, syms[0]),
-      needers,
-      ...pairOf(pin),
-    })
+    return [
+      {
+        syms,
+        exported: false,
+        reason: pin.reason,
+        range: declaringRange(cl, syms[0]),
+        needers,
+        ...pairOf(pin),
+      },
+    ]
+  }
+  for (const c of causes.keys()) {
+    kept.push(...reportsOf(c))
   }
   return kept
 }
