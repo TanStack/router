@@ -1,8 +1,8 @@
 /**
  * The route options Start erases from client route modules (`server`,
- * `headers`, `ssr`) are server-only text of the client compile: the router
- * planner records them for the server-code check (R132), so a client output
- * that kept one fails the compile. A planner that hoists an erased option's
+ * `headers`, `ssr`) are server-only text of the client compile: the router's
+ * recorder finds them in the recognised route options for the server-code
+ * check (R132), so a client output that kept one fails the compile. A planner that hoists an erased option's
  * value into code something else reads stands in for the compiler bug that
  * would keep it (an erased region's owner survives when other generated code
  * reads it).

@@ -43,6 +43,7 @@ import {
   moduleLiteral,
   providerExportBase,
 } from '../server-fns/format'
+import { startServerCode } from './server-code'
 import type {
   LateExport,
   NamespaceEscape,
@@ -461,6 +462,7 @@ export function startEnvPlanner(opts?: {
     plan(ctx) {
       planStartEnv(ctx, ctx.config, table)
     },
+    serverCode: (ctx) => startServerCode(ctx, table),
   }
 }
 
@@ -496,6 +498,8 @@ function planStartEnv(
   let fileTag: string | undefined
   const tagOfFile = () => (fileTag ??= fileTagOf(rootRel))
   const facts: StartEnvFacts = { serverFns: [] }
+  /** The server-only text the client compile erases (step 6's parameter check reads it). */
+  const erased: Array<Range> = []
 
   const diag = (message: string, range: Range) =>
     ctx.diagnostic({ severity: 'error', message, range, by })
@@ -642,16 +646,7 @@ function planStartEnv(
         continue
       }
       if (role === 'client') {
-        rewrites.serverOnly({
-          range: rangeOf(link.arg),
-          subject:
-            recv.kind === 'serverFn'
-              ? "the server function's validator"
-              : link.method === 'server'
-                ? "the middleware's server implementation"
-                : "the middleware's validator",
-          by,
-        })
+        erased.push(rangeOf(link.arg))
         // (the link goes with it)
         rewrites.placeholder({
           range: { start: link.member.object.end, end: link.call.end },
@@ -777,11 +772,7 @@ function planStartEnv(
       for (const l of chain.links) {
         if (l.method === 'server' && l.arg !== null) {
           // (erased with the rest of the chain, below)
-          rewrites.serverOnly({
-            range: rangeOf(l.arg),
-            subject: "the isomorphic function's server implementation",
-            by,
-          })
+          erased.push(rangeOf(l.arg))
         }
       }
     }
@@ -853,11 +844,7 @@ function planStartEnv(
     } else {
       if (c.arg !== null && c.kind === 'server') {
         // (the stub below is the call's text)
-        rewrites.serverOnly({
-          range: rangeOf(c.arg),
-          subject: "the server-only function's body",
-          by,
-        })
+        erased.push(rangeOf(c.arg))
       }
       const message = `create${c.kind === 'server' ? 'Server' : 'Client'}OnlyFn() functions can only be called on the ${c.kind}!`
       const parens = needsParens(
@@ -933,10 +920,11 @@ function planStartEnv(
         config.idMode === 'dev'
           ? `(${moduleLiteral(id)}, ${moduleLiteral((devRevision ??= revision(ctx.analysis.source.code)))})`
           : `(${moduleLiteral(id)})`
-      rewrites.serverOnly({
+      erased.push(rangeOf(h))
+      rewrites.placeholder({
         range: rangeOf(h),
-        subject: "the server function's handler",
-        placeholder: [text({ sym: rpc, ctx: 'callee' }, args)],
+        body: [text({ sym: rpc, ctx: 'callee' }, args)],
+        scope: 'all-outputs',
         by,
       })
       facts.serverFns.push(
@@ -1120,7 +1108,7 @@ function planStartEnv(
       SymbolId,
       { name: Node; fn: Node; direct: Node | null }
     >()
-    for (const { range: text } of rewrites.serverOnlyText) {
+    for (const text of erased) {
       for (const { kind, sym, range } of t1.refs.refsIn(text)) {
         const param =
           kind === 'value' &&

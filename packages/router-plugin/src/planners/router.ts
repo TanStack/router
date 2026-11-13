@@ -10,6 +10,7 @@ import { recognizeRoute, reportNotGenerated, routeEntryDigest } from './route'
 import { SPLITTABLE_KEYS, splitPlanOf } from './decisions'
 import { planSplit } from './split'
 import { planHmrBlock, planHmrHoists } from './hmr'
+import { routeServerCode } from './server-code'
 import { ROUTER_PLANNER, routerPlannerApplies } from './config'
 import type { RouteEntryFacts, RouteModuleInfo } from './route'
 import type { SplitPlan } from './decisions'
@@ -98,6 +99,7 @@ export function routerPlanner(): Planner<typeof ROUTER_PLANNER> {
         planHmrBlock(ctx, round, cfg.hmr.style)
       }
     },
+    serverCode: routeServerCode,
   }
 }
 
