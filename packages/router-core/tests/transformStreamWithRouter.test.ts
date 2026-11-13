@@ -513,6 +513,38 @@ describe('transformReadableStreamWithRouter — real SSR scripts', () => {
     expect(endIndex).toBeLessThan(html.indexOf('</body>'))
   })
 
+  test('uses an ssr nonce set after the SSR utils are attached', async () => {
+    const streamed = createDeferred<string>()
+    const router = createRealSsrRouter({ streamed: streamed.promise })
+    attachRouterServerSsrUtils({ router, manifest: undefined })
+    router.options.ssr = { ...router.options.ssr, nonce: 'late-nonce' }
+
+    await router.load()
+    await router.serverSsr!.dehydrate()
+
+    const initialScripts = router.serverSsr!.takeInitialHydrationScriptTags()!
+    for (const tag of [...initialScripts.before, initialScripts.boundary]) {
+      expect(tag.attrs).toMatchObject({ nonce: 'late-nonce' })
+    }
+
+    const upstream = makeManualUpstream()
+    const output = transformReadableStreamWithRouter(router, upstream.stream)
+    upstream.push(
+      `<html><body>${renderInitialScripts(initialScripts)}</body></html>`,
+    )
+    streamed.resolve('done')
+    await flush(20)
+    upstream.close()
+
+    const html = await readAll(output as any)
+    const endIndex = html.indexOf(`${GLOBAL_TSR}.e()`)
+    expect(endIndex).toBeGreaterThan(-1)
+    expect(
+      html.slice(html.lastIndexOf('<script', endIndex), endIndex),
+    ).toContain('nonce="late-nonce"')
+    expect(html).not.toContain('<script>')
+  })
+
   test.each([
     ['completes', false],
     ['is cancelled before the payload finishes', true],
