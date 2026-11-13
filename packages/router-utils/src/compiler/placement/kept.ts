@@ -83,6 +83,11 @@ export function keptDeclarations(
     (claimed ??= [...input.rewrites.claims.values()].map(
       (claim) => regions.get(claim.region).range,
     )).some((r) => range.start >= r.start && range.end <= r.end)
+  /** Whether `range` holds an option value an output claims. */
+  const claimedIn = (range: { start: number; end: number }) =>
+    (claimed ??= [...input.rewrites.claims.values()].map(
+      (claim) => regions.get(claim.region).range,
+    )).some((r) => r.start >= range.start && r.end <= range.end)
   const clusterOfRef = (ref: ClassifiedRef) => {
     const u = t1.unitAt(ref.range)
     return u === null ? undefined : graph.clusterOfRegion.get(units[u]!.region)
@@ -811,8 +816,10 @@ export function keptDeclarations(
         ? 'env'
         : 'split'
     }
-    /** Whether the env module uses a binding declaration `unit` declares (outside it): it keeps what the declaration uses. */
+    /** Whether the env module needs declaration `unit` for itself: it exports a binding (`Route`, holding the option values), holds an option value an output claims, or the env module uses a binding it declares (outside it). It keeps what the declaration uses. */
     const declaresUsed = (unit: (typeof units)[number]) =>
+      unit.exported.length > 0 ||
+      claimedIn(unit.range) ||
       unit.declares.some((s) =>
         t1.refs
           .refsOf(s)
