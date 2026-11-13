@@ -25,6 +25,7 @@ export function lazyRouteComponent<
   let loadPromise: Promise<any> | undefined
   let comp: T[TKey] | T['default']
   let error: any
+  let reloadRequested = false
 
   const load = () => {
     if (!loadPromise) {
@@ -51,6 +52,14 @@ export function lazyRouteComponent<
   }
   const lazyComp = function Lazy(props: any) {
     if (error) {
+      // `location.reload()` is asynchronous, so renders can still happen while
+      // the document is on its way out. Keep suspending on those instead of
+      // re-reading the guard below, which is already set and would otherwise
+      // fall through to `throw error` and flash the error component.
+      if (reloadRequested) {
+        throw new Promise(() => {})
+      }
+
       // A missing module can mean that a newer deployment replaced the URL.
       // Reload only for the error that is still current at render time, so a
       // successful retry cannot leave a stale reload request armed.
@@ -62,6 +71,7 @@ export function lazyRouteComponent<
         const storageKey = `tanstack_router_reload:${error.message}`
         if (!sessionStorage.getItem(storageKey)) {
           sessionStorage.setItem(storageKey, '1')
+          reloadRequested = true
           window.location.reload()
           // Suspend forever while the document reloads.
           throw new Promise(() => {})
