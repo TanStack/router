@@ -758,23 +758,25 @@ describe("an extracted export's module is a destination", () => {
     )
     expect(r2).toMatchObject([{ code: 'eager-export:state' }])
     expect(r2[0]!.message).toContain(
-      'stays in the route module because it uses `F0` when it loads, and the route module writes `F0` then (line 8), so it loads with the route module instead of with that code. Move it, `F0` and the statements writing them when the module loads to their own module and import them from there.',
+      'stays in the route module because it uses `F0` when it loads, and the route module writes `F0` then (line 8), so it loads with the route module instead of with that code. Move it, `F0`, `on`, `r3`, `l5` and the statements writing them when the module loads to their own module and import them from there.',
     )
-    // the fix: `F0`, its write and `r2` in a module of their own
+    // the fix: `F0`, its write, `r2` and what reads `F0` before the write
+    // (`r3` hands `r2` to a call, `l5` names `F0`) with what that reads
+    // (`on`) in a module of their own
     const fixed = new MemoryHost({
       files: {
         '/app/own.ts': dedent(`
-          export const F0 = () => 2
+          import { snap } from './lib'
+          const on = true
+          const F0 = () => 2
           export const r2 = 'p' in F0
+          export const r3 = snap(r2)
+          export const l5 = on ? F0 : null
           F0.v = [12]
         `),
         '/app/route.tsx': dedent(`
           import { createFileRoute } from 'toy-router'
-          import { snap } from './lib'
-          import { F0, r2 } from './own'
-          const on = true
-          const r3 = snap(r2)
-          const l5 = on ? F0 : null
+          import { l5, r2, r3 } from './own'
           export const Route = createFileRoute('/')({
             loader: () => r3,
             component: () => [r2, r3, l5, r9],
@@ -5619,7 +5621,7 @@ describe('what an evaluation runs: one walk for every rule', () => {
       },
     ])
     expect(r.kept[0]!.message).toBe(
-      '[tanstack-router] The export `initial` of /app/route.tsx is used only by the split `component`, but stays in the route module because it uses `n` when it loads, and the route module writes `n`, so it loads with the route module instead of with that code. Use `n` inside the code that needs it, or move both to their own module and import them from there.',
+      '[tanstack-router] The export `initial` of /app/route.tsx is used only by the split `component`, but stays in the route module because it uses `n` when it loads, and the route module writes `n`, so it loads with the route module instead of with that code. Use `n` inside the code that needs it, or move it, `n` and `inc` to their own module and import them from there.',
     )
   })
 
@@ -7073,8 +7075,126 @@ describe('language operations are no effect (rule L)', () => {
       expect(r.env).toContain('const r11 = [h6.c.v]\no0.v = 5')
       const kept = r.main?.diagnostics ?? []
       expect(kept).toMatchObject([{ code: 'eager-split:state' }])
+      // (the move names the holder `r11` reads `o0` through: left behind,
+      // the new module would import it back from the route module)
       expect(kept[0]!.message).toContain(
-        '`r11` in /app/route.tsx stays in the route module because it uses `o0` when the module loads, and the module writes `o0`',
+        '`r11` in /app/route.tsx stays in the route module because it uses `o0` when the module loads, and the module writes `o0` then (line 6); move `r11`, `o0`, `h6` and the statements writing them when the module loads to their own module, so `r11` can load with the split `component`.',
+      )
+    },
+  )
+
+  // the move a `state` report offers works when applied: it names what the
+  // moved code reads when the module loads, what reads a moved binding
+  // before a moved write, and the code assigning a moved binding (an
+  // imported binding is read-only); when that needs what the route module
+  // keeps, no move is offered (guarantee 13)
+  const stateMessage = async (decls: string, options: string, after = '') => {
+    const r = await split(
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        ${decls}
+        export const Route = createFileRoute('/x')({
+          ${options}
+        })
+        ${after}
+      `),
+    )
+    const kept = r.main?.diagnostics ?? []
+    expect(kept).toMatchObject([{ code: 'eager-split:state' }])
+    return kept[0]!.message
+  }
+  it.each([
+    [
+      'what reads a moved binding before its write',
+      dedent(`
+        const o0 = { v: 1 }
+        const snap = o0.v
+        const h6 = { c: o0 }
+        const r11 = [h6.c.v]
+        o0.v = 5
+      `),
+      'loader: () => snap,\n          component: function Page() { h6.c.v = 12; return [r11, snap] },',
+      'move `r11`, `o0`, `snap`, `h6` and the statements writing them when the module loads to their own module, so `r11` can load',
+    ],
+    [
+      'a statement reading a moved binding before its write',
+      dedent(`
+        const o0 = { v: 1 }
+        console.log(o0.v)
+        const h6 = { c: o0 }
+        const r11 = [h6.c.v]
+        o0.v = 5
+      `),
+      'loader: () => o0,\n          component: function Page() { h6.c.v = 12; return r11 },',
+      'move `r11`, `o0`, `h6`, the statement on line 3 and the statements writing them when the module loads to their own module, so `r11` can load',
+    ],
+    [
+      'a function it calls and what that reads',
+      dedent(`
+        const o0 = { v: 1 }
+        const cfg = { k: 2 }
+        function get() { return cfg.k }
+        const r11 = [o0.v, get()]
+        o0.v = 5
+      `),
+      'loader: () => o0,\n          component: () => r11,',
+      'move `r11`, `o0`, `cfg`, `get` and the statements writing them when the module loads to their own module, so `r11` can load',
+    ],
+    [
+      'the function assigning a moved binding',
+      dedent(`
+        let o0 = { v: 1 }
+        const h6 = { c: o0 }
+        const r11 = [h6.c.v]
+        function reset() { o0 = { v: 0 } }
+      `),
+      'loader: () => { reset(); return o0 },\n          component: () => r11,',
+      'use `o0` inside the code that needs it, or move `r11`, `o0`, `h6` and `reset` to their own module, so `r11` can load',
+    ],
+    [
+      'a holder (a write at an unknown time)',
+      dedent(`
+        const o0 = { v: 1 }
+        const h6 = { c: o0 }
+        const r11 = [h6.c.v]
+      `),
+      'loader: () => { o0.v = 7; return o0 },\n          component: () => r11,',
+      'use `o0` inside the code that needs it, or move `r11`, `o0` and `h6` to their own module, so `r11` can load',
+    ],
+  ])(
+    'offers a move of a read before a write that names %s',
+    async (_, decls, options, fix) => {
+      expect(await stateMessage(decls, options)).toContain(fix)
+    },
+  )
+
+  it.each([
+    [
+      'reads the route when it loads',
+      'const o0 = { v: 1 }\n        const h6 = { c: o0 }',
+      'loader: () => o0,\n          component: function Page() { h6.c.v = 12; return r11 },',
+      dedent(`
+        const r11 = [h6.c.v, Route.options]
+        o0.v = 5
+      `),
+      "`r11` in /app/route.tsx stays in the route module because it uses `o0` when the module loads, and the module writes `o0` then (line 9); it can't move to a module of its own: that module would also need `Route`, which stays in the route module.",
+    ],
+    [
+      'reads a binding a route option assigns',
+      dedent(`
+        let o0 = { v: 1 }
+        const h6 = { c: o0 }
+        const r11 = [h6.c.v]
+      `),
+      'loader: () => { o0 = { v: 0 }; return o0 },\n          component: () => r11,',
+      '',
+      '`r11` in /app/route.tsx stays in the route module because it uses `o0` when the module loads, and the module writes `o0`; use `o0` inside the code that needs it, so `r11` can load with the split `component`.',
+    ],
+  ])(
+    'offers no move of a read before a write when it %s',
+    async (_, decls, options, after, message) => {
+      expect(await stateMessage(decls, options, after)).toBe(
+        `[tanstack-router] ${message}`,
       )
     },
   )
@@ -9948,7 +10068,9 @@ describe('calls whose result the router calls later (R152)', () => {
 
   // every other call reads as before: a function handed to it may run when
   // it does, which the message says. A wrapped component used only as a
-  // JSX tag is one of them (R152 holds route option values only)
+  // JSX tag is one of them (R152 holds route option values only). The move
+  // takes the function it hands along (the new module would import it
+  // back)
   it.each([
     [
       'inline',
@@ -9957,6 +10079,7 @@ describe('calls whose result the router calls later (R152)', () => {
       'save',
       'f',
       '() => save',
+      'both',
     ],
     [
       'named',
@@ -9965,6 +10088,7 @@ describe('calls whose result the router calls later (R152)', () => {
       'save',
       'f',
       '() => save',
+      '`save`, `seen` and `compute`',
     ],
     [
       'named inside an object',
@@ -9973,6 +10097,7 @@ describe('calls whose result the router calls later (R152)', () => {
       'save',
       'f',
       '() => save',
+      '`save`, `seen` and `compute`',
     ],
     [
       'a wrapped component used as a JSX tag',
@@ -9981,10 +10106,11 @@ describe('calls whose result the router calls later (R152)', () => {
       'Card',
       'hoc',
       'function Page() { return <Card /> }',
+      'both',
     ],
   ])(
     'keeps a declaration handing a function reading written state to a call the router does not call later, saying it may use it (%s)',
-    async (_, decls, decl, name, callee, component) => {
+    async (_, decls, decl, name, callee, component, moved) => {
       const code = route(
         `${seen}\n${decls}${decl}`,
         `${loader}\ncomponent: ${component},`,
@@ -10001,7 +10127,7 @@ describe('calls whose result the router calls later (R152)', () => {
         },
       ])
       expect(kept[0]!.message).toBe(
-        `[tanstack-router] \`${name}\` in /app/route.tsx stays in the route module because it may use \`seen\` when the module loads (the function is handed to \`${callee}\`), and the module writes \`seen\`; move both to their own module, so \`${name}\` can load with the split \`component\`.`,
+        `[tanstack-router] \`${name}\` in /app/route.tsx stays in the route module because it may use \`seen\` when the module loads (the function is handed to \`${callee}\`), and the module writes \`seen\`; move ${moved} to their own module, so \`${name}\` can load with the split \`component\`.`,
       )
     },
   )

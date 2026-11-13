@@ -43,6 +43,42 @@ export function keptDiagnostic(
     items.length === 1
       ? items[0]!
       : `${items.slice(0, -1).join(', ')} and ${items.at(-1)!}`
+  /** A `state` move (`k.moves`): `head` (the declaration, `read`) and what moves with them. */
+  const moving = (head: ReadonlyArray<string>) => [
+    ...head,
+    ...(k.moves?.syms ?? []).map((s) => `\`${symbols.name(s)}\``),
+    ...(k.moves?.statements ?? []).map((at) => `the statement on ${line(at)}`),
+  ]
+  /**
+   * `state`: a read inside the code that needs it works only when the
+   * module writes no moved binding when it loads (that code would see the
+   * write) and the read is not in a function already (R152).
+   */
+  const inside =
+    k.at === undefined && k.handedTo === undefined && k.moves?.written !== true
+  /**
+   * The `state` fix, capitalised: a read inside the code (`inside`), or the
+   * move of `head` (the declaration, `read`; `it`: what it starts with when
+   * the declaration is named so) and what moves with them, with the
+   * statements writing them when the module writes one then.
+   */
+  const movePhrase = (head: ReadonlyArray<string>, it = '') => {
+    const moved = moving(head)
+    const what =
+      k.at !== undefined || k.moves?.written === true
+        ? `${it}${moved.join(', ')} and the statements writing them when the module loads`
+        : k.moves === undefined
+          ? 'both'
+          : `${it}${and(moved)}`
+    return inside
+      ? `Use \`${symbols.name(k.read!)}\` inside the code that needs it, or move ${what}`
+      : `Move ${what}`
+  }
+  /** Why no module of its own can take a `state` declaration (`k.stuck`). */
+  const stuck =
+    k.stuck === undefined
+      ? undefined
+      : `it can't move to a module of its own: that module would also need ${k.stuck.sym === undefined ? `the code on ${line(k.stuck.at)}` : `\`${symbols.name(k.stuck.sym)}\``}, which stays in the ${module}`
   if (k.reason === 'unused') {
     // unused code (R148): what it keeps in the env module, or puts in one
     // shared module several split outputs import (R151)
@@ -108,11 +144,11 @@ export function keptDiagnostic(
             ? `it uses ${read} when it loads, and ${writes}`
             : `it may use ${read} when it loads (${handed(k.handedTo)}), and ${writes}`
         fix =
-          k.at !== undefined
-            ? `Move it, ${read} and the statements writing them when the module loads to their own module and import them from there.`
-            : k.handedTo === undefined
-              ? `Use ${read} inside the code that needs it, or move both to their own module and import them from there.`
-              : 'Move both to their own module and import them from there.'
+          stuck === undefined
+            ? `${movePhrase([read], 'it, ')} to their own module and import them from there.`
+            : inside
+              ? `Use ${read} inside the code that needs it.`
+              : `${stuck[0]!.toUpperCase()}${stuck.slice(1)}.`
         break
       }
       default:
@@ -190,14 +226,28 @@ export function keptDiagnostic(
       // write when the module loads (a use inside the code would see it);
       // a use in a function handed to a call is inside a function already
       // (R152)
-      fix =
-        k.read !== undefined && writtenWith(plan, k.syms, k.read)
-          ? `move ${subject}, ${read} and the statements writing them to their own module`
-          : k.read !== undefined && k.at !== undefined
-            ? `move ${subject}, ${read} and the statements writing them when the module loads to their own module`
-            : k.read !== undefined && k.handedTo !== undefined
-              ? 'move both to their own module'
-              : `use ${k.read === undefined ? 'that binding' : read} inside the code that needs it, or move both to their own module`
+      // (what moves with them, `moving`; none can: `stuck`, and a read
+      // inside the code that needs it, if it works, is the fix)
+      if (k.read === undefined) {
+        fix =
+          'use that binding inside the code that needs it, or move both to their own module'
+      } else if (stuck !== undefined) {
+        if (!inside) {
+          return {
+            severity: 'warning',
+            message: `${tag}${subject} in ${file} stay${names.length === 1 ? 's' : ''} in the ${module} because ${because}; ${stuck}.`,
+            range: k.range,
+            by: 'core',
+            code: `eager-split:${k.reason}`,
+          }
+        }
+        fix = `use ${read} inside the code that needs it`
+      } else if (writtenWith(plan, k.syms, k.read)) {
+        fix = `move ${moving([...names, read]).join(', ')} and the statements writing them to their own module`
+      } else {
+        const phrase = movePhrase([...names, read])
+        fix = `${phrase[0]!.toLowerCase()}${phrase.slice(1)} to their own module`
+      }
       break
     }
   }

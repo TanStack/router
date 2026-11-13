@@ -65,10 +65,86 @@ export function keptDeclarations(
         : units[declaring]!.range
     return { start: range.start, end: range.end }
   }
+  /** The clusters that stay in the env module whatever moves: the route options' (the declaration holding a claimed region) and generated code. */
+  let fixed: Set<ClusterId> | undefined
+  /**
+   * The move a `state` report offers (`Events.movedWith`): what moves with
+   * cluster `c` and `read`, named, or what keeps it from moving.
+   */
+  const moveOf = (
+    c: ClusterId,
+    read: SymbolId,
+  ): Pick<KeptDeclaration, 'moves' | 'stuck'> => {
+    if (fixed === undefined) {
+      fixed = new Set()
+      for (const claim of input.rewrites.claims.values()) {
+        const u = t1.unitAt(regions.get(claim.region).range)
+        const x =
+          u === null ? undefined : graph.clusterOfRegion.get(units[u]!.region)
+        if (x !== undefined) {
+          fixed.add(x)
+        }
+      }
+    }
+    const moved = events.movedWith(c, read)
+    const named = (s: SymbolId) =>
+      symbols.isModuleLevel(s) && symbols.kind(s) === 'source'
+    for (const d of moved.clusters) {
+      const cl = clusters[d]!
+      if (fixed.has(d) || cl.gens.length > 0) {
+        const sym = [...cl.declares].find(named)
+        return { stuck: { ...(sym !== undefined && { sym }), at: cl.start } }
+      }
+    }
+    const syms: Array<SymbolId> = []
+    const statements: Array<number> = []
+    /** Whether `d` writes a moved binding when the module loads (a statement writing them). */
+    const writes = (d: ClusterId) =>
+      graph.writes.some(
+        (w) =>
+          w.live &&
+          w.eager &&
+          moved.syms.has(w.sym) &&
+          w.owner !== null &&
+          graph.clusterOfRegion.get(w.owner) === d,
+      )
+    for (const d of moved.clusters) {
+      if (d === c) {
+        continue
+      }
+      const cl = clusters[d]!
+      // (an import is named when the module writes it then: the
+      // statements writing it move)
+      const own = [...cl.declares].filter(
+        (s) =>
+          s !== read &&
+          named(s) &&
+          (cl.kind !== 'import' ||
+            (moved.syms.has(s) &&
+              (graph.writesOfSym.get(s) ?? []).some((w) => w.live && w.eager))),
+      )
+      if (own.length > 0) {
+        syms.push(...own)
+      } else if (cl.kind !== 'import' && !cl.declares.has(read) && !writes(d)) {
+        statements.push(cl.start)
+      }
+    }
+    const at = (s: SymbolId) =>
+      declaringRange(clusters[clusterOfSym.get(s)!]!, s).start
+    syms.sort((a, b) => at(a) - at(b))
+    statements.sort((a, b) => a - b)
+    const written = [...moved.clusters].some(writes)
+    return syms.length === 0 && statements.length === 0 && !written
+      ? {}
+      : { moves: { syms, statements, written } }
+  }
   /** The pair's other event and binding, as a record words them. */
-  const pairOf = (pin: Pin): Partial<KeptDeclaration> => {
+  const pairOf = (c: ClusterId, pin: Pin): Partial<KeptDeclaration> => {
     const other = pin.other
     return {
+      ...(pin.reason === 'state' &&
+        pin.binding !== undefined &&
+        moveOf(c, pin.binding)),
       // (`state`: only a write when the module loads, O, has a place in
       // that order to name; one at an unknown time, V, has none)
       ...(other !== undefined &&
@@ -669,7 +745,7 @@ export function keptDeclarations(
           reason: own.reason,
           range: declaringRange(cl, sym),
           needers,
-          ...pairOf(own),
+          ...pairOf(c, own),
         })
       }
       return out
@@ -706,7 +782,7 @@ export function keptDeclarations(
         reason: pin.reason,
         range: declaringRange(cl, syms[0]),
         needers,
-        ...pairOf(pin),
+        ...pairOf(c, pin),
       },
     ]
   }
