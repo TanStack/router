@@ -3,9 +3,9 @@
  * Start app with RSC enabled, after an edit of a client module: the build
  * served is a build of its own (`rsbuild preview`). The documents its
  * server renders load the client files the second build emitted, and the
- * page shows the edit. Also the tripwire of the RSC manifest's rebuild at
- * `finishMake` stage 10, after Rspack's RSC ServerPlugin's handoff (red
- * when the rebuild runs before it).
+ * page shows the edit. Also the assumption test of the RSC manifest's
+ * rebuild at `finishMake` stage 10, after Rspack's RSC ServerPlugin's
+ * handoff (fails when the rebuild runs before it).
  */
 import { expect, onTestFinished, test } from 'vitest'
 import {

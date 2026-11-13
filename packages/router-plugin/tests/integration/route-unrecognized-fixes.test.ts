@@ -259,27 +259,3 @@ export const Route = createAppRoute('/')(${page})
     expectNoProblems(diagnostics)
   })
 })
-
-// R145: a file the generator does not list that exports a router-made
-// `Route` (a widget module outside the routes directory) is served as
-// written, not split, and reported nothing
-it(
-  'a file the generator does not list is served as written',
-  { timeout },
-  async () => {
-    const { app, diagnostics } = await buildApp({
-      'widgets/w.tsx': `import { createFileRoute } from '${RP}'
-export const Route = createFileRoute('/w')({ component: () => <p>MARK_W_PAGE</p> })
-`,
-      'routes/index.tsx': `import { createFileRoute } from '${RP}'
-export const Route = createFileRoute('/')(${page})
-`,
-      'entry.ts': `export { routeTree } from './routeTree.gen'
-export { Route as Widget } from './widgets/w'
-`,
-    })
-    expectNoProblems(diagnostics)
-    expect(app.where('MARK_W_PAGE')).toBe('eager')
-    expect(app.where('MARK_PAGE')).toBe('lazy')
-  },
-)

@@ -420,7 +420,7 @@ text compiles waits for it and emits its own output from the result.
   - **Takers.** The webpack-family hosts take their environments' sets at `finishMake` (`StaleSetDrain`), the Vite
     dev hosts in each environment's `hotUpdate` (`staleHotUpdate`: the event's own file leaves the set first, its
     modules are the event's), and a Vite watch build at each environment's `buildStart`: a Rolldown watch rebuild runs
-    every `load` and `transform` again, so it builds every stale module (a tripwire test in
+    every `load` and `transform` again, so it builds every stale module (an assumption test in
     `start-build-watch.test.ts` fails if a rebuild stops doing so).
   - **Summaries.** A summary change invalidates an importer only when what it read changed: the digest of an export
     it looked up (`exportKeyOf`; an absent name appearing counts), the `export *` list a lookup walked, or the whole

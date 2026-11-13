@@ -861,7 +861,11 @@ async function startServer(
         `the file watcher still drops changes of ${changeThrottled().join(', ')}`,
     )
 
-  /** Waits until the current watcher watches the app (its initial scan). */
+  /**
+   * Waits until the current watcher watches the app (its initial scan),
+   * read from chokidar's private `_readyEmitted` (Vite's watcher offers no
+   * ready promise; no upstream issue).
+   */
   const watcherReady = () =>
     until(
       () =>

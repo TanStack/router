@@ -12,6 +12,9 @@ import type {
 
 // plugin-vue-jsx reloads an exported `defineComponent` in place under the same
 // `__hmrId`. Anything else (function components, renames) must be swapped.
+// `__hmrId` is the id Vue's HMR runtime keys components by, set by the JSX
+// plugins (@vitejs/plugin-vue-jsx, @rsbuild/plugin-vue-jsx): a private field
+// of Vue's runtime, not public API. No upstream issue.
 const keep = (next: any, held: any) =>
   next?.__hmrId !== undefined && next.__hmrId === held?.__hmrId
 

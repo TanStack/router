@@ -366,8 +366,9 @@ export const Route = createFileRoute('/')({ component: () => <p>${marker}</p> })
 })
 
 // What Start's watch builds rely on of Rolldown's watch mode, which its
-// documentation does not promise. Each goes red when Rolldown changes it.
-describe('vite build --watch: tripwires', () => {
+// documentation does not promise (assumption tests). Each fails when
+// Rolldown changes it.
+describe('vite build --watch: assumption tests', () => {
   // Rolldown's watch rebuild is a whole build: every module's `load` and
   // `transform` run again. Start and the router take a watch build's stale
   // set at its start (and Start embeds the client build afresh in each
