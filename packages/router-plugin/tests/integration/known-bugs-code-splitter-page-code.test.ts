@@ -316,11 +316,10 @@ export const Route = createFileRoute('$PATH')({
     ),
   ]
 
-  // Bug: the root route's options are never split
-  // (`computeSharedBindings` and the reference compiler skip
-  // `createRootRoute`), so its errorComponent and notFoundComponent, which
-  // only render on errors, load with the entry chunk. Its `component`
-  // renders on every page and may stay (SPEC J2.7).
+  // Root routes are not split (R60, SPEC J2.7): their components render on
+  // every page or on error and not-found responses, where a lazy chunk only
+  // adds a round trip, so its errorComponent and notFoundComponent load with
+  // the root route module.
   const rootRoute = `import { createRootRoute, Outlet } from '@tanstack/react-router'
 export const Route = createRootRoute({
   component: () => <Outlet />,
@@ -533,14 +532,23 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
         timeout,
       )
 
-      // Kept unsplit on purpose, like main (SPEC J2.7: acceptable, not preferred).
-      test.fails.each(['errorComponent', 'notFoundComponent'] as const)(
-        "a root route's %s loads lazily",
-        async (option) => {
-          expect((await app()).where(rootMarkers[option])).toBe('lazy')
-        },
-        timeout,
-      )
+      // One cell per bundler kind: Vite and a webpack-family bundler.
+      if (
+        sideEffects === undefined &&
+        (bundler === 'vite' || bundler === 'rspack')
+      ) {
+        test(
+          "a root route's components load with the route module",
+          async () => {
+            const built = await app()
+            expect({
+              errorComponent: built.where(rootMarkers.errorComponent),
+              notFoundComponent: built.where(rootMarkers.notFoundComponent),
+            }).toEqual({ errorComponent: 'eager', notFoundComponent: 'eager' })
+          },
+          timeout,
+        )
+      }
 
       test(
         `${destructured.name} load with their chunk or are reported`,
