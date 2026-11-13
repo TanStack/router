@@ -707,7 +707,8 @@ export function keptDeclarations(
   // needs keeps it too, as a statement following both does (`seeds`
   // `stayPins`): reported the same way (phase 6 step 3, P04b). So does a
   // declaration joined so that the env module does not use
-  // (`const n = table.add(d).size`)
+  // (`const n = table.add(d).size`), and one whose own bindings only split
+  // code uses (`const idx = hits.push('x')`: review round 2 F2-3)
   /** What the env module evaluates for its own needs: not for a cause, a statement reported, or an export statement re-exporting causes. */
   const ownOfEnv = () =>
     reads.reach(
@@ -773,13 +774,14 @@ export function keptDeclarations(
         joined.push({ id: u, unit, written })
       }
     }
-    // (a statement writing two of its bindings, or using a binding of
-    // another cluster split code needs: the one candidates, before the env
-    // module's reach is walked)
+    // (a statement writing two of its bindings, using a binding of another
+    // cluster split code needs, or a declaration in a cluster split code
+    // needs: the one candidates, before the env module's reach is walked)
     if (
       !joined.some(
-        ({ id, written }) =>
+        ({ id, unit, written }) =>
           written.length > 1 ||
+          (unit.kind === 'declaration' && lazyNeeders(cl.id).length > 0) ||
           events
             .unitChanges(id)
             .clusters.some(
@@ -871,6 +873,30 @@ export function keptDeclarations(
           ...(several && { split: true }),
         })
         break
+      }
+      // a declaration whose own bindings only split code uses: they stay
+      // with the write their initialiser makes, which can only stay
+      if (unit.kind === 'declaration') {
+        const own = unit.declares.filter(
+          (s) =>
+            symbols.isModuleLevel(s) &&
+            !symbols.isImport(s) &&
+            t1.refs.refsOf(s).some((ref) => usedAt(ref) === 'split'),
+        )
+        if (own.length > 0) {
+          writtenTogether.push({
+            syms: own,
+            exported: false,
+            reason: 'written',
+            range: declaringRange(cl, own[0]),
+            needers: lazyNeeders(cl.id),
+            at: unit.range.start,
+            read: keptOne.sym,
+            readChanged: true,
+            declaration: true,
+          })
+          break
+        }
       }
       // a binding of another cluster the statement uses: kept by it alone
       // when only split code uses it otherwise (its uses in `cl`'s joined

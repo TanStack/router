@@ -630,4 +630,60 @@ export const Route = createFileRoute('/')({
     },
     timeout,
   )
+
+  // review round 2 F2-3: a declaration whose own initialiser changes
+  // `hits`, which `beforeLoad` keeps, stays with that change, and only the
+  // component uses what it declares: one warning at it, as its twin calling
+  // a function that changes `hits` gets. The fix: the change in a statement
+  // of its own, the declaration without it
+  test.each([
+    [
+      'a call',
+      "const idx = hits.push('x')",
+      "hits.push('x')\nconst idx = hits.length",
+      'idx',
+    ],
+    [
+      'a template',
+      "const idx = `${hits.push('x')}`",
+      "hits.push('x')\nconst idx = `${hits.length}`",
+      'idx',
+    ],
+    [
+      'an enum member',
+      "enum E { A = hits.push('x') }",
+      "hits.push('x')\nenum E { A = hits.length }",
+      'E.A',
+    ],
+  ])(
+    'round 2 F2-3: warns once at a declaration whose initialiser, %s, changes a kept binding, and its fix keeps what beforeLoad sees',
+    async (_, declaration, fixedDeclaration, shown) => {
+      const source = (decl: string) => `${head}const hits: Array<string> = []
+${decl}
+export const Route = createFileRoute('/')({
+  beforeLoad: () => hits.join(','),
+  component: () => <p>{String(${shown})}</p>,
+})
+`
+      const before = 'const seen = entry.Route.options.beforeLoad()'
+      const route = source(declaration)
+      const r = await mounted(bundler, route, {}, before)
+      expect(r.seen).toBe('x')
+      expect(r.text).toBe('1')
+      expectDiagnostic(r.diagnostics, {
+        severity: 'warning',
+        position: diagnosticPosition(
+          route,
+          declaration.startsWith('enum') ? 'enum E' : 'idx =',
+        ),
+        times: 1,
+      })
+      expect(r.diagnostics).toHaveLength(1)
+      const fixed = await mounted(bundler, source(fixedDeclaration), {}, before)
+      expect(fixed.seen).toBe('x')
+      expect(fixed.text).toBe('1')
+      expect(fixed.diagnostics).toEqual([])
+    },
+    timeout,
+  )
 })

@@ -1,14 +1,87 @@
 /**
  * Positions in an original file (a Vue SFC, an MDX page) of offsets of the
- * JavaScript another plugin compiled from it, where no map gives one: a
- * production build's plugin or loader makes no map unless source maps are
- * on, and a map may cover no segment at an offset. The plugins keep the
- * author's statements as written, but tools after them may reprint them:
- * blanks, quote styles and `;` aside, a statement over several lines (SWC
- * prints an object literal's properties one per line).
+ * JavaScript another plugin compiled from it: the one owner of where the
+ * compiler's refusals and import protection's reports point
+ * (`originalPositions`). Through the input map when there is one; where
+ * there is none or it covers no segment at an offset (a production build's
+ * plugin or loader makes no map unless source maps are on), the statement's
+ * line found by its text: the plugins keep the author's statements as
+ * written, but tools after them may reprint them: blanks, quote styles and
+ * `;` aside, a statement over several lines (SWC prints an object literal's
+ * properties one per line). Never a position of the compiled code in the
+ * original file (SPEC J6.5).
  */
 import { readFileSync } from 'node:fs'
+import { Locator, codeFrame } from '../import-protection/locate'
+import type { CodeFrame, OriginalLocation } from '../import-protection/locate'
 import type { InputSourceMap } from '@tanstack/router-utils/compiler'
+
+/** Where an offset of a compile's input is in the original file, and its code frame there. */
+export interface OriginalPositions {
+  /** The position (a map's may be in another file it names), or null when none is known. */
+  at: (offset: number) => OriginalLocation | null
+  /** The code frame of a position `at` gave (null without the original text). */
+  frame: (loc: OriginalLocation) => CodeFrame | null
+}
+
+/**
+ * Positions in `file` of offsets of `code`, its text or another plugin's
+ * output from it. A Vue SFC's script: through the input map, with the
+ * column of the offset in its statement when the mapped line has the
+ * statement's text (a map of whole lines: vue-loader in development);
+ * without a map, the line holding the offset's statement when the SFC has
+ * its text once. Other files: `code`'s own positions when it is the file's
+ * text; else through the map (a position in a file it names), and where
+ * there is none or it covers none, the statement's line by its text. Else
+ * no position.
+ */
+export function originalPositions(
+  file: string,
+  code: string,
+  inputMap: () => InputSourceMap | null,
+): OriginalPositions {
+  const locator = new Locator(code, file, inputMap)
+  let text: string | undefined
+  const original = () => (text ??= originalText(file, inputMap))
+  const reprinted = reprintedLocator(code, original)
+  /**
+   * Without a map, whether `code` is the file's text (else its positions
+   * are no file's). A module with no text to read (a virtual module) is its
+   * code; an SFC never is.
+   */
+  let ownText: boolean | undefined
+  const own = () => {
+    if (ownText === undefined) {
+      const read = file.endsWith('.vue') ? '' : readOriginal(file, inputMap)
+      ownText = read === null || read === code
+    }
+    return ownText
+  }
+  const inFile = (loc: { line: number; column: number } | null) =>
+    loc && { file, ...loc }
+  return {
+    at: (offset) => {
+      if (inputMap() === null) {
+        return own() ? locator.at(offset) : inFile(reprinted(offset))
+      }
+      const at = locator.at(offset)
+      if (!file.endsWith('.vue')) {
+        return at ?? inFile(reprinted(offset))
+      }
+      return at === null || at.file !== file
+        ? null
+        : inFile(reprinted(offset, at.line) ?? at)
+    },
+    frame: (loc) => {
+      // (the map's text of the file, or `code` when it is the file's text)
+      const framed = inputMap() !== null || own() ? locator.frame(loc) : null
+      return (
+        framed ??
+        (loc.file === file ? codeFrame(original(), loc, /\r?\n/) : null)
+      )
+    },
+  }
+}
 
 /** How many compiled lines a statement may span on each side of the offset's. */
 const SPAN = 8
@@ -119,6 +192,14 @@ export function originalText(
   file: string,
   inputMap: () => InputSourceMap | null,
 ): string {
+  return readOriginal(file, inputMap) ?? ''
+}
+
+/** `originalText`, or null when there is none to read (a virtual module, a file gone). */
+function readOriginal(
+  file: string,
+  inputMap: () => InputSourceMap | null,
+): string | null {
   const map = inputMap()
   const name = file.slice(file.lastIndexOf('/') + 1)
   const index = map?.sources.findIndex(
@@ -132,6 +213,6 @@ export function originalText(
   try {
     return readFileSync(file, 'utf8')
   } catch {
-    return ''
+    return null
   }
 }

@@ -14,6 +14,7 @@
 import path from 'node:path'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
+  diagnosticPosition,
   diagnosticsOf,
   expectDiagnostic,
   findDiagnostics,
@@ -544,6 +545,34 @@ export const Route = ${from}(routeId)({ component: () => 'new page' })
         severity: ['warning', 'error'],
         file,
         root,
+      })
+    },
+  )
+
+  // Source: review round 2 F5-2 (the id was reported at its column before
+  // the constructor's repair, which the generator wrote: a stale position,
+  // and a second report once the repaired file was read again)
+  test.each([
+    { fileName: 'new.tsx', from: 'createLazyFileRoute' },
+    { fileName: 'new.lazy.tsx', from: 'createFileRoute' },
+  ] as const)(
+    'round 2 F5-2: $from in $fileName: the id is reported once, at its position in the file as written',
+    async ({ fileName, from }) => {
+      const { root, file, written, diagnostics, error } = await upkeep(
+        fileName,
+        `import { ${from} } from ${router}
+
+const routeId = '/new'
+export const Route = ${from}(routeId)({ component: () => 'new page' })
+`,
+      )
+      expect(error).toBeUndefined()
+      expectDiagnostic(diagnostics, {
+        severity: 'warning',
+        file,
+        root,
+        position: diagnosticPosition(written, 'routeId)'),
+        times: 1,
       })
     },
   )

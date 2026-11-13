@@ -257,7 +257,9 @@ export function formatServedMismatch(
   const unread =
     sites[0]?.cause === 'added'
       ? 'one another plugin added'
-      : 'a pattern import'
+      : sites[0]?.found?.kind === 'require()'
+        ? 'a require()'
+        : 'a pattern import'
   lines.push(
     served === 'mock'
       ? `[import-protection] Denied file mocked in ${info.envType} environment, for an importer that needs it as it is`
@@ -414,6 +416,9 @@ function reachLine(site: PatternSite, ctx: ReportContext): string {
   const rel = relativizePath(site.importer, ctx.config.root)
   if (site.found) {
     const at = site.loc ? `${rel}:${site.loc.line}:${site.loc.column}` : rel
+    if (site.found.kind === 'require()') {
+      return `${at}, through ${requireText(site.found)}, which import protection does not read`
+    }
     const kind =
       site.found.kind === 'import()'
         ? 'an import() with a variable path'
@@ -424,6 +429,10 @@ function reachLine(site: PatternSite, ctx: ReportContext): string {
     ? `${rel}, through an import its source does not have (another plugin's transform added it)`
     : `${rel}, through a pattern import, which import protection does not read`
 }
+
+/** A `require()` as written (`require("./db.server")`). */
+const requireText = (found: PatternImport) =>
+  `require(${JSON.stringify(found.specifier)})`
 
 /** Where a pattern import matched the denied file (`formatViolation`). */
 interface PatternSite {
@@ -537,6 +546,13 @@ function patternSuggestions(
           ]
         : []),
     ]
+  }
+  // (a require() of its path is the import it is: a plain import's fixes,
+  // which leave the call out of the environment's code)
+  if (site.found.kind === 'require()') {
+    return envType === 'client'
+      ? [...CLIENT_ENV_SUGGESTIONS]
+      : [...SERVER_FN_SUGGESTIONS]
   }
   const exclusion = `!${relativeSpecifier(site.importer, denied)}`
   switch (site.found.kind) {
@@ -679,15 +695,17 @@ export function formatViolation(
   if (v.self || v.pattern !== undefined) {
     lines.push(`  Denied file: ${rel(info.resolved ?? info.importer)}`)
     lines.push(
-      site?.found
-        ? `  Matched by: ${site.found.kind === 'import()' ? 'an import() with a variable path' : site.found.kind} in ${at(site.importer, site.loc)}`
-        : site?.cause === 'unchecked'
-          ? `  Imported by: ${rel(site.importer)}, which import protection does not check (outside srcDirectory/include, or exempt by exclude/ignoreImporters)`
-          : site?.cause === 'added'
-            ? `  Imported by: ${rel(site.importer)}, through an import its source does not have (another plugin's transform added it)`
-            : site
-              ? `  Matched by: a pattern import in ${rel(site.importer)} (import.meta.glob, an import() with a variable path, import.meta.webpackContext)`
-              : `  Loaded by an import the compiler does not read: a pattern import (import.meta.glob, an import() with a variable path, import.meta.webpackContext), an import another plugin added, or a request of the file itself (a server.warmup glob)`,
+      site?.found?.kind === 'require()'
+        ? `  Imported by: ${at(site.importer, site.loc)}, through ${requireText(site.found)}`
+        : site?.found
+          ? `  Matched by: ${site.found.kind === 'import()' ? 'an import() with a variable path' : site.found.kind} in ${at(site.importer, site.loc)}`
+          : site?.cause === 'unchecked'
+            ? `  Imported by: ${rel(site.importer)}, which import protection does not check (outside srcDirectory/include, or exempt by exclude/ignoreImporters)`
+            : site?.cause === 'added'
+              ? `  Imported by: ${rel(site.importer)}, through an import its source does not have (another plugin's transform added it)`
+              : site
+                ? `  Matched by: a pattern import in ${rel(site.importer)} (import.meta.glob, an import() with a variable path, import.meta.webpackContext)`
+                : `  Loaded by an import the compiler does not read: a pattern import (import.meta.glob, an import() with a variable path, import.meta.webpackContext), an import another plugin added, or a request of the file itself (a server.warmup glob)`,
     )
   } else {
     const loc = info.importerLoc
@@ -728,9 +746,11 @@ export function formatViolation(
       ) {
         // the step of the pattern import's importer: the call, not a specifier
         loc = site.loc
-        spec = site.found
-          ? ` (${site.found.kind === 'import()' ? 'an import() with a variable path' : site.found.kind})`
-          : ''
+        spec = !site.found
+          ? ''
+          : site.found.kind === 'require()'
+            ? ` (${requireText(site.found)})`
+            : ` (${site.found.kind === 'import()' ? 'an import() with a variable path' : site.found.kind})`
       } else if (v.self && last) {
         spec = ''
       }

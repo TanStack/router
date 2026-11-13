@@ -44,9 +44,9 @@ import {
   ownEntry,
 } from '@tanstack/router-utils/compiler'
 import { startRecognizer } from '../compiler/recognizer'
+import { originalPositions } from '../compiler/reprinted'
 import { NODE_MODULES_RE } from '../compiler/scope'
 import { edgeModuleKey } from '../import-protection/edge-modules'
-import { Locator } from '../import-protection/locate'
 import {
   fileOrMarkerRule,
   markerViolates,
@@ -332,7 +332,12 @@ export function importEdgesPlanner(
       const rules = rulesFor(config, envType)
       const recipe = plan.outputs[output]
       const importerId = recipe?.derivedId ?? ctx.identity.canonicalId
-      const locator = new Locator(ctx.code, ctx.identity.path, ctx.inputMap)
+      // (positions in the original file: an SFC's, never the compiled code's)
+      const locator = originalPositions(
+        ctx.identity.path,
+        ctx.code,
+        ctx.inputMap,
+      )
       const typescript =
         ctx.identity.lang === 'ts' || ctx.identity.lang === 'tsx'
 
@@ -541,7 +546,7 @@ export function importEdgesPlanner(
     const file = relativizePath(ctx.identity.path, config.root)
     const line =
       first &&
-      new Locator(ctx.code, ctx.identity.path, ctx.inputMap).at(
+      originalPositions(ctx.identity.path, ctx.code, ctx.inputMap).at(
         first.specifierRange.start,
       )?.line
     return {

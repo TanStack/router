@@ -6,7 +6,10 @@
  * plugins compile the block into the component's setup function, so a
  * server fn there is nested in a function; a production build's plugin
  * makes no source map. The fixes the messages give build, with the
- * handler on the server only.
+ * handler on the server only. Import protection reports a denied import of
+ * the block at its position in the SFC too, with the SFC in its code frame
+ * (review round 2 F4-2: without a map, it reported the position in the
+ * script the plugin compiled).
  */
 import vue from '@vitejs/plugin-vue'
 import { pluginVue } from '@rsbuild/plugin-vue'
@@ -20,6 +23,7 @@ import {
 import { StartBuildError, buildStart } from '../build-harness'
 import { clientPage, startRsbuildStartDevServer } from '../rsbuild-dev-server'
 import { compileError, createStartHost } from '../regression-helpers'
+import { expectViolationsAt, rejection } from '../importProtection/start-apps'
 import type { StartHost } from '../regression-helpers'
 
 const timeout = 120_000
@@ -161,12 +165,14 @@ const build = (
   bundler: 'vite' | 'rsbuild',
   sfcs: Record<string, string>,
   sourcemap = false,
+  files: Record<string, string> = {},
 ) =>
   buildStart({
     bundler,
     sourcemap,
     framework: 'vue',
     files: {
+      ...files,
       'src/routes/__root.tsx': root,
       ...Object.fromEntries(
         Object.entries(sfcs).map(([name, text]) => [`src/${name}.vue`, text]),
@@ -235,6 +241,42 @@ describe.each([
             position: { line: template },
           }),
         ).toEqual([])
+      },
+      timeout,
+    )
+
+    test(
+      'round 2 F4-2: a denied import of the script fails the build at its position in the SFC, with the SFC in its code frame',
+      async () => {
+        const text = `<template>
+  <p>{{ shown }}</p>
+</template>
+
+<!-- the script -->
+<script setup lang="ts">
+import { ref } from 'vue'
+
+
+import { secret } from './db.server'
+const shown = ref(secret)
+</script>
+`
+        const error = await rejection(
+          build(bundler, { Page: text }, sourcemap, {
+            'src/db.server.ts': `export const secret = 'MARK_DB'\n`,
+          }),
+        )
+        const { line, column } = diagnosticPosition(text, "'./db.server'")
+        expectViolationsAt(error, [
+          { environment: 'client', use: `src/Page.vue:${line}:${column}` },
+        ])
+        const printed = error.diagnostics.filter((d) =>
+          d.text.includes('[import-protection]'),
+        )
+        expect(printed).not.toEqual([])
+        for (const d of printed) {
+          expect(d.text).toContain(`> ${line} | import { secret }`)
+        }
       },
       timeout,
     )

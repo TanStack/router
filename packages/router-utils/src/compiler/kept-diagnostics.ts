@@ -186,6 +186,13 @@ export function keptDiagnostic(
   let fix: string
   switch (k.reason) {
     case 'written': {
+      // its own initialiser changes `read`, which the env module keeps:
+      // that change stays, and the declaration with it (review round 2 F2-3)
+      if (k.declaration === true) {
+        because = `${own} declaration also changes ${read}, which the ${module} keeps`
+        fix = `change ${read} in a statement of its own, and declare ${subject} without changing it`
+        break
+      }
       // a statement using it stays (R149): another binding it uses stays
       // or goes to an output no module shares with it (an extracted
       // export's module, R151), or code that runs later changes it

@@ -38,11 +38,10 @@ import { FunctionIdAllocator } from '../server-fns/ids'
 import { ServerFnRegistry } from '../server-fns/registry'
 import { createImportProtection } from '../import-protection/session'
 import { IMPORT_EDGES_PLANNER } from '../import-protection/violations'
-import { Locator } from '../import-protection/locate'
 import { namesStartSpecifier, startRecognizer } from './recognizer'
 import { opaquePackageModule, startCompileScope } from './scope'
-import { isVueSfc, vueLocator, vueReport } from './vue'
-import { originalText, reprintedLocator } from './reprinted'
+import { isVueSfc, vueReport } from './vue'
+import { originalPositions } from './reprinted'
 import type {
   CompileOutcome,
   CompiledOutputLike,
@@ -488,12 +487,14 @@ export class StartCompilerSession {
       return
     }
     let commonJsScript: boolean | undefined
-    // the SFC's positions of a Vue SFC's script, else the input map's
-    const locate =
-      inputMap &&
-      (isVueSfc(file)
-        ? vueLocator(file, code, inputMap)
-        : mapLocate(file, code, inputMap))
+    // positions in the original file (`originalPositions`, none in another)
+    const positions = inputMap && originalPositions(file, code, inputMap)
+    const locate: SfcLocate | undefined =
+      positions &&
+      ((offset) => {
+        const at = positions.at(offset)
+        return at && at.file === file ? at : null
+      })
     const vue =
       inputMap && locate && isVueSfc(file)
         ? vueReport(out, file, inputMap, locate)
@@ -580,35 +581,6 @@ export interface StartDiagnosticSink {
     at: DiagnosticPosition | undefined,
     generated?: DiagnosticPosition,
   ) => void
-}
-
-/**
- * Positions in `file` of offsets of `code` through its input map (none
- * where it names another file). Where there is none (a loader that makes
- * none in production builds) or it covers none, `code`'s own positions
- * when it is the file's text, else the line of the offset's statement when
- * the file has its text once (`reprinted.ts`), else none.
- */
-function mapLocate(
-  file: string,
-  code: string,
-  inputMap: () => InputSourceMap | null,
-): SfcLocate {
-  const locator = new Locator(code, file, inputMap)
-  const text = () => originalText(file, inputMap)
-  const reprinted = reprintedLocator(code, text)
-  /** Without a map, whether `code` is the file's text (else its positions are no file's). */
-  let ownText: boolean | undefined
-  return (offset) => {
-    if (inputMap() === null && !(ownText ??= text() === code)) {
-      return reprinted(offset)
-    }
-    const at = locator.at(offset)
-    if (at === null) {
-      return reprinted(offset)
-    }
-    return at.file === file ? at : null
-  }
 }
 
 /**

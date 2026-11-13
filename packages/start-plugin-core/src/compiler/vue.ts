@@ -17,8 +17,7 @@
  * cannot be hoisted is told so, with what the module top level is in an SFC.
  */
 import { START_ENV } from '../planners'
-import { Locator } from '../import-protection/locate'
-import { originalText, reprintedLocator } from './reprinted'
+import { originalText } from './reprinted'
 import type { LateEscape, VueHoist } from '../planners'
 import type {
   CompileOutput,
@@ -131,35 +130,6 @@ export function vueReport(
 export type SfcLocate = (
   offset: number,
 ) => { line: number; column: number } | null
-
-/**
- * Positions in the SFC of offsets of its script's compiled code. Through
- * the input map when there is one, with the column of the offset in its
- * statement when the mapped line has the statement's text (a map of whole
- * lines: vue-loader in development). Without one (a production build's
- * Vue plugin makes none unless source maps are on), the line holding the
- * offset's statement when the SFC has its text once (`reprinted.ts`: Vue
- * keeps a script's statements as written, a later TypeScript transform
- * may reprint them); else no position.
- */
-export function vueLocator(
-  file: string,
-  code: string,
-  inputMap: () => InputSourceMap | null,
-): SfcLocate {
-  const locator = new Locator(code, file, inputMap)
-  const reprinted = reprintedLocator(code, () => originalText(file, inputMap))
-  return (offset) => {
-    if (inputMap() === null) {
-      return reprinted(offset)
-    }
-    const at = locator.at(offset)
-    if (at === null || at.file !== file) {
-      return null
-    }
-    return reprinted(offset, at.line) ?? { line: at.line, column: at.column }
-  }
-}
 
 /** The 1-based line ranges of an SFC's `<script setup>` blocks. */
 function scriptSetupLines(sfc: string): Array<[number, number]> {
