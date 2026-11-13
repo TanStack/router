@@ -1,6 +1,9 @@
 import { expect } from '@playwright/test'
 
 import { test } from '@tanstack/router-e2e-utils'
+import { isSpaMode } from './utils/isSpaMode'
+
+test.skip(isSpaMode, 'issue #8736 needs server-rendered markup to hydrate')
 
 // https://github.com/TanStack/router/issues/8736
 test('Back before hydration hydrates the server markup, then shows the current entry', async ({
