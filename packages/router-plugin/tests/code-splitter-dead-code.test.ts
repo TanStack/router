@@ -398,6 +398,7 @@ export const Route = createFileRoute('/')({
 `)
       // Known limitation on main: the statement runs in both modules instead
       // of once in the shared module; only check that each module binds `value`.
+      // Pinned in known-bugs-code-splitter.test.ts ("a binding declared by a var in …").
       for (const name of ['reference', 'virtual component']) {
         expect(binds(modules[name]!, 'value'), `${name} binds value`).toBe(true)
       }
