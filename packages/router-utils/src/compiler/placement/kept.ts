@@ -68,12 +68,15 @@ export function keptDeclarations(
   /** The clusters that stay in the env module whatever moves: the route options' (the declaration holding a claimed region) and generated code. */
   let fixed: Set<ClusterId> | undefined
   /**
-   * The move a `state` or `reads` report offers (`Events.movedWith`): what
-   * moves with cluster `c` and `read`, named, or what keeps it from moving.
+   * The move a `state`, `reads` or `written` report offers
+   * (`Events.movedWith`): what moves with cluster `c` and `read`, named, or
+   * what keeps it from moving. `named`: the statement a `written` report
+   * names already (its position), neither listed nor counted as a write.
    */
   const moveOf = (
     c: ClusterId,
     read: SymbolId,
+    named?: number,
   ): Pick<KeptDeclaration, 'moves' | 'stuck'> => {
     if (fixed === undefined) {
       fixed = new Set()
@@ -87,17 +90,23 @@ export function keptDeclarations(
       }
     }
     const moved = events.movedWith(c, read)
-    const named = (s: SymbolId) =>
+    const source = (s: SymbolId) =>
       symbols.isModuleLevel(s) && symbols.kind(s) === 'source'
     for (const d of moved.clusters) {
       const cl = clusters[d]!
       if (fixed.has(d) || cl.gens.length > 0) {
-        const sym = [...cl.declares].find(named)
+        const sym = [...cl.declares].find(source)
         return { stuck: { ...(sym !== undefined && { sym }), at: cl.start } }
       }
     }
     const syms: Array<SymbolId> = []
     const statements: Array<number> = []
+    const statement =
+      named === undefined ? null : t1.unitAt({ start: named, end: named })
+    const inStatement = (at: number) =>
+      statement !== null &&
+      at >= units[statement]!.range.start &&
+      at < units[statement]!.range.end
     /** Whether `d` writes a moved binding when the module loads (a statement writing them). */
     const writes = (d: ClusterId) =>
       graph.writes.some(
@@ -106,6 +115,7 @@ export function keptDeclarations(
           w.eager &&
           moved.syms.has(w.sym) &&
           w.owner !== null &&
+          !inStatement(w.at) &&
           graph.clusterOfRegion.get(w.owner) === d,
       )
     for (const d of moved.clusters) {
@@ -118,14 +128,19 @@ export function keptDeclarations(
       const own = [...cl.declares].filter(
         (s) =>
           s !== read &&
-          named(s) &&
+          source(s) &&
           (cl.kind !== 'import' ||
             (moved.syms.has(s) &&
               (graph.writesOfSym.get(s) ?? []).some((w) => w.live && w.eager))),
       )
       if (own.length > 0) {
         syms.push(...own)
-      } else if (cl.kind !== 'import' && !cl.declares.has(read) && !writes(d)) {
+      } else if (
+        cl.kind !== 'import' &&
+        !cl.declares.has(read) &&
+        !writes(d) &&
+        !inStatement(cl.start)
+      ) {
         statements.push(cl.start)
       }
     }
@@ -141,10 +156,20 @@ export function keptDeclarations(
   /** The pair's other event and binding, as a record words them. */
   const pairOf = (c: ClusterId, pin: Pin): Partial<KeptDeclaration> => {
     const other = pin.other
+    // (`written`: the move of it and the binding the statement also uses,
+    // or, when code that runs later changes it too, of it alone; the
+    // statement is named already)
+    const subject =
+      pin.reason === 'written' &&
+      (pin.later !== undefined || pin.binding === undefined)
+        ? [...clusters[c]!.declares].find((s) => symbols.isModuleLevel(s))
+        : pin.binding
     return {
-      ...((pin.reason === 'state' || pin.reason === 'reads') &&
-        pin.binding !== undefined &&
-        moveOf(c, pin.binding)),
+      ...((pin.reason === 'state' ||
+        pin.reason === 'reads' ||
+        pin.reason === 'written') &&
+        subject !== undefined &&
+        moveOf(c, subject, pin.reason === 'written' ? other?.at : undefined)),
       // (`state`: only a write when the module loads, O, has a place in
       // that order to name; one at an unknown time, V, has none)
       ...(other !== undefined &&
