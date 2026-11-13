@@ -8607,6 +8607,45 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     },
   )
 
+  // the same through what the statement uses (`unitChanges`): a holder of
+  // it, and an exported binding, as with a call the model does not know
+  it.each([
+    [
+      'a holder of it',
+      'const k = new Set()\nconst d = make()\nconst h = { d }',
+      'k.add(h)',
+      false,
+    ],
+    [
+      'an exported binding',
+      'const k = new Set()\nexport const d = make()',
+      'k.add(d)',
+      true,
+    ],
+  ])(
+    'a binding the route module keeps that a known method changes, using %s',
+    async (_, decls, statement, extract) => {
+      const options = 'loader: () => k, component: () => d'
+      const code = route(`${decls}\n${statement}`, options)
+      const r = await report(code, undefined, {}, extract)
+      written(
+        r,
+        code,
+        'd',
+        statement,
+        'which uses it, stays there: it also changes `k`, which the route module keeps; run that statement in the code that needs it, so `d` can load with the split `component`.',
+      )
+      // the fix: the call in the code that needs `d`
+      const f = await report(
+        route(decls, `loader: () => k, component: () => (${statement}, d)`),
+        undefined,
+        {},
+        extract,
+      )
+      expect(f.diagnostics).toEqual([])
+    },
+  )
+
   it('a binding the route module keeps that the statement only uses', async () => {
     const statement = 'table.setup(cfg)'
     const options = 'loader: () => cfg, component: () => table'
