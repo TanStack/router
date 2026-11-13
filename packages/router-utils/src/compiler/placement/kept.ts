@@ -66,7 +66,13 @@ export function keptDeclarations(
         : units[declaring]!.range
     return { start: range.start, end: range.end }
   }
-  /** The clusters that stay in the env module whatever moves: the route options' (the declaration holding a claimed region) and generated code. */
+  /**
+   * The clusters that stay in the env module whatever moves: the route
+   * options' declaration (holding the values the router calls later,
+   * `calledLater`) and generated code made from it (a generated unit
+   * claiming a region of it). Other generated code is made from the source
+   * it claims, and moves with it.
+   */
   let fixed: Set<ClusterId> | undefined
   /**
    * The move a `state`, `reads` or `written` report offers
@@ -80,13 +86,24 @@ export function keptDeclarations(
     named?: number,
   ): Pick<KeptDeclaration, 'moves' | 'stuck'> => {
     if (fixed === undefined) {
+      const clusterAt = (range: { start: number; end: number }) => {
+        const u = t1.unitAt(range)
+        return u === null
+          ? undefined
+          : graph.clusterOfRegion.get(units[u]!.region)
+      }
       fixed = new Set()
-      for (const claim of input.rewrites.claims.values()) {
-        const u = t1.unitAt(regions.get(claim.region).range)
-        const x =
-          u === null ? undefined : graph.clusterOfRegion.get(units[u]!.region)
+      for (const range of input.calledLater) {
+        const x = clusterAt(range)
         if (x !== undefined) {
           fixed.add(x)
+        }
+      }
+      for (const claim of input.rewrites.claims.values()) {
+        const x = clusterAt(regions.get(claim.region).range)
+        const g = graph.clusterOfGen.get(claim.owner)
+        if (x !== undefined && fixed.has(x) && g !== undefined) {
+          fixed.add(g)
         }
       }
     }
@@ -95,7 +112,7 @@ export function keptDeclarations(
       symbols.isModuleLevel(s) && symbols.kind(s) === 'source'
     for (const d of moved.clusters) {
       const cl = clusters[d]!
-      if (fixed.has(d) || cl.gens.length > 0) {
+      if (fixed.has(d)) {
         const sym = [...cl.declares].find(source)
         return { stuck: { ...(sym !== undefined && { sym }), at: cl.start } }
       }
@@ -120,10 +137,11 @@ export function keptDeclarations(
           graph.clusterOfRegion.get(w.owner) === d,
       )
     for (const d of moved.clusters) {
-      if (d === c) {
+      const cl = clusters[d]!
+      // (generated code only: made again from the source it claims)
+      if (d === c || cl.units.length === 0) {
         continue
       }
-      const cl = clusters[d]!
       // (an import is named when the module writes it then: the
       // statements writing it move)
       const own = [...cl.declares].filter(
