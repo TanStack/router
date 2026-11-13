@@ -10,7 +10,7 @@
 import { statementsIn } from '../units'
 import { derivedNeeds } from './settle'
 import { NEED_KINDS } from './clusters'
-import type { Cluster, ClusterGraph, ClusterId } from './clusters'
+import type { Cluster, ClusterGraph, ClusterId, Write } from './clusters'
 import type { ReadIndex } from './reads'
 import type { Seeds } from './roots'
 import type { Events, Pin } from './events'
@@ -19,6 +19,7 @@ import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { OutputId } from '../rewrite'
 import type { KeptDeclaration, PlacementInput } from '../reach'
+import type { RegionId } from '../units'
 
 export function keptDeclarations(
   input: PlacementInput,
@@ -566,16 +567,95 @@ export function keptDeclarations(
   // a statement writing, when the module loads, a binding the env module
   // uses and one only split code uses joins them (a binding's writers at
   // load join its cluster, `clusters.ts`): the second stays with the
-  // first, reported at its declaration (recheck finding 4)
+  // first, reported at its declaration (recheck finding 4). A statement
+  // joined so (a method the mutation model knows writes only its receiver:
+  // `table.add(d)`) that uses a binding of another cluster only split code
+  // needs keeps it too, as a statement following both does (`seeds`
+  // `stayPins`): reported the same way (phase 6 step 3, P04b)
   const writtenTogether: Array<KeptDeclaration> = []
+  /** What the env module evaluates for its own needs: not for a cause, a statement reported, or an export statement re-exporting causes. */
+  const ownOfEnv = () =>
+    reads.reach(
+      'env',
+      [...envRoots].filter(
+        (c) => !causes.has(c) && !statements.has(c) && !gluesCauses(c),
+      ),
+    )
+  let ownCache: Set<ClusterId> | undefined
+  /** The write table by owner, once a cluster has a statement. */
+  let writesByOwner: Map<RegionId, Array<Write>> | undefined
   let evaluated: Set<ClusterId> | undefined
   let claimed: Array<{ start: number; end: number }> | undefined
   for (const cl of clusters) {
     if (
       (cl.kind !== 'declaration' && cl.kind !== 'effect') ||
-      cl.exported ||
-      cl.declares.size < 2 ||
-      lazyNeeders(cl.id).length === 0
+      !cl.units.some((u) => units[u]!.kind === 'effect')
+    ) {
+      continue
+    }
+    if (writesByOwner === undefined) {
+      writesByOwner = new Map()
+      for (const w of graph.writes) {
+        if (w.owner !== null) {
+          const list = writesByOwner.get(w.owner)
+          if (list) {
+            list.push(w)
+          } else {
+            writesByOwner.set(w.owner, [w])
+          }
+        }
+      }
+    }
+    const writesOf = writesByOwner
+    // (the statements of `cl` writing its bindings when the module loads,
+    // with them)
+    const joined: Array<{
+      unit: (typeof units)[number]
+      written: Array<SymbolId>
+    }> = []
+    for (const u of cl.units) {
+      const unit = units[u]!
+      if (unit.kind !== 'effect') {
+        continue
+      }
+      const written = [
+        ...new Set(
+          (writesOf.get(unit.region) ?? [])
+            .filter(
+              (w) =>
+                w.live &&
+                w.eager &&
+                cl.declares.has(w.sym) &&
+                symbols.isModuleLevel(w.sym) &&
+                !symbols.isImport(w.sym),
+            )
+            .map((w) => w.sym),
+        ),
+      ]
+      if (written.length > 0) {
+        joined.push({ unit, written })
+      }
+    }
+    // (a statement writing two of its bindings, or using a binding of
+    // another cluster split code needs: the one candidates, before the env
+    // module's reach is walked)
+    if (
+      !joined.some(
+        ({ unit, written }) =>
+          (written.length > 1 && !cl.exported) ||
+          t1.refs.refsIn(unit.range).some((r) => {
+            const x = symbols.isModuleLevel(r.sym)
+              ? clusterOfSym.get(r.sym)
+              : undefined
+            return (
+              x !== undefined &&
+              x !== cl.id &&
+              !clusters[x]!.copyable &&
+              clusters[x]!.kind !== 'import' &&
+              lazyNeeders(x).length > 0
+            )
+          }),
+      )
     ) {
       continue
     }
@@ -588,12 +668,20 @@ export function keptDeclarations(
       (claim) => regions.get(claim.region).range,
     )
     const inClaimed = claimed
-    /** Where the code holding `ref` evaluates, outside `cl`: the env module (`env`), split code only (`split`: an option value a split output claims, or code the env module does not evaluate). */
-    const usedAt = (ref: ClassifiedRef): 'env' | 'split' | null => {
+    /** Where the code holding `ref` evaluates, outside `cl` and `outside`: the env module (`env`), split code only (`split`: an option value a split output claims, or code the env module does not evaluate). */
+    const usedAt = (
+      ref: ClassifiedRef,
+      outside = cl.id,
+    ): 'env' | 'split' | null => {
       const u = t1.unitAt(ref.range)
       const x =
         u === null ? undefined : graph.clusterOfRegion.get(units[u]!.region)
-      if (x === undefined || x === cl.id || !NEED_KINDS.has(ref.kind)) {
+      if (
+        x === undefined ||
+        x === cl.id ||
+        x === outside ||
+        !NEED_KINDS.has(ref.kind)
+      ) {
         return null
       }
       return liveInEnv(ref) &&
@@ -604,57 +692,103 @@ export function keptDeclarations(
         ? 'env'
         : 'split'
     }
-    for (const u of cl.units) {
-      const unit = units[u]!
-      if (unit.kind !== 'effect') {
-        continue
-      }
-      const written = [
-        ...new Set(
-          graph.writes
-            .filter(
-              (w) =>
-                w.owner === unit.region &&
-                w.live &&
-                w.eager &&
-                cl.declares.has(w.sym) &&
-                symbols.isModuleLevel(w.sym) &&
-                !symbols.isImport(w.sym),
-            )
-            .map((w) => w.sym),
-        ),
-      ]
-      if (written.length < 2) {
-        continue
-      }
+    for (const { unit, written } of joined) {
       const uses = written.map((sym) => {
-        const at = t1.refs.refsOf(sym).map(usedAt)
+        const at = t1.refs.refsOf(sym).map((ref) => usedAt(ref))
         return { sym, env: at.includes('env'), split: at.includes('split') }
       })
       const keptOne = uses.find((x) => x.env)
-      const free = uses.filter((x) => !x.env && x.split).map((x) => x.sym)
-      if (keptOne === undefined || free.length === 0) {
+      if (keptOne === undefined) {
         continue
       }
+      const free = cl.exported
+        ? []
+        : uses.filter((x) => !x.env && x.split).map((x) => x.sym)
       const node = unit.node
-      writtenTogether.push({
-        syms: free,
-        exported: false,
-        reason: 'written',
-        range: declaringRange(cl, free[0]),
-        needers: lazyNeeders(cl.id),
-        at: unit.range.start,
-        read: keptOne.sym,
-        readChanged: true,
-        // (a statement of several writes can change the kept binding in one
-        // of its own)
-        ...((statementsIn(node) > 1 ||
-          (node.type === 'ExpressionStatement' &&
-            node.expression.type === 'SequenceExpression')) && {
-          split: true,
-        }),
+      if (free.length > 0 && lazyNeeders(cl.id).length > 0) {
+        writtenTogether.push({
+          syms: free,
+          exported: false,
+          reason: 'written',
+          range: declaringRange(cl, free[0]),
+          needers: lazyNeeders(cl.id),
+          at: unit.range.start,
+          read: keptOne.sym,
+          readChanged: true,
+          // (a statement of several writes can change the kept binding in
+          // one of its own)
+          ...((statementsIn(node) > 1 ||
+            (node.type === 'ExpressionStatement' &&
+              node.expression.type === 'SequenceExpression')) && {
+            split: true,
+          }),
+        })
+        break
+      }
+      // a binding of another cluster the statement uses: kept by it alone
+      // when only split code uses it otherwise (its uses in `cl`'s joined
+      // statements aside), and the env module keeps `cl` for its own needs
+      // (else `cl` is a cause, or its cascade, reported at the cause)
+      ownCache ??= ownOfEnv()
+      if (!ownCache.has(cl.id)) {
+        continue
+      }
+      const inJoined = (ref: ClassifiedRef) =>
+        joined.some(
+          (j) =>
+            ref.range.start >= j.unit.range.start &&
+            ref.range.end <= j.unit.range.end,
+        )
+      const used = t1.refs.refsIn(unit.range).find((r) => {
+        const x = symbols.isModuleLevel(r.sym)
+          ? clusterOfSym.get(r.sym)
+          : undefined
+        if (x === undefined || x === cl.id) {
+          return false
+        }
+        const xc = clusters[x]!
+        if (
+          (xc.kind !== 'declaration' && xc.kind !== 'effect') ||
+          xc.exported ||
+          xc.copyable ||
+          xc.gens.length > 0 ||
+          causes.has(x) ||
+          !ev.has(x) ||
+          lazyNeeders(x).length === 0
+        ) {
+          return false
+        }
+        let split = false
+        for (const s of xc.declares) {
+          for (const ref of t1.refs.refsOf(s)) {
+            const at = inJoined(ref) ? null : usedAt(ref, x)
+            if (at === 'env') {
+              return false
+            }
+            split ||= at === 'split'
+          }
+        }
+        return split
       })
-      break
+      if (used !== undefined) {
+        const x = clusterOfSym.get(used.sym)!
+        const xc = clusters[x]!
+        const syms = [...xc.declares].filter(
+          (s) => symbols.isModuleLevel(s) && !symbols.isImport(s),
+        )
+        writtenTogether.push({
+          syms,
+          exported: false,
+          reason: 'written',
+          range: declaringRange(xc, syms[0]),
+          needers: lazyNeeders(x),
+          at: unit.range.start,
+          read: keptOne.sym,
+          readChanged: true,
+          uses: true,
+        })
+        break
+      }
     }
   }
   const kept: Array<KeptDeclaration> = [...unusedReports, ...writtenTogether]
@@ -683,12 +817,7 @@ export function keptDeclarations(
       }
     }
   }
-  const envOwn = reads.reach(
-    'env',
-    [...envRoots].filter(
-      (c) => !causes.has(c) && !statements.has(c) && !gluesCauses(c),
-    ),
-  )
+  const envOwn = ownCache ?? ownOfEnv()
   /**
    * The cluster declaring what an export cancelled because it reads it
    * (`reads`) reads: the export stays only for it, so it keeps nothing by
