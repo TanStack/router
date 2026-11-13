@@ -7,6 +7,7 @@ import {
 import { getRouteNodes as virtualGetRouteNodes } from './virtual/getRouteNodes'
 import { rootPathId } from './physical/rootPathId'
 import type { Config } from '../config'
+import type { Logger } from '../logger'
 import type { RouteNode } from '../types'
 
 /** What one scan of the routes found. Immutable once returned. */
@@ -26,6 +27,7 @@ export interface ScanResult {
 export async function scanRoutes(
   config: Config,
   root: string,
+  logger: Logger,
 ): Promise<ScanResult> {
   const tokenRegexes = {
     indexTokenSegmentRegex: createTokenRegex(config.indexToken, {
@@ -36,8 +38,8 @@ export async function scanRoutes(
     }),
   }
   const result = config.virtualRouteConfig
-    ? await virtualGetRouteNodes(config, root, tokenRegexes)
-    : await physicalGetRouteNodes(config, root, tokenRegexes)
+    ? await virtualGetRouteNodes(config, root, tokenRegexes, logger)
+    : await physicalGetRouteNodes(config, root, tokenRegexes, logger)
 
   if (result.rootRouteNode === undefined) {
     let errorMessage = `rootRouteNode must not be undefined. Make sure you've added your root route into the route-tree.`

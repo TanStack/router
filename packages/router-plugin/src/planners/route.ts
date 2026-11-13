@@ -473,9 +473,14 @@ function reportUnrecognizedRoute(
             ? 'Pass the route options to it: `createRootRoute({ … })`.'
             : 'Call it with the context type, then with the route options: `createRootRouteWithContext<Ctx>()({ … })`.'
       break
+    case 'code-based':
+      cause =
+        'is created by `createRoute`, the constructor of code-based routes'
+      fix = `${writeIt}, without \`getParentRoute\`, \`path\` and \`id\`: the route tree sets them.`
+      break
     case 'wrapped':
       cause =
-        'is not created by a route constructor call bound to its `Route` export (the call is wrapped, made in a function, or stored in another const, or `Route` is declared more than once)'
+        'is not created by a route constructor call bound to its `Route` export (the call is wrapped, made in a function, stored in another const or in what `Route` is destructured from, or `Route` is declared more than once)'
       fix = `${writeIt}${entry.kind === 'root' ? ' (or `createRootRouteWithContext<Ctx>()({ … })`)' : ''}.`
       break
   }

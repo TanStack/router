@@ -17,6 +17,7 @@ import { loadConfigFile } from '../virtual/loadConfigFile'
 import { logging } from '../../logger'
 import { routeOptionPieces, routePieces } from '../../types'
 import { rootPathId } from './rootPathId'
+import type { Logger } from '../../logger'
 import type {
   VirtualRootRoute,
   VirtualRouteSubtreeConfig,
@@ -54,11 +55,11 @@ export async function getRouteNodes(
   >,
   root: string,
   tokenRegexes: TokenRegexBundle,
+  logger: Logger = logging({ disabled: config.disableLogging }),
 ): Promise<GetRouteNodesResult> {
   const { routeFilePrefix, routeFileIgnorePrefix, routeFileIgnorePattern } =
     config
 
-  const logger = logging({ disabled: config.disableLogging })
   const routeFileIgnoreRegExp = new RegExp(routeFileIgnorePattern ?? '', 'g')
 
   const routeNodes: Array<RouteNode> = []
@@ -126,6 +127,7 @@ export async function getRouteNodes(
           },
           root,
           tokenRegexes,
+          logger,
         )
       allPhysicalDirectories.push(...physicalDirectories)
       virtualRouteNodes.forEach((node) => {

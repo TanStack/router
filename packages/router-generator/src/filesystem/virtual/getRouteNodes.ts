@@ -13,6 +13,7 @@ import {
 } from '../../utils'
 import { getRouteNodes as getRouteNodesPhysical } from '../physical/getRouteNodes'
 import { rootPathId } from '../physical/rootPathId'
+import { logging } from '../../logger'
 import { virtualRootRouteSchema } from './config'
 import { loadConfigFile } from './loadConfigFile'
 import type {
@@ -22,6 +23,7 @@ import type {
 import type { GetRouteNodesResult, RouteNode } from '../../types'
 import type { Config } from '../../config'
 import type { TokenRegexBundle } from '../physical/getRouteNodes'
+import type { Logger } from '../../logger'
 
 function ensureLeadingUnderScore(id: string) {
   if (id.startsWith('_')) {
@@ -55,6 +57,7 @@ export async function getRouteNodes(
   >,
   root: string,
   tokenRegexes: TokenRegexBundle,
+  logger: Logger = logging({ disabled: tsrConfig.disableLogging }),
 ): Promise<GetRouteNodesResult> {
   const fullDir = resolve(tsrConfig.routesDirectory)
   if (tsrConfig.virtualRouteConfig === undefined) {
@@ -75,6 +78,7 @@ export async function getRouteNodes(
     fullDir,
     virtualRouteConfig.children,
     tokenRegexes,
+    logger,
   )
   const allNodes = flattenTree({
     children,
@@ -145,6 +149,7 @@ async function getRouteNodesRecursive(
   fullDir: string,
   nodes: Array<VirtualRouteNode> | undefined,
   tokenRegexes: TokenRegexBundle,
+  logger: Logger,
   parent?: RouteNode,
 ): Promise<{ children: Array<RouteNode>; physicalDirectories: Array<string> }> {
   if (nodes === undefined) {
@@ -169,6 +174,7 @@ async function getRouteNodesRecursive(
           },
           root,
           tokenRegexes,
+          logger,
         )
         allPhysicalDirectories.push(
           resolve(fullDir, node.directory),
@@ -288,6 +294,7 @@ async function getRouteNodesRecursive(
                 fullDir,
                 node.children,
                 tokenRegexes,
+                logger,
                 routeNode,
               )
             routeNode.children = children
@@ -346,6 +353,7 @@ async function getRouteNodesRecursive(
                 fullDir,
                 node.children,
                 tokenRegexes,
+                logger,
                 routeNode,
               )
             routeNode.children = children

@@ -55,8 +55,6 @@ function routerWarnings(
   ]
 }
 
-const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
 const fixed = `import { createFileRoute } from '${RP}'
 export const Route = createFileRoute('/x')(${options})
 `
@@ -92,20 +90,29 @@ export const [Route] = [createFileRoute('/x')(${options})]
         'is not created by a route constructor call bound to its `Route` export',
     },
   ])(
-    '$name in a listed route file is reported once, saying its server options ship, and the offered fix keeps them out of the client',
+    '$name in a listed route file is reported, saying its server options ship, and the offered fix keeps them out of the client',
     async ({ route, cause }) => {
       const before = await build(bundler, route)
-      expect(routerWarnings(before.diagnostics)).toEqual([
-        expect.stringMatching(
-          new RegExp(
-            `The route of src/routes/x\\.tsx ${escape(cause)}.*any server code in them ships to the client`,
-          ),
-        ),
-      ])
+      // (each environment reports it; the client's, whose build removes
+      // the server options, says they ship)
+      const warnings = routerWarnings(before.diagnostics)
+      expect(warnings).not.toEqual([])
+      for (const warning of warnings) {
+        expect(warning).toContain(`The route of src/routes/x.tsx ${cause}`)
+      }
+      expect(warnings).toContainEqual(
+        expect.stringContaining('any server code in them ships to the client'),
+      )
       expectDiagnostic(before.diagnostics, {
         severity: 'warning',
         file: 'src/routes/x.tsx',
       })
+      // (as every unrecognised route shape: the build goes on, the route is
+      // not split, and its server options ship with the warning)
+      expect({
+        page: before.client.where('MARK_PAGE'),
+        headers: before.client.where('MARK_HEADERS'),
+      }).toEqual({ page: 'eager', headers: 'eager' })
 
       const after = await build(bundler, fixed)
       expectNoProblems(after.diagnostics)

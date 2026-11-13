@@ -232,10 +232,20 @@ export class Generator {
   }> = []
   private draining: Promise<void> | undefined
 
-  constructor(opts: { config: Config; root: string }) {
+  constructor(opts: {
+    config: Config
+    root: string
+    /**
+     * Where the generator's messages go (default: the console, unless
+     * `disableLogging`): a host printing each warning once per build passes
+     * its own.
+     */
+    logger?: Logger
+  }) {
     this.config = opts.config
     this.root = opts.root
-    this.logger = logging({ disabled: this.config.disableLogging })
+    this.logger =
+      opts.logger ?? logging({ disabled: this.config.disableLogging })
     this.style = styleOf(this.config)
     this.routerPackage = routerPackageOf(this.config.target)
     this.treeFile = path.resolve(this.root, this.config.generatedRouteTree)
@@ -514,7 +524,7 @@ export class Generator {
     if (structural) {
       let scan: ScanResult
       try {
-        scan = await scanRoutes(this.config, this.root)
+        scan = await scanRoutes(this.config, this.root, this.logger)
       } catch (error) {
         // (rejects: a build fails on a file it knows broken, else with this)
         await this.readFiles([Promise.reject(error)], build)

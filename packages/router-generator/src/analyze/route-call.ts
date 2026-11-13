@@ -16,11 +16,15 @@ export type RouteConstructorName =
   | 'createRootRoute'
   | 'createRootRouteWithContext'
 
-const routeConstructors: ReadonlySet<string> = new Set<RouteConstructorName>([
+const routeConstructors: ReadonlySet<string> = new Set<
+  RouteConstructorName | 'createRoute'
+>([
   'createFileRoute',
   'createLazyFileRoute',
   'createRootRoute',
   'createRootRouteWithContext',
+  // the constructor of code-based routes: no route file's (`code-based`)
+  'createRoute',
 ])
 
 /** The constructors whose first call takes the route id, and whose result takes the options. */
@@ -70,10 +74,16 @@ export type ForeignRoute =
       constructor: 'createRootRoute' | 'createRootRouteWithContext'
     }
   /**
+   * `createRoute({ getParentRoute, path, … })`: a code-based route, whose
+   * parent and path the route tree gives a listed file anyway.
+   */
+  | { kind: 'code-based' }
+  /**
    * The initialiser uses a route constructor of the router package (itself
    * or through the file's own functions and consts), but is not its call:
-   * wrapped, made in a function of the file, stored in another const, or
-   * `Route` declared more than once.
+   * wrapped, made in a function of the file, stored in another const or in
+   * what a pattern declaring `Route` destructures, or `Route` declared more
+   * than once.
    */
   | { kind: 'wrapped' }
 
@@ -114,7 +124,7 @@ function constructorOf(
   callee: Node,
   routerPackage: string,
 ): {
-  name: RouteConstructorName
+  name: RouteConstructorName | 'createRoute'
   specifier: Node | null
   property: Node | null
   /** Bound to `import type` (or `import { type … }`). */
@@ -140,7 +150,7 @@ function constructorOf(
       imported.name !== null &&
       routeConstructors.has(imported.name)
       ? {
-          name: imported.name as RouteConstructorName,
+          name: imported.name as RouteConstructorName | 'createRoute',
           specifier: imported.node,
           property: null,
           typeOnly: imported.typeOnly,
@@ -162,7 +172,7 @@ function constructorOf(
       imported.kind === 'namespace' &&
       imported.specifier === routerPackage
       ? {
-          name: property.name as RouteConstructorName,
+          name: property.name as RouteConstructorName | 'createRoute',
           specifier: null,
           property,
           typeOnly: imported.typeOnly,
@@ -172,9 +182,28 @@ function constructorOf(
   return null
 }
 
-function isStringLiteral(node: Node | undefined): boolean {
-  return node?.type === 'Literal' && typeof node.value === 'string'
+/**
+ * The string literal `node` is, through parentheses and TypeScript
+ * assertions (`('/x')`, `'/x' as const`): the route id as the generator
+ * keeps it up, or null.
+ */
+export function stringLiteralOf(
+  node: Node | undefined,
+): (Node & { type: 'Literal'; value: string }) | null {
+  const inner = node ? unwrap(node) : null
+  return inner?.type === 'Literal' && typeof inner.value === 'string'
+    ? (inner as Node & { type: 'Literal'; value: string })
+    : null
 }
+
+/** The nodes of a destructuring pattern between a name it declares and its declarator. */
+const patternParts: ReadonlySet<string> = new Set([
+  'ObjectPattern',
+  'ArrayPattern',
+  'Property',
+  'AssignmentPattern',
+  'RestElement',
+])
 
 const wrappers: ReadonlySet<string> = new Set([
   'ParenthesizedExpression',
@@ -301,14 +330,17 @@ export function routeCallOf(
   if (!routeExport) {
     return { kind: 'none' }
   }
-  // the one declarator of the binding (a type, interface or type namespace
-  // of the same name declares no value)
+  // the declarators of the binding, a destructuring pattern's included (a
+  // type, interface or type namespace of the same name declares no value)
   const declarators: Array<VariableDeclarator> = []
   for (const name of routeExport.kind === 'named'
     ? (routeExport.local?.declarations ?? [])
     : []) {
-    const parent = file.parentOf(name)
-    if (parent?.type === 'VariableDeclarator' && parent.id === name) {
+    let parent = file.parentOf(name)
+    while (parent && patternParts.has(parent.type)) {
+      parent = file.parentOf(parent)
+    }
+    if (parent?.type === 'VariableDeclarator') {
       declarators.push(parent)
     }
   }
@@ -324,7 +356,7 @@ export function routeCallOf(
         : 'other',
     })
   const declarator = declarators.length === 1 ? declarators[0]! : null
-  if (!declarator) {
+  if (!declarator || declarator.id.type !== 'Identifier') {
     // re-exported, imported, destructured, a function, declared twice...
     return notTheCall()
   }
@@ -345,8 +377,11 @@ export function routeCallOf(
     return notTheCall()
   }
   const name = found.name
+  if (name === 'createRoute') {
+    return foreign({ kind: 'code-based' })
+  }
   // (a string as the only call's argument is an id: no options call)
-  const idOnly = !curried && isStringLiteral(outer.arguments[0])
+  const idOnly = !curried && stringLiteralOf(outer.arguments[0]) !== null
   if (found.typeOnly) {
     return foreign({
       kind: 'type-only',
