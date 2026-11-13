@@ -1,5 +1,5 @@
 import { runInNewContext } from 'node:vm'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { GLOBAL_TSR } from '../src/ssr/constants'
@@ -156,8 +156,187 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
   test('omits unmatched route assets by default', async () => {
     const manifest = await dehydrateManifest()
 
-    expect(manifest.routes['/posts']).toBeUndefined()
-    expect(manifest.routes['/']?.preloads).toEqual(['/assets/index.js'])
+    // Route ids are keyed like match ids ('/' -> '#'); see the key test below.
+    expect(Object.keys(manifest.routes)).toEqual(['__root__', '#'])
+    expect(manifest.routes['#posts']).toBeUndefined()
+    expect(manifest.routes['#']?.preloads).toEqual(['/assets/index.js'])
+  })
+
+  test('keys dehydrated manifest routes by encoded route id', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const layoutRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      id: '_layout',
+    })
+    const groupRoute = new BaseRoute({
+      getParentRoute: () => layoutRoute,
+      id: '(marketing)',
+    })
+    const postRoute = new BaseRoute({
+      getParentRoute: () => groupRoute,
+      path: 'blog/$slug',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        layoutRoute.addChildren([groupRoute.addChildren([postRoute])]),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/blog/hello'] }),
+      isServer: true,
+    })
+    const manifest: ServerManifest = {
+      inlineCss: {
+        styles: { '/assets/layout-inline.css': '.layout{}' },
+      },
+      routes: {
+        [rootRoute.id]: { preloads: ['/assets/root.js'] },
+        [layoutRoute.id]: {
+          css: ['/assets/layout-inline.css', '/assets/layout.css'],
+        },
+        [postRoute.id]: {
+          css: ['/assets/post.css'],
+          preloads: ['/assets/post.js'],
+        },
+        '/unmatched': { css: ['/assets/unmatched.css'] },
+      },
+    }
+    const requestAssets: ManifestRouteAssets = {
+      preloads: [{ href: '/assets/request.js' }],
+    }
+
+    attachRouterServerSsrUtils({
+      router,
+      manifest,
+      getRequestAssets: () => requestAssets,
+    })
+    try {
+      await router.load()
+      expect(router.state.matches.map((match) => match.routeId)).toEqual([
+        '__root__',
+        '/_layout',
+        '/_layout/(marketing)',
+        '/_layout/(marketing)/blog/$slug',
+      ])
+
+      const rootAssets = {
+        preloads: [{ href: '/assets/request.js' }, '/assets/root.js'],
+      }
+      const layoutAssets = { css: ['/assets/layout.css'] }
+      const postAssets = {
+        css: ['/assets/post.css'],
+        preloads: ['/assets/post.js'],
+      }
+
+      // Rendering on the server looks routes up by their raw ids.
+      const renderedRoutes = router.ssr!.manifest!.routes
+      expect(renderedRoutes.__root__).toEqual(rootAssets)
+      expect(renderedRoutes['/_layout']).toEqual(layoutAssets)
+      expect(renderedRoutes['/_layout/(marketing)/blog/$slug']).toEqual(
+        postAssets,
+      )
+      expect(router.ssr!.manifest?.inlineStyle?.children).toBe('.layout{}')
+
+      await router.serverSsr!.dehydrate({ requestAssets })
+      const dehydratedManifest = parseSerializedRouter(
+        router.serverSsr!.takeInitialHydrationScriptTags()!,
+      ).manifest!
+
+      // Only the matched routes are inlined, keyed like match ids.
+      expect(dehydratedManifest.routes).toEqual({
+        __root__: rootAssets,
+        '#_layout': layoutAssets,
+        '#_layout#(marketing)#blog#$slug': postAssets,
+      })
+      for (const key of Object.keys(dehydratedManifest.routes)) {
+        expect(key).not.toContain('/')
+      }
+      // Dehydration does not re-key the server-side manifests.
+      expect(Object.keys(router.ssr!.manifest!.routes)).toContain(
+        '/_layout/(marketing)/blog/$slug',
+      )
+      expect(Object.keys(manifest.routes)).toEqual([
+        '__root__',
+        '/_layout',
+        '/_layout/(marketing)/blog/$slug',
+        '/unmatched',
+      ])
+    } finally {
+      router.serverSsr?.cleanup()
+    }
+  })
+
+  test('keys request assets under the root route when the manifest has no root entry', async () => {
+    const router = buildRouter()
+    attachRouterServerSsrUtils({
+      router,
+      manifest: { routes: { '/': { preloads: ['/assets/index.js'] } } },
+    })
+
+    try {
+      await router.load()
+      await router.serverSsr!.dehydrate({
+        requestAssets: { preloads: ['/assets/request.js'] },
+      })
+      const dehydratedManifest = parseSerializedRouter(
+        router.serverSsr!.takeInitialHydrationScriptTags()!,
+      ).manifest!
+
+      expect(dehydratedManifest.routes).toEqual({
+        __root__: { preloads: ['/assets/request.js'] },
+        '#': { preloads: ['/assets/index.js'] },
+      })
+    } finally {
+      router.serverSsr?.cleanup()
+    }
+  })
+
+  test('keys a copy of the production-cached routes for each request', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.resetModules()
+    try {
+      // Production caches prepared routes per manifest and matched route ids.
+      const { attachRouterServerSsrUtils: attachProductionSsrUtils } =
+        await import('../src/ssr/ssr-server')
+      const manifest = buildInlineManifest()
+      const renderRequest = async (requestAssets?: ManifestRouteAssets) => {
+        const router = buildRouter()
+        attachProductionSsrUtils({ router, manifest })
+        try {
+          await router.load()
+          await router.serverSsr!.dehydrate(
+            requestAssets ? { requestAssets } : undefined,
+          )
+          return {
+            renderedRoutes: router.ssr!.manifest!.routes,
+            dehydratedRoutes: parseSerializedRouter(
+              router.serverSsr!.takeInitialHydrationScriptTags()!,
+            ).manifest!.routes,
+          }
+        } finally {
+          router.serverSsr?.cleanup()
+        }
+      }
+
+      const first = await renderRequest({ preloads: ['/assets/request.js'] })
+      const second = await renderRequest()
+
+      expect(first.dehydratedRoutes).toEqual({
+        __root__: { preloads: ['/assets/request.js', '/assets/root.js'] },
+        '#': { preloads: ['/assets/index.js'] },
+      })
+      expect(second.dehydratedRoutes).toEqual({
+        __root__: { preloads: ['/assets/root.js'] },
+        '#': { preloads: ['/assets/index.js'] },
+      })
+      // The cached routes keep raw keys for rendering, with inlined CSS
+      // stripped.
+      for (const { renderedRoutes } of [first, second]) {
+        expect(renderedRoutes['/']).toEqual({ preloads: ['/assets/index.js'] })
+        expect(renderedRoutes['#']).toBeUndefined()
+      }
+    } finally {
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    }
   })
 
   test('preserves script format when dehydrating the manifest', async () => {
@@ -371,7 +550,7 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
           : asset.href === '/assets/shared.css',
       ),
     ).toBe(false)
-    expect(dehydratedManifest.routes['/']?.preloads).toEqual([
+    expect(dehydratedManifest.routes['#']?.preloads).toEqual([
       '/assets/index.js',
     ])
   })
@@ -497,10 +676,10 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
         crossOrigin: 'anonymous',
       },
     ])
-    expect(dehydratedManifest.routes['/']?.css).toEqual([
+    expect(dehydratedManifest.routes['#']?.css).toEqual([
       '/assets/index-linked.css',
     ])
-    expect(dehydratedManifest.routes['/']?.preloads).toEqual([
+    expect(dehydratedManifest.routes['#']?.preloads).toEqual([
       '/assets/index.js',
     ])
   })
@@ -552,6 +731,10 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     expect(scripts).toBeDefined()
     const dehydratedManifest = parseSerializedRouter(scripts!).manifest!
 
-    expect(dehydratedManifest.routes[childRoute.id]).toBeUndefined()
+    expect(Object.keys(dehydratedManifest.routes)).toEqual([
+      '__root__',
+      '#parent',
+    ])
+    expect(dehydratedManifest.routes['#parent#child']).toBeUndefined()
   })
 })
