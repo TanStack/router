@@ -325,6 +325,8 @@ const suite = (title: string, cases: Array<Case>) =>
       it(c.name, async () => {
         const route = await loadRoute(c.route, { files: c.files })
         await expectValidModules(route)
+        // (before the script loads the component's chunk)
+        expect(await route.isLazy('component')).toBe(true)
         expect(await route.run(c.script)).toEqual(c.expected)
       })
     }

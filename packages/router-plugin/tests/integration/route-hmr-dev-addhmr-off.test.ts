@@ -58,6 +58,8 @@ async function editWhileLoaded(
     fresh: true,
     files: { 'hmr-sync.ts': hmrSyncModule },
   })
+  // (a run page of its own, before the page below loads every option)
+  const split = await app.isLazy('component')
   const page = await openPage(
     new URL('/__plugin-host__/page.html', app.host.dev.url).href,
     {
@@ -102,7 +104,7 @@ async function editWhileLoaded(
     page.console
       .slice(consoleBefore)
       .some((line) => line.includes('[vite] hot updated'))
-  return { shown, reloaded, inPlace, page, app }
+  return { shown, reloaded, inPlace, split, page, app }
 }
 
 describe('a dev server with addHmr: false', () => {
@@ -135,14 +137,15 @@ describe('a dev server with addHmr: false', () => {
 it(
   'a dev server with addHmr: true applies the same edit in place (a split route)',
   async () => {
-    const { shown, reloaded, inPlace } = await editWhileLoaded(
+    const { shown, reloaded, inPlace, split } = await editWhileLoaded(
       routes[0]!.route,
       { hmr: true },
     )
-    expect({ shown, reloaded, inPlace }).toEqual({
+    expect({ shown, reloaded, inPlace, split }).toEqual({
       shown: true,
       reloaded: false,
       inPlace: true,
+      split: true,
     })
   },
   timeout,

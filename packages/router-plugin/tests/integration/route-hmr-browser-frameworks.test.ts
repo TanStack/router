@@ -55,6 +55,9 @@ describe.concurrent.each([
         files: { 'routes/index.tsx': route(target, 'v1') },
         ready: 'page v1 data v1',
       })
+      if (bundler === 'vite') {
+        expect(app.splitOutputs() > 0, 'split').toBe(autoCodeSplitting)
+      }
       expect(
         await app.edit(
           { 'routes/index.tsx': route(target, 'v2') },

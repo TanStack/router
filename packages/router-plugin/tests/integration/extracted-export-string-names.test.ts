@@ -34,7 +34,7 @@ describe.each(['vite', 'rspack', 'webpack'] as const)(
             'routes/index.tsx': `${head}import { dep } from '../dep'
 class K { static m = 'MARK_STRING' + dep }
 export { K as ${literal} }
-export const Route = createFileRoute('/')({ component: () => <p>{new K() instanceof K ? K.m : ''}</p> })
+export const Route = createFileRoute('/')({ component: () => <p>{new K() instanceof K ? K.m : 'MARK_PAGE'}</p> })
 `,
             'entry.ts': `import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
@@ -53,6 +53,8 @@ export const render = async () => {
             'return [entry.value(), await entry.render()]',
           )
           expect(result).toEqual(['MARK_STRING_END', '<p>MARK_STRING_END</p>'])
+          // (`MARK_PAGE` is the component's own code: split)
+          expect(app.where('MARK_PAGE')).toBe('lazy')
         } finally {
           await app.dispose()
         }

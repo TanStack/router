@@ -151,6 +151,8 @@ export async function expectProductionClientBundle(
   )
   if (routeFile === undefined) {
     expect(run.html).toContain('MARK_PAGE')
+    // the plain route's component: in its chunk when split
+    expect(app.where('MARK_PAGE')).toBe(autoCodeSplitting ? 'lazy' : 'eager')
   }
   expect(output(app)).toEqual(output(control))
   for (const [file, code] of Object.entries(output(app))) {

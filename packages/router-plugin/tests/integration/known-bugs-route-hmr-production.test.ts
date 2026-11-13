@@ -15,7 +15,8 @@ describe('production builds', () => {
    * Builds a production client bundle with automatic code splitting on or
    * off (off: the route HMR plugin's case), the plugin's own `addHmr`
    * default and `NODE_ENV=production` (the harness's default for a
-   * production build), and returns where a bundler HMR API is used.
+   * production build), and returns where a bundler HMR API is used and
+   * where the route's component is.
    */
   async function hmrPlacement(bundler: Bundler, autoCodeSplitting: boolean) {
     const app = await build({
@@ -27,14 +28,17 @@ describe('production builds', () => {
       },
       files: routeApp(
         `${head}function Page() {
-  return <p>page</p>
+  return <p>MARK_PAGE</p>
 }
 export const Route = createFileRoute('/')({ component: Page })
 `,
         { env: 'client' },
       ),
     })
-    return app.where(/import\.meta\.(?:webpackHot|hot)\b|\bmodule\.hot\b/)
+    return {
+      hmr: app.where(/import\.meta\.(?:webpackHot|hot)\b|\bmodule\.hot\b/),
+      page: app.where('MARK_PAGE'),
+    }
   }
 
   // No Vite rows: Vite replaces `import.meta.hot` with `undefined` in a
@@ -44,7 +48,7 @@ export const Route = createFileRoute('/')({ component: Page })
   test.each(['rspack', 'webpack'] as const)(
     'a production client bundle has no route HMR code (%s)',
     async (bundler) => {
-      expect(await hmrPlacement(bundler, false)).toBe('nowhere')
+      expect((await hmrPlacement(bundler, false)).hmr).toBe('nowhere')
     },
     60_000,
   )
@@ -55,7 +59,10 @@ export const Route = createFileRoute('/')({ component: Page })
   test.each(['rspack', 'webpack'] as const)(
     'a production client bundle with automatic code splitting has no route HMR code (%s)',
     async (bundler) => {
-      expect(await hmrPlacement(bundler, true)).toBe('nowhere')
+      expect(await hmrPlacement(bundler, true)).toEqual({
+        hmr: 'nowhere',
+        page: 'lazy',
+      })
     },
     60_000,
   )

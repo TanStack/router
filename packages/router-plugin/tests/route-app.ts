@@ -220,9 +220,10 @@ const stampedEndpoint = '/__route-app__/stamped'
  * The modules the compilers emitted code for, by environment and module id:
  * for each, the hooks that gave it its code (see `observeEmitted`).
  */
-type EmittedModules = Map<string, Set<string>>
+export type EmittedModules = Map<string, Set<string>>
 
-const emittedKey = (environment: string, id: string) => `${environment}\0${id}`
+export const emittedKey = (environment: string, id: string) =>
+  `${environment}\0${id}`
 
 /**
  * Observes the hooks of `option` (the router plugin as its public entry
@@ -236,7 +237,7 @@ const emittedKey = (environment: string, id: string) => `${environment}\0${id}`
  * by one that resolves to the same, observed, plugins), or returned by a
  * plugin's `applyToEnvironment` for an environment.
  */
-function observeEmitted(
+export function observeEmitted(
   option: PluginOption,
   emitted: EmittedModules,
 ): PluginOption {

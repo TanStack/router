@@ -14,7 +14,7 @@
  *
  * The Vite rows are the control: the edit shows, by a hot update or a reload.
  */
-import { describe, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { openRouteHmrPage } from '../route-hmr-page'
 import { openWebpackHmrPage } from '../webpack-hmr-page'
 import type { TestContext } from 'vitest'
@@ -81,6 +81,10 @@ const run = async (
     files: { [file]: route(target, shape, loaderReads, 'v1') },
     ready: 'shows v1',
   })
+  if (bundler === 'vite') {
+    // (split: a chunk reads the binding)
+    expect(app.splitOutputs()).toBeGreaterThan(0)
+  }
   await app.edit(
     { [file]: route(target, shape, loaderReads, 'v2') },
     'shows v2',

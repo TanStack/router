@@ -36,6 +36,10 @@ const shapes: Record<
   }
 > = {
   'direct read (control)': { code: `const labels = [prefix + 'x']` },
+  // (the control of the split: what the component reads moves with it)
+  'a component reading no module state (control)': {
+    code: `const labels = ['MARK_SPLIT_CONTROL']`,
+  },
   map: { code: `const labels = ['x'].map((k) => prefix + k)` },
   forEach: {
     code: `const labels: Array<string> = []\n;['x'].forEach((k) => labels.push(prefix + k))`,
@@ -204,6 +208,8 @@ export const setters = [${rows.map((_, i) => `S${i}`).join(', ')}]
           ...options,
         })
   try {
+    // where the split control's component is (a client build: Rsbuild's)
+    const control = app.where('MARK_SPLIT_CONTROL')
     const { result } = await app.run(`
       const out = []
       for (let i = 0; i < entry.routes.length; i++) {
@@ -212,12 +218,15 @@ export const setters = [${rows.map((_, i) => `S${i}`).join(', ')}]
       }
       return out
     `)
-    return Object.fromEntries(
-      rows.map(([name], i) => [
-        name,
-        (result as Array<string>)[i]!.replace(/<[^>]*>/g, ''),
-      ]),
-    )
+    return {
+      control,
+      values: Object.fromEntries(
+        rows.map(([name], i) => [
+          name,
+          (result as Array<string>)[i]!.replace(/<[^>]*>/g, ''),
+        ]),
+      ),
+    }
   } finally {
     await app.dispose()
   }
@@ -228,11 +237,20 @@ describe.each(['vite', 'rspack', 'rsbuild'] as const)('%s', (bundler) => {
   const observed = (split: boolean) =>
     (results[String(split)] ??= run(bundler, split))
 
+  if (bundler === 'rsbuild') {
+    it('splits a component that reads no module state (the control)', async () => {
+      expect((await observed(true)).control).toBe('lazy')
+      expect((await observed(false)).control).toBe('eager')
+    }, 180_000)
+  }
+
   describe.each(rows)('%s', (name, { pin }) => {
     ;(pin?.includes(bundler) ? it.fails : it)(
       'gives the value the same code gives unsplit',
       async () => {
-        expect((await observed(true))[name]).toBe((await observed(false))[name])
+        expect((await observed(true)).values[name]).toBe(
+          (await observed(false)).values[name],
+        )
       },
       180_000,
     )
