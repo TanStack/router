@@ -150,6 +150,88 @@ describe('createBrowserHistory', () => {
     history.destroy()
   })
 
+  test('keeps flushing after a scheduled native history call throws', () => {
+    const tasks: Array<() => void> = []
+    vi.stubGlobal('queueMicrotask', (task: () => void) => tasks.push(task))
+    try {
+      const { history, pushState, window } = createBrowserHistoryHarness()
+      pushState.mockImplementationOnce(() => {
+        throw new Error('refused')
+      })
+
+      history.push('/first')
+      expect(tasks).toHaveLength(1)
+      expect(() => tasks.shift()!()).toThrow('refused')
+
+      history.push('/second')
+      expect(tasks).toHaveLength(1)
+      tasks.shift()!()
+      expect(pushState).toHaveBeenLastCalledWith(
+        expect.anything(),
+        '',
+        '/second',
+      )
+
+      // The failed push did not consume a history index.
+      expect(pushState).toHaveBeenLastCalledWith(
+        expect.objectContaining({ __TSR_index: 1 }),
+        '',
+        '/second',
+      )
+
+      // Pushes made outside the router notify subscribers again.
+      const subscriber = vi.fn()
+      history.subscribe(subscriber)
+      window.history.pushState(null, '', '/external')
+      expect(subscriber).toHaveBeenCalledOnce()
+      history.destroy()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  test('restores the browser location after a native history call throws', async () => {
+    const tasks: Array<() => void> = []
+    vi.stubGlobal('queueMicrotask', (task: () => void) => tasks.push(task))
+    try {
+      const { history, pushState, window } = createBrowserHistoryHarness()
+      pushState.mockImplementationOnce(() => {
+        throw new Error('refused')
+      })
+      const subscriber = vi.fn()
+      history.subscribe(subscriber)
+
+      history.push('/first')
+      expect(history.location.state.__TSR_index).toBe(1)
+      expect(() => tasks.shift()!()).toThrow('refused')
+      expect(history.location).toMatchObject({
+        pathname: '/',
+        state: { __TSR_index: 0 },
+      })
+      expect(subscriber).toHaveBeenLastCalledWith(
+        expect.objectContaining({ action: { type: 'REPLACE' } }),
+      )
+
+      pushState.mockImplementationOnce((state, _title, href: string) => {
+        window.history.state = state
+        window.location.pathname = href
+      })
+      history.push('/second')
+      tasks.shift()!()
+      expect(window.history.state.__TSR_index).toBe(1)
+
+      window.history.state = { __TSR_index: 0, __TSR_key: 'initial' }
+      window.location.pathname = '/'
+      await window.dispatchEvent({ type: 'popstate' })
+      expect(subscriber).toHaveBeenLastCalledWith(
+        expect.objectContaining({ action: { type: 'BACK' } }),
+      )
+      history.destroy()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   test.each([
     '//evil.com/path',
     '///evil.com/path',
