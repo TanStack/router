@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CssImportOrderRouteImport } from './routes/css-import-order'
 import { Route as InlineCssRouteImport } from './routes/inline-css'
+import { Route as LazySsrRouteImport } from './routes/lazy-ssr'
 import { Route as ModuleStateRouteImport } from './routes/module-state'
 
 const IndexRoute = IndexRouteImport.update({
@@ -29,6 +30,11 @@ const InlineCssRoute = InlineCssRouteImport.update({
   path: '/inline-css',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LazySsrRoute = LazySsrRouteImport.update({
+  id: '/lazy-ssr',
+  path: '/lazy-ssr',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ModuleStateRoute = ModuleStateRouteImport.update({
   id: '/module-state',
   path: '/module-state',
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/css-import-order': typeof CssImportOrderRoute
   '/inline-css': typeof InlineCssRoute
+  '/lazy-ssr': typeof LazySsrRoute
   '/module-state': typeof ModuleStateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/css-import-order': typeof CssImportOrderRoute
   '/inline-css': typeof InlineCssRoute
+  '/lazy-ssr': typeof LazySsrRoute
   '/module-state': typeof ModuleStateRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,29 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/css-import-order': typeof CssImportOrderRoute
   '/inline-css': typeof InlineCssRoute
+  '/lazy-ssr': typeof LazySsrRoute
   '/module-state': typeof ModuleStateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/css-import-order' | '/inline-css' | '/module-state'
+  fullPaths:
+    '/' | '/css-import-order' | '/inline-css' | '/lazy-ssr' | '/module-state'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/css-import-order' | '/inline-css' | '/module-state'
-  id: '__root__' | '/' | '/css-import-order' | '/inline-css' | '/module-state'
+  to: '/' | '/css-import-order' | '/inline-css' | '/lazy-ssr' | '/module-state'
+  id:
+    | '__root__'
+    | '/'
+    | '/css-import-order'
+    | '/inline-css'
+    | '/lazy-ssr'
+    | '/module-state'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CssImportOrderRoute: typeof CssImportOrderRoute
   InlineCssRoute: typeof InlineCssRoute
+  LazySsrRoute: typeof LazySsrRoute
   ModuleStateRoute: typeof ModuleStateRoute
 }
 
@@ -92,6 +109,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InlineCssRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lazy-ssr': {
+      id: '/lazy-ssr'
+      path: '/lazy-ssr'
+      fullPath: '/lazy-ssr'
+      preLoaderRoute: typeof LazySsrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/module-state': {
       id: '/module-state'
       path: '/module-state'
@@ -106,6 +130,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CssImportOrderRoute: CssImportOrderRoute,
   InlineCssRoute: InlineCssRoute,
+  LazySsrRoute: LazySsrRoute,
   ModuleStateRoute: ModuleStateRoute,
 }
 export const routeTree = rootRouteImport

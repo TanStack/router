@@ -1,8 +1,9 @@
 import { MetaProvider } from '@solidjs/meta'
-import { For, createEffect, createMemo } from 'solid-js'
-import { DEV_STYLES_ATTR } from '@tanstack/router-core'
+import { For, createMemo, createSignal, onCleanup, onMount } from 'solid-js'
+import { DEV_STYLES_ATTR, onDevStylesStale } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
-import { useHydrated } from './ClientOnly'
+import { useRouter } from './useRouter'
 import { useTags } from './headContentUtils'
 import type { HeadContentProps } from './HeadContent'
 
@@ -12,26 +13,36 @@ import type { HeadContentProps } from './HeadContent'
  * to ensure it's part of the reactive tree and updates correctly during client-side navigation.
  * The component uses portals internally to render content into the `<head>` element.
  *
- * Development version: filters out dev styles link after hydration and
- * includes a fallback cleanup effect for hydration mismatch cases.
+ * Development version: keeps the SSR dev styles link until an HMR update makes
+ * it stale. Removing it at hydration would unstyle server-rendered content
+ * whose modules are still loading (e.g. lazy components inside Suspense).
  */
 export function HeadContent(props: HeadContentProps) {
   const tags = useTags(props.assetCrossOrigin)
-  const hydrated = useHydrated()
+  const router = useRouter()
 
-  // Fallback cleanup for hydration mismatch cases
-  // Runs when hydration completes to remove any orphaned dev styles links from DOM
-  createEffect(() => {
-    if (hydrated()) {
+  if (isServer ?? router.isServer) {
+    return (
+      <MetaProvider>
+        <For each={tags()}>{(tag) => <Asset {...tag} />}</For>
+      </MetaProvider>
+    )
+  }
+
+  const [stale, setStale] = createSignal(false)
+  onMount(() => {
+    const unsubscribe = onDevStylesStale(() => {
+      setStale(true)
+      // Also drop links that are not owned by this component (hydration mismatch)
       document
         .querySelectorAll(`link[${DEV_STYLES_ATTR}]`)
         .forEach((el) => el.remove())
-    }
+    })
+    onCleanup(unsubscribe)
   })
 
-  // Filter out dev styles after hydration
   const filteredTags = createMemo(() => {
-    if (hydrated()) {
+    if (stale()) {
       return tags().filter(
         (tag) => tag.tag !== 'link' || tag.attrs?.[DEV_STYLES_ATTR] !== true,
       )
