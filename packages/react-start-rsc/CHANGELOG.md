@@ -1,5 +1,16 @@
 # @tanstack/react-start-rsc
 
+## 0.1.68
+
+### Patch Changes
+
+- [#8919](https://github.com/TanStack/router/pull/8919) [`e7358c3`](https://github.com/TanStack/router/commit/e7358c36d8cde5275fc3c32cd5fd5bbf7ecc30f9) - Raise the minimum RSC bundler peer dependencies to versions with the React Server Components fixes for GHSA-xqc2-xf4c-x3h3 (CVE-2026-126187, unauthenticated RCE) and GHSA-h3gv-c5rc-p453 (server function DoS):
+  - `@vitejs/plugin-rsc` to `>=0.5.38` (GHSA-59pf-q495-3c99), which vendors a fixed `react-server-dom-webpack`.
+  - `react-server-dom-rspack` to `>=0.1.1`, the first release built from React sources that include the fix.
+
+- Updated dependencies [[`0b6d4f3`](https://github.com/TanStack/router/commit/0b6d4f3f6b42e704555d9ff0014ddbf8b44f8e09), [`c156097`](https://github.com/TanStack/router/commit/c156097786b685db61f535d2779cb2a52a6af8aa), [`f870933`](https://github.com/TanStack/router/commit/f8709334ac3056d007e65bc146d94702e052434b), [`70bbd11`](https://github.com/TanStack/router/commit/70bbd11025143665ab5a391ddb44cb3917e4d2e3), [`df6ac30`](https://github.com/TanStack/router/commit/df6ac3040695ddf2ec2d5e8b4be8f63273a658a6), [`2ebc0f3`](https://github.com/TanStack/router/commit/2ebc0f35866fed7345e567cf7d0925ba3c0bcc65), [`3cc054c`](https://github.com/TanStack/router/commit/3cc054c3741d15e8cb6591b0954b315e0a2327a3)]:
+  - @tanstack/start-plugin-core@1.172.0
+
 ## 0.1.67
 
 ### Patch Changes
