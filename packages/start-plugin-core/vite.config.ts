@@ -47,9 +47,11 @@ const smokeTests = [
   'integration/start-compose-project-path.test.ts',
   'integration/start-build-unparsed-module.test.ts',
   // dev on macOS and Windows (phase 6 decision): a file removed and written
-  // back on an Rsbuild dev server. `start-dev-freshness.test.ts` is not here:
-  // one of its tests opens a page, and this list runs without a browser
+  // back on an Rsbuild dev server, and file events through Vite's dev
+  // server (this list runs without a browser: the page test of the latter
+  // is `start-dev-freshness-page.test.ts`)
   'integration/rsbuild/dev-file-back.test.ts',
+  'integration/start-dev-freshness.test.ts',
 ]
 if (process.env.VITEST) {
   const testsDir = path.join(
@@ -161,7 +163,7 @@ const config = defineConfig({
         // Slow tier too (`test:integration` runs both projects): `<Hydrate>`
         // cases rendered and hydrated in pages of the Start host
         // (`render.ts`), as the fast tier runs them, whose cost does not fit
-        // the fast tier's budget. The tests of a file run concurrently: each
+        // the fast tier. The tests of a file run concurrently: each
         // case has its own directory of the file's host, and each page run
         // holds one of the host's pages alone (`start-host.ts`). A test
         // process keeps its browser and the hosts a file gives back for
