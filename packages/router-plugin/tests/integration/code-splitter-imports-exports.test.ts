@@ -84,6 +84,7 @@ export const Route = createFileRoute('/')({ component: Page })
         `await entry.mount(entry.Route.options.component)`,
       )
       expect(run.html).toBe('<div id="root"><p>MARK_BADGE</p></div>')
+      expect(app.where('MARK_BADGE')).toBe('lazy')
     }, 60_000)
   })
 
