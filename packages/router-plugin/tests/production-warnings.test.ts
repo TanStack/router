@@ -4,7 +4,10 @@
  * `test`, which behaves like a shell without it): the bundler's mode
  * decides, and webpack and Rspack build in production when `mode` is left
  * out. Such a warning would log in every visitor's console, with the
- * absolute path of the route file on the build machine.
+ * absolute path of the route file on the build machine. Here: a
+ * configuration without `mode`; with `mode: 'production'`, see
+ * integration/known-bugs-code-splitter-client-output.test.ts ("production
+ * builds").
  */
 import {
   mkdir,
@@ -158,10 +161,7 @@ const bundlers = [
 ] as const
 
 describe.each(bundlers)('$name build', (bundler) => {
-  test.each([
-    { label: "mode: 'production'", mode: 'production' },
-    { label: 'mode left out', mode: undefined },
-  ] as const)(
+  test.each([{ label: 'mode left out', mode: undefined }] as const)(
     'with $label, the client JS logs no warning about an exported component',
     async ({ mode }) => {
       const routeFile = `routes/index.${bundler.extension}`

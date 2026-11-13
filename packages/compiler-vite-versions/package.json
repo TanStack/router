@@ -1,0 +1,14 @@
+{
+  "name": "@tanstack/compiler-vite-versions",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Test-only: the Vite majors the router plugin's peer range admits, as aliased packages for the plugin's version smoke tests. A package of its own so that their `vite` binaries never shadow the workspace's in a package that builds with Vite.",
+  "type": "module",
+  "exports": {
+    ".": "./index.js"
+  },
+  "dependencies": {
+    "vite6": "npm:vite@^6.0.0",
+    "vite7": "npm:vite@^7.0.0"
+  }
+}

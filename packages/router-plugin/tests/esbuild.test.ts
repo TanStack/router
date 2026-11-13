@@ -9,7 +9,10 @@ describe('esbuild plugin', () => {
   test('refuses autoCodeSplitting', () => {
     expect(() =>
       tanstackRouter({ target: 'react', autoCodeSplitting: true }),
-    ).toThrow(/autoCodeSplitting/)
+    ).toThrow(
+      '@tanstack/router-plugin: route code splitting (`autoCodeSplitting`) is not supported with esbuild. ' +
+        'Use the generator alone (`TanStackRouterGeneratorEsbuild`), or set `autoCodeSplitting: false`.',
+    )
   })
 
   test('refuses the code splitter entry', () => {
