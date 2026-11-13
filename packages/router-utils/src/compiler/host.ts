@@ -35,6 +35,7 @@ import type { OutputId } from './rewrite'
 import type { RawFacts, RawFactsCache } from './facts'
 import type { ExportResolver } from './resolve'
 import type { RawSourceMap } from './output-builder'
+import type { ServerOnlyText } from './server-code'
 
 /**
  * What each planner exchanges through the core, by planner name: `config`
@@ -316,6 +317,13 @@ export interface Planner<TName extends string = any> {
     ctx: PrefetchContext<TName>,
   ) => Promise<void | boolean>
   plan: (ctx: PlanContext<TName>) => void
+  /**
+   * The server-only text the planner's recognition finds in a client
+   * compile, for the server-code check (`server-code.ts`, a redundancy net
+   * removable in one deletion): read-only, on the final plan, never read by
+   * `plan`.
+   */
+  serverCode?: (ctx: PlanContext<TName>) => ReadonlyArray<ServerOnlyText>
   policy?: (
     plan: EmitPlan,
     output: OutputId,

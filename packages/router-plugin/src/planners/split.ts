@@ -54,15 +54,6 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
     const props = route.options.node.properties as ReadonlyArray<Node>
     const deleted = new Set<Node>()
     for (const option of plan.deleted) {
-      if (ctx.env.type === 'client' && option.value) {
-        // server-only text of the client compile (Start's `server`,
-        // `headers`, `ssr`): no client output may hold it (R132)
-        ctx.rewrites.serverOnly({
-          range: { start: option.value.start, end: option.value.end },
-          subject: `the route's \`${option.keyText}\` option`,
-          by: ROUTER_PLANNER,
-        })
-      }
       if (plan.shadowing.has(option)) {
         // (a spread before it may hold the key: it keeps its place, or that value would win)
         ctx.rewrites.edit({

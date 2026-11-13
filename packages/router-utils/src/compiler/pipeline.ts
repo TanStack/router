@@ -715,8 +715,10 @@ async function runAttempt(
       )
     }
     checkServerCode(
-      plan.rewrites.serverOnlyText,
+      planners,
+      (p) => withConfig(plan, input.config.perPlanner[p.name]),
       emitPlan,
+      env,
       identity.canonicalId,
       tagOf(host),
       displayFile,

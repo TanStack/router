@@ -49,11 +49,14 @@ emits its own output. Nothing depends on transform order.
   isomorphic call has its stub as its place and its compiled call as its text, which renders in the provider or
   handler module. Two edits, or two placeholders (a claim's included), on one range in one output conflict. A route
   option written as a method claims its function; an edit of the property writes the key before the placeholder.
-  `serverOnly` records server-only text of a client compile (a handler, a `.server()` implementation, a
-  `createServerOnlyFn` body, a validator; the router's erased route options), with its placeholder when it has one. The server-code check
-  (`server-code.ts`, R132) reads the records after freeze: a slice of any output over one, or text mapped into one,
-  fails the module (an error in users' runs, a throw under the self-checks). It is a net under the planners, which
-  remove what they record; it can go once nothing is left for it to catch. The core's orphan cleanup is the
+  The server-code check (`server-code.ts`, R132) is a redundancy net beside the planners, removable in one deletion
+  (its module comment says how): after freeze, each planner's `serverCode` recorder lists the server-only text its
+  recognition finds in a client compile (Start: every server fn's handler and validator, middleware's `.server()`
+  and validator, isomorphic fn's `.server()`, `createServerOnlyFn` body; the router: every recognised route option in
+  `deleteNodes`), whatever the planner did with it; a slice of any output over one, or text mapped into one, fails
+  the module (an error in users' runs, a throw under the self-checks). A compile already holding an error is not
+  checked. It catches a planner skipping a recognised site; not recognition failures, declarations only server code
+  reads, imports of server-only modules or unreadable route options. The core's orphan cleanup is the
   only edit with a scope (`scopedEdit`, not on `PlanContext`). A generated unit has a home (`auto`: placement
   decides; an output), or `env-readers`: placement copies it into every derived output importing a binding of the
   env module other than the ones it names, once inclusion is decided (route HMR registers the chunks reading what
