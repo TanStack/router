@@ -44,7 +44,10 @@ const varsDeclaredAgain: ReadonlyArray<{
 
 type Bundler = 'vite' | 'rspack'
 
-/** One app: a route per row; each row's split component rendered. */
+/**
+ * One app: a route per row; each row's split component rendered, and where
+ * the components' code is (`lazy`: the components are split).
+ */
 async function varDeclaredAgain(
   bundler: Bundler,
   rows: ReadonlyArray<(typeof varsDeclaredAgain)[number]>,
@@ -60,7 +63,7 @@ async function varDeclaredAgain(
         rows.map(({ code }, i) => [
           `routes/r${i}.tsx`,
           `${head}${code}
-export const Route = createFileRoute('/')({ component: () => <p>{x}</p> })
+export const Route = createFileRoute('/')({ component: () => <p title="MARK_PAGE">{x}</p> })
 `,
         ]),
       ),
@@ -74,7 +77,10 @@ export const routes = [${rows.map((_, i) => `R${i}`).join(', ')}]
     const { result } = await app.run(
       `return Promise.all(entry.routes.map((r) => entry.render(r.options.component)))`,
     )
-    return rows.map(({ name }, i) => [name, (result as Array<string>)[i]])
+    return {
+      placement: app.where('MARK_PAGE'),
+      rendered: rows.map(({ name }, i) => [name, (result as Array<string>)[i]]),
+    }
   } finally {
     await app.dispose()
   }
@@ -231,9 +237,10 @@ export const Route = createFileRoute('/')({
       const rows = varsDeclaredAgain.filter(
         (row) => bundler !== 'vite' || !row.rolldownReadsFirst,
       )
-      expect(await varDeclaredAgain(bundler, rows)).toEqual(
-        rows.map(({ name }) => [name, '<p>2</p>']),
-      )
+      expect(await varDeclaredAgain(bundler, rows)).toEqual({
+        placement: 'lazy',
+        rendered: rows.map(({ name }) => [name, '<p title="MARK_PAGE">2</p>']),
+      })
     },
     60_000,
   )
@@ -245,9 +252,10 @@ export const Route = createFileRoute('/')({
   // into the component's chunk, so no module imports the `var`.
   it('gives the split component the value a `var` declared again takes in a head or a pattern (Rolldown)', async () => {
     const rows = varsDeclaredAgain.filter((row) => row.rolldownReadsFirst)
-    expect(await varDeclaredAgain('vite', rows)).toEqual(
-      rows.map(({ name }) => [name, '<p>2</p>']),
-    )
+    expect(await varDeclaredAgain('vite', rows)).toEqual({
+      placement: 'lazy',
+      rendered: rows.map(({ name }) => [name, '<p title="MARK_PAGE">2</p>']),
+    })
   }, 60_000)
 
   it('gives a value read between two declarations of a `var` the first one', async () => {

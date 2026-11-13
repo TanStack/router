@@ -25,6 +25,10 @@ import {
   test,
 } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
+import {
+  loadMarker,
+  loadedModulesExpression,
+} from '@tanstack/compiler-test-utils/importers'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import {
@@ -46,13 +50,15 @@ const appsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 /**
  * A route that throws from its loader (route module), from a function the
  * loader and the split component share, and from the split component, each
- * with its own marker string on the line of the throw.
+ * with its own marker string on the line of the throw. Only the split
+ * component reads `page-label.ts`, which records when it loads.
  */
-const route = `${routeHead()}function fail(): never {
+const route = `${routeHead()}import { pageLabel } from '../page-label'
+function fail(): never {
   throw new Error('MARK_SHARED_THROW')
 }
 function Page(): never {
-  throw new Error('MARK_PAGE_THROW ' + typeof fail)
+  throw new Error('MARK_PAGE_THROW ' + typeof fail + pageLabel)
 }
 export const Route = createFileRoute('/')({
   loader: (input?: { which?: string }) => {
@@ -66,15 +72,20 @@ export const Route = createFileRoute('/')({
 `
 const markers = ['MARK_SHARED_THROW', 'MARK_PAGE_THROW ', 'MARK_LOADER_THROW']
 
+const pageLabel = `${loadMarker('page-label')}export const pageLabel = ''\n`
+
 /**
  * The page's code: runs each throw of the route (the loader's, the shared
  * function's through the loader, the split component's through React) and
- * returns each error's stack, by marker.
+ * returns each error's stack, by marker. `loadedWithRoute`: the modules
+ * recorded as loaded once the route module evaluated.
  */
 const probe = `import { createElement } from 'react'
 import { flushSync } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 import { Route } from './routes/index'
+
+export const loadedWithRoute = [...${loadedModulesExpression}]
 
 const stackOf = async (run: () => unknown) => {
   try {
@@ -160,6 +171,7 @@ describe('vite dev server', () => {
     maps: Map<string, AnySourceMap | undefined>
     root: string
     origin: string
+    loadedWithRoute: Array<string>
   }
   beforeAll(async () => {
     const host = await createPluginHost({
@@ -171,6 +183,7 @@ describe('vite dev server', () => {
       files: {
         'routes/__root.tsx': rootRoute,
         'routes/index.tsx': route,
+        'page-label.ts': pageLabel,
         'probe.ts': probe,
       },
       client: true,
@@ -197,9 +210,15 @@ describe('vite dev server', () => {
         react(),
       ],
     })
-    const { result: stacks } = await host.runClient<
-      Record<string, string | undefined>
-    >('/probe.ts', 'return module.throws()')
+    const {
+      result: { stacks, loadedWithRoute },
+    } = await host.runClient<{
+      stacks: Record<string, string | undefined>
+      loadedWithRoute: Array<string>
+    }>(
+      '/probe.ts',
+      'return { loadedWithRoute: module.loadedWithRoute, stacks: await module.throws() }',
+    )
     // The map of every module a frame names, as the dev server serves it
     // (Vite inlines it)
     const maps = new Map<string, AnySourceMap | undefined>()
@@ -214,7 +233,7 @@ describe('vite dev server', () => {
       const { body } = await host.dev.fetch(url.pathname + url.search)
       maps.set(location, inlineSourceMap(body))
     }
-    throws = { stacks, maps, root: host.root, origin }
+    throws = { stacks, maps, root: host.root, origin, loadedWithRoute }
   }, timeout)
   afterAll(async () => {
     for (const cleanup of cleanups.reverse()) {
@@ -242,6 +261,9 @@ describe('vite dev server', () => {
     },
     { name: 'the split component', marker: 'MARK_PAGE_THROW ' },
   ]
+  test('the split component is not loaded with the route module', () => {
+    expect(throws.loadedWithRoute).not.toContain('page-label')
+  })
   for (const { name, marker } of rows) {
     test(`a throw in ${name} maps to its line in the route file, which its module names as its source`, () => {
       const { stacks, maps, root, origin } = throws
@@ -291,6 +313,7 @@ describe('rsbuild dev server', () => {
 ;(window as any).__throws = throws()
 `,
           'probe.ts': probe,
+          'page-label.ts': pageLabel,
           'routes/__root.tsx': rootRoute,
           'routes/index.tsx': route,
         },
