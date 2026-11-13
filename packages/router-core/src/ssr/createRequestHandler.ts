@@ -83,6 +83,9 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 
       await router.serverSsr?.dehydrate({ signal })
       signal.throwIfAborted()
+      if (router._serverResult?.type === 'redirect') {
+        return router._serverResult.redirect
+      }
 
       const responseHeaders = getRequestHeaders({
         router,
