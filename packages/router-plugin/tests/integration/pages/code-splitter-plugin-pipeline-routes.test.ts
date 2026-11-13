@@ -413,10 +413,10 @@ export const Route = createFileRoute('/hmr')({
 
 // A route the route file creates inside a function of the same file (a
 // helper, an IIFE) is unsupported but user-fixable (SPEC J2.10,
-// J2.8): it is either split like a module-scope route (and
-// hot-updates in place), or left unsplit with a warning naming the file, in
-// production as in development. Either way it renders correctly; silent
-// wrong output, or unsplit without a warning, fails.
+// J2.8; design 5: a listed route the code splitter does not read): it is
+// left unsplit with a warning naming the file, in production as in
+// development, and renders correctly. Silent wrong output, or unsplit
+// without a warning, fails.
 // Sources: #8504 (code-splitter-plugin-pipeline.test.ts); review of #8504.
 describe('a route created inside a function', () => {
   /**
@@ -490,7 +490,7 @@ export const Route = (() =>
     loadRoute(code, { routeId: '/made', fresh: true, ...options })
 
   it.each(Object.entries(factoryRoutes))(
-    'built in %s is split, or reported, and keeps working',
+    'built in %s is reported, not split, and keeps working',
     async (_, route) => {
       const loaded = await loadMade(route('data'))
       await expectValidModules(loaded)
@@ -500,8 +500,13 @@ export const Route = (() =>
       const lazy = await loaded.isLazy('component')
       expect({
         rendered,
-        splitOrReported: lazy || (await reported(loaded)),
-      }).toEqual({ rendered: ['data', '<p>made</p>'], splitOrReported: true })
+        lazy,
+        reported: await reported(loaded),
+      }).toEqual({
+        rendered: ['data', '<p>made</p>'],
+        lazy: false,
+        reported: true,
+      })
     },
   )
 
@@ -573,7 +578,7 @@ export const Route = makeRoute('given')`,
       split: ['loader', 'component'],
     },
   ])(
-    'a route built from $name renders what the factory was given, split or reported',
+    'a route built from $name renders what the factory was given, not split, reported',
     async ({ route, expected, split = ['component'] }) => {
       const loaded =
         await loadMade(`import { createFileRoute } from '@tanstack/react-router'
@@ -582,17 +587,14 @@ ${route}
       const rendered = await loaded.run(
         `return [await (await load('loader'))(), await render('component')]`,
       )
-      let splitOrReported = await reported(loaded)
-      if (!splitOrReported) {
-        const lazy = []
-        for (const option of split) {
-          lazy.push(await loaded.isLazy(option))
-        }
-        splitOrReported = lazy.every(Boolean)
+      const lazy = []
+      for (const option of split) {
+        lazy.push(await loaded.isLazy(option))
       }
-      expect({ rendered, splitOrReported }).toEqual({
+      expect({ rendered, lazy, reported: await reported(loaded) }).toEqual({
         rendered: expected,
-        splitOrReported: true,
+        lazy: split.map(() => false),
+        reported: true,
       })
     },
   )
@@ -627,7 +629,7 @@ export const Route = createFileRoute('/made')({ component: () => <p>made</p> })
   // (SPEC J2.8: the user can change the pattern), across the edits of
   // the files of one dev server.
   it.each(Object.entries(factoryRoutes).slice(0, 2))(
-    'built in %s is split, or reported once per file across repeated transforms',
+    'built in %s is not split, and reported once per file across repeated transforms',
     async (_, route) => {
       const version = (file: 'made' | 'other', edit: number) =>
         `${route('data').replace("'/made'", `'/${file}'`)}// edit ${edit}\n`
@@ -674,11 +676,9 @@ return { made, other: (await compiled()).some((request) => !before.has(request))
           file,
           root: loaded.host.root,
         })
-        expect(
-          split.has(file) ? naming.length === 0 : naming.length === 1,
-          file,
-        ).toBe(true)
+        expect(naming.length, file).toBe(1)
       }
+      expect([...split]).toEqual([])
     },
     30_000,
   )

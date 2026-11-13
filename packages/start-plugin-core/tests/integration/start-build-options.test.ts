@@ -439,8 +439,8 @@ ${callByIdExports}`,
         },
       },
     })
-  /** What the server returns to the client's call of the route's loader. */
-  const runServerFnLoader = async (
+  /** What the server returns to the client's call of the route's loader, and the server fn's id. */
+  const callServerFnLoader = async (
     build: Awaited<ReturnType<typeof buildSplitLoader>>,
   ) => {
     const requests = (
@@ -453,14 +453,18 @@ return requestsOf((options) => (typeof loader === 'function' ? loader : loader.h
       )
     ).result as Array<{ url: string }>
     expect(requests).toHaveLength(1)
-    return (
-      await build.ssr.run(
-        `${callByIdPrelude}return callById(serverFnId(${JSON.stringify(requests[0]!.url.split('?')[0])}))`,
-      )
-    ).result
+    const url = requests[0]!.url.split('?')[0]!
+    const { result } = await build.ssr.run(
+      `${callByIdPrelude}return callById(serverFnId(${JSON.stringify(url)}))`,
+    )
+    return {
+      result,
+      id: decodeURIComponent(url.slice(url.lastIndexOf('/') + 1)),
+    }
   }
-  const splitServerFnLoader = async (declarations: string, loader: string) =>
-    runServerFnLoader(await buildSplitLoader(routeModule(declarations, loader)))
+  const runServerFnLoader = async (
+    build: Awaited<ReturnType<typeof buildSplitLoader>>,
+  ) => (await callServerFnLoader(build)).result
   // (the fixes the warning and the error below give)
   test.each([
     { name: 'a loader calling it', loader: '(ctx) => loaderFn(ctx)' },
@@ -471,12 +475,17 @@ return requestsOf((options) => (typeof loader === 'function' ? loader : loader.h
   ])(
     'router.codeSplittingOptions: $name that is a server fn declared before the route, split into its own chunk, runs on the server',
     async ({ loader }) => {
-      expect(
-        await splitServerFnLoader(
+      const built = await buildSplitLoader(
+        routeModule(
           `const loaderFn = createServerFn().handler(async () => 'MARK_LOADER_FN')\n`,
           loader,
         ),
-      ).toBe('MARK_LOADER_FN')
+      )
+      const { result, id } = await callServerFnLoader(built)
+      expect(result).toBe('MARK_LOADER_FN')
+      // split: the loader (with the client's call of the server fn, by its
+      // id) loads on demand, not with the app
+      expect(built.client.where(id)).toBe('lazy')
     },
     timeout,
   )

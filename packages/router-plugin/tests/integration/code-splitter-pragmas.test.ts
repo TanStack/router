@@ -7,7 +7,6 @@ import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import {
   diagnosticsOf,
   expectDiagnostic,
-  findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, frameworks, routeApp, routeHead } from '../build-harness'
 import { openRouteHmrPage } from '../route-hmr-page'
@@ -91,10 +90,10 @@ return getComputedStyle(document.getElementById('styled')).color`)
 
 // A framework JSX plugin registered before the router plugin is an order the
 // docs do not support (SPEC G11): the build either works (the page renders,
-// with the component split or left in the route with a warning the user can
-// act on: naming the route file, or both plugins) or fails with an error
-// naming both plugins (their package, factory or plugin name; the wording
-// is free), so the user can act. Never a silent wrong result.
+// with the component split) or fails with an error naming both plugins
+// (their package, factory or plugin name; the wording is free), so the user
+// can act. Never a silent wrong result. Today React and Solid fail, Vue
+// splits (`outcomes`).
 // Source: #6760 (`vueJsx()` before the router plugin).
 describe('a framework JSX plugin registered before the router plugin', () => {
   const route = (
@@ -134,8 +133,18 @@ export const Route = createFileRoute('/')({ component: Page })
   const namesBoth = (text: string, jsx: RegExp) =>
     jsx.test(text) && routerPluginNames.test(text)
 
+  /**
+   * What each framework's build does (one outcome each): the route split
+   * and rendered, or the build refused with an error naming both plugins.
+   */
+  const outcomes: Record<Framework, 'split' | 'refused'> = {
+    react: 'refused',
+    solid: 'refused',
+    vue: 'split',
+  }
+
   test.each(frameworks)(
-    'splits the route of a %s app and renders it, or fails the build naming both plugins',
+    'a %s app splits the route and renders it, or fails the build naming both plugins',
     async (framework) => {
       const { names, create } = jsxPlugins[framework]
       const jsxPlugin = await create()
@@ -156,6 +165,7 @@ export const Route = createFileRoute('/')({ component: Page })
         if (!(error instanceof BuildError)) {
           throw error
         }
+        expect(outcomes[framework]).toBe('refused')
         expect(
           diagnosticsOf(error, 'error').some(({ text }) =>
             namesBoth(text, names),
@@ -164,25 +174,12 @@ export const Route = createFileRoute('/')({ component: Page })
         ).toBe(true)
         return
       }
+      expect(outcomes[framework]).toBe('split')
       const run = await app.run(
         'return await entry.render(entry.Route.options.component)',
       )
       expect(run.result).toContain('MARK_COMPONENT')
-      if (app.where('MARK_COMPONENT') !== 'lazy') {
-        const reported = [...app.warnings, ...app.consoleMessages]
-        expect(
-          reported.some(
-            ({ text, severity }) =>
-              severity === 'warning' && namesBoth(text, names),
-          ) ||
-            findDiagnostics(reported, {
-              severity: 'warning',
-              file: 'routes/index.tsx',
-              root: app.root,
-            }).length > 0,
-          `the component stays in the route, reported: ${JSON.stringify(reported.map(({ text }) => text))}`,
-        ).toBe(true)
-      }
+      expect(app.where('MARK_COMPONENT')).toBe('lazy')
     },
     timeout,
   )
