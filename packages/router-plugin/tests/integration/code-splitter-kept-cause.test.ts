@@ -432,4 +432,26 @@ export { count }
     },
     timeout,
   )
+
+  // an export reading `Route` when it loads: no module of its own can take
+  // it (it would import `Route` back), so the warning offers no move
+  test(
+    'warns once at an export reading `Route` when the module loads',
+    async () => {
+      const route = `${head}export const Route = createFileRoute('/')({
+  component: () => <p>{label}</p>,
+})
+export const label = typeof Route.options.component
+`
+      const r = await mounted(bundler, route)
+      expect(r.text).toBe('function')
+      expectDiagnostic(r.diagnostics, {
+        severity: 'warning',
+        position: diagnosticPosition(route, 'label = typeof'),
+        times: 1,
+      })
+      expect(r.diagnostics).toHaveLength(1)
+    },
+    timeout,
+  )
 })

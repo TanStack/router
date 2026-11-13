@@ -157,13 +157,14 @@ export interface KeptDeclaration {
   /** `state`: it uses `read` only in what it hands to this call (`''`: too long to quote), which may or may not run it then. */
   handedTo?: string
   /**
-   * `state`: what the move to a module of their own takes besides it and
-   * `read` (`Events.movedWith`): the other bindings, the statements reading
-   * one before a write when the module loads (their positions), and whether
-   * the module writes a moved binding then (the statements writing them move).
+   * `state`, `reads`: what the move to a module of their own takes besides
+   * it and `read` (`Events.movedWith`): the other bindings, the statements
+   * reading one before a write when the module loads (their positions), and
+   * whether the module writes a moved binding then (the statements writing
+   * them move).
    */
   moves?: { syms: Array<SymbolId>; statements: Array<number>; written: boolean }
-  /** `state`: no module of its own can take it: it would need this code, which stays in the env module (its binding, if it has one, and position). */
+  /** `state`, `reads`: no module of its own can take it: it would need this code, which stays in the env module (its binding, if it has one, and position). */
   stuck?: { sym?: SymbolId; at: number }
 }
 

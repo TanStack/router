@@ -134,14 +134,14 @@ export interface Events {
   loadToucher: (sym: SymbolId, c: ClusterId) => ClusterId | undefined
   /**
    * What moves with cluster `c` and binding `sym` to a module of their own,
-   * which evaluates before the env module's body (the move a `state` report
-   * offers): what they touch when the module loads (left behind, that
-   * module would import it back from the env module: a cycle), the code
-   * writing a moved binding when the module loads or assigning it at any
-   * time (an imported binding is read-only), and what touches a moved
-   * binding when the module loads before one of its writes then (moved, the
-   * write would run first: O). `syms`: the moved bindings (of an import,
-   * the ones reached).
+   * which evaluates before the env module's body (the move a `state` or
+   * `reads` report offers): what they touch when the module loads (left
+   * behind, that module would import it back from the env module: a cycle),
+   * the code writing a moved binding when the module loads or assigning it
+   * at any time (an imported binding is read-only), and what touches a
+   * moved binding when the module loads before one of its writes then
+   * (moved, the write would run first: O). `syms`: the moved bindings (of
+   * an import, the ones reached).
    */
   movedWith: (
     c: ClusterId,

@@ -2789,8 +2789,8 @@ describe('extracted-export outputs', () => {
       'Move it and `kept` to their own module and import them from there.',
     ],
     [
-      '`Route`',
-      'export const count = String(Route.options)',
+      '`Route` (declared after it)',
+      'export const count = Route.options.path',
       'count',
       'Route',
       "It can't move to a module of its own: that module would also need `Route`, which stays in the route module.",
@@ -2798,14 +2798,17 @@ describe('extracted-export outputs', () => {
   ])(
     'offers, for an export reading what the route module keeps, the move of what it reads when it loads: %s',
     async (_, decls, name, read, fix) => {
-      const code = dedent(`
-        import { createFileRoute } from 'toy-router'
-        ${decls.split('\n').join('\n        ')}
+      const route = dedent(`
         export const Route = createFileRoute('/')({
-          loader: () => ${read === 'Route' ? 'null' : read === 'h6' ? 'o0' : read},
+          loader: () => ${read === 'h6' ? 'o0' : read === 'Route' ? 'null' : read},
           component: () => ${name},
         })
       `)
+      // (`Route` read after its declaration)
+      const code = [
+        "import { createFileRoute } from 'toy-router'",
+        ...(read === 'Route' ? [route, decls] : [decls, route]),
+      ].join('\n')
       const r = await extract(code)
       expect(
         r.diagnostics.map((d) => [d.code, d.range?.start, d.message]),

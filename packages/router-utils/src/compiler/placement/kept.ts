@@ -68,8 +68,8 @@ export function keptDeclarations(
   /** The clusters that stay in the env module whatever moves: the route options' (the declaration holding a claimed region) and generated code. */
   let fixed: Set<ClusterId> | undefined
   /**
-   * The move a `state` report offers (`Events.movedWith`): what moves with
-   * cluster `c` and `read`, named, or what keeps it from moving.
+   * The move a `state` or `reads` report offers (`Events.movedWith`): what
+   * moves with cluster `c` and `read`, named, or what keeps it from moving.
    */
   const moveOf = (
     c: ClusterId,
@@ -142,7 +142,7 @@ export function keptDeclarations(
   const pairOf = (c: ClusterId, pin: Pin): Partial<KeptDeclaration> => {
     const other = pin.other
     return {
-      ...(pin.reason === 'state' &&
+      ...((pin.reason === 'state' || pin.reason === 'reads') &&
         pin.binding !== undefined &&
         moveOf(c, pin.binding)),
       // (`state`: only a write when the module loads, O, has a place in

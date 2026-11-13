@@ -123,7 +123,17 @@ export function keptDiagnostic(
         } else {
           const read = `\`${symbols.name(k.read)}\``
           why = `it reads ${read} when it loads, which the ${module} keeps`
-          fix = `Move it and ${read} to their own module and import them from there.`
+          // (what they read when the module loads moves with them, `moving`:
+          // left behind, the new module would import it back; none can:
+          // `stuck`)
+          fix =
+            stuck !== undefined
+              ? `${stuck[0]!.toUpperCase()}${stuck.slice(1)}.`
+              : k.moves === undefined
+                ? `Move it and ${read} to their own module and import them from there.`
+                : k.moves.written
+                  ? `Move it, ${moving([read]).join(', ')} and the statements writing them when the module loads to their own module and import them from there.`
+                  : `Move it, ${and(moving([read]))} to their own module and import them from there.`
         }
         break
       case 'state': {
