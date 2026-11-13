@@ -2830,6 +2830,50 @@ describe('extracted-export outputs', () => {
     },
   )
 
+  // code another planner claims or generates (a hydration boundary here; a
+  // server function's handler and stubs in Start) is made again from its
+  // source wherever that goes: only the route options' declaration keeps a
+  // move from being offered (corpus: Start server functions reading a
+  // middleware or a schema the route module keeps)
+  it.each([
+    [
+      'a value holding a claimed boundary',
+      'const kept = { n: cfg.n, view: () => <Hydrate><b>{cfg.n}</b></Hydrate> }\nexport const count = kept.n',
+      'Move it, `kept` and `cfg` to their own module and import them from there.',
+    ],
+    [
+      'a function it calls holding one',
+      'const kept = { n: cfg.n }\nfunction View() { return <Hydrate><b>{cfg.n}</b></Hydrate> }\nexport const count = [kept.n, View()]',
+      'Move it, `kept`, `cfg` and `View` to their own module and import them from there.',
+    ],
+  ])(
+    "offers the move when what moves holds another planner's code: %s",
+    async (_, decls, fix) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { Hydrate } from 'toy-start'
+        const cfg = { n: 1 }
+        ${decls.split('\n').join('\n        ')}
+        export const Route = createFileRoute('/')({ loader: () => kept, component: () => count })
+      `)
+      const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+      const out = await host.compile(
+        '/app/route.tsx',
+        [
+          toySplitPlanner({ keys: ['component'], extractExports: true }),
+          toyHydratePlanner(),
+        ],
+        build,
+      )
+      expect(out?.diagnostics.map((d) => d.code)).toEqual([
+        'eager-export:reads',
+      ])
+      expect(out?.diagnostics[0]!.message).toContain(
+        `so it loads with the route module instead of with that code. ${fix}`,
+      )
+    },
+  )
+
   // J2.8: an exported declaration a chunk needs that stays in the route
   // module is reported once per export with the reason, positioned at the
   // declaration; a route file exporting only `Route` reports nothing
