@@ -16,6 +16,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   notFound,
 } from '../src'
 import {
@@ -1109,3 +1110,43 @@ test('#8792: router.load() resolves with ancestor code-split errorComponent alre
   expect(screen.getByText('Ancestor errorComponent')).toBeInTheDocument()
 })
 
+test('#8792: router.load() waits for an ancestor lazyRouteComponent errorComponent when child throws', async () => {
+  const importer = createControlledPromise<{
+    default: () => React.JSX.Element
+  }>()
+  const rootRoute = createRootRoute({ component: Outlet })
+
+  const parentRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    component: () => <Outlet />,
+    errorComponent: lazyRouteComponent(() => importer),
+  })
+
+  const childRoute = createRoute({
+    getParentRoute: () => parentRoute,
+    path: '/child',
+    loader: () => {
+      throw new Error('child loader failed')
+    },
+    component: () => <div>Child</div>,
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+    history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+  })
+
+  let loaded = false
+  const loading = router.load().then(() => {
+    loaded = true
+  })
+  await new Promise((resolve) => setTimeout(resolve, 10))
+  expect(loaded).toBe(false)
+
+  importer.resolve({ default: () => <div>Ancestor errorComponent</div> })
+  await loading
+
+  render(<RouterProvider router={router} />)
+  expect(screen.getByText('Ancestor errorComponent')).toBeInTheDocument()
+})
