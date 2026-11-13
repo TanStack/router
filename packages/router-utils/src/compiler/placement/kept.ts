@@ -643,7 +643,7 @@ export function keptDeclarations(
     if (
       !joined.some(
         ({ id, written }) =>
-          (written.length > 1 && !cl.exported) ||
+          written.length > 1 ||
           events
             .unitChanges(id)
             .clusters.some(
@@ -698,9 +698,7 @@ export function keptDeclarations(
       if (keptOne === undefined) {
         continue
       }
-      const free = cl.exported
-        ? []
-        : uses.filter((x) => !x.env && x.split).map((x) => x.sym)
+      const free = uses.filter((x) => !x.env && x.split).map((x) => x.sym)
       const node = unit.node
       if (free.length > 0 && lazyNeeders(cl.id).length > 0) {
         writtenTogether.push({
