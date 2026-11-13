@@ -819,6 +819,82 @@ describe("an extracted export's module is a destination", () => {
     )
   })
 
+  // round tools class B (placement-exec seeds 1112264, 1612539; router
+  // planner 1300879, 1600380): a member of one export's module reading an
+  // object before a later write that the object's own module makes (which
+  // the member's module imports, so it evaluates first) is ordered against
+  // it (O): it stays, and with it what reads it and the object
+  it("keeps a member reading an exported object before a later write of the object's module", async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/route.tsx': dedent(`
+          import { createFileRoute } from 'toy-router'
+          export const o0 = { v: 1 }
+          const r2 = o0.p
+          o0.p = 6
+          export const r13 = [r2]
+          export const Route = createFileRoute('/')({ component: () => [r2, r13] })
+        `),
+      },
+    })
+    const planners = [
+      toySplitPlanner({ keys: ['component'], extractExports: true }),
+    ]
+    const env = { env: envInfo({ mode: 'build' }) }
+    const out = await host.compile('/app/route.tsx', planners, env)
+    expect(out?.code).toContain(
+      'export const o0 = { v: 1 }\nconst r2 = o0.p\no0.p = 6\nexport const r13 = [r2]',
+    )
+    expect(out?.diagnostics).toMatchObject([{ code: 'eager-export:reads' }])
+  })
+
+  // round tools class C (fuzz seeds 6104927, 6407720, 6510105, 6518119;
+  // toy seed 1409092): a statement using an export and a binding the
+  // chunk takes with its write at load would read that binding in the
+  // export's module, which may evaluate before the chunk (O): it stays,
+  // keeping both (no module serves both, R149), reported at each
+  it("keeps a statement using an export and a binding a chunk takes with its write at load out of the export's module", async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/route.tsx': dedent(`
+          import { createFileRoute } from 'toy-router'
+          export function Ex2() { return fmt(Comp) }
+          let l4 = fmt(Comp)
+          l4 = log('T2', l4)
+          async function f5(x) { return fmt(x, l4) }
+          log('T5', l4, Ex2)
+          const P8 = () => [fmt(l3), Ex2()]
+          export const Route = createFileRoute('/')({ component: () => fmt(P8, f5) })
+        `),
+      },
+    })
+    const planners = [
+      toySplitPlanner({ keys: ['component'], extractExports: true }),
+    ]
+    const env = { env: envInfo({ mode: 'build' }) }
+    const out = await host.compile('/app/route.tsx', planners, env)
+    expect(out?.code).toContain(
+      "export function Ex2() { return fmt(Comp) }\nlet l4 = fmt(Comp)\nl4 = log('T2', l4)\nlog('T5', l4, Ex2)",
+    )
+    const module = await host.compile(
+      '/app/route.tsx?tsr-split=export---Ex2',
+      planners,
+      env,
+    )
+    expect(module?.code).not.toContain('log(')
+    const kept = out?.diagnostics ?? []
+    expect(kept.map((d) => d.code)).toEqual([
+      'eager-split:written',
+      'eager-split:written',
+    ])
+    expect(kept[0]!.message).toContain(
+      '`Ex2` in /app/route.tsx stays in the route module because the statement on line 6, which uses it, stays there: it also uses `l4`, which the split `component` uses',
+    )
+    expect(kept[1]!.message).toContain(
+      '`l4` in /app/route.tsx stays in the route module because the statement on line 6, which uses it, stays there: it also uses `Ex2`, which the split `component` uses',
+    )
+  })
+
   it('keeps all of it in the route module as written in dev', async () => {
     const r = await compile('dev', 'client')
     expect(r.diagnostics).toEqual([])
@@ -6962,6 +7038,41 @@ describe('language operations are no effect (rule L)', () => {
         "const on = true\nconst o0 = { v: 1 }\nconst h2 = { c: o0 }\nconst l8 = on ? o0 : null\nconst r = 'p' in l8\nh2.c.p = 4"
       const r = await split(seedRoute(decls, loader))
       inOrder(r, "const r = 'p' in l8", 'h2.c.p = 4')
+    },
+  )
+
+  // round tools class A (placement-exec seeds 13017, 1302957, 1310446,
+  // 1604480; router planner 1300510): the component also writes through
+  // the holder, a write at an unknown time only its chunk makes (recheck
+  // ruling C lets the read move there), but the read is still ordered
+  // against the later write at load the route module keeps (the loader)
+  it.each([
+    ['a function', 'function Page() { h6.c.v = 12; return r11 }'],
+    ['a wrapped function', 'hoc(function Page() { h6.c.v = 12; return r11 })'],
+  ])(
+    'keeps a read through a holder before a later write of the object when the component (%s) writes through the holder',
+    async (_, component) => {
+      const r = await split(
+        dedent(`
+          import { createFileRoute } from 'toy-router'
+          import { hoc } from './lib'
+          const o0 = { v: 1 }
+          const h6 = { c: o0 }
+          const r11 = [h6.c.v]
+          o0.v = 5
+          export const Route = createFileRoute('/x')({
+            loader: () => o0,
+            component: ${component},
+          })
+        `),
+        { files: { '/app/lib.ts': 'export const hoc = (f) => f\n' } },
+      )
+      expect(r.env).toContain('const r11 = [h6.c.v]\no0.v = 5')
+      const kept = r.main?.diagnostics ?? []
+      expect(kept).toMatchObject([{ code: 'eager-split:state' }])
+      expect(kept[0]!.message).toContain(
+        '`r11` in /app/route.tsx stays in the route module because it uses `o0` when the module loads, and the module writes `o0`',
+      )
     },
   )
 
