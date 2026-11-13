@@ -902,6 +902,14 @@ describe("an extracted export's module is a destination", () => {
     expect(kept[1]!.message).toContain(
       '`l4` in /app/route.tsx stays in the route module because the statement on line 6, which uses it, stays there: it also uses `Ex2`, which the split `component` uses',
     )
+    // the move takes the statement writing `l4` when the module loads (left
+    // behind, it would assign an import)
+    expect(kept[0]!.message).toContain(
+      '; move `Ex2`, `l4`, that statement and the statements writing them when the module loads to their own module, so `Ex2` can load',
+    )
+    expect(kept[1]!.message).toContain(
+      '; move `l4`, `Ex2`, that statement and the statements writing them when the module loads to their own module, so `l4` can load',
+    )
   })
 
   it('keeps all of it in the route module as written in dev', async () => {
@@ -2746,6 +2754,125 @@ describe('extracted-export outputs', () => {
       ],
     ])
   })
+
+  // The move a `reads` report offers is what the export and the binding it
+  // reads touch when the module loads, with the code writing them then
+  // (`Events.movedWith`): left in the route module, the new module would
+  // import it back, a cycle (Vite reads `undefined`, Rspack throws a TDZ
+  // error). When that needs `Route`, no module of its own can take it.
+  it.each([
+    [
+      'a binding the read one reads',
+      'const cfg = { k: 2 }\nconst kept = { n: cfg.k }\nexport const count = kept.n',
+      'count',
+      'kept',
+      'Move it, `kept` and `cfg` to their own module and import them from there.',
+    ],
+    [
+      'a holder',
+      'const o0 = { v: 1 }\nconst h6 = { c: o0 }\nexport const count = h6.c.v',
+      'count',
+      'h6',
+      'Move it, `h6` and `o0` to their own module and import them from there.',
+    ],
+    [
+      'a function it calls',
+      'const unit = 2\nconst kept = { n: 1 }\nfunction total() { return kept.n * unit }\nexport const count = total()',
+      'count',
+      'kept',
+      'Move it, `kept`, `unit` and `total` to their own module and import them from there.',
+    ],
+    [
+      'a write when the module loads',
+      'const kept = { n: 1 }\nkept.n = 3\nexport const count = kept.n',
+      'count',
+      'kept',
+      'Move it, `kept` and the statements writing them when the module loads to their own module and import them from there.',
+    ],
+    [
+      'nothing else',
+      "import { loadSettings } from './settings'\nconst kept = loadSettings()\nexport const count = kept.pageSize * 2",
+      'count',
+      'kept',
+      'Move it and `kept` to their own module and import them from there.',
+    ],
+    [
+      '`Route` (declared after it)',
+      'export const count = Route.options.path',
+      'count',
+      'Route',
+      "It can't move to a module of its own: that module would also need `Route`, which stays in the route module.",
+    ],
+  ])(
+    'offers, for an export reading what the route module keeps, the move of what it reads when it loads: %s',
+    async (_, decls, name, read, fix) => {
+      const route = dedent(`
+        export const Route = createFileRoute('/')({
+          loader: () => ${read === 'h6' ? 'o0' : read === 'Route' ? 'null' : read},
+          component: () => ${name},
+        })
+      `)
+      // (`Route` read after its declaration)
+      const code = [
+        "import { createFileRoute } from 'toy-router'",
+        ...(read === 'Route' ? [route, decls] : [decls, route]),
+      ].join('\n')
+      const r = await extract(code)
+      expect(
+        r.diagnostics.map((d) => [d.code, d.range?.start, d.message]),
+      ).toEqual([
+        [
+          'eager-export:reads',
+          code.indexOf(`${name} = `),
+          `[tanstack-router] The export \`${name}\` of /app/route.tsx is used only by the split \`component\`, but stays in the route module because it reads \`${read}\` when it loads, which the route module keeps, so it loads with the route module instead of with that code. ${fix}`,
+        ],
+      ])
+    },
+  )
+
+  // code another planner claims or generates (a hydration boundary here; a
+  // server function's handler and stubs in Start) is made again from its
+  // source wherever that goes: only the route options' declaration keeps a
+  // move from being offered (corpus: Start server functions reading a
+  // middleware or a schema the route module keeps)
+  it.each([
+    [
+      'a value holding a claimed boundary',
+      'const kept = { n: cfg.n, view: () => <Hydrate><b>{cfg.n}</b></Hydrate> }\nexport const count = kept.n',
+      'Move it, `kept` and `cfg` to their own module and import them from there.',
+    ],
+    [
+      'a function it calls holding one',
+      'const kept = { n: cfg.n }\nfunction View() { return <Hydrate><b>{cfg.n}</b></Hydrate> }\nexport const count = [kept.n, View()]',
+      'Move it, `kept`, `cfg` and `View` to their own module and import them from there.',
+    ],
+  ])(
+    "offers the move when what moves holds another planner's code: %s",
+    async (_, decls, fix) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { Hydrate } from 'toy-start'
+        const cfg = { n: 1 }
+        ${decls.split('\n').join('\n        ')}
+        export const Route = createFileRoute('/')({ loader: () => kept, component: () => count })
+      `)
+      const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+      const out = await host.compile(
+        '/app/route.tsx',
+        [
+          toySplitPlanner({ keys: ['component'], extractExports: true }),
+          toyHydratePlanner(),
+        ],
+        build,
+      )
+      expect(out?.diagnostics.map((d) => d.code)).toEqual([
+        'eager-export:reads',
+      ])
+      expect(out?.diagnostics[0]!.message).toContain(
+        `so it loads with the route module instead of with that code. ${fix}`,
+      )
+    },
+  )
 
   // J2.8: an exported declaration a chunk needs that stays in the route
   // module is reported once per export with the reason, positioned at the
@@ -8488,6 +8615,81 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     expect(f.chunks.component).toContain('const d = make()')
   })
 
+  // a method the mutation model knows (`Set.add`, `Array.push`, `Map.set`)
+  // writes only the receiver: the statement joins its cluster, which the
+  // route module keeps, and keeps the binding it uses with one warning, as
+  // a call it does not know does (phase 6 step 3, P04b written with `add`)
+  it.each([
+    ['add', 'new Set()', 'k.add(d)'],
+    ['push', '[]', 'k.push(d)'],
+    ['set', 'new Map()', "k.set('d', d)"],
+  ])(
+    'a binding the route module keeps that a known method (%s) changes',
+    async (_, init, statement) => {
+      const options = 'loader: () => k, component: () => d'
+      const code = route(
+        `const k = ${init}\nconst d = make()\n${statement}`,
+        options,
+      )
+      const r = await report(code)
+      written(
+        r,
+        code,
+        'd',
+        statement,
+        'which uses it, stays there: it also changes `k`, which the route module keeps; run that statement in the code that needs it, so `d` can load with the split `component`.',
+      )
+      // the fix: the call in the code that needs `d`
+      const f = await report(
+        route(
+          `const k = ${init}\nconst d = make()`,
+          `loader: () => k, component: () => (${statement}, d)`,
+        ),
+      )
+      expect(f.diagnostics).toEqual([])
+      expect(f.chunks.component).toContain('const d = make()')
+    },
+  )
+
+  // the same through what the statement uses (`unitChanges`): a holder of
+  // it, and an exported binding, as with a call the model does not know
+  it.each([
+    [
+      'a holder of it',
+      'const k = new Set()\nconst d = make()\nconst h = { d }',
+      'k.add(h)',
+      false,
+    ],
+    [
+      'an exported binding',
+      'const k = new Set()\nexport const d = make()',
+      'k.add(d)',
+      true,
+    ],
+  ])(
+    'a binding the route module keeps that a known method changes, using %s',
+    async (_, decls, statement, extract) => {
+      const options = 'loader: () => k, component: () => d'
+      const code = route(`${decls}\n${statement}`, options)
+      const r = await report(code, undefined, {}, extract)
+      written(
+        r,
+        code,
+        'd',
+        statement,
+        'which uses it, stays there: it also changes `k`, which the route module keeps; run that statement in the code that needs it, so `d` can load with the split `component`.',
+      )
+      // the fix: the call in the code that needs `d`
+      const f = await report(
+        route(decls, `loader: () => k, component: () => (${statement}, d)`),
+        undefined,
+        {},
+        extract,
+      )
+      expect(f.diagnostics).toEqual([])
+    },
+  )
+
   it('a binding the route module keeps that the statement only uses', async () => {
     const statement = 'table.setup(cfg)'
     const options = 'loader: () => cfg, component: () => table'
@@ -8554,6 +8756,32 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     )
     expect(f.diagnostics).toEqual([])
     expect(f.env).not.toContain('own')
+  })
+
+  // the move takes what the binding reads when the module loads: left in
+  // the route module, the new module (which the route module imports to
+  // re-export the export) would import it back, a cycle
+  it('code that runs later changing an export reading another binding when the module loads', async () => {
+    const statement = "Sentry.setContext('flags', flags)"
+    const options = 'component: () => { flags.base = 1; return flags }'
+    const code = route(
+      `const prefix = { p: 'x' }\nexport const flags = { beta: false, p: prefix.p }\n${statement}`,
+      options,
+    )
+    const r = await report(code, undefined, {}, true)
+    written(r, code, 'flags', statement, 'code that runs later changes it too')
+    expect(r.diagnostics[0]!.message).toContain(
+      '; move `flags`, `prefix` and the statements using them when the module loads to their own module, so `flags` can load',
+    )
+    const f = await report(
+      route("import { flags } from './flags'\nexport { flags }", options),
+      undefined,
+      {
+        '/app/flags.ts': `import * as Sentry from '@sentry/react'\nconst prefix = { p: 'x' }\nexport const flags = { beta: false, p: prefix.p }\n${statement}\n`,
+      },
+      true,
+    )
+    expect(f.diagnostics).toEqual([])
   })
 
   // an import a statement changes is no declaration of the module: the
@@ -8633,6 +8861,36 @@ describe('eager-split:written: why a statement that changes it stays', () => {
       expect(f.chunks.component).toContain('const a = make()')
     },
   )
+
+  // the same for an exported binding (it was not reported: the pass
+  // skipped exported clusters)
+  it('a binding the route module keeps a statement also writes, the other one exported', async () => {
+    const statement = 'if (on) { a.v = 1; k.v = 2 }'
+    const options = 'loader: () => k, component: () => a'
+    const code = route(
+      `export const a = make()\nconst k = make()\n${statement}`,
+      options,
+    )
+    written(
+      await report(code, undefined, {}, true),
+      code,
+      'a',
+      statement,
+      'it also changes `k`, which the route module keeps; change `k` in a statement of its own',
+    )
+    // the fix
+    const f = await report(
+      route(
+        'export const a = make()\nconst k = make()\nif (on) { a.v = 1 }\nif (on) { k.v = 2 }',
+        options,
+      ),
+      undefined,
+      {},
+      true,
+    )
+    expect(f.diagnostics).toEqual([])
+    expect(f.env).not.toContain('const a = make()')
+  })
 
   // (one expression writing both: run in the code that needs `a`, as a
   // call changing both is)

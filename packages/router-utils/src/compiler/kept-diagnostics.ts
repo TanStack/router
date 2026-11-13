@@ -43,7 +43,7 @@ export function keptDiagnostic(
     items.length === 1
       ? items[0]!
       : `${items.slice(0, -1).join(', ')} and ${items.at(-1)!}`
-  /** A `state` move (`k.moves`): `head` (the declaration, `read`) and what moves with them. */
+  /** A `state`, `reads` or `written` move (`k.moves`): `head` (the declaration, `read`) and what moves with them. */
   const moving = (head: ReadonlyArray<string>) => [
     ...head,
     ...(k.moves?.syms ?? []).map((s) => `\`${symbols.name(s)}\``),
@@ -74,7 +74,7 @@ export function keptDiagnostic(
       ? `Use \`${symbols.name(k.read!)}\` inside the code that needs it, or move ${what}`
       : `Move ${what}`
   }
-  /** Why no module of its own can take a `state` declaration (`k.stuck`). */
+  /** Why no module of its own can take the declaration a move would take (`k.stuck`). */
   const stuck =
     k.stuck === undefined
       ? undefined
@@ -123,7 +123,17 @@ export function keptDiagnostic(
         } else {
           const read = `\`${symbols.name(k.read)}\``
           why = `it reads ${read} when it loads, which the ${module} keeps`
-          fix = `Move it and ${read} to their own module and import them from there.`
+          // (what they read when the module loads moves with them, `moving`:
+          // left behind, the new module would import it back; none can:
+          // `stuck`)
+          fix =
+            stuck !== undefined
+              ? `${stuck[0]!.toUpperCase()}${stuck.slice(1)}.`
+              : k.moves === undefined
+                ? `Move it and ${read} to their own module and import them from there.`
+                : k.moves.written
+                  ? `Move it, ${moving([read]).join(', ')} and the statements writing them when the module loads to their own module and import them from there.`
+                  : `Move it, ${and(moving([read]))} to their own module and import them from there.`
         }
         break
       case 'state': {
@@ -190,20 +200,48 @@ export function keptDiagnostic(
             : k.read !== undefined
               ? `${stays}: it also ${k.readChanged === true ? 'changes' : 'uses'} ${read}, which ${k.in === undefined ? `the ${module} keeps` : `${plan.outputs.get(k.in)!.kind === 'export' ? '' : 'the split '}${output(k.in)} uses`}`
               : stays
+      // (a move takes what the moved code reads when the module loads,
+      // `moving`, and the statements writing a moved binding then; none
+      // can: `stuck`)
+      const moves =
+        k.reader === undefined &&
+        (k.later !== undefined ||
+          k.read === undefined ||
+          (k.split !== true && k.in !== undefined))
+      if (moves && stuck !== undefined) {
+        return {
+          severity: 'warning',
+          message: `${tag}${subject} in ${file} stay${names.length === 1 ? 's' : ''} in the ${module} because ${because}; ${stuck}.`,
+          range: k.range,
+          by: 'core',
+          code: `eager-split:${k.reason}`,
+        }
+      }
+      /** The move of `head` and what moves with it, with that statement. */
+      const withStatement = (head: ReadonlyArray<string>) => {
+        const moved = [...moving(head), 'that statement']
+        return k.moves?.written === true
+          ? `${moved.join(', ')} and the statements writing them when the module loads`
+          : and(moved)
+      }
+      // (the later writer may be a line of a component: what moves is
+      // what uses it when the module loads, recheck finding 6)
+      const later = [
+        ...names,
+        ...(k.moves?.syms ?? []).map((s) => `\`${symbols.name(s)}\``),
+      ]
       fix =
-        // (the later writer may be a line of a component: what moves is
-        // what uses it when the module loads, recheck finding 6)
         k.later !== undefined
-          ? `move ${subject} and the statements using ${them} when the module loads to their own module`
+          ? `move ${later.join(', ')} and the statements using ${later.length === 1 ? 'it' : 'them'} when the module loads to their own module`
           : k.reader !== undefined
             ? `use ${read} inside the code that needs ${reader} instead of when the module loads`
             : k.read === undefined
-              ? `move ${subject} and that statement to their own module`
+              ? `move ${withStatement(names)} to their own module`
               : k.split === true
                 ? `change ${read} in a statement of its own`
                 : k.in === undefined
                   ? `run that statement in the code that needs ${them}`
-                  : `move ${subject}, ${read} and that statement to their own module`
+                  : `move ${withStatement([...names, read])} to their own module`
       break
     }
     case 'shared':

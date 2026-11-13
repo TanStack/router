@@ -9,8 +9,14 @@
  * offers names what the moved code reads when the module loads (a holder, a
  * function it calls and what that reads) and what reads a moved binding
  * before a moved write (round tools class A): what stays would otherwise be
- * imported back from the route module, a cycle. Vite and Rspack client
- * builds, mounted in a DOM.
+ * imported back from the route module, a cycle. So does the move offered for
+ * an export that stays because it reads what the route module keeps (a
+ * binding that one reads, a holder, a function it calls, a write at load),
+ * and the move offered for a binding a statement that stays changes or uses
+ * (what the binding reads at load; the code writing a moved binding then).
+ * A statement a known method makes a writer of a kept binding (`Set.add`)
+ * keeps a binding it uses with one warning, as an unknown call does.
+ * Vite and Rspack client builds, mounted in a DOM.
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -325,6 +331,306 @@ o0.v = 5
         },
       )
       expect(fixed.text).toBe('1 2')
+      expect(fixed.diagnostics).toEqual([])
+    },
+    timeout,
+  )
+
+  // an export only split code uses reads, when it loads, `kept`, which the
+  // loader keeps in the route module: the move takes what the two read
+  // then, and the statements writing them (left behind, the new module
+  // would import it back from the route module)
+  test.each([
+    [
+      'a binding the read one reads',
+      `const cfg = { k: 2 }
+const kept = { n: cfg.k }
+export const count = kept.n
+`,
+      'kept',
+      'count = kept.n',
+      '2',
+      `const cfg = { k: 2 }
+export const kept = { n: cfg.k }
+export const count = kept.n
+`,
+    ],
+    [
+      'a holder',
+      `const o0 = { v: 1 }
+const h6 = { c: o0 }
+export const count = h6.c.v
+`,
+      'o0',
+      'count = h6.c.v',
+      '1',
+      `export const o0 = { v: 1 }
+const h6 = { c: o0 }
+export const count = h6.c.v
+`,
+    ],
+    [
+      'a function it calls',
+      `const unit = 2
+const kept = { n: 1 }
+function total() {
+  return kept.n * unit
+}
+export const count = total()
+`,
+      'kept',
+      'count = total()',
+      '2',
+      `const unit = 2
+export const kept = { n: 1 }
+function total() {
+  return kept.n * unit
+}
+export const count = total()
+`,
+    ],
+    [
+      'a write when the module loads',
+      `const kept = { n: 1 }
+kept.n = 3
+export const count = kept.n
+`,
+      'kept',
+      'count = kept.n',
+      '3',
+      `export const kept = { n: 1 }
+kept.n = 3
+export const count = kept.n
+`,
+    ],
+  ])(
+    'warns once at an export reading what the route module keeps through %s, and its fix moves what they read when the module loads',
+    async (_, declarations, loaded, at, value, own) => {
+      const options = (
+        imports: string,
+      ) => `${head}${imports}export const Route = createFileRoute('/')({
+  loader: () => ${loaded},
+  component: () => <p>{String(count)}</p>,
+})
+`
+      const route = options(declarations)
+      const r = await mounted(bundler, route)
+      expect(r.text).toBe(value)
+      expectDiagnostic(r.diagnostics, {
+        severity: 'warning',
+        position: diagnosticPosition(route, at),
+        times: 1,
+      })
+      expect(r.diagnostics).toHaveLength(1)
+      // the fix: the export, the binding it reads and what the warning
+      // names with them in a module of their own
+      const fixed = await mounted(
+        bundler,
+        options(`import { count, ${loaded} } from '../own'
+export { count }
+`),
+        { 'own.ts': own },
+      )
+      expect(fixed.text).toBe(value)
+      expect(fixed.diagnostics).toEqual([])
+    },
+    timeout,
+  )
+
+  // an export reading `Route` when it loads: no module of its own can take
+  // it (it would import `Route` back), so the warning offers no move
+  test(
+    'warns once at an export reading `Route` when the module loads',
+    async () => {
+      const route = `${head}export const Route = createFileRoute('/')({
+  component: () => <p>{label}</p>,
+})
+export const label = typeof Route.options.component
+`
+      const r = await mounted(bundler, route)
+      expect(r.text).toBe('function')
+      expectDiagnostic(r.diagnostics, {
+        severity: 'warning',
+        position: diagnosticPosition(route, 'label = typeof'),
+        times: 1,
+      })
+      expect(r.diagnostics).toHaveLength(1)
+    },
+    timeout,
+  )
+
+  // `flags` stays with the statement using it, which code that runs later
+  // changes too: the move takes `prefix`, which `flags` reads when the
+  // module loads (the route module imports the new module to re-export
+  // `flags`)
+  test(
+    'warns once at an export a statement that stays uses, and its fix moves what the export reads when the module loads',
+    async () => {
+      const options = `export const Route = createFileRoute('/')({
+  component: () => {
+    flags.base = 1
+    return <p>{flags.p} {String(context.flags === flags)}</p>
+  },
+})
+`
+      const route = `${head}import { context, setContext } from '../context'
+const prefix = { p: 'x' }
+export const flags: { beta: boolean; p: string; base?: number } = {
+  beta: false,
+  p: prefix.p,
+}
+setContext('flags', flags)
+${options}`
+      const files = {
+        'context.ts': `export const context: Record<string, unknown> = {}
+export function setContext(key: string, value: unknown) {
+  context[key] = value
+}
+`,
+      }
+      const r = await mounted(bundler, route, files)
+      expect(r.text).toBe('x true')
+      expectDiagnostic(r.diagnostics, {
+        severity: 'warning',
+        position: diagnosticPosition(route, 'flags: {'),
+        times: 1,
+      })
+      expect(r.diagnostics).toHaveLength(1)
+      // the fix: `flags`, `prefix` and the statements using them when the
+      // module loads in a module of their own
+      const fixed = await mounted(
+        bundler,
+        `${head}import { context } from '../context'
+import { flags } from '../flags'
+export { flags }
+${options}`,
+        {
+          ...files,
+          'flags.ts': `import { setContext } from './context'
+const prefix = { p: 'x' }
+export const flags: { beta: boolean; p: string; base?: number } = {
+  beta: false,
+  p: prefix.p,
+}
+setContext('flags', flags)
+`,
+        },
+      )
+      expect(fixed.text).toBe('x true')
+      expect(fixed.diagnostics).toEqual([])
+    },
+    timeout,
+  )
+
+  // round tools class C (fuzz seeds 6104927, 6407720, 6510105, 6518119): the
+  // statement on line 7 uses `Title`, an export, and `count`, which the
+  // chunk takes with its write at load: no module serves both, so both
+  // stay, reported at each. The move takes the statement writing `count`
+  // when the module loads (left behind, it would assign an import)
+  test(
+    'warns at each binding a statement that stays uses, and their fix moves the statements writing them when the module loads',
+    async () => {
+      const rest = `async function load(x: unknown) {
+  return format(x, count)
+}
+const Header = () => [format('H'), Title()]
+export const Route = createFileRoute('/')({
+  component: () => <p>{format(Header, load)} {count}</p>,
+})
+`
+      const route = `${head}import { format, log } from '../lib'
+export function Title() { return format('T') }
+let count = format('C')
+count = log('T2', count)
+${rest.replace('const Header', "log('T5', count, Title)\nconst Header")}`
+      const files = {
+        'lib.ts': `export function format(...a: Array<unknown>) {
+  return a.length
+}
+export function log(_tag: string, v: unknown, ..._rest: Array<unknown>) {
+  return typeof v === 'number' ? v + 1 : v
+}
+`,
+      }
+      const r = await mounted(bundler, route, files)
+      expect(r.text).toBe('2 2')
+      for (const at of ['export function Title', 'count = format']) {
+        expectDiagnostic(r.diagnostics, {
+          severity: 'warning',
+          position: diagnosticPosition(route, at),
+          times: 1,
+        })
+      }
+      expect(r.diagnostics).toHaveLength(2)
+      // the fix: `Title`, `count`, that statement and the statements
+      // writing them when the module loads in a module of their own
+      const fixed = await mounted(
+        bundler,
+        `${head}import { format } from '../lib'
+import { Title, count } from '../own'
+export { Title }
+${rest}`,
+        {
+          ...files,
+          'own.ts': `import { format, log } from './lib'
+export function Title() { return format('T') }
+export let count = format('C')
+count = log('T2', count)
+log('T5', count, Title)
+`,
+        },
+      )
+      expect(fixed.text).toBe('2 2')
+      expect(fixed.diagnostics).toEqual([])
+    },
+    timeout,
+  )
+
+  // phase 6 step 3 (P04b written with the bindings file's `init()`):
+  // `table.add(d)` changes `table`, which `beforeLoad` keeps, so it stays,
+  // and so does `d`, which only the component reads: one warning, as with
+  // `table.link(d)`
+  test(
+    'warns once at a binding a known method call on a kept binding uses, and its fix splits it',
+    async () => {
+      const files = {
+        'state.ts': `export const init = <T,>(value: T): T => value
+`,
+      }
+      const route = `${head}import { init } from '../state'
+const table = init(new Set<object>())
+const d = init({ name: 'MARK_D' })
+table.add(d)
+export const Route = createFileRoute('/')({
+  beforeLoad: () => table.size,
+  component: () => <p>{d.name}</p>,
+})
+`
+      const r = await mounted(bundler, route, files)
+      expect(r.text).toBe('MARK_D')
+      expectDiagnostic(r.diagnostics, {
+        severity: 'warning',
+        position: diagnosticPosition(route, 'd = init'),
+        times: 1,
+      })
+      expect(r.diagnostics).toHaveLength(1)
+      // the fix: that statement in the code that needs `d`
+      const fixed = await mounted(
+        bundler,
+        `${head}import { init } from '../state'
+const table = init(new Set<object>())
+const d = init({ name: 'MARK_D' })
+export const Route = createFileRoute('/')({
+  beforeLoad: () => table.size,
+  component: () => {
+    table.add(d)
+    return <p>{d.name}</p>
+  },
+})
+`,
+        files,
+      )
+      expect(fixed.text).toBe('MARK_D')
       expect(fixed.diagnostics).toEqual([])
     },
     timeout,
