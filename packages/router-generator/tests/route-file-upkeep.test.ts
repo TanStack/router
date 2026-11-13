@@ -18,7 +18,10 @@ import {
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
+import {
+  captureDiagnostics,
+  expectNoProblems,
+} from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { createApp, generate, read, rootRoute } from './app'
 import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeCallOf } from './route-id'
@@ -950,6 +953,62 @@ export const Route = createFileRoute(\`/\${x}\`)({})
       }
     },
   )
+
+  // Source: review round 1 F5-3 (a parenthesised id was reported as "not a
+  // string literal" and left stale). A literal in parentheses or a
+  // TypeScript assertion is a string literal: kept up, nothing reported.
+  test.each([
+    {
+      name: 'in parentheses',
+      source: `import { createFileRoute } from ${router}
+export const Route = createFileRoute(('/old'))({})
+`,
+      kept: `createFileRoute(('/new'))({})`,
+    },
+    {
+      name: 'in a TypeScript assertion',
+      source: `import { createFileRoute } from ${router}
+export const Route = createFileRoute(('/old' as const))({})
+`,
+      kept: `createFileRoute(('/new' as const))({})`,
+    },
+  ])(
+    'round 1 F5-3: a route id $name gets the id of its path, nothing reported',
+    async ({ source, kept }) => {
+      const { written, routes, diagnostics, error } = await upkeep(
+        'new.tsx',
+        source,
+      )
+      expect(error).toBeUndefined()
+      expectNoProblems(diagnostics)
+      expect(written).toBe(
+        source.replace(/createFileRoute\(.*\)\(\{\}\)/, kept),
+      )
+      expect(routes).toEqual({
+        __root__: 'routes/__root.tsx',
+        '/new': 'routes/new.tsx',
+      })
+    },
+  )
+
+  // Source: review round 1 F5-3. The stale id of a call without the options
+  // call is named in parentheses too.
+  test('round 1 F5-3: a parenthesised stale id of a call without the options call is reported by name', async () => {
+    const { root, file, diagnostics, error } = await upkeep(
+      'new.tsx',
+      `import { createFileRoute } from ${router}
+export const Route = createFileRoute(('/old'))
+`,
+    )
+    expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
+      severity: ['warning', 'error'],
+      file,
+      root,
+    })
+    expect(
+      [...diagnosticsOf(error), ...diagnostics].map((d) => d.text).join('\n'),
+    ).toContain('without route options')
+  })
 
   // Never-fail-silently controls: a Route that is not a route (the options
   // call forgotten) or whose constructor is imported as a type only (the

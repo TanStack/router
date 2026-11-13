@@ -164,6 +164,74 @@ export const Route = createFileRoute('/')(options)
     },
     split: true,
   },
+  // Source: review round 1 F5-1 (the route was listed, not split, and
+  // nothing was reported: its server options shipped silently under Start)
+  {
+    name: 'round 1 F5-1: a code-based `createRoute`',
+    file: 'routes/index.tsx',
+    files: {
+      'routes/index.tsx': `import { createRoute } from '${RP}'
+import { Route as rootRoute } from './__root'
+export const Route = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
+  component: () => <p>MARK_PAGE</p>,
+})
+`,
+    },
+    fixed: {
+      'routes/index.tsx': `import { createFileRoute } from '${RP}'
+export const Route = createFileRoute('/')(${page})
+`,
+    },
+    split: true,
+    at: 'Route = createRoute({',
+  },
+  {
+    name: 'round 1 F5-1: a code-based `createRoute` through a namespace in the root route file',
+    file: 'routes/__root.tsx',
+    files: {
+      'routes/__root.tsx': `import * as R from '${RP}'
+export const Route = R.createRoute({ component: () => <R.Outlet /> } as any)
+`,
+    },
+    fixed: { 'routes/__root.tsx': rootFile },
+    split: false,
+  },
+  // Source: review round 1 F5-2 (a `Route` bound by a pattern was not seen
+  // by the report)
+  {
+    name: 'round 1 F5-2: a `Route` destructured from an object',
+    file: 'routes/index.tsx',
+    files: {
+      'routes/index.tsx': `import { createFileRoute } from '${RP}'
+export const { Route } = { Route: createFileRoute('/')(${page}) }
+`,
+    },
+    fixed: {
+      'routes/index.tsx': `import { createFileRoute } from '${RP}'
+export const Route = createFileRoute('/')(${page})
+`,
+    },
+    split: true,
+    at: '{ Route } = {',
+  },
+  {
+    name: 'round 1 F5-2: a `Route` destructured from an array a const holds',
+    file: 'routes/index.tsx',
+    files: {
+      'routes/index.tsx': `import { createFileRoute } from '${RP}'
+const routes = [createFileRoute('/')(${page})]
+export const [Route] = routes
+`,
+    },
+    fixed: {
+      'routes/index.tsx': `import { createFileRoute } from '${RP}'
+export const Route = createFileRoute('/')(${page})
+`,
+    },
+    split: true,
+  },
 ]
 
 describe('a listed route the code splitter does not read', () => {
