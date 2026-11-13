@@ -312,6 +312,15 @@ export interface StartBuildOptions {
    * Default: each build has plugins of its own, as a config file gives them.
    */
   samePlugins?: boolean
+  /**
+   * Vite builds: Start's plugins come from the app's config file
+   * (`vite.config.mjs`), as `vite build` loads them: each config resolution
+   * of the build (the top level's and each environment's) evaluates the file
+   * and gets plugin objects of its own. Default: the harness passes them
+   * inline (`configFile: false`), the same objects to every resolution.
+   * Not with `samePlugins`.
+   */
+  viteConfigFile?: boolean
   /** Rsbuild configuration merged over the harness's (Rsbuild builds). */
   rsbuildConfig?: RsbuildConfig
   /**
@@ -645,6 +654,7 @@ export async function buildStart(
     viteBuild: options.viteBuild,
     watchEdits: options.watchEdits,
     samePlugins: options.samePlugins ?? false,
+    viteConfigFile: options.viteConfigFile ?? false,
     cwd: options.cwd,
     configuredRoot: options.root?.(app.root),
   }
@@ -831,6 +841,7 @@ interface BuildTarget {
   viteBuild?: (builder: ViteBuilder) => Promise<void>
   watchEdits?: Record<string, string | null> | ReadonlyArray<WatchStep>
   samePlugins: boolean
+  viteConfigFile: boolean
   /** Start's Vite plugins of every build (`samePlugins`), once created. */
   startPlugins?: ReturnType<typeof startPlugins>
   /** The Rsbuild instance of every build (`samePlugins`), once created, and the records of its current build. */
@@ -862,6 +873,39 @@ const builders: Record<
 > = {
   vite: buildWithVite,
   rsbuild: buildWithRsbuild,
+}
+
+/**
+ * Each evaluation of an app's config file (`viteConfigFile`), by app root:
+ * Start's plugins, new objects each time.
+ */
+const configFileConfigs = ((globalThis as Record<symbol, unknown>)[
+  Symbol.for('tanstack.start-harness.config-files')
+] ??= new Map()) as Map<string, () => InlineConfig>
+
+/** Writes the app's `vite.config.mjs`, giving Start's plugins (`viteConfigFile`). */
+async function viteConfigFile(target: BuildTarget): Promise<string> {
+  if (target.samePlugins) {
+    throw new Error(
+      'buildStart: viteConfigFile and samePlugins exclude each other',
+    )
+  }
+  const file = path.join(target.root, 'vite.config.mjs')
+  configFileConfigs.set(target.root, () => ({
+    plugins: [
+      startPlugins(
+        target.framework,
+        target.root,
+        target.start,
+        harnessEntries(target.root),
+      ),
+    ],
+  }))
+  await writeFile(
+    file,
+    `export default globalThis[Symbol.for('tanstack.start-harness.config-files')].get(${JSON.stringify(target.root)})()\n`,
+  )
+  return file
 }
 
 /** Start's Vite plugins of a build: the same objects for each build of a `samePlugins` target. */
@@ -960,6 +1004,7 @@ async function buildWithVite(
   // `vite build` runs in the app's directory: Start's plugin reads the
   // dependencies of the working directory's package.json (Start libraries
   // it bundles in SSR, `crawlFrameworkPkgs`).
+  const configFile = target.viteConfigFile && (await viteConfigFile(target))
   const cwd = process.cwd()
   process.chdir(target.cwd ?? target.root)
   try {
@@ -967,7 +1012,7 @@ async function buildWithVite(
       mergeConfig<InlineConfig, InlineConfig>(
         {
           root: target.configuredRoot ?? target.root,
-          configFile: false,
+          configFile,
           envDir: false,
           publicDir: false,
           mode: target.mode,
@@ -990,7 +1035,7 @@ async function buildWithVite(
             ssr: environmentBuild('ssr'),
           },
           plugins: [
-            viteStartPlugins(target),
+            ...(configFile ? [] : [viteStartPlugins(target)]),
             // A React app's own Vite plugin, as in every React Start app,
             // unless the test configures it
             ...(target.framework === 'react' &&
@@ -1062,6 +1107,9 @@ async function buildWithVite(
     )
   } finally {
     process.chdir(cwd)
+    if (configFile) {
+      configFileConfigs.delete(target.root)
+    }
   }
   return checkOutputs(outputs)
 }
