@@ -346,25 +346,28 @@ export function ownsItsValue(u: Unit): boolean {
     case 'TSEnumDeclaration':
     case 'TSModuleDeclaration':
       return true
-    case 'VariableDeclarator': {
-      if (n.id.type !== 'Identifier' || n.init === null) {
-        return false
-      }
-      switch (unwrapExpression(n.init).type) {
-        case 'ObjectExpression':
-        case 'ArrayExpression':
-        case 'FunctionExpression':
-        case 'ArrowFunctionExpression':
-        case 'ClassExpression':
-        case 'Literal':
-        case 'TemplateLiteral':
-        case 'CallExpression':
-        case 'NewExpression':
-          return true
-        default:
-          return false
-      }
-    }
+    case 'VariableDeclarator':
+      return (
+        n.id.type === 'Identifier' && n.init !== null && createsItsValue(n.init)
+      )
+    default:
+      return false
+  }
+}
+
+/** Whether expression `e` evaluates to a value of its own (`ownsItsValue`): a literal, a function or class expression, a call's result. */
+export function createsItsValue(e: Node): boolean {
+  switch (unwrapExpression(e).type) {
+    case 'ObjectExpression':
+    case 'ArrayExpression':
+    case 'FunctionExpression':
+    case 'ArrowFunctionExpression':
+    case 'ClassExpression':
+    case 'Literal':
+    case 'TemplateLiteral':
+    case 'CallExpression':
+    case 'NewExpression':
+      return true
     default:
       return false
   }

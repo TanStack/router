@@ -21,8 +21,16 @@
  * its value (`ownsObject`: `alias.v = 1`, `let cur = cfg`) or through a
  * nested member (`holder.c.v = 1`) may write any object it holds
  * (`objectsWrittenBy`), so it is a write of each of those bindings too.
+ * A local name (a function's, a block's) holds what its value comes from
+ * (`localValue`): its initialiser and assignments, the elements a `for…of`
+ * loop runs over, a thrown value for a `catch` parameter, and for a
+ * parameter its default and what the calls that may reach its function
+ * hand them (`handedTo`). A write through it (`function set(o) { o.v = 1 }`
+ * with `set(cfg)`) is a write of what it holds, at the time it runs.
  */
-import { ownsItsValue } from './units'
+import { walk } from 'yuku'
+import { isExpressionWrapper, unwrapExpression } from './source'
+import { createsItsValue, ownsItsValue } from './units'
 import type { ClassifiedRef, RefIndex, Tier1 } from './analysis'
 import type { Range } from './header'
 import type { SymbolId } from './symbols'
@@ -49,8 +57,36 @@ export function writeKind(ref: ClassifiedRef): WriteKind | null {
 /** What the value walk reads of the module. */
 type ModuleShape = Pick<
   Tier1,
-  'units' | 'declaringUnits' | 'runsLaterAt' | 'unitAt'
+  'units' | 'declaringUnits' | 'runsLaterAt' | 'unitAt' | 'symbols' | 'purity'
 >
+
+/** What a local name's value may hold (module bindings), and whether every value it gets is one its sources create (`createsItsValue`). */
+interface LocalValue {
+  held: ReadonlyArray<SymbolId>
+  owns: boolean
+}
+
+const FUNCTIONS: ReadonlySet<string> = new Set([
+  'FunctionDeclaration',
+  'FunctionExpression',
+  'ArrowFunctionExpression',
+])
+
+/** Parents a value climbs through to what holds it (`MutationModel.handedTo`): it is their value, or one they hold. */
+const HOLDING: ReadonlySet<string> = new Set([
+  'ConditionalExpression',
+  'LogicalExpression',
+  'SequenceExpression',
+  'AwaitExpression',
+  'ArrayExpression',
+  'ObjectExpression',
+  'Property',
+  'MethodDefinition',
+  'PropertyDefinition',
+  'ClassBody',
+  'ClassExpression',
+  'SpreadElement',
+])
 
 /** The expressions and statements a write reference writes through (`writeTargets`' constructs). */
 const WRITES: ReadonlySet<string> = new Set([
@@ -83,6 +119,10 @@ export class MutationModel {
   private owns: Map<SymbolId, boolean> | null = null
   /** Per binding, what its value may hold (`heldBy`). */
   private held: Map<SymbolId, ReadonlyArray<SymbolId>> | null = null
+  /** Per local name, its value (`localValue`). */
+  private locals: Map<SymbolId, LocalValue> | null = null
+  /** The values the module throws (what a `catch` parameter may hold). */
+  private thrown: Array<Node> | null = null
   /** Per member write through another name, the other bindings whose objects it may write; per binding, those writes (built at the first ask, once). */
   private through: {
     objects: Map<ClassifiedRef, ReadonlyArray<SymbolId>>
@@ -190,6 +230,10 @@ export class MutationModel {
    */
   heldBy(ref: ClassifiedRef): ReadonlyArray<SymbolId> {
     const sym = ref.sym
+    const { symbols } = this.module()
+    if (!symbols.isModuleLevel(sym)) {
+      return this.localValue(sym).held
+    }
     this.held ??= new Map()
     let held = this.held.get(sym)
     if (held !== undefined) {
@@ -209,6 +253,12 @@ export class MutationModel {
           r.ctx === 'callee' ||
           r.ctx === 'newCallee'
         ) {
+          return false
+        }
+        if (!symbols.isModuleLevel(r.sym)) {
+          for (const t of this.localValue(r.sym).held) {
+            set.add(t)
+          }
           return false
         }
         if (this.namesObject(r.sym)) {
@@ -234,12 +284,17 @@ export class MutationModel {
     const objects = new Map<ClassifiedRef, ReadonlyArray<SymbolId>>()
     const writes = new Map<SymbolId, Array<ClassifiedRef>>()
     this.through = { objects, writes }
-    const { declaringUnits } = this.module()
+    const { declaringUnits, symbols } = this.module()
     for (const ref of this.refs.all) {
+      if (writeKind(ref) !== 'member') {
+        continue
+      }
+      // (a local name: what its value comes from, `localValue`)
       if (
-        writeKind(ref) !== 'member' ||
-        !declaringUnits.has(ref.sym) ||
-        (!ref.readsThrough && this.ownsObject(ref.sym))
+        symbols.isModuleLevel(ref.sym)
+          ? !declaringUnits.has(ref.sym) ||
+            (!ref.readsThrough && this.ownsObject(ref.sym))
+          : !ref.readsThrough && this.localValue(ref.sym).owns
       ) {
         continue
       }
@@ -258,6 +313,274 @@ export class MutationModel {
       }
     }
     return this.through
+  }
+
+  /**
+   * The value of a local name: the module bindings the expressions it gets
+   * its values from name, where they evaluate (not in a function they
+   * hold), and through the names they name (`heldBy`); a call's result is
+   * not its callee. Once per name (a cycle of local names holds what its
+   * first name's other sources give).
+   */
+  private localValue(sym: SymbolId): LocalValue {
+    this.locals ??= new Map()
+    let value = this.locals.get(sym)
+    if (value !== undefined) {
+      return value
+    }
+    value = { held: NO_SYMS, owns: true }
+    this.locals.set(sym, value)
+    const { symbols, purity } = this.module()
+    const file = purity.file
+    const b = symbols.binding(sym)
+    const sources: Array<Node> = []
+    let owns = b !== null
+    for (const id of b?.declarations ?? []) {
+      owns = this.sourcesOf(file, id, sources) && owns
+    }
+    for (const site of this.sitesOf(sym)) {
+      if (site.kind === 'write') {
+        owns = false
+        const assigned = assignedBy(file, site)
+        if (assigned !== null) {
+          sources.push(assigned)
+        }
+      }
+    }
+    const held = new Set<SymbolId>()
+    for (const source of sources) {
+      for (const r of this.refs.refsIn(source)) {
+        if (r.range.end > source.end) {
+          break
+        }
+        if (
+          r.sym === sym ||
+          r.kind !== 'value' ||
+          r.ctx === 'callee' ||
+          r.ctx === 'newCallee' ||
+          inFunctionOf(file, r, source)
+        ) {
+          continue
+        }
+        for (const t of this.heldBy(r)) {
+          held.add(t)
+        }
+        if (symbols.isModuleLevel(r.sym) && this.namesObject(r.sym)) {
+          held.add(r.sym)
+        }
+      }
+    }
+    held.delete(sym)
+    value.held = held.size === 0 ? NO_SYMS : [...held]
+    value.owns = owns
+    return value
+  }
+
+  /**
+   * Pushes the expressions declaration `id` of a local name gives it its
+   * value from (its initialiser, its pattern's defaults, the elements a
+   * `for…of` loop runs over, a thrown value for a `catch` parameter, a
+   * parameter's arguments: `handedTo`); true when each creates the value
+   * it gives (`createsItsValue`: a write of a member of it writes that
+   * object only).
+   */
+  private sourcesOf(file: SourceFile, id: Node, out: Array<Node>): boolean {
+    let creates = true
+    let destructured = false
+    let n = id
+    let parent = file.parentOf(n)
+    while (parent !== null) {
+      if (parent.type === 'AssignmentPattern' && parent.left === n) {
+        out.push(parent.right)
+        creates &&= createsItsValue(parent.right)
+      } else if (
+        parent.type === 'ObjectPattern' ||
+        parent.type === 'ArrayPattern' ||
+        parent.type === 'RestElement' ||
+        (parent.type === 'Property' && parent.value === n)
+      ) {
+        destructured = true
+      } else {
+        break
+      }
+      n = parent
+      parent = file.parentOf(n)
+    }
+    if (parent === null) {
+      return false
+    }
+    if (parent.type === 'VariableDeclarator' && parent.id === n) {
+      const loop = file.parentOf(file.parentOf(parent) ?? parent)
+      if (
+        loop?.type === 'ForOfStatement' &&
+        loop.left === file.parentOf(parent)
+      ) {
+        out.push(loop.right) // (an element of it)
+        return false
+      }
+      if (
+        loop?.type === 'ForInStatement' &&
+        loop.left === file.parentOf(parent)
+      ) {
+        return creates // (a key)
+      }
+      if (parent.init !== null) {
+        out.push(parent.init)
+        return creates && !destructured && createsItsValue(parent.init)
+      }
+      return creates
+    }
+    if (
+      (parent.type === 'FunctionDeclaration' ||
+        parent.type === 'FunctionExpression' ||
+        parent.type === 'ArrowFunctionExpression') &&
+      (parent.params as ReadonlyArray<Node>).includes(n)
+    ) {
+      return this.handedTo(file, parent, out) && creates && !destructured
+    }
+    if (parent.type === 'TSParameterProperty' && parent.parameter === n) {
+      const fn = file.parentOf(parent)
+      return (
+        fn !== null &&
+        FUNCTIONS.has(fn.type) &&
+        this.handedTo(file, fn, out) &&
+        creates
+      )
+    }
+    if (parent.type === 'CatchClause' && parent.param === n) {
+      if (this.thrown === null) {
+        const thrown: Array<Node> = []
+        walk(file.program, {
+          ThrowStatement: (t) => {
+            thrown.push(t.argument)
+          },
+        })
+        this.thrown = thrown
+      }
+      out.push(...this.thrown)
+      return false
+    }
+    // (a function, a class: its own value)
+    return creates
+  }
+
+  /**
+   * Pushes what function `fn`'s parameters may be handed: the arguments of
+   * every call that may reach it, a call whose callee names a value holding
+   * it (`set(cfg)`, `api.set(cfg)`, `set.call(null, cfg)`, `new Store().apply(cfg)`,
+   * the call of a function returning it), and, for a call it is handed to
+   * (`[cfg].forEach(fn)`, `register(fn, cfg)`), what else that call is
+   * handed: its other arguments and its receiver. A value holding it is
+   * one it climbs to (`HOLDING`: a literal, a class, a member read of it,
+   * a call's result), or a name an initialiser or assignment of it gives.
+   * True when each argument it is handed creates its value
+   * (`createsItsValue`); a call it is handed to may hand it anything.
+   */
+  private handedTo(file: SourceFile, fn: Node, out: Array<Node>): boolean {
+    let creates = true
+    const seen = new Set<Node>()
+    const work: Array<Node> = [fn]
+    /** The references of the name declared by identifier `id`. */
+    const followName = (id: Node) => {
+      if (id.type !== 'Identifier') {
+        return
+      }
+      for (const r of file.bindingOf(id)?.references ?? []) {
+        work.push(r.node)
+      }
+    }
+    while (work.length > 0) {
+      let p = work.pop()!
+      if (seen.has(p)) {
+        continue
+      }
+      seen.add(p)
+      if (p.type === 'FunctionDeclaration' || p.type === 'ClassDeclaration') {
+        if (p.id !== null) {
+          followName(p.id)
+        }
+      }
+      for (
+        let parent = file.parentOf(p);
+        parent !== null;
+        p = parent, parent = file.parentOf(p)
+      ) {
+        if (
+          isExpressionWrapper(parent) ||
+          HOLDING.has(parent.type) ||
+          (parent.type === 'MemberExpression' && parent.object === p)
+        ) {
+          continue
+        }
+        if (parent.type === 'ClassDeclaration') {
+          work.push(parent)
+        } else if (
+          parent.type === 'CallExpression' ||
+          parent.type === 'NewExpression'
+        ) {
+          if (parent.callee === p) {
+            for (const a of parent.arguments) {
+              out.push(a)
+              creates &&= a.type !== 'SpreadElement' && createsItsValue(a)
+            }
+          } else {
+            creates = false
+            for (const a of parent.arguments) {
+              if (a !== p) {
+                out.push(a)
+              }
+            }
+            const callee = unwrapExpression(parent.callee)
+            if (callee.type === 'MemberExpression') {
+              out.push(callee.object)
+            }
+          }
+          // (its result may hold it: `set.bind(null, cfg)`, `new Store()`)
+          continue
+        } else if (parent.type === 'VariableDeclarator' && parent.init === p) {
+          followName(parent.id)
+        } else if (
+          parent.type === 'AssignmentExpression' &&
+          parent.right === p
+        ) {
+          let target: Node = parent.left
+          while (target.type === 'MemberExpression') {
+            target = target.object
+          }
+          followName(target)
+        } else if (
+          parent.type === 'ReturnStatement' ||
+          (parent.type === 'ArrowFunctionExpression' && parent.body === p)
+        ) {
+          // (what a call of the function returning it gives)
+          let g: Node | null = parent
+          while (g !== null && !FUNCTIONS.has(g.type)) {
+            g = file.parentOf(g)
+          }
+          if (g !== null) {
+            work.push(g)
+          }
+        } else if (parent.type === 'JSXExpressionContainer') {
+          creates = false
+          const opening = file.parentOf(file.parentOf(parent) ?? parent)
+          if (opening?.type === 'JSXOpeningElement') {
+            for (const a of opening.attributes) {
+              if (
+                a.type === 'JSXAttribute' &&
+                a.value?.type === 'JSXExpressionContainer' &&
+                a.value !== parent
+              ) {
+                out.push(a.value)
+              } else if (a.type === 'JSXSpreadAttribute') {
+                out.push(a.argument)
+              }
+            }
+          }
+        }
+        break
+      }
+    }
+    return creates
   }
 
   /**
@@ -350,4 +673,39 @@ export class MutationModel {
     }
     return false
   }
+}
+
+/** The expression write reference `site` gives its local name (`x = v`, `for (x of v)`: an element of `v`), if any. */
+function assignedBy(file: SourceFile, site: ClassifiedRef): Node | null {
+  let n = file.nodeAt(site.range.start)
+  while (n !== null && !WRITES.has(n.type)) {
+    n = file.parentOf(n)
+  }
+  switch (n?.type) {
+    case 'AssignmentExpression':
+    case 'ForOfStatement':
+      return n.right
+    case 'VariableDeclarator':
+      return n.init
+    default:
+      return null
+  }
+}
+
+/** Whether reference `r` is inside a function nested in `source` (it evaluates when that function runs, not with `source`). */
+function inFunctionOf(
+  file: SourceFile,
+  r: ClassifiedRef,
+  source: Node,
+): boolean {
+  for (
+    let n = file.nodeAt(r.range.start);
+    n !== null && n !== source;
+    n = file.parentOf(n)
+  ) {
+    if (FUNCTIONS.has(n.type)) {
+      return true
+    }
+  }
+  return false
 }

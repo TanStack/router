@@ -51,6 +51,7 @@
  * V's and `ordered`'s pairs, the span of each written binding it touches,
  * (`factsOf`). A module that writes no module binding asks none of it.
  */
+import { isExpressionWrapper } from '../source'
 import { changesAsArgument, changesObject } from '../units'
 import { callChangesNothing } from '../purity'
 import { NEED_KINDS } from './clusters'
@@ -231,6 +232,72 @@ export function eventTable(
       }
     }
     return false
+  }
+
+  /** Per cluster, `ran` (walked once per cluster asked, rarely). */
+  const ranOf: Array<ReadonlySet<number> | undefined> = []
+  /** Whether reference `ref` is what a call calls (`f(…)`, `api.f(…)`, `new Store().apply(…)`), not a value handed on. */
+  const called = (ref: ClassifiedRef): boolean => {
+    if (ref.ctx === 'callee' || ref.ctx === 'newCallee') {
+      return true
+    }
+    let n = t1.nodeAt(ref.range.start)
+    let parent = n === null ? null : t1.parentOf(n)
+    while (
+      n !== null &&
+      parent !== null &&
+      (isExpressionWrapper(parent) ||
+        (parent.type === 'MemberExpression' && parent.object === n) ||
+        (parent.type === 'NewExpression' && parent.callee === n))
+    ) {
+      n = parent
+      parent = t1.parentOf(n)
+    }
+    return (
+      parent !== null &&
+      (parent.type === 'CallExpression' || parent.type === 'NewExpression') &&
+      parent.callee === n
+    )
+  }
+  /**
+   * The member writes (`Write.at`) in functions of the module that `c`'s
+   * evaluation calls when the module loads (`withLog(Page)` running
+   * `hits.push(…)` in `withLog`'s body, and what that body calls):
+   * writes of its evaluation, at load, not at an unknown time (P9: as the
+   * value's inline writes; an assignment there joins the binding's
+   * cluster already). A function only handed to a call is not called
+   * (R149 answer D).
+   */
+  function ran(c: ClusterId): ReadonlySet<number> {
+    let hit = ranOf[c]
+    if (hit !== undefined) {
+      return hit
+    }
+    const sites = new Set<number>()
+    const roots: Array<ClassifiedRef> = []
+    for (const r of clusters[c]!.regions) {
+      for (const ref of t1.refs.refsIn(regions.get(r).range)) {
+        if (ref.eager && !t1.runsLaterAt(ref.range.start) && called(ref)) {
+          roots.push(ref)
+        }
+      }
+    }
+    if (roots.length > 0) {
+      t1.mutation.visitValues(
+        roots,
+        false,
+        (u) => t1.refs.refsIn(t1.units[u]!.range),
+        (ref) => {
+          if (!ref.eager && ref.memberWrite) {
+            sites.add(ref.range.start)
+          }
+          return false
+        },
+        (ref) => !called(ref),
+      )
+    }
+    ranOf[c] = hit = sites
+    return hit
   }
 
   /** Per binding, the clusters whose evaluation touches it at load (`ownLate`; walked once per binding asked, rarely). */
@@ -417,11 +484,25 @@ export function eventTable(
     // elsewhere reads, which moving it reorders)
     if (late !== undefined && inside !== undefined) {
       const writes = lateWritesOf(c)
+      // (a write `c`'s evaluation runs is `c`'s, at load: it moves only
+      // with the binding it writes, as an inline write joins it; an
+      // import's member write joins nothing)
+      const ranInside = (w: Write): boolean => {
+        if (symbols.isImport(w.sym) || !ran(c).has(w.at)) {
+          return true
+        }
+        const bc = clusterOfSym.get(w.sym)
+        const region = bc === undefined ? undefined : clusters[bc]!.regions[0]
+        return region !== undefined && inside({ ...w, owner: region })
+      }
       if (
         writes.length > 0 &&
         writes.every(
           (w) =>
-            w.owner !== null && clusterOfRegion.get(w.owner) !== c && inside(w),
+            w.owner !== null &&
+            clusterOfRegion.get(w.owner) !== c &&
+            inside(w) &&
+            ranInside(w),
         )
       ) {
         return undefined
@@ -671,10 +752,11 @@ export function eventTable(
        * value's own text, or a function only that output holds: run by
        * code there alone), which is then judged as a write by the value.
        */
-      const lateOf = (sym: SymbolId): 'outside' | 'inside' | null => {
+      const lateOf = (sym: SymbolId): 'outside' | 'inside' | 'ran' | null => {
         if (graph.lateWrite(sym, c) === undefined) {
           return null
         }
+        let ranHere = false
         for (const w of writesOfSym.get(sym)!) {
           if (!w.live || w.eager) {
             continue
@@ -686,8 +768,9 @@ export function eventTable(
           if (hr === null || wc === undefined || home.get(wc) !== hr) {
             return 'outside'
           }
+          ranHere ||= wc !== c && ran(c).has(w.at)
         }
-        return 'inside'
+        return ranHere ? 'ran' : 'inside'
       }
       // V, and a write after it (as if what it touches stays: the planner
       // decides its slot). Not judged on both slots: a relocated value
@@ -705,13 +788,17 @@ export function eventTable(
         }
         const late = lateOf(t.sym)
         const later = graph.laterWrite(t.sym, t.at, c) !== undefined
+        // (a write it runs in a function it calls is its write at load,
+        // judged as its inline writes are: `ran`)
         const why =
-          late === 'inside' &&
-          !ownLate(c, t.sym) &&
-          unconfined(c, hr!, t.sym) === 'used'
-            ? 'used'
-            : null
-        if ((late === null || (late === 'inside' && why === null)) && !later) {
+          late === 'ran'
+            ? unconfined(c, hr!, t.sym)
+            : late === 'inside' &&
+                !ownLate(c, t.sym) &&
+                unconfined(c, hr!, t.sym) === 'used'
+              ? 'used'
+              : null
+        if ((late === null || (late !== 'outside' && why === null)) && !later) {
           return false
         }
         out.push({
