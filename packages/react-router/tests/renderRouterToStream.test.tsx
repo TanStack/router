@@ -780,6 +780,44 @@ describe('renderRouterToStream - renderer selection and pipeable errors', () => 
     }
   })
 
+  test('onError receives no error info when React passes only the error', async () => {
+    const renderError = new Error('component failed')
+    reactDomServerMocks.renderToPipeableStream.mockImplementationOnce(
+      (_children, opts) => {
+        queueMicrotask(() => opts.onShellReady())
+        return {
+          abort: vi.fn(),
+          pipe(destination: NodeJS.WritableStream) {
+            destination.write('<html><body>shell')
+            opts.onError(renderError)
+            destination.end('</body></html>')
+          },
+        }
+      },
+    )
+
+    const router = await buildRouter()
+    const stacks: Array<string | null | undefined> = []
+    try {
+      const response = unwrapResponse(
+        await renderRouterToStream({
+          request: new Request('http://localhost/'),
+          router,
+          responseHeaders: new Headers(),
+          children: null,
+          onError: (_error, errorInfo) => {
+            stacks.push(errorInfo?.componentStack)
+          },
+        }),
+      )
+
+      await expect(response.text()).resolves.toContain('shell')
+      expect(stacks).toEqual([undefined])
+    } finally {
+      router.serverSsr?.cleanup()
+    }
+  })
+
   test('onError returns the error digest to the readable renderer', async () => {
     const renderError = new Error('component failed')
     let digest: unknown

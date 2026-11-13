@@ -359,7 +359,7 @@ export function render({ request }: { request: Request }) {
 
 ### Reporting render errors
 
-React reports an error thrown while rendering to the `onError` option of its streaming renderers. By default `renderRouterToStream` writes these errors with `console.error`. Pass `onError` to send them to your own logger or error tracker instead. It receives the same arguments as React's `onError`, and a string it returns is sent to the client as the error's `digest`. Errors caused by an aborted request are not reported.
+React reports an error thrown while rendering to the `onError` option of its streaming renderers. By default `renderRouterToStream` writes these errors with `console.error`. Pass `onError` to send them to your own logger or error tracker instead. It receives the same arguments as React's `onError`, and a string it returns is sent to the client as the error's `digest`. React 18 passes only the error, so treat the second argument as optional. Errors caused by an aborted request are not reported.
 
 ```tsx
 renderRouterToStream({
@@ -368,7 +368,7 @@ renderRouterToStream({
   router,
   children: <RouterServer router={router} />,
   onError: (error, errorInfo) => {
-    logger.error({ error, componentStack: errorInfo.componentStack })
+    logger.error({ error, componentStack: errorInfo?.componentStack })
   },
 })
 ```
