@@ -23,7 +23,8 @@ describe('a dev server compiling an edited route out of order', () => {
    * unless the page's URL has `?later`) loads its `component` and, when the
    * route has one, its `errorComponent` (`preload()` of the real router's
    * lazy route component), renders each with React into the page, and
-   * publishes their HTML.
+   * publishes their HTML, and whether loading the `component` requested a
+   * module of the app the page had not loaded (it is split).
    */
   const page = {
     'index.html': `<!doctype html>
@@ -38,7 +39,15 @@ import { flushSync } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 import { Route } from './routes/page'
 
+performance.setResourceTimingBufferSize(10_000)
+const requested = () =>
+  performance
+    .getEntriesByType('resource')
+    .map((entry) => entry.name)
+    .filter((name) => new URL(name).origin === location.origin)
+
 async function renderRoute() {
+let lazy = false
 const rendered: Array<string> = []
 const errors: Array<string> = []
 const report = (error: unknown) => {
@@ -49,7 +58,11 @@ for (const option of ['component', 'errorComponent'] as const) {
   if (!component) {
     continue
   }
+  const before = new Set(requested())
   await component.preload?.()
+  if (option === 'component') {
+    lazy = requested().some((name) => !before.has(name))
+  }
   const container = document.createElement('div')
   document.body.append(container)
   const root = createRoot(container, {
@@ -60,7 +73,7 @@ for (const option of ['component', 'errorComponent'] as const) {
   flushSync(() => root.render(createElement(component)))
   rendered.push(container.innerHTML)
 }
-;(window as any).__rendered = { rendered, errors }
+;(window as any).__rendered = { rendered, errors, lazy }
 }
 ;(window as any).__renderRoute = renderRoute
 ;(window as any).__routeLoaded = true
@@ -89,7 +102,7 @@ if (!location.search.includes('later')) {
   /** What the page rendered, once it did (see `renderInPage`). */
   async function renderedBy(
     opened: BrowserPage,
-  ): Promise<{ rendered: Array<string> }> {
+  ): Promise<{ rendered: Array<string>; lazy: boolean }> {
     const deadline = Date.now() + 15_000
     for (;;) {
       // (A page opened after an edit loads twice: Vite's server keeps the
@@ -98,11 +111,11 @@ if (!location.search.includes('later')) {
       const result = (await opened.page
         .evaluate(() => (window as any).__rendered)
         .catch(() => undefined)) as
-        | { rendered: Array<string>; errors: Array<string> }
+        | { rendered: Array<string>; errors: Array<string>; lazy: boolean }
         | undefined
       const errors = [...opened.errors, ...(result?.errors ?? [])]
       if (result && errors.length === 0) {
-        return { rendered: result.rendered }
+        return { rendered: result.rendered, lazy: result.lazy }
       }
       if (errors.length > 0 || Date.now() > deadline) {
         throw new Error(
@@ -164,7 +177,12 @@ if (!location.search.includes('later')) {
       .evaluate(() => (window as any).__renderRoute())
       .catch(() => undefined)
     await stale.close()
-    return (await renderInPage(server)).rendered
+    const { rendered, lazy } = await renderInPage(server)
+    // (the race needs the route's split modules)
+    expect(lazy, 'loading the component requests a module of its own').toBe(
+      true,
+    )
+    return rendered
   }
 
   /**

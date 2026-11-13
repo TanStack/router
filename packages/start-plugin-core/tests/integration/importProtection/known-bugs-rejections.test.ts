@@ -1,21 +1,21 @@
 /**
- * Known incorrect rejections (oracle/KNOWN-BUGS.md, "Known incorrect
- * rejections (accepted, R89)"): an importer that is not checked gets the
- * mock of a denied file instead of its real module (SPEC J6.7, J6.1). Both
- * fail safe: the client never runs the denied code. A denied file is judged
- * at its own compile, from the imports the compiler indexed; the bundler's
- * graph is not consulted there in dev, so these imports are not visible:
- * - an importer exempted by `exclude` or `ignoreImporters` that reaches the
- *   file only through a pattern import (`import.meta.glob`, a
- *   template-literal `import()`, Rsbuild's `import.meta.webpackContext`);
+ * Importers import protection does not check, and the denied files only they
+ * reach (oracle/KNOWN-BUGS.md, "Known incorrect rejections (accepted, R89)"
+ * and "Accepted limits"). A denied file is judged at its own compile, from
+ * the plain imports of it the compiler indexed:
  * - an importer outside `srcDirectory` (never compiled by import protection)
- *   importing an in-scope denied file with a plain import.
- * A dev server reports the denied file (it knows no importer of it); a
- * build prints one warning per denied file (its importers are not checked:
- * not a violation, and the `error` behaviour does not fail the build).
- * Controls: an exempt importer's plain import gets the real module. Client
- * environment, mock mode; builds and dev servers (Vite, Vite's bundled dev,
- * Rsbuild).
+ *   importing an in-scope denied file with a plain import gets the mock
+ *   instead of the real module (SPEC J6.7, J6.1; accepted, R89): pinned;
+ * - a pattern import (`import.meta.glob`, a template-literal `import()`,
+ *   Rsbuild's `import.meta.webpackContext`) is not covered (R142): an exempt
+ *   importer reaching a denied file only through one gets the file as its
+ *   plain importers make it served, here the mock.
+ * Both fail safe: the client never runs the denied code. A dev server
+ * reports the denied file (it knows no importer of it); a build prints one
+ * warning per denied file (its importers are not checked: not a violation,
+ * and the `error` behaviour does not fail the build). Controls: an exempt
+ * importer's plain import gets the real module. Client environment, mock
+ * mode; builds and dev servers (Vite, Vite's bundled dev, Rsbuild).
  */
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
@@ -368,22 +368,6 @@ describe.each(hosts)('$name', ({ kinds, run, build: bundler }) => {
     timeout,
   )
 
-  // Accepted (safe direction): the denied file is judged at its own compile
-  // from the imports the planner indexed for exempt importers
-  // (`allowsSelf`, src/import-protection/session.ts); the bundler expands a
-  // pattern import, and its graph is not consulted there, so the exempt
-  // importer is not seen: the file is mocked (and reported in dev).
-  // Impact: an exempt importer (tests, generated code) that globs server
-  // files gets mocks; writing the imports statically gives the real modules.
-  test.fails.each(options)(
-    'an importer exempted by %s reaching a denied file only through a pattern import gets the real module, and is not reported',
-    async (option) => {
-      const uses = kinds.map((kind) => exemptUse(option, kind))
-      expect(about(await result(), uses)).toEqual(realModules(uses))
-    },
-    timeout,
-  )
-
   // Accepted (safe direction, R89): an importer outside the scope is not
   // checked, and only gets the real module of a denied file outside the
   // scope too: the in-scope denied file, judged at its own compile, is
@@ -439,26 +423,3 @@ describe.each(hosts)('$name', ({ kinds, run, build: bundler }) => {
     timeout,
   )
 })
-
-test.fails(
-  'an importer outside the source directory reaching a denied file outside it only through a pattern gets the real module',
-  async () => {
-    const build = await buildStart({
-      bundler: 'vite',
-      files: {
-        'lib/s.server.ts': `export const s = 'MARK_REAL_MODULE'\n`,
-        'lib/a.ts': `export const modules = import.meta.glob('./*.server.ts', { eager: true })\n`,
-        'src/entry.ts': `import { modules } from '../lib/a'
-;(globalThis as any).modules = modules
-`,
-        'src/router.ts': `import './entry'
-export const getRouter = () => undefined
-`,
-      },
-      entry: 'src/entry.ts',
-      start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
-    })
-    expect(build.client.where('MARK_REAL_MODULE')).not.toBe('nowhere')
-  },
-  60_000,
-)

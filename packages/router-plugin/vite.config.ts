@@ -119,7 +119,7 @@ const config = defineConfig({
       {
         // Slow tier too (`test:integration` runs both projects): route apps
         // checked in pages of a real browser (`route-app.ts`), as the fast
-        // tier checks them, whose cost does not fit the fast tier's budget.
+        // tier checks them, whose cost does not fit the fast tier.
         ...pagesProject,
         test: {
           ...pagesProject.test,

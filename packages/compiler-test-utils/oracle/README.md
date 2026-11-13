@@ -64,8 +64,9 @@ CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle
   (`--maxWorkers=<n>` after `--` overrides).
 - Never put `|` in a `-t` filter (Nx passes it through a shell).
 - Use `--skip-nx-cache` only when you measure time or set a switch below (Nx's cache does not know them).
-- The time budgets (`../test-budgets.json`) are reported after each run, and fail nothing unless
-  `COMPILER_TEST_BUDGETS=strict` (see [../AGENTS.md](../AGENTS.md)). They hold only on a quiet machine.
+- The time limits (`../test-budgets.json`: per slow-tier file, and edit to result of a fast-tier file; whole tiers have
+  none) are reported after each run, and fail nothing unless `COMPILER_TEST_BUDGETS=strict` (see
+  [../AGENTS.md](../AGENTS.md)). They hold only on a quiet machine.
 
 ## Reading results
 

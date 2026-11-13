@@ -7,8 +7,9 @@ name: Compiler Platforms
 # (test:integration:smoke: real Vite, Rspack, webpack and Rsbuild builds,
 # including apps under paths with `#`, `%`, spaces and non-ASCII characters,
 # modules the compiler cannot parse, and the split-module ids and import
-# specifiers apps' chunk naming reads, one module per route file, and an
-# Rsbuild dev server's file removal and return) and a Vite and Rsbuild
+# specifiers apps' chunk naming reads, one module per route file, an
+# Rsbuild dev server's file removal and return, and file events through a
+# Vite dev server) and a Vite and Rsbuild
 # production build on the other platforms we ship to; on Linux arm64 the two
 # builds again with the compiler's self-checks off (users' mode), under the
 # app's e2e spec. The rest of the slow tier

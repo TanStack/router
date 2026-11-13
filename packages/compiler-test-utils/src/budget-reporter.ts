@@ -1,9 +1,9 @@
 /**
- * A Vitest reporter that compares a compiler test run with its budget
+ * A Vitest reporter that compares a compiler test run with its limits
  * (`test-budgets.json`), for local iteration at the budgets' worker count:
  *
- * - a whole tier (every file of the tier, no `-t` filter): its duration
- *   against the package's target and hard limit for the tier;
+ * - a tier's duration, reported only (whole tiers have no budget: CI's
+ *   shard times are the number that costs);
  * - each slow-tier file: its time against the per-file hard limit;
  * - a partial fast-tier run (the inner loop: a file or a `-t` filter): the
  *   time since the Vitest process started, a lower bound of edit to result
@@ -41,14 +41,12 @@ import type {
   Vitest,
 } from 'vitest/node'
 
-type Limits = [target: number, hard: number]
 type Tier = 'unit' | 'integration'
 
 interface Budgets {
   workers: number
   slowFileHard: number
   editToResultHard: number
-  packages: Record<string, Record<Tier, Limits>>
 }
 
 const budgets: Budgets = JSON.parse(
@@ -112,8 +110,7 @@ export default class BudgetReporter implements Reporter {
     )
     const seconds = (performance.now() - this.start) / 1000
     const name = packageName(this.vitest.config.root)
-    const packageBudgets = budgets.packages[name]
-    if (!packageBudgets || testModules.length === 0) {
+    if (testModules.length === 0) {
       return
     }
     const strict = process.env.COMPILER_TEST_BUDGETS === 'strict'
@@ -131,12 +128,9 @@ export default class BudgetReporter implements Reporter {
     const tiers = new Set(testModules.map((m) => tierOf(m.project.name)!))
     const at = `at ${workers} worker${workers === 1 ? '' : 's'}`
     if (tiers.size > 1) {
-      lines.push(
-        `${name}: ${seconds.toFixed(1)} s for both tiers ${at}; run one tier to compare it with its budget`,
-      )
+      lines.push(`${name}: ${seconds.toFixed(1)} s for both tiers ${at}`)
     } else {
       const tier = [...tiers][0]!
-      const [target, hard] = packageBudgets[tier]
       const ran = new Set(testModules.map((m) => m.moduleId))
       const all = new Set<string>()
       for (const project of this.vitest.projects) {
@@ -152,21 +146,9 @@ export default class BudgetReporter implements Reporter {
       }
       const filtered = this.vitest.config.testNamePattern !== undefined
       const partial = filtered || ran.size < all.size
-      const tierLine = `${name} ${tier}: ${seconds.toFixed(1)} s ${at}`
-      if (partial) {
-        lines.push(
-          `${tierLine}, ${ran.size} of ${all.size} files${filtered ? ', -t filter' : ''}: a partial run, no tier budget`,
-        )
-      } else if (!atBudgetWorkers) {
-        lines.push(
-          `${tierLine}: reported only (the budgets are for --maxWorkers=${budgets.workers}: target ${target} s, hard limit ${hard} s)`,
-        )
-      } else {
-        check(
-          `${tierLine}: ${seconds > hard ? 'OVER the hard limit' : seconds > target ? 'over target, under the hard limit' : 'within target'} (target ${target} s, hard limit ${hard} s)`,
-          seconds > hard,
-        )
-      }
+      lines.push(
+        `${name} ${tier}: ${seconds.toFixed(1)} s ${at}${partial ? `, ${ran.size} of ${all.size} files${filtered ? ', -t filter' : ''}` : ''}`,
+      )
       if (tier === 'unit' && partial) {
         // From the Vitest process's start: config, workers, imports, tests
         const sinceStart = process.uptime()
