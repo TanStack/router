@@ -7,13 +7,18 @@
  * out of the client (R101); a parenthesised route id is a string literal the
  * generator keeps up; a generator warning prints once per build, also when
  * Start's plugins are passed inline to Vite (the same objects for every
- * config resolution).
+ * config resolution). Review round 2 F5-2: the warning about the id of a
+ * constructor the generator repairs prints once, at the id's position in the
+ * file as the generator wrote it.
  */
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { expectNoProblems } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  diagnosticPosition,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../build-harness'
 
 const timeout = 60_000
@@ -147,6 +152,38 @@ export const Route = createFileRoute(${id})(${options})
         page: result.client.where('MARK_PAGE'),
         server: result.client.where('MARK_SERVER'),
       }).toEqual({ page: 'lazy', server: 'nowhere' })
+    },
+    timeout,
+  )
+
+  // (the generator repairs `createLazyFileRoute` in a route file into
+  // `createFileRoute`, four characters shorter, before the id it reports)
+  test(
+    'round 2 F5-2: a non-literal id of a constructor the generator repairs is reported once, at its position in the repaired file',
+    async () => {
+      const result = await build(
+        bundler,
+        `import { createLazyFileRoute } from '${RP}'
+const ID = '/x'
+export const Route = createLazyFileRoute(ID as any)({ component: () => null } as any)
+`,
+      )
+      const written = await readFile(
+        path.join(result.root, 'src/routes/x.tsx'),
+        'utf8',
+      )
+      expect(written).toContain('= createFileRoute(ID as any)(')
+      const printed = result.diagnostics.filter(
+        (d) =>
+          d.source === 'console' && d.text.includes('not a string literal'),
+      )
+      expect(printed).toHaveLength(1)
+      expectDiagnostic(printed, {
+        severity: 'warning',
+        file: 'src/routes/x.tsx',
+        root: result.root,
+        position: diagnosticPosition(written, 'ID as any'),
+      })
     },
     timeout,
   )
