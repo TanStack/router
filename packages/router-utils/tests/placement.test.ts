@@ -6517,6 +6517,209 @@ describe('state written through another name', () => {
   )
 })
 
+// Review round 1, findings F2-1 and F2-2: a local name (a parameter, a
+// `for…of` or `catch` variable, a function's own `const`) holds what its
+// value comes from, so a write through it writes that object: a read of it
+// at load before the write is kept, as for a write through its first name.
+describe('round 1 F2-1/F2-2: state written through a local name', () => {
+  const route = (write: string) =>
+    [
+      "import { createFileRoute } from 'toy-router'",
+      "const S: any = { theme: 'light', inner: { theme: 'light' }, list: [] }",
+      'const initial = S.theme',
+      write,
+      "export const Route = createFileRoute('/')({",
+      '  beforeLoad: () => S,',
+      '  component: () => initial,',
+      '})',
+    ].join('\n')
+  const eager = (r: Awaited<ReturnType<typeof split>>) =>
+    (r.main?.diagnostics ?? []).filter((d) => d.code?.startsWith('eager-'))
+
+  it.each([
+    ['a parameter', "function set(o: any) { o.theme = 'dark' }\nset(S)"],
+    [
+      'an arrow parameter',
+      "const set = (o: any) => { o.theme = 'dark' }\nset(S)",
+    ],
+    [
+      'a parameter renamed inside',
+      "function set(o: any) { const t = o; t.theme = 'dark' }\nset(S)",
+    ],
+    [
+      "a function's own alias",
+      "function set() { const t = S; t.theme = 'dark' }\nset()",
+    ],
+    [
+      'a destructured parameter',
+      "function set({ inner }: any) { inner.theme = 'dark' }\nset(S)",
+    ],
+    [
+      'a default parameter',
+      "function set(o: any = S) { o.theme = 'dark' }\nset()",
+    ],
+    [
+      'a rest parameter',
+      "function set(...os: Array<any>) { os[0].theme = 'dark' }\nset(S)",
+    ],
+    [
+      'a spread argument',
+      "function set(o: any) { o.theme = 'dark' }\nconst args = [S]\nset(...args)",
+    ],
+    [
+      'a closure made in the function',
+      "function set(o: any) { const f = () => { o.theme = 'dark' }; f() }\nset(S)",
+    ],
+    [
+      "a local class's method",
+      "class Store { apply(o: any) { o.theme = 'dark' } }\nnew Store().apply(S)",
+    ],
+    [
+      "a local object's method",
+      "const setter = { fn(o: any) { o.theme = 'dark' } }\nsetter.fn?.(S)",
+    ],
+    [
+      '`.call`',
+      "function set(this: unknown, o: any) { o.theme = 'dark' }\nset.call(null, S)",
+    ],
+    [
+      '`.bind`',
+      "function set(this: unknown, o: any) { o.theme = 'dark' }\nset.bind(null, S)()",
+    ],
+    [
+      'a returned closure',
+      "function mk(o: any) { return () => { o.theme = 'dark' } }\nmk(S)()",
+    ],
+    [
+      'a known mutator on a parameter',
+      "function register(list: any, name: string) { list.push(name) }\nregister(S, 'x')",
+    ],
+    ['a callback handed with it', ";[S].forEach((s) => { s.theme = 'dark' })"],
+    [
+      'an immediately invoked function',
+      ";((o: any) => { o.theme = 'dark' })(S)",
+    ],
+    ['a `for…of` variable', "for (const s of [S]) { s.theme = 'dark' }"],
+    [
+      'a `for…of` variable over a holder',
+      "const all = [S]\nfor (const s of all) { s.theme = 'dark' }",
+    ],
+    [
+      'a destructured `for…of` variable',
+      "const all = [S]\nfor (const { inner } of all) { inner.theme = 'dark' }",
+    ],
+    [
+      'a `catch` parameter',
+      "try { throw S } catch (e: any) { e.theme = 'dark' }",
+    ],
+  ])('keeps a read at load before a write through %s', async (_, write) => {
+    const r = await split(route(write))
+    expect(r.env).toContain('const initial = S.theme')
+    expect(r.chunks.component).not.toContain('const initial')
+    expect(eager(r).map((d) => d.code)).toEqual(['eager-split:state'])
+  })
+
+  it.each([
+    [
+      'a parameter handed a new object',
+      "function set(o: any) { o.theme = 'dark' }\nset({ ...S })",
+    ],
+    ['a `for…in` variable', 'for (const k in S) { (k as any).length = 0 }'],
+    [
+      'a local object',
+      "function set() { const t = { theme: S.theme }; t.theme = 'dark' }\nset()",
+    ],
+  ])(
+    'moves a read at load past a write through %s, which writes another object (control)',
+    async (_, write) => {
+      const r = await split(route(write))
+      expect(r.env).not.toContain('const initial = S.theme')
+      expect(r.chunks.component).toContain('const initial = S.theme')
+      expect(eager(r)).toEqual([])
+    },
+  )
+})
+
+// Review round 1, finding F2-3: a write in a function of the module that a
+// split option's value calls (its wrapper's own body) runs when the value
+// evaluates, as one written inline in it: the value stays unless the state
+// it writes goes with it.
+describe('round 1 F2-3: writes a split value runs in a function it calls', () => {
+  const route = (decls: string, component: string) =>
+    [
+      "import { createFileRoute } from 'toy-router'",
+      'const hits: Array<string> = []',
+      'const S = { v: 0 }',
+      decls,
+      "export const Route = createFileRoute('/')({",
+      '  beforeLoad: () => hits.length + S.v,',
+      `  component: ${component},`,
+      '})',
+    ].join('\n')
+
+  it.each([
+    [
+      'pushing to kept state',
+      "const withLog = <T,>(c: T): T => (hits.push('w'), c)",
+      'withLog(() => null)',
+    ],
+    [
+      'writing a member of kept state',
+      'function wrap<T>(c: T): T { S.v = 1; return c }',
+      'wrap(() => null)',
+    ],
+    [
+      'calling a function that writes kept state',
+      "function mark() { hits.push('w') }\nfunction wrap<T>(c: T): T { mark(); return c }",
+      'wrap(() => null)',
+    ],
+    [
+      "a local object's method writing kept state",
+      "const log = { wrap<T>(c: T): T { hits.push('w'); return c } }",
+      'log.wrap(() => null)',
+    ],
+    [
+      'writing kept state through its parameter',
+      "function wrap<T>(c: T, into: Array<string>): T { into.push('w'); return c }",
+      'wrap(() => null, hits)',
+    ],
+  ])('keeps a value whose wrapper runs %s', async (_, decls, component) => {
+    const r = await split(route(decls, component))
+    expect(r.env).toContain(`component: ${component},`)
+  })
+
+  it('keeps a declaration naming the value whose wrapper writes kept state', async () => {
+    const r = await split(
+      route(
+        "const withLog = <T,>(c: T): T => (hits.push('w'), c)\nconst Page = withLog(() => null)",
+        'Page',
+      ),
+    )
+    expect(r.env).toContain('const Page = withLog(() => null)')
+    expect(r.chunks.component).not.toContain('const Page')
+  })
+
+  it.each([
+    [
+      'its value',
+      'const reg: Array<unknown> = []\nfunction wrap<T>(c: T): T { reg.push(c); return c }',
+      'wrap(() => reg.length)',
+    ],
+    [
+      'a declaration naming it',
+      'const reg: Array<unknown> = []\nfunction wrap<T>(c: T): T { reg.push(c); return c }\nconst Page = wrap(() => reg.length)',
+      'Page',
+    ],
+  ])(
+    'splits %s when its wrapper writes state only the chunk uses (control)',
+    async (_, decls, component) => {
+      const r = await split(route(decls, component))
+      expect(r.env).not.toContain('reg.push')
+      expect(r.chunks.component).toContain('reg.push(c)')
+    },
+  )
+})
+
 // REVIEW-design2-final finding 4 (R100): every fix a kept declaration's
 // warning offers frees what it names when applied.
 describe('the fixes a kept declaration is offered work when applied', () => {
