@@ -51,6 +51,7 @@ package. What the suite is and how to read it: [oracle/README.md](oracle/README.
   ordinary test; the shared reporter lists the pins that passed.
 - `./workspace-packages`: link built `@tanstack/*` packages into test apps (not declared, to avoid Nx cycles).
 - `./run-node`: run built output in a child Node.
+- `./time-sequencer` (`timeSequencer`, `test.sequence.sequencer`): split `--shard` runs by stored file times.
 
 Package hosts build on these: router-plugin `tests/route-app.ts` (`loadRoute`), start-plugin-core
 `tests/start-host.ts` (`useStartHost`). Start apps use `tanstackStart()` of the built framework package
@@ -73,6 +74,9 @@ CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle
   (`test:integration--shard-<i>-of-<n>`, Vitest `--shard`), one after another on a machine and spread over CI's agents;
   each shard is cached on its own. `test:integration:whole` runs the tier in one Vitest run: use it for a file filter
   (`-- tests/integration/foo.test.ts`; `test:integration` ignores arguments) and for per-file time measurements.
+  The shards split by each file's CI time (`./time-sequencer`, weights in `tests/integration/file-times.json`: the
+  seconds of a green PR run's shard outputs, Vitest's line per file); a file without a time counts as the median.
+  Refresh the weights when the longest CI shard drifts well above the others.
 - Slow tier: at most two `test:integration` runs on the machine at once:
   `until [ "$(pgrep -fc '[v]itest --project integration')" -lt 2 ]; do sleep 30; done`. A whole-oracle run takes the
   machine: start it when none runs (`-lt 1`).

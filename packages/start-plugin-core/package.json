@@ -62,15 +62,16 @@
       "test:integration": {
         "executor": "nx:noop",
         "dependsOn": [
-          "test:integration--shard-1-of-5",
-          "test:integration--shard-2-of-5",
-          "test:integration--shard-3-of-5",
-          "test:integration--shard-4-of-5",
-          "test:integration--shard-5-of-5"
+          "test:integration--shard-1-of-6",
+          "test:integration--shard-2-of-6",
+          "test:integration--shard-3-of-6",
+          "test:integration--shard-4-of-6",
+          "test:integration--shard-5-of-6",
+          "test:integration--shard-6-of-6"
         ]
       },
-      "test:integration--shard-1-of-5": {
-        "command": "pnpm run test:integration --shard=1/5",
+      "test:integration--shard-1-of-6": {
+        "command": "pnpm run test:integration --shard=1/6",
         "dependsOn": [
           "^build",
           "build",
@@ -84,8 +85,8 @@
           }
         ]
       },
-      "test:integration--shard-2-of-5": {
-        "command": "pnpm run test:integration --shard=2/5",
+      "test:integration--shard-2-of-6": {
+        "command": "pnpm run test:integration --shard=2/6",
         "dependsOn": [
           "^build",
           "build",
@@ -99,8 +100,8 @@
           }
         ]
       },
-      "test:integration--shard-3-of-5": {
-        "command": "pnpm run test:integration --shard=3/5",
+      "test:integration--shard-3-of-6": {
+        "command": "pnpm run test:integration --shard=3/6",
         "dependsOn": [
           "^build",
           "build",
@@ -114,8 +115,8 @@
           }
         ]
       },
-      "test:integration--shard-4-of-5": {
-        "command": "pnpm run test:integration --shard=4/5",
+      "test:integration--shard-4-of-6": {
+        "command": "pnpm run test:integration --shard=4/6",
         "dependsOn": [
           "^build",
           "build",
@@ -129,8 +130,23 @@
           }
         ]
       },
-      "test:integration--shard-5-of-5": {
-        "command": "pnpm run test:integration --shard=5/5",
+      "test:integration--shard-5-of-6": {
+        "command": "pnpm run test:integration --shard=5/6",
+        "dependsOn": [
+          "^build",
+          "build",
+          {
+            "projects": [
+              "@tanstack/react-start",
+              "@tanstack/solid-start",
+              "@tanstack/vue-start"
+            ],
+            "target": "build"
+          }
+        ]
+      },
+      "test:integration--shard-6-of-6": {
+        "command": "pnpm run test:integration --shard=6/6",
         "dependsOn": [
           "^build",
           "build",
