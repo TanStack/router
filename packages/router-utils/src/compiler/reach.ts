@@ -144,6 +144,8 @@ export interface KeptDeclaration {
   readChanged?: boolean
   /** `written`: the statement can change `read` in a statement of its own. */
   split?: boolean
+  /** `written`: the statement is the declaration of `syms` itself (its initialiser changes `read`). */
+  declaration?: boolean
   /** `written`: where code the env module keeps uses `read`, which the statement changes: moved or deleted, the statement would change what that code sees (no move is offered). */
   seen?: number
   /** `unused`: the unused declaration (R148), positioned at by `range`. */

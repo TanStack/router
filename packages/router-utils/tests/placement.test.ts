@@ -5832,8 +5832,10 @@ describe('readers and writers of state written at load', () => {
 
   // a member write in an initialiser is a writer of the binding: it stays
   // in the binding's cluster, so the route module's reader sees it (it was
-  // reported `eager-split:state` as a reader the union merged, which an
-  // assignment writer, `const y = (n = 1, 5)`, never was: unreported now)
+  // reported `eager-split:state` as a reader the union merged). Only split
+  // code uses `y`, which stays with that write: reported at it, as an
+  // assignment writer, `const y = (n = 1, 5)`, is (review round 2 F2-3:
+  // both were silent)
   it.each([
     [
       'an effectful call',
@@ -5851,20 +5853,44 @@ describe('readers and writers of state written at load', () => {
       'const r = [cfg]',
     ],
   ])(
-    'keeps a declaration whose initialiser writes a member of a binding the route module reads, in %s',
+    'keeps a declaration whose initialiser writes a member of a binding the route module reads, in %s, with one warning',
     async (_, writer, reader) => {
-      const r = await split(
-        route(
-          `const cfg = {}\n${writer}\nconst get = () => cfg.x\n${reader}`,
-          'loader: () => r,\ncomponent: () => y,',
-        ),
-        { files: lib },
+      const code = route(
+        `const cfg = {}\n${writer}\nconst get = () => cfg.x\n${reader}`,
+        'loader: () => r,\ncomponent: () => y,',
       )
+      const r = await split(code, { files: lib })
       expect(r.env).toContain(writer)
       expect(r.chunks.component).toContain("import { y } from '/app/route.tsx'")
-      expect(eager(r)).toEqual([])
+      expect(eager(r)).toMatchObject([
+        {
+          code: 'eager-split:written',
+          range: { start: code.indexOf('y = ') },
+        },
+      ])
+      expect(eager(r)[0]!.message).toContain(
+        'because its declaration also changes `cfg`',
+      )
     },
   )
+
+  it('keeps a declaration whose initialiser assigns a binding the route module reads, with one warning', async () => {
+    const code = route(
+      'let n = 0\nconst y = (n = 1, 5)',
+      'loader: () => n,\ncomponent: () => y,',
+    )
+    const r = await split(code, { files: lib })
+    expect(r.env).toContain('const y = (n = 1, 5)')
+    expect(eager(r)).toMatchObject([
+      {
+        code: 'eager-split:written',
+        range: { start: code.indexOf('y = ') },
+      },
+    ])
+    expect(eager(r)[0]!.message).toContain(
+      'because its declaration also changes `n`',
+    )
+  })
 
   it('keeps an exported reader of an import a declaration writes when the module loads', async () => {
     const r = await split(
@@ -8894,6 +8920,30 @@ describe('eager-split:written: why a statement that changes it stays', () => {
       )
     },
   )
+
+  // a declaration whose own initialiser changes `k` with a known method
+  // joins `k`'s cluster, and only split code uses what it declares: kept
+  // with that change, reported at it (it was silent); the fix makes the
+  // change a statement of its own (review round 2 F2-3)
+  it('a binding whose own declaration changes a kept binding with a known method', async () => {
+    const options = 'beforeLoad: () => k.length, component: () => idx'
+    const code = route("const k = []\nconst idx = k.push('x')", options)
+    const r = await report(code)
+    expect(r.diagnostics).toMatchObject([
+      {
+        code: 'eager-split:written',
+        range: { start: code.indexOf('idx = ') },
+      },
+    ])
+    expect(r.diagnostics[0]!.message).toContain(
+      'because its declaration also changes `k`, which the route module keeps; change `k` in a statement of its own, and declare `idx` without changing it, so `idx` can load with the split `component`.',
+    )
+    const f = await report(
+      route("const k = []\nk.push('x')\nconst idx = k.length", options),
+    )
+    expect(f.diagnostics).toEqual([])
+    expect(f.chunks.component).toContain('const idx = k.length')
+  })
 
   // the route options' declaration writing a binding at load (a component
   // value `(n = 5, () => …)`) joins its cluster too, but is no unused
