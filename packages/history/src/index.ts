@@ -338,6 +338,8 @@ export function createBrowserHistory(opts?: {
       },
       '',
     )
+  } else if (win.history.state[stateIndexKey] === undefined) {
+    win.history.replaceState({ ...win.history.state, [stateIndexKey]: 0 }, '')
   }
 
   let currentLocation = parseLocation()
