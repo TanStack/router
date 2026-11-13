@@ -154,6 +154,86 @@ export const Route = createFileRoute('/')({
     timeout,
   )
 
+  // round tools, placement-exec seeds 1112264, 1612539 (toy planner),
+  // 1300879, 1600380 (router planner): the write follows the object into
+  // its export's module, which the other export's module imports, so it
+  // ran before the read
+  test(
+    'a read of an exported object before a later write keeps the value the source reads when another export reads it',
+    async () => {
+      const r = await mounted(
+        bundler,
+        `${head}export const o0: { v: number; p?: number } = { v: 1 }
+const r2 = o0.p
+o0.p = 6
+export const r13 = [r2]
+export const Route = createFileRoute('/')({
+  component: () => <p>{String(r2)} {String(r13[0])}</p>,
+})
+`,
+      )
+      expect(r.text).toBe('undefined undefined')
+    },
+    timeout,
+  )
+
+  // round tools, fuzz seeds 6104927, 6407720, 6510105, 6518119 (Start,
+  // React, line-minimised; the free names are globals), toy seed 1409092: a
+  // statement using an export and a `let` the component's code reads
+  // followed the export into its module, which then read the `let` of the
+  // route module at its evaluation
+  test(
+    'a statement using an export and a binding only split code reads runs when the route module loads, in source order',
+    async () => {
+      const app = await build({
+        bundler,
+        env: 'client',
+        minify: false,
+        files: routeApp(
+          `${head}import '../globals'
+declare global {
+  var fmt: (...a: Array<unknown>) => number
+  var log: (tag: string, ...a: Array<unknown>) => unknown
+}
+export function Ex2() { return <i>Ex2:{globalThis.fmt(1)}</i> }
+let l4: unknown = globalThis.fmt(2)
+l4 = globalThis.log('T2', l4)
+async function f5(x?: unknown) { return globalThis.fmt(x, l4) }
+globalThis.log('T5', l4, Ex2)
+const P8 = () => <div>P8:{globalThis.fmt(3)}<Ex2 /></div>
+export const Route = createFileRoute('/')({
+  component: () => <b>I:{globalThis.fmt(P8, f5)}</b>,
+})
+`,
+          {
+            env: 'client',
+            files: {
+              ...libs,
+              'globals.ts': `const g = globalThis as any
+g.__effects = []
+g.fmt = (...a: Array<unknown>) => a.length
+g.log = (tag: string, ...a: Array<unknown>) => {
+  g.__effects.push([tag, ...a.map((x) => typeof x)].join(':'))
+  return a[0]
+}
+`,
+            },
+          },
+        ),
+      })
+      try {
+        const run = await app.run(
+          'const atLoad = [...globalThis.__effects]\nawait entry.mount(entry.Route.options.component)\nreturn atLoad',
+        )
+        expect(run.result).toEqual(['T2:number', 'T5:number:function'])
+        expect((run.html as string).replace(/<[^>]*>/g, '')).toBe('I:2')
+      } finally {
+        await app.dispose()
+      }
+    },
+    timeout,
+  )
+
   test(
     'a column helper and the columns only the component reads load with it, before a schema the route module keeps',
     async () => {
