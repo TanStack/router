@@ -44,9 +44,19 @@ export function originalPositions(
   let text: string | undefined
   const original = () => (text ??= originalText(file, inputMap))
   const reprinted = reprintedLocator(code, original)
-  /** Without a map, whether `code` is the file's text (else its positions are no file's). */
+  /**
+   * Without a map, whether `code` is the file's text (else its positions
+   * are no file's). A module with no text to read (a virtual module) is its
+   * code; an SFC never is.
+   */
   let ownText: boolean | undefined
-  const own = () => (ownText ??= !file.endsWith('.vue') && original() === code)
+  const own = () => {
+    if (ownText === undefined) {
+      const read = file.endsWith('.vue') ? '' : readOriginal(file, inputMap)
+      ownText = read === null || read === code
+    }
+    return ownText
+  }
   const inFile = (loc: { line: number; column: number } | null) =>
     loc && { file, ...loc }
   return {
@@ -182,6 +192,14 @@ export function originalText(
   file: string,
   inputMap: () => InputSourceMap | null,
 ): string {
+  return readOriginal(file, inputMap) ?? ''
+}
+
+/** `originalText`, or null when there is none to read (a virtual module, a file gone). */
+function readOriginal(
+  file: string,
+  inputMap: () => InputSourceMap | null,
+): string | null {
   const map = inputMap()
   const name = file.slice(file.lastIndexOf('/') + 1)
   const index = map?.sources.findIndex(
@@ -195,6 +213,6 @@ export function originalText(
   try {
     return readFileSync(file, 'utf8')
   } catch {
-    return ''
+    return null
   }
 }
