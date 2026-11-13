@@ -19,17 +19,30 @@ export type NotFoundError = {
 }
 
 /**
- * Create a not-found error object recognized by TanStack Router.
+ * Throw a not-found error recognized by TanStack Router.
  *
- * Throw this from loaders/actions to trigger the nearest `notFoundComponent`.
- * Use `routeId` to target a specific route's not-found boundary. If `throw`
- * is true, the error is thrown instead of returned.
+ * Call it from loaders/actions to trigger the nearest `notFoundComponent`.
+ * Use `routeId` to target a specific route's not-found boundary.
  *
- * @param options Optional settings including `routeId`, `headers`, and `throw`.
- * @returns A not-found error object that can be thrown or returned.
+ * @param options Settings including `routeId`, `headers`, and `throw: true`.
+ * @throws A not-found error object. Never returns.
  * @link https://tanstack.com/router/latest/docs/router/framework/react/api/router/notFoundFunction
  */
-export function notFound(options: NotFoundError = {}) {
+export function notFound(options: NotFoundError & { throw: true }): never
+
+/**
+ * Create a not-found error object recognized by TanStack Router.
+ *
+ * Throw it from loaders/actions to trigger the nearest `notFoundComponent`.
+ * Use `routeId` to target a specific route's not-found boundary.
+ *
+ * @param options Optional settings including `routeId` and `headers`.
+ * @returns A not-found error object to throw
+ * @link https://tanstack.com/router/latest/docs/router/framework/react/api/router/notFoundFunction
+ */
+export function notFound(options?: NotFoundError): NotFoundError
+
+export function notFound(options: NotFoundError = {}): NotFoundError {
   ;(options as any).isNotFound = true
   if (options.throw) throw options
   return options
