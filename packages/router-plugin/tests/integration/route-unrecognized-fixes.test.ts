@@ -11,7 +11,10 @@
  */
 import { describe, expect, it } from 'vitest'
 import { expectNoProblems } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  diagnosticPosition,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { build } from '../build-harness'
 import { expectValidModules, loadRoute } from '../route-app'
 
@@ -48,6 +51,8 @@ interface Row {
   fixed: Record<string, string>
   /** The fixed route's component is split (not for a root or a lazy file). */
   split: boolean
+  /** The text the report points at, when the row checks the printed position. */
+  at?: string
 }
 
 const rows: Array<Row> = [
@@ -65,6 +70,7 @@ export const Route = createFileRoute('/')(${page})
 `,
     },
     split: true,
+    at: "Route = createFileRoute('/')\n",
   },
   {
     name: 'the context root constructor without its context call',
@@ -164,13 +170,21 @@ describe('a listed route the code splitter does not read', () => {
   it.for(rows)(
     '$name is reported, and the offered fix is read',
     { timeout },
-    async ({ file, files, fixed, split }) => {
+    async ({ file, files, fixed, split, at }) => {
       const before = await buildApp(files)
       expectDiagnostic(before.diagnostics, {
         severity: 'warning',
         file,
         root: before.app.root,
       })
+      if (at !== undefined) {
+        // the printed warning names the 1-based position (R101): a Vite
+        // build prints no location field of a warning, only its message
+        const { line, column } = diagnosticPosition(files[file]!, at)
+        expect(before.diagnostics.map((d) => d.text).join('\n')).toContain(
+          `${file}:${line}:${column}`,
+        )
+      }
 
       const after = await buildApp(fixed)
       expectNoProblems(after.diagnostics)

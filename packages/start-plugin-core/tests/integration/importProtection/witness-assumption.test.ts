@@ -1,12 +1,16 @@
 /**
- * Tripwire of the survival witness (design 4 §5, F5-4): import protection
- * reports an import a production build mocked when the bundler's own graph
- * says the import's mock survived tree-shaking (Rolldown's rendered exports,
- * Rspack's used exports, inner modules of a `ConcatenatedModule` included).
- * Here that structural answer is compared with the emitted text: the mock
- * of an import carries its importer's path, so it is in a chunk exactly when
- * the import was reported. Goes red when the bundler's graph changes shape
- * under the witness (a scope-hoisted module, an async chunk).
+ * Assumption test (no tripwire: R136 superseded, "Assumption tests",
+ * 2026-11-13). The assumption: a bundler's own graph after tree-shaking
+ * tells whether a module survived (Rolldown's rendered exports, Rspack's
+ * used exports, inner modules of a `ConcatenatedModule` included), which
+ * neither bundler documents as a contract. The code relying on it: import
+ * protection's survival witness (start-plugin-core `import-protection/
+ * witness.ts`, design 4 §5, F5-4), which reports an import a production
+ * build mocked when the mock survived. Here that structural answer is
+ * compared with the emitted text: the mock of an import carries its
+ * importer's path, so it is in a chunk exactly when the import was reported.
+ * Fails when the bundler's graph changes shape under the witness (a
+ * scope-hoisted module, an async chunk). No upstream issue.
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'

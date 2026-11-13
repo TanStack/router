@@ -137,6 +137,10 @@ export const Route = createFileRoute('/')({ component: () => <p>home</p> })`,
           },
           ready: 'home',
         })
+        if (bundler === 'vite') {
+          // (split: the index route's component loads from its chunk)
+          expect(app.splitOutputs()).toBeGreaterThan(0)
+        }
         await app.evaluate(`window.__APP_ROUTER__.navigate({ to: '/posts' })`)
         await app.page.waitForText('posts v1')
         expect(await app.page.page.locator('a').getAttribute('href')).toBe(

@@ -1,14 +1,15 @@
 /**
- * Tripwire of what the Vite hosts' hot update relies on of Vite's module
- * graph (router-utils `hosts/vite.ts`, `liveModules`), which Vite does not
+ * Assumption test (no tripwire: R136 superseded, "Assumption tests",
+ * 2026-11-13). The assumption, of Vite's module graph, which Vite does not
  * document: a module its importer's import analysis created and nothing
  * requested has `isSelfAccepting` unset (it is set by the module's own
  * analysis), and an edit of such a module sends the page nothing (Vite
- * stops an update's propagation at a module it never analysed). The hosts
- * therefore do not transform a route for derived modules that were never
- * loaded: keeping or dropping them changes nothing. The same shortcut is
- * taken in every environment (the SSR environment's graph leaves the field
- * unset as the client's does). Goes red when Vite changes either.
+ * stops an update's propagation at a module it never analysed). The code
+ * relying on it: the Vite hosts' hot update (router-utils `hosts/vite.ts`,
+ * `liveModules`), which does not transform a route for derived modules that
+ * were never loaded, in every environment (the SSR environment's graph
+ * leaves the field unset as the client's does). Fails when Vite changes
+ * either. No upstream issue (private behaviour).
  */
 import fs from 'node:fs'
 import path from 'node:path'

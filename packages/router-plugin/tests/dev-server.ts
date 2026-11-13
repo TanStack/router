@@ -132,6 +132,10 @@ export function see(component: unknown) { seen.push(component) }`,
       'importer.ts': exportsImporter,
     },
   })
+  // (before the run below loads the component's chunk)
+  expect(await app.isLazy('component'), 'the component is split').toBe(
+    autoCodeSplitting,
+  )
   const result = await app.run<{
     exports: Record<
       string,

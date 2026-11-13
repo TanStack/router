@@ -17,6 +17,13 @@ declare const __react_refresh_utils__:
   | undefined
 
 // Globals of the Vite (plugin-react) and webpack/Rspack refresh runtimes.
+// All four are private to those plugins (undocumented, no public API to
+// hook a refresh pass): `__getReactRefreshIgnoredExports` and
+// `__registerBeforePerformReactRefresh` of @vitejs/plugin-react,
+// `__reactRefreshInjected` and `__react_refresh_utils__` of
+// @rspack/plugin-react-refresh. No upstream issue. If a plugin renames them,
+// `refreshActive` is false and an update applies at once, before the
+// refresh pass (a component update may then remount what it patches).
 type RefreshWindow = Window & {
   __getReactRefreshIgnoredExports?: (ctx: { id: string }) => Array<string>
   __registerBeforePerformReactRefresh?: (hook: () => unknown) => void

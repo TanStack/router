@@ -674,6 +674,7 @@ export const Route = createFileRoute('/')({
   component: () => <p>{f.length}{g.length}</p>,
 })
 `)
+    expect(await route.isLazy('component')).toBe(true)
     expect(await route.run(`return render('component')`)).toBe('<p>22</p>')
   })
 

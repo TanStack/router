@@ -34,7 +34,10 @@ const refreshSource = (component: any): string | undefined => {
 // module file: keeping it avoids remounting the route's subtree. A chunk
 // re-imported after a route update is kept only when it is the same object
 // (core's default): after a rename solid-refresh stops patching the chunk's
-// first proxy (an upstream bug).
+// first proxy (an upstream bug: solid-refresh keeps a removed name,
+// https://github.com/solidjs/solid-refresh/issues/88; oracle KNOWN-BUGS,
+// "Upstream issues"). Relies on solid-refresh's proxies' `name` and
+// `location`, which it does not document (`refreshSource`).
 const adapter: RouteHmrAdapter = {
   keepPatched: (next, held) =>
     refreshSource(held) !== undefined &&

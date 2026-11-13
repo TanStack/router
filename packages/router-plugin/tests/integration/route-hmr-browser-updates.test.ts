@@ -475,6 +475,10 @@ describe.concurrent.each(['vite', 'rsbuild'] as const)(
           },
           ready: 'home',
         })
+        if (bundler === 'vite') {
+          // (split: the index route's component loads from its chunk)
+          expect(app.splitOutputs()).toBeGreaterThan(0)
+        }
 
         // The edited route file has no lazy options; the route keeps the ones
         // the route tree gave it (its `.lazy.tsx` component)

@@ -620,6 +620,7 @@ export const Route = createFileRoute('/')({
         files: { 'routes/index.tsx': route('v1') },
         ready: shows('v1'),
       })
+      expect(app.splitOutputs() > 0, 'split').toBe(autoCodeSplitting)
       const mounts = await app.evaluate<number>('window.mounts')
       expect(mounts).toBeGreaterThan(0)
       expect(

@@ -1,12 +1,14 @@
 /**
- * Tripwire of what the empty-read rule relies on of the filesystem it runs
- * on (`RawFactsCache.readChange`): an event that read a file empty and
- * waited in vain is not waited on again while the file's modification time
- * is the same. A save that truncates the file before writing it (an
- * in-place save) must therefore move the time, or stamp whole seconds (a
- * coarse clock, which the rule treats as unknown and always waits on).
- * Goes red on a filesystem where truncating an empty file keeps a time
- * finer than a second.
+ * Assumption test (no tripwire: R136 superseded, "Assumption tests",
+ * 2026-11-13). The assumption, of the filesystem the compiler runs on: a
+ * save that truncates a file before writing it (an in-place save) moves the
+ * file's modification time, or the filesystem stamps whole seconds (a
+ * coarse clock, which the rule treats as unknown and always waits on). The
+ * code relying on it: the empty-read rule (router-utils `facts.ts`,
+ * `RawFactsCache.readChange`): an event that read a file empty and waited
+ * in vain is not waited on again while the file's modification time is the
+ * same. Fails on a filesystem where truncating an empty file keeps a time
+ * finer than a second. No upstream issue (operating-system behaviour).
  */
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'

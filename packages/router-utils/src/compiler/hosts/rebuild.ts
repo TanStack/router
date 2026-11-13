@@ -192,6 +192,11 @@ export class StaleSetDrain {
     if (paths.size === 0 && !taken) {
       return
     }
+    // `builtModules`: undocumented compilation state of both bundlers
+    // (webpack: what this compilation built, without what its snapshot found
+    // current; Rspack: a superset, which also lists modules it did not build
+    // again). Read as "may have been built here": a module of `taken` it
+    // lists is not built a second time; one it misses is. No upstream issue.
     const built = compilation.builtModules
     try {
       await rebuildModulesWhere(compilation, (m) => {
@@ -274,8 +279,8 @@ export class StaleSetDrain {
 /**
  * First `@rspack/core` whose `rebuildModule` calls every callback
  * (web-infra-dev/rspack#16567). Unknown: still open at 2.3.2. Set it when
- * the fix ships; the tripwire test (start-plugin-core,
- * `rspack-rebuild-batch.test.ts`) goes red on the first Rspack without the
+ * the fix ships; the assumption test (start-plugin-core,
+ * `rspack-rebuild-batch.test.ts`) fails on the first Rspack without the
  * defect.
  */
 export const RSPACK_REBUILD_CALLBACKS_FIXED_IN: string | undefined = undefined
