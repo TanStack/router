@@ -1152,6 +1152,7 @@ export class RouterCore<
     e?: boolean // Restoration enabled.
     s?: boolean // Snapshot/lifecycle listeners installed.
     r?: boolean // Render listener installed.
+    c?: () => void // Cleanup listener installed.
   } = { n: true }
   subscribers = new Set<RouterListener<RouterEvent>>()
   /** Accepted off-screen loader generations keyed by match ID. */
