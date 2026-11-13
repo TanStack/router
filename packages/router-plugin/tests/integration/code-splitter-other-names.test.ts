@@ -110,6 +110,30 @@ describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
     timeout,
   )
 
+  // round tools, placement-exec seeds 13017, 1302957, 1310446, 1604480
+  // (toy planner) and 1300510 (router planner, Vue): the component writes
+  // through the holder too; the read stays before the later write
+  test.each([
+    ['a function', 'function Page() { h6.c.v = 12; return <p>{r11[0]}</p> }'],
+    [
+      'a wrapped function',
+      'hoc(function Page() { h6.c.v = 12; return <p>{r11[0]}</p> })',
+    ],
+  ])(
+    'a read through a holder before a later write of the original keeps the value the source reads when the component (%s) writes through the holder',
+    async (_, component) => {
+      const r = await mounted(
+        bundler,
+        route(
+          'const hoc = <T,>(f: T): T => f\nconst o0 = { v: 1 }\nconst h6 = { c: o0 }\nconst r11 = [h6.c.v]\no0.v = 5',
+          `  beforeLoad: () => o0,\n  component: ${component},`,
+        ),
+      )
+      expect(r.text).toBe('1')
+    },
+    timeout,
+  )
+
   test(
     'a read of an object a function writes through a holder keeps the value the source reads',
     async () => {
