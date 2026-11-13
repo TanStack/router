@@ -7,7 +7,10 @@ import {
   lifecycleEnd,
   runRouteLifecycle,
 } from './router'
-import { dehydrateSsrMatchId } from './ssr/ssr-match-id'
+import {
+  dehydrateSsrMatchId,
+  hydrateSsrManifestRouteId,
+} from './ssr/ssr-match-id'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './ssr/constants'
 import type { TsrSsrGlobal } from './ssr/types'
 import type { ParsedLocation } from './location'
@@ -2221,7 +2224,18 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       'Invariant failed: Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!',
     )
   }
-  router.ssr = { manifest: dehydratedRouter!.manifest }
+  const manifest = dehydratedRouter!.manifest
+  router.ssr = {
+    manifest: manifest && {
+      ...manifest,
+      routes: Object.fromEntries(
+        Object.entries(manifest.routes).map(([id, route]) => [
+          hydrateSsrManifestRouteId(id),
+          route,
+        ]),
+      ),
+    },
+  }
   router.options.ssr = {
     nonce: (
       document.querySelector('meta[property="csp-nonce"]') as
