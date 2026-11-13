@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url'
 import { configDefaults, defineConfig, mergeConfig } from 'vitest/config'
 import type { TestProjectInlineConfiguration } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
-import { timeSequencer } from '@tanstack/compiler-test-utils/time-sequencer'
 import packageJson from './package.json'
 
 /**
@@ -89,13 +88,6 @@ const config = defineConfig({
       Math.max(1, Math.floor(os.availableParallelism() / 2)),
     ),
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
-    // CI's slow-tier shards (`test:integration--shard-<i>-of-<n>`) split by
-    // the files' CI times, not by path hash
-    sequence: {
-      sequencer: timeSequencer(
-        new URL('./tests/integration/file-times.json', import.meta.url),
-      ),
-    },
     globalSetup: ['@tanstack/compiler-test-utils/run-directory'],
     setupFiles: [
       '@tanstack/compiler-test-utils/test-scope-setup',
