@@ -8571,6 +8571,42 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     expect(f.chunks.component).toContain('const d = make()')
   })
 
+  // a method the mutation model knows (`Set.add`, `Array.push`, `Map.set`)
+  // writes only the receiver: the statement joins its cluster, which the
+  // route module keeps, and keeps the binding it uses with one warning, as
+  // a call it does not know does (phase 6 step 3, P04b written with `add`)
+  it.each([
+    ['add', 'new Set()', 'k.add(d)'],
+    ['push', '[]', 'k.push(d)'],
+    ['set', 'new Map()', "k.set('d', d)"],
+  ])(
+    'a binding the route module keeps that a known method (%s) changes',
+    async (_, init, statement) => {
+      const options = 'loader: () => k, component: () => d'
+      const code = route(
+        `const k = ${init}\nconst d = make()\n${statement}`,
+        options,
+      )
+      const r = await report(code)
+      written(
+        r,
+        code,
+        'd',
+        statement,
+        'which uses it, stays there: it also changes `k`, which the route module keeps; run that statement in the code that needs it, so `d` can load with the split `component`.',
+      )
+      // the fix: the call in the code that needs `d`
+      const f = await report(
+        route(
+          `const k = ${init}\nconst d = make()`,
+          `loader: () => k, component: () => (${statement}, d)`,
+        ),
+      )
+      expect(f.diagnostics).toEqual([])
+      expect(f.chunks.component).toContain('const d = make()')
+    },
+  )
+
   it('a binding the route module keeps that the statement only uses', async () => {
     const statement = 'table.setup(cfg)'
     const options = 'loader: () => cfg, component: () => table'

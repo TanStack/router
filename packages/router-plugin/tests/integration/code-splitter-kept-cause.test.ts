@@ -14,6 +14,8 @@
  * binding that one reads, a holder, a function it calls, a write at load),
  * and the move offered for a binding a statement that stays changes or uses
  * (what the binding reads at load; the code writing a moved binding then).
+ * A statement a known method makes a writer of a kept binding (`Set.add`)
+ * keeps a binding it uses with one warning, as an unknown call does.
  * Vite and Rspack client builds, mounted in a DOM.
  */
 import { describe, expect, test } from 'vitest'
@@ -579,6 +581,56 @@ log('T5', count, Title)
         },
       )
       expect(fixed.text).toBe('2 2')
+      expect(fixed.diagnostics).toEqual([])
+    },
+    timeout,
+  )
+
+  // phase 6 step 3 (P04b written with the bindings file's `init()`):
+  // `table.add(d)` changes `table`, which `beforeLoad` keeps, so it stays,
+  // and so does `d`, which only the component reads: one warning, as with
+  // `table.link(d)`
+  test(
+    'warns once at a binding a known method call on a kept binding uses, and its fix splits it',
+    async () => {
+      const files = {
+        'state.ts': `export const init = <T,>(value: T): T => value
+`,
+      }
+      const route = `${head}import { init } from '../state'
+const table = init(new Set<object>())
+const d = init({ name: 'MARK_D' })
+table.add(d)
+export const Route = createFileRoute('/')({
+  beforeLoad: () => table.size,
+  component: () => <p>{d.name}</p>,
+})
+`
+      const r = await mounted(bundler, route, files)
+      expect(r.text).toBe('MARK_D')
+      expectDiagnostic(r.diagnostics, {
+        severity: 'warning',
+        position: diagnosticPosition(route, 'd = init'),
+        times: 1,
+      })
+      expect(r.diagnostics).toHaveLength(1)
+      // the fix: that statement in the code that needs `d`
+      const fixed = await mounted(
+        bundler,
+        `${head}import { init } from '../state'
+const table = init(new Set<object>())
+const d = init({ name: 'MARK_D' })
+export const Route = createFileRoute('/')({
+  beforeLoad: () => table.size,
+  component: () => {
+    table.add(d)
+    return <p>{d.name}</p>
+  },
+})
+`,
+        files,
+      )
+      expect(fixed.text).toBe('MARK_D')
       expect(fixed.diagnostics).toEqual([])
     },
     timeout,
