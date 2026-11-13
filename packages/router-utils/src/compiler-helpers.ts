@@ -125,6 +125,18 @@ function addDeclarationModuleInfo(
   }
 }
 
+/**
+ * Whether `node` is a namespace that compiles to a value, such as
+ * `namespace styles {}`. A `declare namespace` emits no code.
+ */
+function isRuntimeNamespace(
+  node: t.Node,
+): node is t.TSModuleDeclaration & { id: t.Identifier } {
+  return (
+    t.isTSModuleDeclaration(node) && !node.declare && t.isIdentifier(node.id)
+  )
+}
+
 function hasIdentifierBinding(scopes: IdentifierScopeStack, name: string) {
   for (let i = scopes.length - 1; i >= 0; i--) {
     if (scopes[i]!.bindings.has(name)) {
@@ -180,6 +192,8 @@ function addIdentifierDeclarationBindings(
       t.isTSEnumDeclaration(declaration)) &&
     declaration.id
   ) {
+    currentIdentifierScope(scopes).bindings.add(declaration.id.name)
+  } else if (isRuntimeNamespace(declaration)) {
     currentIdentifierScope(scopes).bindings.add(declaration.id.name)
   }
 }
@@ -244,6 +258,33 @@ function walkIdentifierNode(
   ids: Set<string>,
 ) {
   if (!current) return
+
+  // A type annotation, such as `Page.Props` in a return type, reads no value
+  // at runtime. Type arguments are still read, since a plain JavaScript
+  // `a < b > (c)` parses as a call with a type argument.
+  if (
+    t.isTSTypeAnnotation(current) ||
+    t.isTSTypeParameterDeclaration(current) ||
+    t.isTSDeclareFunction(current) ||
+    (t.isTSModuleDeclaration(current) && current.declare)
+  ) {
+    return
+  }
+
+  if (isRuntimeNamespace(current)) {
+    currentIdentifierScope(scopes).bindings.add(current.id.name)
+    walkIdentifierNode(current.body, current, parent, 'body', scopes, ids)
+    return
+  }
+
+  if (t.isTSModuleBlock(current)) {
+    const nestedScopes = createNestedIdentifierScope('block', scopes)
+    addIdentifierBlockBindings(current.body, nestedScopes)
+    for (const child of current.body) {
+      walkIdentifierNode(child, current, parent, 'body', nestedScopes, ids)
+    }
+    return
+  }
 
   if (t.isIdentifier(current)) {
     if (
@@ -456,6 +497,8 @@ export function collectLocalBindingsFromStatement(
     bindings.add(declaration.id.name)
   } else if (t.isClassDeclaration(declaration) && declaration.id) {
     bindings.add(declaration.id.name)
+  } else if (isRuntimeNamespace(declaration)) {
+    bindings.add(declaration.id.name)
   }
 }
 
@@ -591,6 +634,12 @@ export function buildDeclarationMap(ast: t.File): Map<string, t.Node> {
     } else if (t.isFunctionDeclaration(declaration) && declaration.id) {
       map.set(declaration.id.name, declaration)
     } else if (t.isClassDeclaration(declaration) && declaration.id) {
+      map.set(declaration.id.name, declaration)
+    } else if (
+      isRuntimeNamespace(declaration) &&
+      !map.has(declaration.id.name)
+    ) {
+      // A merged namespace maps to its first declaration.
       map.set(declaration.id.name, declaration)
     }
   }
@@ -800,6 +849,10 @@ export function removeModuleLevelBindings(
       return !namesToRemove.has(declaration.id.name)
     }
 
+    if (isRuntimeNamespace(declaration)) {
+      return !namesToRemove.has(declaration.id.name)
+    }
+
     if (t.isExportDefaultDeclaration(statement)) {
       const defaultDeclaration = statement.declaration
       if (
@@ -841,6 +894,10 @@ export function retainModuleLevelDeclarations(
     }
 
     if (t.isClassDeclaration(declaration) && declaration.id) {
+      return bindingsToKeep.has(declaration.id.name)
+    }
+
+    if (isRuntimeNamespace(declaration)) {
       return bindingsToKeep.has(declaration.id.name)
     }
 
