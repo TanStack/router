@@ -1,14 +1,16 @@
 # Known bugs
 
-Three parts, one entry per root cause: the bug, the SPEC clause, its tests (`file` and test names; paths under
+Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file` and test names; paths under
 `packages/`; `$name`, `%s` and `${…}` are table-row placeholders), and what a fix must achieve. The test comment
 (`Bug:`, `Impact:`) has the details.
 
 - **Remaining pins**: bugs today's compiler still has. Each is pinned by `.fails` tests that assert the correct
   outcome and accept any correct fix. When a compiler fixes one, its pins fail with "Expect test to fail": remove the
-  `.fails`, keep the test, and move the entry to the second part.
+  `.fails`, keep the test, and move the entry to "Fixed, kept as regression tests".
 - **Known incorrect rejections (accepted, R89)**: wrong outcomes kept on purpose, all in the safe direction (the client
   gets a mock, never server code). Pinned like the remaining pins; a fix that serves the real module may unpin them.
+- **Accepted limits**: outcomes ruled as they are (unsupported inputs, documented limits). Not pins: an ordinary test
+  holds the outcome, or the entry says why none does.
 - **Fixed, kept as regression tests**: bugs main's compilers (the Babel-based ones) had, which the compilers on the
   shared core fix. Their tests run as ordinary tests, mostly in the `known-bugs-*` files. "Cause" files name main's
   implementation.
@@ -20,9 +22,6 @@ Three parts, one entry per root cause: the bug, the SPEC clause, its tests (`fil
   module. SPEC J2.5. `router-plugin/tests/integration/known-bugs-code-splitter-page-code.test.ts`: "$name loads with
   its chunk" (the row "an exported component another route's split component renders", webpack and Rspack without
   `"sideEffects": false`). Fix: the component loads with its chunk on every bundler.
-- **Root routes are never split.** SPEC J2.7 (goal; kept unsplit on purpose, as on main: their components render on
-  every page, or on error and not-found responses). `router-plugin/tests/integration/known-bugs-code-splitter-page-
-code.test.ts`: "a root route's %s loads lazily".
 - **A route module's CSS import loads on every page**: the code splitter keeps the bare import in the route module,
   which the route tree imports eagerly (in dev the CSS is injected once the client runs; a build merges it into the
   entry's CSS). SPEC J2.22. `start-plugin-core/tests/integration/known-bugs-route-css.test.ts` (Vite) and
@@ -80,14 +79,6 @@ code.test.ts`: "a root route's %s loads lazily".
   `start-plugin-core/tests/integration/importProtection/known-bugs-dev.test.ts`: "a module of a custom type importing
   a denied specifier is reported, and its real code does not run".
 
-- **Rolldown: a `var` declared again in a for-in/of head or a pattern, read by a split chunk, reads its first value.**
-  The compiler's output is correct: the route module holds both declarations and exports the binding, and Rolldown
-  inlines the first value in the importing module (see "Upstream issues"; webpack and Rspack read the last one). SPEC
-  J2.5. Fix: upstream. Reached only when the route module keeps the `var` and its loop or block: the statement that
-  declares it again now follows `x` into the chunk when only the chunk reads it, so
-  `router-plugin/tests/integration/code-splitter-module-state.test.ts` ("gives the split component the value a `var`
-  declared again takes in a head or a pattern (Rolldown)") no longer reaches it.
-
 - **A Vue `<script setup>` block that hands a Start builder or factory to its template is a compile error on the dev
   servers and in builds with Vue's devtools**: Vite and Rsbuild dev; Vite builds with `features.prodDevtools`, a true
   `__VUE_PROD_DEVTOOLS__` define or `NODE_ENV=development` (`--mode development` alone inlines); Rsbuild builds with
@@ -118,23 +109,29 @@ code.test.ts`: "a root route's %s loads lazily".
 
 ## Known incorrect rejections (accepted, R89)
 
-Reason, for both: a denied file is judged from the plain imports of it the compiler indexed (at its own compile, and
-again when they change: design 4); the bundler's graph is not consulted there in dev, so these imports are not
-visible. A dev server serves the mock and reports the denied
-file; a build serves the mock and prints one warning per denied file whose every importer is exempt or outside the
-scope, naming the file, its importers and the fix (not a violation: no `onViolation` call, no failure with the `error`
-behaviour; "a build warns once about each denied file…"). Tests in
-`start-plugin-core/tests/integration/importProtection/known-bugs-rejections.test.ts` (Vite build, Vite dev, Vite
-bundled dev, Rsbuild build, Rsbuild dev; its controls show the same importers' plain imports get the real module).
+- **An importer outside the scope (`srcDirectory`/`include`) gets the mock of an in-scope denied file it imports.**
+  SPEC J6.7, J6.1. A denied file is judged from the plain imports of it the compiler indexed (at its own compile, and
+  again when they change: design 4), and an importer outside the scope is never compiled by import protection. A dev
+  server serves the mock and reports the denied file; a build serves the mock and prints one warning per denied file
+  whose every importer is exempt or outside the scope, naming the file, its importers and the fix (not a violation: no
+  `onViolation` call, no failure with the `error` behaviour).
+  `start-plugin-core/tests/integration/importProtection/known-bugs-rejections.test.ts` (Vite build, Vite dev, Vite
+  bundled dev, Rsbuild build, Rsbuild dev): "an importer outside srcDirectory gets the real module of an in-scope
+  denied file it imports, and is not reported"; its controls show exempt importers' plain imports get the real module.
+  Workaround: import the file from a module inside the scope.
 
-- **An exempt importer that reaches a denied file only through a pattern import gets the mock** (`import.meta.glob`, a
-  template-literal `import()`, Rsbuild's `import.meta.webpackContext`; exempt by `exclude` or `ignoreImporters`). SPEC
-  J6.7. "an importer exempted by %s reaching a denied file only through a pattern import gets the real module, and is
-  not reported". Workaround: import the file statically.
-- **An importer outside the scope that reaches a denied file outside it only through a pattern import or (Rsbuild) a
-  `new URL` gets the mock**, with the same warning (the scope is about importers: a denied file is judged wherever it
-  lives). A plain import from there gets the real module. `known-bugs-rejections.test.ts`: "an importer outside the
-  source directory reaching a denied file outside it only through a pattern gets the real module".
+## Accepted limits
+
+- **Root routes are not split** (R60, SPEC J2.7): their components render on every page, or on error and not-found
+  responses, where a lazy chunk only adds a round trip. `router-plugin/tests/integration/known-bugs-code-splitter-page-
+code.test.ts`: "a root route's components load with the route module" (Vite and Rspack).
+- **Pattern imports are not covered by import protection** (R142, SPEC J6.7): `import.meta.glob`, a template-literal
+  `import()`, Rsbuild's `import.meta.webpackContext` / `require.context`. A pattern importer, exempt or outside the
+  scope, gets the denied file as its plain importers make it served; with none, the mock, and a build warns once about
+  the file, naming it, its importers and the fix (import the file statically from a module that `exclude` or
+  `ignoreImporters` exempts inside the scope). `known-bugs-rejections.test.ts`: "a build warns once about each denied
+  file whose every importer is exempt or outside srcDirectory, …", "a build with the error behaviour does not fail on
+  them, and warns the same", "a dev server reports each denied file only an unchecked importer reaches".
 - **A Vite build serves a denied file reached by an exempt plain importer and an exempt pattern importer as it
   compiled it first** (a build compiles a module once; Rsbuild and the dev servers compile the file again): both get
   the mock when the pattern import came first, the real module otherwise. The build reports the shape under
@@ -142,18 +139,17 @@ bundled dev, Rsbuild build, Rsbuild dev; its controls show the same importers' p
   file, the importer that needs it, the pattern import and the fixes; only when something of the file was kept.
   `start-plugin-core/tests/integration/importProtection/served-verdict.test.ts`: "two exempt importers, the plain one
   compiled after the denied file: the %s build …" and "… the plain one compiled first: the error build fails …" (a
-  user plugin holds one importer's `load`). Not a pin: the outcome is the ruled one. With a checked pattern importer (or a checked module another plugin adds an import of the
-  file to), the importers disagree and every build fails on both hosts, whatever the order (R147; "… R147 > …" in the
-  same file).
+  user plugin holds one importer's `load`). With a checked pattern importer (or a checked module another plugin adds an
+  import of the file to), the importers disagree and every build fails on both hosts, whatever the order (R147;
+  "… R147 > …" in the same file).
 - **Vite dev: a denied file stays the real module after an edit removes the last import of the exempt importer that
   needed it, or removes an import `allowImport` allowed**, until a restart: a pattern importer gets the real module.
-  The dev server keeps every module it served, records a dropped import only after the importer's whole transform,
-  and a module requested by URL has no importer, so no signal tells that the importer is gone (design 4 final review,
-  architect ruling: a documented limit, dev only as R142 (3)). Builds, `build --watch` and the Rsbuild dev server
-  forget an importer their compilation no longer holds (`served-demand.test.ts`). Not tested.
-- **An importer outside the scope (`srcDirectory`/`include`) gets the mock of an in-scope denied file it imports.**
-  SPEC J6.7, J6.1. "an importer outside srcDirectory gets the real module of an in-scope denied file it imports, and is
-  not reported". Workaround: import the file from a module inside the scope.
+  Unlike the rejections above, this is the unsafe direction, in dev only. The dev server keeps every module it served,
+  records a dropped import only after the importer's whole transform, and a module requested by URL has no importer,
+  so no signal tells that the importer is gone (design 4 final review, architect ruling: a documented limit, dev only
+  as R142 (3); the guide's Limitations). Builds, `build --watch` and the Rsbuild dev server forget an importer their
+  compilation no longer holds (`served-demand.test.ts`). No test of the Vite dev outcome: it is the limit itself, and
+  a test would pin it.
 
 ## Fixed, kept as regression tests
 
@@ -936,7 +932,7 @@ Paths under `react-start-rsc/tests/integration/`.
 | Vite 8.3.4 dependency optimizer                                 | keeps writing `node_modules/.vite/deps_temp_*` after `close()` resolved: removing the app fails with `ENOTEMPTY`, or a write into the removed app is an unhandled rejection                                                                                          | before `close()` the Vite dev harnesses wait until each environment's optimizer has scanned and no `deps*_temp_*` directory is left (`closeViteServer` in `compiler-test-utils/src/dev-server.ts`). Remove when Vite awaits its optimizer on close.                                                                                                                                                                                                     |
 | Vite 8.3.4 dependency optimizer                                 | a late-discovered dependency changes a pre-bundled chunk's exports without changing its hash; the page fails with "does not provide an export named '<letter>'"                                                                                                      | not seen since the harness apps use `tanstackStart()` (whose framework plugins pre-bundle React at start). No workaround. If seen, re-run the file alone.                                                                                                                                                                                                                                                                                               |
 | solid-refresh 0.6.3 (Rspack HMR)                                | after a rename or a removed component, every later evaluation of the module finds the removed name in the registry it keeps in `hot.data` and calls `hot.invalidate()`; outside an update (an `import()`), Rspack's status stays `ready` and no later update applies | pinned (J3.3): `router-plugin/tests/integration/route-hmr-browser-solid-identity-rsbuild.test.ts`. Remove when solid-refresh forgets a removed name once it invalidated the module (or Rspack applies an update invalidated while idle).                                                                                                                                                                                                                |
-| Rolldown 1.2.13                                                 | `var x = 1; for (var x of [2]) {}; export { x }` (also a for-in head or `var { x } = o`): an importer of `x` gets the constant `1`                                                                                                                                   | pinned above (`.fails`)                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Rolldown 1.2.13                                                 | `var x = 1; for (var x of [2]) {}; export { x }` (also a for-in head or `var { x } = o`): an importer of `x` gets the constant `1`                                                                                                                                   | not pinned (the compiler's output is valid: the route module holds both declarations and exports the binding; webpack and Rspack read the last value). The suite no longer reaches it: the statement declaring `x` again follows `x` into the chunk when only the chunk reads it (`router-plugin/tests/integration/code-splitter-module-state.test.ts`, "… in a head or a pattern (Rolldown)")                                                          |
 | Rspack 2.3.1 lazy compilation (Rsbuild's dev default)           | a module that accepts its own updates and is loaded with `import()` evaluates again on each edit, but every later `import()` of it answers its first namespace (web-infra-dev/rspack#16594)                                                                          | worked around, temporarily (J3.3): `solid-router/src/hmr-chunk-importer.ts` and the router plugin's `chunkImporterCall` (`router-plugin/src/planners/split.ts`) make a Solid split chunk's importer answer its newest evaluation. Remove when the issue is fixed: delete the module, the planner branch and their tests (`solid-router/tests/hmr-chunk-importer.test.ts`); the browser rows of `route-hmr-browser-solid-identity-rsbuild.test.ts` stay. |
 | webpack 5.110                                                   | `export { K as "" } from './x'` (an empty export name) is read as `export *`: importers get `K`, not `""`                                                                                                                                                            | not pinned (the compiler's output is valid). Rows in `router-plugin/tests/integration/extracted-export-string-names.test.ts` skip webpack for that name.                                                                                                                                                                                                                                                                                                |
 | Rollup 4.63.1 (Vite 7)                                          | a `for (var x of …)` or `for (var x in …)` whose `x` another chunk imports renders `for (var x; of …)`: the build fails                                                                                                                                              | not pinned (the compiler's output is valid). Same for a `var` declared once.                                                                                                                                                                                                                                                                                                                                                                            |
