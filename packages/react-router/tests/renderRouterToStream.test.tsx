@@ -738,6 +738,128 @@ describe('renderRouterToStream - renderer selection and pipeable errors', () => 
     }
   })
 
+  test('onError receives a pipeable render error instead of console.error', async () => {
+    const renderError = new Error('component failed')
+    reactDomServerMocks.renderToPipeableStream.mockImplementationOnce(
+      (_children, opts) => {
+        queueMicrotask(() => opts.onShellReady())
+        return {
+          abort: vi.fn(),
+          pipe(destination: NodeJS.WritableStream) {
+            destination.write('<html><body>shell')
+            opts.onError(renderError, { componentStack: '\n    at App' })
+            destination.end('</body></html>')
+          },
+        }
+      },
+    )
+
+    const router = await buildRouter()
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const onError = vi.fn()
+    try {
+      const response = unwrapResponse(
+        await renderRouterToStream({
+          request: new Request('http://localhost/'),
+          router,
+          responseHeaders: new Headers(),
+          children: null,
+          onError,
+        }),
+      )
+
+      await expect(response.text()).resolves.toContain('shell')
+      expect(onError).toHaveBeenCalledTimes(1)
+      expect(onError).toHaveBeenCalledWith(renderError, {
+        componentStack: '\n    at App',
+      })
+      expect(errorSpy).not.toHaveBeenCalled()
+    } finally {
+      errorSpy.mockRestore()
+      router.serverSsr?.cleanup()
+    }
+  })
+
+  test('onError returns the error digest to the readable renderer', async () => {
+    const renderError = new Error('component failed')
+    let digest: unknown
+    reactDomServerMocks.renderToReadableStream = vi.fn((_children, options) => {
+      digest = options.onError?.(renderError, { componentStack: '' })
+      return Promise.resolve(
+        Object.assign(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.close()
+            },
+          }),
+          { allReady: Promise.resolve() },
+        ),
+      )
+    })
+
+    const router = await buildRouter()
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const onError = vi.fn(() => 'digest-1')
+    try {
+      const response = unwrapResponse(
+        await renderRouterToStream({
+          request: new Request('http://localhost/'),
+          router,
+          responseHeaders: new Headers(),
+          children: null,
+          onError,
+        }),
+      )
+
+      await response.text()
+      expect(onError).toHaveBeenCalledWith(renderError, { componentStack: '' })
+      expect(digest).toBe('digest-1')
+      expect(errorSpy).not.toHaveBeenCalled()
+    } finally {
+      errorSpy.mockRestore()
+      router.serverSsr?.cleanup()
+    }
+  })
+
+  test('onError is not called for a renderer cancellation after request abort', async () => {
+    const controller = new AbortController()
+    const renderError = new Error('renderer cancellation')
+    reactDomServerMocks.renderToReadableStream = vi.fn((_children, options) => {
+      controller.signal.addEventListener(
+        'abort',
+        () => options.onError?.(renderError, { componentStack: '' }),
+        { once: true },
+      )
+      return Promise.resolve(
+        Object.assign(new ReadableStream<Uint8Array>(), {
+          allReady: Promise.resolve(),
+        }),
+      )
+    })
+
+    const router = await buildRouter()
+    const onError = vi.fn()
+    try {
+      const response = unwrapResponse(
+        await renderRouterToStream({
+          request: new Request('http://localhost/', {
+            signal: controller.signal,
+          }),
+          router,
+          responseHeaders: new Headers(),
+          children: null,
+          onError,
+        }),
+      )
+
+      controller.abort(new Error('request-gone'))
+      await expectBodyRejects(response, 'request-gone')
+      expect(onError).not.toHaveBeenCalled()
+    } finally {
+      router.serverSsr?.cleanup()
+    }
+  })
+
   test('pipeable renderer cancellation does not log a render error', async () => {
     let options:
       | Parameters<typeof actualReactDomServer.renderToPipeableStream>[1]
