@@ -2476,8 +2476,13 @@ export class RouterCore<
         startViewTransitionParams = fn
       }
 
-      return (document as any).startViewTransition(startViewTransitionParams)
-        .updateCallbackDone
+      const transition = (document as any).startViewTransition(
+        startViewTransitionParams,
+      )
+      // Skipping the animation rejects ready, but still runs the route update.
+      // Keep updateCallbackDone authoritative so update failures still propagate.
+      void transition.ready.catch(() => {})
+      return transition.updateCallbackDone
     }
     return fn()
   }
