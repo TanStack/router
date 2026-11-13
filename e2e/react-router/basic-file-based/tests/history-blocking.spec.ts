@@ -156,6 +156,42 @@ for (const [direction, delta] of [
   })
 }
 
+// A plain fragment link creates its history entry without router state.
+for (const direction of ['back', 'go(-2)'] as const) {
+  test(`blocked ${direction} across a browser-created fragment entry stays put`, async ({
+    page,
+  }) => {
+    await page.goto('/history-blocking')
+    await page.getByRole('link', { name: 'Add history entry' }).click()
+    await expect(page.getByText('Step 1', { exact: true })).toBeVisible()
+    await page.getByRole('link', { name: 'Native fragment' }).click()
+    await expect(page).toHaveURL('/history-blocking?step=1#native-fragment')
+    await page.getByLabel('Draft', { exact: true }).fill('Unsaved draft')
+    const dialogs = dismissUnloadDialogs(page)
+    const originalUrl = page.url()
+    const length = await page.evaluate(() => history.length)
+
+    await page
+      .getByRole('button', { name: `History ${direction}`, exact: true })
+      .click()
+    await expect(
+      page.getByText('Blocker status: blocked', { exact: true }),
+    ).toBeVisible()
+    await page.getByRole('button', { name: 'Stay here' }).click()
+
+    await expect(
+      page.getByText('Blocker status: idle', { exact: true }),
+    ).toBeVisible()
+    await expect(page).toHaveURL(originalUrl)
+    await expect(page.getByText('Step 1', { exact: true })).toBeVisible()
+    await expect(page.getByLabel('Draft', { exact: true })).toHaveValue(
+      'Unsaved draft',
+    )
+    expect(dialogs).toEqual([])
+    expect(await page.evaluate(() => history.length)).toBe(length)
+  })
+}
+
 for (const ignoreBlocker of [false, true]) {
   test(`history go(0) ${ignoreBlocker ? 'can bypass' : 'preserves'} the reload warning`, async ({
     page,
