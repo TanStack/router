@@ -758,7 +758,7 @@ describe("an extracted export's module is a destination", () => {
     )
     expect(r2).toMatchObject([{ code: 'eager-export:state' }])
     expect(r2[0]!.message).toContain(
-      'stays in the route module because it uses `F0` when it loads, and the route module writes `F0`, so it loads with the route module instead of with that code. Use `F0` inside the code that needs it, or move both to their own module and import them from there.',
+      'stays in the route module because it uses `F0` when it loads, and the route module writes `F0` then (line 8), so it loads with the route module instead of with that code. Move it, `F0` and the statements writing them when the module loads to their own module and import them from there.',
     )
     // the fix: `F0`, its write and `r2` in a module of their own
     const fixed = new MemoryHost({
@@ -823,20 +823,19 @@ describe("an extracted export's module is a destination", () => {
   // planner 1300879, 1600380): a member of one export's module reading an
   // object before a later write that the object's own module makes (which
   // the member's module imports, so it evaluates first) is ordered against
-  // it (O): it stays, and with it what reads it and the object
+  // it (O): it stays, and with it what reads it and the object; reported
+  // once, at the member, naming the write (the export reading it is its
+  // cascade)
   it("keeps a member reading an exported object before a later write of the object's module", async () => {
-    const host = new MemoryHost({
-      files: {
-        '/app/route.tsx': dedent(`
-          import { createFileRoute } from 'toy-router'
-          export const o0 = { v: 1 }
-          const r2 = o0.p
-          o0.p = 6
-          export const r13 = [r2]
-          export const Route = createFileRoute('/')({ component: () => [r2, r13] })
-        `),
-      },
-    })
+    const source = dedent(`
+      import { createFileRoute } from 'toy-router'
+      export const o0 = { v: 1 }
+      const r2 = o0.p
+      o0.p = 6
+      export const r13 = [r2]
+      export const Route = createFileRoute('/')({ component: () => [r2, r13] })
+    `)
+    const host = new MemoryHost({ files: { '/app/route.tsx': source } })
     const planners = [
       toySplitPlanner({ keys: ['component'], extractExports: true }),
     ]
@@ -845,7 +844,15 @@ describe("an extracted export's module is a destination", () => {
     expect(out?.code).toContain(
       'export const o0 = { v: 1 }\nconst r2 = o0.p\no0.p = 6\nexport const r13 = [r2]',
     )
-    expect(out?.diagnostics).toMatchObject([{ code: 'eager-export:reads' }])
+    expect(out?.diagnostics).toMatchObject([
+      {
+        code: 'eager-split:state',
+        range: { start: source.indexOf('r2 = o0.p') },
+      },
+    ])
+    expect(out!.diagnostics[0]!.message).toBe(
+      '[tanstack-router] `r2` in /app/route.tsx stays in the route module because it uses `o0` when the module loads, and the module writes `o0` then (line 4); move `r2`, `o0` and the statements writing them when the module loads to their own module, so `r2` can load with the split `component`.',
+    )
   })
 
   // round tools class C (fuzz seeds 6104927, 6407720, 6510105, 6518119;
@@ -2716,7 +2723,8 @@ describe('extracted-export outputs', () => {
     expect(r.diagnostics).toEqual([])
   })
 
-  it('reports each exported cause with its own reason, also one another cause reads', async () => {
+  // (`options` stays only because it reads `base`: moving `base` frees it)
+  it('reports an export another export stays for, not the one reading it', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       const kept = { n: 1 }
@@ -2733,11 +2741,6 @@ describe('extracted-export outputs', () => {
         'eager-export:reads',
         code.indexOf('base = {'),
         expect.stringContaining('it reads `kept` when it loads'),
-      ],
-      [
-        'eager-export:reads',
-        code.indexOf('options = {'),
-        expect.stringContaining('it reads `base` when it loads'),
       ],
     ])
   })
