@@ -46,6 +46,7 @@
  * Import protection is on, with Start's defaults unless the test configures
  * it; it checks the modules of the source directory (`src`) only.
  */
+import { createHash } from 'node:crypto'
 import { realpathSync } from 'node:fs'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -383,9 +384,12 @@ export interface WatchStep {
    * environments the step rebuilds by cause, after the
    * others' builds of it (e.g. the server's, after a save only the client
    * bundles): the step settles once each of them began a build after every
-   * other environment's last build began, and all of them ended. Its
-   * outcome, not a moment of quiet: such a rebuild starts when a file
-   * another build wrote reaches its watcher, which takes longer under load.
+   * other environment's last build that emitted something new began, and
+   * all of them ended. Its outcome, not a moment of quiet: such a rebuild
+   * starts when a file another build wrote reaches its watcher, which takes
+   * longer under load. A build that emits what the one before emitted
+   * moves nothing a rebuild by cause embeds (e.g. a second build of one
+   * save, which Rolldown's watcher reports twice under load).
    */
   rebuilds?: ReadonlyArray<string>
 }
@@ -1074,7 +1078,8 @@ async function buildWithVite(
  * any other file it watches, e.g. one a plugin wrote meanwhile). The edits
  * written since the last settle are settled once every edited file was
  * reported, every environment that reported a file ended such a build, the
- * environments the step rebuilds by cause did (`WatchStep.rebuilds`), and
+ * environments the step rebuilds by cause did (`WatchStep.rebuilds`: what
+ * each environment's builds emit tells which builds moved its output), and
  * no watcher reported anything or began a build for `quietMs` (a file a
  * build writes reaches another environment's watcher a moment later).
  */
@@ -1091,6 +1096,10 @@ function trackViteWatch() {
     /** When its last build began and ended (`performance.now()`; -1: none yet). */
     began: number
     endedAt: number
+    /** What its last build that wrote a bundle emitted (a digest; null: none yet). */
+    emitted: string | null
+    /** When its last build that emitted something else than the one before began (-1: none yet). */
+    movedAt: number
   }
   const environments = new Map<string, EnvironmentBuilds>()
   const watchers: Array<Rolldown.RolldownWatcher> = []
@@ -1111,6 +1120,8 @@ function trackViteWatch() {
         reading: false,
         began: -1,
         endedAt: -1,
+        emitted: null,
+        movedAt: -1,
       }
       environments.set(name, state)
     }
@@ -1177,6 +1188,21 @@ function trackViteWatch() {
       state.owed = false
       state.began = lastActivity = performance.now()
     },
+    writeBundle(_options, bundle) {
+      const state = builds(this.environment.name)
+      const hash = createHash('sha1')
+      for (const output of Object.values(bundle).sort((a, b) =>
+        a.fileName < b.fileName ? -1 : 1,
+      )) {
+        hash.update(`\0${output.fileName}\0`)
+        hash.update(output.type === 'chunk' ? output.code : output.source)
+      }
+      const emitted = hash.digest('hex')
+      if (emitted !== state.emitted) {
+        state.emitted = emitted
+        state.movedAt = state.began
+      }
+    },
   }
   /** How long the watchers stay quiet before the edits count as settled. */
   const quietMs = 300
@@ -1221,8 +1247,8 @@ function trackViteWatch() {
         return (
           state.endedAt > state.began &&
           [...environments].every(
-            ([other, { began, endedAt }]) =>
-              other === name || (endedAt > began && state.began > began),
+            ([other, { began, endedAt, movedAt }]) =>
+              other === name || (endedAt > began && state.began > movedAt),
           )
         )
       }
