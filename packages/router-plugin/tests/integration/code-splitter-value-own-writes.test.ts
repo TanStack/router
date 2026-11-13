@@ -7,7 +7,10 @@
  * split already). Another reader keeps the option in place, wherever it
  * evaluates: one in a module two chunks share too, which would otherwise
  * import the state from the component's chunk while that chunk imports it
- * (REVIEW design 2 final, finding 2). Real builds, mounted in a DOM.
+ * (REVIEW design 2 final, finding 2). The fixes the warning offers, applied:
+ * the state in an object, or in a module of its own that exports the
+ * function writing it (two options writing it too). Real builds, mounted in
+ * a DOM.
  */
 import { describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
@@ -20,6 +23,7 @@ async function buildRoute(
   route: string,
   /** Split groupings (`codeSplittingOptions.defaultBehavior`). */
   groupings?: Array<Array<'loader' | 'component'>>,
+  files: Record<string, string> = {},
 ) {
   const app = await build({
     bundler,
@@ -33,6 +37,7 @@ async function buildRoute(
       files: {
         'entry.ts': clientMountEntry,
         'registry.ts': 'export const registry = { count: 0 }\n',
+        ...files,
       },
     }),
   })
@@ -54,6 +59,10 @@ async function buildRoute(
     await app.dispose()
   }
 }
+
+/** A module of its own holding the state, with the function writing it. */
+const initModule =
+  'export let didInit = false\nexport function init() { didInit = true }\n'
 
 const route = (decls: string, options: string) =>
   `${head}import { memo } from 'react'
@@ -173,6 +182,60 @@ const flags = [n]
     timeout,
   )
 
+  // the other fix offered below: the state in a module of its own that
+  // exports the function writing it (the chunk assigning the imported `let`
+  // itself would assign a read-only import)
+  test(
+    'splits it when the state the route module reads is in a module of its own that exports the function writing it (the fix offered below)',
+    async () => {
+      const r = await buildRoute(
+        bundler,
+        route(
+          "import { didInit, init } from '../init'",
+          '  beforeLoad: () => didInit,\n  component: memo(function Page() { if (!didInit) { init() } return <p>MARK_PAGE{String(didInit)}</p> }),',
+        ),
+        undefined,
+        { 'init.ts': initModule },
+      )
+      expect(r.where).toBe('lazy')
+      expect(r.text).toBe('MARK_PAGEtrue')
+      expect(r.warnings).toEqual([])
+    },
+    timeout,
+  )
+
+  // two split options writing one `let` (`multi-writer`): both stay, and
+  // the same fix splits them
+  test(
+    'keeps two options writing one `let` in place, and the state in a module of its own that exports the function writing it splits them',
+    async () => {
+      const kept = await buildRoute(
+        bundler,
+        route(
+          'let didInit = false',
+          '  loader: () => { didInit = true; return null },\n  component: memo(function Page() { didInit = true; return <p>MARK_PAGE{String(didInit)}</p> }),',
+        ),
+        [['loader'], ['component']],
+      )
+      expect(kept.where).toBe('eager')
+      expect(kept.text).toBe('MARK_PAGEtrue')
+      expect(kept.warnings).toHaveLength(2)
+      const fixed = await buildRoute(
+        bundler,
+        route(
+          "import { didInit, init } from '../init'",
+          '  loader: () => { init(); return null },\n  component: memo(function Page() { init(); return <p>MARK_PAGE{String(didInit)}</p> }),',
+        ),
+        [['loader'], ['component']],
+        { 'init.ts': initModule },
+      )
+      expect(fixed.where).toBe('lazy')
+      expect(fixed.text).toBe('MARK_PAGEtrue')
+      expect(fixed.warnings).toEqual([])
+    },
+    timeout,
+  )
+
   test(
     'keeps it in place when other code reads the state (control)',
     async () => {
@@ -187,7 +250,7 @@ const flags = [n]
       expect(r.text).toBe('MARK_PAGEtrue')
       expect(r.warnings).toHaveLength(1)
       expect(r.warnings[0]).toContain(
-        'The `component` option of routes/index.tsx is not code-split: it writes `didInit`, which the route module also uses, and a split chunk cannot write a binding of another module. Keep that state in an object (`state.didInit`) or in its own module.',
+        'The `component` option of routes/index.tsx is not code-split: it writes `didInit`, which the route module also uses, and a split chunk cannot write a binding of another module. Keep that state in an object (`state.didInit`), or in a module of its own that also exports the functions writing it.',
       )
     },
     timeout,
