@@ -219,7 +219,7 @@ function computeDynamicImports(chunk: RspackCompilationChunk): Array<string> {
 function computeStaticDependencyChunks(
   compilation: RspackCompilation,
   chunk: RspackCompilationChunk,
-  chunksOfModule: (module: RspackModule) => Array<RspackCompilationChunk>,
+  graph: CompilationGraph,
 ): Array<RspackCompilationChunk> {
   const importedChunks: Array<RspackCompilationChunk> = []
   const seen = new Set<RspackCompilationChunk>([chunk])
@@ -264,15 +264,8 @@ function computeStaticDependencyChunks(
   // leaves the module to a later active one).
   const counted = new Set<RspackModule>()
   for (const module of modules) {
-    for (const dependency of module.dependencies) {
-      const connection = compilation.moduleGraph.getConnection(dependency)
-      const importedModule = connection?.module
-      if (
-        !connection ||
-        !importedModule ||
-        localModules.has(importedModule) ||
-        counted.has(importedModule)
-      ) {
+    for (const { importedModule, connection } of graph.importsOf(module)) {
+      if (localModules.has(importedModule) || counted.has(importedModule)) {
         continue
       }
       if (connection.getActiveState(runtime) === false) {
@@ -280,7 +273,7 @@ function computeStaticDependencyChunks(
       }
       counted.add(importedModule)
 
-      for (const importedChunk of chunksOfModule(importedModule)) {
+      for (const importedChunk of graph.chunksOf(importedModule)) {
         if (availableChunks.has(importedChunk) && !seen.has(importedChunk)) {
           seen.add(importedChunk)
           importedChunks.push(importedChunk)
@@ -297,40 +290,61 @@ type GetStaticDependencyChunks = (
 ) => Array<RspackCompilationChunk>
 
 /**
+ * What the static dependency resolution reads from Rspack's graphs, read once
+ * per module: a module is in several chunks and imported from many.
+ */
+interface CompilationGraph {
+  /** The module's static dependencies that resolved to a module, in order. */
+  importsOf: (module: RspackModule) => Array<{
+    importedModule: RspackModule
+    connection: Rspack.ModuleGraphConnection
+  }>
+  chunksOf: (module: RspackModule) => Array<RspackCompilationChunk>
+}
+
+function memoize<TKey, TValue>(
+  read: (key: TKey) => TValue,
+): (key: TKey) => TValue {
+  const values = new Map<TKey, TValue>()
+  return (key) => {
+    let value = values.get(key)
+    if (value === undefined) {
+      value = read(key)
+      values.set(key, value)
+    }
+    return value
+  }
+}
+
+/**
  * Memoize static dependency resolution per chunk. Every chunk is resolved once
  * for its own `imports`, and CSS-only chunks are resolved again from each
- * importer that reaches them. A module's chunks are read once, for every chunk
- * that imports it. Both memos live as long as the resolver, which is created
- * per normalized compilation.
+ * importer that reaches them. The memos live as long as the resolver, which is
+ * created per normalized compilation.
  */
 function createStaticDependencyChunkResolver(
   compilation: RspackCompilation,
 ): GetStaticDependencyChunks {
-  const cache = new Map<RspackCompilationChunk, Array<RspackCompilationChunk>>()
-  const moduleChunks = new Map<RspackModule, Array<RspackCompilationChunk>>()
-  const chunksOfModule = (module: RspackModule) => {
-    let chunks = moduleChunks.get(module)
-    if (!chunks) {
-      chunks = Array.from(
-        compilation.chunkGraph.getModuleChunksIterable(module),
-      )
-      moduleChunks.set(module, chunks)
-    }
-    return chunks
+  const graph: CompilationGraph = {
+    importsOf: memoize((module) => {
+      const imports: ReturnType<CompilationGraph['importsOf']> = []
+      for (const dependency of module.dependencies) {
+        const connection = compilation.moduleGraph.getConnection(dependency)
+        const importedModule = connection?.module
+        if (connection && importedModule) {
+          imports.push({ importedModule, connection })
+        }
+      }
+      return imports
+    }),
+    chunksOf: memoize((module) =>
+      Array.from(compilation.chunkGraph.getModuleChunksIterable(module)),
+    ),
   }
 
-  return (chunk) => {
-    let importedChunks = cache.get(chunk)
-    if (!importedChunks) {
-      importedChunks = computeStaticDependencyChunks(
-        compilation,
-        chunk,
-        chunksOfModule,
-      )
-      cache.set(chunk, importedChunks)
-    }
-    return importedChunks
-  }
+  return memoize((chunk) =>
+    computeStaticDependencyChunks(compilation, chunk, graph),
+  )
 }
 
 /**
