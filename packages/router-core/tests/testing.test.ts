@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute } from '../src'
+import { BaseRootRoute, BaseRoute, notFound } from '../src'
 import {
   assertIsolatedRouteLoaded,
   assertRouteTestParams,
@@ -42,9 +42,20 @@ function createTree() {
   const postRoute = new BaseRoute({
     getParentRoute: () => layoutRoute,
     path: '/posts/$postId',
+    params: {
+      parse: (params: { postId: string }) => {
+        if (params.postId === 'missing') {
+          throw notFound()
+        }
+        return params
+      },
+    },
     validateSearch: (search: Record<string, unknown>) => {
       if (search.tab === 'broken') {
         throw new Error('Unknown tab')
+      }
+      if (search.tab === 'missing') {
+        throw notFound()
       }
       return { tab: (search.tab as string | undefined) ?? 'details' }
     },
@@ -574,6 +585,25 @@ describe('createIsolatedTestRouterWith', () => {
         search: { tab: 'broken' },
       }),
     ).rejects.toThrow('Unknown tab')
+    await expect(
+      createIsolatedTestRouterWith(createRouterCore, {
+        ...base,
+        route: '/layout/posts/$postId',
+        params: { postId: 'missing' },
+      }),
+    ).rejects.toThrow(
+      'The route "/layout/posts/$postId" threw notFound() while parsing its path params at "/posts/missing".',
+    )
+    await expect(
+      createIsolatedTestRouterWith(createRouterCore, {
+        ...base,
+        route: '/layout/posts/$postId',
+        params: { postId: '1' },
+        search: { tab: 'missing' },
+      }),
+    ).rejects.toThrow(
+      'The route "/layout/posts/$postId" threw notFound() while validating its search params at "/posts/1?tab=missing".',
+    )
     await expect(
       createIsolatedTestRouterWith(createRouterCore, {
         ...base,

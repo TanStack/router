@@ -9,7 +9,7 @@ The `createTestRouter` function creates a [`Router`](./RouterType.md) for a test
 
 ## createTestRouter options
 
-The `createTestRouter` function accepts the [`RouterOptions`](./RouterOptionsType.md) that [`createRouter`](./createRouterFunction.md) accepts, plus the following properties.
+The `createTestRouter` function accepts the [`RouterOptions`](./RouterOptionsType.md) that [`createRouter`](./createRouterFunction.md) accepts, plus the following properties. It does not support the deprecated `notFoundRoute` option: give the root route a `notFoundComponent` instead.
 
 ### `routeTree` property
 

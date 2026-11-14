@@ -229,6 +229,11 @@ export type TestRouterOptions<
    * options.
    */
   overrides?: RouteTestOverrides<TRouteTree, TComponents>
+  /**
+   * Not supported: the option is deprecated. Give the root route a
+   * `notFoundComponent` instead.
+   */
+  notFoundRoute?: never
 }
 
 /**
@@ -255,6 +260,11 @@ export type IsolatedTestRouterOptions<
   routeTree: TRouteTree
   /** The element under test. It renders in place of the route's component. */
   element: TElement
+  /**
+   * Not supported: the option is deprecated. Give the root route a
+   * `notFoundComponent` instead.
+   */
+  notFoundRoute?: never
   // Checked here rather than in a constraint on `TId`: with a constraint,
   // TypeScript widens a constant such as `rootRouteId` while inferring.
   route: ConstrainLiteral<TId, RouteIds<TRouteTree>>

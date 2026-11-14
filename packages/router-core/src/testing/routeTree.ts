@@ -1,4 +1,5 @@
 import { SEGMENT_TYPE_PARAM } from '../new-process-route-tree'
+import { isNotFound } from '../not-found'
 import type { AnyRoute } from '../route'
 import type { AnyRouter } from '../router'
 
@@ -293,9 +294,10 @@ export function assertRouteTestParams(
 }
 
 /**
- * Throws when an isolated route test did not end up where the test asked:
- * the target route is not matched, or a match failed, for example because
- * the search params did not pass the route's `validateSearch`.
+ * Throws when an isolated route test did not end up where the test asked: a
+ * route threw `notFound()` or failed to load, for example because the search
+ * params did not pass its `validateSearch`, or the target route is not
+ * matched.
  */
 export function assertIsolatedRouteLoaded(
   router: AnyRouter,
@@ -305,7 +307,24 @@ export function assertIsolatedRouteLoaded(
   const href = router.state.location.href
 
   for (const match of matches) {
+    if (match.status === 'notFound') {
+      const step = isNotFound(match.paramsError)
+        ? ' while parsing its path params'
+        : ''
+      throw new Error(
+        `The route "${match.routeId}" threw notFound()${step} at "${href}".`,
+        { cause: match.error },
+      )
+    }
     if (match.status === 'error') {
+      // A `notFound()` from `validateSearch` arrives wrapped in a
+      // `SearchParamError` without a message, and the match fails.
+      if (isNotFound((match.searchError as Error | undefined)?.cause)) {
+        throw new Error(
+          `The route "${match.routeId}" threw notFound() while validating its search params at "${href}".`,
+          { cause: match.error },
+        )
+      }
       throw match.error instanceof Error
         ? match.error
         : new Error(

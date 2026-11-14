@@ -38,6 +38,14 @@ export interface AnyIsolatedTestRouterOptions {
   [option: string]: unknown
 }
 
+function assertNoNotFoundRoute(notFoundRoute: unknown): void {
+  if (notFoundRoute !== undefined) {
+    throw new Error(
+      'Test routers do not support the deprecated "notFoundRoute" option. Give the root route a "notFoundComponent" instead.',
+    )
+  }
+}
+
 /**
  * The framework-independent part of `createTestRouter`. Framework packages
  * call it with their own `createRouter` and declare the typed signature.
@@ -50,6 +58,7 @@ export function createTestRouterWith<TRouter extends AnyRouter>(
   createRouter: TestRouterFactory<TRouter>,
   options: AnyTestRouterOptions,
 ): TRouter {
+  assertNoNotFoundRoute(options.notFoundRoute)
   const { routeTree, location, overrides, history, ...routerOptions } = options
   const router = createRouter({
     ...routerOptions,
@@ -77,6 +86,7 @@ export async function createIsolatedTestRouterWith<TRouter extends AnyRouter>(
   createRouter: TestRouterFactory<TRouter>,
   options: AnyIsolatedTestRouterOptions,
 ): Promise<TRouter> {
+  assertNoNotFoundRoute(options.notFoundRoute)
   const {
     routeTree,
     component,

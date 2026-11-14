@@ -11,7 +11,7 @@ No `context`, `beforeLoad` or `loader` option of any route runs, no route compon
 
 ## createIsolatedTestRouter options
 
-The `createIsolatedTestRouter` function accepts the following properties, plus the [`RouterOptions`](./RouterOptionsType.md) that [`createRouter`](./createRouterFunction.md) accepts, except `history`, `context` and `search`. It leaves out `defaultComponent`, `defaultPendingComponent`, `defaultErrorComponent` and `defaultNotFoundComponent`, and sets `disableGlobalCatchBoundary`.
+The `createIsolatedTestRouter` function accepts the following properties, plus the [`RouterOptions`](./RouterOptionsType.md) that [`createRouter`](./createRouterFunction.md) accepts, except `history`, `context`, `search` and the deprecated `notFoundRoute`, which test routers do not support. It leaves out `defaultComponent`, `defaultPendingComponent`, `defaultErrorComponent` and `defaultNotFoundComponent`, and sets `disableGlobalCatchBoundary`.
 
 ### `routeTree` property
 
@@ -56,7 +56,7 @@ The `createIsolatedTestRouter` function accepts the following properties, plus t
 
 - A promise of a [`Router`](./RouterType.md) typed with the route tree. It resolves once the router has loaded, so the first render of `<RouterProvider router={router} />` is complete.
 
-The promise rejects when `route` does not exist, when a path param is missing, when a route on the way to `route` fails to load (for example because `validateSearch` rejects the search params), and when the location of `route` does not lead to it, as for a pathless layout route.
+The promise rejects when `route` does not exist, when a path param is missing, when a route on the way to `route` fails to load (for example because its `validateSearch` rejects the search params, or its `params.parse` or `validateSearch` throws `notFound()`), and when the location of `route` does not lead to it, as for a pathless layout route.
 
 ## Types
 

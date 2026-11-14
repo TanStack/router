@@ -223,7 +223,7 @@ At run time, `createIsolatedTestRouter` rejects with a message when:
 
 - `route` is not a route of the tree,
 - a path param is missing,
-- a route on the way to `route` fails to load, for example because its `validateSearch` rejects the search params,
+- a route on the way to `route` fails to load, for example because its `validateSearch` rejects the search params, or its `params.parse` or `validateSearch` throws `notFound()`,
 - the location of the route does not lead to it. A pathless layout route has no location of its own: render the element in one of its child routes, and read the layout's state with `getRouteApi('/_layout')`.
 
 ## Share state across tests
@@ -265,6 +265,8 @@ const router = createTestRouter({
   ),
 })
 ```
+
+Neither function supports the deprecated `notFoundRoute` option: give the root route a `notFoundComponent` instead.
 
 `createIsolatedTestRouter` leaves out `defaultComponent`, `defaultPendingComponent`, `defaultErrorComponent` and `defaultNotFoundComponent`, and turns off the router's global error boundary, so the router does not catch an error that the element throws. It creates its own history and sets its location from `route`, `params` and `search`; its `search` is the route's search params, not the router option of that name.
 
