@@ -218,6 +218,31 @@ export const Route = createFileRoute('/')({
     expect(await route.run('return options.loader()')).toBe('page')
     expect(await route.requested()).not.toContain('/secret.ts')
   })
+
+  // A top-level statement is never deleted with a binding only a deleted
+  // option read: whether writing it changes something else (here the
+  // document) has no syntactic answer. Source: the erasure review's
+  // deleteNodes probe (review-erasure-deletion-bounded.md section 6).
+  it('keep a top-level statement writing a binding only they read', async () => {
+    const route = await loadRoute(
+      `${head}const root = document.documentElement
+root.dataset.caseTheme = 'dark'
+export const Route = createFileRoute('/x')({
+  component: () => <p>MARK_PAGE</p>,
+  ssr: () => root.dataset.caseTheme === 'dark',
+})
+`,
+      { routeId: '/x', deleteNodes: ['ssr'], fresh: true },
+    )
+    await expectValidModules(route)
+    const [ssr, html, theme] = await route.run<[boolean, string, unknown]>(
+      `const html = await renderRoute()
+return ['ssr' in options, html, document.documentElement.dataset.caseTheme ?? null]`,
+    )
+    expect(ssr).toBe(false)
+    expect(html).toContain('MARK_PAGE')
+    expect(theme).toBe('dark')
+  })
 })
 
 describe('route options given by reference', () => {

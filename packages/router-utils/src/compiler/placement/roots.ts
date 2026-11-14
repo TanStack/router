@@ -228,6 +228,34 @@ export function seedRoots(
     pinned.set(c, g.home)
   }
 
+  // ---- provenance: clusters reachable in G0 from erased reads -------------
+  const erasedSeeds = new Set<ClusterId>()
+  for (const part of graph.viewOf('env').erasedParts()) {
+    for (const ref of refs.refsIn(part)) {
+      // a write names the binding too: an initialiser only an erased
+      // handler assigns is orphaned with it
+      if (!NEED_KINDS.has(ref.kind) || !symbols.isModuleLevel(ref.sym)) {
+        continue
+      }
+      const d = clusterOfSym.get(ref.sym)
+      if (d !== undefined) {
+        erasedSeeds.add(d)
+      }
+    }
+  }
+  const fromErased = new Set<ClusterId>()
+  const work = [...erasedSeeds]
+  while (work.length > 0) {
+    const c = work.pop()!
+    if (fromErased.has(c)) {
+      continue
+    }
+    fromErased.add(c)
+    for (const d of reads.successors(c, 'env', false)) {
+      work.push(d)
+    }
+  }
+
   // ---- roots -----------------------------------------------------------------
   const rootCluster = (r: RootRef): ClusterId | undefined => {
     switch (r.t) {
@@ -249,9 +277,14 @@ export function seedRoots(
     const c = clusterOfRegion.get(u.region)!
     if (u.kind === 'effect' || u.kind === 'import-effect') {
       // an augmentation of its own declaration cluster is decided with the
-      // cluster (movable, else an effect root when roots settle); a bare
-      // statement of an unexported cluster may follow what it uses
-      if (!graph.ownAugmentations.has(u.id)) {
+      // cluster (movable, else an effect root when roots settle), but where
+      // erased text reaches the cluster: a top-level statement is never
+      // deleted with what only erased code read (whether it changes only
+      // that binding has no syntactic answer: another name for another
+      // module's object, a setter, a call in the value), it stays a
+      // statement like any other; a bare statement of an unexported cluster
+      // may follow what it uses
+      if (!graph.ownAugmentations.has(u.id) || fromErased.has(c)) {
         if (
           u.kind === 'effect' &&
           u.node.type !== 'TSExportAssignment' &&
@@ -323,34 +356,6 @@ export function seedRoots(
         derivedRoots.set(g.home, set)
       }
       set.add(clusterOfGen.get(g.id)!)
-    }
-  }
-
-  // ---- provenance: clusters reachable in G0 from erased reads -------------
-  const erasedSeeds = new Set<ClusterId>()
-  for (const part of graph.viewOf('env').erasedParts()) {
-    for (const ref of refs.refsIn(part)) {
-      // a write names the binding too: an initialiser only an erased
-      // handler assigns is orphaned with it
-      if (!NEED_KINDS.has(ref.kind) || !symbols.isModuleLevel(ref.sym)) {
-        continue
-      }
-      const d = clusterOfSym.get(ref.sym)
-      if (d !== undefined) {
-        erasedSeeds.add(d)
-      }
-    }
-  }
-  const fromErased = new Set<ClusterId>()
-  const work = [...erasedSeeds]
-  while (work.length > 0) {
-    const c = work.pop()!
-    if (fromErased.has(c)) {
-      continue
-    }
-    fromErased.add(c)
-    for (const d of reads.successors(c, 'env', false)) {
-      work.push(d)
     }
   }
 

@@ -150,7 +150,10 @@ extends Z`, directly or through what they carry) share the module of the first i
   the binding through the route file, or the bundler's chunk assignment put a module the route's chunks import with
   the entry);
 - **dead code, by provenance**: a declaration or import specifier is removed only if _our_ edits orphaned it (its
-  readers disappeared because a planner removed or moved them). Code already unreferenced in the source keeps
+  readers disappeared because a planner removed or moved them). A top-level statement that is no declaration (`x.p =
+v`, `x.push(v)`, `x = v`) is never removed with what only erased code read: it stays a root of the env module with
+  everything it names (`roots.ts`), as main kept it, since whether it changes only that binding has no syntactic
+  answer (another name for another module's object, a setter, a call in the value). Code already unreferenced in the source keeps
   running: an import nothing reads stays in the env module, so its module still evaluates there (a value import a
   route module uses only in type positions leaves it: TypeScript erases it anyway). Type units stay in the env module
   as written whatever their cluster (`import type { X }` next to a value `X` that moves stays whole and type-only),

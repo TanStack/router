@@ -355,15 +355,15 @@ export const register = (name: string) => name
     expect(provider).toContain('db.q()')
   })
 
-  // Recheck ruling E (R149 on the server): a top-level write to a binding
-  // only a handler reads goes with that binding, into the provider module
-  // only; the env module, where the handler is a stub, holds neither.
+  // A top-level write to a binding only a handler reads is a statement:
+  // the env module, where the handler is a stub, keeps it and the binding
+  // (as main does); the provider module holds them with its handler.
   it.each([
     ['a method call', `cache.set('warm', 1)`],
     ['an assignment', `cache.warm = 1`],
     ['the server fn stored', `cache.set('warm', fn)`],
   ])(
-    'writes state only a handler reads with %s in the provider module only',
+    'keeps a write to state only a handler reads with %s, in both modules',
     async (_name, write) => {
       const r = await compile(
         `import { createServerFn } from '@tanstack/react-start'
@@ -376,7 +376,9 @@ ${write}
       )
       expectValid(r.code)
       expect(r.out.diagnostics).toEqual([])
-      expect(r.code).not.toContain('cache')
+      expect(r.code).toContain('const cache = new Map()')
+      expect(r.code).toContain(write)
+      expect(r.code).not.toContain('db')
       const provider = await r.derived(PROVIDER)
       expectValid(provider)
       expect(provider).toContain('const cache = new Map()')
