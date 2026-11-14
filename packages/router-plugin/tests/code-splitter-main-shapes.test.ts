@@ -8,7 +8,11 @@
  * fixtures and spec-main-splitting.md §1.5-1.7.
  */
 import { describe, expect, it } from 'vitest'
-import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  diagnosticPosition,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
+import { expectNoProblems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { expectValidModules, head, loadRoute } from './route-app'
 
 /** `track(name)` records each call and returns a fresh object (`seen()`). */
@@ -883,4 +887,153 @@ export const Route = createFileRoute('/')({
       ).toEqual(values)
     },
   )
+})
+
+// Better than `main` (#8623, #8688): a method is split as a function
+// expression with the same body is; a function value whose own `this` or
+// `super` its body uses stays in the route module, where the router calls
+// it as a method of the route options, and the build warns at the option
+// (its wording: code-splitter-guide.test.ts).
+describe('method shorthand and `this` (#8623, #8688)', () => {
+  it('splits a component written as a method and renders it', async () => {
+    const route = await loadRoute(
+      `${head}export const Route = createFileRoute('/')({
+  component() {
+    return <p>page</p>
+  },
+})
+`,
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
+    expectNoProblems(await route.diagnostics())
+  })
+
+  it.each([
+    { name: 'a method', loader: 'loader() { return 1 }', value: 1 },
+    {
+      name: 'an async method',
+      loader: 'async loader() { return 2 }',
+      value: 2,
+    },
+    {
+      name: 'a method whose nested function has its own `this`',
+      loader: 'loader() { return [1].map(function () { return typeof this }) }',
+      value: ['undefined'],
+    },
+    {
+      name: 'a method whose nested class has its own `this`',
+      loader:
+        'loader() { class A { m() { return this } } const a = new A(); return a.m() === a }',
+      value: true,
+    },
+  ])(
+    'splits a loader written as $name and runs it',
+    async ({ loader, value }) => {
+      const route = await loadRoute(
+        `${head}export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['loader']],
+  ${loader},
+})
+`,
+      )
+      await expectValidModules(route)
+      expect(await route.isLazy('loader')).toBe(true)
+      expect(await route.run(`return await options.loader()`)).toEqual(value)
+      expectNoProblems(await route.diagnostics())
+    },
+  )
+
+  it.each([
+    {
+      name: 'a method reading `this`',
+      loader: 'loader() { return this.label }',
+      call: 'return await options.loader()',
+      value: 'options',
+    },
+    {
+      name: 'a method whose arrow function reads its `this`',
+      loader: 'loader() { return () => this }',
+      call: 'return (await options.loader())() === options',
+      value: true,
+    },
+    {
+      name: 'a method reading `super`',
+      loader: 'loader() { return super.constructor === Object }',
+      call: 'return await options.loader()',
+      value: true,
+    },
+    {
+      name: 'a function expression reading `this`',
+      loader: 'loader: function () { return this.label }',
+      call: 'return await options.loader()',
+      value: 'options',
+    },
+  ])(
+    'keeps a loader written as $name in the route module, working, and warns once at it',
+    async ({ loader, call, value }) => {
+      const code = `${head}export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['loader']],
+  label: 'options',
+  ${loader},
+})
+`
+      const route = await loadRoute(code)
+      await expectValidModules(route)
+      expect(await route.isLazy('loader')).toBe(false)
+      expect(await route.run(call)).toEqual(value)
+      expectDiagnostic(await route.diagnostics(), {
+        severity: 'warning',
+        file: route.url.slice(1),
+        root: route.host.root,
+        position: diagnosticPosition(code, loader),
+        times: 1,
+      })
+    },
+  )
+
+  it('keeps a component function expression reading `this` in the route module, and warns once at it', async () => {
+    const code = `${head}export const Route = createFileRoute('/')({
+  component: function () {
+    return <p>{typeof this}</p>
+  },
+})
+`
+    const route = await loadRoute(code)
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(false)
+    expect(await route.run(`return render('component')`)).toBe(
+      '<p>undefined</p>',
+    )
+    expectDiagnostic(await route.diagnostics(), {
+      severity: 'warning',
+      file: route.url.slice(1),
+      root: route.host.root,
+      position: diagnosticPosition(code, 'component: function'),
+      times: 1,
+    })
+  })
+
+  it('splits a component and an errorComponent written as methods into one group', async () => {
+    const route = await loadRoute(
+      `${head}export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['component', 'errorComponent']],
+  component() {
+    return <p>page</p>
+  },
+  errorComponent() {
+    return <p>error</p>
+  },
+})
+`,
+    )
+    await expectValidModules(route)
+    expect(await route.groups()).toEqual([['component', 'errorComponent']])
+    expect(
+      await route.run(
+        `return [await render('component'), await render('errorComponent')]`,
+      ),
+    ).toEqual(['<p>page</p>', '<p>error</p>'])
+  })
 })

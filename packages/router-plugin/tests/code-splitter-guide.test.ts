@@ -144,6 +144,29 @@ export const Route = createFileRoute('/keys')({
   })
 })
 
+describe('the code-splitting guide: what stays in the route file', () => {
+  it('a method that uses `this`', async () => {
+    const code = `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts')({
+  codeSplitGroupings: [['loader'], ['component']],
+  staticData: { title: 'Posts' },
+  // ❌ stays in the route file
+  loader() {
+    return this.staticData.title
+  },
+})
+`
+    const { built, warnings } = await production('posts', code)
+    // (the bundler prefixes its plugin's name and appends the position)
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toContain(
+      "[tanstack-router] The `loader` option of src/routes/posts.tsx is not code-split because it uses `this`: split, it would no longer be called on the route options. Write it as an arrow function, or don't rely on `this`.",
+    )
+    expect(built.where('this.staticData.title')).toBe('eager')
+  })
+})
+
 /** The app modules the examples import. */
 const app: Record<string, string> = {
   'src/confetti.ts': `export class Confetti {

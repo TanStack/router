@@ -117,6 +117,33 @@ export const Route = createFileRoute('/')({
     },
   )
 
+  // #8623: a component written as a method is split like a function
+  // expression (and hoisted like one when nothing is split)
+  test.for([false, true])(
+    'written as a method: an edit shows in place without mounting it again (autoCodeSplitting: %s)',
+    async (autoCodeSplitting, context: TestContext) => {
+      await expectEditInPlace(
+        {
+          file: 'routes/index.tsx',
+          route: (version) =>
+            `import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+export const Route = createFileRoute('/')({
+  component() {
+    ${countMounts('page')}
+    return <p>method ${version}</p>
+  },
+})
+`,
+          shows: (version) => `method ${version}`,
+          autoCodeSplitting,
+          splits: autoCodeSplitting,
+        },
+        context,
+      )
+    },
+  )
+
   // Every component option of a root route at once, each its own
   // component: the edit shows each one's new code, and the root component
   // keeps its state. The page is at a path no route matches, so the root's

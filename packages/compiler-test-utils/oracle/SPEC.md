@@ -464,8 +464,11 @@ dir)` is not a conflict by itself.
   provably holds none of them doesn't warn: a spread of a module object literal of static keys that only it reads, a
   computed key naming a module string const. Options that can't be read at all may be one object shared across
   evaluations, which the route adopts: an edit of the route file reloads the page.
-- **J2.9 Other shapes.** Method-shorthand options, accessors, spreads and computed option keys stay in the route
-  module as written, as on main (J1.9). Initialiser timing of shared bindings is free: run once, same value
+- **J2.9 Other shapes.** A method-shorthand option (`loader() {…}`, `async`, generator) is split as the function
+  expression with its body would be (#8623). A function expression or method whose own `this` or `super` its body uses
+  (its arrow functions included; not a nested non-arrow function, method, class field initialiser or static block)
+  stays in the route module as written, and the build warns once at the property, naming the fix (#8688). Accessors,
+  spreads and computed option keys stay in the route module as written, as on main (J1.9). Initialiser timing of shared bindings is free: run once, same value
   everywhere.
 - **J2.10 Same-file route factory** (§2.2). A correct split (renders, hot-updates), or unsplit plus a warning naming
   the file, in every mode; crashes or rendering the wrong component are bugs.

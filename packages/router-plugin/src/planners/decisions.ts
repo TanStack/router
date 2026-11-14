@@ -22,7 +22,7 @@ import type {
 } from '@tanstack/router-utils/compiler'
 import type { Node } from 'yuku'
 
-type SplitShape = 'init' | 'shorthand'
+type SplitShape = 'init' | 'shorthand' | 'method'
 
 export interface SplitDecision {
   /** The route option (`component`, `loader`, …). */
@@ -30,10 +30,15 @@ export interface SplitDecision {
   /** `component`, `component~loader`: the chunk's owned query value. */
   groupKey: string
   shape: SplitShape
-  /** The region claimed by the chunk (replaced by the lazy wrapper in the route module). */
+  /**
+   * The region claimed by the chunk (replaced by the lazy wrapper in the
+   * route module); a method's: its function, from its parameters on.
+   */
   region: Range
-  /** The value node. */
+  /** The value node (a method's function). */
   valueNode: Node
+  /** The property (`loader() {…}`, `component: …`). */
+  property: Range
   /** The key as written, for whole-property placeholders (`component: …`). */
   keyText: string
   /** Whether the placeholder replaces the whole property (shorthand). */
@@ -277,10 +282,13 @@ export function splitPlanOf(
       if (!SPLITTABLE_KEYS.includes(key) || deleteNodes.has(key)) {
         continue
       }
-      // a plain property (`key: value`, `{ key }`): a method, an accessor, a
-      // spread or a computed key stays as written, as on `main`
+      // a plain property (`key: value`, `{ key }`) or a method, split as
+      // the function expression with its body would be (#8623); an
+      // accessor, a spread or a computed key stays as written, as on `main`
       const option = route.props.find(
-        (p) => p.key === key && (p.kind === 'init' || p.kind === 'shorthand'),
+        (p) =>
+          p.key === key &&
+          (p.kind === 'init' || p.kind === 'shorthand' || p.kind === 'method'),
       )
       if (!option || option.value === null) {
         continue
@@ -303,11 +311,25 @@ export function splitPlanOf(
       ) {
         continue
       }
-      const shorthand = option.kind === 'shorthand'
       // the chunk claims and declares the bare value (so React Refresh
       // registers a function); a cast around it stays in the route module,
       // around the placeholder (`lazyFn(…) as any`)
       const inner = unwrapExpression(value)
+      const own = ownThisOf(ctx, inner)
+      if (own !== null) {
+        warnings.push({
+          severity: 'warning',
+          code: 'split-this',
+          by: ROUTER_PLANNER,
+          message:
+            own === 'this'
+              ? `[tanstack-router] The \`${key}\` option of ${file} is not code-split because it uses \`this\`: split, it would no longer be called on the route options. Write it as an arrow function, or don't rely on \`this\`.`
+              : `[tanstack-router] The \`${key}\` option of ${file} is not code-split because it uses \`super\`: split, it would no longer be a method of the route options. Don't use \`super\` in it.`,
+          range: { start: option.prop.start, end: option.prop.end },
+        })
+        continue
+      }
+      const shorthand = option.kind === 'shorthand'
       const region = shorthand
         ? { start: option.prop.start, end: option.prop.end }
         : { start: inner.start, end: inner.end }
@@ -328,9 +350,14 @@ export function splitPlanOf(
       decisions.push({
         key,
         groupKey,
-        shape: shorthand ? 'shorthand' : 'init',
+        shape: shorthand
+          ? 'shorthand'
+          : option.kind === 'method'
+            ? 'method'
+            : 'init',
         region,
         valueNode: value,
+        property: { start: option.prop.start, end: option.prop.end },
         keyText: option.keyText,
         wholeProperty: shorthand,
         shorthandSym: shorthand ? valueSym : null,
@@ -487,6 +514,51 @@ export function splitOnMain(ctx: PlanContext, value: Node): boolean {
 }
 
 /**
+ * Whether a function value (a function expression, a method's function)
+ * uses its own `this` or `super` (#8688): the router calls the option on
+ * the route options, a split chunk's lazy wrapper without them, so it stays
+ * in the route module. Its own, as the language scopes them: in its
+ * parameters and body and in the arrow functions there, not in a nested
+ * non-arrow function or method, a class field's initialiser or a static
+ * block (which bind their own); a class's `extends`, computed keys and
+ * decorators are evaluated in the enclosing function and count. `typeof
+ * this` in a type is no use. An arrow function value has the module's
+ * `this` wherever it is: null.
+ */
+function ownThisOf(ctx: PlanContext, fn: Node): 'this' | 'super' | null {
+  if (
+    fn.type !== 'FunctionExpression' ||
+    !/\b(?:this|super)\b/.test(ctx.analysis.source.code.slice(fn.start, fn.end))
+  ) {
+    return null
+  }
+  let found: 'this' | 'super' | null = null
+  walk(fn, {
+    enter: (n, wctx) => {
+      if (n === fn) {
+        return
+      }
+      const parent = wctx.parent
+      if (
+        n.type === 'FunctionExpression' ||
+        n.type === 'FunctionDeclaration' ||
+        n.type === 'StaticBlock' ||
+        n.type === 'TSTypeQuery' ||
+        (wctx.key === 'value' &&
+          (parent?.type === 'PropertyDefinition' ||
+            parent?.type === 'AccessorProperty'))
+      ) {
+        wctx.skip()
+      } else if (n.type === 'ThisExpression' || n.type === 'Super') {
+        found = n.type === 'Super' ? 'super' : 'this'
+        wctx.stop()
+      }
+    },
+  })
+  return found
+}
+
+/**
  * The node Babel's program scope binds `id`'s name to
  * (`programPath.scope.getBinding(name).path.node`), or null: the first
  * module-level declaration of the name in source order that Babel registers
@@ -585,10 +657,11 @@ function sharedNamesOnMain(
   if (declarators.size === 0) {
     return shared
   }
-  // plain properties (`t.isObjectProperty`), `codeSplitGroupings` skipped
+  // plain properties (`t.isObjectProperty`) and methods (read as the
+  // function expression they split as, #8623), `codeSplitGroupings` skipped
   const props = route.props.filter(
     (p) =>
-      (p.kind === 'init' || p.kind === 'shorthand') &&
+      (p.kind === 'init' || p.kind === 'shorthand' || p.kind === 'method') &&
       p.key !== null &&
       p.key !== 'codeSplitGroupings' &&
       p.value !== null,
