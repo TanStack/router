@@ -33,10 +33,12 @@ export function lazyRouteComponent<
         .then((res) => {
           // Resolved clients have no preload work; SSR can reuse the import.
           if (!(isServer ?? typeof window === 'undefined')) {
-            loadPromise = undefined
             ;(lazyComp as any).preload = undefined
           }
           comp = res[exportName ?? 'default']
+          // Keep the import settled for `use()`, so a loaded chunk renders
+          // synchronously even if React has not tracked this promise yet.
+          ;(loadPromise as any).status = 'fulfilled'
         })
         .catch((err) => {
           loadPromise = undefined
@@ -70,12 +72,12 @@ export function lazyRouteComponent<
       throw error
     }
 
-    if (!comp) {
-      if (reactUse) {
-        reactUse(load())
-      } else {
-        throw load()
-      }
+    // React expects `use()` on every render once a render suspended in it,
+    // even after the promise settles.
+    if (reactUse) {
+      reactUse(load())
+    } else if (!comp) {
+      throw load()
     }
 
     return React.createElement(comp, props)
