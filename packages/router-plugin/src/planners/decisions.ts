@@ -392,8 +392,12 @@ export function unsplittableOnMain(
     if (sym === null || !ctx.symbols.isModuleLevel(sym)) {
       return 'unbound'
     }
-    const declaring = ctx.t1.declaringUnits.get(sym) ?? []
-    const unit = declaring.length === 1 ? ctx.t1.units[declaring[0]!] : null
+    // (a type merged with it, `declare namespace Page { type Props }`, is
+    // TypeScript's: the value's declaration decides)
+    const declaring = (ctx.t1.declaringUnits.get(sym) ?? [])
+      .map((u) => ctx.t1.units[u]!)
+      .filter((u) => u.kind !== 'type')
+    const unit = declaring.length === 1 ? declaring[0] : null
     switch (unit?.node.type) {
       case 'FunctionDeclaration':
       case 'ImportSpecifier':
