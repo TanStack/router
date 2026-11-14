@@ -1,10 +1,10 @@
 /**
  * An exported component the route file augments (`Page.displayName = …`)
- * stays in the route module in dev with its augmentation (in a build it is
- * extracted into its own module with it), and the split chunk
- * imports it (SPEC J2.4, J3.3): an edit of the component applies in place
- * through the route module, with React Refresh registering the component
- * where it is declared, and the augmentation is kept across edits.
+ * and gives as the route's component stays in the route module with its
+ * augmentation (an exported option value is not split, as on main; R153):
+ * an edit of the component applies in place through the route module, with
+ * React Refresh registering the component where it is declared, and the
+ * augmentation is kept across edits.
  */
 import { expect, test } from 'vitest'
 import { inPlace } from '../route-hmr-edit'
@@ -31,7 +31,6 @@ test(
       files: { 'routes/index.tsx': route('text-v1') },
       ready: 'text-v1 Named',
     })
-    expect(app.splitOutputs()).toBeGreaterThan(0)
     expect(
       await app.edit({ 'routes/index.tsx': route('text-v2') }, 'text-v2 Named'),
     ).toEqual(inPlace)

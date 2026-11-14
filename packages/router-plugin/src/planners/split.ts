@@ -39,7 +39,6 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
   const { plan } = round
   const { route } = plan
   ctx.setRouteModule()
-  ctx.describeModule({ name: 'route module', tag: '[tanstack-router]' })
 
   // deleteNodes: the properties are erased in every output (J2.14), each
   // run of them with its commas (`{ server: {…}, }` erased to `{ , }` is no

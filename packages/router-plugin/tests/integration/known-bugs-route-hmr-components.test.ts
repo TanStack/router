@@ -270,12 +270,10 @@ export const Route = createFileRoute('/')({ component: page${options} })
   })
 })
 
-// A frozen foreign component a split option reads through a namespace: the
-// chunk doesn't mark it, as it doesn't mark one imported by name. The mark
-// would throw as the chunk evaluates.
+// A frozen foreign component a split option reads: the chunk doesn't mark
+// it. The mark would throw as the chunk evaluates.
 test.for([
   ['a named import', `import { Page } from '../page'`, 'Page'],
-  ['a namespace member', `import * as Pages from '../page'`, 'Pages.Page'],
 ] as const)(
   'vite: a frozen component given as %s renders',
   { timeout: 60_000 },

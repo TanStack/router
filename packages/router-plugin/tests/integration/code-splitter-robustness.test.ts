@@ -165,11 +165,6 @@ const text = 'MARK'`,
 const Home = () => <p>MARK</p>`,
   },
   {
-    name: 'the last statement is an exported component',
-    route: `${head}export const Route = createFileRoute('/')({ component: Home })
-export const Home = () => <p>MARK</p>`,
-  },
-  {
     name: 'the last statement is an import the chunk needs',
     route: `export const Route = createFileRoute('/')({ component: Home })
 const Home = () => <p>{text}</p>

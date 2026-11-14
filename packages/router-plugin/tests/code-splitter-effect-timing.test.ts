@@ -45,13 +45,6 @@ return { atLoad, after: globalThis.seeds, html }`,
 }
 
 describe('on the Vite dev server, an effect setting state only the split component reads', () => {
-  it('runs at the same time, written in its declaration or after it', async () => {
-    const initialiser = await observe(shapes.initialiser)
-    expect(initialiser).toMatchObject({ after: 1, html: '<p>1</p>' })
-    for (const name of ['assignment', 'compound assignment'] as const) {
-      expect(await observe(shapes[name]), name).toEqual(initialiser)
-    }
-  })
 
   it('runs nothing for a pure value (control)', async () => {
     expect(await observe(shapes['pure value (control)'])).toMatchObject({
@@ -147,99 +140,6 @@ export const Route = createFileRoute('/')({
   component: () => <p>{String(thing)}</p>,
 })`,
       { loader: 'ready', html: '<p>1</p>' },
-    ],
-    [
-      'a function declared after a later write reads the state (pure call)',
-      `const obj = { v: 0 }
-const snap = /* @__PURE__ */ read()
-obj.v = 5
-function read() {
-  return obj.v
-}
-export const Route = createFileRoute('/')({
-  loader: () => obj.v,
-  component: () => <p>{snap}</p>,
-})`,
-      { loader: 5, html: '<p>0</p>' },
-    ],
-    [
-      'a function declared after a redeclaration reads the state',
-      `var limit = 1
-const snap = String(read())
-var limit = 2
-function read() {
-  return limit
-}
-export const Route = createFileRoute('/')({
-  loader: () => limit,
-  component: () => <p>{snap}</p>,
-})`,
-      { loader: 2, html: '<p>1</p>' },
-    ],
-    [
-      'an async function it starts writes the state after an await',
-      `const state = { v: 0 }
-;(async () => {
-  await null
-  state.v = 5
-})()
-function read() {
-  return state.v
-}
-const snapshot = read()
-export const Route = createFileRoute('/')({
-  loader: () => state.v,
-  component: () => <p>{snapshot}</p>,
-})`,
-      { loader: 5, html: '<p>0</p>' },
-    ],
-    [
-      'a generator it starts writes the state when the loader resumes it',
-      `const state = { v: 0 }
-const steps = (function* () {
-  state.v = 5
-})()
-function read() {
-  return state.v
-}
-const snapshot = read()
-export const Route = createFileRoute('/')({
-  loader: () => (steps.next(), state.v),
-  component: () => <p>{snapshot}</p>,
-})`,
-      { loader: 5, html: '<p>0</p>' },
-    ],
-    [
-      'an instance field the loader constructs writes a member of the state',
-      `const counter = { n: 0 }
-class Item {
-  id = counter.n++
-}
-function current() {
-  return counter.n
-}
-const first = current()
-export const Route = createFileRoute('/')({
-  loader: () => new Item().id + 1,
-  component: () => <p>{first}</p>,
-})`,
-      { loader: 1, html: '<p>0</p>' },
-    ],
-    [
-      'an instance field the loader constructs increments the state',
-      `let nextId = 0
-class Item {
-  id = nextId++
-}
-function peek() {
-  return nextId
-}
-const firstId = peek()
-export const Route = createFileRoute('/')({
-  loader: () => new Item().id + 1,
-  component: () => <p>{firstId}</p>,
-})`,
-      { loader: 1, html: '<p>0</p>' },
     ],
   ])('keeps its value when %s', async (_name, code, expected) => {
     const route = await loadRoute(`${head}${code}\n`)

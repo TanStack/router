@@ -10,7 +10,10 @@
  *   split code read leaves the route file, effects included; `main` keeps a
  *   class in the route file and copies it, or moves it to its shared module
  *   when two groups read it). Statements, enums, namespaces, exports and
- *   code the source never read stay.
+ *   imports stay; so does a declaration the source never read whose
+ *   evaluation has an effect, while one without (`function Unused() {
+ *   return <Page /> }`) goes, and keeps nothing it names (`main` deletes a
+ *   split value's declaration whatever reads it).
  * - Every other output takes what its roots (a split option's value, a
  *   server-function handler, …) read, transitively, with one home per
  *   declaration: what the env module keeps is imported from it; what one
@@ -26,7 +29,8 @@
  * each declaration but an import exists in one module (one instance, its
  * initialiser runs once), every statement runs once in the env module, and
  * a declaration leaves the env module when `main` removes it there or moves
- * it to its shared module (a class: also when `main` copies it).
+ * it to its shared module (a class: also when `main` copies it; dead code
+ * that runs nothing: always).
  * Where `main` copies a declaration into a chunk (a copy of state it keeps
  * in the route file, a class, a top-level statement), the chunk imports the
  * route file's instance instead.
@@ -194,11 +198,14 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
     } else if (fixedHome.has(c)) {
       continue
     } else if (cl.units.length > 0) {
-      // a statement, a class, an export, or a declaration the source never read
+      // a statement, an export, an import the source never read (its module
+      // still evaluates), or a declaration the source never read whose
+      // evaluation has an effect; one without (`function Unused() { return
+      // <Page /> }`) runs nothing and goes, so it keeps nothing it names here
       if (
         !removable(c) ||
-        !sourceLive.has(c) ||
-        cl.units.some((u) => units[u]!.exported.length > 0)
+        cl.units.some((u) => units[u]!.exported.length > 0) ||
+        (!sourceLive.has(c) && (isImport(c) || cl.effectful))
       ) {
         keepInEnv(c)
       }
