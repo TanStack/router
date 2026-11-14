@@ -31,22 +31,16 @@ export interface SplitDecision {
   shape: SplitShape
   /** The region claimed by the chunk (replaced by the lazy wrapper in the route module). */
   region: Range
-  /** The text the chunk declares its export from (the region itself). */
-  valueRange: Range
   /** The value node. */
   valueNode: Node
   /** The key as written, for whole-property placeholders (`component: …`). */
   keyText: string
   /** Whether the placeholder replaces the whole property (shorthand). */
   wholeProperty: boolean
-  /** Always `''` (methods are not split, as on `main`). */
-  methodPrefix: string
   /** The module binding a shorthand denotes. */
   shorthandSym: SymbolId | null
   /** The chunk's export: the option's name. */
   exportName: string
-  /** Always null (no object-form loader handling, as on `main`). */
-  member: string | null
 }
 
 export interface SplitPlan {
@@ -308,14 +302,11 @@ export function splitPlanOf(
         groupKey,
         shape: shorthand ? 'shorthand' : 'init',
         region,
-        valueRange: shorthand ? { start: value.start, end: value.end } : region,
         valueNode: value,
         keyText: option.keyText,
         wholeProperty: shorthand,
-        methodPrefix: '',
         shorthandSym: shorthand ? valueSym : null,
         exportName: key,
-        member: null,
       })
     }
   }
