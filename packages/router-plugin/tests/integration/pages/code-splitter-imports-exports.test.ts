@@ -606,23 +606,25 @@ return [await render('component'), other.label, typeof other.Page]`),
   // Splitting it anyway is the goal, decided by the build (pinned in
   // known-bugs-code-splitter.test.ts, "page code exported from the route
   // file loads with its chunk").
+  // (distinct export names: the warning prints once per file and wording in a
+  // run, and these routes share one dev server and one file name, J2.19)
   const exportedOptions = [
     {
       name: 'an exported component, with the errorComponent split',
       code: `${head}import { see } from './see'
-export function Page() {
-  see(Page)
+export function ExportedPage() {
+  see(ExportedPage)
   return <p>page</p>
 }
 export const Route = createFileRoute('/')({
-  component: Page,
+  component: ExportedPage,
   errorComponent: () => <p>error</p>,
 })
 `,
       routeId: '/',
       split: 'errorComponent',
       option: 'component',
-      binding: 'Page',
+      binding: 'ExportedPage',
       value: '<p>page</p>',
     },
     {
@@ -671,13 +673,13 @@ export const Route = createFileRoute('/_layout')({
     {
       name: 'a component default-exported by name, with the errorComponent split',
       code: `${head}import { see } from './see'
-const Page = () => {
-  see(Page)
+const NamedPage = () => {
+  see(NamedPage)
   return <p>page</p>
 }
-export default Page
+export default NamedPage
 export const Route = createFileRoute('/')({
-  component: Page,
+  component: NamedPage,
   errorComponent: () => <p>error</p>,
 })
 `,
