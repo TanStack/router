@@ -107,11 +107,14 @@ per-output read walk (`readIndex`):
   import specifiers they reach, transitively; every other import specifier, declarator, function or class declaration
   goes with its initialiser, read in the source or not.
 - **a split chunk** takes what its option's value reads, transitively. What the env module also keeps it imports from
-  there when main does (`RouteModule.imported`, from the router planner: the route binding, `export const|let|var`,
-  the names main shares) and copies otherwise, with the env statements reading or writing what it copies (main's
+  there when main does (`RouteModule.imported`, from the router planner: the route binding, `export const|let|var`)
+  and copies otherwise, with the env statements reading or writing what it copies (main's
   second instance, spec-main-splitting.md §1.8); a binding a statement declares (`if (…) { var x }`) is imported.
-  What one chunk alone needs moves there, what several need is one lazy shared module per file
-  (`?tsr-split=shared---<keys>`), which an exported name main shares also moves to (the env module re-exports it).
+  What one chunk alone needs moves there, what several need is one shared module per file
+  (`?tsr-split=shared---<keys>`). The names main shares (`RouteModule.shared`) live there too, also those the env
+  module reads (a helper the loader and the component call), as in main's `?tsr-shared=1`: the env module imports them
+  and re-exports the exported ones; one the env module or a chunk assigns, or one reading what main never shares,
+  stays in the env module.
   Import specifiers are copied where read. Start's outputs in a route file (Hydrate chunks, the server-fn handler
   module) import what the env module keeps; a provider output copies what it reaches.
 - **one fallback, on the outcome**: a derived output that would assign a binding homed in another module of the file

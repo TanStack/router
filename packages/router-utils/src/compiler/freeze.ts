@@ -538,6 +538,21 @@ function reexportGlue(
   exportNameOf: Map<OutputId, Map<SymbolId, string>>,
 ): Array<Frag> {
   const frags: Array<Frag> = []
+  // (an export statement the env module keeps, `export { x as y }`, exports
+  // the binding it imports itself)
+  const envIncluded = placement.included.get('env')
+  const keptByEnv = (range: { start: number; end: number }) => {
+    const u = plan.t1.unitAt(range)
+    const c =
+      u === null
+        ? undefined
+        : placement.clusterOfRegion.get(plan.t1.units[u]!.region)
+    return (
+      c !== undefined &&
+      plan.t1.units[u!]!.declares.length === 0 &&
+      envIncluded?.has(c) === true
+    )
+  }
   for (const e of placement.extracted) {
     const decl = plan.outputs.get(e.output)
     if (!decl?.derivedId) {
@@ -547,7 +562,12 @@ function reexportGlue(
     for (const s of [...e.syms].sort((a, b) => a - b)) {
       const exported = exportNameOf.get(e.output)?.get(s) ?? plan.nameOf(s)
       for (const x of plan.analysis.exports) {
-        if (x.kind === 'local' && x.local === s && !x.typeOnly) {
+        if (
+          x.kind === 'local' &&
+          x.local === s &&
+          !x.typeOnly &&
+          !keptByEnv(x.range)
+        ) {
           const part =
             exported === x.name
               ? exported

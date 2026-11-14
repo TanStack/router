@@ -227,6 +227,47 @@ return [html, seen(), loaded.name]`),
     ).toEqual(['<p>store</p>', ['store'], 'store'])
   })
 
+  // `main` keeps what a staying option and a split one share in its shared
+  // module, which both import: the chunk does not import the route module
+  // (on Vite 8, a chunk importing its own route module moves React into a
+  // chunk of its own)
+  it('gives a helper a staying loader and the split component share its own module, which the chunk imports', async () => {
+    const route = await loadRoute(
+      `${head}import { track } from './track'
+const prefix = track('prefix')
+function title(n: number) {
+  return \`\${prefix.name} \${n}\`
+}
+export const Route = createFileRoute('/')({
+  loader: () => title(1),
+  component: () => <p>{title(2)}</p>,
+})
+`,
+      { files: { 'track.ts': trackFile } },
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(
+      await route.run(`const loaded = await options.loader()
+const html = await render('component')
+const { seen } = await app('track.ts')
+return [loaded, html, seen()]`),
+    ).toEqual(['prefix 1', '<p>prefix 2</p>', ['prefix']])
+    // what the chunk imports from modules of the route file: the shared one
+    const { modules } = await route.modules()
+    const file = route.url.split('/').at(-1)!
+    const fromRouteFile = [
+      ...modules['lazy component']!.matchAll(/\bfrom\s*["']([^"']+)["']/g),
+    ]
+      .map((m) => m[1]!)
+      .filter((spec) => spec.split('?')[0]!.endsWith(`/${file}`))
+      .map((spec) => new URLSearchParams(spec.split('?')[1] ?? '').toString())
+    expect({
+      routeModule: fromRouteFile.includes(''),
+      sharedModule: fromRouteFile.some((q) => /tsr-split=shared/.test(q)),
+    }).toEqual({ routeModule: false, sharedModule: true })
+  })
+
   it('moves a value only the split component reads into its chunk, its initialiser included', async () => {
     const route = await loadRoute(
       `${head}import { track } from './track'

@@ -599,6 +599,14 @@ async function runRow(bundler: Bundler, fw: Fw, row: Row, ctx: TestContext) {
         typeof row.loaderRuns === 'number'
           ? row.loaderRuns
           : row.loaderRuns(bundler)
+      // (the page may show the edit before the route refresh reruns the
+      // loader: a chunk importing the shared module refreshes on its own)
+      for (
+        const until = Date.now() + 3000;
+        (await loaderRuns()) < before + runs && Date.now() < until;
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 50))
+      }
       expect(await loaderRuns(), `${v} loader runs`).toBe(before + runs)
     }
     // (after a syntax error the page may have reloaded: no state to compare)

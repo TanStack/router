@@ -396,10 +396,11 @@ dir)` is not a conflict by itself.
   they reach; every other declaration leaves it with its initialiser, whether or not the source read it, and so do
   the imports only it read (a never-read `const unused = register('x')` is deleted). A split chunk takes what its
   option value reads: what the route module also keeps it imports from it where main imports it (`Route`, what
-  `export const|let|var` declares, a name main shares) and copies otherwise, with the statements that read or write
-  what it copies (main's second instance, §1.8); what only it needs moves into it, and what several chunks need is
-  one lazy shared module per file (`?tsr-split=shared---<keys>`), which re-exports through the route module an
-  exported name main shares. Option values main cannot compile into a chunk stay in the route module, silently
+  `export const|let|var` declares) and copies otherwise, with the statements that read or write what it copies
+  (main's second instance, §1.8); what only it needs moves into it, and what several chunks need is one shared
+  module per file (`?tsr-split=shared---<keys>`). The names main shares live in that module, as in main's
+  `?tsr-shared=1`, also those the route module reads; the route module imports them from it and re-exports the
+  exported ones (one the route module or a chunk assigns stays in the route module). Option values main cannot compile into a chunk stay in the route module, silently
   (`splitOnMain`, main's `compileCodeSplitVirtualRoute` cases); so does one whose chunk would assign a binding it
   imports (`assignsWhatItImports`: a shared `let`, an `export let`). Improvements over main wait until after #8817.
 - **J2.1 Which modules.** Only file route modules, and in them only the `createFileRoute` / `createRootRoute` /
@@ -419,7 +420,7 @@ dir)` is not a conflict by itself.
 - **J2.4 One instance.** Shared identity, state and once-only effects hold across the route, its importers and its
   chunks wherever main keeps one instance (J2.0): `Route`, what `export const|let|var` declares (a chunk reading it
   imports it from the route module), and a value two options read (two split groups, or a staying option and a
-  split one: one instance, in the shared module or in the route module the chunk imports it from). Where main
+  split one: one instance, in the shared module both import). Where main
   copies (another export form, a value only route-file code outside the options also reads, a class, an enum: §1.8),
   a chunk holds its own copy. Prove identity through real consumers and effects, not declaration counts.
 - **J2.5 Each chunk holds only what it needs.** The split option's code (and bindings only it uses) is absent from

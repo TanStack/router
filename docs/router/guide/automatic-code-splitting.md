@@ -105,7 +105,7 @@ function PostsNotFoundComponent() {
 #### Where top-level code goes
 
 - Code only a split property uses (a helper, a constant, an import) moves into that property's chunk, and its initialiser runs when the chunk loads.
-- Code several properties use (two split properties, or a split one and one that stays, such as the `loader`) exists once: in one shared module, or in the route file, which split chunks import it from. So does `Route` and what `export const` declares.
+- Code several properties use (two split properties, or a split one and one that stays, such as the `loader`) exists once, in one shared module the route file and the chunks import. `Route` and what `export const` declares exist once too: chunks import them from the route file.
 - Top-level statements (`Sentry.init()`, `registry.set(…)`, an `if` block) stay in the route file and run when it loads. A declaration nothing in the route file reaches any more is removed, with what only it imports.
 - Other code a split chunk shares with the route file (a value an exported function or a top-level statement also uses, an exported function or class) is copied into the chunk, with the top-level statements that use it: the chunk has its own instance, and those statements run again when it loads. To keep one instance, read it from an option that stays or export it with `export const`.
 
@@ -113,7 +113,7 @@ function PostsNotFoundComponent() {
 import { createFileRoute } from '@tanstack/react-router'
 import { createStore } from '../store'
 
-// stays: the loader reads it; the component's chunk imports it
+// the loader and the component read it: one shared module both import
 const store = createStore()
 
 // moves into the component's chunk

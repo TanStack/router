@@ -6,14 +6,17 @@
  * - The env module (the route file) keeps its top-level statements, exports,
  *   enums and namespaces (R154), and the declarations and import specifiers
  *   they reach, transitively; every other declaration leaves it, with its
- *   initialiser and the imports only it read (a split value's declaration
- *   included, whatever only unreached code reads it).
- *   An exported name `main` shares that nothing else there reads moves to
- *   the shared module, which the env module re-exports it from.
+ *   initialiser and the imports only it read.
+ * - The names `main` shares (`RouteModule.shared`) live in the shared module
+ *   with what they read, as in `main`'s `?tsr-shared=1`: the env module and
+ *   the chunks import them from it, and the env module re-exports the
+ *   exported ones. One the env module or a chunk assigns, one a top-level
+ *   statement writes or reads before its declaration, or one reading a
+ *   declaration `main` never shares, stays in the env module.
  * - A split chunk takes what its option's value reads, transitively. What
  *   the env module also keeps, the chunk imports from it when `main`
- *   imports it (the route binding, `export const|let|var`, the names `main`
- *   shares: `RouteModule.imported`) and copies otherwise, with the
+ *   imports it (the route binding, `export const|let|var`:
+ *   `RouteModule.imported`) and copies otherwise, with the
  *   statements reading or writing what it copies (`main`'s second instance,
  *   in `main`'s shapes, 1.8). What the env module does not keep has one
  *   home: the one chunk needing it, or one shared module the chunks needing
@@ -125,12 +128,107 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
       }
     }
   }
+  /**
+   * The declarations of names `main` shares (`RouteModule.shared`): they live
+   * in the shared module, which the env module imports them from, as on
+   * `main`; but for one the env module or a chunk assigns (it would assign
+   * an import: `main` fails), and one reading a declaration `main` never
+   * shares (an enum, a `var` in a statement: the two modules would import
+   * each other), which stay in the env module.
+   */
+  const inShared = new Set<ClusterId>()
+  for (const cl of clusters) {
+    if (
+      cl.units.length > 0 &&
+      cl.declares.size > 0 &&
+      removable(cl.id) &&
+      !isImport(cl.id) &&
+      !fixedHome.has(cl.id) &&
+      [...cl.declares].every((s) => sharedNames.has(s))
+    ) {
+      inShared.add(cl.id)
+    }
+  }
+  for (const w of graph.writes) {
+    const d = clusterOfSym.get(w.sym)
+    const c = w.owner === null ? undefined : graph.clusterOfRegion.get(w.owner)
+    if (
+      !w.member &&
+      !w.augment &&
+      d !== undefined &&
+      c !== d &&
+      !(c !== undefined && inShared.has(c))
+    ) {
+      inShared.delete(d)
+    }
+  }
+  // a top-level statement writing one (`plugins.push('auth')`), or reading
+  // one before its declaration (`export default items` above `var items`),
+  // runs in source order with it: it stays in the env module (`main` moves
+  // it and the statement then sees another value)
+  for (const w of graph.writes) {
+    const c = w.owner === null ? undefined : graph.clusterOfRegion.get(w.owner)
+    const d = clusterOfSym.get(w.sym)
+    if (
+      d !== undefined &&
+      c !== undefined &&
+      c !== d &&
+      (clusters[c]!.kind === 'effect' || clusters[c]!.kind === 'export')
+    ) {
+      inShared.delete(d)
+    }
+  }
+  for (const st of clusters) {
+    if (
+      st.units.length === 0 ||
+      (st.kind !== 'effect' && st.kind !== 'export')
+    ) {
+      continue
+    }
+    for (const s of reads.clusterReads(st.id, 'env', true).syms) {
+      const d = clusterOfSym.get(s)
+      if (
+        d !== undefined &&
+        inShared.has(d) &&
+        clusters[d]!.units.some((u) => st.start < units[u]!.range.end)
+      ) {
+        inShared.delete(d)
+      }
+    }
+  }
+  for (let changed = true; changed; ) {
+    changed = false
+    for (const c of inShared) {
+      const r = reads.clusterReads(c, 'env', true)
+      const outside = [
+        ...[...r.syms].map((s) => clusterOfSym.get(s)),
+        ...r.children,
+      ].some(
+        (t) =>
+          t !== undefined &&
+          t !== c &&
+          !isType(t) &&
+          !isImport(t) &&
+          !inShared.has(t),
+      )
+      if (outside) {
+        inShared.delete(c)
+        changed = true
+      }
+    }
+  }
+  /** The shared declarations the env module reads or exports: roots of the shared module. */
+  const sharedRoots = new Set<ClusterId>()
   const env = new Set<ClusterId>()
   const envWork: Array<ClusterId> = []
   const keepInEnv = (c: ClusterId | undefined) => {
     if (c !== undefined && !env.has(c) && !isType(c)) {
       const home = fixedHome.get(c)
       if (home !== undefined && home !== 'env') {
+        return
+      }
+      if (inShared.has(c)) {
+        sharedRoots.add(c)
         return
       }
       env.add(c)
@@ -149,12 +247,6 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
       }
     }
   }
-  /**
-   * Exported declarations of names `main` shares: `main` moves them to its
-   * shared module and the route file re-exports them from there; so here,
-   * unless the env module keeps them for another reader.
-   */
-  const sharedExports: Array<ClusterId> = []
   for (const cl of clusters) {
     const c = cl.id
     if (envReaders.includes(c) || isType(c)) {
@@ -167,15 +259,12 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
     } else if (cl.units.length > 0) {
       // a statement or an export stays (R154); a declaration stays when
       // something that stays reaches it
-      const exported = cl.units.some((u) => units[u]!.exported.length > 0)
+      // (an exported shared declaration: the env module re-exports it
+      // from the shared module)
       if (
-        exported &&
-        removable(c) &&
-        !isImport(c) &&
-        [...cl.declares].every((s) => sharedNames.has(s))
+        !removable(c) ||
+        cl.units.some((u) => units[u]!.exported.length > 0)
       ) {
-        sharedExports.push(c)
-      } else if (!removable(c) || exported) {
         keepInEnv(c)
       }
     } else if (!removable(c) && !rootedElsewhere.has(c) && cl.gens.length > 0) {
@@ -294,12 +383,11 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   /** Derived outputs (not copying) reaching each declaration the env module does not keep. */
   const needers = new Map<ClusterId, Set<OutputId>>()
   const reached = new Map<OutputId, Set<ClusterId>>()
-  // the shared exports the env module does not keep, and what they read:
-  // in the shared module, whoever else reads them
-  const exportedShared = sharedExports.filter((c) => !env.has(c))
+  // the shared declarations the env module reads or exports, and what they
+  // read: in the shared module, whoever else reads them
   const SHARED = 'shared' as OutputId
-  if (exportedShared.length > 0) {
-    const roots = exportedShared.map((c) => ({
+  if (sharedRoots.size > 0) {
+    const roots = [...sharedRoots].map((c) => ({
       t: 'sym' as const,
       id: [...clusters[c]!.declares][0]!,
     }))
@@ -446,7 +534,11 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
     }
   }
   // route HMR's registration: every derived output importing a binding of
-  // the env module other than the ones it names
+  // the env module other than the ones it names, or a binding of the shared
+  // module the env module reads (state the env module's code writes)
+  const envShared = new Set(
+    [...sharedRoots].flatMap((c) => [...clusters[c]!.declares]),
+  )
   for (const c of envReaders) {
     const besides = new Set(
       clusters[c]!.gens.flatMap((g) => {
@@ -456,7 +548,14 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
     )
     for (const o of all) {
       const fromEnv = imports.get(o)?.get('env')
-      if (fromEnv && [...fromEnv].some((s) => !besides.has(s))) {
+      const fromShared =
+        shared === null || o === shared.id
+          ? undefined
+          : imports.get(o)?.get(shared.id)
+      if (
+        (fromEnv && [...fromEnv].some((s) => !besides.has(s))) ||
+        (fromShared && [...fromShared].some((s) => envShared.has(s)))
+      ) {
         included.get(o)!.add(c)
       }
     }
@@ -543,8 +642,12 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   const extracted: Array<ExtractedExport> = []
   if (shared !== null) {
     const { id } = shared
-    const syms = exportedShared
-      .filter((c) => home.get(c) === id)
+    const syms = [...sharedRoots]
+      .filter(
+        (c) =>
+          home.get(c) === id &&
+          clusters[c]!.units.some((u) => units[u]!.exported.length > 0),
+      )
       .flatMap((c) => [...clusters[c]!.declares])
     if (syms.length > 0) {
       extracted.push({ output: id, syms })
