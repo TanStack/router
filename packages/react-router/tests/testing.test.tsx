@@ -561,6 +561,27 @@ describe('createIsolatedTestRouter', () => {
     expect(screen.queryByText('Default component')).not.toBeInTheDocument()
   })
 
+  test('renders no not-found component of the app after a navigation', async () => {
+    const app = createApp()
+    // The router warns that no not-found component is configured.
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const router = await createIsolatedTestRouter({
+      routeTree: app.routeTree,
+      route: '/login',
+      element: <p>Element</p>,
+      context: { locale: 'en', session: { user: null } },
+      defaultNotFoundComponent: () => <p>App not found</p>,
+    })
+    render(<RouterProvider router={router} />)
+
+    router.history.push('/missing')
+
+    expect(await screen.findByText('Not Found')).toBeInTheDocument()
+    expect(screen.queryByText('App not found')).not.toBeInTheDocument()
+    consoleWarn.mockRestore()
+  })
+
   test('lets an error of the element reach the test', async () => {
     const app = createApp()
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})

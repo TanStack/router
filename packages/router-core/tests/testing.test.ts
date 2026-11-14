@@ -113,16 +113,25 @@ describe('initRouteTree', () => {
     expect(postRoute.parentRoute).toBe(layoutRoute)
   })
 
-  test('leaves a tree alone that a router has already processed', () => {
-    const { routeTree, postRoute } = createTree()
+  test('initialises routes added to a tree that a router has processed', () => {
+    const { routeTree, rootRoute } = createTree()
     createRouter(routeTree, '/')
-    const originalIndex = postRoute.originalIndex
-    const init = vi.spyOn(postRoute, 'init')
+    const aboutRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+    })
+    rootRoute.addChildren([
+      ...(rootRoute.children as Array<AnyRoute>),
+      aboutRoute,
+    ])
 
-    initRouteTree(routeTree)
-
-    expect(init).not.toHaveBeenCalled()
-    expect(postRoute.originalIndex).toBe(originalIndex)
+    expect(() =>
+      createTestRouteTree(routeTree, {
+        '/about': { loaderData: 'seeded about data' },
+      }),
+    ).not.toThrow()
+    expect(aboutRoute.id).toBe('/about')
+    expect(aboutRoute.to).toBe('/about')
   })
 })
 
@@ -516,6 +525,7 @@ describe('createIsolatedTestRouterWith', () => {
         '/layout/posts/$postId': 'seeded post data',
       },
       defaultComponent: 'default component',
+      defaultNotFoundComponent: 'default not-found component',
     })
 
     expect(calls).toEqual([])
@@ -531,10 +541,10 @@ describe('createIsolatedTestRouterWith', () => {
     expect(routes['/layout/posts/$postId']!.options.component).toBe(
       'element under test',
     )
-    // A framework option, so core types do not know it.
-    expect(
-      (router.options as Record<string, unknown>).defaultComponent,
-    ).toBeUndefined()
+    // Framework options, so core types do not know them.
+    const options = router.options as Record<string, unknown>
+    expect(options.defaultComponent).toBeUndefined()
+    expect(options.defaultNotFoundComponent).toBeUndefined()
     expect(router.options.disableGlobalCatchBoundary).toBe(true)
   })
 

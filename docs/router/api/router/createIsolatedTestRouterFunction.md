@@ -11,7 +11,7 @@ No `context`, `beforeLoad` or `loader` option of any route runs, no route compon
 
 ## createIsolatedTestRouter options
 
-The `createIsolatedTestRouter` function accepts the following properties, plus the [`RouterOptions`](./RouterOptionsType.md) that [`createRouter`](./createRouterFunction.md) accepts, except `history`, `context` and `search`. It leaves out `defaultComponent`, `defaultPendingComponent` and `defaultErrorComponent`, and sets `disableGlobalCatchBoundary`.
+The `createIsolatedTestRouter` function accepts the following properties, plus the [`RouterOptions`](./RouterOptionsType.md) that [`createRouter`](./createRouterFunction.md) accepts, except `history`, `context` and `search`. It leaves out `defaultComponent`, `defaultPendingComponent`, `defaultErrorComponent` and `defaultNotFoundComponent`, and sets `disableGlobalCatchBoundary`.
 
 ### `routeTree` property
 

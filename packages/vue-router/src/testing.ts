@@ -143,7 +143,7 @@ export function createTestRouter<
  */
 export function createIsolatedTestRouter<
   TRouteTree extends AnyRoute,
-  // `IsolatedRouteState` checks that `route` is a route id of the tree.
+  // `IsolatedTestRouterOptions` checks that `route` is a route id of the tree.
   const TId extends string,
   TTrailingSlashOption extends TrailingSlashOption = 'never',
   TDefaultStructuralSharingOption extends boolean = false,

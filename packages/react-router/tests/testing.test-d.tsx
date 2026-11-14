@@ -76,7 +76,7 @@ describe('createIsolatedTestRouter', () => {
     expectTypeOf<RequiredKeys<PostState>>().toEqualTypeOf<
       'route' | 'params' | 'context' | 'loaderData'
     >()
-    expectTypeOf<'/_authed/posts/$postId'>().toExtend<PostState['route']>()
+    expectTypeOf<PostState['route']>().toEqualTypeOf<'/_authed/posts/$postId'>()
     expectTypeOf<keyof PostState['params']>().toEqualTypeOf<'postId'>()
     expectTypeOf<PostState['params']['postId']>().toEqualTypeOf<string>()
     expectTypeOf<keyof PostState['context']>().toEqualTypeOf<
@@ -116,6 +116,11 @@ describe('createIsolatedTestRouter', () => {
     expectTypeOf<keyof LoginState['context']>().toEqualTypeOf<
       'locale' | 'session'
     >()
+    const _loginState: LoginState = {
+      // @ts-expect-error the state of `/login` cannot name another route
+      route: '/_authed/posts/$postId',
+      context: { locale: 'en', session: { user: null } },
+    }
   })
 
   test('accepts the complete state and resolves to the router type', () => {

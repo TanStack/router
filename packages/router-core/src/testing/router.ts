@@ -95,6 +95,7 @@ export async function createIsolatedTestRouterWith<TRouter extends AnyRouter>(
     defaultComponent: undefined,
     defaultErrorComponent: undefined,
     defaultPendingComponent: undefined,
+    defaultNotFoundComponent: undefined,
     disableGlobalCatchBoundary: true,
     routeTree: createIsolatedRouteTree(routeTree, {
       routeId: route,

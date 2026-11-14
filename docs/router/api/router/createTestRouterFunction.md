@@ -21,7 +21,7 @@ The `createTestRouter` function accepts the [`RouterOptions`](./RouterOptionsTyp
 
 - Type: [`NavigateOptions`](./NavigateOptionsType.md), checked against the route tree
 - Optional
-- Where the router starts. It replaces the current entry of the router's history. Defaults to `/`.
+- Where the router starts. It replaces the current entry of the router's history. Without it, the router starts at the current location of its history: `/` for the default memory history.
 
 ### `overrides` property
 

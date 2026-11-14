@@ -117,7 +117,7 @@ test('sends a signed-out visitor to the login page', async () => {
 
 The test does not replace the `beforeLoad` of `/_authed`, so it runs, finds no user and redirects.
 
-- `location` is typed like the options of `navigate`: `to` must be a path of your app, and the path params and search params that path requires are required here too. It replaces the current entry of the router's history. Without it, the router starts at `/`.
+- `location` is typed like the options of `navigate`: `to` must be a path of your app, and the path params and search params that path requires are required here too. It replaces the current entry of the router's history. Without it, the router starts at the current location of its history: `/` for the default memory history.
 - The router uses a memory history, unless you pass your own `history`.
 - `context` and every other option go to the router as in `createRouter`.
 - The router has not loaded yet. Render it with `RouterProvider`, or `await router.load()` to assert on `router.state` without rendering anything.
@@ -266,7 +266,7 @@ const router = createTestRouter({
 })
 ```
 
-`createIsolatedTestRouter` leaves out `defaultComponent`, `defaultPendingComponent` and `defaultErrorComponent`, and turns off the router's global error boundary, so the router does not catch an error that the element throws. It creates its own history and sets its location from `route`, `params` and `search`; its `search` is the route's search params, not the router option of that name.
+`createIsolatedTestRouter` leaves out `defaultComponent`, `defaultPendingComponent`, `defaultErrorComponent` and `defaultNotFoundComponent`, and turns off the router's global error boundary, so the router does not catch an error that the element throws. It creates its own history and sets its location from `route`, `params` and `search`; its `search` is the route's search params, not the router option of that name.
 
 ## Solid and Vue
 

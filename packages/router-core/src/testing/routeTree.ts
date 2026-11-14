@@ -68,15 +68,13 @@ function getChildren(route: AnyRoute): Array<AnyRoute> | undefined {
 /**
  * Gives every route of a tree its `id`, `path`, `fullPath` and `to`.
  *
- * A router does this for the tree it is built from. A test router is built
- * from a copy of the tree, so without this step the route objects that
- * application code imports would never be initialised: `Route.to` would be
- * `undefined` and `Route.useLoaderData()` would fall back to the nearest match.
+ * A router does this for the tree it is built from, every time one is
+ * created. A test router is built from a copy of the tree, so without this
+ * step the route objects that application code imports would never be
+ * initialised: `Route.to` would be `undefined` and `Route.useLoaderData()`
+ * would fall back to the nearest match.
  */
 export function initRouteTree(routeTree: AnyRoute): void {
-  if ((routeTree.id as string | undefined) !== undefined) {
-    return
-  }
   let index = 0
   const visit = (route: AnyRoute) => {
     route.init(index++)
@@ -90,8 +88,6 @@ function cloneRouteTree<TRouteTree extends AnyRoute>(
   getPatch: (route: AnyRoute) => RouteOptionsPatch | undefined,
   keepLazyRoutes: boolean,
 ): TRouteTree {
-  initRouteTree(routeTree)
-
   const cloneRoute = (route: AnyRoute, parent?: AnyRoute): AnyRoute => {
     const patch = getPatch(route)
     // Route classes take all their state from `options`, so a fresh instance

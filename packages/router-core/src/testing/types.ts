@@ -181,10 +181,11 @@ type IsolatedRouteStateFor<TRoute extends AnyRoute> = OptionalWhenEmpty<
  * - `loaderData`: loader data by route id, for the route and the routes above
  *   it whose loader returns data.
  */
-export type IsolatedRouteState<TRouteTree extends AnyRoute, TId> = {
-  // Checked here rather than in a constraint on `TId`: with a constraint,
-  // TypeScript widens a constant such as `rootRouteId` while inferring.
-  route: ConstrainLiteral<TId, RouteIds<TRouteTree>>
+export type IsolatedRouteState<
+  TRouteTree extends AnyRoute,
+  TId extends RouteIds<TRouteTree>,
+> = {
+  route: TId
 } & IsolatedRouteStateFor<RouteById<TRouteTree, TId>>
 
 /**
@@ -210,7 +211,8 @@ export type TestRouterOptions<
   routeTree: TRouteTree
   /**
    * Where the router starts, typed like the options of `navigate`. It
-   * replaces the current entry of `history`. Defaults to `/`.
+   * replaces the current entry of `history`. Without it, the router starts
+   * at the current location of `history`: `/` for the default memory history.
    */
   location?: ValidateNavigateOptions<
     RouterCore<
@@ -253,4 +255,7 @@ export type IsolatedTestRouterOptions<
   routeTree: TRouteTree
   /** The element under test. It renders in place of the route's component. */
   element: TElement
-} & IsolatedRouteState<TRouteTree, TId>
+  // Checked here rather than in a constraint on `TId`: with a constraint,
+  // TypeScript widens a constant such as `rootRouteId` while inferring.
+  route: ConstrainLiteral<TId, RouteIds<TRouteTree>>
+} & IsolatedRouteStateFor<RouteById<TRouteTree, TId>>
