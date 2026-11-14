@@ -1,27 +1,31 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { RouterProvider } from '@tanstack/react-router'
+import { createIsolatedTestRouter } from '@tanstack/react-router/testing'
 import { describe, expect, test, vi } from 'vitest'
 import { PostHeader } from '../src/components/PostHeader'
-import {
-  appTesting,
-  createPost,
-  routerTesting,
-  testUser,
-} from '../src/test-utils'
+import { routeTree } from '../src/routeTree.gen'
+import { createPost, signedInContext, testUser } from '../src/test-fixtures'
+
+const postRoute = {
+  routeTree,
+  route: '/_authed/posts/$postId',
+  element: <PostHeader />,
+  params: { postId: 'post-1' },
+  context: signedInContext,
+} as const
 
 describe('a component rendered in its route with supplied state', () => {
   test('reads loader data, context, search and params of the route', async () => {
-    const fetchMock = vi.fn()
-    vi.stubGlobal('fetch', fetchMock)
-
-    await routerTesting.renderInRoute(<PostHeader />, {
-      route: '/_authed/posts/$postId',
-      params: { postId: 'post-1' },
-      context: { locale: 'en', session: { user: testUser }, user: testUser },
+    const router = await createIsolatedTestRouter({
+      ...postRoute,
       loaderData: {
-        post: createPost({ title: 'Typed tests', authorId: testUser.id }),
+        '/_authed': { unreadCount: 2 },
+        '/_authed/posts/$postId': {
+          post: createPost({ title: 'Typed tests', authorId: testUser.id }),
+        },
       },
-      routes: { '/_authed': { loaderData: { unreadCount: 2 } } },
     })
+    render(<RouterProvider router={router} />)
 
     expect(screen.getByRole('heading').textContent).toBe('Typed tests')
     expect(screen.getByText('Written by you')).toBeTruthy()
@@ -35,13 +39,14 @@ describe('a component rendered in its route with supplied state', () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
 
-    await routerTesting.renderInRoute(<PostHeader />, {
-      route: '/_authed/posts/$postId',
-      params: { postId: 'post-1' },
-      context: { locale: 'en', session: { user: testUser }, user: testUser },
-      loaderData: { post: createPost() },
-      routes: { '/_authed': { loaderData: { unreadCount: 2 } } },
+    const router = await createIsolatedTestRouter({
+      ...postRoute,
+      loaderData: {
+        '/_authed': { unreadCount: 2 },
+        '/_authed/posts/$postId': { post: createPost() },
+      },
     })
+    render(<RouterProvider router={router} />)
 
     expect(fetchMock).not.toHaveBeenCalled()
     expect(screen.queryByRole('navigation')).toBeNull()
@@ -49,45 +54,57 @@ describe('a component rendered in its route with supplied state', () => {
     expect(screen.queryByLabelText('Tab content')).toBeNull()
   })
 
-  test('takes shared values from the defaults of the application', async () => {
-    await appTesting.renderInRoute(<PostHeader />, {
-      route: '/_authed/posts/$postId',
-      params: { postId: 'post-1' },
-      loaderData: { post: createPost({ status: 'draft' }) },
+  test('shows the state the test supplies', async () => {
+    const router = await createIsolatedTestRouter({
+      ...postRoute,
+      context: { ...signedInContext, user: { id: 'user-2', name: 'Grace' } },
+      loaderData: {
+        '/_authed': { unreadCount: 0 },
+        '/_authed/posts/$postId': { post: createPost({ status: 'draft' }) },
+      },
     })
+    render(<RouterProvider router={router} />)
 
     expect(screen.getByText('Draft')).toBeTruthy()
-    expect(screen.queryByText('Written by you')).toBeNull()
+    expect(screen.getByText('Written by you')).toBeTruthy()
   })
 
   test('sends search params through the validateSearch of the route', async () => {
-    await appTesting.renderInRoute(<PostHeader />, {
-      route: '/_authed/posts/$postId',
-      params: { postId: 'post-1' },
+    const router = await createIsolatedTestRouter({
+      ...postRoute,
       search: { tab: 'comments' },
-      loaderData: { post: createPost() },
+      loaderData: {
+        '/_authed': { unreadCount: 0 },
+        '/_authed/posts/$postId': { post: createPost() },
+      },
     })
+    render(<RouterProvider router={router} />)
 
     expect(screen.getByRole('link', { name: 'Show details' })).toBeTruthy()
   })
 
   test('fails when the search params do not pass validateSearch', async () => {
     await expect(
-      appTesting.renderInRoute(<PostHeader />, {
-        route: '/_authed/posts/$postId',
-        params: { postId: 'post-1' },
+      createIsolatedTestRouter({
+        ...postRoute,
         search: { tab: 'history' },
-        loaderData: { post: createPost() },
+        loaderData: {
+          '/_authed': { unreadCount: 0 },
+          '/_authed/posts/$postId': { post: createPost() },
+        },
       }),
     ).rejects.toThrow('Unknown tab "history"')
   })
 
   test('navigates with the real router', async () => {
-    const { router } = await appTesting.renderInRoute(<PostHeader />, {
-      route: '/_authed/posts/$postId',
-      params: { postId: 'post-1' },
-      loaderData: { post: createPost() },
+    const router = await createIsolatedTestRouter({
+      ...postRoute,
+      loaderData: {
+        '/_authed': { unreadCount: 0 },
+        '/_authed/posts/$postId': { post: createPost() },
+      },
     })
+    render(<RouterProvider router={router} />)
 
     fireEvent.click(screen.getByRole('link', { name: 'Show comments' }))
 

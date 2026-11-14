@@ -12,13 +12,11 @@ export type {
   IsolatedRouteTreeOptions,
 } from './routeTree'
 export type {
+  IsolatedRouteState,
   RouteTestBeforeLoadFn,
   RouteTestComponents,
   RouteTestContextFn,
   RouteTestLoaderFn,
-  RouteTestOptions,
   RouteTestOverride,
   RouteTestOverrides,
-  RouterTestingDefaults,
-  TestRouterContextOption,
 } from './types'

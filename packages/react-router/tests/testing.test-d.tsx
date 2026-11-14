@@ -1,11 +1,8 @@
-import { render } from '@testing-library/react'
 import { describe, expectTypeOf, test } from 'vitest'
-import { createRootRouteWithContext, createRoute } from '../src'
-import { createRouterTesting } from '../src/testing'
-import type * as React from 'react'
-import type { RenderResult } from '@testing-library/react'
+import { createRootRouteWithContext, createRoute, rootRouteId } from '../src'
+import { createIsolatedTestRouter, createTestRouter } from '../src/testing'
 import type { Router, SearchSchemaInput } from '../src'
-import type { RenderInRouteOptions } from '../src/testing'
+import type { IsolatedRouteState, RouteTestOverrides } from '../src/testing'
 
 interface User {
   id: string
@@ -60,205 +57,147 @@ type RequiredKeys<T> = {
   [K in keyof T]-?: {} extends Pick<T, K> ? never : K
 }[keyof T]
 
-const testing = createRouterTesting({ routeTree, render })
-
-const testingWithDefaults = createRouterTesting({
-  routeTree,
-  render,
-  defaults: {
-    context: { locale: 'en', user: { id: 'default' } },
-    routes: { '/_authed': { loaderData: { unreadCount: 0 } } },
-  },
-})
-
 const postState = {
+  routeTree,
   route: '/_authed/posts/$postId',
+  element: <div />,
   params: { postId: '1' },
   context: { locale: 'en', session: { user: null }, user: { id: '1' } },
-  loaderData: { post: { id: '1' } },
-  routes: { '/_authed': { loaderData: { unreadCount: 1 } } },
+  loaderData: {
+    '/_authed': { unreadCount: 1 },
+    '/_authed/posts/$postId': { post: { id: '1' } },
+  },
 } as const
 
-describe('renderInRoute', () => {
+describe('createIsolatedTestRouter', () => {
   test('asks for everything the route promises to its components', () => {
-    type PostOptions = RenderInRouteOptions<
-      RouteTree,
-      '/_authed/posts/$postId',
-      {}
-    >
+    type PostState = IsolatedRouteState<RouteTree, '/_authed/posts/$postId'>
 
-    expectTypeOf<RequiredKeys<PostOptions>>().toEqualTypeOf<
-      'route' | 'params' | 'context' | 'loaderData' | 'routes'
+    expectTypeOf<RequiredKeys<PostState>>().toEqualTypeOf<
+      'route' | 'params' | 'context' | 'loaderData'
     >()
-    expectTypeOf<
-      PostOptions['route']
-    >().toEqualTypeOf<'/_authed/posts/$postId'>()
-    expectTypeOf<keyof PostOptions['params']>().toEqualTypeOf<'postId'>()
-    expectTypeOf<PostOptions['params']['postId']>().toEqualTypeOf<string>()
-    expectTypeOf<keyof PostOptions['context']>().toEqualTypeOf<
+    expectTypeOf<'/_authed/posts/$postId'>().toExtend<PostState['route']>()
+    expectTypeOf<keyof PostState['params']>().toEqualTypeOf<'postId'>()
+    expectTypeOf<PostState['params']['postId']>().toEqualTypeOf<string>()
+    expectTypeOf<keyof PostState['context']>().toEqualTypeOf<
       'locale' | 'session' | 'user'
     >()
-    expectTypeOf<PostOptions['context']['locale']>().toEqualTypeOf<string>()
-    expectTypeOf<PostOptions['context']['session']>().toEqualTypeOf<Session>()
-    expectTypeOf<PostOptions['context']['user']>().toEqualTypeOf<User>()
-    expectTypeOf<PostOptions['loaderData']>().toEqualTypeOf<{
-      post: { id: string }
+    expectTypeOf<PostState['context']['session']>().toEqualTypeOf<Session>()
+    expectTypeOf<PostState['context']['user']>().toEqualTypeOf<User>()
+    expectTypeOf<RequiredKeys<PostState['loaderData']>>().toEqualTypeOf<
+      '/_authed' | '/_authed/posts/$postId'
+    >()
+    expectTypeOf<PostState['loaderData']['/_authed']>().toEqualTypeOf<{
+      unreadCount: number
     }>()
-    expectTypeOf<PostOptions['routes']['/_authed']>().toEqualTypeOf<{
-      loaderData: { unreadCount: number }
-    }>()
-    expectTypeOf<NonNullable<PostOptions['search']>>().toEqualTypeOf<{
+    expectTypeOf<
+      PostState['loaderData']['/_authed/posts/$postId']
+    >().toEqualTypeOf<{ post: { id: string } }>()
+    expectTypeOf<NonNullable<PostState['search']>>().toEqualTypeOf<{
       tab?: string
     }>()
   })
 
   test('asks for nothing a route does not have', () => {
-    type SettingsOptions = RenderInRouteOptions<
-      RouteTree,
-      '/_authed/settings',
-      {}
-    >
+    type SettingsState = IsolatedRouteState<RouteTree, '/_authed/settings'>
     // No path params and no loader of its own, but an ancestor with a loader.
-    expectTypeOf<RequiredKeys<SettingsOptions>>().toEqualTypeOf<
-      'route' | 'context' | 'routes'
+    expectTypeOf<RequiredKeys<SettingsState>>().toEqualTypeOf<
+      'route' | 'context' | 'loaderData'
     >()
+    expectTypeOf<
+      RequiredKeys<SettingsState['loaderData']>
+    >().toEqualTypeOf<'/_authed'>()
 
-    type LoginOptions = RenderInRouteOptions<RouteTree, '/login', {}>
+    type LoginState = IsolatedRouteState<RouteTree, '/login'>
     // Its beforeLoad adds nothing, so the context is the one of the root route.
-    expectTypeOf<RequiredKeys<LoginOptions>>().toEqualTypeOf<
+    expectTypeOf<RequiredKeys<LoginState>>().toEqualTypeOf<
       'route' | 'context'
     >()
-    expectTypeOf<keyof LoginOptions['context']>().toEqualTypeOf<
+    expectTypeOf<keyof LoginState['context']>().toEqualTypeOf<
       'locale' | 'session'
     >()
   })
 
-  test('accepts the complete state and returns the router and the render result', async () => {
-    const rendered = await testing.renderInRoute(<div />, postState)
-
-    expectTypeOf(rendered.router).toEqualTypeOf<
-      Router<RouteTree, 'never', false>
+  test('accepts the complete state and resolves to the router type', () => {
+    expectTypeOf(createIsolatedTestRouter(postState)).toEqualTypeOf<
+      Promise<Router<RouteTree, 'never', false>>
     >()
-    expectTypeOf(rendered.result).toEqualTypeOf<RenderResult>()
   })
 
   test('rejects state that is incomplete or of the wrong type', () => {
     const { context: _context, ...withoutContext } = postState
     // @ts-expect-error the context of the route is missing
-    void testing.renderInRoute(<div />, withoutContext)
+    void createIsolatedTestRouter(withoutContext)
 
     const withoutUser = {
       ...postState,
       context: { locale: 'en', session: { user: null } },
     } as const
     // @ts-expect-error `user` is missing from the context
-    void testing.renderInRoute(<div />, withoutUser)
+    void createIsolatedTestRouter(withoutUser)
 
-    const { loaderData: _loaderData, ...withoutLoaderData } = postState
+    const withoutRouteLoaderData = {
+      ...postState,
+      loaderData: { '/_authed': { unreadCount: 1 } },
+    } as const
     // @ts-expect-error the loader data of the route is missing
-    void testing.renderInRoute(<div />, withoutLoaderData)
+    void createIsolatedTestRouter(withoutRouteLoaderData)
 
-    const { routes: _routes, ...withoutAncestors } = postState
+    const withoutAncestorLoaderData = {
+      ...postState,
+      loaderData: { '/_authed/posts/$postId': { post: { id: '1' } } },
+    } as const
     // @ts-expect-error the loader data of `/_authed` is missing
-    void testing.renderInRoute(<div />, withoutAncestors)
+    void createIsolatedTestRouter(withoutAncestorLoaderData)
 
     const { params: _params, ...withoutParams } = postState
     // @ts-expect-error the path params are missing
-    void testing.renderInRoute(<div />, withoutParams)
+    void createIsolatedTestRouter(withoutParams)
 
-    const wrongLoaderData = { ...postState, loaderData: { post: 1 } } as const
+    const wrongLoaderData = {
+      ...postState,
+      loaderData: {
+        '/_authed': { unreadCount: 1 },
+        '/_authed/posts/$postId': { post: 1 },
+      },
+    } as const
     // @ts-expect-error `post` is not a number
-    void testing.renderInRoute(<div />, wrongLoaderData)
+    void createIsolatedTestRouter(wrongLoaderData)
 
     const unknownRoute = { ...postState, route: '/unknown' } as const
     // @ts-expect-error not a route id of the tree
-    void testing.renderInRoute(<div />, unknownRoute)
+    void createIsolatedTestRouter(unknownRoute)
   })
 
-  test('makes optional what the defaults of the application provide', () => {
-    const { routes: _routes, ...withoutAncestors } = postState
-    const withDefaults = {
-      ...withoutAncestors,
-      context: { session: { user: null } },
-    } as const
-    void testingWithDefaults.renderInRoute(<div />, withDefaults)
+  test('takes the root route by rootRouteId', () => {
+    type RootState = IsolatedRouteState<RouteTree, typeof rootRouteId>
+    expectTypeOf<RequiredKeys<RootState>>().toEqualTypeOf<'route' | 'context'>()
 
-    const withoutSession = { ...withoutAncestors, context: {} } as const
-    // @ts-expect-error `session` is not among the defaults
-    void testingWithDefaults.renderInRoute(<div />, withoutSession)
-
-    type PostOptions = RenderInRouteOptions<
-      RouteTree,
-      '/_authed/posts/$postId',
-      {
-        context: { locale: string; user: User }
-        routes: { '/_authed': { loaderData: { unreadCount: number } } }
-      }
-    >
-    expectTypeOf<RequiredKeys<PostOptions>>().toEqualTypeOf<
-      'route' | 'params' | 'context' | 'loaderData'
-    >()
-    expectTypeOf<
-      RequiredKeys<PostOptions['context']>
-    >().toEqualTypeOf<'session'>()
-  })
-})
-
-describe('createRouterTesting', () => {
-  test('types the defaults from the route tree', () => {
-    createRouterTesting({
+    void createIsolatedTestRouter({
       routeTree,
-      defaults: {
-        context: { locale: 'en', session: { user: null } },
-        routes: {
-          '/_authed': {
-            beforeLoad: ({ context }) => {
-              expectTypeOf(context.session).toEqualTypeOf<Session>()
-              return { user: { id: '1' } }
-            },
-          },
-        },
-      },
+      route: rootRouteId,
+      element: <div />,
+      context: { locale: 'en', session: { user: null } },
     })
-
-    createRouterTesting({
-      routeTree,
-      // @ts-expect-error `locale` is a string
-      defaults: { context: { locale: 1 } },
-    })
-  })
-
-  test('takes the type of the render result from the render function', async () => {
-    const withAsyncRender = createRouterTesting({
-      routeTree,
-      render: (ui: React.ReactElement) => Promise.resolve({ ui }),
-    })
-    const rendered = await withAsyncRender.renderInRoute(<div />, postState)
-
-    expectTypeOf(rendered.result).toEqualTypeOf<{ ui: React.ReactElement }>()
   })
 })
 
 describe('createTestRouter', () => {
   test('returns the router type of the route tree', () => {
     expectTypeOf(
-      testing.createTestRouter({ context: { locale: 'en' } }),
+      createTestRouter({ routeTree, context: { locale: 'en' } }),
     ).toEqualTypeOf<Router<RouteTree, 'never', false>>()
   })
 
-  test('requires the router context unless the defaults provide it', () => {
+  test('requires the router context like createRouter', () => {
+    const withoutContext = { routeTree } as const
     // @ts-expect-error the router context is required
-    testing.createTestRouter()
-
-    const withoutContext = {} as const
-    // @ts-expect-error the router context is required
-    testing.createTestRouter(withoutContext)
-
-    testingWithDefaults.createTestRouter()
+    createTestRouter(withoutContext)
   })
 
   test('types the location like navigation options', () => {
-    testing.createTestRouter({
+    createTestRouter({
+      routeTree,
       context: { locale: 'en' },
       location: {
         to: '/posts/$postId',
@@ -268,25 +207,33 @@ describe('createTestRouter', () => {
     })
 
     const withoutParams = {
+      routeTree,
       context: { locale: 'en' },
       location: { to: '/posts/$postId' },
     } as const
     // @ts-expect-error the path params of the location are missing
-    testing.createTestRouter(withoutParams)
+    createTestRouter(withoutParams)
 
     const unknownPath = {
+      routeTree,
       context: { locale: 'en' },
       location: { to: '/unknown' },
     } as const
     // @ts-expect-error not a path of the tree
-    testing.createTestRouter(unknownPath)
+    createTestRouter(unknownPath)
   })
 
   test('types replacements and seeds from the route', () => {
-    testing.createTestRouter({
+    createTestRouter({
+      routeTree,
       context: { locale: 'en' },
-      routes: {
-        __root__: { context: { session: { user: null } } },
+      overrides: {
+        [rootRouteId]: {
+          beforeLoad: ({ context }) => {
+            expectTypeOf(context.locale).toEqualTypeOf<string>()
+            return { session: { user: null } }
+          },
+        },
         '/_authed': {
           beforeLoad: ({ context }) => {
             expectTypeOf(context.locale).toEqualTypeOf<string>()
@@ -309,44 +256,77 @@ describe('createTestRouter', () => {
         },
       },
     })
+
+    createTestRouter({
+      routeTree,
+      context: { locale: 'en' },
+      overrides: {
+        [rootRouteId]: { routeContext: { session: { user: { id: '1' } } } },
+      },
+    })
+  })
+
+  test('checks a shared override object with RouteTestOverrides', () => {
+    const signedIn = {
+      [rootRouteId]: { routeContext: { session: { user: { id: '1' } } } },
+    } satisfies RouteTestOverrides<RouteTree>
+
+    createTestRouter({
+      routeTree,
+      context: { locale: 'en' },
+      overrides: signedIn,
+    })
   })
 
   test('rejects replacements and seeds of the wrong type', () => {
     const wrongSeed = {
+      routeTree,
       context: { locale: 'en' },
-      routes: { '/_authed': { loaderData: { unreadCount: 'many' } } },
+      overrides: { '/_authed': { loaderData: { unreadCount: 'many' } } },
     } as const
     // @ts-expect-error `unreadCount` is a number
-    testing.createTestRouter(wrongSeed)
+    createTestRouter(wrongSeed)
 
     const wrongContextSeed = {
+      routeTree,
       context: { locale: 'en' },
-      routes: { '/_authed': { context: { user: 'nobody' } } },
+      overrides: { '/_authed': { routeContext: { user: 'nobody' } } },
     } as const
     // @ts-expect-error `user` is an object
-    testing.createTestRouter(wrongContextSeed)
+    createTestRouter(wrongContextSeed)
+
+    const contextValue = {
+      routeTree,
+      context: { locale: 'en' },
+      overrides: { '/_authed': { context: { user: { id: '1' } } } },
+    } as const
+    // @ts-expect-error `context` replaces the route option and takes a function
+    createTestRouter(contextValue)
 
     const wrongLoader = {
+      routeTree,
       context: { locale: 'en' },
-      routes: {
+      overrides: {
         '/_authed/posts/$postId': { loader: () => ({ post: 'none' }) },
       },
     }
     // @ts-expect-error the loader has to return the loader data of the route
-    testing.createTestRouter(wrongLoader)
+    createTestRouter(wrongLoader)
 
     const wrongBeforeLoad = {
+      routeTree,
       context: { locale: 'en' },
-      routes: { '/_authed': { beforeLoad: () => ({ user: 'nobody' }) } },
+      overrides: { '/_authed': { beforeLoad: () => ({ user: 'nobody' }) } },
     }
     // @ts-expect-error beforeLoad has to return what the route's own returns
-    testing.createTestRouter(wrongBeforeLoad)
+    createTestRouter(wrongBeforeLoad)
 
     const unknownRoute = {
+      routeTree,
       context: { locale: 'en' },
-      routes: { '/unknown': {} },
+      overrides: { '/unknown': {} },
     } as const
     // @ts-expect-error not a route id of the tree
-    testing.createTestRouter(unknownRoute)
+    createTestRouter(unknownRoute)
   })
 })

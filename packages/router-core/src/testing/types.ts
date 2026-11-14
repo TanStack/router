@@ -6,9 +6,8 @@ import type {
   LoaderFnContext,
   RouteContextOptions,
 } from '../route'
-import type { AllContext, RouteById, RouteIds } from '../routeInfo'
-import type { InferRouterContext } from '../router'
-import type { Awaitable } from '../utils'
+import type { RouteById, RouteIds } from '../routeInfo'
+import type { Awaitable, ConstrainLiteral } from '../utils'
 
 /**
  * The component options a test can replace on a route. Framework packages
@@ -34,13 +33,6 @@ type OptionalWhenEmpty<TKey extends PropertyKey, TValue> =
   IsEmpty<TValue> extends true
     ? { [K in TKey]?: TValue }
     : { [K in TKey]: TValue }
-
-type OptionalWhenUndefined<
-  TKey extends PropertyKey,
-  TValue,
-> = undefined extends TValue
-  ? { [K in TKey]?: TValue }
-  : { [K in TKey]: TValue }
 
 /**
  * A replacement for a route's `beforeLoad`. It receives what the route's own
@@ -96,11 +88,12 @@ export type RouteTestContextFn<TRoute extends AnyRoute> = (
 /**
  * What a test can replace on one route. Everything is typed from the route.
  *
- * - `beforeLoad`, `loader`: a replacement for that option.
- * - `context`: a function replaces the route's `context` option. A value is a
- *   seed: it stands for everything the route adds to the context, and neither
- *   the route's `context` option nor its `beforeLoad` runs.
- * - `loaderData`: a seed. The route's loader does not run.
+ * - `beforeLoad`, `loader`, `context`: replace the route option of the same
+ *   name. Each takes a function with the signature of the original.
+ * - `loaderData`: a seed for the route's loader data. The route's loader does
+ *   not run.
+ * - `routeContext`: a seed for everything the route adds to the context.
+ *   Neither the route's `context` option nor its `beforeLoad` runs.
  * - The component options replace what the route renders.
  *
  * The options derived from the URL (`params`, `validateSearch`, `loaderDeps`)
@@ -112,11 +105,15 @@ export type RouteTestOverride<
 > = TComponents & {
   beforeLoad?: RouteTestBeforeLoadFn<TRoute>
   loader?: RouteTestLoaderFn<TRoute>
+  context?: RouteTestContextFn<TRoute>
   loaderData?: TRoute['types']['loaderData']
-  context?: TRoute['types']['routeContext'] | RouteTestContextFn<TRoute>
+  routeContext?: TRoute['types']['routeContext']
 }
 
-/** Overrides by route id. */
+/**
+ * Overrides by route id. The root route's id is `rootRouteId`, used as a
+ * computed key: `{ [rootRouteId]: { ... } }`.
+ */
 export type RouteTestOverrides<
   TRouteTree extends AnyRoute,
   TComponents = RouteTestComponents,
@@ -126,61 +123,6 @@ export type RouteTestOverrides<
     TComponents
   >
 }
-
-/**
- * Defaults an application sets once for all of its route tests.
- */
-export interface RouterTestingDefaults<
-  TRouteTree extends AnyRoute,
-  TComponents = RouteTestComponents,
-> {
-  /**
-   * Context values every test router starts with. A key given here becomes
-   * optional in the `context` of each test.
-   */
-  context?: AllContext<TRouteTree>
-  /**
-   * Overrides every test router starts with. A test's own override for a
-   * route wins, option by option. An isolated route test takes only the
-   * `loaderData` seeds from here.
-   */
-  routes?: RouteTestOverrides<TRouteTree, TComponents>
-}
-
-type DefaultContextKeys<TDefaults> = TDefaults extends {
-  context: infer TContext
-}
-  ? keyof TContext
-  : never
-
-type DefaultLoaderDataIds<TDefaults> = TDefaults extends {
-  routes: infer TRoutes
-}
-  ? {
-      [TId in keyof TRoutes]: TRoutes[TId] extends { loaderData: any }
-        ? TId
-        : never
-    }[keyof TRoutes]
-  : never
-
-/** Makes the keys optional that the application's defaults already provide. */
-type WithDefaults<TValue, TDefaultKeys> = [TValue] extends [
-  void | undefined | null,
-]
-  ? TValue
-  : [TDefaultKeys & keyof TValue] extends [never]
-    ? TValue
-    : Omit<TValue, TDefaultKeys & keyof TValue> &
-        Partial<Pick<TValue, TDefaultKeys & keyof TValue>>
-
-/** The `context` option of a test router: the router context minus the defaults. */
-export type TestRouterContextOption<
-  TRouteTree extends AnyRoute,
-  TDefaults = {},
-> = OptionalWhenEmpty<
-  'context',
-  WithDefaults<InferRouterContext<TRouteTree>, DefaultContextKeys<TDefaults>>
->
 
 type AncestorRoutes<TRoute> = TRoute extends {
   types: { parentRoute: infer TParentRoute }
@@ -193,46 +135,32 @@ type AncestorRoutes<TRoute> = TRoute extends {
       : never
   : never
 
-type RequiresLoaderData<
-  TRoute extends AnyRoute,
-  TDefaults,
-> = undefined extends TRoute['types']['loaderData']
-  ? false
-  : TRoute['types']['id'] extends DefaultLoaderDataIds<TDefaults>
-    ? false
-    : true
+type BranchRoutes<TRoute> = TRoute | AncestorRoutes<TRoute>
 
-type AncestorLoaderData<TRoute extends AnyRoute, TDefaults> = {
-  [TAncestor in AncestorRoutes<TRoute> as RequiresLoaderData<
-    TAncestor,
-    TDefaults
-  > extends true
-    ? TAncestor['types']['id']
-    : never]: { loaderData: TAncestor['types']['loaderData'] }
+type HasLoaderData<TRoute extends AnyRoute> =
+  undefined extends TRoute['types']['loaderData'] ? false : true
+
+/**
+ * Loader data by route id for a route and the routes above it. A route whose
+ * loader returns data needs an entry.
+ */
+type BranchLoaderData<TRoute extends AnyRoute> = {
+  [TBranchRoute in BranchRoutes<TRoute> as HasLoaderData<TBranchRoute> extends true
+    ? TBranchRoute['types']['id']
+    : never]: TBranchRoute['types']['loaderData']
 } & {
-  [TAncestor in AncestorRoutes<TRoute> as RequiresLoaderData<
-    TAncestor,
-    TDefaults
-  > extends true
+  [TBranchRoute in BranchRoutes<TRoute> as HasLoaderData<TBranchRoute> extends true
     ? never
-    : TAncestor['types']['id']]?: {
-    loaderData?: TAncestor['types']['loaderData']
-  }
+    : TBranchRoute['types']['id']]?: TBranchRoute['types']['loaderData']
 }
 
-type RouteTestStateFor<TRoute extends AnyRoute, TDefaults> = OptionalWhenEmpty<
+type IsolatedRouteStateFor<TRoute extends AnyRoute> = OptionalWhenEmpty<
   'params',
   TRoute['types']['allParams']
 > &
   OptionalWhenEmpty<'search', TRoute['types']['fullSearchSchemaInput']> &
-  OptionalWhenEmpty<
-    'context',
-    WithDefaults<TRoute['types']['allContext'], DefaultContextKeys<TDefaults>>
-  > &
-  (TRoute['types']['id'] extends DefaultLoaderDataIds<TDefaults>
-    ? { loaderData?: TRoute['types']['loaderData'] }
-    : OptionalWhenUndefined<'loaderData', TRoute['types']['loaderData']>) &
-  OptionalWhenEmpty<'routes', AncestorLoaderData<TRoute, TDefaults>>
+  OptionalWhenEmpty<'context', TRoute['types']['allContext']> &
+  OptionalWhenEmpty<'loaderData', BranchLoaderData<TRoute>>
 
 /**
  * The state an isolated route test supplies for the route `TId`. No route
@@ -241,12 +169,12 @@ type RouteTestStateFor<TRoute extends AnyRoute, TDefaults> = OptionalWhenEmpty<
  *
  * - `params`: all path params of the route.
  * - `search`: search params, which still go through `validateSearch`.
- * - `context`: the merged context of the route, minus the defaults.
- * - `loaderData`: the route's loader data.
- * - `routes`: loader data of the ancestors whose loader returns something.
+ * - `context`: the whole context of the route.
+ * - `loaderData`: loader data by route id, for the route and the routes above
+ *   it whose loader returns data.
  */
-export type RouteTestOptions<
-  TRouteTree extends AnyRoute,
-  TId,
-  TDefaults = {},
-> = { route: TId } & RouteTestStateFor<RouteById<TRouteTree, TId>, TDefaults>
+export type IsolatedRouteState<TRouteTree extends AnyRoute, TId> = {
+  // Checked here rather than in a constraint on `TId`: with a constraint,
+  // TypeScript widens a constant such as `rootRouteId` while inferring.
+  route: ConstrainLiteral<TId, RouteIds<TRouteTree>>
+} & IsolatedRouteStateFor<RouteById<TRouteTree, TId>>

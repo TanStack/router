@@ -1,17 +1,25 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { RouterProvider } from '@tanstack/react-router'
+import { createIsolatedTestRouter } from '@tanstack/react-router/testing'
 import { describe, expect, test } from 'vitest'
 import { UserMenu } from '../src/components/UserMenu'
-import { appTesting, createPost, testUser } from '../src/test-utils'
+import { routeTree } from '../src/routeTree.gen'
+import { createPost, signedInContext } from '../src/test-fixtures'
 
 describe('a component bound to a layout route', () => {
   test('is rendered through a child route and reads the state of the layout route', async () => {
-    await appTesting.renderInRoute(<UserMenu />, {
+    const router = await createIsolatedTestRouter({
+      routeTree,
       route: '/_authed/posts/$postId',
+      element: <UserMenu />,
       params: { postId: 'post-1' },
-      context: { user: { id: 'user-9', name: 'Grace' } },
-      loaderData: { post: createPost() },
-      routes: { '/_authed': { loaderData: { unreadCount: 7 } } },
+      context: { ...signedInContext, user: { id: 'user-9', name: 'Grace' } },
+      loaderData: {
+        '/_authed': { unreadCount: 7 },
+        '/_authed/posts/$postId': { post: createPost() },
+      },
     })
+    render(<RouterProvider router={router} />)
 
     const menu = screen.getByLabelText('User menu')
     expect(menu.textContent).toContain('Grace')
@@ -19,11 +27,18 @@ describe('a component bound to a layout route', () => {
   })
 
   test('navigating away changes the location and renders no other route', async () => {
-    const { router } = await appTesting.renderInRoute(<UserMenu />, {
+    const router = await createIsolatedTestRouter({
+      routeTree,
       route: '/_authed/posts/$postId',
+      element: <UserMenu />,
       params: { postId: 'post-1' },
-      loaderData: { post: createPost() },
+      context: signedInContext,
+      loaderData: {
+        '/_authed': { unreadCount: 0 },
+        '/_authed/posts/$postId': { post: createPost() },
+      },
     })
+    render(<RouterProvider router={router} />)
 
     fireEvent.click(screen.getByRole('link', { name: 'Sign out' }))
 
@@ -35,9 +50,12 @@ describe('a component bound to a layout route', () => {
 
   test('cannot be rendered in a layout route that its own path does not lead to', async () => {
     await expect(
-      appTesting.renderInRoute(<UserMenu />, {
+      createIsolatedTestRouter({
+        routeTree,
         route: '/_authed',
-        context: { user: testUser },
+        element: <UserMenu />,
+        context: signedInContext,
+        loaderData: { '/_authed': { unreadCount: 0 } },
       }),
     ).rejects.toThrow('The route "/_authed" is not matched at "/"')
   })

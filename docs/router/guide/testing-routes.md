@@ -5,18 +5,18 @@ title: Testing Routes
 
 > **Experimental:** The route testing utilities are experimental and subject to change. They are available for React only.
 
-`@tanstack/react-router/testing` builds test routers from your app's route tree. Tests address routes by their id, and everything a test passes is typed from the tree: the start location, params, search params, context, loader data, and the parts of a route it replaces. Tests never declare routes of their own.
+`@tanstack/react-router/testing` creates routers for tests from your app's route tree. Tests address routes by their id, and everything a test passes is typed from the tree: the start location, params, search params, context, loader data, and the parts of a route it replaces. Tests never declare routes of their own.
 
-It has two helpers:
+It has two functions. Both return a router that you render with `RouterProvider`, so they work with any test library:
 
-| Helper             | Use it to test                                                       | What runs                                                                                              |
-| ------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `createTestRouter` | A route or a flow: redirects, loaders, layouts, errors, navigation   | Your routes' `context`, `beforeLoad` and `loader`, unless the test replaces them                       |
-| `renderInRoute`    | A component that reads route state: params, search, context, loaders | None of them. The test supplies the state the component reads, and the TypeScript types require it all |
+| Function                   | Use it to test                                                           | What runs                                                                                                 |
+| -------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `createTestRouter`         | A route or a flow: redirects, loaders, layouts, errors, navigation       | Your routes' `context`, `beforeLoad` and `loader`, unless the test replaces them                          |
+| `createIsolatedTestRouter` | A component that reads route state: params, search, context, loader data | None of them. The test supplies the state the component reads, and the TypeScript types require all of it |
 
 ## Setup
 
-Both helpers take your route tree. With file-based routing, import the generated `routeTree.gen.ts`, and keep the router plugin in the Vite config your tests use, so the file is regenerated when a test run starts:
+Both functions take your route tree. With file-based routing, import the generated `routeTree.gen.ts`, and keep the router plugin in the Vite config your tests use, so the file is regenerated when a test run starts:
 
 ```ts title="vite.config.ts"
 import { defineConfig } from 'vitest/config'
@@ -37,21 +37,6 @@ export default defineConfig({
 ```
 
 With code-based routing, pass the route tree you build with `addChildren`.
-
-Create the helpers once, in a file your tests import:
-
-```tsx title="src/test-utils.tsx"
-import { render } from '@testing-library/react'
-import { createRouterTesting } from '@tanstack/react-router/testing'
-import { routeTree } from './routeTree.gen'
-
-export const { createTestRouter, renderInRoute } = createRouterTesting({
-  routeTree,
-  render,
-})
-```
-
-`render` is the function your test library uses to mount a React element. Only `renderInRoute` calls it; TanStack Router does not depend on a test library.
 
 ## The example app
 
@@ -102,21 +87,23 @@ export function PostHeader() {
 
 ## Test a route with `createTestRouter`
 
-`createTestRouter` creates a router over a copy of your route tree. Every route behaves as in the app unless the test replaces part of it:
+`createTestRouter` takes the options of `createRouter`, plus `location` and `overrides`. It creates a router over a copy of your route tree, and every route behaves as in the app unless the test replaces part of it:
 
 ```tsx title="tests/post-route.test.tsx"
 import { render, screen } from '@testing-library/react'
-import { RouterProvider } from '@tanstack/react-router'
+import { RouterProvider, rootRouteId } from '@tanstack/react-router'
+import { createTestRouter } from '@tanstack/react-router/testing'
 import { expect, test } from 'vitest'
-import { createTestRouter } from '../src/test-utils'
+import { routeTree } from '../src/routeTree.gen'
 
 test('sends a signed-out visitor to the login page', async () => {
   const router = createTestRouter({
-    location: { to: '/posts/$postId', params: { postId: '1' } },
+    routeTree,
     context: { locale: 'en' },
-    routes: {
+    location: { to: '/posts/$postId', params: { postId: '1' } },
+    overrides: {
       // The root route's beforeLoad does not run. This is its result.
-      __root__: { context: { session: { user: null } } },
+      [rootRouteId]: { routeContext: { session: { user: null } } },
     },
   })
   render(<RouterProvider router={router} />)
@@ -128,32 +115,32 @@ test('sends a signed-out visitor to the login page', async () => {
 
 The test does not replace the `beforeLoad` of `/_authed`, so it runs, finds no user and redirects.
 
-- `location` is typed like the options of `navigate`: `to` must be a path of your app, and the path params and search params that path requires are required here too. Without `location`, the router starts at `/`. To start from history entries that are not valid navigation targets, pass `history: createMemoryHistory({ initialEntries: [...] })` instead.
-- `context` is the router context, typed from your root route.
+- `location` is typed like the options of `navigate`: `to` must be a path of your app, and the path params and search params that path requires are required here too. It replaces the current entry of the router's history. Without it, the router starts at `/`.
+- The router uses a memory history, unless you pass your own `history`.
+- `context` and every other option go to the router as in `createRouter`.
 - The router has not loaded yet. Render it with `RouterProvider`, or `await router.load()` to assert on `router.state` without rendering anything.
 - Every call builds a new copy of the route tree. Overrides never reach another test, and the route objects your app imports keep their options.
 
 ### Replace parts of a route
 
-`routes` takes overrides by route id. Each override is typed from the route it replaces:
+`overrides` takes overrides by route id. For the root route, use the `rootRouteId` that `@tanstack/react-router` exports, as a computed key: `[rootRouteId]`. Each override is typed from the route it replaces:
 
-| Override                                                               | Effect                                                                                                                               |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `beforeLoad: fn`                                                       | Replaces the route's `beforeLoad`. `fn` receives what the original receives and has to return what the original returns.             |
-| `loader: fn`                                                           | Replaces the route's loader. `fn` receives what the original receives and has to return the route's loader data.                     |
-| `context: fn`                                                          | Replaces the route's `context` option.                                                                                               |
-| `context: value`                                                       | A seed: `value` is everything the route adds to the context. Neither the route's `context` option nor its `beforeLoad` runs.         |
-| `loaderData: value`                                                    | A seed: the route's loader is replaced by one that returns `value`.                                                                  |
-| `component`, `pendingComponent`, `errorComponent`, `notFoundComponent` | Replace what the route renders. An override also wins over the options of a [lazy route](./code-splitting.md) once they have loaded. |
+| Override                                                               | Effect                                                                                                                                                 |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `beforeLoad`, `loader`, `context`                                      | Replace the route option of the same name. Each takes a function that receives what the original receives and has to return what the original returns. |
+| `loaderData`                                                           | A seed: the route's loader is replaced by one that returns this value.                                                                                 |
+| `routeContext`                                                         | A seed: everything the route adds to the context. Neither the route's `context` option nor its `beforeLoad` runs.                                      |
+| `component`, `pendingComponent`, `errorComponent`, `notFoundComponent` | Replace what the route renders. An override also wins over the options of a [lazy route](./code-splitting.md) once they have loaded.                   |
 
-Setting an option to `undefined` removes it, and a route cannot take both `loader` and `loaderData`. The options that derive state from the URL cannot be replaced, because replacing them would change the route's types: `params.parse` and `params.stringify`, `validateSearch`, the `search` middlewares and `loaderDeps` run as in the app.
+Setting an option to `undefined` removes it. A route cannot take both `loader` and `loaderData`, or `routeContext` together with `context` or `beforeLoad`. The options that derive state from the URL cannot be replaced, because replacing them would change the route's types: `params.parse` and `params.stringify`, `validateSearch`, the `search` middlewares and `loaderDeps` run as in the app.
 
 ```tsx
 const router = createTestRouter({
-  location: { to: '/posts/$postId', params: { postId: '7' } },
+  routeTree,
   context: { locale: 'en' },
-  routes: {
-    __root__: { context: { session: { user: ada } } },
+  location: { to: '/posts/$postId', params: { postId: '7' } },
+  overrides: {
+    [rootRouteId]: { routeContext: { session: { user: ada } } },
     '/_authed': { loaderData: { unreadCount: 3 } },
     '/_authed/posts/$postId': {
       loader: ({ params }) => ({ post: createPost({ id: params.postId }) }),
@@ -164,111 +151,120 @@ const router = createTestRouter({
 
 Here the real `beforeLoad` of `/_authed` derives `user` from the seeded session. A loader that returns the wrong data, or an override for a route id that does not exist, is a type error.
 
-To reuse overrides in several tests, check them against `RouteTestOverrides`:
+To reuse overrides in several tests, check them against `RouteTestOverrides` and spread them:
 
-```tsx
+```tsx title="tests/fixtures.ts"
+import { rootRouteId } from '@tanstack/react-router'
 import type { RouteTestOverrides } from '@tanstack/react-router/testing'
 import type { routeTree } from '../src/routeTree.gen'
 
 export const signedIn = {
-  __root__: { context: { session: { user: ada } } },
+  [rootRouteId]: { routeContext: { session: { user: ada } } },
 } satisfies RouteTestOverrides<typeof routeTree>
 ```
 
-## Test a component with `renderInRoute`
+```tsx
+overrides: { ...signedIn, '/_authed': { loaderData: { unreadCount: 3 } } },
+```
 
-`renderInRoute` renders one element inside one route. The test supplies the state the route would have in the app:
+## Test a component with `createIsolatedTestRouter`
+
+`createIsolatedTestRouter` creates a router that renders one element inside one route. The test supplies the state the route would have in the app:
 
 ```tsx title="tests/post-header.test.tsx"
-import { screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import { RouterProvider } from '@tanstack/react-router'
+import { createIsolatedTestRouter } from '@tanstack/react-router/testing'
 import { expect, test } from 'vitest'
 import { PostHeader } from '../src/components/PostHeader'
-import { renderInRoute } from '../src/test-utils'
+import { routeTree } from '../src/routeTree.gen'
 
 test('marks posts written by the signed-in user', async () => {
-  await renderInRoute(<PostHeader />, {
+  const router = await createIsolatedTestRouter({
+    routeTree,
     route: '/_authed/posts/$postId',
+    element: <PostHeader />,
     params: { postId: '1' },
     context: { locale: 'en', session: { user: ada }, user: ada },
-    loaderData: { post: createPost({ authorId: ada.id }) },
-    routes: { '/_authed': { loaderData: { unreadCount: 0 } } },
+    loaderData: {
+      '/_authed': { unreadCount: 0 },
+      '/_authed/posts/$postId': { post: createPost({ authorId: ada.id }) },
+    },
   })
+  render(<RouterProvider router={router} />)
 
   expect(screen.getByText('Written by you')).toBeTruthy()
 })
 ```
 
-No `context`, `beforeLoad` or `loader` option of any route runs, none of your route components render, and lazy routes are not loaded. Nothing of the app runs around the element. The router has loaded before the element renders, so the first render is complete when `renderInRoute` resolves.
+`element` renders in place of the route's component. No `context`, `beforeLoad` or `loader` option of any route runs, none of your route components render, and lazy routes are not loaded, so nothing of the app runs around the element. The function resolves once the router has loaded, so the first render is complete.
 
-`renderInRoute` resolves to `{ router, result }`. `router` is a real router: links get their real `href`, and navigation updates `router.state`, but every route other than the one under test renders nothing. `result` is what your `render` function returned.
+The router is real: links get their real `href`, and navigation updates `router.state`, but every route other than the one under test renders nothing.
 
 ### What the types require
 
 The options are typed from the route that `route` names. They ask for what the skipped options would have produced:
 
-| Option       | Contains                                                                                                                                   | Required when                                      |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
-| `params`     | All path params of the route                                                                                                               | The route has path params                          |
-| `search`     | The search params, as a link to the route takes them. They go through the route's `validateSearch`.                                        | The route requires search params                   |
-| `context`    | The route's whole context: the router context and everything each route above it adds. It is what `useRouteContext` returns for the route. | The context has values                             |
-| `loaderData` | The route's loader data                                                                                                                    | The route's loader returns data                    |
-| `routes`     | `{ [routeId]: { loaderData } }` for the routes above it                                                                                    | One of those routes has a loader that returns data |
+| Option       | Contains                                                                                                                                   | Required when                                                          |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| `params`     | All path params of the route                                                                                                               | The route has path params                                              |
+| `search`     | The search params, as a link to the route takes them. They go through the route's `validateSearch`.                                        | The route requires search params                                       |
+| `context`    | The route's whole context: the router context and everything each route above it adds. It is what `useRouteContext` returns for the route. | The context has values                                                 |
+| `loaderData` | Loader data by route id, for the route and the routes above it                                                                             | One of these routes has a loader that returns data. It needs an entry. |
 
-In the example, `context` has to hold `locale` from the router context, `session` from the root route and `user` from `/_authed`, and `routes` has to hold the loader data of `/_authed`. Leaving any of them out is a type error that names the missing value.
+In the example, `context` has to hold `locale` from the router context, `session` from the root route and `user` from `/_authed`, and `loaderData` has to hold the data of `/_authed` and of the post route. Leaving any of them out is a type error that names the missing value. For the root route, use `route: rootRouteId`, and `[rootRouteId]` as its key in `loaderData`.
 
 > [!NOTE]
 > Vitest checks these types only when [type checking](https://vitest.dev/guide/testing-types) is on: set `test.typecheck.enabled` as in the [setup](#setup), or run `vitest --typecheck`. Vitest then runs `tsc` with your `tsconfig.json`, and a type error in a test file that the tsconfig includes fails the run, with its file and line. By default Vitest lists such an error as a source error; add your test files to `typecheck.include` to have it reported as a failure of the test that contains it. Without type checking, Vitest only strips the types: a test that leaves state out still runs, and the component reads `undefined`.
 
-At run time, `renderInRoute` fails with a message when:
+At run time, `createIsolatedTestRouter` rejects with a message when:
 
 - `route` is not a route of the tree,
 - a path param is missing,
 - a route on the way to `route` fails to load, for example because its `validateSearch` rejects the search params,
 - the location of the route does not lead to it. A pathless layout route has no location of its own: render the element in one of its child routes, and read the layout's state with `getRouteApi('/_layout')`.
 
-## Share values across tests
+## Share state across tests
 
-Put values that many tests share into `defaults`. What the defaults provide becomes optional in each test:
+There is no configuration step. Share state the way you share any test data, and spread it into each call; the types check the object that a test ends up passing:
 
-```tsx title="src/test-utils.tsx"
-export const { createTestRouter, renderInRoute } = createRouterTesting({
-  routeTree,
-  render,
-  defaults: {
-    context: { locale: 'en', session: { user: ada }, user: ada },
-    routes: { '/_authed': { loaderData: { unreadCount: 0 } } },
-  },
-})
+```tsx title="tests/fixtures.ts"
+export const signedInContext = {
+  locale: 'en',
+  session: { user: ada },
+  user: ada,
+}
 ```
 
 ```tsx
-await renderInRoute(<PostHeader />, {
-  route: '/_authed/posts/$postId',
-  params: { postId: '1' },
-  loaderData: { post: createPost() },
-})
-```
-
-- `defaults.context` is added to the router context of every test router, and is the base of the route's context in `renderInRoute`. A test's own `context` wins, key by key. In `createTestRouter` it does not stop a route's `beforeLoad` from running; seed the route in `defaults.routes` for that.
-- `defaults.routes` applies to every router that `createTestRouter` creates, and a test's own override for a route wins, option by option. `renderInRoute` uses only the `loaderData` seeds from it.
-
-## Providers and router options
-
-`routerOptions` are passed to every test router, for example `Wrap` for the providers your components need:
-
-```tsx title="src/test-utils.tsx"
-export const { createTestRouter, renderInRoute } = createRouterTesting({
+const router = await createIsolatedTestRouter({
   routeTree,
-  render,
-  routerOptions: {
-    Wrap: ({ children }) => (
-      <ThemeProvider theme="light">{children}</ThemeProvider>
-    ),
+  route: '/_authed/posts/$postId',
+  element: <PostHeader />,
+  params: { postId: '1' },
+  context: { ...signedInContext, user: grace },
+  loaderData: {
+    '/_authed': { unreadCount: 0 },
+    '/_authed/posts/$postId': { post: createPost() },
   },
 })
 ```
 
-`renderInRoute` keeps them, except `defaultComponent`, `defaultPendingComponent` and `defaultErrorComponent`. It also turns off the router's global error boundary, so an error the element throws reaches the test.
+## Router options
+
+Both functions pass their other options to the router, for example `Wrap` for the providers your components need:
+
+```tsx
+const router = createTestRouter({
+  routeTree,
+  context: { locale: 'en' },
+  Wrap: ({ children }) => (
+    <ThemeProvider theme="light">{children}</ThemeProvider>
+  ),
+})
+```
+
+`createIsolatedTestRouter` leaves out `defaultComponent`, `defaultPendingComponent` and `defaultErrorComponent`, and turns off the router's global error boundary, so an error the element throws reaches the test from your `render` call. It creates its own history and sets its location from `route`, `params` and `search`; its `search` is the route's search params, not the router option of that name.
 
 ## Limitations
 
@@ -279,4 +275,4 @@ export const { createTestRouter, renderInRoute } = createRouterTesting({
 
 ## API
 
-See the [`createRouterTesting` reference](../api/router/createRouterTestingFunction.md).
+See the [`createTestRouter`](../api/router/createTestRouterFunction.md) and [`createIsolatedTestRouter`](../api/router/createIsolatedTestRouterFunction.md) references.

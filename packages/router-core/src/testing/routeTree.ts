@@ -11,8 +11,9 @@ type RouteOptionsPatch = Record<string, unknown>
 export interface AnyRouteTestOverride {
   beforeLoad?: unknown
   loader?: unknown
-  loaderData?: unknown
   context?: unknown
+  loaderData?: unknown
+  routeContext?: unknown
   component?: unknown
   pendingComponent?: unknown
   errorComponent?: unknown
@@ -24,7 +25,11 @@ export type AnyRouteTestOverrides = Record<
   AnyRouteTestOverride | undefined
 >
 
-const componentOptions = [
+/** Override keys that replace the route option of the same name. */
+const replacedOptions = [
+  'beforeLoad',
+  'loader',
+  'context',
   'component',
   'pendingComponent',
   'errorComponent',
@@ -142,71 +147,69 @@ function assertKnownRouteIds(routeTree: AnyRoute, ids: Iterable<string>) {
 }
 
 function applyOverride(
-  patch: RouteOptionsPatch,
   routeId: string,
   override: AnyRouteTestOverride,
-) {
-  if ('loader' in override && 'loaderData' in override) {
+): RouteOptionsPatch {
+  const conflict =
+    'loader' in override && 'loaderData' in override
+      ? ['loader', 'loaderData']
+      : 'routeContext' in override && 'context' in override
+        ? ['context', 'routeContext']
+        : 'routeContext' in override && 'beforeLoad' in override
+          ? ['beforeLoad', 'routeContext']
+          : undefined
+  if (conflict) {
     throw new Error(
-      `The override for route "${routeId}" has both "loader" and "loaderData". Pass one of them.`,
+      `The override for route "${routeId}" has both "${conflict[0]}" and "${conflict[1]}". Pass one of them.`,
     )
+  }
+  if (
+    override.context !== undefined &&
+    typeof override.context !== 'function'
+  ) {
+    throw new Error(
+      `The override for route "${routeId}" passes a value as "context", which replaces the route's \`context\` option and has to be a function. To seed what the route adds to the context, use "routeContext".`,
+    )
+  }
+
+  const patch: RouteOptionsPatch = {}
+  for (const key of replacedOptions) {
+    if (key in override) {
+      patch[key] = override[key]
+    }
   }
   if ('loaderData' in override) {
     const loaderData = override.loaderData
     patch.loader = () => loaderData
   }
-  if ('loader' in override) {
-    patch.loader = override.loader
+  if ('routeContext' in override) {
+    // The seed stands for everything the route adds to the context, so
+    // neither of the two options that produce it may run.
+    const routeContext = override.routeContext
+    patch.context = () => routeContext
+    patch.beforeLoad = undefined
   }
-  if ('context' in override) {
-    const context = override.context
-    if (typeof context === 'function') {
-      patch.context = context
-    } else {
-      // A seed stands for everything the route contributes to the context,
-      // so neither of the two options that produce it may run.
-      patch.context = () => context
-      patch.beforeLoad = undefined
-    }
-  }
-  if ('beforeLoad' in override) {
-    patch.beforeLoad = override.beforeLoad
-  }
-  for (const key of componentOptions) {
-    if (key in override) {
-      patch[key] = override[key]
-    }
-  }
+  return patch
 }
 
 /**
  * Copies a route tree for one test router and applies per-route overrides.
- * Later override maps win over earlier ones, option by option. Routes without
- * an override keep the application's options.
+ * Routes without an override keep the application's options.
  */
 export function createTestRouteTree<TRouteTree extends AnyRoute>(
   routeTree: TRouteTree,
-  ...overrideMaps: Array<AnyRouteTestOverrides | undefined>
+  overrides?: AnyRouteTestOverrides,
 ): TRouteTree {
   initRouteTree(routeTree)
-  for (const overrides of overrideMaps) {
-    if (overrides) {
-      assertKnownRouteIds(routeTree, Object.keys(overrides))
-    }
+  if (overrides) {
+    assertKnownRouteIds(routeTree, Object.keys(overrides))
   }
 
   return cloneRouteTree(
     routeTree,
     (route) => {
-      let patch: RouteOptionsPatch | undefined
-      for (const overrides of overrideMaps) {
-        const override = overrides?.[route.id]
-        if (override) {
-          patch ??= {}
-          applyOverride(patch, route.id, override)
-        }
-      }
-      return patch
+      const override = overrides?.[route.id]
+      return override ? applyOverride(route.id, override) : undefined
     },
     true,
   )

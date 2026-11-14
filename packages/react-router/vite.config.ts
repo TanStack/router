@@ -32,7 +32,7 @@ export default mergeConfig(
       './src/index.dev.tsx',
       './src/ssr/client.ts',
       './src/ssr/server.ts',
-      './src/testing.tsx',
+      './src/testing.ts',
     ],
     srcDir: './src',
   }),

@@ -174,12 +174,12 @@ describe('createTestRouteTree', () => {
     })
   })
 
-  test('treats a context value as a seed for everything the route contributes', async () => {
+  test('takes routeContext as a seed for everything the route contributes', async () => {
     const { routeTree, calls } = createTree()
 
     const router = createRouter(
       createTestRouteTree(routeTree, {
-        '/layout/posts/$postId': { context: { scope: 'seeded scope' } },
+        '/layout/posts/$postId': { routeContext: { scope: 'seeded scope' } },
       }),
       '/posts/1',
     )
@@ -223,34 +223,22 @@ describe('createTestRouteTree', () => {
     expect(calls).toEqual(['root.beforeLoad', 'layout.loader', 'post.onEnter'])
   })
 
-  test('lets a later override map win, option by option', async () => {
-    const { routeTree } = createTree()
+  test('seeds loader data and replaces components', async () => {
+    const { routeTree, calls } = createTree()
 
     const router = createRouter(
-      createTestRouteTree(
-        routeTree,
-        {
-          '/layout': { loaderData: 'default layout data' },
-          '/layout/posts/$postId': {
-            loader: () => 'default post data',
-            component: 'default component',
-          },
-        },
-        undefined,
-        {
-          '/layout/posts/$postId': { loaderData: 'test post data' },
-        },
-      ),
+      createTestRouteTree(routeTree, {
+        '/layout': { loaderData: 'seeded layout data' },
+        '/layout/posts/$postId': { component: 'test component' },
+      }),
       '/posts/1',
     )
     await router.load()
 
-    expect(getMatch(router, '/layout')?.loaderData).toBe('default layout data')
-    expect(getMatch(router, '/layout/posts/$postId')?.loaderData).toBe(
-      'test post data',
-    )
+    expect(getMatch(router, '/layout')?.loaderData).toBe('seeded layout data')
+    expect(calls).not.toContain('layout.loader')
     expect(router.routesById['/layout/posts/$postId']!.options.component).toBe(
-      'default component',
+      'test component',
     )
   })
 
@@ -274,7 +262,7 @@ describe('createTestRouteTree', () => {
     expect(loadLazyRoute).toHaveBeenCalledTimes(2)
   })
 
-  test('rejects an unknown route id and an ambiguous loader override', () => {
+  test('rejects an unknown route id and conflicting overrides', () => {
     const { routeTree } = createTree()
 
     expect(() => createTestRouteTree(routeTree, { '/missing': {} })).toThrow(
@@ -286,6 +274,32 @@ describe('createTestRouteTree', () => {
       }),
     ).toThrow(
       'The override for route "/layout" has both "loader" and "loaderData". Pass one of them.',
+    )
+    expect(() =>
+      createTestRouteTree(routeTree, {
+        '/layout': { beforeLoad: () => ({}), routeContext: {} },
+      }),
+    ).toThrow(
+      'The override for route "/layout" has both "beforeLoad" and "routeContext". Pass one of them.',
+    )
+    expect(() =>
+      createTestRouteTree(routeTree, {
+        '/layout': { context: () => ({}), routeContext: {} },
+      }),
+    ).toThrow(
+      'The override for route "/layout" has both "context" and "routeContext". Pass one of them.',
+    )
+  })
+
+  test('rejects a value for the context option', () => {
+    const { routeTree } = createTree()
+
+    expect(() =>
+      createTestRouteTree(routeTree, {
+        '/layout': { context: { scope: 'a value' } },
+      }),
+    ).toThrow(
+      'The override for route "/layout" passes a value as "context", which replaces the route\'s `context` option and has to be a function. To seed what the route adds to the context, use "routeContext".',
     )
   })
 })

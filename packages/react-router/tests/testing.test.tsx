@@ -15,8 +15,9 @@ import {
   createRootRouteWithContext,
   createRoute,
   redirect,
+  rootRouteId,
 } from '../src'
-import { createRouterTesting } from '../src/testing'
+import { createIsolatedTestRouter, createTestRouter } from '../src/testing'
 import type { SearchSchemaInput } from '../src'
 
 afterEach(() => {
@@ -167,14 +168,19 @@ function createApp() {
   }
 }
 
+const seededContext = {
+  locale: 'en',
+  session: { user: testUser },
+  user: testUser,
+  scope: 'seeded scope',
+}
+
 describe('createTestRouter', () => {
   test('runs the lifecycle of the application by default', async () => {
     const app = createApp()
-    const { createTestRouter } = createRouterTesting({
-      routeTree: app.routeTree,
-    })
 
     const router = createTestRouter({
+      routeTree: app.routeTree,
       location: { to: '/posts/$postId', params: { postId: '1' } },
       context: { locale: 'en' },
     })
@@ -198,19 +204,17 @@ describe('createTestRouter', () => {
 
   test('replaces the options a test names and keeps the rest', async () => {
     const app = createApp()
-    const { createTestRouter } = createRouterTesting({
-      routeTree: app.routeTree,
-    })
 
     const router = createTestRouter({
+      routeTree: app.routeTree,
       location: {
         to: '/posts/$postId',
         params: { postId: '2' },
         search: { tab: 'comments' },
       },
       context: { locale: 'de' },
-      routes: {
-        __root__: { context: { session: { user: testUser } } },
+      overrides: {
+        [rootRouteId]: { routeContext: { session: { user: testUser } } },
         '/_authed': { loaderData: { unreadCount: 7 } },
         '/_authed/posts/$postId': {
           loader: ({ params }) => ({
@@ -234,14 +238,12 @@ describe('createTestRouter', () => {
 
   test('replaces beforeLoad, the context option and components', async () => {
     const app = createApp()
-    const { createTestRouter } = createRouterTesting({
-      routeTree: app.routeTree,
-    })
 
     const router = createTestRouter({
+      routeTree: app.routeTree,
       location: { to: '/posts/$postId', params: { postId: '1' } },
       context: { locale: 'en' },
-      routes: {
+      overrides: {
         '/_authed': {
           beforeLoad: ({ context }) => ({
             user: { id: 'derived', name: `Derived in ${context.locale}` },
@@ -273,14 +275,12 @@ describe('createTestRouter', () => {
 
   test('removes an option that is overridden with undefined', async () => {
     const app = createApp()
-    const { createTestRouter } = createRouterTesting({
-      routeTree: app.routeTree,
-    })
 
     const router = createTestRouter({
+      routeTree: app.routeTree,
       location: { to: '/posts/$postId', params: { postId: '1' } },
       context: { locale: 'en' },
-      routes: { '/_authed': { loader: undefined } },
+      overrides: { '/_authed': { loader: undefined } },
     })
     await router.load()
 
@@ -294,14 +294,12 @@ describe('createTestRouter', () => {
   test('keeps overrides out of the route tree and out of the next router', async () => {
     const app = createApp()
     const originalLoader = app.postRoute.options.loader
-    const { createTestRouter } = createRouterTesting({
-      routeTree: app.routeTree,
-    })
 
     const first = createTestRouter({
+      routeTree: app.routeTree,
       location: { to: '/posts/$postId', params: { postId: '1' } },
       context: { locale: 'en' },
-      routes: {
+      overrides: {
         '/_authed/posts/$postId': {
           loaderData: { post: { id: '1', title: 'Seeded post' } },
         },
@@ -314,6 +312,7 @@ describe('createTestRouter', () => {
     expect(app.postRoute.options.loader).toBe(originalLoader)
 
     const second = createTestRouter({
+      routeTree: app.routeTree,
       location: { to: '/posts/$postId', params: { postId: '1' } },
       context: { locale: 'en' },
     })
@@ -327,9 +326,7 @@ describe('createTestRouter', () => {
     const app = createApp()
     expect(app.postRoute.id).toBeUndefined()
 
-    createRouterTesting({ routeTree: app.routeTree }).createTestRouter({
-      context: { locale: 'en' },
-    })
+    createTestRouter({ routeTree: app.routeTree, context: { locale: 'en' } })
 
     expect(app.postRoute.id).toBe('/_authed/posts/$postId')
     expect(app.postRoute.fullPath).toBe('/posts/$postId')
@@ -337,13 +334,18 @@ describe('createTestRouter', () => {
     expect(app.authedRoute.id).toBe('/_authed')
   })
 
-  test('starts from a history instead of a location', async () => {
+  test('uses a memory history, or the history it is given', async () => {
     const app = createApp()
-    const { createTestRouter } = createRouterTesting({
+
+    const withMemoryHistory = createTestRouter({
       routeTree: app.routeTree,
+      context: { locale: 'en' },
     })
+    expect(withMemoryHistory.history.location.pathname).toBe('/')
+    expect(window.location.pathname).toBe('/')
 
     const router = createTestRouter({
+      routeTree: app.routeTree,
       history: createMemoryHistory({ initialEntries: ['/login'] }),
       context: { locale: 'en' },
     })
@@ -352,13 +354,29 @@ describe('createTestRouter', () => {
     expect(await screen.findByText('Login page')).toBeInTheDocument()
   })
 
+  test('passes the other options to the router', async () => {
+    const app = createApp()
+
+    const router = createTestRouter({
+      routeTree: app.routeTree,
+      context: { locale: 'en' },
+      location: { to: '/login' },
+      Wrap: ({ children }) => (
+        <section aria-label="Providers">{children}</section>
+      ),
+    })
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByLabelText('Providers')).toHaveTextContent(
+      'Login page',
+    )
+  })
+
   test('lets an override win over the options of a lazy route', async () => {
     const app = createApp()
-    const { createTestRouter } = createRouterTesting({
-      routeTree: app.routeTree,
-    })
 
     const real = createTestRouter({
+      routeTree: app.routeTree,
       location: { to: '/lazy' },
       context: { locale: 'en' },
     })
@@ -367,77 +385,37 @@ describe('createTestRouter', () => {
     unmount()
 
     const overridden = createTestRouter({
+      routeTree: app.routeTree,
       location: { to: '/lazy' },
       context: { locale: 'en' },
-      routes: { '/lazy': { component: () => <p>Test component</p> } },
+      overrides: { '/lazy': { component: () => <p>Test component</p> } },
     })
     render(<RouterProvider router={overridden} />)
     expect(await screen.findByText('Test component')).toBeInTheDocument()
     expect(screen.queryByText('Lazy component')).not.toBeInTheDocument()
   })
 
-  test('applies the defaults of the application, and a test wins over them', async () => {
-    const app = createApp()
-    const { createTestRouter } = createRouterTesting({
-      routeTree: app.routeTree,
-      defaults: {
-        context: { locale: 'fr' },
-        routes: {
-          __root__: { context: { session: { user: testUser } } },
-          '/_authed': { loaderData: { unreadCount: 3 } },
-        },
-      },
-    })
-
-    const withDefaults = createTestRouter({
-      location: { to: '/posts/$postId', params: { postId: '1' } },
-    })
-    const { unmount } = render(<RouterProvider router={withDefaults} />)
-    expect(
-      await screen.findByText(
-        'Test user reads post 1 in fr on tab details with 3 unread in real scope',
-      ),
-    ).toBeInTheDocument()
-    unmount()
-
-    const withOwnValues = createTestRouter({
-      location: { to: '/posts/$postId', params: { postId: '1' } },
-      context: { locale: 'it' },
-      routes: { '/_authed': { loaderData: { unreadCount: 9 } } },
-    })
-    render(<RouterProvider router={withOwnValues} />)
-    expect(
-      await screen.findByText(
-        'Test user reads post 1 in it on tab details with 9 unread in real scope',
-      ),
-    ).toBeInTheDocument()
-  })
-
   test('rejects an override for a route that does not exist', () => {
     const app = createApp()
-    const { createTestRouter } = createRouterTesting({
-      routeTree: app.routeTree,
-    })
 
     expect(() =>
       createTestRouter({
+        routeTree: app.routeTree,
         context: { locale: 'en' },
         // @ts-expect-error not a route id of this tree
-        routes: { '/missing': { component: () => null } },
+        overrides: { '/missing': { component: () => null } },
       }),
     ).toThrow('The route "/missing" does not exist in the route tree')
   })
 
-  test('rejects an override with both a loader and loader data', () => {
+  test('rejects conflicting overrides', () => {
     const app = createApp()
-    const { createTestRouter } = createRouterTesting({
-      routeTree: app.routeTree,
-    })
 
     expect(() =>
       createTestRouter({
+        routeTree: app.routeTree,
         context: { locale: 'en' },
-        routes: {
+        overrides: {
           '/_authed': {
             loader: () => ({ unreadCount: 1 }),
             loaderData: { unreadCount: 2 },
@@ -445,32 +423,41 @@ describe('createTestRouter', () => {
         },
       }),
     ).toThrow('has both "loader" and "loaderData"')
+
+    expect(() =>
+      createTestRouter({
+        routeTree: app.routeTree,
+        context: { locale: 'en' },
+        overrides: {
+          '/_authed': {
+            beforeLoad: () => ({ user: testUser }),
+            routeContext: { user: testUser },
+          },
+        },
+      }),
+    ).toThrow('has both "beforeLoad" and "routeContext"')
   })
 })
 
-describe('renderInRoute', () => {
+describe('createIsolatedTestRouter', () => {
   test('renders one element in one route with the state the test supplies', async () => {
     const app = createApp()
-    const { renderInRoute } = createRouterTesting({
-      routeTree: app.routeTree,
-      render,
-    })
 
-    const { router } = await renderInRoute(<app.PostHeader />, {
+    const router = await createIsolatedTestRouter({
+      routeTree: app.routeTree,
       route: '/_authed/posts/$postId',
+      element: <app.PostHeader />,
       params: { postId: '5' },
       search: { tab: 'comments' },
-      context: {
-        locale: 'en',
-        session: { user: testUser },
-        user: testUser,
-        scope: 'seeded scope',
+      context: seededContext,
+      loaderData: {
+        '/_authed': { unreadCount: 4 },
+        '/_authed/posts/$postId': { post: { id: '5', title: 'Seeded post' } },
       },
-      loaderData: { post: { id: '5', title: 'Seeded post' } },
-      routes: { '/_authed': { loaderData: { unreadCount: 4 } } },
     })
+    render(<RouterProvider router={router} />)
 
-    // The first render is complete: nothing is pending.
+    // The router has loaded, so the first render is complete.
     expect(screen.getByRole('heading')).toHaveTextContent('Seeded post')
     expect(
       screen.getByText(
@@ -488,85 +475,48 @@ describe('renderInRoute', () => {
 
   test('sends search params through validateSearch', async () => {
     const app = createApp()
-    const { renderInRoute } = createRouterTesting({
-      routeTree: app.routeTree,
-      render,
-    })
     const state = {
+      routeTree: app.routeTree,
       route: '/_authed/posts/$postId',
       params: { postId: '5' },
-      context: {
-        locale: 'en',
-        session: { user: testUser },
-        user: testUser,
-        scope: 'seeded scope',
+      context: seededContext,
+      loaderData: {
+        '/_authed': { unreadCount: 4 },
+        '/_authed/posts/$postId': { post: { id: '5', title: 'Seeded post' } },
       },
-      loaderData: { post: { id: '5', title: 'Seeded post' } },
-      routes: { '/_authed': { loaderData: { unreadCount: 4 } } },
     } as const
 
-    await renderInRoute(<app.PostHeader />, state)
+    const router = await createIsolatedTestRouter({
+      ...state,
+      element: <app.PostHeader />,
+    })
+    render(<RouterProvider router={router} />)
     expect(screen.getByText(/on tab details/)).toBeInTheDocument()
-    cleanup()
 
     await expect(
-      renderInRoute(<app.PostHeader />, {
+      createIsolatedTestRouter({
         ...state,
+        element: <app.PostHeader />,
         search: { tab: 'broken' },
       }),
     ).rejects.toThrow('Unknown tab')
   })
 
-  test('takes context and loader data from the defaults of the application', async () => {
-    const app = createApp()
-    const { renderInRoute } = createRouterTesting({
-      routeTree: app.routeTree,
-      render,
-      defaults: {
-        context: {
-          locale: 'en',
-          session: { user: testUser },
-          user: testUser,
-          scope: 'default scope',
-        },
-        routes: { '/_authed': { loaderData: { unreadCount: 2 } } },
-      },
-    })
-
-    await renderInRoute(<app.PostHeader />, {
-      route: '/_authed/posts/$postId',
-      params: { postId: '5' },
-      context: { user: realUser },
-      loaderData: { post: { id: '5', title: 'Seeded post' } },
-    })
-
-    expect(
-      screen.getByText(
-        'Real user reads post 5 in en on tab details with 2 unread in default scope',
-      ),
-    ).toBeInTheDocument()
-    expect(app.calls).toEqual([])
-  })
-
   test('navigates with the real router and renders no other route', async () => {
     const app = createApp()
-    const { renderInRoute } = createRouterTesting({
-      routeTree: app.routeTree,
-      render,
-    })
 
-    const { router } = await renderInRoute(<app.PostHeader />, {
+    const router = await createIsolatedTestRouter({
+      routeTree: app.routeTree,
       route: '/_authed/posts/$postId',
+      element: <app.PostHeader />,
       params: { postId: '5' },
-      context: {
-        locale: 'en',
-        session: { user: testUser },
-        user: testUser,
-        scope: 'seeded scope',
+      context: seededContext,
+      loaderData: {
+        '/_authed': { unreadCount: 4 },
+        '/_authed/posts/$postId': { post: { id: '5', title: 'Seeded post' } },
       },
-      loaderData: { post: { id: '5', title: 'Seeded post' } },
-      routes: { '/_authed': { loaderData: { unreadCount: 4 } } },
     })
+    render(<RouterProvider router={router} />)
 
     fireEvent.click(screen.getByRole('link', { name: 'Sign out' }))
 
@@ -579,37 +529,33 @@ describe('renderInRoute', () => {
 
   test('does not load lazy routes', async () => {
     const app = createApp()
-    const { renderInRoute } = createRouterTesting({
-      routeTree: app.routeTree,
-      render,
-    })
 
-    await renderInRoute(<p>In the lazy route</p>, {
+    const router = await createIsolatedTestRouter({
+      routeTree: app.routeTree,
       route: '/lazy',
+      element: <p>In the lazy route</p>,
       context: { locale: 'en', session: { user: null } },
     })
+    render(<RouterProvider router={router} />)
 
     expect(screen.getByText('In the lazy route')).toBeInTheDocument()
     expect(app.loadLazyRoute).not.toHaveBeenCalled()
   })
 
-  test('applies the router options of the application, such as Wrap', async () => {
+  test('passes the other options to the router, except the default components', async () => {
     const app = createApp()
-    const { renderInRoute } = createRouterTesting({
-      routeTree: app.routeTree,
-      render,
-      routerOptions: {
-        Wrap: ({ children }) => (
-          <section aria-label="Providers">{children}</section>
-        ),
-        defaultComponent: () => <p>Default component</p>,
-      },
-    })
 
-    await renderInRoute(<p>Element</p>, {
+    const router = await createIsolatedTestRouter({
+      routeTree: app.routeTree,
       route: '/login',
+      element: <p>Element</p>,
       context: { locale: 'en', session: { user: null } },
+      Wrap: ({ children }) => (
+        <section aria-label="Providers">{children}</section>
+      ),
+      defaultComponent: () => <p>Default component</p>,
     })
+    render(<RouterProvider router={router} />)
 
     expect(screen.getByLabelText('Providers')).toHaveTextContent('Element')
     expect(screen.queryByText('Default component')).not.toBeInTheDocument()
@@ -617,45 +563,41 @@ describe('renderInRoute', () => {
 
   test('lets an error of the element reach the test', async () => {
     const app = createApp()
-    const { renderInRoute } = createRouterTesting({
-      routeTree: app.routeTree,
-      render,
-    })
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     function Broken(): never {
       throw new Error('The element is broken')
     }
 
-    await expect(
-      renderInRoute(<Broken />, {
-        route: '/login',
-        context: { locale: 'en', session: { user: null } },
-      }),
-    ).rejects.toThrow('The element is broken')
+    const router = await createIsolatedTestRouter({
+      routeTree: app.routeTree,
+      route: '/login',
+      element: <Broken />,
+      context: { locale: 'en', session: { user: null } },
+    })
 
+    expect(() => render(<RouterProvider router={router} />)).toThrow(
+      'The element is broken',
+    )
     consoleError.mockRestore()
   })
 
   test('fails when a path param is missing', async () => {
     const app = createApp()
-    const { renderInRoute } = createRouterTesting({
-      routeTree: app.routeTree,
-      render,
-    })
 
     await expect(
-      renderInRoute(<app.PostHeader />, {
+      createIsolatedTestRouter({
+        routeTree: app.routeTree,
         route: '/_authed/posts/$postId',
+        element: <app.PostHeader />,
         // @ts-expect-error `postId` is missing
         params: {},
-        context: {
-          locale: 'en',
-          session: { user: testUser },
-          user: testUser,
-          scope: 'seeded scope',
+        context: seededContext,
+        loaderData: {
+          '/_authed': { unreadCount: 4 },
+          '/_authed/posts/$postId': {
+            post: { id: '5', title: 'Seeded post' },
+          },
         },
-        loaderData: { post: { id: '5', title: 'Seeded post' } },
-        routes: { '/_authed': { loaderData: { unreadCount: 4 } } },
       }),
     ).rejects.toThrow(
       'Missing path params for route "/_authed/posts/$postId": postId.',
@@ -664,50 +606,28 @@ describe('renderInRoute', () => {
 
   test('fails when the path of the route does not lead to it', async () => {
     const app = createApp()
-    const { renderInRoute } = createRouterTesting({
-      routeTree: app.routeTree,
-      render,
-    })
 
     await expect(
-      renderInRoute(<p>Element</p>, {
+      createIsolatedTestRouter({
+        routeTree: app.routeTree,
         route: '/_authed',
-        context: {
-          locale: 'en',
-          session: { user: testUser },
-          user: testUser,
-        },
-        loaderData: { unreadCount: 4 },
+        element: <p>Element</p>,
+        context: { locale: 'en', session: { user: testUser }, user: testUser },
+        loaderData: { '/_authed': { unreadCount: 4 } },
       }),
     ).rejects.toThrow('The route "/_authed" is not matched at "/"')
   })
 
   test('fails for a route that does not exist', async () => {
     const app = createApp()
-    const { renderInRoute } = createRouterTesting({
-      routeTree: app.routeTree,
-      render,
-    })
 
     await expect(
-      renderInRoute(<p>Element</p>, {
+      createIsolatedTestRouter({
+        routeTree: app.routeTree,
         // @ts-expect-error not a route id of this tree
         route: '/missing',
+        element: <p>Element</p>,
       }),
     ).rejects.toThrow('The route "/missing" does not exist in the route tree')
-  })
-
-  test('needs a render function', async () => {
-    const app = createApp()
-    const { renderInRoute } = createRouterTesting({
-      routeTree: app.routeTree,
-    })
-
-    await expect(
-      renderInRoute(<p>Element</p>, {
-        route: '/login',
-        context: { locale: 'en', session: { user: null } },
-      }),
-    ).rejects.toThrow('renderInRoute needs a render function')
   })
 })

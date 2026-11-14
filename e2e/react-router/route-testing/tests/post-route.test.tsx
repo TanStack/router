@@ -1,7 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react'
-import { RouterProvider } from '@tanstack/react-router'
+import { RouterProvider, rootRouteId } from '@tanstack/react-router'
+import { createTestRouter } from '@tanstack/react-router/testing'
 import { describe, expect, test, vi } from 'vitest'
-import { createPost, routerTesting, testUser } from '../src/test-utils'
+import { routeTree } from '../src/routeTree.gen'
+import { createPost, testUser } from '../src/test-fixtures'
 import type { Session } from '../src/api'
 
 function stubApi(responses: Record<string, unknown>) {
@@ -25,9 +27,10 @@ describe('a test router over the route tree of the application', () => {
       '/api/posts/post-1': createPost({ title: 'From the API' }),
     })
 
-    const router = routerTesting.createTestRouter({
-      location: { to: '/posts/$postId', params: { postId: 'post-1' } },
+    const router = createTestRouter({
+      routeTree,
       context: { locale: 'en' },
+      location: { to: '/posts/$postId', params: { postId: 'post-1' } },
     })
     render(<RouterProvider router={router} />)
 
@@ -47,13 +50,14 @@ describe('a test router over the route tree of the application', () => {
   test('follows the redirect of a real beforeLoad', async () => {
     stubApi({ '/api/session': { user: null } satisfies Session })
 
-    const router = routerTesting.createTestRouter({
+    const router = createTestRouter({
+      routeTree,
+      context: { locale: 'en' },
       location: {
         to: '/posts/$postId',
         params: { postId: 'post-1' },
         search: { tab: 'comments' },
       },
-      context: { locale: 'en' },
     })
     render(<RouterProvider router={router} />)
 
@@ -67,12 +71,13 @@ describe('a test router over the route tree of the application', () => {
   test('replaces only the lifecycle options a test names', async () => {
     const fetchMock = stubApi({})
 
-    const router = routerTesting.createTestRouter({
-      location: { to: '/posts/$postId', params: { postId: 'post-7' } },
+    const router = createTestRouter({
+      routeTree,
       context: { locale: 'en' },
-      routes: {
+      location: { to: '/posts/$postId', params: { postId: 'post-7' } },
+      overrides: {
         // A seed: the session lookup of the root route does not run.
-        __root__: { context: { session: { user: testUser } } },
+        [rootRouteId]: { routeContext: { session: { user: testUser } } },
         // A seed for the loader data.
         '/_authed': { loaderData: { unreadCount: 5 } },
         // A replacement, typed like the loader of the route.
@@ -102,10 +107,11 @@ describe('a test router over the route tree of the application', () => {
       '/api/notifications/unread-count': 0,
     })
 
-    const router = routerTesting.createTestRouter({
-      location: { to: '/posts/$postId', params: { postId: 'post-1' } },
+    const router = createTestRouter({
+      routeTree,
       context: { locale: 'en' },
-      routes: {
+      location: { to: '/posts/$postId', params: { postId: 'post-1' } },
+      overrides: {
         '/_authed/posts/$postId': {
           loaderData: { post: createPost() },
           component: () => <p>Replaced page</p>,
@@ -119,11 +125,12 @@ describe('a test router over the route tree of the application', () => {
   })
 
   test('keeps overrides out of the next router', async () => {
-    const first = routerTesting.createTestRouter({
-      location: { to: '/posts/$postId', params: { postId: 'post-1' } },
+    const first = createTestRouter({
+      routeTree,
       context: { locale: 'en' },
-      routes: {
-        __root__: { context: { session: { user: testUser } } },
+      location: { to: '/posts/$postId', params: { postId: 'post-1' } },
+      overrides: {
+        [rootRouteId]: { routeContext: { session: { user: testUser } } },
         '/_authed': { loaderData: { unreadCount: 0 } },
         '/_authed/posts/$postId': { loaderData: { post: createPost() } },
       },
@@ -132,9 +139,10 @@ describe('a test router over the route tree of the application', () => {
     expect(first.state.matches.at(-1)?.status).toBe('success')
 
     const fetchMock = stubApi({ '/api/session': { user: null } })
-    const second = routerTesting.createTestRouter({
-      location: { to: '/posts/$postId', params: { postId: 'post-1' } },
+    const second = createTestRouter({
+      routeTree,
       context: { locale: 'en' },
+      location: { to: '/posts/$postId', params: { postId: 'post-1' } },
     })
     await second.load()
 
