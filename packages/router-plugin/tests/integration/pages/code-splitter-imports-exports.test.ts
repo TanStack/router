@@ -952,8 +952,8 @@ export const Route = createFileRoute('/')({
   })
 
   // The same with a module TypeScript keeps under `verbatimModuleSyntax` (a
-  // namespace with values, imported by default): it loads with the chunk,
-  // not with the route file
+  // namespace with values, imported by default): no module imports it, as
+  // nothing reads it by value (`main` loads it with the chunk)
   it('leaves a namespace import only the split component references in a type argument out of the route module', async () => {
     const route = await loadRoute(
       `${head}import { useState } from 'react'

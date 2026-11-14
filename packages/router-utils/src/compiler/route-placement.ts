@@ -330,7 +330,8 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
    * The imports already unused in the source: an import nothing in the
    * source references, by value or in a type (an export is a use), a bare
    * `import './polyfill'` or `import './a.css'` included. When the env
-   * module imports the shared module (statically, first), they move there,
+   * module reads a shared name (its first import is then the shared
+   * module's), they move there,
    * in source order with its own imports: they run at the same point, once,
    * and a module a shared declaration reads still runs after a bare import
    * written before it. Otherwise they stay in the env module. Chunks and
@@ -761,14 +762,14 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   }
 
   // ---- imports already unused: in the shared module the env module imports --
-  // (moved: the env module imports the shared module first, so they run at
-  // the same point, once; otherwise they stay in the env module)
+  // (moved when the env module reads a shared name: its import of the shared
+  // module is its first, so they run at the same point, once; a re-export
+  // alone is printed last. Otherwise they stay in the env module)
   if (shared !== null) {
-    const linked =
-      imports.get('env')?.has(shared.id) === true || extracted.length > 0
+    const linked = imports.get('env')?.has(shared.id) === true
     for (const c of unusedImports) {
       included.get(linked ? 'env' : shared.id)!.delete(c)
-      if (linked && home.has(c)) {
+      if (linked) {
         home.set(c, shared.id)
       }
     }

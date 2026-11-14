@@ -209,9 +209,9 @@ v`, `x.push(v)`, `x = v`) is never removed with what only erased code read: it s
   rest) loses only its default value. The initialiser stays as written: a value in a destructured literal
   (`{ a, b } = { a: 1, b: f() }`) is not chased, so `b`'s value stays where `a` needs the declaration. A read the core
   synthesises from a
-  name rather than from a reference (the classic runtime's JSX factory `React` when no pragma names the runtime, a
-  Solid `use:` directive) binds only to a declaration with a runtime value (`valueBinding`):
-  `import type * as React` is never the factory;
+  name rather than from a reference (a Solid `use:` directive) binds only to a declaration with a runtime value
+  (`valueBinding`). JSX is no read of the classic runtime's factory: the classic runtime is not supported with
+  splitting;
 - **effects and mutable state**: statements and impure, still-referenced declarations evaluate once, in the env
   module unless the rules below move them, never duplicated or lost. One model (`mutation.ts`, `t1.mutation`) holds every write of a
   binding (assignment or member write, eager or lazy, wherever it is). A binding's writers when the module loads

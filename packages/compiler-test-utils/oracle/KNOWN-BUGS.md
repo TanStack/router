@@ -151,9 +151,20 @@ code.test.ts`: "a root route's components load with the route module" (Vite and 
 ### Shared causes (several jobs)
 
 **S1. JSX pragmas are not kept effective.** Code the compilers insert lands above a file's leading pragma (Oxc reads
-leading pragmas only); a non-leading pragma becomes leading in a chunk; dead-code elimination does not count a
-classic pragma as a use of its factory, so the factory import is dropped. SPEC J2.16, G12. Fix: every emitted module
-compiles its JSX under the runtime the untouched file has, and keeps the factory it needs.:
+leading pragmas only); a non-leading pragma becomes leading in a chunk. SPEC J2.16, G12. Fix: every emitted module
+compiles its JSX under the runtime the untouched file has. (Dead-code elimination does not count JSX as a use of a
+classic factory, on `main` and here: the classic runtime is not supported with splitting.):
+
+- `router-plugin/tests/code-splitter-pragmas.test.ts`: "keeps a @jsxImportSource written after the imports as
+  ineffective as in the untouched file (leading-pragma project)"; "keeps the pragma in effect in every module that
+  contains JSX".
+- `router-plugin/tests/integration/code-splitter-pragmas.test.ts`: "means in the split route what it means in the
+  untouched route (Vite: Oxc ignores it)".
+- `start-plugin-core/tests/start-compiler-jsx-pragma.test.ts`: "inserted server function imports stay below the
+  @jsxImportSource pragma: %s"; "client: the parent keeps selecting the pragma JSX runtime when the import it sits on
+  $name".
+- `start-plugin-core/tests/integration/pages/known-bugs-hydrate-module-level.test.ts`: "server: a module with a
+  classic JSX pragma renders through its factory".
 
 - `router-plugin/tests/code-splitter-pragmas.test.ts`: "keeps a @jsxImportSource written after the imports as
   ineffective as in the untouched file (leading-pragma project)"; "keeps the pragma in effect in every module that
@@ -447,8 +458,6 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
 - **Code only the split component needs stays when something looks like a read** (a type of the same name, an
   overload signature, a second `var`, an unused renderer). SPEC J2.5. `pages/known-bugs-code-splitter.test.ts`: "a split
   component and its imports leave the route module next to $name".
-- **A value import only types read is copied into every chunk.** SPEC J2.5.
-  `pages/known-bugs-code-splitter-bindings.test.ts`: "split chunks do not import what only $name reads".
 - **`codeSplitGroupings` in a module-level constant is refused.** SPEC J2.2.
   `pages/known-bugs-code-splitter-bindings.test.ts`: "groupings declared in a module-level constant are honoured".
 - **The not-split warning is printed only when the splitter changed the module.** SPEC J2.8.

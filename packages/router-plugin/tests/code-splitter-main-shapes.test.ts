@@ -405,6 +405,44 @@ export function make() {
     ).toEqual(['poly', '<p>poly</p>'])
   })
 
+  // the same when the route module only re-exports a shared name: its import
+  // of the shared module is then printed last, so the bare import stays in
+  // the route module, before the import written after it
+  it('runs a bare import before an import the route module keeps, when it only re-exports a shared name', async () => {
+    const route = await loadRoute(
+      `${head}import './polyfill'
+import { helper } from './helper'
+export const LIMIT = 10
+function Page() {
+  return <p>{LIMIT}</p>
+}
+function Err() {
+  return <b>{LIMIT}</b>
+}
+export const Route = createFileRoute('/')({
+  loader: () => helper(),
+  component: Page,
+  errorComponent: Err,
+})
+`,
+      {
+        files: {
+          'polyfill.ts': `;(globalThis as any).__poly = 'poly'\nexport {}\n`,
+          'helper.ts': `const seen: string = (globalThis as any).__poly ?? 'none'
+export function helper() {
+  return seen
+}
+`,
+        },
+      },
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(
+      await route.run(`return [options.loader(), await render('component')]`),
+    ).toEqual(['poly', '<p>10</p>'])
+  })
+
   // a chunk loads after the route module has run its imports: a bare import
   // is not repeated there
   it('runs a bare import with the route module, and does not repeat it in the chunk', async () => {
@@ -429,18 +467,23 @@ export const Route = createFileRoute('/')({
 
   // only an import the source wrote can be already unused: the route
   // module's generated `lazyRouteComponent` import stays out of the chunks
-  it('gives a split chunk none of the imports the route module is generated with', async () => {
+  // and the shared module
+  it('gives a split chunk and the shared module none of the imports the route module is generated with', async () => {
     const route = await loadRoute(
-      `${head}function Page() {
-  return <p>page</p>
+      `${head}const cfg = { k: 'page' }
+function Page() {
+  return <p>{cfg.k}</p>
 }
-export const Route = createFileRoute('/')({ component: Page })
+export const Route = createFileRoute('/')({ loader: () => cfg.k, component: Page })
 `,
     )
     await expectValidModules(route)
     expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
     const { modules } = await route.modules()
-    expect(modules['lazy component']).not.toMatch(/\blazyRouteComponent\b/)
+    expect({
+      chunk: /\blazyRouteComponent\b/.test(modules['lazy component']!),
+      shared: /\blazyRouteComponent\b/.test(modules['shared']!),
+    }).toEqual({ chunk: false, shared: false })
   })
 
   it('runs top-level statements once, when the route module loads', async () => {
