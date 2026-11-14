@@ -30,6 +30,8 @@ export default defineConfig({
   ],
   test: {
     environment: 'jsdom',
+    // Type-check the tests, so that a test that leaves out route state fails.
+    typecheck: { enabled: true },
   },
 })
 ```
@@ -215,7 +217,7 @@ The options are typed from the route that `route` names. They ask for what the s
 In the example, `context` has to hold `locale` from the router context, `session` from the root route and `user` from `/_authed`, and `routes` has to hold the loader data of `/_authed`. Leaving any of them out is a type error that names the missing value.
 
 > [!NOTE]
-> Type errors appear in your editor and when you type-check your tests, for example with `tsc --noEmit`. `vitest run` strips types without checking them: a test that leaves state out still runs, and the component reads `undefined`. Type-check your test files in CI.
+> Vitest checks these types only when [type checking](https://vitest.dev/guide/testing-types) is on: set `test.typecheck.enabled` as in the [setup](#setup), or run `vitest --typecheck`. Vitest then runs `tsc` with your `tsconfig.json`, and a type error in a test file that the tsconfig includes fails the run, with its file and line. By default Vitest lists such an error as a source error; add your test files to `typecheck.include` to have it reported as a failure of the test that contains it. Without type checking, Vitest only strips the types: a test that leaves state out still runs, and the component reads `undefined`.
 
 At run time, `renderInRoute` fails with a message when:
 
