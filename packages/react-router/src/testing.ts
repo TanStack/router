@@ -1,25 +1,15 @@
-import { createMemoryHistory } from '@tanstack/history'
 import {
-  assertIsolatedRouteLoaded,
-  assertRouteTestParams,
-  createIsolatedRouteTree,
-  createTestRouteTree,
-  setTestRouterLocation,
+  createIsolatedTestRouterWith,
+  createTestRouterWith,
 } from '@tanstack/router-core/testing'
 import { createRouter } from './router'
 import type * as React from 'react'
 import type { RouterHistory } from '@tanstack/history'
+import type { AnyRoute, TrailingSlashOption } from '@tanstack/router-core'
 import type {
-  AnyRoute,
-  RouterConstructorOptions,
-  RouterOptions,
-  TrailingSlashOption,
-  ValidateNavigateOptions,
-} from '@tanstack/router-core'
-import type {
-  AnyRouteTestOverrides,
   RouteTestOverrides as CoreRouteTestOverrides,
-  IsolatedRouteState,
+  IsolatedTestRouterOptions,
+  TestRouterOptions,
 } from '@tanstack/router-core/testing'
 import type {
   ErrorRouteComponent,
@@ -50,7 +40,7 @@ export interface RouteTestComponents {
 export type RouteTestOverrides<TRouteTree extends AnyRoute> =
   CoreRouteTestOverrides<TRouteTree, RouteTestComponents>
 
-/** The options of `createTestRouter`: those of `createRouter`, plus two. */
+/** The options of `createTestRouter`: those of `createRouter`, plus `location` and `overrides`. */
 export type CreateTestRouterOptions<
   TRouteTree extends AnyRoute,
   TLocation = unknown,
@@ -58,34 +48,15 @@ export type CreateTestRouterOptions<
   TDefaultStructuralSharingOption extends boolean = false,
   TRouterHistory extends RouterHistory = RouterHistory,
   TDehydrated extends Record<string, any> = Record<string, any>,
-> = RouterConstructorOptions<
+> = TestRouterOptions<
   TRouteTree,
+  TLocation,
   TTrailingSlashOption,
   TDefaultStructuralSharingOption,
   TRouterHistory,
-  TDehydrated
-> & {
-  routeTree: TRouteTree
-  /**
-   * Where the router starts, typed like the options of `navigate`. It
-   * replaces the current entry of `history`. Defaults to `/`.
-   */
-  location?: ValidateNavigateOptions<
-    Router<
-      TRouteTree,
-      TTrailingSlashOption,
-      TDefaultStructuralSharingOption,
-      TRouterHistory,
-      TDehydrated
-    >,
-    TLocation
-  >
-  /**
-   * Per-route overrides. A route that is not listed keeps the application's
-   * options.
-   */
-  overrides?: RouteTestOverrides<TRouteTree>
-}
+  TDehydrated,
+  RouteTestComponents
+>
 
 /** The options of `createIsolatedTestRouter`. */
 export type CreateIsolatedTestRouterOptions<
@@ -93,38 +64,13 @@ export type CreateIsolatedTestRouterOptions<
   TId,
   TTrailingSlashOption extends TrailingSlashOption = 'never',
   TDefaultStructuralSharingOption extends boolean = false,
-> = Omit<
-  RouterOptions<
-    TRouteTree,
-    TTrailingSlashOption,
-    TDefaultStructuralSharingOption,
-    RouterHistory,
-    Record<string, any>
-  >,
-  // `search` is the route's search params here, not the router option.
-  'routeTree' | 'history' | 'context' | 'search'
-> & {
-  routeTree: TRouteTree
-  /** The element under test. It renders in place of the route's component. */
-  element: React.ReactElement
-} & IsolatedRouteState<TRouteTree, TId>
-
-interface AnyCreateTestRouterOptions {
-  routeTree: AnyRoute
-  location?: object
-  overrides?: AnyRouteTestOverrides
-  history?: RouterHistory
-}
-
-interface AnyCreateIsolatedTestRouterOptions {
-  routeTree: AnyRoute
-  element: React.ReactElement
-  route: string
-  params?: Record<string, unknown>
-  search?: Record<string, unknown>
-  context?: Record<string, unknown>
-  loaderData?: Record<string, unknown>
-}
+> = IsolatedTestRouterOptions<
+  TRouteTree,
+  TId,
+  React.ReactElement,
+  TTrailingSlashOption,
+  TDefaultStructuralSharingOption
+>
 
 /**
  * Creates a router for a test, over a copy of the route tree. It takes the
@@ -168,19 +114,7 @@ export function createTestRouter<
   TRouterHistory,
   TDehydrated
 > {
-  const { routeTree, location, overrides, history, ...routerOptions } =
-    options as AnyCreateTestRouterOptions
-  const router = createRouter({
-    ...routerOptions,
-    routeTree: createTestRouteTree(routeTree, overrides),
-    history: history ?? createMemoryHistory(),
-  } as any)
-
-  if (location) {
-    setTestRouterLocation(router, location)
-  }
-
-  return router as any
+  return createTestRouterWith(createRouter, options as any) as any
 }
 
 /**
@@ -203,7 +137,7 @@ export function createTestRouter<
  * render(<RouterProvider router={router} />)
  * ```
  */
-export async function createIsolatedTestRouter<
+export function createIsolatedTestRouter<
   TRouteTree extends AnyRoute,
   // `IsolatedRouteState` checks that `route` is a route id of the tree.
   const TId extends string,
@@ -219,42 +153,9 @@ export async function createIsolatedTestRouter<
 ): Promise<
   Router<TRouteTree, TTrailingSlashOption, TDefaultStructuralSharingOption>
 > {
-  const {
-    routeTree,
-    element,
-    route,
-    params,
-    search,
-    context,
-    loaderData,
-    ...routerOptions
-  } = options as unknown as AnyCreateIsolatedTestRouterOptions
-
-  const router = createRouter({
-    ...routerOptions,
-    // Nothing of the application renders around the element, and an error
-    // it throws reaches the test instead of an error component.
-    defaultComponent: undefined,
-    defaultErrorComponent: undefined,
-    defaultPendingComponent: undefined,
-    disableGlobalCatchBoundary: true,
-    routeTree: createIsolatedRouteTree(routeTree, {
-      routeId: route,
-      component: () => element,
-      loaderData: new Map(Object.entries(loaderData ?? {})),
-    }),
-    history: createMemoryHistory(),
-    context,
-  } as any)
-
-  assertRouteTestParams(router, route, params)
-  setTestRouterLocation(router, {
-    to: router.routesById[route]!.fullPath,
-    params,
-    search,
-  })
-  await router.load()
-  assertIsolatedRouteLoaded(router, route)
-
-  return router as any
+  const { element, ...state } = options as any
+  return createIsolatedTestRouterWith(createRouter, {
+    ...state,
+    component: () => element,
+  }) as any
 }

@@ -90,6 +90,20 @@
         "default": "./dist/cjs/ssr/client.cjs"
       }
     },
+    "./testing": {
+      "solid": {
+        "types": "./dist/source/testing.d.ts",
+        "default": "./dist/source/testing.js"
+      },
+      "import": {
+        "types": "./dist/esm/testing.d.ts",
+        "default": "./dist/esm/testing.js"
+      },
+      "require": {
+        "types": "./dist/cjs/testing.d.cts",
+        "default": "./dist/cjs/testing.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,

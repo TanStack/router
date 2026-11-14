@@ -5,7 +5,9 @@ import {
   assertIsolatedRouteLoaded,
   assertRouteTestParams,
   createIsolatedRouteTree,
+  createIsolatedTestRouterWith,
   createTestRouteTree,
+  createTestRouterWith,
   initRouteTree,
   setTestRouterLocation,
 } from '../src/testing'
@@ -442,5 +444,131 @@ describe('helpers for a test router', () => {
     expect(() => assertIsolatedRouteLoaded(router, '/layout')).toThrow(
       'The route "/layout" is not matched at "/". Matched routes: __root__, /.',
     )
+  })
+})
+
+describe('createTestRouterWith', () => {
+  const createRouterCore = (options: any) => createTestRouter(options)
+
+  test('creates the router with the given factory, over a copy of the tree', async () => {
+    const { routeTree, rootRoute, calls } = createTree()
+    const factory = vi.fn(createRouterCore)
+
+    const router = createTestRouterWith(factory, {
+      routeTree,
+      context: { locale: 'en' },
+      location: {
+        to: '/posts/$postId',
+        params: { postId: '3' },
+        search: { tab: 'comments' },
+      },
+      overrides: { '/layout': { loaderData: 'seeded layout data' } },
+      defaultPreloadStaleTime: 5,
+    })
+    await router.load()
+
+    expect(factory).toHaveBeenCalledTimes(1)
+    expect(router.routeTree).not.toBe(rootRoute)
+    expect(router.options.defaultPreloadStaleTime).toBe(5)
+    expect(router.state.location.href).toBe('/posts/3?tab=comments')
+    expect(getMatch(router, '/layout')?.loaderData).toBe('seeded layout data')
+    expect(calls).toContain('post.loader')
+    expect(calls).not.toContain('layout.loader')
+  })
+
+  test('uses a memory history unless one is given', () => {
+    const { routeTree } = createTree()
+
+    const withMemoryHistory = createTestRouterWith(createRouterCore, {
+      routeTree,
+      context: { locale: 'en' },
+      location: { to: '/lazy' },
+    })
+    expect(withMemoryHistory.history.location.pathname).toBe('/lazy')
+    expect(window.location.pathname).toBe('/')
+
+    const history = createMemoryHistory({ initialEntries: ['/posts/1'] })
+    const withHistory = createTestRouterWith(createRouterCore, {
+      routeTree,
+      history,
+      context: { locale: 'en' },
+    })
+    expect(withHistory.history).toBe(history)
+    expect(withHistory.history.location.pathname).toBe('/posts/1')
+  })
+})
+
+describe('createIsolatedTestRouterWith', () => {
+  const createRouterCore = (options: any) => createTestRouter(options)
+
+  test('resolves to a loaded router that renders the component in the route', async () => {
+    const { routeTree, calls } = createTree()
+
+    const router = await createIsolatedTestRouterWith(createRouterCore, {
+      routeTree,
+      route: '/layout/posts/$postId',
+      component: 'element under test',
+      params: { postId: '4' },
+      search: { tab: 'comments' },
+      context: { locale: 'en', session: 'seeded session' },
+      loaderData: {
+        '/layout': 'seeded layout data',
+        '/layout/posts/$postId': 'seeded post data',
+      },
+      defaultComponent: 'default component',
+    })
+
+    expect(calls).toEqual([])
+    expect(router.state.status).toBe('idle')
+    expect(router.state.location.href).toBe('/posts/4?tab=comments')
+    const match = getMatch(router, '/layout/posts/$postId')
+    expect(match?.status).toBe('success')
+    expect(match?.loaderData).toBe('seeded post data')
+    expect(match?.context).toEqual({ locale: 'en', session: 'seeded session' })
+    expect(getMatch(router, '/layout')?.loaderData).toBe('seeded layout data')
+
+    const routes = router.routesById as Record<string, AnyRoute>
+    expect(routes['/layout/posts/$postId']!.options.component).toBe(
+      'element under test',
+    )
+    // A framework option, so core types do not know it.
+    expect(
+      (router.options as Record<string, unknown>).defaultComponent,
+    ).toBeUndefined()
+    expect(router.options.disableGlobalCatchBoundary).toBe(true)
+  })
+
+  test('rejects when the route cannot be reached as asked', async () => {
+    const { routeTree } = createTree()
+    const base = { routeTree, component: 'element under test' }
+
+    await expect(
+      createIsolatedTestRouterWith(createRouterCore, {
+        ...base,
+        route: '/missing',
+      }),
+    ).rejects.toThrow('The route "/missing" does not exist in the route tree')
+    await expect(
+      createIsolatedTestRouterWith(createRouterCore, {
+        ...base,
+        route: '/layout/posts/$postId',
+      }),
+    ).rejects.toThrow(
+      'Missing path params for route "/layout/posts/$postId": postId.',
+    )
+    await expect(
+      createIsolatedTestRouterWith(createRouterCore, {
+        ...base,
+        route: '/layout/posts/$postId',
+        params: { postId: '1' },
+        search: { tab: 'broken' },
+      }),
+    ).rejects.toThrow('Unknown tab')
+    await expect(
+      createIsolatedTestRouterWith(createRouterCore, {
+        ...base,
+        route: '/layout',
+      }),
+    ).rejects.toThrow('The route "/layout" is not matched at "/"')
   })
 })

@@ -3,9 +3,9 @@ id: createIsolatedTestRouterFunction
 title: createIsolatedTestRouter function
 ---
 
-> **Experimental:** `createIsolatedTestRouter` is experimental and subject to change. It is available for React only.
+> **Experimental:** `createIsolatedTestRouter` is experimental and subject to change. It is available for React, Solid and Vue.
 
-The `createIsolatedTestRouter` function creates a [`Router`](./RouterType.md) that renders one element inside one route of the app's route tree, with the state the test supplies. Import it from `@tanstack/react-router/testing`. The [Testing Routes guide](../../guide/testing-routes.md) shows how to use it.
+The `createIsolatedTestRouter` function creates a [`Router`](./RouterType.md) that renders one element inside one route of the app's route tree, with the state the test supplies. Import it from the `testing` subpath of your framework package: `@tanstack/react-router/testing`, `@tanstack/solid-router/testing` or `@tanstack/vue-router/testing`. The [Testing Routes guide](../../guide/testing-routes.md) shows how to use it.
 
 No `context`, `beforeLoad` or `loader` option of any route runs, no route component renders, and lazy routes are not loaded. The options that derive state from the URL (`params.parse`, `validateSearch`, the `search` middlewares and `loaderDeps`) run as in the app.
 
@@ -27,7 +27,7 @@ The `createIsolatedTestRouter` function accepts the following properties, plus t
 
 ### `element` property
 
-- Type: `React.ReactElement`
+- Type: React: `React.ReactElement`. Solid: `() => JSX.Element`, because Solid evaluates JSX right away. Vue: `VNode`.
 - Required
 - The element under test. It renders in place of the route's component.
 

@@ -3,11 +3,13 @@ id: testing-routes
 title: Testing Routes
 ---
 
-> **Experimental:** The route testing utilities are experimental and subject to change. They are available for React only.
+> **Experimental:** The route testing utilities are experimental and subject to change. They are available for React, Solid and Vue.
 
-`@tanstack/react-router/testing` creates routers for tests from your app's route tree. Tests address routes by their id, and everything a test passes is typed from the tree: the start location, params, search params, context, loader data, and the parts of a route it replaces. Tests never declare routes of their own.
+The `testing` subpath of each framework package (`@tanstack/react-router/testing`, `@tanstack/solid-router/testing`, `@tanstack/vue-router/testing`) creates routers for tests from your app's route tree. The examples on this page use React; [Solid and Vue](#solid-and-vue) lists what differs.
 
-It has two functions. Both return a router that you render with `RouterProvider`, so they work with any test library:
+Tests address routes by their id, and everything a test passes is typed from the tree: the start location, params, search params, context, loader data, and the parts of a route it replaces. Tests never declare routes of their own.
+
+Each has the same two functions. Both return a router that you render with `RouterProvider`, so they work with any test library:
 
 | Function                   | Use it to test                                                           | What runs                                                                                                 |
 | -------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
@@ -36,7 +38,7 @@ export default defineConfig({
 })
 ```
 
-With code-based routing, pass the route tree you build with `addChildren`.
+For Solid or Vue, pass `target: 'solid'` or `target: 'vue'`, and use your framework's Vite plugin. With code-based routing, pass the route tree you build with `addChildren`.
 
 ## The example app
 
@@ -264,11 +266,41 @@ const router = createTestRouter({
 })
 ```
 
-`createIsolatedTestRouter` leaves out `defaultComponent`, `defaultPendingComponent` and `defaultErrorComponent`, and turns off the router's global error boundary, so an error the element throws reaches the test from your `render` call. It creates its own history and sets its location from `route`, `params` and `search`; its `search` is the route's search params, not the router option of that name.
+`createIsolatedTestRouter` leaves out `defaultComponent`, `defaultPendingComponent` and `defaultErrorComponent`, and turns off the router's global error boundary, so the router does not catch an error that the element throws. It creates its own history and sets its location from `route`, `params` and `search`; its `search` is the route's search params, not the router option of that name.
+
+## Solid and Vue
+
+`@tanstack/solid-router/testing` and `@tanstack/vue-router/testing` have the same two functions with the same options. Only the element under test and the call that renders the router differ:
+
+| Framework | `element`                                                      | Render the router                                                                  |
+| --------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| React     | `<PostHeader />`                                               | `render(<RouterProvider router={router} />)` from `@testing-library/react`         |
+| Solid     | `() => <PostHeader />`, because Solid evaluates JSX right away | `render(() => <RouterProvider router={router} />)` from `@solidjs/testing-library` |
+| Vue       | A vnode: `<PostHeader />` with Vue JSX, or `h(PostHeader)`     | `render(<RouterProvider router={router} />)` from `@testing-library/vue`           |
+
+```tsx title="tests/post-header.test.tsx (Solid)"
+import { render, screen } from '@solidjs/testing-library'
+import { RouterProvider } from '@tanstack/solid-router'
+import { createIsolatedTestRouter } from '@tanstack/solid-router/testing'
+
+const router = await createIsolatedTestRouter({
+  routeTree,
+  route: '/_authed/posts/$postId',
+  element: () => <PostHeader />,
+  params: { postId: '1' },
+  context: { locale: 'en', session: { user: ada }, user: ada },
+  loaderData: {
+    '/_authed': { unreadCount: 0 },
+    '/_authed/posts/$postId': { post: createPost({ authorId: ada.id }) },
+  },
+})
+render(() => <RouterProvider router={router} />)
+```
+
+In Vue, `Wrap` is a component that renders its default slot.
 
 ## Limitations
 
-- Only React is supported.
 - Every test router loads your whole route tree, so every route module is imported, with its top-level code and its imports.
 - The utilities are tested with Vitest in jsdom only.
 - TanStack Start apps are not supported yet. Importing the route tree in a test also imports the server-only code of your route files.

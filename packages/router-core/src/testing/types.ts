@@ -1,3 +1,4 @@
+import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRoute,
   BeforeLoadContextOptions,
@@ -7,6 +8,13 @@ import type {
   RouteContextOptions,
 } from '../route'
 import type { RouteById, RouteIds } from '../routeInfo'
+import type {
+  RouterConstructorOptions,
+  RouterCore,
+  RouterOptions,
+  TrailingSlashOption,
+} from '../router'
+import type { ValidateNavigateOptions } from '../typePrimitives'
 import type { Awaitable, ConstrainLiteral } from '../utils'
 
 /**
@@ -178,3 +186,71 @@ export type IsolatedRouteState<TRouteTree extends AnyRoute, TId> = {
   // TypeScript widens a constant such as `rootRouteId` while inferring.
   route: ConstrainLiteral<TId, RouteIds<TRouteTree>>
 } & IsolatedRouteStateFor<RouteById<TRouteTree, TId>>
+
+/**
+ * The options of `createTestRouter`: those of `createRouter`, plus the route
+ * tree, a start location and per-route overrides. Framework packages pass
+ * their component types as `TComponents`.
+ */
+export type TestRouterOptions<
+  TRouteTree extends AnyRoute,
+  TLocation = unknown,
+  TTrailingSlashOption extends TrailingSlashOption = 'never',
+  TDefaultStructuralSharingOption extends boolean = false,
+  TRouterHistory extends RouterHistory = RouterHistory,
+  TDehydrated extends Record<string, any> = Record<string, any>,
+  TComponents = RouteTestComponents,
+> = RouterConstructorOptions<
+  TRouteTree,
+  TTrailingSlashOption,
+  TDefaultStructuralSharingOption,
+  TRouterHistory,
+  TDehydrated
+> & {
+  routeTree: TRouteTree
+  /**
+   * Where the router starts, typed like the options of `navigate`. It
+   * replaces the current entry of `history`. Defaults to `/`.
+   */
+  location?: ValidateNavigateOptions<
+    RouterCore<
+      TRouteTree,
+      TTrailingSlashOption,
+      TDefaultStructuralSharingOption,
+      TRouterHistory,
+      TDehydrated
+    >,
+    TLocation
+  >
+  /**
+   * Per-route overrides. A route that is not listed keeps the application's
+   * options.
+   */
+  overrides?: RouteTestOverrides<TRouteTree, TComponents>
+}
+
+/**
+ * The options of `createIsolatedTestRouter`. Framework packages pass the type
+ * of the element under test as `TElement`.
+ */
+export type IsolatedTestRouterOptions<
+  TRouteTree extends AnyRoute,
+  TId,
+  TElement,
+  TTrailingSlashOption extends TrailingSlashOption = 'never',
+  TDefaultStructuralSharingOption extends boolean = false,
+> = Omit<
+  RouterOptions<
+    TRouteTree,
+    TTrailingSlashOption,
+    TDefaultStructuralSharingOption,
+    RouterHistory,
+    Record<string, any>
+  >,
+  // `search` is the route's search params here, not the router option.
+  'routeTree' | 'history' | 'context' | 'search'
+> & {
+  routeTree: TRouteTree
+  /** The element under test. It renders in place of the route's component. */
+  element: TElement
+} & IsolatedRouteState<TRouteTree, TId>

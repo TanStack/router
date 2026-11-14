@@ -59,6 +59,12 @@
         "default": "./dist/esm/ssr/client.js"
       }
     },
+    "./testing": {
+      "import": {
+        "types": "./dist/esm/testing.d.ts",
+        "default": "./dist/esm/testing.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,

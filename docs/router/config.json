@@ -309,7 +309,12 @@
         },
         {
           "label": "solid",
-          "children": []
+          "children": [
+            {
+              "label": "Testing Routes",
+              "to": "guide/testing-routes"
+            }
+          ]
         }
       ]
     },

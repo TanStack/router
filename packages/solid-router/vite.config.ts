@@ -59,6 +59,7 @@ export default defineConfig((env) =>
         './src/index.dev.tsx',
         './src/ssr/client.ts',
         './src/ssr/server.ts',
+        './src/testing.ts',
       ],
       srcDir: './src',
     }),

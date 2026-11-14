@@ -3,9 +3,9 @@ id: createTestRouterFunction
 title: createTestRouter function
 ---
 
-> **Experimental:** `createTestRouter` is experimental and subject to change. It is available for React only.
+> **Experimental:** `createTestRouter` is experimental and subject to change. It is available for React, Solid and Vue.
 
-The `createTestRouter` function creates a [`Router`](./RouterType.md) for a test, over a copy of the app's route tree, and lets the test replace parts of single routes. Import it from `@tanstack/react-router/testing`. The [Testing Routes guide](../../guide/testing-routes.md) shows how to use it.
+The `createTestRouter` function creates a [`Router`](./RouterType.md) for a test, over a copy of the app's route tree, and lets the test replace parts of single routes. Import it from the `testing` subpath of your framework package: `@tanstack/react-router/testing`, `@tanstack/solid-router/testing` or `@tanstack/vue-router/testing`. The [Testing Routes guide](../../guide/testing-routes.md) shows how to use it.
 
 ## createTestRouter options
 
@@ -66,10 +66,13 @@ It throws when `overrides` names a route that does not exist, gives a route both
 
 ## Framework-independent core
 
-`@tanstack/router-core/testing` holds the parts that do not depend on a framework. Framework packages build on it; apps use `@tanstack/react-router/testing`.
+`@tanstack/router-core/testing` holds the parts that do not depend on a framework. The React, Solid and Vue packages are thin typed wrappers around it; apps use those.
 
 | Export                                                                   | What it does                                                                                                                                                         |
 | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createTestRouterWith(createRouter, options)`                            | `createTestRouter`, given a framework's `createRouter`.                                                                                                              |
+| `createIsolatedTestRouterWith(createRouter, options)`                    | `createIsolatedTestRouter`, given a framework's `createRouter`. It takes the route `component` that renders the element under test instead of `element`.             |
+| `TestRouterOptions`, `IsolatedTestRouterOptions`                         | The option types, with type parameters for a framework's component and element types.                                                                                |
 | `createTestRouteTree(routeTree, overrides)`                              | Copies a route tree and applies the overrides.                                                                                                                       |
 | `createIsolatedRouteTree(routeTree, { routeId, component, loaderData })` | Copies a route tree without any option that does work or renders. The route `routeId` renders `component`, and the routes in the `loaderData` map return their data. |
 | `initRouteTree(routeTree)`                                               | Gives every route of a tree that no router has processed its `id`, `path`, `fullPath` and `to`.                                                                      |

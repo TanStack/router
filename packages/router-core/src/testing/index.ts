@@ -1,3 +1,9 @@
+export { createIsolatedTestRouterWith, createTestRouterWith } from './router'
+export type {
+  AnyIsolatedTestRouterOptions,
+  AnyTestRouterOptions,
+  TestRouterFactory,
+} from './router'
 export {
   assertIsolatedRouteLoaded,
   assertRouteTestParams,
@@ -13,10 +19,12 @@ export type {
 } from './routeTree'
 export type {
   IsolatedRouteState,
+  IsolatedTestRouterOptions,
   RouteTestBeforeLoadFn,
   RouteTestComponents,
   RouteTestContextFn,
   RouteTestLoaderFn,
   RouteTestOverride,
   RouteTestOverrides,
+  TestRouterOptions,
 } from './types'
