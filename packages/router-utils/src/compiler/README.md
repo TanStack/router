@@ -96,6 +96,28 @@ emits its own output. Nothing depends on transform order.
   unknown, they are the compiler's own (`tsr$x`). A planner can name a binding's glue export ahead
   (`glueExportName`: React route HMR lists them for plugin-react to ignore).
 
+### Route files (`route-placement.ts`, R153)
+
+A plan a planner marks as a route file (`PlanContext.setRouteModule`, the router planner's split part) is placed by
+`computeRoutePlacement`, which does what route splitting on main does, by its outcome; every other plan goes through
+the engine below. One cluster per unit (`buildClusters(input, true)`: no writer joins its binding) and the engine's
+per-output read walk (`readIndex`):
+
+- **the env module** keeps everything but what the planners' edits left unread: an import specifier, a declarator, a
+  function or a class declaration the source read (provenance; an import read only in type positions counts) that
+  nothing kept reads or writes any more goes, with its initialiser. Statements, enums, namespaces, exports, imports
+  and unread declarations with an effect stay; an unread declaration without one (`function Unused() { … }`) goes.
+- **every derived output** takes what its roots read, transitively: what the env module keeps is imported from it,
+  what one output alone needs moves there, what several need is one lazy shared module per file
+  (`?tsr-split=shared---<keys>`); import specifiers are copied where read; a provider output copies what it reaches.
+  Start's outputs in a route file (Hydrate chunks, the server-fn handler module) follow the same rule.
+- **one fallback, on the outcome**: a derived output that would assign a binding homed in another module of the file
+  does not take the root bringing that code (`Placement.fallbacks`, `shared-writer`), and its planner keeps the root in
+  place (the router planner's `assignsWhatItImports`, start-env's handler, Hydrate's `hydrate-module-write`).
+
+Every non-import declaration has one home and every statement runs once in the env module: never worse than main,
+which copies state and statements into chunks (spec-main-splitting.md §1.8).
+
 ### Reachability = splitting = dead-code removal (`reach.ts`, `placement/`)
 
 Per output: roots → closure over _live_ value references (not inside removed ranges; type positions never keep
@@ -217,17 +239,10 @@ v`, `x.push(v)`, `x = v`) is never removed with what only erased code read: it s
   One owner answers both sides: the mutation model (`visitValues`, `objectsWrittenBy`). A method nested in an object argument
   (`defineComponent({ setup() {} })`) and a function it only holds (`const api = { getCached }`) run nothing, and a
   function declaration evaluates nothing. A claimed
-  option value is such an evaluation too. A call whose result the framework calls later holds what it is handed
-  (R152; the values a planner states with `PlanContext.calledLater`, the router planner's component and loader
-  options, split or not): such a value's call, the initialiser of a `const` every use of which is one (such a
-  value, another such `const`, a name handed to such a call), and a call handed directly to such a call
-  (`withAuth(observer(Page))`) run nothing in a function they are handed, and a name they are handed, directly or
-  inside an object or array argument (`define({ setup: render })`), is read as a value (`ClusterGraph.holds`).
-  Every other call may run what it is handed (`ordered-effect` for an option value; a declaration kept for a read
+  region is such an evaluation too. A call may run what it is handed (`ordered-effect` for an option value; a declaration kept for a read
   only there, a wrapped sub-component used as a JSX tag among them, is reported as one that _may_ use the binding),
-  and so does every call for the extraction check (`readsKept`) and the verifier: an extracted module may load
-  before the route module. Accepted break (R146's family): a factory that runs its function at once
-  (`component: createIcon(() => …)`) reads state another output writes when its chunk loads. Outside the model (R97): a getter (`api.latest`, a destructured property),
+  as for the extraction check (`readsKept`) and the verifier: an extracted module may load
+  before the route module. Outside the model (R97): a getter (`api.latest`, a destructured property),
   `toString`, a spread or an array pattern's iterator running user code, and writes through `this` or another
   module: the code they run is not seen to run at load.
   A reader of such state (V) never leaves the route module, pure or not, for a lazy output or an extracted export's module
@@ -510,13 +525,13 @@ Fixed order per env (an array the host passes): `start-env` → `hydrate` → `r
 planning round runs each planner's `plan` in that order; a planner sees the regions, edits and generated names of the
 planners before it. The router plugin alone runs only the `router` planner.
 
-| planner        | job                                                                   | file                                                                                                                                         |
-| -------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `router`       | route option splitting, `deleteNodes`, route HMR                      | `router-plugin/src/planners/router.ts` (`split.ts`, `hmr.ts`); runtime in `router-core/src/hmr.ts` and `{react,solid,vue}-router/src/hmr.ts` |
-| `start-env`    | server functions, middleware, isomorphic/env-only fns, `<ClientOnly>` | `start-plugin-core/src/planners/start-env.ts`; recognition `src/compiler/`; ids/registry/resolver `src/server-fns/`                          |
-| `hydrate`      | `<Hydrate>` extraction into chunks                                    | `start-plugin-core/src/planners/hydrate.ts`                                                                                                  |
-| `rsc-css`      | RSC CSS injection in the provider env                                 | `start-plugin-core/src/planners/rsc-css.ts`                                                                                                  |
-| `import-edges` | import protection: per-output edges, mock substitution (policy phase) | `start-plugin-core/src/planners/edges.ts`; rules, verdicts, reports `src/import-protection/`                                                 |
+| planner        | job                                                                     | file                                                                                                                                         |
+| -------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `router`       | route option splitting (`route-placement.ts`), `deleteNodes`, route HMR | `router-plugin/src/planners/router.ts` (`split.ts`, `hmr.ts`); runtime in `router-core/src/hmr.ts` and `{react,solid,vue}-router/src/hmr.ts` |
+| `start-env`    | server functions, middleware, isomorphic/env-only fns, `<ClientOnly>`   | `start-plugin-core/src/planners/start-env.ts`; recognition `src/compiler/`; ids/registry/resolver `src/server-fns/`                          |
+| `hydrate`      | `<Hydrate>` extraction into chunks                                      | `start-plugin-core/src/planners/hydrate.ts`                                                                                                  |
+| `rsc-css`      | RSC CSS injection in the provider env                                   | `start-plugin-core/src/planners/rsc-css.ts`                                                                                                  |
+| `import-edges` | import protection: per-output edges, mock substitution (policy phase)   | `start-plugin-core/src/planners/edges.ts`; rules, verdicts, reports `src/import-protection/`                                                 |
 
 Composition: `startPlanners()` in `start-plugin-core/src/planners/index.ts`; the router planner and its configuration
 builder (`routerPlannerConfigFrom`) are exported from `@tanstack/router-plugin/planners`.

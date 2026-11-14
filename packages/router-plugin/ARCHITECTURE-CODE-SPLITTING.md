@@ -27,49 +27,38 @@ core; read the
 
 For `posts.tsx` in a client environment:
 
-| id                                    | contents                                                                                                                                                                                                                      |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `posts.tsx`                           | the route module: `Route` with each split option replaced by `lazyRouteComponent`/`lazyFn` of an importer const, and whatever the route module itself still reads                                                             |
-| `posts.tsx?tsr-split=component`       | one chunk per split group (group key: sorted option names joined by `---`, e.g. `component---loader`) exporting the option's value                                                                                            |
-| `posts.tsx?tsr-split=shared---<keys>` | code several chunks need and the route module does not (keys: the options of the needing groups, sorted, joined by `---`), loaded lazily by those chunks                                                                      |
-| `posts.tsx?tsr-split=export---Name`   | build only: an exported, pure, unwritten declaration that only chunks need; the route module re-exports it for other importers; a chunk copies it when the copy is a function or primitive closure, else imports it from here |
+| id                                    | contents                                                                                                                                                               |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `posts.tsx`                           | the route module: `Route` with each split option replaced by `lazyRouteComponent`/`lazyFn` of an importer const, and whatever the route module itself still reads      |
+| `posts.tsx?tsr-split=component`       | one chunk per split group (group key: sorted option names joined by `---`, e.g. `component---loader`) exporting the option's value                                     |
+| `posts.tsx?tsr-split=shared---<keys>` | code several chunks need and the route module does not (keys: the options of the needing groups, sorted, joined by `---`), loaded lazily by those chunks, one per file |
 
 The ids and the specifiers importing them (the route file's absolute path) keep the format of the Babel splitter,
 which apps' chunk naming reads; `router-utils/src/compiler/identity.ts` owns it (core README, "Hosts").
 
-All of them come from one plan: whichever id the bundler asks first computes the plan, the others reuse it. Placement
-is decided by the core from what each output reads; the planners only say which option values are roots of which
-chunk. Module-level state therefore exists once: a binding the route module and a chunk both read stays in the route
-module and the chunk imports it. An exported binding only chunks need is the one exception by rule, and only when
-a copy is indistinguishable from the original: its extracted module serves other importers of the route file and
-is dropped when nobody imports it, while each chunk copies the binding, so the chunk never depends on where the
-bundler places a module the route module re-exports (Rolldown < 1.1.5 and a user `manualChunks` group merging into
-the entry made it eager). The copy carries the binding and what it reaches that exists nowhere else, and every piece
-must be a function or a primitive nothing writes and whose identity nothing observes: an object, array, class, call result or regex in that closure, or
-a written binding, has an identity or state, so such an export is not copied and the chunk imports its extracted
-module (one instance, lazy wherever the bundler leaves the module to the chunk; the build warns when the module
-lands in the entry). Importers of the route file and the chunk then hold two instances of a function at most. In
-dev nothing is bundled: the binding stays in the route module and the chunk copies or imports it the same way.
+All of them come from one plan: whichever id the bundler asks first computes the plan, the others reuse it. A route
+file is placed as route splitting on main places it (R153; `router-utils/src/compiler/route-placement.ts`, core README
+"Route files"): the route module keeps what the split left read (exports, statements, `Route`, what a staying option
+reads), a chunk imports that from it, a binding only one chunk needs moves into it with its initialiser, and one
+several chunks need goes to the shared module. Module-level state therefore exists once, and every statement runs once,
+in the route module.
 
 ## Splitting rules
 
-- Split keys: `component`, `errorComponent`, `pendingComponent`, `notFoundComponent`, `loader` (an object-form
-  loader splits its `handler`). Default groups: `[['component'], ['errorComponent'], ['notFoundComponent']]`. No
-  option of a root route is split: its components render on every page, or on error and not-found responses, where a
-  lazy chunk only adds a round trip.
-- Any value form splits: identifiers, inline functions, method shorthands, casts, `satisfies`, calls (`memo(Page)`),
-  options held in a module-level constant. The chunk takes the value inside a cast (`as`, `satisfies`, `!`), as
-  every other compiler of the build left it; the cast stays in the route module, around the lazy wrapper.
-- Not split, with one warning per file: routes whose options object cannot be read statically (imported from another
-  module, built by a call), and methods/functions whose own body reads `this` (`not-split:this-reference`: the
-  router calls them as methods; a lazy wrapper would call them detached), inline or named by the option (a `const`,
-  through `const`s naming each other, or a function declaration; `boundValueOf`). When the limitation is ours, it is
-  a bug, not a warning.
-- Single writer and evaluation order: a split that would make two outputs write one binding, or move a read of
-  state something writes (an option value reading a binding a function assigns, or one written below it), is a core
-  _fallback_; the option stays in the route module. The core re-plans with each fallback kept in place until no new
-  one appears (keeping one option can free the next: a chain of writers); if that never settles, nothing of the route
-  is split and one warning (`fallback-rounds-exhausted`) says so.
+- Split keys: `component`, `errorComponent`, `pendingComponent`, `notFoundComponent`, `loader`. Default groups:
+  `[['component'], ['errorComponent'], ['notFoundComponent']]`. No option of a root route is split: its components
+  render on every page, or on error and not-found responses, where a lazy chunk only adds a round trip.
+- The options main splits are split (`decisions.ts`): plain properties (`key: value`, `{ key }`) whose value is not
+  `true`/`false`/`null`/`undefined`. Methods, accessors, spreads and computed keys stay as written.
+- An option whose value is a binding the route file exports by its declaration (`export function`, `export
+const|let|var`, `export default function`, `export default <name>`) stays in the route module, and the build warns
+  once, naming the file and the exports (main's warning).
+- Values main cannot compile into a chunk stay in the route module, silently (`unsplittableOnMain`: a member access,
+  `satisfies`, `!`, a class, a namespace member, a global, an array pattern, a sequence, an object, a call holding JSX
+  or TypeScript syntax). An option whose chunk would assign a binding it imports stays too (`assignsWhatItImports`:
+  a core fallback, the core re-plans with it kept in place).
+- Routes whose options object cannot be read statically (imported from another module, built by a call) are not
+  split; with `deleteNodes` the build warns that server code in them ships.
 - `deleteNodes` removes options (every property form) from the env output and what only they imported.
 - Route CSS (`import './x.css'` and other bare style imports) stays in the route module, which the route tree imports
   eagerly, whether or not the route's components are split (fully lazy route CSS needs a router-core asset loader).

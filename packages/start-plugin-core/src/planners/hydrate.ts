@@ -585,8 +585,9 @@ function plan(ctx: PlanContext<typeof HYDRATE_PLANNER>): void {
  * needs it (the chunk copies it when the copy is functions and primitives
  * nothing writes, else imports it from there; in dev the declaration stays in
  * the parent: `placement/settle.ts`), so a component a boundary renders and nothing
- * else imports is not in the eager code. The same outputs the route splitter
- * declares for a route module (`extractExport` keeps a binding's first).
+ * else imports is not in the eager code. (A route file is placed by
+ * `route-placement.ts`, which extracts nothing: an export stays in the route
+ * module, R153.)
  */
 function extractExports(ctx: PlanContext): void {
   for (const e of ctx.analysis.exports) {
