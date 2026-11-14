@@ -469,6 +469,61 @@ export const api = { get: createServerFn()${link}.handler(() => db.q()) }
       expect(provider).not.toContain('./client-thing')
     },
   )
+
+  // spec-phase1 8.2 (RSC, kind B): the three roles of a module whose
+  // handlers read state the module keeps. The SSR caller's module and the
+  // provider env's module stub the handlers and keep the state other code
+  // reads, without the server-only import; the provider copy holds what its
+  // handlers reach (its own copy of the state, as main's), and nothing else.
+  const roles = (code: string) =>
+    Promise.all([
+      compile(code, {
+        env: envInfo({ name: 'ssr', type: 'server', isProvider: false }),
+        config,
+        files,
+      }),
+      compile(code, { env: rsc, config, files }),
+    ])
+  it('s1: a cache a handler fills and an export reads, in the three roles', async () => {
+    const [caller, providerEnv] =
+      await roles(`import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+const cache = new Map<string, number>()
+export const save = createServerFn().handler(async () => { cache.set('k', db.q()) })
+export function getCached() { return cache.get('k') }
+`)
+    for (const r of [caller, providerEnv]) {
+      expectValid(r.code)
+      expect(r.code).not.toContain('./db.server')
+      expect(r.code).toContain('const cache = new Map')
+      expect(r.code).toContain('function getCached()')
+    }
+    const copy = await providerEnv.derived(PROVIDER)
+    expectValid(copy)
+    expect(copy).toContain(`from './db.server'`)
+    expect(copy).toContain('const cache = new Map')
+    expect(copy).not.toContain('getCached')
+  })
+
+  it('l1: a function only the handler calls, assigning a kept `let`, in the three roles', async () => {
+    const [caller, providerEnv] =
+      await roles(`import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+let cache: Map<string, number> | null = null
+function clear() { cache = null }
+export function getCache() { return (cache ??= new Map()) }
+export const reset = createServerFn().handler(async () => { clear(); return db.q() })
+`)
+    for (const r of [caller, providerEnv]) {
+      expectValid(r.code)
+      expect(r.code).not.toContain('./db.server')
+      expect(r.code).toContain('function getCache()')
+    }
+    const copy = await providerEnv.derived(PROVIDER)
+    expectValid(copy)
+    expect(copy).toContain(`from './db.server'`)
+    expect(copy).toContain('function clear()')
+  })
 })
 
 describe('a server fn nested in a function (J4.6): hoisted when it captures nothing', () => {
