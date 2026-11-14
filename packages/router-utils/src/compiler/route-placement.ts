@@ -18,6 +18,9 @@
  *   they import (`?tsr-split=shared---<keys>`, one per file); import
  *   specifiers are copied where they are read. A provider output (another
  *   layer's instance of the module) copies what it reaches.
+ * - A derived output that would assign a binding it imports (`main` fails
+ *   such a build) does not take the root bringing that code: the root falls
+ *   back (`Placement.fallbacks`) and its planner keeps it in place.
  *
  * Why this is never worse than `main` on input `main` compiles correctly:
  * each declaration but an import exists in one module (one instance, its
@@ -32,9 +35,16 @@ import { deriveId } from './identity'
 import { buildClusters } from './placement/clusters'
 import { readIndex } from './placement/reads'
 import type { ClusterId } from './placement/clusters'
-import type { Home, OutputDecl, Placement, PlacementInput } from './reach'
+import type {
+  Fallback,
+  Home,
+  OutputDecl,
+  Placement,
+  PlacementInput,
+  RootRef,
+} from './reach'
 import type { SymbolId } from './symbols'
-import type { UnitId } from './units'
+import type { RegionId, UnitId } from './units'
 import type { OutputId } from './rewrite'
 
 /** The reference kinds that keep a declaration: reads, writes, JSX tags, export specifiers. */
@@ -214,13 +224,24 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   }
 
   // ---- the derived outputs: what each needs ----------------------------------
-  /** Derived outputs (not copying) reaching each declaration the env module does not keep. */
-  const needers = new Map<ClusterId, Set<OutputId>>()
-  const reached = new Map<OutputId, Set<ClusterId>>()
   const copying = (o: OutputId) => outputs.get(o)?.kind === 'provider'
-  for (const o of derived) {
+  /** The roots of a derived output: what its planners rooted there, and the generated units homed there. */
+  const rootsOf = (o: OutputDecl): Array<RootRef> => [
+    ...o.roots,
+    ...gens
+      .filter((g) => g.home === o.id)
+      .map((g) => ({ t: 'gen' as const, id: g.id })),
+  ]
+  /**
+   * What output `o` takes from `roots`, transitively: everything they read
+   * but what another module of the file holds (the env module, or a
+   * generated unit's own home: imported) and types.
+   */
+  const reachFrom = (
+    o: OutputId,
+    roots: ReadonlyArray<RootRef>,
+  ): Set<ClusterId> => {
     const seen = new Set<ClusterId>()
-    reached.set(o.id, seen)
     const work: Array<ClusterId> = []
     const take = (c: ClusterId) => {
       if (!seen.has(c)) {
@@ -228,21 +249,20 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         work.push(c)
       }
     }
-    /** A read of cluster `t` from `o`: followed when `o` takes `t` (it is not imported). */
     const read = (t: ClusterId | undefined) => {
       if (t === undefined || seen.has(t) || isType(t)) {
         return
       }
       const home = fixedHome.get(t)
-      if (home !== undefined && home !== o.id) {
+      if (home !== undefined && home !== o) {
         return // imported from its home
       }
-      if (!copying(o.id) && env.has(t) && !isImport(t)) {
+      if (!copying(o) && env.has(t) && !isImport(t)) {
         return // imported from the env module
       }
       take(t)
     }
-    for (const r of o.roots) {
+    for (const r of roots) {
       if (r.t === 'sym') {
         read(clusterOfSym.get(r.id))
       } else {
@@ -253,14 +273,9 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         )
       }
     }
-    for (const [c, home] of fixedHome) {
-      if (home === o.id) {
-        take(c)
-      }
-    }
     while (work.length > 0) {
       const c = work.pop()!
-      const r = reads.clusterReads(c, o.id, true)
+      const r = reads.clusterReads(c, o, true)
       for (const s of r.syms) {
         read(clusterOfSym.get(s))
       }
@@ -268,6 +283,14 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         read(child)
       }
     }
+    return seen
+  }
+  /** Derived outputs (not copying) reaching each declaration the env module does not keep. */
+  const needers = new Map<ClusterId, Set<OutputId>>()
+  const reached = new Map<OutputId, Set<ClusterId>>()
+  for (const o of derived) {
+    const seen = reachFrom(o.id, rootsOf(o))
+    reached.set(o.id, seen)
     if (!copying(o.id)) {
       for (const c of seen) {
         if (!isImport(c) && !fixedHome.has(c)) {
@@ -410,6 +433,76 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
     }
   }
 
+  // ---- an output that would assign a binding it imports --------------------
+  // A module cannot assign a binding it imports: a derived output that would
+  // assign (`=`, `++`, `+=`, …) a binding another module of the file holds
+  // does not take the root that brings that code (a split option's value, a
+  // server function's handler, `<Hydrate>` children). The root falls back:
+  // its planner keeps it in place in the next round. One check of the
+  // outcome, on the write table every placement shares.
+  const writers = new Map<ClusterId, SymbolId>()
+  for (const w of graph.writes) {
+    const c = w.owner === null ? undefined : graph.clusterOfRegion.get(w.owner)
+    const d = clusterOfSym.get(w.sym)
+    const h = c === undefined ? undefined : home.get(c)
+    if (
+      !w.member &&
+      !w.augment &&
+      c !== undefined &&
+      d !== undefined &&
+      c !== d &&
+      h !== undefined &&
+      h !== 'env' &&
+      h !== 'removed' &&
+      h !== 'duplicate' &&
+      !copying(h) &&
+      home.get(d) !== h
+    ) {
+      writers.set(c, w.sym)
+    }
+  }
+  const fallbacks: Array<Fallback> = []
+  if (writers.size > 0) {
+    const fellBack = new Set<RegionId>()
+    const fallBack = (region: RegionId, binding: SymbolId) => {
+      if (!fellBack.has(region)) {
+        fellBack.add(region)
+        fallbacks.push({ region, reason: 'shared-writer', binding })
+      }
+    }
+    for (const o of derived) {
+      if (copying(o.id)) {
+        continue
+      }
+      for (const root of rootsOf(o)) {
+        let binding: SymbolId | undefined
+        for (const c of reachFrom(o.id, [root])) {
+          binding ??= writers.get(c)
+        }
+        if (binding === undefined) {
+          continue
+        }
+        // the root's place in the source: its claimed text, or the
+        // declaration of the binding it names
+        if (root.t === 'gen') {
+          for (const r of clusters[graph.clusterOfGen.get(root.id)!]!.regions) {
+            if (rewrites.claims.has(r)) {
+              fallBack(r, binding)
+            }
+          }
+        } else if (root.t === 'sym') {
+          for (const u of t1.declaringUnits.get(root.id) ?? []) {
+            if (units[u]!.kind !== 'type') {
+              fallBack(units[u]!.region, binding)
+            }
+          }
+        } else {
+          fallBack(units[root.id]!.region, binding)
+        }
+      }
+    }
+  }
+
   // ---- TypeScript-only specifiers leave with their statement's values -------
   const droppedTypeUnits = new Set<UnitId>()
   units.forEach((unit, u) => {
@@ -433,7 +526,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
     included,
     imports,
     exportsNeeded,
-    fallbacks: [],
+    fallbacks,
     created,
     extracted: [],
     kept: [],

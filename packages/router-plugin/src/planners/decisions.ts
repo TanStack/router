@@ -272,7 +272,10 @@ export function splitPlanOf(
         exported.push(ctx.symbols.name(valueSym))
         continue
       }
-      if (unsplittableOnMain(ctx, value) !== null) {
+      if (
+        unsplittableOnMain(ctx, value) !== null ||
+        assignsWhatItImports(ctx, value, valueSym)
+      ) {
         continue
       }
       const shorthand = option.kind === 'shorthand'
@@ -421,6 +424,31 @@ export function unsplittableOnMain(
     default:
       return value.type
   }
+}
+
+/**
+ * Whether the core found that the chunk taking this value would assign a
+ * binding it imports from another module of the file (a fallback of the
+ * previous round at the value, or at the declaration of the binding it
+ * names): the option stays in the route module, as the shapes of
+ * `unsplittableOnMain` do.
+ */
+function assignsWhatItImports(
+  ctx: PlanContext,
+  value: Node,
+  valueSym: SymbolId | null,
+): boolean {
+  const inner = unwrapExpression(value)
+  if (ctx.fallbackAt({ start: inner.start, end: inner.end }) !== undefined) {
+    return true
+  }
+  const { t1 } = ctx
+  return (
+    valueSym !== null &&
+    (t1.declaringUnits.get(valueSym) ?? []).some(
+      (u) => ctx.fallbackAt(t1.units[u]!.range) !== undefined,
+    )
+  )
 }
 
 function containsSyntax(node: Node, type: RegExp): boolean {
