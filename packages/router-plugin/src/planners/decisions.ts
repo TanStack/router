@@ -323,8 +323,8 @@ export function splitPlanOf(
           by: ROUTER_PLANNER,
           message:
             own === 'this'
-              ? `[tanstack-router] The \`${key}\` option of ${file} is not code-split because it uses \`this\`: split, it would no longer be called on the route options. Write it as an arrow function, or don't rely on \`this\`.`
-              : `[tanstack-router] The \`${key}\` option of ${file} is not code-split because it uses \`super\`: split, it would no longer be a method of the route options. Don't use \`super\` in it.`,
+              ? `[tanstack-router] The \`${key}\` option of ${file} uses \`this\`, so it isn't code-split (splitting can change what \`this\` refers to). Use an arrow function or avoid \`this\` to split it.`
+              : `[tanstack-router] The \`${key}\` option of ${file} uses \`super\`, so it isn't code-split (split, it would no longer be a method of the route options). Avoid \`super\` to split it.`,
           range: { start: option.prop.start, end: option.prop.end },
         })
         continue
@@ -515,17 +515,20 @@ export function splitOnMain(ctx: PlanContext, value: Node): boolean {
 
 /**
  * Whether a function value (a function expression, a method's function)
- * uses its own `this` or `super` (#8688): the router calls the option on
- * the route options, a split chunk's lazy wrapper without them, so it stays
- * in the route module. Its own, as the language scopes them: in its
- * parameters and body and in the arrow functions there, not in a nested
- * non-arrow function or method, a class field's initialiser or a static
- * block (which bind their own); a class's `extends`, computed keys and
- * decorators are evaluated in the enclosing function and count. `typeof
- * this` in a type is no use. An arrow function value has the module's
- * `this` wherever it is: null.
+ * uses its own `this` or `super` (#8688): splitting can change what they
+ * refer to (a split chunk's lazy wrapper calls the function its own way;
+ * `super` needs the options object as its home), so the option stays in
+ * the route module, and route HMR does not hoist such a method out of it.
+ * Its own, as the language scopes them: in its parameters and body and in
+ * the arrow functions there, not in a nested non-arrow function or method,
+ * a class field's initialiser or a static block (which bind their own); a
+ * class's `extends`, computed keys and decorators are evaluated in the
+ * enclosing function and count. `<this.Foo />` is a `this` (a JSX member
+ * expression's object `JSXIdentifier`, as in Babel); `typeof this` in a type
+ * is no use. An arrow function value has the module's `this` wherever it
+ * is: null.
  */
-function ownThisOf(ctx: PlanContext, fn: Node): 'this' | 'super' | null {
+export function ownThisOf(ctx: PlanContext, fn: Node): 'this' | 'super' | null {
   if (
     fn.type !== 'FunctionExpression' ||
     !/\b(?:this|super)\b/.test(ctx.analysis.source.code.slice(fn.start, fn.end))
@@ -549,7 +552,14 @@ function ownThisOf(ctx: PlanContext, fn: Node): 'this' | 'super' | null {
             parent?.type === 'AccessorProperty'))
       ) {
         wctx.skip()
-      } else if (n.type === 'ThisExpression' || n.type === 'Super') {
+      } else if (
+        n.type === 'ThisExpression' ||
+        n.type === 'Super' ||
+        (n.type === 'JSXIdentifier' &&
+          n.name === 'this' &&
+          wctx.key === 'object' &&
+          parent?.type === 'JSXMemberExpression')
+      ) {
         found = n.type === 'Super' ? 'super' : 'this'
         wctx.stop()
       }

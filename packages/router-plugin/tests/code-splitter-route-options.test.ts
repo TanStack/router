@@ -97,7 +97,7 @@ export const Route = createFileRoute('/')({
   })
 
   // A documented grouping: every option in one chunk.
-  it('keep literal and method options grouped with a split option as written', async () => {
+  it('keep working when literal and method options are grouped with a split option', async () => {
     const route =
       await loadRoute(`${head}export const Route = createFileRoute('/')({
   codeSplitGroupings: [['loader', 'component', 'errorComponent', 'pendingComponent', 'notFoundComponent']],
@@ -564,11 +564,9 @@ export const createBits = () => {
     ).toEqual([{ message: 'hello' }, 'About', 1])
   })
 
-  // Splitting a component written as a method is pinned in
-  // known-bugs-code-splitter.test.ts ("a component written as a method
-  // loads with its chunk"), and so is state shared with a split option
-  // ("module state a method option shares with a split option is created
-  // once"); split or not, the options keep working.
+  // A method splits as the function expression with its body would
+  // (#8623: code-splitter-main-shapes.test.ts, "method shorthand and
+  // `this`"); state a method shares with a split option is one instance.
   // Source: #8504 code-splitter-route-options.test.ts "route options written
   // as methods or accessors" (methods only: no route file writes an option
   // as an accessor).

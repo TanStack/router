@@ -53,8 +53,9 @@ which the route module and the chunks import, as main's `?tsr-shared=1`.
   `true`/`false`/`null`/`undefined`, and methods, as the function expression with their body (#8623; the chunk
   declares `function (…) {…}`, an edit of the property writes `key: ` before the placeholder). Accessors, spreads and
   computed keys stay as written. A function expression or method using its own `this` or `super` (`ownThisOf`, the
-  language's scoping) stays in the route module, where the router calls it on the route options, and the build warns
-  at the property (#8688).
+  language's scoping) stays in the route module as written, since splitting can change what `this` refers to, and the
+  build warns at the property; route HMR does not hoist such a method either (as a function expression its `super`
+  is a syntax error) (#8688).
 - An option whose value is a bare identifier the route file exports by its declaration (`export function`, `export
 const|let|var`, `export default function`, `export default <name>`; main's `hasExport`) stays in the route module,
   and the build warns once, naming the file and the exports (main's warning). `Page as any` is split.
