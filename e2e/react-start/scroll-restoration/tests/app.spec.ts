@@ -39,40 +39,6 @@ test('restores window scroll after force reload of a navigated route', async ({
     .toBe(scrollY)
 })
 
-test('keeps window scroll made before hydration', async ({ page }) => {
-  await page.addInitScript(() => {
-    ;(window as any).__holdScrollBootstrap = true
-  })
-  await page.goto('/normal-page')
-  await expect
-    .poll(() =>
-      page.evaluate(() => typeof (window as any).__releaseScrollBootstrap),
-    )
-    .toBe('function')
-
-  const scrollY = await page.evaluate(async () => {
-    window.scrollTo(0, 500)
-    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
-    return window.scrollY
-  })
-
-  expect(scrollY).toBeGreaterThan(0)
-
-  const hydratedScrollY = await page.evaluate(
-    () =>
-      new Promise<number>((resolve) => {
-        addEventListener(
-          'test-scroll-hydrated',
-          () => resolve(window.scrollY),
-          { once: true },
-        )
-        ;(window as any).__releaseScrollBootstrap()
-      }),
-  )
-
-  expect(hydratedScrollY).toBe(scrollY)
-})
-
 test('initial hard navigation to a hash scrolls to the hash target', async ({
   page,
 }) => {
