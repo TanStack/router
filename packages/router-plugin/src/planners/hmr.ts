@@ -33,7 +33,7 @@ import {
   refreshRegisters,
   routerRouteId,
 } from './route'
-import { COMPONENT_KEYS, methodPrefixOf } from './decisions'
+import { COMPONENT_KEYS, methodPrefixOf, ownThisOf } from './decisions'
 import { ROUTER_PLANNER } from './config'
 import type { HmrStyle } from './config'
 import type { RouterRound } from './router'
@@ -124,7 +124,13 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
       ctx.renameRefs(sym, { sym: next.sym }, ROUTER_PLANNER, splitRegions)
       continue
     }
-    if (isSplit || (option.kind !== 'method' && !refreshRegisters(value))) {
+    if (
+      isSplit ||
+      (option.kind !== 'method' && !refreshRegisters(value)) ||
+      // (a method using its own `this` or `super` stays a method: as a
+      // function expression its `super` is a syntax error, #8688)
+      (option.kind === 'method' && ownThisOf(ctx, value) !== null)
+    ) {
       // (a value React Refresh registers no family for stays inline: an
       // edit remounts it)
       continue
