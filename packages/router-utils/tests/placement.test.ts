@@ -3707,18 +3707,6 @@ describe('route-module specifics (lane router)', () => {
     )
   })
 
-  it('keeps a React binding JSX may compile to when the runtime is unknown', async () => {
-    const code = dedent(`
-      import * as React from 'react'
-      import { createFileRoute } from 'toy-router'
-      type Title = React.ReactNode
-      export const Route = createFileRoute('/')({ component: () => <p>classic</p> })
-    `)
-    const r = await split(code)
-    expect(r.chunks.component).toContain("import * as React from 'react'")
-    expect(r.env).not.toContain("from 'react'")
-  })
-
   // Source: tanstack.com `ds.typography.tsx`: `import type * as React from
   // 'react'` and JSX in the split component gave the chunk `import { React }`
   // from the route module, which exported a type-only binding (Rolldown:

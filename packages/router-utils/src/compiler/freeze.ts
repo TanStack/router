@@ -879,12 +879,6 @@ function outputView(
     },
     dynamic: ({ start, end }) =>
       segments.some((s) => s.k === 'slice' && s.start <= start && s.end >= end),
-    jsxFactory: (local) =>
-      refs
-        .refsOf(local)
-        .some(
-          (r) => r.kind === 'implicitJsxFactory' && !erasedAt(r.range.start),
-        ),
   }
 }
 
@@ -1065,11 +1059,7 @@ class Renderer {
     if (env && env.size > 0) {
       subst = []
       for (const ref of this.plan.t1.refs.refsIn({ start, end })) {
-        if (
-          env.has(ref.sym) &&
-          ref.kind !== 'implicitJsxFactory' &&
-          ref.kind !== 'exportSpecifier'
-        ) {
+        if (env.has(ref.sym) && ref.kind !== 'exportSpecifier') {
           subst.push(ref)
         }
       }

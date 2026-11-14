@@ -419,12 +419,13 @@ export const Route = createFileRoute('/')({
     },
   )
 
-  // An unused function that renders the split component stays as written, or
-  // goes, without keeping the component's imports in the route module.
-  // Other shapes are pinned in known-bugs-code-splitter.test.ts ("page code
-  // left in the route module"). Source: #8504 (real apps: Jp-K/DmCompanionAi
+  // An unused function that renders the split component was already unused:
+  // it stays, and so does `Page`, which it reads, with its imports, as on
+  // `main` (the R153 amendment: only what the split made unused leaves; the
+  // bundler drops the rest). The split component still loads and renders.
+  // Source: #8504 (real apps: Jp-K/DmCompanionAi
   // frontend_old/src/routes/_layout/chat.tsx).
-  it('moves the split component and its imports into its chunk when an unused function renders it', async () => {
+  it('keeps the split component in the route module when an unused function renders it, as on main', async () => {
     const route = await loadRoute(
       `${head}import { heavy } from './heavy'
 export const Route = createFileRoute('/')({
@@ -439,7 +440,8 @@ function Unused() {
 `,
       { files: { 'heavy.ts': `export const heavy = () => 'heavy'\n` } },
     )
-    expect(await route.requested()).not.toContain('/heavy.ts')
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.requested()).toContain('/heavy.ts')
     expect(await route.run(`return render('component')`)).toBe('<p>heavy</p>')
   })
 

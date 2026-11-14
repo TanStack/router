@@ -229,32 +229,12 @@ export function seedRoots(
   }
 
   // ---- provenance: clusters reachable in G0 from erased reads -------------
-  const erasedSeeds = new Set<ClusterId>()
-  for (const part of graph.viewOf('env').erasedParts()) {
-    for (const ref of refs.refsIn(part)) {
-      // a write names the binding too: an initialiser only an erased
-      // handler assigns is orphaned with it
-      if (!NEED_KINDS.has(ref.kind) || !symbols.isModuleLevel(ref.sym)) {
-        continue
-      }
-      const d = clusterOfSym.get(ref.sym)
-      if (d !== undefined) {
-        erasedSeeds.add(d)
-      }
-    }
-  }
-  const fromErased = new Set<ClusterId>()
-  const work = [...erasedSeeds]
-  while (work.length > 0) {
-    const c = work.pop()!
-    if (fromErased.has(c)) {
-      continue
-    }
-    fromErased.add(c)
-    for (const d of reads.successors(c, 'env', false)) {
-      work.push(d)
-    }
-  }
+  const fromErased = readFromRemoved(
+    input,
+    graph,
+    reads,
+    graph.viewOf('env').erasedParts(),
+  )
 
   // ---- roots -----------------------------------------------------------------
   const rootCluster = (r: RootRef): ClusterId | undefined => {
@@ -369,4 +349,51 @@ export function seedRoots(
     derivedRoots,
     fromErased,
   }
+}
+
+/**
+ * Provenance, the one removal rule (R153 amendment, R154): the clusters the
+ * source reads from text an output no longer holds (`removed`: what it
+ * erases, what a claim moves out), transitively over the source's reads.
+ * Only these can leave that output, when nothing it keeps reads them any
+ * more; code already unused in the source stays as written (`function
+ * Unused() {…}`, `const unused = register('x')`, an unused import). A use
+ * is a value reference (the analysis's references: JSX tags included, type
+ * positions not, which TypeScript erases).
+ */
+export function readFromRemoved(
+  input: PlacementInput,
+  graph: ClusterGraph,
+  reads: ReadIndex,
+  removed: Iterable<{ start: number; end: number }>,
+): Set<ClusterId> {
+  const { refs, symbols } = input.t1
+  const seeds = new Set<ClusterId>()
+  const parts = [...removed]
+  for (const part of parts) {
+    for (const ref of refs.refsIn(part)) {
+      // a write names the binding too: an initialiser only an erased
+      // handler assigns is orphaned with it
+      if (!NEED_KINDS.has(ref.kind) || !symbols.isModuleLevel(ref.sym)) {
+        continue
+      }
+      const d = graph.clusterOfSym.get(ref.sym)
+      if (d !== undefined) {
+        seeds.add(d)
+      }
+    }
+  }
+  const out = new Set<ClusterId>()
+  const work = [...seeds]
+  while (work.length > 0) {
+    const c = work.pop()!
+    if (out.has(c)) {
+      continue
+    }
+    out.add(c)
+    for (const d of reads.successors(c, 'env', false)) {
+      work.push(d)
+    }
+  }
+  return out
 }

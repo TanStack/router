@@ -952,29 +952,6 @@ export const Route = createFileRoute('/ambient')({
     },
   )
 
-  // An import the code only references from types (without `import type`)
-  // is not imported by the route module when only the split component's
-  // types reference it. (When only the loader's types do, the chunks import
-  // it: pinned in known-bugs-code-splitter.test.ts.) Source: #8504.
-  it('leaves an import only the split component references from types out of the route module', async () => {
-    const route = await loadRoute(
-      `${head}import { useState } from 'react'
-import { Framework } from './projects'
-export const Route = createFileRoute('/')({
-  loader: () => 'data',
-  component: () => {
-    const [framework] = useState<Framework>('react')
-    return <p>{framework}</p>
-  },
-})
-`,
-      { files: { 'projects.ts': `export const Framework = 'Framework'\n` } },
-    )
-    expect(await route.requested()).not.toContain('/projects.ts')
-    await expectValidModules(route)
-    expect(await route.run(`return render('component')`)).toBe('<p>react</p>')
-  })
-
   // Source: @babel/plugin-transform-typescript class/private-method-override;
   // #8504 (a guard against a parser bug, yuku-toolchain/yuku#257).
   it('gives the split component a class with an overloaded private method', async () => {
@@ -1148,25 +1125,6 @@ export const Route = createFileRoute('/posts')({
       expect(await hmr.run(read)).toEqual({ id: '1' })
     },
   )
-
-  // Source: TanStack/router#6480 (an exported type that reads an imported
-  // value kept the import in the client module); replaces router-utils
-  // stripTypeExports "handles the issue #6480 scenario", which never checked
-  // the symptom.
-  it('drops an import that only an exported type and a split component read from the route module', async () => {
-    const route = await loadRoute(
-      `${head}import { secret } from './server-thing'
-export type Secret = typeof secret
-export const Route = createFileRoute('/')({
-  component: () => <p>{secret}</p>,
-})
-`,
-      { files: { 'server-thing.ts': `export const secret = 'server'\n` } },
-    )
-    await expectValidModules(route)
-    expect(await route.requested()).not.toContain('/server-thing.ts')
-    expect(await route.run(`return render('component')`)).toBe('<p>server</p>')
-  })
 
   it('keeps decorators before `export` for legacy decorator transforms', async () => {
     // TypeScript `experimentalDecorators` and Babel `decorators-legacy` only

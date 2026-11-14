@@ -20,8 +20,6 @@ export interface EdgeView {
   reexports: (statementRange: { start: number; end: number }) => boolean
   /** Whether a dynamic import's specifier renders. */
   dynamic: (specifierRange: { start: number; end: number }) => boolean
-  /** Whether the output's JSX reads `local` as its implicit factory. */
-  jsxFactory: (local: SymbolId) => boolean
 }
 
 /** The module as written: every statement renders. */
@@ -32,7 +30,6 @@ export function wholeModule(analysis: ModuleAnalysis): EdgeView {
     erasedAt: () => false,
     reexports: () => true,
     dynamic: () => true,
-    jsxFactory: (local) => analysis.implicitJsxReads().has(local),
   }
 }
 
@@ -82,16 +79,6 @@ export function sourceEdges(
       (start) => !view.erasedAt(start),
       (spec) => locals.has(spec.local),
     )
-    // classic-runtime JSX reads its factory implicitly (no Yuku reference)
-    for (const spec of imp.specifiers) {
-      if (
-        locals.has(spec.local) &&
-        !names.includes(spec.imported) &&
-        view.jsxFactory(spec.local)
-      ) {
-        names.push(spec.imported)
-      }
-    }
     edge(
       imp.specifier,
       imp.bare ? 'bare' : 'static',

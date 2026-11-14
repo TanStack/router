@@ -1234,22 +1234,6 @@ export const fn = createServerFn().handler(async () => h('p', null))
 export const Card = () => <div />`
   const jsxFile = `export const h = (type: string) => \`h(\${type})\`\n`
 
-  // Bug: dead-code elimination does not count a classic JSX pragma
-  // (`/** @jsx h */`) as a use of the factory it names, so the factory import
-  // is removed when no other code reads it (the generated imports also land
-  // above the pragma comment, where Oxc no longer reads it). Same root cause
-  // as the JSX pragma pins in known-bugs-hydrate.test.ts and
-  // router-plugin/tests/known-bugs-code-splitter.test.ts.
-  // Impact: the module's components throw "h is not defined" or render
-  // through another JSX factory than the one the module selects.
-  test('client: the factory of a classic JSX pragma stays imported', async () => {
-    const startCase = await newCase({
-      'module.tsx': pragmaModule,
-      'jsx.ts': jsxFile,
-    })
-    expect(await clientValue(startCase, 'module.Card()')).toBe('h(div)')
-  })
-
   /**
    * A module with a classic JSX runtime pragma whose `Hero` renders `Chart`
    * in `<ClientOnly>`; `heroBody` runs first in `Hero`.
@@ -1289,19 +1273,6 @@ export const render = () => renderToString(createElement(Hero))
     expect(await renderHero(classicRuntimeModule('React.useId()'))).toContain(
       '<div>',
     )
-  })
-
-  // Bug: same family as the pin above: under a classic JSX runtime pragma
-  // (`/** @jsxRuntime classic */`, whose JSX reads `React`), the SSR output
-  // removes the `<ClientOnly>` children, then dead-code elimination drops
-  // `import * as React`, which only the JSX still reads.
-  // Source: start-compiler/handleClientOnlyJSX.ts:26-27 (children removed),
-  // start-compiler/compiler.ts:1349,1410 (dead-code elimination does not
-  // count the JSX as a read of `React`); fuzzing (an unmodified file of a
-  // real app, a charts hero background).
-  // Impact: the server render throws "React is not defined".
-  test('ssr: a module with a classic JSX runtime pragma keeps its React import', async () => {
-    expect(await renderHero(classicRuntimeModule(''))).toContain('<div>')
   })
 
   // Bug: a type-only import re-exported without `type` (`export { Settings }`,

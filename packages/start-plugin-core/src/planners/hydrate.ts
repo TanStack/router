@@ -1062,7 +1062,6 @@ function extract(
     if (
       skip.some((r) => within(ref.range, r)) ||
       setterAt.has(ref.range.start) ||
-      ref.kind === 'implicitJsxFactory' ||
       ref.kind === 'exportSpecifier' ||
       symbols.isModuleLevel(ref.sym) ||
       declaredInside(ref.sym) ||
@@ -1239,15 +1238,6 @@ function extract(
   }
   head.push('return ')
   if (shape.wrap) {
-    // a classic JSX runtime compiles the fragment through the pragma's bindings: read them
-    const { jsx } = t1
-    if (jsx.runtime === 'classic') {
-      for (const s of new Set([jsx.factory, jsx.fragment])) {
-        if (s !== null) {
-          head.push('/* ', { sym: s }, ' */ ')
-        }
-      }
-    }
     head.push('<>')
   } else {
     head.push('(')

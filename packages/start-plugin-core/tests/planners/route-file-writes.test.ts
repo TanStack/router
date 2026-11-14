@@ -160,6 +160,96 @@ export const Route = createFileRoute('/')({ component: () => 'page' })
   })
 })
 
+describe('server functions next to a split component (client and server)', () => {
+  const START = `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn, useServerFn } from '@tanstack/react-start'
+`
+
+  // state two server functions use, one assigning it: server-only on the
+  // client, in the handler module on the server
+  const twoFns = (
+    exported: boolean,
+  ) => `${START}import { connect } from '../server/db'
+let conn = connect()
+const getRows = createServerFn().handler(async () => conn.rows)
+${exported ? 'export ' : ''}const reset = createServerFn({ method: 'POST' }).handler(async () => {
+  conn = connect()
+  return 1
+})
+function Page() {
+  const r = useServerFn(reset)
+  return <p>{typeof getRows}{typeof r}</p>
+}
+export const Route = createFileRoute('/')({ loader: async () => getRows(), component: Page })
+`
+
+  it.each([true, false])(
+    'leaves state only server functions use out of the client route module (exported: %s)',
+    async (exported) => {
+      const out = await compile(twoFns(exported), clientEnv)
+      expect(out!.code).not.toContain('connect')
+      expect(out!.code).not.toContain('../server/db')
+      expect(out!.code).toContain('lazyRouteComponent')
+    },
+  )
+
+  it('splits the component and keeps the handlers lazy on the server', async () => {
+    const out = await compile(twoFns(false), ssrEnv)
+    expect(out!.code).toContain('lazyRouteComponent')
+    expect(out!.code).toContain('?tss-serverfn-handler')
+    expect(out!.code).not.toContain('connect')
+  })
+
+  it('keeps a handler filling a module cache lazy on the server', async () => {
+    const out = await compile(
+      `${START}import { heavy } from '../server/heavy'
+let cached: any
+const getData = createServerFn().handler(async () => {
+  cached ??= heavy()
+  return cached
+})
+function Page() {
+  return <p>{typeof getData}</p>
+}
+export const Route = createFileRoute('/')({ loader: async () => getData(), component: Page })
+`,
+      ssrEnv,
+    )
+    expect(out!.code).toContain('?tss-serverfn-handler')
+    expect(out!.code).not.toContain('heavy')
+    expect(out!.code).toContain('lazyRouteComponent')
+  })
+
+  // a helper the loader, the component and a handler use: `main`'s shared
+  // module on both sides; the handler where Start puts it
+  it.each([
+    ['client', clientEnv],
+    ['ssr', ssrEnv],
+  ] as const)(
+    'gives a helper the loader, the split component and a handler use one module (%s)',
+    async (_name, env) => {
+      const out = await compile(
+        `${START}import { format } from '../format'
+function label(x: string) {
+  return format(x)
+}
+const getRows = createServerFn().handler(async () => label('rows'))
+export const Route = createFileRoute('/')({
+  loader: async () => [await getRows(), label('loader')],
+  component: () => <p>{label('component')}</p>,
+})
+`,
+        env,
+      )
+      expect(out!.code).toMatch(
+        /import \{[^}]*\blabel\b[^}]*\} from '[^']*tsr-split=shared/,
+      )
+      expect(out!.code).not.toMatch(/function label/)
+      expect(out!.code).toContain('lazyRouteComponent')
+    },
+  )
+})
+
 // (the handler module of the control, requested by id, is valid on its own)
 it('serves the handler module of a handler that only reads module state', async () => {
   const code = `${FNS}let count = 0

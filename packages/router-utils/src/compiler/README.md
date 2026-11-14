@@ -113,8 +113,9 @@ per-output read walk (`readIndex`):
   What the env module does not keep the chunk copies too, also what another chunk copies. The names main shares
   (`RouteModule.shared`: two option groups read them, a staying option counting as one) and nothing else are one
   shared module per file (`?tsr-split=shared---<keys>`, main's `?tsr-shared=1`): the env module and the chunks import
-  them, the env module re-exports the exported ones; one code outside the set assigns, or one reading a declaration
-  outside it, stays in the env module (one fixed point). Import specifiers are copied where read. Start's outputs in a
+  them, the env module re-exports the exported ones; one code outside the set assigns (a chunk, the env module,
+  another planner's output), or one reading a declaration outside it, leaves the set and is placed like any other (one
+  fixed point). Import specifiers are copied where read. Start's outputs in a
   route file (Hydrate chunks, the server-fn handler module) import what the env module keeps, and what several of them
   need is one module they import; a provider output copies what it reaches.
 - **one fallback, on the outcome**: a derived output that would assign a binding homed in another module of the file

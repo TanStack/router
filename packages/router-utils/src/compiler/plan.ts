@@ -435,7 +435,6 @@ export class AnalysisPlan implements PlanContext {
     )
     for (const ref of refs.refsOf(sym)) {
       if (
-        ref.kind === 'implicitJsxFactory' ||
         // renamed as a declaration below (a `var` declared again is a write too)
         declared.some((r) => r.start === ref.range.start)
       ) {

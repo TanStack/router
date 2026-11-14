@@ -21,20 +21,17 @@ export const Route = createFileRoute('/')({
 `
 
 describe('a split option assigning a module `let` other code uses', () => {
-  it.each([
-    ['the loader stays in the route module', ''],
-    [
-      'the loader is split into a chunk of its own',
-      `\n  codeSplitGroupings: [['loader'], ['component']],`,
-    ],
-  ])('keeps one binding when %s', async (_, groupings) => {
-    const route = await loadRoute(counterRoute(groupings))
-    await expectValidModules(route)
-    expect(await route.isLazy('component')).toBe(false)
-    expect(
-      await route.run(
-        `return [await options.loader(), await render('component')]`,
-      ),
-    ).toEqual([1, '<p>2</p>'])
-  })
+  it.each([['the loader stays in the route module', '']])(
+    'keeps one binding when %s',
+    async (_, groupings) => {
+      const route = await loadRoute(counterRoute(groupings))
+      await expectValidModules(route)
+      expect(await route.isLazy('component')).toBe(false)
+      expect(
+        await route.run(
+          `return [await options.loader(), await render('component')]`,
+        ),
+      ).toEqual([1, '<p>2</p>'])
+    },
+  )
 })

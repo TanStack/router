@@ -287,6 +287,53 @@ return [before, html, seen()]`),
     ).toEqual([[], '<p>label</p>', ['label']])
   })
 
+  // code already unused in the source stays (the R153 amendment): only what
+  // the split made unused leaves an output; the chunk holds its own copy too,
+  // which runs again when it loads (spec-main-splitting 1.8 #5)
+  it('keeps a declaration nothing reads, whose initialiser runs when the route module loads', async () => {
+    const route = await loadRoute(
+      `${head}import { track } from './track'
+const unused = track('unused')
+export const Route = createFileRoute('/')({
+  component: () => <p>page</p>,
+})
+`,
+      { files: { 'track.ts': trackFile } },
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(
+      await route.run(`const { seen } = await app('track.ts')
+const atLoad = [...seen()]
+await render('component')
+return [atLoad, seen()]`),
+    ).toEqual([['unused'], ['unused', 'unused']])
+  })
+
+  it('keeps an import specifier nothing reads: its module runs when the route module loads', async () => {
+    const route = await loadRoute(
+      `${head}import { setup } from './polyfill'
+export const Route = createFileRoute('/')({
+  component: () => <p>page</p>,
+})
+`,
+      {
+        files: {
+          'track.ts': trackFile,
+          'polyfill.ts': `import { track } from './track'
+track('polyfill')
+export function setup() {}
+`,
+        },
+      },
+    )
+    await expectValidModules(route)
+    expect(
+      await route.run(`const { seen } = await app('track.ts')
+return seen()`),
+    ).toEqual(['polyfill'])
+  })
+
   it('runs top-level statements once, when the route module loads', async () => {
     const route = await loadRoute(
       `${head}import { track } from './track'

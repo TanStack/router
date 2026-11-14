@@ -160,7 +160,7 @@ return [before, await entry.render(component), entry.Route.options.loader(), ent
   // on `main`, which gives another value than the source there.
   it.each([
     {
-      name: 'a loader reads it too',
+      name: "a loader reads it too: `main`'s export value, not the source's",
       loader: 'loader: () => items.length,',
       exportedUndefined: false,
     },
@@ -197,7 +197,7 @@ export const Route = createFileRoute('/')({
   // gives another value than the source there).
   it.each([
     {
-      name: 'a loader reads it too',
+      name: "a loader reads it too: `main`'s export value, not the source's",
       loader: 'loader: () => items.length,',
       exported: ['b'],
     },

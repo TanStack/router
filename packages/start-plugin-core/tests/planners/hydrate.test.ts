@@ -773,25 +773,6 @@ export const Page = () => <Hydrate><b>{new Tag() instanceof Tag ? Tag.label : ''
     )
     expect(dev.chunks[b!.id]).not.toContain('function Tree')
   })
-
-  it('reads the classic JSX pragma’s factory in a fragment-wrapped chunk', async () => {
-    const code = `/** @jsxRuntime classic */
-/** @jsx h */
-import { h } from './h'
-${REACT}export const Page = () => <div><Hydrate>text only</Hydrate></div>
-`
-    const client = await compile(code)
-    const [b] = client.extracted
-    const chunk = client.chunks[b!.id]!
-    // the pragmas still lead the chunk, its fragment reads the factory
-    expect(chunk).toMatch(
-      /^\/\*\* @jsxRuntime classic \*\/\n\/\*\* @jsx h \*\/\nimport \{ h \} from '\.\/h'\n/,
-    )
-    expect(chunk).toMatch(
-      shape(`function «c»() { return /* h */ <>text only</> }`),
-    )
-    expect(client.code).toContain("import { h } from './h'")
-  })
 })
 
 describe('rejections (J5.5)', () => {

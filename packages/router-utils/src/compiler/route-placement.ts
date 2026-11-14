@@ -3,15 +3,17 @@
  * splitting on `main` does, by its outcome, on the core's analysis
  * (spec-main-splitting 1.1-1.8).
  *
- * - The env module (the route file) keeps its top-level statements, exports,
- *   enums and namespaces (R154), and the declarations and import specifiers
- *   they reach, transitively; every other declaration leaves it, with its
- *   initialiser and the imports only it read.
+ * - The env module (the route file) only loses what the split made unused
+ *   (`main`'s rule, the R153 amendment): a declaration or import specifier
+ *   the source read from text the env module no longer holds (a claimed
+ *   option value, erased text: `readFromRemoved`) leaves it, with its
+ *   initialiser, when nothing that stays reads it. Statements, exports,
+ *   enums and namespaces (R154) and code already unused stay.
  * - The names `main` shares (`RouteModule.shared`) and nothing else live in
  *   the shared module, as in `main`'s `?tsr-shared=1`: the env module and the
  *   chunks import them from it, and the env module re-exports the exported
  *   ones. One code outside the set assigns, or one reading a declaration
- *   outside the set, stays in the env module.
+ *   outside the set, leaves the set and is placed like any declaration.
  * - A split chunk takes what its option's value reads, transitively. What
  *   the env module also keeps, the chunk imports from it when `main`
  *   imports it (the route binding, `export const|let|var`:
@@ -32,6 +34,7 @@
 import { deriveId } from './identity'
 import { buildClusters } from './placement/clusters'
 import { readIndex } from './placement/reads'
+import { readFromRemoved } from './placement/roots'
 import type { ClusterId } from './placement/clusters'
 import type {
   ExtractedExport,
@@ -130,34 +133,25 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   /**
    * The declarations of names `main` shares (`RouteModule.shared`): they, and
    * nothing else, live in the shared module, which the env module and the
-   * chunks import them from, as `main`'s `?tsr-shared=1`. One fixed point
-   * keeps the set closed: a name leaves it when code outside the set
-   * assigns it (that module would assign an import: `main` fails), or when
-   * its declaration reads a declaration outside the set (an enum, a `var`
-   * in a statement: `main` emits a missing name), so the shared module
-   * imports nothing of the file. A dropped name stays in the env module.
-   * (`main`'s step 5, no name whose declaration reads `Route`, transitively,
-   * is the planner's: such a name is never a candidate, and each chunk
-   * copies it.)
+   * chunks import them from, as `main`'s `?tsr-shared=1`. (`main`'s step 5,
+   * no name whose declaration reads `Route`, transitively, is the
+   * planner's.) One fixed point, removals only, keeps the set closed:
+   * - a name leaves when code outside the set assigns it, wherever that code
+   *   is (the env module, a chunk, another planner's output): that module
+   *   would assign an import, where `main` fails;
+   * - a name leaves when its declaration reads a declaration outside the
+   *   set (an enum, a namespace, a `var` in a statement, a dropped name), so
+   *   the shared module imports nothing of the file. This follows from R154
+   *   (those stay in the env module), not from `main`'s closure, which only
+   *   adds names; `main` emits a missing name there;
+   * - a planner's generated declaration with no fixed home that the env
+   *   module does not root (a `<Hydrate>` importer) is in the set while a
+   *   member reads it.
+   * A dropped name is placed like any declaration: it stays in the env
+   * module only when something left there uses it; a chunk needing it
+   * otherwise copies it.
    */
   const inShared = new Set<ClusterId>()
-  for (const cl of clusters) {
-    if (
-      cl.units.length > 0 &&
-      cl.declares.size > 0 &&
-      removable(cl.id) &&
-      !isImport(cl.id) &&
-      !fixedHome.has(cl.id) &&
-      [...cl.declares].every((s) => sharedNames.has(s))
-    ) {
-      inShared.add(cl.id)
-    }
-  }
-  /** `main`'s shared names, also those the fixed point drops: one instance either way. */
-  const sharedCandidates = [...inShared]
-  // a planner's generated declaration a shared name reads (no fixed home,
-  // not one the env module roots, such as a server function's id) is in
-  // the set too: the env module imports it from there as well
   {
     const envRooted = new Set(
       outputs
@@ -166,59 +160,78 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
           r.t === 'gen' ? [graph.clusterOfGen.get(r.id)!] : [],
         ),
     )
-    const work = [...inShared]
-    while (work.length > 0) {
-      const r = reads.clusterReads(work.pop()!, 'env', true)
-      for (const t of [
-        ...[...r.syms].map((s) => clusterOfSym.get(s)),
-        ...r.children,
-      ]) {
-        if (
-          t !== undefined &&
-          !inShared.has(t) &&
-          clusters[t]!.units.length === 0 &&
-          !fixedHome.has(t) &&
-          !envRooted.has(t) &&
-          !envReaders.includes(t) &&
-          removable(t)
-        ) {
-          inShared.add(t)
-          work.push(t)
+    const generated = new Set<ClusterId>()
+    for (const cl of clusters) {
+      if (
+        cl.declares.size === 0 ||
+        !removable(cl.id) ||
+        isImport(cl.id) ||
+        fixedHome.has(cl.id)
+      ) {
+        continue
+      }
+      if (cl.units.length > 0) {
+        if ([...cl.declares].every((s) => sharedNames.has(s))) {
+          inShared.add(cl.id)
+        }
+      } else if (!envRooted.has(cl.id) && !envReaders.includes(cl.id)) {
+        generated.add(cl.id)
+        inShared.add(cl.id)
+      }
+    }
+    /** What each member reads (the env module's text: what the shared module renders). */
+    const readsOf = new Map<ClusterId, Array<ClusterId>>()
+    for (const c of inShared) {
+      const r = reads.clusterReads(c, 'env', true)
+      readsOf.set(c, [
+        ...[...r.syms].flatMap((s) => {
+          const t = clusterOfSym.get(s)
+          return t === undefined || t === c ? [] : [t]
+        }),
+        ...[...r.children].filter((t) => t !== c),
+      ])
+    }
+    for (let changed = true; changed; ) {
+      changed = false
+      for (const c of inShared) {
+        // (a read of a generated declaration homed in another derived
+        // output imports it from there: no module the env module imports)
+        const readsOutside = readsOf
+          .get(c)!
+          .some(
+            (t) =>
+              !isType(t) &&
+              !isImport(t) &&
+              !inShared.has(t) &&
+              !(fixedHome.has(t) && fixedHome.get(t) !== 'env'),
+          )
+        const assignedOutside = [...clusters[c]!.declares].some((s) =>
+          (graph.writesOfSym.get(s) ?? []).some((w) => {
+            if (w.member || w.augment) {
+              return false
+            }
+            const by =
+              w.owner === null ? undefined : graph.clusterOfRegion.get(w.owner)
+            return by !== c && (by === undefined || !inShared.has(by))
+          }),
+        )
+        const unread =
+          generated.has(c) &&
+          ![...inShared].some((m) => m !== c && readsOf.get(m)!.includes(c))
+        if (readsOutside || assignedOutside || unread) {
+          inShared.delete(c)
+          changed = true
         }
       }
     }
   }
-  for (let changed = true; changed; ) {
-    changed = false
-    for (const c of inShared) {
-      // (a generated declaration homed in another derived output is
-      // imported from there: no module the env module imports)
-      const outside = (t: ClusterId | undefined) =>
-        t !== undefined &&
-        t !== c &&
-        !isType(t) &&
-        !isImport(t) &&
-        !inShared.has(t) &&
-        !(fixedHome.has(t) && fixedHome.get(t) !== 'env')
-      const r = reads.clusterReads(c, 'env', true)
-      const assignedOutside = [...clusters[c]!.declares].some((s) =>
-        (graph.writesOfSym.get(s) ?? []).some(
-          (w) =>
-            !w.member &&
-            !w.augment &&
-            (w.owner === null || outside(graph.clusterOfRegion.get(w.owner))),
-        ),
-      )
-      if (
-        assignedOutside ||
-        [...r.syms].some((s) => outside(clusterOfSym.get(s))) ||
-        [...r.children].some(outside)
-      ) {
-        inShared.delete(c)
-        changed = true
-      }
-    }
-  }
+  /** What the source reads from text the env module no longer holds: erased, or claimed by a chunk. */
+  const fromRemoved = readFromRemoved(input, graph, reads, [
+    ...graph.viewOf('env').erasedParts(),
+    ...[...rewrites.claims.values()].map(
+      (claim) => rewrites.regions.get(claim.region).range,
+    ),
+  ])
   /** The shared declarations the env module reads or exports: roots of the shared module. */
   const sharedRoots = new Set<ClusterId>()
   const env = new Set<ClusterId>()
@@ -259,26 +272,21 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
     } else if (fixedHome.has(c)) {
       continue
     } else if (cl.units.length > 0) {
-      // a statement or an export stays (R154); a declaration stays when
+      // a statement or an export stays (R154), and so does what the
+      // source did not read from text the env module no longer holds (code
+      // already unused stays, `readFromRemoved`); the rest stays when
       // something that stays reaches it
       // (an exported shared declaration: the env module re-exports it
       // from the shared module)
       if (
         !removable(c) ||
-        cl.units.some((u) => units[u]!.exported.length > 0)
+        cl.units.some((u) => units[u]!.exported.length > 0) ||
+        !fromRemoved.has(c)
       ) {
         keepInEnv(c)
       }
     } else if (!removable(c) && !rootedElsewhere.has(c) && cl.gens.length > 0) {
       // a planner's generated effect no output roots
-      keepInEnv(c)
-    }
-  }
-  // a shared name the set dropped stays in the env module, which every
-  // other module imports it from (one instance; a module assigning it gives
-  // its root back, as where `main` fails)
-  for (const c of sharedCandidates) {
-    if (!inShared.has(c)) {
       keepInEnv(c)
     }
   }
@@ -313,11 +321,45 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   /** A split chunk: it copies what the env module keeps but `main` would not import. */
   const isChunk = (o: OutputId) => outputs.get(o)?.kind === 'split'
   /** The roots of a derived output: what its planners rooted there, and the generated units homed there. */
+  /**
+   * Code already unused in the source, which the removal rule leaves in
+   * every output that starts from the file, as on `main`: a declaration or
+   * import specifier nothing references (an export is a use), so each chunk
+   * holds it too (an `import React` only JSX needs, `const unused =
+   * register('x')`, which then runs again there). Not one that assigns
+   * another binding of the file: the chunk could not.
+   */
+  const unusedInSource: Array<RootRef> = []
+  {
+    const used = readFromRemoved(input, graph, reads, [
+      { start: 0, end: input.code.length },
+    ])
+    for (const cl of clusters) {
+      if (
+        cl.units.length === 0 ||
+        isType(cl.id) ||
+        used.has(cl.id) ||
+        !removable(cl.id) ||
+        fixedHome.has(cl.id) ||
+        cl.units.some((u) => units[u]!.exported.length > 0) ||
+        graph.writes.some(
+          (w) =>
+            w.owner !== null &&
+            graph.clusterOfRegion.get(w.owner) === cl.id &&
+            clusterOfSym.get(w.sym) !== cl.id,
+        )
+      ) {
+        continue
+      }
+      unusedInSource.push({ t: 'sym', id: [...cl.declares][0]! })
+    }
+  }
   const rootsOf = (o: OutputDecl): Array<RootRef> => [
     ...o.roots,
     ...gens
       .filter((g) => g.home === o.id)
       .map((g) => ({ t: 'gen' as const, id: g.id })),
+    ...(o.kind === 'split' ? unusedInSource : []),
   ]
   const SHARED = 'shared' as OutputId
   /** The shared declarations derived outputs read, and the outputs reading them. */
@@ -551,9 +593,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
       // module holds too)
       if (isChunk(o)) {
         for (const c of reached.get(o)!) {
-          if (!isImport(c)) {
-            set.add(c)
-          }
+          set.add(c)
         }
       }
     }

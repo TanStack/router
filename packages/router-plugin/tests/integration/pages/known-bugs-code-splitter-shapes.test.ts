@@ -21,7 +21,6 @@ import {
   loadRoute,
 } from '../../route-app'
 import type { RouteApp } from '../../route-app'
-import type { Plugin } from 'vite'
 
 /**
  * The modules of the app the served module `code` depends on (static
@@ -328,108 +327,6 @@ export const bar = 4
     expect(
       (await route.eagerModules()).some((code) => holdsMarker(code, marker)),
     ).toBe(true)
-  })
-
-  /**
-   * A route app whose dependency optimizer also pre-bundles `@emotion/react`
-   * (a CommonJS-dependent package the page imports), as a user's Vite config
-   * does with `optimizeDeps.include`.
-   */
-  const emotionDeps: Plugin = {
-    name: 'test:app-optimize-emotion',
-    config: () => ({
-      optimizeDeps: {
-        include: ['@emotion/react', '@emotion/react/jsx-runtime'],
-      },
-    }),
-  }
-
-  /**
-   * Renders the route file's component as the route renders it, and as the
-   * same file renders it untouched (an app module the router plugin does not
-   * compile, `untouched.tsx`); with whether `library` loads with the route
-   * module, read before anything else imports it.
-   */
-  async function loadPragmaRoute(code: string, library: string) {
-    const route = await loadRoute(code, {
-      plugins: { before: [emotionDeps] },
-      files: { 'untouched.tsx': code },
-    })
-    const observed = await route.run<{
-      rendered: string
-      untouched: string
-      libraryLoadsEagerly: boolean
-    }>(`// The library's module as the dependency optimizer serves it
-const library = ${JSON.stringify(library)}
-const libraryLoaded = () => performance.getEntriesByType('resource').some((entry) =>
-  new URL(entry.name).pathname.startsWith('/node_modules/.vite/deps/' + library.replace('/', '_') + '.js'))
-const libraryLoadsEagerly = libraryLoaded()
-const rendered = await render('component')
-const untouched = await renderComponent((await app('untouched.tsx')).Route.options.component)
-return { rendered, untouched, libraryLoadsEagerly }`)
-    return { route, ...observed }
-  }
-
-  // Bug: the route module keeps importing the classic JSX factory its pragma
-  // names after the JSX that compiles to it moved to a split chunk (SPEC
-  // J2.5). Source: #8504 (code-splitter-pragmas.test.ts; mutation testing),
-  // where it passes.
-  // Impact: the entry chunk loads the JSX library for nothing.
-  // The factory is the real one (`@emotion/react`'s `jsx`), rendered by the
-  // real React: the split component renders as the untouched file renders
-  // it.
-  test.each([
-    {
-      name: '@jsx',
-      header: `/** @jsxRuntime classic */
-/** @jsx jsx */
-import { jsx } from '@emotion/react'`,
-    },
-    {
-      name: '@jsx written with two spaces',
-      header: `/** @jsxRuntime classic */
-/** @jsx  jsx */
-import { jsx } from '@emotion/react'`,
-    },
-  ])(
-    'a module without JSX does not import the classic factory ($name)',
-    async ({ header }) => {
-      const code = `${header}
-${head}export const Route = createFileRoute('/')({
-  loader: () => 'data',
-  component: () => <p css={{ color: 'red' }}>page</p>,
-})
-`
-      // Without JSX left, the route module needs nothing of the library (nor
-      // does what loads with it).
-      const { rendered, untouched, libraryLoadsEagerly } =
-        await loadPragmaRoute(code, '@emotion/react')
-      expect({ rendered, libraryLoadsEagerly }).toEqual({
-        rendered: untouched,
-        libraryLoadsEagerly: false,
-      })
-    },
-  )
-
-  // The `@jsxFrag` row of the pin above, without its import check: a chunk
-  // that keeps an unused `Fragment` specifier on the import of `react` it
-  // needs anyway pulls in no unrelated dependency (an unused specifier is
-  // free, SPEC §5.9), so what remains to check is that the split
-  // component renders as the untouched file renders it, with `@jsx` and
-  // `@jsxFrag` pragmas naming React's real factories.
-  test('a split component of a file with @jsx and @jsxFrag pragmas renders as the untouched file', async () => {
-    const code = `/** @jsxRuntime classic */
-/** @jsx createElement */
-/** @jsxFrag Fragment */
-import { createElement, Fragment } from 'react'
-${head}export const Route = createFileRoute('/')({
-  loader: () => <>{1}</>,
-  component: () => <p>page</p>,
-})
-`
-    const { rendered, untouched } = await loadPragmaRoute(code, 'react')
-    expect(rendered).toBe(untouched)
-    expect(rendered).toBe('<p>page</p>')
   })
 
   // Control for the array destructuring pins below: a component declared by

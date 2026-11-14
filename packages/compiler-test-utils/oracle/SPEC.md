@@ -400,7 +400,7 @@ dir)` is not a conflict by itself.
   (main's second instance, §1.8), also what another chunk copies. The names main shares (two option groups read
   them, a staying option counting as one; none reading `Route`) and nothing else are one shared module per file
   (`?tsr-split=shared---<keys>`), as main's `?tsr-shared=1`: the route module and the chunks import them, the route
-  module re-exports the exported ones (one code outside the set assigns stays in the route module). Option values main cannot compile into a chunk stay in the route module, silently
+  module re-exports the exported ones (one code outside the set assigns is placed like any declaration). Option values main cannot compile into a chunk stay in the route module, silently
   (`splitOnMain`, main's `compileCodeSplitVirtualRoute` cases); so does one whose chunk would assign a binding it
   imports (`assignsWhatItImports`: a shared `let`, an `export let`). Improvements over main wait until after #8817.
 - **J2.1 Which modules.** Only file route modules, and in them only the `createFileRoute` / `createRootRoute` /

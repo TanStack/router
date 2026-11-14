@@ -160,7 +160,7 @@ format = () => 'reassigned'`,
       expected: ['reassigned', '<p>reassigned</p>'],
     },
     {
-      name: 'a registry a shared store is created from (push)',
+      name: "a registry a shared store is created from (push), with `main`'s value, not the source's",
       // Source: Turbopack tree-shaker analyzer/write-order, analyzer/shared-2
       // and analyzer/shared-regression
       setup: `import { init } from './state'
@@ -511,15 +511,13 @@ describe('page code left in the route module', () => {
   // module, with what it imports, when something there looks like a read of
   // it: a type of the same name (TypeScript keeps types and values in
   // separate namespaces), an overload signature or a second `var`
-  // declaration (dead-code elimination keeps them), or an unused function
-  // that renders it (one that renders the split component itself works:
-  // control in code-splitter-dead-code.test.ts).
+  // declaration (dead-code elimination keeps them). (An unused function that
+  // renders it keeps it in the route module, as on `main`: code already
+  // unused stays, with what it reads.)
   // Sources: tanstack.com src/routes/index.tsx (`type PrincipleProof` next to
   // `function PrincipleProof`); babel-dead-code-elimination
   // dead-code-elimination.test.ts "function" > "declaration" and "variable" >
-  // "identifier"; real apps: Jp-K/DmCompanionAi
-  // frontend_old/src/routes/_layout/chat.tsx; #8504
-  // (code-splitter-dead-code.test.ts), where they pass.
+  // "identifier".
   // Impact: the page's code and dependencies load with the entry chunk.
   test.each([
     {
@@ -543,33 +541,6 @@ export const Route = createFileRoute('/')({
   loader: () => 'data',
   component: () => <p>{load}</p>,
 })`,
-      rendered: '<p>heavy</p>',
-    },
-    {
-      name: 'an unused function that renders a component of the split component',
-      code: `export const Route = createFileRoute('/')({
-  component: Page,
-})
-function Card() {
-  return <p>{heavy()}</p>
-}
-function Page() {
-  return <Card />
-}
-const Unused = () => <Card />`,
-      rendered: '<p>heavy</p>',
-    },
-    {
-      name: 'an unused function that renders what an inline split component renders',
-      code: `export const Route = createFileRoute('/')({
-  component: () => <Page />,
-})
-function Page() {
-  return <p>{heavy()}</p>
-}
-function Unused() {
-  return <Page />
-}`,
       rendered: '<p>heavy</p>',
     },
   ])(

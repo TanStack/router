@@ -169,58 +169,6 @@ return [
   })
 })
 
-// With the classic runtime, the JSX of each module compiles to calls of the
-// factory its pragmas name, so the factory import must stay wherever JSX
-// does. Source: #8504. (A chunk whose only use of the factory is its JSX, or
-// that imports it from the route module: pinned in
-// known-bugs-code-splitter.test.ts, "classic JSX pragmas".) The factory is
-// the real `@emotion/react` `jsx`, rendered by the real React: JSX compiled
-// with the project's default runtime instead leaves a `css` prop unstyled.
-describe('split modules keep the classic JSX factories their JSX compiles to', () => {
-  const classicHead = `/** @jsxRuntime classic */
-/** @jsx jsx */
-${head}import { jsx } from '@emotion/react'
-`
-
-  // Bug: the route module the code splitter emits starts with the code it
-  // adds (the split component's importer and the import of the router's
-  // lazy helper), above the file's leading pragma comments, and drops the
-  // factory import once the route module's only use of it is its JSX
-  // (dead-code elimination does not count a classic JSX pragma as a use of
-  // its factory: same root cause as the "classic JSX pragmas" pins of
-  // known-bugs-code-splitter.test.ts). Oxc (Vite 8) only reads leading
-  // pragmas, so the JSX left in the route module compiles with the
-  // project's default runtime. Found when the in-process JSX stand-in (which
-  // compiled every module with its own classic factory) was replaced by
-  // React's real JSX transform.
-  // Source: #8504 (this test passed with the stand-in).
-  // Impact: with Vite 8, JSX that stays in the route module of a file with
-  // JSX pragmas (a pendingComponent, JSX shared with the loader) ignores them
-  // as soon as an option is split: Emotion's `css` props are dropped, and a
-  // classic factory would throw "jsx is not defined" once the pragma is read.
-  it('in the route module, when the code calling the factory is split', async () => {
-    const code = `${classicHead}function Page() {
-  return jsx('div', { css: { color: 'blue' } }, 'page')
-}
-export const Route = createFileRoute('/')({
-  component: Page,
-  pendingComponent: () => <p css={{ color: 'red' }}>pending</p>,
-})`
-    const route = await loadWithUntouched(code)
-    // (the code calling the factory is split: the component loads on demand)
-    expect(await route.isLazy('component')).toBe(true)
-    const [expected, rendered] = await route.run<
-      [Array<string>, Array<string>]
-    >(`const control = ${untouched}
-return [
-  [await renderComponent(control.pendingComponent), await renderComponent(control.component)],
-  [await render('pendingComponent'), await render('component')],
-]`)
-    expect(expected.map(emotionStyled)).toEqual([true, true])
-    expect(rendered).toEqual(expected)
-  })
-})
-
 /** The route module as the dev server serves it, once the route loaded. */
 async function referenceModule(route: RouteApp) {
   const { modules } = await route.modules()

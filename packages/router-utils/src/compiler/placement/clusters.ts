@@ -181,12 +181,7 @@ class UnionFind {
   }
 }
 
-export const READ_KINDS = new Set([
-  'value',
-  'jsxTag',
-  'implicitJsxFactory',
-  'exportSpecifier',
-])
+export const READ_KINDS = new Set(['value', 'jsxTag', 'exportSpecifier'])
 /**
  * References an output needs the binding for: reads, and writes (an output
  * cannot assign a binding it neither declares nor may import — `x = 1` and

@@ -144,16 +144,19 @@ export const Route = createFileRoute('/')({
       // gives another value than the source here
       { loader: 'idle', html: '<p>1</p>' },
     ],
-  ])('keeps its value when %s', async (_name, code, expected) => {
-    const route = await loadRoute(`${head}${code}\n`)
-    const run = await route.run<{ loader: unknown; html: string }>(
-      `const loader = await options.loader()
+  ])(
+    "gives `main`'s value, not the source's, when %s",
+    async (_name, code, expected) => {
+      const route = await loadRoute(`${head}${code}\n`)
+      const run = await route.run<{ loader: unknown; html: string }>(
+        `const loader = await options.loader()
 await null
 const html = await render('component')
 return { loader, html }`,
-    )
-    expect(run).toEqual(expected)
-  })
+      )
+      expect(run).toEqual(expected)
+    },
+  )
 })
 
 // A destructuring default or computed key runs user code when the

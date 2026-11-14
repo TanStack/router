@@ -105,9 +105,9 @@ function PostsNotFoundComponent() {
 #### Where top-level code goes
 
 - Code only a split property uses (a helper, a constant, an import) moves into that property's chunk, and its initialiser runs when the chunk loads.
-- Code several properties use (two split properties, or a split one and one that stays, such as the `loader`) exists once, in one shared module the route file and the chunks import, unless it reads `Route`: then each chunk has its own copy. `Route` and what `export const` declares exist once too: chunks import them from the route file.
+- Code several properties read (two split properties, or a split one and one that stays, such as the `loader`) exists once, in one shared module the route file and the chunks import, unless it reads `Route`: then each chunk has its own copy. `Route` and what `export const` declares exist once too: chunks import them from the route file.
 - Top-level statements (`Sentry.init()`, `registry.set(…)`, an `if` block) stay in the route file and run when it loads. A declaration nothing in the route file reaches any more is removed, with what only it imports.
-- Other code a split chunk shares with the route file (a value an exported function or a top-level statement also uses, an exported function or class) is copied into the chunk, with the top-level statements that use it: the chunk has its own instance, and those statements run again when it loads. To keep one instance, read it from an option that stays or export it with `export const`.
+- Other code a split chunk shares with the route file (a value an exported function or a top-level statement also uses, an exported function or class) is copied into the chunk, with the top-level statements that use it: the chunk has its own instance, and those statements run again when it loads. Assigning a variable is not reading it: a `let` one property only assigns (`beforeLoad: () => { user = … }`) and a split property reads is two variables, and the split one never sees the assignment. To keep one instance, read it from an option that stays or export it with `export const`.
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
