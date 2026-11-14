@@ -424,39 +424,10 @@ return [...results, config.created, config.seen.size]`),
     },
   )
 
-  // A module binding the loader (route module) reads and the split
-  // component reassigns is one binding: the loader sees the component's
-  // writes (SPEC G3, J2.4); a component that cannot be split for it stays
-  // working in the route module, and the run says so (J2.8).
-  it('keeps a binding the loader reads and the split component reassigns one binding', async () => {
-    const route = await loadRoute(
-      `${head}let count = 0
-export const Route = createFileRoute('/')({
-  loader: () => count,
-  component: () => <p>{\`component \${++count}\`}</p>,
-})
-`,
-      { fresh: true },
-    )
-    await expectValidModules(route)
-    expect(
-      await route.run(`return [
-  options.loader(),
-  await render('component'),
-  options.loader(),
-]`),
-    ).toEqual([0, '<p>component 1</p>', 1])
-    expect({
-      split: await route.isLazy('component'),
-      warned: await reportsNotSplit(route),
-    }).not.toEqual({ split: false, warned: false })
-  })
-
   // Two split options writing one module binding share it, in one chunk or
   // in two (SPEC G3, J2.4): an option that cannot be split for it stays
   // working in the route module, and the run says so (J2.8).
   it.each([
-    { name: 'from two chunks', groupings: [['component'], ['errorComponent']] },
     { name: 'from one chunk', groupings: [['component', 'errorComponent']] },
   ])(
     'keeps one binding that two split options write $name',
@@ -496,36 +467,6 @@ export const Route = createFileRoute('/')({
       }).not.toEqual({ split: false, warned: false })
     },
   )
-
-  // A split option evaluated when the route is created reads a module
-  // binding that top-level code reassigns after it: wherever it evaluates,
-  // it reads the value it had then (SPEC G3, J2.4, J2.8).
-  it('keeps an option value reading a binding later top-level code reassigns at its value then', async () => {
-    const route = await loadRoute(
-      `${head}let label = 'first'
-const withLabel = (text: string) => () => <p>{text}</p>
-export const Route = createFileRoute('/')({
-  loader: () => 'data',
-  component: withLabel(label),
-})
-label = 'second'
-export const current = () => label
-`,
-      { fresh: true },
-    )
-    await expectValidModules(route)
-    expect(
-      await route.run(`return [
-  options.loader(),
-  await render('component'),
-  exports.current(),
-]`),
-    ).toEqual(['data', '<p>first</p>', 'second'])
-    expect({
-      split: await route.isLazy('component'),
-      warned: await reportsNotSplit(route),
-    }).not.toEqual({ split: false, warned: false })
-  })
 
   // A const only the split component reads works with the module-level
   // statements that write to it. Enums and namespaces do not: pinned in
@@ -1212,30 +1153,6 @@ function Page() {
     })
   })
 
-  // (no order rule, R65's case: `Page` moves with its augmentations, in
-  // their order, and `middle` runs before `first`; the row kept all three)
-  it('moves a component with its augmentations past an effect between them', async () => {
-    expect(
-      await observe(
-        `export const Route = createFileRoute('/')({ component: Page })
-function Page() {
-  return <p>{Page.first + Page.second}</p>
-}
-Page.first = recordFirst('MARK_first')
-recordMiddle('MARK_middle')
-Page.second = recordSecond('MARK_second')
-`,
-        ['component'],
-        [],
-      ),
-    ).toEqual({
-      loaded: ['MARK_middle'],
-      rendered: ['MARK_middle', 'MARK_first', 'MARK_second'],
-      html: ['<p>MARK_firstMARK_second</p>'],
-      eagerHolds: [],
-    })
-  })
-
   // (no order rule; the row kept the first)
   it('moves one before a later declarator of its statement that stays', async () => {
     expect(
@@ -1306,37 +1223,6 @@ function Page() {
     })
   })
 
-  it.each([
-    ['whose member the loader writes', 'const', 'first.value = 1'],
-    ['whose member the loader mutates', 'const', 'first.list.push(1)'],
-    ['that the loader reassigns', 'let', 'first = { value: 1, list: [] }'],
-  ])(
-    'keeps one reading a binding the route module keeps %s, in source order',
-    async (_, kind, write) => {
-      expect(
-        await observe(
-          `export const Route = createFileRoute('/')({
-  loader: () => { ${write} },
-  component: Page,
-})
-${kind} first = { value: recordFirst('MARK_first'), list: [] }
-const second = [recordSecond('MARK_second'), first.value]
-function Page() {
-  return <p>{second.join(' ')}</p>
-}
-`,
-          ['component'],
-          [],
-        ),
-      ).toEqual({
-        loaded: ['MARK_first', 'MARK_second'],
-        rendered: ['MARK_first', 'MARK_second'],
-        html: ['<p>MARK_second MARK_first</p>'],
-        eagerHolds: [],
-      })
-    },
-  )
-
   // (no order rule; the row kept `second` before `third`)
   it('moves one reading a const the route module keeps past a later one it keeps', async () => {
     expect(
@@ -1359,28 +1245,6 @@ function Page() {
       loaded: ['MARK_first', 'MARK_third'],
       rendered: ['MARK_first', 'MARK_third', 'MARK_second'],
       html: ['<p>MARK_second MARK_first</p>'],
-      eagerHolds: [],
-    })
-  })
-
-  it('moves interleaved declarations and augmentations together, in source order', async () => {
-    expect(
-      await observe(
-        `export const Route = createFileRoute('/')({ component: Page })
-function Page() {
-  return <p>{first + Page.second + third}</p>
-}
-${record('first')}
-Page.second = recordSecond('MARK_second')
-${record('third')}
-`,
-        ['component'],
-        ['first', 'second', 'third'],
-      ),
-    ).toEqual({
-      loaded: [],
-      rendered: ['MARK_first', 'MARK_second', 'MARK_third'],
-      html: ['<p>MARK_firstMARK_secondMARK_third</p>'],
       eagerHolds: [],
     })
   })

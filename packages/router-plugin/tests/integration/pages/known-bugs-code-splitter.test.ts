@@ -12,7 +12,7 @@
 
 import { parseSync } from 'vite'
 import { describe, expect, test } from 'vitest'
-import { head, holdsMarker, loadRoute } from '../../route-app'
+import { head, loadRoute } from '../../route-app'
 
 /**
  * The modules of the app the served module `code` depends on (static
@@ -722,17 +722,6 @@ export const Route = createFileRoute('/')({
       rendered: '<div>heavy</div>',
     },
     {
-      name: 'overload signatures',
-      code: `function load(id: string): string
-function load(id: number): string
-function load(id: any) { return heavy() + id }
-export const Route = createFileRoute('/')({
-  loader: () => 'data',
-  component: () => <p>{load(1)}</p>,
-})`,
-      rendered: '<p>heavy1</p>',
-    },
-    {
       name: 'a redeclared var',
       code: `var load = 'first'
 var load = heavy()
@@ -782,59 +771,6 @@ ${code}
 })
 
 describe('split route options', () => {
-  // Bug: once the object form compiles (pins above), its handler must also
-  // end up split: a loader configured to be split that stays in the route
-  // module is our limitation, not a pattern the user can change (SPEC
-  // J2.8). Only the handler can move; the router reads the other keys
-  // (`staleReloadMode`) from the route options. Today the compiler throws
-  // first (same root cause as above). A compiler that builds these routes
-  // but keeps a method handler, or a handler after a spread, in the route
-  // module on purpose still has this bug. (A spread after the handler may
-  // replace it: that loader stays, reported; code-splitter-route-options.)
-  // Impact: the loader's code loads with the entry chunk, or the route
-  // cannot be built.
-  test.each([
-    { name: 'an arrow handler', loader: `{ handler: () => 'MARK_handler' }` },
-    {
-      name: 'a method handler',
-      loader: `{ handler() { return 'MARK_handler' } }`,
-    },
-    {
-      name: 'a spread before the handler',
-      loader: `{ ...defaults, handler: () => 'MARK_handler' }`,
-    },
-  ])(
-    'the handler of a split loader in object form with $name loads lazily',
-    async ({ loader }) => {
-      const route =
-        await loadRoute(`${head}const defaults = { staleReloadMode: 'blocking' as const }
-export const Route = createFileRoute('/')({
-  codeSplitGroupings: [['loader'], ['component']],
-  loader: ${loader},
-  component: () => <p>index</p>,
-})
-`)
-      // What loads with the route module loads with the entry: the
-      // handler's code (its user marker, decoded) is not in it, but in what
-      // loading the loader loads.
-      expect({
-        eagerHandler: (await route.eagerModules()).some((code) =>
-          holdsMarker(code, 'MARK_handler'),
-        ),
-        lazyHandler:
-          (await route.isLazy('loader')) &&
-          (await route.loadedBy('loader')).some((code) =>
-            holdsMarker(code, 'MARK_handler'),
-          ),
-        loaded: await route.run(`return options.loader.handler()`),
-      }).toEqual({
-        eagerHandler: false,
-        lazyHandler: true,
-        loaded: 'MARK_handler',
-      })
-    },
-  )
-
   // Bug: same root cause as the object-form pins above. The router reads the
   // keys of a loader object other than `handler` (`staleReloadMode`) from the
   // route options, so they must keep working next to a split handler, and

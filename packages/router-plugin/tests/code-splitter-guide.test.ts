@@ -56,7 +56,6 @@ return { atLoad, html, after: [...globalThis.seeded] }`,
 }
 
 describe('the code-splitting guide: where top-level code goes', () => {
-
   it('puts what two split chunks use in one shared module', async () => {
     const { built, warnings } = await production(
       'posts',

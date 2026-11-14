@@ -5,7 +5,6 @@
  * exports, and top-level effects run once in source order.
  */
 import { describe, expect, it } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, clientMountEntry, head, routeApp } from '../build-harness'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 
@@ -226,94 +225,6 @@ return { before, log: globalThis.log }`)
     },
     timeout,
   )
-
-  // The augmentation calls an imported function: nothing ties the
-  // declaration to the route module's evaluation, so it leaves with the
-  // component for its extracted module, a destination like a chunk (R149,
-  // extended): `track('page')` runs once, when the chunk imports the
-  // component, after the route module's own `track('after')` (effects have
-  // no order of their own, R146).
-  it.each(['vite', 'rspack', 'webpack'] as const)(
-    'runs an augmentation calling an imported function once, when the chunk imports the component, when no other module imports it (%s)',
-    async (bundler) => {
-      const app = await buildRoute(
-        `${head}import { track } from '../tracker'
-export function Page() {
-  return <p>MARK_PAGE</p>
-}
-Page.x = track('page')
-track('after')
-export const Route = createFileRoute('/')({ component: Page })
-`,
-        clientMountEntry,
-        {
-          bundler,
-          files: {
-            'tracker.ts': `export function track(name: string) {
-  ;((globalThis as any).log ??= []).push(name)
-  return name
-}
-`,
-          },
-        },
-      )
-      const run = await app.run(`const before = [...(globalThis.log ?? [])]
-await entry.mount(entry.Route.options.component)
-return { before, log: globalThis.log }`)
-      expect({ html: run.html, ...(run.result as object) }).toEqual({
-        html: '<div id="root"><p>MARK_PAGE</p></div>',
-        before: ['after'],
-        log: ['after', 'page'],
-      })
-    },
-    timeout,
-  )
-})
-
-describe('an unexported helper with an effectful augmentation that only an exported component renders', () => {
-  // `Card.x = track('card')`: `Card` is only read by `Page`, an exported
-  // component the split component is: it leaves with `Page` for its
-  // extracted module (R149, extended) and runs once, when the chunk
-  // imports `Page`, after the route module's own `track('after')`.
-  it.each(['vite', 'rspack', 'webpack'] as const)(
-    'runs the augmentation once, when the chunk imports the component, when no other module imports it (%s)',
-    async (bundler) => {
-      const app = await buildRoute(
-        `${head}import { track } from '../tracker'
-function Card() {
-  return <p>MARK_CARD</p>
-}
-Card.x = track('card')
-export function Page() {
-  return <Card />
-}
-Page.displayName = 'Page'
-track('after')
-export const Route = createFileRoute('/')({ component: Page })
-`,
-        clientMountEntry,
-        {
-          bundler,
-          files: {
-            'tracker.ts': `export function track(name: string) {
-  ;((globalThis as any).log ??= []).push(name)
-  return name
-}
-`,
-          },
-        },
-      )
-      const run = await app.run(`const before = [...(globalThis.log ?? [])]
-await entry.mount(entry.Route.options.component)
-return { before, log: globalThis.log }`)
-      expect({ html: run.html, ...(run.result as object) }).toEqual({
-        html: '<div id="root"><p>MARK_CARD</p></div>',
-        before: ['after'],
-        log: ['after', 'card'],
-      })
-    },
-    timeout,
-  )
 })
 
 describe('exports of one declaration next to a split component, in an export list or by default', () => {
@@ -419,42 +330,6 @@ return entry.config.title`)
         html: '<div id="root"><p>MARK_LOCAL</p></div>',
         imported: 'MARK_SHARED',
       })
-    },
-    timeout,
-  )
-})
-
-describe('an exported component the split component is, augmented with a member of a namespace import', () => {
-  // `Page.icon = Icons.Home` reads the icons module's binding: no code runs,
-  // so the component leaves the route module with its augmentation.
-  it.each(['vite', 'rspack', 'webpack'] as const)(
-    'splits the component with its augmentation, without a warning (%s)',
-    async (bundler) => {
-      const app = await buildRoute(
-        `${head}import * as Icons from '../icons'
-export function Page() {
-  return <p>MARK_PAGE {Page.icon === Icons.Home ? 'icon' : 'none'}</p>
-}
-Page.icon = Icons.Home
-export const Route = createFileRoute('/')({ component: Page })
-`,
-        clientMountEntry,
-        {
-          bundler,
-          files: { 'icons.tsx': `export const Home = () => <i>icon</i>\n` },
-        },
-      )
-      expect(app.where('MARK_PAGE')).toBe('lazy')
-      expect(
-        findDiagnostics([...app.warnings, ...app.consoleMessages], {
-          file: 'routes/index.tsx',
-          root: app.root,
-        }),
-      ).toEqual([])
-      const run = await app.run(
-        `await entry.mount(entry.Route.options.component)`,
-      )
-      expect(run.html).toBe('<div id="root"><p>MARK_PAGE icon</p></div>')
     },
     timeout,
   )

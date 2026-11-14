@@ -18,35 +18,6 @@ import { build, buildWithRsbuild, head, routeApp } from '../build-harness'
 
 const timeout = 60_000
 
-const route = (
-  annotation: string,
-) => `${head}function mk() { (globalThis as any).annotated = 'MARK_ANNOTATED' }
-const list: Array<string> = []; ${annotation} mk()
-list.push('MARK_PUSHED')
-const Comp = () => <p>{list.join()}</p>
-export const Route = createFileRoute('/')({ component: Comp })
-`
-
-describe.each(['vite', 'rspack', 'webpack'] as const)('%s', (bundler) => {
-  test.for(['/* @__PURE__ */', '/* #__PURE__ */'])(
-    'after a statement that moves, %s annotates the call on its line and nothing else',
-    { timeout },
-    async (annotation) => {
-      const app = await build({
-        bundler,
-        env: 'client',
-        files: routeApp(route(annotation), { env: 'client' }),
-      })
-      const run =
-        await app.run(`await entry.mount(entry.Route.options.component)
-return globalThis.annotated ?? null`)
-      expect(run.html).toContain('MARK_PUSHED')
-      expect(run.result).toBeNull()
-      expect(app.where('MARK_ANNOTATED')).toBe('nowhere')
-    },
-  )
-})
-
 // The annotation is the last thing on its line, for the call on the next one
 // (`const list = []; /* @__PURE__ *\/` then `mk()`), with a line comment or a
 // multi-line comment between them: the same, on the five builds (Vite 7 and

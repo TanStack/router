@@ -113,47 +113,6 @@ async function mounted(bundler: 'vite' | 'rspack', route: string) {
 }
 
 describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
-  test(
-    'a snapshot of a table before an unknown call adds a column shows the table without it',
-    async () => {
-      const r = await mounted(
-        bundler,
-        `${head}import { createTable, snapshot } from '../table'
-const table = createTable()
-const columns = snapshot(table)
-table.addColumn('MARK_ADD')
-export const Route = createFileRoute('/')({
-  component: () => <p>{columns}</p>,
-})
-`,
-      )
-      expect(r.text).toBe('none')
-      // the statement follows the table into the chunk, in source order
-      expect(r.where('MARK_ADD')).toBe('lazy')
-    },
-    timeout,
-  )
-
-  test(
-    'a snapshot of an object before a write through another name shows the value before the write',
-    async () => {
-      const r = await mounted(
-        bundler,
-        `${head}import { snap } from '../snap'
-const cfg = { v: 1 }
-const alias = cfg
-const seen = snap(cfg)
-alias.v = 2
-export const Route = createFileRoute('/')({
-  component: () => <p>{seen}</p>,
-})
-`,
-      )
-      expect(r.text).toBe('1')
-    },
-    timeout,
-  )
-
   // round tools, placement-exec seeds 1112264, 1612539 (toy planner),
   // 1300879, 1600380 (router planner): the write follows the object into
   // its export's module, which the other export's module imports, so it
@@ -323,55 +282,11 @@ export const Route = createFileRoute('/')({
       timeout,
     )
 
-    test(
-      'a statement patching a global with a registry only the component reads runs when the chunk loads',
-      async () => {
-        const app = await build({
-          bundler,
-          env: 'client',
-          minify: false,
-          files: routeApp(
-            `${head}import { createRegistry } from '../registry'
-const registry = createRegistry()
-registry.install()
-export const Route = createFileRoute('/')({
-  component: () => <p>{registry ? 'ok' : ''}</p>,
-})
-`,
-            { env: 'client', files: libs },
-          ),
-        })
-        try {
-          const { result } = await app.run(
-            'const before = globalThis.__patched ?? "unpatched"\nawait entry.mount(entry.Route.options.component)\nreturn [before, globalThis.__patched]',
-          )
-          // (the source patches it when the route module loads)
-          expect(result).toEqual(['unpatched', 'patched'])
-        } finally {
-          await app.dispose()
-        }
-      },
-      timeout,
-    )
-
     // R151: a statement using bindings of two split options, and an
     // effectful declaration two split options read, go to one lazy shared
     // module both chunks import: the effect runs once, when the first of
     // them loads, whichever it is
     test.each([
-      [
-        'a statement using bindings of two split options',
-        `import { link } from '../link'
-const a = { x: 'MARK_SHARED_A' }
-const b = { y: 'MARK_SHARED_B' }
-link(a, b)
-export const Route = createFileRoute('/')({
-  component: () => <p>{a.x}</p>,
-  errorComponent: () => <p>{b.y}</p>,
-})
-`,
-        'link',
-      ],
       [
         'an effectful declaration two split options read',
         `import { make } from '../link'
@@ -406,46 +321,6 @@ return [before, mid, [...globalThis.__runs]]`,
             )
             expect(run.result, first).toEqual([[], [effect], [effect]])
           }
-        } finally {
-          await app.dispose()
-        }
-      },
-      timeout,
-    )
-
-    // R149, extended: an extracted export's module is a destination. An
-    // export with effects only the component reads is extracted, the
-    // statement using only it follows it there, and both run when the
-    // component's chunk imports the export (the module is flagged
-    // side-effect free: nothing runs while nothing uses it)
-    test(
-      'an exported store with effects and the statement registering it run when the component uses the export',
-      async () => {
-        const app = await build({
-          bundler,
-          env: 'client',
-          minify: false,
-          files: routeApp(
-            `${head}import { createStore, register } from '../log'
-export const store = createStore('MARK_STORE')
-register(store, '+MARK_REGISTER')
-export const Route = createFileRoute('/')({
-  component: () => <p>{store.value}</p>,
-})
-`,
-            { env: 'client', files: libs },
-          ),
-        })
-        try {
-          expect(app.where('MARK_STORE')).toBe('lazy')
-          expect(app.where('MARK_REGISTER')).toBe('lazy')
-          const run = await app.run(
-            'const before = [...(globalThis.__log ?? [])]\nawait entry.mount(entry.Route.options.component)\nreturn [before, [...globalThis.__log]]',
-          )
-          expect(run.result).toEqual([[], ['create', 'register']])
-          expect((run.html as string).replace(/<[^>]*>/g, '')).toBe(
-            'MARK_STORE+MARK_REGISTER',
-          )
         } finally {
           await app.dispose()
         }

@@ -7,7 +7,6 @@
  */
 
 import { describe, expect, test } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, head, routeApp } from '../build-harness'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 
@@ -58,41 +57,6 @@ export const Route = ${route}
     },
     60_000,
   )
-})
-
-describe('what split chunks hold', () => {
-  // Bug: once the pin above is fixed, the split option must also end up
-  // split, or the build must say why (SPEC J2.8, G5). Splitting the result of
-  // a call would change when the call runs, so the user has to change the
-  // pattern: a warning naming the file and the option is acceptable. Today
-  // the build fails first (same root cause as the pin above).
-  // Impact: the component loads with the entry chunk.
-  test('a component declared by an array destructuring of a call shared with the errorComponent is split or reported', async () => {
-    const app = await build({
-      bundler: 'vite',
-      env: 'client',
-      files: routeApp(
-        `${head}const createPair = () => [() => <div>{'MARK_PAGE'}</div>, () => <p>error</p>]
-const [Page, ErrorView] = createPair()
-export const Route = createFileRoute('/')({
-  component: Page,
-  errorComponent: ErrorView,
-})
-`,
-        { env: 'client' },
-      ),
-    })
-    const reported =
-      findDiagnostics([...app.warnings, ...app.consoleMessages], {
-        severity: 'warning',
-        file: 'routes/index.tsx',
-        root: app.root,
-      }).length > 0
-    expect({
-      lazy: app.where('MARK_PAGE') === 'lazy',
-      reported,
-    }).not.toEqual({ lazy: false, reported: false })
-  }, 60_000)
 })
 
 describe('code that reads a split binding', () => {

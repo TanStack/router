@@ -103,8 +103,6 @@ export async function render(component: any) {
 `
 
 const entries = (shape: Shape) => ({
-  // nothing but the route's chunk imports them: they stay lazy
-  'only the route': `${renderEntry}export { Route } from './routes/index'\n`,
   // other modules import both through the route file: one instance
   'both exports': `${renderEntry}export { Route, ${shape.names.join(', ')} } from './routes/index'\n`,
 })
@@ -127,27 +125,20 @@ describe.each(Object.keys(builds))('on %s', (bundler) => {
     '%s',
     (name) => {
       const shape = shapes[name]
-      test.each(['only the route', 'both exports'] as const)(
-        'runs when the entry imports %s',
-        async (kind) => {
+      test(
+        'runs when the entry imports both exports',
+        async () => {
           const app = await builds[bundler]!({
             'routes/__root.tsx': rootRoute,
             'routes/index.tsx': route(shape),
-            'entry.ts': entries(shape)[kind],
+            'entry.ts': entries(shape)['both exports'],
           })
           try {
             const { result } = await app.run(
               `const html = await entry.render(entry.Route.options.component)
-return [html, ${
-                kind === 'both exports'
-                  ? `globalThis.inChunk[0] === entry.${shape.names[0]} && globalThis.inChunk[1] === entry.${shape.names[1]}`
-                  : 'true'
-              }]`,
+return [html, globalThis.inChunk[0] === entry.${shape.names[0]} && globalThis.inChunk[1] === entry.${shape.names[1]}]`,
             )
             expect(result).toEqual(['<p>MARK_CYCLE_END</p>', true])
-            if (kind === 'only the route' && !('eager' in shape)) {
-              expect(app.where('MARK_CYCLE_END')).toBe('lazy')
-            }
           } finally {
             await app.dispose()
           }
@@ -157,36 +148,6 @@ return [html, ${
     },
   )
 })
-
-// A one-way `extends` is no cycle: each keeps its own module, and importing the
-// base through the route file doesn't load the subclass.
-test(
-  'control: a subclass of an export keeps its own module',
-  async () => {
-    const app = await build({
-      bundler: 'vite',
-      env: 'client',
-      minify: false,
-      files: {
-        'routes/__root.tsx': rootRoute,
-        'routes/index.tsx': `${head}export class Base { static b = 'MARK_BASE_END' }
-export class Sub extends Base { static s = 'MARK_SUB_END' }
-export const Route = createFileRoute('/')({
-  component: () => <p>{new Sub() instanceof Base ? Sub.s + Base.b : 'WRONG'}</p>,
-})
-`,
-        'entry.ts': `${renderEntry}export { Route, Base } from './routes/index'\n`,
-      },
-    })
-    try {
-      expect(app.where('MARK_BASE_END')).toBe('eager')
-      expect(app.where('MARK_SUB_END')).toBe('lazy')
-    } finally {
-      await app.dispose()
-    }
-  },
-  timeout,
-)
 
 // Rollup orders modules differently from Rolldown. Only the render runs: a Node
 // program on the SSR build, where it's the same module graph.

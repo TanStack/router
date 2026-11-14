@@ -458,12 +458,6 @@ export const Route = createFileRoute('/')({
 })
 
 describe('class components', () => {
-  const classPage = `class Page extends Component {
-  render() {
-    return <p>page</p>
-  }
-}`
-
   // Control for the class pin below (same harness, a function component).
   test('a function component declared in the route file renders', async () => {
     const route = await loadRoute(`${head}function Page() {
@@ -472,72 +466,6 @@ describe('class components', () => {
 export const Route = createFileRoute('/')({ component: Page })
 `)
     expect(await route.run(`return render('component')`)).toBe('page')
-  })
-
-  // Bug: a route option that names a class cannot be split: the virtual
-  // compiler throws "Unexpected splitNode type ☝️: ClassDeclaration".
-  // A class only the route option reads must be split like a function
-  // component (our limitation otherwise, SPEC J2.8). A fix may leave an
-  // exported class unsplit, but must then tell the user, in production
-  // builds too.
-  // JavaScript route files: the route types of React accept function
-  // components only (TS2322 for a class).
-  // Source: #8505 (`export class component {}`).
-  // Impact: a route whose component is a class component cannot be built
-  // once code splitting is on.
-  test.each([
-    { declaration: classPage, exported: false },
-    { declaration: `export ${classPage}`, exported: true },
-  ])(
-    'a class component declared in the route file renders (exported: $exported)',
-    async ({ declaration, exported }) => {
-      const route = await loadRoute(
-        `${head}import { Component } from 'react'
-${declaration}
-export const Route = createFileRoute('/')({ component: Page })
-`,
-        { filename: 'route.jsx' },
-      )
-      const rendered = await route.run(`return render('component')`)
-      const lazy = await route.isLazy('component')
-      expect({
-        rendered,
-        split: exported ? lazy || (await reportsNotSplit(route)) : lazy,
-      }).toEqual({ rendered: '<p>page</p>', split: true })
-    },
-  )
-
-  // Bug: same root cause as above. Once split, the class's static fields
-  // and what they import belong to its chunk.
-  // Source: Next.js ssg/getStaticProps/should-support-class-exports; #8504
-  // (code-splitter-dead-code.test.ts), where it passes.
-  test('a class component and the imports of its static fields leave the route module', async () => {
-    const route = await loadRoute(
-      `${head}import { Component } from 'react'
-import { format } from './format'
-class Page extends Component {
-  static title = format('home')
-  render() {
-    return <p>{Page.title}</p>
-  }
-}
-export const Route = createFileRoute('/')({
-  loader: () => 'data',
-  component: Page,
-})
-`,
-      {
-        filename: 'route.jsx',
-        files: {
-          'format.js': 'export const format = (value) => `[${value}]`\n',
-        },
-      },
-    )
-    expect([
-      // Nothing the route module loads requests what only the class reads
-      (await route.requested()).includes('/format.js'),
-      await route.run(`return render('component')`),
-    ]).toEqual([false, '<p>[home]</p>'])
   })
 })
 

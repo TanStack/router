@@ -45,7 +45,6 @@ return { atLoad, after: globalThis.seeds, html }`,
 }
 
 describe('on the Vite dev server, an effect setting state only the split component reads', () => {
-
   it('runs nothing for a pure value (control)', async () => {
     expect(await observe(shapes['pure value (control)'])).toMatchObject({
       atLoad: 0,

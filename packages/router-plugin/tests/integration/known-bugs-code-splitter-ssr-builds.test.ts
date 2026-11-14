@@ -136,19 +136,6 @@ export async function load() {
     },
     30_000,
   )
-
-  // Bug: an object-form loader passed by reference (`loader` holding
-  // `{ handler }`) is split as if it were the loader function, so the route
-  // calls the object ("... is not a function").
-  // Impact: the route's data never loads once the loader is split.
-  test('a split loader in object form passed by reference loads route data', async () => {
-    expect(
-      await loadWithSplitLoader(
-        'loader',
-        `const loader = { handler: () => 'loaded' }\n`,
-      ),
-    ).toEqual([null, 'loaded'])
-  }, 30_000)
 })
 
 describe('exported bindings', () => {

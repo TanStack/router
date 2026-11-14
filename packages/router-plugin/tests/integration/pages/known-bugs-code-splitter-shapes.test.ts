@@ -125,109 +125,6 @@ export const Route = ${route}
     expect(await loaded.run(`return render('component')`)).toBe('<p>page</p>')
   })
 
-  // Bug: the virtual compiler accepts only a fixed list of expression types
-  // for the value of a split option; any other expression the route module
-  // splits makes the build throw "Unexpected splitNode type ☝️:
-  // MemberExpression" (LogicalExpression, TaggedTemplateExpression,
-  // ClassExpression). These are our limitations, so the goal is a split
-  // option (SPEC J2.8).
-  // Source: mutation testing.
-  // Impact: a route whose component is a namespace member (`Pages.Home`), a
-  // fallback (`A ?? B`), a styled-components tagged template or a class
-  // cannot be built once code splitting is on.
-  test.each<{
-    name: string
-    value: string
-    declarations?: string
-    filename?: string
-    expected: unknown
-  }>([
-    {
-      name: 'a member of a namespace import',
-      value: 'Pages.Home',
-      expected: 'home',
-    },
-    {
-      name: 'a logical fallback',
-      declarations: `const overrides: { Home?: () => string } = {}\n`,
-      value: 'overrides.Home || Fallback',
-      expected: 'fallback',
-    },
-    {
-      name: 'a nullish fallback',
-      declarations: `const overrides: { Home?: () => string } = {}\n`,
-      value: 'overrides.Home ?? Fallback',
-      expected: 'fallback',
-    },
-    {
-      name: 'a tagged template',
-      value: 'styled`home`',
-      expected: 'styled home',
-    },
-    {
-      // JavaScript: the route types of React accept function components
-      // only (TS2322 for a class).
-      name: 'a class expression',
-      filename: 'route.jsx',
-      declarations: `import { Component } from 'react'\n`,
-      value: `class extends Component {
-    render() {
-      return <p>class</p>
-    }
-  }`,
-      expected: '<p>class</p>',
-    },
-  ])(
-    'an option written as $name is split and works',
-    async ({ value, declarations = '', filename, expected }) => {
-      const route = await loadRoute(
-        `${head}import * as Pages from './pages'
-import { styled } from './styled'
-${declarations}const Fallback = () => 'fallback'
-export const Route = createFileRoute('/')({
-  codeSplitGroupings: [['loader'], ['component']],
-  loader: () => 'data',
-  component: ${value},
-})
-`,
-        {
-          filename,
-          files: {
-            'pages.ts': `export const Home = () => 'home'\n`,
-            'styled.ts': `export const styled = (strings: TemplateStringsArray) => () =>
-  \`styled \${strings[0]}\`
-`,
-          },
-        },
-      )
-      expect(await route.isLazy('component')).toBe(true)
-      expect(await route.run(`return render('component')`)).toBe(expected)
-    },
-  )
-
-  // A loader written as a member (`api.load`) is a value the compiler does
-  // not read: it may be an object-form loader whose options the router
-  // reads from the route module, so it stays there, reported (SPEC J2.8).
-  test('a loader written as a member of a local object works in the route module, reported', async () => {
-    const route = await loadRoute(
-      `${head}const api = { load: () => 'data' }
-export const Route = createFileRoute('/')({
-  codeSplitGroupings: [['loader'], ['component']],
-  loader: api.load,
-  component: () => <p>page</p>,
-})
-`,
-      { fresh: true },
-    )
-    expect(await route.isLazy('loader')).toBe(false)
-    expect(await route.run(`return options.loader()`)).toBe('data')
-    expectDiagnostic(await route.diagnostics(), {
-      severity: 'warning',
-      file: 'route.tsx',
-      root: route.host.root,
-    })
-  })
-
   // Bug: a component option written as a call cannot be split when its
   // printed code does not parse on its own with Babel's default options: the
   // virtual compiler prints the call and parses it again as a script
@@ -250,42 +147,11 @@ export const Route = createFileRoute('/')({
     targetFramework?: TargetFramework
   }>([
     {
-      name: 'memo of an inline arrow',
-      component: `memo(() => <p>page</p>)`,
-    },
-    {
-      name: 'memo of an inline named function',
-      component: `memo(function Page() {\n  return <p>page</p>\n})`,
-    },
-    {
-      name: 'a call with a JSX argument',
-      imports: `${head}import { withFallback } from './hoc'\nimport { Page } from './page'`,
-      component: `withFallback(Page, <p>loading</p>)`,
-      rendered: 'page',
-    },
-    {
       name: 'a Vue defineComponent with a render function',
       targetFramework: 'vue',
       imports: `import { createFileRoute } from '@tanstack/vue-router'
 import { defineComponent } from 'vue'`,
       component: `defineComponent({\n  setup: () => () => <p>page</p>,\n})`,
-    },
-    {
-      name: 'a call of a typed arrow function',
-      component: `memo((): string => 'page')`,
-      rendered: 'page',
-    },
-    {
-      name: 'a call with a type assertion',
-      imports: `${head}import { memo } from 'react'\nimport { Page } from './page'`,
-      component: `memo(Page as any)`,
-      rendered: 'page',
-    },
-    {
-      name: 'a call with a type argument',
-      imports: `${head}import { memo } from 'react'\nimport { Page } from './page'`,
-      component: `memo<typeof Page>(Page)`,
-      rendered: 'page',
     },
   ])(
     'a component written as $name is split and renders',

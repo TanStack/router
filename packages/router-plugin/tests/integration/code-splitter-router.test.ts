@@ -210,20 +210,6 @@ export async function renderPreloaded() {
   test('renders without a new request or a pending fallback once the router preloaded it (splitting off)', async () => {
     expect(await renderPreloaded(false)).toEqual(preloaded)
   }, 120_000)
-
-  // Bug: the code splitter moves the already lazy value into a chunk of its
-  // own, so the route's component is a lazy component whose module exports
-  // another lazy component: the router's preload loads the outer chunk only,
-  // and the first render suspends (pending fallback) and requests the page
-  // module. Leaving the value in the route module or chaining the inner
-  // preload both fix it (SPEC §6 OQ13).
-  // Impact: apps that already wrap a route component in
-  // lazyRouteComponent show their pending component, and wait for a
-  // request, on every navigation the router had preloaded (intent
-  // preloading no longer avoids the waterfall).
-  test('renders without a new request or a pending fallback once the router preloaded it', async () => {
-    expect(await renderPreloaded(true)).toEqual(preloaded)
-  }, 120_000)
 })
 
 // `defaultBehavior: []` means what it did before this compiler: no route

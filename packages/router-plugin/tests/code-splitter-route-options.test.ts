@@ -664,7 +664,6 @@ export const Route = createRootRouteWithContext<Ctx>()({
 })
 
 describe('option values the route module reassigns or shares', () => {
-
   // A regex literal is an object with state (`lastIndex`): one instance,
   // shared by the route module and the split options.
   it('share one regex literal between the route module and a split component', async () => {

@@ -179,9 +179,11 @@ export const Route = createFileRoute('/')({ component: Shell })
   // from the hoist that gives an inline value a family (unsplit).
   // Impact: the component remounted on every save, where `memo(Page)` keeps
   // its state.
-  // Pinned on Vite unsplit: plugin-react's React Refresh transform (oxc, as
+  // Pinned on Vite: plugin-react's React Refresh transform (oxc, as
   // react-refresh/babel) registers no family for `memo(Page as any)`, where
-  // SWC (Rsbuild) does; the split chunk's export registers it.
+  // SWC (Rsbuild) does; the value stays in the route module with code
+  // splitting too (a call holding TypeScript syntax: main's chunk compile
+  // cannot parse it, R153).
   {
     ...versions(
       'memo(Page as any)',
@@ -193,8 +195,7 @@ export const Route = createFileRoute('/')({ component: Shell })
       bodyText,
       1,
     ),
-    pinned: (bundler, autoCodeSplitting) =>
-      bundler === 'vite' && !autoCodeSplitting,
+    pinned: (bundler) => bundler === 'vite',
   },
   versions(
     'const Page = memo(function …)',

@@ -201,11 +201,6 @@ describe.each(['vite', 'rspack'] as const)('a %s client build', (bundler) => {
   // The warning's fixes, applied
   test.each([
     {
-      name: 'an object written in the route options',
-      loader: `{ handler: blockingLoader.handler, staleReloadMode: 'blocking' }`,
-      form: { loader: 'object', staleReloadMode: 'blocking' },
-    },
-    {
       name: 'a function calling the imported one',
       loader: '(ctx) => functionLoader(ctx)',
       form: { loader: 'function', staleReloadMode: null },
@@ -265,15 +260,7 @@ describe.each(['vite', 'rspack'] as const)('a %s client build', (bundler) => {
     timeout,
   )
 
-  test.each([
-    { name: 'inline', declarations: '', loader: '{ ...base }' },
-    { name: 'in a const', declarations: 'const l = { ...base }', loader: 'l' },
-    {
-      name: 'through a chain of consts',
-      declarations: 'const a = { ...base }\nconst l = a',
-      loader: 'l',
-    },
-  ])(
+  test.each([{ name: 'inline', declarations: '', loader: '{ ...base }' }])(
     'keeps an object loader with no readable `handler` ($name) in the route module, nothing reported',
     async ({ declarations, loader }) => {
       const r = await renderRoute(

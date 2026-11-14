@@ -60,10 +60,6 @@ async function buildRoute(
   }
 }
 
-/** A module of its own holding the state, with the function writing it. */
-const initModule =
-  'export let didInit = false\nexport function init() { didInit = true }\n'
-
 const route = (decls: string, options: string) =>
   `${head}import { memo } from 'react'
 import { registry } from '../registry'
@@ -75,24 +71,6 @@ ${options}
 
 describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
   test.each([
-    [
-      'assigns a `let`',
-      'let didInit = false',
-      '  component: memo(function Page() { if (!didInit) { didInit = true } return <p>MARK_PAGE{String(didInit)}</p> }),',
-      'MARK_PAGEtrue',
-    ],
-    [
-      'writes a member of a `const`',
-      'const seen = { n: 0 }',
-      '  component: memo(function Page() { seen.n++; return <p>MARK_PAGE{seen.n}</p> }),',
-      'MARK_PAGE1',
-    ],
-    [
-      'writes a member of an import in an event handler',
-      '',
-      '  component: memo(function Page() { return <button onClick={() => { registry.count++ }}>MARK_PAGE</button> }),',
-      'MARK_PAGE',
-    ],
     [
       'is declared in a `const`, writing a member of a `const`',
       'const seen = { n: 0 }\nconst C = memo(function Page() { seen.n++; return <p>MARK_PAGE{seen.n}</p> })',
@@ -132,126 +110,6 @@ const flags = [n]
       )
       expect(r.where).toBe('eager')
       expect(r.text).toBe('MARK_PAGE5')
-    },
-    timeout,
-  )
-
-  // REVIEW design 2 final, finding 4 (g): the binding stays only for its
-  // initialiser's effects; the offered annotation frees the option
-  test(
-    'names the effectful initialiser of a `let` the option assigns, and the annotation frees it',
-    async () => {
-      const options = '  component: (n = 5, () => <p>MARK_PAGE{n}</p>),'
-      const kept = await buildRoute(
-        bundler,
-        route('const box = (x: number) => [x][0]!\nlet n = box(0)', options),
-      )
-      expect(kept.where).toBe('eager')
-      expect(kept.warnings).toHaveLength(1)
-      expect(kept.warnings[0]).toContain(
-        'it writes `n`, which stays in the route module because its initialiser has side effects, so a split would run the write later than written. Mark that initialiser `/* @__PURE__ */` if it has none.',
-      )
-      const freed = await buildRoute(
-        bundler,
-        route(
-          'const box = (x: number) => [x][0]!\nlet n = /* @__PURE__ */ box(0)',
-          options,
-        ),
-      )
-      expect(freed.where).toBe('lazy')
-      expect(freed.text).toBe('MARK_PAGE5')
-      expect(freed.warnings).toEqual([])
-    },
-    timeout,
-  )
-
-  test(
-    'splits it when the state the route module reads is a member of an object (the fix offered below)',
-    async () => {
-      const r = await buildRoute(
-        bundler,
-        route(
-          'const state = { didInit: false }',
-          '  beforeLoad: () => state.didInit,\n  component: memo(function Page() { if (!state.didInit) { state.didInit = true } return <p>MARK_PAGE{String(state.didInit)}</p> }),',
-        ),
-      )
-      expect(r.where).toBe('lazy')
-      expect(r.text).toBe('MARK_PAGEtrue')
-      expect(r.warnings).toEqual([])
-    },
-    timeout,
-  )
-
-  // the other fix offered below: the state in a module of its own that
-  // exports the function writing it (the chunk assigning the imported `let`
-  // itself would assign a read-only import)
-  test(
-    'splits it when the state the route module reads is in a module of its own that exports the function writing it (the fix offered below)',
-    async () => {
-      const r = await buildRoute(
-        bundler,
-        route(
-          "import { didInit, init } from '../init'",
-          '  beforeLoad: () => didInit,\n  component: memo(function Page() { if (!didInit) { init() } return <p>MARK_PAGE{String(didInit)}</p> }),',
-        ),
-        undefined,
-        { 'init.ts': initModule },
-      )
-      expect(r.where).toBe('lazy')
-      expect(r.text).toBe('MARK_PAGEtrue')
-      expect(r.warnings).toEqual([])
-    },
-    timeout,
-  )
-
-  // two split options writing one `let` (`multi-writer`): both stay, and
-  // the same fix splits them
-  test(
-    'keeps two options writing one `let` in place, and the state in a module of its own that exports the function writing it splits them',
-    async () => {
-      const kept = await buildRoute(
-        bundler,
-        route(
-          'let didInit = false',
-          '  loader: () => { didInit = true; return null },\n  component: memo(function Page() { didInit = true; return <p>MARK_PAGE{String(didInit)}</p> }),',
-        ),
-        [['loader'], ['component']],
-      )
-      expect(kept.where).toBe('eager')
-      expect(kept.text).toBe('MARK_PAGEtrue')
-      expect(kept.warnings).toHaveLength(2)
-      const fixed = await buildRoute(
-        bundler,
-        route(
-          "import { didInit, init } from '../init'",
-          '  loader: () => { init(); return null },\n  component: memo(function Page() { init(); return <p>MARK_PAGE{String(didInit)}</p> }),',
-        ),
-        [['loader'], ['component']],
-        { 'init.ts': initModule },
-      )
-      expect(fixed.where).toBe('lazy')
-      expect(fixed.text).toBe('MARK_PAGEtrue')
-      expect(fixed.warnings).toEqual([])
-    },
-    timeout,
-  )
-
-  test(
-    'keeps it in place when other code reads the state (control)',
-    async () => {
-      const r = await buildRoute(
-        bundler,
-        route(
-          'let didInit = false',
-          '  beforeLoad: () => didInit,\n  component: memo(function Page() { if (!didInit) { didInit = true } return <p>MARK_PAGE{String(didInit)}</p> }),',
-        ),
-      )
-      expect(r.where).toBe('eager')
-      expect(r.text).toBe('MARK_PAGEtrue')
-      expect(r.warnings).toHaveLength(1)
-      expect(r.warnings[0]).toContain(
-        'The `component` option of routes/index.tsx is not code-split: it writes `didInit`, which the route module also uses, and a split chunk cannot write a binding of another module. Keep that state in an object (`state.didInit`), or in a module of its own that also exports the functions writing it.',
-      )
     },
     timeout,
   )

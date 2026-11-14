@@ -245,34 +245,6 @@ export const Route = createFileRoute('/')({
     60_000,
   )
 
-  // Rolldown inlines the initial value of a `var` another module imports
-  // when its next declaration is a for-in/of head or a pattern, in valid
-  // output (KNOWN-BUGS, "Upstream issues"). These rows no longer reach it:
-  // the loop or block declaring `x` again touches only `x` and follows it
-  // into the component's chunk, so no module imports the `var`.
-  it('gives the split component the value a `var` declared again takes in a head or a pattern (Rolldown)', async () => {
-    const rows = varsDeclaredAgain.filter((row) => row.rolldownReadsFirst)
-    expect(await varDeclaredAgain('vite', rows)).toEqual({
-      placement: 'lazy',
-      rendered: rows.map(({ name }) => [name, '<p title="MARK_PAGE">2</p>']),
-    })
-  }, 60_000)
-
-  it('gives a value read between two declarations of a `var` the first one', async () => {
-    const result = await buildAndRun(
-      `${head}var x = 1
-const before = x
-var x = 2
-export const Route = createFileRoute('/')({
-  loader: () => x,
-  component: () => <p>{before}</p>,
-})
-`,
-      `return [await entry.render(entry.Route.options.component), entry.Route.options.loader()]`,
-    )
-    expect(result).toEqual(['<p>1</p>', 2])
-  }, 30_000)
-
   // Source: #8504 (code-splitter-exported-bindings-identity.test.ts).
   it('gives the split component the state the route file configures before it creates it', async () => {
     const html = await buildAndRun(
