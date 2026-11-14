@@ -6881,6 +6881,34 @@ importers:
         specifier: ^8.3.4
         version: 8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
 
+  e2e/vue-router/route-testing:
+    dependencies:
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      '@tanstack/vue-router':
+        specifier: workspace:*
+        version: link:../../../packages/vue-router
+      vue:
+        specifier: 'catalog:'
+        version: 3.5.25(typescript@6.0.2)
+    devDependencies:
+      '@testing-library/vue':
+        specifier: ^8.1.0
+        version: 8.1.0(@vue/compiler-sfc@3.5.25)(vue@3.5.25(typescript@6.0.2))
+      '@vitejs/plugin-vue-jsx':
+        specifier: 'catalog:'
+        version: 4.2.0(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@6.0.2))
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1(supports-color@10.2.2)
+      vite:
+        specifier: ^8.3.4
+        version: 8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.4(@opentelemetry/api@1.9.1)(@types/node@25.0.9)(@vitest/ui@5.0.4)(jsdom@25.0.1(supports-color@10.2.2))(msw@2.15.0(@types/node@25.0.9)(typescript@6.0.2))(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+
   e2e/vue-router/rspack-basic-file-based:
     dependencies:
       '@tanstack/vue-router':
@@ -14959,7 +14987,7 @@ importers:
         version: 8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
       vite-plugin-solid:
         specifier: ^2.11.10 || ^3.0.0-0
-        version: 2.11.16(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       zod:
         specifier: 'catalog:'
         version: 4.5.4
@@ -29074,16 +29102,6 @@ packages:
       '@testing-library/jest-dom':
         optional: true
 
-  vite-plugin-solid@2.11.16:
-    resolution: {integrity: sha512-qguFUmqY2ICuoGHrZjm+cWpvKkqVyWDMptipC/BIEGr9q6wEzwTWYOjM9pEWJ+yoTuF6T5OpysI2Okdy7rsVlQ==}
-    peerDependencies:
-      '@testing-library/jest-dom': ^5.16.6 || ^5.17.0 || ^6.0.0 || ^7.0.0
-      solid-js: 1.9.12
-      vite: ^8.3.4
-    peerDependenciesMeta:
-      '@testing-library/jest-dom':
-        optional: true
-
   vite-tsconfig-paths@6.1.1:
     resolution: {integrity: sha512-2cihq7zliibCCZ8P9cKJrQBkfgdvcFkOOc3Y02o3GWUDLgqjWsZudaoiuOwO/gzTzy17cS5F7ZPo4bsnS4DGkg==}
     peerDependencies:
@@ -35776,6 +35794,15 @@ snapshots:
     optionalDependencies:
       '@vue/compiler-sfc': 3.5.25
 
+  '@testing-library/vue@8.1.0(@vue/compiler-sfc@3.5.25)(vue@3.5.25(typescript@6.0.2))':
+    dependencies:
+      '@babel/runtime': 7.26.7
+      '@testing-library/dom': 9.3.4
+      '@vue/test-utils': 2.4.6
+      vue: 3.5.25(typescript@6.0.2)
+    optionalDependencies:
+      '@vue/compiler-sfc': 3.5.25
+
   '@trpc/client@11.4.3(@trpc/server@11.4.3(@typescript/typescript6@6.0.2))(@typescript/typescript6@6.0.2)':
     dependencies:
       '@trpc/server': 11.4.3(@typescript/typescript6@6.0.2)
@@ -36677,6 +36704,17 @@ snapshots:
       turbo-stream: 3.2.1
       vite: 8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
       vitefu: 1.1.3(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+
+  '@vitejs/plugin-vue-jsx@4.2.0(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@6.0.2))':
+    dependencies:
+      '@babel/core': 7.29.7(supports-color@10.2.2)
+      '@babel/plugin-transform-typescript': 7.28.6(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
+      '@rolldown/pluginutils': 1.0.1
+      '@vue/babel-plugin-jsx': 1.5.0(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
+      vite: 8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
+      vue: 3.5.25(typescript@6.0.2)
+    transitivePeerDependencies:
+      - supports-color
 
   '@vitejs/plugin-vue-jsx@4.2.0(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))':
     dependencies:
@@ -44067,21 +44105,6 @@ snapshots:
       vitefu: 1.1.1(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
     optionalDependencies:
       '@testing-library/jest-dom': 7.0.1(@testing-library/dom@10.4.1)(vitest@5.0.4)
-    transitivePeerDependencies:
-      - supports-color
-
-  vite-plugin-solid@2.11.16(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)):
-    dependencies:
-      '@babel/core': 7.29.7(supports-color@10.2.2)
-      '@types/babel__core': 7.20.5
-      babel-preset-solid: 1.9.10(@babel/core@7.29.7(supports-color@10.2.2))(solid-js@1.9.12)
-      merge-anything: 5.1.7
-      solid-js: 1.9.12
-      solid-refresh: 0.6.3(solid-js@1.9.12)(supports-color@10.2.2)
-      vite: 8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
-      vitefu: 1.1.3(vite@8.3.4(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
-    optionalDependencies:
-      '@testing-library/jest-dom': 6.6.3
     transitivePeerDependencies:
       - supports-color
 

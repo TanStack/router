@@ -1,0 +1,20 @@
+{
+  "name": "tanstack-router-e2e-vue-route-testing",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:e2e": "vitest run"
+  },
+  "dependencies": {
+    "@tanstack/router-plugin": "workspace:^",
+    "@tanstack/vue-router": "workspace:^",
+    "vue": "catalog:"
+  },
+  "devDependencies": {
+    "@testing-library/vue": "^8.1.0",
+    "@vitejs/plugin-vue-jsx": "catalog:",
+    "jsdom": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}
