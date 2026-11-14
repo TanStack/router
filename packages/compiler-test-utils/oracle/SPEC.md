@@ -298,7 +298,8 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
   fan-in (diamonds), cycles (mutual recursion, a class and a const that read each other), destructuring,
   re-assignment, objects and arrays that hold a binding, closures and factory calls, default parameters, namespace
   members, top-level `await`. It never removes what kept code reads (also through `typeof`, JSX, a shorthand
-  property or `export { a as b }`), and never code that was already dead before the transform. It is per module: a
+  property or `export { a as b }`), never a top-level statement that is not a declaration (`x.p = v`, `x.push(v)`,
+  `x = v`: what it names is used by kept code), and never code that was already dead before the transform. It is per module: a
   neutral module whose export only removed code uses is the user's (J4.12). A leftover import of a server-only or
   unresolvable module on the client, or of a client-only module on the server, is not dead code that may dangle
   (G8): it never reaches the bundler, so no browser stub, externalization warning or polyfill stands in for it.
