@@ -79,8 +79,9 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   }
   /**
    * `main`'s removal rule applies to it: import specifiers, declarators,
-   * function and class declarations, and the declarations planners generate
-   * where they are read (a planner's `auto` home).
+   * function and class declarations, and the declarations and imports
+   * planners generate without an effect, where they are read (a planner's
+   * `auto` home).
    */
   const removable = (c: ClusterId): boolean => {
     const cl = clusters[c]!
@@ -88,9 +89,12 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
       return false
     }
     if (cl.units.length === 0) {
-      return cl.gens.some(
+      // a declaration or an import a planner generates; one with an effect
+      // (route HMR's block, with its own helper import) is a statement
+      return cl.gens.every(
         (g) =>
-          gens[g]!.declares.length > 0 || (gens[g]!.imports ?? []).length > 0,
+          !gens[g]!.effectful &&
+          (gens[g]!.declares.length > 0 || (gens[g]!.imports ?? []).length > 0),
       )
     }
     // (a type merged with the binding, `import { type X }` beside
