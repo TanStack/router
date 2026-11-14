@@ -352,14 +352,16 @@ export function seedRoots(
 }
 
 /**
- * Provenance, the one removal rule (R153 amendment, R154): the clusters the
- * source reads from text an output no longer holds (`removed`: what it
- * erases, what a claim moves out), transitively over the source's reads.
- * Only these can leave that output, when nothing it keeps reads them any
- * more; code already unused in the source stays as written (`function
- * Unused() {…}`, `const unused = register('x')`, an unused import). A use
- * is a value reference (the analysis's references: JSX tags included, type
- * positions not, which TypeScript erases).
+ * Provenance, the one removal rule (R153 amendment, R154), in two halves:
+ * - "the source used it": the clusters text an output no longer holds
+ *   (`removed`: what it erases, what a claim moves out) references,
+ *   transitively, by value or in a type position (`useState<X>()`,
+ *   `v as typeof x`, a local `type` alias);
+ * - "nothing left uses it" is the caller's: what that output keeps reads,
+ *   by value only (TypeScript and the bundlers strip types).
+ * Only the returned clusters can leave an output; code the source never
+ * used stays as written (`function Unused() {…}`, `const unused =
+ * register('x')`, an unused import).
  */
 export function readFromRemoved(
   input: PlacementInput,
@@ -383,6 +385,29 @@ export function readFromRemoved(
       }
     }
   }
+  // the type-position references: in removed text, a seed; elsewhere, a
+  // use by the cluster holding them
+  const typeUses = new Map<ClusterId, Array<ClusterId>>()
+  for (const [s, d] of graph.clusterOfSym) {
+    if (!symbols.isModuleLevel(s)) {
+      continue
+    }
+    for (const ref of symbols.binding(s)?.references ?? []) {
+      if (!ref.inTypePosition) {
+        continue
+      }
+      const at = ref.node.start
+      if (parts.some((p) => at >= p.start && at < p.end)) {
+        seeds.add(d)
+        continue
+      }
+      const r = input.rewrites.regions.innermostAt(at)
+      const by = r === null ? undefined : graph.clusterOfRegion.get(r)
+      if (by !== undefined && by !== d) {
+        typeUses.set(by, [...(typeUses.get(by) ?? []), d])
+      }
+    }
+  }
   const out = new Set<ClusterId>()
   const work = [...seeds]
   while (work.length > 0) {
@@ -392,6 +417,9 @@ export function readFromRemoved(
     }
     out.add(c)
     for (const d of reads.successors(c, 'env', false)) {
+      work.push(d)
+    }
+    for (const d of typeUses.get(c) ?? []) {
       work.push(d)
     }
   }

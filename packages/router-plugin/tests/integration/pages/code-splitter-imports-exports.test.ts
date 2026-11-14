@@ -277,48 +277,24 @@ export const Route = createFileRoute('/')({
   })
 
   // With React's classic JSX runtime, JSX compiles to `React.createElement`,
-  // so a React import that the TypeScript code only uses in types must stay:
-  // the app's own classic transform runs on what the router plugin emits,
-  // and the page renders the component.
-  it.each([
-    { name: 'split component modules', pluginOptions: undefined },
-    {
-      name: 'route module compiled for HMR',
-      pluginOptions: { autoCodeSplitting: false },
-    },
-  ])(
-    'keeps the React import of the $name for classic JSX',
-    async ({ pluginOptions }) => {
-      const route = await loadRoute(
-        `import * as React from 'react'
+  // so a React import that the TypeScript code only uses in types must stay
+  // in a module that keeps the JSX: the app's own classic transform runs on
+  // what the router plugin emits, and the page renders the component.
+  it('keeps the React import of the route module compiled for HMR for classic JSX', async () => {
+    const route = await loadRoute(
+      `import * as React from 'react'
 ${head}function Page({ title = 'classic' }: { title?: React.ReactNode }) {
   return <p>{title}</p>
 }
 export const Route = createFileRoute('/')({ component: Page })
 `,
-        {
-          frameworkPluginOptions: { jsxRuntime: 'classic' },
-          pluginOptions,
-          hmr: pluginOptions !== undefined,
-        },
-      )
-      // `React.createElement` reads an imported `React`.
-      expect(await route.run(`return render('component')`)).toBe(
-        '<p>classic</p>',
-      )
-      await expectValidModules(route)
-    },
-  )
-
-  it('keeps the React import of the split component modules with inline JSX when only a top-level type reads React', async () => {
-    const route = await loadRoute(
-      `import * as React from 'react'
-${head}type Title = React.ReactNode
-export const Route = createFileRoute('/')({ component: () => <p>classic</p> })
-`,
-      { frameworkPluginOptions: { jsxRuntime: 'classic' } },
+      {
+        frameworkPluginOptions: { jsxRuntime: 'classic' },
+        pluginOptions: { autoCodeSplitting: false },
+        hmr: true,
+      },
     )
-    expect(await route.isLazy('component')).toBe(true)
+    // `React.createElement` reads an imported `React`.
     expect(await route.run(`return render('component')`)).toBe('<p>classic</p>')
     await expectValidModules(route)
   })
@@ -952,6 +928,59 @@ export const Route = createFileRoute('/ambient')({
     },
   )
 
+  // An import the code only references from types (without `import type`)
+  // is not imported by the route module when only the split component's
+  // types reference it: a use in a type is a use the split removed. Source:
+  // #8504.
+  it('leaves an import only the split component references from types out of the route module', async () => {
+    const route = await loadRoute(
+      `${head}import { useState } from 'react'
+import { Framework } from './projects'
+export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => {
+    const [framework] = useState<Framework>('react')
+    return <p>{framework}</p>
+  },
+})
+`,
+      { files: { 'projects.ts': `export const Framework = 'Framework'\n` } },
+    )
+    expect(await route.requested()).not.toContain('/projects.ts')
+    await expectValidModules(route)
+    expect(await route.run(`return render('component')`)).toBe('<p>react</p>')
+  })
+
+  // The same with a module TypeScript keeps under `verbatimModuleSyntax` (a
+  // namespace with values, imported by default): it loads with the chunk,
+  // not with the route file
+  it('leaves a namespace import only the split component references in a type argument out of the route module', async () => {
+    const route = await loadRoute(
+      `${head}import { useState } from 'react'
+import Model from './model'
+function Page() {
+  const [rows] = useState<Model.Row[]>([])
+  return <p>{rows.length}</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      {
+        files: {
+          'model.ts': `namespace Model {
+  export type Row = { id: string }
+  export const table = 'rows'
+}
+export default Model
+`,
+        },
+      },
+    )
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.requested()).not.toContain('/model.ts')
+    await expectValidModules(route)
+    expect(await route.run(`return render('component')`)).toBe('<p>0</p>')
+  })
+
   // Source: @babel/plugin-transform-typescript class/private-method-override;
   // #8504 (a guard against a parser bug, yuku-toolchain/yuku#257).
   it('gives the split component a class with an overloaded private method', async () => {
@@ -1125,6 +1154,25 @@ export const Route = createFileRoute('/posts')({
       expect(await hmr.run(read)).toEqual({ id: '1' })
     },
   )
+
+  // Source: TanStack/router#6480 (an exported type that reads an imported
+  // value kept the import in the client module); replaces router-utils
+  // stripTypeExports "handles the issue #6480 scenario", which never checked
+  // the symptom.
+  it('drops an import that only an exported type and a split component read from the route module', async () => {
+    const route = await loadRoute(
+      `${head}import { secret } from './server-thing'
+export type Secret = typeof secret
+export const Route = createFileRoute('/')({
+  component: () => <p>{secret}</p>,
+})
+`,
+      { files: { 'server-thing.ts': `export const secret = 'server'\n` } },
+    )
+    await expectValidModules(route)
+    expect(await route.requested()).not.toContain('/server-thing.ts')
+    expect(await route.run(`return render('component')`)).toBe('<p>server</p>')
+  })
 
   it('keeps decorators before `export` for legacy decorator transforms', async () => {
     // TypeScript `experimentalDecorators` and Babel `decorators-legacy` only

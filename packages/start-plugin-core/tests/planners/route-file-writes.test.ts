@@ -250,6 +250,95 @@ export const Route = createFileRoute('/')({
   )
 })
 
+// A use in a type is a use: an import or declaration only removed code
+// reads in a type leaves the module (TypeScript keeps an import of a class
+// or of what `typeof` reads under `verbatimModuleSyntax`)
+describe('what only an erased handler reads in a type (client)', () => {
+  const START = `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+`
+
+  it('leaves an import a handler reads in a cast out of the client route module', async () => {
+    const out = await compile(
+      `${START}import { Db } from './db.server'
+const getRows = createServerFn().handler(async () => {
+  const d = null as Db | null
+  return String(d)
+})
+function Page() {
+  return <p>{typeof getRows}</p>
+}
+export const Route = createFileRoute('/')({ loader: async () => getRows(), component: Page })
+`,
+      clientEnv,
+    )
+    expect(out!.code).not.toContain('db.server')
+    expect(out!.code).toContain('lazyRouteComponent')
+  })
+
+  it('leaves a declaration a handler reads through `typeof` out of the client route module', async () => {
+    const out = await compile(
+      `${START}import { connect } from './db.server'
+const db = connect()
+const getRows = createServerFn().handler(async () => {
+  const r = null as typeof db | null
+  return String(r)
+})
+function Page() {
+  return <p>{typeof getRows}</p>
+}
+export const Route = createFileRoute('/')({ loader: async () => getRows(), component: Page })
+`,
+      clientEnv,
+    )
+    expect(out!.code).not.toContain('connect')
+    expect(out!.code).not.toContain('db.server')
+  })
+})
+
+// A `let` two split options read and a server function's handler assigns:
+// on the client the handler is erased and writes nothing, so the `let` is
+// `main`'s shared name, one instance both chunks import
+describe('a `let` two split options read and a handler assigns', () => {
+  const code = `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+let filters: { q: string } = { q: '' }
+export const resetFilters = createServerFn({ method: 'POST' }).handler(async () => {
+  filters = { q: '' }
+  return 1
+})
+function Page() {
+  filters.q = 'x'
+  return <p>{filters.q}</p>
+}
+function Err() {
+  return <b>{filters.q}</b>
+}
+export const Route = createFileRoute('/')({ component: Page, errorComponent: Err })
+`
+  const chunkIds = (route: string) =>
+    [...route.matchAll(/import\('([^']*tsr-split=[^']*)'\)/g)].map((m) => m[1]!)
+
+  it('gives both chunks one instance, from the shared module, on the client', async () => {
+    const out = await compile(code, clientEnv)
+    const ids = chunkIds(out!.code)
+    expect(ids).toHaveLength(2)
+    for (const id of ids) {
+      const chunk = await compile(code, clientEnv, { id })
+      expect(chunk!.code).toMatch(
+        /import \{[^}]*\bfilters\b[^}]*\} from '[^']*tsr-split=shared/,
+      )
+      expect(chunk!.code).not.toMatch(/let filters/)
+    }
+  })
+
+  it('splits both options and keeps the handler lazy on the server', async () => {
+    const out = await compile(code, ssrEnv)
+    expect(chunkIds(out!.code)).toHaveLength(2)
+    expect(out!.code).toContain('?tss-serverfn-handler')
+  })
+})
+
 // (the handler module of the control, requested by id, is valid on its own)
 it('serves the handler module of a handler that only reads module state', async () => {
   const code = `${FNS}let count = 0

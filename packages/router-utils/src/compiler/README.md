@@ -103,9 +103,11 @@ A plan a planner marks as a route file (`PlanContext.setRouteModule`, the router
 the engine below. One cluster per unit (`buildClusters(input, true)`: no writer joins its binding) and the engine's
 per-output read walk (`readIndex`):
 
-- **the env module** keeps its top-level statements, exports, enums and namespaces (R154) and the declarations and
-  import specifiers they reach, transitively; every other import specifier, declarator, function or class declaration
-  goes with its initialiser, read in the source or not.
+- **the env module** loses only what the split made unused (the R153 amendment, `readFromRemoved`, the rule erasure
+  uses): a declaration or import specifier the source used from text the module no longer holds (a claimed option
+  value, erased text; a use in a type counts) goes with its initialiser when nothing that stays reads it by value.
+  Top-level statements, exports, enums and namespaces (R154), code already unused in the source and what they reach
+  stay.
 - **a split chunk** takes what its option's value reads, transitively. What the env module also keeps it imports from
   there when main does (`RouteModule.imported`, from the router planner: the route binding, `export const|let|var`)
   and copies otherwise, with the env statements reading or writing what it copies (main's
@@ -118,12 +120,21 @@ per-output read walk (`readIndex`):
   fixed point). Import specifiers are copied where read. Start's outputs in a
   route file (Hydrate chunks, the server-fn handler module) import what the env module keeps, and what several of them
   need is one module they import; a provider output copies what it reaches.
+- **code already unused**: an import nothing in the source references, a bare `import './polyfill'` included, moves
+  to the shared module when the env module imports it (statically, first), in source order with the shared module's
+  own imports: it runs at the same point, once, and a module a shared declaration reads still runs after a bare import
+  written before it; a CSS import keeps its cascade position, as in `main`'s shared module. Otherwise it stays in the
+  env module. Chunks and Start's derived outputs (Hydrate, the server-function handler module) load after the
+  env module has run (a handler module through the memoised loader of its defining module, D6/R66) and get none. Only
+  imports the source wrote (not a planner's generated `lazyRouteComponent`). A declaration nothing references stays in
+  the env module only: a copy would run its initialiser again (`main`'s chunks do). React's classic JSX runtime is not
+  supported with splitting: a chunk holding JSX has `React` only when its code reads it.
 - **one fallback, on the outcome**: a derived output that would assign a binding homed in another module of the file
   does not take the root bringing that code (`Placement.fallbacks`, `shared-writer`), and its planner keeps the root in
   place (the router planner's `assignsWhatItImports`, start-env's handler, Hydrate's `hydrate-module-write`).
 
 A chunk's copies are main's: state is one instance where main has one, and a statement runs again in a chunk only
-where main's chunk runs it again.
+where main's chunk runs it again (never a declaration already unused: better than main).
 
 ### Reachability = splitting = dead-code removal (`reach.ts`, `placement/`)
 
@@ -179,12 +190,13 @@ extends Z`, directly or through what they carry) share the module of the first i
   the binding through the route file, or the bundler's chunk assignment put a module the route's chunks import with
   the entry);
 - **dead code, by provenance**: a declaration or import specifier is removed only if _our_ edits orphaned it (its
-  readers disappeared because a planner removed or moved them). A top-level statement that is no declaration (`x.p =
+  readers, by value or in a type, disappeared because a planner removed or moved them, and nothing left reads it by
+  value: `readFromRemoved`). A top-level statement that is no declaration (`x.p =
 v`, `x.push(v)`, `x = v`) is never removed with what only erased code read: it stays a root of the env module with
   everything it names (`roots.ts`), as main kept it, since whether it changes only that binding has no syntactic
   answer (another name for another module's object, a setter, a call in the value). Code already unreferenced in the source keeps
-  running: an import nothing reads stays in the env module, so its module still evaluates there (a value import a
-  route module uses only in type positions leaves it: TypeScript erases it anyway). Type units stay in the env module
+  running: an import nothing reads stays in the env module, so its module still evaluates there (one removed code read
+  only in a type leaves it, as TypeScript's elision would: under `verbatimModuleSyntax` it would load the module). Type units stay in the env module
   as written whatever their cluster (`import type { X }` next to a value `X` that moves stays whole and type-only),
   never in a derived output; only the TypeScript-only specifiers (an inline `type` specifier, an `export { X }` of a
   type-only binding) follow their statement's value specifiers (`importStays`). Below the units, function-local

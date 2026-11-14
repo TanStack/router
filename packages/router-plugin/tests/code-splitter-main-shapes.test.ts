@@ -288,9 +288,10 @@ return [before, html, seen()]`),
   })
 
   // code already unused in the source stays (the R153 amendment): only what
-  // the split made unused leaves an output; the chunk holds its own copy too,
-  // which runs again when it loads (spec-main-splitting 1.8 #5)
-  it('keeps a declaration nothing reads, whose initialiser runs when the route module loads', async () => {
+  // the split made unused leaves an output. Better than `main`, whose chunks
+  // each hold a copy that runs again when it loads (spec-main-splitting 1.8
+  // #5): it stays in the route module only, which always loads first
+  it('keeps a declaration nothing reads in the route module only (better than `main`: runs once)', async () => {
     const route = await loadRoute(
       `${head}import { track } from './track'
 const unused = track('unused')
@@ -307,7 +308,43 @@ export const Route = createFileRoute('/')({
 const atLoad = [...seen()]
 await render('component')
 return [atLoad, seen()]`),
-    ).toEqual([['unused'], ['unused', 'unused']])
+    ).toEqual([['unused'], ['unused']])
+  })
+
+  it('runs a declaration nothing reads once when the route module and two chunks load (better than `main`: runs once)', async () => {
+    const route = await loadRoute(
+      `${head}import { register } from './register'
+const unused = register('x')
+function Unused() { return <p>{register('fn').name}</p> }
+export const Route = createFileRoute('/')({
+  component: () => <p>page</p>,
+  errorComponent: () => <p>error</p>,
+})
+`,
+      {
+        files: {
+          'register.ts': `const calls: Array<string> = []
+export function register(name: string) {
+  calls.push(name)
+  return { name }
+}
+export const seen = () => calls
+`,
+        },
+      },
+    )
+    await expectValidModules(route)
+    expect([
+      await route.isLazy('component'),
+      await route.isLazy('errorComponent'),
+    ]).toEqual([true, true])
+    expect(
+      await route.run(`const { seen } = await app('register.ts')
+const atLoad = [...seen()]
+const page = await render('component')
+const error = await render('errorComponent')
+return [atLoad, page, error, seen()]`),
+    ).toEqual([['x'], '<p>page</p>', '<p>error</p>', ['x']])
   })
 
   it('keeps an import specifier nothing reads: its module runs when the route module loads', async () => {
@@ -332,6 +369,78 @@ export function setup() {}
       await route.run(`const { seen } = await app('track.ts')
 return seen()`),
     ).toEqual(['polyfill'])
+  })
+
+  // a bare import is an import nothing references: the shared module has it
+  // too, in source order, so a module the shared module imports still runs
+  // after it (the route module imports the shared module first)
+  it('runs a bare import before the module a shared declaration reads, as written', async () => {
+    const route = await loadRoute(
+      `${head}import './polyfill'
+import { make } from './make'
+const cfg = make()
+function Page() {
+  return <p>{cfg.k}</p>
+}
+export const Route = createFileRoute('/')({
+  loader: () => cfg.k,
+  component: Page,
+})
+`,
+      {
+        files: {
+          'polyfill.ts': `;(globalThis as any).__poly = 'poly'\nexport {}\n`,
+          'make.ts': `const seen: string = (globalThis as any).__poly ?? 'none'
+export function make() {
+  return { k: seen }
+}
+`,
+        },
+      },
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(
+      await route.run(`return [options.loader(), await render('component')]`),
+    ).toEqual(['poly', '<p>poly</p>'])
+  })
+
+  // a chunk loads after the route module has run its imports: a bare import
+  // is not repeated there
+  it('runs a bare import with the route module, and does not repeat it in the chunk', async () => {
+    const route = await loadRoute(
+      `${head}import './polyfill'
+export const Route = createFileRoute('/')({
+  component: () => <p>{(globalThis as any).__poly}</p>,
+})
+`,
+      {
+        files: {
+          'polyfill.ts': `;(globalThis as any).__poly = 'poly'\nexport {}\n`,
+        },
+      },
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.run(`return render('component')`)).toBe('<p>poly</p>')
+    const { modules } = await route.modules()
+    expect(modules['lazy component']).not.toMatch(/polyfill/)
+  })
+
+  // only an import the source wrote can be already unused: the route
+  // module's generated `lazyRouteComponent` import stays out of the chunks
+  it('gives a split chunk none of the imports the route module is generated with', async () => {
+    const route = await loadRoute(
+      `${head}function Page() {
+  return <p>page</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+    )
+    await expectValidModules(route)
+    expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
+    const { modules } = await route.modules()
+    expect(modules['lazy component']).not.toMatch(/\blazyRouteComponent\b/)
   })
 
   it('runs top-level statements once, when the route module loads', async () => {

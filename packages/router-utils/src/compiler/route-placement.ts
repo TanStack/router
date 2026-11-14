@@ -5,10 +5,13 @@
  *
  * - The env module (the route file) only loses what the split made unused
  *   (`main`'s rule, the R153 amendment): a declaration or import specifier
- *   the source read from text the env module no longer holds (a claimed
- *   option value, erased text: `readFromRemoved`) leaves it, with its
- *   initialiser, when nothing that stays reads it. Statements, exports,
- *   enums and namespaces (R154) and code already unused stay.
+ *   the source used, by value or in a type, from text the env module no
+ *   longer holds (a claimed option value, erased text: `readFromRemoved`)
+ *   leaves it, with its initialiser, when nothing that stays reads it by
+ *   value. Statements, exports, enums and namespaces (R154) and code
+ *   already unused stay; an import already unused (a bare one included)
+ *   moves to the shared module when the env module imports it, a
+ *   declaration stays in the env module only.
  * - The names `main` shares (`RouteModule.shared`) and nothing else live in
  *   the shared module, as in `main`'s `?tsr-shared=1`: the env module and the
  *   chunks import them from it, and the env module re-exports the exported
@@ -152,6 +155,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
    * otherwise copies it.
    */
   const inShared = new Set<ClusterId>()
+  const envView = graph.viewOf('env')
   {
     const envRooted = new Set(
       outputs
@@ -207,7 +211,9 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
           )
         const assignedOutside = [...clusters[c]!.declares].some((s) =>
           (graph.writesOfSym.get(s) ?? []).some((w) => {
-            if (w.member || w.augment) {
+            // (code the env module erases, a server function's handler on
+            // the client, writes nothing in this environment)
+            if (w.member || w.augment || envView.isErasedAt(w.at)) {
               return false
             }
             const by =
@@ -320,46 +326,44 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   const copying = (o: OutputId) => outputs.get(o)?.kind === 'provider'
   /** A split chunk: it copies what the env module keeps but `main` would not import. */
   const isChunk = (o: OutputId) => outputs.get(o)?.kind === 'split'
-  /** The roots of a derived output: what its planners rooted there, and the generated units homed there. */
   /**
-   * Code already unused in the source, which the removal rule leaves in
-   * every output that starts from the file, as on `main`: a declaration or
-   * import specifier nothing references (an export is a use), so each chunk
-   * holds it too (an `import React` only JSX needs, `const unused =
-   * register('x')`, which then runs again there). Not one that assigns
-   * another binding of the file: the chunk could not.
+   * The imports already unused in the source: an import nothing in the
+   * source references, by value or in a type (an export is a use), a bare
+   * `import './polyfill'` or `import './a.css'` included. When the env
+   * module imports the shared module (statically, first), they move there,
+   * in source order with its own imports: they run at the same point, once,
+   * and a module a shared declaration reads still runs after a bare import
+   * written before it. Otherwise they stay in the env module. Chunks and
+   * Start's derived outputs load after the env module has run and get none.
+   * Only what the source wrote (not a planner's generated import, the route
+   * module's `lazyRouteComponent`). A declaration already unused stays in
+   * the route module only: nothing can read it, and a copy would run its
+   * effect again.
    */
-  const unusedInSource: Array<RootRef> = []
+  const unusedImports: Array<ClusterId> = []
   {
     const used = readFromRemoved(input, graph, reads, [
       { start: 0, end: input.code.length },
     ])
     for (const cl of clusters) {
       if (
-        cl.units.length === 0 ||
-        isType(cl.id) ||
-        used.has(cl.id) ||
-        !removable(cl.id) ||
-        fixedHome.has(cl.id) ||
-        cl.units.some((u) => units[u]!.exported.length > 0) ||
-        graph.writes.some(
-          (w) =>
-            w.owner !== null &&
-            graph.clusterOfRegion.get(w.owner) === cl.id &&
-            clusterOfSym.get(w.sym) !== cl.id,
-        )
+        cl.units.length > 0 &&
+        (cl.kind === 'import-effect' ||
+          (cl.kind === 'import' &&
+            !used.has(cl.id) &&
+            removable(cl.id) &&
+            !cl.units.some((u) => units[u]!.exported.length > 0)))
       ) {
-        continue
+        unusedImports.push(cl.id)
       }
-      unusedInSource.push({ t: 'sym', id: [...cl.declares][0]! })
     }
   }
+  /** The roots of a derived output: what its planners rooted there, and the generated units homed there. */
   const rootsOf = (o: OutputDecl): Array<RootRef> => [
     ...o.roots,
     ...gens
       .filter((g) => g.home === o.id)
       .map((g) => ({ t: 'gen' as const, id: g.id })),
-    ...(o.kind === 'split' ? unusedInSource : []),
   ]
   const SHARED = 'shared' as OutputId
   /** The shared declarations derived outputs read, and the outputs reading them. */
@@ -596,6 +600,11 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
           set.add(c)
         }
       }
+      if (o === shared?.id) {
+        for (const c of unusedImports) {
+          set.add(c)
+        }
+      }
     }
   }
   // what each output reads that it does not hold: imported from its home
@@ -747,6 +756,20 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
       }
       for (const s of syms) {
         exported.add(s)
+      }
+    }
+  }
+
+  // ---- imports already unused: in the shared module the env module imports --
+  // (moved: the env module imports the shared module first, so they run at
+  // the same point, once; otherwise they stay in the env module)
+  if (shared !== null) {
+    const linked =
+      imports.get('env')?.has(shared.id) === true || extracted.length > 0
+    for (const c of unusedImports) {
+      included.get(linked ? 'env' : shared.id)!.delete(c)
+      if (linked && home.has(c)) {
+        home.set(c, shared.id)
       }
     }
   }

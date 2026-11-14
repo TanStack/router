@@ -300,8 +300,8 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
   re-assignment, objects and arrays that hold a binding, closures and factory calls, default parameters, namespace
   members, top-level `await`. It never removes what kept code reads (also through `typeof`, JSX, a shorthand
   property or `export { a as b }`), never a top-level statement that is not a declaration (`x.p = v`, `x.push(v)`,
-  `x = v`: what it names is used by kept code), and never code that was already dead before the transform (a route
-  file's route module keeps only declarations what stays reaches: J2.0). It is per module: a
+  `x = v`: what it names is used by kept code), and never code that was already dead before the transform (a use in
+  a type is a use for this; route files: J2.0). It is per module: a
   neutral module whose export only removed code uses is the user's (J4.12). A leftover import of a server-only or
   unresolvable module on the client, or of a client-only module on the server, is not dead code that may dangle
   (G8): it never reaches the bundler, so no browser stub, externalization warning or polyfill stands in for it.
@@ -392,9 +392,13 @@ dir)` is not a conflict by itself.
   main's output builds and runs correctly, ours does too, with the same runtime behaviour (the same options split or
   more, one instance where main has one, top-level code run once where main runs it once); where main's output is
   broken (spec-main-splitting.md §1.8, §1.11, §1.12) any working behaviour is fine. Concretely: the route module
-  keeps its top-level statements, exports, enums and namespaces (R154), and the declarations and import specifiers
-  they reach; every other declaration leaves it with its initialiser, whether or not the source read it, and so do
-  the imports only it read (a never-read `const unused = register('x')` is deleted). A split chunk takes what its
+  loses only what the split made unused (the R153 amendment): a declaration or import specifier the source used, by
+  value or in a type, from text the module no longer holds leaves it with its initialiser when nothing that stays
+  reads it by value. Top-level statements, exports, enums and namespaces (R154), code already unused and what they
+  reach stay. An import nothing in the source references (a bare or CSS one included) moves to the shared
+  module when the route module imports it, in source order; chunks and Start's derived outputs load after the route
+  module and repeat none (React's classic JSX runtime is not supported with splitting). A declaration already unused (`const unused = register('x')`) stays in the route module only
+  and runs once, where main's chunks run it again (better than main, by decision). A split chunk takes what its
   option value reads: what the route module also keeps it imports from it where main imports it (`Route`, what
   `export const|let|var` declares) and copies otherwise, with the statements that read or write what it copies
   (main's second instance, §1.8), also what another chunk copies. The names main shares (two option groups read
