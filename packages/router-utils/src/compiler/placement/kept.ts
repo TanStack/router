@@ -129,14 +129,6 @@ export function keptDeclarations(
     return undefined
   }
   /**
-   * The clusters that stay in the env module whatever moves: the route
-   * options' declaration (holding the values the router calls later,
-   * `calledLater`) and generated code made from it (a generated unit
-   * claiming a region of it). Other generated code is made from the source
-   * it claims, and moves with it.
-   */
-  let fixed: Set<ClusterId> | undefined
-  /**
    * The move a `state`, `reads` or `written` report offers
    * (`Events.movedWith`): what moves with cluster `c` and `read`, named, or
    * what keeps it from moving. `named`: the statement a `written` report
@@ -147,38 +139,9 @@ export function keptDeclarations(
     read: SymbolId,
     named?: number,
   ): Pick<KeptDeclaration, 'moves' | 'stuck'> => {
-    if (fixed === undefined) {
-      const clusterAt = (range: { start: number; end: number }) => {
-        const u = t1.unitAt(range)
-        return u === null
-          ? undefined
-          : graph.clusterOfRegion.get(units[u]!.region)
-      }
-      fixed = new Set()
-      for (const range of input.calledLater) {
-        const x = clusterAt(range)
-        if (x !== undefined) {
-          fixed.add(x)
-        }
-      }
-      for (const claim of input.rewrites.claims.values()) {
-        const x = clusterAt(regions.get(claim.region).range)
-        const g = graph.clusterOfGen.get(claim.owner)
-        if (x !== undefined && fixed.has(x) && g !== undefined) {
-          fixed.add(g)
-        }
-      }
-    }
     const moved = events.movedWith(c, read)
     const source = (s: SymbolId) =>
       symbols.isModuleLevel(s) && symbols.kind(s) === 'source'
-    for (const d of moved.clusters) {
-      const cl = clusters[d]!
-      if (fixed.has(d)) {
-        const sym = [...cl.declares].find(source)
-        return { stuck: { ...(sym !== undefined && { sym }), at: cl.start } }
-      }
-    }
     const syms: Array<SymbolId> = []
     const statements: Array<number> = []
     const statement =

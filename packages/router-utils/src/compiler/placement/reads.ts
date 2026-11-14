@@ -70,16 +70,9 @@ export interface ReadIndex {
    * sees each reference with where it runs; `named`, each binding the
    * generated text of what runs names (edits, placeholders, inserts: a
    * server fn a planner moved out of a function body the evaluation
-   * calls), by the same rules; true ends the walk (the result). A call
-   * that holds what it is handed runs none of it (`ClusterGraph.holds`,
-   * R152) unless `everyCallRuns` (the extraction check).
+   * calls), by the same rules; true ends the walk (the result).
    */
-  runs: (
-    r: RegionId,
-    visit: RunVisitor,
-    named?: NameVisitor,
-    everyCallRuns?: boolean,
-  ) => boolean
+  runs: (r: RegionId, visit: RunVisitor, named?: NameVisitor) => boolean
 }
 
 /** A binding generated text names, and where that text stands. */
@@ -654,14 +647,8 @@ export function readIndex(
     return text
   }
   const bodyOf = (u: UnitId) => regionText(t1.units[u]!.region)
-  function runs(
-    id: RegionId,
-    visit: RunVisitor,
-    named?: NameVisitor,
-    everyCallRuns = false,
-  ): boolean {
+  function runs(id: RegionId, visit: RunVisitor, named?: NameVisitor): boolean {
     const calls = graph.callsOf(id)
-    const holds = everyCallRuns ? undefined : graph.holds
     // the generated names of a text the walk enters, filtered as its
     // references are (`visitValues`: eager only without a call, within a
     // write's expression)
@@ -677,7 +664,7 @@ export function readIndex(
                   (!t1.isLazyAt(g.at) && !t1.runsLaterAt(g.at))) &&
                 named(g, at),
             )
-    if (visitRuns(t1, regionText(id), calls, bodyOf, visit, entered, holds)) {
+    if (visitRuns(t1, regionText(id), calls, bodyOf, visit, entered)) {
       return true
     }
     if (named === undefined) {
@@ -688,7 +675,7 @@ export function readIndex(
     for (const g of generatedNames(id)) {
       if (
         (!t1.isLazyAt(g.at) ||
-          (calls !== null && runsWhenPassed(calls, g.at, holds))) &&
+          (calls !== null && runsWhenPassed(calls, g.at))) &&
         named(g, g.at)
       ) {
         return true

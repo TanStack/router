@@ -395,7 +395,6 @@ describe('claims, homes and substitution', () => {
     `)
     const e = engine(code)
     const { ctx } = e
-    ctx.setRouteModule()
     const value = rangeOf(code, '() => { useThing(); return <p>hi</p> }')
     const region = ctx.region(value, 'option-value')
     const hoisted = ctx.names.alloc('TsrComponent')
@@ -488,7 +487,6 @@ describe('claims, homes and substitution', () => {
     `)
     const e = engine(code)
     const { ctx } = e
-    ctx.setRouteModule()
     const value = rangeOf(code, 'serverOnly(() => <p>hi</p>)')
     const impl = rangeOf(code, '() => <p>hi</p>')
     const region = ctx.region(value, 'option-value')

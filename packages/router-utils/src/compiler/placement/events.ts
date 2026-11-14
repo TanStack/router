@@ -200,7 +200,6 @@ export function eventTable(
     r: RegionId,
     c: ClusterId,
     visit: (t: Touch) => boolean,
-    everyCallRuns = false,
   ): boolean => {
     const touch = (sym: SymbolId, at: number): boolean => {
       const d = clusterOfSym.get(sym)
@@ -217,17 +216,12 @@ export function eventTable(
         symbols.isModuleLevel(ref.sym) &&
         touch(ref.sym, at),
       (g, at) => symbols.isModuleLevel(g.sym) && touch(g.sym, at),
-      everyCallRuns,
     )
   }
-  /** What `c`'s evaluation touches; `everyCallRuns`: as if every call ran what it is handed (the extraction check, R152). */
-  function touches(
-    c: ClusterId,
-    visit: (t: Touch) => boolean,
-    everyCallRuns = false,
-  ): boolean {
+  /** What `c`'s evaluation touches. */
+  function touches(c: ClusterId, visit: (t: Touch) => boolean): boolean {
     for (const r of clusters[c]!.regions) {
-      if (touchesOfRegion(r, c, visit, everyCallRuns)) {
+      if (touchesOfRegion(r, c, visit)) {
         return true
       }
     }
@@ -518,23 +512,16 @@ export function eventTable(
     // (a binding of the source first: one a planner generated exists in
     // this build only, and is not reported when it is the only one)
     let found: SymbolId | undefined
-    // (every call runs what it is handed: an extracted export evaluates
-    // before the route module, and a call holding a function reading what
-    // that module keeps may run it then, R152)
-    touches(
-      c,
-      (t) => {
-        if (!clusters[t.cluster]!.copyable && kept(t.cluster)) {
-          if (symbols.kind(t.sym) === 'source') {
-            found = t.sym
-            return true
-          }
-          found ??= t.sym
+    touches(c, (t) => {
+      if (!clusters[t.cluster]!.copyable && kept(t.cluster)) {
+        if (symbols.kind(t.sym) === 'source') {
+          found = t.sym
+          return true
         }
-        return false
-      },
-      true,
-    )
+        found ??= t.sym
+      }
+      return false
+    })
     return found
   }
 

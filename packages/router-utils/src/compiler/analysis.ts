@@ -29,13 +29,7 @@ import { ownEntry } from './strings'
 import type { BuilderPurity, PurityContext } from './purity'
 import type { Header, Range } from './header'
 import type { SymbolId } from './symbols'
-import type {
-  EvaluatedCalls,
-  HoldsCall,
-  TopLevelItem,
-  Unit,
-  UnitId,
-} from './units'
+import type { EvaluatedCalls, TopLevelItem, Unit, UnitId } from './units'
 import type { Binding, Node, SourceFile } from 'yuku'
 import type { SourceText } from './output-builder'
 import type { RecognizerTable } from './values'
@@ -1671,11 +1665,7 @@ function declarationAssigns(file: SourceFile, id: Node): boolean {
  * Holding a function runs nothing (`const config = { read }`), nor does
  * writing one of its properties (`Page.displayName = …`, the root of a
  * member write), nor a method nested in an object argument
- * (`defineComponent({ setup() {} })`). A call that holds what it is handed
- * (`holds`, R152: its result is a route option's value, which the router
- * calls later) runs none of it: nothing in a function it is handed runs,
- * and a name it is handed, directly or inside an object or array argument
- * (`memo(Page)`, `define({ setup })`), is read as a value, not a body.
+ * (`defineComponent({ setup() {} })`).
  *
  * The object a binding names is its value: its declaration and those
  * statements (the mutation model's `visitValues`, which also walks the
@@ -1700,21 +1690,13 @@ export function visitRuns(
   visit: (ref: ClassifiedRef, at: number) => boolean,
   /** Sees each body or value text the walk enters (`MutationModel.visitValues`). */
   entered?: (u: UnitId, at: number, within: Range | undefined) => boolean,
-  /** The calls that hold what they are handed (R152); absent: every call may run it. */
-  holds?: HoldsCall,
 ): boolean {
   /** With a call: every reference but a member write's root (a body it names may run); without: those reading through their binding (only their values' eager references run). */
   const roots: Array<ClassifiedRef> = []
-  /** Names a call holds: what their values hold is read, no body they name runs. */
-  let held: Array<ClassifiedRef> | null = null
-  const heldNames =
-    calls === null || holds === undefined
-      ? null
-      : calls.names.filter((n) => holds(n.call))
   for (const ref of text) {
     if (
       !ref.eager &&
-      (calls === null || !runsWhenPassed(calls, ref.range.start, holds))
+      (calls === null || !runsWhenPassed(calls, ref.range.start))
     ) {
       continue
     }
@@ -1726,29 +1708,12 @@ export function visitRuns(
         roots.push(ref)
       }
     } else if (!ref.memberWrite) {
-      if (
-        heldNames !== null &&
-        heldNames.length > 0 &&
-        heldNames.some((h) => h.start === ref.range.start)
-      ) {
-        ;(held ??= []).push(ref)
-      } else {
-        roots.push(ref)
-      }
+      roots.push(ref)
     }
   }
   return (
-    (roots.length > 0 &&
-      t1.mutation.visitValues(
-        roots,
-        calls === null,
-        bodyOf,
-        visit,
-        null,
-        entered,
-      )) ||
-    (held !== null &&
-      t1.mutation.visitValues(held, true, bodyOf, visit, null, entered))
+    roots.length > 0 &&
+    t1.mutation.visitValues(roots, calls === null, bodyOf, visit, null, entered)
   )
 }
 

@@ -132,14 +132,6 @@ interface OutputSpec {
   describe?: string
 }
 
-/** How the core's diagnostics name a module (`describeModule`). */
-interface ModuleWords {
-  /** `route module` (default `module`). */
-  name: string
-  /** The prefix of the planner's own diagnostics, `[tanstack-router]`. */
-  tag: string
-}
-
 /** What planner `TName` sees in phase B. */
 export interface PlanContext<TName extends string = string> {
   readonly analysis: ModuleAnalysis
@@ -157,14 +149,6 @@ export interface PlanContext<TName extends string = string> {
   /** The core's fallback of a previous round on exactly `range` (of `kind`, when given). */
   fallbackAt: (range: Range, kind?: RegionKind) => FallbackRecord | undefined
   region: (range: Range, kind: Exclude<RegionKind, 'unit'>) => RegionId
-  /**
-   * The value at `range` (wrappers aside: the call itself in
-   * `component: memo(Page) as any`) is called later by the framework,
-   * never when the module loads: a route option's value, split or not. A
-   * call there, or through `const`s and the calls it is handed to, holds
-   * the functions it is handed instead of running them (R152).
-   */
-  calledLater: (range: Range) => void
   declareOutput: (spec: OutputSpec) => OutputId
   addRoot: (output: OutputId, root: RootRef) => void
   /**
@@ -175,11 +159,8 @@ export interface PlanContext<TName extends string = string> {
    * diagnostics say `Public`).
    */
   extractExport: (sym: SymbolId, exportName: string) => void
-  /** Keeps an exported binding in the env module whatever another planner offered (the route itself). */
-  keep: (sym: SymbolId) => void
+  /** The module is a route file: placed as route splitting on `main` places it (`route-placement.ts`). */
   setRouteModule: () => void
-  /** Names the module in the core's diagnostics (`the route module`, tagged like the planner's own). */
-  describeModule: (words: ModuleWords) => void
   liveness: (output: OutputId) => LivenessView
   /** The binding name a symbol renders as (after module-wide renames). */
   nameOf: (sym: SymbolId) => string
@@ -250,15 +231,11 @@ export class AnalysisPlan implements PlanContext {
   }> = []
   readonly facts: PlannerFactsByName = {}
   readonly extractions = new Map<SymbolId, OutputId>()
-  /** The values the framework calls later (`calledLater`). */
-  readonly laterValues: Array<Range> = []
-  private readonly keptSyms = new Set<SymbolId>()
   /** Whether the module has a value `export * from …` (`glueExportBase`). */
   private starExports: boolean | undefined
   /** `tagGlueExports` (`glueExportBase`). */
   private glueTag: string | null = null
   routeModule = false
-  moduleWords: ModuleWords | null = null
   placement: Placement | null = null
   /**
    * Renamed directly-exported declarations (`export const a = …`, exported
@@ -320,10 +297,6 @@ export class AnalysisPlan implements PlanContext {
     return this.regions.register(range, kind)
   }
 
-  calledLater(range: Range): void {
-    this.laterValues.push({ start: range.start, end: range.end })
-  }
-
   declareOutput(spec: OutputSpec): OutputId {
     const derivedId = deriveId(this.identity.canonicalId, spec.derived)
     const id: OutputId = `derived:${derivedId}`
@@ -355,7 +328,7 @@ export class AnalysisPlan implements PlanContext {
   }
 
   extractExport(sym: SymbolId, exportName: string): void {
-    if (this.extractions.has(sym) || this.keptSyms.has(sym)) {
+    if (this.extractions.has(sym)) {
       return
     }
     this.extractions.set(
@@ -368,17 +341,8 @@ export class AnalysisPlan implements PlanContext {
     )
   }
 
-  keep(sym: SymbolId): void {
-    this.keptSyms.add(sym)
-    this.extractions.delete(sym)
-  }
-
   setRouteModule(): void {
     this.routeModule = true
-  }
-
-  describeModule(words: ModuleWords): void {
-    this.moduleWords = words
   }
 
   liveness(output: OutputId): LivenessView {
@@ -539,7 +503,6 @@ export class AnalysisPlan implements PlanContext {
       routeModule: this.routeModule,
       extractions: this.extractions,
       extractedOutputs: this.env.mode === 'build',
-      calledLater: this.laterValues,
     })
     for (const created of placement.created) {
       this.outputs.set(created.id, created)

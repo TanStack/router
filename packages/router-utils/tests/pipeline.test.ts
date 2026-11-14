@@ -1532,7 +1532,6 @@ describe('planning rounds', () => {
         if (!found) {
           return
         }
-        ctx.setRouteModule()
         const component = propertyOf(found.options, 'component')!.value
         const body = (
           component as { body: { body: Array<{ start: number; end: number }> } }
