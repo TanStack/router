@@ -59,89 +59,8 @@ async function renderSplitComponent(
 }
 
 describe('the reference module only drops code that splitting left unused', () => {
-  // Each stub calls back what it is given, so a kept declaration that lost
-  // what it reads throws (an uncaught error of the page).
-  const callbackStubs = {
-    ...callsModule,
-    'store.ts': `import { calls } from './calls'
-export const store = {
-  state: { done: true },
-  subscribe: (listener: () => void) => {
-    calls.push('subscribe')
-    queueMicrotask(listener)
-    return () => {}
-  },
-}
-`,
-    'persist.ts': `import { calls } from './calls'
-export const createPersister = ({ onRestore }: { onRestore: () => void }) => {
-  calls.push('createPersister')
-  queueMicrotask(onRestore)
-  return { restore: () => calls.push('restore') }
-}
-`,
-    'registry.ts': `import { calls } from './calls'
-export const register = (read: () => unknown) => {
-  calls.push('register')
-  queueMicrotask(read)
-  return read
-}
-`,
-  }
-
-  describe.each(hmrModes)('with hmr: $hmr', ({ hmr }) => {
-    it.each([
-      {
-        name: 'a store subscription that unsubscribes itself',
-        setup: `import { store } from './store'
-const unsubscribe = store.subscribe(() => {
-  if (store.state.done) unsubscribe()
-})`,
-        calls: ['subscribe'],
-      },
-      {
-        name: 'mutually-referencing declarations',
-        setup: `import { createPersister } from './persist'
-const persister = createPersister({ onRestore: () => restore() })
-function restore() {
-  persister.restore()
-}`,
-        calls: ['createPersister', 'restore'],
-      },
-      {
-        // A reference cycle longer than two declarations: d closes it
-        name: 'a reference cycle of four declarations',
-        setup: `import { register } from './registry'
-const a = register(() => b)
-const b = register(() => c)
-const c = register(() => d)
-const d = register(() => a)`,
-        calls: ['register', 'register', 'register', 'register'],
-      },
-    ])(
-      'keeps $name that nothing used before splitting',
-      async ({ setup, calls: expected }) => {
-        const route = await loadRoute(
-          `${head}${setup}
-export const Route = createFileRoute('/')({ component: () => <div /> })
-`,
-          { hmr, files: callbackStubs },
-        )
-        const run =
-          await route.runPage(`await new Promise((resolve) => setTimeout(resolve))
-return { calls: [...(await app('calls.ts')).calls], html: await render('component') }`)
-        expect(run.result).toEqual({ calls: expected, html: '<div></div>' })
-        expect(uncaughtErrors(run)).toEqual([])
-        await expectValidModules(route)
-      },
-    )
-  })
-
-  // An import the route file never reads was dead before splitting: its
-  // module still runs when the route module loads, as it does without the
-  // plugin (the app's tsconfig sets `verbatimModuleSyntax`, so TypeScript
-  // keeps the import too). An import only the split component reads is the
-  // component's: it loads with the component.
+  // An import only the split component reads is the component's: it loads
+  // with the component.
   describe.each(hmrModes)('imports, with hmr: $hmr', ({ hmr }) => {
     const sideModule = {
       ...callsModule,
@@ -162,33 +81,6 @@ return { loaded, html: await render('component'), calls: [...(await app('calls.t
       return run.result
     }
 
-    it.each([
-      { name: 'a named import', imports: `import { Named } from './side'` },
-      { name: 'a default import', imports: `import Side from './side'` },
-      { name: 'a namespace import', imports: `import * as side from './side'` },
-    ])(
-      'runs the module of $name nothing reads when the route module loads',
-      async ({ imports }) => {
-        expect(
-          await loadThenRender(`${head}${imports}
-export const Route = createFileRoute('/')({ component: () => <p>page</p> })
-`),
-        ).toEqual({ loaded: ['side'], html: '<p>page</p>', calls: ['side'] })
-      },
-    )
-
-    it('runs the module of an import statement whose other specifier only the split component reads when the route module loads', async () => {
-      expect(
-        await loadThenRender(`${head}import Side, { Named } from './side'
-export const Route = createFileRoute('/')({ component: () => <p><Side /></p> })
-`),
-      ).toEqual({
-        loaded: ['side'],
-        html: '<p><b>side</b></p>',
-        calls: ['side'],
-      })
-    })
-
     it('runs the module of an import only the split component reads when the component loads', async () => {
       expect(
         await loadThenRender(`${head}import Side from './side'
@@ -196,69 +88,6 @@ export const Route = createFileRoute('/')({ component: () => <p><Side /></p> })
 `),
       ).toEqual({ loaded: [], html: '<p><b>side</b></p>', calls: ['side'] })
     })
-  })
-
-  // A declaration that only an unused local inside it, or an uncalled
-  // function, reads is still live code: its initializer runs when the route
-  // module loads. Source: #8504 (regressions of the Yuku migration); inputs
-  // adapted from @babel/plugin-proposal-decorators
-  // 2023-11-misc/destructuring-transform-integration and TypeScript's
-  // conformance test classes/propertyMemberDeclarations/autoAccessor10.ts.
-  describe.each(hmrModes)('with hmr: $hmr', ({ hmr }) => {
-    it.each([
-      {
-        name: 'declarations only an unused local inside them reads',
-        setup: `const plugin = {
-  id: register('plugin'),
-  describe() {
-    const self = plugin
-    return 'plugin'
-  },
-}
-class Widget {
-  static {
-    register('widget')
-  }
-  render() {
-    const type = Widget
-    return 'widget'
-  }
-}`,
-        registered: ['plugin', 'widget'],
-      },
-      {
-        name: 'a declaration only an uncalled function reads, the function reading itself through a local',
-        setup: `const effect = register('effect')
-function helper() {
-  const self = helper
-  return effect
-}`,
-        registered: ['effect'],
-      },
-    ])(
-      'runs the initializers of $name when the route module loads',
-      async ({ setup, registered }) => {
-        const route = await loadRoute(
-          `${head}import { register } from './register'
-${setup}
-export const Route = createFileRoute('/')({ component: () => <div /> })
-`,
-          {
-            hmr,
-            files: {
-              ...callsModule,
-              'register.ts': `import { calls } from './calls'
-export const register = (name: string) => calls.push(name)
-`,
-            },
-          },
-        )
-        expect(
-          await route.run(`const loaded = [...(await app('calls.ts')).calls]
-return [loaded, await render('component')]`),
-        ).toEqual([registered, '<div></div>'])
-      },
-    )
   })
 
   // Source: babel-dead-code-elimination dead-code-elimination.test.ts "only
@@ -352,9 +181,6 @@ export const Route = createFileRoute('/')({
     expect((await route.production()).locate('MARK_APPLES').eager).toEqual([])
   })
 
-  // That `track` runs once too is pinned in known-bugs-code-splitter.test.ts
-  // ("an unreferenced top-level side effect (an unused subscription) runs
-  // once"): split chunks still copy it.
   it('creates a store the split component shares once, next to a side effect nothing reads', async () => {
     const route = await loadRoute(
       `${head}import { createStore, track } from './store'
@@ -383,10 +209,8 @@ export const track = (listener: () => void) => {
     await expectValidModules(route)
     expect(
       await route.run(`const { counts } = await app('store.ts')
-// The side effect runs when the route module loads.
-const tracked = counts.tracked
-return [tracked, options.beforeLoad(), await render('component'), counts.created]`),
-    ).toEqual([1, 1, '<p>1</p>', 1])
+return [options.beforeLoad(), await render('component'), counts.created]`),
+    ).toEqual([1, '<p>1</p>', 1])
   })
 
   // Source: React Router route-chunks-test.ts "shared imports across chunks but
@@ -463,7 +287,6 @@ return [loaded, await render('component'), [...calls]]`),
   // TypeScript erases type positions, so a declaration whose binding only
   // appears in a type is still live code that runs when the route loads.
   it.each([
-    { name: 'the reference module', options: {} },
     {
       name: 'a route module compiled for HMR',
       // The composed plugin without code splitting: its route HMR plugin

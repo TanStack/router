@@ -300,7 +300,8 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
   re-assignment, objects and arrays that hold a binding, closures and factory calls, default parameters, namespace
   members, top-level `await`. It never removes what kept code reads (also through `typeof`, JSX, a shorthand
   property or `export { a as b }`), never a top-level statement that is not a declaration (`x.p = v`, `x.push(v)`,
-  `x = v`: what it names is used by kept code), and never code that was already dead before the transform. It is per module: a
+  `x = v`: what it names is used by kept code), and never code that was already dead before the transform (a route
+  file's route module keeps only declarations what stays reaches: J2.0). It is per module: a
   neutral module whose export only removed code uses is the user's (J4.12). A leftover import of a server-only or
   unresolvable module on the client, or of a client-only module on the server, is not dead code that may dangle
   (G8): it never reaches the bundler, so no browser stub, externalization warning or polyfill stands in for it.
@@ -391,14 +392,16 @@ dir)` is not a conflict by itself.
   main's output builds and runs correctly, ours does too, with the same runtime behaviour (the same options split or
   more, one instance where main has one, top-level code run once where main runs it once); where main's output is
   broken (spec-main-splitting.md §1.8, §1.11, §1.12) any working behaviour is fine. Concretely: the route module
-  keeps everything but what the split left unread (an import specifier, a declarator, a function or a class
-  declaration the source read and nothing kept reads or writes any more leaves, with its initialiser); top-level
-  statements, enums, namespaces, exports, imports and unread declarations with an effect stay and run once there.
-  A split chunk takes what its option value reads: what the route module keeps it imports from it (`Route`, an
-  `export const`, state a statement writes), what only it needs moves into it, and what several chunks need is one
-  lazy shared module per file (`?tsr-split=shared---<keys>`). Option values main cannot compile into a chunk stay in
-  the route module, silently (`unsplittableOnMain`); so does one whose chunk would assign a binding it imports
-  (`assignsWhatItImports`). Improvements over main wait until after #8817.
+  keeps its top-level statements, exports, enums and namespaces (R154), and the declarations and import specifiers
+  they reach; every other declaration leaves it with its initialiser, whether or not the source read it, and so do
+  the imports only it read (a never-read `const unused = register('x')` is deleted). A split chunk takes what its
+  option value reads: what the route module also keeps it imports from it where main imports it (`Route`, what
+  `export const|let|var` declares, a name main shares) and copies otherwise, with the statements that read or write
+  what it copies (main's second instance, §1.8); what only it needs moves into it, and what several chunks need is
+  one lazy shared module per file (`?tsr-split=shared---<keys>`), which re-exports through the route module an
+  exported name main shares. Option values main cannot compile into a chunk stay in the route module, silently
+  (`splitOnMain`, main's `compileCodeSplitVirtualRoute` cases); so does one whose chunk would assign a binding it
+  imports (`assignsWhatItImports`: a shared `let`, an `export let`). Improvements over main wait until after #8817.
 - **J2.1 Which modules.** Only file route modules, and in them only the `createFileRoute` / `createRootRoute` /
   `createRootRouteWithContext` call bound to `Route`. `createLazyFileRoute` modules are not split further (they are
   already lazy); non-route modules and code-based routes are returned unchanged. Vite, Rsbuild/Rspack, webpack;
@@ -414,10 +417,11 @@ dir)` is not a conflict by itself.
   route (when its file's top-level code runs: G3); everything not configured for splitting (path parsing, search validation, `beforeLoad`, context, `head`,
   `scripts`, `staticData`, `ssr`, `server`, `headers`, …) stays eager in the route module.
 - **J2.4 One instance.** Shared identity, state and once-only effects hold across the route, its importers and its
-  chunks wherever main keeps one instance (J2.0): `Route`, module state, and every exported binding (an export stays
-  in the route module; a chunk reading it imports it, so importers and the route get the same object). A value two
-  chunks read is one instance in the shared module; one a staying option and a chunk read stays in the route module,
-  imported by the chunk. Prove identity through real consumers and effects, not declaration counts.
+  chunks wherever main keeps one instance (J2.0): `Route`, what `export const|let|var` declares (a chunk reading it
+  imports it from the route module), and a value two options read (two split groups, or a staying option and a
+  split one: one instance, in the shared module or in the route module the chunk imports it from). Where main
+  copies (another export form, a value only route-file code outside the options also reads, a class, an enum: §1.8),
+  a chunk holds its own copy. Prove identity through real consumers and effects, not declaration counts.
 - **J2.5 Each chunk holds only what it needs.** The split option's code (and bindings only it uses) is absent from
   the route module; a declaration the source never read that runs nothing (`function Unused() { return <Page /> }`)
   is dropped and keeps nothing there. An import used only for types is dropped, so its module never loads in the client for that

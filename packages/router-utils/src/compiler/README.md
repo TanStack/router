@@ -103,20 +103,23 @@ A plan a planner marks as a route file (`PlanContext.setRouteModule`, the router
 the engine below. One cluster per unit (`buildClusters(input, true)`: no writer joins its binding) and the engine's
 per-output read walk (`readIndex`):
 
-- **the env module** keeps everything but what the planners' edits left unread: an import specifier, a declarator, a
-  function or a class declaration the source read (provenance; an import read only in type positions counts) that
-  nothing kept reads or writes any more goes, with its initialiser. Statements, enums, namespaces, exports, imports
-  and unread declarations with an effect stay; an unread declaration without one (`function Unused() { … }`) goes.
-- **every derived output** takes what its roots read, transitively: what the env module keeps is imported from it,
-  what one output alone needs moves there, what several need is one lazy shared module per file
-  (`?tsr-split=shared---<keys>`); import specifiers are copied where read; a provider output copies what it reaches.
-  Start's outputs in a route file (Hydrate chunks, the server-fn handler module) follow the same rule.
+- **the env module** keeps its top-level statements, exports, enums and namespaces (R154) and the declarations and
+  import specifiers they reach, transitively; every other import specifier, declarator, function or class declaration
+  goes with its initialiser, read in the source or not.
+- **a split chunk** takes what its option's value reads, transitively. What the env module also keeps it imports from
+  there when main does (`RouteModule.imported`, from the router planner: the route binding, `export const|let|var`,
+  the names main shares) and copies otherwise, with the env statements reading or writing what it copies (main's
+  second instance, spec-main-splitting.md §1.8); a binding a statement declares (`if (…) { var x }`) is imported.
+  What one chunk alone needs moves there, what several need is one lazy shared module per file
+  (`?tsr-split=shared---<keys>`), which an exported name main shares also moves to (the env module re-exports it).
+  Import specifiers are copied where read. Start's outputs in a route file (Hydrate chunks, the server-fn handler
+  module) import what the env module keeps; a provider output copies what it reaches.
 - **one fallback, on the outcome**: a derived output that would assign a binding homed in another module of the file
   does not take the root bringing that code (`Placement.fallbacks`, `shared-writer`), and its planner keeps the root in
   place (the router planner's `assignsWhatItImports`, start-env's handler, Hydrate's `hydrate-module-write`).
 
-Every non-import declaration has one home and every statement runs once in the env module: never worse than main,
-which copies state and statements into chunks (spec-main-splitting.md §1.8).
+A chunk's copies are main's: state is one instance where main has one, and a statement runs again in a chunk only
+where main's chunk runs it again.
 
 ### Reachability = splitting = dead-code removal (`reach.ts`, `placement/`)
 

@@ -146,28 +146,6 @@ export const Route = createFileRoute('/')({
       await route.run(`return [options.loader(), await render('component')]`),
     ).toEqual([[0], '<p>1</p>'])
   })
-
-  // TypeScript erases type positions, so a declaration the split component
-  // only reads in a type is created once, by the route module. (Next to a
-  // type alias that reads it: pinned in known-bugs-code-splitter.test.ts.)
-  // Source: #8504 (real apps: forms that cast `as z.infer<typeof schema>`
-  // in the split component).
-  it('creates a declaration the split component only reads in a type once', async () => {
-    const route = await loadRoute(
-      `${head}import { init } from './state'
-const value = init(1)
-export const Route = createFileRoute('/')({
-  component: () => <p>{typeof ({} as typeof value)}</p>,
-})`,
-      { files: { 'state.ts': countingInit } },
-    )
-    await expectValidModules(route)
-    expect(
-      await route.run(
-        `return [await render('component'), (await app('state.ts')).calls]`,
-      ),
-    ).toEqual(['<p>object</p>', 1])
-  })
 })
 
 // Exported destructurings whose bindings split options read: each
@@ -516,10 +494,9 @@ export const Route = createFileRoute('/')({
   })
 
   // The exported classes are read by the split component alone (the loader
-  // reads only the local one), so they are what the splitter may move for
-  // the component: a class has an identity, it exists once, and the
-  // component, the loader and an importer of the route file all get it.
-  it('keeps exported classes next to it importable, with one identity', async () => {
+  // reads only the local one): the chunk copies them, as on `main`
+  // (spec-main-splitting 1.6), and the route file keeps exporting them.
+  it('keeps exported classes next to it importable', async () => {
     const route = await loadRoute(
       `${head}import { see } from './see'
 export class AppError extends Error {}
@@ -553,16 +530,12 @@ const html = await render('component')
 const { seen } = await app('see.ts')
 return {
   html,
-  sameInComponent: seen.length === 2 && seen[0] === imported.AppError,
-  cacheInstance: seen[1] instanceof imported.Cache,
   cached: seen[1].value,
   local: loaded.local,
   cache: new imported.Cache().value,
 }`),
     ).toEqual({
       html: '<p>component</p>',
-      sameInComponent: true,
-      cacheInstance: true,
       cached: 'cached',
       local: 'local',
       cache: 'cached',
@@ -1149,27 +1122,6 @@ function Page() {
       loaded: ['MARK_shared'],
       rendered: ['MARK_shared', 'MARK_first', 'MARK_third'],
       html: ['<p>MARK_firstMARK_sharedMARK_third</p>'],
-      eagerHolds: [],
-    })
-  })
-
-  // (no order rule; the row kept the first)
-  it('moves one before a later declarator of its statement that stays', async () => {
-    expect(
-      await observe(
-        `export const Route = createFileRoute('/')({ component: Page })
-const first = recordFirst('MARK_first'), middle = recordMiddle('MARK_middle')
-function Page() {
-  return <p>{first}</p>
-}
-`,
-        ['component'],
-        ['first'],
-      ),
-    ).toEqual({
-      loaded: ['MARK_middle'],
-      rendered: ['MARK_middle', 'MARK_first'],
-      html: ['<p>MARK_first</p>'],
       eagerHolds: [],
     })
   })

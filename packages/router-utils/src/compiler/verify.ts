@@ -217,7 +217,17 @@ export function verifyPlan(
       cluster === undefined ? undefined : placement?.home.get(cluster)
     const copy = home === undefined ? undefined : outputs.get(home as OutputId)
     const inCopy = copy !== undefined && copies(copy.recipe.kind)
-    const expected = home === 'removed' || inCopy ? 0 : 1
+    // (a route file's split chunk copying a statement holds it too, as on `main`)
+    const chunkCopies =
+      cluster === undefined
+        ? 0
+        : [...outputs].filter(
+            ([o, { recipe }]) =>
+              o !== home &&
+              !copies(recipe.kind) &&
+              placement!.included.get(o)?.has(cluster) === true,
+          ).length
+    const expected = home === 'removed' || inCopy ? 0 : 1 + chunkCopies
     const holds = (recipe: OutputRecipe) =>
       recipe.segments.some((s) =>
         s.k === 'slice'

@@ -350,9 +350,6 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
   split chunk holds only what its option needs, not the other exports of the route file"; "split chunks do not
   re-export or declare the re-exports and default class of the route file". Fix: a chunk carries only what its group
   needs.
-- **Bindings that read `Route` are never shared**, so chunks copy them (a function reading `Route` is a function
-  closure: copied by rule). SPEC J2.4. `pages/known-bugs-code-splitter-bindings.test.ts`: "a destructuring whose
-  sibling reads Route keeps one cache for the loader and the component".
 - **A split component reading `Route` declared with `const` and exported later (`export { Route }`) recreates the
   route.** SPEC J2.4. `pages/known-bugs-code-splitter-bindings.test.ts`: "a split component reads the route the route
   module exports through export { Route }".
@@ -437,19 +434,16 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
   the environment in a shared declaration, with verbatimModuleSyntax"; `pages/known-bugs-code-splitter.test.ts`: "an
   ambient declare const read by the loader and the split component stays a global";
   `pages/known-bugs-code-splitter-bindings.test.ts`: "a component read from $name renders".
-- **The shared-binding analysis misses readers** (method options, computed keys, nested `var`s, enums, namespaces,
-  class static initialisers), so state is created twice. SPEC J2.4, G3.
-  `pages/code-splitter-module-state-bindings.test.ts`: "$name"; `pages/known-bugs-code-splitter-bindings.test.ts`:
-  "module state a method option shares with a split option is created once"; `pages/known-bugs-code-splitter.test.ts`:
-  "a binding read by a computed-key option and a split option is created once"; "a binding declared by $name and read
-  by the loader and the split component is initialized once"; "module state that the reference module keeps for $name
-  is initialized once".
+- **The shared-binding analysis misses readers** (nested `var`s, enums, namespaces, another name of a destructuring,
+  a JSX member tag), so state is created twice. SPEC J2.4, G3. `pages/known-bugs-code-splitter.test.ts`: "a binding
+  declared by $name and read by the loader and the split component is initialized once"; "module state that the
+  reference module keeps for $name is initialized once".
 - **Chunks keep unreferenced top-level statements** (side effects run twice; `export *` repeated). SPEC G3, J2.5.
   `pages/known-bugs-code-splitter.test.ts`: "an unreferenced top-level side effect ($name) runs once, with the route
   module"; "split chunks do not re-export a module-level export \*, which importers of the route file still get".
 - **A declaration only an exported type alias reads loses its initializer.** SPEC G3.
-  `pages/known-bugs-code-splitter.test.ts`: "the initializers of $name run when the route module loads"; "the
-  initializer of a declaration only an exported type alias reads runs when a route module compiled for HMR loads".
+  `pages/known-bugs-code-splitter.test.ts`: "the initializer of a declaration only an exported type alias reads runs
+  when a route module compiled for HMR loads".
 - **Code only the split component needs stays when something looks like a read** (a type of the same name, an
   overload signature, a second `var`, an unused renderer). SPEC J2.5. `pages/known-bugs-code-splitter.test.ts`: "a split
   component and its imports leave the route module next to $name".

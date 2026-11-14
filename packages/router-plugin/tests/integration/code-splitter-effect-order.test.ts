@@ -113,29 +113,6 @@ async function mounted(bundler: 'vite' | 'rspack', route: string) {
 }
 
 describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
-  // round tools, placement-exec seeds 1112264, 1612539 (toy planner),
-  // 1300879, 1600380 (router planner): the write follows the object into
-  // its export's module, which the other export's module imports, so it
-  // ran before the read
-  test(
-    'a read of an exported object before a later write keeps the value the source reads when another export reads it',
-    async () => {
-      const r = await mounted(
-        bundler,
-        `${head}export const o0: { v: number; p?: number } = { v: 1 }
-const r2 = o0.p
-o0.p = 6
-export const r13 = [r2]
-export const Route = createFileRoute('/')({
-  component: () => <p>{String(r2)} {String(r13[0])}</p>,
-})
-`,
-      )
-      expect(r.text).toBe('undefined undefined')
-    },
-    timeout,
-  )
-
   // round tools, fuzz seeds 6104927, 6407720, 6510105, 6518119 (Start,
   // React, line-minimised; the free names are globals), toy seed 1409092: a
   // statement using an export and a `let` the component's code reads

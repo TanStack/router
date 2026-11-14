@@ -267,37 +267,6 @@ return [typeof entry.Home, entry.Other().props.children]`)
     },
     timeout,
   )
-
-  // A `let` the exported function writes: importers see its live value.
-  it(
-    'a `let` and the function writing it exported in a list: importers read the live binding',
-    async () => {
-      const app = await buildRoute(
-        `${head}let count = 0
-function bump() {
-  count++
-  return <p>MARK_COUNT</p>
-}
-export { count, bump }
-export const Route = createFileRoute('/')({ component: () => bump() })
-`,
-        `${clientMountEntry}export { count, bump } from './routes/index'
-import * as route from './routes/index'
-export const read = () => route.count
-`,
-      )
-      const run =
-        await app.run(`await entry.mount(entry.Route.options.component)
-const afterMount = entry.read()
-entry.bump()
-return [afterMount, entry.read()]`)
-      expect({ html: run.html, counts: run.result }).toEqual({
-        html: '<div id="root"><p>MARK_COUNT</p></div>',
-        counts: [1, 2],
-      })
-    },
-    timeout,
-  )
 })
 
 describe('a route file re-exporting a module with `export *`, next to a split component', () => {

@@ -852,7 +852,7 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     declareOutput: (spec) => plan.declareOutput(spec),
     addRoot: (output, root) => plan.addRoot(output, root),
     extractExport: (sym, exportName) => plan.extractExport(sym, exportName),
-    setRouteModule: () => plan.setRouteModule(),
+    setRouteModule: (route) => plan.setRouteModule(route),
     liveness: (output) => plan.liveness(output),
     nameOf: (sym) => plan.nameOf(sym),
     glueExportName: (sym) => plan.glueExportName(sym),

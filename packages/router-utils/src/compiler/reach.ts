@@ -85,7 +85,8 @@ export interface PlacementInput {
   canonicalId: string
   /** The module's text, for the invariants' messages (`self-checks.ts`). */
   code: string
-  routeModule: boolean
+  /** A route file (`PlanContext.setRouteModule`): placed by `route-placement.ts`. */
+  routeModule: RouteModule | null
   /** Exported symbols a planner allows into an extracted-export output. */
   extractions?: ReadonlyMap<SymbolId, OutputId>
   /**
@@ -174,6 +175,14 @@ export interface ExtractedExport {
   output: OutputId
   /** The exported symbols of the cluster (the env module re-exports them from `output`). */
   syms: Array<SymbolId>
+}
+
+/** A route file's placement input (`PlanContext.setRouteModule`). */
+export interface RouteModule {
+  /** The module bindings a split chunk imports from the route module when it reads them (it copies the others). */
+  imported: ReadonlySet<SymbolId>
+  /** The names `main` shares (`computeSharedBindings`): an exported one only chunks read moves to the shared module, which the route module re-exports it from. */
+  shared: ReadonlySet<SymbolId>
 }
 
 export interface Placement {

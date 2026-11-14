@@ -1,18 +1,14 @@
 /**
  * Module state and identity behind exported bindings a split chunk copies
- * or imports (SPEC J2.4 "One instance": a chunk copies an exported binding
- * only when the copy is a closure of functions and primitive constants
- * nothing writes; a class, an object, a call result, a regex, a written
- * binding, state, effects and augmented bindings exist once). Real
- * production builds, output executed: the split options of one route, an
- * importer of the route file, or both, drive the exported bindings and the
- * test observes what their shared state does (a subscriber fires, a
- * counter counts, `instanceof` holds, a Provider's value reaches a
- * consumer, a sentinel compares equal). Dev folds the extraction of
- * exports back into the route module, so only a build shows where an
- * extracted module and a chunk would each get their own copy of what a
- * copied export reads: the dev twin (`pages/`) runs the same routes.
- * Source: external review 2 of the compiler rewrite, findings 1–3.
+ * or imports (as on `main`, spec-main-splitting 1.6: a chunk imports what
+ * `export const|let|var` declares and copies the other exported
+ * declarations it reads). Real production builds, output executed: the
+ * split options of one route, an importer of the route file, or both,
+ * drive the exported bindings and the test observes what their shared
+ * state does (a subscriber fires, a counter counts, `instanceof` holds, a
+ * Provider's value reaches a consumer, a sentinel compares equal). The dev
+ * twin (`pages/`) runs the same routes.
+ * Source: external review 2 of the compiler rewrite, findings 1–2.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -110,10 +106,10 @@ try {
 }`
 
 // ---- private mutable state behind exported functions the chunk imports ----------
-// `listeners` is written only through member calls, so it never joins the
-// functions' cluster; it is in their reach, so neither function is copied
-// and the one array lives in the route module: each chunk and each
-// importer of the route file subscribes to and emits on the same list.
+// The component and the error component read the functions and `listeners`:
+// names two split options read are shared (as on `main`), so the one array
+// lives in the route module and each chunk and each importer of the route
+// file subscribes to and emits on the same list.
 const moduleState: Array<Case> = [
   {
     name: 'two split options share the private state their exported accessors close over',
@@ -153,32 +149,12 @@ const sentinelUses: Array<[string, string]> = [
 ]
 
 // ---- identity of exported classes, contexts and objects the chunk imports -----
-// A class, an annotated call and a literal have an identity: the chunk
-// imports them from the extracted module, which also serves importers of
+// A class, an annotated call and a literal have an identity: where `main`
+// imports them (an `export const`, a name two split options read), the
+// chunk imports them from the route module, which also serves importers of
 // the route file, so `instanceof`, a Provider's value and a sentinel hold
-// across the route's chunks and its importers. A function returning the
-// sentinel reaches it and is not copied either.
+// across the route's chunks and its importers.
 const identity: Array<Case> = [
-  {
-    // the extracted module evaluates before the route module's body: called
-    // through an alias, the function reads what the route module keeps
-    name: 'an export evaluated through an alias of a function reads the route module once it is initialised',
-    route: `const theme = { dark: true }
-function read() {
-  return theme
-}
-const alias = read
-export const config = /* @__PURE__ */ alias()
-function Page() {
-  return <p>{String(config === theme)}</p>
-}
-export const Route = createFileRoute('/')({ component: Page })
-`,
-    reexports: 'config',
-    script: `const html = ${renderComponent}
-return [html, entry.config.dark]`,
-    expected: ['<p>true</p>', true],
-  },
   {
     name: 'a thrown exported class is recognised by instanceof in the errorComponent chunk',
     route: thrownClass,
@@ -354,122 +330,6 @@ return [html, entry.registry.size]`,
   },
 ]
 
-// ---- finding 3: forms of mutation --------------------------------------------
-/**
- * A route whose split component mutates module state through an exported
- * `bump()` written as `mutation`; an importer reads it through the
- * exported `read()`. One state: the importer reads what the chunk wrote.
- */
-const mutated = (
-  name: string,
-  decl: string,
-  mutation: string,
-  read: string,
-): Case => ({
-  name: `the importer reads what the split component wrote through ${name}`,
-  route: `${decl}
-export function bump() {
-  ${mutation}
-}
-export function read() {
-  return ${read}
-}
-function Page() {
-  bump()
-  return <p>{read()}</p>
-}
-export const Route = createFileRoute('/')({ component: Page })
-`,
-  reexports: 'read',
-  script: `const html = ${renderComponent}
-return [html, entry.read()]`,
-  expected: ['<p>1</p>', 1],
-})
-
-// The mutation model is syntactic (`this.n++` in a method, an alias, a
-// call, `Reflect.set` are no writes of the binding), and it need not be
-// complete here: the state is an object, an array, a class or a Map in
-// every form, so the function reaching it is not copied and the state
-// exists once, whatever form the write takes.
-const obj = `const state = { n: 0 }`
-const arr = `const x: Array<number> = []`
-const mutations: Array<Case> = [
-  mutated(
-    'a method writing this',
-    `export const counter = { n: 0, inc() { this.n++ } }`,
-    `counter.inc()`,
-    `counter.n`,
-  ),
-  mutated(
-    'a static method writing this',
-    `export class S {
-  static n = 0
-  static inc() {
-    this.n++
-  }
-}`,
-    `S.inc()`,
-    `S.n`,
-  ),
-  mutated('an alias', obj, `const s = state\n  s.n++`, `state.n`),
-  mutated(
-    'a function it is passed to',
-    `${obj}
-function mutate(o: { n: number }) {
-  o.n++
-}`,
-    `mutate(state)`,
-    `state.n`,
-  ),
-  mutated(
-    'Reflect.set',
-    obj,
-    `Reflect.set(state, 'n', state.n + 1)`,
-    `state.n`,
-  ),
-  mutated('push.apply', arr, `x.push.apply(x, [1])`, `x.length`),
-  mutated(
-    'a nested member',
-    `const state = { list: [] as Array<number> }`,
-    `state.list.push(1)`,
-    `state.list.length`,
-  ),
-  mutated(
-    'Array.prototype.push.call',
-    arr,
-    `Array.prototype.push.call(x, 1)`,
-    `x.length`,
-  ),
-  mutated('a computed method name', arr, `x['push'](1)`, `x.length`),
-  mutated(
-    'a method of the literal naming the binding',
-    `const store = { items: [] as Array<number>, add() { store.items.push(1) } }`,
-    `store.add()`,
-    `store.items.length`,
-  ),
-  // forms the mutation model names
-  mutated('a member write', obj, `state.n++`, `state.n`),
-  mutated(
-    'Object.assign',
-    obj,
-    `Object.assign(state, { n: state.n + 1 })`,
-    `state.n`,
-  ),
-  mutated(
-    'a computed member write',
-    obj,
-    `for (const k of ['n'] as const) {\n    state[k]++\n  }`,
-    `state.n`,
-  ),
-  mutated('a reassigned let', `let n = 0`, `n++`, `n`),
-  mutated(
-    'a Map set',
-    `const m = new Map<string, number>()`,
-    `m.set('a', 1)`,
-    `m.size`,
-  ),
-]
-
 // ---- runners ------------------------------------------------------------------
 type Runner = { name: string; run: (c: Case) => Promise<unknown> }
 
@@ -586,9 +446,3 @@ describe('identity of exported bindings the chunk imports', () => {
     suite(name, identity, run)
   }
 })
-
-suite(
-  'forms of mutation of module state the split component reaches',
-  mutations,
-  (c) => viteCurrent(c),
-)

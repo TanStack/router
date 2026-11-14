@@ -18,6 +18,7 @@ import type {
   PlanContext,
   Range,
   SymbolId,
+  Unit,
 } from '@tanstack/router-utils/compiler'
 import type { Node } from 'yuku'
 
@@ -54,6 +55,10 @@ export interface SplitPlan {
    * hold them: they stay as `undefined`, or removing them would let that value win.
    */
   shadowing: ReadonlySet<RouteOption>
+  /** The module bindings chunks import from the route module (`chunkImportsOnMain`); empty when nothing is split. */
+  imported: ReadonlySet<SymbolId>
+  /** The names `main` shares (`sharedNamesOnMain`), a subset of `imported`. */
+  shared: ReadonlySet<SymbolId>
 }
 
 /** The options the router planner splits: the components and the loader, values the router calls later. */
@@ -145,6 +150,8 @@ function hidesNoDeletedOption(
   })
 }
 
+const none: ReadonlySet<SymbolId> = new Set()
+
 /** The split plan of a recognised route in this planning round. */
 export function splitPlanOf(
   ctx: PlanContext,
@@ -205,7 +212,15 @@ export function splitPlanOf(
         },
       })
     }
-    return { route, decisions, warnings, deleted, shadowing }
+    return {
+      route,
+      decisions,
+      warnings,
+      deleted,
+      shadowing,
+      imported: none,
+      shared: none,
+    }
   }
 
   let afterUnread = false
@@ -242,7 +257,15 @@ export function splitPlanOf(
   }
 
   if (!splitting) {
-    return { route, decisions, warnings, deleted, shadowing }
+    return {
+      route,
+      decisions,
+      warnings,
+      deleted,
+      shadowing,
+      imported: none,
+      shared: none,
+    }
   }
 
   /** Exported bindings named as a split option's value: not split (`main`'s one warning). */
@@ -266,16 +289,16 @@ export function splitPlanOf(
       if (fallsBackToParent(value)) {
         continue
       }
-      const valueSym = identifierSymbol(ctx, value)
-      if (valueSym !== null && exportedAsOnMain(ctx, valueSym)) {
+      if (exportedAsOnMain(ctx, value)) {
         // the route file keeps exporting it: splitting it would only move a
         // re-export (`main` leaves it, with a warning)
-        exported.push(ctx.symbols.name(valueSym))
+        exported.push(value.name)
         exportedAt ??= { start: value.start, end: value.end }
         continue
       }
+      const valueSym = identifierSymbol(ctx, value)
       if (
-        unsplittableOnMain(ctx, value) !== null ||
+        !splitOnMain(ctx, value) ||
         assignsWhatItImports(ctx, value, valueSym)
       ) {
         continue
@@ -329,7 +352,16 @@ export function splitPlanOf(
       range: exportedAt,
     })
   }
-  return { route, decisions, warnings, deleted, shadowing }
+  return {
+    route,
+    decisions,
+    warnings,
+    deleted,
+    shadowing,
+    ...(decisions.length > 0
+      ? chunkImportsOnMain(ctx, route, groupings)
+      : { imported: none, shared: none }),
+  }
 }
 
 /** The value inside its parentheses (Babel, which `main` parses with, keeps none). */
@@ -353,88 +385,305 @@ function fallsBackToParent(value: Node): boolean {
 }
 
 /**
- * `main`'s `hasExport`: the binding is exported by `export const|let|var`,
- * `export function`, `export default function` or `export default <name>`
- * (not by `export { name }` or `export class`).
+ * `main`'s `hasExport(ast, value)`, called by `compileCodeSplitReferenceRoute`
+ * on a value that is a bare identifier only (an `as any` around it is split):
+ * a top-level `export const|let|var` declares the name (patterns included),
+ * `export function name`, `export default function name` or `export default
+ * name`. By name, as `main` compares them; not `export { name }`, not
+ * `export class`.
  */
-function exportedAsOnMain(ctx: PlanContext, sym: SymbolId): boolean {
-  const { t1 } = ctx
-  for (const u of t1.declaringUnits.get(sym) ?? []) {
-    const node = t1.items[t1.units[u]!.item]!.node
-    if (
-      (node.type === 'ExportNamedDeclaration' &&
-        (node.declaration?.type === 'VariableDeclaration' ||
-          node.declaration?.type === 'FunctionDeclaration')) ||
-      (node.type === 'ExportDefaultDeclaration' &&
-        node.declaration.type === 'FunctionDeclaration')
-    ) {
-      return true
-    }
+function exportedAsOnMain(
+  ctx: PlanContext,
+  value: Node,
+): value is Node & { name: string } {
+  if (value.type !== 'Identifier') {
+    return false
   }
-  return t1.items.some(
-    (item) =>
-      item.node.type === 'ExportDefaultDeclaration' &&
-      item.node.declaration.type === 'Identifier' &&
-      ctx.analysis.file.referenceOf(item.node.declaration)?.binding ===
-        ctx.symbols.binding(sym),
-  )
+  const { name } = value
+  return ctx.t1.items.some(({ node }) => {
+    if (node.type === 'ExportNamedDeclaration') {
+      const d = node.declaration
+      return (
+        (d?.type === 'VariableDeclaration' &&
+          (d.declarations as Array<Node>).some(
+            (decl) =>
+              decl.type === 'VariableDeclarator' &&
+              patternNames(decl.id).includes(name),
+          )) ||
+        (d?.type === 'FunctionDeclaration' && d.id?.name === name)
+      )
+    }
+    if (node.type === 'ExportDefaultDeclaration') {
+      const d = node.declaration
+      return (
+        (d.type === 'Identifier' && d.name === name) ||
+        (d.type === 'FunctionDeclaration' && d.id?.name === name)
+      )
+    }
+    return false
+  })
+}
+
+/** The names a binding pattern declares (`collectIdentifiersFromPattern`). */
+function patternNames(id: Node): Array<string> {
+  switch (id.type) {
+    case 'Identifier':
+      return [id.name]
+    case 'ObjectPattern':
+      return (id.properties as Array<Node>).flatMap((p) =>
+        p.type === 'RestElement'
+          ? patternNames(p.argument)
+          : p.type === 'Property'
+            ? patternNames(p.value)
+            : [],
+      )
+    case 'ArrayPattern':
+      return (id.elements as Array<Node | null>).flatMap((e) =>
+        e === null ? [] : patternNames(e),
+      )
+    case 'RestElement':
+      return patternNames(id.argument)
+    case 'AssignmentPattern':
+      return patternNames(id.left)
+    default:
+      return []
+  }
 }
 
 /**
- * The option values `main` cannot compile into a chunk (its compile throws,
- * or the chunk exports a name it does not declare), which stay in the route
- * module here, silently: the shapes of `main`'s `compileCodeSplitVirtualRoute`.
- * A value naming a module binding is judged by the binding's declaration
- * (followed once, as `main` does); otherwise by the expression. One place,
- * so the policy (unsplit, or an error) can change in one edit.
+ * Whether `main` gives the chunk this value: the cases of
+ * `compileCodeSplitVirtualRoute`'s switch on `splitNode`, which compiles
+ * them; on every other case it throws (or exports a name the chunk does
+ * not declare), so the option stays in the route module here, silently.
+ * One place, so the policy (unsplit, or an error) can change in one edit.
  */
-export function unsplittableOnMain(
-  ctx: PlanContext,
-  value: Node,
-): string | null {
-  if (value.type === 'Identifier') {
-    const b = ctx.analysis.file.referenceOf(value)?.binding ?? null
-    const sym = b ? ctx.symbols.ofBinding(b) : null
-    if (sym === null || !ctx.symbols.isModuleLevel(sym)) {
-      return 'unbound'
-    }
-    // (a type merged with it, `declare namespace Page { type Props }`, is
-    // TypeScript's: the value's declaration decides)
-    const declaring = (ctx.t1.declaringUnits.get(sym) ?? [])
-      .map((u) => ctx.t1.units[u]!)
-      .filter((u) => u.kind !== 'type')
-    const unit = declaring.length === 1 ? declaring[0] : null
-    switch (unit?.node.type) {
-      case 'FunctionDeclaration':
-      case 'ImportSpecifier':
-      case 'ImportDefaultSpecifier':
-        return null
-      case 'VariableDeclarator':
-        return unit.node.id.type === 'ArrayPattern' ? 'array-pattern' : null
-      default:
-        return unit?.node.type ?? 'unbound'
-    }
-  }
-  switch (value.type) {
-    case 'ArrowFunctionExpression':
+export function splitOnMain(ctx: PlanContext, value: Node): boolean {
+  // `while (t.isIdentifier(splitNode)) splitNode = binding?.path.node`:
+  // the declaration Babel binds the module-level name to (one step)
+  const node = value.type === 'Identifier' ? babelBinding(ctx, value) : value
+  // the cases, in `main`'s order: `t.isFunctionDeclaration` (kept under its
+  // name), `t.isFunctionExpression || t.isArrowFunctionExpression`,
+  // `t.isImportSpecifier || t.isImportDefaultSpecifier`,
+  // `t.isVariableDeclarator` (an identifier or an object pattern),
+  // `t.isCallExpression` (printed and parsed again without the JSX and
+  // TypeScript syntax plugins), `t.isConditionalExpression`,
+  // `t.isTSAsExpression`
+  switch (node?.type) {
+    case 'FunctionDeclaration':
     case 'FunctionExpression':
+    case 'ArrowFunctionExpression':
+    case 'ImportSpecifier':
+    case 'ImportDefaultSpecifier':
     case 'ConditionalExpression':
     case 'TSAsExpression':
-      return null
+      return true
+    case 'VariableDeclarator':
+      return node.id.type === 'Identifier' || node.id.type === 'ObjectPattern'
     case 'CallExpression':
-      // `main` prints the call and parses it again without JSX or TypeScript
-      return containsSyntax(value, /^(JSX|TS)/) ? 'call-syntax' : null
+      return !containsSyntax(node, /^(JSX|TS)/)
     default:
-      return value.type
+      return false
   }
+}
+
+/**
+ * The node Babel's program scope binds `id`'s name to
+ * (`programPath.scope.getBinding(name).path.node`), or null: the first
+ * module-level declaration of the name in source order that Babel registers
+ * as a binding. A function's overload signatures, `declare function`,
+ * `enum` and `namespace` are none (an overloaded function is bound to its
+ * implementation); types are none.
+ */
+function babelBinding(ctx: PlanContext, id: Node): Node | null {
+  const b = ctx.analysis.file.referenceOf(id)?.binding ?? null
+  const sym = b ? ctx.symbols.ofBinding(b) : null
+  if (sym === null || !ctx.symbols.isModuleLevel(sym)) {
+    return null
+  }
+  const units = (ctx.t1.declaringUnits.get(sym) ?? [])
+    .map((u) => ctx.t1.units[u]!)
+    .filter(
+      (u) =>
+        u.kind !== 'type' &&
+        [
+          'FunctionDeclaration',
+          'ClassDeclaration',
+          'VariableDeclarator',
+          'ImportSpecifier',
+          'ImportDefaultSpecifier',
+          'ImportNamespaceSpecifier',
+        ].includes(u.node.type),
+    )
+    .sort((a, b) => a.range.start - b.range.start)
+  return units[0]?.node ?? null
+}
+
+/**
+ * The module bindings a chunk imports from the route file on `main`; it
+ * copies whatever else it reads (spec-main-splitting 1.6-1.8): the route
+ * binding, what `export const|let|var` declares (`compileCodeSplitVirtualRoute`
+ * turns those statements into imports), and the shared names
+ * (`computeSharedBindings`: `main` moves them to `?tsr-shared=1`; the route
+ * module holds them here, one instance either way).
+ */
+export function chunkImportsOnMain(
+  ctx: PlanContext,
+  route: RouteModuleInfo,
+  groupings: CodeSplitGroupings,
+): { imported: Set<SymbolId>; shared: Set<SymbolId> } {
+  const shared = sharedNamesOnMain(ctx, route, groupings)
+  const imported = new Set(shared)
+  imported.add(route.routeSym)
+  for (const unit of ctx.t1.units) {
+    const item = ctx.t1.items[unit.item]!.node
+    if (
+      unit.kind !== 'type' &&
+      item.type === 'ExportNamedDeclaration' &&
+      item.declaration?.type === 'VariableDeclaration'
+    ) {
+      for (const s of unit.declares) {
+        imported.add(s)
+      }
+    }
+  }
+  return { imported, shared }
+}
+
+/**
+ * `main`'s `computeSharedBindings`: the module-level `const|let|var`,
+ * function and class bindings (not imports, not the route binding) that
+ * the values of route options under two or more group numbers read,
+ * transitively through these declarations (an option in no group is group
+ * -1, kept or deleted alike); a destructuring declarator whose names are
+ * read under two or more group numbers between them, or one of whose names
+ * is shared, has all its names shared; a name whose declaration reads the
+ * route binding, transitively, is not.
+ */
+function sharedNamesOnMain(
+  ctx: PlanContext,
+  route: RouteModuleInfo,
+  groupings: CodeSplitGroupings,
+): Set<SymbolId> {
+  const { t1 } = ctx
+  const shared = new Set<SymbolId>()
+  // `collectLocalBindingsFromStatement`, `localModuleLevelBindings.delete('Route')`
+  const declarators = new Map<SymbolId, Array<Unit>>()
+  for (const unit of t1.units) {
+    if (
+      unit.kind !== 'type' &&
+      (unit.node.type === 'VariableDeclarator' ||
+        unit.node.type === 'FunctionDeclaration' ||
+        unit.node.type === 'ClassDeclaration')
+    ) {
+      for (const s of unit.declares) {
+        if (s !== route.routeSym) {
+          declarators.set(s, [...(declarators.get(s) ?? []), unit])
+        }
+      }
+    }
+  }
+  if (declarators.size === 0) {
+    return shared
+  }
+  // plain properties (`t.isObjectProperty`), `codeSplitGroupings` skipped
+  const props = route.props.filter(
+    (p) =>
+      (p.kind === 'init' || p.kind === 'shorthand') &&
+      p.key !== null &&
+      p.key !== 'codeSplitGroupings' &&
+      p.value !== null,
+  )
+  const groupOf = (key: string) =>
+    groupings.findIndex((group) => (group as Array<string>).includes(key))
+  {
+    const splitGroups = new Set<number>()
+    let nonSplit = false
+    for (const p of props) {
+      const v = p.value!
+      if (v.type === 'Identifier' && v.name === 'undefined') {
+        continue
+      }
+      const g = groupOf(p.key!)
+      if (g === -1) {
+        nonSplit = true
+      } else {
+        splitGroups.add(g)
+      }
+    }
+    if (!nonSplit && splitGroups.size < 2) {
+      return shared
+    }
+  }
+  /** `buildDependencyGraph`: what each declaration reads (with the route binding: `fullDepGraph`). */
+  const readsOf = (s: SymbolId): Array<SymbolId> =>
+    (declarators.get(s) ?? []).flatMap((u) =>
+      t1.refs
+        .refsIn(u.range)
+        .map((r) => r.sym)
+        .filter((r) => r !== s && (declarators.has(r) || r === route.routeSym)),
+    )
+  const closure = (from: Iterable<SymbolId>): Set<SymbolId> => {
+    const seen = new Set<SymbolId>()
+    const work = [...from]
+    while (work.length > 0) {
+      const s = work.pop()!
+      if (!seen.has(s)) {
+        seen.add(s)
+        work.push(...readsOf(s))
+      }
+    }
+    return seen
+  }
+  const groupsOf = new Map<SymbolId, Set<number>>()
+  for (const p of props) {
+    const g = groupOf(p.key!)
+    const direct = t1.refs
+      .refsIn({ start: p.value!.start, end: p.value!.end })
+      .map((r) => r.sym)
+      .filter((s) => declarators.has(s))
+    for (const s of closure(direct)) {
+      if (declarators.has(s)) {
+        groupsOf.set(s, (groupsOf.get(s) ?? new Set()).add(g))
+      }
+    }
+  }
+  for (const [s, groups] of groupsOf) {
+    if (groups.size >= 2) {
+      shared.add(s)
+    }
+  }
+  // `expandSharedDestructuredDeclarators`, `expandDestructuredDeclarations`
+  for (const unit of t1.units) {
+    if (
+      unit.node.type !== 'VariableDeclarator' ||
+      unit.node.id.type === 'Identifier'
+    ) {
+      continue
+    }
+    const groups = new Set(
+      unit.declares.flatMap((s) => [...(groupsOf.get(s) ?? [])]),
+    )
+    if (groups.size >= 2 || unit.declares.some((s) => shared.has(s))) {
+      for (const s of unit.declares) {
+        shared.add(s)
+      }
+    }
+  }
+  // `removeBindingsTransitivelyDependingOn(shared, fullDepGraph, ['Route'])`
+  for (const s of [...shared]) {
+    if (closure(readsOf(s)).has(route.routeSym)) {
+      shared.delete(s)
+    }
+  }
+  return shared
 }
 
 /**
  * Whether the core found that the chunk taking this value would assign a
  * binding it imports from another module of the file (a fallback of the
  * previous round at the value, or at the declaration of the binding it
- * names): the option stays in the route module, as the shapes of
- * `unsplittableOnMain` do.
+ * names: a shared `let`, an `export let`, where `main`'s build fails): the
+ * option stays in the route module, as the values `splitOnMain` refuses do.
  */
 function assignsWhatItImports(
   ctx: PlanContext,

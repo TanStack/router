@@ -1,11 +1,8 @@
 /**
- * Dev twin of ../code-splitter-copied-exports-state.test.ts (SPEC J2.4,
- * G13 dev/build parity): the same route files on a real dev server, in a
- * real browser page (`../../route-app`). In dev an extracted export stays
- * in the route module and the chunk copies or imports it exactly as in a
- * build, so state and identity agree between the two modes; a build is
- * where an extracted module and a chunk would each get their own copy of
- * what a copied export reads, which is why the build file exists.
+ * Dev twin of ../code-splitter-copied-exports-state.test.ts (G13 dev/build
+ * parity): the same route files on a real dev server, in a real browser
+ * page (`../../route-app`); the chunk copies or imports an export exactly
+ * as in a build, so state and identity agree between the two modes.
  * Source: external review 2 of the compiler rewrite, finding 4.
  */
 import { describe, expect, it } from 'vitest'
@@ -214,111 +211,6 @@ return [html, imported.config.helper === imported.helper]`,
   },
 )
 
-const mutated = (
-  name: string,
-  decl: string,
-  mutation: string,
-  read: string,
-): Case => ({
-  name: `the importer reads what the split component wrote through ${name}`,
-  route: `${head}${decl}
-export function bump() {
-  ${mutation}
-}
-export function read() {
-  return ${read}
-}
-function Page() {
-  bump()
-  return <p>{read()}</p>
-}
-export const Route = createFileRoute('/')({ component: Page })
-`,
-  files: importer,
-  script: `const imported = await app('importer.ts')
-const html = await render('component')
-return [html, imported.read()]`,
-  expected: ['<p>1</p>', 1],
-})
-
-const obj = `const state = { n: 0 }`
-const arr = `const x: Array<number> = []`
-const mutations: Array<Case> = [
-  mutated(
-    'a method writing this',
-    `export const counter = { n: 0, inc() { this.n++ } }`,
-    `counter.inc()`,
-    `counter.n`,
-  ),
-  mutated(
-    'a static method writing this',
-    `export class S {
-  static n = 0
-  static inc() {
-    this.n++
-  }
-}`,
-    `S.inc()`,
-    `S.n`,
-  ),
-  mutated('an alias', obj, `const s = state\n  s.n++`, `state.n`),
-  mutated(
-    'a function it is passed to',
-    `${obj}
-function mutate(o: { n: number }) {
-  o.n++
-}`,
-    `mutate(state)`,
-    `state.n`,
-  ),
-  mutated(
-    'Reflect.set',
-    obj,
-    `Reflect.set(state, 'n', state.n + 1)`,
-    `state.n`,
-  ),
-  mutated('push.apply', arr, `x.push.apply(x, [1])`, `x.length`),
-  mutated(
-    'a nested member',
-    `const state = { list: [] as Array<number> }`,
-    `state.list.push(1)`,
-    `state.list.length`,
-  ),
-  mutated(
-    'Array.prototype.push.call',
-    arr,
-    `Array.prototype.push.call(x, 1)`,
-    `x.length`,
-  ),
-  mutated('a computed method name', arr, `x['push'](1)`, `x.length`),
-  mutated(
-    'a method of the literal naming the binding',
-    `const store = { items: [] as Array<number>, add() { store.items.push(1) } }`,
-    `store.add()`,
-    `store.items.length`,
-  ),
-  mutated('a member write', obj, `state.n++`, `state.n`),
-  mutated(
-    'Object.assign',
-    obj,
-    `Object.assign(state, { n: state.n + 1 })`,
-    `state.n`,
-  ),
-  mutated(
-    'a computed member write',
-    obj,
-    `for (const k of ['n'] as const) {\n    state[k]++\n  }`,
-    `state.n`,
-  ),
-  mutated('a reassigned let', `let n = 0`, `n++`, `n`),
-  mutated(
-    'a Map set',
-    `const m = new Map<string, number>()`,
-    `m.set('a', 1)`,
-    `m.size`,
-  ),
-]
-
 const suite = (title: string, cases: Array<Case>) =>
   describe(title, () => {
     for (const c of cases) {
@@ -337,7 +229,3 @@ suite(
   moduleState,
 )
 suite('in dev, identity of exported bindings the chunk imports', identity)
-suite(
-  'in dev, forms of mutation of module state the split component reaches',
-  mutations,
-)

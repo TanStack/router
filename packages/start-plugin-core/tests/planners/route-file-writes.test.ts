@@ -1,9 +1,10 @@
 /**
- * Start's derived outputs of a route file (a server function's lazy handler
- * module, a `<Hydrate>` chunk) under the route file's placement: an output
- * that would assign a binding it imports from another module of the file is
- * not made; its code stays in place (the handler in the route module; the
- * boundary is reported, as for any module).
+ * Start's code in a route file under the route file's placement. A derived
+ * output (a server function's lazy handler module, a `<Hydrate>` chunk) that
+ * would assign a binding it imports from another module of the file is not
+ * made; its code stays in place (the handler in the route module; the
+ * boundary is reported, as for any module). What only server code the client
+ * erases reads leaves the client's route module.
  */
 import { describe, expect, it } from 'vitest'
 import { compileModule } from '@tanstack/router-utils/compiler'
@@ -138,6 +139,24 @@ export const Route = createFileRoute('/')({
       { code: 'hydrate-module-write', start: code.indexOf('<Hydrate') },
     ])
     expect(out!.code).not.toContain('?tss-hydrate=')
+  })
+})
+
+describe('module state only server code reads (client)', () => {
+  it('leaves the route module with what reads it', async () => {
+    const out = await compile(
+      `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
+import { connect } from '../server/db'
+const conn = connect(process.env.DB_URL)
+const query = createServerOnlyFn(() => conn.q())
+const fetchIt = createServerFn().handler(() => conn.q())
+export const Route = createFileRoute('/')({ component: () => 'page' })
+`,
+      clientEnv,
+    )
+    expect(out!.code).not.toContain('connect')
+    expect(out!.code).not.toContain('../server/db')
   })
 })
 

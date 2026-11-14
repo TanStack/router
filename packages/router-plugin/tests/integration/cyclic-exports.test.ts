@@ -1,9 +1,9 @@
 /**
- * Exported bindings that reference each other (`class Z { o() { return A } }`
- * next to `class A extends Z`) share one extracted module: in two modules
- * importing each other, the one evaluated first depends on who imports what and
- * on how the bundler orders them, and `extends` can then find its base
- * uninitialised. Real builds on every bundler, run.
+ * Exported classes that reference each other (`class Z { o() { return A } }`
+ * next to `class A extends Z`), read by the split component: the chunk
+ * copies them, as on `main` (spec-main-splitting 1.6), so no two modules of
+ * the route file import each other at evaluation, where `extends` could find
+ * its base uninitialised. Real builds on every bundler, run.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -88,7 +88,6 @@ type Shape = (typeof shapes)[keyof typeof shapes]
 const route = ({ source, base, sub }: Shape) =>
   `${head}${source}export const Route = createFileRoute('/')({
   component: () => {
-    ;(globalThis as any).inChunk = [${base}, ${sub}]
     return <p>{new ${sub}() instanceof ${base} && new ${base}().o() === ${sub} ? ${sub}.m : 'WRONG'}</p>
   },
 })
@@ -103,7 +102,7 @@ export async function render(component: any) {
 `
 
 const entries = (shape: Shape) => ({
-  // other modules import both through the route file: one instance
+  // other modules import both through the route file
   'both exports': `${renderEntry}export { Route, ${shape.names.join(', ')} } from './routes/index'\n`,
 })
 
@@ -136,7 +135,7 @@ describe.each(Object.keys(builds))('on %s', (bundler) => {
           try {
             const { result } = await app.run(
               `const html = await entry.render(entry.Route.options.component)
-return [html, globalThis.inChunk[0] === entry.${shape.names[0]} && globalThis.inChunk[1] === entry.${shape.names[1]}]`,
+return [html, new entry.${shape.names[1]}() instanceof entry.${shape.names[0]}]`,
             )
             expect(result).toEqual(['<p>MARK_CYCLE_END</p>', true])
           } finally {

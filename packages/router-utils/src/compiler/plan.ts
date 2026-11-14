@@ -21,6 +21,7 @@ import type {
   OutputKind,
   Placement,
   RootRef,
+  RouteModule,
 } from './reach'
 import type { ModuleAnalysis, Tier1 } from './analysis'
 import type { Diagnostic } from './diagnostics'
@@ -159,8 +160,12 @@ export interface PlanContext<TName extends string = string> {
    * diagnostics say `Public`).
    */
   extractExport: (sym: SymbolId, exportName: string) => void
-  /** The module is a route file: placed as route splitting on `main` places it (`route-placement.ts`). */
-  setRouteModule: () => void
+  /**
+   * The module is a route file: placed as route splitting on `main` places
+   * it (`route-placement.ts`). `imported`: the bindings a split chunk
+   * imports from the route module when it reads them; it copies the rest.
+   */
+  setRouteModule: (route: RouteModule) => void
   liveness: (output: OutputId) => LivenessView
   /** The binding name a symbol renders as (after module-wide renames). */
   nameOf: (sym: SymbolId) => string
@@ -235,7 +240,7 @@ export class AnalysisPlan implements PlanContext {
   private starExports: boolean | undefined
   /** `tagGlueExports` (`glueExportBase`). */
   private glueTag: string | null = null
-  routeModule = false
+  routeModule: RouteModule | null = null
   placement: Placement | null = null
   /**
    * Renamed directly-exported declarations (`export const a = …`, exported
@@ -341,8 +346,8 @@ export class AnalysisPlan implements PlanContext {
     )
   }
 
-  setRouteModule(): void {
-    this.routeModule = true
+  setRouteModule(route: RouteModule): void {
+    this.routeModule = route
   }
 
   liveness(output: OutputId): LivenessView {

@@ -38,10 +38,10 @@ which apps' chunk naming reads; `router-utils/src/compiler/identity.ts` owns it 
 
 All of them come from one plan: whichever id the bundler asks first computes the plan, the others reuse it. A route
 file is placed as route splitting on main places it (R153; `router-utils/src/compiler/route-placement.ts`, core README
-"Route files"): the route module keeps what the split left read (exports, statements, `Route`, what a staying option
-reads), a chunk imports that from it, a binding only one chunk needs moves into it with its initialiser, and one
-several chunks need goes to the shared module. Module-level state therefore exists once, and every statement runs once,
-in the route module.
+"Route files"): the route module keeps its statements and exports and what they reach (R154); a chunk imports from it
+what main imports (`Route`, `export const|let|var`, the names main shares, `decisions.ts` `chunkImportsOnMain`) and
+copies the rest, with the statements that read or write it, as main does; a binding only one chunk needs moves into it
+with its initialiser, and one several chunks need goes to the shared module.
 
 ## Splitting rules
 
@@ -50,12 +50,13 @@ in the route module.
   render on every page, or on error and not-found responses, where a lazy chunk only adds a round trip.
 - The options main splits are split (`decisions.ts`): plain properties (`key: value`, `{ key }`) whose value is not
   `true`/`false`/`null`/`undefined`. Methods, accessors, spreads and computed keys stay as written.
-- An option whose value is a binding the route file exports by its declaration (`export function`, `export
-const|let|var`, `export default function`, `export default <name>`) stays in the route module, and the build warns
-  once, naming the file and the exports (main's warning).
-- Values main cannot compile into a chunk stay in the route module, silently (`unsplittableOnMain`: a member access,
-  `satisfies`, `!`, a class, a namespace member, a global, an array pattern, a sequence, an object, a call holding JSX
-  or TypeScript syntax). An option whose chunk would assign a binding it imports stays too (`assignsWhatItImports`:
+- An option whose value is a bare identifier the route file exports by its declaration (`export function`, `export
+const|let|var`, `export default function`, `export default <name>`; main's `hasExport`) stays in the route module,
+  and the build warns once, naming the file and the exports (main's warning). `Page as any` is split.
+- Values main cannot compile into a chunk stay in the route module, silently (`splitOnMain`, the cases of main's
+  `compileCodeSplitVirtualRoute`: a member access, `satisfies`, `!`, a class, a namespace member, a global, an array
+  pattern, a sequence, an object, a call holding JSX or TypeScript syntax). A function with overload signatures is one
+  function. An option whose chunk would assign a binding it imports stays too (`assignsWhatItImports`:
   a core fallback, the core re-plans with it kept in place).
 - Routes whose options object cannot be read statically (imported from another module, built by a call) are not
   split; with `deleteNodes` the build warns that server code in them ships.

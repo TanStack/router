@@ -246,13 +246,12 @@ return [before, html, seen()]`),
     ).toEqual([[], '<p>label</p>', ['label']])
   })
 
-  it('runs top-level statements and unread declarations once, when the route module loads', async () => {
+  it('runs top-level statements once, when the route module loads', async () => {
     const route = await loadRoute(
       `${head}import { track } from './track'
 const registry = new Map<string, number>()
 registry.set('k', 1)
 track('statement')
-const unused = track('unused')
 if (registry.size) { track('if') }
 function Page() {
   return <p>{registry.get('k')}</p>
@@ -273,10 +272,226 @@ const page = await render('component')
 const error = await render('errorComponent')
 return [atLoad, page, error, seen()]`),
     ).toEqual([
-      ['statement', 'unused', 'if'],
+      ['statement', 'if'],
       '<p>1</p>',
       '<p>1</p>',
-      ['statement', 'unused', 'if'],
+      ['statement', 'if'],
     ])
   })
+})
+
+// What `main`'s chunk copies (or takes alone) leaves the route file's
+// production output with it: the option is split, and what only split code
+// reads loads with the chunk, however the route file also names it (an
+// export other than `export const|let|var`, a statement, an overload).
+// Inputs of review-main-shape-guarantee.md (causes A to E), each with a
+// marker in the route file's own code that only the component reads.
+describe('what main leaves lazy (§1.6-1.8)', () => {
+  it.each([
+    {
+      name: 'an exported function',
+      decls: `export function PostList() { return <p>MARK_HELPER</p> }
+function Page() { return <div><PostList /></div> }`,
+      html: '<div><p>MARK_HELPER</p></div>',
+    },
+    {
+      name: 'an exported class',
+      decls: `export class Model { get() { return 'MARK_HELPER' } }
+function Page() { return <p>{new Model().get()}</p> }`,
+      html: '<p>MARK_HELPER</p>',
+    },
+    {
+      name: 'an exported hook beside an exported const',
+      decls: `export function usePosts() { return 'MARK_HELPER' }
+export const postsKey = ['key']
+function Page() { return <p>{usePosts()}{postsKey[0]}</p> }`,
+      html: '<p>MARK_HELPERkey</p>',
+    },
+    {
+      name: 'a sub-component with a display name',
+      decls: `const Card = (p: any) => <section>MARK_HELPER{p.children}</section>
+Card.displayName = 'Card'
+function Page() { return <Card>x</Card> }`,
+      html: '<section>MARK_HELPERx</section>',
+    },
+    {
+      name: 'a compound component',
+      decls: `function Tabs(p: any) { return <div>{p.children}</div> }
+function TabsList() { return <i>MARK_HELPER</i> }
+Tabs.List = TabsList
+function Page() { return <Tabs><Tabs.List /></Tabs> }`,
+      html: '<div><i>MARK_HELPER</i></div>',
+    },
+    {
+      name: 'a component an unused exported const reads',
+      decls: `const Cell = () => <i>MARK_HELPER</i>
+export const columns = [{ id: 'a', cell: Cell }]
+function Page() { return <div><Cell /></div> }`,
+      html: '<div><i>MARK_HELPER</i></div>',
+    },
+    {
+      name: 'a component with default props',
+      decls: `function Widget() { return <i>MARK_HELPER</i> }
+Widget.defaultProps = { size: 1 }
+function Page() { return <Widget /> }`,
+      html: '<i>MARK_HELPER</i>',
+    },
+    {
+      name: 'an object a statement fills',
+      decls: `function Chart() { return <i>MARK_HELPER</i> }
+const icons: Record<string, any> = {}
+icons.chart = Chart
+function Page() { const I = icons.chart; return <I /> }`,
+      html: '<i>MARK_HELPER</i>',
+    },
+    {
+      name: 'a table an exported function reads',
+      decls: `const table: Record<string, string> = { a: 'MARK_HELPER' }
+export function lookup(k: string) { return table[k] }
+function Page() { return <p>{table.a}</p> }`,
+      html: '<p>MARK_HELPER</p>',
+    },
+    {
+      name: 'a cache an exported default function returns',
+      decls: `const cache = new Map([['MARK_HELPER', 1]])
+export default function getCache() { return cache }
+function Page() { return <p>{[...cache.keys()][0]}</p> }`,
+      html: '<p>MARK_HELPER</p>',
+    },
+    {
+      name: 'a helper exported by a list',
+      decls: `const table: Record<string, string> = { a: 'MARK_HELPER' }
+function lookup(k: string) { return table[k] }
+export { lookup }
+function Page() { return <p>{lookup('a')}</p> }`,
+      html: '<p>MARK_HELPER</p>',
+    },
+    {
+      name: 'a component exported as default',
+      decls: `function Widget() { return <i>MARK_HELPER</i> }
+export default Widget
+function Page() { return <div><Widget /></div> }`,
+      html: '<div><i>MARK_HELPER</i></div>',
+    },
+    {
+      name: 'an enum',
+      decls: `enum Status { Active = 'MARK_HELPER' }
+function Page() { return <p>{Status.Active}</p> }`,
+      html: '<p>MARK_HELPER</p>',
+    },
+    {
+      name: 'an object keyed by an enum',
+      decls: `enum Kind { A = 'MARK_HELPER' }
+const renderers = { [Kind.A]: () => Kind.A }
+function Page() { return <p>{renderers[Kind.A]()}</p> }`,
+      html: '<p>MARK_HELPER</p>',
+    },
+    {
+      name: 'an overloaded function',
+      decls: `function fmt(a: string): string
+function fmt(a: number): string
+function fmt(a: any) { return \`MARK_HELPER\${a}\` }
+function Page() { return <p>{fmt(1)}</p> }`,
+      html: '<p>MARK_HELPER1</p>',
+    },
+    {
+      name: 'an overloaded function a const calls',
+      decls: `declare function ambient(x: number): void
+function pick(a: string): string
+function pick(a: number): string
+function pick(a: any) { return 'MARK_HELPER' + a }
+const one = pick(1)
+function Page() { return <p>{one}{pick('x')}</p> }`,
+      html: '<p>MARK_HELPER1MARK_HELPERx</p>',
+    },
+  ])(
+    'splits the component reading $name, which loads with it',
+    async ({ decls, html }) => {
+      const route = await loadRoute(
+        `${head}${decls}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      )
+      await expectValidModules(route)
+      expect(await route.isLazy('component')).toBe(true)
+      expect(await route.run(`return render('component')`)).toBe(html)
+      expect((await route.production()).where('MARK_HELPER')).toBe('lazy')
+    },
+  )
+
+  it.each([
+    {
+      name: 'an overloaded component',
+      decls: `function Page(p: { a: string }): any
+function Page(p: { b: number }): any
+function Page(p: any) { return <p>MARK_HELPER</p> }`,
+      value: 'Page',
+      html: '<p>MARK_HELPER</p>',
+    },
+    {
+      name: 'an exported component behind a cast',
+      decls: `export function Page() { return <p>MARK_HELPER</p> }`,
+      value: 'Page as any',
+      html: '<p>MARK_HELPER</p>',
+    },
+  ])('splits $name', async ({ decls, value, html }) => {
+    const route = await loadRoute(
+      `${head}${decls}
+export const Route = createFileRoute('/')({ component: ${value} })
+`,
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.run(`return render('component')`)).toBe(html)
+    expect(
+      (await route.diagnostics()).filter((d) => d.severity === 'warning'),
+    ).toEqual([])
+  })
+
+  // A `let` the component assigns that only other route-file code also names:
+  // the chunk holds its own copy, as on `main`, with the statements naming it
+  it.each([
+    {
+      name: 'a statement disposing of it in development',
+      decls: `let socket: any
+if (import.meta.hot) { import.meta.hot.dispose(() => socket?.close()) }
+function Page() { socket ??= { label: 'MARK_HELPER', close() {} }; return <p>{socket.label}</p> }`,
+      html: '<p>MARK_HELPER</p>',
+    },
+    {
+      name: 'a statement setting it in the browser',
+      decls: `let cachedUser: any = null
+if (typeof window !== 'undefined') { cachedUser = 'MARK_HELPER' }
+function Page() { const before = cachedUser; cachedUser = 'next'; return <p>{before}</p> }`,
+      html: '<p>MARK_HELPER</p>',
+    },
+    {
+      name: 'an exported function resetting it',
+      decls: `let cache: any
+export function reset() { cache = undefined }
+function Page() { cache ??= 'MARK_HELPER'; return <p>{cache}</p> }`,
+      html: '<p>MARK_HELPER</p>',
+    },
+    {
+      name: 'a statement disposing of it, beside a second split option',
+      decls: `let socket: any
+if (import.meta.hot) { import.meta.hot.dispose(() => socket?.close()) }
+function Page() { socket ??= { label: 'MARK_HELPER', close() {} }; return <p>{socket.label}</p> }`,
+      options: `errorComponent: () => <b>error</b>,`,
+      html: '<p>MARK_HELPER</p>',
+    },
+  ])(
+    'splits a component assigning a `let` beside $name',
+    async ({ decls, options = '', html }) => {
+      const route = await loadRoute(
+        `${head}${decls}
+export const Route = createFileRoute('/')({ ${options} component: Page })
+`,
+      )
+      await expectValidModules(route)
+      expect(await route.isLazy('component')).toBe(true)
+      expect(await route.run(`return render('component')`)).toBe(html)
+      expect((await route.production()).where('MARK_HELPER')).toBe('lazy')
+    },
+  )
 })
