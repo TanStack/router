@@ -106,15 +106,25 @@ export function stripSearchParams<
     ? TValues | true
     : TValues,
 >(input: NoInfer<TInput>): SearchMiddleware<TSearchSchema> {
-  return (({ search, next, meta }: SearchMiddlewareContext<TSearchSchema>) => {
-    if (input === true) {
-      Object.keys(search as object).forEach((key) => {
-        if (meta) {
-          ;(meta.removedAny ||= new Set()).add(key)
+  if (input === true) {
+    return (({
+      search,
+      next: _next,
+      meta,
+    }: SearchMiddlewareContext<TSearchSchema>) => {
+      if (meta) {
+        const keys = Object.keys(search as object)
+        if (keys.length) {
+          const removed = (meta.removedAny ||= new Set())
+          for (const key of keys) {
+            removed.add(key)
+          }
         }
-      })
+      }
       return {}
-    }
+    }) as SearchMiddleware<TSearchSchema>
+  }
+  return (({ search, next, meta }: SearchMiddlewareContext<TSearchSchema>) => {
     const nextResult = next(search)
     const result = { ...nextResult } as Record<string, unknown>
     if (Array.isArray(input)) {
