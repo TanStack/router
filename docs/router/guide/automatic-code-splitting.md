@@ -135,7 +135,24 @@ export const Route = createFileRoute('/posts')({
 
 #### What stays in the route file
 
-A property is not split when its value is `true`, `false`, `null` or `undefined` (the parent's applies), when it is an exported binding (see above), or when it is written as a method (`loader() {}`), a spread or a computed key. Some values cannot be split and keep working in the route file: a member of an object or of a namespace import (`pages.Home`), a value in `satisfies` or with a `!`, a class, an array-pattern binding, a sequence, an object-form loader (`loader: { handler }`), and a call whose arguments hold JSX or TypeScript syntax (`memo(() => <p />)`; `memo(Page)` is split). A split property whose code would assign a variable the route file also uses (`count++` on a module `let` the `loader` reads) stays in the route file too.
+A property is not split when its value is `true`, `false`, `null` or `undefined` (the parent's applies), when it is an exported binding (see above), or when it is written as a getter or setter, a spread or a computed key. A method (`loader() {}`, `async loader() {}`) is split as a function would be. Some values cannot be split and keep working in the route file: a member of an object or of a namespace import (`pages.Home`), a value in `satisfies` or with a `!`, a class, an array-pattern binding, a sequence, an object-form loader (`loader: { handler }`), and a call whose arguments hold JSX or TypeScript syntax (`memo(() => <p />)`; `memo(Page)` is split). A split property whose code would assign a variable the route file also uses (`count++` on a module `let` the `loader` reads) stays in the route file too.
+
+A function or method that uses its own `this` or `super` stays in the route file: the router calls it on the route options, and a split chunk's wrapper would call it without them. `this` inside an arrow function counts; inside a nested `function`, method or class it is that function's own and does not. The build warns at the property:
+
+```tsx
+export const Route = createFileRoute('/posts')({
+  codeSplitGroupings: [['loader'], ['component']],
+  staticData: { title: 'Posts' },
+  // ❌ stays in the route file
+  loader() {
+    return this.staticData.title
+  },
+})
+```
+
+```txt
+[tanstack-router] The `loader` option of src/routes/posts.tsx is not code-split because it uses `this`: split, it would no longer be called on the route options. Write it as an arrow function, or don't rely on `this`.
+```
 
 **That's it!** There are no other restrictions. You can use any other JavaScript or TypeScript features in your route files as you normally would. If you run into any issues, please [open an issue](https://github.com/tanstack/router/issues) on GitHub.
 
