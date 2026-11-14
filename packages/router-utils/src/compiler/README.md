@@ -110,13 +110,13 @@ per-output read walk (`readIndex`):
   there when main does (`RouteModule.imported`, from the router planner: the route binding, `export const|let|var`)
   and copies otherwise, with the env statements reading or writing what it copies (main's
   second instance, spec-main-splitting.md §1.8); a binding a statement declares (`if (…) { var x }`) is imported.
-  What one chunk alone needs moves there, what several need is one shared module per file
-  (`?tsr-split=shared---<keys>`). The names main shares (`RouteModule.shared`) live there too, also those the env
-  module reads (a helper the loader and the component call), as in main's `?tsr-shared=1`: the env module imports them
-  and re-exports the exported ones; one the env module or a chunk assigns, or one reading what main never shares,
-  stays in the env module.
-  Import specifiers are copied where read. Start's outputs in a route file (Hydrate chunks, the server-fn handler
-  module) import what the env module keeps; a provider output copies what it reaches.
+  What the env module does not keep the chunk copies too, also what another chunk copies. The names main shares
+  (`RouteModule.shared`: two option groups read them, a staying option counting as one) and nothing else are one
+  shared module per file (`?tsr-split=shared---<keys>`, main's `?tsr-shared=1`): the env module and the chunks import
+  them, the env module re-exports the exported ones; one code outside the set assigns, or one reading a declaration
+  outside it, stays in the env module (one fixed point). Import specifiers are copied where read. Start's outputs in a
+  route file (Hydrate chunks, the server-fn handler module) import what the env module keeps, and what several of them
+  need is one module they import; a provider output copies what it reaches.
 - **one fallback, on the outcome**: a derived output that would assign a binding homed in another module of the file
   does not take the root bringing that code (`Placement.fallbacks`, `shared-writer`), and its planner keeps the root in
   place (the router planner's `assignsWhatItImports`, start-env's handler, Hydrate's `hydrate-module-write`).

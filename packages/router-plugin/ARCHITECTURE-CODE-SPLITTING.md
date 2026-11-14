@@ -27,11 +27,11 @@ core; read the
 
 For `posts.tsx` in a client environment:
 
-| id                                    | contents                                                                                                                                                               |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `posts.tsx`                           | the route module: `Route` with each split option replaced by `lazyRouteComponent`/`lazyFn` of an importer const, and whatever the route module itself still reads      |
-| `posts.tsx?tsr-split=component`       | one chunk per split group (group key: sorted option names joined by `---`, e.g. `component---loader`) exporting the option's value                                     |
-| `posts.tsx?tsr-split=shared---<keys>` | code several chunks need and the route module does not (keys: the options of the needing groups, sorted, joined by `---`), loaded lazily by those chunks, one per file |
+| id                                    | contents                                                                                                                                                          |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `posts.tsx`                           | the route module: `Route` with each split option replaced by `lazyRouteComponent`/`lazyFn` of an importer const, and whatever the route module itself still reads |
+| `posts.tsx?tsr-split=component`       | one chunk per split group (group key: sorted option names joined by `---`, e.g. `component---loader`) exporting the option's value                                |
+| `posts.tsx?tsr-split=shared---<keys>` | the names main shares (main's `?tsr-shared=1`; keys: the file's split groups, sorted), which the route module and the chunks import, one per file                 |
 
 The ids and the specifiers importing them (the route file's absolute path) keep the format of the Babel splitter,
 which apps' chunk naming reads; `router-utils/src/compiler/identity.ts` owns it (core README, "Hosts").

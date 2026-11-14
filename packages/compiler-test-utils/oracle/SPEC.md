@@ -397,10 +397,10 @@ dir)` is not a conflict by itself.
   the imports only it read (a never-read `const unused = register('x')` is deleted). A split chunk takes what its
   option value reads: what the route module also keeps it imports from it where main imports it (`Route`, what
   `export const|let|var` declares) and copies otherwise, with the statements that read or write what it copies
-  (main's second instance, §1.8); what only it needs moves into it, and what several chunks need is one shared
-  module per file (`?tsr-split=shared---<keys>`). The names main shares live in that module, as in main's
-  `?tsr-shared=1`, also those the route module reads; the route module imports them from it and re-exports the
-  exported ones (one the route module or a chunk assigns stays in the route module). Option values main cannot compile into a chunk stay in the route module, silently
+  (main's second instance, §1.8), also what another chunk copies. The names main shares (two option groups read
+  them, a staying option counting as one; none reading `Route`) and nothing else are one shared module per file
+  (`?tsr-split=shared---<keys>`), as main's `?tsr-shared=1`: the route module and the chunks import them, the route
+  module re-exports the exported ones (one code outside the set assigns stays in the route module). Option values main cannot compile into a chunk stay in the route module, silently
   (`splitOnMain`, main's `compileCodeSplitVirtualRoute` cases); so does one whose chunk would assign a binding it
   imports (`assignsWhatItImports`: a shared `let`, an `export let`). Improvements over main wait until after #8817.
 - **J2.1 Which modules.** Only file route modules, and in them only the `createFileRoute` / `createRootRoute` /

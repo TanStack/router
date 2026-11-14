@@ -536,3 +536,152 @@ export const Route = createFileRoute('/')({ ${options} component: Page })
     },
   )
 })
+
+// `main`'s shared module holds the names two option groups read (a staying
+// option counting as one group) and nothing else; what else two split
+// options read, each chunk copies (spec-main-splitting 1.3, 1.8 #1).
+describe('what main shares, and only that (§1.3)', () => {
+  it('keeps a component two split options give lazy when a staying option shares a constant with it', async () => {
+    const route = await loadRoute(
+      `${head}const PAGE_SIZE = 20
+export const Route = createFileRoute('/')({
+  component: OverviewRoute,
+  errorComponent: OverviewRoute,
+  loader: () => ({ rows: PAGE_SIZE }),
+})
+function OverviewRoute() {
+  return <p>MARK_OVERVIEW {PAGE_SIZE}{typeof Route.options}</p>
+}
+`,
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(
+      await route.run(
+        `return [(await options.loader()).rows, await render('component')]`,
+      ),
+    ).toEqual([20, '<p>MARK_OVERVIEW 20object</p>'])
+    expect((await route.production()).where('MARK_OVERVIEW')).toBe('lazy')
+  })
+
+  it.each([
+    {
+      name: 'a value read from Route',
+      decls: `const query = { key: 'k' }
+export const Route = createFileRoute('/')({
+  loader: () => query.key,
+  component: Page,
+  notFoundComponent: Missing,
+})
+const options = Route.options`,
+    },
+    {
+      name: 'a property destructured from Route',
+      decls: `const query = { key: 'k' }
+export const Route = createFileRoute('/')({
+  loader: () => query.key,
+  component: Page,
+  notFoundComponent: Missing,
+})
+const { options } = Route`,
+    },
+  ])(
+    'loads the route module when two split options read $name at load',
+    async ({ decls }) => {
+      const route = await loadRoute(
+        `${head}${decls}
+function Page() {
+  return <p>{typeof options}{query.key}</p>
+}
+function Missing() {
+  return <p>missing {typeof options}</p>
+}
+`,
+      )
+      await expectValidModules(route)
+      expect(
+        await route.run(
+          `return [await options.loader(), await render('component'), await render('notFoundComponent')]`,
+        ),
+      ).toEqual(['k', '<p>objectk</p>', '<p>missing object</p>'])
+    },
+  )
+
+  // assigning is no read: `main` shares nothing here, each module has its own
+  it('splits a component that only assigns a let a staying option assigns too', async () => {
+    const route = await loadRoute(
+      `${head}let renders = 0
+export const Route = createFileRoute('/')({
+  beforeLoad: () => {
+    renders = 0
+  },
+  component: () => {
+    renders += 1
+    return <p>page</p>
+  },
+})
+`,
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(
+      await route.run(`options.beforeLoad()
+return render('component')`),
+    ).toBe('<p>page</p>')
+  })
+
+  it.each([
+    {
+      name: 'a top-level call of it',
+      decls: `let client: { id: number } | undefined
+if (typeof window !== 'undefined') { getClient() }
+function getClient() {
+  if (!client) { client = { id: 1 } }
+  return client
+}`,
+      read: 'getClient().id',
+      values: [1, '<p>1</p>'],
+    },
+    {
+      name: 'a property set on it',
+      decls: `let pool: Array<number> | null = null
+function fill() {
+  pool ??= [1]
+  return pool
+}
+fill.calls = 0`,
+      read: 'fill().length',
+      values: [1, '<p>1</p>'],
+    },
+    {
+      name: 'a display name set on it',
+      decls: `let seq = 0
+function useId() {
+  seq += 1
+  return seq
+}
+useId.displayName = 'useId'`,
+      read: 'useId()',
+      values: [1, '<p>2</p>'],
+    },
+  ])(
+    'shares a function assigning a shared let next to $name',
+    async ({ decls, read, values }) => {
+      const route = await loadRoute(
+        `${head}${decls}
+export const Route = createFileRoute('/')({
+  loader: () => ${read},
+  component: () => <p>{${read}}</p>,
+})
+`,
+      )
+      await expectValidModules(route)
+      expect(await route.isLazy('component')).toBe(true)
+      expect(
+        await route.run(
+          `return [await options.loader(), await render('component')]`,
+        ),
+      ).toEqual(values)
+    },
+  )
+})

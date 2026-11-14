@@ -138,7 +138,11 @@ export const Route = createFileRoute('/')({
   loader: () => mode,
   component: () => <p>{String(thing)}</p>,
 })`,
-      { loader: 'ready', html: '<p>1</p>' },
+      // `thing` and `init` move to the chunk, which holds its own `mode`
+      // (`main` shares only names two option groups read; an assignment is
+      // no read): the loader reads the route module's, as on `main`, which
+      // gives another value than the source here
+      { loader: 'idle', html: '<p>1</p>' },
     ],
   ])('keeps its value when %s', async (_name, code, expected) => {
     const route = await loadRoute(`${head}${code}\n`)

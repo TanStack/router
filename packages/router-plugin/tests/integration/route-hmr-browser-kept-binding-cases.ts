@@ -385,18 +385,6 @@ ${ui.page('value.text')}`,
     shows,
   },
   {
-    name: 'a written let',
-    files: (ui, v) => ({
-      [FILE]: `${ui.imports()}let value = 'unset'
-export const Route = createFileRoute('/')({
-  beforeLoad: () => { value = '${v}' },
-  component: Page,
-})
-${ui.page('value')}`,
-    }),
-    shows,
-  },
-  {
     name: 'an effectful initialiser',
     files: (ui, v) => ({
       [FILE]: `${ui.imports(`import { make } from '../make'\n`)}export const value = make('${v}')
@@ -579,8 +567,13 @@ async function runRow(bundler: Bundler, fw: Fw, row: Row, ctx: TestContext) {
     )
     await app.writeBroken(broken, row.shows('v1'))
   }
+  /** The loader runs the previous edit reached: a late second run of it shows here. */
+  let target: number | undefined
   for (const v of ['v2', 'v3']) {
     const before = await loaderRuns()
+    if (target !== undefined) {
+      expect(before, `${v} loader runs before the edit`).toBe(target)
+    }
     const reloaded = await app.edit(
       edit(ui, v),
       row.unmounted ? 'home' : row.shows(v),
@@ -608,6 +601,7 @@ async function runRow(bundler: Bundler, fw: Fw, row: Row, ctx: TestContext) {
         await new Promise((resolve) => setTimeout(resolve, 50))
       }
       expect(await loaderRuns(), `${v} loader runs`).toBe(before + runs)
+      target = before + runs
     }
     // (after a syntax error the page may have reloaded: no state to compare)
     if (
@@ -620,6 +614,9 @@ async function runRow(bundler: Bundler, fw: Fw, row: Row, ctx: TestContext) {
         `${v} state`,
       ).toBe('n=2')
     }
+  }
+  if (target !== undefined) {
+    expect(await loaderRuns(), 'loader runs after the last edit').toBe(target)
   }
   if (row.unmounted) {
     await app.click('#go')

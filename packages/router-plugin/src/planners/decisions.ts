@@ -614,13 +614,28 @@ function sharedNamesOnMain(
       return shared
     }
   }
+  /**
+   * The names `main` collects in a range (`collectModuleLevelRefsFromNode`,
+   * Babel's `t.isReferenced`): an assignment's target (`x = …`, `x += …`,
+   * `[x] = …`) is none; an update (`x++`) and a member write's object are.
+   */
+  const { file } = ctx.analysis
+  const namesIn = (range: Range): Array<SymbolId> =>
+    t1.refs
+      .refsIn(range)
+      .filter(
+        (r) =>
+          r.kind !== 'write' ||
+          file.parentOf(file.nodeAt(r.range.start)!)?.type ===
+            'UpdateExpression',
+      )
+      .map((r) => r.sym)
   /** `buildDependencyGraph`: what each declaration reads (with the route binding: `fullDepGraph`). */
   const readsOf = (s: SymbolId): Array<SymbolId> =>
     (declarators.get(s) ?? []).flatMap((u) =>
-      t1.refs
-        .refsIn(u.range)
-        .map((r) => r.sym)
-        .filter((r) => r !== s && (declarators.has(r) || r === route.routeSym)),
+      namesIn(u.range).filter(
+        (r) => r !== s && (declarators.has(r) || r === route.routeSym),
+      ),
     )
   const closure = (from: Iterable<SymbolId>): Set<SymbolId> => {
     const seen = new Set<SymbolId>()
@@ -637,10 +652,9 @@ function sharedNamesOnMain(
   const groupsOf = new Map<SymbolId, Set<number>>()
   for (const p of props) {
     const g = groupOf(p.key!)
-    const direct = t1.refs
-      .refsIn({ start: p.value!.start, end: p.value!.end })
-      .map((r) => r.sym)
-      .filter((s) => declarators.has(s))
+    const direct = namesIn({ start: p.value!.start, end: p.value!.end }).filter(
+      (s) => declarators.has(s),
+    )
     for (const s of closure(direct)) {
       if (declarators.has(s)) {
         groupsOf.set(s, (groupsOf.get(s) ?? new Set()).add(g))

@@ -170,8 +170,10 @@ const store = init({ plugins: [...plugins] })
 plugins.push('late')`,
       loader: 'store.plugins',
       component: '() => <p>{store.plugins.join()}</p>',
-      // One store, created once.
-      expected: [['auth'], '<p>auth</p>'],
+      // One store, created once, in the shared module, before the route
+      // module's statements fill the registry: as on `main`, which gives
+      // another value than the source here.
+      expected: [[], '<p></p>'],
       inits: 1,
     },
     {
