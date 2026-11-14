@@ -48,14 +48,18 @@ import type {
   Placement,
   PlacementInput,
   RootRef,
+  RouteModule,
 } from './reach'
 import type { SymbolId } from './symbols'
 import type { RegionId, UnitId } from './units'
 import type { OutputId } from './rewrite'
 
+/** A plan that is no route file: no name a chunk imports, none `main` shares. */
+const NO_ROUTE: RouteModule = { imported: new Set(), shared: new Set() }
+
 export function computeRoutePlacement(input: PlacementInput): Placement {
   const { t1, rewrites, outputs } = input
-  const { imported, shared: sharedNames } = input.routeModule!
+  const { imported, shared: sharedNames } = input.routeModule ?? NO_ROUTE
   const { units, items } = t1
   const graph = buildClusters(input, true)
   const reads = readIndex(input, graph)
@@ -199,6 +203,17 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         ...[...r.children].filter((t) => t !== c),
       ])
     }
+    /** The members reading each declaration (a generated one no member reads leaves). */
+    const readersOf = new Map<ClusterId, Array<ClusterId>>()
+    for (const [m, targets] of readsOf) {
+      for (const t of targets) {
+        let readers = readersOf.get(t)
+        if (!readers) {
+          readersOf.set(t, (readers = []))
+        }
+        readers.push(m)
+      }
+    }
     for (let changed = true; changed; ) {
       changed = false
       for (const c of inShared) {
@@ -227,7 +242,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         )
         const unread =
           generated.has(c) &&
-          ![...inShared].some((m) => m !== c && readsOf.get(m)!.includes(c))
+          !(readersOf.get(c) ?? []).some((m) => m !== c && inShared.has(m))
         if (readsOutside || assignedOutside || unread) {
           inShared.delete(c)
           changed = true

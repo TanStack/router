@@ -523,6 +523,13 @@ export const reset = createServerFn().handler(async () => { clear(); return db.q
     expectValid(copy)
     expect(copy).toContain(`from './db.server'`)
     expect(copy).toContain('function clear()')
+    // kind A (R155 phase 1): `clear` leaves the modules where the handler is
+    // a stub, and the copy holds what its handlers reach, nothing else (the
+    // old engine joined writers to the binding they write: `getCache`)
+    for (const r of [caller, providerEnv]) {
+      expect(r.code).not.toContain('function clear()')
+    }
+    expect(copy).not.toContain('getCache')
   })
 })
 
@@ -761,10 +768,10 @@ export function makeFns() {
     expect(h).toContain('db.get(3)')
   })
 
-  // the declaration and its effect leave the defining module's evaluation
-  // for the handler module's, once (a lazy initialisation, as in a split
-  // chunk): nothing outside the module keeps it (R149, answer A)
-  it('moves module state and its effect only a hoisted handler reads', async () => {
+  // the assignment is a statement: it stays in the defining module with the
+  // binding it writes and its import, and runs once, when the module loads
+  // (R154); the handler module imports the binding
+  it('keeps module state and the statement assigning it in the module, where a hoisted handler reads it', async () => {
     const r = await compile(
       `${FNS}import { load } from './db.server'
 let label: unknown = 'initial'
@@ -776,10 +783,37 @@ export function makeFn() {
       { env: ssrEnv, files },
     )
     expectValid(r.code)
-    expect(r.code).not.toContain('load(label)')
+    expect(r.code).toContain(`let label: unknown = 'initial'`)
+    expect(r.code.match(/label = load\(label\)/g)).toHaveLength(1)
+    expect(r.code).toContain(`import { load } from './db.server'`)
     const h = await r.derived(HANDLER_ID)
     expectValid(h)
-    expect(h.match(/label = load\(label\)/g)).toHaveLength(1)
+    expect(h).not.toContain('load(label)')
+    expect(h).toMatch(
+      /import \{[^}]*\blabel\b[^}]*\} from '\/app\/src\/module\.tsx'/,
+    )
+  })
+
+  // kind A (R155 phase 1): a const the module keeps is imported by the
+  // handler module, not declared there again (the old engine copied a
+  // string or number const; corpus, 43 compiles)
+  it('imports a const the module keeps into the handler module', async () => {
+    const r = await compile(
+      `${FNS}import { db } from './db.server'
+const prefix = 'p:'
+export const fn = createServerFn().handler(async () => prefix + String(db.get(1)))
+export function show(x: string) { return prefix + x }
+`,
+      { env: ssrEnv, files },
+    )
+    expectValid(r.code)
+    expect(r.code).toContain(`const prefix = 'p:'`)
+    const h = await r.derived(HANDLER_ID)
+    expectValid(h)
+    expect(h).not.toMatch(/const prefix/)
+    expect(h).toMatch(
+      /import \{[^}]*\bprefix\b[^}]*\} from '\/app\/src\/module\.tsx'/,
+    )
   })
 
   it('derives the handler module of an SFC block before its language key', async () => {

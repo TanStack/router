@@ -271,11 +271,10 @@ export const fn = createServerFn().handler(async () => [first, second, third])`,
 
 // The same with a declaration the module keeps calling the same import, and
 // an effect between two augmentations of an object only the handler reads:
-// the server runs every one once; the object and its writes, which only
-// call an import (they change nothing else: R146 amendment), go with the
-// handler and run in source order there, after the call between them,
-// which stays (no order between effects). The client, which keeps the
-// augmented object, runs them in source order.
+// the server runs every one once, in source order, when the module loads:
+// the writes are statements, which stay with what they name (R154), and the
+// handler module imports the object. The client, which keeps the augmented
+// object, runs them in source order too.
 test('effectful declarations and augmentations a handler reads run once each, the object with its writes in order', async () => {
   const startCase = await effectCase(
     await host(),
@@ -301,13 +300,7 @@ export const fn = createServerFn().handler(async () => [
     'register:second',
   ]
   expect(await recordClientSideEffects(startCase)).toEqual(calls)
-  const serverCalls = [
-    'register:kept',
-    'register:middle',
-    'register:tools',
-    'register:first',
-    'register:second',
-  ]
+  const serverCalls = calls
   const global = globalThis as Record<string, unknown>
   global[effectsKey] = []
   try {

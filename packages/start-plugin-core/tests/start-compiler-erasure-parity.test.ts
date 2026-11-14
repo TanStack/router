@@ -324,3 +324,133 @@ export const q = createServerFn().handler(createServerOnlyFn(async () => db.q())
     expect(await callServerFnThroughCallers(served, 'module.q')).toBe('db')
   })
 })
+
+// Server-fn handler modules and erasure-only plans on the one placement
+// (R155 phase 1, spec 8.2 kind A: each failed on the old engine): what a
+// statement names stays in the module with it and runs when the module
+// loads (R154); a declaration goes where removed text alone used it.
+describe('handlers on the one placement (kind A)', () => {
+  /** A `.server` module recording that it ran (`./calls`). */
+  const recordedServer = (name: string) => ({
+    [`${name}.ts`]: `import { calls } from './calls'
+calls.push(${JSON.stringify(name)})
+export const db = { q: () => 'db', reset: () => {} }
+`,
+  })
+
+  // l1: `clear` is needed only by the handler; it assigns `cache`, which an
+  // export reads. The old engine kept writers beside the binding they write,
+  // and with them what they read.
+  test('l1, client: a function only the handler calls leaves the client although it assigns a kept `let`', async () => {
+    const served = await serveCase(await host(), {
+      ...callsFile,
+      ...recordedServer('db.server'),
+      'module.tsx': `${serverFn}import { db } from './db.server'
+let cache: Map<string, number> | null = null
+function clear() { cache = null; db.reset() }
+export function getCache() { return (cache ??= new Map()) }
+export const reset = createServerFn().handler(async () => { clear(); return 'reset' })`,
+    })
+    expectNotLoaded(await served.loads(), ['./db.server'])
+    expect(
+      await inPage(served, `return (await load('module.tsx')).getCache().size`),
+    ).toBe(0)
+  })
+
+  // l1 on the server: the handler would assign what its module imports, so
+  // it stays in place (accepted: main is broken here, its copy clears a
+  // second `cache`): one `cache`, and `./db.server` loads with the module
+  test('l1, server: that handler stays in place and clears the one `cache` the export reads', async () => {
+    const served = await serveCase(await host(), {
+      ...callsFile,
+      ...recordedServer('db.server'),
+      'module.tsx': `${serverFn}import { db } from './db.server'
+let cache: Map<string, number> | null = null
+function clear() { cache = null; db.reset() }
+export function getCache() { return (cache ??= new Map()) }
+export const reset = createServerFn().handler(async () => { clear(); return 'reset' })`,
+    })
+    expect(await serverCalls(served)).toEqual(['db.server'])
+    const module = await served.ssr()
+    const before = module.getCache()
+    expect(await callFromClient(served, 'module.reset')).toBe('reset')
+    expect(module.getCache()).not.toBe(before)
+  })
+
+  // e13, l10: a container a top-level statement fills stays with the
+  // statement and its import, and the statement runs once, at load
+  test('e13, l10: a container a statement fills stays in the module and is filled at load, once', async () => {
+    const served = await serveCase(await host(), {
+      ...callsFile,
+      'module.tsx': `${serverFn}import { connect } from './calls'
+const table = new Map<string, unknown>()
+table.set('a', connect('a'))
+table.set('b', connect('b'))
+export const fn = createServerFn().handler(async ({ data }: { data: string }) => (table.get(data) as any).name)`,
+    })
+    expect(await serverCalls(served)).toEqual(['a', 'b'])
+    expect(await callServerFnThroughCallers(served, 'module.fn', 'b')).toBe('b')
+    expect(await serverCalls(served)).toEqual(['a', 'b'])
+  })
+
+  // e11: statements reading what only the handler reads run at load, in
+  // source order, once
+  test('e11: statements on a binding only the handler reads run at load on the server, in source order', async () => {
+    const served = await serveCase(await host(), {
+      ...callsFile,
+      'module.tsx': `${serverFn}import { connect } from './calls'
+const db = connect('db')
+if (db.name) { connect('if') }
+try { connect('try') } catch {}
+export const fn = createServerFn().handler(async () => db.q())`,
+    })
+    expect(await serverCalls(served)).toEqual(['db', 'if', 'try'])
+    expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('db')
+    expect(await serverCalls(served)).toEqual(['db', 'if', 'try'])
+  })
+
+  // e23: `let db; db = connect()` read by a handler: both stay, the
+  // assignment runs at load
+  test('e23: a `let` a top-level statement assigns stays with the statement, which runs at load', async () => {
+    const served = await serveCase(await host(), {
+      ...callsFile,
+      'module.tsx': `${serverFn}import { connect } from './calls'
+let db: ReturnType<typeof connect>
+db = connect('db')
+export const fn = createServerFn().handler(async () => db.q())`,
+    })
+    expect(await serverCalls(served)).toEqual(['db'])
+    expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('db')
+    expect(await serverCalls(served)).toEqual(['db'])
+  })
+
+  // l13: code never used that reads the handler's helper keeps the helper
+  // (and what it reads) in the module (R153 amendment: already-unused code
+  // stays); the handler module imports the helper
+  test('l13: a helper code never used reads stays in the module, with its import', async () => {
+    const served = await serveCase(await host(), {
+      ...callsFile,
+      ...recordedServer('db.server'),
+      'module.tsx': `${serverFn}import { db } from './db.server'
+function helper() { return db.q() }
+function Unused() { return helper() }
+export const fn = createServerFn().handler(async () => helper())`,
+    })
+    expect(await serverCalls(served)).toEqual(['db.server'])
+    expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('db')
+    expect(await serverCalls(served)).toEqual(['db.server'])
+  })
+
+  // t1: a value import the handler uses only as a type is no import of the
+  // module on the server (verbatimModuleSyntax keeps what is written)
+  test('t1: a class import the handler uses only as a type does not load on the server', async () => {
+    const served = await serveCase(await host(), {
+      ...callsFile,
+      ...recordedServer('client.server'),
+      'module.tsx': `${serverFn}import { db } from './client.server'
+export const fn = createServerFn().handler(async () => { const c: typeof db | null = null; return c ?? 'none' })`,
+    })
+    expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('none')
+    expect(await serverCalls(served)).toEqual([])
+  })
+})

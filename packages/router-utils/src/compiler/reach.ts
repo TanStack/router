@@ -213,6 +213,22 @@ export interface Placement {
   check: () => InvariantViolation | undefined
 }
 
+/** R155 phases 1-2: the plans the old engine still places. Deleted with the engine in phase 3. */
+function onOldEngine(input: PlacementInput): boolean {
+  if (input.routeModule) {
+    return false
+  }
+  for (const o of input.outputs.values()) {
+    // `<Hydrate>` outside a route file (its chunks, and the `export` outputs
+    // only its planner declares); `split` without `setRouteModule`: the
+    // core's toy planners
+    if (o.kind === 'hydrate' || o.kind === 'export' || o.kind === 'split') {
+      return true
+    }
+  }
+  return false
+}
+
 /**
  * The stages' order is load-bearing, and a reorder still compiles:
  * - `keptDeclarations` reads the settled `roots`, so it precedes
@@ -228,8 +244,9 @@ export interface Placement {
  * - `includeAndImport` reads the final `roots` and homes.
  */
 export function computePlacement(input: PlacementInput): Placement {
-  if (input.routeModule) {
-    // a route file: what route splitting on `main` does (`route-placement.ts`)
+  if (!onOldEngine(input)) {
+    // a route file, a server function's handler module, erasure only: what
+    // route splitting on `main` does, its removal rule (`route-placement.ts`)
     return computeRoutePlacement(input)
   }
   // 1. clusters (a binding with its writers at load), the write table
