@@ -83,7 +83,10 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
           gens[g]!.declares.length > 0 || (gens[g]!.imports ?? []).length > 0,
       )
     }
-    return cl.units.every((u) => {
+    // (a type merged with the binding, `import { type X }` beside
+    // `function X`, is TypeScript's: it decides nothing)
+    const values = cl.units.filter((u) => units[u]!.kind !== 'type')
+    return values.every((u) => {
       const unit = units[u]!
       return (
         unit.kind === 'import-specifier' ||
@@ -126,6 +129,19 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
             work.push(t)
           }
         }
+      }
+    }
+    // a value import the source uses only in type positions (TypeScript
+    // erases it): read, so it leaves with its readers, as on `main`
+    for (const cl of clusters) {
+      if (
+        cl.units.length > 0 &&
+        cl.units.every((u) => units[u]!.kind === 'import-specifier') &&
+        [...cl.declares].every(
+          (s) => (t1.symbols.binding(s)?.references.length ?? 0) > 0,
+        )
+      ) {
+        sourceLive.add(cl.id)
       }
     }
   }
@@ -347,11 +363,6 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
     } else {
       for (const [c, h] of home) {
         if (h === o) {
-          set.add(c)
-        }
-      }
-      for (const c of reached.get(o) ?? []) {
-        if (isImport(c)) {
           set.add(c)
         }
       }
