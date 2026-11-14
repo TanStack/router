@@ -5,6 +5,7 @@ import {
   BaseRoute,
   _getAssetMatches,
   createSerializationAdapter,
+  getLocationChangeInfo,
   isNotFound,
   notFound,
 } from '../src'
@@ -775,6 +776,43 @@ describe('hydrate', () => {
         data: { source: 'index head' },
       }),
     )
+  })
+
+  it('does not reset scroll on the first render after hydration', async () => {
+    const scrollTo = vi.fn()
+    vi.stubGlobal('scrollTo', scrollTo)
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      isServer: false,
+      scrollRestoration: true,
+    })
+    mockWindow.$_TSR = createMockBootstrap({
+      manifest: testManifest,
+      dehydratedData: {},
+      matches: router
+        .matchRoutes(router.stores.location.get())
+        .map((match) => ({
+          i: dehydrateSsrMatchId(match.id),
+          s: 'success' as const,
+          ssr: true,
+          u: Date.now(),
+        })),
+    })
+
+    await hydrate(router)
+    const location = router.stores.resolvedLocation.get()!
+    router.emit({
+      type: 'onRendered',
+      ...getLocationChangeInfo(location, location),
+    })
+
+    expect(scrollTo).not.toHaveBeenCalled()
   })
 })
 
