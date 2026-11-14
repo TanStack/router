@@ -81,6 +81,16 @@
         "default": "./dist/cjs/ssr/client.cjs"
       }
     },
+    "./testing": {
+      "import": {
+        "types": "./dist/esm/testing.d.ts",
+        "default": "./dist/esm/testing.js"
+      },
+      "require": {
+        "types": "./dist/cjs/testing.d.cts",
+        "default": "./dist/cjs/testing.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,

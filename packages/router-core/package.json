@@ -68,6 +68,16 @@
         "default": "./dist/cjs/ssr/client.cjs"
       }
     },
+    "./testing": {
+      "import": {
+        "types": "./dist/esm/testing/index.d.ts",
+        "default": "./dist/esm/testing/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/testing/index.d.cts",
+        "default": "./dist/cjs/testing/index.cjs"
+      }
+    },
     "./isServer": {
       "development": {
         "import": {
