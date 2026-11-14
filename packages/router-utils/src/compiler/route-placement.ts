@@ -456,7 +456,10 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
       h !== 'removed' &&
       h !== 'duplicate' &&
       !copying(h) &&
-      home.get(d) !== h
+      home.get(d) !== h &&
+      // (a write in text that output erases, a client's stubbed server-fn
+      // handler, assigns nothing there)
+      !graph.viewOf(h).isErasedAt(w.at)
     ) {
       writers.set(c, w.sym)
     }
