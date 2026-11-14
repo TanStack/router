@@ -679,13 +679,16 @@ export function escapeHtml(str: string): string {
 
 // Decode component data only. Leave protocol-relative URL handling to callers;
 // this decoder also receives fragments, where slashes and backslashes are data.
+// Hoisted: a regex literal allocates a new RegExp each time it is evaluated.
+// eslint-disable-next-line no-control-regex
+const NEEDS_DECODE_RE = /[%\\\x00-\x1f\x7f]/
+
 export function decodePath(path: string) {
   if (!path) {
     return path
   }
   let result = path
-  // eslint-disable-next-line no-control-regex
-  if (/[%\\\x00-\x1f\x7f]/.test(path)) {
+  if (NEEDS_DECODE_RE.test(path)) {
     const re = /%25|%5C/gi
     let cursor = 0
     let match
@@ -719,16 +722,19 @@ export function decodePath(path: string) {
  * encodePathLikeUrl('/path/日本語') // '/path/%E6%97%A5%E6%9C%AC%E8%AA%9E'
  * encodePathLikeUrl('/path/already%20encoded') // '/path/already%20encoded' (preserved)
  */
+const NEEDS_URL_ENCODE_RE = /[\s\u0080-\uFFFF]/
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
+// eslint-disable-next-line no-control-regex
+const URL_ENCODE_RE = /\s|[^\u0000-\u007F]/gu
+
 export function encodePathLikeUrl(path: string): string {
   // Encode whitespace and non-ASCII characters that browsers encode in URLs.
   // The test uses one character class: it matches the same code units as the
   // replacement pattern below and is cheaper than the alternation.
-  if (!/[\s\u0080-\uFFFF]/.test(path)) {
+  if (!NEEDS_URL_ENCODE_RE.test(path)) {
     return path
   }
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
-  // eslint-disable-next-line no-control-regex
-  return path.replace(/\s|[^\u0000-\u007F]/gu, encodeURIComponent)
+  return path.replace(URL_ENCODE_RE, encodeURIComponent)
 }
 
 /**
