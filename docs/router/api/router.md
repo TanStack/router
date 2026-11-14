@@ -12,6 +12,7 @@ title: Router API
   - [`createLazyRoute`](./router/createLazyRouteFunction.md)
   - [`createRouteMask`](./router/createRouteMaskFunction.md)
   - [`createRouter`](./router/createRouterFunction.md)
+  - [`createRouterTesting`](./router/createRouterTestingFunction.md) (experimental, React only)
   - [`defer`](./router/deferFunction.md)
   - [`getRouteApi`](./router/getRouteApiFunction.md)
   - [`isNotFound`](./router/isNotFoundFunction.md)

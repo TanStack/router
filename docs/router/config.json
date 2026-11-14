@@ -300,7 +300,12 @@
       "frameworks": [
         {
           "label": "react",
-          "children": []
+          "children": [
+            {
+              "label": "Testing Routes",
+              "to": "guide/testing-routes"
+            }
+          ]
         },
         {
           "label": "solid",
