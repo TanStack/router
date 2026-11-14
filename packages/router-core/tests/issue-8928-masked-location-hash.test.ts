@@ -53,12 +53,16 @@ describe('masked navigation keeps the hash of the real location', () => {
   test('a masked navigation without a hash stays without one', async () => {
     const { router, history } = setup()
     await router.load()
+    // Leave `/` first, so the masked navigation below is not a same-location no-op
+    await router.navigate({ to: '/chats/$chatId', params: { chatId: 'c0' } })
 
     await router.navigate({
       to: '/',
       mask: { to: '/chats/$chatId', params: { chatId: 'c1' } },
     })
 
+    expect(history.location.href).toBe('/chats/c1')
+    expect(history.location.state.__tempLocation).toBeDefined()
     expect(router.parseLocation(history.location)).toMatchObject({
       pathname: '/',
       hash: '',
