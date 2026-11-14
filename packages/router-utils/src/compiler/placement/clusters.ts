@@ -299,7 +299,16 @@ const importsOnly = (g: GeneratedUnit): boolean =>
   !g.effectful &&
   (g.imports?.length ?? 0) > 0
 
-export function buildClusters(input: PlacementInput): ClusterGraph {
+/**
+ * `byUnit`: one cluster per unit (merged declarations together), a claimed
+ * region with its owner and an unclaimed sub-region with the region around
+ * it, and nothing else: a binding's writers stay clusters of their own (the
+ * route-file placement, `route-placement.ts`, decides per unit).
+ */
+export function buildClusters(
+  input: PlacementInput,
+  byUnit = false,
+): ClusterGraph {
   const { t1, rewrites } = input
   const { units, refs, items } = t1
   const { regions } = rewrites
@@ -502,6 +511,14 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
   for (const claim of rewrites.claims.values()) {
     uf.union(claim.region, memberOfGen(claim.owner))
   }
+  if (byUnit) {
+    for (const r of regions.regions) {
+      const parent = regions.parentOf(r.id)
+      if (r.unit === null && parent !== null && !rewrites.claims.has(r.id)) {
+        uf.union(r.id, parent)
+      }
+    }
+  }
 
   // ---- writes: every write of a module binding, one table -----------------
   const writes: Array<Write> = []
@@ -634,11 +651,13 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     }
     const unitOwner = regions.get(w.owner).kind === 'unit'
     if (w.member) {
-      if (w.eager && unitOwner) {
+      if (w.eager && unitOwner && !byUnit) {
         uf.union(w.owner, d)
       }
     } else if (w.augment || unitOwner) {
-      uf.union(w.owner, d)
+      if (!byUnit) {
+        uf.union(w.owner, d)
+      }
     } else {
       regionWrittenSyms.add(w.sym)
       let set = writersOfMember.get(d)

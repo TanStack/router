@@ -19,6 +19,7 @@ import {
 import { keptDeclarations } from './placement/kept'
 import { assignHomes } from './placement/homes'
 import { includeAndImport } from './placement/inclusion'
+import { computeRoutePlacement } from './route-placement'
 import type { ClusterId } from './placement/clusters'
 import type { Tier1 } from './analysis'
 import type { InvariantViolation } from './self-checks'
@@ -221,6 +222,10 @@ export interface Placement {
  * - `includeAndImport` reads the final `roots` and homes.
  */
 export function computePlacement(input: PlacementInput): Placement {
+  if (input.routeModule) {
+    // a route file: what route splitting on `main` does (`route-placement.ts`)
+    return computeRoutePlacement(input)
+  }
   // 1. clusters (a binding with its writers at load), the write table
   const graph = buildClusters(input)
   // 2. what each cluster reads, per output, and what each evaluation runs;

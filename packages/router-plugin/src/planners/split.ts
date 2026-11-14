@@ -5,8 +5,8 @@
  * unit homed there that declares the chunk's export from the option's
  * value (claimed region) and, in the route module, a placeholder calling
  * `lazyRouteComponent` / `lazyFn` with one importer const per group. The
- * core places everything else by needers (what both sides read lives in
- * the route module and is imported by the chunk). `deleteNodes` erases
+ * core places everything else as route splitting on `main` does
+ * (`setRouteModule`, the core's `route-placement.ts`). `deleteNodes` erases
  * properties in every output.
  */
 import {
@@ -34,7 +34,7 @@ import type {
 } from '@tanstack/router-utils/compiler'
 import type { Node } from 'yuku'
 
-/** Applies the round's split plan: `deleteNodes`, split options, extracted exports. */
+/** Applies the round's split plan: `deleteNodes`, split options. */
 export function planSplit(ctx: PlanContext, round: RouterRound): void {
   const { plan } = round
   const { route } = plan
@@ -295,27 +295,6 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
         by: ROUTER_PLANNER,
       })
     }
-  }
-
-  // every exported binding but the route may leave for an
-  // extracted-export output; the core decides (a pure, unwritten
-  // declaration only chunks need moves, the route module re-exports it,
-  // chunks copy it when the copy is a closure of functions and primitives
-  // nothing writes, else import it; in dev it stays in the route module:
-  // `placement/settle.ts`)
-  for (const e of ctx.analysis.exports) {
-    if (e.kind !== 'local' || e.local === null || e.typeOnly) {
-      continue
-    }
-    const sym = e.local
-    if (sym === route.routeSym) {
-      // the route stays, whatever another planner offered (Hydrate
-      // offers every export): its chunks import it, and that is no
-      // kept export to report
-      ctx.keep(sym)
-      continue
-    }
-    ctx.extractExport(sym, e.name)
   }
 
   if (helperImports.length > 0) {
