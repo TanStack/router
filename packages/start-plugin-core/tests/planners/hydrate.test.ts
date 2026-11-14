@@ -1129,6 +1129,29 @@ export function Page({ a, b }) {
     expect(server.code).toContain('server-fallback')
   })
 
+  // A top-level statement is never deleted with a binding only the stripped
+  // fallback read: whether writing it changes something else (here another
+  // module's object) has no syntactic answer. Source: the erasure review's
+  // Hydrate probe (review-erasure-deletion-bounded.md section 6).
+  it('keeps a top-level statement writing a binding only the fallback read', async () => {
+    const code = `${REACT}import { config } from './config'
+const flags = config.flags
+flags.newUi = true
+export function Page() {
+  return <Hydrate fallback={<p>{String(flags.newUi)}</p>}><p>child</p></Hydrate>
+}
+`
+    const files = {
+      '/app/src/config.ts': `export const config = { flags: {} as any }\n`,
+    }
+    const server = await compile(code, { env: ssrEnv, files })
+    expect(server.code).toContain(`import { config } from './config'
+const flags = config.flags
+flags.newUi = true
+`)
+    expect(server.code).toContain(`<Hydrate h="${idAt(code)}"><p>child</p>`)
+  })
+
   it('serves no chunk on the server', async () => {
     const code = `${REACT}export const Page = () => <Hydrate><p>x</p></Hydrate>\n`
     const server = await compile(code, { env: ssrEnv })
