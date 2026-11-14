@@ -1909,6 +1909,45 @@ test('when creating a route with a nested boundary splat, optional param and req
   >()
 })
 
+test('when creating a route with a param after a splat, the param is not inferred', () => {
+  const rootRoute = createRootRoute()
+
+  const filesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'files/$/$fileName',
+  })
+
+  const routeTree = rootRoute.addChildren([filesRoute])
+
+  const router = createRouter({ routeTree })
+
+  expectTypeOf(filesRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      _splat?: string
+    }>
+  >()
+})
+
+test('when creating a route with a boundary param, a splat and a param after the splat', () => {
+  const rootRoute = createRootRoute()
+
+  const accountSettingsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'accounts/file-{$accountId}.json/settings/$/$section',
+  })
+
+  const routeTree = rootRoute.addChildren([accountSettingsRoute])
+
+  const router = createRouter({ routeTree })
+
+  expectTypeOf(accountSettingsRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      accountId: string
+      _splat?: string
+    }>
+  >()
+})
+
 test('when creating a route with a nested boundary splat, optional param, required param and escaping', () => {
   const rootRoute = createRootRoute()
 

@@ -70,11 +70,7 @@ export type ParsePathParamsSymbol<T extends string> =
     ? TRight extends `${string}/${string}`
       ? TRight extends `${infer TParam}/${infer TRest}`
         ? TParam extends ''
-          ? ParsePathParamsResult<
-              ParsePathParams<TRest>['required'],
-              '_splat' | ParsePathParams<TRest>['optional'],
-              ParsePathParams<TRest>['rest']
-            >
+          ? ParsePathParamsResult<never, '_splat', never>
           : ParsePathParamsResult<
               TParam | ParsePathParams<TRest>['required'],
               ParsePathParams<TRest>['optional'],
