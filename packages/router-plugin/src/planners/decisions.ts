@@ -247,6 +247,7 @@ export function splitPlanOf(
 
   /** Exported bindings named as a split option's value: not split (`main`'s one warning). */
   const exported: Array<string> = []
+  let exportedAt: Range | undefined
   for (const group of groupings) {
     const groupKey = groupKeyOf(group)
     for (const key of new Set(group)) {
@@ -270,6 +271,7 @@ export function splitPlanOf(
         // the route file keeps exporting it: splitting it would only move a
         // re-export (`main` leaves it, with a warning)
         exported.push(ctx.symbols.name(valueSym))
+        exportedAt ??= { start: value.start, end: value.end }
         continue
       }
       if (
@@ -324,6 +326,7 @@ export function splitPlanOf(
         ...exported.map((name) => `- ${name}`),
         'For the best optimization, these items should either have their export statements removed, or be imported from another location that is not a route file.',
       ].join('\n'),
+      range: exportedAt,
     })
   }
   return { route, decisions, warnings, deleted, shadowing }

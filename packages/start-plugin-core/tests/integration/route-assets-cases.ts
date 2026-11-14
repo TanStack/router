@@ -371,7 +371,9 @@ const routes: Record<string, { needs: Assets; may?: Partial<Assets> }> = {
 /**
  * The markers of code only a route's split options or a lazy boundary
  * import (no other module imports it through a route file, which a bundler
- * may keep with the entry: SPEC J2.8): the app shell never links them.
+ * may keep with the entry: SPEC J2.8): the app shell never links them. (Not
+ * `Gem`: an export of `/hyd` stays in its route file, as on main, R153, and
+ * every page imports the route files.)
  */
 const routeOnly = [
   'EXPORTED',
@@ -384,7 +386,6 @@ const routeOnly = [
   'SHAREDERROR',
   'HYD',
   'BOUNDARY',
-  'GEM',
   'TWICE',
   'TWICECHILD',
   'NEST',

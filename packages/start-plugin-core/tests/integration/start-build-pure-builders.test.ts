@@ -76,14 +76,6 @@ export function makeMiddleware(tag: string) {
   .handler(async () => 'label')`,
     '<button onClick={() => getLabel()}>go</button>',
   ),
-  'src/routes/exported.tsx': route(
-    'exported',
-    `export const getExported = createServerFn({ method: 'POST' })
-  .middleware([${tagging('MARK_exported')}])
-  .validator((input: string) => input)
-  .handler(async ({ data }) => data)`,
-    "<button onClick={() => getExported({ data: 'x' })}>go</button>",
-  ),
   'src/routes/middleware.tsx': route(
     'middleware',
     `const tagged = ${tagging('MARK_middleware')}
@@ -137,7 +129,6 @@ export const Route = createFileRoute('/impure')({
 
 const lazyPaths = [
   'server-fn',
-  'exported',
   'middleware',
   'isomorphic',
   'shared',

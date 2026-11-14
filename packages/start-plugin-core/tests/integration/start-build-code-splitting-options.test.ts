@@ -11,7 +11,6 @@ import {
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import {
-  StartBuildError,
   buildStart,
   callByIdExports,
   callByIdPrelude,
@@ -169,12 +168,10 @@ return { staticData: route.options.staticData ?? null, ssr: route.options.ssr ??
 
   // A loader that is a server fn, in a chunk of its own: each build
   // compiles it, and the client's loader calls the server's. Written in
-  // place as an object-form loader's handler, the build fails at the server
-  // fn (R3-G7-4): Start moves a server fn written in place to the module top
-  // level, and the code splitter cannot move the same text into the chunk.
-  // As the loader itself (in place or named), the value is a call, which
-  // the compiler cannot tell from an object-form loader: the loader stays
-  // in the route module, warned at (SPEC J2.8), and runs on the server.
+  // place as the loader, Start rewrites it in the route module, so the
+  // loader stays there, warned at, and runs on the server. An object-form
+  // loader stays in the route module (a value main's chunk compile cannot
+  // take, R153) and runs on the server.
   const routeModule = (declarations: string, loader: string) =>
     `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
@@ -233,10 +230,7 @@ return requestsOf((options) => (typeof loader === 'function' ? loader : loader.h
   // (the fixes the warning and the error below give)
   test.each([
     { name: 'a loader calling it', loader: '(ctx) => loaderFn(ctx)' },
-    {
-      name: "an object-form loader's handler",
-      loader: '{ handler: loaderFn }',
-    },
+    { name: 'a loader', loader: 'loaderFn' },
   ])(
     'router.codeSplittingOptions: $name that is a server fn declared before the route, split into its own chunk, runs on the server',
     async ({ loader }) => {
@@ -260,11 +254,6 @@ return requestsOf((options) => (typeof loader === 'function' ? loader : loader.h
       declarations: '',
       loader: `createServerFn().handler(async () => 'MARK_LOADER_FN')`,
     },
-    {
-      name: 'declared before the route',
-      declarations: `const loaderFn = createServerFn().handler(async () => 'MARK_LOADER_FN')\n`,
-      loader: 'loaderFn',
-    },
   ])(
     'router.codeSplittingOptions: a loader that is a server fn $name stays in the route module, warned at, and runs on the server',
     async ({ declarations, loader }) => {
@@ -285,26 +274,19 @@ return requestsOf((options) => (typeof loader === 'function' ? loader : loader.h
   )
   test.each([
     {
-      name: "an object-form loader's handler",
+      name: 'written in place',
       loader: `{ handler: createServerFn().handler(async () => 'MARK_LOADER_FN') }`,
     },
+    {
+      name: 'declared before the route',
+      declarations: `const loaderFn = createServerFn().handler(async () => 'MARK_LOADER_FN')\n`,
+      loader: '{ handler: loaderFn }',
+    },
   ])(
-    'router.codeSplittingOptions: $name that is a server fn written in place, split into its own chunk, fails the build at the server fn',
-    async ({ loader }) => {
-      const module = routeModule('', loader)
-      const error = await buildSplitLoader(module).then(
-        () => expect.fail('the build succeeded'),
-        (e: unknown) => e,
-      )
-      if (!(error instanceof StartBuildError)) {
-        throw error
-      }
-      expectDiagnostic(error.diagnostics, {
-        severity: 'error',
-        file: 'src/routes/index.tsx',
-        root: error.root,
-        position: diagnosticPosition(module, 'createServerFn().handler'),
-      })
+    "router.codeSplittingOptions: an object-form loader's handler that is a server fn $name stays in the route module and runs on the server",
+    async ({ declarations = '', loader }) => {
+      const built = await buildSplitLoader(routeModule(declarations, loader))
+      expect(await runServerFnLoader(built)).toBe('MARK_LOADER_FN')
     },
     timeout,
   )

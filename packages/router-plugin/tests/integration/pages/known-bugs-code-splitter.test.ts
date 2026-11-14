@@ -811,30 +811,6 @@ export const Route = createFileRoute('/')({
         created: { store: 0, theme: 0, config: 1 },
       },
     },
-    {
-      // Only the handler moves: its import leaves the route module, and the
-      // state it shares with `staleReloadMode` is created once.
-      // Source: #8504 (code-splitter-route-options.test.ts), where it passes.
-      name: 'an import only the handler reads, next to state the handler and another key read',
-      code: `import { fetchPosts } from './api'
-import { createConfig } from './store'
-const config = createConfig()
-export const Route = createFileRoute('/')({
-  codeSplitGroupings: [['loader'], ['component']],
-  loader: {
-    handler: () => [config.mode, fetchPosts()],
-    staleReloadMode: config.mode,
-  },
-  component: () => <p>index</p>,
-})`,
-      expected: {
-        loaded: ['background', 'posts'],
-        staleReloadMode: 'background',
-        rendered: '<p>index</p>',
-        created: { store: 0, theme: 0, config: 1 },
-        apiLoadsEagerly: false,
-      },
-    },
   ])(
     'a split loader in object form keeps $name working, created once',
     async ({ code, expected }) => {

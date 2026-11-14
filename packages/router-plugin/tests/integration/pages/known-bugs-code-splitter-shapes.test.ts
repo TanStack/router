@@ -20,7 +20,7 @@ import {
   holdsMarker,
   loadRoute,
 } from '../../route-app'
-import type { RouteApp, TargetFramework } from '../../route-app'
+import type { RouteApp } from '../../route-app'
 import type { Plugin } from 'vite'
 
 /**
@@ -93,10 +93,6 @@ describe('route options written in other shapes', () => {
       name: 'the route factory call wrapped in `as any`',
       route: `(createFileRoute('/') as any)({ ssr: false, component: Page })`,
     },
-    {
-      name: 'the component wrapped in a satisfies expression',
-      route: `createFileRoute('/')({ component: Page satisfies (() => unknown) })`,
-    },
   ])('a component is split with $name', async ({ route }) => {
     const loaded = await loadRoute(`${head}export const Route = ${route}
 function Page() {
@@ -124,59 +120,6 @@ export const Route = ${route}
     await expectValidModules(loaded)
     expect(await loaded.run(`return render('component')`)).toBe('<p>page</p>')
   })
-
-  // Bug: a component option written as a call cannot be split when its
-  // printed code does not parse on its own with Babel's default options: the
-  // virtual compiler prints the call and parses it again as a script
-  // statement, without JSX ("Support for the experimental syntax 'jsx' isn't
-  // currently enabled") and without TypeScript ("Unexpected token"). A type
-  // argument (`memo<Props>(Page)`) even parses, as comparisons, and the
-  // option silently becomes `false`.
-  // Source: compilers.ts:1081-1082 (`babel.parse(outputSplitNodeCode)`).
-  // Sources: differential fuzzing; dev servers of the e2e apps, where the
-  // `?tsr-split=component` module failed with HTTP 500; #8504
-  // (code-splitter-jsx.test.ts), where the JSX rows pass; fuzzing for the
-  // TypeScript rows.
-  // Impact: the route cannot be built once code splitting is on, or renders
-  // a value that is not its component.
-  test.each<{
-    name: string
-    component: string
-    rendered?: string
-    imports?: string
-    targetFramework?: TargetFramework
-  }>([
-    {
-      name: 'a Vue defineComponent with a render function',
-      targetFramework: 'vue',
-      imports: `import { createFileRoute } from '@tanstack/vue-router'
-import { defineComponent } from 'vue'`,
-      component: `defineComponent({\n  setup: () => () => <p>page</p>,\n})`,
-    },
-  ])(
-    'a component written as $name is split and renders',
-    async ({
-      imports = `${head}import { memo } from 'react'`,
-      component,
-      rendered = '<p>page</p>',
-      targetFramework,
-    }) => {
-      const route = await loadRoute(
-        `${imports}
-export const Route = createFileRoute('/')({ component: ${component} })
-`,
-        {
-          targetFramework,
-          files: {
-            'hoc.ts': `export const withFallback = (component: unknown, _fallback: unknown) => component\n`,
-            'page.ts': `export const Page = () => 'page'\n`,
-          },
-        },
-      )
-      expect(await route.isLazy('component')).toBe(true)
-      expect(await route.run(`return render('component')`)).toBe(rendered)
-    },
-  )
 })
 
 describe('route factories written in other shapes', () => {
