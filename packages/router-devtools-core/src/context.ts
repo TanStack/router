@@ -1,5 +1,7 @@
 import { createContext, useContext } from 'solid-js'
 
+export const DevtoolsStylesContext = createContext<object>()
+
 export const ShadowDomTargetContext = createContext<ShadowRoot | undefined>(
   undefined,
 )
