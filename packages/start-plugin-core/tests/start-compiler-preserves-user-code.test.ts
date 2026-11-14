@@ -324,6 +324,232 @@ export const fn = createServerFn().handler(async () => [
   }
 })
 
+// A top-level statement that is not a declaration is kept, with what it
+// names, when the code the compiler erases was the only other reader of a
+// binding it writes: whether writing that binding changes anything else
+// (another module's object, the document, a setter, a user method named
+// like a built-in one, a call in the written value) has no syntactic
+// answer. Source: review-erasure-deletion-bounded.md rows 15 to 23, each
+// a statement main keeps and runs, and the client used to delete.
+describe('keeps a top-level statement on a binding only an erased handler reads', () => {
+  /** A module recording its calls in `globalThis.caseCalls`. */
+  const calls = `const record = (name: string) => {
+  ;((globalThis as any).caseCalls ??= []).push(name)
+  return name
+}
+export const register = (name: string) => record(name)
+export const track = (name: string) => record(name)
+export const connect = (name: string) => record(name)
+export const connectPair = () => {
+  record('pair')
+  return { a: 1, b: 2 }
+}
+`
+  const serverFn = `import { createServerFn } from '@tanstack/react-start'\n`
+  test.each<{
+    name: string
+    files: Record<string, string>
+    /** A page script (fresh document, the module imported) whose JSON value is checked. */
+    run: string
+    result: unknown
+  }>([
+    {
+      name: "a write through a binding holding another module's object",
+      files: {
+        'config.ts': `export const config = { flags: {} as Record<string, boolean> }`,
+        'module.tsx': `${serverFn}import { config } from './config'
+const flags = config.flags
+flags.newUi = true
+export const fn = createServerFn().handler(async () => flags.newUi)`,
+      },
+      run: `return (await load('config.ts')).config.flags.newUi`,
+      result: true,
+    },
+    {
+      name: 'writes to the document through a binding',
+      files: {
+        'module.tsx': `${serverFn}const root = document.documentElement
+root.classList.add('case-dark')
+root.dataset.caseTheme = 'dark'
+export const fn = createServerFn().handler(async () => root.className)`,
+      },
+      run: `return [document.documentElement.classList.contains('case-dark'), document.documentElement.dataset.caseTheme]`,
+      result: [true, 'dark'],
+    },
+    {
+      name: "a push into another module's array",
+      files: {
+        'items.ts': `export const store = { items: [] as Array<string> }`,
+        'module.tsx': `${serverFn}import { store } from './items'
+const view = store.items
+view.push('x')
+export const fn = createServerFn().handler(async () => view)`,
+      },
+      run: `return (await load('items.ts')).store.items`,
+      result: ['x'],
+    },
+    {
+      name: 'a push into a global array',
+      files: {
+        'plugins.ts': `;(globalThis as any).casePlugins = []`,
+        'module.tsx': `${serverFn}import './plugins'
+const list = (globalThis as any).casePlugins
+list.push('plugin')
+export const fn = createServerFn().handler(async () => list)`,
+      },
+      run: `return globalThis.casePlugins`,
+      result: ['plugin'],
+    },
+    {
+      name: "a write through an object literal holding another module's object",
+      files: {
+        'config.ts': `export const config: Record<string, unknown> = {}`,
+        'module.tsx': `${serverFn}import { config } from './config'
+const holder = { c: config }
+holder.c.v = 1
+export const fn = createServerFn().handler(async () => holder)`,
+      },
+      run: `return (await load('config.ts')).config.v`,
+      result: 1,
+    },
+    {
+      name: "a write after reassigning a binding to another module's object",
+      files: {
+        'targets.ts': `export const a: Record<string, unknown> = {}
+export const b: Record<string, unknown> = {}`,
+        'module.tsx': `${serverFn}import { a, b } from './targets'
+let cur = a
+cur = b
+cur.v = 1
+export const fn = createServerFn().handler(async () => cur)`,
+      },
+      run: `const t = await load('targets.ts')
+return [t.a.v ?? null, t.b.v]`,
+      result: [null, 1],
+    },
+    {
+      name: 'a call of a user method named like an array method',
+      files: {
+        'module.tsx': `${serverFn}const bus = {
+  push(e: string) {
+    ;((globalThis as any).caseBus ??= []).push(e)
+  },
+}
+bus.push('ready')
+export const fn = createServerFn().handler(async () => bus)`,
+      },
+      run: `return globalThis.caseBus`,
+      result: ['ready'],
+    },
+    {
+      name: 'a call of a function property named like a Set method',
+      files: {
+        'module.tsx': `${serverFn}function log(m: string) {
+  return m
+}
+log.add = (m: string) => {
+  ;((globalThis as any).caseLog ??= []).push(m)
+}
+log.add('boot')
+export const fn = createServerFn().handler(async () => log('x'))`,
+      },
+      run: `return globalThis.caseLog`,
+      result: ['boot'],
+    },
+    {
+      name: 'an assignment that runs a setter',
+      files: {
+        'module.tsx': `${serverFn}const state = {
+  set title(v: string) {
+    document.title = v
+  },
+}
+state.title = 'case-title'
+export const fn = createServerFn().handler(async () => state)`,
+      },
+      run: `return document.title`,
+      result: 'case-title',
+    },
+    {
+      name: 'a push of a call',
+      files: {
+        'calls.ts': calls,
+        'module.tsx': `${serverFn}import { register } from './calls'
+const list: Array<string> = []
+list.push(register('list'))
+export const fn = createServerFn().handler(async () => list)`,
+      },
+      run: `return globalThis.caseCalls`,
+      result: ['list'],
+    },
+    {
+      name: 'a property set to a call',
+      files: {
+        'calls.ts': calls,
+        'module.tsx': `${serverFn}import { track } from './calls'
+function Page() {
+  return null
+}
+Page.tracker = track('page')
+export const fn = createServerFn().handler(async () => Page.tracker)`,
+      },
+      run: `return globalThis.caseCalls`,
+      result: ['page'],
+    },
+    {
+      name: 'an assignment of a call to a `let`',
+      files: {
+        'calls.ts': calls,
+        'module.tsx': `${serverFn}import { connect } from './calls'
+let db: unknown
+db = connect('db')
+export const fn = createServerFn().handler(async () => db)`,
+      },
+      run: `return globalThis.caseCalls`,
+      result: ['db'],
+    },
+    {
+      name: 'a destructuring assignment of a call',
+      files: {
+        'calls.ts': calls,
+        'module.tsx': `${serverFn}import { connectPair } from './calls'
+let a: unknown, b: unknown
+;({ a, b } = connectPair())
+export const fn = createServerFn().handler(async () => [a, b])`,
+      },
+      run: `return globalThis.caseCalls`,
+      result: ['pair'],
+    },
+  ])('client: $name', async ({ files, run, result }) => {
+    const startCase = await (await host()).case(files)
+    const page = await startCase.client(run, { fresh: true })
+    expect(page.errors).toEqual([])
+    expect(page.result).toEqual(result)
+  })
+
+  // The same on the server, where a createClientOnlyFn's body is erased
+  // (row 35)
+  test('server: a push into a global array only a client-only function reads', async () => {
+    const startCase = await (
+      await host()
+    ).case({
+      'queue.ts': `;(globalThis as any).caseQueue = []`,
+      'module.tsx': `import { createClientOnlyFn } from '@tanstack/react-start'
+import './queue'
+const queue = (globalThis as any).caseQueue
+queue.push('boot')
+export const read = createClientOnlyFn(() => queue)`,
+    })
+    const global = globalThis as Record<string, unknown>
+    try {
+      await startCase.ssr()
+      expect(global.caseQueue).toEqual(['boot'])
+    } finally {
+      delete global.caseQueue
+    }
+  })
+})
+
 // TypeScript erases type positions, so a declaration whose binding only
 // appears in a type is still live JavaScript: its initializer runs once at
 // import time.
