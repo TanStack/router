@@ -630,6 +630,22 @@ const renderers = { [Kind.A]: () => Kind.A }
 function Page() { return <p>{renderers[Kind.A]()}</p> }`,
       html: '<p>MARK_HELPER</p>',
     },
+    // R155: an enum or a namespace goes by the removal rule like any
+    // declaration (main keeps it in the route module and copies it into the
+    // chunk)
+    {
+      name: 'a namespace',
+      decls: `namespace Labels { export const quiet = 'MARK_HELPER' }
+function Page() { return <p>{Labels.quiet}</p> }`,
+      html: '<p>MARK_HELPER</p>',
+    },
+    {
+      name: 'an enum with a computed member',
+      decls: `const measure = (s: string) => s.length
+enum Size { Large = measure('MARK_HELPER') }
+function Page() { return <p>{Size.Large}</p> }`,
+      html: '<p>11</p>',
+    },
     {
       name: 'an overloaded function',
       decls: `function fmt(a: string): string
@@ -660,6 +676,40 @@ export const Route = createFileRoute('/')({ component: Page })
       expect(await route.isLazy('component')).toBe(true)
       expect(await route.run(`return render('component')`)).toBe(html)
       expect((await route.production()).where('MARK_HELPER')).toBe('lazy')
+    },
+  )
+
+  // R155: an enum or a namespace the route module reads too stays there;
+  // the chunk copies it, as main does
+  it.each([
+    {
+      name: 'a namespace',
+      decls: `namespace Labels { export const quiet = 'MARK_HELPER' }
+;(globalThis as any).caseKept = Labels.quiet`,
+      read: 'Labels.quiet',
+      html: '<p>MARK_HELPER</p>',
+    },
+    {
+      name: 'an enum',
+      decls: `const measure = (s: string) => s.length
+enum Size { Large = measure('MARK_HELPER') }
+;(globalThis as any).caseKept = Size.Large`,
+      read: 'Size.Large',
+      html: '<p>11</p>',
+    },
+  ])(
+    'keeps $name the route module reads too in the route module',
+    async ({ decls, read, html }) => {
+      const route = await loadRoute(
+        `${head}${decls}
+function Page() { return <p>{${read}}</p> }
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      )
+      await expectValidModules(route)
+      expect(await route.isLazy('component')).toBe(true)
+      expect(await route.run(`return render('component')`)).toBe(html)
+      expect((await route.production()).where('MARK_HELPER')).toBe('eager+lazy')
     },
   )
 

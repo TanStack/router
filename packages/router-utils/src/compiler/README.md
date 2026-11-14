@@ -106,8 +106,8 @@ per-output read walk (`readIndex`):
 - **the env module** loses only what the split made unused (the R153 amendment, `readFromRemoved`, the rule erasure
   uses): a declaration or import specifier the source used from text the module no longer holds (a claimed option
   value, erased text; a use in a type counts) goes with its initialiser when nothing that stays reads it by value.
-  Top-level statements, exports, enums and namespaces (R154), code already unused in the source and what they reach
-  stay.
+  Top-level statements (R154), exports, code already unused in the source and what they reach stay; enums and
+  namespaces are declarations like any other (R155).
 - **a split chunk** takes what its option's value reads, transitively. What the env module also keeps it imports from
   there when main does (`RouteModule.imported`, from the router planner: the route binding, `export const|let|var`)
   and copies otherwise, with the env statements reading or writing what it copies (main's

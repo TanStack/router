@@ -8,8 +8,9 @@
  *   the source used, by value or in a type, from text the env module no
  *   longer holds (a claimed option value, erased text: `readFromRemoved`)
  *   leaves it, with its initialiser, when nothing that stays reads it by
- *   value. Statements, exports, enums and namespaces (R154) and code
- *   already unused stay; an import already unused (a bare one included)
+ *   value; enums and namespaces are declarations like any other (R155).
+ *   Statements (R154), exports and code already unused stay; an import
+ *   already unused (a bare one included)
  *   moves to the shared module when the env module imports it, a
  *   declaration stays in the env module only.
  * - The names `main` shares (`RouteModule.shared`) and nothing else live in
@@ -76,9 +77,10 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   }
   /**
    * `main`'s removal rule applies to it: import specifiers, declarators,
-   * function and class declarations, and the declarations and imports
-   * planners generate without an effect, where they are read (a planner's
-   * `auto` home).
+   * function, class, `enum` and `namespace` declarations (R155; a `declare`
+   * or type-only namespace is a type unit, filtered below), and the
+   * declarations and imports planners generate without an effect, where
+   * they are read (a planner's `auto` home).
    */
   const removable = (c: ClusterId): boolean => {
     const cl = clusters[c]!
@@ -109,7 +111,9 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         (unit.kind === 'declaration' &&
           (unit.node.type === 'VariableDeclarator' ||
             unit.node.type === 'FunctionDeclaration' ||
-            unit.node.type === 'ClassDeclaration'))
+            unit.node.type === 'ClassDeclaration' ||
+            unit.node.type === 'TSEnumDeclaration' ||
+            unit.node.type === 'TSModuleDeclaration'))
       )
     })
   }
@@ -143,10 +147,10 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
    *   is (the env module, a chunk, another planner's output): that module
    *   would assign an import, where `main` fails;
    * - a name leaves when its declaration reads a declaration outside the
-   *   set (an enum, a namespace, a `var` in a statement, a dropped name), so
-   *   the shared module imports nothing of the file. This follows from R154
-   *   (those stay in the env module), not from `main`'s closure, which only
-   *   adds names; `main` emits a missing name there;
+   *   set (a `var` in a statement, a dropped name), so the shared module
+   *   imports nothing of the file. This follows from R154 (statements stay
+   *   in the env module), not from `main`'s closure, which only adds names;
+   *   `main` emits a missing name there;
    * - a planner's generated declaration with no fixed home that the env
    *   module does not root (a `<Hydrate>` importer) is in the set while a
    *   member reads it.
