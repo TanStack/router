@@ -7,9 +7,8 @@
  * module ids (`manualChunks`), with the default groupings and with
  * `codeSplitGroupings`. A split group's `import()` specifier is the route
  * file's absolute path (forward slashes) with `?tsr-split=` and the group's
- * options sorted and joined by `---`; the modules main had no counterpart
- * for (code several groups share, an extracted export) are named in the
- * same style. Each route file is one module, however its outputs import it.
+ * options sorted and joined by `---`; the module main names `?tsr-shared=1`
+ * (code several groups share) is named in the same style. Each route file is one module, however its outputs import it.
  * Runs in the integration smoke set (Windows: `C:\` paths).
  */
 import { afterAll, describe, expect, test } from 'vitest'
@@ -46,7 +45,8 @@ export const Route = createFileRoute('/posts')({
   pendingComponent: () => <div>grouped pending</div>,
 })
 `,
-  // an exported component the split component reads and another module imports
+  // an exported component another module imports: the route file keeps it
+  // (an exported option value is not split, as on main)
   'routes/exported.tsx': `${head}export function Card() {
   return <b>card</b>
 }
@@ -66,7 +66,6 @@ export { Route as index } from './routes/index'
 /** The route files' split modules, by bundler (`<routes>` is the routes directory, forward slashes). */
 const splitGroups = {
   default: [
-    '<routes>/exported.tsx?tsr-split=component',
     '<routes>/grouped.tsx?tsr-split=component---loader',
     '<routes>/grouped.tsx?tsr-split=errorComponent---pendingComponent',
     '<routes>/index.tsx?tsr-split=component',
@@ -76,7 +75,6 @@ const splitGroups = {
   ],
   // the plugin's `defaultBehavior` (the route's own groupings win)
   defaultBehavior: [
-    '<routes>/exported.tsx?tsr-split=component---loader',
     '<routes>/grouped.tsx?tsr-split=component---loader',
     '<routes>/grouped.tsx?tsr-split=errorComponent---pendingComponent',
     '<routes>/index.tsx?tsr-split=component---loader',
@@ -87,12 +85,8 @@ const splitGroups = {
 
 /** The other route-file modules each configuration has (static imports: no chunk origin). */
 const otherModules = {
-  default: [
-    '<routes>/exported.tsx?tsr-split=export---Card',
-    '<routes>/posts.tsx?tsr-split=shared---component---errorComponent',
-  ],
+  default: ['<routes>/posts.tsx?tsr-split=shared---component---errorComponent'],
   defaultBehavior: [
-    '<routes>/exported.tsx?tsr-split=export---Card',
     '<routes>/posts.tsx?tsr-split=shared---component---errorComponent---loader---notFoundComponent',
   ],
 }

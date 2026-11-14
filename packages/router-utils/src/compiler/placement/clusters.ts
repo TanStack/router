@@ -11,18 +11,10 @@
 import { observesIdentity } from '../analysis'
 import { writeKind } from '../mutation'
 import { callsWhenEvaluated, runsWhenPassed } from '../units'
-import { unwrapExpression } from '../source'
 import type { ClassifiedRef, Tier1 } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { Range } from '../header'
-import type {
-  EvaluatedCall,
-  EvaluatedCalls,
-  HoldsCall,
-  RegionId,
-  Unit,
-  UnitId,
-} from '../units'
+import type { EvaluatedCalls, RegionId, Unit, UnitId } from '../units'
 import type {
   Frag,
   GenFrag,
@@ -136,16 +128,6 @@ export interface ClusterGraph {
    */
   callsOf: (r: RegionId) => EvaluatedCalls | null
   /**
-   * Whether a call holds what it is handed (R152): its result is a value
-   * the framework calls later (`PlacementInput.calledLater`, wrappers
-   * aside), the initialiser of a module-level `const` every use of which
-   * is one (such a value, the initialiser of another such `const`, or a
-   * name handed to a call that holds it), or an argument of a call that
-   * holds it (`withAuth(observer(Page))`). What every rule but the
-   * extraction check reads (`Events.readsKept`).
-   */
-  holds: HoldsCall
-  /**
    * The late half of the mutation model (V): a live write of `sym` by
    * another cluster than `by` at an unknown time (inside a function, or in
    * code evaluated with the module that runs later), or by `by` in a
@@ -199,12 +181,7 @@ class UnionFind {
   }
 }
 
-export const READ_KINDS = new Set([
-  'value',
-  'jsxTag',
-  'implicitJsxFactory',
-  'exportSpecifier',
-])
+export const READ_KINDS = new Set(['value', 'jsxTag', 'exportSpecifier'])
 /**
  * References an output needs the binding for: reads, and writes (an output
  * cannot assign a binding it neither declares nor may import — `x = 1` and
@@ -299,7 +276,16 @@ const importsOnly = (g: GeneratedUnit): boolean =>
   !g.effectful &&
   (g.imports?.length ?? 0) > 0
 
-export function buildClusters(input: PlacementInput): ClusterGraph {
+/**
+ * `byUnit`: one cluster per unit (merged declarations together), a claimed
+ * region with its owner and an unclaimed sub-region with the region around
+ * it, and nothing else: a binding's writers stay clusters of their own (the
+ * route-file placement, `route-placement.ts`, decides per unit).
+ */
+export function buildClusters(
+  input: PlacementInput,
+  byUnit = false,
+): ClusterGraph {
   const { t1, rewrites } = input
   const { units, refs, items } = t1
   const { regions } = rewrites
@@ -373,94 +359,6 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     return result
   }
 
-  // ---- R152: the calls whose result the framework calls later ----------
-  const later = input.calledLater
-  const isLater = (r: Range) =>
-    later.some((l) => l.start === r.start && l.end === r.end)
-  /** Module-level `const` declarators of one name: their initialisers (wrappers aside) by start, with the binding (made when first asked). */
-  let constOfInit: Map<number, { end: number; sym: SymbolId }> | null = null
-  const constInitialised = (r: Range): SymbolId | undefined => {
-    if (constOfInit === null) {
-      constOfInit = new Map()
-      for (const u of units) {
-        const d = u.node
-        if (
-          u.kind !== 'declaration' ||
-          u.declares.length !== 1 ||
-          d.type !== 'VariableDeclarator' ||
-          d.id.type !== 'Identifier' ||
-          d.init === null
-        ) {
-          continue
-        }
-        const stmt = items[u.item]!.node
-        const decl =
-          stmt.type === 'ExportNamedDeclaration' ? stmt.declaration : stmt
-        if (decl?.type === 'VariableDeclaration' && decl.kind === 'const') {
-          const init = unwrapExpression(d.init)
-          constOfInit.set(init.start, { end: init.end, sym: u.declares[0]! })
-        }
-      }
-    }
-    const hit = constOfInit.get(r.start)
-    return hit !== undefined && hit.end === r.end ? hit.sym : undefined
-  }
-  /** Per `const`: whether every use is a value called later (false while asked: a cycle holds nothing). */
-  const laterOfSym = new Map<SymbolId, boolean>()
-  const usedLater = (sym: SymbolId): boolean => {
-    const hit = laterOfSym.get(sym)
-    if (hit !== undefined) {
-      return hit
-    }
-    laterOfSym.set(sym, false)
-    const uses = refs.valueRefsOf(sym)
-    let result = uses.length > 0
-    for (const ref of uses) {
-      if (!laterUse(ref)) {
-        result = false
-        break
-      }
-    }
-    laterOfSym.set(sym, result)
-    return result
-  }
-  /** A use, when the module loads, that the framework calls later: such a value, another such `const`'s initialiser, or a name a holding call is handed. */
-  const laterUse = (ref: ClassifiedRef): boolean => {
-    if (ref.kind !== 'value' || !ref.eager) {
-      return false
-    }
-    if (isLater(ref.range)) {
-      return true
-    }
-    const alias = constInitialised(ref.range)
-    if (alias !== undefined) {
-      return usedLater(alias)
-    }
-    const u = t1.unitAt(ref.range)
-    const name =
-      u === null
-        ? undefined
-        : unitCalls(u).names.find((n) => n.start === ref.range.start)
-    return name !== undefined && holds(name.call)
-  }
-  const holdsOf = new Map<EvaluatedCall, boolean>()
-  const holds: HoldsCall = (call) => {
-    if (later.length === 0) {
-      return false
-    }
-    let hit = holdsOf.get(call)
-    if (hit === undefined) {
-      holdsOf.set(call, false)
-      const sym = isLater(call) ? undefined : constInitialised(call)
-      hit =
-        isLater(call) ||
-        (sym !== undefined && usedLater(sym)) ||
-        (call.outer !== null && holds(call.outer))
-      holdsOf.set(call, hit)
-    }
-    return hit
-  }
-
   // ---- owner index: refs by owning region --------------------------------
   const ownedRefs = new Map<RegionId, Array<ClassifiedRef>>()
   for (const ref of refs.all) {
@@ -501,6 +399,14 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
   // claimed regions travel with their owner
   for (const claim of rewrites.claims.values()) {
     uf.union(claim.region, memberOfGen(claim.owner))
+  }
+  if (byUnit) {
+    for (const r of regions.regions) {
+      const parent = regions.parentOf(r.id)
+      if (r.unit === null && parent !== null && !rewrites.claims.has(r.id)) {
+        uf.union(r.id, parent)
+      }
+    }
   }
 
   // ---- writes: every write of a module binding, one table -----------------
@@ -555,7 +461,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
       eager: ref.eager && !t1.runsLaterAt(ref.range.start),
       live: isLive(ref, 'env'),
       owner,
-      passed: calls !== null && runsWhenPassed(calls, ref.range.start, holds),
+      passed: calls !== null && runsWhenPassed(calls, ref.range.start),
       augment: false,
       member: kind === 'member',
     }
@@ -634,11 +540,13 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     }
     const unitOwner = regions.get(w.owner).kind === 'unit'
     if (w.member) {
-      if (w.eager && unitOwner) {
+      if (w.eager && unitOwner && !byUnit) {
         uf.union(w.owner, d)
       }
     } else if (w.augment || unitOwner) {
-      uf.union(w.owner, d)
+      if (!byUnit) {
+        uf.union(w.owner, d)
+      }
     } else {
       regionWrittenSyms.add(w.sym)
       let set = writersOfMember.get(d)
@@ -899,7 +807,6 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     ownAugmentations,
     unitSurvives,
     callsOf,
-    holds,
     lateWrite,
     lateWrites,
     laterWrite,

@@ -1,26 +1,17 @@
 /**
- * An import a module reads only as the JSX factory is an edge that reads
- * that binding (SPEC J6.1, J6.4): every element calls the factory under a
- * classic-runtime pragma, and the bundlers' TypeScript transforms keep a
- * default `React` import in a module with JSX whatever the runtime. On dev
+ * An import a module reads only as the JSX factory (a classic-runtime pragma)
+ * is an import edge of the module like any other (SPEC J6.1, J6.4): on dev
  * servers (client, mock mode, Vite and Rsbuild) the import of a denied file
- * is reported and the client never loads the file; in an Rsbuild build whose
- * `source.transformImport` rewrites the library the factory comes from, the
- * file rule judges the submodule the factory's import is rewritten to.
- * Alike for a module the compiler only reads the imports of and one whose
- * Start code it rewrites (a server fn).
+ * is reported and the client never loads the file. Alike for a module the
+ * compiler only reads the imports of and one whose Start code it rewrites (a
+ * server fn).
  */
 import {
   captureConsole,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
-import {
-  rejection,
-  reportedViolations,
-  violationRecorder,
-} from '../../importProtection/start-apps'
+import { violationRecorder } from '../../importProtection/start-apps'
 import {
   runInClient,
   runViteClient,
@@ -128,61 +119,6 @@ describe('rsbuild dev', () => {
         factoryLoaded: (result as { result: unknown }).result,
         reported: importersIn({ root: server.root, ...recorder }, 'client'),
       }).toEqual(expected)
-    },
-    timeout,
-  )
-})
-
-describe('rsbuild build, source.transformImport', () => {
-  const fromLib = `/** @jsxRuntime classic */
-/** @jsx h */
-import { h } from 'ui-lib'
-`
-  test(
-    'a JSX factory of a rewritten library is judged at its submodule: the build fails, naming each importer',
-    async () => {
-      const error = await rejection(
-        buildStart({
-          bundler: 'rsbuild',
-          files: {
-            'node_modules/ui-lib/package.json': JSON.stringify({
-              name: 'ui-lib',
-              type: 'module',
-              exports: { '.': './index.js', './*': './*.js' },
-            }),
-            'node_modules/ui-lib/index.js': `export { h } from './h.js'\n`,
-            'node_modules/ui-lib/h.js': `export const h = () => 'MARK_SECRET'\n`,
-            'src/forms/plain.tsx': `${fromLib}export const Plain = () => <p>plain</p>\n`,
-            'src/forms/start.tsx': `${fromLib}${serverFn('pingLib')}export const Start = () => <p>start</p>\n`,
-            'src/entry.ts': `export { Plain } from './forms/plain'
-export { Start } from './forms/start'
-`,
-          },
-          entry: 'src/entry.ts',
-          // `excludeFiles: []`: the checks see dependencies (J6.10)
-          start: {
-            importProtection: {
-              client: { files: ['**/ui-lib/h.js'], excludeFiles: [] },
-            },
-          },
-          rsbuildConfig: {
-            source: {
-              transformImport: [
-                {
-                  libraryName: 'ui-lib',
-                  customName: 'ui-lib/{{ member }}',
-                  transformToDefaultImport: false,
-                },
-              ],
-            },
-          },
-        }),
-      )
-      expect(
-        reportedViolations(error)
-          .map((v) => `${v.environment} ${v.importer.split(':')[0]}`)
-          .sort(),
-      ).toEqual(['client src/forms/plain.tsx', 'client src/forms/start.tsx'])
     },
     timeout,
   )

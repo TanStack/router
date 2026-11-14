@@ -17,11 +17,6 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
 
 ## Remaining pins
 
-- **webpack and Rspack keep an exported component another module imports through the route file in the entry
-  chunk** unless the package is side-effect free (`"sideEffects": false`); Vite redirects the import to the extracted
-  module. SPEC J2.5. `router-plugin/tests/integration/known-bugs-code-splitter-page-code.test.ts`: "$name loads with
-  its chunk" (the row "an exported component another route's split component renders", webpack and Rspack without
-  `"sideEffects": false`). Fix: the component loads with its chunk on every bundler.
 - **A route module's CSS import loads on every page**: the code splitter keeps the bare import in the route module,
   which the route tree imports eagerly (in dev the CSS is injected once the client runs; a build merges it into the
   entry's CSS). SPEC J2.22. `start-plugin-core/tests/integration/known-bugs-route-css.test.ts` (Vite) and
@@ -156,9 +151,20 @@ code.test.ts`: "a root route's components load with the route module" (Vite and 
 ### Shared causes (several jobs)
 
 **S1. JSX pragmas are not kept effective.** Code the compilers insert lands above a file's leading pragma (Oxc reads
-leading pragmas only); a non-leading pragma becomes leading in a chunk; dead-code elimination does not count a
-classic pragma as a use of its factory, so the factory import is dropped. SPEC J2.16, G12. Fix: every emitted module
-compiles its JSX under the runtime the untouched file has, and keeps the factory it needs.:
+leading pragmas only); a non-leading pragma becomes leading in a chunk. SPEC J2.16, G12. Fix: every emitted module
+compiles its JSX under the runtime the untouched file has. (Dead-code elimination does not count JSX as a use of a
+classic factory, on `main` and here: the classic runtime is not supported with splitting.):
+
+- `router-plugin/tests/code-splitter-pragmas.test.ts`: "keeps a @jsxImportSource written after the imports as
+  ineffective as in the untouched file (leading-pragma project)"; "keeps the pragma in effect in every module that
+  contains JSX".
+- `router-plugin/tests/integration/code-splitter-pragmas.test.ts`: "means in the split route what it means in the
+  untouched route (Vite: Oxc ignores it)".
+- `start-plugin-core/tests/start-compiler-jsx-pragma.test.ts`: "inserted server function imports stay below the
+  @jsxImportSource pragma: %s"; "client: the parent keeps selecting the pragma JSX runtime when the import it sits on
+  $name".
+- `start-plugin-core/tests/integration/pages/known-bugs-hydrate-module-level.test.ts`: "server: a module with a
+  classic JSX pragma renders through its factory".
 
 - `router-plugin/tests/code-splitter-pragmas.test.ts`: "keeps a @jsxImportSource written after the imports as
   ineffective as in the untouched file (leading-pragma project)"; "keeps the pragma in effect in every module that
@@ -329,6 +335,10 @@ removal:
 
 ### J2 Route code splitting
 
+Route splitting does what main does since R153 (SPEC J2.0): where a fix below was a rule main does not have (an export
+extracted, a statement moved with its bindings, a value refused and warned at), the entry was removed with its tests;
+those that remain are main's bugs our output does not have.
+
 Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `integration/pages/`.
 
 - **Imported route options are not read** (only an object literal of the route file is): nothing is split or
@@ -340,59 +350,31 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
 - **The esbuild adapter never runs the generator in a build**, so nothing is split and nothing refuses. SPEC J2.18.
   `integration/build-harness.test.ts`: "router plugin with esbuild loads a split component lazily and renders it, or
   refuses the build (%s)".
-- **An already-lazy option value is wrapped again** and suspends after preload. SPEC §6 OQ13.
-  `integration/code-splitter-router.test.ts`: "renders without a new request or a pending fallback once the router
-  preloaded it".
 - **Default-exported declarations shared by options are duplicated** ("Duplicate declaration"). SPEC J2.4.
   `integration/code-splitter-runtime.test.ts`: "preserves executable route contracts with shared named-default
   declarations"; `pages/known-bugs-code-splitter-bindings.test.ts`: "a split option renders the default-exported
   component other modules import"; "a default-exported function the loader and the split component call works on one
   state".
 - **Split chunks keep exports of the route file their option does not use.** SPEC J2.5.
-  `integration/known-bugs-code-splitter-page-code.test.ts`: "$name loads with its chunk"; "${exportedSharedByOptions.name}
-  loads with its chunk"; "${unreadExport.name} is not in its chunk"; `pages/known-bugs-code-splitter-shapes.test.ts`: "a
+  `integration/known-bugs-code-splitter-page-code.test.ts`: "$name loads with its chunk"; "${unreadExport.name} is not in
+  its chunk"; `pages/known-bugs-code-splitter-shapes.test.ts`: "a
   split chunk holds only what its option needs, not the other exports of the route file"; "split chunks do not
   re-export or declare the re-exports and default class of the route file". Fix: a chunk carries only what its group
   needs.
-- **The split chunk copies a pure exported function** (two instances: the route module's or its extracted module's,
-  which importers of the route file get, and the chunk's own copy). By rule (`router-plugin/ARCHITECTURE-CODE-
-SPLITTING.md`): a chunk never imports the extracted module of a copyable export the route module
-  re-exports, so the export stays lazy whatever the bundler's chunk assignment (Rolldown < 1.1.5, a user `manualChunks`
-  group), at the price of a second instance of a function or component whose closure holds only functions and
-  primitive constants nothing writes and whose identity nothing observes; a class, an object, a call result, a regex, a written binding, state, effects
-  and augmented bindings are never copied (one instance, imported from the extracted module or the route module).
-  SPEC J2.4 (amended). No pins: the identity rows were deleted with the decision (a by-rule outcome is not a bug); the
-  rendering rows next to them remain
-  (`react-refresh-route-components.test.ts` "keep a $name component exported as the route option value"; `pages/known-bugs-code-splitter-bindings.test.ts` "an exported errorComponent written as `%s`
-  renders, split or reported"); `integration/code-splitter-copied-exports-state.test.ts` and its dev twin prove the
-  identity and state cases that are one instance. Fix: none planned; a bundler-independent way to share one instance
-  lazily would reopen the decision.
-- **Bindings that read `Route` are never shared**, so chunks copy them (a function reading `Route` is a function
-  closure: copied by rule). SPEC J2.4. `pages/known-bugs-code-splitter-bindings.test.ts`: "a destructuring whose
-  sibling reads Route keeps one cache for the loader and the component".
 - **A split component reading `Route` declared with `const` and exported later (`export { Route }`) recreates the
   route.** SPEC J2.4. `pages/known-bugs-code-splitter-bindings.test.ts`: "a split component reads the route the route
   module exports through export { Route }".
-- **A component declared by a destructuring is not split, or the build throws.** SPEC J2.8, J2.9.
-  `integration/known-bugs-code-splitter-page-code.test.ts`: "${destructured.name} load with their chunk or are
-  reported"; `integration/known-bugs-code-splitter-client-builds.test.ts`: "a component declared by an array
-  destructuring of a call shared with the errorComponent is split or reported";
-  `pages/known-bugs-code-splitter-shapes.test.ts`: "a component declared by an array destructuring of a call shared
-  with the errorComponent renders".
+- **A component declared by a destructuring is not split, or the build throws.** SPEC J2.8, J2.9. A name of an object
+  pattern is split; a name of an array pattern stays in the route module, working (a value main cannot compile into a
+  chunk, R153). `code-splitter-main-shapes.test.ts`: "splits a name of a destructuring and renders it"; "renders a name of
+  an array pattern"; `pages/known-bugs-code-splitter-shapes.test.ts`: "a component declared by an array destructuring of
+  a call shared with the errorComponent renders".
 - **The split compiler accepts a fixed list of value shapes** ("Unexpected splitNode type": object-form loaders,
-  classes, casts, `satisfies`, member/logical/tagged-template/class expressions; a call is printed and re-parsed
-  without JSX or TypeScript). SPEC J2.8, J2.9. `integration/known-bugs-code-splitter-ssr-builds.test.ts`: "a split
-  loader in object form with $name loads route data"; "a split loader in object form passed by reference loads route
-  data"; `pages/known-bugs-code-splitter-server.test.ts`: "a class component declared in the route file renders
-  (exported: $exported)"; "a class component and the imports of its static fields leave the route module";
-  `pages/known-bugs-code-splitter-shapes.test.ts`: "a component is split with $name"; "an option written as $name is
-  split and works"; "a component written as $name is split and renders"; `pages/known-bugs-code-splitter.test.ts`: "the
-  handler of a split loader in object form with $name loads lazily"; "a split loader in object form keeps $name
-  working, created once". Fix: split any valid value, or keep it unsplit and warn.
-- **Top-level statements that write a moved binding stay behind** (`Page.displayName = …` throws). SPEC J2.12, G3.
-  `integration/known-bugs-code-splitter-property-write.test.ts`: "a component the route file writes a property of
-  loads with its chunk and renders the property ($hint)"; `pages/known-bugs-code-splitter.test.ts`: "top-level writes
-  to $name stay with the binding they write".
+  classes, `satisfies`, member/logical/tagged-template/class expressions; a call is printed and re-parsed without JSX
+  or TypeScript). SPEC J2.8, J2.9. The values main's chunk compile cannot take stay in the route module and work
+  (R153, `unsplittableOnMain`). `code-splitter-main-shapes.test.ts`: "renders $name";
+  `pages/known-bugs-code-splitter-shapes.test.ts`: "an option written as $name is split and works" (the shapes main
+  splits).
 - **A split binding's declaration or import is deleted from the route module although other code still reads it.**
   SPEC J2.12. `pages/known-bugs-code-splitter-server.test.ts`: "a split component that $name reads renders from both";
   "a split component renders through a function $name"; "a component read by a split and an unsplit option renders
@@ -463,24 +445,19 @@ SPLITTING.md`): a chunk never imports the extracted module of a copyable export 
   the environment in a shared declaration, with verbatimModuleSyntax"; `pages/known-bugs-code-splitter.test.ts`: "an
   ambient declare const read by the loader and the split component stays a global";
   `pages/known-bugs-code-splitter-bindings.test.ts`: "a component read from $name renders".
-- **The shared-binding analysis misses readers** (method options, computed keys, nested `var`s, enums, namespaces,
-  class static initialisers), so state is created twice. SPEC J2.4, G3.
-  `pages/code-splitter-module-state-bindings.test.ts`: "$name"; `pages/known-bugs-code-splitter-bindings.test.ts`:
-  "module state a method option shares with a split option is created once"; `pages/known-bugs-code-splitter.test.ts`:
-  "a binding read by a computed-key option and a split option is created once"; "a binding declared by $name and read
-  by the loader and the split component is initialized once"; "module state that the reference module keeps for $name
-  is initialized once".
+- **The shared-binding analysis misses readers** (nested `var`s, enums, namespaces, another name of a destructuring,
+  a JSX member tag), so state is created twice. SPEC J2.4, G3. `pages/known-bugs-code-splitter.test.ts`: "a binding
+  declared by $name and read by the loader and the split component is initialized once"; "module state that the
+  reference module keeps for $name is initialized once".
 - **Chunks keep unreferenced top-level statements** (side effects run twice; `export *` repeated). SPEC G3, J2.5.
   `pages/known-bugs-code-splitter.test.ts`: "an unreferenced top-level side effect ($name) runs once, with the route
   module"; "split chunks do not re-export a module-level export \*, which importers of the route file still get".
 - **A declaration only an exported type alias reads loses its initializer.** SPEC G3.
-  `pages/known-bugs-code-splitter.test.ts`: "the initializers of $name run when the route module loads"; "the
-  initializer of a declaration only an exported type alias reads runs when a route module compiled for HMR loads".
+  `pages/known-bugs-code-splitter.test.ts`: "the initializer of a declaration only an exported type alias reads runs
+  when a route module compiled for HMR loads".
 - **Code only the split component needs stays when something looks like a read** (a type of the same name, an
   overload signature, a second `var`, an unused renderer). SPEC J2.5. `pages/known-bugs-code-splitter.test.ts`: "a split
   component and its imports leave the route module next to $name".
-- **A value import only types read is copied into every chunk.** SPEC J2.5.
-  `pages/known-bugs-code-splitter-bindings.test.ts`: "split chunks do not import what only $name reads".
 - **`codeSplitGroupings` in a module-level constant is refused.** SPEC J2.2.
   `pages/known-bugs-code-splitter-bindings.test.ts`: "groupings declared in a module-level constant are honoured".
 - **The not-split warning is printed only when the splitter changed the module.** SPEC J2.8.
@@ -591,8 +568,7 @@ Paths under `router-plugin/tests/` unless given.
   (`const Page = flag ? Wide : Narrow`) brought the old component back (main: stale from the switch). A temporary
   workaround makes the importer of a Solid split chunk answer the chunk's newest evaluation. SPEC J3.3.
   `integration/route-hmr-browser-solid-identity-rsbuild.test.ts`: "a loader sharing the route component chunk", "a
-  loader function of the file sharing the route component chunk", "a loader in an object sharing the route component
-  chunk", "a conditional, then an option the route module keeps", "a grouped loader edited, then an option the route
+  loader function of the file sharing the route component chunk", "a conditional, then an option the route module keeps", "a grouped loader edited, then an option the route
   module keeps" (autoCodeSplitting: true).
 - **A split chunk lost the route file's `@refresh` pragma**: solid-refresh never kept a split component's state under
   `@refresh granular` (`@refresh skip` and `reload` were lost the same way). SPEC J2.16.

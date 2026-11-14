@@ -19,13 +19,13 @@ import {
 import { keptDeclarations } from './placement/kept'
 import { assignHomes } from './placement/homes'
 import { includeAndImport } from './placement/inclusion'
+import { computeRoutePlacement } from './route-placement'
 import type { ClusterId } from './placement/clusters'
 import type { Tier1 } from './analysis'
 import type { InvariantViolation } from './self-checks'
 import type { SymbolId } from './symbols'
 import type { RegionId, UnitId } from './units'
 import type { GenUnitId, OutputId, RewriteSet } from './rewrite'
-import type { Range } from './header'
 
 export type RootRef =
   | { t: 'unit'; id: UnitId }
@@ -85,7 +85,8 @@ export interface PlacementInput {
   canonicalId: string
   /** The module's text, for the invariants' messages (`self-checks.ts`). */
   code: string
-  routeModule: boolean
+  /** A route file (`PlanContext.setRouteModule`): placed by `route-placement.ts`. */
+  routeModule: RouteModule | null
   /** Exported symbols a planner allows into an extracted-export output. */
   extractions?: ReadonlyMap<SymbolId, OutputId>
   /**
@@ -94,8 +95,6 @@ export interface PlacementInput {
    * leave, and which of them chunks copy, is the same either way.
    */
   extractedOutputs: boolean
-  /** The values planners say the framework calls later (`PlanContext.calledLater`, R152). */
-  calledLater: ReadonlyArray<Range>
 }
 
 /**
@@ -178,6 +177,14 @@ export interface ExtractedExport {
   syms: Array<SymbolId>
 }
 
+/** A route file's placement input (`PlanContext.setRouteModule`). */
+export interface RouteModule {
+  /** The module bindings a split chunk imports from the route module when it reads them (it copies the others). */
+  imported: ReadonlySet<SymbolId>
+  /** The names `main` shares (`computeSharedBindings`): an exported one only chunks read moves to the shared module, which the route module re-exports it from. */
+  shared: ReadonlySet<SymbolId>
+}
+
 export interface Placement {
   clusterOfRegion: Map<RegionId, ClusterId>
   clusterOfGen: Map<GenUnitId, ClusterId>
@@ -221,6 +228,10 @@ export interface Placement {
  * - `includeAndImport` reads the final `roots` and homes.
  */
 export function computePlacement(input: PlacementInput): Placement {
+  if (input.routeModule) {
+    // a route file: what route splitting on `main` does (`route-placement.ts`)
+    return computeRoutePlacement(input)
+  }
   // 1. clusters (a binding with its writers at load), the write table
   const graph = buildClusters(input)
   // 2. what each cluster reads, per output, and what each evaluation runs;

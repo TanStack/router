@@ -96,6 +96,46 @@ emits its own output. Nothing depends on transform order.
   unknown, they are the compiler's own (`tsr$x`). A planner can name a binding's glue export ahead
   (`glueExportName`: React route HMR lists them for plugin-react to ignore).
 
+### Route files (`route-placement.ts`, R153)
+
+A plan a planner marks as a route file (`PlanContext.setRouteModule`, the router planner's split part) is placed by
+`computeRoutePlacement`, which does what route splitting on main does, by its outcome; every other plan goes through
+the engine below. One cluster per unit (`buildClusters(input, true)`: no writer joins its binding) and the engine's
+per-output read walk (`readIndex`):
+
+- **the env module** loses only what the split made unused (the R153 amendment, `readFromRemoved`, the rule erasure
+  uses): a declaration or import specifier the source used from text the module no longer holds (a claimed option
+  value, erased text; a use in a type counts) goes with its initialiser when nothing that stays reads it by value.
+  Top-level statements, exports, enums and namespaces (R154), code already unused in the source and what they reach
+  stay.
+- **a split chunk** takes what its option's value reads, transitively. What the env module also keeps it imports from
+  there when main does (`RouteModule.imported`, from the router planner: the route binding, `export const|let|var`)
+  and copies otherwise, with the env statements reading or writing what it copies (main's
+  second instance, spec-main-splitting.md §1.8); a binding a statement declares (`if (…) { var x }`) is imported.
+  What the env module does not keep the chunk copies too, also what another chunk copies. The names main shares
+  (`RouteModule.shared`: two option groups read them, a staying option counting as one) and nothing else are one
+  shared module per file (`?tsr-split=shared---<keys>`, main's `?tsr-shared=1`): the env module and the chunks import
+  them, the env module re-exports the exported ones; one code outside the set assigns (a chunk, the env module,
+  another planner's output), or one reading a declaration outside it, leaves the set and is placed like any other (one
+  fixed point). Import specifiers are copied where read. Start's outputs in a
+  route file (Hydrate chunks, the server-fn handler module) import what the env module keeps, and what several of them
+  need is one module they import; a provider output copies what it reaches.
+- **code already unused**: an import nothing in the source references, a bare `import './polyfill'` included, moves
+  to the shared module when the env module imports it (statically, first), in source order with the shared module's
+  own imports: it runs at the same point, once, and a module a shared declaration reads still runs after a bare import
+  written before it; a CSS import keeps its cascade position, as in `main`'s shared module. Otherwise it stays in the
+  env module. Chunks and Start's derived outputs (Hydrate, the server-function handler module) load after the
+  env module has run (a handler module through the memoised loader of its defining module, D6/R66) and get none. Only
+  imports the source wrote (not a planner's generated `lazyRouteComponent`). A declaration nothing references stays in
+  the env module only: a copy would run its initialiser again (`main`'s chunks do). React's classic JSX runtime is not
+  supported with splitting: a chunk holding JSX has `React` only when its code reads it.
+- **one fallback, on the outcome**: a derived output that would assign a binding homed in another module of the file
+  does not take the root bringing that code (`Placement.fallbacks`, `shared-writer`), and its planner keeps the root in
+  place (the router planner's `assignsWhatItImports`, start-env's handler, Hydrate's `hydrate-module-write`).
+
+A chunk's copies are main's: state is one instance where main has one, and a statement runs again in a chunk only
+where main's chunk runs it again (never a declaration already unused: better than main).
+
 ### Reachability = splitting = dead-code removal (`reach.ts`, `placement/`)
 
 Per output: roots → closure over _live_ value references (not inside removed ranges; type positions never keep
@@ -150,12 +190,13 @@ extends Z`, directly or through what they carry) share the module of the first i
   the binding through the route file, or the bundler's chunk assignment put a module the route's chunks import with
   the entry);
 - **dead code, by provenance**: a declaration or import specifier is removed only if _our_ edits orphaned it (its
-  readers disappeared because a planner removed or moved them). A top-level statement that is no declaration (`x.p =
+  readers, by value or in a type, disappeared because a planner removed or moved them, and nothing left reads it by
+  value: `readFromRemoved`). A top-level statement that is no declaration (`x.p =
 v`, `x.push(v)`, `x = v`) is never removed with what only erased code read: it stays a root of the env module with
   everything it names (`roots.ts`), as main kept it, since whether it changes only that binding has no syntactic
   answer (another name for another module's object, a setter, a call in the value). Code already unreferenced in the source keeps
-  running: an import nothing reads stays in the env module, so its module still evaluates there (a value import a
-  route module uses only in type positions leaves it: TypeScript erases it anyway). Type units stay in the env module
+  running: an import nothing reads stays in the env module, so its module still evaluates there (one removed code read
+  only in a type leaves it, as TypeScript's elision would: under `verbatimModuleSyntax` it would load the module). Type units stay in the env module
   as written whatever their cluster (`import type { X }` next to a value `X` that moves stays whole and type-only),
   never in a derived output; only the TypeScript-only specifiers (an inline `type` specifier, an `export { X }` of a
   type-only binding) follow their statement's value specifiers (`importStays`). Below the units, function-local
@@ -168,9 +209,9 @@ v`, `x.push(v)`, `x = v`) is never removed with what only erased code read: it s
   rest) loses only its default value. The initialiser stays as written: a value in a destructured literal
   (`{ a, b } = { a: 1, b: f() }`) is not chased, so `b`'s value stays where `a` needs the declaration. A read the core
   synthesises from a
-  name rather than from a reference (the classic runtime's JSX factory `React` when no pragma names the runtime, a
-  Solid `use:` directive) binds only to a declaration with a runtime value (`valueBinding`):
-  `import type * as React` is never the factory;
+  name rather than from a reference (a Solid `use:` directive) binds only to a declaration with a runtime value
+  (`valueBinding`). JSX is no read of the classic runtime's factory: the classic runtime is not supported with
+  splitting;
 - **effects and mutable state**: statements and impure, still-referenced declarations evaluate once, in the env
   module unless the rules below move them, never duplicated or lost. One model (`mutation.ts`, `t1.mutation`) holds every write of a
   binding (assignment or member write, eager or lazy, wherever it is). A binding's writers when the module loads
@@ -217,17 +258,10 @@ v`, `x.push(v)`, `x = v`) is never removed with what only erased code read: it s
   One owner answers both sides: the mutation model (`visitValues`, `objectsWrittenBy`). A method nested in an object argument
   (`defineComponent({ setup() {} })`) and a function it only holds (`const api = { getCached }`) run nothing, and a
   function declaration evaluates nothing. A claimed
-  option value is such an evaluation too. A call whose result the framework calls later holds what it is handed
-  (R152; the values a planner states with `PlanContext.calledLater`, the router planner's component and loader
-  options, split or not): such a value's call, the initialiser of a `const` every use of which is one (such a
-  value, another such `const`, a name handed to such a call), and a call handed directly to such a call
-  (`withAuth(observer(Page))`) run nothing in a function they are handed, and a name they are handed, directly or
-  inside an object or array argument (`define({ setup: render })`), is read as a value (`ClusterGraph.holds`).
-  Every other call may run what it is handed (`ordered-effect` for an option value; a declaration kept for a read
+  region is such an evaluation too. A call may run what it is handed (`ordered-effect` for an option value; a declaration kept for a read
   only there, a wrapped sub-component used as a JSX tag among them, is reported as one that _may_ use the binding),
-  and so does every call for the extraction check (`readsKept`) and the verifier: an extracted module may load
-  before the route module. Accepted break (R146's family): a factory that runs its function at once
-  (`component: createIcon(() => …)`) reads state another output writes when its chunk loads. Outside the model (R97): a getter (`api.latest`, a destructured property),
+  as for the extraction check (`readsKept`) and the verifier: an extracted module may load
+  before the route module. Outside the model (R97): a getter (`api.latest`, a destructured property),
   `toString`, a spread or an array pattern's iterator running user code, and writes through `this` or another
   module: the code they run is not seen to run at load.
   A reader of such state (V) never leaves the route module, pure or not, for a lazy output or an extracted export's module
@@ -510,13 +544,13 @@ Fixed order per env (an array the host passes): `start-env` → `hydrate` → `r
 planning round runs each planner's `plan` in that order; a planner sees the regions, edits and generated names of the
 planners before it. The router plugin alone runs only the `router` planner.
 
-| planner        | job                                                                   | file                                                                                                                                         |
-| -------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `router`       | route option splitting, `deleteNodes`, route HMR                      | `router-plugin/src/planners/router.ts` (`split.ts`, `hmr.ts`); runtime in `router-core/src/hmr.ts` and `{react,solid,vue}-router/src/hmr.ts` |
-| `start-env`    | server functions, middleware, isomorphic/env-only fns, `<ClientOnly>` | `start-plugin-core/src/planners/start-env.ts`; recognition `src/compiler/`; ids/registry/resolver `src/server-fns/`                          |
-| `hydrate`      | `<Hydrate>` extraction into chunks                                    | `start-plugin-core/src/planners/hydrate.ts`                                                                                                  |
-| `rsc-css`      | RSC CSS injection in the provider env                                 | `start-plugin-core/src/planners/rsc-css.ts`                                                                                                  |
-| `import-edges` | import protection: per-output edges, mock substitution (policy phase) | `start-plugin-core/src/planners/edges.ts`; rules, verdicts, reports `src/import-protection/`                                                 |
+| planner        | job                                                                     | file                                                                                                                                         |
+| -------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `router`       | route option splitting (`route-placement.ts`), `deleteNodes`, route HMR | `router-plugin/src/planners/router.ts` (`split.ts`, `hmr.ts`); runtime in `router-core/src/hmr.ts` and `{react,solid,vue}-router/src/hmr.ts` |
+| `start-env`    | server functions, middleware, isomorphic/env-only fns, `<ClientOnly>`   | `start-plugin-core/src/planners/start-env.ts`; recognition `src/compiler/`; ids/registry/resolver `src/server-fns/`                          |
+| `hydrate`      | `<Hydrate>` extraction into chunks                                      | `start-plugin-core/src/planners/hydrate.ts`                                                                                                  |
+| `rsc-css`      | RSC CSS injection in the provider env                                   | `start-plugin-core/src/planners/rsc-css.ts`                                                                                                  |
+| `import-edges` | import protection: per-output edges, mock substitution (policy phase)   | `start-plugin-core/src/planners/edges.ts`; rules, verdicts, reports `src/import-protection/`                                                 |
 
 Composition: `startPlanners()` in `start-plugin-core/src/planners/index.ts`; the router planner and its configuration
 builder (`routerPlannerConfigFrom`) are exported from `@tanstack/router-plugin/planners`.

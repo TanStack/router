@@ -389,26 +389,4 @@ export function h(type, props, ...children) {
         .html,
     ).toBe(source.html)
   })
-
-  // Bug: dead-code elimination does not count a classic JSX pragma
-  // (`/** @jsx jsx */`) as a use of the factory it names, so the client parent
-  // drops the factory import once the children that call it are split (the
-  // generated code also lands above the pragma comment, where Oxc no longer
-  // reads it). Same root cause as the JSX pragma pins in
-  // known-bugs-start-compiler.test.ts and
-  // router-plugin/tests/known-bugs-code-splitter.test.ts.
-  // Impact: the client renders the parent's JSX through another factory than
-  // the server (a hydration mismatch), or throws "h is not defined". In a
-  // project whose default JSX runtime is classic, Oxc then compiles the
-  // parent's JSX to `React.createElement` without `React` in scope.
-  test('client: a module with a classic JSX pragma renders through its factory', async () => {
-    const { client } = await expectRendersLikeSource(
-      await hosts(),
-      pragmaModule,
-      {
-        files: pragmaFiles,
-      },
-    )
-    expect(client.html).toContain('<div data-h="">')
-  }, 20_000)
 })

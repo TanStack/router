@@ -9,14 +9,14 @@
  * by their effects.
  */
 import { deriveId } from '../identity'
-import { READ_KINDS, isDuplicable, symRefsOf } from './clusters'
+import { READ_KINDS, isDuplicable } from './clusters'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
 import type { ClassifiedRef } from '../analysis'
 import type { Roots } from './settle'
 import type { Seeds } from './roots'
 import type { SymbolId } from '../symbols'
 import type { RegionId, Unit } from '../units'
-import type { Frag, GenFrag, OutputId } from '../rewrite'
+import type { OutputId } from '../rewrite'
 import type { Fallback, Home, OutputDecl, PlacementInput } from '../reach'
 
 export interface Homes {
@@ -35,8 +35,8 @@ export function assignHomes(
   seeds: Seeds,
   roots: Roots,
 ): Homes {
-  const { t1, rewrites, outputs, routeModule } = input
-  const { units, symbols } = t1
+  const { t1, rewrites, outputs } = input
+  const { units } = t1
   const { regions } = rewrites
   const { clusters, clusterOfRegion, clusterOfGen, clusterOfSym } = graph
   const { liveEnv, derivedReach, movable, pinned, copied } = roots
@@ -58,54 +58,17 @@ export function assignHomes(
       orphaned.add(c)
     }
   }
-  // symbols generated text reads: uses the semantic model does not see (a Solid `use:x`)
-  let generatedReads: Set<SymbolId> | null = null
-  const readByGeneratedText = (s: SymbolId): boolean => {
-    if (generatedReads === null) {
-      generatedReads = new Set()
-      const add = (frags: ReadonlyArray<Frag | GenFrag>) => {
-        for (const r of symRefsOf(frags)) {
-          generatedReads!.add(r)
-        }
-      }
-      for (const e of rewrites.edits) {
-        add(e.body)
-      }
-      for (const p of rewrites.places) {
-        add(p.body)
-      }
-      for (const g of rewrites.generated) {
-        add(g.body)
-      }
-      for (const c of rewrites.claims.values()) {
-        add(c.placeholder)
-      }
-    }
-    return generatedReads.has(s)
-  }
   /**
    * Whether an import specifier no output needs stays in the env module.
    * Imports follow provenance like declarations: an import the source
    * never read was dead before the transform and stays as written (its
    * module still evaluates there); one our edits orphaned leaves with its
    * readers, and so does one read only by a dead pure cluster we dropped
-   * (it would pull a chunk's dependency into the route module). A value
-   * import a route module uses only in type positions leaves (TypeScript
-   * erases it; the module is not loaded for types); plain modules keep it
-   * as written. A generated import no output needs is dead generated code.
+   * (it would pull a chunk's dependency into the env module). A generated
+   * import no output needs is dead generated code.
    */
-  const importStays = (cl: Cluster): boolean => {
-    if (cl.units.length === 0 || orphaned.has(cl.id)) {
-      return false
-    }
-    if (!routeModule) {
-      return true
-    }
-    return [...cl.declares].every(
-      (s) =>
-        !readByGeneratedText(s) && symbols.binding(s)?.references.length === 0,
-    )
-  }
+  const importStays = (cl: Cluster): boolean =>
+    cl.units.length > 0 && !orphaned.has(cl.id)
 
   // ---- needers and homes -----------------------------------------------------
   const derivedNeeders: Array<Array<OutputId>> = clusters.map(() => [])

@@ -1,23 +1,15 @@
 /**
- * Split decisions of a route module for one planning round: which options
- * move to which chunk, which stay with a reason (J2.8 warnings), and which
- * `deleteNodes` erases. The router planner computes them once per round: its
+ * Split decisions of a route module for one planning round, as `main` makes
+ * them: which options move to which chunk (spec-main-splitting 1.4), and
+ * which `deleteNodes` erases. The router planner computes them once per round: its
  * split part applies them, its HMR part hoists only what stays.
  */
-import { isExpressionWrapper, walk } from '@tanstack/router-utils/compiler'
+import { unwrapExpression, walk } from '@tanstack/router-utils/compiler'
 import { propertyKeyName } from '@tanstack/router-generator'
 import { groupingsProblem } from '../core/config'
 import { splitRouteIdentNodes } from '../core/constants'
 import { ROUTER_PLANNER } from './config'
-import {
-  boundValueOf,
-  chainSoleUse,
-  chainWritten,
-  identifierSymbol,
-  isAlreadyLazy,
-  isFallbackLiteral,
-  liveInEnv,
-} from './route'
+import { boundValueOf, chainSoleUse, identifierSymbol } from './route'
 import type { RouteModuleInfo, RouteOption } from './route'
 import type { RouterPlannerConfig } from './config'
 import type { CodeSplitGroupings } from '../core/constants'
@@ -26,10 +18,11 @@ import type {
   PlanContext,
   Range,
   SymbolId,
+  Unit,
 } from '@tanstack/router-utils/compiler'
 import type { Node } from 'yuku'
 
-type SplitShape = 'init' | 'method' | 'shorthand'
+type SplitShape = 'init' | 'shorthand'
 
 export interface SplitDecision {
   /** The route option (`component`, `loader`, …). */
@@ -39,51 +32,16 @@ export interface SplitDecision {
   shape: SplitShape
   /** The region claimed by the chunk (replaced by the lazy wrapper in the route module). */
   region: Range
-  /**
-   * The text the chunk declares its export from: the region itself, or a
-   * method's function (the chunk writes the key's modifiers, `methodPrefix`;
-   * a non-computed key holds no other planner's edit).
-   */
-  valueRange: Range
-  /** The value node (a method's function; an object-form loader's handler). */
+  /** The value node. */
   valueNode: Node
   /** The key as written, for whole-property placeholders (`component: …`). */
   keyText: string
-  /** Whether the placeholder replaces the whole property (method, shorthand). */
+  /** Whether the placeholder replaces the whole property (shorthand). */
   wholeProperty: boolean
-  /** `async function* ` … for methods. */
-  methodPrefix: string
   /** The module binding a shorthand denotes. */
   shorthandSym: SymbolId | null
-  /** Object-form loader: the chunk exports the handler under `loader`. */
+  /** The chunk's export: the option's name. */
   exportName: string
-  /** A loader named by a binding holding `{ handler }`: the chunk exports that member. */
-  member: string | null
-}
-
-type NotSplitReason =
-  | 'shared-writer'
-  | 'multi-writer'
-  | 'ordered-effect'
-  | 'hydrate-writer'
-  | 'env-declared'
-  | 'exhausted'
-  | 'this-reference'
-  | 'reassigned'
-  | 'loader-object'
-  | 'loader-unread'
-  | 'loader-handler-replaceable'
-
-interface NotSplit {
-  key: string
-  reason: NotSplitReason
-  range: Range
-  /** The module binding a writer fallback writes (`ordered-effect`: writes or reads). */
-  binding?: string
-  /** `ordered-effect`: the option writes `binding`, which other code uses (`used`) or which stays in the route module (`kept`). */
-  writes?: 'used' | 'kept'
-  /** `writes: 'kept'`: marking `binding`'s initialiser `/* @__PURE__ *\/` frees the option. */
-  annotate?: true
 }
 
 export interface SplitPlan {
@@ -97,6 +55,10 @@ export interface SplitPlan {
    * hold them: they stay as `undefined`, or removing them would let that value win.
    */
   shadowing: ReadonlySet<RouteOption>
+  /** The module bindings chunks import from the route module (`chunkImportsOnMain`); empty when nothing is split. */
+  imported: ReadonlySet<SymbolId>
+  /** The names `main` shares (`sharedNamesOnMain`), a subset of `imported`. */
+  shared: ReadonlySet<SymbolId>
 }
 
 /** The options the router planner splits: the components and the loader, values the router calls later. */
@@ -150,186 +112,6 @@ export function methodPrefixOf(fn: Node): string {
   return `${fn.async ? 'async ' : ''}function${fn.generator ? '*' : ''} `
 }
 
-type ObjectExpression = Extract<Node, { type: 'ObjectExpression' }>
-type Property = Extract<Node, { type: 'Property' }>
-
-/**
- * The `handler` property of an object-form loader (the last one written;
- * none when that is an accessor), or `'replaceable'` when what follows it
- * (a spread, a computed key) may give the object another handler.
- */
-function handlerPropertyOf(
-  object: ObjectExpression,
-): Property | 'replaceable' | null {
-  let handler: Property | 'replaceable' | null = null
-  for (const p of object.properties) {
-    if (
-      p.type === 'Property' &&
-      !p.computed &&
-      propertyKeyName(p) === 'handler'
-    ) {
-      handler = p.kind === 'init' ? p : null
-    } else if (handler !== null && (p.type !== 'Property' || p.computed)) {
-      handler = 'replaceable'
-    }
-  }
-  return handler
-}
-
-/** The `handler` property of an object-form loader as the option to split. */
-function handlerOption(ctx: PlanContext, handler: Property): RouteOption {
-  const code = ctx.analysis.source.code
-  return {
-    key: 'handler',
-    kind: handler.method ? 'method' : handler.shorthand ? 'shorthand' : 'init',
-    prop: handler,
-    value: handler.value,
-    keyText: code.slice(handler.key.start, handler.key.end),
-  }
-}
-
-/** Whether `node` is a function the compiler reads (an arrow, a function expression or declaration). */
-function isFunction(node: Node): boolean {
-  return (
-    node.type === 'ArrowFunctionExpression' ||
-    node.type === 'FunctionExpression' ||
-    node.type === 'FunctionDeclaration'
-  )
-}
-
-/** The bare value inside the wrappers around `value`, or, for a sequence, its innermost parentheses. */
-function claimedValueOf(value: Node): Node {
-  let parens: Node | null = null
-  let n = value
-  while (isExpressionWrapper(n)) {
-    if (n.type === 'ParenthesizedExpression') {
-      parens = n
-    }
-    n = n.expression
-  }
-  return n.type === 'SequenceExpression' && parens !== null ? parens : n
-}
-
-/** The option of a splittable key, or the `handler` of an object-form loader. */
-function splitTarget(
-  ctx: PlanContext,
-  routerPackage: string,
-  option: RouteOption,
-):
-  | {
-      shape: SplitShape
-      region: Range
-      valueRange: Range
-      value: Node
-      keyText: string
-      wholeProperty: boolean
-      methodPrefix: string
-      exportName: string
-      member: string | null
-    }
-  | { refused: NotSplitReason }
-  | null {
-  if (option.value === null) {
-    return null
-  }
-  let prop = option
-  let member: string | null = null
-  if (
-    option.key === 'loader' &&
-    (option.kind === 'init' || option.kind === 'shorthand')
-  ) {
-    // what the value is through a chain of consts: a function splits; an
-    // object-form loader splits its handler
-    const { node: init, syms } = boundValueOf(ctx, option.value)
-    if (init.type !== 'ObjectExpression' && !isFunction(init)) {
-      // an import, a call, …: a function, or an object-form loader whose
-      // options (`staleReloadMode`) the router reads from the route module
-      // before a chunk could load. A value the router never calls (a lazy
-      // wrapper, `undefined`) stays, nothing reported
-      return isFallbackLiteral(init) || isAlreadyLazy(ctx, routerPackage, init)
-        ? null
-        : { refused: 'loader-unread' }
-    }
-    if (init.type === 'ObjectExpression') {
-      const handler = handlerPropertyOf(init)
-      if (handler === null) {
-        // no `handler` the text shows (`{ ...base }`): stays in the route
-        // module, nothing reported
-        return null
-      }
-      if (handler === 'replaceable') {
-        return { refused: 'loader-handler-replaceable' }
-      }
-      if (syms.length === 0) {
-        // `loader: { handler, … }`: the handler is split inside the object
-        prop = handlerOption(ctx, handler)
-      } else if (init.properties.length === 1 && !chainWritten(ctx, syms)) {
-        // a module const `{ handler }`: the chunk exports its handler (the
-        // router calls `loader.handler`; `lazyFn` calls what the chunk
-        // exports)
-        member = 'handler'
-      } else if (chainSoleUse(ctx, syms)) {
-        // the object holds other options (`staleReloadMode`) the router
-        // reads from the route module: the handler is split inside the
-        // object, which stays as the route's loader
-        prop = handlerOption(ctx, handler)
-      } else {
-        return { refused: 'loader-object' }
-      }
-    }
-  }
-  const value = prop.value!
-  switch (prop.kind) {
-    case 'init': {
-      // the chunk claims and declares the bare value (so React Refresh
-      // registers a function); a cast around it stays in the route module,
-      // around the placeholder (`lazyFn(…) as any`): a claim's owner copies
-      // the whole claimed text, so every edit inside it reaches the chunk. A
-      // sequence keeps its innermost parentheses: without them the chunk's
-      // `const X = a, b` would declare, not evaluate it
-      const inner = claimedValueOf(value)
-      const range = { start: inner.start, end: inner.end }
-      return {
-        shape: 'init',
-        region: range,
-        valueRange: range,
-        value,
-        keyText: prop.keyText,
-        wholeProperty: false,
-        methodPrefix: '',
-        exportName: option.key!,
-        member,
-      }
-    }
-    case 'method':
-      return {
-        shape: 'method',
-        region: { start: prop.prop.start, end: prop.prop.end },
-        valueRange: { start: value.start, end: value.end },
-        value,
-        keyText: prop.keyText,
-        wholeProperty: true,
-        methodPrefix: methodPrefixOf(value),
-        exportName: option.key!,
-        member: null,
-      }
-    case 'shorthand':
-      return {
-        shape: 'shorthand',
-        region: { start: prop.prop.start, end: prop.prop.end },
-        valueRange: { start: value.start, end: value.end },
-        value,
-        keyText: prop.keyText,
-        wholeProperty: true,
-        methodPrefix: '',
-        exportName: option.key!,
-        member,
-      }
-    default:
-      return null
-  }
-}
-
 /**
  * Whether a spread or computed route option provably holds none of
  * `deleteNodes`: a spread of a module object literal of static keys that
@@ -368,6 +150,8 @@ function hidesNoDeletedOption(
   })
 }
 
+const none: ReadonlySet<SymbolId> = new Set()
+
 /** The split plan of a recognised route in this planning round. */
 export function splitPlanOf(
   ctx: PlanContext,
@@ -377,7 +161,6 @@ export function splitPlanOf(
   const warnings: Array<Diagnostic> = [...route.warnings]
   const file = ctx.displayPath
   const decisions: Array<SplitDecision> = []
-  const notSplit: Array<NotSplit> = []
   const deleted: Array<RouteOption> = []
   const shadowing = new Set<RouteOption>()
   const deleteNodes = new Set(cfg.deleteNodes)
@@ -429,7 +212,15 @@ export function splitPlanOf(
         },
       })
     }
-    return { route, decisions, warnings, deleted, shadowing }
+    return {
+      route,
+      decisions,
+      warnings,
+      deleted,
+      shadowing,
+      imported: none,
+      shared: none,
+    }
   }
 
   let afterUnread = false
@@ -466,134 +257,99 @@ export function splitPlanOf(
   }
 
   if (!splitting) {
-    return { route, decisions, warnings, deleted, shadowing }
+    return {
+      route,
+      decisions,
+      warnings,
+      deleted,
+      shadowing,
+      imported: none,
+      shared: none,
+    }
   }
 
+  /** Exported bindings named as a split option's value: not split (`main`'s one warning). */
+  const exported: Array<string> = []
+  let exportedAt: Range | undefined
   for (const group of groupings) {
     const groupKey = groupKeyOf(group)
     for (const key of new Set(group)) {
       if (!SPLITTABLE_KEYS.includes(key) || deleteNodes.has(key)) {
         continue
       }
+      // a plain property (`key: value`, `{ key }`): a method, an accessor, a
+      // spread or a computed key stays as written, as on `main`
       const option = route.props.find(
-        (p) =>
-          p.key === key &&
-          p.kind !== 'spread' &&
-          p.kind !== 'computed' &&
-          p.kind !== 'accessor',
+        (p) => p.key === key && (p.kind === 'init' || p.kind === 'shorthand'),
       )
       if (!option || option.value === null) {
         continue
       }
-      const target = splitTarget(ctx, route.routerPackage, option)
-      if (!target) {
+      const value = withoutParens(option.value)
+      if (fallsBackToParent(value)) {
         continue
       }
-      if ('refused' in target) {
-        notSplit.push({
-          key,
-          reason: target.refused,
-          range: { start: option.value.start, end: option.value.end },
-        })
+      if (exportedAsOnMain(ctx, value)) {
+        // the route file keeps exporting it: splitting it would only move a
+        // re-export (`main` leaves it, with a warning)
+        exported.push(value.name)
+        exportedAt ??= { start: value.start, end: value.end }
         continue
       }
+      const valueSym = identifierSymbol(ctx, value)
       if (
-        isFallbackLiteral(target.value) ||
-        isAlreadyLazy(ctx, route.routerPackage, target.value)
+        !splitOnMain(ctx, value) ||
+        assignsWhatItImports(ctx, value, valueSym)
       ) {
         continue
       }
-      if (readsOwnThis(ctx, calledFunctionOf(ctx, target))) {
-        // #8688: the router calls a method or function-expression callback as
-        // a method of the options object; a split chunk's detached call would
-        // change its `this` (J2.8: informed, never broken), wherever the
-        // function is declared
-        notSplit.push({
-          key,
-          reason: 'this-reference',
-          range: target.region,
-        })
-        continue
-      }
+      const shorthand = option.kind === 'shorthand'
+      // the chunk claims and declares the bare value (so React Refresh
+      // registers a function); a cast around it stays in the route module,
+      // around the placeholder (`lazyFn(…) as any`)
+      const inner = unwrapExpression(value)
+      const region = shorthand
+        ? { start: option.prop.start, end: option.prop.end }
+        : { start: inner.start, end: inner.end }
       // another planner already puts something at exactly this text's place
       // in the route module (Start hoists a server fn written in place): the
-      // chunk cannot take it as well
-      const claimed = ctx.rewrites.view('env').placeholderAt(target.region)
+      // chunk cannot take it as well, and the option keeps working there
+      const claimed = ctx.rewrites.view('env').placeholderAt(region)
       if (claimed) {
         warnings.push({
-          severity: 'error',
+          severity: 'warning',
           code: 'split-claimed',
           by: ROUTER_PLANNER,
-          message: `[tanstack-router] The \`${key}\` option of ${file} is split into its own chunk, but its value is ${('owner' in claimed ? claimed.subject : undefined) ?? 'moved elsewhere by the compiler'}, so it cannot move into the chunk as well. Declare it as a module-level \`const\` before the route and pass it by name: \`${target.keyText}: ${key}Fn\`.`,
-          range: target.region,
+          message: `[tanstack-router] The \`${key}\` option of ${file} is not code-split: its value is ${('owner' in claimed ? claimed.subject : undefined) ?? 'moved elsewhere by the compiler'}, so it cannot move into a chunk as well. Declare it as a module-level \`const\` before the route and pass it by name: \`${option.keyText}: ${key}Fn\`.`,
+          range: region,
         })
         continue
       }
-      const shorthandSym =
-        target.shape === 'shorthand'
-          ? identifierSymbol(ctx, target.value)
-          : null
-      const valueSym = identifierSymbol(ctx, target.value)
-      if (
-        valueSym !== null &&
-        ctx.symbols.isModuleLevel(valueSym) &&
-        ctx.t1.mutation.isReassigned(valueSym, liveInEnv(ctx))
-      ) {
-        // the options object holds the binding's value at route creation; a
-        // chunk re-exporting the live binding would render its latest value
-        notSplit.push({
-          key,
-          reason: 'reassigned',
-          range: target.region,
-        })
-        continue
-      }
-      // the core reports a fallback at the option value, or at the
-      // declaration of the binding the value names (its writes, its effects)
-      const fallback =
-        ctx.fallbackAt(target.region) ??
-        (valueSym !== null
-          ? declaringRanges(ctx, valueSym)
-              .map((r) => ctx.fallbackAt(r))
-              .find((f) => f !== undefined)
-          : undefined)
-      if (fallback) {
-        notSplit.push({
-          key,
-          reason: fallback.reason,
-          range: target.region,
-          ...(fallback.binding !== undefined && { binding: fallback.binding }),
-          ...(fallback.writes !== undefined && { writes: fallback.writes }),
-          ...(fallback.annotate && { annotate: true }),
-        })
-        continue
-      }
-      const decision: SplitDecision = {
+      decisions.push({
         key,
         groupKey,
-        shape: target.shape,
-        region: target.region,
-        valueRange: target.valueRange,
-        valueNode: target.value,
-        keyText: target.keyText,
-        wholeProperty: target.wholeProperty,
-        methodPrefix: target.methodPrefix,
-        shorthandSym,
-        exportName: target.exportName,
-        member: target.member,
-      }
-      decisions.push(decision)
+        shape: shorthand ? 'shorthand' : 'init',
+        region,
+        valueNode: value,
+        keyText: option.keyText,
+        wholeProperty: shorthand,
+        shorthandSym: shorthand ? valueSym : null,
+        exportName: key,
+      })
     }
   }
-
-  // J2.8: what stays, once per (file, reason)
-  for (const n of notSplit) {
+  if (exported.length > 0) {
+    // `main`'s message
     warnings.push({
       severity: 'warning',
-      code: `not-split:${n.reason}`,
+      code: 'exported-not-split',
       by: ROUTER_PLANNER,
-      message: `[tanstack-router] The \`${n.key}\` option of ${file} is not code-split: ${describeReason(n.reason, n.key, n.binding, n.writes, n.annotate)}`,
-      range: n.range,
+      message: [
+        `[tanstack-router] These exports from "${file}" will not be code-split and will increase your bundle size:`,
+        ...exported.map((name) => `- ${name}`),
+        'For the best optimization, these items should either have their export statements removed, or be imported from another location that is not a route file.',
+      ].join('\n'),
+      range: exportedAt,
     })
   }
   return {
@@ -602,118 +358,374 @@ export function splitPlanOf(
     warnings,
     deleted,
     shadowing,
+    ...(decisions.length > 0
+      ? chunkImportsOnMain(ctx, route, groupings)
+      : { imported: none, shared: none }),
   }
 }
 
-function describeReason(
-  reason: NotSplitReason,
-  key: string,
-  binding?: string,
-  writes?: 'used' | 'kept',
-  annotate?: true,
-): string {
-  const written = binding === undefined ? 'a module binding' : `\`${binding}\``
-  const inObject = `\`state.${binding ?? 'count'}\``
-  switch (reason) {
-    case 'shared-writer':
-      return `it writes ${written}, which the route module also uses, and a split chunk cannot write a binding of another module. Keep that state in an object (${inObject}), or in a module of its own that also exports the functions writing it.`
-    case 'multi-writer':
-      return `it writes ${written}, which another split option also writes, and a split chunk cannot write a binding of another module. Keep that state in an object (${inObject}), or in a module of its own that also exports the functions writing it.`
-    case 'ordered-effect':
-      if (writes === 'used') {
-        // (when it loads, or in a function its call runs, which may run at
-        // any time: other code of the module would see the write at another
-        // time)
-        return `it writes ${written}, which other code also uses, so a split would change when that code sees the write. Use ${written} only inside the option's functions.`
-      }
-      if (writes === 'kept') {
-        // the binding stays in the route module (its initialiser's effects,
-        // or code there needs it): the chunk would write it after that
-        // module's code ran
-        return annotate
-          ? `it writes ${written}, which stays in the route module because its initialiser has side effects, so a split would run the write later than written. Mark that initialiser \`/* @__PURE__ */\` if it has none.`
-          : `it writes ${written}, which stays in the route module, so a split would run the write later than written. Declare and use ${written} only inside the option's functions.`
-      }
-      return `it uses ${written} when the module loads, and other code of the module changes it later or reads it after the option, so a split would change what one of them sees. Use ${written} only inside the option's functions, or move what writes it out of the option, before the route.`
-    case 'hydrate-writer':
-      return 'it writes a binding a hydration boundary also uses. Keep that state in an object, or in a module of its own that also exports the functions writing it.'
-    case 'env-declared':
-      return 'its value is created by a statement the route module keeps (a call or a destructuring, or one writing an exported binding), so a split chunk could only import it. Declare the value on its own (`function Component() { … }`) to have it split.'
-    case 'exhausted':
-      return 'the compiler could not settle which options of this route can be split; nothing of it is split.'
-    case 'this-reference':
-      return `it reads \`this\`, which a split chunk cannot keep: the router calls it without one (\`this\` is \`undefined\`), and only code calling \`Route.options.${key}()\` passes the route options. Write it without \`this\`, for example as an arrow function.`
-    case 'reassigned':
-      return 'its value names a binding that is reassigned, and the route keeps the value it had when it was created; a split chunk would load the latest value. Assign the binding once.'
-    case 'loader-unread':
-      return 'the compiler cannot tell whether its value is a function or an object-form loader (`{ handler, staleReloadMode }`), whose options the router reads from the route module before a split chunk could load. Write the loader in the route options (`loader: { handler, … }` for an object), or call a function from one written there: `loader: (ctx) => myLoader(ctx)`.'
-    case 'loader-handler-replaceable':
-      return 'what is written after `handler` in its object (a spread, a computed key) may replace the handler, so the compiler cannot tell what the router calls. Put the spread before `handler`: `loader: { ...options, handler }`.'
-    case 'loader-object':
-      return 'its value names an object with options next to `handler` that other code also reads, and only the handler of an object-form loader nothing else reads is code-split. Write the object inline in the route options (`loader: { handler, … }`), or keep what other code reads out of it.'
+/** The value inside its parentheses (Babel, which `main` parses with, keeps none). */
+function withoutParens(value: Node): Node {
+  let v = value
+  while (v.type === 'ParenthesizedExpression') {
+    v = v.expression
   }
+  return v
+}
+
+/** `true`, `false`, `null` or `undefined` as written: the parent's option applies. */
+function fallsBackToParent(value: Node): boolean {
+  if (value.type === 'Identifier') {
+    return value.name === 'undefined'
+  }
+  return (
+    value.type === 'Literal' &&
+    (value.value === null || typeof value.value === 'boolean')
+  )
 }
 
 /**
- * The function the router calls for a split target: what its value names
- * (`boundValueOf`), or the `handler` of the loader object it names.
+ * `main`'s `hasExport(ast, value)`, called by `compileCodeSplitReferenceRoute`
+ * on a value that is a bare identifier only (an `as any` around it is split):
+ * a top-level `export const|let|var` declares the name (patterns included),
+ * `export function name`, `export default function name` or `export default
+ * name`. By name, as `main` compares them; not `export { name }`, not
+ * `export class`.
  */
-function calledFunctionOf(
+function exportedAsOnMain(
   ctx: PlanContext,
-  target: { value: Node; member: string | null },
-): Node {
-  const { node: value } = boundValueOf(ctx, target.value)
-  const handler =
-    target.member !== null && value.type === 'ObjectExpression'
-      ? handlerPropertyOf(value)
-      : null
-  return handler !== null && handler !== 'replaceable'
-    ? boundValueOf(ctx, handler.value).node
-    : value
-}
-
-/**
- * Whether a function expression's or declaration's own body (or parameters)
- * reads `this`, not that of a nested function, class or object method inside
- * it (#8688). Arrow functions have the module's `this` wherever they evaluate.
- */
-function readsOwnThis(ctx: PlanContext, fn: Node): boolean {
-  if (
-    (fn.type !== 'FunctionExpression' && fn.type !== 'FunctionDeclaration') ||
-    // (most named functions are components: no walk of a body without the word)
-    !ctx.analysis.source.code.slice(fn.start, fn.end).includes('this')
-  ) {
+  value: Node,
+): value is Node & { name: string } {
+  if (value.type !== 'Identifier') {
     return false
   }
+  const { name } = value
+  return ctx.t1.items.some(({ node }) => {
+    if (node.type === 'ExportNamedDeclaration') {
+      const d = node.declaration
+      return (
+        (d?.type === 'VariableDeclaration' &&
+          (d.declarations as Array<Node>).some(
+            (decl) =>
+              decl.type === 'VariableDeclarator' &&
+              patternNames(decl.id).includes(name),
+          )) ||
+        (d?.type === 'FunctionDeclaration' && d.id?.name === name)
+      )
+    }
+    if (node.type === 'ExportDefaultDeclaration') {
+      const d = node.declaration
+      return (
+        (d.type === 'Identifier' && d.name === name) ||
+        (d.type === 'FunctionDeclaration' && d.id?.name === name)
+      )
+    }
+    return false
+  })
+}
+
+/** The names a binding pattern declares (`collectIdentifiersFromPattern`). */
+function patternNames(id: Node): Array<string> {
+  switch (id.type) {
+    case 'Identifier':
+      return [id.name]
+    case 'ObjectPattern':
+      return (id.properties as Array<Node>).flatMap((p) =>
+        p.type === 'RestElement'
+          ? patternNames(p.argument)
+          : p.type === 'Property'
+            ? patternNames(p.value)
+            : [],
+      )
+    case 'ArrayPattern':
+      return (id.elements as Array<Node | null>).flatMap((e) =>
+        e === null ? [] : patternNames(e),
+      )
+    case 'RestElement':
+      return patternNames(id.argument)
+    case 'AssignmentPattern':
+      return patternNames(id.left)
+    default:
+      return []
+  }
+}
+
+/**
+ * Whether `main` gives the chunk this value: the cases of
+ * `compileCodeSplitVirtualRoute`'s switch on `splitNode`, which compiles
+ * them; on every other case it throws (or exports a name the chunk does
+ * not declare), so the option stays in the route module here, silently.
+ * One place, so the policy (unsplit, or an error) can change in one edit.
+ */
+export function splitOnMain(ctx: PlanContext, value: Node): boolean {
+  // `while (t.isIdentifier(splitNode)) splitNode = binding?.path.node`:
+  // the declaration Babel binds the module-level name to (one step)
+  const node = value.type === 'Identifier' ? babelBinding(ctx, value) : value
+  // the cases, in `main`'s order: `t.isFunctionDeclaration` (kept under its
+  // name), `t.isFunctionExpression || t.isArrowFunctionExpression`,
+  // `t.isImportSpecifier || t.isImportDefaultSpecifier`,
+  // `t.isVariableDeclarator` (an identifier or an object pattern),
+  // `t.isCallExpression` (printed and parsed again without the JSX and
+  // TypeScript syntax plugins), `t.isConditionalExpression`,
+  // `t.isTSAsExpression`
+  switch (node?.type) {
+    case 'FunctionDeclaration':
+    case 'FunctionExpression':
+    case 'ArrowFunctionExpression':
+    case 'ImportSpecifier':
+    case 'ImportDefaultSpecifier':
+    case 'ConditionalExpression':
+    case 'TSAsExpression':
+      return true
+    case 'VariableDeclarator':
+      return node.id.type === 'Identifier' || node.id.type === 'ObjectPattern'
+    case 'CallExpression':
+      return !containsSyntax(node, /^(JSX|TS)/)
+    default:
+      return false
+  }
+}
+
+/**
+ * The node Babel's program scope binds `id`'s name to
+ * (`programPath.scope.getBinding(name).path.node`), or null: the first
+ * module-level declaration of the name in source order that Babel registers
+ * as a binding. A function's overload signatures, `declare function`,
+ * `enum` and `namespace` are none (an overloaded function is bound to its
+ * implementation); types are none.
+ */
+function babelBinding(ctx: PlanContext, id: Node): Node | null {
+  const b = ctx.analysis.file.referenceOf(id)?.binding ?? null
+  const sym = b ? ctx.symbols.ofBinding(b) : null
+  if (sym === null || !ctx.symbols.isModuleLevel(sym)) {
+    return null
+  }
+  const units = (ctx.t1.declaringUnits.get(sym) ?? [])
+    .map((u) => ctx.t1.units[u]!)
+    .filter(
+      (u) =>
+        u.kind !== 'type' &&
+        [
+          'FunctionDeclaration',
+          'ClassDeclaration',
+          'VariableDeclarator',
+          'ImportSpecifier',
+          'ImportDefaultSpecifier',
+          'ImportNamespaceSpecifier',
+        ].includes(u.node.type),
+    )
+    .sort((a, b) => a.range.start - b.range.start)
+  return units[0]?.node ?? null
+}
+
+/**
+ * The module bindings a chunk imports from the route file on `main`; it
+ * copies whatever else it reads (spec-main-splitting 1.6-1.8): the route
+ * binding, what `export const|let|var` declares (`compileCodeSplitVirtualRoute`
+ * turns those statements into imports), and the shared names
+ * (`computeSharedBindings`: `main` moves them to `?tsr-shared=1`; the route
+ * module holds them here, one instance either way).
+ */
+export function chunkImportsOnMain(
+  ctx: PlanContext,
+  route: RouteModuleInfo,
+  groupings: CodeSplitGroupings,
+): { imported: Set<SymbolId>; shared: Set<SymbolId> } {
+  const shared = sharedNamesOnMain(ctx, route, groupings)
+  const imported = new Set(shared)
+  imported.add(route.routeSym)
+  for (const unit of ctx.t1.units) {
+    const item = ctx.t1.items[unit.item]!.node
+    if (
+      unit.kind !== 'type' &&
+      item.type === 'ExportNamedDeclaration' &&
+      item.declaration?.type === 'VariableDeclaration'
+    ) {
+      for (const s of unit.declares) {
+        imported.add(s)
+      }
+    }
+  }
+  return { imported, shared }
+}
+
+/**
+ * `main`'s `computeSharedBindings`: the module-level `const|let|var`,
+ * function and class bindings (not imports, not the route binding) that
+ * the values of route options under two or more group numbers read,
+ * transitively through these declarations (an option in no group is group
+ * -1, kept or deleted alike); a destructuring declarator whose names are
+ * read under two or more group numbers between them, or one of whose names
+ * is shared, has all its names shared; a name whose declaration reads the
+ * route binding, transitively, is not.
+ */
+function sharedNamesOnMain(
+  ctx: PlanContext,
+  route: RouteModuleInfo,
+  groupings: CodeSplitGroupings,
+): Set<SymbolId> {
+  const { t1 } = ctx
+  const shared = new Set<SymbolId>()
+  // `collectLocalBindingsFromStatement`, `localModuleLevelBindings.delete('Route')`
+  const declarators = new Map<SymbolId, Array<Unit>>()
+  for (const unit of t1.units) {
+    if (
+      unit.kind !== 'type' &&
+      (unit.node.type === 'VariableDeclarator' ||
+        unit.node.type === 'FunctionDeclaration' ||
+        unit.node.type === 'ClassDeclaration')
+    ) {
+      for (const s of unit.declares) {
+        if (s !== route.routeSym) {
+          declarators.set(s, [...(declarators.get(s) ?? []), unit])
+        }
+      }
+    }
+  }
+  if (declarators.size === 0) {
+    return shared
+  }
+  // plain properties (`t.isObjectProperty`), `codeSplitGroupings` skipped
+  const props = route.props.filter(
+    (p) =>
+      (p.kind === 'init' || p.kind === 'shorthand') &&
+      p.key !== null &&
+      p.key !== 'codeSplitGroupings' &&
+      p.value !== null,
+  )
+  const groupOf = (key: string) =>
+    groupings.findIndex((group) => (group as Array<string>).includes(key))
+  {
+    const splitGroups = new Set<number>()
+    let nonSplit = false
+    for (const p of props) {
+      const v = p.value!
+      if (v.type === 'Identifier' && v.name === 'undefined') {
+        continue
+      }
+      const g = groupOf(p.key!)
+      if (g === -1) {
+        nonSplit = true
+      } else {
+        splitGroups.add(g)
+      }
+    }
+    if (!nonSplit && splitGroups.size < 2) {
+      return shared
+    }
+  }
+  /**
+   * The names `main` collects in a range (`collectModuleLevelRefsFromNode`,
+   * Babel's `t.isReferenced`): an assignment's target (`x = …`, `x += …`,
+   * `[x] = …`) is none; an update (`x++`) and a member write's object are.
+   */
+  const { file } = ctx.analysis
+  const namesIn = (range: Range): Array<SymbolId> =>
+    t1.refs
+      .refsIn(range)
+      .filter(
+        (r) =>
+          r.kind !== 'write' ||
+          file.parentOf(file.nodeAt(r.range.start)!)?.type ===
+            'UpdateExpression',
+      )
+      .map((r) => r.sym)
+  /** `buildDependencyGraph`: what each declaration reads (with the route binding: `fullDepGraph`). */
+  const readsOf = (s: SymbolId): Array<SymbolId> =>
+    (declarators.get(s) ?? []).flatMap((u) =>
+      namesIn(u.range).filter(
+        (r) => r !== s && (declarators.has(r) || r === route.routeSym),
+      ),
+    )
+  const closure = (from: Iterable<SymbolId>): Set<SymbolId> => {
+    const seen = new Set<SymbolId>()
+    const work = [...from]
+    while (work.length > 0) {
+      const s = work.pop()!
+      if (!seen.has(s)) {
+        seen.add(s)
+        work.push(...readsOf(s))
+      }
+    }
+    return seen
+  }
+  const groupsOf = new Map<SymbolId, Set<number>>()
+  for (const p of props) {
+    const g = groupOf(p.key!)
+    const direct = namesIn({ start: p.value!.start, end: p.value!.end }).filter(
+      (s) => declarators.has(s),
+    )
+    for (const s of closure(direct)) {
+      if (declarators.has(s)) {
+        groupsOf.set(s, (groupsOf.get(s) ?? new Set()).add(g))
+      }
+    }
+  }
+  for (const [s, groups] of groupsOf) {
+    if (groups.size >= 2) {
+      shared.add(s)
+    }
+  }
+  // `expandSharedDestructuredDeclarators`, `expandDestructuredDeclarations`
+  for (const unit of t1.units) {
+    if (
+      unit.node.type !== 'VariableDeclarator' ||
+      unit.node.id.type === 'Identifier'
+    ) {
+      continue
+    }
+    const groups = new Set(
+      unit.declares.flatMap((s) => [...(groupsOf.get(s) ?? [])]),
+    )
+    if (groups.size >= 2 || unit.declares.some((s) => shared.has(s))) {
+      for (const s of unit.declares) {
+        shared.add(s)
+      }
+    }
+  }
+  // `removeBindingsTransitivelyDependingOn(shared, fullDepGraph, ['Route'])`
+  for (const s of [...shared]) {
+    if (closure(readsOf(s)).has(route.routeSym)) {
+      shared.delete(s)
+    }
+  }
+  return shared
+}
+
+/**
+ * Whether the core found that the chunk taking this value would assign a
+ * binding it imports from another module of the file (a fallback of the
+ * previous round at the value, or at the declaration of the binding it
+ * names: a shared `let`, an `export let`, where `main`'s build fails): the
+ * option stays in the route module, as the values `splitOnMain` refuses do.
+ */
+function assignsWhatItImports(
+  ctx: PlanContext,
+  value: Node,
+  valueSym: SymbolId | null,
+): boolean {
+  const inner = unwrapExpression(value)
+  if (ctx.fallbackAt({ start: inner.start, end: inner.end }) !== undefined) {
+    return true
+  }
+  const { t1 } = ctx
+  return (
+    valueSym !== null &&
+    (t1.declaringUnits.get(valueSym) ?? []).some(
+      (u) => ctx.fallbackAt(t1.units[u]!.range) !== undefined,
+    )
+  )
+}
+
+function containsSyntax(node: Node, type: RegExp): boolean {
   let found = false
-  walk(fn, {
+  walk(node, {
     enter: (n, wctx) => {
-      if (found) {
-        wctx.stop()
-        return
-      }
-      if (n === fn) {
-        return
-      }
-      if (
-        n.type === 'FunctionExpression' ||
-        n.type === 'FunctionDeclaration' ||
-        n.type === 'ClassBody'
-      ) {
-        wctx.skip()
-        return
-      }
-      if (n.type === 'ThisExpression') {
+      if (type.test(n.type)) {
         found = true
         wctx.stop()
       }
     },
   })
   return found
-}
-
-/** The ranges of the module-level units declaring a symbol. */
-function declaringRanges(ctx: PlanContext, sym: SymbolId): Array<Range> {
-  const { t1 } = ctx
-  return (t1.declaringUnits.get(sym) ?? []).map((u) => t1.units[u]!.range)
 }

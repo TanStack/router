@@ -1,8 +1,8 @@
 /**
  * The user-facing warning for a declaration only split code needs that
- * stays in the env module (`Placement.kept`). The planners supply the words:
- * how their outputs are named (`OutputSpec.describe`) and what the module
- * is (`PlanContext.describeModule`).
+ * stays in the env module (`Placement.kept`). The planners supply how their
+ * outputs are named (`OutputSpec.describe`). (Route files are placed by
+ * `route-placement.ts`, which keeps nothing to report.)
  */
 import { isPureExpression } from './purity'
 import { unwrapExpression } from './source'
@@ -27,8 +27,7 @@ export function keptDiagnostic(
   k: KeptDeclaration,
 ): Diagnostic {
   const { analysis, symbols } = plan
-  const tag = plan.moduleWords === null ? '' : `${plan.moduleWords.tag} `
-  const module = plan.moduleWords?.name ?? 'module'
+  const module = 'module'
   const file = plan.displayPath
   const output = (o: OutputId) => {
     const decl = plan.outputs.get(o)!
@@ -96,8 +95,8 @@ export function keptDiagnostic(
       severity: 'warning',
       message:
         k.shared === true
-          ? `${tag}In ${file}, unused ${at} ${more.length === 0 ? 'puts' : 'put'} ${and(names)} in one shared module the split ${and(k.needers.map(output))} import; delete ${more.length === 0 ? unused : 'them'}, so each loads with the split code that needs it.`
-          : `${tag}In ${file}, unused ${at} keeps ${and(names)} in the ${module}; delete ${unused}, so ${one ? 'it' : 'they'} can load with the split code that needs ${one ? 'it' : 'them'}.`,
+          ? `In ${file}, unused ${at} ${more.length === 0 ? 'puts' : 'put'} ${and(names)} in one shared module the split ${and(k.needers.map(output))} import; delete ${more.length === 0 ? unused : 'them'}, so each loads with the split code that needs it.`
+          : `In ${file}, unused ${at} keeps ${and(names)} in the ${module}; delete ${unused}, so ${one ? 'it' : 'they'} can load with the split code that needs ${one ? 'it' : 'them'}.`,
       range: k.range,
       by: 'core',
       code: k.shared === true ? 'shared-split:unused' : 'eager-split:unused',
@@ -169,7 +168,7 @@ export function keptDiagnostic(
     }
     return {
       severity: 'warning',
-      message: `${tag}The export${one ? '' : 's'} ${names.join(', ')} of ${file} ${one ? 'is' : 'are'} used only by the split ${split}, but ${one ? 'stays' : 'stay'} in the ${module} because ${why}, so ${one ? 'it loads' : 'they load'} with the ${module} instead of with that code. ${fix}`,
+      message: `The export${one ? '' : 's'} ${names.join(', ')} of ${file} ${one ? 'is' : 'are'} used only by the split ${split}, but ${one ? 'stays' : 'stay'} in the ${module} because ${why}, so ${one ? 'it loads' : 'they load'} with the ${module} instead of with that code. ${fix}`,
       range: k.range,
       by: 'core',
       code: `eager-export:${k.reason}`,
@@ -202,7 +201,7 @@ export function keptDiagnostic(
       if (k.seen !== undefined) {
         return {
           severity: 'warning',
-          message: `${tag}${subject} in ${file} stay${names.length === 1 ? 's' : ''} in the ${module} because ${stays}: it also changes ${read}, which the ${module}'s code uses on ${line(k.seen)}; moving or deleting that statement would change what that code sees.`,
+          message: `${subject} in ${file} stay${names.length === 1 ? 's' : ''} in the ${module} because ${stays}: it also changes ${read}, which the ${module}'s code uses on ${line(k.seen)}; moving or deleting that statement would change what that code sees.`,
           range: k.range,
           by: 'core',
           code: `eager-split:${k.reason}`,
@@ -229,7 +228,7 @@ export function keptDiagnostic(
       if (moves && stuck !== undefined) {
         return {
           severity: 'warning',
-          message: `${tag}${subject} in ${file} stay${names.length === 1 ? 's' : ''} in the ${module} because ${because}; ${stuck}.`,
+          message: `${subject} in ${file} stay${names.length === 1 ? 's' : ''} in the ${module} because ${because}; ${stuck}.`,
           range: k.range,
           by: 'core',
           code: `eager-split:${k.reason}`,
@@ -291,7 +290,7 @@ export function keptDiagnostic(
         if (!inside) {
           return {
             severity: 'warning',
-            message: `${tag}${subject} in ${file} stay${names.length === 1 ? 's' : ''} in the ${module} because ${because}; ${stuck}.`,
+            message: `${subject} in ${file} stay${names.length === 1 ? 's' : ''} in the ${module} because ${because}; ${stuck}.`,
             range: k.range,
             by: 'core',
             code: `eager-split:${k.reason}`,
@@ -309,7 +308,7 @@ export function keptDiagnostic(
   }
   return {
     severity: 'warning',
-    message: `${tag}${subject} in ${file} stay${names.length === 1 ? 's' : ''} in the ${module} because ${because}; ${fix}, so ${subject} can load with the split ${split}.`,
+    message: `${subject} in ${file} stay${names.length === 1 ? 's' : ''} in the ${module} because ${because}; ${fix}, so ${subject} can load with the split ${split}.`,
     range: k.range,
     by: 'core',
     code: `eager-split:${k.reason}`,

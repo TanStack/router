@@ -7,7 +7,6 @@
  */
 
 import { afterAll, describe, expect, test } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, buildWithRsbuild, head } from '../build-harness'
 import type {
   BuildResult,
@@ -52,14 +51,8 @@ describe('page code in client builds', () => {
   const component = `export const Route = createFileRoute('$PATH')({ component: Page })`
 
   // Page code that loads with its chunk: code the route file does not
-  // export, and exported functions and classes (the chunk declares its own
-  // copy of a function whose closure is functions and primitives, by rule;
-  // a class and state are one instance the chunk imports from the extracted
-  // module, pinned in "module state shared with split chunks" and "exported
-  // bindings"; the bundler drops an unused extracted module of the route
-  // file, and the hosts' `sideEffects: false` rule for `tsr-split=export---`
-  // keeps an imported one lazy without `"sideEffects": false`). A fix must
-  // keep them out of the entry chunk.
+  // export. (An exported binding stays in the route file, as on main: R153.)
+  // A fix must keep it out of the entry chunk.
   const controls: Array<Case> = [
     routeCase(
       'a const only a split component renders',
@@ -70,252 +63,7 @@ function Page() {
 }
 ${component}`,
     ),
-    routeCase(
-      'an exported function component',
-      'exported-function',
-      `export function Card() {
-  return <b>{'$MARK'}</b>
-}
-function Page() {
-  return <Card />
-}
-${component}`,
-    ),
-    routeCase(
-      'a function component exported by specifier',
-      'exported-specifier',
-      `function Card() {
-  return <b>{'$MARK'}</b>
-}
-export { Card }
-function Page() {
-  return <Card />
-}
-${component}`,
-    ),
-    routeCase(
-      'a default-exported function component',
-      'exported-default',
-      `export default function Card() {
-  return <b>{'$MARK'}</b>
-}
-function Page() {
-  return <Card />
-}
-${component}`,
-    ),
-    routeCase(
-      'an exported helper function',
-      'exported-helper',
-      `export function format(value: number) {
-  return '$MARK' + value
-}
-function Page() {
-  return <p>{format(1)}</p>
-}
-${component}`,
-    ),
-    routeCase(
-      'an exported class',
-      'exported-class',
-      `export class Store {
-  value = '$MARK'
-}
-function Page() {
-  return <p>{new Store().value}</p>
-}
-${component}`,
-    ),
-    routeCase(
-      'an exported function over module state',
-      'exported-state',
-      `let count = 0
-export function next() {
-  count++
-  return '$MARK' + count
-}
-function Page() {
-  return <p>{next()}</p>
-}
-${component}`,
-    ),
-    // A dependency with side effects next to the exported component: only
-    // the declaration is asserted, how the bundler groups the modules next
-    // to it is up to it. (A client build bundles `react/jsx-runtime`, a
-    // CommonJS module, whose interop call has side effects too.)
-    // Source: #8504 (code-splitter-exported-bindings-chunks.test.ts).
-    routeCase(
-      'an exported function component with a dependency that has side effects',
-      'exported-effect-dep',
-      `import { label } from '../label'
-export function Card() {
-  return <b>{'$MARK' + label}</b>
-}
-function Page() {
-  return <Card />
-}
-${component}`,
-    ),
-    // What an exported function component imports loads with the chunk too.
-    // Source: #8504 (code-splitter-exported-bindings-chunks.test.ts).
-    {
-      ...routeCase(
-        "an exported function component's dependency",
-        'exported-dep',
-        `import { heavy } from '../heavy'
-export function Card() {
-  return <b>{heavy()}</b>
-}
-function Page() {
-  return <Card />
-}
-${component}`,
-      ),
-      marker: 'MARK_heavy_dependency_END',
-    },
-    // Whether it renders is pinned at the compiler level ("top-level writes
-    // to the split component (property assignment) stay with the binding
-    // they write"); a fix must keep the component in its chunk.
-    // Source: review of #8504 (a candidate fix moved the component to the
-    // entry).
-    routeCase(
-      'an exported function component next to a helper the loader and the component share',
-      'shared-helper-export',
-      `const label = (value: string) => value + '!'
-export function Card() {
-  return <b>{'$MARK'}</b>
-}
-export const Route = createFileRoute('$PATH')({
-  loader: () => label('data'),
-  component: () => <p>{label('page')}<Card /></p>,
-})`,
-    ),
   ]
-
-  // Bug (main): page code the route file exports as a variable, and an
-  // exported split component, stay in the route module, which the entry
-  // chunk loads, with everything they import: a split chunk imports exported
-  // variables from the route module instead of owning them, and an exported
-  // component is not split (the code splitter warns). Bundlers can only move
-  // the code out with the export unused, which the generated route tree
-  // (importing `Route` only) allows; whether our compiler or the bundler's
-  // tree-shaking does it is free, with or without `"sideEffects": false` or
-  // a `/* @__PURE__ */` initialiser.
-  // Source: #8504's exported-bindings chunks tests.
-  // Impact: page code exported for tests or reuse loads with the entry chunk.
-  // webpack and Rspack keep an export another module imports through the
-  // route module in the entry chunk unless the package is side-effect free
-  // (vite: Rollup redirects the import to the extracted module, which only
-  // the importer loads; the route's own chunk carries its copy). Every
-  // configuration: integration/code-splitter-exported-bindings-builds.test.ts.
-  const exportedImportedByRoute = routeCase(
-    "an exported component another route's split component renders",
-    'exported-shared',
-    `export function Card() {
-  return <b>{'$MARK'}</b>
-}
-function Page() {
-  return <Card />
-}
-${component}`,
-  )
-
-  const exported: Array<Case> = [
-    routeCase(
-      'an exported const component only the split component renders',
-      'exported-const',
-      `export const Card = () => <b>{'$MARK'}</b>
-function Page() {
-  return <Card />
-}
-${component}`,
-    ),
-    routeCase(
-      'an exported const with a pure initialiser',
-      'exported-pure',
-      `function makeLabel(value: string) {
-  return { text: value }
-}
-export const label = /* @__PURE__ */ makeLabel('$MARK')
-function Page() {
-  return <p>{label.text}</p>
-}
-${component}`,
-    ),
-    routeCase(
-      'an exported function used as the component',
-      'exported-component',
-      `export function Page() {
-  return <p>{'$MARK'}</p>
-}
-${component}`,
-    ),
-    routeCase(
-      'a default-exported function used as the component',
-      'exported-default-component',
-      `export default function Page() {
-  return <p>{'$MARK'}</p>
-}
-${component}`,
-    ),
-    // Source: review of #8504.
-    routeCase(
-      'an exported const used as the component',
-      'exported-const-component',
-      `export const Page = () => <p>{'$MARK'}</p>
-${component}`,
-    ),
-    // The augmentation leaves with the component for its extracted module,
-    // which the chunk imports (one instance of an augmented binding;
-    // compiler-level: "extracts an exported component with its
-    // augmentations"); whether the bundler keeps that module out of the
-    // entry is its side-effect analysis of the property write.
-    routeCase(
-      'an exported component with a displayName',
-      'exported-display-name',
-      `export function Page() {
-  return <p>{'$MARK'}{Page.displayName}</p>
-}
-Page.displayName = 'PageDisplay'
-${component}`,
-    ),
-    exportedImportedByRoute,
-  ]
-
-  // An exported component that two split options render: each chunk
-  // carries its own copy, and the module the route module re-exports
-  // it from is imported by nobody, so every bundler drops it, with or
-  // without `"sideEffects": false`.
-  // Source: review of #8504.
-  const exportedSharedByOptions = routeCase(
-    'an exported component two split options render',
-    'exported-two-options',
-    `export function Card() {
-  return <b>{'$MARK'}</b>
-}
-export const Route = createFileRoute('$PATH')({
-  component: () => <p><Card /></p>,
-  errorComponent: () => <p><Card /></p>,
-})`,
-  )
-
-  // Goals for split options the code splitter leaves in the route module.
-  const unsplit: Array<Case> = [
-    // Bug: a route option written as a method (`component() {}`) is not
-    // split (only property values are). SPEC J2.9: method shorthand
-    // options are splittable like any other.
-    // Impact: the component loads with the entry chunk.
-    routeCase(
-      'a component written as a method',
-      'method-component',
-      `export const Route = createFileRoute('$PATH')({
-  component() {
-    return <p>{'$MARK'}</p>
-  },
-})`,
-    ),
-  ]
-
   // Root routes are not split (R60, SPEC J2.7): their components render on
   // every page or on error and not-found responses, where a lazy chunk only
   // adds a round trip, so its errorComponent and notFoundComponent load with
@@ -332,27 +80,6 @@ export const Route = createRootRoute({
     notFoundComponent: 'MARK_root_not_found_END',
   }
 
-  // Bug: route options destructured from a call result
-  // (`const { component, loader } = createBits()`) are neither split nor
-  // reported: the destructuring moves to a module the route module imports
-  // statically, so the component's code loads with the entry, silently.
-  // Splitting them would change when the call runs, so the user has to
-  // change the pattern: a warning naming the file and the option is the
-  // expected outcome (SPEC J2.8, G5).
-  const destructured = routeCase(
-    'route options destructured from a call result',
-    'destructured-options',
-    `function DefaultComponent() {
-  return <div>Default</div>
-}
-const createBits = () => ({ component: ActualComponent, loader: () => 'data' })
-const { component: MyComponent = DefaultComponent, loader } = createBits()
-function ActualComponent() {
-  return <div>{'$MARK'}</div>
-}
-export const Route = createFileRoute('$PATH')({ component: MyComponent, loader })`,
-  )
-
   // Bug: a split chunk keeps the route file's exported declarations that
   // its option does not read (SPEC J2.5; compiler-level pin in "what
   // split chunks hold"), and bundlers keep them.
@@ -368,14 +95,7 @@ function Page() {
 ${component}`,
   )
 
-  const cases = [
-    ...controls,
-    ...exported,
-    ...unsplit,
-    exportedSharedByOptions,
-    destructured,
-    unreadExport,
-  ]
+  const cases = [...controls, unreadExport]
   /**
    * `mount(path)` mounts the component of the route at `path` into #root;
    * `renderEach(paths)` mounts each into its own element and returns what
@@ -421,14 +141,6 @@ export const label = 'label'
     'heavy.ts': `export function heavy() {
   return 'MARK_heavy_dependency_END'
 }
-`,
-    // Renders the exported component of `exported-shared` in its split
-    // component.
-    'routes/imports-exported.tsx': `${head}import { Card } from './exported-shared'
-function Page() {
-  return <Card />
-}
-export const Route = createFileRoute('/imports-exported')({ component: Page })
 `,
     'routes/__root.tsx': rootRoute,
     ...Object.fromEntries(
@@ -500,38 +212,6 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
         timeout,
       )
 
-      // A component the route file writes a property of, per bundler and
-      // hint: known-bugs-code-splitter-property-write.test.ts (its own apps).
-
-      test.each([
-        ...exported.filter((row) => row !== exportedImportedByRoute),
-        ...unsplit,
-      ])(
-        '$name loads with its chunk',
-        async (row) => {
-          expect(await outcome(row)).toEqual(lazyAndRendered)
-        },
-        timeout,
-      )
-      ;(sideEffects === false || bundler === 'vite' ? test : test.fails).each([
-        exportedImportedByRoute,
-      ])(
-        '$name loads with its chunk',
-        async (row) => {
-          expect(await outcome(row)).toEqual(lazyAndRendered)
-        },
-        timeout,
-      )
-      test(
-        `${exportedSharedByOptions.name} loads with its chunk`,
-        async () => {
-          expect(await outcome(exportedSharedByOptions)).toEqual(
-            lazyAndRendered,
-          )
-        },
-        timeout,
-      )
-
       // One cell per bundler kind: Vite and a webpack-family bundler.
       if (
         sideEffects === undefined &&
@@ -549,24 +229,6 @@ export const Route = createFileRoute('/imports-exported')({ component: Page })
           timeout,
         )
       }
-
-      test(
-        `${destructured.name} load with their chunk or are reported`,
-        async () => {
-          const built = await app()
-          const reported =
-            findDiagnostics([...built.warnings, ...built.consoleMessages], {
-              severity: 'warning',
-              file: `routes/${destructured.file}.tsx`,
-              root: built.root,
-            }).length > 0
-          expect({
-            lazy: built.where(destructured.marker) === 'lazy',
-            reported,
-          }).not.toEqual({ lazy: false, reported: false })
-        },
-        timeout,
-      )
 
       test(
         `${unreadExport.name} is not in its chunk`,

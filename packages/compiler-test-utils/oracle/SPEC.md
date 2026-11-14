@@ -182,7 +182,8 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
   (including what the split modules it emits contain, J2.5); final chunk and bundle contents are asserted on builds,
   per bundler, with `sideEffects` and `@__PURE__` hints varied. (R2)
 - **G3 Surviving code runs once per environment, never duplicated or lost; when it runs follows the code that needs
-  it.** After the documented removals (server-only code on the client, J4; client-only code on the server, J4.11;
+  it.** (Route files: J2.0 decides where code goes and when it runs; what follows applies to Start's derived outputs,
+  Hydrate chunks and server-function handler modules, and to route files where J2.0 does not say otherwise.) After the documented removals (server-only code on the client, J4; client-only code on the server, J4.11;
   type-only imports, J2.5; `deleteNodes`, J2.14), everything at the top level of a module exists once and runs once per
   environment: splitting never duplicates an effect across derived modules and never loses one. Shared module state
   initialises once when evaluated, and every consumer sees the same value and instance (J2.4). Where code runs is
@@ -201,8 +202,7 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
   registered at load, it moves with what it writes, and what it assigns is not seen at load (R149 answer D, "B4
   widened"); a binding two chunks use, one of them assigning it inline, which goes with the chunk that assigns it, so
   loading the other chunk loads that one ("Row 8 and exported `let`", "Rules page confirmations"); startup work only a server function uses, which starts with its first call (R149 answer A);
-  an extracted export, which evaluates before the route module's own top-level code (R150); a call making a route
-  option's value that runs the function it is handed at once (R152); getters, `toString` and coercions (R97). Printed
+  an extracted export, which evaluates before the module's own top-level code (R150); getters, `toString` and coercions (R97). Printed
   statement and import order is free. How to check: an initializer counter plus real consumers detects duplication and
   inconsistent values; a load marker detects where a statement or a declaration landed; an order between effects of
   different outputs is not a valid check, nor is a single total source-order trace; tests must not force an
@@ -225,7 +225,8 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
   clause gives one; never its wording, the API or option it names, the cause it gives or its code frame (§5.7). "Warn"
   means at least a warning (an error where the clause allows refusal); an info or log line does not count. A clause
   that says "warn" and allows no refusal asks for a warning; an option that asks for a severity (`mockAccess: 'warn'`)
-  is checked at that severity. "The build fails" means it fails. (R5)
+  is checked at that severity. "The build fails" means it fails. Route splitting (R153): a shape main cannot split
+  stays unsplit without a warning (J2.8). (R5)
 - **G6 Source maps.** Every emitted module derived from user source (route modules, split chunks, Start client, ssr
   and provider output, Hydrate chunks, rewritten import-protection modules) carries a map, so stack traces and
   import-protection reports resolve to the user's original line and column, through composed maps when other plugins
@@ -299,7 +300,8 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
   re-assignment, objects and arrays that hold a binding, closures and factory calls, default parameters, namespace
   members, top-level `await`. It never removes what kept code reads (also through `typeof`, JSX, a shorthand
   property or `export { a as b }`), never a top-level statement that is not a declaration (`x.p = v`, `x.push(v)`,
-  `x = v`: what it names is used by kept code), and never code that was already dead before the transform. It is per module: a
+  `x = v`: what it names is used by kept code), and never code that was already dead before the transform (a use in
+  a type is a use for this; route files: J2.0). It is per module: a
   neutral module whose export only removed code uses is the user's (J4.12). A leftover import of a server-only or
   unresolvable module on the client, or of a client-only module on the server, is not dead code that may dangle
   (G8): it never reaches the bundler, so no browser stub, externalization warning or polyfill stands in for it.
@@ -386,6 +388,25 @@ dir)` is not a conflict by itself.
 
 ### J2 Route code splitting (router-plugin)
 
+- **J2.0 What splitting does (R153).** Route splitting does what main's splitter does, by its outcome: wherever
+  main's output builds and runs correctly, ours does too, with the same runtime behaviour (the same options split or
+  more, one instance where main has one, top-level code run once where main runs it once); where main's output is
+  broken (spec-main-splitting.md §1.8, §1.11, §1.12) any working behaviour is fine. Concretely: the route module
+  loses only what the split made unused (the R153 amendment): a declaration or import specifier the source used, by
+  value or in a type, from text the module no longer holds leaves it with its initialiser when nothing that stays
+  reads it by value. Top-level statements, exports, enums and namespaces (R154), code already unused and what they
+  reach stay. An import nothing in the source references (a bare or CSS one included) moves to the shared
+  module when the route module imports it, in source order; chunks and Start's derived outputs load after the route
+  module and repeat none (React's classic JSX runtime is not supported with splitting). A declaration already unused (`const unused = register('x')`) stays in the route module only
+  and runs once, where main's chunks run it again (better than main, by decision). A split chunk takes what its
+  option value reads: what the route module also keeps it imports from it where main imports it (`Route`, what
+  `export const|let|var` declares) and copies otherwise, with the statements that read or write what it copies
+  (main's second instance, §1.8), also what another chunk copies. The names main shares (two option groups read
+  them, a staying option counting as one; none reading `Route`) and nothing else are one shared module per file
+  (`?tsr-split=shared---<keys>`), as main's `?tsr-shared=1`: the route module and the chunks import them, the route
+  module re-exports the exported ones (one code outside the set assigns is placed like any declaration). Option values main cannot compile into a chunk stay in the route module, silently
+  (`splitOnMain`, main's `compileCodeSplitVirtualRoute` cases); so does one whose chunk would assign a binding it
+  imports (`assignsWhatItImports`: a shared `let`, an `export let`). Improvements over main wait until after #8817.
 - **J2.1 Which modules.** Only file route modules, and in them only the `createFileRoute` / `createRootRoute` /
   `createRootRouteWithContext` call bound to `Route`. `createLazyFileRoute` modules are not split further (they are
   already lazy); non-route modules and code-based routes are returned unchanged. Vite, Rsbuild/Rspack, webpack;
@@ -401,23 +422,14 @@ dir)` is not a conflict by itself.
   route (when its file's top-level code runs: G3); everything not configured for splitting (path parsing, search validation, `beforeLoad`, context, `head`,
   `scripts`, `staticData`, `ssr`, `server`, `headers`, …) stays eager in the route module.
 - **J2.4 One instance.** Shared identity, state and once-only effects hold across the route, its importers and its
-  chunks: `Route`, module state, and every exported function, class or constant (importers of a route-module export
-  and the route itself get the same object; before the amendment below, a copy of an exported declaration in a
-  chunk was a bug, even a "stateless" one such as an exported function that reads `Route`). Pure helpers with
-  unobservable identity may be copied or rewritten (§5.3). Prove identity through real consumers and effects, not declaration counts. Amended:
-  today's compiler copies an exported binding into the chunk by rule, so that the chunk never imports the module the
-  route module re-exports it from, only when the copy is a closure of functions and primitive constants nothing
-  writes and whose identity nothing observes (`new`, `instanceof`, `===`, `.prototype`) (one instance for every importer of the route file, a second one of the function in the chunk; KNOWN-BUGS
-  "The split chunk copies a pure exported function"). Everything with an identity or state (a class, an object or
-  array, a call result, a regex, a written binding, an effect, an augmented binding) exists once: `instanceof`, a
-  context's Provider and consumer, a sentinel, a registry and a subscriber list hold across the route's chunks and
-  its importers, in a build as in dev. An exported binding only split code uses, effectful or not, moves to a module of
-  its own together with the statements that use it (R150); such an export is imported by the chunk, never copied, and
-  an exported `let` moves with the code assigning it, importers reading its current value. That module evaluates
-  before the route module's own top-level code (an accepted break, G3). In dev nothing is extracted: the binding
-  stays in the route module, with the same instances.
+  chunks wherever main keeps one instance (J2.0): `Route`, what `export const|let|var` declares (a chunk reading it
+  imports it from the route module), and a value two options read (two split groups, or a staying option and a
+  split one: one instance, in the shared module both import). Where main
+  copies (another export form, a value only route-file code outside the options also reads, a class, an enum: §1.8),
+  a chunk holds its own copy. Prove identity through real consumers and effects, not declaration counts.
 - **J2.5 Each chunk holds only what it needs.** The split option's code (and bindings only it uses) is absent from
-  the route module. An import used only for types is dropped, so its module never loads in the client for that
+  the route module; a declaration the source never read that runs nothing (`function Unused() { return <Page /> }`)
+  is dropped and keeps nothing there. An import used only for types is dropped, so its module never loads in the client for that
   reason, with or without `verbatimModuleSyntax`. A compiler-emitted split module carries no unrelated source
   declarations or dependencies its group does not need ("needed" includes the group's transitive dependencies,
   required effects and compiler/runtime support). Compiler-level checks may prove a particular unrelated declaration
@@ -439,26 +451,22 @@ dir)` is not a conflict by itself.
 - **J2.7 Root route.** Root routes are not split (R60): the root's `component`, `errorComponent` and
   `notFoundComponent` load with the root route module (C1). Splitting them cost server time on error and not-found
   renders, and their chunks were preloaded on every page anyway.
-- **J2.8 Not split → user informed, never broken.** Every option configured for splitting ends up split. If a
-  user-fixable pattern prevents it (e.g. the option's value assigns a `let` the route module also uses, or reads
-  `this`), the option keeps working in the route module with one instance,
-  and the run warns once naming the file, in every mode. If our analysis is the obstacle, that is a bug (a goal pin).
-  Options the compiler cannot read statically (an options object imported from another module, factory-built
-  options, a cast it does not unwrap) fall under this clause: split correctly or report once naming the file (the dev
-  full-reload allowance for factory-built options stands). A `loader` value it cannot read (an import, a call, a
-  conditional) may be an object-form loader whose options (`staleReloadMode`) the router reads from the route module
-  before a chunk could load: it stays there and the run warns (fix: write the loader in the route options, or call the
-  function from one written there), as does a loader object with a spread or computed key after its `handler` (fix:
-  the spread before `handler`). Under Start, the client build never ships their
-  `ssr`/`server`/`headers` silently: a spread, options from a call or an import, written to after their declaration or
-  whose object (or a `const` naming it) other code also names, and a computed key build and warn once, saying what
-  isn't split or removed, that server code in it ships, and what to write instead (J2.14, J4.12). The server code they hold is the user's responsibility. What provably holds none of
-  them doesn't warn: a spread of a module object literal of static keys that only it reads, a computed key naming a
-  module string const (that option stays unsplit). Options that can't be read at all may be one object shared across
+- **J2.8 Not split → never broken.** The options main splits are split (J2.0). An option whose value is a binding
+  the route file exports by its declaration (`export function`, `export const|let|var`, `export default function`,
+  `export default <name>`) stays in the route module, and the run warns once naming the file (main's warning). A value
+  main cannot compile into a chunk (a member access, `satisfies`, `!`, a class, a namespace member, a global, an array
+  pattern, a sequence, a call holding JSX or TypeScript syntax, an object) stays in the route module silently, working.
+  Options the compiler cannot read statically (an options object imported from another module, factory-built options)
+  are not split. Under Start, the client build never ships their `ssr`/`server`/`headers` silently: a spread,
+  options from a call or an import, written to after their declaration or whose object (or a `const` naming it) other
+  code also names, and a computed key build and warn once, saying what isn't split or removed, that server code in it
+  ships, and what to write instead (J2.14, J4.12). The server code they hold is the user's responsibility. What
+  provably holds none of them doesn't warn: a spread of a module object literal of static keys that only it reads, a
+  computed key naming a module string const. Options that can't be read at all may be one object shared across
   evaluations, which the route adopts: an edit of the route file reloads the page.
-- **J2.9 Best-effort shapes.** Method-shorthand options split (and refresh) like any other. Spread or computed
-  option keys: best effort, safe fallback (J1.9), never a silent wrong split. Initialiser timing of shared bindings
-  is free: run once, same value everywhere.
+- **J2.9 Other shapes.** Method-shorthand options, accessors, spreads and computed option keys stay in the route
+  module as written, as on main (J1.9). Initialiser timing of shared bindings is free: run once, same value
+  everywhere.
 - **J2.10 Same-file route factory** (§2.2). A correct split (renders, hot-updates), or unsplit plus a warning naming
   the file, in every mode; crashes or rendering the wrong component are bugs.
 - **J2.11 Two `createFileRoute` calls in one module.** Never silently swap components: each renders its own, or the
@@ -855,8 +863,7 @@ A compiler may do any of these and still be correct; tests must not fail on them
   `?server-fn-module-lookup`; except that split groups keep main's ids and absolute `import()` specifiers,
   `<file>?tsr-split=<a>---<b>`, which apps' chunk naming reads: router-plugin `split-module-ids.test.ts`), chunk
   count and shape, shared-dependency chunks, where shared bindings live (shared module, chunk re-import, entry
-  re-export), copying _pure, unexported, identity-unobservable_ helpers (and, by the
-  J2.4 amendment, exported functions whose closure is functions and primitives) into a chunk or
+  re-export), copying _pure, unexported, identity-unobservable_ helpers into a chunk or
   importing them (J2.4), as long as group semantics hold: a group is available together (J2.2; forwarding modules
   allowed), separately configured groups are neither made eager nor loaded together when one is needed, and no chunk
   carries unrelated code (J2.5). Whether the SSR build splits route options like the client: not required (it should
@@ -907,10 +914,8 @@ A compiler may do any of these and still be correct; tests must not fail on them
 
 - **OQ12: license comments beyond the splitter.** Free for the Start compiler and the import-protection rewrite; no
   test (G12, §5.5).
-- **OQ13: already-lazy option values.** For `component: lazyRouteComponent(() => import('../features/ReportsPage'))`
-  (the docs recommend `createLazyFileRoute` instead): once the router preloaded the route, rendering it requests no
-  new module and shows no pending fallback. Leaving already-lazy values in the route module and chaining the inner
-  `preload()` both pass.
+- **OQ13: already-lazy option values.** Superseded (R153): `component: lazyRouteComponent(() => import(…))` is a
+  call, split like any other, as on main (the docs recommend `createLazyFileRoute` instead).
 - **OQ14: a chunk for `component: Outlet`.** Resolved: a chunk is emitted that forwards the imported binding (J2.8), as on main. `integration/vite-versions.test.ts` ("outlet" route) pins it. Dropping the property is not equivalent (the router falls back to `defaultComponent`).
 - **OQ15: the release-candidate `.inputValidator()`.** Type-invalid input (§8, §2.2). No requirement, no test.
 - **OQ16: third-party transforms on split chunks.** An app's own `enforce: 'pre'` plugin filtering `/\.tsx$/` does not
@@ -927,25 +932,25 @@ A compiler may do any of these and still be correct; tests must not fail on them
 
 ## 7. Conflicts between docs and types, and how this spec resolves them
 
-| #   | Conflict                                                                                                                                        | Resolution                                                                                                                                                                                                             |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| C1  | `guide/code-splitting.md`: `__root.tsx` "does not support code splitting"                                                                       | not a conflict: J2.7, root routes are not split (R60)                                                                                                                                                                  |
-| C2  | `router-plugin/src/core/config.ts` JSDoc default grouping includes `pendingComponent`; `guide/automatic-code-splitting.md` does not             | J2.2 follows the docs                                                                                                                                                                                                  |
-| C3  | `guide/automatic-code-splitting.md`: exporting a route property bundles it into the main bundle                                                 | that was the Babel compiler's behaviour, not intent: J2.4 (an export does not prevent the split: an exported binding only split code uses moves to a module of its own, with the statements that use it; one instance) |
-| C4  | `guide/import-protection.md`: dev may report imports that "would later be compiled away"                                                        | not a conflict: J6.4 separates edges the Start compiler removed (never reported) from edges awaiting bundler tree-shaking (may be reported in dev)                                                                     |
-| C5  | `guide/server-functions.md`: hash `filename + functionName`; `generateFunctionId` receives the generated handler name                           | J4.4 keeps the generated handler name as `functionName` (custom ids survive an upgrade), and the default id hashes `<filename>--<functionName>` (SHA256 hex)                                                           |
-| C6  | `routing/virtual-file-routes.md` prose says `virtualRoutesConfig`                                                                               | the option is `virtualRouteConfig` (docs typo)                                                                                                                                                                         |
-| C7  | `guide/automatic-code-splitting.md` shows `createRoute('/posts')({...})` in a file-route example                                                | J2.1: file routes use `createFileRoute`/`createRootRoute*` only (docs typo)                                                                                                                                            |
-| C8  | React `HydrateProps` rejects function children even with `split={false}`; `deferred-hydration.md` recommends `split={false}` for them           | a types/docs mismatch, no compiler rule: with `split={false}` the compiler neither extracts nor errors (J5.5)                                                                                                          |
-| C9  | `renderToReadableStream` is typed one-argument under the default condition, `(data, options?)` under `react-server`; the docs show one argument | §2.2: two-argument and plain-data inputs must not break; no CSS or warning requirement                                                                                                                                 |
-| C10 | `guide/environment-variables.md` presents `server.build.staticNodeEnv` for Vite and Rsbuild; the Rsbuild plugin ignores it                      | out of scope (§1.2)                                                                                                                                                                                                    |
-| C11 | router-plugin `deleteNodes`/`addHmr` are public; Start overrides them                                                                           | §1.1 wiring; tests assert the per-env outcome; whether users may override them is a product decision                                                                                                                   |
-| C12 | `installation/with-esbuild.md` shows `autoCodeSplitting: true` on esbuild                                                                       | J2.18: works or refuses                                                                                                                                                                                                |
-| C13 | `docs/router/quick-start.md`: Router "only compatible with React and Solid"                                                                     | Vue is in scope (the types and packages exist); feature exceptions in §1.3                                                                                                                                             |
-| C14 | "SSR RPC" (handler replaced by an id lookup) as job 4 was first stated                                                                          | J4.3: in place or extracted when SSR and the provider share an environment; with a separate provider the handler runs there                                                                                            |
-| C15 | `guide/middleware.md`: "on the server, nothing is tree-shaken"                                                                                  | true for middleware (a `.client()` callback is not a client-only boundary); J4.11 concerns `<ClientOnly>`, client-only fns and isomorphic `.client()`                                                                  |
-| C16 | `guide/import-protection.md` table omits `mockAccess`; `schema.ts` exposes it                                                                   | J6.3 includes it (runtime diagnostics only)                                                                                                                                                                            |
-| C17 | `api/router/createLazyFileRouteFunction.md`: lazy files hold only four component options                                                        | not a conflict: J2.1 leaves lazy modules unsplit because they are already lazy; splitting them further would violate nothing                                                                                           |
+| #   | Conflict                                                                                                                                        | Resolution                                                                                                                                                                                                  |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C1  | `guide/code-splitting.md`: `__root.tsx` "does not support code splitting"                                                                       | not a conflict: J2.7, root routes are not split (R60)                                                                                                                                                       |
+| C2  | `router-plugin/src/core/config.ts` JSDoc default grouping includes `pendingComponent`; `guide/automatic-code-splitting.md` does not             | J2.2 follows the docs                                                                                                                                                                                       |
+| C3  | `guide/automatic-code-splitting.md`: exporting a route property bundles it into the main bundle                                                 | the guide is right (R153): an option whose value the route file exports stays in the route module, warned at (J2.8); an exported binding a split option reads stays there too, imported by the chunk (J2.4) |
+| C4  | `guide/import-protection.md`: dev may report imports that "would later be compiled away"                                                        | not a conflict: J6.4 separates edges the Start compiler removed (never reported) from edges awaiting bundler tree-shaking (may be reported in dev)                                                          |
+| C5  | `guide/server-functions.md`: hash `filename + functionName`; `generateFunctionId` receives the generated handler name                           | J4.4 keeps the generated handler name as `functionName` (custom ids survive an upgrade), and the default id hashes `<filename>--<functionName>` (SHA256 hex)                                                |
+| C6  | `routing/virtual-file-routes.md` prose says `virtualRoutesConfig`                                                                               | the option is `virtualRouteConfig` (docs typo)                                                                                                                                                              |
+| C7  | `guide/automatic-code-splitting.md` shows `createRoute('/posts')({...})` in a file-route example                                                | J2.1: file routes use `createFileRoute`/`createRootRoute*` only (docs typo)                                                                                                                                 |
+| C8  | React `HydrateProps` rejects function children even with `split={false}`; `deferred-hydration.md` recommends `split={false}` for them           | a types/docs mismatch, no compiler rule: with `split={false}` the compiler neither extracts nor errors (J5.5)                                                                                               |
+| C9  | `renderToReadableStream` is typed one-argument under the default condition, `(data, options?)` under `react-server`; the docs show one argument | §2.2: two-argument and plain-data inputs must not break; no CSS or warning requirement                                                                                                                      |
+| C10 | `guide/environment-variables.md` presents `server.build.staticNodeEnv` for Vite and Rsbuild; the Rsbuild plugin ignores it                      | out of scope (§1.2)                                                                                                                                                                                         |
+| C11 | router-plugin `deleteNodes`/`addHmr` are public; Start overrides them                                                                           | §1.1 wiring; tests assert the per-env outcome; whether users may override them is a product decision                                                                                                        |
+| C12 | `installation/with-esbuild.md` shows `autoCodeSplitting: true` on esbuild                                                                       | J2.18: works or refuses                                                                                                                                                                                     |
+| C13 | `docs/router/quick-start.md`: Router "only compatible with React and Solid"                                                                     | Vue is in scope (the types and packages exist); feature exceptions in §1.3                                                                                                                                  |
+| C14 | "SSR RPC" (handler replaced by an id lookup) as job 4 was first stated                                                                          | J4.3: in place or extracted when SSR and the provider share an environment; with a separate provider the handler runs there                                                                                 |
+| C15 | `guide/middleware.md`: "on the server, nothing is tree-shaken"                                                                                  | true for middleware (a `.client()` callback is not a client-only boundary); J4.11 concerns `<ClientOnly>`, client-only fns and isomorphic `.client()`                                                       |
+| C16 | `guide/import-protection.md` table omits `mockAccess`; `schema.ts` exposes it                                                                   | J6.3 includes it (runtime diagnostics only)                                                                                                                                                                 |
+| C17 | `api/router/createLazyFileRouteFunction.md`: lazy files hold only four component options                                                        | not a conflict: J2.1 leaves lazy modules unsplit because they are already lazy; splitting them further would violate nothing                                                                                |
 
 ---
 

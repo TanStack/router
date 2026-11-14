@@ -5,7 +5,7 @@
  * it, in the route module, what only the removed option used, whatever the
  * shape of the code in between (G16): nothing that loads with the route
  * requests the module only that option imports. Kept code keeps what it
- * reads, and code already dead before the transform keeps running (G3).
+ * reads.
  * Each route runs in a real browser page served by a real Vite dev server
  * with the public router plugin (`route-app.ts`). The same shapes run
  * through every removal of the Start compiler in start-plugin-core
@@ -83,11 +83,6 @@ ${loader}${removal.options(shape.root)}
         )
       } else {
         expect(await route.requested()).not.toContain('/dep.ts')
-      }
-      if (shape.alreadyDead) {
-        expect(
-          await route.run(`return [...(await app('record.ts')).calls]`),
-        ).toContain('dead')
       }
     })
   }

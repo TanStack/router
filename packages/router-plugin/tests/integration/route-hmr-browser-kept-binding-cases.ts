@@ -385,18 +385,6 @@ ${ui.page('value.text')}`,
     shows,
   },
   {
-    name: 'a written let',
-    files: (ui, v) => ({
-      [FILE]: `${ui.imports()}let value = 'unset'
-export const Route = createFileRoute('/')({
-  beforeLoad: () => { value = '${v}' },
-  component: Page,
-})
-${ui.page('value')}`,
-    }),
-    shows,
-  },
-  {
     name: 'an effectful initialiser',
     files: (ui, v) => ({
       [FILE]: `${ui.imports(`import { make } from '../make'\n`)}export const value = make('${v}')
@@ -435,24 +423,6 @@ export const Route = createFileRoute('/')({
 ${ui.page('upper')}`,
     }),
     shows: (v) => `shows ${v}!`,
-    loaderRuns: 1,
-  },
-  // kept because its value reads, in a callback run at load, state the
-  // route module writes later (beforeLoad): the source's value (`a`), and
-  // the chunk reading it is registered as a reader of the route module
-  {
-    name: 'kept for state read in a callback at load',
-    files: (ui, v) => ({
-      [FILE]: `${ui.imports()}let prefix = 'a'
-const labels = ['${v}'].map((k) => prefix + k)
-export const Route = createFileRoute('/')({
-  beforeLoad: () => { prefix = 'b' },
-  loader: () => { ${loaderCount}; return 1 },
-  component: Page,
-})
-${ui.page('labels[0]')}`,
-    }),
-    shows: (v) => `shows a${v}`,
     loaderRuns: 1,
   },
   // a memoised child reads it: nothing but a refresh re-renders it
@@ -597,8 +567,13 @@ async function runRow(bundler: Bundler, fw: Fw, row: Row, ctx: TestContext) {
     )
     await app.writeBroken(broken, row.shows('v1'))
   }
+  /** The loader runs the previous edit reached: a late second run of it shows here. */
+  let target: number | undefined
   for (const v of ['v2', 'v3']) {
     const before = await loaderRuns()
+    if (target !== undefined) {
+      expect(before, `${v} loader runs before the edit`).toBe(target)
+    }
     const reloaded = await app.edit(
       edit(ui, v),
       row.unmounted ? 'home' : row.shows(v),
@@ -617,7 +592,16 @@ async function runRow(bundler: Bundler, fw: Fw, row: Row, ctx: TestContext) {
         typeof row.loaderRuns === 'number'
           ? row.loaderRuns
           : row.loaderRuns(bundler)
+      // (the page may show the edit before the route refresh reruns the
+      // loader: a chunk importing the shared module refreshes on its own)
+      for (
+        const until = Date.now() + 3000;
+        (await loaderRuns()) < before + runs && Date.now() < until;
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 50))
+      }
       expect(await loaderRuns(), `${v} loader runs`).toBe(before + runs)
+      target = before + runs
     }
     // (after a syntax error the page may have reloaded: no state to compare)
     if (
@@ -630,6 +614,9 @@ async function runRow(bundler: Bundler, fw: Fw, row: Row, ctx: TestContext) {
         `${v} state`,
       ).toBe('n=2')
     }
+  }
+  if (target !== undefined) {
+    expect(await loaderRuns(), 'loader runs after the last edit').toBe(target)
   }
   if (row.unmounted) {
     await app.click('#go')

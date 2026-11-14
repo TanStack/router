@@ -43,7 +43,7 @@ export function includeAndImport(
   homes: Homes,
   extracted: ReadonlyArray<ExtractedExport>,
 ): Inclusion {
-  const { t1, outputs, routeModule } = input
+  const { t1, outputs } = input
   const { units, items, refs, symbols } = t1
   const { clusters, clusterOfRegion, clusterOfSym } = graph
   const { envRoots, derivedRoots, derivedReach, copied, pinned } = roots
@@ -144,13 +144,6 @@ export function includeAndImport(
       unit.node.type === 'ExportSpecifier' && unit.node.exportKind !== 'type'
     if (!inlineImportSpecifier && !typeOnlyExportSpecifier) {
       return true
-    }
-    if (routeModule) {
-      // the statement leaves with its value specifiers (an inline `type`
-      // specifier alone keeps loading the module under
-      // verbatimModuleSyntax); a type-only `export { X }` names nothing at
-      // run time
-      return false
     }
     if (inlineImportSpecifier) {
       return items[unit.item]!.units.some((sibling) => {

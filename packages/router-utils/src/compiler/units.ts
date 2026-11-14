@@ -1286,36 +1286,17 @@ export interface EvaluatedCalls {
   /**
    * The names handed to them as an argument, directly or inside an object
    * or array argument (`memo(Page)`, `define({ setup })`), wrappers aside,
-   * with the call: run like any name the evaluation reads, unless the call
-   * holds them (`holdsCall`, R152).
+   * with the call: run like any name the evaluation reads.
    */
   names: Array<Range & { call: EvaluatedCall }>
 }
 
 /**
- * Whether a call holds what it is handed (R152): its result is called later
- * by the framework (`PlanContext.calledLater`), so the functions it is
- * handed do not run when the module loads. Absent: every call may run them
- * (the extraction check, the verifier).
- */
-export type HoldsCall = (call: EvaluatedCall) => boolean
-
-/**
  * Whether code at `at` inside a function the evaluation hands to a call
- * runs when it evaluates: inside a function passed to a call (`callbacks`),
- * and inside none that a call holding it is handed (`holds`).
+ * runs when it evaluates: inside a function passed to a call (`callbacks`).
  */
-export function runsWhenPassed(
-  calls: EvaluatedCalls,
-  at: number,
-  holds: HoldsCall | undefined,
-): boolean {
-  const inside = (f: Range) => f.start <= at && at < f.end
-  return (
-    calls.callbacks.some(inside) &&
-    (holds === undefined ||
-      !calls.callbacks.some((f) => f.argument && inside(f) && holds(f.call)))
-  )
+export function runsWhenPassed(calls: EvaluatedCalls, at: number): boolean {
+  return calls.callbacks.some((f) => f.start <= at && at < f.end)
 }
 
 /**

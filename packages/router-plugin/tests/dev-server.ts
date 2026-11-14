@@ -117,6 +117,8 @@ export async function expectExportedRouteOptions(
    * exported component by rule: the rendering checks alone apply then.
    */
   sharedInstance = true,
+  /** Whether the component option is split (default: with code splitting). */
+  lazy = autoCodeSplitting,
 ) {
   const app = await loadRoute(`import { see } from './see'\n${route}`, {
     routeId: '/page',
@@ -133,9 +135,7 @@ export function see(component: unknown) { seen.push(component) }`,
     },
   })
   // (before the run below loads the component's chunk)
-  expect(await app.isLazy('component'), 'the component is split').toBe(
-    autoCodeSplitting,
-  )
+  expect(await app.isLazy('component'), 'the component is split').toBe(lazy)
   const result = await app.run<{
     exports: Record<
       string,
@@ -188,13 +188,17 @@ return { exports: out, page: await renderRoute({ at: '/page' }), component: awai
  * A route file case of `expectExportedRouteOptions`: `declaration` declares
  * and exports components (each rendering something of its own), `options`
  * are the route options, and `exported` maps each export to the route
- * options whose value it is.
+ * options whose value it is. `split`: whether code splitting splits the
+ * component option (an option whose value is a binding the route file
+ * exports by its declaration, `export function` / `export const` /
+ * `export default function`, stays in the route file, as a class does).
  */
 export type ExportedRouteOptionsCase = {
   name: string
   declaration: string
   options: string
   exported: Record<string, Array<string>>
+  split: boolean
 }
 
 /**

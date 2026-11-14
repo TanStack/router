@@ -2,8 +2,8 @@
  * A split option's importer (`() => import('/…/route.tsx?tsr-split=…')`) costs no
  * binding of its own in a minified client bundle: the minifier inlines it
  * into the `lazyRouteComponent` / `lazyFn` call, also when the route module
- * keeps an effectful declaration (read by an option that stays and by the
- * split component) before `Route`.
+ * keeps an effectful declaration (read by an option that stays) before
+ * `Route`.
  */
 import { expect, test } from 'vitest'
 import { build, head, routeApp } from '../build-harness'
@@ -17,7 +17,7 @@ test('the minifier inlines the split importer past an effectful declaration the 
 const pages = [query('MARK_FIRST'), query('second')]
 export const Route = createFileRoute('/')({
   loader: () => pages.map((page) => page.key),
-  component: () => <p>MARK_SPLIT {pages.length}</p>,
+  component: () => <p>MARK_SPLIT</p>,
 })
 `,
       {

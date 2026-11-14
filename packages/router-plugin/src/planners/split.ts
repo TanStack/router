@@ -5,8 +5,8 @@
  * unit homed there that declares the chunk's export from the option's
  * value (claimed region) and, in the route module, a placeholder calling
  * `lazyRouteComponent` / `lazyFn` with one importer const per group. The
- * core places everything else by needers (what both sides read lives in
- * the route module and is imported by the chunk). `deleteNodes` erases
+ * core places everything else as route splitting on `main` does
+ * (`setRouteModule`, the core's `route-placement.ts`). `deleteNodes` erases
  * properties in every output.
  */
 import {
@@ -34,12 +34,11 @@ import type {
 } from '@tanstack/router-utils/compiler'
 import type { Node } from 'yuku'
 
-/** Applies the round's split plan: `deleteNodes`, split options, extracted exports. */
+/** Applies the round's split plan: `deleteNodes`, split options. */
 export function planSplit(ctx: PlanContext, round: RouterRound): void {
   const { plan } = round
   const { route } = plan
-  ctx.setRouteModule()
-  ctx.describeModule({ name: 'route module', tag: '[tanstack-router]' })
+  ctx.setRouteModule({ imported: plan.imported, shared: plan.shared })
 
   // deleteNodes: the properties are erased in every output (J2.14), each
   // run of them with its commas (`{ server: {…}, }` erased to `{ , }` is no
@@ -201,9 +200,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
     const valueSym =
       d.shape === 'shorthand'
         ? d.shorthandSym
-        : d.shape === 'init'
-          ? identifierSymbol(ctx, d.valueNode)
-          : null
+        : identifierSymbol(ctx, d.valueNode)
     const body: Array<GenFrag> = []
     // an identifier value is exported as it is (`export { Page as
     // component }`: no alias for the minifier to keep); a member of it,
@@ -211,33 +208,25 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
     // declaration. (A chunk only re-exporting an import is no chunk to
     // Rollup: it resolves the lazy import to the module owning the
     // binding, often the entry, which then carries the export glue.)
-    const direct =
-      valueSym !== null && d.member === null && !symbols.isImport(valueSym)
+    const direct = valueSym !== null && !symbols.isImport(valueSym)
     const exported: SymRef = { sym: direct ? valueSym : split.sym }
     /** The value the chunk claims (null: an identifier, read as a symbol). */
     let region: RegionId | null = null
     if (valueSym !== null) {
-      // the original symbol: placement follows its declaring unit; a
-      // rename renders at emit time. The core reports it when its
-      // effects keep it in the route module (`env-declared`).
+      // the original symbol: placement follows its declaring unit (the
+      // chunk imports it when the route module keeps it); a rename renders
+      // at emit time
       if (!direct) {
         body.push({
           k: 'text',
-          parts: [
-            `const ${split.name} = `,
-            { sym: valueSym },
-            d.member === null ? '\n' : `.${d.member}\n`,
-          ],
+          parts: [`const ${split.name} = `, { sym: valueSym }, '\n'],
         })
       }
       ctx.addRoot(g.output, { t: 'sym', id: valueSym })
     } else {
-      // the chunk claims the value (a method's function) and renders it whole
-      region = ctx.region(d.valueRange, 'option-value')
-      body.push({
-        k: 'text',
-        parts: [`const ${split.name} = ${d.methodPrefix}`],
-      })
+      // the chunk claims the value and renders it whole
+      region = ctx.region(d.region, 'option-value')
+      body.push({ k: 'text', parts: [`const ${split.name} = `] })
       body.push({ k: 'region', id: region })
       body.push({ k: 'text', parts: ['\n'] })
     }
@@ -276,18 +265,6 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
         by: ROUTER_PLANNER,
       })
     } else {
-      if (d.wholeProperty) {
-        // a method: the property's edit writes the key before the place of
-        // the claimed function
-        ctx.rewrites.edit({
-          range: d.region,
-          body: [
-            { k: 'text', parts: [`${d.keyText}: `] },
-            { k: 'slice', range: d.valueRange },
-          ],
-          by: ROUTER_PLANNER,
-        })
-      }
       ctx.rewrites.claim({
         region,
         owner,
@@ -295,27 +272,6 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
         by: ROUTER_PLANNER,
       })
     }
-  }
-
-  // every exported binding but the route may leave for an
-  // extracted-export output; the core decides (a pure, unwritten
-  // declaration only chunks need moves, the route module re-exports it,
-  // chunks copy it when the copy is a closure of functions and primitives
-  // nothing writes, else import it; in dev it stays in the route module:
-  // `placement/settle.ts`)
-  for (const e of ctx.analysis.exports) {
-    if (e.kind !== 'local' || e.local === null || e.typeOnly) {
-      continue
-    }
-    const sym = e.local
-    if (sym === route.routeSym) {
-      // the route stays, whatever another planner offered (Hydrate
-      // offers every export): its chunks import it, and that is no
-      // kept export to report
-      ctx.keep(sym)
-      continue
-    }
-    ctx.extractExport(sym, e.name)
   }
 
   if (helperImports.length > 0) {

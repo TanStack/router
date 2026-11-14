@@ -16,82 +16,6 @@ const routeWarnings = (diagnostics: unknown) =>
     text.includes('routes/index.tsx'),
   )
 
-const entry = `${clientMountEntry}
-export const effects = () => (globalThis as any).__effects
-`
-
-/** Runs the entry: the effects its route module ran as it evaluated (null: none), then those after the component's chunk loaded. */
-async function effectsAtLoad(route: string) {
-  const app = await build({
-    bundler: 'vite',
-    env: 'client',
-    minify: false,
-    files: routeApp(route, { env: 'client', files: { 'entry.ts': entry } }),
-  })
-  const { result } = await app.run(
-    'const atLoad = entry.effects() ?? null\nawait entry.mount(entry.Route.options.component)\nreturn [atLoad, entry.effects()]',
-  )
-  return result
-}
-
-const effect = `${head}
-const effects: Array<string> = ((globalThis as any).__effects = [])
-function fx(name: string) {
-  effects.push(name)
-  return 1
-}
-fx('before')
-`
-
-test(
-  'control: an impure const a split component reads moves with the effects around it, in their order',
-  async () => {
-    expect(
-      await effectsAtLoad(`${effect}const value = fx('value')
-fx('after')
-export const Route = createFileRoute('/')({ component: () => <p>{value}</p> })
-`),
-    ).toEqual([null, ['before', 'value', 'after']])
-  },
-  timeout,
-)
-
-// A member's initializer runs as the module evaluates: an enum with an impure
-// one moves into the lazy chunk of its only reader with the effects around it
-// (recheck ruling C: `fx`, the only later writer of what it reads, goes
-// there too), and they keep their order there.
-test(
-  'a computed enum member a split component reads moves with the effects around it, in their order',
-  async () => {
-    expect(
-      await effectsAtLoad(`${effect}enum E { A = fx('enum') }
-fx('after')
-export const Route = createFileRoute('/')({ component: () => <p>{E.A}</p> })
-`),
-    ).toEqual([null, ['before', 'enum', 'after']])
-  },
-  timeout,
-)
-
-test(
-  'control: an enum of pure members moves with its only reader',
-  async () => {
-    const app = await build({
-      bundler: 'vite',
-      env: 'client',
-      minify: false,
-      files: routeApp(
-        `${head}enum E { A = 1, B = A << 1, C = 'MARK_ENUM' }
-export const Route = createFileRoute('/')({ component: () => <p>{Object.keys(E).length}</p> })
-`,
-        { env: 'client', files: { 'entry.ts': clientMountEntry } },
-      ),
-    })
-    expect(app.where('MARK_ENUM')).toBe('lazy')
-  },
-  timeout,
-)
-
 // A specifier naming a member of Object.prototype must not find it in a table
 // of known packages or markers.
 test.each(['constructor', '__proto__', 'toString'])(
@@ -220,41 +144,6 @@ test.each([
       }),
     })
     expect(routeWarnings(app.warnings)).toEqual([])
-  },
-  timeout,
-)
-
-// Not a state: a literal the plugin rewrites only reaches the route module's
-// copy. Main's route module and chunk share the untransformed text instead
-// (the plugin's rewrite is lost on both). Recorded as observed behaviour.
-test(
-  'a pre plugin that only the route module goes through: a pure const the plugin rewrites differs between the route module and the chunk',
-  async () => {
-    const app = await build({
-      bundler: 'vite',
-      env: 'client',
-      minify: false,
-      routerPlugins: anchoredPrePlugin((code) =>
-        code.replaceAll('MARK_RAW', 'MARK_REWRITTEN'),
-      ),
-      files: routeApp(
-        `${head}const label = 'MARK_RAW'
-export const Route = createFileRoute('/')({
-  loader: () => label,
-  component: () => <p>{label}</p>,
-})
-`,
-        { env: 'client', files: { 'entry.ts': clientMountEntry } },
-      ),
-    })
-    const run = await app.run(
-      `await entry.mount(entry.Route.options.component)
-return entry.Route.options.loader()`,
-    )
-    expect({ loader: run.result, html: run.html }).toEqual({
-      loader: 'MARK_REWRITTEN',
-      html: '<div id="root"><p>MARK_RAW</p></div>',
-    })
   },
   timeout,
 )

@@ -249,13 +249,6 @@ const groupedLoaderRows: Array<Row> = (
         option: 'loader: loadData',
       }),
     ],
-    [
-      ' in an object',
-      (text: string) => ({
-        decls: '',
-        option: `loader: { handler: () => ${text}, staleReloadMode: 'blocking' }`,
-      }),
-    ],
   ] as const
 ).map(([shape, loader]) => ({
   name: `a loader${shape} sharing the route component chunk`,

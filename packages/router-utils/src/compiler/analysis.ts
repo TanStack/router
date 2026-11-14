@@ -29,13 +29,7 @@ import { ownEntry } from './strings'
 import type { BuilderPurity, PurityContext } from './purity'
 import type { Header, Range } from './header'
 import type { SymbolId } from './symbols'
-import type {
-  EvaluatedCalls,
-  HoldsCall,
-  TopLevelItem,
-  Unit,
-  UnitId,
-} from './units'
+import type { EvaluatedCalls, TopLevelItem, Unit, UnitId } from './units'
 import type { Binding, Node, SourceFile } from 'yuku'
 import type { SourceText } from './output-builder'
 import type { RecognizerTable } from './values'
@@ -120,12 +114,7 @@ interface DynamicEdge {
 
 type Marker = 'server-only' | 'client-only' | 'conflict' | null
 
-type RefKind =
-  | 'value'
-  | 'write'
-  | 'jsxTag'
-  | 'exportSpecifier'
-  | 'implicitJsxFactory'
+type RefKind = 'value' | 'write' | 'jsxTag' | 'exportSpecifier'
 
 export type RefContext =
   | 'plain'
@@ -226,26 +215,18 @@ export class RefIndex {
     return this.bySym.get(sym) ?? []
   }
 
-  /** Reads of `sym` outside its own declarations (value, JSX tag, implicit factory). */
+  /** Reads of `sym` outside its own declarations (value, JSX tag). */
   valueRefsOf(sym: SymbolId): Array<ClassifiedRef> {
     const decls = this.declRanges.get(sym)
     return this.refsOf(sym).filter(
       (r) =>
-        (r.kind === 'value' ||
-          r.kind === 'jsxTag' ||
-          r.kind === 'implicitJsxFactory') &&
+        (r.kind === 'value' || r.kind === 'jsxTag') &&
         !(
           decls &&
           decls.some((d) => r.range.start >= d.start && r.range.end <= d.end)
         ),
     )
   }
-}
-
-interface JsxInfo {
-  runtime: 'automatic' | 'classic' | 'unknown'
-  factory: SymbolId | null
-  fragment: SymbolId | null
 }
 
 export interface Tier1 {
@@ -255,7 +236,6 @@ export interface Tier1 {
   refs: RefIndex
   /** References to names without a binding (globals, `arguments`). */
   freeRefs: ReadonlyArray<FreeRef>
-  jsx: JsxInfo
   names: ReadonlySet<string>
   exportNames: ReadonlySet<string>
   declaringUnits: ReadonlyMap<SymbolId, ReadonlyArray<UnitId>>
@@ -1020,103 +1000,6 @@ export class ModuleAnalysis {
     return names
   }
 
-  private jsxInfo: JsxInfo | null = null
-  /**
-   * The JSX runtime from the leading pragmas, and the bindings JSX reads
-   * implicitly under the classic runtime: the factory every element reads
-   * and the fragment factory every fragment reads. Without a pragma the
-   * project's transform decides the runtime; a module-level `React` binding
-   * with a runtime value (not `import type * as React`) is read by every
-   * JSX element when it is classic (Babel's default factory, and the
-   * TypeScript transforms keep its import whatever the runtime), so it is
-   * counted as a read.
-   */
-  jsx(): JsxInfo {
-    if (this.jsxInfo !== null) {
-      return this.jsxInfo
-    }
-    let runtime: JsxInfo['runtime'] = 'unknown'
-    let factoryName: string | null = null
-    let fragmentName: string | null = null
-    for (const p of this.header.pragmas) {
-      if (p.kind === 'jsxImportSource') {
-        runtime = 'automatic'
-      } else if (p.kind === 'jsxRuntime') {
-        runtime = p.value === 'classic' ? 'classic' : 'automatic'
-      } else if (p.kind === 'jsx') {
-        factoryName = p.value
-        if (runtime === 'unknown') {
-          runtime = 'classic'
-        }
-      } else {
-        fragmentName = p.value
-      }
-    }
-    const rootScope = this.file.rootScope
-    const rootSym = (name: string | null): SymbolId | null => {
-      if (!name) {
-        return null
-      }
-      const b = valueBinding(rootScope, name.split('.')[0]!)
-      return b ? (b.id as SymbolId) : null
-    }
-    const factory =
-      runtime === 'classic'
-        ? rootSym(factoryName ?? 'React')
-        : runtime === 'unknown'
-          ? rootSym('React')
-          : null
-    const fragment =
-      runtime === 'classic'
-        ? rootSym(fragmentName ?? factoryName ?? 'React')
-        : runtime === 'unknown'
-          ? factory
-          : null
-    return (this.jsxInfo = { runtime, factory, fragment })
-  }
-
-  private implicitReads: ReadonlySet<SymbolId> | null = null
-  /**
-   * The bindings the module's JSX reads implicitly (`jsx()`), without Tier
-   * 1: whether it has an element (the factory) and a fragment (the fragment
-   * factory), one walk that stops once it saw both, or either when both read
-   * the same binding. TypeScript (`.ts`) has no JSX.
-   */
-  implicitJsxReads(): ReadonlySet<SymbolId> {
-    if (this.implicitReads !== null) {
-      return this.implicitReads
-    }
-    const reads = new Set<SymbolId>()
-    const jsx = this.jsx()
-    const factory = jsx.factory
-    if (factory !== null && this.file.lang !== 'ts') {
-      const fragment = jsx.fragment ?? factory
-      // (the walk's callbacks set them)
-      const seen = { element: false, fragment: false }
-      walk(this.file.program, {
-        JSXElement: (_n, w) => {
-          seen.element = true
-          if (seen.fragment || fragment === factory) {
-            w.stop()
-          }
-        },
-        JSXFragment: (_n, w) => {
-          seen.fragment = true
-          if (seen.element || fragment === factory) {
-            w.stop()
-          }
-        },
-      })
-      if (seen.element) {
-        reads.add(factory)
-      }
-      if (seen.fragment) {
-        reads.add(fragment)
-      }
-    }
-    return (this.implicitReads = reads)
-  }
-
   t1(): Tier1 {
     if (this.tier1) {
       return this.tier1
@@ -1276,35 +1159,6 @@ export class ModuleAnalysis {
       })
     }
 
-    // classic (or unknown) runtime → implicit factory reads per element
-    const jsx = this.jsx()
-    const { factory, fragment } = jsx
-    if (factory !== null) {
-      walk(file.program, {
-        JSXElement: (n) => {
-          refs.push({
-            sym: factory,
-            range: { start: n.start, end: n.start },
-            kind: 'implicitJsxFactory',
-            ctx: 'plain',
-            eager: !isLazyAt(n.start),
-            memberWrite: false,
-            readsThrough: false,
-          })
-        },
-        JSXFragment: (n) => {
-          refs.push({
-            sym: fragment ?? factory,
-            range: { start: n.start, end: n.start },
-            kind: 'implicitJsxFactory',
-            ctx: 'plain',
-            eager: !isLazyAt(n.start),
-            memberWrite: false,
-            readsThrough: false,
-          })
-        },
-      })
-    }
     // Solid directives (`<p use:tip>`) name their function in a JSX
     // attribute only: a value read of the binding where the JSX is
     if (this.source.code.includes('use:')) {
@@ -1353,7 +1207,6 @@ export class ModuleAnalysis {
       symbols,
       refs: refIndex,
       freeRefs,
-      jsx,
       names,
       exportNames,
       declaringUnits,
@@ -1671,11 +1524,7 @@ function declarationAssigns(file: SourceFile, id: Node): boolean {
  * Holding a function runs nothing (`const config = { read }`), nor does
  * writing one of its properties (`Page.displayName = …`, the root of a
  * member write), nor a method nested in an object argument
- * (`defineComponent({ setup() {} })`). A call that holds what it is handed
- * (`holds`, R152: its result is a route option's value, which the router
- * calls later) runs none of it: nothing in a function it is handed runs,
- * and a name it is handed, directly or inside an object or array argument
- * (`memo(Page)`, `define({ setup })`), is read as a value, not a body.
+ * (`defineComponent({ setup() {} })`).
  *
  * The object a binding names is its value: its declaration and those
  * statements (the mutation model's `visitValues`, which also walks the
@@ -1700,21 +1549,13 @@ export function visitRuns(
   visit: (ref: ClassifiedRef, at: number) => boolean,
   /** Sees each body or value text the walk enters (`MutationModel.visitValues`). */
   entered?: (u: UnitId, at: number, within: Range | undefined) => boolean,
-  /** The calls that hold what they are handed (R152); absent: every call may run it. */
-  holds?: HoldsCall,
 ): boolean {
   /** With a call: every reference but a member write's root (a body it names may run); without: those reading through their binding (only their values' eager references run). */
   const roots: Array<ClassifiedRef> = []
-  /** Names a call holds: what their values hold is read, no body they name runs. */
-  let held: Array<ClassifiedRef> | null = null
-  const heldNames =
-    calls === null || holds === undefined
-      ? null
-      : calls.names.filter((n) => holds(n.call))
   for (const ref of text) {
     if (
       !ref.eager &&
-      (calls === null || !runsWhenPassed(calls, ref.range.start, holds))
+      (calls === null || !runsWhenPassed(calls, ref.range.start))
     ) {
       continue
     }
@@ -1726,29 +1567,12 @@ export function visitRuns(
         roots.push(ref)
       }
     } else if (!ref.memberWrite) {
-      if (
-        heldNames !== null &&
-        heldNames.length > 0 &&
-        heldNames.some((h) => h.start === ref.range.start)
-      ) {
-        ;(held ??= []).push(ref)
-      } else {
-        roots.push(ref)
-      }
+      roots.push(ref)
     }
   }
   return (
-    (roots.length > 0 &&
-      t1.mutation.visitValues(
-        roots,
-        calls === null,
-        bodyOf,
-        visit,
-        null,
-        entered,
-      )) ||
-    (held !== null &&
-      t1.mutation.visitValues(held, true, bodyOf, visit, null, entered))
+    roots.length > 0 &&
+    t1.mutation.visitValues(roots, calls === null, bodyOf, visit, null, entered)
   )
 }
 

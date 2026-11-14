@@ -35,9 +35,8 @@ export function hasRuntimeValue(b: Binding): boolean {
  * The binding a value read of `name` written in `scope` would resolve to, or
  * null when the name is unbound or bound to a declaration without a runtime
  * value. Every read the compiler synthesises from a name rather than from a
- * reference (the JSX factory of the classic runtime, a Solid `use:`
- * directive) resolves through this, so a type-only binding of the name
- * never becomes a value read.
+ * reference (a Solid `use:` directive) resolves through this, so a
+ * type-only binding of the name never becomes a value read.
  */
 export function valueBinding(scope: Scope, name: string): Binding | null {
   const b = scope.lookup(name, 'value')

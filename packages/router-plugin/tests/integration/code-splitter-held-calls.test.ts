@@ -64,16 +64,6 @@ ${options}
 describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
   test.each([
     [
-      'an unknown wrapper',
-      '',
-      '  component: observer(function Page() { return <p>MARK_PAGE{seen.size}</p> }),',
-    ],
-    [
-      'wrappers of wrappers',
-      '',
-      '  component: withAuth(observer(function Page() { return <p>MARK_PAGE{seen.size}</p> })),',
-    ],
-    [
       '`memo` through a `const`',
       'function Page() { return <p>MARK_PAGE{seen.size}</p> }\nconst P = memo(Page)',
       '  component: P,',
@@ -85,26 +75,6 @@ describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
       expect(r.where).toBe('lazy')
       expect(r.text).toBe('MARK_PAGE0')
       expect(r.warnings).toEqual([])
-    },
-    timeout,
-  )
-
-  test(
-    'keeps a wrapped sub-component used as a JSX tag in place, saying it may use the state',
-    async () => {
-      const r = await buildRoute(
-        bundler,
-        route(
-          'const Card = observer(function Card() { return <p>MARK_PAGE{seen.size}</p> })',
-          '  component: function Page() { return <Card /> },',
-        ),
-      )
-      expect(r.where).toBe('eager')
-      expect(r.text).toBe('MARK_PAGE0')
-      expect(r.warnings).toHaveLength(1)
-      expect(r.warnings[0]).toContain(
-        'stays in the route module because it may use `seen` when the module loads (the function is handed to `observer`), and the module writes `seen`; move both to their own module',
-      )
     },
     timeout,
   )

@@ -212,6 +212,7 @@ describe.each([true, false])(
           'export function component() { see(component); return <p>function</p> }',
         options: 'component',
         exported: { component: ['component'] },
+        split: false,
       },
       {
         name: 'overloaded function',
@@ -219,6 +220,7 @@ describe.each([true, false])(
           "import type { ReactNode } from 'react'\nexport function component(): ReactNode\nexport function component() { see(component); return <p>overloaded</p> }",
         options: 'component',
         exported: { component: ['component'] },
+        split: false,
       },
       {
         name: 'function used by two options',
@@ -226,6 +228,7 @@ describe.each([true, false])(
           'export function component() { see(component); return <p>two options</p> }',
         options: 'component, errorComponent: component',
         exported: { component: ['component', 'errorComponent'] },
+        split: false,
       },
       {
         name: 'variable',
@@ -233,6 +236,7 @@ describe.each([true, false])(
           'export const component = () => { see(component); return <p>variable</p> }',
         options: 'component',
         exported: { component: ['component'] },
+        split: false,
       },
       {
         name: 'variables declared together',
@@ -243,6 +247,7 @@ describe.each([true, false])(
           component: ['component'],
           pendingComponent: ['pendingComponent'],
         },
+        split: false,
       },
       {
         name: 'default',
@@ -250,6 +255,7 @@ describe.each([true, false])(
           'export default function component() { see(component); return <p>default</p> }',
         options: 'component',
         exported: { default: ['component'] },
+        split: false,
       },
       {
         name: 'class',
@@ -257,6 +263,7 @@ describe.each([true, false])(
 export class component extends Component { render() { see(component); return <p>class</p> } }`,
         options: 'component',
         exported: { component: ['component'] },
+        split: false,
       },
       {
         name: 'aliased',
@@ -264,23 +271,25 @@ export class component extends Component { render() { see(component); return <p>
           'function component() { see(component); return <p>aliased</p> }; export { component as View }',
         options: 'component',
         exported: { View: ['component'] },
+        split: true,
       },
     ]
 
-    // With code splitting the chunk renders its own copy of a pure exported
-    // function component, while importers get the route module's instance
-    // (by rule: known-bugs "the split chunk copies a pure exported
-    // function"; a class component is one instance the chunk imports): the
-    // rendering is asserted in both modes, the identity without splitting
+    // An option whose value the route file exports by its declaration stays
+    // in the route file (a class too), as on main: the option renders the
+    // instance importers get. A split one renders the chunk's binding, which
+    // imports the route file's when the route file keeps it: the rendering
+    // is asserted in both modes, the identity where nothing is split
     it.each(cases)(
       'keep a $name component exported as the route option value',
-      async ({ declaration, options, exported }) => {
+      async ({ declaration, options, exported, split }) => {
         await expectExportedRouteOptions(
           `${head}${declaration}
 export const Route = createFileRoute('/page')({ ${options} })`,
           exported,
           autoCodeSplitting,
-          false,
+          !(autoCodeSplitting && split),
+          autoCodeSplitting && split,
         )
       },
       30_000,

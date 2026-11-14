@@ -1,33 +1,10 @@
 /**
- * An exported component of a route file only its split component renders
- * loads with the route's chunk in a Start client build (the chunk carries
- * its copy; the module the route module re-exports it from is dropped,
- * by rule). An exported class only the split component uses loads with
- * the chunk too, imported from that module (one instance: a class has an
- * identity). When a module loaded with the entry imports either through
- * the route file (here the app's router module), the bundler keeps that
- * module with the entry. The component then ships twice (the chunk's copy
- * and the entry's), and the build warns once, naming the route file, on
- * Vite and on Rsbuild (SPEC J2.8; the router plugin's hosts do the same);
- * the class is one instance the entry needs, which is no news (R101).
- *
- * An unexported declaration only the split component reads that a staying
- * statement changes (it also uses what `validateSearch` keeps) loads with
- * the entry, and the build warns once for the client and server
- * environments together, naming the declaration and the statement (every
- * host and reason: router-plugin
- * tests/integration/code-splitter-split-only-eager.test.ts).
- *
- * The router's pure APIs are no such effect: tamery's `const {
- * useSearch } = getRouteApi(…)` between the pinned declaration and the
- * route loads with the chunk and is not reported.
+ * The router's pure APIs are no effect: tamery's `const { useSearch } =
+ * getRouteApi(…)` before the route loads with the chunk and is not
+ * reported.
  */
 import { describe, expect, test } from 'vitest'
-import {
-  diagnosticPosition,
-  expectDiagnostic,
-  findDiagnostics,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../build-harness'
 
 const timeout = 120_000
@@ -66,65 +43,6 @@ const files = {
   'entry.ts': 'export const ok = true\n',
 }
 
-describe.each(startBundlers)('a %s client build', (bundler) => {
-  test(
-    'an exported component only the split component renders loads with its chunk, unreported',
-    async () => {
-      const build = await buildStart({ bundler, files })
-      expect(build.client.where('MARK_CARD')).toBe('lazy')
-      expect(
-        findDiagnostics(build.diagnostics, {
-          file: 'src/routes/card.tsx',
-          root: build.root,
-        }),
-      ).toEqual([])
-    },
-    timeout,
-  )
-
-  test(
-    'an exported class only the split component uses loads with its chunk, imported from its module, unreported',
-    async () => {
-      const build = await buildStart({ bundler, files })
-      expect(build.client.where('MARK_TAG')).toBe('lazy')
-      expect(
-        findDiagnostics(build.diagnostics, {
-          file: 'src/routes/tag.tsx',
-          root: build.root,
-        }),
-      ).toEqual([])
-    },
-    timeout,
-  )
-
-  test(
-    'an exported component the router module imports through the route file ships twice, and the build says so once; a class it imports is one instance, unreported',
-    async () => {
-      const build = await buildStart({
-        bundler,
-        files: { ...files, 'src/router.tsx': router(true) },
-      })
-      expect(build.client.where('MARK_CARD')).toBe('eager+lazy')
-      expectDiagnostic(build.client.warnings, {
-        severity: 'warning',
-        file: 'src/routes/card.tsx',
-        root: build.root,
-        times: 1,
-      })
-      // the class is one instance: the chunk imports the module the entry
-      // keeps, so it is eager, not copied into the chunk as well
-      expect(build.client.where('MARK_TAG')).toBe('eager')
-      expect(
-        findDiagnostics(build.client.warnings, {
-          file: 'src/routes/tag.tsx',
-          root: build.root,
-        }),
-      ).toEqual([])
-    },
-    timeout,
-  )
-})
-
 // (no order rule: a `validateSearch` call after the declaration pins
 // nothing, and two split options reading it share a lazy module, R151; a
 // statement changing it that uses what the route module keeps keeps it,
@@ -154,33 +72,6 @@ const pinnedFiles = {
 `,
   'src/schema.ts': 'export function makeSchema<T>(shape: T) { return shape }\n',
 }
-
-describe.each(startBundlers)('a %s build', (bundler) => {
-  test(
-    'keeps a declaration a staying statement changes in the route module and warns once for every environment',
-    async () => {
-      const build = await buildStart({ bundler, files: pinnedFiles })
-      expect(build.client.where('MARK_CONFETTI')).toBe('eager')
-      // what the two environments' bundlers reported (Rsbuild's logger
-      // prints each bundler warning again in `build.diagnostics`)
-      const reported = [...build.client.warnings, ...build.ssr.warnings]
-      expectDiagnostic(reported, {
-        severity: 'warning',
-        file: 'src/routes/account.tsx',
-        root: build.root,
-        position: diagnosticPosition(pinned, 'confetti = new'),
-        times: 1,
-      })
-      expect(
-        findDiagnostics(build.diagnostics, {
-          file: 'src/routes/card.tsx',
-          root: build.root,
-        }),
-      ).toEqual([])
-    },
-    timeout,
-  )
-})
 
 /** tamery's account route: the route's API between the pinned effect and the route. */
 const withRouteApi = (path: string, imports: string, api: string) =>

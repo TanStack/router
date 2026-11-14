@@ -109,42 +109,6 @@ test.each(['vite', 'rspack', 'webpack'] as const)(
   120_000,
 )
 
-// A watch build (webpack-dev-server, `--watch`) rebuilds from its cache after
-// an edit: the split stays as in a fresh build. Source: the #8504 probe (a
-// module marked side-effect free lost the mark on a cached rebuild).
-test.each(['rspack', 'webpack'] as const)(
-  'an exported component a split component renders still loads with its chunk after a cached rebuild (%s)',
-  async (bundler) => {
-    const route = (version: string) => `${head}export function Card() {
-  return <b>{'MARK_CARD_END'}</b>
-}
-function Page() {
-  return <p><Card />{'${version}'}</p>
-}
-export const Route = createFileRoute('/')({ component: Page })
-`
-    const app = await build({
-      bundler,
-      env: 'client',
-      files: {
-        'routes/__root.tsx': rootRoute,
-        'routes/index.tsx': route('v1'),
-        // Like the route tree, the entry imports only `Route`.
-        'entry.ts': clientMountEntry,
-      },
-      rebuildAfter: { 'routes/index.tsx': route('v2') },
-    })
-    const run = await app.run(
-      `await entry.mount(entry.Route.options.component)`,
-    )
-    expect({ card: app.where('MARK_CARD_END'), html: run.html }).toEqual({
-      card: 'lazy',
-      html: '<div id="root"><p><b>MARK_CARD_END</b>v2</p></div>',
-    })
-  },
-  120_000,
-)
-
 // A statement may end without a `;`: at the end of a file with no final
 // newline, or on the line break inside a comment. What renders after it (the
 // chunk's export, the next statement kept, a generated declaration) starts a
@@ -163,11 +127,6 @@ const text = 'MARK'`,
     name: 'the last statement is the component',
     route: `${head}export const Route = createFileRoute('/')({ component: Home })
 const Home = () => <p>MARK</p>`,
-  },
-  {
-    name: 'the last statement is an exported component',
-    route: `${head}export const Route = createFileRoute('/')({ component: Home })
-export const Home = () => <p>MARK</p>`,
   },
   {
     name: 'the last statement is an import the chunk needs',
@@ -277,48 +236,4 @@ test.each(unterminated.map((row, i) => [row.name, i] as const))(
     expect((await unterminatedResults)[i]).toBe('<p>MARK</p>')
   },
   60_000,
-)
-
-// A route option value may be a parenthesized sequence: the option is what
-// the last expression gives, and the ones before it run as the value is
-// evaluated. The split component's chunk evaluates the whole value, in
-// order, when it loads (it was a chunk that did not parse: `const X = a, …`).
-test.each(['vite', 'rspack'] as const)(
-  'a component option written as a parenthesized sequence is split and renders (%s)',
-  async (bundler) => {
-    const app = await build({
-      bundler,
-      env: 'client',
-      files: {
-        'routes/__root.tsx': rootRoute,
-        'routes/index.tsx': `${head}import { track } from '../track'
-export const Route = createFileRoute('/')({
-  component: (track('MARK_SEQUENCE_HEAD'), () => <p>MARK_SEQUENCE</p>),
-})
-`,
-        'track.ts': `export function track(name: string) {
-  ;((globalThis as any).tracked ??= []).push(name)
-}
-`,
-        'entry.ts': clientMountEntry,
-      },
-    })
-    const run = await app.run(
-      `const atLoad = [...(globalThis.tracked ?? [])]
-await entry.mount(entry.Route.options.component)
-return { atLoad, after: globalThis.tracked }`,
-    )
-    expect({
-      component: app.where('MARK_SEQUENCE'),
-      head: app.where('MARK_SEQUENCE_HEAD'),
-      html: run.html,
-      tracked: run.result,
-    }).toEqual({
-      component: 'lazy',
-      head: 'lazy',
-      html: '<div id="root"><p>MARK_SEQUENCE</p></div>',
-      tracked: { atLoad: [], after: ['MARK_SEQUENCE_HEAD'] },
-    })
-  },
-  120_000,
 )

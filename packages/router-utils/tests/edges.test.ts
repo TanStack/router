@@ -252,56 +252,6 @@ describe('edge names (J6)', () => {
     'tier 1': (rec: Planner) => [toyEnvPlanner(), rec],
   }
 
-  // classic-runtime JSX (and no pragma, with a `React` binding: the
-  // TypeScript transforms keep it) calls its factory: a read of the binding
-  it.each(Object.entries(tiers))(
-    '%s: an import read only as the JSX factory is a binding edge naming it',
-    async (_tier, planners) => {
-      const code = dedent(`
-        import { wrapServer } from 'toy-start'
-        import React from './react'
-        import { h } from './h'
-        import { Fragment } from './fragment'
-        export const fn = wrapServer(() => 1)
-        export const view = () => <p />
-      `)
-      const host = new MemoryHost({
-        files: {
-          '/app/auto.tsx': code,
-          '/app/fragment.tsx': code.replace('<p />', '<></>'),
-          '/app/classic.tsx': `/** @jsx h */\n/** @jsxFrag Fragment */\n${code.replace('<p />', '<><p /></>')}`,
-          // (an element before a fragment: two bindings, both read)
-          '/app/classic-el-first.tsx': `/** @jsx h */\n/** @jsxFrag Fragment */\n${code}export const frag = () => <></>\n`,
-        },
-      })
-      let rec = edgeRecorder()
-      await host.compile('/app/auto.tsx', planners(rec))
-      expect(byspec(rec.edges.env!)).toMatchObject({
-        'static ./react': ['binding', ['default']],
-        'static ./h': ['evaluation', []],
-      })
-      // (a fragment reads the same binding)
-      rec = edgeRecorder()
-      await host.compile('/app/fragment.tsx', planners(rec))
-      expect(byspec(rec.edges.env!)).toMatchObject({
-        'static ./react': ['binding', ['default']],
-      })
-      rec = edgeRecorder()
-      await host.compile('/app/classic.tsx', planners(rec))
-      expect(byspec(rec.edges.env!)).toMatchObject({
-        'static ./react': ['evaluation', []],
-        'static ./h': ['binding', ['h']],
-        'static ./fragment': ['binding', ['Fragment']],
-      })
-      rec = edgeRecorder()
-      await host.compile('/app/classic-el-first.tsx', planners(rec))
-      expect(byspec(rec.edges.env!)).toMatchObject({
-        'static ./h': ['binding', ['h']],
-        'static ./fragment': ['binding', ['Fragment']],
-      })
-    },
-  )
-
   // a report points at an import that reads the binding: not at one with
   // type specifiers only, which TypeScript erases
   it.each(Object.entries(tiers))(

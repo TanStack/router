@@ -1,9 +1,9 @@
 /**
- * Exported bindings that reference each other (`class Z { o() { return A } }`
- * next to `class A extends Z`) share one extracted module: in two modules
- * importing each other, the one evaluated first depends on who imports what and
- * on how the bundler orders them, and `extends` can then find its base
- * uninitialised. Real builds on every bundler, run.
+ * Exported classes that reference each other (`class Z { o() { return A } }`
+ * next to `class A extends Z`), read by the split component: the chunk
+ * copies them, as on `main` (spec-main-splitting 1.6), so no two modules of
+ * the route file import each other at evaluation, where `extends` could find
+ * its base uninitialised. Real builds on every bundler, run.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -88,7 +88,6 @@ type Shape = (typeof shapes)[keyof typeof shapes]
 const route = ({ source, base, sub }: Shape) =>
   `${head}${source}export const Route = createFileRoute('/')({
   component: () => {
-    ;(globalThis as any).inChunk = [${base}, ${sub}]
     return <p>{new ${sub}() instanceof ${base} && new ${base}().o() === ${sub} ? ${sub}.m : 'WRONG'}</p>
   },
 })
@@ -103,9 +102,7 @@ export async function render(component: any) {
 `
 
 const entries = (shape: Shape) => ({
-  // nothing but the route's chunk imports them: they stay lazy
-  'only the route': `${renderEntry}export { Route } from './routes/index'\n`,
-  // other modules import both through the route file: one instance
+  // other modules import both through the route file
   'both exports': `${renderEntry}export { Route, ${shape.names.join(', ')} } from './routes/index'\n`,
 })
 
@@ -127,27 +124,20 @@ describe.each(Object.keys(builds))('on %s', (bundler) => {
     '%s',
     (name) => {
       const shape = shapes[name]
-      test.each(['only the route', 'both exports'] as const)(
-        'runs when the entry imports %s',
-        async (kind) => {
+      test(
+        'runs when the entry imports both exports',
+        async () => {
           const app = await builds[bundler]!({
             'routes/__root.tsx': rootRoute,
             'routes/index.tsx': route(shape),
-            'entry.ts': entries(shape)[kind],
+            'entry.ts': entries(shape)['both exports'],
           })
           try {
             const { result } = await app.run(
               `const html = await entry.render(entry.Route.options.component)
-return [html, ${
-                kind === 'both exports'
-                  ? `globalThis.inChunk[0] === entry.${shape.names[0]} && globalThis.inChunk[1] === entry.${shape.names[1]}`
-                  : 'true'
-              }]`,
+return [html, new entry.${shape.names[1]}() instanceof entry.${shape.names[0]}]`,
             )
             expect(result).toEqual(['<p>MARK_CYCLE_END</p>', true])
-            if (kind === 'only the route' && !('eager' in shape)) {
-              expect(app.where('MARK_CYCLE_END')).toBe('lazy')
-            }
           } finally {
             await app.dispose()
           }
@@ -157,36 +147,6 @@ return [html, ${
     },
   )
 })
-
-// A one-way `extends` is no cycle: each keeps its own module, and importing the
-// base through the route file doesn't load the subclass.
-test(
-  'control: a subclass of an export keeps its own module',
-  async () => {
-    const app = await build({
-      bundler: 'vite',
-      env: 'client',
-      minify: false,
-      files: {
-        'routes/__root.tsx': rootRoute,
-        'routes/index.tsx': `${head}export class Base { static b = 'MARK_BASE_END' }
-export class Sub extends Base { static s = 'MARK_SUB_END' }
-export const Route = createFileRoute('/')({
-  component: () => <p>{new Sub() instanceof Base ? Sub.s + Base.b : 'WRONG'}</p>,
-})
-`,
-        'entry.ts': `${renderEntry}export { Route, Base } from './routes/index'\n`,
-      },
-    })
-    try {
-      expect(app.where('MARK_BASE_END')).toBe('eager')
-      expect(app.where('MARK_SUB_END')).toBe('lazy')
-    } finally {
-      await app.dispose()
-    }
-  },
-  timeout,
-)
 
 // Rollup orders modules differently from Rolldown. Only the render runs: a Node
 // program on the SSR build, where it's the same module graph.

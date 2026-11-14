@@ -1,0 +1,808 @@
+/**
+ * Placement of a route file (`PlanContext.setRouteModule`): what route code
+ * splitting on `main` does, by its outcome, on the core's analysis
+ * (spec-main-splitting 1.1-1.8).
+ *
+ * - The env module (the route file) only loses what the split made unused
+ *   (`main`'s rule, the R153 amendment): a declaration or import specifier
+ *   the source used, by value or in a type, from text the env module no
+ *   longer holds (a claimed option value, erased text: `readFromRemoved`)
+ *   leaves it, with its initialiser, when nothing that stays reads it by
+ *   value. Statements, exports, enums and namespaces (R154) and code
+ *   already unused stay; an import already unused (a bare one included)
+ *   moves to the shared module when the env module imports it, a
+ *   declaration stays in the env module only.
+ * - The names `main` shares (`RouteModule.shared`) and nothing else live in
+ *   the shared module, as in `main`'s `?tsr-shared=1`: the env module and the
+ *   chunks import them from it, and the env module re-exports the exported
+ *   ones. One code outside the set assigns, or one reading a declaration
+ *   outside the set, leaves the set and is placed like any declaration.
+ * - A split chunk takes what its option's value reads, transitively. What
+ *   the env module also keeps, the chunk imports from it when `main`
+ *   imports it (the route binding, `export const|let|var`:
+ *   `RouteModule.imported`) and copies otherwise, with the
+ *   statements reading or writing what it copies (`main`'s second instance,
+ *   in `main`'s shapes, 1.8); so it copies what the env module does not
+ *   keep, also what another chunk copies too. Import specifiers are copied
+ *   where they are read.
+ * - Another planner's derived output (a server function's, `<Hydrate>`
+ *   children's) imports what the env module keeps; what it alone needs moves
+ *   there, what several need is one module they import; a provider output
+ *   (another layer's instance of the module) copies what it reaches.
+ * - A derived output that would assign a binding it imports (`main` fails
+ *   such a build: a shared `let`, an `export let`) does not take the root
+ *   bringing that code: the root falls back (`Placement.fallbacks`) and its
+ *   planner keeps it in place.
+ */
+import { deriveId } from './identity'
+import { buildClusters } from './placement/clusters'
+import { readIndex } from './placement/reads'
+import { readFromRemoved } from './placement/roots'
+import type { ClusterId } from './placement/clusters'
+import type {
+  ExtractedExport,
+  Fallback,
+  Home,
+  OutputDecl,
+  Placement,
+  PlacementInput,
+  RootRef,
+} from './reach'
+import type { SymbolId } from './symbols'
+import type { RegionId, UnitId } from './units'
+import type { OutputId } from './rewrite'
+
+export function computeRoutePlacement(input: PlacementInput): Placement {
+  const { t1, rewrites, outputs } = input
+  const { imported, shared: sharedNames } = input.routeModule!
+  const { units, items } = t1
+  const graph = buildClusters(input, true)
+  const reads = readIndex(input, graph)
+  const { clusters, clusterOfSym } = graph
+  const gens = rewrites.generated
+
+  // ---- what each cluster is -------------------------------------------------
+  /** The output a generated unit is homed in by its planner. */
+  const fixedHome = new Map<ClusterId, OutputId>()
+  /** Generated units with `env-readers` homes (decided last). */
+  const envReaders: Array<ClusterId> = []
+  for (const g of gens) {
+    const c = graph.clusterOfGen.get(g.id)!
+    if (typeof g.home === 'string' && g.home !== 'auto') {
+      fixedHome.set(c, g.home)
+    } else if (typeof g.home === 'object') {
+      envReaders.push(c)
+    }
+  }
+  /**
+   * `main`'s removal rule applies to it: import specifiers, declarators,
+   * function and class declarations, and the declarations and imports
+   * planners generate without an effect, where they are read (a planner's
+   * `auto` home).
+   */
+  const removable = (c: ClusterId): boolean => {
+    const cl = clusters[c]!
+    if (fixedHome.has(c) || envReaders.includes(c)) {
+      return false
+    }
+    if (cl.units.length === 0) {
+      // a declaration or an import a planner generates; one with an effect
+      // (route HMR's block, with its own helper import) is a statement
+      return cl.gens.every(
+        (g) =>
+          !gens[g]!.effectful &&
+          (gens[g]!.declares.length > 0 || (gens[g]!.imports ?? []).length > 0),
+      )
+    }
+    // (a type merged with the binding, `import { type X }` beside
+    // `function X`, and a function's overload signatures are TypeScript's:
+    // they decide nothing)
+    const values = cl.units.filter(
+      (u) =>
+        units[u]!.kind !== 'type' &&
+        units[u]!.node.type !== 'TSDeclareFunction',
+    )
+    return values.every((u) => {
+      const unit = units[u]!
+      return (
+        unit.kind === 'import-specifier' ||
+        (unit.kind === 'declaration' &&
+          (unit.node.type === 'VariableDeclarator' ||
+            unit.node.type === 'FunctionDeclaration' ||
+            unit.node.type === 'ClassDeclaration'))
+      )
+    })
+  }
+  const isType = (c: ClusterId) => clusters[c]!.kind === 'type'
+  /** Copied where it is read: an import specifier, a planner's generated import. */
+  const isImport = (c: ClusterId) => clusters[c]!.kind === 'import'
+
+  /** What a chunk imports from the env module rather than copying it (`RouteModule.imported`). */
+  const importedFromEnv = (c: ClusterId) =>
+    [...clusters[c]!.declares].some((s) => imported.has(s))
+
+  // ---- the env module --------------------------------------------------------
+  const derived = [...outputs.values()].filter(
+    (o) => o.id !== 'env' && o.kind !== 'export',
+  )
+  const rootedElsewhere = new Set<ClusterId>()
+  for (const o of derived) {
+    for (const r of o.roots) {
+      if (r.t === 'gen') {
+        rootedElsewhere.add(graph.clusterOfGen.get(r.id)!)
+      }
+    }
+  }
+  /**
+   * The declarations of names `main` shares (`RouteModule.shared`): they, and
+   * nothing else, live in the shared module, which the env module and the
+   * chunks import them from, as `main`'s `?tsr-shared=1`. (`main`'s step 5,
+   * no name whose declaration reads `Route`, transitively, is the
+   * planner's.) One fixed point, removals only, keeps the set closed:
+   * - a name leaves when code outside the set assigns it, wherever that code
+   *   is (the env module, a chunk, another planner's output): that module
+   *   would assign an import, where `main` fails;
+   * - a name leaves when its declaration reads a declaration outside the
+   *   set (an enum, a namespace, a `var` in a statement, a dropped name), so
+   *   the shared module imports nothing of the file. This follows from R154
+   *   (those stay in the env module), not from `main`'s closure, which only
+   *   adds names; `main` emits a missing name there;
+   * - a planner's generated declaration with no fixed home that the env
+   *   module does not root (a `<Hydrate>` importer) is in the set while a
+   *   member reads it.
+   * A dropped name is placed like any declaration: it stays in the env
+   * module only when something left there uses it; a chunk needing it
+   * otherwise copies it.
+   */
+  const inShared = new Set<ClusterId>()
+  const envView = graph.viewOf('env')
+  {
+    const envRooted = new Set(
+      outputs
+        .get('env')!
+        .roots.flatMap((r) =>
+          r.t === 'gen' ? [graph.clusterOfGen.get(r.id)!] : [],
+        ),
+    )
+    const generated = new Set<ClusterId>()
+    for (const cl of clusters) {
+      if (
+        cl.declares.size === 0 ||
+        !removable(cl.id) ||
+        isImport(cl.id) ||
+        fixedHome.has(cl.id)
+      ) {
+        continue
+      }
+      if (cl.units.length > 0) {
+        if ([...cl.declares].every((s) => sharedNames.has(s))) {
+          inShared.add(cl.id)
+        }
+      } else if (!envRooted.has(cl.id) && !envReaders.includes(cl.id)) {
+        generated.add(cl.id)
+        inShared.add(cl.id)
+      }
+    }
+    /** What each member reads (the env module's text: what the shared module renders). */
+    const readsOf = new Map<ClusterId, Array<ClusterId>>()
+    for (const c of inShared) {
+      const r = reads.clusterReads(c, 'env', true)
+      readsOf.set(c, [
+        ...[...r.syms].flatMap((s) => {
+          const t = clusterOfSym.get(s)
+          return t === undefined || t === c ? [] : [t]
+        }),
+        ...[...r.children].filter((t) => t !== c),
+      ])
+    }
+    for (let changed = true; changed; ) {
+      changed = false
+      for (const c of inShared) {
+        // (a read of a generated declaration homed in another derived
+        // output imports it from there: no module the env module imports)
+        const readsOutside = readsOf
+          .get(c)!
+          .some(
+            (t) =>
+              !isType(t) &&
+              !isImport(t) &&
+              !inShared.has(t) &&
+              !(fixedHome.has(t) && fixedHome.get(t) !== 'env'),
+          )
+        const assignedOutside = [...clusters[c]!.declares].some((s) =>
+          (graph.writesOfSym.get(s) ?? []).some((w) => {
+            // (code the env module erases, a server function's handler on
+            // the client, writes nothing in this environment)
+            if (w.member || w.augment || envView.isErasedAt(w.at)) {
+              return false
+            }
+            const by =
+              w.owner === null ? undefined : graph.clusterOfRegion.get(w.owner)
+            return by !== c && (by === undefined || !inShared.has(by))
+          }),
+        )
+        const unread =
+          generated.has(c) &&
+          ![...inShared].some((m) => m !== c && readsOf.get(m)!.includes(c))
+        if (readsOutside || assignedOutside || unread) {
+          inShared.delete(c)
+          changed = true
+        }
+      }
+    }
+  }
+  /** What the source reads from text the env module no longer holds: erased, or claimed by a chunk. */
+  const fromRemoved = readFromRemoved(input, graph, reads, [
+    ...graph.viewOf('env').erasedParts(),
+    ...[...rewrites.claims.values()].map(
+      (claim) => rewrites.regions.get(claim.region).range,
+    ),
+  ])
+  /** The shared declarations the env module reads or exports: roots of the shared module. */
+  const sharedRoots = new Set<ClusterId>()
+  const env = new Set<ClusterId>()
+  const envWork: Array<ClusterId> = []
+  const keepInEnv = (c: ClusterId | undefined) => {
+    if (c !== undefined && !env.has(c) && !isType(c)) {
+      const home = fixedHome.get(c)
+      if (home !== undefined && home !== 'env') {
+        return
+      }
+      if (inShared.has(c)) {
+        sharedRoots.add(c)
+        return
+      }
+      env.add(c)
+      envWork.push(c)
+    }
+  }
+  /** What the env module keeps reads, transitively. */
+  const closeEnv = () => {
+    while (envWork.length > 0) {
+      const r = reads.clusterReads(envWork.pop()!, 'env', true)
+      for (const s of r.syms) {
+        keepInEnv(clusterOfSym.get(s))
+      }
+      for (const child of r.children) {
+        keepInEnv(child)
+      }
+    }
+  }
+  for (const cl of clusters) {
+    const c = cl.id
+    if (envReaders.includes(c) || isType(c)) {
+      continue
+    }
+    if (fixedHome.get(c) === 'env') {
+      keepInEnv(c)
+    } else if (fixedHome.has(c)) {
+      continue
+    } else if (cl.units.length > 0) {
+      // a statement or an export stays (R154), and so does what the
+      // source did not read from text the env module no longer holds (code
+      // already unused stays, `readFromRemoved`); the rest stays when
+      // something that stays reaches it
+      // (an exported shared declaration: the env module re-exports it
+      // from the shared module)
+      if (
+        !removable(c) ||
+        cl.units.some((u) => units[u]!.exported.length > 0) ||
+        !fromRemoved.has(c)
+      ) {
+        keepInEnv(c)
+      }
+    } else if (!removable(c) && !rootedElsewhere.has(c) && cl.gens.length > 0) {
+      // a planner's generated effect no output roots
+      keepInEnv(c)
+    }
+  }
+  for (const r of outputs.get('env')!.roots) {
+    keepInEnv(
+      r.t === 'unit'
+        ? graph.clusterOfRegion.get(units[r.id]!.region)
+        : r.t === 'gen'
+          ? graph.clusterOfGen.get(r.id)
+          : clusterOfSym.get(r.id),
+    )
+  }
+  closeEnv()
+
+  /** The statements of the env module reading or writing each declaration it keeps: a chunk copying the declaration copies them (`main`'s chunks keep the statements naming what they declare). */
+  const statementsOf = new Map<ClusterId, Array<ClusterId>>()
+  for (const c of env) {
+    const cl = clusters[c]!
+    if (cl.kind !== 'effect' || cl.units.length === 0) {
+      continue
+    }
+    for (const s of reads.clusterReads(c, 'env', true).syms) {
+      const t = clusterOfSym.get(s)
+      if (t !== undefined && t !== c && env.has(t) && !isImport(t)) {
+        statementsOf.set(t, [...(statementsOf.get(t) ?? []), c])
+      }
+    }
+  }
+
+  // ---- the derived outputs: what each needs ----------------------------------
+  const copying = (o: OutputId) => outputs.get(o)?.kind === 'provider'
+  /** A split chunk: it copies what the env module keeps but `main` would not import. */
+  const isChunk = (o: OutputId) => outputs.get(o)?.kind === 'split'
+  /**
+   * The imports already unused in the source: an import nothing in the
+   * source references, by value or in a type (an export is a use), a bare
+   * `import './polyfill'` or `import './a.css'` included. When the env
+   * module reads a shared name (its first import is then the shared
+   * module's), they move there,
+   * in source order with its own imports: they run at the same point, once,
+   * and a module a shared declaration reads still runs after a bare import
+   * written before it. Otherwise they stay in the env module. Chunks and
+   * Start's derived outputs load after the env module has run and get none.
+   * Only what the source wrote (not a planner's generated import, the route
+   * module's `lazyRouteComponent`). A declaration already unused stays in
+   * the route module only: nothing can read it, and a copy would run its
+   * effect again.
+   */
+  const unusedImports: Array<ClusterId> = []
+  {
+    const used = readFromRemoved(input, graph, reads, [
+      { start: 0, end: input.code.length },
+    ])
+    for (const cl of clusters) {
+      if (
+        cl.units.length > 0 &&
+        (cl.kind === 'import-effect' ||
+          (cl.kind === 'import' &&
+            !used.has(cl.id) &&
+            removable(cl.id) &&
+            !cl.units.some((u) => units[u]!.exported.length > 0)))
+      ) {
+        unusedImports.push(cl.id)
+      }
+    }
+  }
+  /** The roots of a derived output: what its planners rooted there, and the generated units homed there. */
+  const rootsOf = (o: OutputDecl): Array<RootRef> => [
+    ...o.roots,
+    ...gens
+      .filter((g) => g.home === o.id)
+      .map((g) => ({ t: 'gen' as const, id: g.id })),
+  ]
+  const SHARED = 'shared' as OutputId
+  /** The shared declarations derived outputs read, and the outputs reading them. */
+  const sharedRead = new Set<ClusterId>()
+  const sharedReaders = new Set<OutputId>()
+  /**
+   * What output `o` takes from `roots`, transitively: everything they read
+   * but types and what another module of the file holds (a generated
+   * unit's own home; the env module, but what a chunk copies from it:
+   * imported).
+   */
+  const reachFrom = (
+    o: OutputId,
+    roots: ReadonlyArray<RootRef>,
+  ): Set<ClusterId> => {
+    const seen = new Set<ClusterId>()
+    const work: Array<ClusterId> = []
+    const take = (c: ClusterId) => {
+      if (!seen.has(c)) {
+        seen.add(c)
+        work.push(c)
+      }
+    }
+    const read = (t: ClusterId | undefined) => {
+      if (t === undefined || seen.has(t) || isType(t)) {
+        return
+      }
+      const home = fixedHome.get(t)
+      if (home !== undefined && home !== o) {
+        return // imported from its home
+      }
+      if (inShared.has(t) && o !== SHARED) {
+        sharedRead.add(t)
+        sharedReaders.add(o)
+        return // imported from the shared module
+      }
+      if (!copying(o) && env.has(t) && !isImport(t)) {
+        // (so is what a statement declaring a `var` names, `if (…) { var
+        // flag = … }`: `main` deletes that declarator from the route file,
+        // which runs the rest of the statement; a copy of the statement
+        // would run it twice)
+        if (
+          !isChunk(o) ||
+          importedFromEnv(t) ||
+          clusters[t]!.kind === 'effect' ||
+          (statementsOf.get(t) ?? []).some(
+            (st) => clusters[st]!.declares.size > 0,
+          )
+        ) {
+          return // imported from the env module
+        }
+        // copied, with the statements naming it
+        for (const s of statementsOf.get(t) ?? []) {
+          take(s)
+        }
+      }
+      take(t)
+    }
+    for (const r of roots) {
+      if (r.t === 'sym') {
+        read(clusterOfSym.get(r.id))
+      } else {
+        take(
+          r.t === 'unit'
+            ? graph.clusterOfRegion.get(units[r.id]!.region)!
+            : graph.clusterOfGen.get(r.id)!,
+        )
+      }
+    }
+    while (work.length > 0) {
+      const c = work.pop()!
+      const r = reads.clusterReads(c, o, true)
+      for (const s of r.syms) {
+        read(clusterOfSym.get(s))
+      }
+      for (const child of r.children) {
+        read(child)
+      }
+    }
+    return seen
+  }
+  /**
+   * The outputs of other planners (not copying, not split chunks) reaching
+   * each declaration the env module does not keep: one home, theirs, or a
+   * module the several import. A split chunk copies what it reaches, as on
+   * `main`; it is a home only of what no other output needs.
+   */
+  const needers = new Map<ClusterId, Set<OutputId>>()
+  const reached = new Map<OutputId, Set<ClusterId>>()
+  const chunkOwner = new Map<ClusterId, OutputId>()
+  for (const o of derived) {
+    const seen = reachFrom(o.id, rootsOf(o))
+    reached.set(o.id, seen)
+    if (copying(o.id)) {
+      continue
+    }
+    for (const c of seen) {
+      if (isImport(c) || fixedHome.has(c) || env.has(c)) {
+        continue
+      }
+      if (isChunk(o.id)) {
+        if (!chunkOwner.has(c)) {
+          chunkOwner.set(c, o.id)
+        }
+      } else {
+        let set = needers.get(c)
+        if (!set) {
+          needers.set(c, (set = new Set()))
+        }
+        set.add(o.id)
+      }
+    }
+  }
+
+  // ---- homes ------------------------------------------------------------------
+  const home = new Map<ClusterId, Home>()
+  const created: Array<OutputDecl> = []
+  const sharedOutput = (key: string): OutputDecl => {
+    const derivedId = deriveId(input.canonicalId, {
+      kind: 'shared',
+      value: key,
+    })
+    const decl: OutputDecl = {
+      id: `derived:${derivedId}`,
+      kind: 'shared',
+      key: `shared~${key}`,
+      derivedId,
+      roots: [],
+    }
+    created.push(decl)
+    return decl
+  }
+  // `main`'s shared module: the shared names the env module or a chunk reads
+  let shared: OutputDecl | null = null
+  {
+    const used = reachFrom(
+      SHARED,
+      [...sharedRoots, ...sharedRead].map((c) => ({
+        t: 'sym' as const,
+        id: [...clusters[c]!.declares][0]!,
+      })),
+    )
+    const held = [...used].filter((c) => !isImport(c))
+    if (held.length > 0) {
+      const key = derived
+        .filter((o) => sharedReaders.has(o.id))
+        .map((o) => o.key)
+        .sort()
+        .join('+')
+      shared = sharedOutput(key || 'route')
+      for (const c of held) {
+        home.set(c, shared.id)
+      }
+    }
+  }
+  // what other planners' outputs need: one home, or a common module
+  let common: OutputDecl | null = null
+  for (const [c, set] of needers) {
+    if (set.size === 1) {
+      home.set(c, [...set][0]!)
+    } else {
+      common ??= sharedOutput(
+        [
+          ...new Set(
+            [...needers.values()].flatMap((n) => (n.size > 1 ? [...n] : [])),
+          ),
+        ]
+          .map((o) => outputs.get(o)!.key)
+          .sort()
+          .join('+'),
+      )
+      home.set(c, common.id)
+    }
+  }
+  for (const [c, o] of chunkOwner) {
+    if (!home.has(c)) {
+      home.set(c, o)
+    }
+  }
+  for (const c of env) {
+    home.set(c, 'env')
+  }
+  for (const [c, h] of fixedHome) {
+    home.set(c, h)
+  }
+  for (const cl of clusters) {
+    if (!home.has(cl.id)) {
+      home.set(cl.id, isImport(cl.id) ? 'duplicate' : 'removed')
+    }
+  }
+
+  // ---- inclusion and imports ----------------------------------------------------
+  const included = new Map<OutputId, Set<ClusterId>>()
+  const imports = new Map<OutputId, Map<OutputId, Set<SymbolId>>>()
+  const exportsNeeded = new Map<OutputId, Set<SymbolId>>()
+  const importFrom = (o: OutputId, h: OutputId, s: SymbolId) => {
+    let byHome = imports.get(o)
+    if (!byHome) {
+      imports.set(o, (byHome = new Map()))
+    }
+    let syms = byHome.get(h)
+    if (!syms) {
+      byHome.set(h, (syms = new Set()))
+    }
+    syms.add(s)
+    let exported = exportsNeeded.get(h)
+    if (!exported) {
+      exportsNeeded.set(h, (exported = new Set()))
+    }
+    exported.add(s)
+  }
+  included.set('env', env)
+  const all: Array<OutputId> = [
+    ...derived.map((o) => o.id),
+    ...created.map((o) => o.id),
+  ]
+  for (const o of all) {
+    const set = new Set<ClusterId>()
+    included.set(o, set)
+    if (copying(o)) {
+      for (const c of reached.get(o)!) {
+        set.add(c)
+      }
+    } else {
+      for (const [c, h] of home) {
+        if (h === o) {
+          set.add(c)
+        }
+      }
+      // what a chunk copies (from the env module, or a declaration another
+      // module holds too)
+      if (isChunk(o)) {
+        for (const c of reached.get(o)!) {
+          set.add(c)
+        }
+      }
+      if (o === shared?.id) {
+        for (const c of unusedImports) {
+          set.add(c)
+        }
+      }
+    }
+  }
+  // what each output reads that it does not hold: imported from its home
+  // (an import specifier is copied where it is read)
+  for (const o of ['env' as OutputId, ...all]) {
+    const set = included.get(o)!
+    const work = [...set]
+    while (work.length > 0) {
+      const c = work.pop()!
+      for (const s of reads.clusterReads(c, o, true).syms) {
+        const t = clusterOfSym.get(s)
+        if (t === undefined || set.has(t) || isType(t)) {
+          continue
+        }
+        const h = home.get(t)
+        if (isImport(t) || h === undefined || h === 'removed' || h === o) {
+          // (a read of what no output holds: as `main`, the name stays unbound)
+          if (isImport(t)) {
+            set.add(t)
+            work.push(t)
+          }
+          continue
+        }
+        importFrom(o, h as OutputId, s)
+      }
+    }
+  }
+  // route HMR's registration: every derived output importing a binding of
+  // the env module other than the ones it names, or a binding of the shared
+  // module the env module reads (state the env module's code writes)
+  const envShared = new Set(
+    [...sharedRoots].flatMap((c) => [...clusters[c]!.declares]),
+  )
+  for (const c of envReaders) {
+    const besides = new Set(
+      clusters[c]!.gens.flatMap((g) => {
+        const h = gens[g]!.home
+        return typeof h === 'object' ? [...h.besides] : []
+      }),
+    )
+    for (const o of all) {
+      const fromEnv = imports.get(o)?.get('env')
+      const fromShared =
+        shared === null || o === shared.id
+          ? undefined
+          : imports.get(o)?.get(shared.id)
+      if (
+        (fromEnv && [...fromEnv].some((s) => !besides.has(s))) ||
+        (fromShared && [...fromShared].some((s) => envShared.has(s)))
+      ) {
+        included.get(o)!.add(c)
+      }
+    }
+  }
+
+  // ---- an output that would assign a binding it imports --------------------
+  // A module cannot assign a binding it imports: a derived output that would
+  // assign (`=`, `++`, `+=`, …) a binding another module of the file holds
+  // does not take the root that brings that code (a split option's value, a
+  // server function's handler, `<Hydrate>` children). The root falls back:
+  // its planner keeps it in place in the next round. One check of the
+  // outcome, on the write table every placement shares.
+  const writers = new Map<ClusterId, SymbolId>()
+  for (const w of graph.writes) {
+    const c = w.owner === null ? undefined : graph.clusterOfRegion.get(w.owner)
+    const d = clusterOfSym.get(w.sym)
+    if (
+      w.member ||
+      w.augment ||
+      c === undefined ||
+      d === undefined ||
+      c === d
+    ) {
+      continue
+    }
+    for (const h of all) {
+      const set = included.get(h)!
+      if (
+        !copying(h) &&
+        set.has(c) &&
+        !set.has(d) &&
+        home.get(d) !== 'removed' &&
+        // (a write in text that output erases, a client's stubbed server-fn
+        // handler, assigns nothing there)
+        !graph.viewOf(h).isErasedAt(w.at)
+      ) {
+        writers.set(c, w.sym)
+      }
+    }
+  }
+  const fallbacks: Array<Fallback> = []
+  if (writers.size > 0) {
+    const fellBack = new Set<RegionId>()
+    const fallBack = (region: RegionId, binding: SymbolId) => {
+      if (!fellBack.has(region)) {
+        fellBack.add(region)
+        fallbacks.push({ region, reason: 'shared-writer', binding })
+      }
+    }
+    for (const o of derived) {
+      if (copying(o.id)) {
+        continue
+      }
+      for (const root of rootsOf(o)) {
+        let binding: SymbolId | undefined
+        for (const c of reachFrom(o.id, [root])) {
+          binding ??= writers.get(c)
+        }
+        if (binding === undefined) {
+          continue
+        }
+        // the root's place in the source: its claimed text, or the
+        // declaration of the binding it names
+        if (root.t === 'gen') {
+          for (const r of clusters[graph.clusterOfGen.get(root.id)!]!.regions) {
+            if (rewrites.claims.has(r)) {
+              fallBack(r, binding)
+            }
+          }
+        } else if (root.t === 'sym') {
+          for (const u of t1.declaringUnits.get(root.id) ?? []) {
+            if (units[u]!.kind !== 'type') {
+              fallBack(units[u]!.region, binding)
+            }
+          }
+        } else {
+          fallBack(units[root.id]!.region, binding)
+        }
+      }
+    }
+  }
+
+  // ---- the shared exports: re-exported by the env module ---------------------
+  const extracted: Array<ExtractedExport> = []
+  if (shared !== null) {
+    const { id } = shared
+    const syms = [...sharedRoots]
+      .filter(
+        (c) =>
+          home.get(c) === id &&
+          clusters[c]!.units.some((u) => units[u]!.exported.length > 0),
+      )
+      .flatMap((c) => [...clusters[c]!.declares])
+    if (syms.length > 0) {
+      extracted.push({ output: id, syms })
+      let exported = exportsNeeded.get(id)
+      if (!exported) {
+        exportsNeeded.set(id, (exported = new Set()))
+      }
+      for (const s of syms) {
+        exported.add(s)
+      }
+    }
+  }
+
+  // ---- imports already unused: in the shared module the env module imports --
+  // (moved when the env module reads a shared name: its import of the shared
+  // module is its first, so they run at the same point, once; a re-export
+  // alone is printed last. Otherwise they stay in the env module)
+  if (shared !== null) {
+    const linked = imports.get('env')?.has(shared.id) === true
+    for (const c of unusedImports) {
+      included.get(linked ? 'env' : shared.id)!.delete(c)
+      if (linked) {
+        home.set(c, shared.id)
+      }
+    }
+  }
+
+  // ---- TypeScript-only specifiers leave with their statement's values -------
+  const droppedTypeUnits = new Set<UnitId>()
+  units.forEach((unit, u) => {
+    if (unit.kind !== 'type') {
+      return
+    }
+    const inlineImportSpecifier =
+      unit.importIndex !== null &&
+      (items[unit.item]!.node as { importKind?: string }).importKind !== 'type'
+    const typeOnlyExportSpecifier =
+      unit.node.type === 'ExportSpecifier' && unit.node.exportKind !== 'type'
+    if (inlineImportSpecifier || typeOnlyExportSpecifier) {
+      droppedTypeUnits.add(u)
+    }
+  })
+
+  return {
+    clusterOfRegion: graph.clusterOfRegion,
+    clusterOfGen: graph.clusterOfGen,
+    home,
+    included,
+    imports,
+    exportsNeeded,
+    fallbacks,
+    created,
+    extracted,
+    kept: [],
+    droppedTypeUnits,
+    check: () => undefined,
+  }
+}

@@ -154,14 +154,24 @@ return [before, await entry.render(component), entry.Route.options.loader(), ent
 
   // `export default items` above `var items = …` holds `undefined` (the
   // statement runs before the initialiser); the split component reads the
-  // binding, which has its value by then. With a loader reading it too
-  // (`items` stays in the route module) and without.
+  // binding, which has its value by then. Without a loader reading it; with
+  // one, `items` is a shared name in the shared module, which the route
+  // module imports before its body runs, so the export holds the value: as
+  // on `main`, which gives another value than the source there.
   it.each([
-    { name: 'a loader reads it too', loader: 'loader: () => items.length,' },
-    { name: 'only the component reads it', loader: '' },
+    {
+      name: "a loader reads it too: `main`'s export value, not the source's",
+      loader: 'loader: () => items.length,',
+      exportedUndefined: false,
+    },
+    {
+      name: 'only the component reads it',
+      loader: '',
+      exportedUndefined: true,
+    },
   ])(
     'gives the split component the value of a `var` the route file exports by default before declaring it ($name)',
-    async ({ loader }) => {
+    async ({ loader, exportedUndefined }) => {
       const result = await buildAndRun(
         `${head}export default items
 var items = ['a', 'b']
@@ -177,18 +187,24 @@ export const Route = createFileRoute('/')({
           },
         },
       )
-      expect(result).toEqual(['<p>a,b</p>', true])
+      expect(result).toEqual(['<p>a,b</p>', exportedUndefined])
     },
     30_000,
   )
 
-  // A later `var` changes the binding, not what the export took.
+  // A later `var` changes the binding, not what the export took (with a
+  // loader reading it, the shared module's last value, as on `main`, which
+  // gives another value than the source there).
   it.each([
-    { name: 'a loader reads it too', loader: 'loader: () => items.length,' },
-    { name: 'only the component reads it', loader: '' },
+    {
+      name: "a loader reads it too: `main`'s export value, not the source's",
+      loader: 'loader: () => items.length,',
+      exported: ['b'],
+    },
+    { name: 'only the component reads it', loader: '', exported: ['a'] },
   ])(
     'gives the split component the value a later `var` gives the binding the route file exports by default ($name)',
-    async ({ loader }) => {
+    async ({ loader, exported }) => {
       const result = await buildAndRun(
         `${head}var items = ['a']
 export default items
@@ -205,7 +221,7 @@ export const Route = createFileRoute('/')({
           },
         },
       )
-      expect(result).toEqual(['<p>b</p>', ['a']])
+      expect(result).toEqual(['<p>b</p>', exported])
     },
     30_000,
   )
@@ -244,34 +260,6 @@ export const Route = createFileRoute('/')({
     },
     60_000,
   )
-
-  // Rolldown inlines the initial value of a `var` another module imports
-  // when its next declaration is a for-in/of head or a pattern, in valid
-  // output (KNOWN-BUGS, "Upstream issues"). These rows no longer reach it:
-  // the loop or block declaring `x` again touches only `x` and follows it
-  // into the component's chunk, so no module imports the `var`.
-  it('gives the split component the value a `var` declared again takes in a head or a pattern (Rolldown)', async () => {
-    const rows = varsDeclaredAgain.filter((row) => row.rolldownReadsFirst)
-    expect(await varDeclaredAgain('vite', rows)).toEqual({
-      placement: 'lazy',
-      rendered: rows.map(({ name }) => [name, '<p title="MARK_PAGE">2</p>']),
-    })
-  }, 60_000)
-
-  it('gives a value read between two declarations of a `var` the first one', async () => {
-    const result = await buildAndRun(
-      `${head}var x = 1
-const before = x
-var x = 2
-export const Route = createFileRoute('/')({
-  loader: () => x,
-  component: () => <p>{before}</p>,
-})
-`,
-      `return [await entry.render(entry.Route.options.component), entry.Route.options.loader()]`,
-    )
-    expect(result).toEqual(['<p>1</p>', 2])
-  }, 30_000)
 
   // Source: #8504 (code-splitter-exported-bindings-identity.test.ts).
   it('gives the split component the state the route file configures before it creates it', async () => {

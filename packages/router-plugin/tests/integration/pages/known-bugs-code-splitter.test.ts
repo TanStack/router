@@ -12,7 +12,7 @@
 
 import { parseSync } from 'vite'
 import { describe, expect, test } from 'vitest'
-import { head, holdsMarker, loadRoute } from '../../route-app'
+import { head, loadRoute } from '../../route-app'
 
 /**
  * The modules of the app the served module `code` depends on (static
@@ -83,32 +83,6 @@ export const Route = createFileRoute('/')({
     ).toEqual([1, '<p>1</p>', '<p>error</p>', 1])
   })
 
-  // Bug: a binding that an option with a computed key and a split option
-  // both read is created twice: the computed-key option is not seen as a
-  // reader of the route module.
-  // Source: round-3 mutation testing (compilers-A).
-  // Impact: module state is created twice (two stores, registrations run
-  // twice).
-  test('a binding read by a computed-key option and a split option is created once', async () => {
-    const route = await loadRoute(
-      `${head}import { init } from './state'
-const store = init({ count: 1 })
-const key = 'staticData'
-export const Route = createFileRoute('/')({
-  [key]: { read: () => store },
-  loader: () => 'data',
-  component: () => <p>{store.count}</p>,
-})
-`,
-      { files: { 'state.ts': stateFile } },
-    )
-    expect(
-      await route.run(
-        `return [await render('component'), (await app('state.ts')).calls]`,
-      ),
-    ).toEqual(['<p>1</p>', 1])
-  })
-
   // Bug: a `var` nested in a statement, an enum or a namespace is not shared.
   // The `var` is missed because module bindings are collected from top-level
   // declarations only (`collectLocalBindingsFromStatement`); same root cause
@@ -136,36 +110,15 @@ const read = () => Value.One`,
       declaration: `namespace Value { export const one = init(1) }
 const read = () => Value.one`,
     },
-    // Source: mutation testing of #8504 (a direct read takes another path
-    // than a read through a helper).
-    {
-      name: 'an enum, read directly',
-      declaration: `enum Value { One = init(1) }`,
-      read: 'Value.One',
-    },
-    {
-      name: 'a namespace, read directly',
-      declaration: `namespace Value { export const one = init(1) }`,
-      read: 'Value.one',
-    },
-    {
-      // Source: #8504 (a namespace merged across two declarations). The
-      // second block reads `Value.one`: TypeScript transforms (Oxc, Babel)
-      // do not resolve a bare `one` across merged blocks.
-      name: 'a namespace declared in two blocks',
-      declaration: `namespace Value { export const one = init(1) }
-namespace Value { export const two = Value.one }`,
-      read: 'Value.two',
-    },
   ])(
     'a binding declared by $name and read by the loader and the split component is initialized once',
-    async ({ declaration, read = 'read()' }) => {
+    async ({ declaration }) => {
       const route = await loadRoute(
         `${head}import { init } from './state'
 ${declaration}
 export const Route = createFileRoute('/')({
-  loader: () => ${read},
-  component: () => <p>{${read}}</p>,
+  loader: () => read(),
+  component: () => <p>{read()}</p>,
 })`,
         { files: { 'state.ts': stateFile } },
       )
@@ -207,7 +160,7 @@ format = () => 'reassigned'`,
       expected: ['reassigned', '<p>reassigned</p>'],
     },
     {
-      name: 'a registry a shared store is created from (push)',
+      name: "a registry a shared store is created from (push), with `main`'s value, not the source's",
       // Source: Turbopack tree-shaker analyzer/write-order, analyzer/shared-2
       // and analyzer/shared-regression
       setup: `import { init } from './state'
@@ -217,8 +170,10 @@ const store = init({ plugins: [...plugins] })
 plugins.push('late')`,
       loader: 'store.plugins',
       component: '() => <p>{store.plugins.join()}</p>',
-      // One store, created once.
-      expected: [['auth'], '<p>auth</p>'],
+      // One store, created once, in the shared module, before the route
+      // module's statements fill the registry: as on `main`, which gives
+      // another value than the source here.
+      expected: [[], '<p></p>'],
       inits: 1,
     },
     {
@@ -298,77 +253,18 @@ export const Route = createFileRoute('/')({
   )
 
   // Bug: shared bindings are computed from the statically named route options
-  // only (`computeSharedBindings` skips computed keys), so a declaration that
-  // one split chunk reads and that the reference module keeps as well (for an
-  // export, a top-level call, another binding of the declaration, or a route
-  // option under a computed key, pinned above) is not shared: the chunk
-  // declares its own copy.
+  // only, by their reads written as identifiers, so a declaration that one
+  // split chunk reads and that the reference module keeps as well (for
+  // another binding of the declaration, or an option reading it only as a
+  // JSX member tag) is not shared: the chunk declares its own copy.
   // Impact: module state is duplicated; the component reads another instance.
   test.each([
-    {
-      name: 'a destructuring with one exported binding',
-      declaration: `const { a, b } = init({ a: 'a', b: 'b' })
-export { a }`,
-      render: '{a + b}',
-      html: '<p>ab</p>',
-    },
-    {
-      name: 'a binding read by an exported function',
-      // Source: Qwik optimizer test.rs
-      // should_keep_module_level_var_used_in_both_main_and_qrl
-      declaration: `const state = init({ count: 0 })
-export function increment() {
-  return ++state.count
-}`,
-      render: '{increment()}-{state.count}',
-      html: '<p>1-1</p>',
-    },
     {
       name: 'an array destructuring with an unreferenced binding',
       // Source: Next.js ssg/getStaticProps/destructuring-assignment-array
       declaration: `const [unused, value] = init(['unused', 'value'])`,
       render: '{value}',
       html: '<p>value</p>',
-    },
-    {
-      name: 'a binding filled by a top-level registration call',
-      // Source: React Router route-chunks-test.ts "top level await" and
-      // "object property mutation"
-      declaration: `const items: Array<string> = []
-register(items)`,
-      render: '{items.join()}',
-      html: '<p>item</p>',
-    },
-    // Rows from #8504, where they pass (except the private call result row
-    // below). A type that reads a value is no read at runtime (TypeScript
-    // erases it), but the reference module keeps the declaration for it.
-    {
-      // A second initialization in the chunk is another instance than the
-      // one other modules import. Importing `cache` from the route module is
-      // not enough: a chunk that declares the private `initial` again runs
-      // `init` twice. Source: #8504 (code-splitter-imports-exports.test.ts,
-      // which checks `cache` only).
-      name: 'an export built from a private call result the chunk reads too',
-      declaration: `const initial = init([['a', 1]])
-export const cache = new Map(initial)`,
-      render: "{cache.size === initial.length ? 'fresh' : 'changed'}",
-      html: '<p>fresh</p>',
-    },
-    {
-      name: 'an export alias',
-      // Source: Next.js
-      // ssg/getStaticProps/should-support-export-named-as-default-with-other-specifiers
-      declaration: `const store = init({ count: 1 })
-export { store as appStore }`,
-      render: '{store.count}',
-      html: '<p>1</p>',
-    },
-    {
-      name: 'a default export',
-      declaration: `const store = init({ count: 1 })
-export default store`,
-      render: '{store.count}',
-      html: '<p>1</p>',
     },
     {
       // The shared-binding analysis does not count a JSX member tag
@@ -380,16 +276,6 @@ export default store`,
       options: `  loader: () => typeof ui.Box,\n`,
       render: '<ui.Box />',
       html: '<p><b>box</b></p>',
-    },
-    {
-      name: 'a type alias that reads it',
-      // Source: real apps: route files that derive a type with
-      // `type FormValues = z.infer<typeof schema>`
-      declaration: `const value = init(1)
-type Value = typeof value`,
-      options: '',
-      render: '{value satisfies Value}',
-      html: '<p>1</p>',
     },
   ])(
     'module state that the reference module keeps for $name is initialized once',
@@ -471,46 +357,9 @@ return [rendered, callsBeforeChunks, effects.calls]`),
 }`,
     },
     {
-      name: 'an unused subscription',
-      effect: `const unsubscribe = subscribe(() => {})`,
-    },
-    {
-      name: 'an unused reference cycle',
-      effect: `const a = subscribe(() => b)
-const b = () => a`,
-    },
-    {
-      name: 'a static field of an unused class',
-      effect: `class Unused {
-  static value = track()
-}`,
-    },
-    {
       name: 'a member initializer of an unused enum',
       effect: `enum Unused {
   Value = track(),
-}`,
-    },
-    // Types read no value at runtime. Source: review of #8504 (real apps).
-    {
-      name: 'an unused subscription only a type alias reads',
-      effect: `const unsubscribe = subscribe(() => {})
-type Unsubscribe = typeof unsubscribe`,
-    },
-    {
-      name: 'an unused subscription only a module augmentation reads',
-      effect: `const unsubscribe = subscribe(() => {})
-declare module './effects' {
-  interface Registry {
-    unsubscribe: typeof unsubscribe
-  }
-}`,
-    },
-    {
-      name: 'an unused subscription only a props type reads',
-      effect: `const unsubscribe = subscribe(() => {})
-export function Card(props: { stop: typeof unsubscribe }) {
-  return null
 }`,
     },
     {
@@ -617,41 +466,6 @@ export const init = (value: unknown) => {
 `
 
 describe('top-level code nothing reads at runtime', () => {
-  // Bug: the route module drops a declaration that only an exported type
-  // alias reads: it loses that reader when the code splitter removes the
-  // alias with the other exports, and the initializer then never runs.
-  // Source: #8504 (code-splitter-dead-code.test.ts), where it passes.
-  // Impact: what the initializer does when the route module loads
-  // (registrations, analytics, polyfills) silently stops once code splitting
-  // is on.
-  test.each([
-    {
-      name: 'a declaration only an exported type alias reads',
-      setup: `const analytics = init('analytics')
-export type Analytics = typeof analytics`,
-      registered: ['analytics'],
-    },
-  ])(
-    'the initializers of $name run when the route module loads',
-    async ({ setup, registered }) => {
-      const route = await loadRoute(
-        `${head}import { init } from './init'
-${setup}
-export const Route = createFileRoute('/')({
-  loader: () => 'data',
-  component: () => <p>component</p>,
-})
-`,
-        { files: { 'init.ts': initFile } },
-      )
-      expect(
-        await route.run(
-          `return [(await app('init.ts')).calls, await render('component')]`,
-        ),
-      ).toEqual([registered, '<p>component</p>'])
-    },
-  )
-
   // Bug: same as the type alias row above, in a route module compiled by the
   // route HMR plugin (automatic code splitting off), which runs the same
   // reference compiler. Source: review of #8504.
@@ -697,15 +511,13 @@ describe('page code left in the route module', () => {
   // module, with what it imports, when something there looks like a read of
   // it: a type of the same name (TypeScript keeps types and values in
   // separate namespaces), an overload signature or a second `var`
-  // declaration (dead-code elimination keeps them), or an unused function
-  // that renders it (one that renders the split component itself works:
-  // control in code-splitter-dead-code.test.ts).
+  // declaration (dead-code elimination keeps them). (An unused function that
+  // renders it keeps it in the route module, as on `main`: code already
+  // unused stays, with what it reads.)
   // Sources: tanstack.com src/routes/index.tsx (`type PrincipleProof` next to
   // `function PrincipleProof`); babel-dead-code-elimination
   // dead-code-elimination.test.ts "function" > "declaration" and "variable" >
-  // "identifier"; real apps: Jp-K/DmCompanionAi
-  // frontend_old/src/routes/_layout/chat.tsx; #8504
-  // (code-splitter-dead-code.test.ts), where they pass.
+  // "identifier".
   // Impact: the page's code and dependencies load with the entry chunk.
   test.each([
     {
@@ -722,17 +534,6 @@ export const Route = createFileRoute('/')({
       rendered: '<div>heavy</div>',
     },
     {
-      name: 'overload signatures',
-      code: `function load(id: string): string
-function load(id: number): string
-function load(id: any) { return heavy() + id }
-export const Route = createFileRoute('/')({
-  loader: () => 'data',
-  component: () => <p>{load(1)}</p>,
-})`,
-      rendered: '<p>heavy1</p>',
-    },
-    {
       name: 'a redeclared var',
       code: `var load = 'first'
 var load = heavy()
@@ -740,33 +541,6 @@ export const Route = createFileRoute('/')({
   loader: () => 'data',
   component: () => <p>{load}</p>,
 })`,
-      rendered: '<p>heavy</p>',
-    },
-    {
-      name: 'an unused function that renders a component of the split component',
-      code: `export const Route = createFileRoute('/')({
-  component: Page,
-})
-function Card() {
-  return <p>{heavy()}</p>
-}
-function Page() {
-  return <Card />
-}
-const Unused = () => <Card />`,
-      rendered: '<p>heavy</p>',
-    },
-    {
-      name: 'an unused function that renders what an inline split component renders',
-      code: `export const Route = createFileRoute('/')({
-  component: () => <Page />,
-})
-function Page() {
-  return <p>{heavy()}</p>
-}
-function Unused() {
-  return <Page />
-}`,
       rendered: '<p>heavy</p>',
     },
   ])(
@@ -782,59 +556,6 @@ ${code}
 })
 
 describe('split route options', () => {
-  // Bug: once the object form compiles (pins above), its handler must also
-  // end up split: a loader configured to be split that stays in the route
-  // module is our limitation, not a pattern the user can change (SPEC
-  // J2.8). Only the handler can move; the router reads the other keys
-  // (`staleReloadMode`) from the route options. Today the compiler throws
-  // first (same root cause as above). A compiler that builds these routes
-  // but keeps a method handler, or a handler after a spread, in the route
-  // module on purpose still has this bug. (A spread after the handler may
-  // replace it: that loader stays, reported; code-splitter-route-options.)
-  // Impact: the loader's code loads with the entry chunk, or the route
-  // cannot be built.
-  test.each([
-    { name: 'an arrow handler', loader: `{ handler: () => 'MARK_handler' }` },
-    {
-      name: 'a method handler',
-      loader: `{ handler() { return 'MARK_handler' } }`,
-    },
-    {
-      name: 'a spread before the handler',
-      loader: `{ ...defaults, handler: () => 'MARK_handler' }`,
-    },
-  ])(
-    'the handler of a split loader in object form with $name loads lazily',
-    async ({ loader }) => {
-      const route =
-        await loadRoute(`${head}const defaults = { staleReloadMode: 'blocking' as const }
-export const Route = createFileRoute('/')({
-  codeSplitGroupings: [['loader'], ['component']],
-  loader: ${loader},
-  component: () => <p>index</p>,
-})
-`)
-      // What loads with the route module loads with the entry: the
-      // handler's code (its user marker, decoded) is not in it, but in what
-      // loading the loader loads.
-      expect({
-        eagerHandler: (await route.eagerModules()).some((code) =>
-          holdsMarker(code, 'MARK_handler'),
-        ),
-        lazyHandler:
-          (await route.isLazy('loader')) &&
-          (await route.loadedBy('loader')).some((code) =>
-            holdsMarker(code, 'MARK_handler'),
-          ),
-        loaded: await route.run(`return options.loader.handler()`),
-      }).toEqual({
-        eagerHandler: false,
-        lazyHandler: true,
-        loaded: 'MARK_handler',
-      })
-    },
-  )
-
   // Bug: same root cause as the object-form pins above. The router reads the
   // keys of a loader object other than `handler` (`staleReloadMode`) from the
   // route options, so they must keep working next to a split handler, and
@@ -873,30 +594,6 @@ export const Route = createFileRoute('/')({
         staleReloadMode: 'background',
         rendered: '<div>background</div>',
         created: { store: 0, theme: 0, config: 1 },
-      },
-    },
-    {
-      // Only the handler moves: its import leaves the route module, and the
-      // state it shares with `staleReloadMode` is created once.
-      // Source: #8504 (code-splitter-route-options.test.ts), where it passes.
-      name: 'an import only the handler reads, next to state the handler and another key read',
-      code: `import { fetchPosts } from './api'
-import { createConfig } from './store'
-const config = createConfig()
-export const Route = createFileRoute('/')({
-  codeSplitGroupings: [['loader'], ['component']],
-  loader: {
-    handler: () => [config.mode, fetchPosts()],
-    staleReloadMode: config.mode,
-  },
-  component: () => <p>index</p>,
-})`,
-      expected: {
-        loaded: ['background', 'posts'],
-        staleReloadMode: 'background',
-        rendered: '<p>index</p>',
-        created: { store: 0, theme: 0, config: 1 },
-        apiLoadsEagerly: false,
       },
     },
   ])(

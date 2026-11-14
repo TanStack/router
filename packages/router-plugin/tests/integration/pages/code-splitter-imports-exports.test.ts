@@ -10,10 +10,7 @@
  */
 import { parse as parseWithBabel } from '@babel/core'
 import { describe, expect, it } from 'vitest'
-import {
-  expectDiagnostic,
-  findDiagnostics,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   expectValidModules,
   head,
@@ -280,48 +277,24 @@ export const Route = createFileRoute('/')({
   })
 
   // With React's classic JSX runtime, JSX compiles to `React.createElement`,
-  // so a React import that the TypeScript code only uses in types must stay:
-  // the app's own classic transform runs on what the router plugin emits,
-  // and the page renders the component.
-  it.each([
-    { name: 'split component modules', pluginOptions: undefined },
-    {
-      name: 'route module compiled for HMR',
-      pluginOptions: { autoCodeSplitting: false },
-    },
-  ])(
-    'keeps the React import of the $name for classic JSX',
-    async ({ pluginOptions }) => {
-      const route = await loadRoute(
-        `import * as React from 'react'
+  // so a React import that the TypeScript code only uses in types must stay
+  // in a module that keeps the JSX: the app's own classic transform runs on
+  // what the router plugin emits, and the page renders the component.
+  it('keeps the React import of the route module compiled for HMR for classic JSX', async () => {
+    const route = await loadRoute(
+      `import * as React from 'react'
 ${head}function Page({ title = 'classic' }: { title?: React.ReactNode }) {
   return <p>{title}</p>
 }
 export const Route = createFileRoute('/')({ component: Page })
 `,
-        {
-          frameworkPluginOptions: { jsxRuntime: 'classic' },
-          pluginOptions,
-          hmr: pluginOptions !== undefined,
-        },
-      )
-      // `React.createElement` reads an imported `React`.
-      expect(await route.run(`return render('component')`)).toBe(
-        '<p>classic</p>',
-      )
-      await expectValidModules(route)
-    },
-  )
-
-  it('keeps the React import of the split component modules with inline JSX when only a top-level type reads React', async () => {
-    const route = await loadRoute(
-      `import * as React from 'react'
-${head}type Title = React.ReactNode
-export const Route = createFileRoute('/')({ component: () => <p>classic</p> })
-`,
-      { frameworkPluginOptions: { jsxRuntime: 'classic' } },
+      {
+        frameworkPluginOptions: { jsxRuntime: 'classic' },
+        pluginOptions: { autoCodeSplitting: false },
+        hmr: true,
+      },
     )
-    expect(await route.isLazy('component')).toBe(true)
+    // `React.createElement` reads an imported `React`.
     expect(await route.run(`return render('component')`)).toBe('<p>classic</p>')
     await expectValidModules(route)
   })
@@ -609,23 +582,25 @@ return [await render('component'), other.label, typeof other.Page]`),
   // Splitting it anyway is the goal, decided by the build (pinned in
   // known-bugs-code-splitter.test.ts, "page code exported from the route
   // file loads with its chunk").
+  // (distinct export names: the warning prints once per file and wording in a
+  // run, and these routes share one dev server and one file name, J2.19)
   const exportedOptions = [
     {
       name: 'an exported component, with the errorComponent split',
       code: `${head}import { see } from './see'
-export function Page() {
-  see(Page)
+export function ExportedPage() {
+  see(ExportedPage)
   return <p>page</p>
 }
 export const Route = createFileRoute('/')({
-  component: Page,
+  component: ExportedPage,
   errorComponent: () => <p>error</p>,
 })
 `,
       routeId: '/',
       split: 'errorComponent',
       option: 'component',
-      binding: 'Page',
+      binding: 'ExportedPage',
       value: '<p>page</p>',
     },
     {
@@ -674,13 +649,13 @@ export const Route = createFileRoute('/_layout')({
     {
       name: 'a component default-exported by name, with the errorComponent split',
       code: `${head}import { see } from './see'
-const Page = () => {
-  see(Page)
+const NamedPage = () => {
+  see(NamedPage)
   return <p>page</p>
 }
-export default Page
+export default NamedPage
 export const Route = createFileRoute('/')({
-  component: Page,
+  component: NamedPage,
   errorComponent: () => <p>error</p>,
 })
 `,
@@ -955,8 +930,8 @@ export const Route = createFileRoute('/ambient')({
 
   // An import the code only references from types (without `import type`)
   // is not imported by the route module when only the split component's
-  // types reference it. (When only the loader's types do, the chunks import
-  // it: pinned in known-bugs-code-splitter.test.ts.) Source: #8504.
+  // types reference it: a use in a type is a use the split removed. Source:
+  // #8504.
   it('leaves an import only the split component references from types out of the route module', async () => {
     const route = await loadRoute(
       `${head}import { useState } from 'react'
@@ -974,6 +949,36 @@ export const Route = createFileRoute('/')({
     expect(await route.requested()).not.toContain('/projects.ts')
     await expectValidModules(route)
     expect(await route.run(`return render('component')`)).toBe('<p>react</p>')
+  })
+
+  // The same with a module TypeScript keeps under `verbatimModuleSyntax` (a
+  // namespace with values, imported by default): no module imports it, as
+  // nothing reads it by value (`main` loads it with the chunk)
+  it('leaves a namespace import only the split component references in a type argument out of the route module', async () => {
+    const route = await loadRoute(
+      `${head}import { useState } from 'react'
+import Model from './model'
+function Page() {
+  const [rows] = useState<Model.Row[]>([])
+  return <p>{rows.length}</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      {
+        files: {
+          'model.ts': `namespace Model {
+  export type Row = { id: string }
+  export const table = 'rows'
+}
+export default Model
+`,
+        },
+      },
+    )
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.requested()).not.toContain('/model.ts')
+    await expectValidModules(route)
+    expect(await route.run(`return render('component')`)).toBe('<p>0</p>')
   })
 
   // Source: @babel/plugin-transform-typescript class/private-method-override;
@@ -1289,284 +1294,5 @@ export const Route = createFileRoute('/')({
         `return [await render('component'), await render('errorComponent')]`,
       ),
     ).toEqual(['<p>shared</p>', '<p>true</p>'])
-  })
-})
-
-// An exported component the route file augments (`Page.displayName = …`,
-// static props, `preload`) leaves, in a build, for its extracted module with
-// its augmentations, under the effect-order rule of every move: a surviving
-// effect before the augmentation keeps the component in the route module
-// (the extracted module would evaluate before that effect), one after keeps
-// its order. Other modules import the augmented component either way, and
-// in dev the component stays in the route module whatever the order
-// (nothing is bundled there).
-describe('an exported component with augmentations', () => {
-  const augmented = [
-    {
-      name: 'a displayName',
-      code: `${head}export function Page() {
-  return <p title="MARK_PAGE">{Page.displayName}</p>
-}
-Page.displayName = 'PageDisplay'
-export const Route = createFileRoute('/')({ component: Page })
-`,
-      script: `const { Page } = await app('importer.ts')
-return [await render('component'), Page.displayName]`,
-      expected: ['<p title="MARK_PAGE">PageDisplay</p>', 'PageDisplay'],
-      extracted: true,
-    },
-    {
-      name: 'static props',
-      code: `${head}export const Page = () => <p title="MARK_PAGE">{Page.label}</p>
-Page.label = 'static'
-Page.count = 2
-export const Route = createFileRoute('/')({ component: Page })
-`,
-      script: `const { Page } = await app('importer.ts')
-return [await render('component'), Page.label, Page.count]`,
-      expected: ['<p title="MARK_PAGE">static</p>', 'static', 2],
-      extracted: true,
-    },
-    {
-      name: 'a preload',
-      code: `${head}export function Page() {
-  return <p title="MARK_PAGE">page</p>
-}
-Page.preload = () => import('./heavy')
-export const Route = createFileRoute('/')({ component: Page })
-`,
-      script: `const { Page } = await app('importer.ts')
-const heavy = await Page.preload()
-return [await render('component'), heavy.weight]`,
-      expected: ['<p title="MARK_PAGE">page</p>', 'heavy'],
-      extracted: true,
-    },
-    {
-      // (R139: the write is no effect, so it is no longer ordered against
-      // `see()`; the row asserted that it stayed in the route module)
-      name: 'a displayName after a surviving effect (the write is no effect)',
-      code: `${head}import { see } from './see'
-see('before')
-export function Page() {
-  return <p title="MARK_PAGE">{Page.displayName}</p>
-}
-Page.displayName = 'PageDisplay'
-export const Route = createFileRoute('/')({ component: Page })
-`,
-      script: `const { Page } = await app('importer.ts')
-const { seen } = await app('see.ts')
-return [await render('component'), Page.displayName, seen]`,
-      expected: [
-        '<p title="MARK_PAGE">PageDisplay</p>',
-        'PageDisplay',
-        ['before'],
-      ],
-      extracted: true,
-    },
-    {
-      name: 'a displayName before a surviving effect (the effect keeps its order)',
-      code: `${head}import { see } from './see'
-export function Page() {
-  return <p title="MARK_PAGE">{Page.displayName}</p>
-}
-Page.displayName = 'PageDisplay'
-see('after')
-export const Route = createFileRoute('/')({ component: Page })
-`,
-      script: `const { Page } = await app('importer.ts')
-const { seen } = await app('see.ts')
-return [await render('component'), Page.displayName, seen]`,
-      expected: [
-        '<p title="MARK_PAGE">PageDisplay</p>',
-        'PageDisplay',
-        ['after'],
-      ],
-      extracted: true,
-    },
-  ]
-
-  it.each(augmented)(
-    'with $name loads with its chunk and keeps it',
-    async ({ code, script, expected, extracted }) => {
-      const route = await loadRoute(code, {
-        files: {
-          'see.ts': `export const seen: Array<unknown> = []
-export const see = (value: unknown) => seen.push(value)
-`,
-          'heavy.ts': `export const weight = 'heavy'\n`,
-          'importer.ts': `export { Page } from './route'\n`,
-        },
-      })
-      await expectValidModules(route)
-      expect(await route.run(script)).toEqual(expected)
-      expect(await route.isLazy('component')).toBe(true)
-      // in dev the route module holds the component (nothing is extracted
-      // there); a production build holds it in the route's chunk only when
-      // it left the route module (the extracted module's re-export is unused
-      // and dropped), with the route module when it was kept
-      expect(holdsMarker(await route.transform(), 'MARK_PAGE')).toBe(true)
-      expect((await route.production()).where('MARK_PAGE')).toBe(
-        extracted ? 'lazy' : 'eager',
-      )
-    },
-  )
-})
-
-// An exported `let` only split code uses leaves with the code assigning
-// it (R150: every writer in its module): an exported setter, a setter only
-// the component calls, a statement assigning it when the module loads. The
-// route module re-exports it, so other modules importing it from the route
-// file read its current value; the build loads it with the component and
-// reports nothing.
-describe('an exported let with every assignment moving with it', () => {
-  it.each([
-    {
-      name: 'an exported setter',
-      code: `export let mode = 'MARK_MODE'
-export function setMode(m: string) {
-  mode = m
-}
-export const Route = createFileRoute('/')({
-  component: () => {
-    setMode('set')
-    return <p>{mode}</p>
-  },
-})
-`,
-      expected: ['<p>set</p>', 'set'],
-    },
-    {
-      name: 'a setter only the component calls',
-      code: `export let mode = 'MARK_MODE'
-function setMode(m: string) {
-  mode = m
-}
-export const Route = createFileRoute('/')({
-  component: () => {
-    setMode('set')
-    return <p>{mode}</p>
-  },
-})
-`,
-      expected: ['<p>set</p>', 'set'],
-    },
-    {
-      name: 'a statement assigning it at load',
-      code: `export let mode = 'MARK_MODE'
-mode = mode.toLowerCase()
-export const Route = createFileRoute('/')({
-  component: () => <p>{mode}</p>,
-})
-`,
-      expected: ['<p>mark_mode</p>', 'mark_mode'],
-    },
-  ])(
-    'loads with the component, other importers read its current value: $name',
-    async ({ code, expected }) => {
-      const route = await loadRoute(`${head}${code}`, {
-        files: {
-          'importer.ts': `import { mode } from './route'
-export const read = () => mode
-`,
-        },
-      })
-      await expectValidModules(route)
-      expect(
-        await route.run(`const other = await app('importer.ts')
-return [await render('component'), other.read()]`),
-      ).toEqual(expected)
-      expect(
-        findDiagnostics(await route.diagnostics(), {
-          file: route.url.slice(1),
-          root: route.host.root,
-        }),
-      ).toEqual([])
-      expect((await route.production()).where('MARK_MODE')).toBe('lazy')
-    },
-  )
-})
-
-// J2.8: an exported binding a split component needs that cannot leave the
-// route module (it reads, when it loads, what the loader keeps there) is
-// reported once in dev, naming the file; a route file exporting only
-// `Route` is not. (A name no other row of a shared dev host uses: its
-// ledger reports a wording once per file.)
-describe('an exported binding kept in the route module', () => {
-  it('is reported once naming the file when it reads what the route module keeps, and not when nothing keeps it', async () => {
-    const kept = await loadRoute(
-      `${head}const visitLog = { count: 1 }
-export const keptVisits = visitLog.count
-function Page() {
-  return <p>{keptVisits}</p>
-}
-export const Route = createFileRoute('/')({
-  loader: () => visitLog.count,
-  component: Page,
-})
-`,
-    )
-    expect(await kept.run(`return render('component')`)).toBe('<p>1</p>')
-    expectDiagnostic(await kept.diagnostics(), {
-      severity: 'warning',
-      file: kept.url.slice(1),
-      root: kept.host.root,
-      times: 1,
-    })
-    const free = await loadRoute(
-      `${head}import { createStore } from './store'
-const store = createStore()
-export function Card() {
-  return <b>card</b>
-}
-function Page() {
-  return <p>{store.value}<Card /></p>
-}
-export const Route = createFileRoute('/')({ component: Page })
-`,
-      {
-        files: {
-          'store.ts': `export const createStore = () => ({ value: 'stored' })\n`,
-        },
-      },
-    )
-    expect(await free.run(`return render('component')`)).toBe(
-      '<p>stored<b>card</b></p>',
-    )
-    expect(
-      findDiagnostics(await free.diagnostics(), {
-        file: free.url.slice(1),
-        root: free.host.root,
-      }),
-    ).toEqual([])
-  })
-})
-
-// In dev a pure exported component only the split component
-// renders stays in the route module as written (no extracted module to
-// request one level deeper), and the route's chunk carries its own copy, as
-// in a build; other modules importing it from the route file get the route
-// module's instance.
-describe('an exported component in dev', () => {
-  it('stays in the route module, and the split component renders its own copy', async () => {
-    const route = await loadRoute(
-      `${head}export function Card() {
-  return <b title="MARK_CARD">card</b>
-}
-function Page() {
-  return <Card />
-}
-export const Route = createFileRoute('/')({ component: Page })
-`,
-      { files: { 'importer.ts': `export { Card } from './route'\n` } },
-    )
-    await expectValidModules(route)
-    expect(
-      await route.run(`const { Card } = await app('importer.ts')
-return [await render('component'), typeof Card]`),
-    ).toEqual(['<b title="MARK_CARD">card</b>', 'function'])
-    expect(holdsMarker(await route.transform(), 'MARK_CARD')).toBe(true)
-    const chunk = await route.loadedBy('component')
-    expect(chunk.some((code) => holdsMarker(code, 'MARK_CARD'))).toBe(true)
-    expect((await route.production()).where('MARK_CARD')).toBe('lazy')
   })
 })

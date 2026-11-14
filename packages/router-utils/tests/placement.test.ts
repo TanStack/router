@@ -485,7 +485,6 @@ describe('glue and renames (lane router)', () => {
       plan(ctx) {
         const found = findRouteOptions(ctx)!
         const p = propertyOf(found.options, 'component')!
-        ctx.setRouteModule()
         const out = ctx.declareOutput({
           kind: 'split',
           key: 'component',
@@ -758,7 +757,7 @@ describe("an extracted export's module is a destination", () => {
     )
     expect(r2).toMatchObject([{ code: 'eager-export:state' }])
     expect(r2[0]!.message).toContain(
-      'stays in the route module because it uses `F0` when it loads, and the route module writes `F0` then (line 8), so it loads with the route module instead of with that code. Move it, `F0`, `on`, `r3`, `l5` and the statements writing them when the module loads to their own module and import them from there.',
+      'stays in the module because it uses `F0` when it loads, and the module writes `F0` then (line 8), so it loads with the module instead of with that code. Move it, `F0`, `on`, `r3`, `l5` and the statements writing them when the module loads to their own module and import them from there.',
     )
     // the fix: `F0`, its write, `r2` and what reads `F0` before the write
     // (`r3` hands `r2` to a call, `l5` names `F0`) with what that reads
@@ -853,7 +852,7 @@ describe("an extracted export's module is a destination", () => {
       },
     ])
     expect(out!.diagnostics[0]!.message).toBe(
-      '[tanstack-router] `r2` in /app/route.tsx stays in the route module because it uses `o0` when the module loads, and the module writes `o0` then (line 4); move `r2`, `o0` and the statements writing them when the module loads to their own module, so `r2` can load with the split `component`.',
+      '`r2` in /app/route.tsx stays in the module because it uses `o0` when the module loads, and the module writes `o0` then (line 4); move `r2`, `o0` and the statements writing them when the module loads to their own module, so `r2` can load with the split `component`.',
     )
   })
 
@@ -897,10 +896,10 @@ describe("an extracted export's module is a destination", () => {
       'eager-split:written',
     ])
     expect(kept[0]!.message).toContain(
-      '`Ex2` in /app/route.tsx stays in the route module because the statement on line 6, which uses it, stays there: it also uses `l4`, which the split `component` uses',
+      '`Ex2` in /app/route.tsx stays in the module because the statement on line 6, which uses it, stays there: it also uses `l4`, which the split `component` uses',
     )
     expect(kept[1]!.message).toContain(
-      '`l4` in /app/route.tsx stays in the route module because the statement on line 6, which uses it, stays there: it also uses `Ex2`, which the split `component` uses',
+      '`l4` in /app/route.tsx stays in the module because the statement on line 6, which uses it, stays there: it also uses `Ex2`, which the split `component` uses',
     )
     // the move takes the statement writing `l4` when the module loads (left
     // behind, it would assign an import)
@@ -2288,7 +2287,7 @@ describe('extracted-export outputs', () => {
         'class A { t = theme }\nclass B extends A { constructor() { super() } }\nexport const config = /* @__PURE__ */ new B()',
       ],
     ])(
-      'keeps an export whose evaluation calls a function reading what the route module keeps (no TDZ): %s',
+      'keeps an export whose evaluation calls a function reading what the module keeps (no TDZ): %s',
       async (_, declarations) => {
         const code = dedent(`
           import { createFileRoute } from 'toy-router'
@@ -2327,7 +2326,7 @@ describe('extracted-export outputs', () => {
         'export enum Label { A = 1 }\nexport enum Label { B = 2 }',
       ],
     ])(
-      'the route module re-exports a binding of %s once',
+      'the module re-exports a binding of %s once',
       async (_, declarations) => {
         const code = dedent(`
           import { createFileRoute } from 'toy-router'
@@ -2712,7 +2711,7 @@ describe('extracted-export outputs', () => {
       `),
     ],
   ])(
-    'does not report an exported declaration the route module needs anyway: %s',
+    'does not report an exported declaration the module needs anyway: %s',
     async (_, code) => {
       const r = await extract(code)
       expect(r.diagnostics).toEqual([])
@@ -2796,15 +2795,8 @@ describe('extracted-export outputs', () => {
       'kept',
       'Move it and `kept` to their own module and import them from there.',
     ],
-    [
-      '`Route` (declared after it)',
-      'export const count = Route.options.path',
-      'count',
-      'Route',
-      "It can't move to a module of its own: that module would also need `Route`, which stays in the route module.",
-    ],
   ])(
-    'offers, for an export reading what the route module keeps, the move of what it reads when it loads: %s',
+    'offers, for an export reading what the module keeps, the move of what it reads when it loads: %s',
     async (_, decls, name, read, fix) => {
       const route = dedent(`
         export const Route = createFileRoute('/')({
@@ -2824,7 +2816,7 @@ describe('extracted-export outputs', () => {
         [
           'eager-export:reads',
           code.indexOf(`${name} = `),
-          `[tanstack-router] The export \`${name}\` of /app/route.tsx is used only by the split \`component\`, but stays in the route module because it reads \`${read}\` when it loads, which the route module keeps, so it loads with the route module instead of with that code. ${fix}`,
+          `The export \`${name}\` of /app/route.tsx is used only by the split \`component\`, but stays in the module because it reads \`${read}\` when it loads, which the module keeps, so it loads with the module instead of with that code. ${fix}`,
         ],
       ])
     },
@@ -2869,7 +2861,7 @@ describe('extracted-export outputs', () => {
         'eager-export:reads',
       ])
       expect(out?.diagnostics[0]!.message).toContain(
-        `so it loads with the route module instead of with that code. ${fix}`,
+        `so it loads with the module instead of with that code. ${fix}`,
       )
     },
   )
@@ -2889,7 +2881,7 @@ describe('extracted-export outputs', () => {
     const r = await extract(code)
     expect(r.diagnostics.map((d) => d.message)).toEqual([
       expect.stringContaining(
-        'The exports `value`, `alias` of /app/route.tsx are used only by the split `component`, but stay in the route module because ',
+        'The exports `value`, `alias` of /app/route.tsx are used only by the split `component`, but stay in the module because ',
       ),
     ])
   })
@@ -3488,20 +3480,6 @@ describe('a `var` declared again', () => {
 })
 
 describe('route-module specifics (lane router)', () => {
-  it('drops `export { X }` of an inline type-only import with the import (route module)', async () => {
-    const code = dedent(`
-      import { createFileRoute } from 'toy-router'
-      import { type Settings } from './settings'
-      export { Settings }
-      export const Route = createFileRoute('/')({
-        component: () => 1,
-      })
-    `)
-    const r = await split(code)
-    expect(r.env).not.toContain('Settings')
-    expect(r.chunks.component).not.toContain('Settings')
-  })
-
   it('keeps a pragma comment written after the imports non-leading in a chunk (J2.16)', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -3515,23 +3493,6 @@ describe('route-module specifics (lane router)', () => {
     expect(r.chunks.component).toMatch(
       /^export \{\}\n\/\*\* @jsxImportSource @emotion\/react \*\/\nfunction Page/,
     )
-  })
-
-  it('drops inline type specifiers of a route module from the env output (J2.5)', async () => {
-    // `import { type Db }` survives verbatimModuleSyntax as `import './db'`;
-    // `import type` is erased by TypeScript and may stay
-    const code = dedent(`
-      import { createFileRoute } from 'toy-router'
-      import { type Db } from './db'
-      import type { Other } from './other'
-      function Page(props: { db?: Db; other?: Other }) { return 'page' }
-      export const Route = createFileRoute('/')({ component: Page })
-    `)
-    const r = await split(code)
-    expect(r.env).not.toContain("'./db'")
-    expect(r.env).toContain("import type { Other } from './other'")
-    expect(r.chunks.component).not.toContain("'./db'")
-    expect(r.chunks.component).not.toContain("'./other'")
   })
 
   it('moves an effectful declaration an identifier option value named into the chunk that needs it', async () => {
@@ -3550,7 +3511,6 @@ describe('route-module specifics (lane router)', () => {
       plan(ctx) {
         const found = findRouteOptions(ctx)!
         const p = propertyOf(found.options, 'component')!
-        ctx.setRouteModule()
         const out = ctx.declareOutput({
           kind: 'split',
           key: 'component',
@@ -3747,18 +3707,6 @@ describe('route-module specifics (lane router)', () => {
     )
   })
 
-  it('keeps a React binding JSX may compile to when the runtime is unknown', async () => {
-    const code = dedent(`
-      import * as React from 'react'
-      import { createFileRoute } from 'toy-router'
-      type Title = React.ReactNode
-      export const Route = createFileRoute('/')({ component: () => <p>classic</p> })
-    `)
-    const r = await split(code)
-    expect(r.chunks.component).toContain("import * as React from 'react'")
-    expect(r.env).not.toContain("from 'react'")
-  })
-
   // Source: tanstack.com `ds.typography.tsx`: `import type * as React from
   // 'react'` and JSX in the split component gave the chunk `import { React }`
   // from the route module, which exported a type-only binding (Rolldown:
@@ -3767,12 +3715,6 @@ describe('route-module specifics (lane router)', () => {
     ['a type-only namespace import', "import type * as React from 'react'"],
     ['a type-only default import', "import type React from 'react'"],
     ['a type-only named import', "import type { React } from 'react'"],
-    // (an inline `type` specifier follows its statement's value specifiers)
-    [
-      'an inline type specifier',
-      "import { type React, useId } from 'react'",
-      "import { useId } from 'react'",
-    ],
     ['an interface', 'interface React { node: unknown }'],
   ])(
     'never reads %s named React as the JSX factory',
@@ -4550,32 +4492,6 @@ describe('needers and homes', () => {
     expect(r.chunks.component).not.toContain('Named')
   })
 
-  it('drops a type-only-used value import in route modules and keeps it elsewhere (J2.5)', async () => {
-    const route = dedent(`
-      import { createFileRoute } from 'toy-router'
-      import { Thing } from './thing'
-      export const Route = createFileRoute('/')({
-        component: () => null as unknown as Thing,
-      })
-    `)
-    const r = await split(route)
-    expect(r.env).not.toContain("'./thing'")
-    const host = new MemoryHost({
-      files: {
-        '/app/lib.ts': dedent(`
-          import { wrapServer } from 'toy-start'
-          import { Thing } from './thing'
-          export const fn = wrapServer(() => 1 as unknown as Thing)
-        `),
-      },
-    })
-    const out = await host.compile('/app/lib.ts', [toyEnvPlanner()])
-    expect(out?.code).toContain("import { Thing } from './thing'")
-    expect(host.edgesOf(out!).map((e) => [e.specifier, e.kind])).toContainEqual(
-      ['./thing', 'evaluation'],
-    )
-  })
-
   it('keeps type units in the env module and out of derived outputs', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -4614,23 +4530,6 @@ describe('needers and homes', () => {
     expect(r.chunks.component).toContain('function Chip')
     expect(r.chunks.component).not.toContain('./labels')
     expect(r.chunks.component).not.toContain('./chip')
-  })
-
-  it('drops an inline type specifier of a route module whatever its cluster (J2.5)', async () => {
-    const code = dedent(`
-      import { createFileRoute } from 'toy-router'
-      import { type Badge, label } from './labels'
-      function Badge() { return label }
-      function Page() { return Badge() }
-      export const Route = createFileRoute('/')({
-        loader: () => Badge(),
-        component: Page,
-      })
-    `)
-    const r = await split(code)
-    expect(r.env).toContain("import { label } from './labels'")
-    expect(r.env).toContain('function Badge')
-    expect(r.chunks.component).not.toContain('./labels')
   })
 
   it('keeps an `import type` statement type-only when the env erases a value of the same name', async () => {
@@ -4991,7 +4890,7 @@ describe('one mutation model: eager reads of state something writes', () => {
     ['a template literal', 'const initial = `${n}`', 'initial'],
     ['a static class field', 'class Snap { static value = n }', 'Snap.value'],
   ])(
-    'keeps %s that reads a binding a function writes in the route module',
+    'keeps %s that reads a binding a function writes in the module',
     async (_, declaration, read) => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
@@ -5017,7 +4916,7 @@ describe('one mutation model: eager reads of state something writes', () => {
   // runs later (an async or generator IIFE, an instance field)
   it.each([
     [
-      'a function it calls assigns a binding the route module reads',
+      'a function it calls assigns a binding the module reads',
       "let mode = 'idle'\nfunction init() { mode = 'ready'; return 1 }\nconst snap = init()",
       'mode',
     ],
@@ -5042,7 +4941,7 @@ describe('one mutation model: eager reads of state something writes', () => {
       'new Item().id',
     ],
   ])(
-    'keeps a value computed at load in the route module when %s',
+    'keeps a value computed at load in the module when %s',
     async (_, declarations, loaderReads) => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
@@ -5480,7 +5379,7 @@ describe('what an evaluation runs: one walk for every rule', () => {
       'loader: () => reconnect(),',
     ],
   ])(
-    'keeps a declaration whose load calls a function assigning module state in the route module when %s',
+    'keeps a declaration whose load calls a function assigning module state in the module when %s',
     async (_, declarations, name, state, loader) => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
@@ -5556,7 +5455,7 @@ describe('what an evaluation runs: one walk for every rule', () => {
       'n',
     ],
   ])(
-    'keeps a declaration whose load calls a function %s in the route module',
+    'keeps a declaration whose load calls a function %s in the module',
     async (_, declarations, object, reason, read) => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
@@ -5748,7 +5647,7 @@ describe('what an evaluation runs: one walk for every rule', () => {
       },
     ])
     expect(r.kept[0]!.message).toBe(
-      '[tanstack-router] The export `initial` of /app/route.tsx is used only by the split `component`, but stays in the route module because it uses `n` when it loads, and the route module writes `n`, so it loads with the route module instead of with that code. Use `n` inside the code that needs it, or move it, `n` and `inc` to their own module and import them from there.',
+      'The export `initial` of /app/route.tsx is used only by the split `component`, but stays in the module because it uses `n` when it loads, and the module writes `n`, so it loads with the module instead of with that code. Use `n` inside the code that needs it, or move it, `n` and `inc` to their own module and import them from there.',
     )
   })
 
@@ -5853,7 +5752,7 @@ describe('readers and writers of state written at load', () => {
       'const r = [cfg]',
     ],
   ])(
-    'keeps a declaration whose initialiser writes a member of a binding the route module reads, in %s, with one warning',
+    'keeps a declaration whose initialiser writes a member of a binding the module reads, in %s, with one warning',
     async (_, writer, reader) => {
       const code = route(
         `const cfg = {}\n${writer}\nconst get = () => cfg.x\n${reader}`,
@@ -5915,7 +5814,7 @@ describe('readers and writers of state written at load', () => {
   // to the chunk and the reader saw the array empty, with no diagnostic.
   it.each([
     [
-      'the route module',
+      'the module',
       "loader: () => snap,\ncomponent: f(seen.push('x') && (() => null)),",
     ],
     [
@@ -5955,10 +5854,7 @@ describe('readers and writers of state written at load', () => {
   // value is a write of its event as a member write is (finding 2): `n`
   // read later at load saw it unassigned.
   it.each([
-    [
-      'the route module',
-      'loader: () => snap,\ncomponent: f((n = 1, () => null)),',
-    ],
+    ['the module', 'loader: () => snap,\ncomponent: f((n = 1, () => null)),'],
     ['its own chunk', 'component: f((n = 1, () => snap)),'],
     ['its own chunk, through `++`', 'component: f((n++, () => snap)),'],
   ])(
@@ -5980,7 +5876,7 @@ describe('readers and writers of state written at load', () => {
   // names the import and nothing in its own output reads it at load.
   it.each([
     [
-      'the route module reads it',
+      'the module reads it',
       'loader: () => snap,\ncomponent: f((open.page = 1, () => null)),',
       'const snap = [open]',
     ],
@@ -6044,43 +5940,6 @@ describe('readers and writers of state written at load', () => {
     expect(r.env).not.toContain('open.page')
     expect(r.chunks.component).toContain('open.page = 1')
   })
-
-  // R152: a call whose result is an option value (the router calls it
-  // later) holds the function it is handed, inline or named: its write runs
-  // when the router calls the value, not when the module loads, so the
-  // value splits and the binding stays with the route module's reader
-  // (finding 4 read every call as running its function).
-  it.each([
-    [
-      'inline',
-      'component: f(function Page() { seen.n = 1; return null }),',
-      '',
-    ],
-    [
-      'named',
-      'component: f(Page),',
-      'function Page() { seen.n = 1; return null }',
-    ],
-  ])(
-    'splits an option value whose call holds a function writing a binding the route module reads (%s)',
-    async (_, options, decls) => {
-      const r = await split(
-        route(
-          `const seen = {}\n${decls}`,
-          `loader: () => snap,\n${options}`,
-          'const snap = [seen]',
-        ),
-        { files: lib },
-      )
-      const facts = r.main?.facts.planners['toy-split'] as
-        | { notSplittable?: string }
-        | undefined
-      expect(facts?.notSplittable).toBeUndefined()
-      expect(r.chunks.component).toContain('seen.n = 1')
-      expect(r.env).toContain('const seen = {}')
-      expect(r.main?.diagnostics).toEqual([])
-    },
-  )
 
   // REVIEW-design2-step4 finding 3: that write pins the value only when
   // the binding is not confined to its chunk, as a write at load by the
@@ -6174,7 +6033,7 @@ describe('readers and writers of state written at load', () => {
       'function render() { seen.n++; return null }',
     ],
   ])(
-    'splits an option value reaching a function that writes a binding the route module reads later (%s)',
+    'splits an option value reaching a function that writes a binding the module reads later (%s)',
     async (_, options, decls) => {
       const r = await split(
         route(
@@ -6192,23 +6051,6 @@ describe('readers and writers of state written at load', () => {
       expect(r.main?.diagnostics).toEqual([])
     },
   )
-
-  it('splits an option value whose call holds a function writing a binding another function writes later (R152)', async () => {
-    const r = await split(
-      route(
-        'const seen = { n: 0 }\nexport function reset() { seen.n = 0 }',
-        'component: f(function Page() { seen.n++; return null }),',
-      ),
-      { files: lib },
-    )
-    const facts = r.main?.facts.planners['toy-split'] as
-      | { notSplittable?: string }
-      | undefined
-    expect(facts?.notSplittable).toBeUndefined()
-    expect(r.chunks.component).toContain('seen.n++')
-    expect(r.env).toContain('export function reset()')
-    expect(r.main?.diagnostics).toEqual([])
-  })
 
   // A member write inside a planner's unclaimed region is its declaration's
   // write (finding 1): the declaration stays with the binding it writes.
@@ -6966,7 +6808,7 @@ describe('effectful declarations reading each other (R138)', () => {
       'let a = make()\na = make()\nconst b = [a, make()]',
     ],
   ])(
-    'moves a declaration reading a binding the route module keeps: %s',
+    'moves a declaration reading a binding the module keeps: %s',
     async (_, decls) => {
       const r = await split(
         route(decls, 'loader: () => a,\ncomponent: () => b,'),
@@ -6988,7 +6830,7 @@ describe('effectful declarations reading each other (R138)', () => {
       'loader: () => (a = make()),',
     ],
   ])(
-    'keeps a declaration reading a `let` the route module assigns %s, as reading written state',
+    'keeps a declaration reading a `let` the module assigns %s, as reading written state',
     async (_, decls, loader) => {
       const r = await split(route(decls, `${loader}\ncomponent: () => b,`))
       expect(r.env).toContain('const b = [a, make()]')
@@ -7102,7 +6944,7 @@ describe('declarations only split code needs that stay in the route module', () 
     const r = await kept(code)
     expect(r.diagnostics.map((d) => d.message)).toEqual([
       expect.stringContaining(
-        '`homeUrl`, `docsUrl` in /app/route.tsx stay in the route module because the statement on line 6, which changes them, stays there: it also uses `k`, which the route module keeps; run that statement in the code that needs them, so `homeUrl`, `docsUrl` can load with the split `component`.',
+        '`homeUrl`, `docsUrl` in /app/route.tsx stay in the module because the statement on line 6, which changes them, stays there: it also uses `k`, which the module keeps; run that statement in the code that needs them, so `homeUrl`, `docsUrl` can load with the split `component`.',
       ),
     ])
   })
@@ -7122,7 +6964,7 @@ describe('declarations only split code needs that stay in the route module', () 
     const r = await kept(code)
     expect(r.diagnostics.map((d) => d.message)).toEqual([
       expect.stringContaining(
-        '`registry`, `index` in /app/route.tsx stay in the route module because the statement on line 5, which changes them, stays there: it also uses `k`, which the route module keeps; run that statement in the code that needs them',
+        '`registry`, `index` in /app/route.tsx stay in the module because the statement on line 5, which changes them, stays there: it also uses `k`, which the module keeps; run that statement in the code that needs them',
       ),
     ])
   })
@@ -7407,10 +7249,7 @@ describe('language operations are no effect (rule L)', () => {
   // the holder, a write at an unknown time only its chunk makes (recheck
   // ruling C lets the read move there), but the read is still ordered
   // against the later write at load the route module keeps (the loader)
-  it.each([
-    ['a function', 'function Page() { h6.c.v = 12; return r11 }'],
-    ['a wrapped function', 'hoc(function Page() { h6.c.v = 12; return r11 })'],
-  ])(
+  it.each([['a function', 'function Page() { h6.c.v = 12; return r11 }']])(
     'keeps a read through a holder before a later write of the object when the component (%s) writes through the holder',
     async (_, component) => {
       const r = await split(
@@ -7434,7 +7273,7 @@ describe('language operations are no effect (rule L)', () => {
       // (the move names the holder `r11` reads `o0` through: left behind,
       // the new module would import it back from the route module)
       expect(kept[0]!.message).toContain(
-        '`r11` in /app/route.tsx stays in the route module because it uses `o0` when the module loads, and the module writes `o0` then (line 6); move `r11`, `o0`, `h6` and the statements writing them when the module loads to their own module, so `r11` can load with the split `component`.',
+        '`r11` in /app/route.tsx stays in the module because it uses `o0` when the module loads, and the module writes `o0` then (line 6); move `r11`, `o0`, `h6` and the statements writing them when the module loads to their own module, so `r11` can load with the split `component`.',
       )
     },
   )
@@ -7521,37 +7360,6 @@ describe('language operations are no effect (rule L)', () => {
     'offers a move of a read before a write that names %s',
     async (_, decls, options, fix) => {
       expect(await stateMessage(decls, options)).toContain(fix)
-    },
-  )
-
-  it.each([
-    [
-      'reads the route when it loads',
-      'const o0 = { v: 1 }\n        const h6 = { c: o0 }',
-      'loader: () => o0,\n          component: function Page() { h6.c.v = 12; return r11 },',
-      dedent(`
-        const r11 = [h6.c.v, Route.options]
-        o0.v = 5
-      `),
-      "`r11` in /app/route.tsx stays in the route module because it uses `o0` when the module loads, and the module writes `o0` then (line 9); it can't move to a module of its own: that module would also need `Route`, which stays in the route module.",
-    ],
-    [
-      'reads a binding a route option assigns',
-      dedent(`
-        let o0 = { v: 1 }
-        const h6 = { c: o0 }
-        const r11 = [h6.c.v]
-      `),
-      'loader: () => { o0 = { v: 0 }; return o0 },\n          component: () => r11,',
-      '',
-      '`r11` in /app/route.tsx stays in the route module because it uses `o0` when the module loads, and the module writes `o0`; use `o0` inside the code that needs it, so `r11` can load with the split `component`.',
-    ],
-  ])(
-    'offers no move of a read before a write when it %s',
-    async (_, decls, options, after, message) => {
-      expect(await stateMessage(decls, options, after)).toBe(
-        `[tanstack-router] ${message}`,
-      )
     },
   )
 
@@ -8214,14 +8022,14 @@ describe('statements follow the bindings they use (R149)', () => {
         ${options.split('\n').join('\n        ')}
       })
     `)
-  /** `decls` in the route module, in order, and none of it in the component chunk. */
+  /** `decls` in the module, in order, and none of it in the component chunk. */
   const stays = (r: Awaited<ReturnType<typeof split>>, decls: string) => {
     expect(r.env).toContain(decls)
     for (const line of decls.split('\n')) {
       expect(r.chunks.component).not.toContain(line)
     }
   }
-  /** `decls` in the component chunk, in order, and none of it in the route module. */
+  /** `decls` in the component chunk, in order, and none of it in the module. */
   const moves = (r: Awaited<ReturnType<typeof split>>, decls: string) => {
     expect(r.chunks.component).toContain(decls)
     for (const line of decls.split('\n')) {
@@ -8329,7 +8137,7 @@ describe('statements follow the bindings they use (R149)', () => {
       ['with a binding it changes', 'if (on) { d.init(); fill(k) }'],
       ['alone', 'fill(k)'],
     ])(
-      'a binding the route module keeps, handed to a local function it calls (%s)',
+      'a binding the module keeps, handed to a local function it calls (%s)',
       async (_, statement) => {
         const decls = `const k = createTable()\nconst d = createTable()\nfunction fill(o) { o.v = 3 }\n${statement}`
         const r = await split(
@@ -8523,7 +8331,7 @@ describe('lazy shared modules hold effects (R151)', () => {
       },
     ])
     expect(r.diagnostics[0]!.message).toContain(
-      `unused \`CheckStep\` (line ${lineOf(code, 'function CheckStep')}) keeps \`card\` in the route module; delete \`CheckStep\`, so it can load with the split code that needs it`,
+      `unused \`CheckStep\` (line ${lineOf(code, 'function CheckStep')}) keeps \`card\` in the module; delete \`CheckStep\`, so it can load with the split code that needs it`,
     )
     // the fix
     const f = await compile(
@@ -8675,7 +8483,7 @@ describe('lazy shared modules hold effects (R151)', () => {
     expect(r.env).toContain('link(d, e)')
     expect(r.diagnostics).toMatchObject([{ code: 'eager-split:written' }])
     expect(r.diagnostics[0]!.message).toContain(
-      'it also uses `e`, which the route module keeps',
+      'it also uses `e`, which the module keeps',
     )
   })
 
@@ -8815,9 +8623,9 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     )
     expect(r.diagnostics[0]!.message).toContain(cause)
   }
-  /** The end of the `written` message when code the route module keeps sees what the statement changes: no move keeps what that code sees. */
+  /** The end of the `written` message when code the module keeps sees what the statement changes: no move keeps what that code sees. */
   const seenBy = (code: string, reader: string) =>
-    `, which the route module's code uses on line ${lineOf(code, reader)}; moving or deleting that statement would change what that code sees.`
+    `, which the module's code uses on line ${lineOf(code, reader)}; moving or deleting that statement would change what that code sees.`
 
   // the statement changes `k`, which the loader reads: run in the code
   // that needs `d`, it would change `k` later than the loader reads it, so
@@ -8848,7 +8656,7 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     ['push', '[]', 'k.push(d)'],
     ['set', 'new Map()', "k.set('d', d)"],
   ])(
-    'a binding the route module keeps that a known method (%s) changes',
+    'a binding the module keeps that a known method (%s) changes',
     async (_, init, statement) => {
       const options = 'loader: () => k, component: () => d'
       const code = route(
@@ -8881,7 +8689,7 @@ describe('eager-split:written: why a statement that changes it stays', () => {
       true,
     ],
   ])(
-    'a binding the route module keeps that a known method changes, using %s',
+    'a binding the module keeps that a known method changes, using %s',
     async (_, decls, statement, extract) => {
       const options = 'loader: () => k, component: () => d'
       const code = route(`${decls}\n${statement}`, options)
@@ -8903,7 +8711,7 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     ['a known method', 'new Set()', 'k.add(d)'],
     ['an unknown call', 'make()', 'k.link(d)'],
   ])(
-    'a binding the route module keeps that an unused declaration changes with %s',
+    'a binding the module keeps that an unused declaration changes with %s',
     async (_, init, call) => {
       const statement = `n = ${call}.size`
       const options = 'beforeLoad: () => k.size, component: () => d'
@@ -8936,7 +8744,7 @@ describe('eager-split:written: why a statement that changes it stays', () => {
       },
     ])
     expect(r.diagnostics[0]!.message).toContain(
-      'because its declaration also changes `k`, which the route module keeps; change `k` in a statement of its own, and declare `idx` without changing it, so `idx` can load with the split `component`.',
+      'because its declaration also changes `k`, which the module keeps; change `k` in a statement of its own, and declare `idx` without changing it, so `idx` can load with the split `component`.',
     )
     const f = await report(
       route("const k = []\nk.push('x')\nconst idx = k.length", options),
@@ -8978,7 +8786,7 @@ describe('eager-split:written: why a statement that changes it stays', () => {
       code,
       'd',
       'k.add(d)',
-      'which uses it, stays there: it also changes `k`, which the route module keeps; run that statement in the code that needs it, so `d` can load with the split `component`.',
+      'which uses it, stays there: it also changes `k`, which the module keeps; run that statement in the code that needs it, so `d` can load with the split `component`.',
     )
     // the fix: the call in the code that needs `d`
     const f = await report(
@@ -9003,7 +8811,7 @@ describe('eager-split:written: why a statement that changes it stays', () => {
       code,
       'table',
       statement,
-      'which changes it, stays there: it also uses `cfg`, which the route module keeps',
+      'which changes it, stays there: it also uses `cfg`, which the module keeps',
     )
   })
 
@@ -9114,7 +8922,7 @@ describe('eager-split:written: why a statement that changes it stays', () => {
       code,
       'd',
       statement,
-      '`k`, which the route module keeps',
+      '`k`, which the module keeps',
     )
     // the fix: `k` changed in a statement of its own
     const fixed = route(
@@ -9140,7 +8948,7 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     ['a block', '{ a.v = 1; k.v = 2 }', '{ a.v = 1 }\n{ k.v = 2 }'],
     ['a sequence', 'a.v = 1, k.v = 2', 'a.v = 1\nk.v = 2'],
   ])(
-    'a binding the route module keeps %s also writes',
+    'a binding the module keeps %s also writes',
     async (_, statement, apart) => {
       const options = 'loader: () => k, component: () => a'
       const code = route(
@@ -9152,7 +8960,7 @@ describe('eager-split:written: why a statement that changes it stays', () => {
         code,
         'a',
         statement,
-        'it also changes `k`, which the route module keeps; change `k` in a statement of its own',
+        'it also changes `k`, which the module keeps; change `k` in a statement of its own',
       )
       // the fix
       const f = await report(
@@ -9177,7 +8985,7 @@ describe('eager-split:written: why a statement that changes it stays', () => {
       code,
       'a',
       statement,
-      'it also changes `k`, which the route module keeps; change `k` in a statement of its own',
+      'it also changes `k`, which the module keeps; change `k` in a statement of its own',
     )
     // the fix
     const f = await report(
@@ -9257,7 +9065,7 @@ describe('eager-split:written: why a statement that changes it stays', () => {
       code,
       'flags',
       statement,
-      'which changes it, stays there: it also uses `base`, which the route module keeps; run that statement in the code that needs it',
+      'which changes it, stays there: it also uses `base`, which the module keeps; run that statement in the code that needs it',
     )
     // the fix makes the component a later writer of what `Sentry.setContext`
     // uses at load: the next warning says so, and asks to move only what
@@ -9302,7 +9110,7 @@ describe('eager-split:written: why a statement that changes it stays', () => {
       'beforeLoad: () => base, component: () => flags',
       ['component'],
       'flags',
-      'it also uses `base`, which the route module keeps',
+      'it also uses `base`, which the module keeps',
     ],
     [
       "the binding's own statements",
@@ -10436,253 +10244,6 @@ function evaluatedNames(
   }
   return names
 }
-
-// R152: a call holds (does not run when the module loads) the functions
-// it is handed when its result is called later by the router: a route
-// option's value the planner states, split or not, directly, through
-// `const`s, or handed on to such a call (wrappers of wrappers). Every other
-// call, and the extraction check, read as before. A name inside an object or
-// array handed to a call is held (small item 2c).
-describe('calls whose result the router calls later (R152)', () => {
-  const route = (decls: string, options: string, extra = '') =>
-    dedent(`
-      import { createFileRoute } from 'toy-router'
-      import { hoc, run, f } from './lib'
-      ${decls.split('\n').join('\n      ')}
-      export const Route = createFileRoute('/')({
-        ${options.split('\n').join('\n        ')}
-      })
-      ${extra}
-    `)
-  const lib = {
-    '/app/lib.ts':
-      'export const hoc = <T,>(x: T) => x\nexport const run = <T,>(g: () => T) => g()\nexport const f = (x: unknown) => x\n',
-  }
-  const notSplit = (r: Awaited<ReturnType<typeof split>>) =>
-    (
-      r.main?.facts.planners['toy-split'] as
-        | { notSplittable?: string }
-        | undefined
-    )?.notSplittable
-  const seen = 'const seen = new Set<number>()'
-  const loader = 'loader: () => { seen.add(1) },'
-
-  it.each([
-    ['inline', '', 'component: hoc(function Page() { return seen.size }),'],
-    ['named', 'function Page() { return seen.size }', 'component: hoc(Page),'],
-    [
-      'in wrappers of wrappers',
-      '',
-      'component: hoc(hoc(function Page() { return seen.size })),',
-    ],
-    [
-      'in a cast',
-      '',
-      'component: hoc(function Page() { return seen.size }) as any,',
-    ],
-    [
-      'through a `const`',
-      'function Page() { return seen.size }\nconst P = hoc(Page)',
-      'component: P,',
-    ],
-    [
-      'through a `const` of wrappers of wrappers',
-      'function Page() { return seen.size }\nconst P = hoc(hoc(Page))',
-      'component: P,',
-    ],
-    [
-      'through a `const` handed to another',
-      'function Page() { return seen.size }\nconst A = hoc(Page)\nconst P = hoc(A)',
-      'component: P,',
-    ],
-    [
-      'through a `const` naming another',
-      'function Page() { return seen.size }\nconst A = hoc(Page)\nconst P = A',
-      'component: P,',
-    ],
-  ])(
-    'splits an option value whose call holds a function reading state the loader writes (%s)',
-    async (_, decls, options) => {
-      const r = await split(
-        route(`${seen}\n${decls}`, `${loader}\n${options}`),
-        {
-          files: lib,
-        },
-      )
-      expect(notSplit(r)).toBeUndefined()
-      expect(r.chunks.component).toContain('return seen.size')
-      expect(r.env).not.toContain('seen.size')
-      expect(r.env).not.toContain('hoc(')
-      expect(r.main?.diagnostics).toEqual([])
-    },
-  )
-
-  // the accepted break (R152, R146's family): a factory that runs its
-  // function at once reads the state when the chunk loads
-  it('splits an option value whose call is handed a function reading a binding the loader writes, whatever the call does with it', async () => {
-    const r = await split(
-      route(
-        'let base = 1',
-        'loader: () => { base = 5 },\ncomponent: run(() => { const b = base; return () => b }),',
-      ),
-      { files: lib },
-    )
-    expect(notSplit(r)).toBeUndefined()
-    expect(r.chunks.component).toContain('run(() => {')
-  })
-
-  // its result is called when the module loads: not a value the router
-  // calls later, the call runs its function as before
-  it('keeps a `const` whose call result is also called when the module loads', async () => {
-    const r = await split(
-      route(
-        `${seen}\nfunction Page() { return seen.size }\nconst P = hoc(Page)\nconst first = P()`,
-        `${loader}\ncomponent: P,`,
-      ),
-      { files: lib },
-    )
-    expect(r.env).toContain('const P = hoc(Page)')
-    expect(r.chunks.component).not.toContain('hoc(Page)')
-  })
-
-  // a value the router calls later that the planner does not split: its
-  // call holds the function, so the route reads nothing at load
-  it('holds the function an unsplit option value hands to its call', async () => {
-    const r = await split(
-      route(
-        'const seen = { n: 0 }\nconst C = f(function Page() { seen.n++; return null })',
-        'loader: hoc(function load() { return seen.n }),\ncomponent: () => C,',
-      ),
-      { files: lib },
-    )
-    expect(r.env).not.toContain('const C =')
-    expect(r.chunks.component).toContain('const C = f(function Page()')
-    expect(r.main?.diagnostics).toEqual([])
-  })
-
-  // small item 2c, with R152: a name inside an object or array handed to
-  // such a call is held, as an inline function there already is
-  it.each([
-    [
-      'an object, inline (control)',
-      'hoc({ render() { return seen.size } })',
-      '',
-    ],
-    [
-      'an object, by name',
-      'hoc({ render })',
-      'function render() { return seen.size }',
-    ],
-    [
-      'an array, by name',
-      'hoc([render])',
-      'function render() { return seen.size }',
-    ],
-    [
-      'a nested object',
-      'hoc({ a: [{ render }] })',
-      'function render() { return seen.size }',
-    ],
-  ])(
-    'moves a `const` the router calls later whose call is handed a function inside %s',
-    async (_, call, decls) => {
-      const r = await split(
-        route(
-          `${seen}\n${decls}\nconst P = ${call}`,
-          `${loader}\ncomponent: P,`,
-        ),
-        { files: lib },
-      )
-      expect(notSplit(r)).toBeUndefined()
-      expect(r.env).not.toContain('const P =')
-      expect(r.chunks.component).toContain(`const P = ${call}`)
-      expect(r.main?.diagnostics).toEqual([])
-    },
-  )
-
-  // the extraction check reads every call as running what it is handed:
-  // an export whose call is handed a function reading what the route
-  // module keeps stays there (`createIcon(() => cfg.path)` would read it
-  // before it exists), so the option naming it is not split
-  it('keeps an exported option value whose call is handed a function reading a binding the route module keeps', async () => {
-    const code = route(
-      'const cfg = { v: 1 }\nexport const W = hoc(function W() { return cfg.v })',
-      'loader: () => cfg,\ncomponent: W,',
-    )
-    const r = await split(code, { files: lib, extractExports: true })
-    expect(r.env).toContain('export const W = hoc(function W()')
-    expect(r.chunks.component).not.toContain('cfg.v')
-    expect(r.main?.facts.planners['toy-split']).toMatchObject({
-      reasons: { component: 'env-declared' },
-    })
-  })
-
-  // every other call reads as before: a function handed to it may run when
-  // it does, which the message says. A wrapped component used only as a
-  // JSX tag is one of them (R152 holds route option values only). The move
-  // takes the function it hands along (the new module would import it
-  // back)
-  it.each([
-    [
-      'inline',
-      '',
-      'const save = f(() => seen.size)',
-      'save',
-      'f',
-      '() => save',
-      'both',
-    ],
-    [
-      'named',
-      'function compute() { return seen.size }\n',
-      'const save = f(compute)',
-      'save',
-      'f',
-      '() => save',
-      '`save`, `seen` and `compute`',
-    ],
-    [
-      'named inside an object',
-      'function compute() { return seen.size }\n',
-      'const save = f({ compute })',
-      'save',
-      'f',
-      '() => save',
-      '`save`, `seen` and `compute`',
-    ],
-    [
-      'a wrapped component used as a JSX tag',
-      '',
-      'const Card = hoc(function Card() { return <p>{seen.size}</p> })',
-      'Card',
-      'hoc',
-      'function Page() { return <Card /> }',
-      'both',
-    ],
-  ])(
-    'keeps a declaration handing a function reading written state to a call the router does not call later, saying it may use it (%s)',
-    async (_, decls, decl, name, callee, component, moved) => {
-      const code = route(
-        `${seen}\n${decls}${decl}`,
-        `${loader}\ncomponent: ${component},`,
-      )
-      const r = await split(code, { files: lib })
-      expect(r.env).toContain(decl)
-      const kept = (r.main?.diagnostics ?? []).filter((d) =>
-        d.code?.startsWith('eager-'),
-      )
-      expect(kept).toMatchObject([
-        {
-          code: 'eager-split:state',
-          range: { start: code.indexOf(`${name} = `) },
-        },
-      ])
-      expect(kept[0]!.message).toBe(
-        `[tanstack-router] \`${name}\` in /app/route.tsx stays in the route module because it may use \`seen\` when the module loads (the function is handed to \`${callee}\`), and the module writes \`seen\`; move ${moved} to their own module, so \`${name}\` can load with the split \`component\`.`,
-      )
-    },
-  )
-})
 
 // P4: a kept declaration's message names a binding its evaluation reads,
 // for every `state` record this file's compiles report (F1-5b:
