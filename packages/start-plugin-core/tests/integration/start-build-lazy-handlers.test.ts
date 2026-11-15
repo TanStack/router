@@ -89,6 +89,24 @@ export const readInitialised = createServerFn().handler(async () => initialised)
 export const readAssigned = createServerFn().handler(async () => assigned)
 export const readPure = createServerFn().handler(async () => pure)
 `,
+  // a server fn with a middleware, whose handler alone imports a module: the
+  // order the three first run in
+  'order-dep.server.ts': `;((globalThis as any).ORDER ??= []).push('dep')
+export const value = 'MARK_ORDER'
+`,
+  'ordered.ts': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+import { value } from './order-dep.server'
+const logged = createMiddleware({ type: 'function' }).server(async ({ next }) => {
+  ;((globalThis as any).ORDER ??= []).push('middleware')
+  return next()
+})
+export const ordered = createServerFn()
+  .middleware([logged])
+  .handler(async () => {
+    ;((globalThis as any).ORDER ??= []).push('handler')
+    return value
+  })
+`,
   'broken.ts': `${head}import { value } from './broken.server'
 export const callBroken = createServerFn().handler(async () => value)
 `,
@@ -168,6 +186,7 @@ export const Route = createFileRoute('/nested-class')({ component: Page })
 export * from './fns'
 export * from './writers'
 export * from './seeded'
+export * from './ordered'
 export { callBroken } from './broken'
 export const loadTla = () => import('./tla')
 export const loadTlaFor = () => import('./tla-for')
@@ -406,6 +425,64 @@ return {
       expect(result).toEqual({
         broken: { error: expect.stringContaining('MARK_BROKEN_AT_IMPORT') },
         other: { value: 'MARK_HEAVY' },
+      })
+    },
+    timeout,
+  )
+
+  test(
+    "SSR: an HTTP call loads its handler's imports before its middleware runs, as main's provider module does (R158 rule 3)",
+    async () => {
+      const { result } = await build.ssr
+        .run(`${callByIdPrelude}const atLoad = globalThis.ORDER ?? []
+const overHttp = await callById(serverFnId(entry.ordered))
+return { atLoad, overHttp, order: globalThis.ORDER }`)
+      expect(result).toEqual({
+        atLoad: [],
+        overHttp: 'MARK_ORDER',
+        order: ['dep', 'middleware', 'handler'],
+      })
+    },
+    timeout,
+  )
+
+  test(
+    "SSR: a direct call and then an HTTP call of a server fn with a middleware share one instance of its handler's imports",
+    async () => {
+      const { result } = await build.ssr
+        .run(`${callByIdPrelude}const direct = await entry.ordered()
+const overHttp = await callById(serverFnId(entry.ordered))
+const order = globalThis.ORDER
+return {
+  direct,
+  overHttp,
+  deps: order.filter((x) => x === 'dep').length,
+  calls: order.filter((x) => x === 'handler').length,
+}`)
+      expect(result).toEqual({
+        direct: 'MARK_ORDER',
+        overHttp: 'MARK_ORDER',
+        deps: 1,
+        calls: 2,
+      })
+    },
+    timeout,
+  )
+
+  test(
+    'SSR: an HTTP call reaches the server fn of a module that awaits it at its top level, one instance with the direct call',
+    async () => {
+      const { result } = await build.ssr
+        .run(`${callByIdPrelude}const tla = await entry.loadTla()
+return {
+  ready: tla.ready,
+  overHttp: await callById(serverFnId(tla.tlaFn)),
+  dep: globalThis.MARK_TLA_DEP,
+}`)
+      expect(result).toEqual({
+        ready: 'tla:MARK_TLA_DEP',
+        overHttp: 'tla:MARK_TLA_DEP',
+        dep: 1,
       })
     },
     timeout,
