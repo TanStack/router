@@ -5,6 +5,7 @@ title: Router API
 
 - Functions
   - [`createFileRoute`](./router/createFileRouteFunction.md)
+  - [`createLink`](./router/createLinkFunction.md)
   - [`createLazyFileRoute`](./router/createLazyFileRouteFunction.md)
   - [`createRootRoute`](./router/createRootRouteFunction.md)
   - [`createRootRouteWithContext`](./router/createRootRouteWithContextFunction.md)
