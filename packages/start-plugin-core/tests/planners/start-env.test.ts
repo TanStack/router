@@ -475,8 +475,8 @@ export const api = { get: createServerFn()${link}.handler(() => db.q()) }
   // provider env's module stub the handlers and keep the state other code
   // reads, without the server-only import; the provider copy holds what its
   // handlers reach (its own copy of the state, as main's), with the
-  // top-level code reaching that state (R1: an export reading it too, as in
-  // main's copy of the whole file).
+  // top-level code reaching that state (R1); an export reading it is not
+  // copied (main's copy strips its exports and deletes what only they read).
   const roles = (code: string) =>
     Promise.all([
       compile(code, {
@@ -504,7 +504,7 @@ export function getCached() { return cache.get('k') }
     expectValid(copy)
     expect(copy).toContain(`from './db.server'`)
     expect(copy).toContain('const cache = new Map')
-    expect(copy).toContain('function getCached()')
+    expect(copy).not.toContain('getCached')
   })
 
   // R1 (review-phase1 3.1) in the provider copy: it copies, with what its
@@ -525,7 +525,6 @@ export const f = createServerFn().handler(async () => registry.get('a'))
       'a class static block',
       `const routes: Array<string> = []
 class Boot { static { routes.push('boot') } }
-export const boot = Boot
 export const f = createServerFn().handler(async () => routes.length)
 `,
       ["routes.push('boot')"],
@@ -578,11 +577,12 @@ export const reset = createServerFn().handler(async () => { clear(); return db.q
     expect(copy).toContain('function clear()')
     // kind A (R155 phase 1): `clear` leaves the modules where the handler is
     // a stub; the copy holds what its handlers reach and the code reaching
-    // it (R1: `getCache` reads `cache`, as in main's copy)
+    // it (R1), not `getCache`, which only an export reads (main's copy
+    // deletes it)
     for (const r of [caller, providerEnv]) {
       expect(r.code).not.toContain('function clear()')
     }
-    expect(copy).toContain('function getCache()')
+    expect(copy).not.toContain('getCache')
   })
 })
 

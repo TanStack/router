@@ -367,8 +367,10 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   /**
    * The top-level code reaching each declaration the env module keeps
    * through the names it references, transitively (R1): every statement,
-   * and every declaration nothing in the module reads (an export is no
-   * read), whose code names the declaration, or names a declaration whose
+   * and every declaration nothing in the module references (an export is a
+   * reference, as in `main`'s removal rule: `main`'s copy strips its exports
+   * and deletes what only they read), whose code names the declaration, or
+   * names a declaration whose
    * code names it, and so on. A chunk copying the declaration takes them,
    * as `main`'s chunk keeps every statement reading a name it still
    * declares, every class and every never-read declaration, and `main`'s
@@ -416,7 +418,9 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
           cl.units.length > 0 &&
           !isImport(r) &&
           !isType(r) &&
-          (isStatement(r) || !readersInEnv.has(r))
+          (isStatement(r) ||
+            (!readersInEnv.has(r) &&
+              cl.units.every((u) => units[u]!.exported.length === 0)))
         ) {
           found.push(r)
         }

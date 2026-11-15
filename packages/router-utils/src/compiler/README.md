@@ -114,7 +114,8 @@ per-output read walk (`readIndex`):
 - **a split chunk** takes what its option's value reads, transitively. What the env module also keeps it imports from
   there when main does (`RouteModule.imported`, from the router planner: the route binding, `export const|let|var`)
   and copies otherwise, with the top-level code reaching what it copies through the names it references (R1: every
-  statement and every never-read declaration whose names reach it, transitively; main's second instance,
+  statement and every declaration nothing references (an export is a reference, as in main's removal rule) whose
+  names reach it, transitively; main's second instance,
   spec-main-splitting.md §1.8; `export default <expression>` is such a statement, rendered there as
   `void (<expression>)`); a binding a statement declares (`if (…) { var x }`) is imported. A derived output drops
   only the `export` (`default`) keywords of what it copies: comments and annotations stay with the copy.

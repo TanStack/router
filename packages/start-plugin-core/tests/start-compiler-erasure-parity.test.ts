@@ -631,11 +631,12 @@ alias.url = 'b'
 export const f = createServerFn().handler(async () => cfg.url)`,
       expected: 'b',
     },
+    // (a class only an export reads is not reached: main keeps it because
+    // its removal rule never removes a class; open, review-phase1 r5)
     {
       name: 'r5: a class static block',
       code: `const routes: Array<string> = []
 class Boot { static { routes.push('boot') } }
-export const boot = Boot
 export const f = createServerFn().handler(async () => routes.length)`,
       expected: 1,
     },
@@ -646,13 +647,15 @@ const _boot = registry.set('a', 1)
 export const f = createServerFn().handler(async () => registry.get('a'))`,
       expected: 1,
     },
+    // main's copy deletes `filled` (only an export read it; its exports are
+    // stripped), so the handler reads `undefined`, as on main (R153)
     {
-      name: 'r7: a declaration an export reads, filling the state',
+      name: 'r7: a declaration only an export reads, filling the state, as main',
       code: `const registry = new Map<string, number>()
 const filled = registry.set('a', 1)
 export const g = () => filled
 export const f = createServerFn().handler(async () => registry.get('a'))`,
-      expected: 1,
+      expected: undefined,
     },
   ])('$name', async ({ code, expected }) => {
     const served = await serveCase(await host(), {
