@@ -11,8 +11,8 @@ export async function dehydrateToBootstrap(
     await router.load()
     await router.serverSsr!.dehydrate()
 
-    const script = router.serverSsr!.takeBufferedScripts()
-    if (typeof script?.children !== 'string') {
+    const scripts = router.serverSsr!.takeInitialHydrationScriptTags()
+    if (!scripts?.before.length) {
       throw new Error(
         'Expected server dehydration to produce a bootstrap script',
       )
@@ -30,7 +30,9 @@ export async function dehydrateToBootstrap(
       },
     }
     context.self = context
-    runInNewContext(script.children, context)
+    for (const script of scripts.before) {
+      runInNewContext(script.children!, context)
+    }
 
     if (!context.$_TSR) {
       throw new Error('Expected bootstrap script to initialize $_TSR')

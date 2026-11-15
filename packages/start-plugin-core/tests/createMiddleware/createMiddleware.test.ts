@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test, vi } from 'vitest'
 import { StartCompiler } from '../../src/start-compiler/compiler'
+import { formatSnapshot } from '../format-snapshot'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {
@@ -22,7 +23,6 @@ async function compile(opts: {
   env: 'client' | 'server'
   code: string
   id: string
-  warn?: (message: string) => void
 }) {
   const compiler = new StartCompiler({
     ...opts,
@@ -43,7 +43,6 @@ async function compile(opts: {
         kind: 'Root',
       },
     ],
-    warn: opts.warn,
     getKnownServerFns: () => ({}),
     resolveId: async (id) => {
       return id
@@ -69,9 +68,9 @@ describe('createMiddleware compiles correctly', async () => {
     test(`should compile for ${filename} client`, async () => {
       const result = await compile({ env: 'client', code, id: filename })
 
-      await expect(result!.code).toMatchFileSnapshot(
-        `./snapshots/client/${filename}`,
-      )
+      await expect(
+        await formatSnapshot(result!.code, filename),
+      ).toMatchFileSnapshot(`./snapshots/client/${filename}`)
     })
   })
 
@@ -90,37 +89,12 @@ describe('createMiddleware compiles correctly', async () => {
       id: 'test.ts',
     })
 
-    expect(result!.code).toMatchInlineSnapshot(`
-      "import { createMiddleware } from '@tanstack/react-start';
-      const myMiddleware = createMiddleware({
-        type: 'function'
-      });"
-    `)
-  })
-
-  // TODO remove upon stable
-  test('should warn for deprecated inputValidator method', async () => {
-    const warn = vi.fn()
-    const code = `
-      import { createMiddleware } from '@tanstack/react-start'
+    expect(await formatSnapshot(result!.code, 'test.ts'))
+      .toMatchInlineSnapshot(`
+      "import { createMiddleware } from '@tanstack/react-start'
       const myMiddleware = createMiddleware({ type: 'function' })
-        .inputValidator((input: string) => input)
-        .server(async ({ next }) => {
-          return next()
-        })`
-
-    await compile({
-      env: 'client',
-      code,
-      id: 'test.ts',
-      warn,
-    })
-
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'createMiddleware().inputValidator() is deprecated. Use createMiddleware().validator() instead.',
-      ),
-    )
+      "
+    `)
   })
 
   test('should use fast path for direct imports from known library (no extra resolveId calls)', async () => {

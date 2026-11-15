@@ -1,4 +1,3 @@
-import { runInNewContext } from 'node:vm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
@@ -10,9 +9,9 @@ import {
   notFound,
 } from '../src'
 import { hydrate } from '../src/ssr/client'
-import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import { dehydrateSsrMatchId } from '../src/ssr/ssr-match-id'
-import { createTestRouter } from './routerTestUtils'
+import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
+import { createTestRouter, dehydrateToBootstrap } from './routerTestUtils'
 import type { AnyRouteMatch, AnyRouter, LocationRewrite } from '../src'
 import type { ServerManifest } from '../src/manifest'
 import type { TsrSsrGlobal } from '../src/ssr/types'
@@ -32,35 +31,6 @@ function createMockBootstrap(
     p: vi.fn(),
     buffer: [],
     initialized: false,
-  }
-}
-
-async function dehydrateToBootstrap(
-  router: AnyRouter,
-  manifest: ServerManifest = testManifest,
-): Promise<TsrSsrGlobal> {
-  attachRouterServerSsrUtils({ router, manifest })
-  try {
-    await router.load()
-    await router.serverSsr!.dehydrate()
-
-    const script = router.serverSsr!.takeBufferedScripts()
-    expect(script?.children).toBeTruthy()
-
-    const context: Record<string, any> = {
-      document: {
-        currentScript: {
-          remove() {},
-        },
-      },
-    }
-    context.self = context
-    runInNewContext(script!.children!, context)
-
-    expect(context.$_TSR).toBeDefined()
-    return context.$_TSR
-  } finally {
-    router.serverSsr?.cleanup()
   }
 }
 
@@ -219,6 +189,40 @@ describe('hydrate', () => {
     expect(clientLoader).not.toHaveBeenCalled()
   })
 
+  it('inlines match ids that are valid HTML and not path-like', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const productRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/products/$productId',
+      loader: () => 'product',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([productRoute]),
+      history: createMemoryHistory({ initialEntries: ['/products/42'] }),
+      isServer: true,
+    })
+    attachRouterServerSsrUtils({ router, manifest: testManifest })
+
+    try {
+      await router.load()
+      await router.serverSsr!.dehydrate()
+      const html = router
+        .serverSsr!.takeInitialHydrationScriptTags()!
+        .before.map((script) => script.children)
+        .join('')
+
+      // Control characters other than whitespace are parse errors in the HTML
+      // input stream.
+      // eslint-disable-next-line no-control-regex
+      expect(html).not.toMatch(/[\x00-\x08\x0b\x0e-\x1f\x7f-\x9f]/)
+      // A char above U+00FF would widen the whole HTML string to two bytes.
+      expect(html).not.toMatch(/[\u0100-\uffff]/)
+      expect(html).not.toContain('/products/42')
+    } finally {
+      router.serverSsr?.cleanup()
+    }
+  })
+
   it('restores undefined loader data without serializing it', async () => {
     const serverRootRoute = new BaseRootRoute({})
     const serverRoute = new BaseRoute({
@@ -232,7 +236,7 @@ describe('hydrate', () => {
       isServer: true,
     })
 
-    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, testManifest)
     expect(mockWindow.$_TSR.router?.matches[1]).not.toHaveProperty('l')
 
     const clientLoader = vi.fn(() => undefined)
@@ -278,7 +282,7 @@ describe('hydrate', () => {
       isServer: true,
     })
 
-    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, testManifest)
     expect(mockWindow.$_TSR.router?.matches[1]).not.toHaveProperty('l')
 
     const parentError = new Error('parent reload failed')
@@ -342,7 +346,7 @@ describe('hydrate', () => {
         isServer: true,
       })
 
-      mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+      mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, testManifest)
       mockWindow.$_TSR.router!.matches[1]!.i = identity as string
 
       const clientLoader = vi.fn(() => 'client data')
@@ -400,7 +404,7 @@ describe('hydrate', () => {
       isServer: true,
     })
 
-    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, testManifest)
     mockWindow.$_TSR.router!.matches[2]!.i = dehydrateSsrMatchId(
       '/different-child-match',
     )
@@ -478,7 +482,7 @@ describe('hydrate', () => {
       isServer: true,
     })
 
-    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, testManifest)
     expect(mockWindow.$_TSR.router?.matches).toHaveLength(3)
 
     const clientLoader = vi.fn(() => 'client data')
@@ -536,7 +540,7 @@ describe('hydrate', () => {
     })
     serverRouter.options.serializationAdapters = [adapter]
 
-    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, testManifest)
 
     const clientLoader = vi.fn(() => new AdaptedValue('client loader data'))
     const clientRootRoute = new BaseRootRoute({})
@@ -577,7 +581,7 @@ describe('hydrate', () => {
       isServer: true,
     })
 
-    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, testManifest)
 
     expect(serverRouter.state.matches).toHaveLength(2)
     expect(serverRouter.state.matches[0]).toMatchObject({
@@ -635,7 +639,7 @@ describe('hydrate', () => {
       isServer: true,
       isShell: true,
     })
-    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, testManifest)
 
     const clientRootRoute = new BaseRootRoute({
       notFoundComponent: () => 'Not Found',
@@ -690,7 +694,7 @@ describe('hydrate', () => {
       isServer: true,
     })
 
-    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, testManifest)
 
     const clientLoader = vi.fn(() => 'client internal data')
     const clientRootRoute = new BaseRootRoute({})
@@ -699,13 +703,12 @@ describe('hydrate', () => {
       path: '/internal',
       loader: clientLoader,
     })
-    let clientRouter: AnyRouter
     const customHydrate = vi.fn((dehydrated: { rewrite?: boolean }) => {
       if (dehydrated.rewrite) {
         clientRouter.update({ rewrite })
       }
     })
-    clientRouter = createTestRouter({
+    const clientRouter: AnyRouter = createTestRouter({
       routeTree: clientRootRoute.addChildren([clientInternalRoute]),
       history: createMemoryHistory({ initialEntries: ['/public'] }),
       hydrate: customHydrate,
@@ -772,5 +775,62 @@ describe('hydrate', () => {
         data: { source: 'index head' },
       }),
     )
+  })
+})
+
+describe('createSerializationAdapter key validation', () => {
+  function createAdapter(key: string) {
+    return createSerializationAdapter({
+      key,
+      test: (value): value is string => typeof value === 'string',
+      toSerializable: (value) => value,
+      fromSerializable: (value) => value,
+    })
+  }
+
+  it('throws in development for empty or unsupported keys', () => {
+    for (const key of [
+      '',
+      'nul\0key',
+      'bad"key',
+      'back\\slash',
+      'lt<key',
+      'back\bspace',
+      'tab\tkey',
+      'form\ffeed',
+      'line\nbreak',
+      'carriage\rreturn',
+      'line\u2028separator',
+      'paragraph\u2029separator',
+      'unpaired-high-\ud800',
+      'unpaired-low-\udc00',
+      'surrogate-pair-🚀',
+    ]) {
+      expect(() => createAdapter(key)).toThrowError(
+        /createSerializationAdapter: key .* is invalid/s,
+      )
+    }
+  })
+
+  it('accepts a key that Seroval preserves verbatim', () => {
+    expect(() => createAdapter('safe-key/v1.0_$-')).not.toThrow()
+  })
+
+  it('does not inspect the key in production', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    try {
+      const options = {
+        get key(): string {
+          throw new Error('production key was inspected')
+        },
+        test: (value: unknown): value is string => typeof value === 'string',
+        toSerializable: (value: string) => value,
+        fromSerializable: (value: string) => value,
+      }
+
+      expect(createSerializationAdapter(options)).toBe(options)
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
 })

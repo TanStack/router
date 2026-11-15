@@ -1,4 +1,3 @@
-import { runInNewContext } from 'node:vm'
 import {
   afterEach,
   beforeEach,
@@ -16,36 +15,13 @@ import {
   createControlledPromise,
 } from '../src'
 import { hydrate } from '../src/ssr/client'
-import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import { dehydrateSsrMatchId } from '../src/ssr/ssr-match-id'
-import { createTestRouter } from './routerTestUtils'
+import { createTestRouter, dehydrateToBootstrap } from './routerTestUtils'
 import type { AnyRouteMatch, AnyRouter, NavigateFn } from '../src'
 import type { DehydratedRouter, TsrSsrGlobal } from '../src/ssr/types'
 import type { ServerManifest } from '../src/manifest'
 
 const testManifest: ServerManifest = { routes: {} }
-
-async function dehydrateToBootstrap(router: AnyRouter): Promise<TsrSsrGlobal> {
-  attachRouterServerSsrUtils({ router, manifest: testManifest })
-  try {
-    await router.load()
-    await router.serverSsr!.dehydrate()
-
-    const script = router.serverSsr!.takeBufferedScripts()
-    expect(script?.children).toBeTruthy()
-
-    const context: Record<string, any> = {
-      document: { currentScript: { remove() {} } },
-    }
-    context.self = context
-    runInNewContext(script!.children!, context)
-
-    expect(context.$_TSR).toBeDefined()
-    return context.$_TSR
-  } finally {
-    router.serverSsr?.cleanup()
-  }
-}
 
 // These tests install the hydration protocol directly so client-only hooks can
 // be paused at deterministic ownership boundaries.
@@ -155,7 +131,7 @@ describe('hydration asset currentness', () => {
       }),
       isServer: true,
     })
-    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, testManifest)
     expect(serverChildLoader).not.toHaveBeenCalled()
 
     const childContext = vi.fn(() => ({ assetSource: 'child context' }))
@@ -227,7 +203,7 @@ describe('hydration asset currentness', () => {
       history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
       isServer: true,
     })
-    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, testManifest)
 
     const childLoaderResult = createControlledPromise<string>()
     let continuationAssetEnd: number | undefined
@@ -434,9 +410,10 @@ describe('hydration asset currentness', () => {
     expect(childLoader).toHaveBeenCalledTimes(1)
   })
 
-  test('failed HMR restores a partial hydration presentation and handoff', async () => {
+  test('published HMR consumes a partial hydration handoff before its successor converges', async () => {
     let hydrationController: AbortController | undefined
-    const childLoader = vi.fn(() => 'client child data')
+    let generation = 0
+    const childLoader = vi.fn(() => `client child data ${++generation}`)
     const rootRoute = new BaseRootRoute({
       context: ({ abortController }: { abortController: AbortController }) => {
         hydrationController ??= abortController
@@ -465,30 +442,40 @@ describe('hydration asset currentness', () => {
 
     await hydrate(router)
     const handoff = router._handoff
-    const startTransition = router.startTransition
-    router.startTransition = async (fn) => {
+    const firstAck = createControlledPromise<boolean>()
+    const firstPublished = createControlledPromise<void>()
+    let transitions = 0
+    router.startTransition = (fn) => {
+      transitions++
+      if (transitions === 1) {
+        fn()
+        firstPublished.resolve()
+        return firstAck
+      }
+      firstAck.resolve(false)
       fn()
-      throw new Error('HMR render failed')
+      return Promise.resolve(true)
     }
 
-    await router._refreshRoute!()
+    const firstRefresh = router._refreshRoute!()
+    await firstPublished
 
-    expect(router.state.matches.map((match) => match.routeId)).toEqual([
-      rootRoute.id,
-      childRoute.id,
-    ])
-    expect(router.state.matches[1]).toMatchObject({
-      status: 'pending',
-      ssr: false,
-    })
-    expect(router._handoff).toBe(handoff)
-    expect(hydrationController?.signal.aborted).toBe(false)
-
-    router.startTransition = startTransition
-    await router.load()
+    expect(handoff).toBeDefined()
+    expect(router._handoff).toBeUndefined()
+    expect(hydrationController?.signal.aborted).toBe(true)
     expect(router.state.matches[1]).toMatchObject({
       status: 'success',
-      loaderData: 'client child data',
+      ssr: false,
+      loaderData: 'client child data 1',
+    })
+
+    const secondRefresh = router._refreshRoute!()
+    await Promise.all([firstRefresh, secondRefresh])
+
+    expect(router._handoff).toBeUndefined()
+    expect(router.state.matches[1]).toMatchObject({
+      status: 'success',
+      loaderData: 'client child data 2',
     })
     expect(childLoader).toHaveBeenCalledTimes(2)
   })
@@ -586,7 +573,7 @@ describe('hydration asset currentness', () => {
       isServer: true,
     })
 
-    const bootstrap = await dehydrateToBootstrap(serverRouter)
+    const bootstrap = await dehydrateToBootstrap(serverRouter, testManifest)
 
     expect(serverBeforeLoad).toHaveBeenCalledTimes(1)
     expect(serverChildLoader).not.toHaveBeenCalled()

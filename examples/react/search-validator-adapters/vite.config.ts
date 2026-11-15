@@ -11,6 +11,7 @@ export default defineConfig({
     watch: false,
     environment: 'jsdom',
     typecheck: { enabled: true },
+    setupFiles: ['./tests/jest-dom.setup.ts'],
   },
   plugins: [
     tailwindcss(),

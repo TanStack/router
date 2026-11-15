@@ -62,13 +62,12 @@ export function createWorkloadGroup(
     return new Request(`http://localhost/items/${id}?q=${q}`, requestInit)
   }
 
-  const run = () =>
+  const run = async () =>
     runSequentialRequestLoop(handler, {
       random: benchmarkRandom,
       iterations: requestChurnIterations,
       buildRequest: buildItemRequest,
       validateResponse: validateItemResponse,
-      pinGcBetweenIterations: true,
     })
 
   return {

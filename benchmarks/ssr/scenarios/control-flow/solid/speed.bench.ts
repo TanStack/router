@@ -1,12 +1,8 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertControlFlowSanity,
   controlFlowBenchOptions,
-  runErrorLoop,
-  runNotFoundLoop,
   runRedirectLoop,
-  runRouteHeadersLoop,
-  runUnmatchedLoop,
 } from '../shared'
 import type { StartRequestHandler } from '../shared'
 
@@ -20,34 +16,8 @@ const { default: handler } = (await import(
 
 await assertControlFlowSanity(handler)
 
-describe('ssr', () => {
-  bench(
-    'ssr redirect (solid)',
-    () => runRedirectLoop(handler),
-    controlFlowBenchOptions,
-  )
-
-  bench(
-    'ssr not-found (solid)',
-    () => runNotFoundLoop(handler),
-    controlFlowBenchOptions,
-  )
-
-  bench(
-    'ssr control-flow error 500 (solid)',
-    () => runErrorLoop(handler),
-    controlFlowBenchOptions,
-  )
-
-  bench(
-    'ssr control-flow unmatched 404 (solid)',
-    () => runUnmatchedLoop(handler),
-    controlFlowBenchOptions,
-  )
-
-  bench(
-    'ssr control-flow route headers (solid)',
-    () => runRouteHeadersLoop(handler),
+test('ssr', async ({ bench }) => {
+  await bench('ssr redirect (solid)', async () => runRedirectLoop(handler)).run(
     controlFlowBenchOptions,
   )
 })

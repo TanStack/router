@@ -1,14 +1,13 @@
-import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig, devices } from '@playwright/test'
-import { getTestServerPort } from '@tanstack/router-e2e-utils'
-import packageJson from './package.json' with { type: 'json' }
+import { appServerReady } from '@tanstack/router-e2e-utils'
 
 // Ensure port file is written next to this config, even if Playwright loads it
 // from a different working directory.
 process.chdir(path.dirname(fileURLToPath(import.meta.url)))
 
-const PORT = await getTestServerPort(packageJson.name)
+const PORT = Number(process.env.E2E_APP_PORT ?? 0)
 const baseURL = `http://localhost:${PORT}`
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -26,8 +25,8 @@ export default defineConfig({
 
   webServer: {
     command: `pnpm build && VITE_SERVER_PORT=${PORT} PORT=${PORT} pnpm start`,
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    wait: appServerReady,
+    reuseExistingServer: false,
     stdout: 'pipe',
   },
 

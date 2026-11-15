@@ -76,18 +76,24 @@ describe('early hints', () => {
       },
     }
 
-    expect(
-      collectStaticHintsFromManifest(manifest, [
-        { id: '__root__' },
-        { id: '/posts' },
-      ] as Array<AnyRoute>),
-    ).toEqual([
-      { href: '/assets/root.js', rel: 'modulepreload', as: 'script' },
+    const hints = collectStaticHintsFromManifest(manifest, [
+      { id: '__root__' },
+      { id: '/posts' },
+    ] as Array<AnyRoute>)
+
+    expect(hints).toEqual([
+      {
+        href: '/assets/root.js',
+        rel: 'modulepreload',
+        as: 'script',
+        fetchPriority: 'low',
+      },
       {
         href: '/assets/shared.js',
         rel: 'modulepreload',
         as: 'script',
         crossOrigin: 'anonymous',
+        fetchPriority: 'low',
       },
       {
         href: '/assets/root.css',
@@ -95,8 +101,20 @@ describe('early hints', () => {
         as: 'style',
         crossOrigin: 'use-credentials',
       },
-      { href: '/assets/posts.js', rel: 'modulepreload', as: 'script' },
+      {
+        href: '/assets/posts.js',
+        rel: 'modulepreload',
+        as: 'script',
+        fetchPriority: 'low',
+      },
       { href: '/assets/posts.css', rel: 'preload', as: 'style' },
+    ])
+    expect(hints.map(serializeEarlyHint)).toEqual([
+      '</assets/root.js>; rel=modulepreload; as=script; fetchpriority=low',
+      '</assets/shared.js>; rel=modulepreload; as=script; crossorigin=anonymous; fetchpriority=low',
+      '</assets/root.css>; rel=preload; as=style; crossorigin=use-credentials',
+      '</assets/posts.js>; rel=modulepreload; as=script; fetchpriority=low',
+      '</assets/posts.css>; rel=preload; as=style',
     ])
   })
 
@@ -120,7 +138,12 @@ describe('early hints', () => {
         { id: '/posts' },
       ] as Array<AnyRoute>),
     ).toEqual([
-      { href: '/assets/posts.js', rel: 'modulepreload', as: 'script' },
+      {
+        href: '/assets/posts.js',
+        rel: 'modulepreload',
+        as: 'script',
+        fetchPriority: 'low',
+      },
     ])
   })
 
@@ -149,7 +172,12 @@ describe('early hints', () => {
         { id: '/posts' },
       ] as Array<AnyRoute>),
     ).toEqual([
-      { href: '/assets/posts.js', rel: 'modulepreload', as: 'script' },
+      {
+        href: '/assets/posts.js',
+        rel: 'modulepreload',
+        as: 'script',
+        fetchPriority: 'low',
+      },
     ])
   })
 
@@ -171,12 +199,18 @@ describe('early hints', () => {
         { id: '/posts' },
       ] as Array<AnyRoute>),
     ).toEqual([
-      { href: '/assets/posts.js', rel: 'preload', as: 'script' },
+      {
+        href: '/assets/posts.js',
+        rel: 'preload',
+        as: 'script',
+        fetchPriority: 'low',
+      },
       {
         href: '/assets/shared.js',
         rel: 'preload',
         as: 'script',
         crossOrigin: 'anonymous',
+        fetchPriority: 'low',
       },
     ])
   })
@@ -395,7 +429,7 @@ describe('early hints', () => {
 
     expect(events).toHaveLength(2)
     expect(headers.get('Link')).toBe(
-      '</assets/app.js>; rel=modulepreload; as=script',
+      '</assets/app.js>; rel=modulepreload; as=script; fetchpriority=low',
     )
   })
 

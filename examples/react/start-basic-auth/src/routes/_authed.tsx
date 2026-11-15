@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { hashPassword, prismaClient } from '~/utils/prisma'
 import { Login } from '~/components/Login'
-import { useAppSession } from '~/utils/session'
+import { getAppSession } from '~/utils/session'
 
 export const loginFn = createServerFn({ method: 'POST' })
   .validator((d: { email: string; password: string }) => d)
@@ -33,13 +33,10 @@ export const loginFn = createServerFn({ method: 'POST' })
       }
     }
 
-    // Create a session
-    const session = await useAppSession()
-
     // Store the user's email in the session
-    await session.update({
-      userEmail: user.email,
-    })
+    const session = await getAppSession()
+    session.userEmail = user.email
+    await session.save()
   })
 
 export const Route = createFileRoute('/_authed')({
@@ -49,7 +46,7 @@ export const Route = createFileRoute('/_authed')({
     }
   },
   errorComponent: ({ error }) => {
-    if (error.message === 'Not authenticated') {
+    if (error instanceof Error && error.message === 'Not authenticated') {
       return <Login />
     }
 

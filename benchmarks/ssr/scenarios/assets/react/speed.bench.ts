@@ -1,11 +1,10 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertAssetsScenario,
   assetsBenchOptions,
   runAssetsInlineLoop,
-  runAssetsLinkedControlLoop,
-  type StartRequestHandler,
 } from '../shared'
+import type { StartRequestHandler } from '../shared'
 
 const appModuleUrl = new URL('./dist/server/server.js', import.meta.url).href
 
@@ -17,15 +16,8 @@ const { default: handler } = (await import(
 
 await assertAssetsScenario(handler)
 
-describe('ssr', () => {
-  bench(
-    'ssr assets inline-css cdn (react)',
-    () => runAssetsInlineLoop(handler),
-    assetsBenchOptions,
-  )
-  bench(
-    'ssr assets linked-css control (react)',
-    () => runAssetsLinkedControlLoop(handler),
-    assetsBenchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr assets inline-css cdn (react)', async () =>
+    runAssetsInlineLoop(handler),
+  ).run(assetsBenchOptions)
 })

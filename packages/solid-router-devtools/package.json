@@ -72,9 +72,14 @@
   "devDependencies": {
     "@solidjs/vite-plugin": "^3.0.0-next.57",
     "@solidjs/web": "^2.0.0-rc.21",
-    "@types/node": ">=20",
     "solid-js": "^2.0.0-rc.21",
-    "vite": "*"
+    "vite": "*",
+    "@types/node": ">=20",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "@solidjs/web": "^2.0.0-rc.21",

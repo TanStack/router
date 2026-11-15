@@ -102,24 +102,30 @@
   },
   "dependencies": {
     "@solid-devtools/logger": "^0.9.4",
+    "@solid-primitives/refs": "^1.0.8",
     "@solidjs/meta": "^0.29.4",
     "@solidjs/web": "^2.0.0-rc.21",
     "@tanstack/history": "workspace:*",
     "@tanstack/router-core": "workspace:*",
-    "isbot": "^5.1.22",
-    "@solid-primitives/refs": "^1.0.8"
+    "isbot": "catalog:"
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.10",
     "@solidjs/vite-plugin": "^3.0.0-next.57",
     "@solidjs/web": "^2.0.0-rc.21",
-    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/jest-dom": "catalog:",
     "@types/node": ">=20",
-    "combinate": "^1.1.11",
+    "combinate": "catalog:",
     "eslint-plugin-solid": "^0.14.5",
     "solid-js": "^2.0.0-rc.21",
     "vite": "*",
-    "zod": "^4.4.3"
+    "zod": "catalog:",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "@solidjs/web": ">=2.0.0-rc.21 <3.0.0",

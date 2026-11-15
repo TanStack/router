@@ -1,8 +1,10 @@
 import * as React from 'react'
 import { afterEach, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { createControlledPromise } from '@tanstack/router-core'
 import {
+  Link,
+  Outlet,
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
@@ -43,6 +45,84 @@ test('concurrent component preloads share the import', async () => {
 
   componentImport.resolve({ default: () => null })
   await Promise.all([first, second])
+})
+
+test('a resolved client component preload is reused', async () => {
+  const importer = vi.fn().mockResolvedValue({ default: () => null })
+  const Page = lazyRouteComponent(importer)
+
+  await Page.preload?.()
+  expect(Page.preload).toBeUndefined()
+  expect(importer).toHaveBeenCalledTimes(1)
+})
+
+test('revisiting a resolved lazy component skips pending UI', async () => {
+  const componentImport = createControlledPromise<{
+    default: () => React.JSX.Element
+  }>()
+  const repeatedImport = createControlledPromise<{
+    default: () => React.JSX.Element
+  }>()
+  const importer = vi
+    .fn()
+    .mockImplementationOnce(() => componentImport)
+    .mockImplementationOnce(() => repeatedImport)
+  const Page = lazyRouteComponent(importer)
+  const PendingComponent = vi.fn(() => (
+    <div data-testid="pending-component">Loading page</div>
+  ))
+  const rootRoute = createRootRoute({
+    component: () => (
+      <>
+        <Link to="/">Home link</Link>
+        <Link to="/page">Page link</Link>
+        <Outlet />
+      </>
+    ),
+  })
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <div>Home content</div>,
+  })
+  const pageRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/page',
+    component: Page,
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, pageRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+    defaultPendingMs: 0,
+    defaultPendingMinMs: 0,
+    defaultPendingComponent: PendingComponent,
+  })
+
+  render(<RouterProvider router={router} />)
+  expect(await screen.findByText('Home content')).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('link', { name: 'Page link' }))
+  expect(await screen.findByTestId('pending-component')).toHaveTextContent(
+    'Loading page',
+  )
+  await act(() => {
+    componentImport.resolve({ default: () => <div>Page content</div> })
+  })
+  expect(await screen.findByText('Page content')).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('link', { name: 'Home link' }))
+  expect(await screen.findByText('Home content')).toBeInTheDocument()
+  PendingComponent.mockClear()
+  fireEvent.click(screen.getByRole('link', { name: 'Page link' }))
+  await act(() => new Promise((resolve) => setTimeout(resolve, 10)))
+
+  const revisitedContent = screen.queryByText('Page content')
+  const revisitedPending = screen.queryByTestId('pending-component')
+
+  expect(revisitedContent).toBeInTheDocument()
+  expect(revisitedPending).not.toBeInTheDocument()
+  expect(PendingComponent).not.toHaveBeenCalled()
+  expect(importer).toHaveBeenCalledOnce()
 })
 
 test('a failed component download is retried from the route error UI', async () => {

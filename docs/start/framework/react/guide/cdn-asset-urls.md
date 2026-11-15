@@ -3,8 +3,6 @@ id: cdn-asset-urls
 title: CDN Asset URLs
 ---
 
-# CDN Asset URLs
-
 > **Experimental:** `transformAssets` is experimental and subject to change.
 
 Use this guide when you need TanStack Start to rewrite manifest-managed asset URLs at runtime. The most common use case is serving JavaScript and CSS from a CDN whose origin is known only when the server starts, or varies per request.

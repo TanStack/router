@@ -1,9 +1,7 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertServerFnTransportScenario,
   runServerFnMultipartRequestLoop,
-  runServerFnRawResponseRequestLoop,
-  runServerFnRawStreamRequestLoop,
   serverFnTransportBenchOptions,
   setupServerFnTransportBench,
 } from '../bench'
@@ -14,27 +12,12 @@ const { default: handler } = (await import(
 )) as {
   default: StartRequestHandler
 }
-
 const context = await setupServerFnTransportBench(handler)
 
 await assertServerFnTransportScenario(handler, context)
 
-describe('ssr', () => {
-  bench(
-    'ssr server-fn multipart (react)',
-    () => runServerFnMultipartRequestLoop(handler, context),
-    serverFnTransportBenchOptions,
-  )
-
-  bench(
-    'ssr server-fn raw-response (react)',
-    () => runServerFnRawResponseRequestLoop(handler, context),
-    serverFnTransportBenchOptions,
-  )
-
-  bench(
-    'ssr server-fn raw-stream (react)',
-    () => runServerFnRawStreamRequestLoop(handler, context),
-    serverFnTransportBenchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr server-fn multipart (react)', async () =>
+    runServerFnMultipartRequestLoop(handler, context),
+  ).run(serverFnTransportBenchOptions)
 })

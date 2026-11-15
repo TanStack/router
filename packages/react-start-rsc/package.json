@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-start-rsc",
-  "version": "0.1.43",
+  "version": "0.1.67",
   "description": "React Server Components support for TanStack Start",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -104,21 +104,33 @@
     "@tanstack/start-fn-stubs": "workspace:*",
     "@tanstack/start-plugin-core": "workspace:*",
     "@tanstack/start-storage-context": "workspace:*",
-    "pathe": "^2.0.3"
+    "pathe": "catalog:"
   },
   "devDependencies": {
-    "@rspack/core": "2.0.0",
-    "@testing-library/react": "^16.2.0",
-    "@vitejs/plugin-react": "^4.3.4",
-    "@vitejs/plugin-rsc": "^0.5.30",
-    "react-server-dom-rspack": "^0.0.2"
+    "@rspack/core": "2.2.7",
+    "@testing-library/react": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "@vitejs/plugin-rsc": "^0.5.39",
+    "react-server-dom-rspack": "^0.1.1",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@eslint-react/eslint-plugin": "catalog:",
+    "eslint-plugin-react-hooks": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "@rspack/core": ">=2.0.0-0",
-    "@vitejs/plugin-rsc": ">=0.5.30",
+    "@vitejs/plugin-rsc": ">=0.5.38",
     "react": ">=18.0.0 || >=19.0.0",
     "react-dom": ">=18.0.0 || >=19.0.0",
-    "react-server-dom-rspack": ">=0.0.2"
+    "react-server-dom-rspack": ">=0.1.1"
   },
   "peerDependenciesMeta": {
     "@rspack/core": {

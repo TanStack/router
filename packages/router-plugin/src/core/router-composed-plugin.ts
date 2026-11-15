@@ -4,6 +4,7 @@ import { createRouterCodeSplitterPlugin } from './router-code-splitter-plugin'
 import { createRouterHmrPlugin } from './router-hmr-plugin'
 import { createRouterPluginContext } from './router-plugin-context'
 import type { Config } from './config'
+import type { HmrStyle } from './hmr'
 import type {
   RspackCompiler,
   UnpluginFactory,
@@ -30,13 +31,18 @@ function applyRspackInlineCssDefaultDefinePlugin(compiler: RspackCompiler) {
 
 export const unpluginRouterComposedFactory: UnpluginFactory<
   Partial<Config | (() => Config)> | undefined
-> = (options = {}, _meta) => {
+> = (options = {}, meta) => {
   const ROOT: string = process.cwd()
   const userConfig = getConfig(
     (typeof options === 'function' ? options() : options) as Partial<Config>,
     ROOT,
   )
   const routerPluginContext = createRouterPluginContext()
+  // webpack and Rspack share webpack's `import.meta.webpackHot` HMR API.
+  const hmrStyle: HmrStyle =
+    meta.framework === 'webpack' || meta.framework === 'rspack'
+      ? 'webpack'
+      : 'vite'
 
   const getPlugin = (plugin: ReturnType<UnpluginFactory<any>>) => {
     if (!Array.isArray(plugin)) {
@@ -49,7 +55,7 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
     createRouterGeneratorPlugin(options, routerPluginContext),
   )
   const routerCodeSplitter = getPlugin(
-    createRouterCodeSplitterPlugin(options, routerPluginContext),
+    createRouterCodeSplitterPlugin(options, routerPluginContext, hmrStyle),
   )
 
   const result = [
@@ -89,7 +95,7 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
 
   if (!isProduction && !userConfig.autoCodeSplitting) {
     const routerHmr = getPlugin(
-      createRouterHmrPlugin(options, routerPluginContext),
+      createRouterHmrPlugin(options, routerPluginContext, hmrStyle),
     )
     result.push(...routerHmr)
   }

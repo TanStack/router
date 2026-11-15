@@ -18,7 +18,18 @@ export const ServerFunctionSerializationAdapter = createSerializationAdapter({
       // to another server function), it originates from the client and must be
       // validated the same way as direct HTTP calls to server functions.
       const serverFn = await getServerFnById(functionId, { origin: 'client' })
-      const result = await serverFn(opts ?? {}, signal)
+      const result = await serverFn(
+        {
+          data: opts?.data,
+          context: opts?.context,
+          method: serverFn.method ?? 'GET',
+        },
+        signal,
+      )
+      // Only a failed call has an `error` key, holding the thrown value.
+      if ('error' in result) {
+        throw result.error
+      }
       return result.result
     }
     return fn as never

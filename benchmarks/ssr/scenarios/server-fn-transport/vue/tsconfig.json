@@ -6,7 +6,7 @@
     "types": ["node", "vite/client", "vitest/globals"]
   },
   "include": [
-    "speed.bench.ts",
+    "speed*.bench.ts",
     "vite.config.ts",
     "../../../bench-utils.ts",
     "../bench.ts",

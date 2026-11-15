@@ -1,3 +1,4 @@
+import { defineComponent } from 'vue'
 import {
   cleanup,
   fireEvent,
@@ -205,13 +206,17 @@ test('reproducer for #2053', async () => {
     },
   })
 
+  const FooComponent = defineComponent({
+    setup() {
+      const params = fooRoute.useParams()
+      return () => <div>fooId: {params.value.fooId}</div>
+    },
+  })
+
   const fooRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/foo/$fooId',
-    component: () => {
-      const params = fooRoute.useParams()
-      return <div>fooId: {params.value.fooId}</div>
-    },
+    component: FooComponent,
   })
 
   window.history.replaceState(null, 'root', '/foo/3ΚΑΠΠΑ')
@@ -288,15 +293,22 @@ test('#7673: aborted loader does not render the route component with undefined l
   const routeComponentRendered = vi.fn()
   const renderedError = vi.fn()
   const rootRoute = createRootRoute({})
+  const IndexComponent = defineComponent({
+    setup() {
+      const data = indexRoute.useLoaderData()
+      return () => {
+        routeComponentRendered()
+
+        return <div data-testid="index-content">{data.value.value}</div>
+      }
+    },
+  })
+
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
     loader: (): Promise<{ value: string }> => Promise.reject(abortError),
-    component: () => {
-      routeComponentRendered()
-      const data = indexRoute.useLoaderData()
-      return <div data-testid="index-content">{data.value.value}</div>
-    },
+    component: IndexComponent,
     errorComponent: ({ error }) => {
       renderedError(error)
       return <div data-testid="index-error">indexErrorComponent</div>
@@ -368,17 +380,10 @@ test('reproducer #4245', async () => {
   const LOADER_WAIT_TIME = 500
   const rootRoute = createRootRoute({})
 
-  const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-    loader: async () => {
-      await sleep(LOADER_WAIT_TIME)
-      return 'index'
-    },
-
-    component: () => {
+  const IndexComponent = defineComponent({
+    setup() {
       const data = indexRoute.useLoaderData()
-      return (
+      return () => (
         <div>
           <Link to="/foo" data-testid="link-to-foo">
             foo
@@ -387,6 +392,17 @@ test('reproducer #4245', async () => {
         </div>
       )
     },
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    loader: async () => {
+      await sleep(LOADER_WAIT_TIME)
+      return 'index'
+    },
+
+    component: IndexComponent,
   })
 
   const fooRoute = createRoute({
@@ -483,6 +499,30 @@ test('reproducer #4546', async () => {
   })
 
   let counter = 0
+  const Header = defineComponent({
+    setup() {
+      const router = useRouter()
+
+      const ctx = appRoute.useRouteContext()
+      return () => (
+        <div>
+          Header Counter:{' '}
+          <p data-testid="header-counter">{ctx.value.counter}</p>
+          <button
+            onClick={() => {
+              router.invalidate()
+            }}
+            data-testid="invalidate-router"
+            style={{
+              border: '1px solid blue',
+            }}
+          >
+            Invalidate router
+          </button>
+        </div>
+      )
+    },
+  })
   const appRoute = createRoute({
     getParentRoute: () => rootRoute,
     id: '_app',
@@ -502,42 +542,12 @@ test('reproducer #4546', async () => {
     },
   })
 
-  function Header() {
-    const router = useRouter()
-    const ctx = appRoute.useRouteContext()
-
-    return (
-      <div>
-        Header Counter: <p data-testid="header-counter">{ctx.value.counter}</p>
-        <button
-          onClick={() => {
-            router.invalidate()
-          }}
-          data-testid="invalidate-router"
-          style={{
-            border: '1px solid blue',
-          }}
-        >
-          Invalidate router
-        </button>
-      </div>
-    )
-  }
-
-  const indexRoute = createRoute({
-    getParentRoute: () => appRoute,
-    path: '/',
-    loader: ({ context }) => {
-      return {
-        counter: context.counter,
-      }
-    },
-
-    component: () => {
+  const IndexComponent = defineComponent({
+    setup() {
       const data = indexRoute.useLoaderData()
-      const ctx = indexRoute.useRouteContext()
 
-      return (
+      const ctx = indexRoute.useRouteContext()
+      return () => (
         <div
           style={{
             display: 'flex',
@@ -557,20 +567,24 @@ test('reproducer #4546', async () => {
       )
     },
   })
-  const idRoute = createRoute({
+
+  const indexRoute = createRoute({
     getParentRoute: () => appRoute,
-    path: '$id',
+    path: '/',
     loader: ({ context }) => {
       return {
         counter: context.counter,
       }
     },
 
-    component: () => {
+    component: IndexComponent,
+  })
+  const IdComponent = defineComponent({
+    setup() {
       const data = idRoute.useLoaderData()
-      const ctx = idRoute.useRouteContext()
 
-      return (
+      const ctx = idRoute.useRouteContext()
+      return () => (
         <div
           style={{
             display: 'flex',
@@ -589,6 +603,18 @@ test('reproducer #4546', async () => {
         </div>
       )
     },
+  })
+
+  const idRoute = createRoute({
+    getParentRoute: () => appRoute,
+    path: '$id',
+    loader: ({ context }) => {
+      return {
+        counter: context.counter,
+      }
+    },
+
+    component: IdComponent,
   })
 
   const routeTree = rootRoute.addChildren([

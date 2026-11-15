@@ -16,11 +16,6 @@ export default defineConfig({
     pluginVueJsx(),
     tanstackStart(),
   ],
-  performance: {
-    chunkSplit: {
-      strategy: 'split-by-experience',
-    },
-  },
   source: {
     define: {
       __TSR_PRERENDER__: JSON.stringify(isPrerender),

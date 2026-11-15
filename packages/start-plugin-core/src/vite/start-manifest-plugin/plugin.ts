@@ -4,7 +4,6 @@ import { rootRouteId } from '@tanstack/router-core'
 import { DEV_CLIENT_ENTRY, START_ENVIRONMENT_NAMES } from '../../constants'
 import {
   buildStartManifest,
-  createManifestAssetResolvers,
   serializeStartManifest,
 } from '../../start-manifest-plugin/manifestBuilder'
 import { createVirtualModule } from '../createVirtualModule'
@@ -24,6 +23,7 @@ export function startManifestPlugin(opts: {
 }): PluginOption {
   let clientBuild: NormalizedClientBuild | undefined
   let cssCodeSplitDisabledFileName: string | undefined
+  let devClientRuntime: string | undefined
 
   return [
     {
@@ -32,6 +32,14 @@ export function startManifestPlugin(opts: {
         return environment.name === START_ENVIRONMENT_NAMES.client
       },
       enforce: 'post',
+      configureServer(server) {
+        // Vite's separate bundled dev runtime must run before the client entry.
+        // Use its SSR output API once available (vitejs/vite#22991).
+        devClientRuntime = server.environments[START_ENVIRONMENT_NAMES.client]
+          .bundledDev
+          ? joinURL(server.config.base, 'bundledDevClient.mjs')
+          : undefined
+      },
       generateBundle(_options, bundle) {
         if (this.environment.name !== START_ENVIRONMENT_NAMES.client) {
           throw new Error(
@@ -39,7 +47,10 @@ export function startManifestPlugin(opts: {
           )
         }
 
-        clientBuild = normalizeViteClientBuild(bundle)
+        clientBuild = normalizeViteClientBuild(
+          bundle,
+          opts.getConfig().startConfig.server.build.inlineCss.enabled,
+        )
         cssCodeSplitDisabledFileName = getAssetFileNameByName(
           bundle,
           'style.css',
@@ -58,11 +69,11 @@ export function startManifestPlugin(opts: {
         })
 
         if (this.environment.name !== START_ENVIRONMENT_NAMES.server) {
-          return getEmptyStartManifestModule(clientEntry)
+          return getEmptyStartManifestModule(clientEntry, devClientRuntime)
         }
 
         if (this.environment.config.command === 'serve') {
-          return getEmptyStartManifestModule(clientEntry)
+          return getEmptyStartManifestModule(clientEntry, devClientRuntime)
         }
 
         const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
@@ -105,10 +116,10 @@ function getViteAdditionalRouteAssets(options: {
     )
   }
 
-  const { getStylesheetLink } = createManifestAssetResolvers(options.basePath)
-
   return {
-    [rootRouteId]: [getStylesheetLink(options.cssCodeSplitDisabledFileName)],
+    [rootRouteId]: [
+      joinURL(options.basePath, options.cssCodeSplitDisabledFileName),
+    ],
   }
 }
 
@@ -135,7 +146,24 @@ function getAssetFileNameByName(
   return undefined
 }
 
-function getEmptyStartManifestModule(clientEntry: string) {
+function getEmptyStartManifestModule(
+  clientEntry: string,
+  clientRuntime?: string,
+) {
+  if (clientRuntime) {
+    const entries = [clientRuntime, clientEntry]
+    return `export const tsrStartManifest = () => (${serializeStartManifest({
+      routes: {
+        [rootRouteId]: {
+          preloads: entries,
+          scripts: entries.map((src) => ({
+            attrs: { type: 'module', async: false, src },
+          })),
+        },
+      },
+    })})`
+  }
+
   return `export const tsrStartManifest = () => ({
       routes: {
         __root__: {

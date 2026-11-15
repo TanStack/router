@@ -1,51 +1,186 @@
+import { invariant, isNotFound, isRedirect } from '@tanstack/router-core'
 import {
   createRawStreamRPCPlugin,
-  invariant,
-  isNotFound,
-  isRedirect,
-} from '@tanstack/router-core'
+  defaultSerovalDeserializerPlugins as routerDefaultSerovalPlugins,
+} from '@tanstack/router-core/ssr/server'
 import {
+  TSS_CONTENT_TYPE_FRAMED_VERSIONED,
   TSS_FORMDATA_CONTEXT,
   X_TSS_RAW_RESPONSE,
   X_TSS_SERIALIZED,
-  getDefaultSerovalPlugins,
-  safeObjectMerge,
+  getSerovalPlugins,
 } from '@tanstack/start-client-core'
-import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
-import { getResponse } from './request-response'
-import { getServerFnById } from './getServerFnById'
 import {
-  TSS_CONTENT_TYPE_FRAMED_VERSIONED,
-  createMultiplexedStream,
+  MAX_FRAMED_STREAMS,
+  MAX_FRAME_PAYLOAD_SIZE,
+} from '@tanstack/start-client-core/client-rpc'
+import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
+import {
+  createFinalizedResponse,
+  getErrorHeaders,
+  getParsedRequestUrl,
+  getSerializedResponseState,
+  protectResponseHeaders,
+  resolveErrorResponseStatus,
+  setProtectedResponseHeaders,
+} from './internal-request-response'
+import { getServerFnById } from './getServerFnById'
+import { createMultiplexedStream } from './frame-protocol'
+import type {
+  LateStreamRegistration,
+  MultiplexedStreamOptions,
+  MultiplexedStreamRecord,
 } from './frame-protocol'
-import type { LateStreamRegistration } from './frame-protocol'
 import type { Plugin as SerovalPlugin } from 'seroval'
+import type { StartEvent } from './internal-request-response'
 
-// Cache serovalPlugins at module level to avoid repeated calls
-let serovalPlugins: Array<SerovalPlugin<any, any>> | undefined = undefined
+// Serialized replies are decoded by the client from their body. With a
+// helper-selected 3xx status, a Location would let fetch follow it first.
+const SERIALIZED_JSON_HEADERS: ReadonlyMap<string, string | null> = new Map([
+  ['content-type', 'application/json'],
+  [X_TSS_SERIALIZED, 'true'],
+  [X_TSS_RAW_RESPONSE, null],
+  ['location', null],
+])
+// A shared template the Response constructor copies. Never mutate it.
+const SERIALIZED_JSON_HEADER_INIT = new Headers({
+  'content-type': 'application/json',
+  [X_TSS_SERIALIZED]: 'true',
+})
 
-// Known FormData 'Content-Type' header values - module-level constant
-const FORM_DATA_CONTENT_TYPES = [
-  'multipart/form-data',
-  'application/x-www-form-urlencoded',
-]
+/** Completed bytes own no stream until the request pipeline accepts them. */
+export class DeferredResponse {
+  constructor(private readonly body: Uint8Array) {}
+
+  createResponse(event: StartEvent): Response {
+    return createFinalizedResponse(
+      this.body,
+      SERIALIZED_JSON_HEADER_INIT,
+      SERIALIZED_JSON_HEADERS,
+      event,
+    )
+  }
+}
+
+const SERIALIZED_FRAMED_HEADERS: ReadonlyMap<string, string | null> = new Map([
+  ['content-type', TSS_CONTENT_TYPE_FRAMED_VERSIONED],
+  [X_TSS_SERIALIZED, 'true'],
+  [X_TSS_RAW_RESPONSE, null],
+  ['location', null],
+])
+const NOT_FOUND_HEADERS: ReadonlyMap<string, string | null> = new Map([
+  ['content-type', 'application/json'],
+  [X_TSS_SERIALIZED, null],
+  [X_TSS_RAW_RESPONSE, null],
+  ['location', null],
+])
+const RAW_RESPONSE_HEADERS: ReadonlyMap<string, string | null> = new Map([
+  [X_TSS_RAW_RESPONSE, 'true'],
+])
+// A Response the server function threw. The client rethrows it.
+const THROWN_RESPONSE_HEADERS: ReadonlyMap<string, string | null> = new Map([
+  [X_TSS_RAW_RESPONSE, 'thrown'],
+])
 
 // Maximum payload size for GET requests (1MB)
 const MAX_PAYLOAD_SIZE = 1_000_000
+const MAX_PENDING_SERIALIZATION_RECORDS = 1024
+const MAX_PENDING_SERIALIZATION_BYTES = 32 * 1024 * 1024
+const textEncoder = new TextEncoder()
 
+function encodeSerializationRecord(value: unknown) {
+  return textEncoder.encode(JSON.stringify(value))
+}
+
+function exceedsPendingSerializationLimit(
+  record: Uint8Array,
+  recordCount: number,
+  pendingBytes: number,
+) {
+  return (
+    recordCount >= MAX_PENDING_SERIALIZATION_RECORDS ||
+    pendingBytes + record.byteLength > MAX_PENDING_SERIALIZATION_BYTES
+  )
+}
+
+function runSerializationCleanup(dispose: () => void) {
+  try {
+    dispose()
+  } catch {}
+}
+
+function cancelRawStream(stream: ReadableStream<Uint8Array>, reason?: unknown) {
+  void stream.cancel(reason).catch(() => {})
+}
+
+/**
+ * Marks a Response thrown during a server-function request so the client
+ * rejects the call with it. Redirects keep their own protocol.
+ */
+export function toThrownServerFnResponse(response: Response): Response {
+  return isRedirect(response)
+    ? response
+    : setProtectedResponseHeaders(response, THROWN_RESPONSE_HEADERS)
+}
+
+/**
+ * Builds the reply for a server-function request that failed outside the
+ * function, such as in request middleware. Like a failed call, it carries
+ * only the thrown value under an `error` key, so the client rethrows it.
+ */
+export async function createServerFnErrorResponse(
+  error: unknown,
+  serovalPlugins?: Array<SerovalPlugin<any, any>>,
+) {
+  if (isNotFound(error)) {
+    return isNotFoundResponse(error)
+  }
+
+  // Header getters and reporting hooks can write helpers before the status
+  // is resolved. Error statuses are always body-bearing, as the client needs.
+  const headers = getErrorHeaders(error) ?? new Headers()
+  const { status, statusText } = resolveErrorResponseStatus(error)
+  headers.set('Content-Type', 'application/json')
+  headers.set(X_TSS_SERIALIZED, 'true')
+  headers.delete(X_TSS_RAW_RESPONSE)
+  headers.delete('location')
+
+  const plugins =
+    serovalPlugins ?? getSerovalPlugins(routerDefaultSerovalPlugins)
+  let serializedError: string
+  try {
+    serializedError = JSON.stringify(
+      await toCrossJSONAsync({ error }, { refs: new Map(), plugins }),
+    )
+  } catch (serializationError) {
+    // Like a result that cannot be serialized, the call rejects with the
+    // serialization error instead of the value it could not send.
+    serializedError = JSON.stringify(
+      await toCrossJSONAsync(
+        { error: serializationError },
+        { refs: new Map(), plugins },
+      ),
+    )
+  }
+  const errorResponse = new Response(serializedError, {
+    status,
+    statusText,
+    headers,
+  })
+  protectResponseHeaders(errorResponse, SERIALIZED_JSON_HEADERS)
+  return errorResponse
+}
+
+// The action merges the client context with the trusted server context
+// (__executeServer), so the client context is passed through unmerged.
 export const handleServerAction = async ({
   request,
-  context,
   serverFnId,
 }: {
   request: Request
-  context: any
   serverFnId: string
 }) => {
-  const method = request.method
-  const methodUpper = method.toUpperCase()
-  const url = new URL(request.url)
-
+  const methodUpper = request.method.toUpperCase()
   const action = await getServerFnById(serverFnId, { origin: 'client' })
 
   // Early method check: reject mismatched HTTP methods before parsing
@@ -62,370 +197,420 @@ export const handleServerAction = async ({
     )
   }
 
-  const isServerFn = request.headers.get('x-tsr-serverFn') === 'true'
-
-  // Initialize serovalPlugins lazily (cached at module level)
-  if (!serovalPlugins) {
-    serovalPlugins = getDefaultSerovalPlugins()
+  const headers = request.headers
+  const isServerFn = headers.get('x-tsr-serverfn') === 'true'
+  let serovalPlugins: Array<SerovalPlugin<any, any>> | undefined
+  const getRequestSerovalPlugins = () => {
+    return (serovalPlugins ??= getSerovalPlugins(routerDefaultSerovalPlugins))
   }
+  const contentType = headers.get('content-type')
 
-  const contentType = request.headers.get('Content-Type')
-
-  function parsePayload(payload: any) {
-    const parsedPayload = fromJSON(payload, { plugins: serovalPlugins })
-    return parsedPayload as any
-  }
-
-  const response = await (async () => {
-    try {
-      let res = await (async () => {
-        // FormData
-        if (
-          FORM_DATA_CONTENT_TYPES.some(
-            (type) => contentType && contentType.includes(type),
+  try {
+    let res: any
+    if (
+      contentType &&
+      (contentType.includes('multipart/form-data') ||
+        contentType.includes('application/x-www-form-urlencoded'))
+    ) {
+      // We don't support GET requests with FormData payloads... that seems impossible
+      if (methodUpper === 'GET') {
+        if (process.env.NODE_ENV !== 'production') {
+          throw new Error(
+            'Invariant failed: GET requests with FormData payloads are not supported',
           )
-        ) {
-          // We don't support GET requests with FormData payloads... that seems impossible
-          if (methodUpper === 'GET') {
-            if (process.env.NODE_ENV !== 'production') {
-              throw new Error(
-                'Invariant failed: GET requests with FormData payloads are not supported',
-              )
-            }
-
-            invariant()
-          }
-          const formData = await request.formData()
-          const serializedContext = formData.get(TSS_FORMDATA_CONTEXT)
-          formData.delete(TSS_FORMDATA_CONTEXT)
-
-          const params = {
-            context,
-            data: formData,
-            method: methodUpper,
-          }
-          if (typeof serializedContext === 'string') {
-            try {
-              const parsedContext = JSON.parse(serializedContext)
-              const deserializedContext = fromJSON(parsedContext, {
-                plugins: serovalPlugins,
-              })
-              if (
-                typeof deserializedContext === 'object' &&
-                deserializedContext
-              ) {
-                params.context = safeObjectMerge(
-                  deserializedContext as Record<string, unknown>,
-                  context,
-                )
-              }
-            } catch (e) {
-              // Log warning for debugging but don't expose to client
-              if (process.env.NODE_ENV === 'development') {
-                console.warn('Failed to parse FormData context:', e)
-              }
-            }
-          }
-
-          return await action(params)
         }
 
-        // Get requests use the query string
-        if (methodUpper === 'GET') {
-          // Get payload directly from searchParams
-          const payloadParam = url.searchParams.get('payload')
-          // Reject oversized payloads to prevent DoS
-          if (payloadParam && payloadParam.length > MAX_PAYLOAD_SIZE) {
-            throw new Error('Payload too large')
-          }
-          // If there's a payload, we should try to parse it
-          const payload: any = payloadParam
-            ? parsePayload(JSON.parse(payloadParam))
-            : {}
-          payload.context = safeObjectMerge(payload.context, context)
-          payload.method = methodUpper
-          // Send it through!
-          return await action(payload)
-        }
-
-        let jsonPayload
-        if (contentType?.includes('application/json')) {
-          jsonPayload = await request.json()
-        }
-
-        const payload = jsonPayload ? parsePayload(jsonPayload) : {}
-        payload.context = safeObjectMerge(payload.context, context)
-        payload.method = methodUpper
-        return await action(payload)
-      })()
-
-      const unwrapped = res.result || res.error
-
-      if (isNotFound(res)) {
-        res = isNotFoundResponse(res)
+        invariant()
       }
+      const formData = await request.formData()
+      const serializedContext = formData.get(TSS_FORMDATA_CONTEXT)
+      formData.delete(TSS_FORMDATA_CONTEXT)
 
-      if (!isServerFn) {
-        return unwrapped
+      const params: { context?: unknown; data: FormData; method: string } = {
+        data: formData,
+        method: methodUpper,
       }
-
-      if (unwrapped instanceof Response) {
-        if (isRedirect(unwrapped)) {
-          return unwrapped
-        }
-        unwrapped.headers.set(X_TSS_RAW_RESPONSE, 'true')
-        return unwrapped
-      }
-
-      return serializeResult(res)
-
-      function serializeResult(res: unknown): Response {
-        let nonStreamingBody: any = undefined
-
-        const alsResponse = getResponse()
-        if (res !== undefined) {
-          // Collect raw streams encountered during initial synchronous serialization
-          const rawStreams = new Map<number, ReadableStream<Uint8Array>>()
-
-          // Track whether we're still in the initial synchronous phase
-          // After initial phase, new RawStreams go to lateStreamWriter
-          let initialPhase = true
-
-          // Late stream registration for RawStreams discovered after initial pass
-          // (e.g., from resolved Promises)
-          let lateStreamWriter:
-            | WritableStreamDefaultWriter<LateStreamRegistration>
-            | undefined
-          let lateStreamReadable:
-            | ReadableStream<LateStreamRegistration>
-            | undefined = undefined
-          const pendingLateStreams: Array<LateStreamRegistration> = []
-
-          const rawStreamPlugin = createRawStreamRPCPlugin(
-            (id: number, stream: ReadableStream<Uint8Array>) => {
-              if (initialPhase) {
-                rawStreams.set(id, stream)
-                return
-              }
-
-              if (lateStreamWriter) {
-                // Late stream - write to the late stream channel
-                lateStreamWriter.write({ id, stream }).catch(() => {
-                  // Ignore write errors - stream may be closed
-                })
-                return
-              }
-
-              // Discovered after initial phase but before writer exists.
-              pendingLateStreams.push({ id, stream })
-            },
-          )
-
-          // Build plugins with RawStreamRPCPlugin first (before default SSR plugin)
-          const plugins = [rawStreamPlugin, ...(serovalPlugins || [])]
-
-          // first run without the stream in case `result` does not need streaming
-          let done = false as boolean
-          const callbacks: {
-            onParse: (value: any) => void
-            onDone: () => void
-            onError: (error: any) => void
-          } = {
-            onParse: (value) => {
-              nonStreamingBody = value
-            },
-            onDone: () => {
-              done = true
-            },
-            onError: (error) => {
-              throw error
-            },
-          }
-          toCrossJSONStream(res, {
-            refs: new Map(),
-            plugins,
-            onParse(value) {
-              callbacks.onParse(value)
-            },
-            onDone() {
-              callbacks.onDone()
-            },
-            onError: (error) => {
-              callbacks.onError(error)
-            },
+      if (typeof serializedContext === 'string') {
+        try {
+          const parsedContext = JSON.parse(serializedContext)
+          const deserializedContext = fromJSON(parsedContext, {
+            plugins: getRequestSerovalPlugins(),
           })
-
-          // End of initial synchronous phase - any new RawStreams are "late"
-          initialPhase = false
-
-          // If any RawStreams are discovered after this point but before the
-          // late-stream writer exists, we buffer them and flush once the writer
-          // is ready. This avoids an occasional missed-stream race.
-
-          // If no raw streams and done synchronously, return simple JSON
-          if (done && rawStreams.size === 0) {
-            return new Response(
-              nonStreamingBody ? JSON.stringify(nonStreamingBody) : undefined,
-              {
-                status: alsResponse.status,
-                statusText: alsResponse.statusText,
-                headers: {
-                  'Content-Type': 'application/json',
-                  [X_TSS_SERIALIZED]: 'true',
-                },
-              },
-            )
+          if (typeof deserializedContext === 'object' && deserializedContext) {
+            params.context = deserializedContext
           }
-
-          // Not done synchronously or has raw streams - use framed protocol
-          // This supports late RawStreams from resolved Promises
-          const { readable, writable } =
-            new TransformStream<LateStreamRegistration>()
-          lateStreamReadable = readable
-          lateStreamWriter = writable.getWriter()
-
-          // Flush any late streams that were discovered in the small window
-          // between end of initial serialization and writer setup.
-          for (const registration of pendingLateStreams) {
-            lateStreamWriter.write(registration).catch(() => {
-              // Ignore write errors - stream may be closed
-            })
+        } catch (e) {
+          // Log warning for debugging but don't expose to client
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Failed to parse FormData context:', e)
           }
-          pendingLateStreams.length = 0
-
-          // Create a stream of JSON chunks
-          const jsonStream = new ReadableStream<string>({
-            start(controller) {
-              callbacks.onParse = (value) => {
-                controller.enqueue(JSON.stringify(value) + '\n')
-              }
-              callbacks.onDone = () => {
-                try {
-                  controller.close()
-                } catch {
-                  // Already closed
-                }
-                // Close late stream writer when JSON serialization is done
-                // Any RawStreams not yet discovered won't be sent
-                lateStreamWriter
-                  ?.close()
-                  .catch(() => {
-                    // Ignore close errors
-                  })
-                  .finally(() => {
-                    lateStreamWriter = undefined
-                  })
-              }
-
-              callbacks.onError = (error) => {
-                controller.error(error)
-                lateStreamWriter
-                  ?.abort(error)
-                  .catch(() => {
-                    // Ignore abort errors
-                  })
-                  .finally(() => {
-                    lateStreamWriter = undefined
-                  })
-              }
-
-              // Emit initial body if we have one
-              if (nonStreamingBody !== undefined) {
-                callbacks.onParse(nonStreamingBody)
-              }
-              // If serialization already completed synchronously, close now
-              // This handles the case where onDone was called during toCrossJSONStream
-              // before we overwrote callbacks.onDone
-              if (done) {
-                callbacks.onDone()
-              }
-            },
-            cancel() {
-              lateStreamWriter?.abort().catch(() => {})
-              lateStreamWriter = undefined
-            },
-          })
-
-          // Create multiplexed stream with JSON, initial raw streams, and late streams
-          const multiplexedStream = createMultiplexedStream(
-            jsonStream,
-            rawStreams,
-            lateStreamReadable,
-          )
-
-          return new Response(multiplexedStream, {
-            status: alsResponse.status,
-            statusText: alsResponse.statusText,
-            headers: {
-              'Content-Type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
-              [X_TSS_SERIALIZED]: 'true',
-            },
-          })
         }
-
-        return new Response(undefined, {
-          status: alsResponse.status,
-          statusText: alsResponse.statusText,
-        })
-      }
-    } catch (error: any) {
-      if (error instanceof Response) {
-        return error
-      }
-      // else if (
-      //   isPlainObject(error) &&
-      //   'result' in error &&
-      //   error.result instanceof Response
-      // ) {
-      //   return error.result
-      // }
-
-      // Currently this server-side context has no idea how to
-      // build final URLs, so we need to defer that to the client.
-      // The client will check for __redirect and __notFound keys,
-      // and if they exist, it will handle them appropriately.
-
-      if (isNotFound(error)) {
-        return isNotFoundResponse(error)
       }
 
-      console.info()
-      console.info('Server Fn Error!')
-      console.info()
-      console.error(error)
-      console.info()
-
-      const serializedError = JSON.stringify(
-        await Promise.resolve(
-          toCrossJSONAsync(error, {
-            refs: new Map(),
-            plugins: serovalPlugins,
-          }),
-        ),
-      )
-      const response = getResponse()
-      return new Response(serializedError, {
-        status: response.status ?? 500,
-        statusText: response.statusText,
-        headers: {
-          'Content-Type': 'application/json',
-          [X_TSS_SERIALIZED]: 'true',
-        },
+      res = await action(params)
+    } else {
+      let json: any
+      if (methodUpper === 'GET') {
+        // Get payload directly from searchParams
+        const payloadParam =
+          getParsedRequestUrl(request).searchParams.get('payload')
+        // Reject oversized payloads to prevent DoS
+        if (payloadParam && payloadParam.length > MAX_PAYLOAD_SIZE) {
+          throw new Error('Payload too large')
+        }
+        json = payloadParam ? JSON.parse(payloadParam) : undefined
+      } else if (contentType?.includes('application/json')) {
+        json = await request.json()
+      }
+      const payload: any =
+        json === undefined
+          ? undefined
+          : fromJSON(json, { plugins: getRequestSerovalPlugins() })
+      // Pass only the fields a client sends, so a crafted `error` or
+      // `result` key cannot decide the outcome of the call.
+      res = await action({
+        data: payload?.data,
+        context: payload?.context,
+        method: methodUpper,
       })
     }
-  })()
 
-  return response
+    const failed = 'error' in res
+    const unwrapped = failed ? res.error : res.result
+
+    if (
+      !isServerFn &&
+      (unwrapped instanceof Response ||
+        unwrapped === null ||
+        typeof unwrapped !== 'object')
+    ) {
+      return unwrapped
+    }
+
+    if (unwrapped instanceof Response) {
+      if (failed) {
+        return toThrownServerFnResponse(unwrapped)
+      }
+      if (isRedirect(unwrapped)) {
+        return unwrapped
+      }
+      return setProtectedResponseHeaders(unwrapped, RAW_RESPONSE_HEADERS)
+    }
+
+    return serializeResult(res, request, getRequestSerovalPlugins())
+  } catch (error: any) {
+    if (error instanceof Response) {
+      return error
+    }
+
+    // Currently this server-side context has no idea how to
+    // build final URLs, so we need to defer that to the client.
+    // The client will check for __redirect and __notFound keys,
+    // and if they exist, it will handle them appropriately.
+
+    return createServerFnErrorResponse(error, serovalPlugins)
+  }
+}
+
+/**
+ * Serializes a server-function result. A result that Seroval completes
+ * synchronously without RawStreams becomes plain JSON; everything else is a
+ * framed response whose records and raw streams are multiplexed in order.
+ */
+function serializeResult(
+  res: unknown,
+  request: Request,
+  plugins: Array<SerovalPlugin<any, any>>,
+): Response | DeferredResponse {
+  const initialRecords: Array<Uint8Array> = []
+  let initialBytes = 0
+  const pendingRawStreams: Array<LateStreamRegistration> = []
+
+  // Seroval replays synchronously discovered work before returning. Collect
+  // that first pass so a complete result can skip framing entirely.
+  let done = false as boolean
+  let initialParsed = false
+  let serializationFailure: [unknown] | undefined
+  let disposeSerialization: (() => void) | undefined
+  let onParse = (value: any, initial: boolean) => {
+    if (serializationFailure) {
+      return
+    }
+    initialParsed ||= initial
+    const record = encodeSerializationRecord(value)
+    if (
+      exceedsPendingSerializationLimit(
+        record,
+        initialRecords.length,
+        initialBytes,
+      )
+    ) {
+      serializationFailure = [
+        new Error(
+          'Server function serialization exceeded its pending output limit',
+        ),
+      ]
+      return
+    }
+    initialRecords.push(record)
+    initialBytes += record.byteLength
+  }
+  let onDone = () => {
+    if (initialParsed) {
+      done = true
+    }
+  }
+  let onError = (error: any) => {
+    serializationFailure ??= [error]
+  }
+  const rawStreamPlugin = createRawStreamRPCPlugin(
+    (id: number, stream: ReadableStream<Uint8Array>) => {
+      if (serializationFailure) {
+        cancelRawStream(stream, serializationFailure[0])
+        return
+      }
+      if (id > MAX_FRAMED_STREAMS) {
+        const error = new Error(
+          `Too many raw streams in framed response (max ${MAX_FRAMED_STREAMS})`,
+        )
+        cancelRawStream(stream, error)
+        onError(error)
+        return
+      }
+      pendingRawStreams.push({ id, stream })
+    },
+  )
+
+  const dispose = toCrossJSONStream(res, {
+    refs: new Map(),
+    plugins: [rawStreamPlugin, ...plugins],
+    onParse(value, initial) {
+      onParse(value, initial)
+    },
+    onDone() {
+      onDone()
+    },
+    onError: (error) => {
+      onError(error)
+    },
+  })
+  if (serializationFailure) {
+    runSerializationCleanup(dispose)
+    for (const registration of pendingRawStreams) {
+      cancelRawStream(registration.stream, serializationFailure[0])
+    }
+    throw serializationFailure[0]
+  }
+  if (!done) {
+    disposeSerialization = dispose
+  }
+
+  if (done && pendingRawStreams.length === 0 && initialRecords.length === 1) {
+    return new DeferredResponse(initialRecords[0]!)
+  }
+
+  if (done && initialRecords.length === 1) {
+    const json = initialRecords[0]!
+    if (json.byteLength > MAX_FRAME_PAYLOAD_SIZE) {
+      const error = new Error(
+        'Server function serialization exceeded its pending output limit',
+      )
+      for (const registration of pendingRawStreams) {
+        cancelRawStream(registration.stream, error)
+      }
+      throw error
+    }
+
+    // Serialization is complete, so this one bounded record needs no writer
+    // or pending-serialization lifecycle. The mux still controls raw demand.
+    const rawStreams = pendingRawStreams.splice(0)
+    initialRecords.length = 0
+    return createFramedResponse(
+      new ReadableStream<MultiplexedStreamRecord>({
+        start(controller) {
+          controller.enqueue({ json, rawStreams })
+          controller.close()
+        },
+        cancel(reason) {
+          for (const registration of rawStreams) {
+            cancelRawStream(registration.stream, reason)
+          }
+        },
+      }),
+      { signal: request.signal },
+    )
+  }
+
+  // Couple every JSON patch to the RawStreams it introduces. The mux admits
+  // each JSON reference before it starts that stream's chunks.
+  const { readable, writable } = new TransformStream<MultiplexedStreamRecord>()
+  const writer = writable.getWriter()
+  const recordAbortController = new AbortController()
+  let pendingBytes = 0
+  const pendingRecords = new Set<MultiplexedStreamRecord>()
+
+  const abortRecordStream = (error: unknown) => {
+    if (serializationFailure) {
+      return
+    }
+    serializationFailure = [error]
+    const disposeCurrentSerialization = disposeSerialization
+    disposeSerialization = undefined
+    for (const registration of pendingRawStreams.splice(0)) {
+      cancelRawStream(registration.stream, error)
+    }
+    for (const record of pendingRecords) {
+      for (const registration of record.rawStreams) {
+        cancelRawStream(registration.stream, error)
+      }
+    }
+    pendingRecords.clear()
+    recordAbortController.abort(error)
+    void writer.abort(error).catch(() => {})
+    if (disposeCurrentSerialization) {
+      runSerializationCleanup(disposeCurrentSerialization)
+    }
+  }
+
+  const writeRecord = (
+    json: Uint8Array,
+    rawStreams: Array<LateStreamRegistration>,
+  ) => {
+    if (serializationFailure) {
+      for (const registration of rawStreams) {
+        cancelRawStream(registration.stream, serializationFailure[0])
+      }
+      return false
+    }
+
+    if (
+      json.byteLength > MAX_FRAME_PAYLOAD_SIZE ||
+      exceedsPendingSerializationLimit(json, pendingRecords.size, pendingBytes)
+    ) {
+      const error = new Error(
+        'Server function serialization exceeded its pending output limit',
+      )
+      for (const registration of rawStreams) {
+        cancelRawStream(registration.stream, error)
+      }
+      onError(error)
+      return false
+    }
+
+    pendingBytes += json.byteLength
+    const record = { json, rawStreams }
+    pendingRecords.add(record)
+    void writer.write(record).then(
+      () => {
+        pendingRecords.delete(record)
+        pendingBytes -= json.byteLength
+      },
+      (error) => {
+        const stillOwned = pendingRecords.delete(record)
+        pendingBytes -= json.byteLength
+        if (stillOwned) {
+          for (const registration of rawStreams) {
+            cancelRawStream(registration.stream, error)
+          }
+        }
+      },
+    )
+    return true
+  }
+
+  onParse = (value) => {
+    if (serializationFailure) {
+      return
+    }
+    writeRecord(encodeSerializationRecord(value), pendingRawStreams.splice(0))
+  }
+  onDone = () => {
+    if (serializationFailure) {
+      return
+    }
+    disposeSerialization = undefined
+    void writer.close().catch(() => {})
+  }
+  onError = (error) => {
+    abortRecordStream(error)
+  }
+
+  // Seroval buffers nested patches during its initial traversal. Their
+  // RawStream callbacks may precede the root callback, so start every
+  // synchronously discovered stream only after all initial records.
+  const initialRawStreams = pendingRawStreams.splice(0)
+  for (let index = 0; index < initialRecords.length; index++) {
+    const isLast = index === initialRecords.length - 1
+    if (!writeRecord(initialRecords[index]!, isLast ? initialRawStreams : [])) {
+      // `writeRecord` recorded the failure. Nothing was handed to the client
+      // yet, so fail the whole call.
+      if (!isLast) {
+        for (const registration of initialRawStreams) {
+          cancelRawStream(registration.stream, serializationFailure![0])
+        }
+      }
+      initialRecords.length = 0
+      throw serializationFailure![0]
+    }
+  }
+  initialRecords.length = 0
+  if (done) {
+    onDone()
+  }
+
+  void writer.closed.catch((error) => {
+    abortRecordStream(error)
+  })
+
+  return createFramedResponse(readable, {
+    signal: AbortSignal.any([recordAbortController.signal, request.signal]),
+    onCancel: abortRecordStream,
+  })
+}
+
+function createFramedResponse(
+  records: ReadableStream<MultiplexedStreamRecord>,
+  options: MultiplexedStreamOptions,
+) {
+  const multiplexedStream = createMultiplexedStream(records, options)
+  // Completed JSON reads helper state later, when the pipeline accepts it.
+  const { status, statusText } = getSerializedResponseState()
+  try {
+    const response = new Response(multiplexedStream, {
+      status,
+      statusText,
+      headers: {
+        'Content-Type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+        [X_TSS_SERIALIZED]: 'true',
+      },
+    })
+    protectResponseHeaders(response, SERIALIZED_FRAMED_HEADERS)
+    return response
+  } catch (error) {
+    cancelRawStream(multiplexedStream, error)
+    throw error
+  }
 }
 
 function isNotFoundResponse(error: any) {
   const { headers, ...rest } = error
+  let responseHeaders: HeadersInit
+  if (headers) {
+    // Snapshot caller headers before serialization can run user callbacks.
+    const copiedHeaders = new Headers(headers)
+    copiedHeaders.set('Content-Type', 'application/json')
+    copiedHeaders.delete(X_TSS_SERIALIZED)
+    copiedHeaders.delete(X_TSS_RAW_RESPONSE)
+    copiedHeaders.delete('location')
+    responseHeaders = copiedHeaders
+  } else {
+    responseHeaders = { 'Content-Type': 'application/json' }
+  }
 
-  return new Response(JSON.stringify(rest), {
+  const response = new Response(JSON.stringify(rest), {
     status: 404,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(headers || {}),
-    },
+    headers: responseHeaders,
   })
+  protectResponseHeaders(response, NOT_FOUND_HEADERS)
+  return response
 }

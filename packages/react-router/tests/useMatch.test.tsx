@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   cleanup,
@@ -98,6 +99,40 @@ describe('useMatch', () => {
       expect(postsTitle).toBeInTheDocument()
       expect(select).toHaveBeenCalled()
     })
+  })
+
+  test('switches subscriptions when the targeted route changes', async () => {
+    function RootComponent() {
+      const [from, setFrom] = useState('/posts')
+      const routeId = useMatch({
+        from,
+        shouldThrow: false,
+        select: (match) => match.routeId,
+      })
+
+      return (
+        <>
+          <div data-testid="targeted-route">{routeId ?? 'absent'}</div>
+          <button onClick={() => setFrom('/')}>Select index</button>
+          <button onClick={() => setFrom('/posts')}>Select posts</button>
+          <Outlet />
+        </>
+      )
+    }
+
+    setup({ RootComponent })
+    expect(await screen.findByText('IndexTitle')).toBeInTheDocument()
+    expect(screen.getByTestId('targeted-route')).toHaveTextContent('absent')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select index' }))
+    expect(screen.getByTestId('targeted-route')).toHaveTextContent('/')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select posts' }))
+    expect(screen.getByTestId('targeted-route')).toHaveTextContent('absent')
+
+    fireEvent.click(screen.getByRole('link', { name: 'Posts' }))
+    expect(await screen.findByText('PostsTitle')).toBeInTheDocument()
+    expect(screen.getByTestId('targeted-route')).toHaveTextContent('/posts')
   })
 
   test('tracks presentation generations across replacement and re-entry', async () => {

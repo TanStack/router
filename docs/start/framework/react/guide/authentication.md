@@ -1,11 +1,12 @@
 ---
 id: authentication
-title: Authentication
+title: Implement Authentication in React
+description: Implement sessions, sign-in, sign-out, protected routes, and server-side authorization in a TanStack Start React app.
 ---
 
-This guide covers authentication patterns and shows how to implement your own authentication system with TanStack Start.
+Implement the authentication workflow in your React app, from sessions and sign-in to protected routes and authorization.
 
-> **📋 Before You Start:** Check our [Authentication Overview](./authentication-overview.md) for all available options including partner solutions and hosted services.
+To compare libraries and hosted services, read [Choose Authentication for React Apps](./authentication-overview.md).
 
 ## Authentication Approaches
 
@@ -34,7 +35,7 @@ Authentication involves many considerations including password security, session
 - **Authentication**: Who is this user? (Login/logout)
 - **Authorization**: What can this user do? (Permissions/roles)
 
-TanStack Start provides the tools for both through server functions, sessions, and route protection.
+TanStack Start provides server functions, request and cookie utilities, and route protection. Session storage and authentication come from your application or a library you choose.
 
 > Protect the data/API boundary first. Any server function, server route, or other API endpoint that returns or mutates private data must authorize the request itself. `beforeLoad` is useful for route UX: it keeps users out of screens they cannot use and avoids triggering work that would fail anyway. It is not the security boundary for the data. See [Authentication Server Primitives](./authentication-server-primitives.md) for the server-side pattern.
 
@@ -47,6 +48,7 @@ Server functions handle sensitive authentication logic securely on the server:
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
 import { redirect } from '@tanstack/react-router'
+import { getAppSession } from '~/utils/session'
 
 // Login server function
 export const loginFn = createServerFn({ method: 'POST' })
@@ -60,11 +62,9 @@ export const loginFn = createServerFn({ method: 'POST' })
     }
 
     // Create session
-    const session = await useAppSession()
-    await session.update({
-      userId: user.id,
-      email: user.email,
-    })
+    const session = await getAppSession()
+    session.userId = user.id
+    await session.save()
 
     // Redirect to protected area
     throw redirect({ to: '/dashboard' })
@@ -72,97 +72,130 @@ export const loginFn = createServerFn({ method: 'POST' })
 
 // Logout server function
 export const logoutFn = createServerFn({ method: 'POST' }).handler(async () => {
-  const session = await useAppSession()
-  await session.clear()
+  const session = await getAppSession()
+  session.destroy()
   throw redirect({ to: '/' })
 })
 
 // Get current user
 export const getCurrentUserFn = createServerFn({ method: 'GET' }).handler(
   async () => {
-    const session = await useAppSession()
-    const userId = session.data.userId
+    const session = await getAppSession()
+    const userId = session.userId
 
     if (!userId) {
       return null
     }
 
-    return await getUserById(userId)
+    const user = await getUserById(userId)
+    return user ? { id: user.id, email: user.email, role: user.role } : null
   },
 )
 ```
 
 ### 2. Session Management
 
-TanStack Start provides secure HTTP-only cookie sessions:
+Start does not provide a session API. This guide uses iron-session for encrypted cookie sessions. Start's cookie helpers connect it to server functions, server routes, and request middleware.
+
+For encrypted cookie sessions, install [iron-session](https://github.com/vvo/iron-session):
+
+```sh
+pnpm add iron-session
+```
+
+This example uses iron-session 9's cookie adapter. Its Node runtime requires Node 22.13 or newer; check the library's runtime requirements for other deployment targets.
 
 ```tsx
-// utils/session.ts
-import { useSession } from '@tanstack/react-start/server'
+// utils/session.ts — import only from server code
+import { getIronSession } from 'iron-session'
+import { getCookie, setCookie } from '@tanstack/react-start/server'
 
 type SessionData = {
-  userId?: string
-  email?: string
-  role?: string
+  userId: string
+  oauthState: string
 }
 
-export function useAppSession() {
-  return useSession<SessionData>({
-    // Session configuration
-    name: 'app-session',
-    password: process.env.SESSION_SECRET!, // At least 32 characters
-    // Optional: customize cookie settings
-    cookie: {
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      httpOnly: true,
+export function getAppSession(ttl = 7 * 24 * 60 * 60) {
+  const password = process.env.SESSION_SECRET
+  if (!password || password.length < 32) {
+    throw new Error('SESSION_SECRET must be at least 32 characters')
+  }
+
+  return getIronSession<SessionData>(
+    { read: getCookie, write: setCookie },
+    {
+      cookieName: 'app-session',
+      password,
+      ttl,
+      cookieOptions: {
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        httpOnly: true,
+        path: '/',
+      },
     },
-  })
+  )
 }
 ```
+
+Read fields directly from the returned session, change them, then `await session.save()` before returning or redirecting. Missing or expired sessions have no user ID. `session.destroy()` removes the browser cookie. Keep one session object for the operation; another call to `getAppSession()` reads the incoming request again. For middleware, pass that object through request context when downstream code needs the same mutations.
+
+The `getAppSession` helper belongs to your application. Start does not cache sessions, choose expiration rules, or synchronize concurrent writes. Keep secrets and session objects in server code, and read request-specific configuration inside the active request.
 
 ### 3. Authentication Context
 
-Share authentication state across your application:
+Load the current user in your root route's `beforeLoad` so the initial server render and child routes receive the same authentication state. `useServerFn` returns a callable function, not an object with `data`, `isLoading`, or `refetch`. You can call a server function directly from `beforeLoad`.
+
+Merge this pattern into your existing root route, keeping its metadata and document shell:
 
 ```tsx
-// contexts/auth.tsx
-import { createContext, useContext, ReactNode } from 'react'
-import { useServerFn } from '@tanstack/react-start'
+// routes/__root.tsx
+import {
+  createRootRoute,
+  HeadContent,
+  Outlet,
+  Scripts,
+} from '@tanstack/react-router'
+import type { ReactNode } from 'react'
 import { getCurrentUserFn } from '../server/auth'
 
-type User = {
-  id: string
-  email: string
-  role: string
-}
+export const Route = createRootRoute({
+  headers: () => ({ 'Cache-Control': 'private, no-store' }),
+  beforeLoad: async () => ({ user: await getCurrentUserFn() }),
+  component: Outlet,
+  shellComponent: RootDocument,
+})
 
-type AuthContextType = {
-  user: User | null
-  isLoading: boolean
-  refetch: () => void
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const { data: user, isLoading, refetch } = useServerFn(getCurrentUserFn)
-
+function RootDocument({ children }: { children: ReactNode }) {
   return (
-    <AuthContext.Provider value={{ user, isLoading, refetch }}>
-      {children}
-    </AuthContext.Provider>
+    <html>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
   )
 }
+```
 
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider')
-  }
-  return context
+The root includes session-specific data, so its responses use `Cache-Control: private, no-store`. Keep that policy on child routes that render this data, and do not override it with public caching at your CDN.
+
+Read that state from a descendant component:
+
+```tsx
+// components/AuthStatus.tsx
+import { Route } from '../routes/__root'
+
+export function AuthStatus() {
+  const { user } = Route.useRouteContext()
+  return <span>{user ? user.email : 'Signed out'}</span>
 }
 ```
+
+After login or logout changes the session, call `await router.invalidate()` to reload the current user and rerun route guards. Keep private-data authorization in the server function itself, even when a route already checks the user.
 
 ### 4. Route Protection
 
@@ -240,8 +273,9 @@ export const registerFn = createServerFn({ method: 'POST' })
     })
 
     // Create session
-    const session = await useAppSession()
-    await session.update({ userId: user.id })
+    const session = await getAppSession()
+    session.userId = user.id
+    await session.save()
 
     return { success: true, user: { id: user.id, email: user.email } }
   })
@@ -309,8 +343,9 @@ export const initiateOAuthFn = createServerFn({ method: 'POST' })
     const state = generateRandomState()
 
     // Store state in session for CSRF protection
-    const session = await useAppSession()
-    await session.update({ oauthState: state })
+    const session = await getAppSession()
+    session.oauthState = state
+    await session.save()
 
     // Generate OAuth URL
     const authUrl = generateOAuthUrl(provider, state)
@@ -373,21 +408,9 @@ const hashedPassword = await bcrypt.hash(password, saltRounds)
 
 ### 2. Session Security
 
-```tsx
-// Use secure session configuration
-export function useAppSession() {
-  return useSession({
-    name: 'app-session',
-    password: process.env.SESSION_SECRET!, // 32+ characters
-    cookie: {
-      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-      sameSite: 'lax', // CSRF protection
-      httpOnly: true, // XSS protection
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-    },
-  })
-}
-```
+Set the library's server-validated expiration as well as appropriate cookie attributes. In the iron-session example, `ttl` limits a sealed credential's lifetime from its latest save; saving again renews it. A numeric `cookieOptions.maxAge` controls browser retention. In iron-session 9, explicitly setting `maxAge: undefined` also disables seal expiry; omit the property to use the configured `ttl`. Use an application-validated timestamp or a server-side record if you also need an absolute lifetime that writes cannot extend.
+
+Use `httpOnly`, `sameSite`, and `path` deliberately, and require `secure: true` on HTTPS deployments. These cookie attributes complement server-side authorization and CSRF protections. Keep only the minimum session data and load current account permissions from their authoritative store. Logout removes a stateless cookie from the current browser; it cannot revoke a copy without server-side state.
 
 ### 3. Rate Limiting
 
@@ -489,28 +512,69 @@ describe('Authentication Flow', () => {
 
 ### Loading States
 
-```tsx
-function LoginForm() {
-  const [isLoading, setIsLoading] = useState(false)
-  const loginMutation = useServerFn(loginFn)
+Call the function returned by `useServerFn` with `{ data }`. Track pending state in the component, handle invalid credentials, and refresh route context after a successful login. This form uses the `loginFn` from the server-functions example above. It requires JavaScript, so the fields stay disabled until hydration; `method="post"` also prevents credentials appearing in a native GET submission.
 
-  const handleSubmit = async (data: LoginData) => {
+```tsx
+// components/LoginForm.tsx
+import { useState } from 'react'
+import type { FormEvent } from 'react'
+import { useHydrated, useRouter } from '@tanstack/react-router'
+import { useServerFn } from '@tanstack/react-start'
+import { loginFn } from '../server/auth'
+
+export function LoginForm() {
+  const hydrated = useHydrated()
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const login = useServerFn(loginFn)
+  const router = useRouter()
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const formData = new FormData(event.currentTarget)
+    const email = formData.get('email')
+    const password = formData.get('password')
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return
+    }
+
     setIsLoading(true)
+    setError('')
     try {
-      await loginMutation.mutate(data)
-    } catch (error) {
-      // Handle error
+      const result = await login({ data: { email, password } })
+      if (result?.error) {
+        setError(result.error)
+        return
+      }
+      await router.invalidate()
+    } catch {
+      setError('Login failed. Please try again.')
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      {/* Form fields */}
-      <button disabled={isLoading}>
-        {isLoading ? 'Logging in...' : 'Login'}
-      </button>
+    <form method="post" onSubmit={handleSubmit}>
+      <fieldset disabled={!hydrated || isLoading}>
+        <label>
+          Email
+          <input name="email" type="email" autoComplete="username" required />
+        </label>
+        <label>
+          Password
+          <input
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+          />
+        </label>
+        <button type="submit" disabled={isLoading}>
+          {isLoading ? 'Logging in...' : 'Login'}
+        </button>
+      </fieldset>
+      <p role="alert">{error}</p>
     </form>
   )
 }
@@ -525,16 +589,14 @@ export const loginFn = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const user = await authenticateUser(data.email, data.password)
-    if (!user) return { error: 'Invalid credentials' }
+    if (!user) {
+      return { error: 'Invalid credentials' }
+    }
 
-    const session = await useAppSession()
-    await session.update(
-      { userId: user.id },
-      {
-        // Extend session if remember me is checked
-        maxAge: data.rememberMe ? 30 * 24 * 60 * 60 : undefined, // 30 days vs session
-      },
-    )
+    const ttl = data.rememberMe ? 30 * 24 * 60 * 60 : 8 * 60 * 60
+    const session = await getAppSession(ttl)
+    session.userId = user.id
+    await session.save()
 
     return { success: true }
   })
@@ -562,7 +624,6 @@ If you're migrating from client-side authentication (localStorage, context only)
 ### From Other Frameworks
 
 - **Next.js**: Replace API routes with server functions, migrate NextAuth sessions
-- **Remix**: Convert loaders/actions to server functions, adapt session patterns
 - **SvelteKit**: Move form actions to server functions, update route protection
 
 ## Production Considerations

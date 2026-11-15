@@ -7,8 +7,9 @@ import {
 import { createStartHandler } from '@tanstack/solid-start-server'
 import { createMemoryHistory } from '@tanstack/solid-router'
 import {
-  getResponse,
-  requestHandler,
+  createServerEntry,
+  getResponseHeaders,
+  getResponseStatus,
 } from '@tanstack/start-server-core/request-response'
 import { handleSolidServerFunctionRequest } from './server-functions-handler'
 import type { RequestHandler } from '@tanstack/solid-start-server'
@@ -29,8 +30,8 @@ export function createSolidStartHandler<TRegister = Register>(
   cbOrOptions: Parameters<typeof createStartHandler>[0],
 ): RequestHandler<TRegister> {
   const startHandler = createStartHandler<TRegister>(cbOrOptions)
-  const solidServerFnHandler = requestHandler(
-    async (request, requestOptions) => {
+  const solidServerFnHandler = createServerEntry<TRegister>({
+    fetch: (async (request: Request, requestOptions?: { context?: object }) => {
       const getRouter = createRequestRouterGetter(request)
       const startOptions = await getRequestStartOptions(getRouter)
       const requestMiddlewares = flattenMiddlewares(
@@ -52,24 +53,9 @@ export function createSolidStartHandler<TRegister = Register>(
           })
         },
       )
-      const startResponse = getResponse()
-      const status = startResponse.status || 200
-      const statusText = startResponse.statusText || ''
-
-      if (
-        response.status !== 200 ||
-        (response.status === status && response.statusText === statusText)
-      ) {
-        return response
-      }
-
-      return new Response(response.body, {
-        headers: response.headers,
-        status,
-        statusText,
-      })
-    },
-  )
+      return applyResponseHelpers(response)
+    }) as RequestHandler<TRegister>,
+  }).fetch
 
   return (async (request: Request, requestOptions?: unknown) => {
     return await provideRequestEvent({ request, locals: {} }, async () => {
@@ -83,6 +69,35 @@ export function createSolidStartHandler<TRegister = Register>(
       return await (startHandler as any)(request, requestOptions)
     })
   }) as RequestHandler<TRegister>
+}
+
+// Only createStartHandler's pipeline applies response helper writes.
+function applyResponseHelpers(response: Response) {
+  const status = getResponseStatus()
+  const helperHeaders = getResponseHeaders()
+  const overrideStatus = response.status === 200 && status !== 200
+  let hasHelperHeaders = false
+  helperHeaders.forEach(() => {
+    hasHelperHeaders = true
+  })
+  if (!overrideStatus && !hasHelperHeaders) {
+    return response
+  }
+
+  const headers = new Headers(response.headers)
+  helperHeaders.forEach((value, name) => {
+    if (name !== 'set-cookie') {
+      headers.set(name, value)
+    }
+  })
+  for (const cookie of helperHeaders.getSetCookie()) {
+    headers.append('set-cookie', cookie)
+  }
+  return new Response(response.body, {
+    headers,
+    status: overrideStatus ? status : response.status,
+    statusText: overrideStatus ? '' : response.statusText,
+  })
 }
 
 async function executeRequestMiddleware(

@@ -1,8 +1,21 @@
+import { defineComponent } from 'vue'
 import { createFileRoute } from '@tanstack/vue-router'
 
 type ItemSearch = {
   q: string
 }
+
+const ItemComponent = defineComponent({
+  setup() {
+    const data = Route.useLoaderData()
+
+    return () => (
+      <main
+        data-bench-id={data.value.id}
+      >{`${data.value.id}:${data.value.q}:${data.value.checksum}`}</main>
+    )
+  },
+})
 
 export const Route = createFileRoute('/items/$id')({
   validateSearch: (search: Record<string, unknown>): ItemSearch => ({
@@ -22,13 +35,3 @@ export const Route = createFileRoute('/items/$id')({
   }),
   component: ItemComponent,
 })
-
-function ItemComponent() {
-  const data = Route.useLoaderData()
-
-  return (
-    <main
-      data-bench-id={data.value.id}
-    >{`${data.value.id}:${data.value.q}:${data.value.checksum}`}</main>
-  )
-}

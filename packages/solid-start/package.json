@@ -26,6 +26,7 @@
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test": "pnpm test:build",
+    "test:unit": "vitest",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build && vite build -c vite.config.server-entry.ts"
   },
@@ -145,21 +146,29 @@
     "@tanstack/start-plugin-core": "workspace:*",
     "@tanstack/start-server-core": "workspace:*",
     "@tanstack/start-storage-context": "workspace:*",
-    "pathe": "^2.0.3"
+    "pathe": "catalog:"
   },
   "devDependencies": {
-    "@rsbuild/core": "^2.1.0",
+    "@rsbuild/core": "catalog:",
     "@solidjs/web": "^2.0.0-rc.21",
     "@tanstack/router-utils": "workspace:*",
     "@types/node": ">=20",
     "solid-js": "^2.0.0-rc.21",
-    "vite": "*"
+    "vite": "*",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@eslint-react/eslint-plugin": "catalog:",
+    "eslint-plugin-react-hooks": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "@solidjs/web": ">=2.0.0-rc.21 <3.0.0",
+    "@rsbuild/core": "^2.0.5",
     "solid-js": ">=2.0.0-rc.21 <3.0.0",
-    "vite": ">=7.0.0",
-    "@rsbuild/core": "^2.0.0"
+    "vite": ">=8.0.0"
   },
   "peerDependenciesMeta": {
     "@rsbuild/core": {

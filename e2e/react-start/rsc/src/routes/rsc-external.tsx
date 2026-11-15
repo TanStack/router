@@ -109,11 +109,7 @@ const getExternalDataServerComponent = createServerFn({ method: 'GET' })
     )
   })
 
-// The external server URL is provided by the e2e test setup
-const EXTERNAL_SERVER_URL =
-  typeof process !== 'undefined' && process.env.EXTERNAL_SERVER_URL
-    ? process.env.EXTERNAL_SERVER_URL
-    : 'http://localhost:65003'
+const EXTERNAL_SERVER_URL = 'https://jsonplaceholder.typicode.com'
 
 export const Route = createFileRoute('/rsc-external')({
   loader: async () => {

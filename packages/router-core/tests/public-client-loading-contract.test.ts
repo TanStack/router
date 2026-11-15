@@ -55,6 +55,76 @@ describe('public client loading contracts', () => {
     })
   })
 
+  test('a successor retains committed UI until its pending context is ready', async () => {
+    const initialPublished = createControlledPromise<void>()
+    const initialRenderAck = createControlledPromise<boolean>()
+    const successorStarted = createControlledPromise<void>()
+    const successorLoader = createControlledPromise<string>()
+    const rootRoute = new BaseRootRoute({})
+    const initialRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const successorRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/successor',
+      context: () => ({ destinationContext: 'ready' }),
+      pendingMs: 0,
+      pendingMinMs: 0,
+      pendingComponent: () => null,
+      loader: () => {
+        successorStarted.resolve()
+        return successorLoader
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([initialRoute, successorRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    const startTransition = router.startTransition
+    let waitForInitialRender = true
+    router.startTransition = (fn, expected) => {
+      fn()
+      if (
+        waitForInitialRender &&
+        expected?.at(-1)?.routeId === initialRoute.id &&
+        expected.at(-1)?.status === 'success'
+      ) {
+        waitForInitialRender = false
+        initialPublished.resolve()
+        return initialRenderAck
+      }
+      return Promise.resolve(true)
+    }
+
+    const initialLoad = router.load()
+    let navigation: Promise<void> | undefined
+    try {
+      await initialPublished
+      expect(router._committed.at(-1)?.routeId).toBe(initialRoute.id)
+      expect(router.state.resolvedLocation).toBeUndefined()
+      expect(initialRenderAck.status).toBe('pending')
+
+      navigation = router.navigate({ to: '/successor' })
+      await successorStarted
+
+      expect(router.state.matches.at(-1)).toMatchObject({
+        routeId: successorRoute.id,
+        status: 'pending',
+        context: { destinationContext: 'ready' },
+      })
+
+      successorLoader.resolve('successor data')
+      initialRenderAck.resolve(true)
+      await Promise.all([initialLoad, navigation])
+    } finally {
+      successorLoader.resolve('successor data')
+      initialRenderAck.resolve(true)
+      await Promise.allSettled([initialLoad, navigation])
+      router.startTransition = startTransition
+    }
+  })
+
   test('background loading is observable while retaining committed data', async () => {
     const reloadGate = createControlledPromise<{ generation: number }>()
     let loaderCalls = 0

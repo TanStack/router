@@ -1,5 +1,4 @@
-import { bench, describe } from 'vitest'
-import { memoryBenchOptions } from '#memory-server/bench-utils'
+import { test } from 'vitest'
 
 // TODO(solid-router-v2): re-enable once router-core's SSR stream transformer
 // supports Solid 2's streaming shape. Solid 2's renderToStream emits
@@ -9,6 +8,4 @@ import { memoryBenchOptions } from '#memory-server/bench-utils'
 // (MAX_TAIL_CHARS = 64 kB) for this scenario's ~200 kB of deferred payload.
 // React and Vue keep deferred chunks before `</body>`, which is what the
 // transformer assumes.
-describe('memory', () => {
-  bench.skip('mem server streaming-peak (solid)', () => {}, memoryBenchOptions)
-})
+test.skip('memory', () => {})

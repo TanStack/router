@@ -1,11 +1,16 @@
-import { bench, describe } from 'vitest'
-import { memoryBenchOptions } from '#memory-server/bench-utils'
+import { test } from 'vitest'
+import {
+  memoryBenchHooks,
+  memoryBenchOptions,
+} from '#memory-server/bench-utils'
 import { workloadGroup } from './setup'
 
 await workloadGroup.sanity()
 
-describe('memory', () => {
+test('memory', async ({ bench }) => {
   for (const workload of workloadGroup.workloads) {
-    bench(workload.name, workload.run, memoryBenchOptions)
+    await bench(workload.name, memoryBenchHooks(), workload.run).run(
+      memoryBenchOptions,
+    )
   }
 })

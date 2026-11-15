@@ -6,7 +6,7 @@ const outDir = process.env.E2E_DIST_DIR ?? 'dist'
 
 export default defineConfig({
   plugins: [
-    pluginReact({ splitChunks: false }),
+    pluginReact(),
     tanstackStart({
       rsc: {
         enabled: true,

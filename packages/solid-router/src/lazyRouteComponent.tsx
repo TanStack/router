@@ -1,5 +1,6 @@
 import { lazy } from 'solid-js'
 import { isModuleNotFoundError } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import type { AsyncRouteComponent } from './route'
 
 export function lazyRouteComponent<
@@ -21,31 +22,45 @@ export function lazyRouteComponent<
   // hydration claims the component synchronously from the preloaded module.
   const comp = lazy(
     () =>
-      importer().catch((error) => {
-        // If the load fails due to module not found, it may mean a new
-        // version of the build was deployed and the user's browser is still
-        // using an old version with an outdated URL to the lazy module. In
-        // that case, attempt one window refresh to get the latest — gated
-        // through sessionStorage so some other issue can't cause a reload
-        // loop.
-        if (
-          isModuleNotFoundError(error) &&
-          error instanceof Error &&
-          typeof window !== 'undefined' &&
-          typeof sessionStorage !== 'undefined'
-        ) {
-          const storageKey = `tanstack_router_reload:${error.message}`
-          if (!sessionStorage.getItem(storageKey)) {
-            sessionStorage.setItem(storageKey, '1')
-            window.location.reload()
-
-            // The page is reloading; render nothing in the meantime.
-            return { [resolvedExport]: () => null } as unknown as T
+      importer().then(
+        (module) => {
+          if (!module[resolvedExport]) {
+            if (process.env.NODE_ENV !== 'production') {
+              throw new Error(
+                `lazyRouteComponent: export "${resolvedExport}" not found`,
+              )
+            }
+            // lazy() re-imports forever on an undefined component; render blank.
+            return { ...module, [resolvedExport]: () => null } as T
           }
-        }
+          return module
+        },
+        (error) => {
+          // If the load fails due to module not found, it may mean a new
+          // version of the build was deployed and the user's browser is still
+          // using an old version with an outdated URL to the lazy module. In
+          // that case, attempt one window refresh to get the latest — gated
+          // through sessionStorage so some other issue can't cause a reload
+          // loop.
+          if (
+            isModuleNotFoundError(error) &&
+            error instanceof Error &&
+            typeof window !== 'undefined' &&
+            typeof sessionStorage !== 'undefined'
+          ) {
+            const storageKey = `tanstack_router_reload:${error.message}`
+            if (!sessionStorage.getItem(storageKey)) {
+              sessionStorage.setItem(storageKey, '1')
+              window.location.reload()
 
-        throw error
-      }),
+              // The page is reloading; render nothing in the meantime.
+              return { [resolvedExport]: () => null } as unknown as T
+            }
+          }
+
+          throw error
+        },
+      ),
     { export: resolvedExport },
   )
 
@@ -57,7 +72,12 @@ export function lazyRouteComponent<
   comp.preload = () => {
     if (!preloadPromise) {
       preloadPromise = load().then(
-        () => {},
+        () => {
+          // Resolved clients have no preload work; SSR can reuse the import.
+          if (!(isServer ?? typeof window === 'undefined')) {
+            comp.preload = undefined as any
+          }
+        },
         () => {
           preloadPromise = undefined
         },

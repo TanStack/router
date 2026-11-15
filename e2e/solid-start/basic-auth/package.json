@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
     "prisma-generate": "prisma generate",
-    "test:e2e": "rm -rf port*.txt; mkdir -p .tmp; rm -f .tmp/dev.db .tmp/dev.db-journal .tmp/dev.db-wal .tmp/dev.db-shm; export DATABASE_URL=file:./.tmp/dev.db; pnpm run prisma-generate && pnpm exec prisma migrate deploy && playwright test --project=chromium"
+    "test:e2e": "mkdir -p .tmp; rm -f .tmp/dev.db .tmp/dev.db-journal .tmp/dev.db-wal .tmp/dev.db-shm; export DATABASE_URL=file:./.tmp/dev.db; pnpm run prisma-generate && pnpm exec prisma migrate deploy && playwright test --project=chromium"
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",
@@ -20,7 +20,8 @@
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
-    "redaxios": "^0.5.1",
+    "iron-session": "^9.0.1",
+    "redaxios": "catalog:",
     "solid-js": "^2.0.0-rc.21",
     "tailwind-merge": "^3.6.0"
   },
@@ -32,10 +33,21 @@
     "@types/node": "^22.10.2",
     "dotenv": "^17.2.3",
     "prisma": "^7.0.0",
-    "srvx": "^0.11.9",
+    "srvx": "^1.0.0",
     "tailwindcss": "^4.2.2",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14"
+  },
+  "nx": {
+    "targets": {
+      "test:e2e": {
+        "outputs": [
+          "...",
+          "{projectRoot}/.tmp",
+          "{projectRoot}/src/prisma-generated"
+        ]
+      }
+    }
   }
 }

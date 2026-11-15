@@ -570,7 +570,7 @@ The `routeOptions.onCatch` option is a function that is called whenever an error
 ```tsx
 // src/routes/posts.tsx
 export const Route = createFileRoute('/posts')({
-  onCatch: ({ error, errorInfo }) => {
+  onCatch: (error) => {
     // Log the error
     console.error(error)
   },
@@ -581,8 +581,12 @@ export const Route = createFileRoute('/posts')({
 
 The `routeOptions.errorComponent` option is a component that is rendered when an error occurs during the route loading or rendering lifecycle. It is rendered with the following props:
 
-- `error` - The error that occurred
+- `error` - The caught value (`unknown` in React and Vue; `Error` in Solid)
 - `reset` - A function to reset the internal `CatchBoundary`
+
+`ErrorComponentProps` defaults its `error` property to `unknown` in React and Vue, where you must narrow the value before accessing properties such as `message`. In Solid, it defaults to `Error`. `ErrorComponentProps<MyError>` can describe an error after you have narrowed it; it does not restrict what a route can throw. This applies to boundary components and `onCatch` callbacks, including `defaultOnCatch`; it does not change the `onError` callback.
+
+React and Vue boundaries pass through the caught value, including falsy values. Solid wraps non-`Error` throws in an `Error` whose `cause` contains the original value. This also applies to Solid error components rendered during SSR: existing `Error` instances are preserved, strings become the error message, and other values use the message `Unknown error`. Router state and loader `onError` callbacks retain the original value.
 
 ```tsx
 // src/routes/posts.tsx
@@ -590,7 +594,7 @@ export const Route = createFileRoute('/posts')({
   loader: () => fetchPosts(),
   errorComponent: ({ error }) => {
     // Render an error message
-    return <div>{error.message}</div>
+    return <div>{error instanceof Error ? error.message : String(error)}</div>
   },
 })
 ```
@@ -604,7 +608,7 @@ export const Route = createFileRoute('/posts')({
   errorComponent: ({ error, reset }) => {
     return (
       <div>
-        {error.message}
+        {error instanceof Error ? error.message : String(error)}
         <button
           onClick={() => {
             // Reset the router error boundary
@@ -630,7 +634,7 @@ export const Route = createFileRoute('/posts')({
 
     return (
       <div>
-        {error.message}
+        {error instanceof Error ? error.message : String(error)}
         <button
           onClick={() => {
             // Invalidate the route to reload the loader, which will also reset the error boundary

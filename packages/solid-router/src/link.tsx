@@ -1,9 +1,10 @@
 import * as Solid from 'solid-js'
 
 import {
+  _isRouteDeparting,
   deepEqual,
-  exactPathTest,
   functionalUpdate,
+  getUrlScheme,
   hasKeys,
   isDangerousProtocol,
   preloadWarning,
@@ -13,6 +14,7 @@ import {
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from '@solidjs/web'
 import { useRouter } from './useRouter'
+import { nearestMatchContext } from './matchContext'
 
 import { useIntersectionObserver } from './utils'
 
@@ -21,6 +23,7 @@ import type {
   AnyRouter,
   Constrain,
   LinkOptions,
+  ParsedLocation,
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
@@ -61,12 +64,6 @@ function splitProps<T extends Record<string, any>, TKey extends keyof T>(
   // Note: Solid.omit uses rest params (...keys), so we must spread the array.
   return [props as any, Solid.omit(props, ...(keys as any)) as any]
 }
-const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
-const cancelPreload = (eventTarget: object) => {
-  clearTimeout(timeoutMap.get(eventTarget))
-  timeoutMap.delete(eventTarget)
-}
-
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
@@ -82,136 +79,149 @@ export function useLinkProps<
 
   let hasRenderFetched = false
 
-  // Defaults are resolved through accessors at the use sites instead of
-  // merging them into the props. Every merge/omit proxy layered here gets
-  // re-enumerated by spread() on each navigation, and V8 dispatches proxy
-  // traps in native runtime code — keeping this path proxy-free is what
-  // keeps Link updates cheap.
   const local = options
-  const activeProps = () => local.activeProps ?? STATIC_ACTIVE_PROPS_GET
-  const inactiveProps = () => local.inactiveProps ?? STATIC_INACTIVE_PROPS_GET
 
-  const propsSafeToSpread = Solid.omit(
+  const propsSafeToSpread: Record<string, any> = Solid.omit(
     options as Record<string, any>,
-    'activeProps',
-    'inactiveProps',
-    'activeOptions',
-    'to',
-    'preload',
-    'preloadDelay',
-    'preloadIntentProximity',
-    'hashScrollIntoView',
-    'replace',
-    'startTransition',
-    'resetScroll',
-    'viewTransition',
-    'target',
-    'disabled',
-    'style',
-    'class',
-    'onClick',
-    'onBlur',
-    'onFocus',
-    'onMouseEnter',
-    'onMouseLeave',
-    'onMouseOver',
-    'onMouseOut',
-    'onTouchStart',
-    'ignoreBlocker',
-    'params',
-    'search',
-    'hash',
-    'state',
-    'mask',
-    'reloadDocument',
-    'unsafeRelative',
-    'from',
+    ...LINK_OPTION_KEYS,
   )
 
-  const currentLocation = Solid.createMemo(() => router.stores.location.get(), {
-    equals: (prev, next) => prev.href === next.href,
+  // A live match never changes route, so read it once without tracking.
+  const routeId = Solid.untrack(Solid.useContext(nearestMatchContext)[0])
+
+  // While a publishing navigation leaves the Link's route, keep the location
+  // the route still presents so the Link does no work. The route unmounts
+  // when that navigation commits, and any other outcome publishes a newer
+  // location. Compare by identity: a same-href navigation can change state.
+  const currentLocation = Solid.createMemo((prev?: ParsedLocation) => {
+    const location = router.stores.location.get()
+    return prev && _isRouteDeparting(router, routeId, location)
+      ? prev
+      : location
   })
 
-  const _options = () => options
-
-  const next = Solid.createMemo(
+  // The Link's own destination options, replaced only when a destination prop
+  // changes: the router reuses a location built from the same object without
+  // reading the current location. A Solid store changes in place, so a store
+  // prop value (checked one level deep, not nested) gets a fresh object per
+  // location instead, re-reading the store at each navigation as before. A
+  // mask holds destination options of its own, so its values are checked too.
+  const dest = Solid.createMemo(
     () => {
-      // Rebuild when inherited search/hash or the current route context changes.
-      const _fromLocation = currentLocation()
-      const options = { _fromLocation, ..._options() } as any
-      // untrack because router-core will also access stores, which are signals in solid
-      return Solid.untrack(() => router.buildLocation(options))
-    },
-    {
-      lazy: true,
-      // Navigations usually leave most links' built locations unchanged;
-      // comparing hrefs lets downstream memos (href, isActive) skip work.
-      equals: (prev, next) =>
-        prev.href === next.href &&
-        prev.external === next.external &&
-        prev.maskedLocation?.href === next.maskedLocation?.href,
-    },
-  )
-
-  const hrefOption = Solid.createMemo(
-    () => {
-      if (_options().disabled) return undefined
-      // Use publicHref - it contains the correct href for display
-      // When a rewrite changes the origin, publicHref is the full URL
-      // Otherwise it's the origin-stripped path
-      // This avoids constructing URL objects in the hot path
-      const location = next().maskedLocation ?? next()
-      const publicHref = location.publicHref
-      const external = location.external
-
-      if (external) {
-        return { href: publicHref, external: true }
+      const dest: any = {}
+      for (const key of NAVIGATION_KEYS) {
+        const value = (dest[key] = (options as any)[key])
+        if (
+          isStore(value) ||
+          (key === 'mask' && value && Object.values(value).some(isStore))
+        ) {
+          currentLocation()
+        }
       }
-
-      return {
-        href: router.history.createHref(publicHref) || '/',
-        external: false,
-      }
+      return dest
     },
     { lazy: true },
   )
 
-  const externalLink = Solid.createMemo(
-    () => {
-      const _href = hrefOption()
-      if (_href?.external) {
-        // Block dangerous protocols for external links
-        if (isDangerousProtocol(_href.href, router.protocolAllowlist)) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn(`Blocked Link with dangerous protocol: ${_href.href}`)
-          }
-          return undefined
-        }
-        return _href.href
-      }
-      const to = _options().to
-      const safeInternal = isSafeInternal(to)
-      if (safeInternal) return undefined
-      if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
-      try {
-        new URL(to as any)
-        // Block dangerous protocols like javascript:, blob:, data:
-        if (isDangerousProtocol(to, router.protocolAllowlist)) {
+  // Everything the Link derives from its destination and the location, in
+  // one computation: [element href, external href (null when blocked),
+  // active]. An unchanged result keeps its identity, so a navigation that
+  // leaves the Link as it was notifies nothing downstream.
+  const linkState = Solid.createMemo(
+    (prev?: LinkState): LinkState => {
+      const location = currentLocation()
+      const to = local.to
+      const disabled = local.disabled
+      const scheme = typeof to === 'string' && getUrlScheme(to)
+      let href: string | undefined
+      let external: string | null | undefined
+      let active = false
+      if (scheme) {
+        if (router.protocolAllowlist.has(scheme)) {
+          external = to
+        } else {
           if (process.env.NODE_ENV !== 'production') {
             console.warn(`Blocked Link with dangerous protocol: ${to}`)
           }
-          return undefined
+          external = null
         }
-        return to
-      } catch {}
-      return undefined
+      } else {
+        const options_ = dest()
+        // Clicks and preloads go where the href points.
+        options_._fromLocation = location
+        // untrack because router-core will also access stores, which are signals in solid
+        const next = Solid.untrack(() => router.buildLocation(options_))
+        if (!disabled) {
+          // Use publicHref - it contains the correct href for display
+          // When a rewrite changes the origin, publicHref is the full URL
+          // Otherwise it's the origin-stripped path
+          // This avoids constructing URL objects in the hot path
+          const shown = next.maskedLocation ?? next
+          const publicHref = shown.publicHref
+          const shownHref = shown.external
+            ? publicHref
+            : router.history.createHref(publicHref) || '/'
+          if (
+            (shown.external || shownHref !== publicHref) &&
+            isDangerousProtocol(shownHref, router.protocolAllowlist)
+          ) {
+            if (process.env.NODE_ENV !== 'production') {
+              console.warn(`Blocked Link with dangerous protocol: ${shownHref}`)
+            }
+          } else {
+            href = shownHref
+          }
+        }
+        external =
+          !href && !disabled
+            ? null
+            : href && getUrlScheme(href)
+              ? href
+              : undefined
+        if (external === undefined) {
+          const activeOptions = local.activeOptions
+          const currentPath = removeTrailingSlash(
+            location.pathname,
+            router.basepath,
+          )
+          const nextPath = removeTrailingSlash(next.pathname, router.basepath)
+          // Both modes compare normalized paths; fuzzy matches need a segment boundary.
+          active =
+            (activeOptions?.exact
+              ? currentPath === nextPath
+              : currentPath.startsWith(nextPath) &&
+                (currentPath.length === nextPath.length ||
+                  currentPath[nextPath.length] === '/')) &&
+            (!(activeOptions?.includeSearch ?? true) ||
+              deepEqual(
+                location.search,
+                next.search,
+                !activeOptions?.exact,
+                activeOptions?.explicitUndefined,
+              )) &&
+            (!activeOptions?.includeHash ||
+              (shouldHydrateHash && !hasHydrated() ? '' : location.hash) ===
+                next.hash)
+        }
+      }
+      href = external === null ? undefined : external || href
+      return prev &&
+        prev[0 /* href */] === href &&
+        prev[1 /* external */] === external &&
+        prev[2 /* active */] === active
+        ? prev
+        : [href, external, active]
     },
     { lazy: true },
   )
 
   const preload = Solid.createMemo(
     () => {
-      if (_options().reloadDocument || externalLink() || local.disabled) {
+      if (
+        local.reloadDocument ||
+        linkState()[1 /* external */] !== undefined ||
+        local.disabled
+      ) {
         return false
       }
       return local.preload ?? router.options.defaultPreload
@@ -221,68 +231,21 @@ export function useLinkProps<
   const preloadDelay = () =>
     local.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
-  const isActive = Solid.createMemo(
-    () => {
-      if (externalLink()) return false
-      const activeOptions = local.activeOptions
-      const current = currentLocation()
-      const nextLocation = next()
-
-      if (activeOptions?.exact) {
-        const testExact = exactPathTest(
-          current.pathname,
-          nextLocation.pathname,
-          router.basepath,
-        )
-        if (!testExact) {
-          return false
-        }
-      } else {
-        const currentPath = removeTrailingSlash(
-          current.pathname,
-          router.basepath,
-        )
-        const nextPath = removeTrailingSlash(
-          nextLocation.pathname,
-          router.basepath,
-        )
-
-        const pathIsFuzzyEqual =
-          currentPath.startsWith(nextPath) &&
-          (currentPath.length === nextPath.length ||
-            currentPath[nextPath.length] === '/')
-        if (!pathIsFuzzyEqual) {
-          return false
-        }
-      }
-
-      if (activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(current.search, nextLocation.search, {
-          partial: !activeOptions?.exact,
-          ignoreUndefined: !activeOptions?.explicitUndefined,
-        })
-        if (!searchTest) {
-          return false
-        }
-      }
-
-      if (activeOptions?.includeHash) {
-        const currentHash =
-          shouldHydrateHash && !hasHydrated() ? '' : current.hash
-        return currentHash === nextLocation.hash
-      }
-      return true
-    },
-    { lazy: true },
-  )
+  // A departing Link goes where its href points. Otherwise a held Solid 2
+  // transition can leave it on a stale location, so build from the router's.
+  const navigationOptions = () => {
+    const options_ = Solid.untrack(dest)
+    const pending = router._tx?.[2 /* location */]
+    return pending && _isRouteDeparting(router, routeId, pending)
+      ? options_
+      : { ...options_, _fromLocation: undefined }
+  }
 
   const doPreload = () =>
-    router
-      .preloadRoute({ ...options, _builtLocation: next() } as any)
-      .catch((err: any) => {
-        console.warn(err)
-        console.warn(preloadWarning)
-      })
+    router.preloadRoute(navigationOptions()).catch((err: any) => {
+      console.warn(err)
+      console.warn(preloadWarning)
+    })
 
   const [ref, setRefSignal] = Solid.createSignal<Element | null>(null)
 
@@ -292,11 +255,17 @@ export function useLinkProps<
     })
   }
 
+  let preloadTimeout: ReturnType<typeof setTimeout> | undefined
+  const cancelPreload = () => {
+    clearTimeout(preloadTimeout)
+    preloadTimeout = undefined
+  }
+
   const enqueuePreload = (
     e?: MouseEvent | FocusEvent | IntersectionObserverEntry,
   ) => {
     if (!e) {
-      cancelPreload(ref)
+      cancelPreload()
       return
     }
 
@@ -307,7 +276,7 @@ export function useLinkProps<
       )
     ) {
       if ((e as IntersectionObserverEntry).isIntersecting === false) {
-        cancelPreload(ref)
+        cancelPreload()
       }
       return
     }
@@ -317,18 +286,13 @@ export function useLinkProps<
       return
     }
 
-    if (!timeoutMap.has(ref)) {
-      timeoutMap.set(
-        ref,
-        setTimeout(() => {
-          timeoutMap.delete(ref)
-          doPreload()
-        }, preloadDelay()),
-      )
-    }
+    preloadTimeout ??= setTimeout(() => {
+      preloadTimeout = undefined
+      doPreload()
+    }, preloadDelay())
   }
 
-  useIntersectionObserver(ref, enqueuePreload, () => preload() !== 'viewport')
+  useIntersectionObserver(ref, enqueuePreload, preload)
 
   Solid.createEffect(preload, (preloadValue) => {
     if (hasRenderFetched) {
@@ -339,31 +303,6 @@ export function useLinkProps<
       hasRenderFetched = true
     }
   })
-
-  if (Solid.untrack(externalLink)) {
-    const externalHref = Solid.untrack(externalLink)
-    return Solid.merge(
-      propsSafeToSpread,
-      {
-        ref: mergeRefs(setRef, options.ref),
-        href: externalHref,
-      },
-      splitProps(local, [
-        'target',
-        'disabled',
-        'style',
-        'class',
-        'onClick',
-        'onBlur',
-        'onFocus',
-        'onMouseEnter',
-        'onMouseLeave',
-        'onMouseOut',
-        'onMouseOver',
-        'onTouchStart',
-      ])[0],
-    ) as any
-  }
 
   // The click handler
   const handleClick = (e: MouseEvent) => {
@@ -376,24 +315,18 @@ export function useLinkProps<
 
     if (
       !local.disabled &&
-      !isCtrlEvent(e) &&
+      linkState()[1 /* external */] === undefined &&
+      !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) &&
       !e.defaultPrevented &&
       (!effectiveTarget || effectiveTarget === '_self') &&
       e.button === 0
     ) {
       e.preventDefault()
+      cancelPreload()
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
-      router.navigate({
-        ...options,
-        replace: local.replace,
-        resetScroll: local.resetScroll,
-        hashScrollIntoView: local.hashScrollIntoView,
-        startTransition: local.startTransition,
-        viewTransition: local.viewTransition,
-        ignoreBlocker: local.ignoreBlocker,
-      })
+      router.navigate(navigationOptions())
     }
   }
 
@@ -404,18 +337,9 @@ export function useLinkProps<
 
   const handleLeave = () => {
     if (preload() === 'intent') {
-      cancelPreload(ref)
+      cancelPreload()
     }
   }
-
-  const simpleStyling = Solid.createMemo(
-    () =>
-      activeProps() === STATIC_ACTIVE_PROPS_GET &&
-      inactiveProps() === STATIC_INACTIVE_PROPS_GET &&
-      local.class === undefined &&
-      local.style === undefined,
-    { lazy: true },
-  )
 
   const onClick = createComposedHandler(() => local.onClick, handleClick)
   const onBlur = createComposedHandler(() => local.onBlur, handleLeave)
@@ -442,131 +366,154 @@ export function useLinkProps<
     style?: JSX.CSSProperties
   }
 
-  const resolvedStateProps = Solid.createMemo(
-    (): ResolvedLinkStateProps =>
-      (isActive()
-        ? functionalUpdate(activeProps() as any, {})
-        : functionalUpdate(inactiveProps(), {})) ?? EMPTY_OBJECT,
-    { lazy: true },
-  )
+  const resolveLinkStateProps = (): ResolvedLinkStateProps => {
+    const [href, external, active] = linkState()
+    const disabled = !!local.disabled || external === null
+    // Solid does not delegate mouseenter/mouseleave/focus/blur, so composed
+    // intent handlers would install real listeners on every anchor. Without
+    // intent preloading they only forward, so the user's handler goes as is.
+    const intent = preload() === 'intent'
+    const base: Record<string, any> = {
+      onClick,
+      onBlur: intent ? onBlur : local.onBlur,
+      onFocus: intent ? onFocus : local.onFocus,
+      onMouseEnter: intent ? onMouseEnter : local.onMouseEnter,
+      onMouseOver: intent ? onMouseOver : local.onMouseOver,
+      onMouseLeave: intent ? onMouseLeave : local.onMouseLeave,
+      onMouseOut: intent ? onMouseOut : local.onMouseOut,
+      onTouchStart: intent ? onTouchStart : local.onTouchStart,
+      href,
+      disabled,
+      target: local.target,
+    }
+    if (disabled) {
+      Object.assign(base, STATIC_DISABLED_PROPS)
+    }
 
-  const resolvedClass = Solid.createMemo(
-    () => {
-      if (simpleStyling()) return isActive() ? 'active' : undefined
+    if (
+      local.activeProps === undefined &&
+      local.inactiveProps === undefined &&
+      local.class === undefined &&
+      local.style === undefined
+    ) {
       return (
-        [local.class, resolvedStateProps().class].filter(Boolean).join(' ') ||
-        undefined
-      )
-    },
-    { lazy: true },
-  )
-
-  const resolvedStyle = Solid.createMemo(
-    () => {
-      if (simpleStyling()) return local.style
-      const style = { ...local.style, ...resolvedStateProps().style }
-      return hasKeys(style) ? style : undefined
-    },
-    { lazy: true },
-  )
-
-  // The returned object must be a plain object with a stable key set so the
-  // consuming spread() never enumerates through proxy traps. Reactivity lives
-  // in the property getters; values that no longer apply resolve to undefined,
-  // which spread()/assign() treats as attribute removal. Keys returned by
-  // activeProps/inactiveProps are discovered once at setup.
-  const extraStateKeys = new Set<string>()
-  Solid.untrack(() => {
-    for (const stateProps of [
-      functionalUpdate(activeProps() as any, {}),
-      functionalUpdate(inactiveProps(), {}),
-    ]) {
-      if (stateProps) {
-        for (const key of Object.keys(stateProps)) {
-          if (key !== 'class' && key !== 'style') extraStateKeys.add(key)
-        }
-      }
+        active ? Object.assign(base, STATIC_DEFAULT_ACTIVE_ATTRIBUTES) : base
+      ) as ResolvedLinkStateProps
     }
-  })
 
-  const composedRef = mergeRefs(setRef, (el: Element) => {
-    const r = _options().ref as any
-    if (typeof r === 'function') r(el)
-  })
+    const stateProps: ResolvedLinkStateProps =
+      functionalUpdate(
+        ((active ? local.activeProps : local.inactiveProps) ??
+          (active ? STATIC_ACTIVE_PROPS : EMPTY_OBJECT)) as any,
+        {},
+      ) ?? EMPTY_OBJECT
+    const baseStyle = local.style
+    const stateStyle = stateProps.style
+    // Snapshot reactive style properties so in-place updates remain observable.
+    const style =
+      baseStyle || stateStyle ? { ...baseStyle, ...stateStyle } : undefined
+    const baseClass = local.class
+    const stateClass = stateProps.class
+    const className = baseClass
+      ? stateClass
+        ? `${baseClass} ${stateClass}`
+        : baseClass
+      : stateClass
 
-  const linkProps: Record<string, any> = {}
-  for (const key of Object.keys(propsSafeToSpread)) {
-    Object.defineProperty(
-      linkProps,
-      key,
-      Object.getOwnPropertyDescriptor(propsSafeToSpread, key)!,
-    )
+    return {
+      ...base,
+      ...stateProps,
+      // State props can override element props, but not routing options.
+      href,
+      disabled,
+      target: base.target,
+      ...(style && hasKeys(style) && { style }),
+      ...(className && { class: className }),
+      ...(active && STATIC_ACTIVE_ATTRIBUTES),
+    } as ResolvedLinkStateProps
   }
-  for (const key of extraStateKeys) {
-    Object.defineProperty(linkProps, key, {
-      get: () => (resolvedStateProps() as Record<string, any>)[key],
-      enumerable: true,
-      configurable: true,
-    })
-  }
 
-  const defineGetters = (getters: Record<string, () => any>) => {
-    for (const key of Object.keys(getters)) {
-      Object.defineProperty(linkProps, key, {
-        get: getters[key],
-        enumerable: true,
-        configurable: true,
-      })
-    }
-  }
+  // `merge` memoizes this itself; the ref reads its latest result.
+  let resolved: ResolvedLinkStateProps | undefined
+  const resolvedProps = () => (resolved = resolveLinkStateProps())
 
-  linkProps.ref = composedRef
-  linkProps.onClick = onClick
-
-  // Intent preloading is the only thing these handlers do, and each of them
-  // already bails at a `preload() !== 'intent'` gate. Handing them out anyway
-  // is not free: Solid does not delegate mouseenter/mouseleave/focus/blur, so
-  // every anchor installs four real listeners that exist only to return. On a
-  // list view — a table of rows, a calendar of spans — that is four listeners
-  // per row for no behaviour at all.
-  //
-  // So when intent preloading is off, the property resolves to whatever the
-  // user passed (or undefined), and spread()/assign() installs nothing. The
-  // getters keep this reactive: flipping `preload` back to 'intent' re-runs
-  // the consuming spread, which attaches the composed handler then.
-  const onIntent =
-    (composed: (event: any) => void, user: () => unknown) => () =>
-      preload() === 'intent' ? composed : user()
-
-  defineGetters({
-    onBlur: onIntent(onBlur, () => local.onBlur),
-    onFocus: onIntent(onFocus, () => local.onFocus),
-    onMouseEnter: onIntent(onMouseEnter, () => local.onMouseEnter),
-    onMouseOver: onIntent(onMouseOver, () => local.onMouseOver),
-    onMouseLeave: onIntent(onMouseLeave, () => local.onMouseLeave),
-    onMouseOut: onIntent(onMouseOut, () => local.onMouseOut),
-    onTouchStart: onIntent(onTouchStart, () => local.onTouchStart),
+  // One ref callback per element. The selected state props' ref, else the
+  // Link's own, receives the element once; a state change does not re-call it.
+  const linkRef = mergeRefs(setRef, (el: Element) => {
+    mergeRefs(resolved?.ref ?? local.ref)(el)
   })
 
-  defineGetters({
-    href: () => hrefOption()?.href,
-    disabled: () => !!local.disabled,
-    target: () => local.target,
-    role: () => (local.disabled ? 'link' : propsSafeToSpread.role),
-    'aria-disabled': () => (local.disabled ? 'true' : undefined),
-    'data-status': () => (isActive() ? 'active' : undefined),
-    'aria-current': () => (isActive() ? 'page' : undefined),
-    class: resolvedClass,
-    style: resolvedStyle,
-  })
-
-  return linkProps as any
+  return Solid.merge(propsSafeToSpread, resolvedProps, {
+    ref: linkRef,
+  }) as any
 }
 
+// [element href, external href (null when blocked), active]
+type LinkState = [
+  href: string | undefined,
+  external: string | null | undefined,
+  active: boolean,
+]
+
+const isStore = (value: any): boolean => !!value?.[Solid.$PROXY]
+
+// Props that decide where and how a Link navigates.
+const NAVIGATION_KEYS = [
+  'to',
+  'reloadDocument',
+  'replace',
+  'resetScroll',
+  'hashScrollIntoView',
+  'startTransition',
+  'viewTransition',
+  'ignoreBlocker',
+  'params',
+  'search',
+  'hash',
+  'state',
+  'mask',
+  'unsafeRelative',
+  'from',
+  'href',
+] as const
+// Options the Link consumes; every other option is an element prop.
+const LINK_OPTION_KEYS = [
+  ...NAVIGATION_KEYS,
+  'activeProps',
+  'inactiveProps',
+  'activeOptions',
+  'preload',
+  'preloadDelay',
+  'preloadIntentProximity',
+  'target',
+  'disabled',
+  'style',
+  'class',
+  'onClick',
+  'onBlur',
+  'onFocus',
+  'onMouseEnter',
+  'onMouseLeave',
+  'onMouseOver',
+  'onMouseOut',
+  'onTouchStart',
+]
+
 const STATIC_ACTIVE_PROPS = { class: 'active' }
-const STATIC_ACTIVE_PROPS_GET = () => STATIC_ACTIVE_PROPS
 const EMPTY_OBJECT = {}
-const STATIC_INACTIVE_PROPS_GET = () => EMPTY_OBJECT
+const STATIC_DEFAULT_ACTIVE_ATTRIBUTES = {
+  class: 'active',
+  'data-status': 'active',
+  'aria-current': 'page',
+}
+const STATIC_DISABLED_PROPS = {
+  role: 'link' as const,
+  'aria-disabled': 'true',
+}
+const STATIC_ACTIVE_ATTRIBUTES = {
+  'data-status': 'active',
+  'aria-current': 'page',
+}
 
 /** Call a JSX.EventHandlerUnion with the event. */
 function callHandler<T, TEvent extends Event>(
@@ -750,17 +697,6 @@ export const Link: LinkComponent<'a'> = (props) => {
       {children()}
     </Dynamic>
   )
-}
-
-function isCtrlEvent(e: MouseEvent) {
-  return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
-}
-
-function isSafeInternal(to: unknown) {
-  if (typeof to !== 'string') return false
-  const zero = to.charCodeAt(0)
-  if (zero === 47) return to.charCodeAt(1) !== 47 // '/' but not '//'
-  return zero === 46 // '.', '..', './', '../'
 }
 
 export type LinkOptionsFnOptions<

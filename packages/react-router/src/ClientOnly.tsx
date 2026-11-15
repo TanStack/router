@@ -2,6 +2,9 @@
 
 import React from 'react'
 
+const getSnapshot = () => true
+const getServerSnapshot = () => false
+
 export interface ClientOnlyProps {
   /**
    * The children to render when the JS is loaded.
@@ -53,11 +56,19 @@ export function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
  * ```
  * @returns True if the JS has been hydrated already, false otherwise.
  */
-export function useHydrated(): boolean {
+export function useHydrated(): boolean
+/**
+ * @internal
+ * callers whose output does not depend on hydration can keep the
+ * same snapshot on both sides, avoiding an unnecessary post-hydration render.
+ */
+export function useHydrated(enabled: boolean): boolean
+/** @internal */
+export function useHydrated(enabled = true): boolean {
   return React.useSyncExternalStore(
     subscribe,
-    () => true,
-    () => false,
+    getSnapshot,
+    enabled ? getServerSnapshot : getSnapshot,
   )
 }
 

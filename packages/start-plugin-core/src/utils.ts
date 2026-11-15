@@ -4,7 +4,11 @@ const isWindows: boolean =
   typeof process !== 'undefined' && process.platform === 'win32'
 const windowsSlashRE = /\\/g
 
-/** Read `build.rollupOptions` or `build.rolldownOptions` from a build config. */
+/**
+ * Read `build.rolldownOptions` from a build config. Vite 8 still accepts
+ * `build.rollupOptions` as a deprecated alias, and a user config can reach a
+ * plugin before Vite maps it.
+ */
 export function getBundlerOptions(build: any): any {
   return build?.rolldownOptions ?? build?.rollupOptions
 }

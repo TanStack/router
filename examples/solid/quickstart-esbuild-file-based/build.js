@@ -16,7 +16,7 @@ const ctx = await esbuild.context({
   conditions: ['style'],
   plugins: [
     solidPlugin({ solid: { moduleName: '@solidjs/web' } }),
-    tanstackRouter({ target: 'solid', autoCodeSplitting: true }),
+    tanstackRouter({ target: 'solid' }),
   ],
 })
 

@@ -15,20 +15,20 @@
   "dependencies": {
     "@solidjs/web": "^2.0.0-rc.21",
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/router-plugin": "^1.168.30",
     "@tanstack/solid-devtools": "^0.7.0",
     "@tanstack/solid-router": "^2.0.0-rc.10",
     "@tanstack/solid-router-devtools": "^2.0.0-rc.8",
     "@tanstack/solid-router-ssr-query": "^2.0.0-rc.8",
     "@tanstack/solid-start": "^2.0.0-rc.10",
+    "@tanstack/router-plugin": "^1.169.0",
     "solid-js": "^2.0.0-rc.21",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
-    "@solidjs/testing-library": "^0.8.10",
-    "@solidjs/vite-plugin": "^3.0.0-next.57",
     "@tanstack/eslint-config": "^0.3.2",
     "@testing-library/dom": "^10.4.1",
+    "@solidjs/testing-library": "^0.8.10",
+    "@solidjs/vite-plugin": "^3.0.0-next.57",
     "@types/bun": "^1.2.22",
     "@types/node": "22.10.2",
     "jsdom": "^27.0.0",
@@ -36,7 +36,7 @@
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
-    "vitest": "^4.1.4",
+    "vitest": "^5.0.4",
     "web-vitals": "^5.1.0"
   }
 }

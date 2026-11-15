@@ -1,45 +1,14 @@
-import { PassThrough } from 'node:stream'
+import { PassThrough, Readable } from 'node:stream'
 import ReactDOMServer from 'react-dom/server'
 import { isbot } from 'isbot'
 import {
   createSsrStreamResponse,
-  transformPipeableStreamWithRouter,
+  getSsrStatus,
   transformReadableStreamWithRouter,
+  waitForRequest,
 } from '@tanstack/router-core/ssr/server'
 import type { AnyRouter } from '@tanstack/router-core'
-import type { ReadableStream } from 'node:stream/web'
 import type { ReactNode } from 'react'
-
-const noop = () => {}
-
-// Bot responses wait for `allReady` so crawlers receive complete HTML.
-// If the request disconnects during that wait, React may not settle quickly;
-// unblock the wait so the response pipeline can abort and clean up.
-async function waitForReadyOrAbort(
-  ready: Promise<unknown>,
-  signal: AbortSignal,
-) {
-  let cleanup = noop
-  try {
-    await Promise.race([
-      ready,
-      new Promise<void>((resolve) => {
-        const onAbort = () => resolve()
-        cleanup = () => signal.removeEventListener('abort', onAbort)
-        signal.addEventListener('abort', onAbort, { once: true })
-        if (signal.aborted) resolve()
-      }),
-    ])
-  } finally {
-    cleanup()
-  }
-}
-
-// A client disconnecting mid-stream is normal operation, not a render
-// failure; don't let React's onError log it as one.
-const isAbortError = (request: Request, error: unknown) =>
-  (request.signal.aborted && error === request.signal.reason) ||
-  (error instanceof Error && error.name === 'AbortError')
 
 export const renderRouterToStream = async ({
   request,
@@ -52,169 +21,116 @@ export const renderRouterToStream = async ({
   responseHeaders: Headers
   children: ReactNode
 }) => {
-  if (typeof ReactDOMServer.renderToReadableStream === 'function') {
-    const stream = await ReactDOMServer.renderToReadableStream(children, {
-      signal: request.signal,
-      nonce: router.options.ssr?.nonce,
-      progressiveChunkSize: Number.POSITIVE_INFINITY,
-      onError: (error, info) => {
-        if (!isAbortError(request, error)) {
-          console.error('Error in renderToReadableStream:', error, info)
-        }
-      },
-    })
-
-    if (isbot(request.headers.get('User-Agent'))) {
-      await waitForReadyOrAbort(stream.allReady, request.signal)
-    }
-
-    const responseStream = transformReadableStreamWithRouter(
-      router,
-      stream as unknown as ReadableStream,
-      {
-        signal: request.signal,
-        onAbort: () => stream.cancel().catch(() => {}),
-      },
-    )
-    return createSsrStreamResponse(
-      router,
-      new Response(responseStream as any, {
-        status:
-          router._serverResult?.type === 'render'
-            ? router._serverResult.status
-            : 200,
-        headers: responseHeaders,
-      }),
-    )
+  const signal = request.signal
+  if (signal.aborted) {
+    router.serverSsr?.cleanup()
+    throw signal.reason
   }
-
-  if (typeof ReactDOMServer.renderToPipeableStream === 'function') {
-    const reactAppPassthrough = new PassThrough()
-
-    let pipeable:
-      | ReturnType<typeof ReactDOMServer.renderToPipeableStream>
-      | undefined
-    let responseAttached = false
-    let aborted = false
-    let endedBeforeAttach = false
-    let pendingAbortReason: unknown
-    const toError = (reason: unknown) =>
-      reason instanceof Error
-        ? reason
-        : new Error(String(reason ?? 'SSR aborted'))
-    const destroyError = (reason: unknown) =>
-      reason === undefined ? undefined : toError(reason)
-    const pendingDestroyError = () =>
-      pendingAbortReason === undefined
-        ? toError(pendingAbortReason)
-        : destroyError(pendingAbortReason)
-    const finishPassThrough = (
-      reason: unknown,
-      opts?: { defaultError?: boolean },
-    ) => {
-      if (reactAppPassthrough.destroyed) return
-      if (responseAttached) {
-        reactAppPassthrough.destroy(
-          opts?.defaultError ? toError(reason) : destroyError(reason),
-        )
-      } else {
-        endedBeforeAttach = true
-        // onError can fire synchronously before React returns the pipeable
-        // handle and before Readable.toWeb() is attached. Defer touching the
-        // PassThrough until after the router transform can observe the error.
+  let rendererTeardown = false
+  const bot = isbot(request.headers.get('User-Agent'))
+  const onError =
+    (
+      renderer: string,
+    ): ReactDOMServer.RenderToPipeableStreamOptions['onError'] =>
+    (error, info) => {
+      if (!rendererTeardown && !signal.aborted) {
+        console.error(`Error in ${renderer}:`, error, info)
       }
     }
-    const abortPipeable = (
-      reason?: unknown,
-      opts?: { defaultError?: boolean },
-    ) => {
-      if (aborted) return
-      aborted = true
-      pendingAbortReason = reason
-      const err = toError(reason)
-      try {
-        pipeable?.abort(err)
-      } catch {
-        // ignore — React may throw if already aborted/finished
-      }
-      finishPassThrough(reason, opts)
-    }
 
-    // Register before attaching the router transform; the transform may
-    // synchronously cleanup/error, and cleanup must still remove this listener.
-    if (request.signal.aborted) {
-      abortPipeable(request.signal.reason)
-    } else {
-      const onRequestAbort = () => abortPipeable(request.signal.reason)
-      request.signal.addEventListener('abort', onRequestAbort, { once: true })
-      router.serverSsr?.onCleanup(() => {
-        request.signal.removeEventListener('abort', onRequestAbort)
-      })
-    }
-
-    try {
-      pipeable = ReactDOMServer.renderToPipeableStream(children, {
+  try {
+    if (typeof ReactDOMServer.renderToReadableStream === 'function') {
+      const stream = await ReactDOMServer.renderToReadableStream(children, {
+        signal,
         nonce: router.options.ssr?.nonce,
         progressiveChunkSize: Number.POSITIVE_INFINITY,
-        ...(isbot(request.headers.get('User-Agent'))
-          ? {
-              onAllReady() {
-                pipeable!.pipe(reactAppPassthrough)
-              },
-            }
-          : {
-              onShellReady() {
-                pipeable!.pipe(reactAppPassthrough)
-              },
-            }),
-        onError: (error, info) => {
-          if (!isAbortError(request, error)) {
-            console.error('Error in renderToPipeableStream:', error, info)
-          }
-          abortPipeable(error, { defaultError: true })
+        onError: onError('renderToReadableStream'),
+      })
+      // The transform owns the reader and bounds bot readiness by its lifetime.
+      const rendererAbort = bot ? new AbortController() : undefined
+      const responseStream = transformReadableStreamWithRouter(router, stream, {
+        rendererSafePoint: 'script-close',
+        signal,
+        onAbort: (reason) => {
+          rendererTeardown = true
+          rendererAbort?.abort(reason)
         },
       })
-    } catch (e) {
-      console.error('Error in renderToPipeableStream:', e)
-      router.serverSsr?.cleanup()
-      throw e
+      if (rendererAbort) {
+        await waitForRequest(stream.allReady, rendererAbort.signal)
+      }
+      return createSsrStreamResponse(
+        router,
+        new Response(responseStream, {
+          status: getSsrStatus(router),
+          headers: responseHeaders,
+        }),
+      )
     }
 
-    const responseStream = transformPipeableStreamWithRouter(
-      router,
-      reactAppPassthrough,
-      { signal: request.signal, onAbort: abortPipeable },
-    )
-    responseAttached = true
-
-    if (endedBeforeAttach) {
-      reactAppPassthrough.destroy(pendingDestroyError())
-    }
-
-    // React's onError may have fired synchronously inside
-    // renderToPipeableStream before `pipeable` was assigned. If so,
-    // abortPipeable ran without a pipeable handle; re-apply the abort now.
-    if (aborted && pipeable) {
+    if (typeof ReactDOMServer.renderToPipeableStream === 'function') {
+      const reactAppPassthrough = new PassThrough()
+      let pipeable:
+        | ReturnType<typeof ReactDOMServer.renderToPipeableStream>
+        | undefined
+      let resolveReady!: () => void
+      const ready = new Promise<void>((resolve) => {
+        resolveReady = resolve
+      })
+      const rendererAbort = new AbortController()
+      const abortPipeable = (reason?: unknown) => {
+        if (rendererTeardown) {
+          return
+        }
+        rendererTeardown = true
+        rendererAbort.abort(reason)
+        try {
+          pipeable?.abort(reason)
+        } catch {
+          // ignore — React may throw if already aborted/finished
+        }
+      }
       try {
-        pipeable.abort(toError(pendingAbortReason))
-      } catch {
-        // ignore — React may throw if already aborted/finished
+        pipeable = ReactDOMServer.renderToPipeableStream(children, {
+          nonce: router.options.ssr?.nonce,
+          progressiveChunkSize: Number.POSITIVE_INFINITY,
+          ...(bot
+            ? { onAllReady: resolveReady }
+            : { onShellReady: resolveReady }),
+          onError: onError('renderToPipeableStream'),
+          onShellError: (error) => rendererAbort.abort(error),
+        })
+        const responseStream = transformReadableStreamWithRouter(
+          router,
+          Readable.toWeb(reactAppPassthrough),
+          {
+            rendererSafePoint: 'script-close',
+            signal,
+            onAbort: abortPipeable,
+          },
+        )
+
+        await waitForRequest(ready, rendererAbort.signal)
+        pipeable.pipe(reactAppPassthrough)
+
+        return createSsrStreamResponse(
+          router,
+          new Response(responseStream, {
+            status: getSsrStatus(router),
+            headers: responseHeaders,
+          }),
+        )
+      } catch (error) {
+        abortPipeable(error)
+        throw error
       }
     }
 
-    return createSsrStreamResponse(
-      router,
-      new Response(responseStream as any, {
-        status:
-          router._serverResult?.type === 'render'
-            ? router._serverResult.status
-            : 200,
-        headers: responseHeaders,
-      }),
+    throw new Error(
+      'No renderToReadableStream or renderToPipeableStream found in react-dom/server. Ensure you are using a version of react-dom that supports streaming.',
     )
+  } catch (error) {
+    router.serverSsr?.cleanup()
+    throw error
   }
-
-  throw new Error(
-    'No renderToReadableStream or renderToPipeableStream found in react-dom/server. Ensure you are using a version of react-dom that supports streaming.',
-  )
 }

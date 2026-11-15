@@ -1,4 +1,5 @@
 import { createMiddleware, createStart } from '@tanstack/solid-start'
+import { getRequestMiddlewareCount } from '../../shared'
 import type { GlobalMiddlewareContext } from '../../shared'
 
 function appendTrace(
@@ -48,6 +49,13 @@ const requestMiddlewareC = createMiddleware({ type: 'request' }).server(
   },
 )
 
+const requestMiddlewareSets: Array<Array<typeof requestMiddlewareA>> = [
+  [],
+  [requestMiddlewareA],
+  [requestMiddlewareA, requestMiddlewareB],
+  [requestMiddlewareA, requestMiddlewareB, requestMiddlewareC],
+]
+
 const functionMiddlewareA = createMiddleware({ type: 'function' }).server(
   ({ next, context }) => {
     const ctx = (context ?? {}) as GlobalMiddlewareContext
@@ -75,10 +83,6 @@ const functionMiddlewareB = createMiddleware({ type: 'function' }).server(
 )
 
 export const startInstance = createStart(() => ({
-  requestMiddleware: [
-    requestMiddlewareA,
-    requestMiddlewareB,
-    requestMiddlewareC,
-  ],
+  requestMiddleware: requestMiddlewareSets[getRequestMiddlewareCount()],
   functionMiddleware: [functionMiddlewareA, functionMiddlewareB],
 }))

@@ -2,6 +2,7 @@ import * as Vue from 'vue'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
+import type { AnyRouteMatch } from '@tanstack/router-core'
 
 export function useTransitionerSetup() {
   const router = useRouter()
@@ -9,12 +10,13 @@ export function useTransitionerSetup() {
     return
   }
 
-  const transition = async (fn: () => void) => {
+  let transitionOwner: Array<AnyRouteMatch> | undefined
+  router.startTransition = async (fn, expected) => {
+    transitionOwner = expected
     fn()
     await Vue.nextTick()
-    return true
+    return transitionOwner === expected
   }
-  router.startTransition = transition
 
   Vue.onMounted(() => {
     Vue.onUnmounted(router.history.subscribe(router.load))

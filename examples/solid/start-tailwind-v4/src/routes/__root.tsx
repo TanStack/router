@@ -7,7 +7,6 @@ import {
   createRootRoute,
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
-import * as React from 'react'
 import type { JSX } from '@solidjs/web'
 import appCss from '~/styles/app.css?url'
 

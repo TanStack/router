@@ -1,4 +1,5 @@
 import { expectTypeOf, test } from 'vitest'
+import * as Vue from 'vue'
 import {
   createMemoryHistory,
   createRootRoute,
@@ -6,7 +7,35 @@ import {
   createRoute,
   createRouter,
 } from '../src'
-import type { RouterHistory } from '../src'
+import type { ErrorComponentProps, RouterHistory } from '../src'
+
+test('router defaults accept named Vue components', () => {
+  const DefaultComponent = Vue.defineComponent({
+    setup() {
+      return () => <div />
+    },
+  })
+  const DefaultErrorComponent = Vue.defineComponent({
+    props: {
+      error: {
+        type: Object as Vue.PropType<ErrorComponentProps['error']>,
+        required: true,
+      },
+    },
+    setup(props) {
+      expectTypeOf(props.error).toEqualTypeOf<unknown>()
+      return () => <div>{String(props.error)}</div>
+    },
+  })
+
+  createRouter({
+    routeTree: createRootRoute(),
+    defaultComponent: DefaultComponent,
+    defaultErrorComponent: DefaultErrorComponent,
+    defaultPendingComponent: DefaultComponent,
+    defaultNotFoundComponent: DefaultComponent,
+  })
+})
 
 test('when creating a router without context', () => {
   const rootRoute = createRootRoute()

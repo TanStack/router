@@ -1,3 +1,4 @@
+import { defineComponent } from 'vue'
 import { createFileRoute } from '@tanstack/vue-router'
 
 const itemIndexes = Array.from({ length: 5 }, (_, index) => index)
@@ -5,6 +6,24 @@ const itemIndexes = Array.from({ length: 5 }, (_, index) => index)
 type ItemSearch = {
   q: string
 }
+
+const ItemComponent = defineComponent({
+  setup() {
+    const data = Route.useLoaderData()
+
+    return () => (
+      <main data-bench="request-churn-item">
+        <h1>{data.value.title}</h1>
+        <p>{data.value.q}</p>
+        <ul>
+          {data.value.items.map((item) => (
+            <li key={item.id}>{item.label}</li>
+          ))}
+        </ul>
+      </main>
+    )
+  },
+})
 
 export const Route = createFileRoute('/items/$id')({
   validateSearch: (search: Record<string, unknown>): ItemSearch => ({
@@ -22,19 +41,3 @@ export const Route = createFileRoute('/items/$id')({
   }),
   component: ItemComponent,
 })
-
-function ItemComponent() {
-  const data = Route.useLoaderData()
-
-  return (
-    <main data-bench="request-churn-item">
-      <h1>{data.value.title}</h1>
-      <p>{data.value.q}</p>
-      <ul>
-        {data.value.items.map((item) => (
-          <li key={item.id}>{item.label}</li>
-        ))}
-      </ul>
-    </main>
-  )
-}

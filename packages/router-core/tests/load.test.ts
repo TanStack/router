@@ -75,6 +75,264 @@ describe('redirect resolution', () => {
       expect(response.headers.get('Location')).toBe('/undefined')
     },
   )
+
+  test.each([
+    '//evil.example',
+    '/\\evil.example',
+    '/\\\\evil.example',
+    '/\\/evil.example',
+    '\\/evil.example',
+    '\\\\evil.example',
+  ])('server loaders do not emit an unsafe Location for %j', async (href) => {
+    const rootRoute = new BaseRootRoute({})
+    const sourceRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/source',
+      loader: () => redirect({ href }),
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([sourceRoute]),
+      history: createMemoryHistory({ initialEntries: ['/source'] }),
+      isServer: true,
+    })
+
+    const response = await loadServerResponse(router, '/source')
+
+    expect(response.status).toBe(500)
+    expect(response.headers.get('Location')).toBeNull()
+  })
+
+  test.each([
+    [
+      'preserves an explicit same-origin document redirect',
+      'https://victim.example/target',
+      true,
+      '/target',
+    ],
+    [
+      'document-navigates an intentional external redirect',
+      'https://other.example/target',
+      undefined,
+      'https://other.example/target',
+    ],
+  ] as const)('%s', async (_name, href, reloadDocument, expectedHref) => {
+    const rootRoute = new BaseRootRoute({})
+    const sourceRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/source',
+      loader: () => redirect({ href, reloadDocument }),
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+    })
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([sourceRoute, targetRoute]),
+      history,
+      origin: 'https://victim.example',
+      isServer: false,
+    })
+    const windowLocation = { href: '', replace: vi.fn() }
+    vi.stubGlobal('window', { location: windowLocation })
+
+    void router.navigate({ to: '/source' })
+
+    await vi.waitFor(() => {
+      expect(windowLocation.replace).toHaveBeenCalledWith(expectedHref)
+    })
+  })
+
+  test.each(['javascript:alert(1)', 'blob:https://victim.example/id'])(
+    'client loaders block redirects made dangerous by output rewrite %j',
+    async (dangerousHref) => {
+      const unsafeRedirect = redirect({ to: '/target' })
+      const rootRoute = new BaseRootRoute({})
+      const sourceRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/source',
+        loader: () => unsafeRedirect,
+      })
+      const targetRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/target',
+      })
+      const history = createMemoryHistory({ initialEntries: ['/'] })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([sourceRoute, targetRoute]),
+        history,
+        isServer: false,
+        rewrite: {
+          input: ({ url }) => url,
+          output: ({ url }) =>
+            url.pathname === '/target' ? new URL(dangerousHref) : url,
+        },
+      })
+
+      await router.navigate({ to: '/source' })
+
+      expect(history.location.href).toBe('/source')
+      expect(unsafeRedirect.options.href).toBeUndefined()
+      expect(router.state.matches.at(-1)).toMatchObject({
+        routeId: '/source',
+        status: 'error',
+        error: expect.objectContaining({
+          message: expect.stringMatching(/Redirect blocked: unsafe protocol/),
+        }),
+      })
+    },
+  )
+
+  test('client loaders block masked redirects made dangerous by output rewrites', async () => {
+    const unsafeRedirect = redirect({
+      to: '/target',
+      mask: { to: '/pretty' },
+    })
+    const rootRoute = new BaseRootRoute({})
+    const sourceRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/source',
+      loader: () => unsafeRedirect,
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+    })
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([sourceRoute, targetRoute]),
+      history,
+      isServer: false,
+      rewrite: {
+        input: ({ url }) => url,
+        output: ({ url }) =>
+          url.pathname === '/pretty' ? new URL('javascript:alert(1)') : url,
+      },
+    })
+
+    await router.navigate({ to: '/source' })
+
+    expect(history.location.href).toBe('/source')
+    expect(unsafeRedirect.options.href).toBeUndefined()
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: '/source',
+      status: 'error',
+      error: expect.objectContaining({
+        message: expect.stringMatching(/Redirect blocked: unsafe protocol/),
+      }),
+    })
+  })
+
+  test('client loaders document-navigate an external output rewrite', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const sourceRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/source',
+      loader: () => redirect({ to: '/target' }),
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([sourceRoute, targetRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      origin: 'https://victim.example',
+      isServer: false,
+      rewrite: {
+        input: ({ url }) => url,
+        output: ({ url }) =>
+          url.pathname === '/target'
+            ? new URL('https://other.example/rewritten')
+            : url,
+      },
+    })
+    const windowLocation = { href: '', replace: vi.fn() }
+    vi.stubGlobal('window', { location: windowLocation })
+
+    try {
+      void router.navigate({ to: '/source' })
+
+      await vi.waitFor(() => {
+        expect(windowLocation.replace).toHaveBeenCalledWith(
+          'https://other.example/rewritten',
+        )
+      })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  test('preloading stops at a redirect with an external output rewrite', async () => {
+    const targetLoader = vi.fn()
+    const rootRoute = new BaseRootRoute({})
+    const sourceRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/source',
+      loader: () => redirect({ to: '/target' }),
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+      loader: targetLoader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([sourceRoute, targetRoute]),
+      origin: 'https://victim.example',
+      isServer: false,
+      rewrite: {
+        input: ({ url }) => url,
+        output: ({ url }) =>
+          url.pathname === '/target'
+            ? new URL('https://other.example/rewritten')
+            : url,
+      },
+    })
+
+    await router.preloadRoute({ to: '/source' })
+
+    expect(targetLoader).not.toHaveBeenCalled()
+  })
+
+  test('preloading follows an inferred same-origin absolute redirect', async () => {
+    const targetLoader = vi.fn()
+    const rootRoute = new BaseRootRoute({})
+    const sourceRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/source',
+      loader: () => redirect({ href: 'https://victim.example/app/pretty' }),
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+      loader: targetLoader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([sourceRoute, targetRoute]),
+      history: createMemoryHistory({ initialEntries: ['/app/'] }),
+      origin: 'https://victim.example',
+      basepath: '/app',
+      isServer: false,
+      rewrite: {
+        input: ({ url }) => {
+          if (url.pathname === '/pretty') {
+            url.pathname = '/target'
+          }
+          return url
+        },
+        output: ({ url }) => {
+          if (url.pathname === '/target') {
+            url.pathname = '/pretty'
+          }
+          return url
+        },
+      },
+    })
+
+    await router.preloadRoute({ to: '/source' })
+
+    expect(targetLoader).toHaveBeenCalledOnce()
+  })
 })
 
 describe('notFound detection', () => {

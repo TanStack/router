@@ -51,6 +51,9 @@ export function tanstackStart(
           }
 
           rule.use(CHAIN_ID.USE.BABEL).tap((babelOptions) => {
+            if (typeof babelOptions === 'string') {
+              return babelOptions
+            }
             babelOptions.presets = (babelOptions.presets ?? []).map(
               (preset: unknown) => {
                 if (
@@ -84,14 +87,22 @@ export function tanstackStart(
           if (jsRule.oneOfs.has(CHAIN_ID.ONE_OF.JS_MAIN)) {
             const jsMainRule = jsRule.oneOf(CHAIN_ID.ONE_OF.JS_MAIN)
             if (jsMainRule.uses.has('solid')) {
-              jsMainRule.use('solid').tap((loaderOptions) => ({
-                ...loaderOptions,
-                solid: {
-                  ...(loaderOptions?.solid ?? {}),
-                  hydratable: true,
-                  generate: target === 'node' ? 'ssr' : 'dom',
-                },
-              }))
+              jsMainRule.use('solid').tap((loaderOptions) => {
+                if (typeof loaderOptions === 'string') {
+                  return loaderOptions
+                }
+                const options = loaderOptions as
+                  | { solid?: Record<string, unknown> }
+                  | undefined
+                return {
+                  ...options,
+                  solid: {
+                    ...options?.solid,
+                    hydratable: true,
+                    generate: target === 'node' ? 'ssr' : 'dom',
+                  },
+                }
+              })
             }
           }
         }

@@ -1,6 +1,8 @@
-import { ClientOnly } from '@tanstack/react-router';
+import { ClientOnly } from '@tanstack/react-router'
 export function MyComponent() {
-  return <div>
+  return (
+    <div>
       <ClientOnly fallback={<div>Loading...</div>} />
-    </div>;
+    </div>
+  )
 }

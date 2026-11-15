@@ -8,9 +8,9 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
+    "@tanstack/react-query": "^5.102.0",
     "@router-mono-react-query/post-query": "workspace:*",
     "@router-mono-react-query/router": "workspace:*",
-    "@tanstack/react-query": "catalog:",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

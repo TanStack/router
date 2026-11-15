@@ -1,12 +1,11 @@
 node_modules
-# Keep environment variables out of version control
-!.env
 package-lock.json
 yarn.lock
 
 .DS_Store
 .cache
-.env
+# The checked-in .env contains public demo values used by the build.
+!.env
 .vercel
 .output
 /build/

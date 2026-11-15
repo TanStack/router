@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { apiTest as test } from '@tanstack/router-e2e-utils'
 
 test.describe('FullPath type/runtime match (Issues #4892, #2675, #6403)', () => {
   test.describe('Pathless layout routes should have parent fullPath, not empty string', () => {

@@ -29,7 +29,7 @@ The `CatchBoundary` component accepts the following props:
 
 ### `props.onCatch` prop
 
-- Type: `(error: any) => void`
+- Type: `(error: unknown, errorInfo: ErrorInfo) => void` in React; `(error: unknown) => void` in Vue; `(error: Error) => void` in Solid
 - Optional
 - A callback that will be called with the error that was thrown by the component's children.
 

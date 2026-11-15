@@ -1,12 +1,12 @@
 import * as Vue from 'vue'
 import { isNotFound, rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { useStore } from '@tanstack/vue-store'
+import { useSelector } from '@tanstack/vue-store'
 import { CatchBoundary } from './CatchBoundary'
 import { ClientOnly } from './ClientOnly'
 import { useRouter } from './useRouter'
 import { CatchNotFound } from './not-found'
-import { routeIdContext } from './matchContext'
+import { provideLinkLocation, routeIdContext } from './matchContext'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import {
@@ -29,14 +29,19 @@ export const Match = Vue.defineComponent({
 
     const routeId = props.routeId
 
-    const activeMatch = useStore(
+    const activeMatch = useSelector(
       router.stores.getMatchStore(routeId),
       (value) => value,
-      { equal: Object.is },
+      { compare: Object.is },
     )
     // Provide routeId context (stable string) for children.
     // MatchInner, Outlet, and useMatch all consume this.
     Vue.provide(routeIdContext, routeId)
+    // This match's links hold their location while a navigation leaves it.
+    // Server links read the live location.
+    if (!(isServer ?? router.isServer)) {
+      provideLinkLocation(router, routeId)
+    }
 
     return (): VNode => {
       const match = activeMatch.value
@@ -108,7 +113,7 @@ export const Match = Vue.defineComponent({
           content = CatchBoundary({
             getResetKey: () => activeMatch.value,
             errorComponent: routeErrorComponent,
-            onCatch: (error: Error) => {
+            onCatch: (error: unknown) => {
               // Forward not found errors (we don't want to show the error component for these)
               if (isNotFound(error)) {
                 error.routeId ??= routeId
@@ -129,11 +134,9 @@ export const Match = Vue.defineComponent({
 
         return Vue.h(Vue.Fragment, null, [
           content,
-          Vue.h(Vue.Fragment, null, [
-            (isServer ?? router.isServer) && router.options.scrollRestoration
-              ? Vue.h(ScrollRestoration)
-              : null,
-          ]),
+          (isServer ?? router.isServer) && router.options.scrollRestoration
+            ? Vue.h(ScrollRestoration)
+            : null,
         ])
       }
 
@@ -158,7 +161,7 @@ export const MatchInner = Vue.defineComponent({
 
     // Use routeId from context (provided by parent Match) — stable string.
     const routeId = Vue.inject(routeIdContext)!
-    const activeMatch = useStore(router.stores.getMatchStore(routeId))
+    const activeMatch = useSelector(router.stores.getMatchStore(routeId))
 
     // Combined selector for match state AND remount key
     // This ensures both are computed in the same selector call with consistent data
@@ -295,11 +298,11 @@ export const Outlet = Vue.defineComponent({
     const router = useRouter()
     const parentRouteId = Vue.inject(routeIdContext)!
 
-    const parentMatch = useStore(router.stores.getMatchStore(parentRouteId))
+    const parentMatch = useSelector(router.stores.getMatchStore(parentRouteId))
 
     const route = router.routesById[parentRouteId]!
 
-    const childRouteId = useStore(router.stores.matches, (matches) => {
+    const childRouteId = useSelector(router.stores.matches, (matches) => {
       const index = matches.findIndex(
         (match) => match.routeId === parentRouteId,
       )

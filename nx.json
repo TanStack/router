@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "main",
+  "bust": "nx24-exclusive-e2e-16-medium-baseline-2026-10-25-05",
   "nxCloudId": "6442f7de8226a6291646a813",
   "useInferencePlugins": false,
   "parallel": 5,
@@ -10,7 +11,10 @@
   "namedInputs": {
     "sharedGlobals": [
       "{workspaceRoot}/.npmrc",
-      "{workspaceRoot}/.nx/workflows/sandboxing-config.yaml",
+      "{workspaceRoot}/nx.json",
+      "{workspaceRoot}/.github/workflows/pr.yml",
+      "{workspaceRoot}/.nx/ci-config.yaml",
+      "{workspaceRoot}/.nx/workflows/ultracache-config.yaml",
       "{workspaceRoot}/.nvmrc",
       "{workspaceRoot}/package.json",
       "{workspaceRoot}/tsconfig.json"
@@ -20,6 +24,11 @@
         "dependentTasksOutputFiles": "**/*",
         "transitive": true
       }
+    ],
+    "streamingSsrTests": [
+      "{workspaceRoot}/e2e/streaming-ssr-assertions.ts",
+      "{workspaceRoot}/e2e/streaming-ssr-fixtures/**/*",
+      "{workspaceRoot}/e2e/streaming-ssr-specs/**/*"
     ],
     "default": [
       "sharedGlobals",
@@ -36,7 +45,7 @@
   "targetDefaults": {
     "test:docs": {
       "cache": true,
-      "inputs": ["{workspaceRoot}/docs/**/*"]
+      "inputs": ["sharedGlobals", "{workspaceRoot}/docs/**/*"]
     },
     "test:eslint": {
       "cache": true,
@@ -62,27 +71,27 @@
     "test:e2e": {
       "cache": true,
       "dependsOn": ["^build", "test:e2e--*"],
-      "inputs": ["default", "^production", "dependentTaskOutputs"],
-      "outputs": [
-        "{projectRoot}/dist",
-        "{projectRoot}/port-*.txt",
-        "{projectRoot}/test-results"
-      ]
+      "inputs": ["buildProduction", "^production", "dependentTaskOutputs"],
+      "outputs": ["{projectRoot}/dist", "{projectRoot}/test-results"],
+      "parallelism": false
     },
     "test:e2e:nitro": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"]
+      "inputs": ["default", "^production"],
+      "parallelism": false
     },
     "test:e2e:basepath": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"]
+      "inputs": ["default", "^production"],
+      "parallelism": false
     },
     "test:e2e:preview": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"]
+      "inputs": ["default", "^production"],
+      "parallelism": false
     },
     "test:types": {
       "cache": true,
@@ -94,6 +103,21 @@
         "dependentTaskOutputs"
       ]
     },
+    "test:types:client": {
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/benchmarks/client-nav/*.{ts,json}",
+        "{workspaceRoot}/benchmarks/client-nav/scenarios/*.ts",
+        "{workspaceRoot}/benchmarks/client-nav/scenarios/*/*.ts",
+        "{workspaceRoot}/benchmarks/memory/*.ts",
+        "{workspaceRoot}/benchmarks/memory/client/*.{ts,json}",
+        "{workspaceRoot}/benchmarks/memory/client/scenarios/*/*.ts",
+        "{workspaceRoot}/benchmarks/cpu-simulation.ts",
+        "dependentTaskOutputs"
+      ]
+    },
     "test:types:ssr": {
       "cache": true,
       "dependsOn": ["^build", "build"],
@@ -101,6 +125,11 @@
         "default",
         "^production",
         "{workspaceRoot}/benchmarks/ssr/bench-utils.ts",
+        "{workspaceRoot}/benchmarks/cpu-simulation.ts",
+        "{workspaceRoot}/benchmarks/ssr/scenarios/*/*.ts",
+        "{workspaceRoot}/benchmarks/memory/*.ts",
+        "{workspaceRoot}/benchmarks/memory/server/*.ts",
+        "{workspaceRoot}/benchmarks/memory/server/scenarios/*/*.ts",
         "dependentTaskOutputs"
       ]
     },
@@ -120,6 +149,9 @@
       "cache": true,
       "dependsOn": ["build"],
       "inputs": ["buildProduction", "dependentTaskOutputs"]
+    },
+    "test:e2e*": {
+      "parallelism": false
     }
   },
   "plugins": [

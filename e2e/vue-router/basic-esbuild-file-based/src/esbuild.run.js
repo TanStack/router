@@ -1,8 +1,7 @@
-import * as esbuild from 'esbuild'
 import http from 'node:http'
-import { createReadStream } from 'node:fs'
-import { promises as fs } from 'node:fs'
+import { createReadStream, promises as fs } from 'node:fs'
 import path from 'node:path'
+import * as esbuild from 'esbuild'
 import esbuildConfig from './esbuild.config.js'
 
 const args = process.argv.slice(2)
@@ -18,7 +17,7 @@ function getPort() {
   const fromArg = getArgValue('--port')
   const fromEnv = process.env.VITE_SERVER_PORT
   const port = Number(fromArg ?? fromEnv ?? 5601)
-  if (!Number.isFinite(port) || port <= 0) {
+  if (!Number.isFinite(port) || port < 0) {
     throw new Error(`Invalid port: ${String(fromArg ?? fromEnv)}`)
   }
   return port
@@ -138,7 +137,7 @@ function startStaticServer({ port }) {
 
   return new Promise((resolve) => {
     server.listen(port, () => {
-      console.log(`http://localhost:${port}`)
+      console.log(`E2E app: http://localhost:${server.address().port}`)
       resolve(server)
     })
   })

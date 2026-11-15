@@ -14,8 +14,8 @@
     "@tanstack/solid-query": "^6.0.0-rc.5",
     "@tanstack/solid-router": "^2.0.0-rc.10",
     "@tanstack/solid-router-devtools": "^2.0.0-rc.8",
-    "redaxios": "^0.5.1",
     "solid-js": "^2.0.0-rc.21",
+    "redaxios": "^0.5.1",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {

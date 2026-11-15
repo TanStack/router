@@ -20,7 +20,9 @@ import { Route as ApiOnlyAnyRouteImport } from './routes/api/only-any'
 import { Route as MethodsIndexRouteImport } from './routes/methods/index'
 import { Route as MethodsOnlyAnyRouteImport } from './routes/methods/only-any'
 import { Route as ApiParamsFooRouteRouteImport } from './routes/api/params/$foo/route'
+import { Route as ApiParsedParamsIdRouteImport } from './routes/api/parsed-params.$id'
 import { Route as ApiParamsFooBarRouteImport } from './routes/api/params/$foo/$bar'
+import { Route as ApiParsedParamsIdChildIdRouteImport } from './routes/api/parsed-params.$id.$childId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -77,11 +79,22 @@ const ApiParamsFooRouteRoute = ApiParamsFooRouteRouteImport.update({
   path: '/api/params/$foo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiParsedParamsIdRoute = ApiParsedParamsIdRouteImport.update({
+  id: '/api/parsed-params/$id',
+  path: '/api/parsed-params/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiParamsFooBarRoute = ApiParamsFooBarRouteImport.update({
   id: '/$bar',
   path: '/$bar',
   getParentRoute: () => ApiParamsFooRouteRoute,
 } as any)
+const ApiParsedParamsIdChildIdRoute =
+  ApiParsedParamsIdChildIdRouteImport.update({
+    id: '/$childId',
+    path: '/$childId',
+    getParentRoute: () => ApiParsedParamsIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -95,7 +108,9 @@ export interface FileRoutesByFullPath {
   '/methods/only-any': typeof MethodsOnlyAnyRoute
   '/methods/': typeof MethodsIndexRoute
   '/api/params/$foo': typeof ApiParamsFooRouteRouteWithChildren
+  '/api/parsed-params/$id': typeof ApiParsedParamsIdRouteWithChildren
   '/api/params/$foo/$bar': typeof ApiParamsFooBarRoute
+  '/api/parsed-params/$id/$childId': typeof ApiParsedParamsIdChildIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -108,7 +123,9 @@ export interface FileRoutesByTo {
   '/methods/only-any': typeof MethodsOnlyAnyRoute
   '/methods': typeof MethodsIndexRoute
   '/api/params/$foo': typeof ApiParamsFooRouteRouteWithChildren
+  '/api/parsed-params/$id': typeof ApiParsedParamsIdRouteWithChildren
   '/api/params/$foo/$bar': typeof ApiParamsFooBarRoute
+  '/api/parsed-params/$id/$childId': typeof ApiParsedParamsIdChildIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -123,7 +140,9 @@ export interface FileRoutesById {
   '/methods/only-any': typeof MethodsOnlyAnyRoute
   '/methods/': typeof MethodsIndexRoute
   '/api/params/$foo': typeof ApiParamsFooRouteRouteWithChildren
+  '/api/parsed-params/$id': typeof ApiParsedParamsIdRouteWithChildren
   '/api/params/$foo/$bar': typeof ApiParamsFooBarRoute
+  '/api/parsed-params/$id/$childId': typeof ApiParsedParamsIdChildIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -139,7 +158,9 @@ export interface FileRouteTypes {
     | '/methods/only-any'
     | '/methods/'
     | '/api/params/$foo'
+    | '/api/parsed-params/$id'
     | '/api/params/$foo/$bar'
+    | '/api/parsed-params/$id/$childId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -152,7 +173,9 @@ export interface FileRouteTypes {
     | '/methods/only-any'
     | '/methods'
     | '/api/params/$foo'
+    | '/api/parsed-params/$id'
     | '/api/params/$foo/$bar'
+    | '/api/parsed-params/$id/$childId'
   id:
     | '__root__'
     | '/'
@@ -166,7 +189,9 @@ export interface FileRouteTypes {
     | '/methods/only-any'
     | '/methods/'
     | '/api/params/$foo'
+    | '/api/parsed-params/$id'
     | '/api/params/$foo/$bar'
+    | '/api/parsed-params/$id/$childId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -179,6 +204,7 @@ export interface RootRouteChildren {
   ApiMiddlewareContextRoute: typeof ApiMiddlewareContextRoute
   ApiOnlyAnyRoute: typeof ApiOnlyAnyRoute
   ApiParamsFooRouteRoute: typeof ApiParamsFooRouteRouteWithChildren
+  ApiParsedParamsIdRoute: typeof ApiParsedParamsIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -260,12 +286,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiParamsFooRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/parsed-params/$id': {
+      id: '/api/parsed-params/$id'
+      path: '/api/parsed-params/$id'
+      fullPath: '/api/parsed-params/$id'
+      preLoaderRoute: typeof ApiParsedParamsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/params/$foo/$bar': {
       id: '/api/params/$foo/$bar'
       path: '/$bar'
       fullPath: '/api/params/$foo/$bar'
       preLoaderRoute: typeof ApiParamsFooBarRouteImport
       parentRoute: typeof ApiParamsFooRouteRoute
+    }
+    '/api/parsed-params/$id/$childId': {
+      id: '/api/parsed-params/$id/$childId'
+      path: '/$childId'
+      fullPath: '/api/parsed-params/$id/$childId'
+      preLoaderRoute: typeof ApiParsedParamsIdChildIdRouteImport
+      parentRoute: typeof ApiParsedParamsIdRoute
     }
   }
 }
@@ -295,6 +335,17 @@ const ApiParamsFooRouteRouteChildren: ApiParamsFooRouteRouteChildren = {
 const ApiParamsFooRouteRouteWithChildren =
   ApiParamsFooRouteRoute._addFileChildren(ApiParamsFooRouteRouteChildren)
 
+interface ApiParsedParamsIdRouteChildren {
+  ApiParsedParamsIdChildIdRoute: typeof ApiParsedParamsIdChildIdRoute
+}
+
+const ApiParsedParamsIdRouteChildren: ApiParsedParamsIdRouteChildren = {
+  ApiParsedParamsIdChildIdRoute: ApiParsedParamsIdChildIdRoute,
+}
+
+const ApiParsedParamsIdRouteWithChildren =
+  ApiParsedParamsIdRoute._addFileChildren(ApiParsedParamsIdRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   MethodsRouteRoute: MethodsRouteRouteWithChildren,
@@ -305,6 +356,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMiddlewareContextRoute: ApiMiddlewareContextRoute,
   ApiOnlyAnyRoute: ApiOnlyAnyRoute,
   ApiParamsFooRouteRoute: ApiParamsFooRouteRouteWithChildren,
+  ApiParsedParamsIdRoute: ApiParsedParamsIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

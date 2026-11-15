@@ -246,7 +246,7 @@ skills:
     package: 'packages/react-router'
     description: >-
       Integrating TanStack Router with TanStack Query: queryClient
-      in router context, ensureQueryData/prefetchQuery in loaders,
+      in router context, static queries and fire-and-forget queries in loaders,
       useSuspenseQuery in components, defaultPreloadStaleTime: 0,
       setupRouterSsrQueryIntegration for SSR dehydration/hydration
       and streaming, per-request QueryClient isolation.

@@ -3,7 +3,7 @@ import path from 'node:path'
 import express from 'express'
 import { toNodeHandler } from 'srvx/node'
 
-const port = process.env.PORT || 3000
+const port = Number(process.env.PORT ?? 3000)
 const distDir = process.env.E2E_DIST_DIR || 'dist-vite-ssr'
 const distClientDir = path.resolve(distDir, 'client')
 
@@ -37,8 +37,10 @@ async function createStartServer() {
 }
 
 createStartServer().then((app) => {
-  app.listen(port, (error) => {
-    if (error) throw error
-    console.info(`Start Server: http://localhost:${port}`)
+  const httpServer = app.listen(port, (error) => {
+    if (error) {
+      throw error
+    }
+    console.info(`E2E app: http://localhost:${httpServer.address().port}`)
   })
 })

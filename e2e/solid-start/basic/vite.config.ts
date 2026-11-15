@@ -1,14 +1,9 @@
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import viteSolid from '@solidjs/vite-plugin'
-import { e2eStartDummyServerForBuild } from '@tanstack/router-e2e-utils'
 import { isSpaMode } from './tests/utils/isSpaMode'
 import { isPrerender } from './tests/utils/isPrerender'
 import tailwindcss from '@tailwindcss/vite'
-
-if (isPrerender) {
-  await e2eStartDummyServerForBuild()
-}
 
 const spaModeConfiguration = {
   enabled: true,
@@ -22,6 +17,7 @@ const prerenderConfiguration = {
   filter: (page: { path: string }) =>
     ![
       '/this-route-does-not-exist',
+      '/error-normalization',
       '/redirect',
       '/i-do-not-exist',
       '/not-found',

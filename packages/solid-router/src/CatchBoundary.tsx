@@ -53,28 +53,48 @@ export function CatchBoundary(
   return (
     <Solid.Errored
       fallback={(error, reset) => {
-        const resolvedError = Solid.untrack(() => error() as Error)
+        // Primitives become Errors; objects pass through, since an error from
+        // another realm (a DOMException) is not an `instanceof Error`.
+        const thrown: unknown = Solid.untrack(error)
+        const resolvedError = (
+          typeof thrown === 'object' && thrown !== null
+            ? thrown
+            : new Error(typeof thrown === 'string' ? thrown : 'Unknown error', {
+                cause: thrown,
+              })
+        ) as Error
 
         props.onCatch?.(resolvedError)
         resetBoundary = reset
 
-        return process.env.NODE_ENV !== 'production' ? (
-          renderInNonRouteComponentContext(
-            () => (
-              <Dynamic
-                component={props.errorComponent ?? ErrorComponent}
-                error={resolvedError}
-                reset={reset}
-              />
-            ),
-            'errorComponent',
+        // A lazy error component can suspend after the route enters its
+        // error state. Keep that suspension here so it does not render the
+        // route's pending fallback again.
+        if (process.env.NODE_ENV !== 'production') {
+          return (
+            <Solid.Loading>
+              {renderInNonRouteComponentContext(
+                () => (
+                  <Dynamic
+                    component={props.errorComponent ?? ErrorComponent}
+                    error={resolvedError}
+                    reset={reset}
+                  />
+                ),
+                'errorComponent',
+              )}
+            </Solid.Loading>
           )
-        ) : (
-          <Dynamic
-            component={props.errorComponent ?? ErrorComponent}
-            error={resolvedError}
-            reset={reset}
-          />
+        }
+
+        return (
+          <Solid.Loading>
+            <Dynamic
+              component={props.errorComponent ?? ErrorComponent}
+              error={resolvedError}
+              reset={reset}
+            />
+          </Solid.Loading>
         )
       }}
     >
@@ -85,7 +105,7 @@ export function CatchBoundary(
   )
 }
 
-export function ErrorComponent({ error }: { error: any }) {
+export function ErrorComponent({ error }: { error: Error }) {
   const [show, setShow] = Solid.createSignal(
     process.env.NODE_ENV !== 'production',
   )

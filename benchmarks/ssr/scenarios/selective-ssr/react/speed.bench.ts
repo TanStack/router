@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertSelectiveSanity,
   benchOptions,
@@ -16,6 +16,8 @@ const { default: handler } = (await import(
 
 await assertSelectiveSanity(handler)
 
-describe('ssr', () => {
-  bench('ssr selective (react)', () => runSelectiveLoop(handler), benchOptions)
+test('ssr', async ({ bench }) => {
+  await bench('ssr selective (react)', async () =>
+    runSelectiveLoop(handler),
+  ).run(benchOptions)
 })

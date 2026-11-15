@@ -73,12 +73,18 @@
     "@tanstack/solid-router": "workspace:*",
     "eslint-plugin-solid": "^0.14.5",
     "solid-js": "^2.0.0-rc.21",
-    "vite": "*"
+    "vite": "*",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "@solidjs/web": ">=2.0.0-rc.21",
-    "@tanstack/query-core": ">=5.90.0",
-    "@tanstack/solid-query": ">=5.90.0",
+    "@tanstack/query-core": ">=5.102.0",
+    "@tanstack/solid-query": ">=5.102.0",
     "@tanstack/solid-router": ">=2.0.0-alpha.1",
     "solid-js": ">=2.0.0-rc.21"
   }

@@ -1,6 +1,6 @@
-import { createRootRoute } from '@tanstack/react-router';
+import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute({
   component: () => {
-    return <div className="p-2">hello world</div>;
-  }
-});
+    return <div className="p-2">hello world</div>
+  },
+})

@@ -16,8 +16,8 @@
     }
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.102.0",
     "@router-mono-simple-lazy/router": "workspace:*",
-    "@tanstack/react-query": "catalog:",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

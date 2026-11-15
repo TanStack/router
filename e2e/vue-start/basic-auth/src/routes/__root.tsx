@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import { defineComponent } from 'vue'
 import {
   Body,
   HeadContent,
@@ -15,19 +16,67 @@ import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
 import { NotFound } from '~/components/NotFound.js'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo.js'
-import { useAppSession } from '~/utils/session.js'
+import { getAppSession } from '~/utils/session.js'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   // We need to auth on the server so we have access to secure cookies
-  const session = await useAppSession()
+  const session = await getAppSession()
 
-  if (!session.data.userEmail) {
+  if (!session.userEmail) {
     return null
   }
 
   return {
-    email: session.data.userEmail,
+    email: session.userEmail,
   }
+})
+
+const RootShell = defineComponent({
+  setup(_, { slots }) {
+    const routeContext = Route.useRouteContext()
+    return () => (
+      <Html>
+        <head>
+          <HeadContent />
+        </head>
+        <Body>
+          <div class="p-2 flex gap-2 text-lg">
+            <Link
+              to="/"
+              activeProps={{
+                class: 'font-bold',
+              }}
+              activeOptions={{ exact: true }}
+            >
+              Home
+            </Link>{' '}
+            <Link
+              to="/posts"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              Posts
+            </Link>
+            <div class="ml-auto">
+              {routeContext.value.user ? (
+                <>
+                  <span class="mr-2">{routeContext.value.user.email}</span>
+                  <Link to="/logout">Logout</Link>
+                </>
+              ) : (
+                <Link to="/login">Login</Link>
+              )}
+            </div>
+          </div>
+          <hr />
+          {slots.default?.()}
+          <TanStackRouterDevtools position="bottom-right" />
+          <Scripts />
+        </Body>
+      </Html>
+    )
+  },
 })
 
 export const Route = createRootRoute({
@@ -81,50 +130,3 @@ export const Route = createRootRoute({
   notFoundComponent: () => <NotFound />,
   component: () => <Outlet />,
 })
-
-function RootShell(_: unknown, { slots }: { slots: any }) {
-  const routeContext = Route.useRouteContext()
-
-  return (
-    <Html>
-      <head>
-        <HeadContent />
-      </head>
-      <Body>
-        <div class="p-2 flex gap-2 text-lg">
-          <Link
-            to="/"
-            activeProps={{
-              class: 'font-bold',
-            }}
-            activeOptions={{ exact: true }}
-          >
-            Home
-          </Link>{' '}
-          <Link
-            to="/posts"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Posts
-          </Link>
-          <div class="ml-auto">
-            {routeContext.value.user ? (
-              <>
-                <span class="mr-2">{routeContext.value.user.email}</span>
-                <Link to="/logout">Logout</Link>
-              </>
-            ) : (
-              <Link to="/login">Login</Link>
-            )}
-          </div>
-        </div>
-        <hr />
-        {slots.default?.()}
-        <TanStackRouterDevtools position="bottom-right" />
-        <Scripts />
-      </Body>
-    </Html>
-  )
-}

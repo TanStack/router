@@ -63,7 +63,11 @@ test('#7635: a parent beforeLoad error replaces the previous child title', async
     component: Outlet,
     errorComponent: ({ error }) => {
       appErrorRendered(error)
-      return <div data-testid="app-error">{error.message}</div>
+      return (
+        <div data-testid="app-error">
+          {error instanceof Error ? error.message : String(error)}
+        </div>
+      )
     },
   })
   const childRoute = createRoute({

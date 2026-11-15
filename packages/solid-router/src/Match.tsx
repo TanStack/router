@@ -301,6 +301,18 @@ export const MatchInner = (): any => {
                   () => currentMatch().error,
                 ) as Error
                 if (isServer ?? router.isServer) {
+                  // Match the client error boundary's normalization without changing router state.
+                  const thrown: unknown = matchError
+                  const error = (
+                    typeof thrown === 'object' && thrown !== null
+                      ? thrown
+                      : new Error(
+                          typeof thrown === 'string' ? thrown : 'Unknown error',
+                          {
+                            cause: thrown,
+                          },
+                        )
+                  ) as Error
                   const RouteErrorComponent =
                     (route().options.errorComponent ??
                       router.options.defaultErrorComponent) ||
@@ -310,7 +322,7 @@ export const MatchInner = (): any => {
                     renderInNonRouteComponentContext(
                       () => (
                         <RouteErrorComponent
-                          error={matchError}
+                          error={error}
                           reset={undefined as any}
                           info={{ componentStack: '' }}
                         />
@@ -319,7 +331,7 @@ export const MatchInner = (): any => {
                     )
                   ) : (
                     <RouteErrorComponent
-                      error={matchError}
+                      error={error}
                       reset={undefined as any}
                       info={{ componentStack: '' }}
                     />

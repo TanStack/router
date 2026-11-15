@@ -38,5 +38,18 @@ This example demonstrates how to use TanStack Query with TanStack Start for:
 
 - Server-side data fetching
 - Client-side caching and synchronization
-- Optimistic updates
-- Automatic refetching
+- Confirmed server mutations followed by query invalidation
+- Explicit freshness and automatic refetching
+
+## SSR and mutation checks
+
+Read the [Start + TanStack Query guide](https://tanstack.com/start/latest/docs/framework/react/guide/tanstack-query). The `/preferences` page stores a harmless display name in a cookie, so its tests need no account or external API. This cookie is not authentication. The other post/user examples use JSONPlaceholder.
+
+```sh
+pnpm exec playwright install chromium
+pnpm test:e2e
+pnpm build
+QUERY_EXAMPLE_PRODUCTION=1 pnpm test:e2e
+```
+
+The tests check concurrent SSR request isolation, no duplicate hydration read, one refetch after mutation invalidation, and persistence on reload. Query data is fresh for 30 seconds by default in this example; choose a window appropriate for your application.

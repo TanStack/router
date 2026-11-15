@@ -42,7 +42,6 @@ type PrefetchController = {
   promise?: Promise<void>
 }
 
-const hydrateIdSelector = `[${hydrateIdAttribute}]`
 const dynamicType = 'dynamic'
 const dynamicHydrateStrategy = {
   _t: dynamicType,
@@ -215,15 +214,9 @@ export function GenericHydrate(props: InternalHydrateProps) {
       currentHydrateType,
     }) => {
       gate.when = currentHydrateType
-      for (const element of document.querySelectorAll<HTMLDivElement>(
-        hydrateIdSelector,
-      )) {
-        if (element.getAttribute(hydrateIdAttribute) === id) {
-          markerElement = element
-          preservedServerChildNodes ??= Array.from(element.childNodes)
-          saveFallbackHtml(id, element)
-          break
-        }
+      if (markerElement) {
+        preservedServerChildNodes ??= Array.from(markerElement.childNodes)
+        saveFallbackHtml(id, markerElement)
       }
 
       if (
@@ -375,6 +368,9 @@ export function GenericHydrate(props: InternalHydrateProps) {
       : initialHydrateStrategy._a?.()
   const markerProps: HydrationMarkerDynamicProps = {
     component: 'div',
+    ref: (element) => {
+      markerElement = element
+    },
     [hydrateIdAttribute]: id,
     [hydrateWhenAttribute]: markerHydrateType,
     ...markerAttributes,

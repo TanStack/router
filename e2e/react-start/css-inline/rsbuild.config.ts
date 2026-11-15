@@ -8,7 +8,7 @@ const transformInlineCssAssets =
 
 export default defineConfig({
   plugins: [
-    pluginReact({ splitChunks: false }),
+    pluginReact(),
     tanstackStart({
       server: {
         build: {

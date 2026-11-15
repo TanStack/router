@@ -8,7 +8,7 @@
     "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
     "start": "vite",
-    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
+    "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
     "@sentry/solid": "^10.32.0",
@@ -18,8 +18,8 @@
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
-    "redaxios": "^0.5.1",
     "solid-js": "^2.0.0-rc.21",
+    "redaxios": "catalog:",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {

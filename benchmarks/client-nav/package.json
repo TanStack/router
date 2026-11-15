@@ -9,10 +9,10 @@
     "test:flame:react": "NODE_ENV=production flame run --md-format=detailed --delay=none --node-options=\"--stack-size=65500\" ./react/speed.flame.ts",
     "test:flame:solid": "NODE_ENV=production flame run --md-format=detailed --delay=none --node-options=\"--stack-size=65500\" ./solid/speed.flame.ts",
     "test:flame:vue": "NODE_ENV=production flame run --md-format=detailed --delay=none --node-options=\"--stack-size=65500\" ./vue/speed.flame.ts",
-    "test:perf": "NODE_ENV=production vitest bench --config ./vitest.config.ts",
-    "test:perf:react": "NODE_ENV=production vitest bench --config ./vitest.react.config.ts",
-    "test:perf:solid": "NODE_ENV=production vitest bench --config ./vitest.solid.config.ts",
-    "test:perf:vue": "NODE_ENV=production vitest bench --config ./vitest.vue.config.ts",
+    "test:perf": "NODE_ENV=production vitest bench --mode benchmark --config ./vitest.config.ts",
+    "test:perf:react": "NODE_ENV=production vitest bench --mode benchmark --config ./vitest.react.config.ts",
+    "test:perf:solid": "NODE_ENV=production vitest bench --mode benchmark --config ./vitest.solid.config.ts",
+    "test:perf:vue": "NODE_ENV=production vitest bench --mode benchmark --config ./vitest.vue.config.ts",
     "test:types": "pnpm run test:types:react && pnpm run test:types:solid && pnpm run test:types:vue",
     "test:types:react": "tsc -p ./react/tsconfig.json --noEmit",
     "test:types:solid": "tsc -p ./solid/tsconfig.json --noEmit",
@@ -31,20 +31,22 @@
     "vue": "^3.5.16"
   },
   "devDependencies": {
-    "@codspeed/vitest-plugin": "^5.5.0",
     "@platformatic/flame": "^1.6.0",
     "@solidjs/vite-plugin": "^3.0.0-next.57",
+    "@codspeed/vitest-plugin": "^6.0.1",
     "@tanstack/router-plugin": "workspace:^",
     "@testing-library/react": "^16.2.0",
-    "@types/jsdom": "28.0.0",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitejs/plugin-vue": "^6.0.5",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
+    "@types/jsdom": "28.0.0",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "@typescript/native": "npm:typescript@^7.0.2",
     "jsdom": "^29.1.1",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
-    "vitest": "^4.1.4"
+    "vitest": "catalog:"
   },
   "nx": {
     "targets": {
@@ -63,6 +65,8 @@
               "@benchmarks/client-nav-control-flow-react",
               "@benchmarks/client-nav-head-react",
               "@benchmarks/client-nav-history-react",
+              "@benchmarks/client-nav-hydration-react",
+              "@benchmarks/client-nav-link-churn-react",
               "@benchmarks/client-nav-links-react",
               "@benchmarks/client-nav-loaders-react",
               "@benchmarks/client-nav-mount-react",
@@ -91,6 +95,8 @@
               "@benchmarks/client-nav-control-flow-solid",
               "@benchmarks/client-nav-head-solid",
               "@benchmarks/client-nav-history-solid",
+              "@benchmarks/client-nav-hydration-solid",
+              "@benchmarks/client-nav-link-churn-solid",
               "@benchmarks/client-nav-links-solid",
               "@benchmarks/client-nav-loaders-solid",
               "@benchmarks/client-nav-mount-solid",
@@ -119,6 +125,7 @@
               "@benchmarks/client-nav-control-flow-vue",
               "@benchmarks/client-nav-head-vue",
               "@benchmarks/client-nav-history-vue",
+              "@benchmarks/client-nav-link-churn-vue",
               "@benchmarks/client-nav-links-vue",
               "@benchmarks/client-nav-loaders-vue",
               "@benchmarks/client-nav-mount-vue",
@@ -177,7 +184,13 @@
         ]
       },
       "test:types": {
-        "cache": false,
+        "inputs": [
+          "default",
+          "^production",
+          "{workspaceRoot}/eslint.config.js",
+          "{workspaceRoot}/benchmarks/cpu-simulation.ts",
+          "dependentTaskOutputs"
+        ],
         "dependsOn": [
           "^build",
           {
@@ -194,8 +207,13 @@
               "@benchmarks/client-nav-history-react",
               "@benchmarks/client-nav-history-solid",
               "@benchmarks/client-nav-history-vue",
+              "@benchmarks/client-nav-hydration-react",
+              "@benchmarks/client-nav-hydration-solid",
+              "@benchmarks/client-nav-link-churn-react",
               "@benchmarks/client-nav-links-react",
+              "@benchmarks/client-nav-link-churn-solid",
               "@benchmarks/client-nav-links-solid",
+              "@benchmarks/client-nav-link-churn-vue",
               "@benchmarks/client-nav-links-vue",
               "@benchmarks/client-nav-loaders-react",
               "@benchmarks/client-nav-loaders-solid",

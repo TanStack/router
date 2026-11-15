@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom/vitest'
+import { defineComponent } from 'vue'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 import combinate from 'combinate'
@@ -29,13 +29,12 @@ interface BlockerTestOpts {
 async function setup({ blockerFn, disabled, ignoreBlocker }: BlockerTestOpts) {
   const _mockBlockerFn = vi.fn(blockerFn)
   const rootRoute = createRootRoute()
-  const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-    component: function Setup() {
+  const Setup = defineComponent({
+    setup() {
       const navigate = useNavigate()
+
       useBlocker({ disabled, shouldBlockFn: _mockBlockerFn })
-      return (
+      return () => (
         <>
           <h1>Index</h1>
           <Link to="/posts" ignoreBlocker={ignoreBlocker}>
@@ -48,6 +47,12 @@ async function setup({ blockerFn, disabled, ignoreBlocker }: BlockerTestOpts) {
         </>
       )
     },
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: Setup,
   })
 
   const postsRoute = createRoute({

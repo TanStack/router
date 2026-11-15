@@ -16,7 +16,7 @@ export interface StartStorageContext {
   contextAfterGlobalMiddlewares: any
   // Track middlewares that have already executed in the request phase
   // to prevent duplicate execution
-  executedRequestMiddlewares: Set<any>
+  executedRequestMiddlewares?: Set<any>
   // Type of handler processing this request
   handlerType: StartHandlerType
 
@@ -42,10 +42,10 @@ if (!globalObj[GLOBAL_STORAGE_KEY]) {
 
 const startStorage = globalObj[GLOBAL_STORAGE_KEY]
 
-export async function runWithStartContext<T>(
+export function runWithStartContext<T>(
   context: StartStorageContext,
-  fn: () => T | Promise<T>,
-): Promise<T> {
+  fn: () => T,
+): T {
   return startStorage.run(context, fn)
 }
 

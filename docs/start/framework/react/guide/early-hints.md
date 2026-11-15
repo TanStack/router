@@ -3,8 +3,6 @@ id: early-hints
 title: Early Hints
 ---
 
-# Early Hints
-
 > **Experimental:** Early Hints are experimental and subject to change.
 
 HTTP `103 Early Hints` lets your server tell the browser about important resources before the final HTML response is ready. TanStack Start can collect route assets and route `head().links`, then call your server entry so your runtime can send `103` responses.
@@ -166,6 +164,7 @@ Static Early Hints are collected from the final Start manifest resolved for the 
 - CDN URL rewrites are reflected in Early Hints.
 - `crossOrigin` returned from `transformAssets` is reflected in Early Hints.
 - JavaScript hints follow the client output format: `modulepreload` for module output, or `preload; as=script` for IIFE output.
+- JavaScript hints carry `fetchpriority=low`, matching the generated HTML preload links, so they don't compete with render-blocking stylesheets.
 - Per-request transforms with `cache: false` are reflected in Early Hints for that request.
 - Inlined CSS assets are skipped when Start's [CSS inlining](./css-styling#inline-route-css-in-production) build option inlines them into the HTML.
 

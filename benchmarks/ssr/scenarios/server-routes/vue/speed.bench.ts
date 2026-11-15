@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest'
+import { test } from 'vitest'
 import {
   assertServerRouteResponse,
   runServerRouteLoop,
@@ -16,10 +16,8 @@ const { default: handler } = (await import(
 
 await assertServerRouteResponse(handler)
 
-describe('ssr', () => {
-  bench(
-    'ssr server-route (vue)',
-    () => runServerRouteLoop(handler),
-    serverRouteBenchOptions,
-  )
+test('ssr', async ({ bench }) => {
+  await bench('ssr server-route (vue)', async () =>
+    runServerRouteLoop(handler),
+  ).run(serverRouteBenchOptions)
 })

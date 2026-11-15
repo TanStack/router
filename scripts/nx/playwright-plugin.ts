@@ -1,12 +1,12 @@
 import { dirname } from 'node:path'
 import { createNodesFromFiles, readJsonFile } from '@nx/devkit'
 import type {
-  CreateNodesContextV2,
-  CreateNodesV2,
+  CreateNodes,
+  CreateNodesContext,
   TargetConfiguration,
 } from '@nx/devkit'
 
-export const createNodesV2: CreateNodesV2 = [
+export const createNodes: CreateNodes = [
   '**/package.json',
   async (configFiles, options, context) => {
     return await createNodesFromFiles(
@@ -21,7 +21,7 @@ export const createNodesV2: CreateNodesV2 = [
 
 function createNodesInternal(
   configFilePath: string,
-  _context: CreateNodesContextV2,
+  _context: CreateNodesContext,
 ) {
   const projectConfiguration = readJsonFile<{
     name?: string
@@ -69,7 +69,6 @@ function createNodesInternal(
 
   const { targets, targetGroupEntries } = buildShardedTargets(
     root,
-    packageName,
     projectConfiguration.nx.metadata.playwrightShards,
   )
   // Project configuration to be merged into the rest of the Nx configuration
@@ -130,11 +129,10 @@ function captureCommandOutput(command: string, outputFile?: string): string {
 
 function getTestOutputs(
   modeKey: string,
-  portKey: string,
+  taskKey: string,
 ): TargetConfiguration['outputs'] {
   return [
-    `{projectRoot}/port-${portKey}*.txt`,
-    `{projectRoot}/test-results/${portKey}`,
+    `{projectRoot}/test-results/${taskKey}`,
     `{projectRoot}/violations.${modeKey}.*.json`,
   ]
 }
@@ -249,7 +247,6 @@ function buildModeTargets(
   const targetGroup: Array<string> = []
   const ciDependsOnTargets: Array<{
     target: string
-    projects: 'self'
     params: 'forward'
   }> = []
 
@@ -264,7 +261,7 @@ function buildModeTargets(
     const shardCount = modeMetadata.shards ?? 1
     const distDir = `dist-${modeMetadata.toolchain}-${modeMetadata.mode}${variantPathSuffix}`
     const modeKey = `${modeMetadata.toolchain}-${modeMetadata.mode}${variantPathSuffix}`
-    const modeEnv = {
+    const modeEnv: Record<string, string> = {
       ...modeMetadata.env,
       MODE: modeMetadata.mode,
       TOOLCHAIN: modeMetadata.toolchain,
@@ -274,7 +271,7 @@ function buildModeTargets(
       E2E_DIST_DIR: distDir,
     }
     const buildLog = modeEnv.E2E_BUILD_LOG
-    const modePortKey = `${packageName}-${modeKey}-e2e`
+    const modeTaskKey = `${packageName}-${modeKey}-e2e`
     const modeDescription = `${modeMetadata.toolchain}/${modeMetadata.mode}${modeMetadata.name ? `/${modeMetadata.name}` : ''}`
     const modeShardTargets: Array<string> = []
 
@@ -307,16 +304,14 @@ function buildModeTargets(
       targets[modeTargetName] = {
         executor: 'nx:run-commands',
         options: {
-          command: `playwright test --project=chromium --output=test-results/${modePortKey}`,
+          command: `playwright test --project=chromium --output=test-results/${modeTaskKey}`,
           cwd: projectRoot,
-          env: {
-            ...modeEnv,
-            E2E_PORT_KEY: modePortKey,
-          },
+          env: modeEnv,
         },
+        parallelism: false,
         cache: true,
         inputs: TEST_INPUTS,
-        outputs: getTestOutputs(modeKey, modePortKey),
+        outputs: getTestOutputs(modeKey, modeTaskKey),
         dependsOn: [buildTargetName],
         metadata: {
           technologies: ['playwright'],
@@ -327,21 +322,19 @@ function buildModeTargets(
     } else {
       for (let shardIndex = 1; shardIndex <= shardCount; shardIndex++) {
         const shardTargetName = `${modeTargetName}${MODE_TARGET_SEPARATOR}shard-${shardIndex}-of-${shardCount}`
-        const shardPortKey = `${modePortKey}-shard-${shardIndex}-of-${shardCount}`
+        const shardTaskKey = `${modeTaskKey}-shard-${shardIndex}-of-${shardCount}`
 
         targets[shardTargetName] = {
           executor: 'nx:run-commands',
           options: {
-            command: `playwright test --project=chromium --shard=${shardIndex}/${shardCount} --output=test-results/${shardPortKey}`,
+            command: `playwright test --project=chromium --shard=${shardIndex}/${shardCount} --output=test-results/${shardTaskKey}`,
             cwd: projectRoot,
-            env: {
-              ...modeEnv,
-              E2E_PORT_KEY: shardPortKey,
-            },
+            env: modeEnv,
           },
+          parallelism: false,
           cache: true,
           inputs: TEST_INPUTS,
-          outputs: getTestOutputs(modeKey, shardPortKey),
+          outputs: getTestOutputs(modeKey, shardTaskKey),
           dependsOn: [buildTargetName],
           metadata: {
             technologies: ['playwright'],
@@ -367,7 +360,6 @@ function buildModeTargets(
         inputs: TEST_INPUTS,
         dependsOn: modeShardTargets.map((shardTargetName) => ({
           target: shardTargetName,
-          projects: 'self' as const,
           params: 'forward' as const,
         })),
         metadata: {
@@ -380,7 +372,6 @@ function buildModeTargets(
 
     ciDependsOnTargets.push({
       target: modeTargetName,
-      projects: 'self',
       params: 'forward',
     })
   }
@@ -404,7 +395,6 @@ function buildModeTargets(
 
 function buildShardedTargets(
   projectRoot: string,
-  packageName: string,
   shardCount: number,
 ): {
   targets: Record<string, TargetConfiguration>
@@ -416,17 +406,14 @@ function buildShardedTargets(
   // Create individual shard targets
   for (let shardIndex = 1; shardIndex <= shardCount; shardIndex++) {
     const shardTargetName = `${CI_TARGET_NAME}--shard-${shardIndex}-of-${shardCount}`
-    const e2ePortKey = `${packageName}-shard-${shardIndex}-of-${shardCount}`
 
     targets[shardTargetName] = {
       executor: 'nx:run-commands',
       options: {
         command: `playwright test --project=chromium --shard=${shardIndex}/${shardCount}`,
         cwd: projectRoot,
-        env: {
-          E2E_PORT_KEY: e2ePortKey,
-        },
       },
+      parallelism: false,
       cache: true,
       inputs: TEST_INPUTS,
       dependsOn: [`^build`, 'build'],
@@ -454,7 +441,6 @@ function buildShardedTargets(
     inputs: TEST_INPUTS,
     dependsOn: targetGroup.map((shardTargetName) => ({
       target: shardTargetName,
-      projects: 'self' as const,
       params: 'forward' as const,
     })),
     metadata: {

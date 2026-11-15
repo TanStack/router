@@ -18,8 +18,8 @@
     "@tanstack/solid-router": "^2.0.0-rc.10",
     "@tanstack/solid-router-devtools": "^2.0.0-rc.8",
     "@tanstack/solid-start": "^2.0.0-rc.10",
-    "redaxios": "^0.5.1",
-    "solid-js": "^2.0.0-rc.21"
+    "solid-js": "^2.0.0-rc.21",
+    "redaxios": "^0.5.1"
   },
   "devDependencies": {
     "@solidjs/vite-plugin": "^3.0.0-next.57",

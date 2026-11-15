@@ -3,8 +3,6 @@ id: import-protection
 title: Import Protection
 ---
 
-> **Experimental:** Import protection is experimental and subject to change.
-
 Import protection prevents server-only code from leaking into client bundles and client-only code from leaking into server bundles. It runs inside TanStack Start and is enabled by default.
 
 ## How It Works

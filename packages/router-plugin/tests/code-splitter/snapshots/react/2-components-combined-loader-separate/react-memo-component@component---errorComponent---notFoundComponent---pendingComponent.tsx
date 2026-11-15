@@ -1,6 +1,6 @@
-import React from 'react';
+import React from 'react'
 function Component() {
-  return <div>Component</div>;
+  return <div>Component</div>
 }
-const SplitComponent = React.memo(Component);
-export { SplitComponent as component };
+const SplitComponent = React.memo(Component)
+export { SplitComponent as component }

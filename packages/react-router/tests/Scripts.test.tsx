@@ -547,6 +547,35 @@ describe('ssr HeadContent', () => {
     )
   })
 
+  test('renders manifest module preloads with low fetch priority', async () => {
+    const preloadHref = '/low-priority-module.js'
+    const rootRoute = createRootRoute({
+      component: () => <HeadContent />,
+    })
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+    })
+    const router = createRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: true,
+    })
+
+    router.ssr = {
+      manifest: createTestManifest(rootRoute.id, { preloadHref }),
+    }
+
+    await router.load()
+
+    const html = ReactDOMServer.renderToString(
+      <RouterProvider router={router} />,
+    )
+    expect(html).toContain(
+      `<link rel="modulepreload" href="${preloadHref}" fetchPriority="low"/>`,
+    )
+  })
+
   test('keeps manifest stylesheet links mounted when history state changes', async () => {
     const history = createTestBrowserHistory()
     const stylesheetHref = '/history-state.css'
@@ -745,7 +774,7 @@ describe('ssr HeadContent', () => {
     ).toBe('.runtime{color:red}')
   })
 
-  test('renders preload as script links for iife manifest preloads', async () => {
+  test('renders iife manifest preloads as low priority script links', async () => {
     const history = createTestBrowserHistory()
     const preloadHref = '/iife-preload.js'
 
@@ -795,6 +824,13 @@ describe('ssr HeadContent', () => {
         `link[rel="modulepreload"][href="${preloadHref}"]`,
       ),
     ).toBeFalsy()
+    expect(
+      document.head
+        .querySelector(
+          `link[rel="preload"][as="script"][href="${preloadHref}"]`,
+        )
+        ?.getAttribute('fetchpriority'),
+    ).toBe('low')
   })
 
   test('assetCrossOrigin overrides manifest crossOrigin values', async () => {

@@ -17,7 +17,6 @@ import { getFrameworkHmrCompilerPlugins } from './code-splitter/plugins/framewor
 import {
   defaultCodeSplitGroupings,
   splitRouteIdentNodes,
-  tsrShared,
   tsrSplit,
 } from './constants'
 import { debug, normalizePath, routeFactoryCallCodeFilter } from './utils'
@@ -25,7 +24,8 @@ import { createRouterPluginContext } from './router-plugin-context'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 import type { GetRoutesByFileMapResultValue } from '@tanstack/router-generator'
 import type { CodeSplitCompilerPlugin } from './code-splitter/plugins'
-import type { Config, HmrStyle } from './config'
+import type { Config } from './config'
+import type { HmrStyle } from './hmr'
 import type { RouterPluginContext } from './router-plugin-context'
 import type {
   UnpluginFactory,
@@ -81,11 +81,11 @@ const TRANSFORMATION_PLUGINS_BY_FRAMEWORK: Record<
 export function createRouterCodeSplitterPlugin(
   options: Partial<Config | (() => Config)> | undefined = {},
   routerPluginContext: RouterPluginContext,
+  hmrStyle: HmrStyle = 'vite',
 ): ReturnType<UnpluginFactory<Partial<Config | (() => Config)> | undefined>> {
   let ROOT: string = process.cwd()
   let userConfig: Config
   let addHmr: boolean
-  let hmrStyle: HmrStyle
   let compilerPlugins: Array<CodeSplitCompilerPlugin>
   let virtualRouteCompilerPlugins: Array<CodeSplitCompilerPlugin>
 
@@ -99,16 +99,12 @@ export function createRouterCodeSplitterPlugin(
     }
 
     addHmr = (userConfig.codeSplittingOptions?.addHmr ?? true) && !isProduction
-    hmrStyle = userConfig.plugin?.hmr?.style ?? 'vite'
-    compilerPlugins = [
-      ...(addHmr
-        ? (getFrameworkHmrCompilerPlugins({
-            targetFramework: userConfig.target,
-            hmrStyle,
-          }) ?? [])
-        : []),
-      ...(userConfig.codeSplittingOptions?.compilerPlugins ?? []),
-    ]
+    compilerPlugins = addHmr
+      ? (getFrameworkHmrCompilerPlugins({
+          targetFramework: userConfig.target,
+          hmrStyle,
+        }) ?? [])
+      : []
     virtualRouteCompilerPlugins = compilerPlugins.filter(
       (plugin) => plugin.onVirtualRouteSplitNode,
     )
@@ -186,6 +182,7 @@ export function createRouterCodeSplitterPlugin(
       targetFramework: userConfig.target,
       filename: id,
       id,
+      isProduction,
       deleteNodes: userConfig.codeSplittingOptions?.deleteNodes
         ? new Set(userConfig.codeSplittingOptions.deleteNodes)
         : undefined,
@@ -261,7 +258,6 @@ export function createRouterCodeSplitterPlugin(
       transform: {
         filter: {
           id: {
-            exclude: [tsrSplit, tsrShared],
             // this is necessary for webpack / rspack to avoid matching .html files
             include: /\.(m|c)?(j|t)sx?$/,
           },
@@ -332,13 +328,13 @@ export function createRouterCodeSplitterPlugin(
       },
 
       rspack(compiler) {
-        isProduction = compiler.options.mode === 'production'
+        isProduction = (compiler.options.mode ?? 'production') === 'production'
         ROOT = process.cwd()
         initUserConfig()
       },
 
       webpack(compiler) {
-        isProduction = compiler.options.mode === 'production'
+        isProduction = (compiler.options.mode ?? 'production') === 'production'
         ROOT = process.cwd()
         initUserConfig()
       },

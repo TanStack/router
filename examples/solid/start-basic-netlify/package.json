@@ -16,7 +16,7 @@
     "solid-js": "^2.0.0-rc.21"
   },
   "devDependencies": {
-    "@netlify/vite-plugin-tanstack-start": "^1.1.4",
+    "@netlify/vite-plugin-tanstack-start": "^1.3.19",
     "@solidjs/vite-plugin": "^3.0.0-next.57",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22.5.4",

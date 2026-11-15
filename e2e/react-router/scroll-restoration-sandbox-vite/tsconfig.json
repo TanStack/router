@@ -11,5 +11,5 @@
     "allowJs": true,
     "types": ["vite/client", "node"]
   },
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "dist-hash"]
 }

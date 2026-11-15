@@ -6,7 +6,7 @@ type CatchBoundaryProps = {
   getResetKey: () => unknown
   children: Vue.VNode
   errorComponent?: ErrorRouteComponent | Vue.Component
-  onCatch?: (error: Error) => void
+  onCatch?: (error: unknown) => void
 }
 
 const VueErrorBoundary = Vue.defineComponent({
@@ -18,22 +18,22 @@ const VueErrorBoundary = Vue.defineComponent({
     errorComponent: null,
   },
   setup(props) {
-    const error = Vue.ref<Error | null>(null)
+    const error = Vue.shallowRef<[unknown] | 0>(0)
 
     const reset = () => {
-      error.value = null
+      error.value = 0
     }
 
     Vue.watch(
       () => props.resetKey,
-      (newKey, oldKey) => {
-        if (newKey !== oldKey && error.value) {
+      () => {
+        if (error.value) {
           reset()
         }
       },
     )
 
-    Vue.onErrorCaptured((err: Error) => {
+    Vue.onErrorCaptured((err: unknown) => {
       if (
         err instanceof Promise ||
         (err && typeof (err as any).then === 'function')
@@ -41,7 +41,7 @@ const VueErrorBoundary = Vue.defineComponent({
         return false
       }
 
-      error.value = err
+      error.value = [err]
 
       if (props.onError) {
         props.onError(err)
@@ -57,7 +57,7 @@ const VueErrorBoundary = Vue.defineComponent({
 
       const errorComponent = props.errorComponent ?? ErrorComponent
       const errorProps = {
-        error: error.value,
+        error: error.value[0],
         reset,
       }
 
@@ -86,7 +86,7 @@ CatchBoundary.props = ['getResetKey', 'children', 'errorComponent', 'onCatch']
 export const ErrorComponent = Vue.defineComponent({
   name: 'ErrorComponent',
   props: {
-    error: Object,
+    error: null as unknown as Vue.PropType<unknown>,
     reset: Function,
   },
   setup(props) {
@@ -140,8 +140,12 @@ export const ErrorComponent = Vue.defineComponent({
                   },
                 },
                 [
-                  props.error?.message
-                    ? Vue.h('code', {}, props.error.message)
+                  (props.error as { message?: string } | null)?.message
+                    ? Vue.h(
+                        'code',
+                        {},
+                        (props.error as { message: string }).message,
+                      )
                     : null,
                 ],
               ),

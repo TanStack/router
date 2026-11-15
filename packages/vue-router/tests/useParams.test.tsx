@@ -1,3 +1,4 @@
+import { defineComponent } from 'vue'
 import { expect, test, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/vue'
 import {
@@ -33,6 +34,30 @@ test('useParams must return parsed result if applicable.', async () => {
     component: PostsComponent,
   })
 
+  const PostCategoryComponent = defineComponent({
+    setup() {
+      const data = postCategoryRoute.useLoaderData()
+      return () => (
+        <div>
+          <h1 data-testid="post-category-heading">Post Categories</h1>
+          {data.value.posts.map((post: (typeof posts)[number]) => {
+            const id = post.id === 1 ? 'one' : 'two'
+            return (
+              <Link
+                from={postCategoryRoute.fullPath}
+                to="./$postId"
+                params={{ postId: id }}
+                data-testid={`post-${id}-link`}
+              >
+                {post.title}
+              </Link>
+            )
+          })}
+          <Outlet />
+        </div>
+      )
+    },
+  })
   const postCategoryRoute = createRoute({
     getParentRoute: () => postsRoute,
     path: 'category_{$category}',
@@ -68,6 +93,42 @@ test('useParams must return parsed result if applicable.', async () => {
     }),
   })
 
+  const PostComponent = defineComponent({
+    setup() {
+      const params = useParams({ from: postRoute.fullPath })
+
+      const data = postRoute.useLoaderData()
+      return () => (
+        <div>
+          <h1 data-testid="post-heading">Post Route</h1>
+          <div>
+            Category_Param:{' '}
+            <span data-testid="param_category_value">
+              {params.value.category}
+            </span>
+          </div>
+          <div>
+            PostId_Param:{' '}
+            <span data-testid="param_postId_value">{params.value.postId}</span>
+          </div>
+          <div>
+            PostId:{' '}
+            <span data-testid="post_id_value">{data.value.post.id}</span>
+          </div>
+          <div>
+            Title:{' '}
+            <span data-testid="post_title_value">{data.value.post.title}</span>
+          </div>
+          <div>
+            Category:{' '}
+            <span data-testid="post_category_value">
+              {data.value.post.category}
+            </span>
+          </div>
+        </div>
+      )
+    },
+  })
   const postRoute = createRoute({
     getParentRoute: () => postCategoryRoute,
     path: '$postId',
@@ -105,65 +166,6 @@ test('useParams must return parsed result if applicable.', async () => {
           First Category
         </Link>
         <Outlet />
-      </div>
-    )
-  }
-
-  function PostCategoryComponent() {
-    const data = postCategoryRoute.useLoaderData()
-
-    return (
-      <div>
-        <h1 data-testid="post-category-heading">Post Categories</h1>
-        {data.value.posts.map((post: (typeof posts)[number]) => {
-          const id = post.id === 1 ? 'one' : 'two'
-          return (
-            <Link
-              from={postCategoryRoute.fullPath}
-              to="./$postId"
-              params={{ postId: id }}
-              data-testid={`post-${id}-link`}
-            >
-              {post.title}
-            </Link>
-          )
-        })}
-        <Outlet />
-      </div>
-    )
-  }
-
-  function PostComponent() {
-    const params = useParams({ from: postRoute.fullPath })
-
-    const data = postRoute.useLoaderData()
-
-    return (
-      <div>
-        <h1 data-testid="post-heading">Post Route</h1>
-        <div>
-          Category_Param:{' '}
-          <span data-testid="param_category_value">
-            {params.value.category}
-          </span>
-        </div>
-        <div>
-          PostId_Param:{' '}
-          <span data-testid="param_postId_value">{params.value.postId}</span>
-        </div>
-        <div>
-          PostId: <span data-testid="post_id_value">{data.value.post.id}</span>
-        </div>
-        <div>
-          Title:{' '}
-          <span data-testid="post_title_value">{data.value.post.title}</span>
-        </div>
-        <div>
-          Category:{' '}
-          <span data-testid="post_category_value">
-            {data.value.post.category}
-          </span>
-        </div>
       </div>
     )
   }

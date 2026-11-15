@@ -1,9 +1,10 @@
+import { defineComponent } from 'vue'
 import { Link, createFileRoute } from '@tanstack/vue-router'
 
-export const Route = createFileRoute('/redirect/$target/serverFn/')({
-  component: () => {
+const RouteComponent = defineComponent({
+  setup() {
     const params = Route.useParams()
-    return (
+    return () => (
       <div>
         <h1 class="mb-4 text-4xl font-extrabold lmd:text-5xl lg:text-6xl ">
           redirect test with server functions (target {params.value.target})
@@ -86,4 +87,8 @@ export const Route = createFileRoute('/redirect/$target/serverFn/')({
       </div>
     )
   },
+})
+
+export const Route = createFileRoute('/redirect/$target/serverFn/')({
+  component: RouteComponent,
 })

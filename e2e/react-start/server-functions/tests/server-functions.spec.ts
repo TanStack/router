@@ -1,11 +1,9 @@
 import * as fs from 'node:fs'
 import { expect } from '@playwright/test'
-import { getTestServerPort, test } from '@tanstack/router-e2e-utils'
-import packageJson from '../package.json' with { type: 'json' }
+import { test } from '@tanstack/router-e2e-utils'
 import type { Page } from '@playwright/test'
 
-const e2ePortKey = process.env.E2E_PORT_KEY ?? packageJson.name
-const PORT = await getTestServerPort(e2ePortKey)
+const PORT = Number(process.env.E2E_APP_PORT ?? 0)
 
 test('Server function URLs correctly include explicit ids', async ({
   page,

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { hydrate } from '@tanstack/router-core/ssr/client'
 import { dehydrateSsrMatchId } from '../../router-core/src/ssr/ssr-match-id'
@@ -20,18 +20,20 @@ function bootstrap(
     ssr: AnyRouteMatch['ssr']
     data?: unknown
     error?: unknown
+    notFound?: boolean
   }>,
 ): void {
   window.$_TSR = {
     router: {
       manifest: undefined,
-      matches: matches.map(({ match, status, ssr, data, error }) => ({
+      matches: matches.map(({ match, status, ssr, data, error, notFound }) => ({
         i: dehydrateSsrMatchId(match.id),
         l: data,
         e: error,
         s: status,
         ssr,
         u: Date.now(),
+        ...(notFound ? { g: true } : {}),
       })),
     },
     h: vi.fn(),
@@ -44,6 +46,7 @@ function bootstrap(
 
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
   delete window.$_TSR
 })
 
@@ -94,5 +97,45 @@ describe('hydration terminal lane', () => {
     expect(screen.queryByText('client-parent')).not.toBeInTheDocument()
     expect(parentLoader).not.toHaveBeenCalled()
     expect(childLoader).toHaveBeenCalledTimes(1)
+  })
+
+  test('keeps a hydrated pending fallback through its minimum before a terminal result', async () => {
+    const rootRoute = createRootRoute({
+      pendingMs: 0,
+      pendingMinMs: 100,
+      pendingComponent: () => <div role="status">Missing page pending</div>,
+      notFoundComponent: () => <div>Missing page</div>,
+    })
+    const router = createRouter({
+      history: createMemoryHistory({ initialEntries: ['/missing'] }),
+      routeTree: rootRoute,
+    })
+    const matches = router.matchRoutes(router.state.location)
+    expect(matches[0]?._notFound).toBe(true)
+    bootstrap([
+      {
+        match: matches[0]!,
+        status: 'pending',
+        ssr: false,
+        notFound: true,
+      },
+    ])
+
+    await hydrate(router)
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
+    render(<RouterProvider router={router} />)
+    expect(screen.getByRole('status')).toHaveTextContent('Missing page pending')
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(99)
+    })
+    expect(screen.getByRole('status')).toHaveTextContent('Missing page pending')
+    expect(screen.queryByText('Missing page')).not.toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5)
+    })
+    expect(screen.getByText('Missing page')).toBeInTheDocument()
   })
 })

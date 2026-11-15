@@ -208,10 +208,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 
   useMatch: UseMatchRoute<TRoute['id']> = (opts) => {
-    return useMatch({
-      select: opts?.select,
-      from: this.options.id,
-    } as any) as any
+    return useMatch({ ...opts, from: this.options.id } as any) as any
   }
 
   useRouteContext: UseRouteContextRoute<TRoute['id']> = (opts) => {
@@ -219,17 +216,11 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 
   useSearch: UseSearchRoute<TRoute['id']> = (opts) => {
-    return useSearch({
-      select: opts?.select,
-      from: this.options.id,
-    } as any) as any
+    return useSearch({ ...opts, from: this.options.id } as any)
   }
 
   useParams: UseParamsRoute<TRoute['id']> = (opts) => {
-    return useParams({
-      select: opts?.select,
-      from: this.options.id,
-    } as any) as any
+    return useParams({ ...opts, from: this.options.id } as any)
   }
 
   useLoaderDeps: UseLoaderDepsRoute<TRoute['id']> = (opts) => {

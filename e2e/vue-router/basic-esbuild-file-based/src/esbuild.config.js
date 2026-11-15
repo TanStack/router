@@ -9,7 +9,6 @@ export default {
     }),
     tanstackRouter({
       target: 'vue',
-      autoCodeSplitting: true,
     }),
   ],
 }

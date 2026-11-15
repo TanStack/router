@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 
 import { hashPassword, prismaClient } from '~/utils/prisma'
-import { useAppSession } from '~/utils/session'
+import { getAppSession } from '~/utils/session'
 
 export const loginFn = createServerFn({
   method: 'POST',
@@ -36,12 +36,11 @@ export const loginFn = createServerFn({
     }
 
     // Create a session
-    const session = await useAppSession()
+    const session = await getAppSession()
 
     // Store the user's email in the session
-    await session.update({
-      userEmail: user.email,
-    })
+    session.userEmail = user.email
+    await session.save()
   })
 
 export const Route = createFileRoute('/_authed')({

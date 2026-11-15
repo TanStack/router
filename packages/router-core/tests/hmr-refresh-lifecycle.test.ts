@@ -193,13 +193,22 @@ describe('HMR route refresh', () => {
     expect(router.state.matches[0]?.loaderData).toBe(2)
   })
 
-  test('restores the committed presentation when publication fails', async () => {
+  test('publishes refresh route errors without restoring the previous generation', async () => {
     let generation = 1
+    const boom = new Error('refreshed loader failed')
+    const onError = vi.fn()
     const rootRoute = new BaseRootRoute({})
     const pageRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/page',
-      loader: () => generation,
+      loader: () => {
+        if (generation === 2) {
+          throw boom
+        }
+        return generation
+      },
+      onError,
+      errorComponent: () => null,
     })
     const router = createTestRouter({
       routeTree: rootRoute.addChildren([pageRoute]),
@@ -207,28 +216,19 @@ describe('HMR route refresh', () => {
     })
 
     await router.load()
-    const previousMatches = router.state.matches
     generation = 2
-    const startTransition = router.startTransition
-    router.startTransition = async (fn) => {
-      fn()
-      router.clearCache()
-      throw new Error('render failed')
-    }
-
     await router._refreshRoute!()
 
+    expect(onError).toHaveBeenCalledWith(boom)
     expect(router.state.status).toBe('idle')
-    expect(router.state.matches).toHaveLength(previousMatches.length)
-    expect(router.state.matches.at(-1)?.loaderData).toBe(1)
-
-    router.startTransition = startTransition
-    generation = 3
-    await router._refreshRoute!()
-    expect(router.state.matches.at(-1)?.loaderData).toBe(3)
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: pageRoute.id,
+      status: 'error',
+      error: boom,
+    })
   })
 
-  test('keeps the rendered generation alive until refresh is acknowledged', async () => {
+  test('rapid refreshes release obsolete generations and converge on the successor', async () => {
     let generation = 1
     const signals: Array<AbortSignal> = []
     const rootRoute = new BaseRootRoute({})
@@ -246,70 +246,44 @@ describe('HMR route refresh', () => {
     })
 
     await router.load()
-    const renderedSignal = signals[0]!
-    generation = 2
-    const startTransition = router.startTransition
-    router.startTransition = async (fn) => {
-      fn()
-      throw new Error('render failed')
-    }
-
-    await router._refreshRoute!()
-
-    expect(renderedSignal.aborted).toBe(false)
-    expect(signals[1]?.aborted).toBe(true)
-    expect(router.state.matches.at(-1)?.loaderData).toBe(1)
-
-    router.startTransition = startTransition
-    generation = 3
-    await router._refreshRoute!()
-    expect(renderedSignal.aborted).toBe(true)
-    expect(router.state.matches.at(-1)?.loaderData).toBe(3)
-  })
-
-  test('rolls overlapping refreshes back to the last acknowledged generation', async () => {
-    let generation = 1
-    const rootRoute = new BaseRootRoute({})
-    const pageRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/page',
-      loader: () => generation,
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([pageRoute]),
-      history: createMemoryHistory({ initialEntries: ['/page'] }),
-    })
-
-    await router.load()
-    let transitionCount = 0
-    let supersedeFirst!: () => void
+    const firstAck = createControlledPromise<boolean>()
+    const firstPublished = createControlledPromise<void>()
+    let transitions = 0
     router.startTransition = (fn) => {
-      transitionCount++
-      fn()
-      if (transitionCount === 1) {
-        return new Promise<boolean>((resolve) => {
-          supersedeFirst = () => resolve(false)
-        })
+      transitions++
+      if (transitions === 1) {
+        fn()
+        firstPublished.resolve()
+        return firstAck
       }
-      return Promise.reject(new Error('replacement render failed'))
+      firstAck.resolve(false)
+      fn()
+      return Promise.resolve(true)
     }
-    ;(
-      router as typeof router & { _cancelTransition?: () => void }
-    )._cancelTransition = () => supersedeFirst()
 
     generation = 2
-    const firstRefresh = router._refreshRoute!()
-    await vi.waitFor(() => expect(transitionCount).toBe(1))
+    const firstSettled = vi.fn()
+    const firstRefresh = router._refreshRoute!().then(firstSettled)
+    await firstPublished
+
+    expect(firstSettled).not.toHaveBeenCalled()
+    expect(signals[0]?.aborted).toBe(true)
+    expect(signals[1]?.aborted).toBe(false)
+    expect(router.state.matches.at(-1)?.loaderData).toBe(2)
 
     generation = 3
     const secondRefresh = router._refreshRoute!()
     await Promise.all([firstRefresh, secondRefresh])
 
+    expect(firstSettled).toHaveBeenCalledOnce()
+    expect(signals[1]?.aborted).toBe(true)
+    expect(signals[2]?.aborted).toBe(false)
+    expect(router.state.matches.at(-1)?.loaderData).toBe(3)
     expect(router.state.status).toBe('idle')
-    expect(router.state.matches.at(-1)?.loaderData).toBe(1)
+    expect(router._cache.size).toBe(0)
   })
 
-  test('does not resolve a superseding navigation promise during rollback', async () => {
+  test('a published refresh waits for the navigation that supersedes it', async () => {
     let generation = 1
     const destinationGate = createControlledPromise<void>()
     const rootRoute = new BaseRootRoute({})
@@ -329,25 +303,25 @@ describe('HMR route refresh', () => {
     })
 
     await router.load()
+    const refreshAck = createControlledPromise<boolean>()
+    const refreshPublished = createControlledPromise<void>()
     let transitionCount = 0
-    let cancelRefresh!: () => void
     router.startTransition = (fn) => {
       transitionCount++
-      fn()
       if (transitionCount === 1) {
-        return new Promise<boolean>((resolve) => {
-          cancelRefresh = () => resolve(false)
-        })
+        fn()
+        refreshPublished.resolve()
+        return refreshAck
       }
+      refreshAck.resolve(false)
+      fn()
       return Promise.resolve(true)
     }
-    ;(
-      router as typeof router & { _cancelTransition?: () => void }
-    )._cancelTransition = () => cancelRefresh()
 
     generation = 2
-    const refresh = router._refreshRoute!()
-    await vi.waitFor(() => expect(transitionCount).toBe(1))
+    const refreshSettled = vi.fn()
+    const refresh = router._refreshRoute!().then(refreshSettled)
+    await refreshPublished
 
     const navigationSettled = vi.fn()
     const navigation = router
@@ -356,16 +330,19 @@ describe('HMR route refresh', () => {
     await vi.waitFor(() =>
       expect(router.state.location.pathname).toBe('/destination'),
     )
+    expect(refreshSettled).not.toHaveBeenCalled()
     expect(navigationSettled).not.toHaveBeenCalled()
 
     destinationGate.resolve()
     await Promise.all([refresh, navigation])
+    expect(refreshSettled).toHaveBeenCalledOnce()
     expect(navigationSettled).toHaveBeenCalledOnce()
     expect(router.state.matches.at(-1)?.routeId).toBe(destinationRoute.id)
   })
 
   test('waits for an ordinary pending navigation before refreshing', async () => {
     const destinationGate = createControlledPromise<void>()
+    const destinationLoader = vi.fn(() => destinationGate)
     const rootRoute = new BaseRootRoute({})
     const pageRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -377,7 +354,7 @@ describe('HMR route refresh', () => {
       pendingMs: 0,
       pendingMinMs: 0,
       pendingComponent: () => null,
-      loader: () => destinationGate,
+      loader: destinationLoader,
     })
     const router = createTestRouter({
       routeTree: rootRoute.addChildren([pageRoute, destinationRoute]),
@@ -390,9 +367,6 @@ describe('HMR route refresh', () => {
       expect(router.state.status).toBe('pending')
       expect(router.state.matches.at(-1)?.routeId).toBe(destinationRoute.id)
     })
-    destinationRoute.options.onStay = () => {
-      throw new Error('refreshed destination failed')
-    }
     const refreshSettled = vi.fn()
     const refresh = router._refreshRoute!().then(refreshSettled)
     await Promise.resolve()
@@ -406,37 +380,8 @@ describe('HMR route refresh', () => {
       routeId: destinationRoute.id,
       status: 'success',
     })
+    expect(destinationLoader).toHaveBeenCalledTimes(2)
     expect(refreshSettled).toHaveBeenCalledOnce()
-  })
-
-  test('rolls back when an HMR lifecycle callback throws', async () => {
-    let generation = 1
-    const rootRoute = new BaseRootRoute({})
-    const pageRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/page',
-      loader: () => generation,
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([pageRoute]),
-      history: createMemoryHistory({ initialEntries: ['/page'] }),
-    })
-
-    await router.load()
-    generation = 2
-    pageRoute.options.onStay = () => {
-      throw new Error('lifecycle failed')
-    }
-
-    await router._refreshRoute!()
-
-    expect(router.state.status).toBe('idle')
-    expect(router.state.matches.at(-1)?.loaderData).toBe(1)
-
-    pageRoute.options.onStay = undefined
-    generation = 3
-    await router._refreshRoute!()
-    expect(router.state.matches.at(-1)?.loaderData).toBe(3)
   })
 
   test('does not adopt a preload created by HMR preflight hooks', async () => {

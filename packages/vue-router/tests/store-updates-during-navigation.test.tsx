@@ -1,3 +1,4 @@
+import { defineComponent } from 'vue'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   cleanup,
@@ -44,10 +45,10 @@ function setup({
 }) {
   const select = vi.fn()
 
-  const rootRoute = createRootRoute({
-    component: function RootComponent() {
+  const RootComponent = defineComponent({
+    setup() {
       useRouterState({ select })
-      return (
+      return () => (
         <>
           <Link to="/">Back</Link>
           <Link to="/posts">Posts</Link>
@@ -55,6 +56,10 @@ function setup({
         </>
       )
     },
+  })
+
+  const rootRoute = createRootRoute({
+    component: RootComponent,
   })
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,

@@ -1,10 +1,10 @@
 import * as Solid from '@solidjs/web'
-import { makeSsrSerovalPlugin } from '@tanstack/router-core'
-import clientAssetsManifest from './clientAssetsManifest'
+import { renderSsrHtmlResponse } from '@tanstack/router-core/ssr/server'
+import { getSolidRenderOptions } from './renderOptions'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { JSX } from '@solidjs/web'
 
-export const renderRouterToString = ({
+export const renderRouterToString = async ({
   router,
   responseHeaders,
   children,
@@ -15,43 +15,10 @@ export const renderRouterToString = ({
   children: () => JSX.Element
   manifest?: unknown
 }) => {
-  try {
-    const serializationAdapters =
-      (router.options as any)?.serializationAdapters ||
-      (router.options.ssr as any)?.serializationAdapters
-    const serovalPlugins = serializationAdapters?.map((adapter: any) => {
-      const plugin = makeSsrSerovalPlugin(adapter, { didRun: false })
-      return plugin
-    })
-
-    let html = Solid.renderToString(children, {
-      nonce: router.options.ssr?.nonce,
-      plugins: serovalPlugins,
-      // Prefer the bundler-provided client-assets bridge (module-keyed, the
-      // shape Solid resolves lazy() assets from); the router's route-keyed
-      // manifest is a last resort that cannot answer lazy module lookups.
-      manifest: manifest ?? clientAssetsManifest ?? router.ssr?.manifest,
-    } as any)
-    router.serverSsr!.setRenderFinished()
-
-    const injectedHtml = router.serverSsr!.takeBufferedHtml()
-    if (injectedHtml) {
-      html = html.replace(`</body>`, () => `${injectedHtml}</body>`)
-    }
-    return new Response(`<!DOCTYPE html>${html}`, {
-      status:
-        router._serverResult?.type === 'render'
-          ? router._serverResult.status
-          : 200,
-      headers: responseHeaders,
-    })
-  } catch (error) {
-    console.error('Render to string error:', error)
-    return new Response('Internal Server Error', {
-      status: 500,
-      headers: responseHeaders,
-    })
-  } finally {
-    router.serverSsr?.cleanup()
-  }
+  return renderSsrHtmlResponse({
+    router,
+    responseHeaders,
+    render: () =>
+      Solid.renderToString(children, getSolidRenderOptions(router, manifest)),
+  })
 }
