@@ -1498,6 +1498,46 @@ ${rest}
       }
     },
   )
+
+  // A boundary inside a route option the router planner erases on the
+  // client (`server`, `headers`), after the Hydrate planner made its chunk:
+  // the chunk component is unused (review-phase2-stops 1, k1 and k2). The
+  // route builds, as on main: no chunk, nothing of the option.
+  it.each([
+    [
+      'server',
+      '',
+      `server: { handlers: { GET: async () => new Response(render(<Hydrate><Heavy /></Hydrate>)) } },`,
+    ],
+    [
+      'headers',
+      `const title = 'SECRET'\nfunction Mail() { return <h1>{title}</h1> }\n`,
+      `headers: () => ({ 'x-preview': render(<Hydrate><Mail /><Heavy /></Hydrate>) }),`,
+    ],
+  ])(
+    'a route file: a boundary inside the %s option the client deletes yields no chunk',
+    async (_, decls, option) => {
+      const code = `import { createFileRoute } from '@tanstack/react-router'
+${REACT}import { Heavy } from './heavy.server'
+import { render } from './render.server'
+${decls}function Page() { return <p>page</p> }
+export const Route = createFileRoute('/')({
+  ${option}
+  component: Page,
+})
+`
+      const client = await compile(code, {
+        env: buildClientEnv,
+        start: 'route',
+      })
+      expect(client.errors).toEqual([])
+      expect(client.extracted).toEqual([])
+      expect(client.code).not.toContain('heavy.server')
+      expect(client.code).not.toContain('render.server')
+      expect(client.code).not.toContain('tss-hydrate')
+      expect(client.code).not.toContain('SECRET')
+    },
+  )
 })
 
 /**

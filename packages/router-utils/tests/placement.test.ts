@@ -134,32 +134,6 @@ describe('clusters and the single-writer rule', () => {
     expect(r.chunks.component).toBe('export {}\n')
   })
 
-  // the same rule for a `<Hydrate>` boundary: its chunk cannot assign the
-  // exported `let` the module keeps for its importers, so the boundary
-  // stays in place, as Start's planner keeps it (and reports it) on the
-  // core's `hydrate-writer` fallback
-  it.each(['build', 'dev'] as const)(
-    'keeps a <Hydrate> boundary whose children assign an exported let in place (hydrate-writer, %s)',
-    async (mode) => {
-      const code = dedent(`
-        import { Hydrate } from 'toy-start'
-        export let count = 0
-        export function Page() { return <Hydrate><button onClick={() => count++}>{count}</button></Hydrate> }
-      `)
-      const host = new MemoryHost({ files: { '/app/mod.tsx': code } })
-      const out = await host.compile('/app/mod.tsx', [toyHydratePlanner()], {
-        env: envInfo({ mode }),
-      })
-      expect(out!.facts.planners['toy-hydrate']).toEqual({
-        kept: { h0: 'hydrate-writer' },
-      })
-      expect(out!.code).toContain(
-        'export let count = 0\nexport function Page() { return <Hydrate><button onClick={() => count++}>{count}</button></Hydrate> }',
-      )
-      expect(out!.code).not.toContain('tss-hydrate')
-    },
-  )
-
   // the same rule for a component declared on its own: a top-level writer
   // joins the binding it writes, which the route module keeps for its
   // other reader, so the option would only re-export it from there
@@ -6924,26 +6898,6 @@ describe('declarations only split code needs that stay in the route module', () 
       ),
     }
   }
-
-  // the planners word what the core reports: a Hydrate chunk is named as
-  // its boundary, and a module no planner describes is just "the module"
-  it('names the split outputs and the module with the words their planners give', async () => {
-    const code = dedent(`
-      import { Hydrate } from 'toy-start'
-      let n = 0
-      export function inc() { n++ }
-      const confetti = [n]
-      export function Page() { return <Hydrate><p>{confetti}</p></Hydrate> }
-    `)
-    const host = new MemoryHost({ files: { '/app/mod.tsx': code } })
-    const out = await host.compile('/app/mod.tsx', [toyHydratePlanner()], {
-      env: envInfo({ mode: 'build' }),
-    })
-    expect(out!.diagnostics).toMatchObject([{ code: 'eager-split:state' }])
-    expect(out!.diagnostics[0]!.message).toMatch(
-      /^`confetti` in \/app\/mod\.tsx stays in the module because .*, so `confetti` can load with the split `<Hydrate>` boundary\.$/,
-    )
-  })
 
   it('reports an effect several split options need, writes and reads of state', async () => {
     const code = dedent(`

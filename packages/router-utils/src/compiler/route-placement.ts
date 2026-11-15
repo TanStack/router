@@ -1,6 +1,6 @@
 /**
- * Placement of every plan but a `<Hydrate>` one outside a route file (R155,
- * `reach.ts` `onOldEngine`). A route file (`PlanContext.setRouteModule`):
+ * Placement of every plan but one with a `split` output and no route module
+ * (the core's toy planners: R155, `reach.ts` `onOldEngine`). A route file (`PlanContext.setRouteModule`):
  * what route code splitting on `main` does, by its outcome, on the core's
  * analysis (spec-main-splitting 1.1-1.8). Any other plan (a server fn's
  * handler module, the RSC provider copy, erasure only) by the same rules,
@@ -12,6 +12,8 @@
  *   longer holds (a claimed option value, erased text: `readFromRemoved`)
  *   leaves it, with its initialiser, when nothing that stays reads it by
  *   value; enums and namespaces are declarations like any other (R155).
+ *   A fixed home says where a generated declaration lives, not whether it
+ *   does: a claim's owner whose output no longer keeps the claim is unused.
  *   Statements (R154), exports and code already unused stay; an import
  *   already unused (a bare one included)
  *   moves to the shared module when the env module imports it, a
@@ -64,7 +66,7 @@ import type {
 } from './reach'
 import type { SymbolId } from './symbols'
 import type { RegionId, UnitId } from './units'
-import type { OutputId } from './rewrite'
+import type { GenUnitId, OutputId } from './rewrite'
 
 /** A plan that is no route file: no name a chunk imports, none `main` shares. */
 const NO_ROUTE: RouteModule = { imported: new Set(), shared: new Set() }
@@ -77,6 +79,26 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   const reads = readIndex(input, graph)
   const { clusters, clusterOfSym } = graph
   const gens = rewrites.generated
+  /**
+   * The removal rule on generated code: a fixed home says where a generated
+   * declaration lives, not whether it does. The owner of a claim exists for
+   * its placeholder and for generated code that reads it; when the output it
+   * lives in keeps neither (`hasClaim`: an erasure removed the occurrence,
+   * e.g. a `<Hydrate>` boundary in a route option the router deletes on the
+   * client), our changes made it unused: no root, no home, not rendered.
+   */
+  const unused = new Set<GenUnitId>()
+  for (const claim of rewrites.claims.values()) {
+    const h = gens[claim.owner]!.home
+    if (
+      typeof h === 'string' &&
+      !graph.viewOf(h === 'auto' ? 'env' : h).hasClaim(claim.region)
+    ) {
+      unused.add(claim.owner)
+    }
+  }
+  const liveRoots = (o: OutputDecl): ReadonlyArray<RootRef> =>
+    o.roots.filter((r) => r.t !== 'gen' || !unused.has(r.id))
 
   // ---- what each cluster is -------------------------------------------------
   /** The output a generated unit is homed in by its planner. */
@@ -85,6 +107,9 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   const envReaders: Array<ClusterId> = []
   for (const g of gens) {
     const c = graph.clusterOfGen.get(g.id)!
+    if (unused.has(g.id)) {
+      continue
+    }
     if (typeof g.home === 'string' && g.home !== 'auto') {
       fixedHome.set(c, g.home)
     } else if (typeof g.home === 'object') {
@@ -150,7 +175,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   )
   const rootedElsewhere = new Set<ClusterId>()
   for (const o of derived) {
-    for (const r of o.roots) {
+    for (const r of liveRoots(o)) {
       if (r.t === 'gen') {
         rootedElsewhere.add(graph.clusterOfGen.get(r.id)!)
       }
@@ -304,7 +329,11 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   }
   for (const cl of clusters) {
     const c = cl.id
-    if (envReaders.includes(c) || isType(c)) {
+    if (
+      envReaders.includes(c) ||
+      isType(c) ||
+      cl.gens.some((g) => unused.has(g))
+    ) {
       continue
     }
     if (fixedHome.get(c) === 'env') {
@@ -403,7 +432,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
           work.push(c)
         }
       }
-      for (const r of o.roots) {
+      for (const r of liveRoots(o)) {
         visit(
           r.t === 'unit'
             ? graph.clusterOfRegion.get(units[r.id]!.region)
@@ -413,7 +442,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         )
       }
       for (const g of gens) {
-        if (g.home === o.id) {
+        if (g.home === o.id && !unused.has(g.id)) {
           visit(graph.clusterOfGen.get(g.id))
         }
       }
@@ -615,9 +644,9 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   }
   /** The roots of a derived output: what its planners rooted there, and the generated units homed there. */
   const rootsOf = (o: OutputDecl): Array<RootRef> => [
-    ...o.roots,
+    ...liveRoots(o),
     ...gens
-      .filter((g) => g.home === o.id)
+      .filter((g) => g.home === o.id && !unused.has(g.id))
       .map((g) => ({ t: 'gen' as const, id: g.id })),
   ]
   const SHARED = 'shared' as OutputId
