@@ -91,11 +91,12 @@ esbuild.build({
   plugins: [
     tanstackRouter({
       target: 'react',
-      autoCodeSplitting: true,
     }),
   ],
 })
 ```
+
+> Automatic code splitting is not available with esbuild: the plugin throws when `autoCodeSplitting` is `true`. Use manual code splitting (`.lazy.tsx` files) or another bundler to split routes.
 
 ## Configuration Options
 

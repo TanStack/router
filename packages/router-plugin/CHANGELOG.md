@@ -1,5 +1,31 @@
 # @tanstack/router-plugin
 
+## 1.169.0
+
+### Minor Changes
+
+- [#8855](https://github.com/TanStack/router/pull/8855) [`446ce1b`](https://github.com/TanStack/router/commit/446ce1b30650d85f1fc78f2d1ee42712e40b75c6) - Require Node `^20.19.0 || >=22.12.0` (was `>=20.19`), so the CommonJS builds can load ESM-only dependencies through `require(esm)`. Node 21 and Node 22.0–22.11 do not enable it by default, so they are no longer supported.
+
+- [#8851](https://github.com/TanStack/router/pull/8851) [`d250819`](https://github.com/TanStack/router/commit/d25081952dd04a5f5a44db7c8df5cbbf50fad054) - Require Vite 6 or later: the `vite` peer range is now `>=6.0.0`. Vite 5 is no longer supported.
+
+### Patch Changes
+
+- [`1ba19a0`](https://github.com/TanStack/router/commit/1ba19a04456983ee0f8adffd038b6b1194441e15) - fix: webpack and Rspack production builds no longer put the code splitter's "will not be code-split" warning, with the route file's absolute path, into the client bundle when the build process's `NODE_ENV` isn't `production`. The bundler's mode decides, and a config without `mode` counts as production, as it does for webpack and Rspack. The warning still prints in the build output.
+
+- [#8852](https://github.com/TanStack/router/pull/8852) [`94f36c4`](https://github.com/TanStack/router/commit/94f36c4a9ecf3062b326a8eb772e73b00c0644d9) - The esbuild plugin now throws when `autoCodeSplitting` is enabled, and `TanStackRouterCodeSplitterEsbuild` throws, instead of silently bundling every route without splitting. Route generation with esbuild is unchanged.
+
+- [#8856](https://github.com/TanStack/router/pull/8856) [`533ca27`](https://github.com/TanStack/router/commit/533ca2704452f36c5fef5c5fe084554d9b5db1ab) - Remove the undocumented `plugin.hmr.style` option and the `HmrOptions` type. Each bundler entry now picks its own HMR runtime: the webpack and Rspack entries already forced `'webpack'`, and on Vite, `'webpack'` broke route HMR.
+
+- [#8853](https://github.com/TanStack/router/pull/8853) [`13b6256`](https://github.com/TanStack/router/commit/13b625683030ea4ab359495ecda570e05e472587) - Remove internal code-splitter APIs: the `codeSplittingOptions.compilerPlugins` option, and the root-entry exports `unpluginRouterCodeSplitterFactory`, `getObjectPropertyKeyName`, `CodeSplitCompilerPlugin`, `ReferenceRouteCompilerPlugin`, `ReferenceRouteCompilerPluginContext` and `VirtualRouteSplitNodeCompilerPluginContext`.
+
+- [#8860](https://github.com/TanStack/router/pull/8860) [`b5e2ac9`](https://github.com/TanStack/router/commit/b5e2ac9c4cee4c5c6f464adc6cfddcddf6c84171) - Source maps of split routes now point at the route file. On webpack and Rspack (including Rsbuild), a split component or shared code mapped to the wrong line, because unplugin's loader dropped the router plugin's map; `unplugin` now requires `^3.5.0`, which keeps it. The maps of split and shared modules also name the route file itself instead of its `?tsr-split` / `?tsr-shared` module id, so debuggers bind breakpoints set in the route file.
+
+- [#8870](https://github.com/TanStack/router/pull/8870) [`f420d4a`](https://github.com/TanStack/router/commit/f420d4a6dacfaa81d306b7bbc9af8f1010d1a1bc) - Vite route HMR now writes `import.meta.hot.accept(` out instead of calling it through a `hot` alias. Vite only treats a module as a hot boundary when the call is spelled out, so an edit of a route file no framework plugin accepts (a `.ts` route file, or an app without `@vitejs/plugin-react`) reloaded the page instead of updating the route in place. With React HMR, a route file that declares its own top-level `hot` binding no longer fails to compile with `Duplicate declaration "hot"`.
+
+- Updated dependencies [[`446ce1b`](https://github.com/TanStack/router/commit/446ce1b30650d85f1fc78f2d1ee42712e40b75c6), [`ad5b3b7`](https://github.com/TanStack/router/commit/ad5b3b7a0990eed7351d672ea6695d341108e0d6), [`ff157f0`](https://github.com/TanStack/router/commit/ff157f0079982e90d62be7fdeecfb77e4fdcec69)]:
+  - @tanstack/router-generator@1.168.0
+  - @tanstack/router-utils@1.163.0
+
 ## 1.168.48
 
 ### Patch Changes

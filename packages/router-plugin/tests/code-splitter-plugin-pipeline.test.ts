@@ -10,6 +10,7 @@ import {
 } from './regression-helpers'
 import { getModuleErrors } from './validate-module'
 import type { Config } from '../src/core/config'
+import type { HmrStyle } from '../src/core/hmr'
 
 const routeSource = (name: string) => `
 import { createFileRoute } from '@tanstack/react-router'
@@ -191,6 +192,7 @@ export const Route = createFileRoute('/unshared')({
 describe('route HMR plugin without code splitting', () => {
   function transformWith(
     options: Partial<Config> & { target: 'solid' | 'vue' },
+    hmrStyle?: HmrStyle,
   ) {
     const code = `
 import { createFileRoute } from '@tanstack/${options.target}-router'
@@ -198,10 +200,12 @@ export const Route = createFileRoute('/hmr')({
   component: () => <p>hmr</p>,
 })
 `
-    return transformWithRouteHmrPlugin(code, options, {
-      file: routeFile('hmr'),
-      routeId: '/hmr',
-    })
+    return transformWithRouteHmrPlugin(
+      code,
+      options,
+      { file: routeFile('hmr'), routeId: '/hmr' },
+      hmrStyle,
+    )
   }
 
   it.each(['solid', 'vue'] as const)(
@@ -217,10 +221,7 @@ export const Route = createFileRoute('/hmr')({
   )
 
   it('uses webpack HMR with the generated route id for non-React routes', async () => {
-    const output = transformWith({
-      target: 'solid',
-      plugin: { hmr: { style: 'webpack' } },
-    })
+    const output = transformWith({ target: 'solid' }, 'webpack')
     expect(output).toContain('import.meta.webpackHot')
     expect(output).not.toContain('import.meta.hot.')
     expect(output).toContain('"/hmr"')

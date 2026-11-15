@@ -1,13 +1,12 @@
 import * as babel from '@babel/core'
-import * as t from '@babel/types'
 import { parseAst } from '@tanstack/router-utils'
 import { describe, expect, it } from 'vitest'
 import {
-  getObjectPropertyKeyName,
   getUniqueProgramIdentifier,
   normalizePath,
   routeFactoryCallCodeFilter,
 } from '../src/core/utils'
+import type * as t from '@babel/types'
 import type { NodePath } from '@babel/core'
 
 function matchesRouteFactoryCallCodeFilter(code: string) {
@@ -138,42 +137,5 @@ describe('routeFactoryCallCodeFilter', () => {
     expect(
       matchesRouteFactoryCallCodeFilter("createFileRoute ('/posts')({})"),
     ).toBe(true)
-  })
-})
-
-describe('getObjectPropertyKeyName', () => {
-  it('returns identifier keys', () => {
-    const prop = t.objectProperty(t.identifier('component'), t.identifier('x'))
-
-    expect(getObjectPropertyKeyName(prop)).toBe('component')
-  })
-
-  it('returns string literal keys', () => {
-    const prop = t.objectProperty(
-      t.stringLiteral('errorComponent'),
-      t.identifier('x'),
-    )
-
-    expect(getObjectPropertyKeyName(prop)).toBe('errorComponent')
-  })
-
-  it('returns undefined for computed identifier keys', () => {
-    const prop = t.objectProperty(
-      t.identifier('component'),
-      t.identifier('x'),
-      true,
-    )
-
-    expect(getObjectPropertyKeyName(prop)).toBeUndefined()
-  })
-
-  it('returns undefined for computed member expression keys', () => {
-    const prop = t.objectProperty(
-      t.memberExpression(t.identifier('foo'), t.identifier('bar')),
-      t.identifier('x'),
-      true,
-    )
-
-    expect(getObjectPropertyKeyName(prop)).toBeUndefined()
   })
 })

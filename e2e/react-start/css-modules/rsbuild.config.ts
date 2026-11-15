@@ -2,9 +2,25 @@ import { defineConfig } from '@rsbuild/core'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { pluginSass } from '@rsbuild/plugin-sass'
 import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
+import { cloudflare } from 'rsbuild-plugin-cloudflare'
+
+// E2E_RSBUILD_CLOUDFLARE: Set to 'true' to run the SSR environment in workerd
+const useCloudflare = process.env.E2E_RSBUILD_CLOUDFLARE === 'true'
 
 export default defineConfig({
-  plugins: [pluginReact(), pluginSass(), tanstackStart()],
+  plugins: [
+    pluginReact(),
+    pluginSass(),
+    ...(useCloudflare
+      ? [
+          cloudflare({
+            rsbuildEnvironment: { name: 'ssr' },
+            inspectorPort: false,
+          }),
+        ]
+      : []),
+    tanstackStart(),
+  ],
   output: {
     distPath: {
       root: process.env.E2E_DIST_DIR ?? 'dist-rsbuild-ssr',

@@ -7,6 +7,7 @@ import { getConfig } from './config'
 import { createRouterPluginContext } from './router-plugin-context'
 import type { UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
+import type { HmrStyle } from './hmr'
 import type { RouterPluginContext } from './router-plugin-context'
 
 /**
@@ -18,6 +19,7 @@ import type { RouterPluginContext } from './router-plugin-context'
 export function createRouterHmrPlugin(
   options: Partial<Config | (() => Config)> | undefined = {},
   routerPluginContext: RouterPluginContext,
+  hmrStyle: HmrStyle = 'vite',
 ): ReturnType<UnpluginFactory<Partial<Config> | undefined>> {
   let ROOT: string = process.cwd()
 
@@ -46,8 +48,6 @@ export function createRouterHmrPlugin(
         }
 
         if (debug) console.info('Adding HMR handling to route ', normalizedId)
-
-        const hmrStyle = userConfig.plugin?.hmr?.style ?? 'vite'
 
         if (userConfig.target === 'react') {
           const compilerPlugins = getFrameworkHmrCompilerPlugins({

@@ -20,9 +20,8 @@ export const Route = createFileRoute('/posts')({
   loader: fetchPosts,
   component: TSRSplitComponent,
 })
-const hot = import.meta.hot
-if (hot && typeof window !== 'undefined') {
-  hot.data ??= {}
+if (import.meta.hot && typeof window !== 'undefined') {
+  import.meta.hot.data ??= {}
   const tsrReactRefresh = (window.__TSR_REACT_REFRESH__ ??= (() => {
     const ignoredExportsById = new Map()
     const previousGetIgnoredExports = window.__getReactRefreshIgnoredExports
@@ -39,8 +38,7 @@ export function TSRFastRefreshAnchor() {
   return null
 }
 if (import.meta.hot) {
-  const hot = import.meta.hot
-  const hotData = (hot.data ??= {})
+  const hotData = (import.meta.hot.data ??= {})
   const handleRouteUpdate = function handleRouteUpdate(routeId, newRoute) {
     const router = window.__TSR_ROUTER__
     const oldRoute = router.routesById[routeId]
@@ -101,7 +99,7 @@ if (import.meta.hot) {
     handleRouteUpdate(initialRouteId, Route)
     hotData['tsr-route-update-handled'] = Route
   }
-  hot.accept((newModule) => {
+  import.meta.hot.accept((newModule) => {
     if (Route && newModule && newModule.Route) {
       const routeId = hotData['tsr-route-id'] ?? Route.id
       if (routeId) {

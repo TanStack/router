@@ -1,5 +1,25 @@
 # @tanstack/react-start
 
+## 1.169.6
+
+### Patch Changes
+
+- Updated dependencies [[`3f22686`](https://github.com/TanStack/router/commit/3f226869e0af211ff7f1de5d7343e43462dbb101), [`559c7de`](https://github.com/TanStack/router/commit/559c7ded6e2a6eeda3f91c80d8c03f4cfeb9a206)]:
+  - @tanstack/start-plugin-core@1.171.57
+  - @tanstack/react-start-rsc@0.1.67
+
+## 1.169.5
+
+### Patch Changes
+
+- [#8863](https://github.com/TanStack/router/pull/8863) [`01fab5a`](https://github.com/TanStack/router/commit/01fab5a6c8aed70d61d82c64bc344cbac66c240c) - The Rsbuild plugin keeps the app's `server.compress` setting instead of always setting it to `false`. Compression stays off by default: a compressed streamed page reaches the browser only once the stream ends. The optional `@rsbuild/core` peer is now `^2.0.5`, the first version whose compression keeps SSR response headers intact.
+
+- Updated dependencies [[`446ce1b`](https://github.com/TanStack/router/commit/446ce1b30650d85f1fc78f2d1ee42712e40b75c6), [`ff157f0`](https://github.com/TanStack/router/commit/ff157f0079982e90d62be7fdeecfb77e4fdcec69), [`01fab5a`](https://github.com/TanStack/router/commit/01fab5a6c8aed70d61d82c64bc344cbac66c240c), [`c5320d7`](https://github.com/TanStack/router/commit/c5320d7ca23eca82d720ac5629d2bad5cf7d9b02), [`545a8d3`](https://github.com/TanStack/router/commit/545a8d3790989ca502153c3292c6b1e8063257f4), [`da8c28c`](https://github.com/TanStack/router/commit/da8c28c498230a5730ce75b2693baeeb3ef68ac1), [`d66a84b`](https://github.com/TanStack/router/commit/d66a84ba0a74ffd03e22b57ccd90796274c96244)]:
+  - @tanstack/router-utils@1.163.0
+  - @tanstack/start-plugin-core@1.171.56
+  - @tanstack/react-start-client@1.168.45
+  - @tanstack/react-start-rsc@0.1.66
+
 ## 1.169.4
 
 ### Patch Changes

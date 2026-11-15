@@ -469,6 +469,43 @@ describe('normalizeRspackClientBuild', () => {
     ])
   })
 
+  test('imports the chunk of a side-effect-free module used after its inactive import', async () => {
+    // The import statement's own connection to `lib.js` is inactive (no side
+    // effects); the later connection for the used `lib` binding is active.
+    const { clientBuild } = await buildClientFixture(
+      {
+        'index.js': `globalThis.route = () => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component')`,
+        'alpha.js': `
+        import { lib } from './lib.js'
+        export const render = () => lib() + 'alpha'
+      `,
+        'lib.js': `export const lib = () => 'lib'`,
+      },
+      {
+        module: { rules: [{ test: /lib\.js$/, sideEffects: false }] },
+        optimization: {
+          splitChunks: {
+            minSize: 0,
+            cacheGroups: {
+              default: false,
+              defaultVendors: false,
+              vendor: {
+                name: 'vendor',
+                test: /lib\.js$/,
+                chunks: 'all',
+                enforce: true,
+              },
+            },
+          },
+        },
+      },
+    )
+
+    expect(clientBuild.chunksByFileName.get('alpha.js')?.imports).toEqual([
+      'vendor.js',
+    ])
+  })
+
   test('uses a dependency in the parent group without importing its copy in another entry', async () => {
     const { clientBuild } = await buildClientFixture(
       {
@@ -493,6 +530,77 @@ describe('normalizeRspackClientBuild', () => {
     ])
     expect(clientBuild.chunksByFileName.get('alpha.js')?.imports).toEqual([
       'index.js',
+    ])
+  })
+
+  // #8780: a chunk of a module two routes share must not import either
+  // route's chunk for a module duplicated into each of them (a chunk is a
+  // dependency only when every group of the shared chunk has it).
+  test('does not import a sibling route chunk through a module duplicated into each route', async () => {
+    const { clientBuild, directory } = await buildClientFixture(
+      {
+        'index.js': `
+          globalThis.routes = [
+            () => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component'),
+            () => import(/* webpackChunkName: "beta" */ './beta.js?tsr-split=component'),
+          ]
+        `,
+        'alpha.js': `
+          import { shared } from './shared.js'
+          import './alpha.css'
+          export const render = () => shared() + 'alpha'
+        `,
+        'beta.js': `
+          import { shared } from './shared.js'
+          import './beta.css'
+          export const render = () => shared() + 'beta'
+        `,
+        'shared.js': `import { widget } from './widget.js'; export const shared = () => widget()`,
+        'widget.js': `export const widget = () => 'widget'`,
+        'alpha.css': '.alpha { color: red; }',
+        'beta.css': '.beta { color: blue; }',
+      },
+      {
+        optimization: {
+          splitChunks: {
+            minSize: 0,
+            cacheGroups: {
+              default: false,
+              defaultVendors: false,
+              shared: {
+                name: 'shared',
+                test: /shared\.js$/,
+                chunks: 'async',
+                enforce: true,
+              },
+            },
+          },
+        },
+      },
+    )
+
+    expect(clientBuild.chunksByFileName.get('shared.js')?.imports).toEqual([])
+    const manifest = buildStartManifest({
+      clientBuild,
+      basePath: '/',
+      routeTreeRoutes: {
+        __root__: {
+          filePath: join(directory, 'root.js'),
+          children: ['/alpha', '/beta'],
+        },
+        '/alpha': { filePath: join(directory, 'alpha.js') },
+        '/beta': { filePath: join(directory, 'beta.js') },
+      },
+    })
+    expect(manifest.routes['/alpha']?.css).toEqual(['/alpha.css'])
+    expect(manifest.routes['/alpha']?.preloads).toEqual([
+      '/alpha.js',
+      '/shared.js',
+    ])
+    expect(manifest.routes['/beta']?.css).toEqual(['/beta.css'])
+    expect(manifest.routes['/beta']?.preloads).toEqual([
+      '/beta.js',
+      '/shared.js',
     ])
   })
 

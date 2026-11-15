@@ -255,6 +255,7 @@ export function handleCreateServerFn(
     const functionId = context.generateFunctionId({
       filename: relativeFilename,
       functionName,
+      variableName: existingVariableName,
       extractedFilename,
     })
 

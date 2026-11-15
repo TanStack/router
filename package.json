@@ -5,17 +5,17 @@
     "type": "git",
     "url": "git+https://github.com/TanStack/router.git"
   },
-  "packageManager": "pnpm@11.21.0",
+  "packageManager": "pnpm@12.18.0",
   "engines": {
-    "pnpm": ">=11.21.0"
+    "pnpm": ">=12.18.0"
   },
   "type": "module",
   "scripts": {
     "cleanNodeModules": "pnpm -r exec rm -rf node_modules",
     "clean": "pnpm --filter \"./packages/**\" run clean",
     "test": "pnpm run test:ci",
-    "test:pr": "nx affected --targets=test:eslint,test:unit,test:e2e,test:types,test:build,build",
-    "test:ci": "nx run-many --targets=test:eslint,test:unit,test:e2e,test:types,test:build,build",
+    "test:pr": "nx affected --targets=test:eslint,test:unit,test:integration,test:e2e,test:types,test:build,build",
+    "test:ci": "nx run-many --targets=test:eslint,test:unit,test:integration,test:e2e,test:types,test:build,build",
     "test:eslint": "nx affected --target=test:eslint --exclude=examples/**,e2e/**",
     "test:unit": "nx affected --target=test:unit --exclude=examples/**,e2e/**",
     "test:unit:dev": "pnpm run test:unit && nx watch --all -- pnpm run test:unit",
@@ -65,7 +65,7 @@
   "devDependencies": {
     "@changesets/changelog-github": "^0.7.0",
     "@changesets/cli": "^2.30.0",
-    "@nx/devkit": "23.2.0",
+    "@nx/devkit": "24.0.0",
     "@playwright/test": "catalog:",
     "@swc-node/register": "^1.11.1",
     "@tanstack/eslint-config": "0.4.0",
@@ -73,7 +73,7 @@
     "eslint": "catalog:",
     "eslint-plugin-unused-imports": "^4.1.4",
     "markdown-link-extractor": "^4.0.3",
-    "nx": "23.2.0",
+    "nx": "24.0.0",
     "prettier": "^3.8.0",
     "tinyglobby": "^0.2.15",
     "typescript": "npm:@typescript/typescript6@^6.0.2",

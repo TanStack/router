@@ -4,7 +4,9 @@ import type * as t from '@babel/types'
 
 /**
  * Emits HMR accept code for Vite / native ESM HMR: `import.meta.hot.accept`
- * with a callback that receives the freshly re-imported module.
+ * with a callback that receives the freshly re-imported module. Vite makes the
+ * module a hot boundary only when the code spells `import.meta.hot.accept(`
+ * out, so the call must not go through an alias.
  *
  * `targetFramework` is currently unused — Vite's framework-specific fast-refresh
  * plugins handle component body patching via their own accept boundaries — but
@@ -26,8 +28,7 @@ export function createViteHmrStatement(
     template.statement(
       `
 if (import.meta.hot) {
-  const hot = import.meta.hot
-  const hotData = hot.data ??= {}
+  const hotData = import.meta.hot.data ??= {}
   const handleRouteUpdate = ${handleRouteUpdateCode}
   const initialRouteId = ${routeIdFallback} ?? hotData['tsr-route-id']
   if (initialRouteId) {
@@ -41,7 +42,7 @@ if (import.meta.hot) {
     handleRouteUpdate(initialRouteId, Route)
     hotData['tsr-route-update-handled'] = Route
   }
-  hot.accept((newModule) => {
+  import.meta.hot.accept((newModule) => {
     if (Route && newModule && newModule.Route) {
       const routeId = hotData['tsr-route-id'] ?? ${routeIdFallback}
       if (routeId) {

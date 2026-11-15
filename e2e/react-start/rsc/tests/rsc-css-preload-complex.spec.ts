@@ -116,15 +116,16 @@ test.describe('RSC Complex CSS Preload Tests', () => {
   test('CSS module classes are scoped for all widgets', async ({ page }) => {
     await page.goto('/rsc-css-preload-complex')
 
-    // Widget A classes should be hashed (accept Vite `_widget_xxx` or Rspack `widget-xxx` scoped names)
+    // Widget A classes should be hashed (accept Vite `_widget_xxx`, Rspack
+    // `widget-xxx`, and Rsbuild dev `src-...-module__widget-xxx` scoped names)
     const widgetA = page.locator('[data-testid="client-widget-a"]')
     const widgetAClass = await widgetA.getAttribute('class')
-    expect(widgetAClass).toMatch(/(^|\s)(_widget_|widget[-_])[\w-]+/)
+    expect(widgetAClass).toMatch(/(^|\s|__)(_widget_|widget[-_])[\w-]+/)
 
     // Widget B classes should be hashed
     const widgetB = page.locator('[data-testid="client-widget-b"]')
     const widgetBClass = await widgetB.getAttribute('class')
-    expect(widgetBClass).toMatch(/(^|\s)(_widget_|widget[-_])[\w-]+/)
+    expect(widgetBClass).toMatch(/(^|\s|__)(_widget_|widget[-_])[\w-]+/)
 
     // Classes should be different (different modules)
     expect(widgetAClass).not.toBe(widgetBClass)

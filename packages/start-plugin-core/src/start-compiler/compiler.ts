@@ -16,6 +16,11 @@ import { handleCreateIsomorphicFn } from './handleCreateIsomorphicFn'
 import { handleEnvOnlyFn } from './handleEnvOnly'
 import { handleClientOnlyJSX } from './handleClientOnlyJSX'
 import { cleanId } from './utils'
+import {
+  customIdCheck,
+  customIdError,
+  customIdWarning,
+} from './server-fn-id-check'
 import type {
   CompilationContext,
   DevServerFnModuleSpecifierEncoder,
@@ -631,11 +636,15 @@ export class StartCompiler {
    * In dev mode, uses a base64-encoded JSON with file path and export name.
    * In build mode, uses SHA256 hash or custom generator.
    */
-  private generateFunctionId(opts: {
-    filename: string
-    functionName: string
-    extractedFilename: string
-  }): string {
+  private generateFunctionId(
+    opts: {
+      filename: string
+      functionName: string
+      variableName: string
+      extractedFilename: string
+    },
+    warn: ((message: string) => void) | undefined,
+  ): string {
     if (this.mode === 'dev') {
       // In dev, encode the file path and export name for direct lookup.
       // Each bundler adapter supplies its own strategy for encoding
@@ -673,11 +682,25 @@ export class StartCompiler {
         functionId = knownFn.functionId
       }
 
-      if (this.options.generateFunctionId) {
-        functionId ??= this.options.generateFunctionId({
+      if (functionId === undefined && this.options.generateFunctionId) {
+        functionId = this.options.generateFunctionId({
           filename: opts.filename,
           functionName: opts.functionName,
         })
+        if (functionId) {
+          const subject = {
+            name: opts.variableName,
+            functionName: opts.functionName,
+            rootRel: opts.filename,
+          }
+          const check = customIdCheck(functionId)
+          if (check === 'error') {
+            throw new Error(customIdError(subject, functionId))
+          }
+          if (check === 'deprecated') {
+            warn?.(customIdWarning(subject, functionId))
+          }
+        }
       }
       if (!functionId) {
         functionId = crypto.createHash('sha256').update(entryId).digest('hex')
@@ -1400,7 +1423,7 @@ export class StartCompiler {
           })(),
         warn: warnFn,
 
-        generateFunctionId: (opts) => this.generateFunctionId(opts),
+        generateFunctionId: (opts) => this.generateFunctionId(opts, warnFn),
         getKnownServerFns: this.options.getKnownServerFns,
         serverFnProviderModuleDirectives:
           this.options.serverFnProviderModuleDirectives,
