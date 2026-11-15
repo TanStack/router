@@ -4,7 +4,9 @@
  * server bundle run by Start's own server entry inside a real request):
  * the modules only handlers import load on the first call, like main, and
  * nothing a server fn module evaluates runs twice, whether server code calls
- * the fn directly or a page calls it over HTTP.
+ * the fn directly or a page calls it over HTTP, except what main's provider
+ * copy of the module runs again: the handler module copies what its
+ * handlers read from the module, with the statements naming it (R156).
  * Source: the real-app differential corpus (lbogerd/tictaak-start: a route
  * file whose handlers import the database module, which throws at load
  * without DATABASE_URL); issue #6451 (concurrent first calls of a server fn
@@ -215,8 +217,12 @@ return {
     timeout,
   )
 
+  // R156 (amends R66): the handler module has its own copy of the state its
+  // handlers read, as main's provider copy of the module has: the module's
+  // writes are not what the handlers read, and theirs not what the module
+  // reads (main's second instance), whether called directly or over HTTP
   test(
-    "SSR: a handler reads the module's current state, and a handler's writes are what the module reads",
+    'SSR: handlers read and write the copy of the module state their handler module holds, as on main',
     async () => {
       const { result } = await build.ssr
         .run(`${callByIdPrelude}entry.setLabel('changed')
@@ -226,9 +232,9 @@ await entry.bump()
 await callById(serverFnId(entry.bump))
 return { label, overHttp, count: entry.readCount() }`)
       expect(result).toEqual({
-        label: 'changed',
-        overHttp: 'changed',
-        count: 2,
+        label: 'initial',
+        overHttp: 'initial',
+        count: 0,
       })
     },
     timeout,
@@ -248,10 +254,14 @@ return { label, overHttp, count: entry.readCount() }`)
     timeout,
   )
 
-  // G3, DECISIONS R29/R31: either may run at load or at the first call,
-  // both at the same time
+  // main's timing (R153 supersedes R29/R31's "both at the same time"; R156):
+  // the statement assigning the state stays in the module and runs at load
+  // (R154), and again in the handler module's copy at the first call; the
+  // declaration only handlers read runs in the handler module, at the first
+  // call, once. main: the same (its module drops the declaration and keeps
+  // the statement, its provider copy runs both)
   test(
-    'SSR: an effect setting state only handlers read runs at the same time, written in its declaration or after it',
+    'SSR: an effect setting state only handlers read runs as on main, in its declaration or after it',
     async () => {
       const { result } = await build.ssr
         .run(`${callByIdPrelude}const atLoad = [...globalThis.seeded]
@@ -268,8 +278,8 @@ return { atLoad, values, after: globalThis.seeded }`)
         after: Array<string>
       }
       expect(values).toEqual([1, 1, 1, 5])
-      expect([...after].sort()).toEqual(['assignment', 'initialiser'])
-      expect(atLoad.includes('assignment')).toBe(atLoad.includes('initialiser'))
+      expect(atLoad).toEqual(['assignment'])
+      expect(after).toEqual(['assignment', 'initialiser', 'assignment'])
     },
     timeout,
   )

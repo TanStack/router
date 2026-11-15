@@ -29,10 +29,14 @@
  *   in `main`'s shapes, 1.8); so it copies what the env module does not
  *   keep, also what another chunk copies too. Import specifiers are copied
  *   where they are read.
- * - Another planner's derived output (a server function's, `<Hydrate>`
- *   children's) imports what the env module keeps; what it alone needs moves
- *   there, what several need is one module they import; a provider output
- *   (another layer's instance of the module) copies what it reaches.
+ * - A server function's handler module is a chunk too (R156): it copies
+ *   what it reads that the env module keeps, with the statements naming
+ *   it, as `main`'s provider copy of the file does, and imports nothing of
+ *   the env module (`main`'s copy imports nothing of the file).
+ * - Another planner's derived output (`<Hydrate>` children's) imports what
+ *   the env module keeps; what it alone needs moves there, what several
+ *   need is one module they import; a provider output (another layer's
+ *   instance of the module) copies what it reaches.
  * - A derived output that would assign a binding it imports (`main` fails
  *   such a build: a shared `let`, an `export let`) does not take the root
  *   bringing that code: the root falls back (`Placement.fallbacks`) and its
@@ -128,8 +132,14 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   /** Copied where it is read: an import specifier, a planner's generated import. */
   const isImport = (c: ClusterId) => clusters[c]!.kind === 'import'
 
-  /** What a chunk imports from the env module rather than copying it (`RouteModule.imported`). */
-  const importedFromEnv = (c: ClusterId) =>
+  /**
+   * What a chunk imports from the env module rather than copying it: a split
+   * chunk what `main`'s router splitter imports (`RouteModule.imported`);
+   * a handler module nothing, `main`'s provider being a copy of the whole
+   * file that imports nothing of it (R156).
+   */
+  const importedFromEnv = (c: ClusterId, o: OutputId) =>
+    outputs.get(o)?.kind === 'split' &&
     [...clusters[c]!.declares].some((s) => imported.has(s))
 
   // ---- the env module --------------------------------------------------------
@@ -346,8 +356,15 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
 
   // ---- the derived outputs: what each needs ----------------------------------
   const copying = (o: OutputId) => outputs.get(o)?.kind === 'provider'
-  /** A split chunk: it copies what the env module keeps but `main` would not import. */
-  const isChunk = (o: OutputId) => outputs.get(o)?.kind === 'split'
+  /**
+   * A chunk: a lazy output that copies what the env module keeps but `main`
+   * would not import, with the statements naming it, as `main`'s
+   * counterpart does: a split chunk, and a planner's own lazy module
+   * (`custom`: Start's server-fn handler module, which `main` makes as a
+   * copy of the file; R156).
+   */
+  const isChunk = (o: OutputId) =>
+    outputs.get(o)?.kind === 'split' || outputs.get(o)?.kind === 'custom'
   /**
    * The imports already unused in the source: an import nothing in the
    * source references, by value or in a type (an export is a use), a bare
@@ -430,7 +447,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         // would run it twice)
         if (
           !isChunk(o) ||
-          importedFromEnv(t) ||
+          importedFromEnv(t, o) ||
           clusters[t]!.kind === 'effect' ||
           (statementsOf.get(t) ?? []).some(
             (st) => clusters[st]!.declares.size > 0,
@@ -469,10 +486,10 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
     return seen
   }
   /**
-   * The outputs of other planners (not copying, not split chunks) reaching
-   * each declaration the env module does not keep: one home, theirs, or a
-   * module the several import. A split chunk copies what it reaches, as on
-   * `main`; it is a home only of what no other output needs.
+   * The outputs of other planners (not copying, not chunks) reaching each
+   * declaration the env module does not keep: one home, theirs, or a module
+   * the several import. A chunk copies what it reaches, as on `main`; it is
+   * a home only of what no other output needs.
    */
   const needers = new Map<ClusterId, Set<OutputId>>()
   const reached = new Map<OutputId, Set<ClusterId>>()

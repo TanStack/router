@@ -120,9 +120,10 @@ per-output read walk (`readIndex`):
   shared module per file (`?tsr-split=shared---<keys>`, main's `?tsr-shared=1`): the env module and the chunks import
   them, the env module re-exports the exported ones; one code outside the set assigns (a chunk, the env module,
   another planner's output), or one reading a declaration outside it, leaves the set and is placed like any other (one
-  fixed point). Import specifiers are copied where read. Start's outputs in a
-  route file (Hydrate chunks, the server-fn handler module) import what the env module keeps, and what several of them
-  need is one module they import; a provider output copies what it reaches.
+  fixed point). Import specifiers are copied where read. A server-fn handler module is
+  a chunk too (R156): it copies what the env module keeps, with the statements naming it, and imports nothing of it
+  (main's provider is a copy of the whole file). Hydrate chunks in a route file import what the env module keeps,
+  and what several of them need is one module they import; a provider output copies what it reaches.
 - **code already unused**: an import nothing in the source references, a bare `import './polyfill'` included, moves
   to the shared module when the env module imports it (statically, first), in source order with the shared module's
   own imports: it runs at the same point, once, and a module a shared declaration reads still runs after a bare import
