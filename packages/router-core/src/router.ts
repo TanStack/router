@@ -1498,7 +1498,7 @@ export class RouterCore<
       url.search = searchStr
 
       return {
-        href: url.href.replace(url.origin, ''),
+        href: getUrlPath(url),
         publicHref: href,
         // An input rewrite can expose a path like "//evil.example".
         // Normalize it to "/evil.example" to keep it on the current origin.

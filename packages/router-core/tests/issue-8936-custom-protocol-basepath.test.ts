@@ -31,6 +31,7 @@ describe('basepath on a custom-protocol origin', () => {
       const router = setup(origin)
 
       expect(router.latestLocation).toMatchObject({
+        href: '/',
         pathname: '/',
         publicHref: '/app-x/',
         external: false,
