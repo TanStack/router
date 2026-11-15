@@ -273,6 +273,44 @@ function Page() {
 }
 export const Route = createFileRoute('/nested')({ component: Page })
 `,
+  // the same with a middleware: the hoisted chain is lazy too (R159), its
+  // middleware's module loads with the chunk, the handler's at the call
+  'nested-mw.ts': `${counted('MARK_NESTED_MW')}import { createMiddleware } from '@tanstack/react-start'
+export const nestedMw = createMiddleware({ type: 'function' }).server(async ({ next }) => next())
+`,
+  'nested-mw-dep.server.ts': counted(
+    'MARK_NESTED_MW_DEP',
+    `'MARK_NESTED_MW_DEP'`,
+  ),
+  'src/routes/nested-mw.tsx': `import { createFileRoute } from '@tanstack/react-router'
+${head}import { nestedMw } from '../../nested-mw'
+import { value } from '../../nested-mw-dep.server'
+function Page() {
+  const load = createServerFn().middleware([nestedMw]).handler(async () => value)
+  ;(globalThis as any).__nestedMwLoad = load
+  return 'MARK_NESTED_MW_PAGE'
+}
+export const Route = createFileRoute('/nested-mw')({ component: Page })
+`,
+  // a top-level statement names a server fn the split component calls: the
+  // file holds it; one instance answers the chunk's calls and HTTP calls
+  'register.ts': `export const register = (fn: unknown) => {
+  ;((globalThis as any).REGISTERED ??= []).push(typeof fn)
+}
+`,
+  'src/routes/registered.tsx': `import { createFileRoute } from '@tanstack/react-router'
+${head}import { register } from '../../register'
+let seen = 0
+const save = createServerFn({ method: 'POST' })
+  .validator(() => ({ n: ++seen }))
+  .handler(({ data }) => data.n)
+register(save)
+export const Route = createFileRoute('/registered')({ component: Page })
+function Page() {
+  ;(globalThis as any).__registered = save
+  return 'MARK_REGISTERED_PAGE'
+}
+`,
   // a route whose loader and split component both call a server fn whose
   // handler alone reads a module-level declaration (jsedlacek/knihovna
   // `$authorSlug.tsx`'s `log`; the route module reads `PAGE_SIZE`, which the
@@ -650,6 +688,56 @@ return {
         overHttp: 'MARK_ROUTE_DEP',
         after: { route_dep: 1 },
       })
+    },
+    timeout,
+  )
+
+  test(
+    "SSR (R159): a server fn nested in a route's split component, with a middleware: nothing loads at server start, the middleware with the chunk, the handler's module at the first call",
+    async () => {
+      const { result } = await build.ssr
+        .run(`${callByIdPrelude}const marks = () => ({
+  mw: globalThis.MARK_NESTED_MW ?? 0,
+  dep: globalThis.MARK_NESTED_MW_DEP ?? 0,
+})
+const atStart = marks()
+const { routeTree } = entry.getRouter()
+const rendered = (await entry.renderPath(routeTree, '/nested-mw')).includes('MARK_NESTED_MW_PAGE')
+const afterRender = marks()
+const load = globalThis.__nestedMwLoad
+return {
+  atStart,
+  rendered,
+  afterRender,
+  called: await load(),
+  overHttp: await callById(serverFnId(load)),
+  end: marks(),
+}`)
+      expect(result).toEqual({
+        atStart: { mw: 0, dep: 0 },
+        rendered: true,
+        afterRender: { mw: 1, dep: 0 },
+        called: 'MARK_NESTED_MW_DEP',
+        overHttp: 'MARK_NESTED_MW_DEP',
+        end: { mw: 1, dep: 1 },
+      })
+    },
+    timeout,
+  )
+
+  test(
+    'SSR: a server fn a top-level statement names and the split component calls has one instance: 1 2 3 4',
+    async () => {
+      const { result } = await build.ssr
+        .run(`${callByIdPrelude}const { routeTree } = entry.getRouter()
+await entry.renderPath(routeTree, '/registered')
+const save = globalThis.__registered
+const calls = [await save({ data: {} })]
+calls.push(await callById(serverFnId(save), {}, 'POST'))
+calls.push(await callById(serverFnId(save), {}, 'POST'))
+calls.push(await save({ data: {} }))
+return calls`)
+      expect(result).toEqual([1, 2, 3, 4])
     },
     timeout,
   )
