@@ -633,7 +633,8 @@ function planStartEnv(
     return { out: handlerOut!, load: handlerLoad }
   }
 
-  // ---- 1. link stripping on the client (serverFn validators, middleware server/validator)
+  // ---- 1. link stripping on the client (serverFn validators, middleware server/validator) and
+  // in a lazy provider's split chunks (serverFn validators: the caller copies, R159)
   for (const chain of analysis.chains) {
     if (chain.unsupported) {
       continue
@@ -666,6 +667,15 @@ function planStartEnv(
           range: { start: link.member.object.end, end: link.call.end },
           body: [],
           scope: 'all-outputs',
+          by,
+        })
+      } else if (provider === 'lazy' && recv.kind === 'serverFn') {
+        // R159 rule 2: a split chunk's caller copy has no validator (it
+        // runs in the server phase only), as the client's copy
+        rewrites.placeholder({
+          range: { start: link.member.object.end, end: link.call.end },
+          body: [],
+          scope: { kinds: ['split'] },
           by,
         })
       }
