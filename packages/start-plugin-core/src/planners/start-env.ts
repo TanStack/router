@@ -1061,17 +1061,15 @@ function planStartEnv(
       home,
       by,
     })
-    // R158 rule 1: the file holds a server fn only when its own code names
-    // it; the lazy module re-exports the wrapper, the registry's one root
-    const caller =
-      provider === 'lazy' &&
-      site.topLevelUnit?.node.type === 'VariableDeclarator'
-    if (!providerOut && !caller) {
+    if (provider === 'file') {
+      // (the registry imports the file itself)
       ctx.addRoot('env', { t: 'gen', id: gen })
     }
     if (provider === 'lazy') {
+      // R158 rules 1 and 3: the lazy module re-exports the wrapper, the
+      // registry's one root; the file holds the server fn only when its own
+      // code names it
       const out = handlerOutput()
-      // the registry's module: the lazy module re-exports the wrapper
       ctx.addRoot(out, {
         t: 'gen',
         id: rewrites.addGenerated({
@@ -1085,8 +1083,6 @@ function planStartEnv(
           by,
         }),
       })
-    }
-    if (caller) {
       // R159 rule 2: a split chunk's copy of a server fn is a caller (the
       // user's chain, its handler an RPC through the registry to the one
       // executing instance), as the client's copy and `main`'s chunk

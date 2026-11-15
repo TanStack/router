@@ -814,7 +814,6 @@ export function makeFns() {
     )
     expectValid(r.code)
     expect(r.code).not.toContain('./db.server')
-    expect(r.code).toContain('?tss-serverfn-handler')
     const h = await r.derived(HANDLER_ID)
     expectValid(h)
     expect(h).toContain(`from './db.server'`)

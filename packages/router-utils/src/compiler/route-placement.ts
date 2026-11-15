@@ -30,12 +30,8 @@
  *   transitively; `main`'s second instance, in `main`'s shapes, 1.8); so it
  *   copies what the env module does not keep, also what another chunk
  *   copies too. Import specifiers are copied where they are read.
- * - Every chunk imports a declaration the env module keeps that a generated
- *   unit rooted in the env module or in a planner's lazy module names
- *   (Start's in-place server-fn provider): the env module's one instance, as
- *   `main` has one (`namedByEnvRoots`). Where the env module does not keep
- *   it, a chunk copies it, rendering it as its planner renders it in split
- *   chunks (a `{ kinds }` scope: Start's stub of a server fn, R158).
+ * - A planner renders its text in split chunks with a `{ kinds }` scope
+ *   (Start's caller copy of a server fn, R159).
  * - Another planner's derived output (a server function's handler module,
  *   `<Hydrate>` children's) imports what the env module keeps; what it
  *   alone needs moves there, what several need is one module they import;
@@ -52,7 +48,7 @@
  *   planner keeps it in place.
  */
 import { deriveId } from './identity'
-import { buildClusters, symRefsOf } from './placement/clusters'
+import { buildClusters } from './placement/clusters'
 import { readIndex } from './placement/reads'
 import { readFromRemoved } from './placement/roots'
 import type { ClusterId } from './placement/clusters'
@@ -143,8 +139,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
 
   /**
    * What a split chunk imports from the env module rather than copying it,
-   * as `main`'s router splitter does (`RouteModule.imported`). (It imports
-   * what `namedByEnvRoots` holds too: `importsFromEnv`.)
+   * as `main`'s router splitter does (`RouteModule.imported`).
    */
   const importedFromEnv = (c: ClusterId) =>
     [...clusters[c]!.declares].some((s) => imported.has(s))
@@ -525,46 +520,15 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   const declaresInStatement = (st: ClusterId) =>
     [...clusters[st]!.declares].some((d) => t1.symbols.kind(d) !== 'synthetic')
   /**
-   * The declarations the env module keeps that generated code names, where
-   * the env module or a planner's lazy module (`custom`) roots that code
-   * (Start's in-place server-fn provider: `createServerRpc(…, (opts) =>
-   * fn.__executeServer(opts))` in the env module; the lazy module's
-   * re-exports of that wrapper and of the server fn, which the server-fn
-   * registry and the chunks' stubs read, R158): the env module's one
-   * instance of them, set up there. A chunk imports such a
-   * declaration instead of copying it, so it acts on that instance
-   * (`main`'s chunk holds a caller that forwards to its one provider
-   * instance). Only what the generated text itself names (a claim's text,
-   * the source's, is not read here). Where no planner roots generated code
-   * (every client), this is empty.
-   */
-  const namedByEnvRoots = new Set<ClusterId>()
-  for (const r of [
-    ...outputs.get('env')!.roots,
-    ...derived.filter((o) => o.kind === 'custom').flatMap((o) => o.roots),
-  ]) {
-    if (r.t !== 'gen') {
-      continue
-    }
-    for (const s of symRefsOf(gens[r.id]!.body)) {
-      const t = clusterOfSym.get(s)
-      if (t !== undefined && env.has(t) && !isImport(t)) {
-        namedByEnvRoots.add(t)
-      }
-    }
-  }
-  /**
    * What a chunk imports from the env module instead of copying it: what
    * `main` imports (`importedFromEnv`), a statement declaring a name, a
    * declaration such a statement names (`main` deletes that declarator and
-   * runs the statement once), and a declaration a generated unit the env
-   * module roots names (`namedByEnvRoots`). A provider copy imports nothing.
+   * runs the statement once). A provider copy imports nothing.
    */
   const importsFromEnv = (c: ClusterId, o: OutputId) =>
     !copying(o) &&
     isChunk(o) &&
     (importedFromEnv(c) ||
-      namedByEnvRoots.has(c) ||
       (clusters[c]!.kind === 'effect' && declaresInStatement(c)) ||
       (statementsOf.get(c) ?? []).some(declaresInStatement))
   const reachingCode = new Map<string, Array<ClusterId>>()
