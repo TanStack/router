@@ -24,8 +24,9 @@ function StreamRoute() {
   let reader: ReadableStreamDefaultReader | undefined
 
   createEffect(
-    () => data().stream,
-    (stream) => {
+    // Solid 2 would consume a stream returned directly as an async source.
+    () => ({ stream: data().stream }),
+    ({ stream }) => {
       if (stream.locked) {
         return
       }

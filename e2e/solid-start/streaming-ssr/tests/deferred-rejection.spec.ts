@@ -1,1 +1,21 @@
-import '../../../streaming-ssr-specs/deferred-rejection'
+import { expect, test } from '../../../streaming-ssr-assertions'
+
+test.use({
+  whitelistErrors: ['Error in deferred object'],
+})
+
+// Solid 2 masks a streamed server error's message in production, so only the boundary is asserted.
+test('rejected deferred Await renders the route error boundary without killing SSR', async ({
+  page,
+}) => {
+  await page.goto('/deferred-rejection')
+
+  await expect(page.getByTestId('deferred-error-boundary')).toBeVisible({
+    timeout: 5000,
+  })
+
+  await page.goto('/sync-only')
+  await expect(page.getByTestId('sync-message')).toContainText(
+    'Hello from sync loader!',
+  )
+})
