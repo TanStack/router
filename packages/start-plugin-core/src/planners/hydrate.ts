@@ -571,31 +571,6 @@ function plan(ctx: PlanContext<typeof HYDRATE_PLANNER>): void {
       )
     }
   }
-  if (planned.size > 0) {
-    extractExports(ctx)
-  }
-}
-
-/**
- * Extracted-export outputs for Hydrate chunks, as for split routes (J5.4 "an
- * export only the children use loads lazily"): every exported binding may
- * leave for an extracted-export output (`?tsr-split=export---<name>`, side-effect
- * free), which the parent re-exports; the core moves a pure, unwritten
- * declaration there only when the parent itself does not read it and a chunk
- * needs it (the chunk copies it when the copy is functions and primitives
- * nothing writes, else imports it from there; in dev the declaration stays in
- * the parent: `placement/settle.ts`), so a component a boundary renders and nothing
- * else imports is not in the eager code. (A route file is placed by
- * `route-placement.ts`, which extracts nothing: an export stays in the route
- * module, R153.)
- */
-function extractExports(ctx: PlanContext): void {
-  for (const e of ctx.analysis.exports) {
-    if (e.kind !== 'local' || e.local === null || e.typeOnly) {
-      continue
-    }
-    ctx.extractExport(e.local, e.name)
-  }
 }
 
 /**
