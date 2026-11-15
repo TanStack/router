@@ -34,7 +34,7 @@ export type EditScope =
   | 'all-outputs'
   | ReadonlyArray<OutputId>
   | { readonly except: ReadonlyArray<OutputId> }
-  /** The outputs of these kinds (a planner's text for outputs another planner declares: Start's stub of a server fn in split chunks). */
+  /** The outputs of these kinds (a planner's text for outputs another planner declares: Start's caller copy of a server fn in split chunks). */
   | { readonly kinds: ReadonlyArray<OutputKind> }
 export type RefTarget =
   | { sym: SymbolId }

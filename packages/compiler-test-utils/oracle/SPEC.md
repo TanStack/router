@@ -576,7 +576,13 @@ dir)` is not a conflict by itself.
   instance, R157): a lazy handler module imports what the module keeps; a declaration only handlers reach moves to it
   and runs at the first call, unless evaluating it reads, by name and transitively, something the module keeps (then
   it stays and runs at load, as in the source; a declaration that is exactly a function always moves); a handler
-  assigning a binding the module keeps stays in place. In a production
+  assigning a binding the module keeps stays in place. With SSR as the provider, the module (or a route's shared
+  module) holds a server fn only when its own remaining code names it; otherwise the lazy handler module holds it,
+  chain included, and the registry always names the lazy module (R158). A split route chunk imports a server fn where
+  `main` imports it (an export) and otherwise holds a caller copy (R159): the chain as written, its `.middleware(…)`
+  kept (a middleware's `.client()` half runs where the call is made), its `.validator(…)` links gone, and
+  `createSsrRpc(id)` as its handler, so its calls reach the one executing instance through the registry, whatever
+  builder, factory or options the chain starts from. In a production
   build, only server functions the client references are HTTP-callable: a function no client code references must
   not answer a direct HTTP call by id. What the compile adds to the defining module's exports is unique to that file, so
   server functions of several modules behind one `export *` barrel build and run without a conflicting name, also

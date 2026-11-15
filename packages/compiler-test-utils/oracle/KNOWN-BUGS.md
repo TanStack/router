@@ -154,6 +154,18 @@ code.test.ts`: "a root route's components load with the route module" (Vite and 
   compilation no longer holds (`served-demand.test.ts`). No test of the Vite dev outcome: it is the limit itself, and
   a test would pin it.
 
+- **A split chunk's caller copy of a server fn differs from the source as `main`'s chunk does** (R159; SSR as the
+  provider). A server fn only a split component names lives in the module's lazy server module (its one executing
+  instance); the chunk holds a caller copy (the chain with its middleware, without its validator, `createSsrRpc(id)`
+  as its handler). Three differences from the source, each `main`'s: (1) the copy evaluates the chain's root and its
+  `.middleware(…)` argument again when the chunk loads (a factory call `makeFn()` or an effect there runs once in the
+  chunk and once in the lazy module); (2) a middleware's `.client()` half runs in the copy, so state it shares with
+  its own `.server()` half is that of the copy's evaluation when the middleware module is not one both import; (3) a
+  top-level statement naming a server fn the module keeps (`register(save)`) runs again in a chunk that copies it.
+  Values of the server fn itself are the source's (one executing instance): `start-plugin-core/tests/integration/
+start-build-lazy-handlers.test.ts`, "SSR (R159) %s: …" and "SSR: a server fn a top-level statement names and the
+  split component calls has one instance: 1 2 3 4". No test holds the three differences: they are the limit itself.
+
 ## Fixed, kept as regression tests
 
 ### Shared causes (several jobs)

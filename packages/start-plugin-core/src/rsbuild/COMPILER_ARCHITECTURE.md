@@ -72,12 +72,16 @@ its child compilations (done during `make`), and the
 resolver virtual module is rewritten;
 at stage −10 the resolver module itself is rebuilt while its content changes (`server-fn-resolver-rebuild.ts`). The resolver is a manifest importing each provider module; production builds
 whose SSR environment is the provider list only client-referenced functions (the client compiles first:
-`MultiCompiler.setDependencies`). When the SSR environment is the provider, a module defining server functions keeps
-their chains and `createServerRpc` exports, and its handlers move into its `?tss-serverfn-handler` derived module,
-which it imports once on the first call (direct or through the resolver): what only handlers read loads then, but a
-declaration whose evaluation reads, by name, something the module keeps, which stays and runs at load; what the
-module keeps is imported back (one instance, R157). A handler that assigns a binding the module keeps, and the
-handlers of a module that awaits at its top level, stay in place. Custom ids (`generateFunctionId`) are placeholders in the outputs, allocated per
+`MultiCompiler.setDependencies`). When the SSR environment is the provider, every module defining server functions
+has a `?tss-serverfn-handler` derived module (its lazy module), which the resolver imports and which re-exports each
+server function's `createServerRpc` wrapper (R158). The module keeps a server function's chain only when its own
+remaining code names it; otherwise the lazy module holds the chain. Handlers move into the lazy module, loaded once on
+the first call (direct or through the resolver): what only handlers read loads then, but a declaration whose
+evaluation reads, by name, something the module keeps stays and runs at load; what the module keeps is imported back
+(one instance, R157). A handler that assigns a binding the module keeps, and the handlers of a module that awaits at
+its top level, stay in place. A split route chunk's copy of a server function is a caller (R159): the chain with its
+middleware and without its validator, `createSsrRpc(id)` as its handler, calling the one instance through the
+resolver. Custom ids (`generateFunctionId`) are placeholders in the outputs, allocated per
 rank (client first) and patched at `processAssets` before minification.
 
 ## Import protection

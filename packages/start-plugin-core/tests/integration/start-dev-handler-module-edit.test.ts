@@ -10,7 +10,10 @@
  * registry reaches through the module's lazy module (R158 rule 3). A server
  * fn only a split component calls, on a builder imported from another module
  * (R159: the chunk holds a caller copy, the lazy module the one instance):
- * edits of the builder's module and of the handler reach HTTP calls. On
+ * edits of the builder's module and of the handler reach HTTP calls. A
+ * server fn nested in a plain file's exported function, which the file names
+ * (R159: hoisted into a module the file and its lazy module import): an edit
+ * of its handler reaches server code and HTTP calls. On
  * Vite's and Rsbuild's dev servers.
  */
 import { describe, expect, onTestFinished, test } from 'vitest'
@@ -88,6 +91,36 @@ function Page() {
 }
 `
 
+/**
+ * `src/nested-fns.ts`: a server fn nested in an exported function of a plain
+ * file, hoisted on the server; the file names it, so it lives in a module the
+ * file and its lazy module import (R159); `mark` is the handler's.
+ */
+const nestedFns = (mark: string) =>
+  `import { createServerFn } from '@tanstack/react-start'
+export function makeNested() {
+  const nested = createServerFn().handler(() => 'N:${mark}')
+  return nested
+}
+`
+
+/** `src/routes/nested-dev.tsx`: the loader (server render) and a button (HTTP) call the nested server fn. */
+const nestedRoute = `import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { makeNested } from '../nested-fns'
+const nested = makeNested()
+export const Route = createFileRoute('/nested-dev')({ loader: () => nested(), component: Page })
+function Page() {
+  const [text, setText] = useState('idle')
+  return (
+    <>
+      <p data-testid="nested-loader">{'loader=' + Route.useLoaderData()}</p>
+      <button data-testid="nested-probe" onClick={async () => setText('client=' + (await nested()))}>{text}</button>
+    </>
+  )
+}
+`
+
 /** `src/lib-builder.ts`: a builder whose middleware gives the handler `mark`. */
 const libBuilder = (mark: string) =>
   `import { createMiddleware, createServerFn } from '@tanstack/react-start'
@@ -114,6 +147,8 @@ function Page() {
 `
 
 const files = {
+  'src/nested-fns.ts': nestedFns('H1'),
+  'src/routes/nested-dev.tsx': nestedRoute,
   'src/lib-builder.ts': libBuilder('B1'),
   'src/routes/built.tsx': builtRoute('H1'),
   'src/stop-schema.ts': stopSchema('S1'),
@@ -251,6 +286,55 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
       await reaches('client=S2/H1')
       await server.edit({ 'src/routes/stubbed.tsx': lazyRoute('H2') })
       await reaches('client=S2/H2')
+    },
+    timeout,
+  )
+
+  test(
+    'a hoisted server fn a plain file names: an edit of its handler reaches server code and HTTP calls (R159)',
+    async () => {
+      const server = await servers[bundler]!()
+      const url = `${server.url}nested-dev`
+      /** The server render's loader value, once it is `expected`. */
+      const rendered = async (expected: string) => {
+        let last = ''
+        await waitForOutcome({
+          applied: async () =>
+            (last = await (await fetch(url)).text()).includes(
+              `loader=${expected}`,
+            ),
+          timeout: 10_000,
+          describe: () => `the server render: ${last.slice(0, 400)}`,
+        })
+      }
+      /** A client call over HTTP from a fresh page, once it gives `expected`. */
+      const reaches = async (expected: string) => {
+        let last = ''
+        await waitForOutcome({
+          applied: async () => {
+            const page = await openPage(url, {
+              registerCleanup: onTestFinished,
+            })
+            await page.waitForText('hydrated', {
+              selector: '[data-testid=hydrated]',
+            })
+            await page.page.locator('[data-testid=nested-probe]').click()
+            await page.waitForText(/client=/, {
+              selector: '[data-testid=nested-probe]',
+            })
+            last = await page.text('[data-testid=nested-probe]')
+            return last === expected
+          },
+          timeout: 15_000,
+          describe: () => `the HTTP call: ${last}`,
+        })
+      }
+
+      await rendered('N:H1')
+      await reaches('client=N:H1')
+      await server.edit({ 'src/nested-fns.ts': nestedFns('H2') })
+      await rendered('N:H2')
+      await reaches('client=N:H2')
     },
     timeout,
   )

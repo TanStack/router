@@ -760,8 +760,8 @@ function planStartEnv(
   // module.
   const lazySites = new Set<ServerFnSite>()
   if (role === 'provider' && !providerOut && sites.length > 0) {
-    // a lazy handler module and a split chunk import the server fns from
-    // the file (the in-place provider's one instance) through glue exports
+    // the lazy handler module (and a shared module placement creates)
+    // imports what the file keeps through glue exports
     ctx.tagGlueExports(tagOfFile())
   }
   if (
