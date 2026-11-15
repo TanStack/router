@@ -126,7 +126,10 @@ per-output read walk (`readIndex`):
   another planner's output), or one reading a declaration outside it, leaves the set and is placed like any other (one
   fixed point). Import specifiers are copied where read. A server-fn handler module is
   a chunk too (R156): it copies what the env module keeps, with the top-level code reaching it, and imports nothing of
-  it but a name a statement declares (main's provider is a copy of the whole file). Hydrate chunks in a route file import what the env module keeps,
+  it but a name a statement declares (main's provider is a copy of the whole file). Both kinds of chunk import a
+  declaration a generated unit rooted in the env module names (Start's in-place provider: the `createServerRpc` export
+  naming the server fn, which the registry reads from the file): that is the env module's one instance, as main has one
+  (its chunk's caller forwards to it); where no planner roots such a unit (every client) nothing changes. Hydrate chunks in a route file import what the env module keeps,
   and what several of them need is one module they import; a provider output copies what it reaches.
 - **code already unused**: an import nothing in the source references, a bare `import './polyfill'` included, moves
   to the shared module when the env module imports it (statically, first), in source order with the shared module's
