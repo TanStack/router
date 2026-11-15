@@ -182,6 +182,84 @@ function Page() {
 }
 export const Route = createFileRoute('/nested-class')({ component: Page })
 `,
+  // R158: server fns only a route's split component calls (the route file's
+  // code does not name them) live in the file's lazy module with their
+  // chain, and the chunk calls them through a stub
+  // the route probe (design 2.3): a middleware module, a validator schema
+  // built by a call (an effect in a chain argument) and a handler-only
+  // module, none of which load at server start or with the chunk
+  'probe-mw.ts': `${counted('MARK_PROBE_MW')}import { createMiddleware } from '@tanstack/react-start'
+export const probeMw = createMiddleware({ type: 'function' }).server(async ({ next }) => next())
+`,
+  'probe-schema.ts': `${counted('MARK_PROBE_SCHEMA')}export const buildSchema = () => {
+  ;(globalThis as any).MARK_PROBE_BUILDS = ((globalThis as any).MARK_PROBE_BUILDS ?? 0) + 1
+  return (data: unknown) => data
+}
+`,
+  'probe-db.server.ts': counted('MARK_PROBE_DB', `'MARK_PROBE_DB'`),
+  'src/routes/probe.tsx': `import { createFileRoute } from '@tanstack/react-router'
+${head}import { probeMw } from '../../probe-mw'
+import { buildSchema } from '../../probe-schema'
+import { value } from '../../probe-db.server'
+const save = createServerFn({ method: 'POST' })
+  .middleware([probeMw])
+  .validator(buildSchema())
+  .handler(async () => value)
+export const Route = createFileRoute('/probe')({ component: Page })
+function Page() {
+  ;(globalThis as any).__probeSave = save
+  return 'MARK_PROBE_PAGE'
+}
+`,
+  // what the chain, the handler and the module share: the validator's state
+  // (chain state, validator state), a declaration whose evaluation reads
+  // kept state (`snapshot`, R157 rule 4), a class and a container the
+  // module's own code uses (#8656)
+  'src/routes/shared-state.tsx': `import { createFileRoute } from '@tanstack/react-router'
+${head}let seen = 0
+const next = createServerFn({ method: 'POST' })
+  .validator(() => ({ n: ++seen }))
+  .handler(({ data }) => data.n)
+let calls = 0
+const validated = createServerFn()
+  .validator((data: unknown) => {
+    calls++
+    return data
+  })
+  .handler(() => calls)
+const cfg = { url: 'a' }
+const snapshot = cfg.url
+function set(o: { url: string }) {
+  o.url = 'b'
+}
+set(cfg)
+const snap = createServerFn().handler(async () => snapshot + '/' + cfg.url)
+export class Session {
+  constructor(public id: string) {}
+}
+const store = new Map<string, number>()
+export const remember = () => store.set('k', 1).size
+const make = createServerFn().handler(async () => new Session('a'))
+const size = createServerFn().handler(async () => store.size)
+export const Route = createFileRoute('/shared-state')({ component: Page })
+function Page() {
+  ;(globalThis as any).__shared = { next, validated, snap, make, size }
+  return 'MARK_SHARED_PAGE'
+}
+`,
+  // nickysemenza/cubby `mutation-data.ts`: a server fn only an isomorphic
+  // fn's client side calls, so no server code names it
+  'cubby-contract.ts': `${counted('MARK_CUBBY_CONTRACT')}export const contract = (data: unknown) => data
+`,
+  'cubby.ts': `import { createIsomorphicFn, createServerFn } from '@tanstack/react-start'
+import { contract } from './cubby-contract'
+const hidden = createServerFn({ method: 'POST' })
+  .validator(contract)
+  .handler(async ({ data }) => data)
+export const check = createIsomorphicFn()
+  .server(async (data: unknown) => 'server:' + String(data))
+  .client((data: unknown) => hidden({ data }))
+`,
   'client-entry.ts': `import './seed'
 export * from './fns'
 export * from './writers'
@@ -192,6 +270,8 @@ export const loadTla = () => import('./tla')
 export const loadTlaFor = () => import('./tla-for')
 export { getRouter } from './src/router'
 export { listLogged } from './src/routes/shared-log'
+export { remember, Session } from './src/routes/shared-state'
+export { check } from './cubby'
 `,
   'ssr-entry.ts': `export * from './client-entry'
 export { renderPath } from './harness/render'
@@ -404,6 +484,83 @@ return {
         overHttp: 'route:x:20',
         after: { route_log: 1 },
       })
+    },
+    timeout,
+  )
+
+  test(
+    "SSR (R158): a server fn only a route's split component calls loads nothing at server start or with the chunk; its chain is built once, at the first call",
+    async () => {
+      const { result } = await build.ssr
+        .run(`${callByIdPrelude}const marks = () => ({
+  mw: globalThis.MARK_PROBE_MW ?? 0,
+  schema: globalThis.MARK_PROBE_SCHEMA ?? 0,
+  builds: globalThis.MARK_PROBE_BUILDS ?? 0,
+  db: globalThis.MARK_PROBE_DB ?? 0,
+})
+const atStart = marks()
+const { routeTree } = entry.getRouter()
+const rendered = (await entry.renderPath(routeTree, '/probe')).includes('MARK_PROBE_PAGE')
+const afterRender = marks()
+const save = globalThis.__probeSave
+const called = await save({ data: { id: 'x' } })
+const afterCall = marks()
+const overHttp = await callById(serverFnId(save), { id: 'y' }, 'POST')
+return { atStart, rendered, afterRender, called, afterCall, overHttp, end: marks() }`)
+      const none = { mw: 0, schema: 0, builds: 0, db: 0 }
+      const once = { mw: 1, schema: 1, builds: 1, db: 1 }
+      expect(result).toEqual({
+        atStart: none,
+        rendered: true,
+        afterRender: none,
+        called: 'MARK_PROBE_DB',
+        afterCall: once,
+        overHttp: 'MARK_PROBE_DB',
+        end: once,
+      })
+    },
+    timeout,
+  )
+
+  test(
+    "SSR (R158): server fns only a route's split component calls share the module's state: chain state 1 2 3 4, validator state, a pinned snapshot, #8656's class and container",
+    async () => {
+      const { result } = await build.ssr
+        .run(`${callByIdPrelude}const { routeTree } = entry.getRouter()
+await entry.renderPath(routeTree, '/shared-state')
+const fns = globalThis.__shared
+const http = (fn, data) => callById(serverFnId(fn), data, 'POST')
+const chain = [await fns.next({ data: {} })]
+for (let i = 0; i < 3; i++) {
+  chain.push(await http(fns.next, {}))
+}
+entry.remember()
+const session = await fns.make()
+return {
+  chain,
+  validated: [await fns.validated({ data: 1 }), await callById(serverFnId(fns.validated), 1)],
+  snap: [await fns.snap(), await callById(serverFnId(fns.snap))],
+  session: session instanceof entry.Session,
+  size: [await fns.size(), await callById(serverFnId(fns.size))],
+}`)
+      expect(result).toEqual({
+        chain: [1, 2, 3, 4],
+        validated: [1, 2],
+        snap: ['a/b', 'a/b'],
+        session: true,
+        size: [1, 1],
+      })
+    },
+    timeout,
+  )
+
+  test(
+    'SSR (R158): a server fn only the client side of an isomorphic fn calls loads nothing at server start (cubby)',
+    async () => {
+      const { result } = await build.ssr
+        .run(`const atStart = globalThis.MARK_CUBBY_CONTRACT ?? 0
+return { atStart, server: await entry.check('x'), after: globalThis.MARK_CUBBY_CONTRACT ?? 0 }`)
+      expect(result).toEqual({ atStart: 0, server: 'server:x', after: 0 })
     },
     timeout,
   )
