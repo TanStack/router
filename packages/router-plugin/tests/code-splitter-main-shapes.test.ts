@@ -738,6 +738,49 @@ export const Route = createFileRoute('/')({ ${options} component: Page })
       expect((await route.production()).where('MARK_HELPER')).toBe('lazy')
     },
   )
+
+  // `export default <expression>` is a top-level statement: a chunk copying
+  // what it reads or writes runs it too, as `main`'s chunk keeps it (its
+  // copy of `ready` is `true`, its `registry` is registered to again). The
+  // route module's default export is unchanged.
+  it.each([
+    {
+      name: 'assigning it',
+      decls: `let ready = false
+export default (ready = true)
+function Page() { return <p>{String(ready)}</p> }`,
+      values: [true, '<p>true</p>'],
+    },
+    {
+      name: 'exporting it',
+      decls: `const label = { text: 'MARK_HELPER' }
+export default label
+function Page() { return <p>{label.text}</p> }`,
+      values: [{ text: 'MARK_HELPER' }, '<p>MARK_HELPER</p>'],
+    },
+    {
+      name: 'passing it to a function that changes it',
+      decls: `function register(list: Array<string>, name: string) { list.push(name); return list.length }
+const registry: Array<string> = []
+export default register(registry, 'MARK_HELPER')
+function Page() { return <p>{registry.join()}</p> }`,
+      values: [1, '<p>MARK_HELPER</p>'],
+    },
+  ])(
+    'splits a component reading a binding beside an `export default` $name',
+    async ({ decls, values }) => {
+      const route = await loadRoute(
+        `${head}${decls}
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      )
+      await expectValidModules(route)
+      expect(await route.isLazy('component')).toBe(true)
+      expect(
+        await route.run(`return [exports.default, await render('component')]`),
+      ).toEqual(values)
+    },
+  )
 })
 
 // `main`'s shared module holds the names two option groups read (a staying

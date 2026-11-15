@@ -14,6 +14,7 @@ import {
   bindingNameRange,
   isExpressionWrapper,
   namespaceName,
+  nextToken,
   patternIdentifiers,
   unwrapExpression,
 } from './source'
@@ -67,7 +68,13 @@ export interface TopLevelItem {
   kind: string
   shape: ItemShape
   units: Array<UnitId>
-  /** `export ` / `export default ` keyword range of an exported declaration, excluded in derived outputs. */
+  /**
+   * The `export` (`export default`) keywords of an exported declaration or
+   * of `export default <expression>`, from the first through the spaces
+   * after the last: the only text a derived output drops from such a
+   * statement (its comments stay, an annotation before or after `export`
+   * included).
+   */
   exportKeyword: Range | null
   /** Ephemeral: the statement node (phase B only). */
   node: Node
@@ -545,6 +552,15 @@ function rootIdentifier(node: Node): Node | null {
   }
 }
 
+/** `pos` past the whitespace there (not past a comment). */
+function pastSpaces(code: string, pos: number): number {
+  let i = pos
+  while (i < code.length && /\s/.test(code[i]!)) {
+    i++
+  }
+  return i
+}
+
 export function buildItems(
   file: SourceFile,
   header: Header,
@@ -587,7 +603,10 @@ export function buildItems(
     if (node.type === 'ExportNamedDeclaration') {
       if (node.declaration !== null) {
         decl = node.declaration
-        exportKeyword = { start: node.start, end: node.declaration.start }
+        exportKeyword = {
+          start: node.start,
+          end: pastSpaces(code, node.start + 'export'.length),
+        }
       } else if (node.source === null) {
         shape = 'export-list'
       } else if (
@@ -598,11 +617,17 @@ export function buildItems(
       }
     } else if (node.type === 'ExportDefaultDeclaration') {
       const d = node.declaration
+      exportKeyword = {
+        start: node.start,
+        end: pastSpaces(
+          code,
+          nextToken(code, node.start + 'export'.length) + 'default'.length,
+        ),
+      }
       if (
         (d.type === 'FunctionDeclaration' || d.type === 'ClassDeclaration') &&
         d.id !== null
       ) {
-        exportKeyword = { start: node.start, end: d.start }
         decl = d
       }
     }
@@ -1246,19 +1271,37 @@ export function statementRecipe(
     out.push(slice(node.source!.start, item.range.end))
     return out
   }
+  /** The statement's text up to `end`, without its `export` keywords when it drops them. */
+  const prefix = (end: number): Array<Frag> =>
+    dropExport
+      ? [
+          slice(item.range.start, item.exportKeyword!.start),
+          slice(item.exportKeyword!.end, end),
+        ]
+      : [slice(item.range.start, end)]
   if (all) {
-    // export keyword excluded only
-    return [slice(item.exportKeyword!.end, item.range.end)]
+    const unit = units[item.units[0]!]!
+    if (unit.kind === 'export-default') {
+      // `export default <expression>` evaluates its expression: a
+      // derived output (no module's default export) runs it as a statement
+      const value = (
+        item.node as Extract<Node, { type: 'ExportDefaultDeclaration' }>
+      ).declaration
+      return [
+        slice(item.range.start, item.exportKeyword!.start),
+        text('void ('),
+        slice(item.exportKeyword!.end, value.end),
+        text(')'),
+        slice(value.end, item.range.end),
+      ]
+    }
+    // export keywords excluded only
+    return prefix(item.range.end)
   }
   switch (item.shape) {
     case 'declarators': {
       const lastOfAll = units[item.units[item.units.length - 1]!]!
-      const prefixStart = dropExport
-        ? item.exportKeyword!.end
-        : item.range.start
-      const out: Array<Frag> = [
-        slice(prefixStart, units[item.units[0]!]!.range.start),
-      ]
+      const out: Array<Frag> = prefix(units[item.units[0]!]!.range.start)
       kept.forEach((u, i) => {
         if (i > 0) {
           out.push(text(', '))

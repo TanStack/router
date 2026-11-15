@@ -40,6 +40,23 @@ export const Route = createFileRoute('${path}')({
 })
 `
 
+/**
+ * A route exporting a function annotated before its `export` keyword, with
+ * an unused call of it at the top level: the split component reads the
+ * function, so its chunk copies it with that statement (as `main`'s chunk
+ * does), and the copy keeps the annotation.
+ */
+const exportedAnnotatedRoute = (path: string, declaration: string) =>
+  `${head}import { format } from '../format'
+/* #__NO_SIDE_EFFECTS__ */ ${declaration} makeLabel(text: string) {
+  return format(text)
+}
+makeLabel('MARK_${path}_UNUSED_CALL')
+export const Route = createFileRoute('/${path}')({
+  component: () => <p>{makeLabel('used')}</p>,
+})
+`
+
 /** Routes besides `routes/index.tsx`, by the name the entry exports them. */
 const otherRoutes: Record<BundlerName, Record<string, string>> = {
   vite: {
@@ -49,6 +66,11 @@ const otherRoutes: Record<BundlerName, Record<string, string>> = {
       'MARK_ANNOTATED_UNUSED_CALL',
     ),
     plain: annotatedRoute('/plain', '', 'MARK_PLAIN_UNUSED_CALL'),
+    exported: exportedAnnotatedRoute('exported', 'export function'),
+    exportedDefault: exportedAnnotatedRoute(
+      'exportedDefault',
+      'export default function',
+    ),
   },
   rspack: {
     annotated: annotatedRoute(
@@ -69,6 +91,8 @@ const markers = [
   'MARK_PING_END',
   'MARK_ANNOTATED_UNUSED_CALL',
   'MARK_PLAIN_UNUSED_CALL',
+  'MARK_exported_UNUSED_CALL',
+  'MARK_exportedDefault_UNUSED_CALL',
 ]
 
 /** Where each marker is and what each route's component renders, per bundler. */
@@ -185,6 +209,24 @@ describe('a function annotated #__NO_SIDE_EFFECTS__', () => {
       expect({
         unusedCall: where.MARK_ANNOTATED_UNUSED_CALL,
         html: html.annotated,
+      }).toEqual({
+        unusedCall: 'nowhere',
+        html: '<div id="root"><p>USED</p></div>',
+      })
+    },
+    60_000,
+  )
+
+  // Exported, annotated before `export`: the chunk's copy of the function
+  // (the statement calling it comes with it) keeps the annotation, so the
+  // copied unused call is dropped there too, as on `main`.
+  it.each(['exported', 'exportedDefault'])(
+    'keeps its annotation where a chunk copies it with an unused call (%s, vite)',
+    async (name) => {
+      const { where, html } = await appOf('vite')
+      expect({
+        unusedCall: where[`MARK_${name}_UNUSED_CALL`],
+        html: html[name],
       }).toEqual({
         unusedCall: 'nowhere',
         html: '<div id="root"><p>USED</p></div>',
