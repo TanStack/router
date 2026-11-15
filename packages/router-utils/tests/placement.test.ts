@@ -10439,6 +10439,122 @@ describe('what a generated unit rooted in the env module names', () => {
   })
 })
 
+// A planner's lazy module (`custom`, Start's server-fn handler module)
+// imports what the env module keeps (R157 rule 3). A declaration only it
+// reaches moves there, unless evaluating it reads, by name and
+// transitively, something the env module keeps: then it stays in the env
+// module (rule 4). A declaration that is exactly a function evaluates
+// nothing and moves.
+describe('the lazy module of a planner (custom)', () => {
+  /** Moves the text of `lazy(<text>)` into the lazy module, as Start moves a handler. */
+  const toyLazy: Planner = {
+    name: 'toy-lazy',
+    tier: 1,
+    gate: () => true,
+    plan(ctx) {
+      const code = ctx.analysis.source.code
+      const at = code.indexOf('lazy(')
+      if (at < 0) {
+        return
+      }
+      const range = { start: at + 'lazy('.length, end: code.lastIndexOf(')') }
+      const out = ctx.declareOutput({
+        kind: 'custom',
+        key: 'handler',
+        derived: { kind: 'handler', value: '' },
+      })
+      const local = ctx.names.alloc('tsrHandler')
+      const owner = ctx.rewrites.addGenerated({
+        body: [
+          { k: 'text', parts: ['export const ', { sym: local.sym }, ' = '] },
+          { k: 'region', id: ctx.region(range, 'custom') },
+          { k: 'text', parts: ['\n'] },
+        ],
+        declares: [local.sym],
+        effectful: false,
+        anchor: { k: 'end' },
+        home: out,
+        by: 'toy-lazy',
+      })
+      ctx.addRoot(out, { t: 'gen', id: owner })
+      ctx.rewrites.claim({
+        region: ctx.region(range, 'custom'),
+        owner,
+        placeholder: [{ k: 'text', parts: ['null'] }],
+        by: 'toy-lazy',
+      })
+    },
+  }
+  const compileBoth = async (code: string) => {
+    const host = new MemoryHost({ files: { '/app/mod.ts': code } })
+    const env = envInfo({ name: 'ssr', type: 'server', mode: 'build' })
+    const out = async (id: string) =>
+      (await host.compile(id, [toyLazy], { env }))?.code ?? ''
+    return {
+      env: await out('/app/mod.ts'),
+      lazy: await out('/app/mod.ts?tss-serverfn-handler'),
+    }
+  }
+  const imports = (code: string, name: string) =>
+    new RegExp(
+      `import \\{[^}]*\\b${name}\\b[^}]*\\} from '/app/mod\\.ts'`,
+    ).test(code)
+
+  it('imports what the env module keeps', async () => {
+    const r = await compileBoth(
+      dedent(`
+        let count = 0
+        export const read = () => count
+        export const fn = lazy(() => count)
+      `),
+    )
+    expect(r.env).toContain('let count = 0')
+    expect(r.lazy).not.toContain('let count')
+    expect(imports(r.lazy, 'count')).toBe(true)
+  })
+
+  it('leaves in the env module a declaration whose evaluation reads what it keeps, also through a function', async () => {
+    const r = await compileBoth(
+      dedent(`
+        const cfg = { url: 'a' }
+        const snapshot = cfg.url
+        function read() { return cfg.url }
+        const viaRead = read()
+        function set(o: { url: string }) { o.url = 'b' }
+        set(cfg)
+        export const fn = lazy(() => [snapshot, viaRead])
+      `),
+    )
+    expect(r.env).toContain('const snapshot = cfg.url')
+    expect(r.env).toContain('const viaRead = read()')
+    expect(imports(r.lazy, 'snapshot')).toBe(true)
+    expect(imports(r.lazy, 'viaRead')).toBe(true)
+    expect(r.lazy).not.toContain('cfg.url')
+  })
+
+  it('moves a function, and a declaration reading only imports or what moves', async () => {
+    const r = await compileBoth(
+      dedent(`
+        import { connect } from 'db'
+        const cfg = { url: 'a' }
+        const reader = () => cfg.url
+        function helper() { return conn }
+        const conn = connect()
+        const viaConn = helper()
+        export const getCfg = () => cfg.url
+        export const fn = lazy(() => [reader(), viaConn])
+      `),
+    )
+    expect(r.env).not.toContain('const reader')
+    expect(r.env).not.toContain('connect')
+    expect(r.lazy).toContain('const reader = () => cfg.url')
+    expect(r.lazy).toContain('const conn = connect()')
+    expect(r.lazy).toContain('const viaConn = helper()')
+    expect(r.lazy).toContain(`from 'db'`)
+    expect(imports(r.lazy, 'cfg')).toBe(true)
+  })
+})
+
 // P4: a kept declaration's message names a binding its evaluation reads,
 // for every `state` record this file's compiles report (F1-5b:
 // a holder of a function another declaration calls was said to use what
