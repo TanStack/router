@@ -169,3 +169,23 @@ export function namespaceName(decl: {
   }
   return id.type === 'Identifier' ? id : null
 }
+
+/** The offset of the next token at or after `pos` (past whitespace and comments), or the end of the code. */
+export function nextToken(code: string, pos: number): number {
+  let i = pos
+  while (i < code.length) {
+    const c = code[i]!
+    if (/\s/.test(c)) {
+      i++
+    } else if (code.startsWith('//', i)) {
+      const nl = code.slice(i).search(/[\n\r\u2028\u2029]/)
+      i = nl === -1 ? code.length : i + nl
+    } else if (code.startsWith('/*', i)) {
+      const close = code.indexOf('*/', i + 2)
+      i = close === -1 ? code.length : close + 2
+    } else {
+      break
+    }
+  }
+  return i
+}
