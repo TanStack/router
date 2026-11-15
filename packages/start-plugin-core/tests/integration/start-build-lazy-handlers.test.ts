@@ -31,6 +31,141 @@ const counted = (name: string, value = `'${name}'`) =>
 export const value = ${value}
 `
 
+/**
+ * R159: the builder shapes of probe-r158-builder-shapes.md, each a route
+ * whose split component alone names `save`: the chain's root (`root`, after
+ * `preamble`), the modules it loads (`chain`, which main loads with the
+ * chunk). `save`'s validator writes `seen`, which its handler reads; its
+ * handler reads a pinned `snapshot` (R157 rule 4), a class and a container
+ * the file's own export uses (#8656), a handler-only module (`lib/db`) and
+ * the context of the middleware's server half, which reads what its client
+ * half sent.
+ */
+const builderShapes: Record<
+  string,
+  { imports: string; preamble: string; root: string; chain: Array<string> }
+> = {
+  // a literal chain
+  s0: {
+    imports: `import { createServerFn } from '@tanstack/react-start'
+import { authMw } from '../../lib/auth'
+`,
+    preamble: '',
+    root: `createServerFn({ method: 'POST' }).middleware([authMw])`,
+    chain: ['auth'],
+  },
+  // a builder imported from another module
+  s1: {
+    imports: `import { authedFn } from '../../lib/fns'\n`,
+    preamble: '',
+    root: 'authedFn',
+    chain: ['fns', 'auth'],
+  },
+  // a builder declared in the route file
+  s2: {
+    imports: `import { createServerFn } from '@tanstack/react-start'
+import { authMw } from '../../lib/auth'
+`,
+    preamble: `const base = createServerFn({ method: 'POST' }).middleware([authMw])\n`,
+    root: 'base',
+    chain: ['auth'],
+  },
+  // a builder through a barrel
+  s3: {
+    imports: `import { authedFn } from '../../lib'\n`,
+    preamble: '',
+    root: 'authedFn',
+    chain: ['index', 'fns', 'factory', 'auth'],
+  },
+  // a factory
+  s4: {
+    imports: `import { makeFn } from '../../lib/factory'\n`,
+    preamble: '',
+    root: 'makeFn()',
+    chain: ['factory', 'auth'],
+  },
+  // options that are no literal
+  s5: {
+    imports: `import { createServerFn } from '@tanstack/react-start'
+import { authMw } from '../../lib/auth'
+`,
+    preamble: `const opts = { method: ['PO', 'ST'].join('') as 'POST' }\n`,
+    root: 'createServerFn(opts).middleware([authMw])',
+    chain: ['auth'],
+  },
+}
+
+const builderShapeFiles = {
+  'lib/auth.ts': `${counted('MARK_LIB_AUTH')}import { createMiddleware } from '@tanstack/react-start'
+const g = globalThis as any
+export const authMw = createMiddleware({ type: 'function' })
+  .client(async ({ next }) => {
+    g.LIB_CLIENT_HALF = (g.LIB_CLIENT_HALF ?? 0) + 1
+    return next({ sendContext: { sent: 'from-client' } })
+  })
+  .server(async ({ next, context }) => {
+    g.LIB_SERVER_HALF = (g.LIB_SERVER_HALF ?? 0) + 1
+    return next({ context: { received: (context as any).sent ?? null } })
+  })
+`,
+  'lib/fns.ts': `${counted('MARK_LIB_FNS')}import { createServerFn } from '@tanstack/react-start'
+import { authMw } from './auth'
+export const authedFn = createServerFn({ method: 'POST' }).middleware([authMw])
+`,
+  'lib/factory.ts': `${counted('MARK_LIB_FACTORY')}import { createServerFn } from '@tanstack/react-start'
+import { authMw } from './auth'
+export const makeFn = () => createServerFn({ method: 'POST' }).middleware([authMw])
+`,
+  'lib/index.ts': `${counted('MARK_LIB_INDEX')}export { authedFn } from './fns'
+export { makeFn } from './factory'
+`,
+  'lib/schema.ts': `${counted('MARK_LIB_SCHEMA')}export const makeSchema = () => {
+  ;(globalThis as any).MARK_LIB_BUILDS = ((globalThis as any).MARK_LIB_BUILDS ?? 0) + 1
+  return (data: unknown) => data
+}
+`,
+  'lib/db.server.ts': counted('MARK_LIB_DB', `'MARK_LIB_DB'`),
+  ...Object.fromEntries(
+    Object.entries(builderShapes).map(([k, shape]) => [
+      `src/routes/shape-${k}.tsx`,
+      `import { createFileRoute } from '@tanstack/react-router'
+${shape.imports}import { makeSchema } from '../../lib/schema'
+import { value as db } from '../../lib/db.server'
+let seen = 0
+const schema = makeSchema()
+const cfg = { url: 'a' }
+const snapshot = cfg.url
+function set(o: { url: string }) {
+  o.url = 'b'
+}
+set(cfg)
+export class Session {}
+const store = new Map<string, number>()
+export const remember = () => {
+  ;(globalThis as any).__session_${k} = Session
+  return store.set('k', 1).size
+}
+${shape.preamble}const save = ${shape.root}
+  .validator((d: unknown) => (schema(d), { n: ++seen }))
+  .handler(async ({ data, context }) => ({
+    n: data.n,
+    seen,
+    session: (globalThis as any).__session_${k} === Session,
+    size: store.size,
+    snap: snapshot + '/' + cfg.url,
+    db,
+    received: (context as any).received,
+  }))
+export const Route = createFileRoute('/shape-${k}')({ component: Page })
+function Page() {
+  ;(globalThis as any).__shape_${k} = save
+  return 'MARK_SHAPE_PAGE'
+}
+`,
+    ]),
+  ),
+}
+
 const files = {
   // handler-only dependencies
   'heavy.server.ts': counted('MARK_HEAVY'),
@@ -182,12 +317,14 @@ function Page() {
 }
 export const Route = createFileRoute('/nested-class')({ component: Page })
 `,
-  // R158: server fns only a route's split component calls (the route file's
-  // code does not name them) live in the file's lazy module with their
-  // chain, and the chunk calls them through a stub
+  // R158, R159: server fns only a route's split component calls (the route
+  // file's code does not name them) live in the file's lazy module with
+  // their chain; the chunk holds a caller copy (the chain, its handler an
+  // RPC to the lazy module's one instance)
   // the route probe (design 2.3): a middleware module, a validator schema
   // built by a call (an effect in a chain argument) and a handler-only
-  // module, none of which load at server start or with the chunk
+  // module, none of which load at server start; the chain's modules load
+  // with the chunk, as on main, the handler's at the first call
   'probe-mw.ts': `${counted('MARK_PROBE_MW')}import { createMiddleware } from '@tanstack/react-start'
 export const probeMw = createMiddleware({ type: 'function' }).server(async ({ next }) => next())
 `,
@@ -274,25 +411,6 @@ function Page() {
   return 'MARK_STOP_PAGE'
 }
 `,
-  // shapes the chunk's stub does not take (a stored builder, a method that
-  // is no literal): the route module holds them (R157), with the module's
-  // one state
-  'src/routes/fallback.tsx': `import { createFileRoute } from '@tanstack/react-router'
-${head}let seen = 0
-const base = createServerFn({ method: 'POST' })
-const viaBase = base
-  .validator(() => ({ n: ++seen }))
-  .handler(({ data }) => data.n)
-const method = ['G', 'ET'].join('') as 'GET'
-const viaMethod = createServerFn({ method })
-  .validator(() => ({ n: ++seen }))
-  .handler(({ data }) => data.n)
-export const Route = createFileRoute('/fallback')({ component: Page })
-function Page() {
-  ;(globalThis as any).__fallback = { viaBase, viaMethod }
-  return 'MARK_FALLBACK_PAGE'
-}
-`,
   // nickysemenza/cubby `mutation-data.ts`: a server fn only an isomorphic
   // fn's client side calls, so no server code names it
   'cubby-contract.ts': `${counted('MARK_CUBBY_CONTRACT')}export const contract = (data: unknown) => data
@@ -306,6 +424,7 @@ export const check = createIsomorphicFn()
   .server(async (data: unknown) => 'server:' + String(data))
   .client((data: unknown) => hidden({ data }))
 `,
+  ...builderShapeFiles,
   'client-entry.ts': `import './seed'
 export * from './fns'
 export * from './writers'
@@ -318,7 +437,12 @@ export { getRouter } from './src/router'
 export { listLogged } from './src/routes/shared-log'
 export { remember, Session } from './src/routes/shared-state'
 export { check } from './cubby'
-`,
+${Object.keys(builderShapes)
+  .map(
+    (k) =>
+      `export { remember as remember_${k} } from './src/routes/shape-${k}'\n`,
+  )
+  .join('')}`,
   'ssr-entry.ts': `export * from './client-entry'
 export { renderPath } from './harness/render'
 ${callByIdExports}`,
@@ -535,7 +659,7 @@ return {
   )
 
   test(
-    "SSR (R158): a server fn only a route's split component calls loads nothing at server start or with the chunk; its chain is built once, at the first call",
+    "SSR (R159): a server fn only a route's split component calls loads nothing at server start; its chain loads with the chunk, as on main, its handler's imports at the first call",
     async () => {
       const { result } = await build.ssr
         .run(`${callByIdPrelude}const marks = () => ({
@@ -553,16 +677,18 @@ const called = await save({ data: { id: 'x' } })
 const afterCall = marks()
 const overHttp = await callById(serverFnId(save), { id: 'y' }, 'POST')
 return { atStart, rendered, afterRender, called, afterCall, overHttp, end: marks() }`)
-      const none = { mw: 0, schema: 0, builds: 0, db: 0 }
-      const once = { mw: 1, schema: 1, builds: 1, db: 1 }
+      // the chunk's caller copy builds the chain's root, middleware and
+      // validator, the lazy module the executing instance (main: its provider
+      // copy)
+      const called_ = { mw: 1, schema: 1, builds: 2, db: 1 }
       expect(result).toEqual({
-        atStart: none,
+        atStart: { mw: 0, schema: 0, builds: 0, db: 0 },
         rendered: true,
-        afterRender: none,
+        afterRender: { mw: 1, schema: 1, builds: 1, db: 0 },
         called: 'MARK_PROBE_DB',
-        afterCall: once,
+        afterCall: called_,
         overHttp: 'MARK_PROBE_DB',
-        end: once,
+        end: called_,
       })
     },
     timeout,
@@ -601,7 +727,7 @@ return {
   )
 
   test(
-    "SSR (R158 amendment): a server fn only the split component calls stays lazy beside one the route's loader calls; the chunk's stub has the server fn's url and method",
+    "SSR (R158 amendment): a server fn only the split component calls stays lazy beside one the route's loader calls; the chunk's caller copy has the server fn's url and method",
     async () => {
       const { result } = await build.ssr
         .run(`${callByIdPrelude}const marks = () => ({
@@ -629,13 +755,13 @@ return {
   peek: [await peek(), await callById(serverFnId(peek), undefined, peek.method)],
   end: marks(),
 }`)
-      const none = { schema: 0, builds: 0, db: 0 }
-      const once = { schema: 1, builds: 1, db: 1 }
+      const once = { schema: 1, builds: 2, db: 1 }
       expect(result).toEqual({
-        atStart: none,
+        atStart: { schema: 0, builds: 0, db: 0 },
         rendered: true,
         // the render runs the loader: the file's first server-fn call loads
-        // its lazy module, `save`'s chain with it (main: its provider copy)
+        // its lazy module, `save`'s chain with it (main: its provider copy);
+        // the chunk's caller copy builds the validator too, as main's chunk
         afterRender: once,
         surface: [
           { url: true, method: 'POST' },
@@ -651,27 +777,80 @@ return {
     timeout,
   )
 
-  test(
-    "SSR (R158): a server fn whose chain's root the stub cannot read (a stored builder, a method that is no literal) is the route module's one instance",
-    async () => {
+  test.each(Object.entries(builderShapes))(
+    "SSR (R159) %s: a server fn only a route's split component calls, on any chain shape, loads its chain with the chunk as on main and its handler's imports at the first call; one executing instance; the caller copy runs the middleware's client half and has the server fn's method and url; production lists its id",
+    async (k, shape) => {
       const { result } = await build.ssr
-        .run(`${callByIdPrelude}const { routeTree } = entry.getRouter()
-await entry.renderPath(routeTree, '/fallback')
-const { viaBase, viaMethod } = globalThis.__fallback
+        .run(`${callByIdPrelude}const g = globalThis
+const marks = () => ({
+  index: g.MARK_LIB_INDEX ?? 0,
+  fns: g.MARK_LIB_FNS ?? 0,
+  factory: g.MARK_LIB_FACTORY ?? 0,
+  auth: g.MARK_LIB_AUTH ?? 0,
+  schema: g.MARK_LIB_SCHEMA ?? 0,
+  builds: g.MARK_LIB_BUILDS ?? 0,
+  db: g.MARK_LIB_DB ?? 0,
+})
+const atStart = marks()
+const { routeTree } = entry.getRouter()
+const rendered = (await entry.renderPath(routeTree, '/shape-${k}')).includes('MARK_SHAPE_PAGE')
+const afterRender = marks()
+const save = g.__shape_${k}
+const remembered = entry.remember_${k}()
+const calls = [await save({ data: {} })]
+const afterCall = marks()
+calls.push(await callById(serverFnId(save), {}, 'POST'))
+calls.push(await callById(serverFnId(save), {}, save.method))
+calls.push(await save({ data: {} }))
 return {
-  names: [viaBase.serverFnMeta.name, viaMethod.serverFnMeta.name],
-  methods: [viaBase.method, viaMethod.method],
-  seen: [
-    await viaBase({ data: {} }),
-    await callById(serverFnId(viaBase), {}, 'POST'),
-    await viaMethod({ data: {} }),
-    await callById(serverFnId(viaMethod), {}, 'GET'),
-  ],
+  atStart,
+  rendered,
+  afterRender,
+  afterCall,
+  end: marks(),
+  remembered,
+  calls,
+  halves: { client: g.LIB_CLIENT_HALF ?? 0, server: g.LIB_SERVER_HALF ?? 0 },
+  method: save.method,
+  url: serverFnId(save).length > 0,
 }`)
+      const loaded = (names: Array<string>, extra: object) => ({
+        index: 0,
+        fns: 0,
+        factory: 0,
+        auth: 0,
+        ...Object.fromEntries(names.map((name) => [name, 1])),
+        ...extra,
+      })
+      const value = (n: number, received: string | null) => ({
+        n,
+        seen: n,
+        session: true,
+        size: 1,
+        snap: 'a/b',
+        db: 'MARK_LIB_DB',
+        received,
+      })
       expect(result).toEqual({
-        names: ['viaBase', 'viaMethod'],
-        methods: ['POST', 'GET'],
-        seen: [1, 2, 3, 4],
+        atStart: loaded([], { schema: 0, builds: 0, db: 0 }),
+        rendered: true,
+        afterRender: loaded(shape.chain, { schema: 1, builds: 1, db: 0 }),
+        afterCall: loaded(shape.chain, { schema: 1, builds: 2, db: 1 }),
+        end: loaded(shape.chain, { schema: 1, builds: 2, db: 1 }),
+        remembered: 1,
+        // the copy's calls run the middleware's client half, whose context
+        // reaches its server half; an HTTP call by id sends none
+        calls: [
+          value(1, 'from-client'),
+          value(2, null),
+          value(3, null),
+          value(4, 'from-client'),
+        ],
+        halves: { client: 2, server: 4 },
+        method: 'POST',
+        // (a production build: the manifest lists only client-referenced
+        // ids, J4.2; the copy's calls and the HTTP calls reach it by its id)
+        url: true,
       })
     },
     timeout,

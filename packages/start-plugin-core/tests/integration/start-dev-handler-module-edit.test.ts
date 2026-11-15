@@ -7,8 +7,11 @@
  * server render) and a client call over HTTP both see the edited code, with
  * the value the source gives. The same for a handler that stays in its
  * module (it assigns a binding the module keeps, R157 rule 5), which the
- * registry reaches through the module's lazy module (R158 rule 3). On Vite's
- * and Rsbuild's dev servers.
+ * registry reaches through the module's lazy module (R158 rule 3). A server
+ * fn only a split component calls, on a builder imported from another module
+ * (R159: the chunk holds a caller copy, the lazy module the one instance):
+ * edits of the builder's module and of the handler reach HTTP calls. On
+ * Vite's and Rsbuild's dev servers.
  */
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
@@ -42,7 +45,7 @@ export const keep = createServerFn().handler(() => (last = '${mark}'))
 const lazySchema = (mark: string) =>
   `export const schema = (data: unknown) => ({ ...(data as object), s: '${mark}' })\n`
 
-/** `src/routes/stubbed.tsx`: a server fn only the split component calls (R158: the lazy module holds it); `mark` is the handler's. */
+/** `src/routes/stubbed.tsx`: a server fn only the split component calls (R158: the lazy module holds it, R159: the chunk holds a caller copy); `mark` is the handler's. */
 const lazyRoute = (mark: string) =>
   `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
@@ -85,7 +88,34 @@ function Page() {
 }
 `
 
+/** `src/lib-builder.ts`: a builder whose middleware gives the handler `mark`. */
+const libBuilder = (mark: string) =>
+  `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+const marked = createMiddleware({ type: 'function' }).server(({ next }) =>
+  next({ context: { mark: '${mark}' } }),
+)
+export const authed = createServerFn({ method: 'POST' }).middleware([marked])
+`
+
+/** `src/routes/built.tsx`: a server fn on the imported builder only the split component calls; its validator counts (one instance: n, n + 1 in one page); `mark` is the handler's. */
+const builtRoute = (mark: string) =>
+  `import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { authed } from '../lib-builder'
+let n = 0
+const save = authed
+  .validator(() => ({ n: ++n }))
+  .handler(({ data, context }) => context.mark + ':' + data.n + '/${mark}')
+export const Route = createFileRoute('/built')({ component: Page })
+function Page() {
+  const [text, setText] = useState('idle')
+  return <button data-testid="built-probe" onClick={async () => setText('client=' + (await save({ data: {} })))}>{text}</button>
+}
+`
+
 const files = {
+  'src/lib-builder.ts': libBuilder('B1'),
+  'src/routes/built.tsx': builtRoute('H1'),
   'src/stop-schema.ts': stopSchema('S1'),
   'src/routes/stop.tsx': stopRoute,
   'src/lazy-schema.ts': lazySchema('S1'),
@@ -229,42 +259,14 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
     "the step-4 stop's shape: an edit of a module only the lazy module's chain reads reaches HTTP calls, one instance (R158 amendment)",
     async () => {
       const server = await servers[bundler]!()
-      /** Two client calls over HTTP from one fresh page of the route. */
-      const calledTwice = async () => {
-        const page = await openPage(`${server.url}stop`, {
-          registerCleanup: onTestFinished,
-        })
-        await page.waitForText('hydrated', {
-          selector: '[data-testid=hydrated]',
-        })
-        const results: Array<string> = []
-        for (const before of ['idle', null]) {
-          const was = before ?? results[0]!
-          await page.page.locator('[data-testid=stop-probe]').click()
-          await page.page.waitForFunction(
-            (text) =>
-              document.querySelector('[data-testid=stop-probe]')
-                ?.textContent !== text,
-            was,
-          )
-          results.push(await page.text('[data-testid=stop-probe]'))
-        }
-        return results.join(' ')
-      }
-      let last = ''
       /** Two calls answered by the `mark` validator, one instance counting on (n, n + 1). */
       const reaches = (mark: string) =>
-        waitForOutcome({
-          applied: async () => {
-            last = await calledTwice()
-            const m = new RegExp(
-              `^client=L/${mark}:(\\d+) client=L/${mark}:(\\d+)$`,
-            ).exec(last)
-            return m !== null && Number(m[2]) === Number(m[1]) + 1
-          },
-          timeout: 15_000,
-          describe: () => `the HTTP calls: ${last}`,
-        })
+        reachesTwice(
+          server,
+          'stop',
+          'stop-probe',
+          new RegExp(`^client=L/${mark}:(\\d+) client=L/${mark}:(\\d+)$`),
+        )
 
       await reaches('S1')
       await server.edit({ 'src/stop-schema.ts': stopSchema('S2') })
@@ -272,4 +274,71 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
     },
     timeout,
   )
+
+  test(
+    "a server fn on an imported builder only the split component calls: edits of the builder's module and of the handler reach HTTP calls, one instance (R159)",
+    async () => {
+      const server = await servers[bundler]!()
+      /** Two calls answered with the builder's `builder` mark and the handler's `handler` mark, one instance counting on. */
+      const reaches = (builder: string, handler: string) =>
+        reachesTwice(
+          server,
+          'built',
+          'built-probe',
+          new RegExp(
+            `^client=${builder}:(\\d+)/${handler} client=${builder}:(\\d+)/${handler}$`,
+          ),
+        )
+
+      await reaches('B1', 'H1')
+      await server.edit({ 'src/lib-builder.ts': libBuilder('B2') })
+      await reaches('B2', 'H1')
+      await server.edit({ 'src/routes/built.tsx': builtRoute('H2') })
+      await reaches('B2', 'H2')
+    },
+    timeout,
+  )
 })
+
+/**
+ * Two client calls over HTTP from one fresh page of `path` (its button
+ * `testid`), until `pattern` matches them with the counter `(n, n + 1)`:
+ * one instance answers both.
+ */
+async function reachesTwice(
+  server: Served,
+  path: string,
+  testid: string,
+  pattern: RegExp,
+) {
+  const calledTwice = async () => {
+    const page = await openPage(`${server.url}${path}`, {
+      registerCleanup: onTestFinished,
+    })
+    await page.waitForText('hydrated', {
+      selector: '[data-testid=hydrated]',
+    })
+    const results: Array<string> = []
+    for (const before of ['idle', null]) {
+      const was = before ?? results[0]!
+      await page.page.locator(`[data-testid=${testid}]`).click()
+      await page.page.waitForFunction(
+        ([selector, text]) =>
+          document.querySelector(selector!)?.textContent !== text,
+        [`[data-testid=${testid}]`, was],
+      )
+      results.push(await page.text(`[data-testid=${testid}]`))
+    }
+    return results.join(' ')
+  }
+  let last = ''
+  await waitForOutcome({
+    applied: async () => {
+      last = await calledTwice()
+      const m = pattern.exec(last)
+      return m !== null && Number(m[2]) === Number(m[1]) + 1
+    },
+    timeout: 15_000,
+    describe: () => `the HTTP calls: ${last}`,
+  })
+}
