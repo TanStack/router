@@ -5,7 +5,10 @@
  * before `set(cfg)` writes `cfg`). After an edit of that declaration, and
  * after an edit of the handler, server code (the route's loader, on the
  * server render) and a client call over HTTP both see the edited code, with
- * the value the source gives. On Vite's and Rsbuild's dev servers.
+ * the value the source gives. The same for a handler that stays in its
+ * module (it assigns a binding the module keeps, R157 rule 5), which the
+ * registry reaches through the module's lazy module (R158 rule 3). On Vite's
+ * and Rsbuild's dev servers.
  */
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
@@ -27,6 +30,14 @@ set(cfg)
 export const read = createServerFn().handler(() => snapshot + '/' + cfg.url + '/${handler}')
 `
 
+/** `src/kept.ts`: a handler writing what its module keeps (it stays in place); `mark` is the handler's. */
+const kept = (mark: string) =>
+  `import { createServerFn } from '@tanstack/react-start'
+let last = ''
+export const lastKept = () => last
+export const keep = createServerFn().handler(() => (last = '${mark}'))
+`
+
 const files = {
   'harness/client-entry.ts': `import { createElement } from 'react'
 import { hydrateRoot } from 'react-dom/client'
@@ -37,11 +48,13 @@ hydrateRoot(document, createElement(StartClient))
   'src/router.ts': routerFile,
   'src/routes/__root.tsx': rootDocument(),
   'src/fns.ts': fns('P1', 'H1'),
+  'src/kept.ts': kept('K1'),
   'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { read } from '../fns'
+import { keep } from '../kept'
 export const Route = createFileRoute('/')({
-  loader: () => read(),
+  loader: async () => (await read()) + '|' + (await keep()),
   component: Page,
 })
 function Page() {
@@ -49,7 +62,7 @@ function Page() {
   return (
     <>
       <p data-testid="loader">{'loader=' + Route.useLoaderData()}</p>
-      <button data-testid="probe" onClick={async () => setText('client=' + (await read()))}>{text}</button>
+      <button data-testid="probe" onClick={async () => setText('client=' + (await read()) + '|' + (await keep()))}>{text}</button>
     </>
   )
 }
@@ -78,7 +91,7 @@ const servers: Record<string, () => Promise<Served>> = {
 
 describe.each(Object.keys(servers))('%s dev', (bundler) => {
   test(
-    'edits of a pinned declaration and of the handler reach server code and HTTP calls',
+    'edits of a pinned declaration, of the handler and of a handler kept in place reach server code and HTTP calls',
     async () => {
       const server = await servers[bundler]!()
       /** The server render's loader value, once it is `expected`. */
@@ -106,16 +119,20 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
         return page.text('[data-testid=probe]')
       }
 
-      await rendered('a:P1/b/H1')
-      expect(await called()).toBe('client=a:P1/b/H1')
+      await rendered('a:P1/b/H1|K1')
+      expect(await called()).toBe('client=a:P1/b/H1|K1')
 
       await server.edit({ 'src/fns.ts': fns('P2', 'H1') })
-      await rendered('a:P2/b/H1')
-      expect(await called()).toBe('client=a:P2/b/H1')
+      await rendered('a:P2/b/H1|K1')
+      expect(await called()).toBe('client=a:P2/b/H1|K1')
 
       await server.edit({ 'src/fns.ts': fns('P2', 'H2') })
-      await rendered('a:P2/b/H2')
-      expect(await called()).toBe('client=a:P2/b/H2')
+      await rendered('a:P2/b/H2|K1')
+      expect(await called()).toBe('client=a:P2/b/H2|K1')
+
+      await server.edit({ 'src/kept.ts': kept('K2') })
+      await rendered('a:P2/b/H2|K2')
+      expect(await called()).toBe('client=a:P2/b/H2|K2')
     },
     timeout,
   )

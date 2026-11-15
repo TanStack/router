@@ -53,7 +53,7 @@ import type {
   StartPrefetch,
 } from '../compiler/prefetch'
 import type { Chain, Escape, EscapeReason } from '../compiler/start-analysis'
-import type { ServerFnFact } from '../server-fns/registry'
+import type { ProviderModule, ServerFnFact } from '../server-fns/registry'
 import type {
   AbstractValue,
   EditScope,
@@ -513,6 +513,12 @@ function planStartEnv(
     (c) => c.terminalValue.t === 'serverFn' && !c.unsupported,
   )
   const derivesProvider = config.providerSeparate
+  /** The registry's module of the file's server fns (R158 rule 3): by configuration and path only. */
+  const provider: ProviderModule = config.late
+    ? 'file'
+    : derivesProvider
+      ? 'derived'
+      : 'lazy'
   if (config.late && derivesProvider && serverFnChains.length > 0) {
     // the provider module is derived from the file, which is no JavaScript
     diag(LATE_MESSAGE, rangeOf(serverFnChains[0]!.head))
@@ -578,19 +584,22 @@ function planStartEnv(
     return sym
   }
 
-  // ---- lazy handler module (in-place provider): one per defining module, loaded once on the first call
+  // ---- lazy handler module (in-place provider): one per defining module, loaded once on the
+  // first call; the registry imports every server fn's wrapper from it (R158 rule 3)
   let handlerOut: OutputId | null = null
   let handlerLoad: SymbolId | null = null
+  const handlerOutput = (): OutputId =>
+    (handlerOut ??= ctx.declareOutput({
+      kind: 'custom',
+      key: 'handler',
+      derived: { kind: 'handler', value: '' },
+    }))
   const lazyHandlerOutput = (): { out: OutputId; load: SymbolId } => {
-    if (handlerOut === null || handlerLoad === null) {
-      handlerOut = ctx.declareOutput({
-        kind: 'custom',
-        key: 'handler',
-        derived: { kind: 'handler', value: '' },
-      })
+    if (handlerLoad === null) {
+      handlerOutput()
       const memo = names.alloc('tsrHandlers')
       const load = names.alloc('tsrLoadHandlers')
-      const spec = sameFileSpecifier(derivedIdOf(handlerOut))
+      const spec = sameFileSpecifier(derivedIdOf(handlerOut!))
       rewrites.addGenerated({
         body: [
           text(
@@ -619,7 +628,7 @@ function planStartEnv(
       })
       handlerLoad = load.sym
     }
-    return { out: handlerOut, load: handlerLoad }
+    return { out: handlerOut!, load: handlerLoad }
   }
 
   // ---- 1. link stripping on the client (serverFn validators, middleware server/validator)
@@ -914,7 +923,6 @@ function planStartEnv(
     const h = site.handler
     // (the manifest's `functionName` stays `site.functionName`)
     const { local: rpcLocal, exportName } = site.wrapper
-    const providerDerived = derivesProvider
     if (role === 'client') {
       const rpc = glueImport(specs.clientRpc, 'createClientRpc', 'tsrClientRpc')
       // in dev the stub also names its file's revision (an argument the runtime ignores): the
@@ -933,7 +941,7 @@ function planStartEnv(
         by,
       })
       facts.serverFns.push(
-        serverFnFact(site, id, name, exportName, providerDerived, rootRel),
+        serverFnFact(site, id, name, exportName, provider, rootRel),
       )
       continue
     }
@@ -949,7 +957,7 @@ function planStartEnv(
       })
       if (role === 'ssr-caller') {
         facts.serverFns.push(
-          serverFnFact(site, id, name, exportName, providerDerived, rootRel),
+          serverFnFact(site, id, name, exportName, provider, rootRel),
         )
         continue
       }
@@ -1027,10 +1035,12 @@ function planStartEnv(
           { sym: fnSym },
           '.__executeServer(',
           { sym: opts.sym },
-          '))\nexport { ',
-          { sym: rpcLocal.sym },
-          ' }\n',
+          '))\n',
         ),
+        // (the registry's module exports it: the lazy module re-exports it under this name)
+        ...(provider === 'lazy'
+          ? []
+          : [text('export { ', { sym: rpcLocal.sym }, ' }\n')]),
       ],
       declares: [rpcLocal.sym],
       effectful: false,
@@ -1041,10 +1051,27 @@ function planStartEnv(
     if (!providerOut) {
       ctx.addRoot('env', { t: 'gen', id: gen })
     }
+    if (provider === 'lazy') {
+      // the registry's module: the lazy module re-exports the wrapper
+      const out = handlerOutput()
+      ctx.addRoot(out, {
+        t: 'gen',
+        id: rewrites.addGenerated({
+          body: [
+            text('export { ', { sym: rpcLocal.sym }, ` as ${exportName} }\n`),
+          ],
+          declares: [],
+          effectful: false,
+          anchor: { k: 'end' },
+          home: out,
+          by,
+        }),
+      })
+    }
     // the hoisted chain renders after its wrapper (the chain reads the wrapper eagerly)
     commitHoist?.()
     facts.serverFns.push(
-      serverFnFact(site, id, name, exportName, providerDerived, rootRel),
+      serverFnFact(site, id, name, exportName, provider, rootRel),
     )
   }
 
@@ -1573,7 +1600,7 @@ function serverFnFact(
   id: string,
   name: string,
   exportName: string,
-  providerDerived: boolean,
+  provider: ProviderModule,
   rootRel: string,
 ): ServerFnFact {
   return {
@@ -1584,7 +1611,7 @@ function serverFnFact(
     id,
     exportName,
     name,
-    providerDerived,
+    provider,
   }
 }
 

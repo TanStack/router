@@ -21,6 +21,8 @@ import type {
   HostServices,
 } from '@tanstack/router-utils/compiler'
 
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
 class Host implements HostServices {
   readonly rawFacts: RawFactsCache
   readonly caches: CompilerCaches
@@ -159,10 +161,10 @@ export const label = () => 'client'
       'createServerRpc',
       '@tanstack/react-start/server-rpc',
     )
-    // the export the resolver reads, the handler loaded on the first call
+    // the wrapper the resolver reads (through the lazy module), the handler loaded on the first call
     const { h } = namesIn(
       out.code,
-      `const «h» = ${rpc}({ id: "«…»", name: "fn", filename: "module.tsx" }, («o») => fn.__executeServer(«o»))\nexport { «h» }`,
+      `const «h» = ${rpc}({ id: "«…»", name: "fn", filename: "module.tsx" }, («o») => fn.__executeServer(«o»))`,
     )
     const { impl } = namesIn(
       out.code,
@@ -177,6 +179,14 @@ export const label = () => 'client'
     expect(handlers.code).toContain("import { db } from './db.server'")
     expect(handlers.code).toContain(`const ${impl} = async () => db.x()`)
     expect(handlers.code).toContain(`export { ${impl} }`)
+    // the registry's module (R158 rule 3): it re-exports the wrapper under the facts' name
+    const facts = out.facts.planners[START_ENV] as StartEnvFacts
+    expect(facts.serverFns[0]).toMatchObject({ provider: 'lazy' })
+    expect(handlers.code).toMatch(
+      new RegExp(
+        `export \\{ \\S+ as ${escapeRegExp(facts.serverFns[0]!.exportName)} \\}`,
+      ),
+    )
   })
 
   test('ssr caller with a separate provider: an ssr rpc stub keeps the validator', async () => {
@@ -644,15 +654,13 @@ export function Page() {
     expect(provider.code).not.toContain("from './module.tsx")
     expect(provider.code).not.toContain('useState')
     const facts = env.facts.planners[START_ENV] as StartEnvFacts
-    expect(facts.serverFns[0]).toMatchObject({ providerDerived: true })
+    expect(facts.serverFns[0]).toMatchObject({ provider: 'derived' })
   })
 })
 
 describe('route modules', () => {
   test('a private server fn of a route module: provider output', async () => {
-    const out = (await compile(
-      {
-        '/app/src/routes/posts.tsx': `import { createFileRoute } from '@tanstack/react-router'
+    const source = `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { secret } from '../db.server'
 const cache = new Map<string, string>()
@@ -665,18 +673,34 @@ export const Route = createFileRoute('/posts')({
   loader: async () => getPosts(),
   component: Posts,
 })
-`,
+`
+    const out = (await compile(
+      {
+        '/app/src/routes/posts.tsx': source,
         '/app/src/db.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
       },
       'ssr',
       '/app/src/routes/posts.tsx',
     ))!
-    // the resolver reads the export the facts name
+    // the resolver reads the export the facts name, from the lazy module (R158 rule 3)
     const facts = out.facts.planners[START_ENV] as StartEnvFacts
     expect(facts.serverFns[0]).toMatchObject({
       rootRel: 'src/routes/posts.tsx',
+      provider: 'lazy',
     })
-    expect(out.code).toContain(`export { ${facts.serverFns[0]!.exportName} }`)
+    const lazy = (await compile(
+      {
+        '/app/src/routes/posts.tsx': source,
+        '/app/src/db.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+      },
+      'ssr',
+      '/app/src/routes/posts.tsx?tss-serverfn-handler',
+    ))!
+    expect(lazy.code).toMatch(
+      new RegExp(
+        `export \\{ \\S+ as ${escapeRegExp(facts.serverFns[0]!.exportName)} \\}`,
+      ),
+    )
   })
 })
 
