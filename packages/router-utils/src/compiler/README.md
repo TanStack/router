@@ -100,9 +100,9 @@ emits its own output. Nothing depends on transform order.
 
 A plan a planner marks as a route file (`PlanContext.setRouteModule`, the router planner's split part) is placed by
 `computeRoutePlacement`, which does what route splitting on main does, by its outcome. So is every other plan
-(server-fn handler modules, the RSC provider copy, erasure only), with no name a chunk imports and none main shares,
-except the ones the engine below still places (`onOldEngine` in `reach.ts`: `<Hydrate>` outside a route file, a
-`split` output without a route module; R155 phase 2 moves them). One cluster per unit (`buildClusters(input, true)`: no writer joins its binding) and the engine's
+(server-fn handler modules, the RSC provider copy, erasure only, `<Hydrate>` chunks), with no name a chunk imports and
+none main shares, except the ones the engine below still places (`onOldEngine` in `reach.ts`: a `split` output without
+a route module, the core's toy planners; R155 phase 3 deletes the engine). One cluster per unit (`buildClusters(input, true)`: no writer joins its binding) and the engine's
 per-output read walk (`readIndex`):
 
 - **the env module** loses only what the split made unused (the R153 amendment, `readFromRemoved`, the rule erasure
@@ -126,9 +126,14 @@ per-output read walk (`readIndex`):
   another planner's output), or one reading a declaration outside it, leaves the set and is placed like any other (one
   fixed point). Import specifiers are copied where read. A planner renders its own text
   in split chunks with a `{ kinds }` scope (Start: a split chunk's copy of a server fn is a caller, its handler
-  `createSsrRpc(id)` and its validator gone, R159). Another
-  planner's derived output (a server-fn handler module, Hydrate chunks in a route file) imports what the env module
-  keeps, and what several of them need is one module they import; a provider output copies what it reaches (R157). A
+  `createSsrRpc(id)` and its validator gone, R159).
+- **a `<Hydrate>` chunk** (spec-phase2-hydrate H1/H2) copies every declaration its children reach, by binding and
+  transitively, exported or not, and no top-level statement; it imports only what cannot be a copy: a binding its
+  planner names (`OutputDecl.imported`: a declaration leading back to the boundary, the route or a recursive
+  component), a name a statement declares, what another module of the file holds (a shared name, a generated
+  declaration with its own home). It is no home of anything: two chunks reaching one helper each copy it.
+- Another planner's derived output (the server-fn handler module, one per file) imports what the env module keeps,
+  and what it alone needs moves there; a provider output copies what it reaches (R157). A
   declaration a planner's lazy module (`custom`, the server-fn handler module) reaches stays in the env module when
   evaluating it reads, by name and transitively, something the env module keeps (`const snapshot = cfg.url;
 set(cfg)`): it runs at load, as in the source; a declaration that is exactly a function moves (one fixed point
@@ -142,6 +147,9 @@ set(cfg)`): it runs at load, as in the source; a declaration that is exactly a f
   imports the source wrote (not a planner's generated `lazyRouteComponent`). A declaration nothing references stays in
   the env module only: a copy would run its initialiser again (`main`'s chunks do). React's classic JSX runtime is not
   supported with splitting: a chunk holding JSX has `React` only when its code reads it.
+- **a fixed home says where, not whether**: the owner of a claim whose output no longer keeps the claim (`hasClaim`:
+  an erasure removed its occurrence, e.g. a boundary in a route option the router deletes on the client) is unused,
+  whatever home its planner gave it: no root, no home (the removal rule).
 - **one fallback, on the outcome**: a derived output that would assign a binding homed in another module of the file
   does not take the root bringing that code (`Placement.fallbacks`, `shared-writer`), and its planner keeps the root in
   place (the router planner's `assignsWhatItImports`, start-env's handler, Hydrate's `hydrate-module-write`).

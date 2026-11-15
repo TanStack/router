@@ -454,72 +454,29 @@ export function routes() {
       timeout,
     )
 
-    // An export only the children use, initialized by a call, moves with
-    // the chunk (one instance, initialized once). Source:
-    // hydrate-when-transform.test.ts "unwraps exported declarations needed
-    // by extracted virtual modules".
+    // An exported let the children of a `split={false}` boundary assign
+    // stays live: the children run in the page, and a click's assignment is
+    // what the page's importers read (`split={false}` keeps one instance;
+    // a split boundary's chunk holds its own copy, as on main).
     test(
-      'an export only the children use, initialized by a call, is initialized once and hydrates',
+      'an exported let the children of a split={false} boundary assign stays live',
       async () => {
-        const build = await sharedApp()
-        expect(build.client.where('widgetCall-boundary-marker')).toBe('lazy')
-        expect(
-          await hydrateShared(
-            'widgetCall',
-            ['widgetCall-marker'],
-            'globalThis.__initialized?.widgetCall',
-          ),
-        ).toEqual({
-          text: 'widgetCall-marker clicked widgetCall-boundary-marker',
-          recoverableErrors: [],
-          consoleErrors: [],
-          read: 1,
-        })
-      },
-      timeout,
-    )
-
-    // R101: each fix the build error offers for children that assign an
-    // exported `let` (`hydrate-module-write`, the planner rows of
-    // tests/planners/hydrate.test.ts), applied: the build reports nothing
-    // for the page, the children hydrate, and a click's assignment is what
-    // the page's importers read (the live binding, not a snapshot).
-    // `split={false}` keeps the children's code in the page; where the
-    // component declared outside the boundary loads is the bundler's call.
-    test.each([
-      {
-        name: 'split={false}',
-        page: 'moduleWriteSplitFalse',
-        file: 'src/pages/module-write-split-false.tsx',
-        clicks: 'splitFalseClicks',
-        where: ['eager'],
-      },
-      {
-        name: 'the writer in a component declared outside the boundary',
-        page: 'moduleWriteOutside',
-        file: 'src/pages/module-write-outside.tsx',
-        clicks: 'outsideClicks',
-        where: ['eager', 'lazy'],
-      },
-    ])(
-      'an exported let the children assign, fixed with $name, builds and stays live',
-      async ({ page, file, clicks, where }) => {
         const build = await sharedApp()
         expect(
           findDiagnostics(problems(build.diagnostics), {
-            file,
+            file: 'src/pages/module-write-split-false.tsx',
             root: build.root,
           }),
         ).toEqual([])
-        expect(where).toContain(build.client.where(`${page}-marker`))
+        expect(build.client.where('moduleWriteSplitFalse-marker')).toBe('eager')
         expect(
           await hydrateShared(
-            page,
-            [`${page}-marker`],
-            `entry.pages.${clicks}`,
+            'moduleWriteSplitFalse',
+            ['moduleWriteSplitFalse-marker'],
+            'entry.pages.splitFalseClicks',
           ),
         ).toEqual({
-          text: `${page}-marker clicked`,
+          text: 'moduleWriteSplitFalse-marker clicked',
           recoverableErrors: [],
           consoleErrors: [],
           read: 1,
@@ -746,14 +703,14 @@ export { Other } from './other.js'
  * (`globalThis.__initialized`), so only a purity hint lets the bundler drop
  * a call of it.
  */
-const widgetPage = (name: string, widget: string, more = '') => ({
+const widgetPage = (name: string, widget: string) => ({
   [`src/pages/${name}.tsx`]: `import { useState } from 'react'
 import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
 import { initialize } from '../initialize'
 export const Widget = ${widget}
 export function Page() {
-  return <Hydrate when={load()}><Widget />${more}</Hydrate>
+  return <Hydrate when={load()}><Widget /></Hydrate>
 }
 `,
 })
@@ -851,11 +808,6 @@ export function UsedPlainWidget() {
     'widgetPureCall',
     `/* @__PURE__ */ initialize('widgetPureCall', ${widgetComponent('widgetPureCall')})`,
   ),
-  ...widgetPage(
-    'widgetCall',
-    `initialize('widgetCall', ${widgetComponent('widgetCall')})`,
-    `<i> widgetCall-boundary-marker</i>`,
-  ),
   'src/pages/module-write-split-false.tsx': `import { useState } from 'react'
 import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
@@ -869,18 +821,6 @@ export function Page() {
   )
 }
 `,
-  'src/pages/module-write-outside.tsx': `import { useState } from 'react'
-import { Hydrate } from '@tanstack/react-start'
-import { load } from '@tanstack/react-start/hydration'
-export let outsideClicks = 0
-function Counter() {
-  const [clicked, setClicked] = useState(false)
-  return <button onClick={() => { outsideClicks++; setClicked(true) }}>moduleWriteOutside-marker{clicked ? ' clicked' : ''}</button>
-}
-export function Page() {
-  return <Hydrate when={load()}><Counter /></Hydrate>
-}
-`,
   'src/pages.ts': `export { Page as chartProject } from './pages/chart-project'
 export { Page as chartPlainWidgets } from './pages/chart-plain-widgets'
 export { Page as chartPureWidgets } from './pages/chart-pure-widgets'
@@ -888,13 +828,11 @@ export { Page as twoBoundaries } from './pages/two-boundaries'
 export { Page as moduleLevel } from './pages/module-level'
 export { Page as widgetFunction } from './pages/widgetFunction'
 export { Page as widgetPureCall } from './pages/widgetPureCall'
-export { Page as widgetCall } from './pages/widgetCall'
 export { routes } from './route-pages'
 export { UsedHydratedWidget } from './hydrated-widgets'
 export { UsedPlainWidget } from './plain-widgets'
 export { Page as throwing } from './pages/throwing'
 export { Page as moduleWriteSplitFalse, splitFalseClicks } from './pages/module-write-split-false'
-export { Page as moduleWriteOutside, outsideClicks } from './pages/module-write-outside'
 `,
   'src/route-pages.ts': routesPageModule(sharedRoutes),
 }

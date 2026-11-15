@@ -727,6 +727,10 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   component; values the children capture from the enclosing scope are passed in and reflect the latest render;
   identifiers declared inside the children (e.g. a `const Icon` in a map callback) are not captures; nested boundaries
   each get their own chunk; `prefetch`'s `preload()` loads that chunk (and resolves at once with `split={false}`).
+  The chunk holds its own copy of the module-level declarations the children reach, as `main`'s does (R155, R161:
+  a second instance, no top-level statement), and imports only what a copy cannot be: a binding leading back to the
+  boundary (the route, a component rendering itself), a name a top-level statement declares, what another module of
+  the file holds. Children assigning such an import are rejected (J5.5); the copy's limits are KNOWN-BUGS'.
 - **J5.3 Server output.** Children still render to HTML (G1); the server renders a boundary marker; `fallback` is
   removed when statically visible (a direct prop, an inline object spread, a single-use `const` spread) and may stay
   otherwise.
@@ -740,7 +744,8 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
 - **J5.5 Loud rejections when extraction is attempted.** For a boundary being extracted, function-as-children, hook
   calls directly inside the extracted JSX (React; Solid children may call them, R101) and `this`/`super` captures give
   a compile error naming the fix (`split={false}` or a child component); so does, on React, a read of a reassigned
-  `let` inside a function of the children (R123; the fix is `useRef`). Dynamic `split` counts as split. A boundary with literal `split={false}` is
+  `let` inside a function of the children (R123; the fix is `useRef`), and children assigning a module binding the
+  chunk imports (J5.2; the fix is `split={false}`). Dynamic `split` counts as split. A boundary with literal `split={false}` is
   neither extracted nor rejected, and its runtime behaviour is the framework's (C8). These rejections are the
   specified outcome, not a limitation to remove (G5's "our limitation is a bug" does not apply). Each compilation
   that attempts the extraction rejects (the client compilation included).
@@ -753,7 +758,8 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
 - **J5.7 CSS stays route-linked.** CSS imported by split children stays discoverable for the route's SSR HTML (not
   deferred with the chunk).
 - **J5.8 Semantics otherwise untouched.** `when`, `prefetch`, `onHydrated`, keys and context flow through as
-  written; the function form of `when` runs on the client only. Extraction keeps context flowing into the children,
+  written; the function form of `when` runs on the client only. Extraction keeps context flowing into the children
+  (a context object the module itself creates is copied with the chunk, J5.2),
   keeps legal `key`/`ref` behaviour, and passes the latest captured values and callbacks after parent re-renders and
   keyed reorders: it never freezes the first render's data or a Solid read. A changed inline `when`/`prefetch`
   identity does not restart an established gate; a new `key` creates a new boundary. React's early hydration stays

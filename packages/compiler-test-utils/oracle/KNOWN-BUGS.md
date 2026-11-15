@@ -166,6 +166,32 @@ code.test.ts`: "a root route's components load with the route module" (Vite and 
 start-build-lazy-handlers.test.ts`, "SSR (R159) %s: …" and "SSR: a server fn a top-level statement names and the
   split component calls has one instance: 1 2 3 4". No test holds the three differences: they are the limit itself.
 
+- **A `<Hydrate>` chunk copies the module-level declarations its children reach, as `main`'s chunk does** (R155, R161
+  D1; spec-phase2-hydrate H1). The copy is a second instance, and no top-level statement is copied. Bugs of `main` the
+  PR no longer fixes, each with its input (the children inside `<Hydrate when={…}>`):
+  1. a context created in the module: `const Theme = createContext('light')`, children `<Label />` reading
+     `useContext(Theme)`, under `<Theme.Provider value="dark">`: the client renders `light` (hydration mismatch);
+  2. the same in Solid (`createContext('no-provider')` in the page module): the children read `no-provider`;
+  3. a `let` the module reassigns: `let clicks = 0; export function bump() { clicks++ }`, children `{clicks}`, after
+     `bump()`: the chunk shows 0;
+  4. an exported declaration: `export const store = makeStore()`, children `{store.id}`: two stores, `makeStore`
+     runs twice;
+  5. an export initialised by a call: `export const Widget = initialize('w', function Widget() {…})`, children
+     `<Widget />`: `initialize` runs twice;
+  6. an exported `let` a component outside the boundary assigns: `export let clicks = 0; function Counter() {
+… clicks++ … }`, children `<Counter />`: the module's export stays 0;
+  7. a compound component: `function Card() {…}; Card.Title = function Title() {…}`, children `<Card.Title />`:
+     undefined in the copy ("Element type is invalid");
+  8. `Object.assign(Tabs, { Tab })`, children `<Tabs.Tab />`: the same;
+  9. a registry filled by a top-level call: `const registry = new Map(); registry.set('a', 'A')`, children
+     `{registry.get('a')}`: empty in the copy.
+     `split={false}` keeps one instance (`hydrate-build-cases.ts`: "an exported let the children of a split={false}
+     boundary assign stays live"). A binding leading back to the boundary (the route, a recursive component) and a name
+     a top-level statement declares are imported, not copied (H2). No test holds the nine: they are the limit itself.
+- **A `<Hydrate>` chunk copies a destructuring declarator whole** (`const { a, b } = make()` with children reading
+  `a`): `main`'s copy keeps `{ a }` only. Lazy bytes only (+4 B on the probe); the chunk evaluates `make()` once on
+  both; pruning a pattern changes which getters run. No test (the outcome is the limit).
+
 ## Fixed, kept as regression tests
 
 ### Shared causes (several jobs)
@@ -732,8 +758,6 @@ Paths under `start-plugin-core/tests/integration/`; `pages/` means `integration/
 - **A split component with a boundary that another option reads goes to the shared module without its lazy
   component.** SPEC J2.20. `hydrate-build-cases.ts`: "boundaries in split route options that another option reads
   hydrate in the boundaries the server renders".
-- **An export only the children use, initialised by a call, must run once.** SPEC J5.6, G3. `hydrate-build-cases.ts`:
-  "an export only the children use, initialized by a call, is initialized once and hydrates".
 - **The parent of a boundary keeps a declaration only the children use when another removed declaration reads it
   too.** The parent prunes with its own walk (`stripBindingsOnlyReferencedByNodes` in `hydrate-when-transform.ts`),
   which drops a binding only when every reference lies in the one node it is pruning: the shared end of a diamond and
@@ -743,14 +767,10 @@ Paths under `start-plugin-core/tests/integration/`; `pages/` means `integration/
   "… a class and a const that read each other").
 - **A namespace member `<Start.Hydrate>` is not a boundary.** SPEC J5.1. `hydrate-pages-react.ts` and
   `hydrate-pages-solid.ts`: "a namespace-imported Start.Hydrate loads its children when it hydrates".
-- **The chunk re-declares module-level bindings and exports instead of using the parent's.** SPEC J5.8, G3, J2.4.
-  `hydrate-pages-solid.ts`: "split children read a context declared in the page module";
-  `pages/known-bugs-hydrate-module-level.test.ts`: "client: the children use the module-level $name of the parent
-  module"; "client: an exported declaration the children use has one instance, initialized once".
-- **Module-level declarations reach the chunk only for some forms** (statements completing them, nested `var`s,
-  `import X = ns.X`, default-exported functions, enums, namespaces, assigned `let`s are dropped). SPEC G1.
-  `pages/known-bugs-hydrate-module-level.test.ts`: "client: $name that the children rely on reaches the chunk";
-  "client: a var declared in a nested block that the children read reaches the chunk"; "client: a TypeScript import
+- **Module-level declarations reach the chunk only for some forms** (nested `var`s, `import X = ns.X`,
+  default-exported functions, enums, namespaces, assigned `let`s are dropped). SPEC G1.
+  `pages/known-bugs-hydrate-module-level.test.ts`: "client: a var declared in a nested block that the children read
+  reaches the chunk"; "client: a TypeScript import
   alias used by the split children is declared in the chunk"; "client: $name used by the children reaches the chunk".
 - **The chunk removes any binding named `Route` without importing the route.** SPEC G1, J2.4.
   `pages/known-bugs-hydrate-module-level.test.ts`: "client: split children reading Route $name use the one route";

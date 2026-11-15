@@ -913,10 +913,10 @@ export function App() {
     expect(client.html).toContain('<p>4</p>')
   })
 
-  // Whether the split code shares the parent's instance of these
-  // declarations or declares its own is pinned in known-bugs-hydrate.test.ts
-  // (module state initialized once), like a default-exported function, enums
-  // and namespaces; only the output is asserted here.
+  // The split code declares its own copy of these declarations, as on main
+  // (KNOWN-BUGS, accepted limits: the chunk's second instance); a
+  // default-exported function, enums and namespaces are pinned in
+  // known-bugs-hydrate-module-level.test.ts; only the output is asserted here.
   // Source: Qwik optimizer example_exports (#8504
   // hydrate-split-modules.test.ts)
   test('client: exported declarations of every form used by the children render', async () => {
