@@ -35,12 +35,22 @@ export function unreferencedWarning(entry: ServerFnEntry): string {
   return `[tanstack-start] The server function ${entry.name} of ${entry.rootRel} was called from the client, but no client module this dev server compiled references it. A production build refuses such a call: only server functions client code references are callable over HTTP.`
 }
 
-/** The dev lookup module of one id: a re-export of the provider wrapper. */
+/**
+ * The dev lookup module of one id: a re-export of the provider wrapper. It
+ * accepts its own hot updates: the registry's module (the lazy module, R158
+ * rule 3) accepts none, and an edit reaching the lookup through it ends
+ * there instead of fully reloading the server (the resolver imports the
+ * lookup again at the next call).
+ */
 export function devLookupModule(
   entry: ServerFnEntry,
   specifier: string,
 ): string {
-  return `export { ${entry.exportName} as action } from ${JSON.stringify(specifier)}\n`
+  return `export { ${entry.exportName} as action } from ${JSON.stringify(specifier)}
+if (import.meta.hot) {
+  import.meta.hot.accept(() => {})
+}
+`
 }
 
 interface ManifestResolverOptions {
@@ -104,7 +114,9 @@ export function manifestResolverModule(opts: ManifestResolverOptions): string {
   const manifest = entries
     .map((e, index) => {
       const moduleRef = `serverFnModule${index}`
-      const filename = JSON.stringify(opts.providerModuleId(e))
+      const filename = JSON.stringify(
+        registrySpecifier(opts.providerModuleId(e)),
+      )
       if (opts.staticImports) {
         staticImports.push(`import * as ${moduleRef} from ${filename}`)
       }
@@ -166,6 +178,22 @@ ${warnUnreferenced}
 }
 
 `
+}
+
+/**
+ * The specifier the resolver imports a registry module by (an absolute id,
+ * a file's derived module with its query): a `#` of the path (`C#`,
+ * `project #2`) escaped as `\0#`, as `sameFileSpecifier` prints a file's
+ * own derived modules: webpack and Rspack resolve the escape, the Vite host
+ * resolves it for the resolver module (`resolveRegistrySpecifier`).
+ */
+export function registrySpecifier(id: string): string {
+  return id.replace(/#/g, '\0#')
+}
+
+/** The id a `registrySpecifier` names (the Vite host, for the resolver module's imports). */
+export function resolveRegistrySpecifier(specifier: string): string {
+  return specifier.replace(/\0#/g, '#')
 }
 
 /**
