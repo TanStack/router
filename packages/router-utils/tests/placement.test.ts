@@ -134,6 +134,67 @@ describe('clusters and the single-writer rule', () => {
     expect(r.chunks.component).toBe('export {}\n')
   })
 
+  // spec-phase2-hydrate H1, H2, H4 on the core: a `<Hydrate>` chunk copies
+  // the declarations its children reach and no statement; it imports what
+  // its planner names (`imported`); one assigning such an import falls back
+  describe('a <Hydrate> chunk', () => {
+    const code = dedent(`
+      import { Hydrate } from 'toy-start'
+      import { register } from './register'
+      export let theme = { c: 1 }
+      register(theme)
+      export function Page() { return <Hydrate><p onClick={() => { theme = { c: 2 } }}>{theme.c}</p></Hydrate> }
+    `)
+    const buildEnv = { env: envInfo({ mode: 'build' }) }
+    const chunk = async (imported?: Array<string>) => {
+      const host = new MemoryHost({ files: { '/app/mod.tsx': code } })
+      const planners = [toyHydratePlanner('toy-start', { imported })]
+      const env = await host.compile('/app/mod.tsx', planners, buildEnv)
+      const h = await host.compile(
+        '/app/mod.tsx?tss-hydrate=h0',
+        planners,
+        buildEnv,
+      )
+      return { env: env!, chunk: h!.code }
+    }
+
+    it('copies the declarations the children reach, without the statements reaching them (H1)', async () => {
+      const r = await chunk()
+      expect(r.env.facts.planners['toy-hydrate']).toBeUndefined()
+      expect(r.chunk).toContain('let theme = { c: 1 }')
+      expect(r.chunk).not.toContain('register')
+      expect(r.chunk).not.toContain("from '/app/mod.tsx'")
+      expect(r.env.code).toContain(
+        'export let theme = { c: 1 }\nregister(theme)',
+      )
+    })
+
+    it('imports a binding its planner names; children assigning it fall back (H2, H4)', async () => {
+      const r = await chunk(['theme'])
+      expect(r.env.facts.planners['toy-hydrate']).toEqual({
+        kept: { h0: 'shared-writer' },
+      })
+      expect(r.env.code).not.toContain('tss-hydrate')
+    })
+
+    it('imports a binding its planner names (H2)', async () => {
+      const host = new MemoryHost({
+        files: {
+          '/app/mod.tsx': code.replace('{ theme = { c: 2 } }', '{}'),
+        },
+      })
+      const planners = [toyHydratePlanner('toy-start', { imported: ['theme'] })]
+      await host.compile('/app/mod.tsx', planners, buildEnv)
+      const h = await host.compile(
+        '/app/mod.tsx?tss-hydrate=h0',
+        planners,
+        buildEnv,
+      )
+      expect(h!.code).toContain("import { theme } from '/app/mod.tsx'")
+      expect(h!.code).not.toContain('let theme')
+    })
+  })
+
   // the same rule for a component declared on its own: a top-level writer
   // joins the binding it writes, which the route module keeps for its
   // other reader, so the option would only re-export it from there

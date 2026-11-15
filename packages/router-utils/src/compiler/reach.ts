@@ -62,6 +62,12 @@ export interface OutputDecl {
   header?: HeaderPolicy
   /** How the core's diagnostics name the output (`` `<Hydrate>` boundary ``; default its key). */
   describe?: string
+  /**
+   * A `hydrate` output: the module bindings it imports from the module that
+   * holds them; it copies the others (H2 (a), spec-phase2-hydrate: the per-output
+   * form of `RouteModule.imported`).
+   */
+  imported?: ReadonlySet<SymbolId>
 }
 
 export type Home = OutputId | 'duplicate' | 'removed'

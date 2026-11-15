@@ -34,10 +34,16 @@
  *   copies too. Import specifiers are copied where they are read.
  * - A planner renders its text in split chunks with a `{ kinds }` scope
  *   (Start's caller copy of a server fn, R159).
- * - Another planner's derived output (a server function's handler module,
- *   `<Hydrate>` children's) imports what the env module keeps; what it
- *   alone needs moves there, what several need is one module they import;
- *   a provider output (another layer's instance of the module) copies what
+ * - A `<Hydrate>` chunk copies every declaration its children reach, by
+ *   binding and transitively, exported or not, and no top-level statement
+ *   (H1, spec-phase2-hydrate). It imports only what cannot be a copy (H2): a
+ *   binding its planner names (`OutputDecl.imported`: a declaration leading
+ *   back to the boundary, the route or a recursive component), a name a
+ *   statement declares, what another module of the file holds (a shared
+ *   name, a generated declaration with its own home).
+ * - Another planner's derived output (a server function's handler module)
+ *   imports what the env module keeps; what it alone needs moves there; a
+ *   provider output (another layer's instance of the module) copies what
  *   it reaches (R157).
  * - A declaration a planner's lazy module (`custom`: Start's server-fn
  *   handler module) reaches stays in the env module when evaluating it
@@ -550,14 +556,17 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
     [...clusters[st]!.declares].some((d) => t1.symbols.kind(d) !== 'synthetic')
   /**
    * What a chunk imports from the env module instead of copying it: what
-   * `main` imports (`importedFromEnv`), a statement declaring a name, a
-   * declaration such a statement names (`main` deletes that declarator and
-   * runs the statement once). A provider copy imports nothing.
+   * `main` imports (a split chunk: `importedFromEnv`; a `<Hydrate>` chunk:
+   * its planner's set, H2 (a)), a statement declaring a name, a declaration
+   * such a statement names (`main` deletes that declarator and runs the
+   * statement once; H2 (b)). A provider copy imports nothing.
    */
   const importsFromEnv = (c: ClusterId, o: OutputId) =>
     !copying(o) &&
-    isChunk(o) &&
-    (importedFromEnv(c) ||
+    (isChunk(o) || isHydrate(o)) &&
+    ((isHydrate(o)
+      ? [...clusters[c]!.declares].some((s) => outputs.get(o)!.imported?.has(s))
+      : importedFromEnv(c)) ||
       (clusters[c]!.kind === 'effect' && declaresInStatement(c)) ||
       (statementsOf.get(c) ?? []).some(declaresInStatement))
   const reachingCode = new Map<string, Array<ClusterId>>()
@@ -609,6 +618,14 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
    * import, with the top-level code reaching it, as `main`'s chunk does.
    */
   const isChunk = (o: OutputId) => outputs.get(o)?.kind === 'split'
+  /**
+   * A `<Hydrate>` chunk: it copies the declarations its children reach and
+   * no statement (H1); it imports what its planner names and a name a
+   * statement declares (H2 (a), (b)), and what another module of the file
+   * holds by the rules above (H2 (c)). No needer and no home: it holds
+   * what it reached, as a provider copy does.
+   */
+  const isHydrate = (o: OutputId) => outputs.get(o)?.kind === 'hydrate'
   /**
    * The imports already unused in the source: an import nothing in the
    * source references, by value or in a type (an export is a use), a bare
@@ -691,7 +708,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         // would run it twice)
         if (
           !copying(o) &&
-          (!isChunk(o) ||
+          ((!isChunk(o) && !isHydrate(o)) ||
             importsFromEnv(t, o) ||
             clusters[t]!.kind === 'effect')
         ) {
@@ -699,12 +716,14 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         }
         // copied (a chunk, a provider copy), with the top-level code
         // reaching it: a statement as it stands, a declaration by these same
-        // rules
-        for (const c of codeReaching(t, o)) {
-          if (isStatement(c)) {
-            take(c)
-          } else {
-            read(c)
+        // rules; a `<Hydrate>` chunk copies the declaration alone (H1)
+        if (!isHydrate(o)) {
+          for (const c of codeReaching(t, o)) {
+            if (isStatement(c)) {
+              take(c)
+            } else {
+              read(c)
+            }
           }
         }
       }
@@ -734,18 +753,18 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
     return seen
   }
   /**
-   * The outputs of other planners (not copying, not chunks) reaching each
-   * declaration the env module does not keep: one home, theirs, or a module
-   * the several import. A chunk copies what it reaches, as on `main`; it is
-   * a home only of what no other output needs.
+   * The output of another planner (not copying, not a chunk: Start's
+   * server-fn handler module, one per file) reaching each declaration the
+   * env module does not keep: its home. A chunk copies what it reaches, as
+   * on `main`; a split chunk is a home only of what no other output needs.
    */
-  const needers = new Map<ClusterId, Set<OutputId>>()
+  const needer = new Map<ClusterId, OutputId>()
   const reached = new Map<OutputId, Set<ClusterId>>()
   const chunkOwner = new Map<ClusterId, OutputId>()
   for (const o of derived) {
     const seen = reachFrom(o.id, rootsOf(o))
     reached.set(o.id, seen)
-    if (copying(o.id)) {
+    if (copying(o.id) || isHydrate(o.id)) {
       continue
     }
     for (const c of seen) {
@@ -756,12 +775,8 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         if (!chunkOwner.has(c)) {
           chunkOwner.set(c, o.id)
         }
-      } else {
-        let set = needers.get(c)
-        if (!set) {
-          needers.set(c, (set = new Set()))
-        }
-        set.add(o.id)
+      } else if (!needer.has(c)) {
+        needer.set(c, o.id)
       }
     }
   }
@@ -807,24 +822,9 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
       }
     }
   }
-  // what other planners' outputs need: one home, or a common module
-  let common: OutputDecl | null = null
-  for (const [c, set] of needers) {
-    if (set.size === 1) {
-      home.set(c, [...set][0]!)
-    } else {
-      common ??= sharedOutput(
-        [
-          ...new Set(
-            [...needers.values()].flatMap((n) => (n.size > 1 ? [...n] : [])),
-          ),
-        ]
-          .map((o) => outputs.get(o)!.key)
-          .sort()
-          .join('+'),
-      )
-      home.set(c, common.id)
-    }
+  // what another planner's output needs lives there
+  for (const [c, o] of needer) {
+    home.set(c, o)
   }
   for (const [c, o] of chunkOwner) {
     if (!home.has(c)) {
@@ -883,7 +883,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
       }
       // what a chunk copies (from the env module, or a declaration another
       // module holds too)
-      if (isChunk(o)) {
+      if (isChunk(o) || isHydrate(o)) {
         for (const c of reached.get(o)!) {
           set.add(c)
         }
