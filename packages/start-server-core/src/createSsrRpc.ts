@@ -17,3 +17,31 @@ export const createSsrRpc = (functionId: string) => {
     [TSS_SERVER_FUNCTION]: true,
   })
 }
+
+/**
+ * A split chunk's server fn when the file's lazy server module holds it
+ * (R158 rule 2): the chunk does not build the server fn's chain; a call
+ * loads the lazy module and calls the server fn itself, so its middleware,
+ * validator and handler run in their one instance. The id, the URL and the
+ * method are literals, the synchronous surface of a server fn.
+ */
+export const createSsrFnStub = (
+  functionId: string,
+  method: string,
+  load: () => Promise<(...args: Array<any>) => Promise<any>>,
+) => {
+  const url = process.env.TSS_SERVER_FN_BASE + functionId
+  const serverFnMeta: ClientFnMeta = { id: functionId }
+
+  const fn = async (...args: Array<any>): Promise<any> => {
+    const serverFn = await load()
+    return serverFn(...args)
+  }
+
+  return Object.assign(fn, {
+    url,
+    serverFnMeta,
+    method,
+    [TSS_SERVER_FUNCTION]: true,
+  })
+}

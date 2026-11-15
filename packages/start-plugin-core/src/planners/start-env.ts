@@ -25,6 +25,7 @@ import {
   patternIdentifiers,
   revision,
   sameFileSpecifier,
+  staticPropertyKey,
   stringLiteral,
   unwrapExpression,
   walk,
@@ -64,6 +65,7 @@ import type {
   PlanContext,
   Planner,
   Range,
+  SymRef,
   SymbolId,
   TextFrag,
   Unit,
@@ -1048,25 +1050,69 @@ function planStartEnv(
       home,
       by,
     })
-    if (!providerOut) {
+    // R158 rule 1: the file does not root the wrapper of a server fn a
+    // split chunk can call through a stub (its declarator's value is the
+    // chain, whose method the stub carries as a literal); the lazy module
+    // re-exports the wrapper and the server fn: the file holds them only
+    // when its own code names the server fn
+    const stub =
+      provider === 'lazy' &&
+      site.topLevelUnit?.node.type === 'VariableDeclarator'
+        ? stubOf(site.chain, site.topLevelUnit.node)
+        : null
+    if (!providerOut && stub === null) {
       ctx.addRoot('env', { t: 'gen', id: gen })
     }
     if (provider === 'lazy') {
-      // the registry's module: the lazy module re-exports the wrapper
       const out = handlerOutput()
-      ctx.addRoot(out, {
-        t: 'gen',
-        id: rewrites.addGenerated({
+      const reExport = (parts: Array<string | SymRef>) =>
+        ctx.addRoot(out, {
+          t: 'gen',
+          id: rewrites.addGenerated({
+            body: [text(...parts)],
+            declares: [],
+            effectful: false,
+            anchor: { k: 'end' },
+            home: out,
+            by,
+          }),
+        })
+      // the registry's module: the lazy module re-exports the wrapper
+      reExport(['export { ', { sym: rpcLocal.sym }, ` as ${exportName} }\n`])
+      if (stub !== null) {
+        // R158 rule 2: a split chunk copying the declaration (the file does
+        // not hold it) calls the server fn through a stub that loads the
+        // lazy module on the call; the lazy module exports the server fn
+        const fnExport = names.allocExportName(
+          `tsrFn$${identifierBase(site.stableKey)}`,
+        )
+        reExport(['export { ', { sym: fnSym }, ` as ${fnExport} }\n`])
+        const spec = sameFileSpecifier(derivedIdOf(out))
+        const stubFn = glueImport(
+          specs.ssrRpc,
+          'createSsrFnStub',
+          'tsrSsrFnStub',
+        )
+        rewrites.placeholder({
+          range: stub.range,
           body: [
-            text('export { ', { sym: rpcLocal.sym }, ` as ${exportName} }\n`),
+            text(
+              { sym: stubFn, ctx: 'callee' },
+              `(${moduleLiteral(id)}, ${moduleLiteral(stub.method)}, () => import(`,
+            ),
+            {
+              k: 'spec',
+              specifier: spec,
+              edgeKey: ctx.edgeKey(spec, 'dynamic', 'runtime'),
+              provenance: { origin: 'runtime' },
+              form: 'dynamic',
+            },
+            text(`).then((m) => m.${fnExport}))`),
           ],
-          declares: [],
-          effectful: false,
-          anchor: { k: 'end' },
-          home: out,
+          scope: { kinds: ['split'] },
           by,
-        }),
-      })
+        })
+      }
     }
     // the hoisted chain renders after its wrapper (the chain reads the wrapper eagerly)
     commitHoist?.()
@@ -1593,6 +1639,48 @@ function hasTopLevelAwait(ctx: PlanContext): boolean {
     }
   }
   return false
+}
+
+/**
+ * The stub of a server fn in split chunks (R158 rule 2): the range of the
+ * declarator's value, and the method the chain's root declares
+ * (`createServerFn()`: `GET`; `createServerFn({ method: 'POST' })`). Null
+ * when the root is no factory call or its method no literal: the stub could
+ * not carry it, and the file holds the server fn.
+ */
+function stubOf(
+  chain: Chain,
+  declarator: Extract<Node, { type: 'VariableDeclarator' }>,
+): { range: Range; method: string } | null {
+  const head = chain.head
+  if (
+    declarator.init === null ||
+    !chain.headIsFactoryCall ||
+    head.type !== 'CallExpression'
+  ) {
+    return null
+  }
+  let method = 'GET'
+  const opts = head.arguments[0]
+  if (opts !== undefined) {
+    if (opts.type !== 'ObjectExpression' || head.arguments.length > 1) {
+      return null
+    }
+    for (const p of opts.properties) {
+      const key = p.type === 'Property' ? staticPropertyKey(p) : null
+      if (key === null) {
+        return null
+      }
+      if (key === 'method') {
+        const value = (p as Extract<Node, { type: 'Property' }>).value
+        if (value.type !== 'Literal' || typeof value.value !== 'string') {
+          return null
+        }
+        method = value.value
+      }
+    }
+  }
+  return { range: rangeOf(declarator.init), method }
 }
 
 function serverFnFact(

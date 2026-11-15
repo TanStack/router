@@ -38,7 +38,29 @@ export const lastKept = () => last
 export const keep = createServerFn().handler(() => (last = '${mark}'))
 `
 
+/** `src/lazy-schema.ts`: a validator only the lazy module's server fn imports; `mark` is its. */
+const lazySchema = (mark: string) =>
+  `export const schema = (data: unknown) => ({ ...(data as object), s: '${mark}' })\n`
+
+/** `src/routes/stubbed.tsx`: a server fn only the split component calls (R158: the lazy module holds it); `mark` is the handler's. */
+const lazyRoute = (mark: string) =>
+  `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+import { useState } from 'react'
+import { schema } from '../lazy-schema'
+const lazyFn = createServerFn({ method: 'POST' })
+  .validator(schema)
+  .handler(({ data }) => data.s + '/${mark}')
+export const Route = createFileRoute('/stubbed')({ component: Page })
+function Page() {
+  const [text, setText] = useState('idle')
+  return <button data-testid="lazy-probe" onClick={async () => setText('client=' + (await lazyFn({ data: {} })))}>{text}</button>
+}
+`
+
 const files = {
+  'src/lazy-schema.ts': lazySchema('S1'),
+  'src/routes/stubbed.tsx': lazyRoute('H1'),
   'harness/client-entry.ts': `import { createElement } from 'react'
 import { hydrateRoot } from 'react-dom/client'
 import { StartClient } from '@tanstack/react-start/client'
@@ -133,6 +155,43 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
       await server.edit({ 'src/kept.ts': kept('K2') })
       await rendered('a:P2/b/H2|K2')
       expect(await called()).toBe('client=a:P2/b/H2|K2')
+    },
+    timeout,
+  )
+
+  test(
+    "edits of a module only the lazy module's server fn imports and of its handler reach HTTP calls (R158)",
+    async () => {
+      const server = await servers[bundler]!()
+      /** What a client call over HTTP gives, from a fresh page of the route. */
+      const called = async () => {
+        const page = await openPage(`${server.url}stubbed`, {
+          registerCleanup: onTestFinished,
+        })
+        await page.waitForText('hydrated', {
+          selector: '[data-testid=hydrated]',
+        })
+        await page.page.locator('[data-testid=lazy-probe]').click()
+        await page.waitForText(/client=/, {
+          selector: '[data-testid=lazy-probe]',
+        })
+        return page.text('[data-testid=lazy-probe]')
+      }
+      /** The call's result, once it is `expected`. */
+      const reaches = async (expected: string) => {
+        let last = ''
+        await waitForOutcome({
+          applied: async () => (last = await called()) === expected,
+          timeout: 15_000,
+          describe: () => `the HTTP call: ${last}`,
+        })
+      }
+
+      await reaches('client=S1/H1')
+      await server.edit({ 'src/lazy-schema.ts': lazySchema('S2') })
+      await reaches('client=S2/H1')
+      await server.edit({ 'src/routes/stubbed.tsx': lazyRoute('H2') })
+      await reaches('client=S2/H2')
     },
     timeout,
   )

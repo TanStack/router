@@ -196,13 +196,15 @@ export const Route = createFileRoute('/')({ loader: async () => getRows(), compo
   it('splits the component and keeps the handlers lazy on the server', async () => {
     const out = await compile(twoFns(false), ssrEnv)
     expect(out!.code).toContain('lazyRouteComponent')
-    expect(out!.code).toContain('?tss-serverfn-handler')
     expect(out!.code).not.toContain('connect')
+    const lazy = await compile(twoFns(false), ssrEnv, {
+      id: `${FILE}?tss-serverfn-handler`,
+    })
+    expect(lazy!.code).toContain('connect')
   })
 
   it('keeps a handler filling a module cache lazy on the server', async () => {
-    const out = await compile(
-      `${START}import { heavy } from '../server/heavy'
+    const source = `${START}import { heavy } from '../server/heavy'
 let cached: any
 const getData = createServerFn().handler(async () => {
   cached ??= heavy()
@@ -212,12 +214,14 @@ function Page() {
   return <p>{typeof getData}</p>
 }
 export const Route = createFileRoute('/')({ loader: async () => getData(), component: Page })
-`,
-      ssrEnv,
-    )
-    expect(out!.code).toContain('?tss-serverfn-handler')
+`
+    const out = await compile(source, ssrEnv)
     expect(out!.code).not.toContain('heavy')
     expect(out!.code).toContain('lazyRouteComponent')
+    const lazy = await compile(source, ssrEnv, {
+      id: `${FILE}?tss-serverfn-handler`,
+    })
+    expect(lazy!.code).toContain('heavy')
   })
 
   // a helper the loader, the component and a handler use: `main`'s shared
