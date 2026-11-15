@@ -30,9 +30,12 @@
  *   transitively; `main`'s second instance, in `main`'s shapes, 1.8); so it
  *   copies what the env module does not keep, also what another chunk
  *   copies too. Import specifiers are copied where they are read.
- * - Every chunk imports a declaration a generated unit rooted in the env
- *   module names (Start's in-place server-fn provider): the env module's one
- *   instance, as `main` has one (`namedByEnvRoots`).
+ * - Every chunk imports a declaration the env module keeps that a generated
+ *   unit rooted in the env module or in a planner's lazy module names
+ *   (Start's in-place server-fn provider): the env module's one instance, as
+ *   `main` has one (`namedByEnvRoots`). Where the env module does not keep
+ *   it, a chunk copies it, rendering it as its planner renders it in split
+ *   chunks (a `{ kinds }` scope: Start's stub of a server fn, R158).
  * - Another planner's derived output (a server function's handler module,
  *   `<Hydrate>` children's) imports what the env module keeps; what it
  *   alone needs moves there, what several need is one module they import;
@@ -49,7 +52,7 @@
  *   planner keeps it in place.
  */
 import { deriveId } from './identity'
-import { buildClusters } from './placement/clusters'
+import { buildClusters, symRefsOf } from './placement/clusters'
 import { readIndex } from './placement/reads'
 import { readFromRemoved } from './placement/roots'
 import type { ClusterId } from './placement/clusters'
@@ -513,24 +516,33 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   const declaresInStatement = (st: ClusterId) =>
     [...clusters[st]!.declares].some((d) => t1.symbols.kind(d) !== 'synthetic')
   /**
-   * The declarations a generated unit the env module roots names (Start's
-   * in-place server-fn provider: `createServerRpc(…, (opts) =>
-   * fn.__executeServer(opts))`, which the server-fn registry reads from the
-   * env module): the env module's one instance of them, set up there. A
-   * chunk imports such a declaration instead of copying it, so it acts on
-   * that instance (`main`'s chunk holds a caller that forwards to its one
-   * provider instance). Where no planner roots generated code in the env
-   * module (every client), this is empty.
+   * The declarations the env module keeps that generated code names, where
+   * the env module or a planner's lazy module (`custom`) roots that code
+   * (Start's in-place server-fn provider: `createServerRpc(…, (opts) =>
+   * fn.__executeServer(opts))` in the env module; the lazy module's
+   * re-exports of that wrapper and of the server fn, which the server-fn
+   * registry and the chunks' stubs read, R158): the env module's one
+   * instance of them, set up there. A chunk imports such a
+   * declaration instead of copying it, so it acts on that instance
+   * (`main`'s chunk holds a caller that forwards to its one provider
+   * instance). Only what the generated text itself names: a unit owning a
+   * claim (a handler's text, the source's) names nothing here. Where no
+   * planner roots generated code (every client), this is empty.
    */
   const namedByEnvRoots = new Set<ClusterId>()
-  for (const r of outputs.get('env')!.roots) {
-    if (r.t !== 'gen') {
+  const claimOwners = new Set(
+    [...rewrites.claims.values()].map((claim) => claim.owner),
+  )
+  for (const r of [
+    ...outputs.get('env')!.roots,
+    ...derived.filter((o) => o.kind === 'custom').flatMap((o) => o.roots),
+  ]) {
+    if (r.t !== 'gen' || claimOwners.has(r.id)) {
       continue
     }
-    const g = graph.clusterOfGen.get(r.id)!
-    for (const s of reads.clusterReads(g, 'env', true).syms) {
+    for (const s of symRefsOf(gens[r.id]!.body)) {
       const t = clusterOfSym.get(s)
-      if (t !== undefined && t !== g && env.has(t) && !isImport(t)) {
+      if (t !== undefined && env.has(t) && !isImport(t)) {
         namedByEnvRoots.add(t)
       }
     }

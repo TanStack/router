@@ -18,6 +18,7 @@
  * range.
  */
 import type { Range } from './header'
+import type { OutputKind } from './reach'
 import type { ClassifiedRef, RefContext } from './analysis'
 import type { SymbolId } from './symbols'
 import type { RegionId, UnitId } from './units'
@@ -33,6 +34,8 @@ export type EditScope =
   | 'all-outputs'
   | ReadonlyArray<OutputId>
   | { readonly except: ReadonlyArray<OutputId> }
+  /** The outputs of these kinds (a planner's text for outputs another planner declares: Start's stub of a server fn in split chunks). */
+  | { readonly kinds: ReadonlyArray<OutputKind> }
 export type RefTarget =
   | { sym: SymbolId }
   | { member: [SymbolId, ...Array<string>] }
@@ -911,14 +914,22 @@ export class RewriteSet {
     return this.changes
   }
 
+  /** The kind of each output (`{ kinds }` scopes); the plan sets it (an output placement creates has none). */
+  outputKind: (output: OutputId) => OutputKind | undefined = () => undefined
+
   /** Whether `output` is in `scope`. */
-  static inScope(scope: EditScope, output: OutputId): boolean {
+  inScope(scope: EditScope, output: OutputId): boolean {
     if (scope === 'all-outputs') {
       return true
     }
-    return 'except' in scope
-      ? !scope.except.includes(output)
-      : scope.includes(output)
+    if ('except' in scope) {
+      return !scope.except.includes(output)
+    }
+    if ('kinds' in scope) {
+      const kind = this.outputKind(output)
+      return kind !== undefined && scope.kinds.includes(kind)
+    }
+    return scope.includes(output)
   }
 
   /** What `output` renders of the source. */
@@ -1121,7 +1132,7 @@ export class OutputView {
     }
     let found: Edit | null = null
     for (const e of edits) {
-      if (RewriteSet.inScope(e.scope, this.output)) {
+      if (this.set.inScope(e.scope, this.output)) {
         found = same(found, e, n)
       }
     }
@@ -1189,7 +1200,7 @@ export class OutputView {
     }
     let found: Placeholder | null = null
     for (const p of places) {
-      if (RewriteSet.inScope(p.scope, this.output)) {
+      if (this.set.inScope(p.scope, this.output)) {
         found = same(found, p, n)
       }
     }
@@ -1199,7 +1210,7 @@ export class OutputView {
   /** Whether the claim's placeholder belongs at its place in this output. */
   private applies(claim: RegionClaim): boolean {
     return (
-      claim.scope === undefined || RewriteSet.inScope(claim.scope, this.output)
+      claim.scope === undefined || this.set.inScope(claim.scope, this.output)
     )
   }
 
@@ -1290,7 +1301,7 @@ export class OutputView {
           at <= lastAt &&
           at !== skipAt &&
           this.set.insertLevel(ins) === level &&
-          RewriteSet.inScope(ins.scope, output)
+          this.set.inScope(ins.scope, output)
         ) {
           if (at > st.pos) {
             v.source(st.pos, at)

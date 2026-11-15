@@ -10437,6 +10437,87 @@ describe('what a generated unit rooted in the env module names', () => {
     expect(r.chunk).toContain('const save = { run: () => cfg.n }')
     expect(r.chunk).toMatch(/^save\.run\(\)$/m)
   })
+
+  /**
+   * R158: a planner's lazy module roots generated code naming `save` (Start
+   * re-exports the server fn there), and the planner renders `save`'s value
+   * otherwise in split chunks (a `{ kinds }` scope: Start's stub).
+   */
+  const toyLazyRoot: Planner = {
+    name: 'toy-lazy-root',
+    tier: 1,
+    gate: () => true,
+    plan(ctx) {
+      const named = (n: string) =>
+        [...ctx.analysis.file.bindings]
+          .map((b) => ctx.symbols.ofBinding(b))
+          .find(
+            (s) => ctx.symbols.isModuleLevel(s) && ctx.symbols.name(s) === n,
+          )
+      const route = named('Route')
+      const sym = named('save')
+      if (route === undefined || sym === undefined) {
+        return
+      }
+      // a route file: the core places it as route splitting on `main`
+      ctx.setRouteModule({ imported: new Set([route]), shared: new Set() })
+      const out = ctx.declareOutput({
+        kind: 'custom',
+        key: 'handler',
+        derived: { kind: 'handler', value: '' },
+      })
+      ctx.addRoot(out, {
+        t: 'gen',
+        id: ctx.rewrites.addGenerated({
+          body: [{ k: 'text', parts: ['export { ', { sym }, ' as tsrFn }\n'] }],
+          declares: [],
+          effectful: false,
+          anchor: { k: 'end' },
+          home: out,
+          by: 'toy-lazy-root',
+        }),
+      })
+      const src = ctx.analysis.source.code
+      const value = '{ run: () => cfg.n }'
+      const start = src.indexOf(value)
+      ctx.rewrites.placeholder({
+        range: { start, end: start + value.length },
+        body: [{ k: 'text', parts: ['stub()'] }],
+        scope: { kinds: ['split'] },
+        by: 'toy-lazy-root',
+      })
+    },
+  }
+
+  it("is imported by a split chunk when the env module keeps it and a generated unit a planner's lazy module roots names it", async () => {
+    const r = await compileAll([toySplitPlanner(), toyLazyRoot])
+    expect(r.env).toContain('const save = { run: () => cfg.n }')
+    for (const derived of [r.chunk, r.handler]) {
+      expect(derived).toMatch(
+        /import \{[^}]*\bsave\b[^}]*\} from '\/app\/route\.tsx'/,
+      )
+      expect(derived).not.toContain('const save')
+    }
+  })
+
+  it('lives in the lazy module when the env module does not keep it; a split chunk renders it as its planner does there', async () => {
+    const host = new MemoryHost({
+      files: { '/app/route.tsx': code.replace('save.run()\n', '') },
+    })
+    const env = envInfo({ name: 'ssr', type: 'server', mode: 'build' })
+    const out = async (id: string) =>
+      (await host.compile(id, [toySplitPlanner(), toyLazyRoot], { env }))
+        ?.code ?? ''
+    const r = {
+      env: await out('/app/route.tsx'),
+      chunk: await out('/app/route.tsx?tsr-split=component'),
+      handler: await out('/app/route.tsx?tss-serverfn-handler'),
+    }
+    expect(r.env).not.toContain('save')
+    expect(r.handler).toContain('const save = { run: () => cfg.n }')
+    expect(r.chunk).toContain('const save = stub()')
+    expect(r.chunk).not.toContain('run: () => cfg.n')
+  })
 })
 
 // A planner's lazy module (`custom`, Start's server-fn handler module)
