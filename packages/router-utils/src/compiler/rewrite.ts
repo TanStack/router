@@ -1482,6 +1482,25 @@ export class OutputView {
     return this.decide(offset, this.set.regions.nodeAt(offset))
   }
 
+  /**
+   * Whether the byte at `offset` belongs to another output's text instead of
+   * this one's: the innermost claim around it, in scope here, is owned by
+   * generated code another output is home to (a server fn's handler a
+   * planner moved to its lazy module). An owner placement homes (`auto`,
+   * `env-readers`) decides nothing.
+   */
+  isRelocatedAt(offset: number): boolean {
+    for (let x = this.set.regions.nodeAt(offset); x !== null; x = x.parent) {
+      if (x.claim !== null && this.applies(x.claim)) {
+        const home = this.set.generated[x.claim.owner]!.home
+        return (
+          typeof home === 'string' && home !== 'auto' && home !== this.output
+        )
+      }
+    }
+    return false
+  }
+
   /** Whether the byte at `range.start` is erased by what strictly encloses `range` (an edit on exactly the range does not count). */
   isErasedAround(range: Range): boolean {
     const own = this.set.regions.nodeOn(range)

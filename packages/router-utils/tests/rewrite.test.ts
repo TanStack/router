@@ -385,6 +385,56 @@ describe('claims, homes and substitution', () => {
     expect(env.placeholderAt(rangeOf(code, '() => 1'))).toBeNull()
   })
 
+  it("tells text another output's generated code takes from text a placement-homed owner takes (a later planner reads only what stays)", () => {
+    const code = dedent(`
+      import { log } from './log'
+      const PAGE = 20
+      export const list = wrapServer(() => log(PAGE))
+      export const hoisted = wrapOther(() => PAGE)
+    `)
+    const { ctx } = engine(code, { env: { type: 'server' } })
+    const lazy = ctx.declareOutput({
+      kind: 'custom',
+      key: 'handler',
+      derived: { kind: 'handler', value: '' },
+    })
+    const claimInto = (text: string, home: 'auto' | OutputId) => {
+      const region = ctx.region(rangeOf(code, text), 'custom')
+      const local = ctx.names.alloc('tsrMoved')
+      const owner = ctx.rewrites.addGenerated({
+        body: [
+          { k: 'text', parts: ['const ', { sym: local.sym }, ' = '] },
+          { k: 'region', id: region },
+          { k: 'text', parts: ['\n'] },
+        ],
+        declares: [local.sym],
+        effectful: false,
+        anchor: { k: 'end' },
+        home,
+        by: 'toy',
+      })
+      ctx.rewrites.claim({
+        region,
+        owner,
+        placeholder: [{ k: 'text', parts: ['null'] }],
+        by: 'toy',
+      })
+    }
+    claimInto('() => log(PAGE)', lazy)
+    claimInto('() => PAGE', 'auto')
+    const env = ctx.rewrites.view('env')
+    const at = (text: string, from = 0) => code.indexOf(text, from)
+    // the moved handler's reads
+    expect(env.isRelocatedAt(at('log(PAGE)'))).toBe(true)
+    expect(env.isRelocatedAt(at('PAGE)', at('log(')))).toBe(true)
+    // the text around it, and text whose owner placement homes
+    expect(env.isRelocatedAt(at('wrapServer'))).toBe(false)
+    expect(env.isRelocatedAt(at('PAGE = 20'))).toBe(false)
+    expect(env.isRelocatedAt(at('PAGE', at('wrapOther')))).toBe(false)
+    // the lazy module holds the handler's text
+    expect(ctx.rewrites.view(lazy).isRelocatedAt(at('log(PAGE)'))).toBe(false)
+  })
+
   it('homes the hoist in the chunk when only the chunk roots the placeholder', () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
