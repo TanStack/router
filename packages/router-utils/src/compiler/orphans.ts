@@ -574,7 +574,10 @@ const HOOK_NAME = /^use[A-Z0-9_]/
 /**
  * Whether an initialiser calls a hook (`useX(...)`, `ns.useX(...)`): a hook
  * call is never dropped, whatever it reads, so the hook order stays equal on
- * both sides (the call stays as a statement with its import).
+ * both sides (the call stays as a statement with its import). `main` drops
+ * such calls and mismatches `useId` at hydration (R160). Possible later
+ * optimisation, not done: a hook call could go when no `useId` call and no
+ * custom hook (which may call `useId`) follows it in the same function.
  */
 function callsHook(init: Node): boolean {
   let found = false
