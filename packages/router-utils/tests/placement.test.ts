@@ -10313,6 +10313,132 @@ function evaluatedNames(
   return names
 }
 
+// A generated unit a planner roots in the env module (Start's in-place
+// server-fn provider: a `createServerRpc` export naming the server fn, which
+// the registry reads from the file) makes the declarations it names the env
+// module's one instance: a split chunk and a planner's lazy module (`custom`,
+// Start's handler module) import them instead of copying them, and the copy
+// walk of R1 stops there. Without such a root a chunk copies them, as
+// `main`'s does. (design-ssr-serverfn-double-build.md, option a)
+describe('what a generated unit rooted in the env module names', () => {
+  /**
+   * For each module-level binding of `names`: a generated wrapper rooted in
+   * the env module (`home: 'auto'`) that names it, and with `handler`, a
+   * unit of a lazy module of the planner's own that names it too.
+   */
+  const toyProvider = (names: Array<string>, handler: boolean): Planner => ({
+    name: 'toy-provider',
+    tier: 1,
+    gate: () => true,
+    plan(ctx) {
+      for (const b of ctx.analysis.file.bindings) {
+        const sym = ctx.symbols.ofBinding(b)
+        const name = ctx.symbols.name(sym)
+        if (name === 'Route' && ctx.symbols.isModuleLevel(sym)) {
+          // a route file: the core places it as route splitting on `main`
+          ctx.setRouteModule({ imported: new Set([sym]), shared: new Set() })
+        }
+        if (!ctx.symbols.isModuleLevel(sym) || !names.includes(name)) {
+          continue
+        }
+        const wrapper = ctx.names.alloc(`tsrRpc$${name}`)
+        const gen = ctx.rewrites.addGenerated({
+          body: [
+            {
+              k: 'text',
+              parts: [
+                'const ',
+                { sym: wrapper.sym },
+                ' = () => ',
+                { sym },
+                '.run()\nexport { ',
+                { sym: wrapper.sym },
+                ' }\n',
+              ],
+            },
+          ],
+          declares: [wrapper.sym],
+          effectful: false,
+          anchor: { k: 'end' },
+          home: 'auto',
+          by: 'toy-provider',
+        })
+        ctx.addRoot('env', { t: 'gen', id: gen })
+        if (handler) {
+          const out = ctx.declareOutput({
+            kind: 'custom',
+            key: 'handler',
+            derived: { kind: 'handler', value: '' },
+          })
+          const local = ctx.names.alloc(`tsrHandler$${name}`)
+          const owner = ctx.rewrites.addGenerated({
+            body: [
+              {
+                k: 'text',
+                parts: [
+                  'export const ',
+                  { sym: local.sym },
+                  ' = () => ',
+                  { sym },
+                  '.run()\n',
+                ],
+              },
+            ],
+            declares: [local.sym],
+            effectful: false,
+            anchor: { k: 'end' },
+            home: out,
+            by: 'toy-provider',
+          })
+          ctx.addRoot(out, { t: 'gen', id: owner })
+        }
+      }
+    },
+  })
+  const code = dedent(`
+    import { createFileRoute } from 'toy-router'
+    const cfg = { n: 1 }
+    const save = { run: () => cfg.n }
+    save.run()
+    export const Route = createFileRoute('/')({
+      component: () => [cfg.n, save.run()],
+    })
+  `)
+  const compileAll = async (planners: Array<Planner>) => {
+    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
+    const env = envInfo({ name: 'ssr', type: 'server', mode: 'build' })
+    const out = async (id: string) =>
+      (await host.compile(id, planners, { env }))?.code ?? ''
+    return {
+      env: await out('/app/route.tsx'),
+      chunk: await out('/app/route.tsx?tsr-split=component'),
+      handler: await out('/app/route.tsx?tss-serverfn-handler'),
+    }
+  }
+
+  it('is imported by a split chunk and a lazy module, which copy what they read besides', async () => {
+    const r = await compileAll([toySplitPlanner(), toyProvider(['save'], true)])
+    expect(r.env).toMatch(/export \{[^}]*\bsave\b[^}]*\}/)
+    for (const derived of [r.chunk, r.handler]) {
+      expect(derived).toMatch(
+        /import \{[^}]*\bsave\b[^}]*\} from '\/app\/route\.tsx'/,
+      )
+      expect(derived).not.toContain('const save')
+      expect(derived).not.toContain('tsrRpc$save')
+    }
+    // the chunk copies `cfg`, which it reads itself; the statement naming
+    // `save` reaches `cfg` only through the import and is not copied (O1)
+    expect(r.chunk).toContain('const cfg = { n: 1 }')
+    expect(r.chunk).not.toMatch(/^save\.run\(\)$/m)
+  })
+
+  it('is copied by a split chunk where no generated unit the env module roots names it', async () => {
+    const r = await compileAll([toySplitPlanner(), toyProvider([], false)])
+    expect(r.chunk).toContain('const save = { run: () => cfg.n }')
+    expect(r.chunk).toMatch(/^save\.run\(\)$/m)
+  })
+})
+
 // P4: a kept declaration's message names a binding its evaluation reads,
 // for every `state` record this file's compiles report (F1-5b:
 // a holder of a function another declaration calls was said to use what

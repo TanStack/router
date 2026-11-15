@@ -736,6 +736,11 @@ function planStartEnv(
   // isomorphic call) is the handler's text: it renders in the handler
   // module.
   const lazySites = new Set<ServerFnSite>()
+  if (role === 'provider' && !providerOut && sites.length > 0) {
+    // a lazy handler module and a split chunk import the server fns from
+    // the file (the in-place provider's one instance) through glue exports
+    ctx.tagGlueExports(tagOfFile())
+  }
   if (
     role === 'provider' &&
     !providerOut &&
@@ -751,9 +756,6 @@ function planStartEnv(
       if (ctx.fallbackAt(rangeOf(site.handler), 'custom') === undefined) {
         lazySites.add(site)
       }
-    }
-    if (lazySites.size > 0) {
-      ctx.tagGlueExports(tagOfFile())
     }
   }
   /** An environment rewrite: the text of the call, wherever it renders (a stubbed handler's place hides it). */

@@ -35,6 +35,9 @@
  *   reaching it, as `main`'s provider copy of the file does, and imports
  *   nothing of the env module but a name a statement declares (`if (…) {
  *   var x }`, as every chunk), where `main`'s copy imports nothing.
+ * - Every chunk imports a declaration a generated unit rooted in the env
+ *   module names (Start's in-place server-fn provider): the env module's one
+ *   instance, as `main` has one (`namedByEnvRoots`).
  * - Another planner's derived output (`<Hydrate>` children's) imports what
  *   the env module keeps; what it alone needs moves there, what several
  *   need is one module they import; a provider output (another layer's
@@ -135,10 +138,11 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   const isImport = (c: ClusterId) => clusters[c]!.kind === 'import'
 
   /**
-   * What a chunk imports from the env module rather than copying it: a split
-   * chunk what `main`'s router splitter imports (`RouteModule.imported`);
-   * a handler module nothing, `main`'s provider being a copy of the whole
-   * file that imports nothing of it (R156).
+   * What a chunk imports from the env module rather than copying it, as
+   * `main` does: a split chunk what `main`'s router splitter imports
+   * (`RouteModule.imported`); a handler module nothing, `main`'s provider
+   * being a copy of the whole file that imports nothing of it (R156). (Both
+   * import what `namedByEnvRoots` holds too: `importsFromEnv`.)
    */
   const importedFromEnv = (c: ClusterId, o: OutputId) =>
     outputs.get(o)?.kind === 'split' &&
@@ -401,15 +405,40 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   const declaresInStatement = (st: ClusterId) =>
     [...clusters[st]!.declares].some((d) => t1.symbols.kind(d) !== 'synthetic')
   /**
+   * The declarations a generated unit the env module roots names (Start's
+   * in-place server-fn provider: `createServerRpc(…, (opts) =>
+   * fn.__executeServer(opts))`, which the server-fn registry reads from the
+   * env module): the env module's one instance of them, set up there. A
+   * chunk imports such a declaration instead of copying it, so it acts on
+   * that instance (`main`'s chunk holds a caller that forwards to its one
+   * provider instance). Where no planner roots generated code in the env
+   * module (every client), this is empty.
+   */
+  const namedByEnvRoots = new Set<ClusterId>()
+  for (const r of outputs.get('env')!.roots) {
+    if (r.t !== 'gen') {
+      continue
+    }
+    const g = graph.clusterOfGen.get(r.id)!
+    for (const s of reads.clusterReads(g, 'env', true).syms) {
+      const t = clusterOfSym.get(s)
+      if (t !== undefined && t !== g && env.has(t) && !isImport(t)) {
+        namedByEnvRoots.add(t)
+      }
+    }
+  }
+  /**
    * What a chunk imports from the env module instead of copying it: what
-   * `main` imports (`importedFromEnv`), a statement declaring a name, and a
+   * `main` imports (`importedFromEnv`), a statement declaring a name, a
    * declaration such a statement names (`main` deletes that declarator and
-   * runs the statement once). A provider copy imports nothing.
+   * runs the statement once), and a declaration a generated unit the env
+   * module roots names (`namedByEnvRoots`). A provider copy imports nothing.
    */
   const importsFromEnv = (c: ClusterId, o: OutputId) =>
     !copying(o) &&
     isChunk(o) &&
     (importedFromEnv(c, o) ||
+      namedByEnvRoots.has(c) ||
       (clusters[c]!.kind === 'effect' && declaresInStatement(c)) ||
       (statementsOf.get(c) ?? []).some(declaresInStatement))
   const reachingCode = new Map<string, Array<ClusterId>>()

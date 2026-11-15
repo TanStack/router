@@ -19,6 +19,65 @@ import type { ServedCase } from './regression-helpers'
 // real requests; "loads" is what the environment's module graph reaches.
 
 /**
+ * The route files of the one-instance rows (below): an unexported server fn
+ * the route's component calls on SSR, from the split chunk. Each route
+ * records into a module of its own.
+ */
+function routeFiles(): Record<string, string> {
+  const head = `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+`
+  const page = (fn: string, also = '') => `function Page() {
+  void ${fn}({ data: {} })${also}
+  return <p data-url={${fn}.url}>page</p>
+}
+`
+  return {
+    // what the validator and the handler see, in order
+    'src/notes-chain.ts': `const notes: Array<number> = []
+export const note = (n: number) => {
+  notes.push(n)
+  return [...notes]
+}
+`,
+    'src/routes/chain-state.tsx': `${head}import { note } from '../notes-chain'
+let seen = 0
+const save = createServerFn({ method: 'POST' })
+  .validator(() => ({ n: ++seen }))
+  .handler(({ data }) => Response.json(note(data.n)))
+export const Route = createFileRoute('/chain-state')({ component: Page })
+${page('save')}`,
+    // how often a validator schema is built, per route
+    ...Object.fromEntries(
+      ['once', 'read'].map((key) => [
+        `src/schema-${key}.ts`,
+        `let builds = 0
+export const countedSchema = () => {
+  builds++
+  return (data: unknown) => data
+}
+export const schemaBuilds = () => builds
+`,
+      ]),
+    ),
+    'src/routes/schema-once.tsx': `${head}import { countedSchema, schemaBuilds } from '../schema-once'
+const schema = countedSchema()
+const check = createServerFn({ method: 'POST' })
+  .validator(schema)
+  .handler(() => Response.json(schemaBuilds()))
+export const Route = createFileRoute('/schema-once')({ component: Page })
+${page('check')}`,
+    'src/routes/schema-read.tsx': `${head}import { countedSchema, schemaBuilds } from '../schema-read'
+const schema = countedSchema()
+const check = createServerFn({ method: 'POST' })
+  .validator(schema)
+  .handler(() => Response.json(schemaBuilds()))
+export const Route = createFileRoute('/schema-read')({ component: Page })
+${page('check', '\n  schema({})')}`,
+  }
+}
+
+/**
  * No import protection (its dev mock would hide a leaked import from the
  * loads) and `verbatimModuleSyntax` (without it, the TypeScript transform
  * drops imports nothing reads after the compiler and hides leaks).
@@ -26,6 +85,7 @@ import type { ServedCase } from './regression-helpers'
 const host = useStartHost({
   start: { importProtection: { enabled: false } },
   files: {
+    ...routeFiles(),
     'tsconfig.json': JSON.stringify({
       compilerOptions: {
         target: 'ES2022',
@@ -721,4 +781,100 @@ export const f = createServerFn().handler(async () => cfg.url)`,
     expect(await callServerFnThroughCallers(served, 'module.f')).toBe('a')
     expect(await serverCalls(served)).toEqual(['bumpOther'])
   })
+})
+
+// One instance per server fn, as `main` (R153; design-ssr-serverfn-double-
+// build.md, option a): the in-place provider roots each server fn's
+// `createServerRpc` export in its file, so the file keeps the server fn's
+// declaration; a split chunk or a handler module reading it imports it
+// instead of copying it. Kind A: each failed at 02f8d6b8bd, where the copy
+// was a second instance with its own validator schema and chain state.
+describe('a server fn has one instance on the server', () => {
+  /**
+   * Renders `route` on the server (its component calls the route's server
+   * fn from the split chunk), then calls that server fn `calls` times over
+   * HTTP by its public `url`, one after the other; gives the last call's
+   * result (the handler answers with a `Response`, which reaches the caller
+   * as is).
+   */
+  async function renderThenCall(route: string, calls: number) {
+    const run = await (
+      await host()
+    ).run<unknown>(`(async () => {
+  const html = await (await fetch(${JSON.stringify(route)})).text()
+  const url = /data-url="([^"]+)"/.exec(html)?.[1]?.replace(/&amp;/g, '&')
+  if (!url) {
+    throw new Error('no server fn url in ' + html.slice(0, 300))
+  }
+  let last
+  for (let i = 0; i < ${calls}; i++) {
+    const response = await fetch(url, { method: 'POST', body: new FormData() })
+    last = await response.json()
+  }
+  return last
+})()`)
+    expect(run.errors).toEqual([])
+    return run.result
+  }
+
+  // main: the chunk's caller forwards to the one provider instance: 1 2 3
+  // (02f8d6b8bd: 1 1 2, the chunk's copy counting on its own)
+  test('a route chunk calls the instance HTTP calls reach: chain state is shared', async () => {
+    expect(await renderThenCall('/chain-state', 2)).toEqual([1, 2, 3])
+  })
+
+  // a schema only the chain reads is built once, when the route file loads
+  // (main: at chunk load, then again in its provider copy at the first
+  // call: 2; 02f8d6b8bd: 2, the chunk's copy)
+  test('a validator schema only the server fn reads is built once', async () => {
+    expect(await renderThenCall('/schema-once', 1)).toBe(1)
+  })
+
+  // the component reads the schema itself: the chunk copies it, as main's
+  // chunk does, and imports only the server fn (main: 2)
+  test('a schema the component also reads is copied into the chunk, as on main', async () => {
+    expect(await renderThenCall('/schema-read', 1)).toBe(2)
+  })
+
+  // main: one provider copy runs both handlers: 1 2 3 4 (02f8d6b8bd:
+  // 1 1 2 2, `a`'s handler module holding its own `b`)
+  test('a handler calling a sibling server fn calls its one instance', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${serverFn}let seen = 0
+export const b = createServerFn()
+  .validator(() => ({ n: ++seen }))
+  .handler(({ data }) => data.n)
+export const a = createServerFn().handler(() => b({ data: {} }))`,
+    })
+    const results = []
+    for (const fn of ['module.b', 'module.a', 'module.b', 'module.a']) {
+      results.push(await callFromClient(served, fn))
+    }
+    expect(results).toEqual([1, 2, 3, 4])
+  })
+
+  // Known difference (KNOWN-BUGS "Accepted limits", design-ssr-serverfn-
+  // double-build.md 6): a handler reading module state its own validator
+  // writes. The handler module copies `calls` (R156) while the validator
+  // stays in the file and counts the file's, so the handler reads 0, 0;
+  // main's provider copy runs both and reads 1, 2. Niche, best effort.
+  // Pinned: asserts main's value.
+  test.fails(
+    'v_state known difference: a handler reads state its validator writes',
+    async () => {
+      const served = await serveCase(await host(), {
+        'module.tsx': `${serverFn}let calls = 0
+export const fn = createServerFn()
+  .validator((data: unknown) => {
+    calls++
+    return data
+  })
+  .handler(() => calls)`,
+      })
+      expect([
+        await callFromClient(served, 'module.fn'),
+        await callFromClient(served, 'module.fn'),
+      ]).toEqual([1, 2])
+    },
+  )
 })
