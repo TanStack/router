@@ -247,6 +247,52 @@ function Page() {
   return 'MARK_SHARED_PAGE'
 }
 `,
+  // the step-4 stop (WebDevSimplified `routes/index.tsx`): the loader calls
+  // one server fn, whose lazy handler keeps Start's loader in the route
+  // module; another only the split component calls (and one with the
+  // default method) still lives in the lazy module (R158 amendment)
+  'stop-schema.ts': `${counted('MARK_STOP_SCHEMA')}export const buildStopSchema = () => {
+  ;(globalThis as any).MARK_STOP_BUILDS = ((globalThis as any).MARK_STOP_BUILDS ?? 0) + 1
+  return (data: unknown) => data
+}
+`,
+  'stop-db.server.ts': counted('MARK_STOP_DB', `'MARK_STOP_DB'`),
+  'src/routes/stop.tsx': `import { createFileRoute } from '@tanstack/react-router'
+${head}import { buildStopSchema } from '../../stop-schema'
+import { value } from '../../stop-db.server'
+const list = createServerFn().handler(async () => 'MARK_STOP_LIST')
+const save = createServerFn({ method: 'POST' })
+  .validator(buildStopSchema())
+  .handler(async () => value)
+const peek = createServerFn().handler(async () => 'MARK_STOP_PEEK')
+export const Route = createFileRoute('/stop')({
+  loader: () => list(),
+  component: Page,
+})
+function Page() {
+  ;(globalThis as any).__stop = { save, peek }
+  return 'MARK_STOP_PAGE'
+}
+`,
+  // shapes the chunk's stub does not take (a stored builder, a method that
+  // is no literal): the route module holds them (R157), with the module's
+  // one state
+  'src/routes/fallback.tsx': `import { createFileRoute } from '@tanstack/react-router'
+${head}let seen = 0
+const base = createServerFn({ method: 'POST' })
+const viaBase = base
+  .validator(() => ({ n: ++seen }))
+  .handler(({ data }) => data.n)
+const method = ['G', 'ET'].join('') as 'GET'
+const viaMethod = createServerFn({ method })
+  .validator(() => ({ n: ++seen }))
+  .handler(({ data }) => data.n)
+export const Route = createFileRoute('/fallback')({ component: Page })
+function Page() {
+  ;(globalThis as any).__fallback = { viaBase, viaMethod }
+  return 'MARK_FALLBACK_PAGE'
+}
+`,
   // nickysemenza/cubby `mutation-data.ts`: a server fn only an isomorphic
   // fn's client side calls, so no server code names it
   'cubby-contract.ts': `${counted('MARK_CUBBY_CONTRACT')}export const contract = (data: unknown) => data
@@ -549,6 +595,81 @@ return {
         snap: ['a/b', 'a/b'],
         session: true,
         size: [1, 1],
+      })
+    },
+    timeout,
+  )
+
+  test(
+    "SSR (R158 amendment): a server fn only the split component calls stays lazy beside one the route's loader calls; the chunk's stub has the server fn's url and method",
+    async () => {
+      const { result } = await build.ssr
+        .run(`${callByIdPrelude}const marks = () => ({
+  schema: globalThis.MARK_STOP_SCHEMA ?? 0,
+  builds: globalThis.MARK_STOP_BUILDS ?? 0,
+  db: globalThis.MARK_STOP_DB ?? 0,
+})
+const atStart = marks()
+const { routeTree } = entry.getRouter()
+const rendered = (await entry.renderPath(routeTree, '/stop')).includes('MARK_STOP_PAGE')
+const afterRender = marks()
+const { save, peek } = globalThis.__stop
+const surface = (fn) => ({ url: typeof fn.url === 'string' && fn.url.length > 0, method: fn.method })
+const called = await save({ data: {} })
+const afterCall = marks()
+const overHttp = await callById(serverFnId(save), {}, save.method)
+return {
+  atStart,
+  rendered,
+  afterRender,
+  surface: [surface(save), surface(peek)],
+  called,
+  afterCall,
+  overHttp,
+  peek: [await peek(), await callById(serverFnId(peek), undefined, peek.method)],
+  end: marks(),
+}`)
+      const none = { schema: 0, builds: 0, db: 0 }
+      const once = { schema: 1, builds: 1, db: 1 }
+      expect(result).toEqual({
+        atStart: none,
+        rendered: true,
+        afterRender: none,
+        surface: [
+          { url: true, method: 'POST' },
+          { url: true, method: 'GET' },
+        ],
+        called: 'MARK_STOP_DB',
+        afterCall: once,
+        overHttp: 'MARK_STOP_DB',
+        peek: ['MARK_STOP_PEEK', 'MARK_STOP_PEEK'],
+        end: once,
+      })
+    },
+    timeout,
+  )
+
+  test(
+    "SSR (R158): a server fn whose chain's root the stub cannot read (a stored builder, a method that is no literal) is the route module's one instance",
+    async () => {
+      const { result } = await build.ssr
+        .run(`${callByIdPrelude}const { routeTree } = entry.getRouter()
+await entry.renderPath(routeTree, '/fallback')
+const { viaBase, viaMethod } = globalThis.__fallback
+return {
+  names: [viaBase.serverFnMeta.name, viaMethod.serverFnMeta.name],
+  methods: [viaBase.method, viaMethod.method],
+  seen: [
+    await viaBase({ data: {} }),
+    await callById(serverFnId(viaBase), {}, 'POST'),
+    await viaMethod({ data: {} }),
+    await callById(serverFnId(viaMethod), {}, 'GET'),
+  ],
+}`)
+      expect(result).toEqual({
+        names: ['viaBase', 'viaMethod'],
+        methods: ['POST', 'GET'],
+        seen: [1, 2, 3, 4],
       })
     },
     timeout,

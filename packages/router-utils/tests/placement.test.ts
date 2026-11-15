@@ -10634,6 +10634,66 @@ describe('the lazy module of a planner (custom)', () => {
     expect(r.lazy).toContain(`from 'db'`)
     expect(imports(r.lazy, 'cfg')).toBe(true)
   })
+
+  // R158 amendment: rule 4 counts declarations of the source; one a planner
+  // generates (Start's lazy-handler loader) is no state of the file, since
+  // no source code can name it (the step-4 stop: 22 corpus routes)
+  it("moves a declaration whose evaluation reads only a planner's generated declaration the env module keeps", async () => {
+    /** A generated `tsrLoad` the env module roots, which the text in `wrap(…)` reads (as Start's handler stand-in reads its loader). */
+    const toyLoader: Planner = {
+      name: 'toy-loader',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        const code = ctx.analysis.source.code
+        const at = code.indexOf('wrap(0)')
+        if (at < 0) {
+          return
+        }
+        const load = ctx.names.alloc('tsrLoad')
+        ctx.addRoot('env', {
+          t: 'gen',
+          id: ctx.rewrites.addGenerated({
+            body: [
+              {
+                k: 'text',
+                parts: ['const ', { sym: load.sym }, ' = () => 1\n'],
+              },
+            ],
+            declares: [load.sym],
+            effectful: false,
+            anchor: { k: 'after-header' },
+            home: 'auto',
+            by: 'toy-loader',
+          }),
+        })
+        ctx.rewrites.placeholder({
+          range: { start: at + 'wrap('.length, end: at + 'wrap(0'.length },
+          body: [{ k: 'text', parts: ['() => ', { sym: load.sym }, '()'] }],
+          scope: 'all-outputs',
+          by: 'toy-loader',
+        })
+      },
+    }
+    const host = new MemoryHost({
+      files: {
+        '/app/mod.ts': dedent(`
+          const x = wrap(0)
+          export const fn = lazy(() => x)
+        `),
+      },
+    })
+    const env = envInfo({ name: 'ssr', type: 'server', mode: 'build' })
+    const out = async (id: string) =>
+      (await host.compile(id, [toyLoader, toyLazy], { env }))?.code ?? ''
+    const r = {
+      env: await out('/app/mod.ts'),
+      lazy: await out('/app/mod.ts?tss-serverfn-handler'),
+    }
+    expect(r.env).not.toContain('const x')
+    expect(r.lazy).toContain('const x = wrap(() => tsrLoad())')
+    expect(imports(r.lazy, 'tsrLoad')).toBe(true)
+  })
 })
 
 // P4: a kept declaration's message names a binding its evaluation reads,

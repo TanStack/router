@@ -58,7 +58,36 @@ function Page() {
 }
 `
 
+/** `src/stop-schema.ts`: counts its validations (one instance: 1, 2 in one page); `mark` is its. */
+const stopSchema = (mark: string) =>
+  `let n = 0
+export const schema = (data: unknown) => ({ ...(data as object), s: '${mark}', n: ++n })
+`
+
+/**
+ * `src/routes/stop.tsx`, the step-4 stop's shape (R158 amendment): the
+ * loader calls `list`, whose lazy handler keeps Start's loader in the route
+ * module; `save`, only the split component calls, lives in the lazy module.
+ */
+const stopRoute = `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+import { useState } from 'react'
+import { schema } from '../stop-schema'
+const list = createServerFn().handler(async () => 'L')
+const save = createServerFn({ method: 'POST' })
+  .validator(schema)
+  .handler(({ data }) => data.s + ':' + data.n)
+export const Route = createFileRoute('/stop')({ loader: () => list(), component: Page })
+function Page() {
+  const loaded = Route.useLoaderData()
+  const [text, setText] = useState('idle')
+  return <button data-testid="stop-probe" onClick={async () => setText('client=' + loaded + '/' + (await save({ data: {} })))}>{text}</button>
+}
+`
+
 const files = {
+  'src/stop-schema.ts': stopSchema('S1'),
+  'src/routes/stop.tsx': stopRoute,
   'src/lazy-schema.ts': lazySchema('S1'),
   'src/routes/stubbed.tsx': lazyRoute('H1'),
   'harness/client-entry.ts': `import { createElement } from 'react'
@@ -192,6 +221,54 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
       await reaches('client=S2/H1')
       await server.edit({ 'src/routes/stubbed.tsx': lazyRoute('H2') })
       await reaches('client=S2/H2')
+    },
+    timeout,
+  )
+
+  test(
+    "the step-4 stop's shape: an edit of a module only the lazy module's chain reads reaches HTTP calls, one instance (R158 amendment)",
+    async () => {
+      const server = await servers[bundler]!()
+      /** Two client calls over HTTP from one fresh page of the route. */
+      const calledTwice = async () => {
+        const page = await openPage(`${server.url}stop`, {
+          registerCleanup: onTestFinished,
+        })
+        await page.waitForText('hydrated', {
+          selector: '[data-testid=hydrated]',
+        })
+        const results: Array<string> = []
+        for (const before of ['idle', null]) {
+          const was = before ?? results[0]!
+          await page.page.locator('[data-testid=stop-probe]').click()
+          await page.page.waitForFunction(
+            (text) =>
+              document.querySelector('[data-testid=stop-probe]')
+                ?.textContent !== text,
+            was,
+          )
+          results.push(await page.text('[data-testid=stop-probe]'))
+        }
+        return results.join(' ')
+      }
+      let last = ''
+      /** Two calls answered by the `mark` validator, one instance counting on (n, n + 1). */
+      const reaches = (mark: string) =>
+        waitForOutcome({
+          applied: async () => {
+            last = await calledTwice()
+            const m = new RegExp(
+              `^client=L/${mark}:(\\d+) client=L/${mark}:(\\d+)$`,
+            ).exec(last)
+            return m !== null && Number(m[2]) === Number(m[1]) + 1
+          },
+          timeout: 15_000,
+          describe: () => `the HTTP calls: ${last}`,
+        })
+
+      await reaches('S1')
+      await server.edit({ 'src/stop-schema.ts': stopSchema('S2') })
+      await reaches('S2')
     },
     timeout,
   )
