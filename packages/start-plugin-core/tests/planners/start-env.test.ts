@@ -730,9 +730,8 @@ export const outer = createServerFn().handler(async () => {
 
 // In-place provider (SSR = provider): handlers move to one lazy handler
 // module the defining module imports on the first call; what only they read
-// moves with them, what the defining module also reads is copied there
-// with the statements naming it, as main's provider copy of the module
-// (R156).
+// moves with them, what the defining module also reads stays and is
+// imported back (nothing evaluates twice).
 describe('lazy handler module of the in-place provider', () => {
   const FNS = `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'\n`
   const files = {
@@ -755,15 +754,14 @@ export function read() { return count }
     const h = await r.derived(HANDLER_ID)
     expectValid(h)
     expect(h).toContain(`from './db.server'`)
-    // module state the defining module also reads is copied, as in main's
-    // provider copy of the file, which imports nothing of it (R156)
-    expect(h).toMatch(/let count = 0/)
-    expect(h).not.toContain('/app/src/module.tsx')
+    // module state the defining module also reads is imported from it, not copied
+    expect(h).not.toMatch(/let count/)
+    expect(h).toMatch(
+      /import \{[^}]*\bcount\b[^}]*\} from '\/app\/src\/module\.tsx'/,
+    )
   })
 
-  // (R156: the handler writes its module's own copy, as the copy's in main's
-  // provider; main's second instance)
-  it('moves a handler that writes module state the module also reads, with its own copy of it', async () => {
+  it('keeps a handler that writes module state the module also reads in place', async () => {
     const r = await compile(
       `${FNS}let count = 0
 export const fn = createServerFn().handler(async () => count++)
@@ -772,12 +770,8 @@ export function read() { return count }
       { env: ssrEnv },
     )
     expectValid(r.code)
-    expect(r.code).not.toContain('count++')
-    expect(r.code).toContain('?tss-serverfn-handler')
-    const h = await r.derived(HANDLER_ID)
-    expectValid(h)
-    expect(h).toMatch(/let count = 0/)
-    expect(h).toContain('count++')
+    expect(r.code).toContain('count++')
+    expect(r.code).not.toContain('?tss-serverfn-handler')
   })
 
   it('keeps the handlers of a module that awaits at its top level in place', async () => {
@@ -828,10 +822,9 @@ export function makeFns() {
   })
 
   // the assignment is a statement: it stays in the defining module with the
-  // binding it writes and its import, and runs when the module loads (R154);
-  // the handler module has its own copy of both, as main's provider copy
-  // (R156)
-  it('keeps module state and the statement assigning it in the module, and copies both where a hoisted handler reads it', async () => {
+  // binding it writes and its import, and runs once, when the module loads
+  // (R154); the handler module imports the binding
+  it('keeps module state and the statement assigning it in the module, where a hoisted handler reads it', async () => {
     const r = await compile(
       `${FNS}import { load } from './db.server'
 let label: unknown = 'initial'
@@ -848,14 +841,16 @@ export function makeFn() {
     expect(r.code).toContain(`import { load } from './db.server'`)
     const h = await r.derived(HANDLER_ID)
     expectValid(h)
-    expect(h).toContain(`let label: unknown = 'initial'`)
-    expect(h.match(/label = load\(label\)/g)).toHaveLength(1)
-    expect(h).not.toContain('/app/src/module.tsx')
+    expect(h).not.toContain('load(label)')
+    expect(h).toMatch(
+      /import \{[^}]*\blabel\b[^}]*\} from '\/app\/src\/module\.tsx'/,
+    )
   })
 
-  // a const the module keeps is copied into the handler module, as into
-  // main's provider copy (R156)
-  it('copies a const the module keeps into the handler module', async () => {
+  // kind A (R155 phase 1): a const the module keeps is imported by the
+  // handler module, not declared there again (the old engine copied a
+  // string or number const; corpus, 43 compiles)
+  it('imports a const the module keeps into the handler module', async () => {
     const r = await compile(
       `${FNS}import { db } from './db.server'
 const prefix = 'p:'
@@ -868,8 +863,10 @@ export function show(x: string) { return prefix + x }
     expect(r.code).toContain(`const prefix = 'p:'`)
     const h = await r.derived(HANDLER_ID)
     expectValid(h)
-    expect(h).toContain(`const prefix = 'p:'`)
-    expect(h).not.toContain('/app/src/module.tsx')
+    expect(h).not.toMatch(/const prefix/)
+    expect(h).toMatch(
+      /import \{[^}]*\bprefix\b[^}]*\} from '\/app\/src\/module\.tsx'/,
+    )
   })
 
   // A name a top-level statement declares (`if (…) { var conn = … }`) is
