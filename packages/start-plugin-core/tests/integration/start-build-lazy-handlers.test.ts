@@ -120,6 +120,32 @@ function Page() {
 }
 export const Route = createFileRoute('/nested')({ component: Page })
 `,
+  // a route whose loader and split component both call a server fn whose
+  // handler alone reads a module-level declaration (jsedlacek/knihovna
+  // `$authorSlug.tsx`'s `log`; the route module reads `PAGE_SIZE`, which the
+  // chunk and the handler share): main shares only what the route module
+  // keeps once Start moved the handler out, so the declaration and its
+  // import load with the handler, on the first call
+  'route-log.ts': `globalThis.MARK_ROUTE_LOG = (globalThis.MARK_ROUTE_LOG ?? 0) + 1
+export const createLogger = (name: string) => ({
+  info: (message: string) => name + ':' + message,
+})
+`,
+  'src/routes/shared-log.tsx': `import { createFileRoute } from '@tanstack/react-router'
+${head}import { createLogger } from '../../route-log'
+const log = createLogger('route')
+const PAGE_SIZE = 20
+export const listLogged = createServerFn().handler(
+  async () => log.info('x') + ':' + PAGE_SIZE,
+)
+export const Route = createFileRoute('/shared-log')({
+  loader: () => listLogged({ data: PAGE_SIZE }),
+  component: Page,
+})
+function Page() {
+  return <p onClick={() => listLogged()}>MARK_SHARED_LOG_PAGE {PAGE_SIZE}</p>
+}
+`,
   // a server fn nested in an exported class only the split component reads:
   // the class leaves the route module, which holds the hoisted fn, and each
   // of the two imports the other
@@ -146,6 +172,7 @@ export { callBroken } from './broken'
 export const loadTla = () => import('./tla')
 export const loadTlaFor = () => import('./tla-for')
 export { getRouter } from './src/router'
+export { listLogged } from './src/routes/shared-log'
 `,
   'ssr-entry.ts': `export * from './client-entry'
 export { renderPath } from './harness/render'
@@ -336,6 +363,27 @@ return {
         called: 'MARK_ROUTE_DEP',
         overHttp: 'MARK_ROUTE_DEP',
         after: { route_dep: 1 },
+      })
+    },
+    timeout,
+  )
+
+  test(
+    "SSR: a declaration only a route's server-fn handler reads loads on the first call, though the loader and the split component both call the fn",
+    async () => {
+      const { result } = await build.ssr
+        .run(`${callByIdPrelude}${counters}const before = counts('route_log')
+return {
+  before,
+  called: await entry.listLogged(),
+  overHttp: await callById(serverFnId(entry.listLogged)),
+  after: counts('route_log'),
+}`)
+      expect(result).toEqual({
+        before: { route_log: 0 },
+        called: 'route:x:20',
+        overHttp: 'route:x:20',
+        after: { route_log: 1 },
       })
     },
     timeout,
