@@ -941,9 +941,9 @@ export const Route = createFileRoute('/')({
 
 // Better than `main` (#8623, #8688): a method is split as a function
 // expression with the same body is; a function value whose own `this` or
-// `super` its body uses stays in the route module, where the router calls
-// it as a method of the route options, and the build warns at the option
-// (its wording: code-splitter-guide.test.ts).
+// `super` its body uses stays in the route module as written (splitting can
+// change what they refer to), and the build warns at the option (its
+// wording: code-splitter-guide.test.ts). "Own" is the language's scoping.
 describe('method shorthand and `this` (#8623, #8688)', () => {
   it('splits a component written as a method and renders it', async () => {
     const route = await loadRoute(
@@ -960,6 +960,7 @@ describe('method shorthand and `this` (#8623, #8688)', () => {
     expectNoProblems(await route.diagnostics())
   })
 
+  const loaded = 'return await options.loader()'
   it.each([
     { name: 'a method', loader: 'loader() { return 1 }', value: 1 },
     {
@@ -968,19 +969,56 @@ describe('method shorthand and `this` (#8623, #8688)', () => {
       value: 2,
     },
     {
+      name: 'a generator method',
+      loader: '*loader() { yield 3 }',
+      call: 'return [...(await options.loader())]',
+      value: [3],
+    },
+    {
+      name: 'an async generator method',
+      loader: 'async *loader() { yield 4 }',
+      call: `const out = []
+for await (const v of await options.loader()) out.push(v)
+return out`,
+      value: [4],
+    },
+    {
       name: 'a method whose nested function has its own `this`',
       loader: 'loader() { return [1].map(function () { return typeof this }) }',
       value: ['undefined'],
     },
     {
-      name: 'a method whose nested class has its own `this`',
+      name: 'a method whose nested function renders `<this.Foo />`',
+      loader: 'loader() { return typeof function () { return <this.Foo /> } }',
+      value: 'function',
+    },
+    {
+      name: 'a method whose nested class method has its own `this`',
       loader:
         'loader() { class A { m() { return this } } const a = new A(); return a.m() === a }',
       value: true,
     },
+    {
+      name: "a method whose nested class field initialiser has the instance's `this`",
+      loader:
+        'loader() { class A { x = this } const a = new A(); return a.x === a }',
+      value: true,
+    },
+    {
+      name: "a method whose nested static block has the class's `this`",
+      loader:
+        'loader() { let s: unknown; class A { static { s = this } } return s === A }',
+      value: true,
+    },
+    {
+      name: 'a method naming `this` in a type only',
+      loader:
+        'loader() { const x: typeof this | undefined = undefined; return String(x) }',
+      value: 'undefined',
+    },
   ])(
     'splits a loader written as $name and runs it',
-    async ({ loader, value }) => {
+    async ({ loader, call = loaded, value }) => {
       const route = await loadRoute(
         `${head}export const Route = createFileRoute('/')({
   codeSplitGroupings: [['loader']],
@@ -990,49 +1028,76 @@ describe('method shorthand and `this` (#8623, #8688)', () => {
       )
       await expectValidModules(route)
       expect(await route.isLazy('loader')).toBe(true)
-      expect(await route.run(`return await options.loader()`)).toEqual(value)
+      expect(await route.run(call)).toEqual(value)
       expectNoProblems(await route.diagnostics())
     },
   )
 
+  // The router calls the loader as a plain function (`this` is
+  // `undefined`); a split one would get the chunk's own `this`. Rendered
+  // through the router: what the loader returned.
   it.each([
     {
       name: 'a method reading `this`',
-      loader: 'loader() { return this.label }',
-      call: 'return await options.loader()',
-      value: 'options',
+      loader: 'loader() { return typeof this }',
+      value: 'undefined',
     },
     {
       name: 'a method whose arrow function reads its `this`',
-      loader: 'loader() { return () => this }',
-      call: 'return (await options.loader())() === options',
-      value: true,
+      loader: 'loader() { return typeof (() => this)() }',
+      value: 'undefined',
+    },
+    {
+      name: 'a method reading `this` in a parameter default',
+      loader: 'loader(_ctx: unknown, t = typeof this) { return t }',
+      value: 'undefined',
+    },
+    {
+      name: 'a method reading `this` in a nested class `extends`',
+      loader:
+        'loader() { class A extends (this ?? Object) {} return typeof A }',
+      value: 'function',
+    },
+    {
+      name: "a method reading `this` in a nested class's computed key",
+      loader: 'loader() { class A { [String(this)]() {} } return typeof A }',
+      value: 'function',
+    },
+    {
+      name: 'a method whose arrow function renders `<this.Foo />`',
+      loader: 'loader() { return typeof (() => <this.Foo />) }',
+      value: 'function',
+    },
+    {
+      name: 'a method whose arrow function renders `<this.a.Foo>`',
+      loader: 'loader() { return typeof (() => <this.a.Foo>x</this.a.Foo>) }',
+      value: 'function',
     },
     {
       name: 'a method reading `super`',
-      loader: 'loader() { return super.constructor === Object }',
-      call: 'return await options.loader()',
-      value: true,
+      loader: 'loader() { return typeof super.toString }',
+      value: 'function',
     },
     {
       name: 'a function expression reading `this`',
-      loader: 'loader: function () { return this.label }',
-      call: 'return await options.loader()',
-      value: 'options',
+      loader: 'loader: function () { return typeof this }',
+      value: 'undefined',
     },
   ])(
-    'keeps a loader written as $name in the route module, working, and warns once at it',
-    async ({ loader, call, value }) => {
+    'keeps a loader written as $name in the route module, as the router runs it, and warns once at it',
+    async ({ loader, value }) => {
       const code = `${head}export const Route = createFileRoute('/')({
   codeSplitGroupings: [['loader']],
-  label: 'options',
   ${loader},
+  component: () => <p>{String(Route.useLoaderData())}</p>,
 })
 `
-      const route = await loadRoute(code)
+      // (a host of its own: the plugin reports a warning once per file
+      // and run, and the rows share file and message)
+      const route = await loadRoute(code, { fresh: true })
       await expectValidModules(route)
       expect(await route.isLazy('loader')).toBe(false)
-      expect(await route.run(call)).toEqual(value)
+      expect(await route.run('return renderRoute()')).toBe(`<p>${value}</p>`)
       expectDiagnostic(await route.diagnostics(), {
         severity: 'warning',
         file: route.url.slice(1),
@@ -1043,27 +1108,41 @@ describe('method shorthand and `this` (#8623, #8688)', () => {
     },
   )
 
-  it('keeps a component function expression reading `this` in the route module, and warns once at it', async () => {
-    const code = `${head}export const Route = createFileRoute('/')({
+  it.each([
+    {
+      name: 'reading `this`',
+      body: '<p>{typeof this}</p>',
+      html: '<p>undefined</p>',
+    },
+    {
+      name: 'rendering `<this.Foo />` in an arrow function',
+      body: '<p>{typeof (() => <this.Foo />)}</p>',
+      html: '<p>function</p>',
+    },
+  ])(
+    'keeps a component function expression $name in the route module, and warns once at it',
+    async ({ body, html }) => {
+      const code = `${head}export const Route = createFileRoute('/')({
   component: function () {
-    return <p>{typeof this}</p>
+    return ${body}
   },
 })
 `
-    const route = await loadRoute(code)
-    await expectValidModules(route)
-    expect(await route.isLazy('component')).toBe(false)
-    expect(await route.run(`return render('component')`)).toBe(
-      '<p>undefined</p>',
-    )
-    expectDiagnostic(await route.diagnostics(), {
-      severity: 'warning',
-      file: route.url.slice(1),
-      root: route.host.root,
-      position: diagnosticPosition(code, 'component: function'),
-      times: 1,
-    })
-  })
+      // (a host of its own: the plugin reports a warning once per file
+      // and run, and the rows share file and message)
+      const route = await loadRoute(code, { fresh: true })
+      await expectValidModules(route)
+      expect(await route.isLazy('component')).toBe(false)
+      expect(await route.run('return renderRoute()')).toBe(html)
+      expectDiagnostic(await route.diagnostics(), {
+        severity: 'warning',
+        file: route.url.slice(1),
+        root: route.host.root,
+        position: diagnosticPosition(code, 'component: function'),
+        times: 1,
+      })
+    },
+  )
 
   it('splits a component and an errorComponent written as methods into one group', async () => {
     const route = await loadRoute(

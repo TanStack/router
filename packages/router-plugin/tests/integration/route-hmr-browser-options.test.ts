@@ -144,6 +144,41 @@ export const Route = createFileRoute('/')({
     },
   )
 
+  // #8688: a method using its own `super` or `this` stays a method (a
+  // function expression holding `super` is a syntax error); it shows, and
+  // an edit shows in place, without a reload or an error (it may remount)
+  test.for(
+    [false, true].flatMap((autoCodeSplitting) => [
+      { autoCodeSplitting, uses: 'super', expr: 'typeof super.toString' },
+      { autoCodeSplitting, uses: 'this', expr: 'typeof this' },
+    ]),
+  )(
+    'written as a method using $uses: shows, and an edit shows in place (autoCodeSplitting: $autoCodeSplitting)',
+    async (
+      { autoCodeSplitting, expr },
+      { expect, onTestFinished }: TestContext,
+    ) => {
+      const route = (version: string) =>
+        `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({
+  component() {
+    return <p>method {${expr}} ${version}</p>
+  },
+})
+`
+      const app = await openRouteHmrPage({
+        onTestFinished,
+        pluginOptions: { autoCodeSplitting },
+        files: { 'routes/index.tsx': route('v1') },
+        ready: /method \w+ v1/,
+      })
+      expect(app.splitOutputs()).toBe(0)
+      expect(
+        await app.edit({ 'routes/index.tsx': route('v2') }, /method \w+ v2/),
+      ).toEqual(inPlace)
+    },
+  )
+
   // Every component option of a root route at once, each its own
   // component: the edit shows each one's new code, and the root component
   // keeps its state. The page is at a path no route matches, so the root's

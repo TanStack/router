@@ -4551,6 +4551,74 @@ describe('needers and homes', () => {
   })
 })
 
+// Type-only export syntax has no runtime meaning: no output keeps it, as
+// main's `stripTypeExports` removed it. Its binding may be an inline type
+// specifier that left with its statement's values, and a Babel plugin after
+// the compiler (React Compiler) rejects an export nothing declares ("Export
+// 'Row' is not defined"; corpus of #8817: brain-dump `claude-tasks.ts`).
+// Type declarations stay as written.
+describe('type-only exports', () => {
+  const rows = dedent(`
+    export const readRows = () => [1]
+    export const label = 'label'
+    export type Row = { id: number }
+  `)
+  const exportForms = dedent(`
+    export type { Row }
+    export { type Row as R2, label }
+    export type { Row as R3 } from './rows'
+    export { type Row as R4 } from './rows'
+    export { label as L2, type Row as R5 } from './rows'
+    export type * from './rows'
+  `)
+
+  it('leaves them out of an env module whose erasure removed their inline type import', async () => {
+    const host = new MemoryHost({
+      files: {
+        '/app/rows.ts': rows,
+        '/app/lib.ts': dedent(`
+          import { wrapServer } from 'toy-start'
+          import { readRows, type Row } from './rows'
+          import { label } from './rows'
+          ${exportForms}
+          export type Local = Row
+          export interface Shape { row: Row }
+          export const fn = wrapServer(() => readRows())
+        `),
+      },
+    })
+    const out = await host.compile('/app/lib.ts', [toyEnvPlanner()])
+    const code = out?.code ?? ''
+    expect(code).not.toContain('readRows')
+    expect(code).not.toMatch(/\bR[2-5]\b|export type \{|export type \*/)
+    expect(code).toContain('export { label }')
+    expect(code).toContain("export { label as L2 } from './rows'")
+    expect(code).toContain('export type Local = Row')
+    expect(code).toContain('export interface Shape { row: Row }')
+  })
+
+  it('leaves them out of a route module whose split moved their inline type import', async () => {
+    const r = await split(
+      dedent(`
+        import { createFileRoute } from 'toy-router'
+        import { readRows, type Row } from './rows'
+        import { label } from './rows'
+        ${exportForms}
+        export const Route = createFileRoute('/')({
+          component: (): Array<Row> => readRows(),
+        })
+      `),
+      { files: { '/app/rows.ts': rows } },
+    )
+    for (const code of [r.env, r.chunks.component!]) {
+      expect(code).not.toMatch(/\bR[2-5]\b|export type \{|export type \*/)
+    }
+    expect(r.env).toContain('export { label }')
+    expect(r.env).toContain("export { label as L2 } from './rows'")
+    expect(r.chunks.component).toContain('readRows')
+  })
+})
+
 describe('provider outputs (J4.14)', () => {
   it('copies the exported cluster its root reads instead of importing it from the env module', async () => {
     // a provider output is the module's own instance in another layer: its

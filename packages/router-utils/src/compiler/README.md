@@ -199,7 +199,10 @@ v`, `x.push(v)`, `x = v`) is never removed with what only erased code read: it s
   only in a type leaves it, as TypeScript's elision would: under `verbatimModuleSyntax` it would load the module). Type units stay in the env module
   as written whatever their cluster (`import type { X }` next to a value `X` that moves stays whole and type-only),
   never in a derived output; only the TypeScript-only specifiers (an inline `type` specifier, an `export { X }` of a
-  type-only binding) follow their statement's value specifiers (`importStays`). Below the units, function-local
+  type-only binding) follow their statement's value specifiers (`droppedTypeUnits`). Type-only export syntax
+  (`export type { X }`, `export type { X } from`, `export type * from`, `export { type X }`, a `type X` specifier of an
+  `export { … } from`) is in no output, as main's `stripTypeExports` removed it (`isTypeOnlyExport`): its binding may be
+  an inline type specifier that left, and a Babel plugin after the compiler rejects an export nothing declares. Below the units, function-local
   declarators and destructuring leaves only erased code read go too (`orphans.ts`), with their initialisers whatever
   they do (a call of a helper, a global's method), as main's dead-code elimination did; a hook call (`useX(…)`,
   `ns.useX(…)`) in a function stays as a statement with the import it reads, so every output calls the same hooks in
