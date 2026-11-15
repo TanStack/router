@@ -46,7 +46,17 @@ type UnitKind =
   | 'export-default'
   | 'effect'
 
-type ItemShape = 'single' | 'declarators' | 'import' | 'export-list'
+/**
+ * How a statement whose units are not all kept renders (`statementRecipe`);
+ * `reexport-list`: an `export { … } from` with type-only specifiers next to
+ * value ones, rendered without them.
+ */
+type ItemShape =
+  | 'single'
+  | 'declarators'
+  | 'import'
+  | 'export-list'
+  | 'reexport-list'
 
 export interface TopLevelItem {
   index: number
@@ -580,6 +590,11 @@ export function buildItems(
         exportKeyword = { start: node.start, end: node.declaration.start }
       } else if (node.source === null) {
         shape = 'export-list'
+      } else if (
+        node.exportKind !== 'type' &&
+        node.specifiers.some((spec) => spec.exportKind === 'type')
+      ) {
+        shape = 'reexport-list'
       }
     } else if (node.type === 'ExportDefaultDeclaration') {
       const d = node.declaration
@@ -779,6 +794,11 @@ export function buildUnits(
           break
         }
         if (node.source !== null) {
+          if (isTypeOnlyExport(node)) {
+            // `export { type X } from '…'`: as `export type { X } from '…'`
+            add(item, base(node, 'type', itemRange))
+            break
+          }
           const u = base(node, 'reexport', itemRange)
           u.effectful = true
           for (const spec of node.specifiers) {
@@ -1152,6 +1172,35 @@ function itemAt(
 type StatementRecipe = 'keep' | 'drop' | Array<Frag>
 
 /**
+ * Type-only export syntax: `export type { X }`, `export type { X } from '…'`,
+ * `export type * from '…'`, an `export { type X }` specifier and an
+ * `export { type X } from '…'` whose specifiers are all type-only. It has no
+ * runtime meaning, and every output leaves it out, as `main` does
+ * (`stripTypeExports`): its binding may be an inline type import specifier
+ * that left with its statement's values, and a Babel plugin after the
+ * compiler rejects an export of a name nothing declares. A type-only
+ * specifier next to value ones in an `export { … } from` renders nowhere
+ * either (`reexport-list`). Type declarations (`export type X = …`,
+ * `export interface X`) are no export syntax of this kind.
+ */
+export function isTypeOnlyExport(node: Node): boolean {
+  switch (node.type) {
+    case 'ExportNamedDeclaration':
+      return (
+        node.declaration === null &&
+        (node.exportKind === 'type' ||
+          (node.specifiers.length > 0 &&
+            node.specifiers.every((spec) => spec.exportKind === 'type')))
+      )
+    case 'ExportAllDeclaration':
+    case 'ExportSpecifier':
+      return node.exportKind === 'type'
+    default:
+      return false
+  }
+}
+
+/**
  * One edit per statement from the final retained set (not per-unit comma
  * ranges, which overlap). `keepExport`
  * is false in derived outputs (the `export` keyword of included exported
@@ -1170,7 +1219,7 @@ export function statementRecipe(
   }
   const all = kept.length === item.units.length
   const dropExport = !keepExport && item.exportKeyword !== null
-  if (all && !dropExport) {
+  if (all && !dropExport && item.shape !== 'reexport-list') {
     return 'keep'
   }
   const slice = (start: number, end: number): Frag => ({
@@ -1178,6 +1227,25 @@ export function statementRecipe(
     range: { start, end },
   })
   const text = (t: string): Frag => ({ k: 'text', parts: [t] })
+  if (item.shape === 'reexport-list') {
+    // its one unit, kept: without its type-only specifiers (`isTypeOnlyExport`)
+    const node = item.node as Extract<Node, { type: 'ExportNamedDeclaration' }>
+    const out: Array<Frag> = [
+      slice(item.range.start, item.nodeRange.start),
+      text('export { '),
+    ]
+    node.specifiers
+      .filter((spec) => spec.exportKind !== 'type')
+      .forEach((spec, i) => {
+        if (i > 0) {
+          out.push(text(', '))
+        }
+        out.push(slice(spec.start, spec.end))
+      })
+    out.push(text(' } from '))
+    out.push(slice(node.source!.start, item.range.end))
+    return out
+  }
   if (all) {
     // export keyword excluded only
     return [slice(item.exportKeyword!.end, item.range.end)]
