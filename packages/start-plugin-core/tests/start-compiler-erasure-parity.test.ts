@@ -669,6 +669,23 @@ export const f = createServerFn().handler(async () => registry.get('a'))`,
   // (main's copy runs it again: fewer runs than main, as many as the source.
   // Code reaching the copied state through any name, an export reading both
   // included, is copied and runs again, as on main)
+  // Known difference (accepted, KNOWN-BUGS "Accepted limits"): a class
+  // whose only reader is an export is not reached by name, so the handler
+  // module's copy lacks its static block; main keeps every class (its
+  // removal rule never removes one) and reads 1. Pinned: asserts main's value.
+  test.fails(
+    'r5 known difference: a class static block whose class only an export reads',
+    async () => {
+      const served = await serveCase(await host(), {
+        'module.tsx': `${serverFn}const routes: Array<string> = []
+class Boot { static { routes.push('boot') } }
+export const boot = Boot
+export const f = createServerFn().handler(async () => routes.length)`,
+      })
+      expect(await callServerFnThroughCallers(served, 'module.f')).toBe(1)
+    },
+  )
+
   test('r8: load-time code that reaches nothing the handler copies runs once', async () => {
     const served = await serveCase(await host(), {
       ...callsFile,
