@@ -67,6 +67,7 @@ export type {
   CustomFetch,
   Fetcher,
   RscStream,
+  FetcherBase,
   FetcherBaseOptions,
   ServerFn,
   ServerFnCtx,

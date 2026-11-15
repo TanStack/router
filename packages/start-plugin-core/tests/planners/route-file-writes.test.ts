@@ -1,11 +1,9 @@
 /**
  * Start's code in a route file under the route file's placement. A derived
- * output that would assign a binding it imports from another module of the
- * file (a `<Hydrate>` chunk) is not made; its code stays in place (the
- * boundary is reported, as for any module). A server function's lazy handler
- * module imports nothing of the route file (but a name a statement
- * declares): it copies what it reads, as
- * `main`'s provider copy does (R156). What only server code the client
+ * output (a server function's lazy handler module, a `<Hydrate>` chunk) that
+ * would assign a binding it imports from another module of the file is not
+ * made; its code stays in place (the handler in the route module; the
+ * boundary is reported, as for any module). What only server code the client
  * erases reads leaves the client's route module.
  */
 import { describe, expect, it } from 'vitest'
@@ -104,9 +102,7 @@ export const Route = createFileRoute('/')({
     expect(out!.code).toContain('?tss-serverfn-handler')
   })
 
-  // (R156: the handler assigns its module's own `count`, as it assigns the
-  // copy's in `main`'s provider; main's second instance)
-  it('moves a handler that assigns a `let` the route file keeps, with its own copy of it', async () => {
+  it('keeps a handler that assigns a `let` the route file keeps in place', async () => {
     const code = `${FNS}let count = 0
 export const bump = createServerFn().handler(async () => count++)
 export const Route = createFileRoute('/')({
@@ -116,11 +112,8 @@ export const Route = createFileRoute('/')({
 `
     const out = await compile(code, ssrEnv)
     expect(out!.diagnostics.filter((d) => d.severity === 'error')).toEqual([])
-    expect(out!.code).not.toContain('count++')
-    expect(out!.code).toContain('?tss-serverfn-handler')
-    const handler = await compile(code, ssrEnv, { id: HANDLER_ID })
-    expect(handler!.code).toContain('let count = 0')
-    expect(handler!.code).toContain('count++')
+    expect(out!.code).toContain('count++')
+    expect(out!.code).not.toContain('?tss-serverfn-handler')
   })
 })
 
@@ -203,13 +196,15 @@ export const Route = createFileRoute('/')({ loader: async () => getRows(), compo
   it('splits the component and keeps the handlers lazy on the server', async () => {
     const out = await compile(twoFns(false), ssrEnv)
     expect(out!.code).toContain('lazyRouteComponent')
-    expect(out!.code).toContain('?tss-serverfn-handler')
     expect(out!.code).not.toContain('connect')
+    const lazy = await compile(twoFns(false), ssrEnv, {
+      id: `${FILE}?tss-serverfn-handler`,
+    })
+    expect(lazy!.code).toContain('connect')
   })
 
   it('keeps a handler filling a module cache lazy on the server', async () => {
-    const out = await compile(
-      `${START}import { heavy } from '../server/heavy'
+    const source = `${START}import { heavy } from '../server/heavy'
 let cached: any
 const getData = createServerFn().handler(async () => {
   cached ??= heavy()
@@ -219,12 +214,14 @@ function Page() {
   return <p>{typeof getData}</p>
 }
 export const Route = createFileRoute('/')({ loader: async () => getData(), component: Page })
-`,
-      ssrEnv,
-    )
-    expect(out!.code).toContain('?tss-serverfn-handler')
+`
+    const out = await compile(source, ssrEnv)
     expect(out!.code).not.toContain('heavy')
     expect(out!.code).toContain('lazyRouteComponent')
+    const lazy = await compile(source, ssrEnv, {
+      id: `${FILE}?tss-serverfn-handler`,
+    })
+    expect(lazy!.code).toContain('heavy')
   })
 
   // a helper the loader, the component and a handler use: `main`'s shared
@@ -356,7 +353,5 @@ export const Route = createFileRoute('/')({
 })
 `
   const out = await compile(code, ssrEnv, { id: HANDLER_ID })
-  // (its own copy of `count`, as `main`'s provider copy: R156)
-  expect(out!.code).toContain('let count = 0')
-  expect(out!.code).not.toMatch(/import \{[^}]*\bcount\b[^}]*\} from/)
+  expect(out!.code).toMatch(/import \{[^}]*\bcount\b[^}]*\} from/)
 })

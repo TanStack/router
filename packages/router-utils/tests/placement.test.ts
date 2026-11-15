@@ -10437,6 +10437,263 @@ describe('what a generated unit rooted in the env module names', () => {
     expect(r.chunk).toContain('const save = { run: () => cfg.n }')
     expect(r.chunk).toMatch(/^save\.run\(\)$/m)
   })
+
+  /**
+   * R158: a planner's lazy module roots generated code naming `save` (Start
+   * re-exports the server fn there), and the planner renders `save`'s value
+   * otherwise in split chunks (a `{ kinds }` scope: Start's stub).
+   */
+  const toyLazyRoot: Planner = {
+    name: 'toy-lazy-root',
+    tier: 1,
+    gate: () => true,
+    plan(ctx) {
+      const named = (n: string) =>
+        [...ctx.analysis.file.bindings]
+          .map((b) => ctx.symbols.ofBinding(b))
+          .find(
+            (s) => ctx.symbols.isModuleLevel(s) && ctx.symbols.name(s) === n,
+          )
+      const route = named('Route')
+      const sym = named('save')
+      if (route === undefined || sym === undefined) {
+        return
+      }
+      // a route file: the core places it as route splitting on `main`
+      ctx.setRouteModule({ imported: new Set([route]), shared: new Set() })
+      const out = ctx.declareOutput({
+        kind: 'custom',
+        key: 'handler',
+        derived: { kind: 'handler', value: '' },
+      })
+      ctx.addRoot(out, {
+        t: 'gen',
+        id: ctx.rewrites.addGenerated({
+          body: [{ k: 'text', parts: ['export { ', { sym }, ' as tsrFn }\n'] }],
+          declares: [],
+          effectful: false,
+          anchor: { k: 'end' },
+          home: out,
+          by: 'toy-lazy-root',
+        }),
+      })
+      const src = ctx.analysis.source.code
+      const value = '{ run: () => cfg.n }'
+      const start = src.indexOf(value)
+      ctx.rewrites.placeholder({
+        range: { start, end: start + value.length },
+        body: [{ k: 'text', parts: ['stub()'] }],
+        scope: { kinds: ['split'] },
+        by: 'toy-lazy-root',
+      })
+    },
+  }
+
+  it("is imported by a split chunk when the env module keeps it and a generated unit a planner's lazy module roots names it", async () => {
+    const r = await compileAll([toySplitPlanner(), toyLazyRoot])
+    expect(r.env).toContain('const save = { run: () => cfg.n }')
+    for (const derived of [r.chunk, r.handler]) {
+      expect(derived).toMatch(
+        /import \{[^}]*\bsave\b[^}]*\} from '\/app\/route\.tsx'/,
+      )
+      expect(derived).not.toContain('const save')
+    }
+  })
+
+  it('lives in the lazy module when the env module does not keep it; a split chunk renders it as its planner does there', async () => {
+    const host = new MemoryHost({
+      files: { '/app/route.tsx': code.replace('save.run()\n', '') },
+    })
+    const env = envInfo({ name: 'ssr', type: 'server', mode: 'build' })
+    const out = async (id: string) =>
+      (await host.compile(id, [toySplitPlanner(), toyLazyRoot], { env }))
+        ?.code ?? ''
+    const r = {
+      env: await out('/app/route.tsx'),
+      chunk: await out('/app/route.tsx?tsr-split=component'),
+      handler: await out('/app/route.tsx?tss-serverfn-handler'),
+    }
+    expect(r.env).not.toContain('save')
+    expect(r.handler).toContain('const save = { run: () => cfg.n }')
+    expect(r.chunk).toContain('const save = stub()')
+    expect(r.chunk).not.toContain('run: () => cfg.n')
+  })
+})
+
+// A planner's lazy module (`custom`, Start's server-fn handler module)
+// imports what the env module keeps (R157 rule 3). A declaration only it
+// reaches moves there, unless evaluating it reads, by name and
+// transitively, something the env module keeps: then it stays in the env
+// module (rule 4). A declaration that is exactly a function evaluates
+// nothing and moves.
+describe('the lazy module of a planner (custom)', () => {
+  /** Moves the text of `lazy(<text>)` into the lazy module, as Start moves a handler. */
+  const toyLazy: Planner = {
+    name: 'toy-lazy',
+    tier: 1,
+    gate: () => true,
+    plan(ctx) {
+      const code = ctx.analysis.source.code
+      const at = code.indexOf('lazy(')
+      if (at < 0) {
+        return
+      }
+      const range = { start: at + 'lazy('.length, end: code.lastIndexOf(')') }
+      const out = ctx.declareOutput({
+        kind: 'custom',
+        key: 'handler',
+        derived: { kind: 'handler', value: '' },
+      })
+      const local = ctx.names.alloc('tsrHandler')
+      const owner = ctx.rewrites.addGenerated({
+        body: [
+          { k: 'text', parts: ['export const ', { sym: local.sym }, ' = '] },
+          { k: 'region', id: ctx.region(range, 'custom') },
+          { k: 'text', parts: ['\n'] },
+        ],
+        declares: [local.sym],
+        effectful: false,
+        anchor: { k: 'end' },
+        home: out,
+        by: 'toy-lazy',
+      })
+      ctx.addRoot(out, { t: 'gen', id: owner })
+      ctx.rewrites.claim({
+        region: ctx.region(range, 'custom'),
+        owner,
+        placeholder: [{ k: 'text', parts: ['null'] }],
+        by: 'toy-lazy',
+      })
+    },
+  }
+  const compileBoth = async (code: string) => {
+    const host = new MemoryHost({ files: { '/app/mod.ts': code } })
+    const env = envInfo({ name: 'ssr', type: 'server', mode: 'build' })
+    const out = async (id: string) =>
+      (await host.compile(id, [toyLazy], { env }))?.code ?? ''
+    return {
+      env: await out('/app/mod.ts'),
+      lazy: await out('/app/mod.ts?tss-serverfn-handler'),
+    }
+  }
+  const imports = (code: string, name: string) =>
+    new RegExp(
+      `import \\{[^}]*\\b${name}\\b[^}]*\\} from '/app/mod\\.ts'`,
+    ).test(code)
+
+  it('imports what the env module keeps', async () => {
+    const r = await compileBoth(
+      dedent(`
+        let count = 0
+        export const read = () => count
+        export const fn = lazy(() => count)
+      `),
+    )
+    expect(r.env).toContain('let count = 0')
+    expect(r.lazy).not.toContain('let count')
+    expect(imports(r.lazy, 'count')).toBe(true)
+  })
+
+  it('leaves in the env module a declaration whose evaluation reads what it keeps, also through a function', async () => {
+    const r = await compileBoth(
+      dedent(`
+        const cfg = { url: 'a' }
+        const snapshot = cfg.url
+        function read() { return cfg.url }
+        const viaRead = read()
+        function set(o: { url: string }) { o.url = 'b' }
+        set(cfg)
+        export const fn = lazy(() => [snapshot, viaRead])
+      `),
+    )
+    expect(r.env).toContain('const snapshot = cfg.url')
+    expect(r.env).toContain('const viaRead = read()')
+    expect(imports(r.lazy, 'snapshot')).toBe(true)
+    expect(imports(r.lazy, 'viaRead')).toBe(true)
+    expect(r.lazy).not.toContain('cfg.url')
+  })
+
+  it('moves a function, and a declaration reading only imports or what moves', async () => {
+    const r = await compileBoth(
+      dedent(`
+        import { connect } from 'db'
+        const cfg = { url: 'a' }
+        const reader = () => cfg.url
+        function helper() { return conn }
+        const conn = connect()
+        const viaConn = helper()
+        export const getCfg = () => cfg.url
+        export const fn = lazy(() => [reader(), viaConn])
+      `),
+    )
+    expect(r.env).not.toContain('const reader')
+    expect(r.env).not.toContain('connect')
+    expect(r.lazy).toContain('const reader = () => cfg.url')
+    expect(r.lazy).toContain('const conn = connect()')
+    expect(r.lazy).toContain('const viaConn = helper()')
+    expect(r.lazy).toContain(`from 'db'`)
+    expect(imports(r.lazy, 'cfg')).toBe(true)
+  })
+
+  // R158 amendment: rule 4 counts declarations of the source; one a planner
+  // generates (Start's lazy-handler loader) is no state of the file, since
+  // no source code can name it (the step-4 stop: 22 corpus routes)
+  it("moves a declaration whose evaluation reads only a planner's generated declaration the env module keeps", async () => {
+    /** A generated `tsrLoad` the env module roots, which the text in `wrap(…)` reads (as Start's handler stand-in reads its loader). */
+    const toyLoader: Planner = {
+      name: 'toy-loader',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        const code = ctx.analysis.source.code
+        const at = code.indexOf('wrap(0)')
+        if (at < 0) {
+          return
+        }
+        const load = ctx.names.alloc('tsrLoad')
+        ctx.addRoot('env', {
+          t: 'gen',
+          id: ctx.rewrites.addGenerated({
+            body: [
+              {
+                k: 'text',
+                parts: ['const ', { sym: load.sym }, ' = () => 1\n'],
+              },
+            ],
+            declares: [load.sym],
+            effectful: false,
+            anchor: { k: 'after-header' },
+            home: 'auto',
+            by: 'toy-loader',
+          }),
+        })
+        ctx.rewrites.placeholder({
+          range: { start: at + 'wrap('.length, end: at + 'wrap(0'.length },
+          body: [{ k: 'text', parts: ['() => ', { sym: load.sym }, '()'] }],
+          scope: 'all-outputs',
+          by: 'toy-loader',
+        })
+      },
+    }
+    const host = new MemoryHost({
+      files: {
+        '/app/mod.ts': dedent(`
+          const x = wrap(0)
+          export const fn = lazy(() => x)
+        `),
+      },
+    })
+    const env = envInfo({ name: 'ssr', type: 'server', mode: 'build' })
+    const out = async (id: string) =>
+      (await host.compile(id, [toyLoader, toyLazy], { env }))?.code ?? ''
+    const r = {
+      env: await out('/app/mod.ts'),
+      lazy: await out('/app/mod.ts?tss-serverfn-handler'),
+    }
+    expect(r.env).not.toContain('const x')
+    expect(r.lazy).toContain('const x = wrap(() => tsrLoad())')
+    expect(imports(r.lazy, 'tsrLoad')).toBe(true)
+  })
 })
 
 // P4: a kept declaration's message names a binding its evaluation reads,

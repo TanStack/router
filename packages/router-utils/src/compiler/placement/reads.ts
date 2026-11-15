@@ -9,7 +9,6 @@
  * same walk of its text in the env module, read for its references.
  */
 import { visitRuns } from '../analysis'
-import { RewriteSet } from '../rewrite'
 import { runsWhenPassed } from '../units'
 import { NEED_KINDS, symRefsOf } from './clusters'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'
@@ -416,7 +415,7 @@ export function readIndex(
     )
     textReads(r.id, o, into)
     for (const e of inserts[r.id] ?? NO_INSERTS) {
-      if (RewriteSet.inScope(e.scope, o)) {
+      if (rewrites.inScope(e.scope, o)) {
         symRefsOf(e.body, into.syms)
       }
     }
@@ -445,12 +444,12 @@ export function readIndex(
         continue
       }
       for (const e of n.edits ?? []) {
-        if (RewriteSet.inScope(e.scope, o)) {
+        if (rewrites.inScope(e.scope, o)) {
           symRefsOf(e.body, into.syms)
         }
       }
       for (const p of n.places ?? []) {
-        if (RewriteSet.inScope(p.scope, o)) {
+        if (rewrites.inScope(p.scope, o)) {
           symRefsOf(p.body, into.syms)
         }
       }

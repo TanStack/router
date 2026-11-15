@@ -161,9 +161,7 @@ export const fn = createServerFn().handler(async () => db.q())`,
     expect(await serverCalls(served)).toEqual(['db'])
   })
 
-  // (server: the handler module has its own copy, as main's provider copy:
-  // R156)
-  test('e07: an effectful initialiser an export reads too stays on the client and runs once there', async () => {
+  test('e07: an effectful initialiser an export reads too stays on the client and runs once', async () => {
     const served = await serveCase(await host(), {
       ...callsFile,
       'module.tsx': `${serverFn}import { connect } from './calls'
@@ -174,9 +172,8 @@ export const g = () => db.q()`,
     expect(await clientCalls(served, `await load('module.tsx')`)).toEqual([
       'db',
     ])
-    expect(await serverCalls(served)).toEqual(['db'])
     expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('db')
-    expect(await serverCalls(served)).toEqual(['db', 'db'])
+    expect(await serverCalls(served)).toEqual(['db'])
   })
 
   // e08, n1: named, default and namespace imports only the handler reads
@@ -222,18 +219,9 @@ export const fn = createServerFn().handler(async () => db.q())`,
     })
     const ran = ['db', 'if', 'try', 'for:db', 'iife:db']
     expect(await clientCalls(served, `await load('module.tsx')`)).toEqual(ran)
-    expect(await serverCalls(served)).toEqual(ran)
     expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('db')
-    // the handler module's copy runs `db` and the statements naming it
-    // again, at the first call, as main's provider copy does (R156); main's
-    // copy also runs `try` again
-    expect(await serverCalls(served)).toEqual([
-      ...ran,
-      'db',
-      'if',
-      'for:db',
-      'iife:db',
-    ])
+    // each once on the server (where and when: the kind A row of the dispatch, R154)
+    expect((await serverCalls(served)).sort()).toEqual([...ran].sort())
   })
 
   // e12: `export { db }` keeps it on the client
@@ -251,10 +239,9 @@ export { db }`,
     expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('db')
   })
 
-  // e26: a kept function writes the container the handler reads: the
-  // handler module has its own container, as main's provider copy (R156;
-  // main's second instance)
-  test('e26: an exported function and the handler each use their own copy of the container', async () => {
+  // e26: a kept function writes the container the handler reads: the server
+  // has one container
+  test('e26: an exported function writing the container the handler reads works on the server', async () => {
     const served = await serveCase(await host(), {
       'module.tsx': `${serverFn}const cache = new Map<string, number>()
 export function remember(k: string, v: number) { cache.set(k, v) }
@@ -262,7 +249,7 @@ export const size = createServerFn().handler(async () => cache.size)`,
     })
     const module = await served.ssr()
     module.remember('a', 1)
-    expect(await callFromClient(served, 'module.size')).toBe(0)
+    expect(await callFromClient(served, 'module.size')).toBe(1)
     expect(
       await inPage(
         served,
@@ -274,9 +261,8 @@ return typeof m.remember`,
   })
 
   // e29b: the handler assigns a `let` an export reads: the client keeps the
-  // `let`; on the server the handler assigns its module's copy, as main's
-  // provider copy (R156; main's second instance)
-  test('e29b: a `let` the handler assigns and an export reads: the handler assigns its own copy on the server', async () => {
+  // `let`; on the server, the export sees what the handler assigned
+  test('e29b: a `let` the handler assigns and an export reads is one binding on the server', async () => {
     const served = await serveCase(await host(), {
       ...dbServer('load.server.ts'),
       'module.tsx': `${serverFn}import { db } from './load.server'
@@ -289,7 +275,7 @@ export const peek = () => cache`,
     ).toBe(null)
     expectNotLoaded(await served.loads(), ['./load.server'])
     expect(await callFromClient(served, 'module.fill')).toBe('filled')
-    expect((await served.ssr()).peek()).toBe(undefined)
+    expect((await served.ssr()).peek()).toBe('db')
   })
 
   // t2, t3: a value import the handler reads by value and kept code only in
@@ -431,11 +417,10 @@ export const reset = createServerFn().handler(async () => { clear(); return 'res
     ).toBe(0)
   })
 
-  // l1 on the server: the handler module copies `clear` and `cache`, as
-  // main's provider copy (R156): the handler clears its own `cache`, the
-  // export's stays (main's second instance), and `./db.server` loads with
-  // the handler module, at the first call
-  test('l1, server: that handler clears the copy of `cache` in its own module, lazily', async () => {
+  // l1 on the server: the handler would assign what its module imports, so
+  // it stays in place (accepted: main is broken here, its copy clears a
+  // second `cache`): one `cache`, and `./db.server` loads with the module
+  test('l1, server: that handler stays in place and clears the one `cache` the export reads', async () => {
     const served = await serveCase(await host(), {
       ...callsFile,
       ...recordedServer('db.server'),
@@ -445,19 +430,16 @@ function clear() { cache = null; db.reset() }
 export function getCache() { return (cache ??= new Map()) }
 export const reset = createServerFn().handler(async () => { clear(); return 'reset' })`,
     })
-    expect(await serverCalls(served)).toEqual([])
+    expect(await serverCalls(served)).toEqual(['db.server'])
     const module = await served.ssr()
     const before = module.getCache()
     expect(await callFromClient(served, 'module.reset')).toBe('reset')
-    expect(module.getCache()).toBe(before)
-    expect(await serverCalls(served)).toEqual(['db.server'])
+    expect(module.getCache()).not.toBe(before)
   })
 
   // e13, l10: a container a top-level statement fills stays with the
-  // statement and its import, and the statement runs at load; the handler
-  // module fills its own copy at the first call, as main's provider copy
-  // (R156)
-  test('e13, l10: a container a statement fills stays in the module and is filled at load', async () => {
+  // statement and its import, and the statement runs once, at load
+  test('e13, l10: a container a statement fills stays in the module and is filled at load, once', async () => {
     const served = await serveCase(await host(), {
       ...callsFile,
       'module.tsx': `${serverFn}import { connect } from './calls'
@@ -468,12 +450,11 @@ export const fn = createServerFn().handler(async ({ data }: { data: string }) =>
     })
     expect(await serverCalls(served)).toEqual(['a', 'b'])
     expect(await callServerFnThroughCallers(served, 'module.fn', 'b')).toBe('b')
-    expect(await serverCalls(served)).toEqual(['a', 'b', 'a', 'b'])
+    expect(await serverCalls(served)).toEqual(['a', 'b'])
   })
 
   // e11: statements reading what only the handler reads run at load, in
-  // source order; the handler module's copy runs the ones naming what it
-  // copies again at the first call (R156; main's copy runs all of them)
+  // source order, once
   test('e11: statements on a binding only the handler reads run at load on the server, in source order', async () => {
     const served = await serveCase(await host(), {
       ...callsFile,
@@ -485,12 +466,11 @@ export const fn = createServerFn().handler(async () => db.q())`,
     })
     expect(await serverCalls(served)).toEqual(['db', 'if', 'try'])
     expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('db')
-    expect(await serverCalls(served)).toEqual(['db', 'if', 'try', 'db', 'if'])
+    expect(await serverCalls(served)).toEqual(['db', 'if', 'try'])
   })
 
   // e23: `let db; db = connect()` read by a handler: both stay, the
-  // assignment runs at load; the handler module's copy runs it again at the
-  // first call (R156, as main's provider copy)
+  // assignment runs at load
   test('e23: a `let` a top-level statement assigns stays with the statement, which runs at load', async () => {
     const served = await serveCase(await host(), {
       ...callsFile,
@@ -501,12 +481,12 @@ export const fn = createServerFn().handler(async () => db.q())`,
     })
     expect(await serverCalls(served)).toEqual(['db'])
     expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('db')
-    expect(await serverCalls(served)).toEqual(['db', 'db'])
+    expect(await serverCalls(served)).toEqual(['db'])
   })
 
   // l13: code never used that reads the handler's helper keeps the helper
   // (and what it reads) in the module (R153 amendment: already-unused code
-  // stays); the handler module has its own copy of it (R156)
+  // stays); the handler module imports the helper
   test('l13: a helper code never used reads stays in the module, with its import', async () => {
     const served = await serveCase(await host(), {
       ...callsFile,
@@ -635,12 +615,12 @@ ${handler}`,
   })
 })
 
-// R156 (gate probe x2; integration: start-build-handler-local-writes, round 1
-// F2-1): the handler module copies what it reads from its module, with the
-// statements naming it, as main's provider copy does, so a value the source
-// read at load before a write through a local name keeps that value. Kind A:
-// failed when the handler module imported `cfg` and evaluated `snapshot` at
-// the first call (`'b/b'`).
+// R157 rule 4 (gate probe x2; integration: start-build-handler-local-writes,
+// round 1 F2-1): `snapshot`, which only the handler reads, evaluates a read
+// of `cfg`, which the module keeps (a statement names it): it stays in the
+// module and runs at load, as in the source; the handler module imports both.
+// Kind A: failed when the handler module imported `cfg` and evaluated
+// `snapshot` at the first call (`'b/b'`).
 test('x2: a handler reads the value its module read at load before a write through a local name', async () => {
   const served = await serveCase(await host(), {
     'module.tsx': `${serverFn}const cfg = { url: 'a' }
@@ -656,14 +636,125 @@ export const viaParam = createServerFn().handler(async () => snapshot + '/' + cf
   expect((await served.ssr()).getCfg()).toBe('b')
 })
 
-// R1 (review-phase1 3.1): the handler module copies, with what it copies,
-// the top-level code that reaches it through other names, as main's
-// provider copy of the whole file runs it: a function the module calls at
-// load, a helper filling a registry, a write through an alias, a class
-// static block, a never-read declaration. Kind A: each failed at cb9d1331b2
-// (the copy held the state without the code that changes it). The control
-// row: code that reaches nothing the handler copies is not copied.
-describe('the handler module copies the load-time code reaching what it copies (R1)', () => {
+// R157 rules 4 and 5 (design-serverfn-instances-first-principles.md): a
+// declaration only handlers reach moves to the lazy handler module unless
+// evaluating it reads, by name and transitively, something the module
+// keeps; then it stays in the module and runs at load, as in the source. A
+// declaration that is exactly a function evaluates nothing and moves. A
+// handler assigning a binding the module keeps stays in place.
+describe('handler-only declarations and handler writes (R157)', () => {
+  /** A `.server` module recording its own load in `./calls`. */
+  const loadsRecorded = (name: string) => ({
+    [`${name}.ts`]: `import { calls } from './calls'
+calls.push(${JSON.stringify(name)})
+export const wrap = (value: unknown) => () => value
+`,
+  })
+
+  // rule 4, transitively: `snap` calls `read`, a function only handlers
+  // reach, which reads `cfg`, which the module keeps
+  test('a handler-only declaration reading kept state through a function runs at load', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${serverFn}const cfg = { url: 'a' }
+function read() { return cfg.url }
+const snap = read()
+function set(o: { url: string }) { o.url = 'b' }
+set(cfg)
+export const f = createServerFn().handler(async () => snap + '/' + cfg.url)`,
+    })
+    expect(await callServerFnThroughCallers(served, 'module.f')).toBe('a/b')
+  })
+
+  // rule 4's laziness cost (corpus: petit-meme `server/meme.ts`): the
+  // pinned declaration's import loads with the module, as in the source
+  test('a pinned declaration runs at load with the module it imports', async () => {
+    const served = await serveCase(await host(), {
+      ...callsFile,
+      ...loadsRecorded('wrap.server'),
+      'module.tsx': `${serverFn}import { wrap } from './wrap.server'
+const cfg = { url: 'a' }
+const fetcher = wrap(cfg.url)
+function set(o: { url: string }) { o.url = 'b' }
+set(cfg)
+export const f = createServerFn().handler(async () => fetcher() + '/' + cfg.url)`,
+    })
+    expect(await serverCalls(served)).toEqual(['wrap.server'])
+    expect(await callServerFnThroughCallers(served, 'module.f')).toBe('a/b')
+    expect(await serverCalls(served)).toEqual(['wrap.server'])
+  })
+
+  // a declaration that is exactly a function moves: what only it imports
+  // loads at the first call; it reads the module's current state
+  test('a handler-only function reading kept state stays lazy and reads the current value', async () => {
+    const served = await serveCase(await host(), {
+      ...callsFile,
+      ...loadsRecorded('wrap.server'),
+      'module.tsx': `${serverFn}import { wrap } from './wrap.server'
+const cfg = { url: 'a' }
+const read = () => wrap(cfg.url)()
+function set(o: { url: string }) { o.url = 'b' }
+set(cfg)
+export const f = createServerFn().handler(async () => read())`,
+    })
+    expect(await serverCalls(served)).toEqual([])
+    expect(await callServerFnThroughCallers(served, 'module.f')).toBe('b')
+    expect(await serverCalls(served)).toEqual(['wrap.server'])
+  })
+
+  // probe t1_request_mutation: request-time code fills the container after
+  // load; `initialSize` was read at load (main: '0/0', its copy's
+  // container)
+  test('t1: a value read at load from a container later filled by server code', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${serverFn}const cache = new Map<string, number>()
+const initialSize = cache.size
+export const fill = () => { cache.set('k', 1); return cache.size }
+export const f = createServerFn().handler(async () => initialSize + '/' + cache.size)`,
+    })
+    expect((await served.ssr()).fill()).toBe(1)
+    expect(await callFromClient(served, 'module.f')).toBe('0/1')
+  })
+
+  // rule 5, probe h_write: the handler assigns `count`, which the module
+  // keeps: it stays in place, and server code sees its writes (main: 0)
+  test('h_write: a handler assigning kept state is what the module reads', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${serverFn}let count = 0
+export const getCount = () => count
+export const inc = createServerFn().handler(async () => ++count)`,
+    })
+    expect(await callFromClient(served, 'module.inc')).toBe(1)
+    expect(await callFromClient(served, 'module.inc')).toBe(2)
+    expect((await served.ssr()).getCount()).toBe(2)
+  })
+
+  // #8656 (probe p8656_class): a class of the module the handler
+  // instantiates is the class SSR code sees, and the handler reads the
+  // container SSR code fills (main: false, 0)
+  test('p8656: a class and a container the handler shares with SSR code are one', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${serverFn}export class Session { constructor(public id: string) {} }
+const store = new Map<string, number>()
+export const remember = () => store.set('k', 1).size
+export const make = createServerFn().handler(async () => new Session('a'))
+export const size = createServerFn().handler(async () => store.size)`,
+    })
+    const module = await served.ssr()
+    module.remember()
+    const session = await served.inRequest(() => module.make({}))
+    expect(session instanceof module.Session).toBe(true)
+    expect(await callFromClient(served, 'module.size')).toBe(1)
+  })
+})
+
+// R157 rule 3: the handler module imports what its module keeps, so the
+// handler reads the one instance the module's load-time code set up: a
+// function the module calls at load, a helper filling a registry, a write
+// through an alias, a class static block, a never-read declaration, a
+// declaration only an export reads. Each runs once. (Under R156 the handler
+// module copied the state, and R1 copied the code reaching it: kind A at
+// cb9d1331b2 for r1 to r6.)
+describe('the handler module reads the state its module set up at load (R157)', () => {
   test.each([
     {
       name: 'r1: a function the module calls at load writes the state',
@@ -708,14 +799,24 @@ export const f = createServerFn().handler(async () => registry.get('a'))`,
       expected: 1,
     },
     // main's copy deletes `filled` (only an export read it; its exports are
-    // stripped), so the handler reads `undefined`, as on main (R153)
+    // stripped), so its handler reads `undefined`; one instance: the
+    // source's value (kind A at b89355a9fe: `undefined`)
     {
-      name: 'r7: a declaration only an export reads, filling the state, as main',
+      name: 'r7: a declaration only an export reads, filling the state',
       code: `const registry = new Map<string, number>()
 const filled = registry.set('a', 1)
 export const g = () => filled
 export const f = createServerFn().handler(async () => registry.get('a'))`,
-      expected: undefined,
+      expected: 1,
+    },
+    // the probe r7_export_init: `export const ready = boot(cfg)` (main: 'a')
+    {
+      name: 'r7b: an exported initialiser writing the state the handler reads',
+      code: `const cfg = { url: 'a' }
+const boot = (o: { url: string }) => { o.url = 'b'; return true }
+export const ready = boot(cfg)
+export const f = createServerFn().handler(async () => cfg.url)`,
+      expected: 'b',
     },
   ])('$name', async ({ code, expected }) => {
     const served = await serveCase(await host(), {
@@ -726,29 +827,20 @@ export const f = createServerFn().handler(async () => registry.get('a'))`,
     )
   })
 
-  // (main's copy runs it again: fewer runs than main, as many as the source.
-  // Code reaching the copied state through any name, an export reading both
-  // included, is copied and runs again, as on main)
-  // Known difference (accepted, KNOWN-BUGS "Accepted limits"): a class
-  // whose only reader is an export is not reached by name, so the handler
-  // module's copy lacks its static block; main keeps every class (its
-  // removal rule never removes one) and reads 1. Pinned: asserts main's value.
-  test.fails(
-    'r5 known difference: a class static block whose class only an export reads',
-    async () => {
-      const served = await serveCase(await host(), {
-        'module.tsx': `${serverFn}const routes: Array<string> = []
+  // (was a pinned known difference under R156: the copy lacked the static
+  // block of a class only an export reads; main reads 1)
+  test('r5b: a class static block whose class only an export reads', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${serverFn}const routes: Array<string> = []
 class Boot { static { routes.push('boot') } }
 export const boot = Boot
 export const f = createServerFn().handler(async () => routes.length)`,
-      })
-      expect(await callServerFnThroughCallers(served, 'module.f')).toBe(1)
-    },
-  )
+    })
+    expect(await callServerFnThroughCallers(served, 'module.f')).toBe(1)
+  })
 
   // O1 (review-phase1-final 3.1, f6): a statement declaring a name (`if
-  // (…) { var conn = … }`) and what it names (`opts`) are imported, not
-  // copied: the copy taking `cfg` does not run the statement again. Kind A: at bd4b7c6d23 `connect` ran twice.
+  // (…) { var conn = … }`) runs once; the handler module imports `conn`.
   test('o1: a statement declaring a name the handler module imports runs once', async () => {
     const served = await serveCase(await host(), {
       ...callsFile,
@@ -853,28 +945,23 @@ export const a = createServerFn().handler(() => b({ data: {} }))`,
     expect(results).toEqual([1, 2, 3, 4])
   })
 
-  // Known difference (KNOWN-BUGS "Accepted limits", design-ssr-serverfn-
-  // double-build.md 6): a handler reading module state its own validator
-  // writes. The handler module copies `calls` (R156) while the validator
-  // stays in the file and counts the file's, so the handler reads 0, 0;
-  // main's provider copy runs both and reads 1, 2. Niche, best effort.
-  // Pinned: asserts main's value.
-  test.fails(
-    'v_state known difference: a handler reads state its validator writes',
-    async () => {
-      const served = await serveCase(await host(), {
-        'module.tsx': `${serverFn}let calls = 0
+  // v_state: a handler reading module state its own validator writes. The
+  // validator stays in the module with `calls`; the handler module imports
+  // `calls` (R157 rule 3): 1, 2, as main's provider copy and the source.
+  // Kind A at b89355a9fe: 0, 0 (the handler module's copy of `calls`).
+  test('v_state: a handler reads state its validator writes', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${serverFn}let calls = 0
 export const fn = createServerFn()
   .validator((data: unknown) => {
     calls++
     return data
   })
   .handler(() => calls)`,
-      })
-      expect([
-        await callFromClient(served, 'module.fn'),
-        await callFromClient(served, 'module.fn'),
-      ]).toEqual([1, 2])
-    },
-  )
+    })
+    expect([
+      await callFromClient(served, 'module.fn'),
+      await callFromClient(served, 'module.fn'),
+    ]).toEqual([1, 2])
+  })
 })

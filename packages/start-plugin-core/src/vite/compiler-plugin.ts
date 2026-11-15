@@ -38,7 +38,10 @@ import {
   watchLoadedFile,
   withOwnSourcesNamedByFile,
 } from '@tanstack/router-utils/compiler'
+import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { TRANSFORM_ID_REGEX } from '../constants'
+import { resolveRegistrySpecifier } from '../server-fns/resolver'
+import { resolveViteId } from '../utils'
 import { isVueSfc } from '../compiler/vue'
 import { resolveViteEdgeModuleId } from '../import-protection/edge-modules'
 import { viteDevGraphView } from '../import-protection/graph-trace'
@@ -79,6 +82,10 @@ type TransformHandler = Extract<
 
 /** Specifiers of import protection's edge modules. */
 const IP_SPECIFIER_RE = /tanstack-start-ip:/
+/** The server-fn resolver module's id (`createVirtualModule`'s escape of its `#`). */
+const SERVER_FN_RESOLVER_ID = resolveViteId(
+  VIRTUAL_MODULES.serverFnResolver.replaceAll('#', '%23'),
+)
 
 export function startCompilerPlugin(state: ViteCompilerState): PluginOption {
   return [
@@ -347,7 +354,13 @@ function envCompilerPlugins(
             return served !== null && served !== target ? served : edge
           })
         }
-        return resolveSameFileSpecifier(source, importer)
+        return (
+          resolveSameFileSpecifier(source, importer) ??
+          // the resolver module imports the registry's modules (R158 rule 3)
+          (importer === SERVER_FN_RESOLVER_ID
+            ? resolveRegistrySpecifier(source)
+            : null)
+        )
       },
     },
     load: {

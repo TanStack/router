@@ -21,8 +21,8 @@ export interface ServerFnEntry extends ServerFnKey {
   name: string
   /** The defining module's canonical id (no owned query). */
   definingCanonicalId: string
-  /** Whether a separate provider module (derived id) carries the handler. */
-  providerDerived: boolean
+  /** The module the registry imports the `createServerRpc` wrapper from (`ProviderModule`). */
+  provider: ProviderModule
   clientReferenced: boolean
 }
 
@@ -35,8 +35,18 @@ export interface ServerFnFact {
   id: string
   exportName: string
   name: string
-  providerDerived: boolean
+  provider: ProviderModule
 }
+
+/**
+ * Where an entry's wrapper is exported from, fixed per file by the
+ * configuration and the path (R158 rule 3): `derived`, the separate
+ * provider's module (RSC); `file`, the defining module itself (a file that is
+ * no JavaScript, compiled in place by the late pass); otherwise `lazy`, the
+ * file's lazy server module, which re-exports the wrapper of a server fn the
+ * file holds.
+ */
+export type ProviderModule = 'derived' | 'lazy' | 'file'
 
 interface ServerFnEnv {
   name: string
@@ -153,7 +163,7 @@ export class ServerFnRegistry {
             exportName: f.exportName,
             name: f.name,
             definingCanonicalId,
-            providerDerived: f.providerDerived,
+            provider: f.provider,
             clientReferenced:
               (byId.get(f.id)?.clientReferenced ?? false) ||
               env.type === 'client',
@@ -168,7 +178,10 @@ export class ServerFnRegistry {
 
 /** The module an entry's `createServerRpc` wrapper is exported from. */
 export function providerModuleId(entry: ServerFnEntry): string {
-  return entry.providerDerived
-    ? deriveId(entry.definingCanonicalId, { kind: 'provider', value: '' })
-    : entry.definingCanonicalId
+  return entry.provider === 'file'
+    ? entry.definingCanonicalId
+    : deriveId(entry.definingCanonicalId, {
+        kind: entry.provider === 'derived' ? 'provider' : 'handler',
+        value: '',
+      })
 }

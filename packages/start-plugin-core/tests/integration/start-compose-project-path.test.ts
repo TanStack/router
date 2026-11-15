@@ -152,7 +152,7 @@ export const Route = createFileRoute('/')({
 })
 `,
           // the handler of `readLabel` reads a binding its module writes:
-          // its lazy handler module holds its own copy of it (R156)
+          // its lazy handler module imports the module itself
           'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 let label = 'MARK_LABEL_INITIAL'
 export function setLabel(value: string) {
@@ -194,17 +194,14 @@ export { renderPath } from '../harness/render'
       expect(build.client.where('MARK_INDEX')).toBe('lazy')
     })
 
-    // main's behaviour, accepted under R156: the lazy handler module has its
-    // own copy of `label`, as main's provider copy has, so the module's write
-    // is not what the handler reads; follow-up: #8656
-    test('a server function handler reads the copy of module state its handler module holds', async () => {
+    test("a server function handler reads its module's one instance", async () => {
       expect(
         (
           await build.ssr.run(
             `entry.setLabel('MARK_LABEL_SET')\nreturn await entry.readLabel()`,
           )
         ).result,
-      ).toBe('MARK_LABEL_INITIAL')
+      ).toBe('MARK_LABEL_SET')
     })
   })
 })

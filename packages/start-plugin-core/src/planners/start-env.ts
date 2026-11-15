@@ -4,8 +4,9 @@
  * keep their chain next to a generated `createServerRpc` export in the
  * provider; an in-place provider (SSR) moves the handlers into one derived
  * handler module it imports on the first call (what only handlers read
- * loads then, once; what the module also keeps is copied there with the
- * top-level code reaching it, as main's provider copy of the file: R156);
+ * loads then, once, but a declaration whose evaluation reads something the
+ * module keeps; everything the module keeps is imported back: one instance,
+ * R157);
  * middleware links, isomorphic implementations and env-only fns are
  * selected per env; `<ClientOnly>` children leave server envs; nested
  * server fns are hoisted on the server when that is safe, else refused at
@@ -24,6 +25,7 @@ import {
   patternIdentifiers,
   revision,
   sameFileSpecifier,
+  staticPropertyKey,
   stringLiteral,
   unwrapExpression,
   walk,
@@ -52,7 +54,7 @@ import type {
   StartPrefetch,
 } from '../compiler/prefetch'
 import type { Chain, Escape, EscapeReason } from '../compiler/start-analysis'
-import type { ServerFnFact } from '../server-fns/registry'
+import type { ProviderModule, ServerFnFact } from '../server-fns/registry'
 import type {
   AbstractValue,
   EditScope,
@@ -63,6 +65,7 @@ import type {
   PlanContext,
   Planner,
   Range,
+  SymRef,
   SymbolId,
   TextFrag,
   Unit,
@@ -512,6 +515,12 @@ function planStartEnv(
     (c) => c.terminalValue.t === 'serverFn' && !c.unsupported,
   )
   const derivesProvider = config.providerSeparate
+  /** The registry's module of the file's server fns (R158 rule 3): by configuration and path only. */
+  const provider: ProviderModule = config.late
+    ? 'file'
+    : derivesProvider
+      ? 'derived'
+      : 'lazy'
   if (config.late && derivesProvider && serverFnChains.length > 0) {
     // the provider module is derived from the file, which is no JavaScript
     diag(LATE_MESSAGE, rangeOf(serverFnChains[0]!.head))
@@ -577,19 +586,22 @@ function planStartEnv(
     return sym
   }
 
-  // ---- lazy handler module (in-place provider): one per defining module, loaded once on the first call
+  // ---- lazy handler module (in-place provider): one per defining module, loaded once on the
+  // first call; the registry imports every server fn's wrapper from it (R158 rule 3)
   let handlerOut: OutputId | null = null
   let handlerLoad: SymbolId | null = null
+  const handlerOutput = (): OutputId =>
+    (handlerOut ??= ctx.declareOutput({
+      kind: 'custom',
+      key: 'handler',
+      derived: { kind: 'handler', value: '' },
+    }))
   const lazyHandlerOutput = (): { out: OutputId; load: SymbolId } => {
-    if (handlerOut === null || handlerLoad === null) {
-      handlerOut = ctx.declareOutput({
-        kind: 'custom',
-        key: 'handler',
-        derived: { kind: 'handler', value: '' },
-      })
+    if (handlerLoad === null) {
+      handlerOutput()
       const memo = names.alloc('tsrHandlers')
       const load = names.alloc('tsrLoadHandlers')
-      const spec = sameFileSpecifier(derivedIdOf(handlerOut))
+      const spec = sameFileSpecifier(derivedIdOf(handlerOut!))
       rewrites.addGenerated({
         body: [
           text(
@@ -618,7 +630,7 @@ function planStartEnv(
       })
       handlerLoad = load.sym
     }
-    return { out: handlerOut, load: handlerLoad }
+    return { out: handlerOut!, load: handlerLoad }
   }
 
   // ---- 1. link stripping on the client (serverFn validators, middleware server/validator)
@@ -913,7 +925,6 @@ function planStartEnv(
     const h = site.handler
     // (the manifest's `functionName` stays `site.functionName`)
     const { local: rpcLocal, exportName } = site.wrapper
-    const providerDerived = derivesProvider
     if (role === 'client') {
       const rpc = glueImport(specs.clientRpc, 'createClientRpc', 'tsrClientRpc')
       // in dev the stub also names its file's revision (an argument the runtime ignores): the
@@ -932,7 +943,7 @@ function planStartEnv(
         by,
       })
       facts.serverFns.push(
-        serverFnFact(site, id, name, exportName, providerDerived, rootRel),
+        serverFnFact(site, id, name, exportName, provider, rootRel),
       )
       continue
     }
@@ -948,7 +959,7 @@ function planStartEnv(
       })
       if (role === 'ssr-caller') {
         facts.serverFns.push(
-          serverFnFact(site, id, name, exportName, providerDerived, rootRel),
+          serverFnFact(site, id, name, exportName, provider, rootRel),
         )
         continue
       }
@@ -1026,10 +1037,12 @@ function planStartEnv(
           { sym: fnSym },
           '.__executeServer(',
           { sym: opts.sym },
-          '))\nexport { ',
-          { sym: rpcLocal.sym },
-          ' }\n',
+          '))\n',
         ),
+        // (the registry's module exports it: the lazy module re-exports it under this name)
+        ...(provider === 'lazy'
+          ? []
+          : [text('export { ', { sym: rpcLocal.sym }, ' }\n')]),
       ],
       declares: [rpcLocal.sym],
       effectful: false,
@@ -1037,13 +1050,74 @@ function planStartEnv(
       home,
       by,
     })
-    if (!providerOut) {
+    // R158 rule 1: the file does not root the wrapper of a server fn a
+    // split chunk can call through a stub (its declarator's value is the
+    // chain, whose method the stub carries as a literal); the lazy module
+    // re-exports the wrapper and the server fn: the file holds them only
+    // when its own code names the server fn
+    const stub =
+      provider === 'lazy' &&
+      site.topLevelUnit?.node.type === 'VariableDeclarator'
+        ? stubOf(site.chain, site.topLevelUnit.node)
+        : null
+    if (!providerOut && stub === null) {
       ctx.addRoot('env', { t: 'gen', id: gen })
+    }
+    if (provider === 'lazy') {
+      const out = handlerOutput()
+      const reExport = (parts: Array<string | SymRef>) =>
+        ctx.addRoot(out, {
+          t: 'gen',
+          id: rewrites.addGenerated({
+            body: [text(...parts)],
+            declares: [],
+            effectful: false,
+            anchor: { k: 'end' },
+            home: out,
+            by,
+          }),
+        })
+      // the registry's module: the lazy module re-exports the wrapper
+      reExport(['export { ', { sym: rpcLocal.sym }, ` as ${exportName} }\n`])
+      if (stub !== null) {
+        // R158 rule 2: a split chunk copying the declaration (the file does
+        // not hold it) calls the server fn through a stub that loads the
+        // lazy module on the call; the lazy module exports the server fn
+        const fnExport = names.allocExportName(
+          `tsrFn$${identifierBase(site.stableKey)}`,
+        )
+        reExport(['export { ', { sym: fnSym }, ` as ${fnExport} }\n`])
+        const spec = sameFileSpecifier(derivedIdOf(out))
+        const stubFn = glueImport(
+          specs.ssrRpc,
+          'createSsrFnStub',
+          'tsrSsrFnStub',
+        )
+        rewrites.placeholder({
+          range: stub.range,
+          body: [
+            text(
+              { sym: stubFn, ctx: 'callee' },
+              `(${moduleLiteral(id)}, ${moduleLiteral(stub.method)}, () => import(`,
+            ),
+            {
+              k: 'spec',
+              specifier: spec,
+              edgeKey: ctx.edgeKey(spec, 'dynamic', 'runtime'),
+              provenance: { origin: 'runtime' },
+              form: 'dynamic',
+            },
+            text(`).then((m) => m.${fnExport}))`),
+          ],
+          scope: { kinds: ['split'] },
+          by,
+        })
+      }
     }
     // the hoisted chain renders after its wrapper (the chain reads the wrapper eagerly)
     commitHoist?.()
     facts.serverFns.push(
-      serverFnFact(site, id, name, exportName, providerDerived, rootRel),
+      serverFnFact(site, id, name, exportName, provider, rootRel),
     )
   }
 
@@ -1567,12 +1641,54 @@ function hasTopLevelAwait(ctx: PlanContext): boolean {
   return false
 }
 
+/**
+ * The stub of a server fn in split chunks (R158 rule 2): the range of the
+ * declarator's value, and the method the chain's root declares
+ * (`createServerFn()`: `GET`; `createServerFn({ method: 'POST' })`). Null
+ * when the root is no factory call or its method no literal: the stub could
+ * not carry it, and the file holds the server fn.
+ */
+function stubOf(
+  chain: Chain,
+  declarator: Extract<Node, { type: 'VariableDeclarator' }>,
+): { range: Range; method: string } | null {
+  const head = chain.head
+  if (
+    declarator.init === null ||
+    !chain.headIsFactoryCall ||
+    head.type !== 'CallExpression'
+  ) {
+    return null
+  }
+  let method = 'GET'
+  const opts = head.arguments[0]
+  if (opts !== undefined) {
+    if (opts.type !== 'ObjectExpression' || head.arguments.length > 1) {
+      return null
+    }
+    for (const p of opts.properties) {
+      const key = p.type === 'Property' ? staticPropertyKey(p) : null
+      if (key === null) {
+        return null
+      }
+      if (key === 'method') {
+        const value = (p as Extract<Node, { type: 'Property' }>).value
+        if (value.type !== 'Literal' || typeof value.value !== 'string') {
+          return null
+        }
+        method = value.value
+      }
+    }
+  }
+  return { range: rangeOf(declarator.init), method }
+}
+
 function serverFnFact(
   site: ServerFnSite,
   id: string,
   name: string,
   exportName: string,
-  providerDerived: boolean,
+  provider: ProviderModule,
   rootRel: string,
 ): ServerFnFact {
   return {
@@ -1583,7 +1699,7 @@ function serverFnFact(
     id,
     exportName,
     name,
-    providerDerived,
+    provider,
   }
 }
 
