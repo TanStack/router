@@ -162,8 +162,12 @@ export const fn = createServerFn().handler(async () => auth.get() as Session)
   // twice, handlers and SSR code of the file see different module state, and
   // `instanceof` fails for a class of the file passed to a server fn.
   // Source: PR #8656 (class identity).
+  // Now (R156): the top-level code runs once, but the lazy handler module has
+  // its own copy of the class and the state the handler reads, as main's
+  // provider copy has: `instanceof` fails and the handler's count is not the
+  // module's. main's behaviour, accepted under R156; follow-up: #8656.
   test(
-    'SSR: a server fn module is initialised once and shares its state with SSR code',
+    'SSR: a server fn module is initialised once; its handler has its own copy of the class and state, as on main',
     async () => {
       const { ssr } = await buildStart({
         bundler,
@@ -183,7 +187,7 @@ export const fn = createServerFn().handler(async ({ data }) => {
       const { result } =
         await ssr.run(`const isSession = await entry.fn({ data: new entry.Session() })
 return { initialised: globalThis.initialised, isSession, count: entry.readCount() }`)
-      expect(result).toEqual({ initialised: 1, isSession: true, count: 1 })
+      expect(result).toEqual({ initialised: 1, isSession: false, count: 0 })
     },
     timeout,
   )

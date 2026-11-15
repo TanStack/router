@@ -8,6 +8,8 @@ import { describe, expect, test } from 'vitest'
 import { collectionSizes } from '@tanstack/router-utils/compiler'
 import { viteEdgeModuleIds } from '../../src/import-protection/edge-modules'
 import { violationsOf } from '../../src/import-protection/violations'
+import { startRecognizer } from '../../src/compiler/recognizer'
+import { START_ENV, startEnvPlanner } from '../../src/planners'
 import { MemoryApp, ROOT } from './memory-host'
 import type { Planner } from '@tanstack/router-utils/compiler'
 import type { ViolationInfo } from '../../src/import-protection/trace'
@@ -388,6 +390,79 @@ export * from 'X'
 export const load = () => import('X')
 `,
     )
+  })
+})
+
+// Erasure and the edges (spec-phase1 8.2, R155): an import only code the
+// client erases used leaves the client output, so it is no edge; an import a
+// statement the client keeps reads, or one nothing reads, is one (main's
+// rule; import protection reports it as on main).
+describe('edges of what erasure leaves on the client', () => {
+  const START = `import { createServerFn } from '@tanstack/react-start'\n`
+  const startApp = (module: string) =>
+    new MemoryApp({
+      files: {
+        'src/db.server.ts': `export const db = { a: 1, users: () => [] }\n`,
+        'src/secret.server.ts': `export const secret = 1\nexport const unused = 2\n`,
+        'src/a.ts': `${START}${module}`,
+      },
+      options: {},
+      mode: 'dev',
+      recognizer: startRecognizer(),
+    })
+  const compileClient = (a: MemoryApp) =>
+    a.compile('src/a.ts', 'client', {
+      planners: [startEnvPlanner()],
+      perPlanner: {
+        [START_ENV]: {
+          framework: 'react',
+          root: ROOT,
+          providerSeparate: false,
+          idMode: 'dev',
+        },
+      },
+    })
+  test.each([
+    {
+      name: 'e10b: an enum whose member reads db, only the handler reads',
+      module: `import { db } from './db.server'
+enum Kind { A = db.a }
+export const f = createServerFn().handler(async () => Kind.A)`,
+    },
+    {
+      name: 'e10c: a namespace reading db, only the handler reads',
+      module: `import { db } from './db.server'
+namespace Repo { export const get = () => db.users() }
+export const f = createServerFn().handler(async () => Repo.get())`,
+    },
+    {
+      name: 't4: a value only an exported type reads',
+      module: `import { secret } from './secret.server'
+const Schema = { secret }
+export type S = typeof Schema
+export const f = createServerFn().handler(async () => 1)`,
+    },
+  ])('$name: no edge to the .server module', async ({ module }) => {
+    const { out } = await compileClient(startApp(module))
+    expect(edgeImports(out!.code)).toEqual([])
+    expect(out!.code).not.toContain('.server')
+  })
+  test.each([
+    {
+      name: 'e13: a container a kept statement fills',
+      module: `import { secret } from './secret.server'
+const registry = new Map()
+registry.set('a', secret)
+export const f = createServerFn().handler(async () => registry.get('a'))`,
+    },
+    {
+      name: 'n1: an import nothing reads',
+      module: `import { unused } from './secret.server'
+export const f = createServerFn().handler(async () => 1)`,
+    },
+  ])('$name: the edge stays', async ({ module }) => {
+    const { out } = await compileClient(startApp(module))
+    expect(edgeImports(out!.code)).toHaveLength(1)
   })
 })
 

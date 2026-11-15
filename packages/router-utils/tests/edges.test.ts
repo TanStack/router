@@ -133,7 +133,8 @@ describe('edge names (J6)', () => {
     [
       'named and type',
       `import { type T, handlerOnly, everywhere } from './x'`,
-      `import { type T, everywhere } from './y'`,
+      // (the inline type specifier leaves with its statement's pruned values)
+      `import { everywhere } from './y'`,
       ['everywhere'],
     ],
     [

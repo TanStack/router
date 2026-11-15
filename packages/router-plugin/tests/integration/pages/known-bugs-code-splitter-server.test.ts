@@ -139,9 +139,11 @@ return [rendered, await renderComponent(${read})]`)
 
   // Bug: same root cause as above, for a function that module-level code
   // keeps reachable: it renders the split component, whose declaration the
-  // route module lost. The registry is created, filled and subscribed to
-  // once, also after the chunk loads (a chunk that runs that code again
-  // makes a second registry). Source: #8504 (code-splitter-dead-code.test.ts).
+  // route module lost. Source: #8504 (code-splitter-dead-code.test.ts).
+  // `main` throws here (R153); chunk re-runs the registration as `main`'s
+  // chunk does: the chunk copying `Page` takes `registry.set('preview',
+  // Preview)` (it reaches `Page` through `Preview`, R1), so a second
+  // registry is created and filled when the chunk loads.
   // Impact: the route module throws when it loads ("Page is not defined").
   test.each([
     {
@@ -198,7 +200,7 @@ return [loaded, rendered, { ...(await app('subscribe.ts')).runs }]`),
       ).toEqual([
         '<p>page</p>',
         '<p>page</p>',
-        { registries: 1, sets: 1, subscribes },
+        { registries: 2, sets: 2, subscribes },
       ])
     },
   )

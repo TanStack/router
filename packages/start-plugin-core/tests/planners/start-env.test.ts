@@ -469,6 +469,121 @@ export const api = { get: createServerFn()${link}.handler(() => db.q()) }
       expect(provider).not.toContain('./client-thing')
     },
   )
+
+  // spec-phase1 8.2 (RSC, kind B): the three roles of a module whose
+  // handlers read state the module keeps. The SSR caller's module and the
+  // provider env's module stub the handlers and keep the state other code
+  // reads, without the server-only import; the provider copy holds what its
+  // handlers reach (its own copy of the state, as main's), with the
+  // top-level code reaching that state (R1); an export reading it is not
+  // copied (main's copy strips its exports and deletes what only they read).
+  const roles = (code: string) =>
+    Promise.all([
+      compile(code, {
+        env: envInfo({ name: 'ssr', type: 'server', isProvider: false }),
+        config,
+        files,
+      }),
+      compile(code, { env: rsc, config, files }),
+    ])
+  it('s1: a cache a handler fills and an export reads, in the three roles', async () => {
+    const [caller, providerEnv] =
+      await roles(`import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+const cache = new Map<string, number>()
+export const save = createServerFn().handler(async () => { cache.set('k', db.q()) })
+export function getCached() { return cache.get('k') }
+`)
+    for (const r of [caller, providerEnv]) {
+      expectValid(r.code)
+      expect(r.code).not.toContain('./db.server')
+      expect(r.code).toContain('const cache = new Map')
+      expect(r.code).toContain('function getCached()')
+    }
+    const copy = await providerEnv.derived(PROVIDER)
+    expectValid(copy)
+    expect(copy).toContain(`from './db.server'`)
+    expect(copy).toContain('const cache = new Map')
+    expect(copy).not.toContain('getCached')
+  })
+
+  // R1 (review-phase1 3.1) in the provider copy: it copies, with what its
+  // handlers reach, the top-level code reaching it through other names, as
+  // main's copy of the whole file runs it. Kind A: the copy held the state
+  // without that code (gate probes r2, r5, r6, x3 under RSC).
+  it.each([
+    [
+      'a registry filled through a helper',
+      `const registry = new Map<string, number>()
+function register(k: string, v: number) { registry.set(k, v) }
+register('a', 1)
+export const f = createServerFn().handler(async () => registry.get('a'))
+`,
+      ["register('a', 1)", 'function register'],
+    ],
+    [
+      'a class static block',
+      `const routes: Array<string> = []
+class Boot { static { routes.push('boot') } }
+export const f = createServerFn().handler(async () => routes.length)
+`,
+      ["routes.push('boot')"],
+    ],
+    [
+      'a never-read declaration',
+      `const registry = new Map<string, number>()
+const _boot = registry.set('a', 1)
+export const f = createServerFn().handler(async () => registry.get('a'))
+`,
+      ["registry.set('a', 1)"],
+    ],
+    [
+      'a default-export expression',
+      `let ready = false
+export default (ready = true)
+export const f = createServerFn().handler(async () => ready)
+`,
+      ['ready = true'],
+    ],
+  ])('copies %s into the provider copy (R1)', async (_name, body, expected) => {
+    const r = await compile(
+      `import { createServerFn } from '@tanstack/react-start'\n${body}`,
+      { env: rsc, config, files },
+    )
+    const copy = await r.derived(PROVIDER)
+    expectValid(copy)
+    for (const text of expected) {
+      expect(copy).toContain(text)
+    }
+  })
+
+  it('l1: a function only the handler calls, assigning a kept `let`, in the three roles', async () => {
+    const [caller, providerEnv] =
+      await roles(`import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+let cache: Map<string, number> | null = null
+function clear() { cache = null }
+export function getCache() { return (cache ??= new Map()) }
+export const reset = createServerFn().handler(async () => { clear(); return db.q() })
+`)
+    for (const r of [caller, providerEnv]) {
+      expectValid(r.code)
+      expect(r.code).not.toContain('./db.server')
+      expect(r.code).toContain('function getCache()')
+    }
+    const copy = await providerEnv.derived(PROVIDER)
+    expectValid(copy)
+    expect(copy).toContain(`from './db.server'`)
+    expect(copy).toContain('function clear()')
+    // kind A (R155 phase 1): `clear` leaves the modules where the handler is
+    // a stub; the copy holds what its handlers reach and the code reaching
+    // it (R1), not `getCache`, which only an export reads (main's copy
+    // deletes it)
+    for (const r of [caller, providerEnv]) {
+      expect(r.code).not.toContain('function clear()')
+    }
+    expect(copy).not.toContain('getCache')
+  })
 })
 
 describe('a server fn nested in a function (J4.6): hoisted when it captures nothing', () => {
@@ -615,8 +730,9 @@ export const outer = createServerFn().handler(async () => {
 
 // In-place provider (SSR = provider): handlers move to one lazy handler
 // module the defining module imports on the first call; what only they read
-// moves with them, what the defining module also reads stays and is
-// imported back (nothing evaluates twice).
+// moves with them, what the defining module also reads is copied there
+// with the statements naming it, as main's provider copy of the module
+// (R156).
 describe('lazy handler module of the in-place provider', () => {
   const FNS = `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'\n`
   const files = {
@@ -639,14 +755,15 @@ export function read() { return count }
     const h = await r.derived(HANDLER_ID)
     expectValid(h)
     expect(h).toContain(`from './db.server'`)
-    // module state the defining module also reads is imported from it, not copied
-    expect(h).not.toMatch(/let count/)
-    expect(h).toMatch(
-      /import \{[^}]*\bcount\b[^}]*\} from '\/app\/src\/module\.tsx'/,
-    )
+    // module state the defining module also reads is copied, as in main's
+    // provider copy of the file, which imports nothing of it (R156)
+    expect(h).toMatch(/let count = 0/)
+    expect(h).not.toContain('/app/src/module.tsx')
   })
 
-  it('keeps a handler that writes module state the module also reads in place', async () => {
+  // (R156: the handler writes its module's own copy, as the copy's in main's
+  // provider; main's second instance)
+  it('moves a handler that writes module state the module also reads, with its own copy of it', async () => {
     const r = await compile(
       `${FNS}let count = 0
 export const fn = createServerFn().handler(async () => count++)
@@ -655,8 +772,12 @@ export function read() { return count }
       { env: ssrEnv },
     )
     expectValid(r.code)
-    expect(r.code).toContain('count++')
-    expect(r.code).not.toContain('?tss-serverfn-handler')
+    expect(r.code).not.toContain('count++')
+    expect(r.code).toContain('?tss-serverfn-handler')
+    const h = await r.derived(HANDLER_ID)
+    expectValid(h)
+    expect(h).toMatch(/let count = 0/)
+    expect(h).toContain('count++')
   })
 
   it('keeps the handlers of a module that awaits at its top level in place', async () => {
@@ -706,10 +827,11 @@ export function makeFns() {
     expect(h).toContain('db.get(3)')
   })
 
-  // the declaration and its effect leave the defining module's evaluation
-  // for the handler module's, once (a lazy initialisation, as in a split
-  // chunk): nothing outside the module keeps it (R149, answer A)
-  it('moves module state and its effect only a hoisted handler reads', async () => {
+  // the assignment is a statement: it stays in the defining module with the
+  // binding it writes and its import, and runs when the module loads (R154);
+  // the handler module has its own copy of both, as main's provider copy
+  // (R156)
+  it('keeps module state and the statement assigning it in the module, and copies both where a hoisted handler reads it', async () => {
     const r = await compile(
       `${FNS}import { load } from './db.server'
 let label: unknown = 'initial'
@@ -721,10 +843,73 @@ export function makeFn() {
       { env: ssrEnv, files },
     )
     expectValid(r.code)
-    expect(r.code).not.toContain('load(label)')
+    expect(r.code).toContain(`let label: unknown = 'initial'`)
+    expect(r.code.match(/label = load\(label\)/g)).toHaveLength(1)
+    expect(r.code).toContain(`import { load } from './db.server'`)
     const h = await r.derived(HANDLER_ID)
     expectValid(h)
+    expect(h).toContain(`let label: unknown = 'initial'`)
     expect(h.match(/label = load\(label\)/g)).toHaveLength(1)
+    expect(h).not.toContain('/app/src/module.tsx')
+  })
+
+  // a const the module keeps is copied into the handler module, as into
+  // main's provider copy (R156)
+  it('copies a const the module keeps into the handler module', async () => {
+    const r = await compile(
+      `${FNS}import { db } from './db.server'
+const prefix = 'p:'
+export const fn = createServerFn().handler(async () => prefix + String(db.get(1)))
+export function show(x: string) { return prefix + x }
+`,
+      { env: ssrEnv, files },
+    )
+    expectValid(r.code)
+    expect(r.code).toContain(`const prefix = 'p:'`)
+    const h = await r.derived(HANDLER_ID)
+    expectValid(h)
+    expect(h).toContain(`const prefix = 'p:'`)
+    expect(h).not.toContain('/app/src/module.tsx')
+  })
+
+  // A name a top-level statement declares (`if (…) { var conn = … }`) is
+  // the one thing the handler module imports from the module (main deletes
+  // the declarator and runs the statement once; a copy would run it again).
+  // A handler assigning it would assign an import: it stays in place (the
+  // `shared-writer` fallback, review-phase1 3.4, probe f1).
+  it('keeps a handler in place that assigns a `var` a top-level statement declares', async () => {
+    const r = await compile(
+      `${FNS}import { load } from './db.server'
+if (typeof window === 'undefined') { var conn: unknown = load(1) }
+export const f = createServerFn().handler(async () => { conn = null; return 1 })
+`,
+      { env: ssrEnv, files },
+    )
+    expectValid(r.code)
+    expect(r.code).toContain('conn = null')
+    expect(r.code).not.toContain('?tss-serverfn-handler')
+  })
+
+  // Z1 (review-phase1 3.2, accepted): such a `var` only a handler reads
+  // stays with its statement and the import it reads, at load (R154); the
+  // handler module imports it. main deletes the declarator, and its copy
+  // loads `./db.server` on the first call; values are equal.
+  it('keeps a `var` a top-level statement declares, only a handler reads, with its statement (Z1)', async () => {
+    const r = await compile(
+      `${FNS}import { load } from './db.server'
+if (typeof window === 'undefined') { var conn = load(1) }
+export const f = createServerFn().handler(async () => conn)
+`,
+      { env: ssrEnv, files },
+    )
+    expectValid(r.code)
+    expect(r.code).toContain(`from './db.server'`)
+    expect(r.code).toContain('var conn = load(1)')
+    const h = await r.derived(HANDLER_ID)
+    expectValid(h)
+    expect(h).toMatch(
+      /import \{[^}]*\bconn\b[^}]*\} from '\/app\/src\/module\.tsx'/,
+    )
   })
 
   it('derives the handler module of an SFC block before its language key', async () => {

@@ -117,6 +117,14 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
 
 ## Accepted limits
 
+- **A class whose only reader is an export is not copied with what its code reaches** (R1, review-phase1 r5; accepted:
+  niche, no corpus file): a chunk or a server-fn handler module copies the top-level code that reaches what it copies
+  by name, and an export is no root, so `class Boot { static { routes.push('boot') } }; export const boot = Boot` with
+  a handler (or a split component) reading `routes` gives the copy `routes` without `Boot`'s static block (0). `main`
+  keeps every class in every copy (its removal rule never removes one) and reads 1.
+  `start-plugin-core/tests/start-compiler-erasure-parity.test.ts`: "r5 known difference: a class static block whose
+  class only an export reads" (pinned).
+
 - **Root routes are not split** (R60, SPEC J2.7): their components render on every page, or on error and not-found
   responses, where a lazy chunk only adds a round trip. `router-plugin/tests/integration/known-bugs-code-splitter-page-
 code.test.ts`: "a root route's components load with the route module" (Vite and Rspack).
@@ -663,8 +671,11 @@ Paths under `start-plugin-core/tests/` unless noted.
   SPEC §2.1. `integration/known-bugs-start-compiler-vue-sfc.test.ts`: "build: a server fn in a <script lang="ts"> block
   may use angle-bracket type assertions".
 - **With SSR as the provider, a module is two instances in the SSR bundle**, so its top-level code runs twice. SPEC
-  J4.14, G3. `integration/known-bugs-start-compiler.test.ts`: "SSR: a server fn module is initialised once and shares
-  its state with SSR code"; `integration/start-compose-server-fn-route.test.ts`: "the server runs the route module once".
+  J4.14, G3. Partly kept by decision (R156): the lazy handler module copies the state and classes its handlers read
+  with the code reaching them, as main's copy (#8656 is the follow-up); what nothing of a handler reaches runs once.
+  `integration/known-bugs-start-compiler.test.ts`: "SSR: a server fn module is initialised once; its handler has its
+  own copy of the class and state, as on main"; `integration/start-compose-server-fn-route.test.ts`: "the server runs
+  the route module once".
 - **Production builds: server fns no client code references answer HTTP calls by id.** SPEC J4.2.
   `integration/known-bugs-start-compiler.test.ts`: "SSR: a server fn only server code references is not callable over
   HTTP".

@@ -4,13 +4,15 @@
  * keep their chain next to a generated `createServerRpc` export in the
  * provider; an in-place provider (SSR) moves the handlers into one derived
  * handler module it imports on the first call (what only handlers read
- * loads then, once; everything else stays and is imported back);
+ * loads then, once; what the module also keeps is copied there with the
+ * top-level code reaching it, as main's provider copy of the file: R156);
  * middleware links, isomorphic implementations and env-only fns are
  * selected per env; `<ClientOnly>` children leave server envs; nested
  * server fns are hoisted on the server when that is safe, else refused at
  * the capture. Everything the removed code alone referenced is dropped by
- * the core: provenance-based placement at the module level, its orphan
- * cleanup for function-local declarators and destructured bindings.
+ * the core: its removal rule at the module level (`route-placement.ts`:
+ * statements stay with what they name, R154), its orphan cleanup for
+ * function-local declarators and destructured bindings.
  */
 import {
   cacheDisabled,
@@ -739,7 +741,7 @@ function planStartEnv(
     !providerOut &&
     sites.length > 0 &&
     // a module that awaits at its top level could await one of its own server fns while it
-    // evaluates: the handler module imports it back and would wait for it forever
+    // evaluates: a handler module importing anything of it would wait for it forever
     !hasTopLevelAwait(ctx) &&
     // (the handler module would read the file, which is no JavaScript)
     !config.late

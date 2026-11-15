@@ -1,11 +1,15 @@
 /**
- * Placement: clusters, reachability, provenance-based orphans, the event
- * table's order rules and needers/homes (see README.md,
- * "Reachability = splitting = dead-code removal"). A generic service:
- * planners supply roots and derived outputs; the core decides what each
- * output contains and what it imports. `computePlacement` composes the
- * stages in `placement/` in an order that carries meaning: two of them change
- * what earlier stages produced, in place (see there).
+ * Placement, a generic service: planners supply roots and derived outputs;
+ * the core decides what each output contains and what it imports.
+ * `computePlacement` places every plan with `route-placement.ts` (route
+ * files, server-fn handler modules, the RSC provider copy, erasure only),
+ * except the ones the engine below still places (`onOldEngine`: `<Hydrate>`
+ * outside a route file, a `split` output without a route module), R155.
+ * That engine: clusters, reachability, provenance-based orphans, the event
+ * table's order rules and needers/homes (see README.md, "Reachability =
+ * splitting = dead-code removal"), the stages in `placement/` composed in an
+ * order that carries meaning: two of them change what earlier stages
+ * produced, in place (see there).
  */
 import { buildClusters } from './placement/clusters'
 import { eventTable } from './placement/events'
@@ -213,6 +217,22 @@ export interface Placement {
   check: () => InvariantViolation | undefined
 }
 
+/** R155 phases 1-2: the plans the old engine still places. Deleted with the engine in phase 3. */
+function onOldEngine(input: PlacementInput): boolean {
+  if (input.routeModule) {
+    return false
+  }
+  for (const o of input.outputs.values()) {
+    // `<Hydrate>` outside a route file (its chunks, and the `export` outputs
+    // only its planner declares); `split` without `setRouteModule`: the
+    // core's toy planners
+    if (o.kind === 'hydrate' || o.kind === 'export' || o.kind === 'split') {
+      return true
+    }
+  }
+  return false
+}
+
 /**
  * The stages' order is load-bearing, and a reorder still compiles:
  * - `keptDeclarations` reads the settled `roots`, so it precedes
@@ -228,8 +248,9 @@ export interface Placement {
  * - `includeAndImport` reads the final `roots` and homes.
  */
 export function computePlacement(input: PlacementInput): Placement {
-  if (input.routeModule) {
-    // a route file: what route splitting on `main` does (`route-placement.ts`)
+  if (!onOldEngine(input)) {
+    // a route file, a server function's handler module, erasure only: what
+    // route splitting on `main` does, its removal rule (`route-placement.ts`)
     return computeRoutePlacement(input)
   }
   // 1. clusters (a binding with its writers at load), the write table

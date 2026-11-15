@@ -530,6 +530,82 @@ return [atLoad, page, error, seen()]`),
 // export other than `export const|let|var`, a statement, an overload).
 // Inputs of review-main-shape-guarantee.md (causes A to E), each with a
 // marker in the route file's own code that only the component reads.
+// R1 (review-phase1 3.1): a chunk copying state the route module keeps
+// also copies the top-level code reaching it through other names, as
+// main's chunk keeps it (main's chunk drops no statement reading a name it
+// still declares, no class, no never-read declaration): the component reads
+// the value the route module computed at load. Kind A: each failed at
+// cb9d1331b2 (the chunk held the state without the code changing it).
+describe('a chunk copies the load-time code reaching what it copies (R1)', () => {
+  it.each([
+    {
+      name: 'a function the module calls at load (`bump()`)',
+      decls: `let count = 0
+function bump() { count++ }
+bump()`,
+      read: 'count',
+      html: '<p>1</p>',
+    },
+    {
+      name: 'a registry filled through a helper',
+      decls: `const registry = new Map<string, number>()
+function register(k: string, v: number) { registry.set(k, v) }
+register('a', 1)`,
+      read: "registry.get('a')",
+      html: '<p>1</p>',
+    },
+    {
+      name: 'a write through an alias',
+      decls: `const cfg = { url: 'a' }
+const alias = cfg
+alias.url = 'b'`,
+      read: 'cfg.url',
+      html: '<p>b</p>',
+    },
+    {
+      name: 'a class static block',
+      decls: `const routes: Array<string> = []
+class Boot { static { routes.push('boot') } }`,
+      read: 'routes.length',
+      html: '<p>1</p>',
+    },
+    {
+      name: 'a never-read declaration',
+      decls: `const registry = new Map<string, number>()
+const _boot = registry.set('a', 1)`,
+      read: "registry.get('a')",
+      html: '<p>1</p>',
+    },
+  ])('$name', async ({ decls, read, html }) => {
+    const route = await loadRoute(
+      `${head}${decls}
+export const Route = createFileRoute('/')({ component: () => <p>{String(${read})}</p> })
+`,
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.run(`return render('component')`)).toBe(html)
+  })
+
+  // O1 (review-phase1-final 3.1): code reaching a copied binding only
+  // through a binding the chunk imports (an `export const`) is not copied:
+  // the imported binding is the route module's one instance, already set
+  // up there. Kind A: at bd4b7c6d23 the chunk ran `state.n++` again (2).
+  it('does not copy code reaching what it copies only through a binding it imports', async () => {
+    const route = await loadRoute(
+      `${head}const defaults = { n: 0 }
+export const state = { ...defaults }
+state.n++
+function Comp() { return <p>{defaults.n}/{state.n}</p> }
+export const Route = createFileRoute('/')({ component: Comp })
+`,
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.run(`return render('component')`)).toBe('<p>0/1</p>')
+  })
+})
+
 describe('what main leaves lazy (§1.6-1.8)', () => {
   it.each([
     {
@@ -630,6 +706,22 @@ const renderers = { [Kind.A]: () => Kind.A }
 function Page() { return <p>{renderers[Kind.A]()}</p> }`,
       html: '<p>MARK_HELPER</p>',
     },
+    // R155: an enum or a namespace goes by the removal rule like any
+    // declaration (main keeps it in the route module and copies it into the
+    // chunk)
+    {
+      name: 'a namespace',
+      decls: `namespace Labels { export const quiet = 'MARK_HELPER' }
+function Page() { return <p>{Labels.quiet}</p> }`,
+      html: '<p>MARK_HELPER</p>',
+    },
+    {
+      name: 'an enum with a computed member',
+      decls: `const measure = (s: string) => s.length
+enum Size { Large = measure('MARK_HELPER') }
+function Page() { return <p>{Size.Large}</p> }`,
+      html: '<p>11</p>',
+    },
     {
       name: 'an overloaded function',
       decls: `function fmt(a: string): string
@@ -660,6 +752,40 @@ export const Route = createFileRoute('/')({ component: Page })
       expect(await route.isLazy('component')).toBe(true)
       expect(await route.run(`return render('component')`)).toBe(html)
       expect((await route.production()).where('MARK_HELPER')).toBe('lazy')
+    },
+  )
+
+  // R155: an enum or a namespace the route module reads too stays there;
+  // the chunk copies it, as main does
+  it.each([
+    {
+      name: 'a namespace',
+      decls: `namespace Labels { export const quiet = 'MARK_HELPER' }
+;(globalThis as any).caseKept = Labels.quiet`,
+      read: 'Labels.quiet',
+      html: '<p>MARK_HELPER</p>',
+    },
+    {
+      name: 'an enum',
+      decls: `const measure = (s: string) => s.length
+enum Size { Large = measure('MARK_HELPER') }
+;(globalThis as any).caseKept = Size.Large`,
+      read: 'Size.Large',
+      html: '<p>11</p>',
+    },
+  ])(
+    'keeps $name the route module reads too in the route module',
+    async ({ decls, read, html }) => {
+      const route = await loadRoute(
+        `${head}${decls}
+function Page() { return <p>{${read}}</p> }
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      )
+      await expectValidModules(route)
+      expect(await route.isLazy('component')).toBe(true)
+      expect(await route.run(`return render('component')`)).toBe(html)
+      expect((await route.production()).where('MARK_HELPER')).toBe('eager+lazy')
     },
   )
 

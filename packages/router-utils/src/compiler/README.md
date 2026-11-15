@@ -96,22 +96,27 @@ emits its own output. Nothing depends on transform order.
   unknown, they are the compiler's own (`tsr$x`). A planner can name a binding's glue export ahead
   (`glueExportName`: React route HMR lists them for plugin-react to ignore).
 
-### Route files (`route-placement.ts`, R153)
+### The one placement (`route-placement.ts`, R153, R155)
 
 A plan a planner marks as a route file (`PlanContext.setRouteModule`, the router planner's split part) is placed by
-`computeRoutePlacement`, which does what route splitting on main does, by its outcome; every other plan goes through
-the engine below. One cluster per unit (`buildClusters(input, true)`: no writer joins its binding) and the engine's
+`computeRoutePlacement`, which does what route splitting on main does, by its outcome. So is every other plan
+(server-fn handler modules, the RSC provider copy, erasure only), with no name a chunk imports and none main shares,
+except the ones the engine below still places (`onOldEngine` in `reach.ts`: `<Hydrate>` outside a route file, a
+`split` output without a route module; R155 phase 2 moves them). One cluster per unit (`buildClusters(input, true)`: no writer joins its binding) and the engine's
 per-output read walk (`readIndex`):
 
 - **the env module** loses only what the split made unused (the R153 amendment, `readFromRemoved`, the rule erasure
   uses): a declaration or import specifier the source used from text the module no longer holds (a claimed option
-  value, erased text; a use in a type counts) goes with its initialiser when nothing that stays reads it by value.
-  Top-level statements, exports, enums and namespaces (R154), code already unused in the source and what they reach
-  stay.
+  value, erased text, the type-only export statements main deletes first; a use in a type counts) goes with its
+  initialiser when nothing that stays reads it by value.
+  Top-level statements (R154), exports, code already unused in the source and what they reach stay; enums and
+  namespaces are declarations like any other (R155).
 - **a split chunk** takes what its option's value reads, transitively. What the env module also keeps it imports from
   there when main does (`RouteModule.imported`, from the router planner: the route binding, `export const|let|var`)
-  and copies otherwise, with the env statements reading or writing what it copies (main's
-  second instance, spec-main-splitting.md §1.8; `export default <expression>` is such a statement, rendered there as
+  and copies otherwise, with the top-level code reaching what it copies through the names it references (R1: every
+  statement and every declaration nothing references (an export is a reference, as in main's removal rule) whose
+  names reach it, transitively; main's second instance,
+  spec-main-splitting.md §1.8; `export default <expression>` is such a statement, rendered there as
   `void (<expression>)`); a binding a statement declares (`if (…) { var x }`) is imported. A derived output drops
   only the `export` (`default`) keywords of what it copies: comments and annotations stay with the copy.
   What the env module does not keep the chunk copies too, also what another chunk copies. The names main shares
@@ -119,9 +124,10 @@ per-output read walk (`readIndex`):
   shared module per file (`?tsr-split=shared---<keys>`, main's `?tsr-shared=1`): the env module and the chunks import
   them, the env module re-exports the exported ones; one code outside the set assigns (a chunk, the env module,
   another planner's output), or one reading a declaration outside it, leaves the set and is placed like any other (one
-  fixed point). Import specifiers are copied where read. Start's outputs in a
-  route file (Hydrate chunks, the server-fn handler module) import what the env module keeps, and what several of them
-  need is one module they import; a provider output copies what it reaches.
+  fixed point). Import specifiers are copied where read. A server-fn handler module is
+  a chunk too (R156): it copies what the env module keeps, with the top-level code reaching it, and imports nothing of
+  it but a name a statement declares (main's provider is a copy of the whole file). Hydrate chunks in a route file import what the env module keeps,
+  and what several of them need is one module they import; a provider output copies what it reaches.
 - **code already unused**: an import nothing in the source references, a bare `import './polyfill'` included, moves
   to the shared module when the env module imports it (statically, first), in source order with the shared module's
   own imports: it runs at the same point, once, and a module a shared declaration reads still runs after a bare import
