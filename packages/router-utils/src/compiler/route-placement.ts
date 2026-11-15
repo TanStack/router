@@ -373,8 +373,17 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
    * what the lazy module would hold, a declaration the env module keeps: it
    * runs at load, where the source runs it (`const snapshot = cfg.url;
    * set(cfg)`). Names only: no value, timing or write analysis. What it
-   * reads stays with it (`closeEnv`), which can pin more.
+   * reads stays with it (`closeEnv`), which can pin more. Only declarations
+   * of the source are state of the file (`fileState`, R158 amendment).
    */
+  /**
+   * A declaration of the source the env module keeps: state of the file. A
+   * declaration a planner generates (Start's lazy-handler loader) is none:
+   * no source code can name it, so nothing changes or observes it between
+   * load and the first call, and reading it never pins.
+   */
+  const fileState = (t: ClusterId) =>
+    env.has(t) && !isType(t) && !isImport(t) && clusters[t]!.units.length > 0
   for (const o of derived) {
     if (o.kind !== 'custom') {
       continue
@@ -423,7 +432,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
           if (t === undefined || t === c) {
             continue
           }
-          if (env.has(t) && !isType(t) && !isImport(t)) {
+          if (fileState(t)) {
             readsKept.add(c)
           } else if (held(t)) {
             readsHeld.get(c)!.push(t)
@@ -525,19 +534,16 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
    * instance of them, set up there. A chunk imports such a
    * declaration instead of copying it, so it acts on that instance
    * (`main`'s chunk holds a caller that forwards to its one provider
-   * instance). Only what the generated text itself names: a unit owning a
-   * claim (a handler's text, the source's) names nothing here. Where no
-   * planner roots generated code (every client), this is empty.
+   * instance). Only what the generated text itself names (a claim's text,
+   * the source's, is not read here). Where no planner roots generated code
+   * (every client), this is empty.
    */
   const namedByEnvRoots = new Set<ClusterId>()
-  const claimOwners = new Set(
-    [...rewrites.claims.values()].map((claim) => claim.owner),
-  )
   for (const r of [
     ...outputs.get('env')!.roots,
     ...derived.filter((o) => o.kind === 'custom').flatMap((o) => o.roots),
   ]) {
-    if (r.t !== 'gen' || claimOwners.has(r.id)) {
+    if (r.t !== 'gen') {
       continue
     }
     for (const s of symRefsOf(gens[r.id]!.body)) {

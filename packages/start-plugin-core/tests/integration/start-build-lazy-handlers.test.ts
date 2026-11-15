@@ -634,7 +634,9 @@ return {
       expect(result).toEqual({
         atStart: none,
         rendered: true,
-        afterRender: none,
+        // the render runs the loader: the file's first server-fn call loads
+        // its lazy module, `save`'s chain with it (main: its provider copy)
+        afterRender: once,
         surface: [
           { url: true, method: 'POST' },
           { url: true, method: 'GET' },
