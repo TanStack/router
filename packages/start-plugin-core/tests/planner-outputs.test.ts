@@ -66,6 +66,15 @@ function envInfo(env: Env): EnvInfo {
   }
 }
 
+/** The module of the one static import of `code` (a same-file derived module). */
+function importedModule(code: string): string {
+  const specifiers = [...code.matchAll(/^import .* from '([^']+)'$/gm)].map(
+    (m) => m[1]!,
+  )
+  expect(specifiers).toHaveLength(1)
+  return specifiers[0]!
+}
+
 async function compile(
   files: Record<string, string>,
   env: Env,
@@ -325,8 +334,12 @@ export const wrapped = wrap(wrap(createServerFn().handler(async () => 'w')))
     expect(client.code).toContain(
       `wrap(wrap(createServerFn().handler(${clientRpc(client.code)}(`,
     )
+    // the hoisted chain lives in one module the file and the lazy module
+    // import (the lazy module's re-export of the wrapper is its only root,
+    // R159), with its handler loaded on the first call
     const ssr = (await compile(files, 'ssr'))!
-    expect(ssr.code).toMatch(
+    const chain = (await compile(files, 'ssr', importedModule(ssr.code)))!
+    expect(chain.code).toMatch(
       shape(
         `.handler(«h», (...args) => «load»().then((m) => m.«impl»(...args)))`,
       ),
@@ -378,20 +391,24 @@ export function make() {
     )
     expect(client.code).not.toContain('db.server')
     const ssr = (await compile(files2, 'ssr'))!
-    // hoisted: the module-level fn the nested occurrence reads
+    // hoisted: the module-level fn the nested occurrence reads, in one
+    // module the file and the lazy module import (R159)
+    const chain = (await compile(files2, 'ssr', importedModule(ssr.code)))!
     const { hoisted } = namesIn(
-      ssr.code,
+      chain.code,
       `const «hoisted» = createServerFn().handler(«h», (...args) => «load»().then((m) => m.«impl»(...args)))`,
     )
     expect(ssr.code).not.toContain('db.server')
+    expect(chain.code).not.toContain('db.server')
     const handlers = (await compile(
       files2,
       'ssr',
       '/app/module.tsx?tss-serverfn-handler',
     ))!
     expect(handlers.code).toContain('= async () => db.inner()')
+    expect(ssr.code).toContain(`import { ${hoisted} }`)
     expect(ssr.code).toContain(`const inner = ${hoisted}`)
-    expect(ssr.code).toContain('name: "inner"')
+    expect(chain.code).toContain('name: "inner"')
   })
 
   // The nested site is judged against the stub of its enclosing handler

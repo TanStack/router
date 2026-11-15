@@ -875,12 +875,11 @@ export const f = createServerFn().handler(async () => cfg.url)`,
   })
 })
 
-// One instance per server fn, as `main` (R153; design-ssr-serverfn-double-
-// build.md, option a): the in-place provider roots each server fn's
-// `createServerRpc` export in its file, so the file keeps the server fn's
-// declaration; a split chunk or a handler module reading it imports it
-// instead of copying it. Kind A: each failed at 02f8d6b8bd, where the copy
-// was a second instance with its own validator schema and chain state.
+// One executing instance per server fn, as `main` has one: the file or its
+// lazy module holds it (R158 rule 1), the handler module imports what the
+// file keeps (R157 rule 3), and a split chunk's copy is a caller through the
+// registry (R159). Kind A: each failed at 02f8d6b8bd, where the copy was a
+// second instance with its own validator schema and chain state.
 describe('a server fn has one instance on the server', () => {
   /**
    * Renders `route` on the server (its component calls the route's server
@@ -915,9 +914,10 @@ describe('a server fn has one instance on the server', () => {
     expect(await renderThenCall('/chain-state', 2)).toEqual([1, 2, 3])
   })
 
-  // a schema only the chain reads is built once, when the route file loads
-  // (main: at chunk load, then again in its provider copy at the first
-  // call: 2; 02f8d6b8bd: 2, the chunk's copy)
+  // a schema only the chain reads is built once, by the lazy module's one
+  // instance at the first call: the chunk's caller copy has no validator
+  // (R159, as the client's copy) (main: at chunk load, then again in its
+  // provider copy at the first call: 2; 02f8d6b8bd: 2, the chunk's copy)
   test('a validator schema only the server fn reads is built once', async () => {
     expect(await renderThenCall('/schema-once', 1)).toBe(1)
   })
