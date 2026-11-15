@@ -411,6 +411,22 @@ function Page() {
   return 'MARK_STOP_PAGE'
 }
 `,
+  // a validator assigning an exported binding (challenge-serverfn-generic.md
+  // 5.5): the chunk's caller copy has no validator, so it assigns nothing
+  // it imports and the component is split on the server
+  'vw-ui.ts': counted('MARK_VW_UI', `'MARK_VW_PAGE'`),
+  'src/routes/validator-writes.tsx': `import { createFileRoute } from '@tanstack/react-router'
+${head}import { value } from '../../vw-ui'
+export let seen = 0
+const save = createServerFn({ method: 'POST' })
+  .validator(() => ({ n: ++seen }))
+  .handler(({ data }) => data.n)
+export const Route = createFileRoute('/validator-writes')({ component: Page })
+function Page() {
+  ;(globalThis as any).__vw = save
+  return value
+}
+`,
   // nickysemenza/cubby `mutation-data.ts`: a server fn only an isomorphic
   // fn's client side calls, so no server code names it
   'cubby-contract.ts': `${counted('MARK_CUBBY_CONTRACT')}export const contract = (data: unknown) => data
@@ -437,6 +453,7 @@ export { getRouter } from './src/router'
 export { listLogged } from './src/routes/shared-log'
 export { remember, Session } from './src/routes/shared-state'
 export { check } from './cubby'
+export { seen as vwSeen } from './src/routes/validator-writes'
 ${Object.keys(builderShapes)
   .map(
     (k) =>
@@ -677,14 +694,15 @@ const called = await save({ data: { id: 'x' } })
 const afterCall = marks()
 const overHttp = await callById(serverFnId(save), { id: 'y' }, 'POST')
 return { atStart, rendered, afterRender, called, afterCall, overHttp, end: marks() }`)
-      // the chunk's caller copy builds the chain's root, middleware and
-      // validator, the lazy module the executing instance (main: its provider
-      // copy)
-      const called_ = { mw: 1, schema: 1, builds: 2, db: 1 }
+      // the chunk's caller copy builds the chain's root and middleware (its
+      // validator is the server phase's, gone as in the client's copy), the
+      // lazy module the executing instance (main: its provider copy, after
+      // the chunk built the validator too)
+      const called_ = { mw: 1, schema: 1, builds: 1, db: 1 }
       expect(result).toEqual({
         atStart: { mw: 0, schema: 0, builds: 0, db: 0 },
         rendered: true,
-        afterRender: { mw: 1, schema: 1, builds: 1, db: 0 },
+        afterRender: { mw: 1, schema: 0, builds: 0, db: 0 },
         called: 'MARK_PROBE_DB',
         afterCall: called_,
         overHttp: 'MARK_PROBE_DB',
@@ -755,13 +773,12 @@ return {
   peek: [await peek(), await callById(serverFnId(peek), undefined, peek.method)],
   end: marks(),
 }`)
-      const once = { schema: 1, builds: 2, db: 1 }
+      const once = { schema: 1, builds: 1, db: 1 }
       expect(result).toEqual({
         atStart: { schema: 0, builds: 0, db: 0 },
         rendered: true,
         // the render runs the loader: the file's first server-fn call loads
-        // its lazy module, `save`'s chain with it (main: its provider copy);
-        // the chunk's caller copy builds the validator too, as main's chunk
+        // its lazy module, `save`'s chain with it (main: its provider copy)
         afterRender: once,
         surface: [
           { url: true, method: 'POST' },
@@ -778,7 +795,7 @@ return {
   )
 
   test.each(Object.entries(builderShapes))(
-    "SSR (R159) %s: a server fn only a route's split component calls, on any chain shape, loads its chain with the chunk as on main and its handler's imports at the first call; one executing instance; the caller copy runs the middleware's client half and has the server fn's method and url; production lists its id",
+    "SSR (R159) %s: a server fn only a route's split component calls, on any chain shape, loads its chain (without its validator) with the chunk as on main and the handler's imports at the first call; one executing instance; the caller copy runs the middleware's client half and has the server fn's method and url; production lists its id",
     async (k, shape) => {
       const { result } = await build.ssr
         .run(`${callByIdPrelude}const g = globalThis
@@ -834,9 +851,11 @@ return {
       expect(result).toEqual({
         atStart: loaded([], { schema: 0, builds: 0, db: 0 }),
         rendered: true,
-        afterRender: loaded(shape.chain, { schema: 1, builds: 1, db: 0 }),
-        afterCall: loaded(shape.chain, { schema: 1, builds: 2, db: 1 }),
-        end: loaded(shape.chain, { schema: 1, builds: 2, db: 1 }),
+        // the caller copy has no validator (R159, as the client's copy): the
+        // schema is built once, by the instance (main: by the chunk too)
+        afterRender: loaded(shape.chain, { schema: 0, builds: 0, db: 0 }),
+        afterCall: loaded(shape.chain, { schema: 1, builds: 1, db: 1 }),
+        end: loaded(shape.chain, { schema: 1, builds: 1, db: 1 }),
         remembered: 1,
         // the copy's calls run the middleware's client half, whose context
         // reaches its server half; an HTTP call by id sends none
@@ -851,6 +870,31 @@ return {
         // (a production build: the manifest lists only client-referenced
         // ids, J4.2; the copy's calls and the HTTP calls reach it by its id)
         url: true,
+      })
+    },
+    timeout,
+  )
+
+  test(
+    'SSR (R159): a server fn whose validator assigns an exported binding, only the split component calls it: the component is split on the server; one instance counts 1 2 3 4',
+    async () => {
+      const { result } = await build.ssr
+        .run(`${callByIdPrelude}const atStart = globalThis.MARK_VW_UI ?? 0
+const { routeTree } = entry.getRouter()
+const rendered = (await entry.renderPath(routeTree, '/validator-writes')).includes('MARK_VW_PAGE')
+const afterRender = globalThis.MARK_VW_UI ?? 0
+const save = globalThis.__vw
+const calls = [await save({ data: {} })]
+calls.push(await callById(serverFnId(save), {}, 'POST'))
+calls.push(await callById(serverFnId(save), {}, 'POST'))
+calls.push(await save({ data: {} }))
+return { atStart, rendered, afterRender, calls, seen: entry.vwSeen }`)
+      expect(result).toEqual({
+        atStart: 0,
+        rendered: true,
+        afterRender: 1,
+        calls: [1, 2, 3, 4],
+        seen: 4,
       })
     },
     timeout,
