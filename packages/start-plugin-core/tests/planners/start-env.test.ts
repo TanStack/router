@@ -187,6 +187,67 @@ export function Comp() {
     expect(r.code).toContain('<ClientOnly/>')
   })
 
+  // The server erases <ClientOnly> children; a local only they read goes
+  // with what only it read, a hook call included (main's dead-code
+  // elimination): the server chunk no longer loads react-query.
+  it('drops a hook-call local only <ClientOnly> children read, with its import (server)', async () => {
+    const r = await compile(
+      `import { ClientOnly } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
+import { Data } from './data'
+export function Comp() {
+  const q = useQuery({ queryKey: ['a'], queryFn: () => 1 })
+  return <ClientOnly fallback={null}><Data q={q} /></ClientOnly>
+}
+`,
+      { env: ssrEnv },
+    )
+    expectValid(r.code)
+    expect(r.code).not.toContain('useQuery')
+    expect(r.code).not.toContain('@tanstack/react-query')
+    expect(r.code).not.toContain('./data')
+    expect(r.code).toContain('<ClientOnly fallback={null}/>')
+  })
+
+  it('drops locals only an orphaned local reads, and the imports only they read (server)', async () => {
+    const r = await compile(
+      `import { ClientOnly } from '@tanstack/react-router'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { signInEmailFn } from './auth'
+import { Form } from './form'
+export function SignIn() {
+  const queryClient = useQueryClient()
+  const signIn = useMutation({ mutationFn: signInEmailFn, onSuccess: () => queryClient.clear() })
+  return <ClientOnly fallback={null}><Form onSubmit={signIn.mutate} /></ClientOnly>
+}
+`,
+      { env: ssrEnv },
+    )
+    expectValid(r.code)
+    expect(r.code).not.toContain('queryClient')
+    expect(r.code).not.toContain('useMutation')
+    expect(r.code).not.toContain('@tanstack/react-query')
+    expect(r.code).not.toContain('./auth')
+  })
+
+  it('keeps a local <ClientOnly> children and kept code both read (server)', async () => {
+    const r = await compile(
+      `import { ClientOnly } from '@tanstack/react-router'
+import { useId } from 'react'
+import { Form } from './form'
+export function SignIn() {
+  const id = useId()
+  return <div id={id}><ClientOnly fallback={null}><Form id={id} /></ClientOnly></div>
+}
+`,
+      { env: ssrEnv },
+    )
+    expectValid(r.code)
+    expect(r.code).toContain("import { useId } from 'react'")
+    expect(r.code).toContain('const id = useId()')
+    expect(r.code).not.toContain('./form')
+  })
+
   it('cascades: a declarator read only by an orphaned sibling goes with it', async () => {
     const r = await compile(`${HEAD}export function Comp() {
   const a = 1, b = a + 1, c = 3
