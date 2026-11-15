@@ -351,6 +351,57 @@ export function hydrateBuildSuite(bundler: StartBundler) {
       timeout,
     )
 
+    // A route file exporting the component its boundary's children render
+    // (spec-phase2-hydrate r2): the chunk holds its own copy, as on main, so
+    // the module that component imports loads with the chunk, not with the
+    // route module; the boundary hydrates.
+    test(
+      'an exported component of a route file that only the children render loads its imports with the chunk',
+      async () => {
+        const build = await buildStart({
+          bundler,
+          entry,
+          files: {
+            ...pageEntries,
+            'src/toggle.tsx': toggleSource,
+            'src/comments-chart.tsx': `import { Toggle } from './toggle'
+export const CommentsChart = () => <Toggle label="route-export-marker" />
+`,
+            'src/routes/comments.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { Hydrate } from '@tanstack/react-start'
+import { interaction } from '@tanstack/react-start/hydration'
+import { CommentsChart } from '../comments-chart'
+export function Comments() { return <CommentsChart /> }
+function Page() { return <article><Hydrate when={interaction()}><Comments /></Hydrate></article> }
+export const Route = createFileRoute('/comments')({ component: Page })
+`,
+            'src/pages.ts': `import { createElement } from 'react'
+import { routeTree } from './routeTree.gen'
+const route = (Object.values((routeTree as any).children) as Array<any>).find(
+  (candidate) => candidate.options.path === '/comments',
+)
+export function routes() {
+  return createElement(route.options.component)
+}
+`,
+          },
+        })
+        expect(build.client.where('route-export-marker')).toBe('lazy')
+        const html = (await renderPages(build)).routes
+        expect(typeof html).toBe('string')
+        expect(
+          await hydratePage(build, html as string, 'routes', [
+            'route-export-marker',
+          ]),
+        ).toEqual({
+          text: 'route-export-marker clicked',
+          recoverableErrors: [],
+          consoleErrors: [],
+        })
+      },
+      timeout,
+    )
+
     // Control for the pin below (same build): an unused export without a
     // boundary is not in the client.
     test(

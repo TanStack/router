@@ -11,9 +11,14 @@ import {
   tokenOffsets,
 } from '@tanstack/compiler-test-utils/source-maps'
 import { invalidate } from '@tanstack/router-utils/compiler'
+import {
+  ROUTER_PLANNER,
+  routerPlanner,
+  routerPlannerConfigFrom,
+} from '@tanstack/router-plugin/planners'
 import { startRecognizer } from '../../src/compiler/recognizer'
 import { createHydratePlanner } from '../../src/planners/hydrate'
-import { START_ENV, startEnvPlanner } from '../../src/planners'
+import { START_ENV, startEnvPlanner, startPlanners } from '../../src/planners'
 import { NAME, shape } from '../generated-names'
 import {
   MemoryHost,
@@ -80,17 +85,62 @@ async function compile(
     config?: Record<string, unknown>
     id?: string
     wantMap?: boolean
+    /**
+     * Start's planners (`startPlanners`, the Start recognizer); `'route'`
+     * also the router planner, with the file a route file of the registry.
+     */
+    start?: true | 'route'
   } = {},
 ): Promise<Compiled> {
   const id = opts.id ?? FILE
   const path = id.split('?')[0]!
-  const host = new MemoryHost({ [path]: code, ...opts.files })
-  const planners = opts.planners ?? [hydrate]
+  const env = opts.env ?? clientEnv
+  const route = opts.start === 'route'
+  const host = new MemoryHost(
+    { [path]: code, ...opts.files },
+    opts.start
+      ? {
+          recognizer: startRecognizer(),
+          routes: route
+            ? {
+                lookup: (p) =>
+                  p === path
+                    ? { routeId: '/', kind: 'file', routerConstructor: true }
+                    : null,
+                digestFor: (p) => (p === path ? 'route' : null),
+              }
+            : undefined,
+        }
+      : {},
+  )
+  const planners =
+    opts.planners ??
+    (opts.start
+      ? startPlanners({ hydrate, router: route ? routerPlanner() : null })
+      : [hydrate])
   const config = {
     configKey: 'cfg',
-    perPlanner: { hydrate: { root: ROOT, ...opts.config } },
+    perPlanner: {
+      hydrate: { root: ROOT, ...opts.config },
+      ...(opts.start && {
+        [START_ENV]: {
+          framework: 'react',
+          root: ROOT,
+          providerSeparate: false,
+          idMode: 'default',
+        },
+      }),
+      ...(route && {
+        [ROUTER_PLANNER]: routerPlannerConfigFrom(undefined, {
+          framework: 'react',
+          envType: env.type === 'client' ? 'client' : 'server',
+          mode: env.mode === 'dev' ? 'dev' : 'build',
+          hmrStyle: 'vite',
+          start: true,
+        }),
+      }),
+    },
   }
-  const env = opts.env ?? clientEnv
   const out = await host.compile(id, planners, {
     env,
     config,
@@ -773,6 +823,107 @@ export const Page = () => <Hydrate><b>{new Tag() instanceof Tag ? Tag.label : ''
     )
     expect(dev.chunks[b!.id]).not.toContain('function Tree')
   })
+
+  // spec-phase2-hydrate H1: a chunk copies what its children reach; the
+  // children assign their own copy, as on main (h4, a5)
+  it('lets the children assign a module let an export reads: the chunk holds its own copy', async () => {
+    const code = `${REACT}let renders = 0
+export function getRenders() { return renders }
+export const Page = () => <Hydrate><button onClick={() => { renders++ }}>x</button></Hydrate>
+`
+    for (const env of [clientEnv, buildClientEnv]) {
+      const client = await compile(code, { env })
+      const [b] = client.extracted
+      expect(client.errors).toEqual([])
+      expect(client.chunks[b!.id]).toContain('let renders = 0')
+      expect(client.chunks[b!.id]).not.toContain(`'${FILE}`)
+      expect(client.code).toContain('let renders = 0')
+    }
+  })
+
+  it('lets two boundaries assign one module let: each chunk holds its own copy', async () => {
+    const code = `${REACT}let n = 0
+export const Page = () => <div><Hydrate><button onClick={() => { n++ }}>a</button></Hydrate><Hydrate><button onClick={() => { n++ }}>{n}</button></Hydrate></div>
+`
+    for (const env of [clientEnv, buildClientEnv]) {
+      const client = await compile(code, { env })
+      expect(client.errors).toEqual([])
+      expect(client.extracted).toHaveLength(2)
+      for (const { id } of client.extracted) {
+        expect(client.chunks[id]).toContain('let n = 0')
+        expect(client.chunks[id]).not.toContain(`'${FILE}`)
+      }
+    }
+  })
+
+  // H1: declarations only, never a statement (h6); the statements stay in
+  // the module (H3)
+  it('copies the declarations the children reach and none of the statements beside them', async () => {
+    const code = `${REACT}import { Tabs, TabsList } from './tabs'
+import { register } from './register'
+function Heavy() { return <Tabs.List /> }
+Heavy.displayName = 'Heavy'
+Tabs.List = TabsList
+register(Heavy)
+const config = { n: 1 }
+config.n = 2
+function Other() { return <p>{config.n}</p> }
+export const Page = () => <Hydrate><Heavy /><Other /></Hydrate>
+`
+    const statements = [
+      "Heavy.displayName = 'Heavy'",
+      'Tabs.List = TabsList',
+      'register(Heavy)',
+      'config.n = 2',
+    ]
+    for (const env of [clientEnv, buildClientEnv]) {
+      const client = await compile(code, { env })
+      const [b] = client.extracted
+      const chunk = client.chunks[b!.id]!
+      expect(chunk).toContain('function Heavy() { return <Tabs.List /> }')
+      expect(chunk).toContain('const config = { n: 1 }')
+      for (const statement of statements) {
+        expect(chunk).not.toContain(statement)
+        expect(client.code).toContain(statement)
+      }
+    }
+  })
+
+  // H1: two boundaries reaching one helper each copy it (h5), as on main:
+  // no module of the file shared between the chunks
+  it('copies a helper two boundaries reach into each chunk', async () => {
+    const code = `${REACT}import { heavy } from './heavy'
+const registry = new Map()
+function Item() { return <p>{heavy(registry.size)}</p> }
+export const Page = () => <div><Hydrate><Item /></Hydrate><Hydrate><Item /></Hydrate></div>
+`
+    for (const env of [clientEnv, buildClientEnv]) {
+      const client = await compile(code, { env })
+      expect(client.extracted).toHaveLength(2)
+      for (const { id } of client.extracted) {
+        const chunk = client.chunks[id]!
+        expect(chunk).toContain('const registry = new Map()')
+        expect(chunk).toContain('function Item()')
+        expect(chunk).not.toContain(`'${FILE}`)
+      }
+    }
+  })
+
+  // H2 (b), H4: a name a top-level statement declares cannot be copied; the
+  // chunk imports it, so children assigning it are reported (a4)
+  it('rejects children that assign a var a top-level statement declares', async () => {
+    const code = `${REACT}import { detect } from './detect'
+if (typeof window !== 'undefined') { var flag = detect() }
+export const Page = () => <Hydrate><button onClick={() => { flag = 1 }}>{String(flag)}</button></Hydrate>
+`
+    for (const env of [clientEnv, buildClientEnv]) {
+      const client = await compile(code, { env })
+      expect(client.errors).toEqual([
+        { code: 'hydrate-module-write', start: code.indexOf('<Hydrate') },
+      ])
+      expect(client.chunks).toEqual({})
+    }
+  })
 })
 
 describe('rejections (J5.5)', () => {
@@ -1311,6 +1462,42 @@ export const Page = () => <Hydrate><p>b</p></Hydrate>
     // nothing loads the orphaned boundary's chunk any more
     expect(client.code).not.toContain(`tss-hydrate=${idAt(code)}`)
   })
+
+  // spec-phase2-hydrate 3.1 (L1, L4): a function only an erased handler
+  // calls, which assigns state a kept function reads, goes with its import
+  // (the removal rule), from the file and from the chunk
+  it.each([
+    [
+      'an export reads the state',
+      'export function getCache() { return (cache ??= new Map()) }\nexport function Page() { return <Hydrate><Chart /></Hydrate> }',
+    ],
+    [
+      'the children read the state',
+      'function getCache() { return (cache ??= new Map()) }\nexport function Page() { return <Hydrate><Chart c={getCache()} /></Hydrate> }',
+    ],
+  ])(
+    'the client keeps nothing only an erased handler reaches, in the module or the chunk (%s)',
+    async (_, rest) => {
+      const code = `import { createServerFn } from '@tanstack/react-start'
+${REACT}import { db } from './db.server'
+import { Chart } from './chart'
+let cache: Map<string, number> | null = null
+function clear() { cache = null; return db.ok('SECRET') }
+export const reset = createServerFn().handler(async () => clear())
+${rest}
+`
+      for (const env of [clientEnv, buildClientEnv]) {
+        const client = await compile(code, { env, start: true })
+        expect(client.errors).toEqual([])
+        expect(client.extracted).toHaveLength(1)
+        for (const out of [client.code, ...Object.values(client.chunks)]) {
+          expect(out).not.toContain('db.server')
+          expect(out).not.toContain('function clear')
+          expect(out).not.toContain('SECRET')
+        }
+      }
+    },
+  )
 })
 
 /**
@@ -1472,6 +1659,55 @@ export const Route = createFileRoute('/')({
     expect(chunk!.code).toMatch(
       shape(`function «c»() { return <><Chart />{Route.id}</> }`),
     )
+  })
+
+  // spec-phase2-hydrate H1 on the router planner (r2, r3): the chunk copies
+  // an exported component its children render, as on main; the route file
+  // keeps the export
+  it.each([
+    ['an exported function', 'export function Comments() { return <Chart /> }'],
+    ['an exported const', 'export const Comments = () => <Chart />'],
+  ])(
+    'a route file: the chunk copies the exported component its children render and imports nothing of the file (%s)',
+    async (_, decl) => {
+      const code = `import { createFileRoute } from '@tanstack/react-router'
+${REACT}import { Chart } from './chart'
+${decl}
+function Page() { return <article><Hydrate><Comments /></Hydrate></article> }
+export const Route = createFileRoute('/')({ component: Page })
+`
+      const client = await compile(code, {
+        env: buildClientEnv,
+        start: 'route',
+      })
+      const [b] = client.extracted
+      const chunk = client.chunks[b!.id]!
+      expect(client.errors).toEqual([])
+      expect(chunk).toContain('<Chart />')
+      expect(chunk).toMatch(/function Comments\(|const Comments = /)
+      expect(chunk).not.toContain(`'${FILE}`)
+      expect(client.code).toMatch(/export (function|const) Comments/)
+    },
+  )
+
+  // H2 (a): a child component reading the route leads back to the boundary
+  // (`Route` -> `component: Page` -> the boundary); the chunk imports the
+  // route, not a second one (r4; main: `Route` unbound in the chunk)
+  it('a route file: the chunk imports the route a child component reads', async () => {
+    const code = `import { createFileRoute } from '@tanstack/react-router'
+${REACT}import { Chart } from './chart'
+import { fetchRows } from './rows'
+function Comments() { const rows = Route.useLoaderData(); return <Chart rows={rows} /> }
+function Page() { return <article><Hydrate><Comments /></Hydrate></article> }
+export const Route = createFileRoute('/')({ loader: () => fetchRows(), component: Page })
+`
+    const client = await compile(code, { env: buildClientEnv, start: 'route' })
+    const [b] = client.extracted
+    const chunk = client.chunks[b!.id]!
+    expect(client.errors).toEqual([])
+    expect(chunk).toContain(`import { Route } from '${FILE}'`)
+    expect(chunk).toContain('function Comments()')
+    expect(chunk).not.toContain('createFileRoute')
   })
 })
 

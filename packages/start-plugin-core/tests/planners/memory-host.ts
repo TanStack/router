@@ -47,14 +47,18 @@ export class MemoryHost implements HostServices {
   readonly files: Record<string, string>
   readonly rawFacts: RawFactsCache
   readonly caches: CompilerCaches
+  readonly routes: HostServices['routes']
 
   constructor(
     files: Record<string, string>,
     opts: {
       recognizer?: ConstructorParameters<typeof RawFactsCache>[0]['recognizer']
+      /** The route registry (route files), as a router host has it. */
+      routes?: HostServices['routes']
     } = {},
   ) {
     this.files = { ...files }
+    this.routes = opts.routes
     this.rawFacts = new RawFactsCache({
       readFile: (p) => this.readFile(p),
       loadVirtual: () => Promise.resolve(null),
