@@ -68,6 +68,8 @@ export interface MemoryAppOptions extends Partial<
 > {
   files: Record<string, string>
   mode?: 'dev' | 'build'
+  /** The raw-facts recognizer of another planner compiled with the edges (Start's, for its erasure). */
+  recognizer?: ConstructorParameters<typeof RawFactsCache>[0]['recognizer']
 }
 
 export class MemoryApp {
@@ -102,6 +104,7 @@ export class MemoryApp {
       readFile: (p) => Promise.resolve(this.files[p] ?? null),
       loadVirtual: () => Promise.resolve(null),
       markerSpecifiers: ip.markerSpecifiers,
+      recognizer: opts.recognizer,
     })
     this.caches = createCompilerCaches(this.rawFacts)
     this.host = {
@@ -157,6 +160,8 @@ export class MemoryApp {
     env: string,
     extra: {
       planners?: Array<Planner>
+      /** The other planners' configuration (`perPlanner`). */
+      perPlanner?: Record<string, unknown>
       inputMap?: InputSourceMap | null | (() => InputSourceMap | null)
       code?: string
     } = {},
@@ -179,7 +184,10 @@ export class MemoryApp {
         inputMap: extra.inputMap,
         env: info,
         planners: [...(extra.planners ?? []), this.ip.planner],
-        config: { configKey: this.ip.config.configKey, perPlanner: {} },
+        config: {
+          configKey: this.ip.config.configKey,
+          perPlanner: extra.perPlanner ?? {},
+        },
         wantMap: false,
       },
       this.host,

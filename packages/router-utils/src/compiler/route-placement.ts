@@ -24,15 +24,17 @@
  * - A split chunk takes what its option's value reads, transitively. What
  *   the env module also keeps, the chunk imports from it when `main`
  *   imports it (the route binding, `export const|let|var`:
- *   `RouteModule.imported`) and copies otherwise, with the
- *   statements reading or writing what it copies (`main`'s second instance,
- *   in `main`'s shapes, 1.8); so it copies what the env module does not
- *   keep, also what another chunk copies too. Import specifiers are copied
- *   where they are read.
+ *   `RouteModule.imported`) and copies otherwise, with the top-level code
+ *   reaching what it copies through the names it references (R1: the
+ *   statements and the never-read declarations whose names reach it,
+ *   transitively; `main`'s second instance, in `main`'s shapes, 1.8); so it
+ *   copies what the env module does not keep, also what another chunk
+ *   copies too. Import specifiers are copied where they are read.
  * - A server function's handler module is a chunk too (R156): it copies
- *   what it reads that the env module keeps, with the statements naming
- *   it, as `main`'s provider copy of the file does, and imports nothing of
- *   the env module (`main`'s copy imports nothing of the file).
+ *   what it reads that the env module keeps, with the top-level code
+ *   reaching it, as `main`'s provider copy of the file does, and imports
+ *   nothing of the env module but a name a statement declares (`if (…) {
+ *   var x }`, as every chunk), where `main`'s copy imports nothing.
  * - Another planner's derived output (`<Hydrate>` children's) imports what
  *   the env module keeps; what it alone needs moves there, what several
  *   need is one module they import; a provider output (another layer's
@@ -347,7 +349,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   const isStatement = (c: ClusterId): boolean =>
     clusters[c]!.kind === 'effect' ||
     clusters[c]!.units.some((u) => units[u]!.kind === 'export-default')
-  /** The statements of the env module reading or writing each declaration it keeps: a chunk copying the declaration copies them (`main`'s chunks keep the statements naming what they declare). */
+  /** The statements of the env module reading or writing each declaration it keeps: a name such a statement declares (`if (…) { var x }`) is imported by a chunk, not copied (`main` deletes the declarator and runs the statement once). */
   const statementsOf = new Map<ClusterId, Array<ClusterId>>()
   for (const c of env) {
     const cl = clusters[c]!
@@ -362,11 +364,73 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
     }
   }
 
+  /**
+   * The top-level code reaching each declaration the env module keeps
+   * through the names it references, transitively (R1): every statement,
+   * and every declaration nothing in the module reads (an export is no
+   * read), whose code names the declaration, or names a declaration whose
+   * code names it, and so on. A chunk copying the declaration takes them,
+   * as `main`'s chunk keeps every statement reading a name it still
+   * declares, every class and every never-read declaration, and `main`'s
+   * provider runs the whole file. Names only: no value, call or write
+   * analysis.
+   */
+  const readersInEnv = new Map<ClusterId, Array<ClusterId>>()
+  for (const c of env) {
+    const r = reads.clusterReads(c, 'env', true)
+    const named = new Set<ClusterId>(r.children)
+    for (const sym of r.syms) {
+      const t = clusterOfSym.get(sym)
+      if (t !== undefined) {
+        named.add(t)
+      }
+    }
+    for (const t of named) {
+      if (t !== c && env.has(t)) {
+        let readers = readersInEnv.get(t)
+        if (!readers) {
+          readersInEnv.set(t, (readers = []))
+        }
+        readers.push(c)
+      }
+    }
+  }
+  const reachingCode = new Map<ClusterId, Array<ClusterId>>()
+  const codeReaching = (t: ClusterId): Array<ClusterId> => {
+    let found = reachingCode.get(t)
+    if (found) {
+      return found
+    }
+    found = []
+    const seenReaders = new Set<ClusterId>([t])
+    const work = [t]
+    while (work.length > 0) {
+      for (const r of readersInEnv.get(work.pop()!) ?? []) {
+        if (seenReaders.has(r)) {
+          continue
+        }
+        seenReaders.add(r)
+        work.push(r)
+        const cl = clusters[r]!
+        if (
+          cl.units.length > 0 &&
+          !isImport(r) &&
+          !isType(r) &&
+          (isStatement(r) || !readersInEnv.has(r))
+        ) {
+          found.push(r)
+        }
+      }
+    }
+    reachingCode.set(t, found)
+    return found
+  }
+
   // ---- the derived outputs: what each needs ----------------------------------
   const copying = (o: OutputId) => outputs.get(o)?.kind === 'provider'
   /**
    * A chunk: a lazy output that copies what the env module keeps but `main`
-   * would not import, with the statements naming it, as `main`'s
+   * would not import, with the top-level code reaching it, as `main`'s
    * counterpart does: a split chunk, and a planner's own lazy module
    * (`custom`: Start's server-fn handler module, which `main` makes as a
    * copy of the file; R156).
@@ -467,9 +531,14 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         ) {
           return // imported from the env module
         }
-        // copied, with the statements naming it
-        for (const s of statementsOf.get(t) ?? []) {
-          take(s)
+        // copied, with the top-level code reaching it: a statement as it
+        // stands, a declaration by these same rules
+        for (const c of codeReaching(t)) {
+          if (isStatement(c)) {
+            take(c)
+          } else {
+            read(c)
+          }
         }
       }
       take(t)

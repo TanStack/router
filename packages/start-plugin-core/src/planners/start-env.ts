@@ -5,7 +5,7 @@
  * provider; an in-place provider (SSR) moves the handlers into one derived
  * handler module it imports on the first call (what only handlers read
  * loads then, once; what the module also keeps is copied there with the
- * statements naming it, as main's provider copy of the file: R156);
+ * top-level code reaching it, as main's provider copy of the file: R156);
  * middleware links, isomorphic implementations and env-only fns are
  * selected per env; `<ClientOnly>` children leave server envs; nested
  * server fns are hoisted on the server when that is safe, else refused at

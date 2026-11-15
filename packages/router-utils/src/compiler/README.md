@@ -113,8 +113,9 @@ per-output read walk (`readIndex`):
   namespaces are declarations like any other (R155).
 - **a split chunk** takes what its option's value reads, transitively. What the env module also keeps it imports from
   there when main does (`RouteModule.imported`, from the router planner: the route binding, `export const|let|var`)
-  and copies otherwise, with the env statements reading or writing what it copies (main's
-  second instance, spec-main-splitting.md §1.8; `export default <expression>` is such a statement, rendered there as
+  and copies otherwise, with the top-level code reaching what it copies through the names it references (R1: every
+  statement and every never-read declaration whose names reach it, transitively; main's second instance,
+  spec-main-splitting.md §1.8; `export default <expression>` is such a statement, rendered there as
   `void (<expression>)`); a binding a statement declares (`if (…) { var x }`) is imported. A derived output drops
   only the `export` (`default`) keywords of what it copies: comments and annotations stay with the copy.
   What the env module does not keep the chunk copies too, also what another chunk copies. The names main shares
@@ -123,8 +124,8 @@ per-output read walk (`readIndex`):
   them, the env module re-exports the exported ones; one code outside the set assigns (a chunk, the env module,
   another planner's output), or one reading a declaration outside it, leaves the set and is placed like any other (one
   fixed point). Import specifiers are copied where read. A server-fn handler module is
-  a chunk too (R156): it copies what the env module keeps, with the statements naming it, and imports nothing of it
-  (main's provider is a copy of the whole file). Hydrate chunks in a route file import what the env module keeps,
+  a chunk too (R156): it copies what the env module keeps, with the top-level code reaching it, and imports nothing of
+  it but a name a statement declares (main's provider is a copy of the whole file). Hydrate chunks in a route file import what the env module keeps,
   and what several of them need is one module they import; a provider output copies what it reaches.
 - **code already unused**: an import nothing in the source references, a bare `import './polyfill'` included, moves
   to the shared module when the env module imports it (statically, first), in source order with the shared module's

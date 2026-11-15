@@ -3,7 +3,8 @@
  * output that would assign a binding it imports from another module of the
  * file (a `<Hydrate>` chunk) is not made; its code stays in place (the
  * boundary is reported, as for any module). A server function's lazy handler
- * module imports nothing of the route file: it copies what it reads, as
+ * module imports nothing of the route file (but a name a statement
+ * declares): it copies what it reads, as
  * `main`'s provider copy does (R156). What only server code the client
  * erases reads leaves the client's route module.
  */

@@ -530,6 +530,64 @@ return [atLoad, page, error, seen()]`),
 // export other than `export const|let|var`, a statement, an overload).
 // Inputs of review-main-shape-guarantee.md (causes A to E), each with a
 // marker in the route file's own code that only the component reads.
+// R1 (review-phase1 3.1): a chunk copying state the route module keeps
+// also copies the top-level code reaching it through other names, as
+// main's chunk keeps it (main's chunk drops no statement reading a name it
+// still declares, no class, no never-read declaration): the component reads
+// the value the route module computed at load. Kind A: each failed at
+// cb9d1331b2 (the chunk held the state without the code changing it).
+describe('a chunk copies the load-time code reaching what it copies (R1)', () => {
+  it.each([
+    {
+      name: 'a function the module calls at load (`bump()`)',
+      decls: `let count = 0
+function bump() { count++ }
+bump()`,
+      read: 'count',
+      html: '<p>1</p>',
+    },
+    {
+      name: 'a registry filled through a helper',
+      decls: `const registry = new Map<string, number>()
+function register(k: string, v: number) { registry.set(k, v) }
+register('a', 1)`,
+      read: "registry.get('a')",
+      html: '<p>1</p>',
+    },
+    {
+      name: 'a write through an alias',
+      decls: `const cfg = { url: 'a' }
+const alias = cfg
+alias.url = 'b'`,
+      read: 'cfg.url',
+      html: '<p>b</p>',
+    },
+    {
+      name: 'a class static block',
+      decls: `const routes: Array<string> = []
+class Boot { static { routes.push('boot') } }`,
+      read: 'routes.length',
+      html: '<p>1</p>',
+    },
+    {
+      name: 'a never-read declaration',
+      decls: `const registry = new Map<string, number>()
+const _boot = registry.set('a', 1)`,
+      read: "registry.get('a')",
+      html: '<p>1</p>',
+    },
+  ])('$name', async ({ decls, read, html }) => {
+    const route = await loadRoute(
+      `${head}${decls}
+export const Route = createFileRoute('/')({ component: () => <p>{String(${read})}</p> })
+`,
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.run(`return render('component')`)).toBe(html)
+  })
+})
+
 describe('what main leaves lazy (§1.6-1.8)', () => {
   it.each([
     {

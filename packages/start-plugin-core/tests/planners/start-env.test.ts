@@ -819,6 +819,46 @@ export function show(x: string) { return prefix + x }
     expect(h).not.toContain('/app/src/module.tsx')
   })
 
+  // A name a top-level statement declares (`if (…) { var conn = … }`) is
+  // the one thing the handler module imports from the module (main deletes
+  // the declarator and runs the statement once; a copy would run it again).
+  // A handler assigning it would assign an import: it stays in place (the
+  // `shared-writer` fallback, review-phase1 3.4, probe f1).
+  it('keeps a handler in place that assigns a `var` a top-level statement declares', async () => {
+    const r = await compile(
+      `${FNS}import { load } from './db.server'
+if (typeof window === 'undefined') { var conn: unknown = load(1) }
+export const f = createServerFn().handler(async () => { conn = null; return 1 })
+`,
+      { env: ssrEnv, files },
+    )
+    expectValid(r.code)
+    expect(r.code).toContain('conn = null')
+    expect(r.code).not.toContain('?tss-serverfn-handler')
+  })
+
+  // Z1 (review-phase1 3.2, accepted): such a `var` only a handler reads
+  // stays with its statement and the import it reads, at load (R154); the
+  // handler module imports it. main deletes the declarator, and its copy
+  // loads `./db.server` on the first call; values are equal.
+  it('keeps a `var` a top-level statement declares, only a handler reads, with its statement (Z1)', async () => {
+    const r = await compile(
+      `${FNS}import { load } from './db.server'
+if (typeof window === 'undefined') { var conn = load(1) }
+export const f = createServerFn().handler(async () => conn)
+`,
+      { env: ssrEnv, files },
+    )
+    expectValid(r.code)
+    expect(r.code).toContain(`from './db.server'`)
+    expect(r.code).toContain('var conn = load(1)')
+    const h = await r.derived(HANDLER_ID)
+    expectValid(h)
+    expect(h).toMatch(
+      /import \{[^}]*\bconn\b[^}]*\} from '\/app\/src\/module\.tsx'/,
+    )
+  })
+
   it('derives the handler module of an SFC block before its language key', async () => {
     const id = `${FILE}?vue&type=script&lang.ts`
     const r = await compile(

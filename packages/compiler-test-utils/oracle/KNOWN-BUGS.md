@@ -663,8 +663,11 @@ Paths under `start-plugin-core/tests/` unless noted.
   SPEC §2.1. `integration/known-bugs-start-compiler-vue-sfc.test.ts`: "build: a server fn in a <script lang="ts"> block
   may use angle-bracket type assertions".
 - **With SSR as the provider, a module is two instances in the SSR bundle**, so its top-level code runs twice. SPEC
-  J4.14, G3. `integration/known-bugs-start-compiler.test.ts`: "SSR: a server fn module is initialised once and shares
-  its state with SSR code"; `integration/start-compose-server-fn-route.test.ts`: "the server runs the route module once".
+  J4.14, G3. Partly kept by decision (R156): the lazy handler module copies the state and classes its handlers read
+  with the code reaching them, as main's copy (#8656 is the follow-up); what nothing of a handler reaches runs once.
+  `integration/known-bugs-start-compiler.test.ts`: "SSR: a server fn module is initialised once; its handler has its
+  own copy of the class and state, as on main"; `integration/start-compose-server-fn-route.test.ts`: "the server runs
+  the route module once".
 - **Production builds: server fns no client code references answer HTTP calls by id.** SPEC J4.2.
   `integration/known-bugs-start-compiler.test.ts`: "SSR: a server fn only server code references is not callable over
   HTTP".

@@ -595,3 +595,90 @@ export const viaParam = createServerFn().handler(async () => snapshot + '/' + cf
   )
   expect((await served.ssr()).getCfg()).toBe('b')
 })
+
+// R1 (review-phase1 3.1): the handler module copies, with what it copies,
+// the top-level code that reaches it through other names, as main's
+// provider copy of the whole file runs it: a function the module calls at
+// load, a helper filling a registry, a write through an alias, a class
+// static block, a never-read declaration. Kind A: each failed at cb9d1331b2
+// (the copy held the state without the code that changes it). The control
+// row: code that reaches nothing the handler copies is not copied.
+describe('the handler module copies the load-time code reaching what it copies (R1)', () => {
+  test.each([
+    {
+      name: 'r1: a function the module calls at load writes the state',
+      code: `const cfg = { url: 'a' }
+function init() { cfg.url = 'b' }
+init()
+export const getCfg = () => cfg.url
+export const f = createServerFn().handler(async () => cfg.url)`,
+      expected: 'b',
+    },
+    {
+      name: 'r2: a registry filled through a helper',
+      code: `const registry = new Map<string, number>()
+function register(k: string, v: number) { registry.set(k, v) }
+register('a', 1)
+register('b', 2)
+export const f = createServerFn().handler(async () => [registry.get('a'), registry.size])`,
+      expected: [1, 2],
+    },
+    {
+      name: 'r3: a write through an alias',
+      code: `const cfg = { url: 'a', n: 0 }
+const alias = cfg
+alias.url = 'b'
+export const f = createServerFn().handler(async () => cfg.url)`,
+      expected: 'b',
+    },
+    {
+      name: 'r5: a class static block',
+      code: `const routes: Array<string> = []
+class Boot { static { routes.push('boot') } }
+export const boot = Boot
+export const f = createServerFn().handler(async () => routes.length)`,
+      expected: 1,
+    },
+    {
+      name: 'r6: a never-read declaration',
+      code: `const registry = new Map<string, number>()
+const _boot = registry.set('a', 1)
+export const f = createServerFn().handler(async () => registry.get('a'))`,
+      expected: 1,
+    },
+    {
+      name: 'r7: a declaration an export reads, filling the state',
+      code: `const registry = new Map<string, number>()
+const filled = registry.set('a', 1)
+export const g = () => filled
+export const f = createServerFn().handler(async () => registry.get('a'))`,
+      expected: 1,
+    },
+  ])('$name', async ({ code, expected }) => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${serverFn}${code}`,
+    })
+    expect(await callServerFnThroughCallers(served, 'module.f')).toEqual(
+      expected,
+    )
+  })
+
+  // (main's copy runs it again: fewer runs than main, as many as the source.
+  // Code reaching the copied state through any name, an export reading both
+  // included, is copied and runs again, as on main)
+  test('r8: load-time code that reaches nothing the handler copies runs once', async () => {
+    const served = await serveCase(await host(), {
+      ...callsFile,
+      'module.tsx': `${serverFn}import { connect } from './calls'
+const cfg = { url: 'a' }
+const other = { n: 0 }
+function bumpOther() { other.n++; connect('bumpOther') }
+bumpOther()
+export const getCfg = () => cfg.url
+export const getOther = () => other.n
+export const f = createServerFn().handler(async () => cfg.url)`,
+    })
+    expect(await callServerFnThroughCallers(served, 'module.f')).toBe('a')
+    expect(await serverCalls(served)).toEqual(['bumpOther'])
+  })
+})

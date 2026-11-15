@@ -401,7 +401,8 @@ dir)` is not a conflict by itself.
   module and repeat none (React's classic JSX runtime is not supported with splitting). A declaration already unused (`const unused = register('x')`) stays in the route module only
   and runs once, where main's chunks run it again (better than main, by decision). A split chunk takes what its
   option value reads: what the route module also keeps it imports from it where main imports it (`Route`, what
-  `export const|let|var` declares) and copies otherwise, with the statements that read or write what it copies
+  `export const|let|var` declares) and copies otherwise, with the top-level code reaching what it copies through the
+  names it references (every statement and never-read declaration whose names reach it, transitively)
   (main's second instance, §1.8), also what another chunk copies. The names main shares (two option groups read
   them, a staying option counting as one; none reading `Route`) and nothing else are one shared module per file
   (`?tsr-split=shared---<keys>`), as main's `?tsr-shared=1`: the route module and the chunks import them, the route
@@ -572,8 +573,8 @@ dir)` is not a conflict by itself.
 - **J4.2 `createServerFn` on the provider.** The handler runs with its original semantics and closure; the function
   is registered under its id, so an HTTP call by id (with validation and middleware) runs it; the defining module's
   top-level code runs once in that env, except what main's provider copy of the module runs again: a lazy handler
-  module copies what its handlers read from the module, with the top-level statements that read or write it, and
-  imports nothing of the module, as main's copy (J2.0's chunk rule; R156: main's second instance, only where main
+  module copies what its handlers read from the module, with the top-level code reaching it (J2.0's chunk rule), and
+  imports nothing of the module but a name a statement declares, as main's copy (J2.0's chunk rule; R156: main's second instance, only where main
   has one). In a production
   build, only server functions the client references are HTTP-callable: a function no client code references must
   not answer a direct HTTP call by id. What the compile adds to the defining module's exports is unique to that file, so
