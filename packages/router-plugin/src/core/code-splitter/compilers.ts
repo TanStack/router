@@ -1559,6 +1559,12 @@ function resolveIdentifier(path: any, node: any): t.Node | undefined {
 function removeIdentifierLiteral(path: babel.NodePath, node: t.Identifier) {
   const binding = path.scope.getBinding(node.name)
   if (binding) {
+    // Keep the binding if it is still referenced elsewhere (e.g. an unsplit
+    // route option such as `pendingComponent` or `loader`)
+    if (binding.referencePaths.some((ref) => ref.node !== node)) {
+      return
+    }
+
     // If the binding is a destructured property from an ObjectPattern,
     // only remove that property instead of the entire declaration
     if (

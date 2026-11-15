@@ -459,4 +459,25 @@ export const Route = createFileRoute('/')({
     expect(modules.shared).toContain('.add(199)')
     await expectValidModules(modules)
   })
+
+  it('keeps an imported binding used in both a split option and an unsplit option', async () => {
+    const { modules } = compileRouteModules(
+      `${head}import { Page } from '~/components/Page'
+export const Route = createFileRoute('/about')({
+  loader: () => null,
+  component: Page,
+  pendingComponent: Page,
+})
+`,
+      { codeSplitGroupings: [['component']] },
+    )
+    expect(importedNames(modules.reference!, '~/components/Page')).toEqual([
+      'Page',
+    ])
+    expect(modules.reference).toContain('pendingComponent: Page')
+    expect(modules['virtual component']).toContain(
+      "import { Page } from '~/components/Page'",
+    )
+    await expectValidModules(modules)
+  })
 })
