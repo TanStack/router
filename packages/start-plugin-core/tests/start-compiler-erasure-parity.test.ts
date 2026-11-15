@@ -915,11 +915,11 @@ describe('a server fn has one instance on the server', () => {
     expect(await renderThenCall('/chain-state', 2)).toEqual([1, 2, 3])
   })
 
-  // a schema only the chain reads is built once, when the route file loads
-  // (main: at chunk load, then again in its provider copy at the first
-  // call: 2; 02f8d6b8bd: 2, the chunk's copy)
-  test('a validator schema only the server fn reads is built once', async () => {
-    expect(await renderThenCall('/schema-once', 1)).toBe(1)
+  // a schema only the chain reads is built at chunk load by the chunk's
+  // caller copy (R159), then by the lazy module's one instance at the first
+  // call, as main (its chunk's caller, then its provider copy)
+  test('a validator schema only the server fn reads is built by the caller copy and the instance, as on main', async () => {
+    expect(await renderThenCall('/schema-once', 1)).toBe(2)
   })
 
   // the component reads the schema itself: the chunk copies it, as main's
