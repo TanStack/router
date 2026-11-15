@@ -1186,10 +1186,10 @@ export async function hydrate(html: string) {
   }
 
   // Bug: removing the other environment's implementation of an env function
-  // declared in a hook leaves the locals only that implementation read
-  // unreferenced, and dead-code elimination (babel-dead-code-elimination,
-  // which removes newly unreferenced bindings) deletes their declarators,
-  // hook calls included.
+  // declared in a hook, or `<ClientOnly>` children on the server, leaves the
+  // locals only that code read unreferenced, and dead-code elimination
+  // (babel-dead-code-elimination, which removes newly unreferenced bindings)
+  // deletes their declarators, hook calls included.
   // Impact: the hooks after it run in a different order on the server and
   // the client (`useId` mismatches, hydration errors).
   // Observed: the server's HTML of a component using the hook hydrates in
@@ -1216,6 +1216,29 @@ export function useField() {
   const describe = createClientOnlyFn(() => clientId)
   const inputId = useId()
   return [describe, inputId]
+}`,
+    },
+    {
+      output: 'ssr <ClientOnly>' as const,
+      code: `import { ClientOnly } from '@tanstack/react-router'
+import { useId } from 'react'
+export function useField() {
+  const clientId = useId()
+  const inputId = useId()
+  return [<ClientOnly>{clientId}</ClientOnly>, inputId]
+}`,
+    },
+    {
+      output: 'ssr <ClientOnly>, a custom hook calling useId' as const,
+      code: `import { ClientOnly } from '@tanstack/react-router'
+import { useId } from 'react'
+function useLabel() {
+  return useId() + '-label'
+}
+export function useField() {
+  const label = useLabel()
+  const inputId = useId()
+  return [<ClientOnly>{label}</ClientOnly>, inputId]
 }`,
     },
   ])(

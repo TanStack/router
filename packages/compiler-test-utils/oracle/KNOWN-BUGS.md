@@ -712,7 +712,8 @@ Paths under `start-plugin-core/tests/` unless noted.
 - **Re-exports are looked up by local name only**, so distinct aliases and shadowing locals resolve to the wrong
   factory. SPEC J4.5, G15. `known-bugs-start-compiler.test.ts`: "distinct re-export aliases of two factories keep their
   own kind"; "%s: parameters and locals shadowing the factories are left alone next to a compiled factory call".
-- **Removing the other env's implementation deletes hook calls only it read.** SPEC G3, J4.9.
+- **Removing the other env's implementation, or `<ClientOnly>` children on the server, deletes hook calls only it
+  read**: a later `useId` gets another id on the server than on the client (hydration error). SPEC G3, J4.9.
   `known-bugs-start-compiler.test.ts`: "$output: hook calls read only by the removed implementation still run".
 - **Env-specific functions inside a handler are not compiled on the server.** SPEC J4.10.
   `start-compiler-factories.test.ts`: "the server compiles env-specific functions inside a server fn handler".
