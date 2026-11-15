@@ -397,9 +397,30 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
       }
     }
   }
-  const reachingCode = new Map<ClusterId, Array<ClusterId>>()
-  const codeReaching = (t: ClusterId): Array<ClusterId> => {
-    let found = reachingCode.get(t)
+  /** A statement declaring a name (`if (…) { var x = … }`; `export default`'s own `default` is none). */
+  const declaresInStatement = (st: ClusterId) =>
+    [...clusters[st]!.declares].some((d) => t1.symbols.kind(d) !== 'synthetic')
+  /**
+   * What a chunk imports from the env module instead of copying it: what
+   * `main` imports (`importedFromEnv`), a statement declaring a name, and a
+   * declaration such a statement names (`main` deletes that declarator and
+   * runs the statement once). A provider copy imports nothing.
+   */
+  const importsFromEnv = (c: ClusterId, o: OutputId) =>
+    !copying(o) &&
+    isChunk(o) &&
+    (importedFromEnv(c, o) ||
+      (clusters[c]!.kind === 'effect' && declaresInStatement(c)) ||
+      (statementsOf.get(c) ?? []).some(declaresInStatement))
+  const reachingCode = new Map<string, Array<ClusterId>>()
+  /**
+   * (The walk stops at what output `o` imports (O1): that binding is the
+   * env module's one instance, already set up there; code reaching a copy
+   * only through it would act on the import, not on the copy.)
+   */
+  const codeReaching = (t: ClusterId, o: OutputId): Array<ClusterId> => {
+    const key = `${o}\u0000${t}`
+    let found = reachingCode.get(key)
     if (found) {
       return found
     }
@@ -412,6 +433,9 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
           continue
         }
         seenReaders.add(r)
+        if (importsFromEnv(r, o)) {
+          continue
+        }
         work.push(r)
         const cl = clusters[r]!
         if (
@@ -426,7 +450,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         }
       }
     }
-    reachingCode.set(t, found)
+    reachingCode.set(key, found)
     return found
   }
 
@@ -524,22 +548,15 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         if (
           !copying(o) &&
           (!isChunk(o) ||
-            importedFromEnv(t, o) ||
-            clusters[t]!.kind === 'effect' ||
-            (statementsOf.get(t) ?? []).some((st) =>
-              // (`export default`'s own `default` is no binding the chunk
-              // would declare)
-              [...clusters[st]!.declares].some(
-                (d) => t1.symbols.kind(d) !== 'synthetic',
-              ),
-            ))
+            importsFromEnv(t, o) ||
+            clusters[t]!.kind === 'effect')
         ) {
           return // imported from the env module
         }
         // copied (a chunk, a provider copy), with the top-level code
         // reaching it: a statement as it stands, a declaration by these same
         // rules
-        for (const c of codeReaching(t)) {
+        for (const c of codeReaching(t, o)) {
           if (isStatement(c)) {
             take(c)
           } else {

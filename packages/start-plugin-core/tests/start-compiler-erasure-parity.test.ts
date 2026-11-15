@@ -686,6 +686,26 @@ export const f = createServerFn().handler(async () => routes.length)`,
     },
   )
 
+  // O1 (review-phase1-final 3.1, f6): a statement declaring a name (`if
+  // (…) { var conn = … }`) and what it names (`opts`) are imported, not
+  // copied: the copy taking `cfg` does not run the statement again. Kind A: at bd4b7c6d23 `connect` ran twice.
+  test('o1: a statement declaring a name the handler module imports runs once', async () => {
+    const served = await serveCase(await host(), {
+      ...callsFile,
+      'module.tsx': `${serverFn}import { connect } from './calls'
+const cfg = { url: 'a' }
+const opts = { cfg }
+if (opts) { var conn = connect('conn') }
+export const getCfg = () => cfg.url
+export const f = createServerFn().handler(async () => [typeof conn, cfg.url])`,
+    })
+    expect(await callServerFnThroughCallers(served, 'module.f')).toEqual([
+      'object',
+      'a',
+    ])
+    expect(await serverCalls(served)).toEqual(['conn'])
+  })
+
   test('r8: load-time code that reaches nothing the handler copies runs once', async () => {
     const served = await serveCase(await host(), {
       ...callsFile,

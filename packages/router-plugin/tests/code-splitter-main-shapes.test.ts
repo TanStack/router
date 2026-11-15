@@ -586,6 +586,24 @@ export const Route = createFileRoute('/')({ component: () => <p>{String(${read})
     expect(await route.isLazy('component')).toBe(true)
     expect(await route.run(`return render('component')`)).toBe(html)
   })
+
+  // O1 (review-phase1-final 3.1): code reaching a copied binding only
+  // through a binding the chunk imports (an `export const`) is not copied:
+  // the imported binding is the route module's one instance, already set
+  // up there. Kind A: at bd4b7c6d23 the chunk ran `state.n++` again (2).
+  it('does not copy code reaching what it copies only through a binding it imports', async () => {
+    const route = await loadRoute(
+      `${head}const defaults = { n: 0 }
+export const state = { ...defaults }
+state.n++
+function Comp() { return <p>{defaults.n}/{state.n}</p> }
+export const Route = createFileRoute('/')({ component: Comp })
+`,
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.run(`return render('component')`)).toBe('<p>0/1</p>')
+  })
 })
 
 describe('what main leaves lazy (§1.6-1.8)', () => {
