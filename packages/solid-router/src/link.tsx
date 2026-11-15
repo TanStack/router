@@ -93,11 +93,11 @@ export function useLinkProps<
   // the route still presents so the Link does no work. The route unmounts
   // when that navigation commits, and any other outcome publishes a newer
   // location. Compare by identity: a same-href navigation can change state.
+  let holding = false
   const currentLocation = Solid.createMemo((prev?: ParsedLocation) => {
     const location = router.stores.location.get()
-    return prev && _isRouteDeparting(router, routeId, location)
-      ? prev
-      : location
+    holding = !!prev && !!_isRouteDeparting(router, routeId, location)
+    return holding ? prev! : location
   })
 
   // The Link's own destination options, replaced only when a destination prop
@@ -231,14 +231,12 @@ export function useLinkProps<
   const preloadDelay = () =>
     local.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
-  // A departing Link goes where its href points. Otherwise a held Solid 2
-  // transition can leave it on a stale location, so build from the router's.
+  // A Link holding its departing route's location goes where its href points.
+  // Otherwise a held Solid 2 transition can leave it on a stale location, so
+  // build from the router's.
   const navigationOptions = () => {
     const options_ = Solid.untrack(dest)
-    const pending = router._tx?.[2 /* location */]
-    return pending && _isRouteDeparting(router, routeId, pending)
-      ? options_
-      : { ...options_, _fromLocation: undefined }
+    return holding ? options_ : { ...options_, _fromLocation: undefined }
   }
 
   const doPreload = () =>

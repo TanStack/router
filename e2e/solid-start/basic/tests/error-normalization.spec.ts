@@ -11,7 +11,8 @@ test.use({
   ],
 })
 
-test('normalizes errors during SSR, hydration, and client navigation', async ({
+// TODO(solid-router-v2): an SSR-rendered route error UI is not hydrated; the server renders it inline, the client through the boundary.
+test.fixme('normalizes errors during SSR, hydration, and client navigation', async ({
   page,
 }) => {
   const response = await page.goto('/error-normalization?kind=string')

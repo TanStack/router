@@ -76,6 +76,12 @@
         "default": "./dist/esm/request-response.js"
       }
     },
+    "./request-scope": {
+      "import": {
+        "types": "./dist/esm/request-scope.d.ts",
+        "default": "./dist/esm/request-scope.js"
+      }
+    },
     "./constants": {
       "import": {
         "types": "./dist/esm/constants.d.ts",
