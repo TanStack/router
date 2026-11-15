@@ -124,6 +124,12 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   keeps every class in every copy (its removal rule never removes one) and reads 1.
   `start-plugin-core/tests/start-compiler-erasure-parity.test.ts`: "r5 known difference: a class static block whose
   class only an export reads" (pinned).
+- **A server-fn handler that reads module state its own validator writes reads the handler module's copy** (R156,
+  design-ssr-serverfn-double-build.md 6; accepted: niche, best effort): with `let calls = 0` and
+  `.validator((d) => { calls++; return d }).handler(() => calls)`, the handler module copies `calls` while the
+  validator runs in the file and counts the file's, so two calls give 0, 0. `main`'s provider copy runs both and gives
+  1, 2. `start-plugin-core/tests/start-compiler-erasure-parity.test.ts`: "v_state known difference: a handler reads
+  state its validator writes" (pinned).
 
 - **Root routes are not split** (R60, SPEC J2.7): their components render on every page, or on error and not-found
   responses, where a lazy chunk only adds a round trip. `router-plugin/tests/integration/known-bugs-code-splitter-page-
