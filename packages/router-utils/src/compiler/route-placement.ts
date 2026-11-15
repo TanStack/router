@@ -512,27 +512,29 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         sharedReaders.add(o)
         return // imported from the shared module
       }
-      if (!copying(o) && env.has(t) && !isImport(t)) {
+      if (env.has(t) && !isImport(t)) {
         // (so is what a statement declaring a `var` names, `if (…) { var
         // flag = … }`: `main` deletes that declarator from the route file,
         // which runs the rest of the statement; a copy of the statement
         // would run it twice)
         if (
-          !isChunk(o) ||
-          importedFromEnv(t, o) ||
-          clusters[t]!.kind === 'effect' ||
-          (statementsOf.get(t) ?? []).some((st) =>
-            // (`export default`'s own `default` is no binding the chunk
-            // would declare)
-            [...clusters[st]!.declares].some(
-              (d) => t1.symbols.kind(d) !== 'synthetic',
-            ),
-          )
+          !copying(o) &&
+          (!isChunk(o) ||
+            importedFromEnv(t, o) ||
+            clusters[t]!.kind === 'effect' ||
+            (statementsOf.get(t) ?? []).some((st) =>
+              // (`export default`'s own `default` is no binding the chunk
+              // would declare)
+              [...clusters[st]!.declares].some(
+                (d) => t1.symbols.kind(d) !== 'synthetic',
+              ),
+            ))
         ) {
           return // imported from the env module
         }
-        // copied, with the top-level code reaching it: a statement as it
-        // stands, a declaration by these same rules
+        // copied (a chunk, a provider copy), with the top-level code
+        // reaching it: a statement as it stands, a declaration by these same
+        // rules
         for (const c of codeReaching(t)) {
           if (isStatement(c)) {
             take(c)

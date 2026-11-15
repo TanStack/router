@@ -474,7 +474,9 @@ export const api = { get: createServerFn()${link}.handler(() => db.q()) }
   // handlers read state the module keeps. The SSR caller's module and the
   // provider env's module stub the handlers and keep the state other code
   // reads, without the server-only import; the provider copy holds what its
-  // handlers reach (its own copy of the state, as main's), and nothing else.
+  // handlers reach (its own copy of the state, as main's), with the
+  // top-level code reaching that state (R1: an export reading it too, as in
+  // main's copy of the whole file).
   const roles = (code: string) =>
     Promise.all([
       compile(code, {
@@ -502,7 +504,58 @@ export function getCached() { return cache.get('k') }
     expectValid(copy)
     expect(copy).toContain(`from './db.server'`)
     expect(copy).toContain('const cache = new Map')
-    expect(copy).not.toContain('getCached')
+    expect(copy).toContain('function getCached()')
+  })
+
+  // R1 (review-phase1 3.1) in the provider copy: it copies, with what its
+  // handlers reach, the top-level code reaching it through other names, as
+  // main's copy of the whole file runs it. Kind A: the copy held the state
+  // without that code (gate probes r2, r5, r6, x3 under RSC).
+  it.each([
+    [
+      'a registry filled through a helper',
+      `const registry = new Map<string, number>()
+function register(k: string, v: number) { registry.set(k, v) }
+register('a', 1)
+export const f = createServerFn().handler(async () => registry.get('a'))
+`,
+      ["register('a', 1)", 'function register'],
+    ],
+    [
+      'a class static block',
+      `const routes: Array<string> = []
+class Boot { static { routes.push('boot') } }
+export const boot = Boot
+export const f = createServerFn().handler(async () => routes.length)
+`,
+      ["routes.push('boot')"],
+    ],
+    [
+      'a never-read declaration',
+      `const registry = new Map<string, number>()
+const _boot = registry.set('a', 1)
+export const f = createServerFn().handler(async () => registry.get('a'))
+`,
+      ["registry.set('a', 1)"],
+    ],
+    [
+      'a default-export expression',
+      `let ready = false
+export default (ready = true)
+export const f = createServerFn().handler(async () => ready)
+`,
+      ['ready = true'],
+    ],
+  ])('copies %s into the provider copy (R1)', async (_name, body, expected) => {
+    const r = await compile(
+      `import { createServerFn } from '@tanstack/react-start'\n${body}`,
+      { env: rsc, config, files },
+    )
+    const copy = await r.derived(PROVIDER)
+    expectValid(copy)
+    for (const text of expected) {
+      expect(copy).toContain(text)
+    }
   })
 
   it('l1: a function only the handler calls, assigning a kept `let`, in the three roles', async () => {
@@ -524,12 +577,12 @@ export const reset = createServerFn().handler(async () => { clear(); return db.q
     expect(copy).toContain(`from './db.server'`)
     expect(copy).toContain('function clear()')
     // kind A (R155 phase 1): `clear` leaves the modules where the handler is
-    // a stub, and the copy holds what its handlers reach, nothing else (the
-    // old engine joined writers to the binding they write: `getCache`)
+    // a stub; the copy holds what its handlers reach and the code reaching
+    // it (R1: `getCache` reads `cache`, as in main's copy)
     for (const r of [caller, providerEnv]) {
       expect(r.code).not.toContain('function clear()')
     }
-    expect(copy).not.toContain('getCache')
+    expect(copy).toContain('function getCache()')
   })
 })
 
