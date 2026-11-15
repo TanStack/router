@@ -1,11 +1,15 @@
 /**
- * Placement: clusters, reachability, provenance-based orphans, the event
- * table's order rules and needers/homes (see README.md,
- * "Reachability = splitting = dead-code removal"). A generic service:
- * planners supply roots and derived outputs; the core decides what each
- * output contains and what it imports. `computePlacement` composes the
- * stages in `placement/` in an order that carries meaning: two of them change
- * what earlier stages produced, in place (see there).
+ * Placement, a generic service: planners supply roots and derived outputs;
+ * the core decides what each output contains and what it imports.
+ * `computePlacement` places every plan with `route-placement.ts` (route
+ * files, server-fn handler modules, the RSC provider copy, erasure only),
+ * except the ones the engine below still places (`onOldEngine`: `<Hydrate>`
+ * outside a route file, a `split` output without a route module), R155.
+ * That engine: clusters, reachability, provenance-based orphans, the event
+ * table's order rules and needers/homes (see README.md, "Reachability =
+ * splitting = dead-code removal"), the stages in `placement/` composed in an
+ * order that carries meaning: two of them change what earlier stages
+ * produced, in place (see there).
  */
 import { buildClusters } from './placement/clusters'
 import { eventTable } from './placement/events'

@@ -9,8 +9,9 @@
  * selected per env; `<ClientOnly>` children leave server envs; nested
  * server fns are hoisted on the server when that is safe, else refused at
  * the capture. Everything the removed code alone referenced is dropped by
- * the core: provenance-based placement at the module level, its orphan
- * cleanup for function-local declarators and destructured bindings.
+ * the core: its removal rule at the module level (`route-placement.ts`:
+ * statements stay with what they name, R154), its orphan cleanup for
+ * function-local declarators and destructured bindings.
  */
 import {
   cacheDisabled,

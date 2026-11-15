@@ -1,7 +1,10 @@
 /**
- * Placement of a route file (`PlanContext.setRouteModule`): what route code
- * splitting on `main` does, by its outcome, on the core's analysis
- * (spec-main-splitting 1.1-1.8).
+ * Placement of every plan but a `<Hydrate>` one outside a route file (R155,
+ * `reach.ts` `onOldEngine`). A route file (`PlanContext.setRouteModule`):
+ * what route code splitting on `main` does, by its outcome, on the core's
+ * analysis (spec-main-splitting 1.1-1.8). Any other plan (a server fn's
+ * handler module, the RSC provider copy, erasure only) by the same rules,
+ * with no name a chunk imports and none `main` shares.
  *
  * - The env module (the route file) only loses what the split made unused
  *   (`main`'s rule, the R153 amendment): a declaration or import specifier

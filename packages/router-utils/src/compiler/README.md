@@ -96,16 +96,19 @@ emits its own output. Nothing depends on transform order.
   unknown, they are the compiler's own (`tsr$x`). A planner can name a binding's glue export ahead
   (`glueExportName`: React route HMR lists them for plugin-react to ignore).
 
-### Route files (`route-placement.ts`, R153)
+### The one placement (`route-placement.ts`, R153, R155)
 
 A plan a planner marks as a route file (`PlanContext.setRouteModule`, the router planner's split part) is placed by
-`computeRoutePlacement`, which does what route splitting on main does, by its outcome; every other plan goes through
-the engine below. One cluster per unit (`buildClusters(input, true)`: no writer joins its binding) and the engine's
+`computeRoutePlacement`, which does what route splitting on main does, by its outcome. So is every other plan
+(server-fn handler modules, the RSC provider copy, erasure only), with no name a chunk imports and none main shares,
+except the ones the engine below still places (`onOldEngine` in `reach.ts`: `<Hydrate>` outside a route file, a
+`split` output without a route module; R155 phase 2 moves them). One cluster per unit (`buildClusters(input, true)`: no writer joins its binding) and the engine's
 per-output read walk (`readIndex`):
 
 - **the env module** loses only what the split made unused (the R153 amendment, `readFromRemoved`, the rule erasure
   uses): a declaration or import specifier the source used from text the module no longer holds (a claimed option
-  value, erased text; a use in a type counts) goes with its initialiser when nothing that stays reads it by value.
+  value, erased text, the type-only export statements main deletes first; a use in a type counts) goes with its
+  initialiser when nothing that stays reads it by value.
   Top-level statements (R154), exports, code already unused in the source and what they reach stay; enums and
   namespaces are declarations like any other (R155).
 - **a split chunk** takes what its option's value reads, transitively. What the env module also keeps it imports from
