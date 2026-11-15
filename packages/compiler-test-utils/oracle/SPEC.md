@@ -182,9 +182,9 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
   (including what the split modules it emits contain, J2.5); final chunk and bundle contents are asserted on builds,
   per bundler, with `sideEffects` and `@__PURE__` hints varied. (R2)
 - **G3 Surviving code runs once per environment, never duplicated or lost; when it runs follows the code that needs
-  it.** (Route files: J2.0 decides where code goes and when it runs; server-function handler modules follow J2.0's
-  chunk rule, J4.2 (R156); what follows applies to Start's other derived outputs, Hydrate chunks, and to route files
-  where J2.0 does not say otherwise.) After the documented removals (server-only code on the client, J4; client-only code on the server, J4.11;
+  it.** (Route files: J2.0 decides where code goes and when it runs; server-function handler modules: J4.2 (R157);
+  what follows applies to Start's other derived outputs, Hydrate chunks, and to route files where J2.0 does not say
+  otherwise.) After the documented removals (server-only code on the client, J4; client-only code on the server, J4.11;
   type-only imports, J2.5; `deleteNodes`, J2.14), everything at the top level of a module exists once and runs once per
   environment: splitting never duplicates an effect across derived modules and never loses one. Shared module state
   initialises once when evaluated, and every consumer sees the same value and instance (J2.4). Where code runs is
@@ -572,10 +572,11 @@ dir)` is not a conflict by itself.
   also uses stays.
 - **J4.2 `createServerFn` on the provider.** The handler runs with its original semantics and closure; the function
   is registered under its id, so an HTTP call by id (with validation and middleware) runs it; the defining module's
-  top-level code runs once in that env, except what main's provider copy of the module runs again: a lazy handler
-  module copies what its handlers read from the module, with the top-level code reaching it (J2.0's chunk rule), and
-  imports nothing of the module but a name a statement declares, as main's copy (J2.0's chunk rule; R156: main's second instance, only where main
-  has one). In a production
+  top-level code runs once in that env, and its handlers share every binding with the rest of the module (one
+  instance, R157): a lazy handler module imports what the module keeps; a declaration only handlers reach moves to it
+  and runs at the first call, unless evaluating it reads, by name and transitively, something the module keeps (then
+  it stays and runs at load, as in the source; a declaration that is exactly a function always moves); a handler
+  assigning a binding the module keeps stays in place. In a production
   build, only server functions the client references are HTTP-callable: a function no client code references must
   not answer a direct HTTP call by id. What the compile adds to the defining module's exports is unique to that file, so
   server functions of several modules behind one `export *` barrel build and run without a conflicting name, also

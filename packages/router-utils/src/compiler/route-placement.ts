@@ -30,18 +30,19 @@
  *   transitively; `main`'s second instance, in `main`'s shapes, 1.8); so it
  *   copies what the env module does not keep, also what another chunk
  *   copies too. Import specifiers are copied where they are read.
- * - A server function's handler module is a chunk too (R156): it copies
- *   what it reads that the env module keeps, with the top-level code
- *   reaching it, as `main`'s provider copy of the file does, and imports
- *   nothing of the env module but a name a statement declares (`if (…) {
- *   var x }`, as every chunk), where `main`'s copy imports nothing.
  * - Every chunk imports a declaration a generated unit rooted in the env
  *   module names (Start's in-place server-fn provider): the env module's one
  *   instance, as `main` has one (`namedByEnvRoots`).
- * - Another planner's derived output (`<Hydrate>` children's) imports what
- *   the env module keeps; what it alone needs moves there, what several
- *   need is one module they import; a provider output (another layer's
- *   instance of the module) copies what it reaches.
+ * - Another planner's derived output (a server function's handler module,
+ *   `<Hydrate>` children's) imports what the env module keeps; what it
+ *   alone needs moves there, what several need is one module they import;
+ *   a provider output (another layer's instance of the module) copies what
+ *   it reaches (R157).
+ * - A declaration a planner's lazy module (`custom`: Start's server-fn
+ *   handler module) reaches stays in the env module when evaluating it
+ *   reads, by name and transitively, something the env module keeps: it
+ *   runs at load, as in the source; a declaration that is exactly a
+ *   function evaluates nothing and moves (R157 rule 4, `pinned`).
  * - A derived output that would assign a binding it imports (`main` fails
  *   such a build: a shared `let`, an `export let`) does not take the root
  *   bringing that code: the root falls back (`Placement.fallbacks`) and its
@@ -138,14 +139,11 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   const isImport = (c: ClusterId) => clusters[c]!.kind === 'import'
 
   /**
-   * What a chunk imports from the env module rather than copying it, as
-   * `main` does: a split chunk what `main`'s router splitter imports
-   * (`RouteModule.imported`); a handler module nothing, `main`'s provider
-   * being a copy of the whole file that imports nothing of it (R156). (Both
-   * import what `namedByEnvRoots` holds too: `importsFromEnv`.)
+   * What a split chunk imports from the env module rather than copying it,
+   * as `main`'s router splitter does (`RouteModule.imported`). (It imports
+   * what `namedByEnvRoots` holds too: `importsFromEnv`.)
    */
-  const importedFromEnv = (c: ClusterId, o: OutputId) =>
-    outputs.get(o)?.kind === 'split' &&
+  const importedFromEnv = (c: ClusterId) =>
     [...clusters[c]!.declares].some((s) => imported.has(s))
 
   // ---- the env module --------------------------------------------------------
@@ -346,6 +344,116 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   closeEnv()
 
   /**
+   * A declaration that is exactly a function: evaluating it reads nothing
+   * (a function declaration, a declarator whose initialiser is a function
+   * or arrow expression; overload signatures and merged types decide
+   * nothing).
+   */
+  const isFunction = (c: ClusterId) =>
+    clusters[c]!.units.length > 0 &&
+    clusters[c]!.units.every((u) => {
+      const node = units[u]!.node
+      return (
+        units[u]!.kind === 'type' ||
+        node.type === 'TSDeclareFunction' ||
+        node.type === 'FunctionDeclaration' ||
+        (node.type === 'VariableDeclarator' &&
+          (node.init?.type === 'ArrowFunctionExpression' ||
+            node.init?.type === 'FunctionExpression'))
+      )
+    })
+  /**
+   * R157 rule 4, one fixed point: a declaration a planner's lazy module
+   * (`custom`: Start's server-fn handler module, which imports what the env
+   * module keeps) would hold, that is not exactly a function, stays in the
+   * env module when evaluating it reads, by name and transitively through
+   * what the lazy module would hold, a declaration the env module keeps: it
+   * runs at load, where the source runs it (`const snapshot = cfg.url;
+   * set(cfg)`). Names only: no value, timing or write analysis. What it
+   * reads stays with it (`closeEnv`), which can pin more.
+   */
+  for (const o of derived) {
+    if (o.kind !== 'custom') {
+      continue
+    }
+    for (let changed = true; changed; ) {
+      changed = false
+      /** What the lazy module would hold: not imported (the env module's, another home's, the shared module's), not copied (an import specifier). */
+      const held = (c: ClusterId | undefined): c is ClusterId =>
+        c !== undefined &&
+        !isType(c) &&
+        !isImport(c) &&
+        !env.has(c) &&
+        !inShared.has(c) &&
+        (fixedHome.get(c) ?? o.id) === o.id
+      /** The declarations of the env module each held declaration reads, and the held ones it reads. */
+      const readsKept = new Set<ClusterId>()
+      const readsHeld = new Map<ClusterId, Array<ClusterId>>()
+      const work: Array<ClusterId> = []
+      const visit = (c: ClusterId | undefined) => {
+        if (held(c) && !readsHeld.has(c)) {
+          readsHeld.set(c, [])
+          work.push(c)
+        }
+      }
+      for (const r of o.roots) {
+        visit(
+          r.t === 'unit'
+            ? graph.clusterOfRegion.get(units[r.id]!.region)
+            : r.t === 'gen'
+              ? graph.clusterOfGen.get(r.id)
+              : clusterOfSym.get(r.id),
+        )
+      }
+      for (const g of gens) {
+        if (g.home === o.id) {
+          visit(graph.clusterOfGen.get(g.id))
+        }
+      }
+      while (work.length > 0) {
+        const c = work.pop()!
+        const r = reads.clusterReads(c, o.id, true)
+        for (const t of [
+          ...[...r.syms].map((s) => clusterOfSym.get(s)),
+          ...r.children,
+        ]) {
+          if (t === undefined || t === c) {
+            continue
+          }
+          if (env.has(t) && !isType(t) && !isImport(t)) {
+            readsKept.add(c)
+          } else if (held(t)) {
+            readsHeld.get(c)!.push(t)
+            visit(t)
+          }
+        }
+      }
+      for (const c of readsHeld.keys()) {
+        if (fixedHome.has(c) || isFunction(c)) {
+          continue
+        }
+        const seen = new Set([c])
+        const stack = [c]
+        while (stack.length > 0) {
+          const x = stack.pop()!
+          if (readsKept.has(x)) {
+            keepInEnv(c)
+            changed = true
+            break
+          }
+          for (const t of readsHeld.get(x)!) {
+            if (!seen.has(t)) {
+              seen.add(t)
+              stack.push(t)
+            }
+          }
+        }
+      }
+      closeEnv()
+    }
+  }
+
+  /**
    * A top-level statement: an effect, or `export default <expression>`
    * (it evaluates its expression; a derived output renders it as a
    * statement).
@@ -437,7 +545,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   const importsFromEnv = (c: ClusterId, o: OutputId) =>
     !copying(o) &&
     isChunk(o) &&
-    (importedFromEnv(c, o) ||
+    (importedFromEnv(c) ||
       namedByEnvRoots.has(c) ||
       (clusters[c]!.kind === 'effect' && declaresInStatement(c)) ||
       (statementsOf.get(c) ?? []).some(declaresInStatement))
@@ -486,14 +594,10 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   // ---- the derived outputs: what each needs ----------------------------------
   const copying = (o: OutputId) => outputs.get(o)?.kind === 'provider'
   /**
-   * A chunk: a lazy output that copies what the env module keeps but `main`
-   * would not import, with the top-level code reaching it, as `main`'s
-   * counterpart does: a split chunk, and a planner's own lazy module
-   * (`custom`: Start's server-fn handler module, which `main` makes as a
-   * copy of the file; R156).
+   * A split chunk: it copies what the env module keeps but `main` would not
+   * import, with the top-level code reaching it, as `main`'s chunk does.
    */
-  const isChunk = (o: OutputId) =>
-    outputs.get(o)?.kind === 'split' || outputs.get(o)?.kind === 'custom'
+  const isChunk = (o: OutputId) => outputs.get(o)?.kind === 'split'
   /**
    * The imports already unused in the source: an import nothing in the
    * source references, by value or in a type (an export is a use), a bare

@@ -4,8 +4,9 @@
  * keep their chain next to a generated `createServerRpc` export in the
  * provider; an in-place provider (SSR) moves the handlers into one derived
  * handler module it imports on the first call (what only handlers read
- * loads then, once; what the module also keeps is copied there with the
- * top-level code reaching it, as main's provider copy of the file: R156);
+ * loads then, once, but a declaration whose evaluation reads something the
+ * module keeps; everything the module keeps is imported back: one instance,
+ * R157);
  * middleware links, isomorphic implementations and env-only fns are
  * selected per env; `<ClientOnly>` children leave server envs; nested
  * server fns are hoisted on the server when that is safe, else refused at

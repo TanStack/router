@@ -124,13 +124,16 @@ per-output read walk (`readIndex`):
   shared module per file (`?tsr-split=shared---<keys>`, main's `?tsr-shared=1`): the env module and the chunks import
   them, the env module re-exports the exported ones; one code outside the set assigns (a chunk, the env module,
   another planner's output), or one reading a declaration outside it, leaves the set and is placed like any other (one
-  fixed point). Import specifiers are copied where read. A server-fn handler module is
-  a chunk too (R156): it copies what the env module keeps, with the top-level code reaching it, and imports nothing of
-  it but a name a statement declares (main's provider is a copy of the whole file). Both kinds of chunk import a
+  fixed point). Import specifiers are copied where read. A split chunk imports a
   declaration a generated unit rooted in the env module names (Start's in-place provider: the `createServerRpc` export
   naming the server fn, which the registry reads from the file): that is the env module's one instance, as main has one
-  (its chunk's caller forwards to it); where no planner roots such a unit (every client) nothing changes. Hydrate chunks in a route file import what the env module keeps,
-  and what several of them need is one module they import; a provider output copies what it reaches.
+  (its chunk's caller forwards to it); where no planner roots such a unit (every client) nothing changes. Another
+  planner's derived output (a server-fn handler module, Hydrate chunks in a route file) imports what the env module
+  keeps, and what several of them need is one module they import; a provider output copies what it reaches (R157). A
+  declaration a planner's lazy module (`custom`, the server-fn handler module) reaches stays in the env module when
+  evaluating it reads, by name and transitively, something the env module keeps (`const snapshot = cfg.url;
+set(cfg)`): it runs at load, as in the source; a declaration that is exactly a function moves (one fixed point
+  after the env closure). A handler assigning what the env module keeps falls back in place (`shared-writer`).
 - **code already unused**: an import nothing in the source references, a bare `import './polyfill'` included, moves
   to the shared module when the env module imports it (statically, first), in source order with the shared module's
   own imports: it runs at the same point, once, and a module a shared declaration reads still runs after a bare import

@@ -74,9 +74,9 @@ at stage −10 the resolver module itself is rebuilt while its content changes (
 whose SSR environment is the provider list only client-referenced functions (the client compiles first:
 `MultiCompiler.setDependencies`). When the SSR environment is the provider, a module defining server functions keeps
 their chains and `createServerRpc` exports, and its handlers move into its `?tss-serverfn-handler` derived module,
-which it imports once on the first call (direct or through the resolver): what only handlers read loads then, and
-what the module itself also keeps is copied there with the top-level code reaching it, as main's provider copy of
-the file (R156: main's second instance). A handler that assigns a name a top-level statement declares, and the
+which it imports once on the first call (direct or through the resolver): what only handlers read loads then, but a
+declaration whose evaluation reads, by name, something the module keeps, which stays and runs at load; what the
+module keeps is imported back (one instance, R157). A handler that assigns a binding the module keeps, and the
 handlers of a module that awaits at its top level, stay in place. Custom ids (`generateFunctionId`) are placeholders in the outputs, allocated per
 rank (client first) and patched at `processAssets` before minification.
 
