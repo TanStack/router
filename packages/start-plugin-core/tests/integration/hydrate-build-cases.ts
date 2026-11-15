@@ -353,14 +353,18 @@ export function hydrateBuildSuite(bundler: StartBundler) {
 
     // A route file exporting the component its boundary's children render
     // (spec-phase2-hydrate r2): the chunk holds its own copy, as on main, so
-    // the module that component imports loads with the chunk, not with the
-    // route module; the boundary hydrates.
+    // in an app marked `"sideEffects": false` the route module's unused
+    // export and its import drop, and the module that component imports
+    // loads with the chunk, not with the route module; the boundary
+    // hydrates. (Without the hint the route module's import evaluates that
+    // module eagerly, on main too.)
     test(
       'an exported component of a route file that only the children render loads its imports with the chunk',
       async () => {
         const build = await buildStart({
           bundler,
           entry,
+          sideEffects: false,
           files: {
             ...pageEntries,
             'src/toggle.tsx': toggleSource,
