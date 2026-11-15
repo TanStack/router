@@ -454,3 +454,103 @@ export const fn = createServerFn().handler(async () => { const c: typeof db | nu
     expect(await serverCalls(served)).toEqual([])
   })
 })
+
+// F1 (spec-phase1 6.2): main deletes type-only export statements
+// (`stripTypeExports`) before its removal rule, so a value only such a
+// statement reads goes, with what it reads, in both environments. Kind A
+// (t4, t7 and the other forms of the statement): they failed before. Kind B
+// beside them: a value a local type, an annotation or a class used as a
+// type reads stays, and runs, as on main (t5, t6, t8).
+describe('a value only a type-only export reads (F1)', () => {
+  const schemaFiles = {
+    ...callsFile,
+    'schema.server.ts': `import { calls } from './calls'
+calls.push('schema.server')
+export const users = { table: 'users' }
+`,
+    'make.ts': `import { calls } from './calls'
+export const makeSchema = (x: unknown) => {
+  calls.push('makeSchema')
+  return { x }
+}
+`,
+  }
+  const head = `${serverFn}import { users } from './schema.server'
+import { makeSchema } from './make'
+const UserSchema = makeSchema(users)
+`
+  const handler = `export const getUser = createServerFn().handler(async () => 1)\n`
+
+  test.each([
+    ['t4: `export type X = typeof v`', 'export type User = typeof UserSchema'],
+    [
+      'an exported interface',
+      'export interface User { schema: typeof UserSchema }',
+    ],
+    ['`export type { v }`', 'export type { UserSchema }'],
+    [
+      '`export { type v }`',
+      'const version = 1\nexport { version, type UserSchema }',
+    ],
+  ])(
+    '%s: the value goes with its imports, client and server',
+    async (_name, typeExport) => {
+      const served = await serveCase(await host(), {
+        ...schemaFiles,
+        'module.tsx': `${head}${typeExport}\n${handler}`,
+      })
+      expectNotLoaded(await served.loads(), ['./schema.server', './make'])
+      expectNotLoaded(await served.serverLoads(), ['./schema.server', './make'])
+      expect(await callServerFnThroughCallers(served, 'module.getUser')).toBe(1)
+    },
+  )
+
+  test('t7: a function only an exported type reads goes with its import', async () => {
+    const served = await serveCase(await host(), {
+      ...dbServer(),
+      'module.tsx': `${serverFn}import { db } from './db.server'
+function Unused() { return db.q() }
+export type U = ReturnType<typeof Unused>
+${handler}`,
+    })
+    expectNotLoaded(await served.loads(), ['./db.server'])
+    expectNotLoaded(await served.serverLoads(), ['./db.server'])
+  })
+
+  test('t5, kind B: a value only a local type reads stays and runs', async () => {
+    const served = await serveCase(await host(), {
+      ...schemaFiles,
+      'module.tsx': `${head}type User = typeof UserSchema
+export function show(u: User) { return String(u) }
+${handler}`,
+    })
+    expect(await clientCalls(served, `await load('module.tsx')`)).toEqual([
+      'schema.server',
+      'makeSchema',
+    ])
+    expect(await serverCalls(served)).toEqual(['schema.server', 'makeSchema'])
+  })
+
+  test('t6, t8, kind B: an import a parameter annotation or a class used as a type reads stays', async () => {
+    const served = await serveCase(await host(), {
+      ...callsFile,
+      'schema.server.ts': `import { calls } from './calls'
+calls.push('schema.server')
+export const users = { table: 'users' }
+`,
+      'base.server.ts': `import { calls } from './calls'
+calls.push('base.server')
+export class Base {}
+`,
+      'module.tsx': `${serverFn}import { users } from './schema.server'
+import { Base } from './base.server'
+class Repo extends Base {}
+export function show(u: typeof users, r: Repo) { return String(u) + String(r) }
+${handler}`,
+    })
+    expect(await clientCalls(served, `await load('module.tsx')`)).toEqual([
+      'schema.server',
+      'base.server',
+    ])
+  })
+})

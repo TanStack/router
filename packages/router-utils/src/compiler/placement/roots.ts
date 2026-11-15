@@ -15,6 +15,7 @@ import type { Pin } from './events'
 import type { Node } from 'yuku'
 import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
+import type { TopLevelItem } from '../units'
 import type { GenUnitId, OutputId } from '../rewrite'
 import type { PlacementInput, RootRef } from '../reach'
 
@@ -352,6 +353,35 @@ export function seedRoots(
 }
 
 /**
+ * The type-only export statements `main` deletes before its removal rule
+ * (`stripTypeExports`): `export type X = …`, `export interface X {…}`,
+ * `export type { X }`, and an `export { type X }` specifier. Their text is
+ * removed text like an erased handler's: a value only they read was used by
+ * the source and goes when nothing left reads it (F1). A re-export reads
+ * nothing of the module.
+ */
+function typeOnlyExportRanges(
+  items: ReadonlyArray<TopLevelItem>,
+): Array<{ start: number; end: number }> {
+  const out: Array<{ start: number; end: number }> = []
+  for (const { node, nodeRange } of items) {
+    if (node.type !== 'ExportNamedDeclaration' || node.source !== null) {
+      continue
+    }
+    if (node.exportKind === 'type') {
+      out.push(nodeRange)
+      continue
+    }
+    for (const spec of node.specifiers) {
+      if (spec.exportKind === 'type') {
+        out.push({ start: spec.start, end: spec.end })
+      }
+    }
+  }
+  return out
+}
+
+/**
  * Provenance, the one removal rule (R153 amendment, R154), in two halves:
  * - "the source used it": the clusters text an output no longer holds
  *   (`removed`: what it erases, what a claim moves out) references,
@@ -371,7 +401,7 @@ export function readFromRemoved(
 ): Set<ClusterId> {
   const { refs, symbols } = input.t1
   const seeds = new Set<ClusterId>()
-  const parts = [...removed]
+  const parts = [...removed, ...typeOnlyExportRanges(input.t1.items)]
   for (const part of parts) {
     for (const ref of refs.refsIn(part)) {
       // a write names the binding too: an initialiser only an erased
