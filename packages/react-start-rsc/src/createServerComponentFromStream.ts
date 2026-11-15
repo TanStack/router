@@ -2,11 +2,7 @@
 
 import { use } from 'react'
 import { trackPostProcessPromise } from '@tanstack/start-client-core'
-import { createFromReadableStream as browserDecode } from 'virtual:tanstack-rsc-browser-decode'
-
-import { awaitLazyElements } from './awaitLazyElements'
 import { createRscProxy } from './createRscProxy'
-import { unwrapRscCssEnvelope } from './rscCssEnvelope'
 import type {
   AnyCompositeComponent,
   RscSlotUsageEvent,
@@ -99,16 +95,19 @@ function setupStreamDecode(
   const startDecode = () => {
     if (!transformedTreePromise) {
       // Promise for the tree with lazy elements awaited.
-      transformedTreePromise = Promise.resolve(browserDecode(stream)).then(
-        async (result) => {
-          await awaitLazyElements(result, (href) => {
+      // The Flight client runtime is imported on first decode so it stays out
+      // of the entry chunk for routes that never render a server component.
+      transformedTreePromise = import('./decodeRscStream')
+        .then(({ decodeRscStream }) =>
+          decodeRscStream(stream, (href) => {
             cssHrefs.add(href)
-          })
-          cachedTree = unwrapRscCssEnvelope(result)
+          }),
+        )
+        .then((tree) => {
+          cachedTree = tree
           cacheReady = true
-          return cachedTree
-        },
-      )
+          return tree
+        })
 
       // Track the lazy element loading - prevents flash for RPC/RSC fetches.
       trackPostProcessPromise(transformedTreePromise)

@@ -1079,6 +1079,10 @@ When a server component accesses slot props, it accesses a proxy:
 
 TanStack Start sends a React Flight stream with these placeholders. On the client, placeholders are replaced with the actual props you passed when rendering.
 
+### Client Bundle Cost
+
+Enabling RSC adds a small serialization adapter to the client entry chunk so any server function response can carry a server component. The browser Flight decoder (`react-server-dom`'s client runtime) is loaded in a separate chunk the first time a server component is decoded, so routes that never render one don't download it.
+
 ## Current Status
 
 Server Components are experimental in TanStack Start and will remain so into early v1.
