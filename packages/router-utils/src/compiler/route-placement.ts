@@ -339,11 +339,19 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   }
   closeEnv()
 
+  /**
+   * A top-level statement: an effect, or `export default <expression>`
+   * (it evaluates its expression; a derived output renders it as a
+   * statement).
+   */
+  const isStatement = (c: ClusterId): boolean =>
+    clusters[c]!.kind === 'effect' ||
+    clusters[c]!.units.some((u) => units[u]!.kind === 'export-default')
   /** The statements of the env module reading or writing each declaration it keeps: a chunk copying the declaration copies them (`main`'s chunks keep the statements naming what they declare). */
   const statementsOf = new Map<ClusterId, Array<ClusterId>>()
   for (const c of env) {
     const cl = clusters[c]!
-    if (cl.kind !== 'effect' || cl.units.length === 0) {
+    if (!isStatement(c) || cl.units.length === 0) {
       continue
     }
     for (const s of reads.clusterReads(c, 'env', true).syms) {
@@ -449,8 +457,12 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
           !isChunk(o) ||
           importedFromEnv(t, o) ||
           clusters[t]!.kind === 'effect' ||
-          (statementsOf.get(t) ?? []).some(
-            (st) => clusters[st]!.declares.size > 0,
+          (statementsOf.get(t) ?? []).some((st) =>
+            // (`export default`'s own `default` is no binding the chunk
+            // would declare)
+            [...clusters[st]!.declares].some(
+              (d) => t1.symbols.kind(d) !== 'synthetic',
+            ),
           )
         ) {
           return // imported from the env module

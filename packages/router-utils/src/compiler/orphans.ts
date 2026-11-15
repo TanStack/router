@@ -9,7 +9,11 @@
 import { walk } from 'yuku'
 import { extendOverTrailingLine } from './header'
 import { isPureClass } from './purity'
-import { opensNonExpressionStatement, patternIdentifiers } from './source'
+import {
+  nextToken,
+  opensNonExpressionStatement,
+  patternIdentifiers,
+} from './source'
 import type { Node } from 'yuku'
 import type { ClassifiedRef } from './analysis'
 import type { Range } from './header'
@@ -666,24 +670,4 @@ export function listEnd(code: string, items: ReadonlyArray<Node>): number {
 /** Whether the next token after `pos` (past whitespace and comments) is a comma. */
 function commaFollows(code: string, pos: number): boolean {
   return code[nextToken(code, pos)] === ','
-}
-
-/** The offset of the next token at or after `pos` (past whitespace and comments), or the end of the code. */
-function nextToken(code: string, pos: number): number {
-  let i = pos
-  while (i < code.length) {
-    const c = code[i]!
-    if (/\s/.test(c)) {
-      i++
-    } else if (code.startsWith('//', i)) {
-      const nl = code.slice(i).search(/[\n\r\u2028\u2029]/)
-      i = nl === -1 ? code.length : i + nl
-    } else if (code.startsWith('/*', i)) {
-      const close = code.indexOf('*/', i + 2)
-      i = close === -1 ? code.length : close + 2
-    } else {
-      break
-    }
-  }
-  return i
 }
