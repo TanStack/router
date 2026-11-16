@@ -1,3 +1,4 @@
+import { action } from 'solid-js'
 import { createFileRoute } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 
@@ -10,6 +11,10 @@ const readCount = createServerFn().handler(() => {
 
 const incrementCount = createServerFn({ method: 'POST' }).handler(() => {
   return ++count
+})
+
+const increment = action(function* () {
+  return yield incrementCount()
 })
 
 export const Route = createFileRoute('/single-flight')({
@@ -27,7 +32,7 @@ function SingleFlight() {
       <button
         type="button"
         data-testid="single-flight-mutate"
-        onClick={() => incrementCount()}
+        onClick={() => increment()}
       >
         Increment
       </button>
