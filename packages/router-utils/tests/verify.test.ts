@@ -16,14 +16,6 @@ const CODE = dedent(`
   export const Route = createFileRoute('/')({ component: Page })
 `)
 
-/** The output of an extracted export, as the core names it. */
-const exportOutput = (ctx: PlanContext, name: string): OutputId =>
-  ctx.declareOutput({
-    kind: 'export',
-    key: `export~${name}`,
-    derived: { kind: 'export', value: name },
-  })
-
 /** The id an output of this file is imported by. */
 const idOf = (ctx: PlanContext, output: OutputId) =>
   output === 'env' ? ctx.identity.canonicalId : output.slice('derived:'.length)
@@ -85,40 +77,6 @@ const CASES: Array<{
         (l) => `console.log(${l})\n`,
       ),
   },
-  {
-    check: '(e) an extracted module reading the env module at its evaluation',
-    error: 'of the env module at its evaluation',
-    edit: (ctx) =>
-      brokenGlue(
-        ctx,
-        exportOutput(ctx, 'Card'),
-        'env',
-        'Route',
-        (l) => `console.log(${l})\n`,
-      ),
-  },
-  {
-    check: '(h) two extracted modules importing each other',
-    error: 'import cycle of extracted modules',
-    edit: (ctx) => {
-      const card = exportOutput(ctx, 'Card')
-      const badge = exportOutput(ctx, 'Badge')
-      brokenGlue(
-        ctx,
-        card,
-        badge,
-        'Badge',
-        (l) => `export const b = () => ${l}\n`,
-      )
-      brokenGlue(
-        ctx,
-        badge,
-        card,
-        'Card',
-        (l) => `export const c = () => ${l}\n`,
-      )
-    },
-  },
 ]
 
 // a `!` path imports its outputs by basename (`./route.tsx?…`), any other by
@@ -127,11 +85,9 @@ describe.each(['/app/src', '/app/s!rc'])('the verifier under %s', (dir) => {
   const path = `${dir}/route.tsx`
   const compile = (edit: ((ctx: PlanContext) => void) | null) => {
     const host = new MemoryHost({ files: { [path]: CODE } })
-    return host.compile(
-      path,
-      [toySplitPlanner({ extractExports: true }), brokenPlanner(edit)],
-      { env: envInfo({ mode: 'build' }) },
-    )
+    return host.compile(path, [toySplitPlanner(), brokenPlanner(edit)], {
+      env: envInfo({ mode: 'build' }),
+    })
   }
 
   it('passes the sound plan', async () => {

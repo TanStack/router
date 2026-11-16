@@ -148,6 +148,10 @@ describe('rewrite tree', () => {
       export const Route = { ssr: false, component: 1 }
     `)
     const e = engine(code)
+    e.ctx.setRouteModule({
+      imported: new Set(e.ctx.t1.units[0]!.declares),
+      shared: new Set(),
+    })
     const chunk: OutputId = e.ctx.declareOutput({
       kind: 'split',
       key: 'x',
@@ -161,9 +165,10 @@ describe('rewrite tree', () => {
       by: 'split',
     })
     expect(e.render('env').code).toBe('export const Route = { component: 1 }\n')
-    // exported clusters stay in the env module; the chunk imports them
+    // the chunk's root is its own copy, with the property the placeholder
+    // erases from the env output only
     expect(e.render(chunk).code).toBe(
-      "import { Route } from '/app/route.tsx'\n",
+      'const Route = { ssr: false, component: 1 }\n',
     )
   })
 })
@@ -1186,33 +1191,6 @@ describe('statement-level edits (one edit per statement)', () => {
     )
   })
 
-  it('moves a pure cluster to its only needer, importing exported clusters from the env module', () => {
-    const code = dedent(`
-      export const a = 1, b = 2
-      export function f() { return b }
-      const g = () => f()
-    `)
-    const e = engine(code)
-    const chunk = e.ctx.declareOutput({
-      kind: 'split',
-      key: 'x',
-      derived: { kind: 'split', value: 'x' },
-      roots: [{ t: 'unit', id: 3 }],
-    })
-    expect(e.render(chunk).code).toBe(
-      dedent(`
-      import { f } from '/app/route.tsx'
-      const g = () => f()
-    `),
-    )
-    expect(e.render('env').code).toBe(
-      dedent(`
-      export const a = 1, b = 2
-      export function f() { return b }
-    `),
-    )
-  })
-
   it('drops the export keyword of a declaration included in a derived output', () => {
     const code = dedent(`
       export const a = 1, b = 2
@@ -1220,6 +1198,10 @@ describe('statement-level edits (one edit per statement)', () => {
     `)
     const e = engine(code)
     // `b` is exported (env root) and read by the chunk-only `g`: the chunk imports it
+    e.ctx.setRouteModule({
+      imported: new Set(e.ctx.t1.units[1]!.declares),
+      shared: new Set(),
+    })
     const chunk = e.ctx.declareOutput({
       kind: 'split',
       key: 'x',
@@ -1232,8 +1214,12 @@ describe('statement-level edits (one edit per statement)', () => {
       const g = () => b
     `),
     )
-    // a non-exported declaration keeps nothing of `export`; an exported one included in a chunk loses the keyword
+    // a non-exported declaration keeps nothing of `export`; an exported one a chunk copies (its root) loses the keyword
     const e2 = engine('export const c = 3\nconst h = () => c\n')
+    e2.ctx.setRouteModule({
+      imported: new Set(e2.ctx.t1.units[0]!.declares),
+      shared: new Set(),
+    })
     const chunk2 = e2.ctx.declareOutput({
       kind: 'split',
       key: 'x',
@@ -1243,9 +1229,7 @@ describe('statement-level edits (one edit per statement)', () => {
         { t: 'unit', id: 1 },
       ],
     })
-    expect(e2.render(chunk2).code).toBe(
-      "import { c } from '/app/route.tsx'\nconst h = () => c\n",
-    )
+    expect(e2.render(chunk2).code).toBe('const c = 3\nconst h = () => c\n')
   })
 })
 

@@ -1539,6 +1539,15 @@ describe('planning rounds', () => {
         if (body.some((s) => ctx.fallbackAt(s)?.reason === 'exhausted')) {
           return
         }
+        // a route file whose chunk imports `a`: each claimed write of it falls back
+        ctx.setRouteModule({
+          imported: new Set(
+            ctx.t1.units
+              .flatMap((u) => u.declares)
+              .filter((sym) => ctx.symbols.name(sym) === 'a'),
+          ),
+          shared: new Set(),
+        })
         const stmt = body.find((s) => ctx.fallbackAt(s) === undefined)
         if (!stmt) {
           return
