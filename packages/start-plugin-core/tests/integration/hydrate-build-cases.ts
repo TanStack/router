@@ -406,6 +406,74 @@ export function routes() {
       timeout,
     )
 
+    // A hook that needs the browser whose value only the fallback reads, in
+    // a route file (its component in a split chunk) and in a component file:
+    // the server drops the call with the declaration, as main's split chunk
+    // does, and renders the children (main keeps the call outside split
+    // route chunks, and the server render throws there).
+    // Source: design-hooks-clientonly-hydrate `hy-fb-vp`.
+    test(
+      'a browser-only hook only the fallback reads lets the server render the children, in a route file and a component file',
+      async () => {
+        const fallbackPage = (label: string) => `function Page() {
+  const vp = useViewport()
+  return <section><p>outside</p><Hydrate when={interaction()} fallback={<p>{vp}</p>}><Toggle label="${label}" /></Hydrate></section>
+}`
+        const imports = (
+          up: string,
+        ) => `import { Hydrate } from '@tanstack/react-start'
+import { interaction } from '@tanstack/react-start/hydration'
+import { Toggle } from '${up}/toggle'
+import { useViewport } from '${up}/browser-hook'
+`
+        const build = await buildStart({
+          bundler,
+          entry,
+          files: {
+            ...pageEntries,
+            'src/toggle.tsx': toggleSource,
+            'src/browser-hook.ts': `import { useState } from 'react'
+export function useViewport() {
+  const [width] = useState(() => (window.innerWidth > 0 ? 'vp-wide' : 'vp-narrow'))
+  return width
+}
+`,
+            'src/routes/viewport.tsx': `import { createFileRoute } from '@tanstack/react-router'
+${imports('..')}${fallbackPage('fallback-route-marker')}
+export const Route = createFileRoute('/viewport')({ component: Page })
+`,
+            'src/pages/viewport.tsx': `${imports('..')}export ${fallbackPage('fallback-file-marker')}
+`,
+            'src/pages.ts': `import { createElement } from 'react'
+import { routeTree } from './routeTree.gen'
+export { Page as file } from './pages/viewport'
+const route = (Object.values((routeTree as any).children) as Array<any>).find(
+  (candidate) => candidate.options.path === '/viewport',
+)
+export function routes() {
+  return createElement(route.options.component)
+}
+`,
+          },
+        })
+        const html = await renderPages(build)
+        for (const [name, label] of [
+          ['routes', 'fallback-route-marker'],
+          ['file', 'fallback-file-marker'],
+        ] as const) {
+          expect(html[name]).toContain(label)
+          expect(
+            await hydratePage(build, html[name] as string, name, [label]),
+          ).toEqual({
+            text: `outside${label} clicked`,
+            recoverableErrors: [],
+            consoleErrors: [],
+          })
+        }
+      },
+      timeout,
+    )
+
     // A helper both the page and the children call, which writes a module
     // `let` (a lazily built cache, a scratch variable): each side holds its
     // own copy, as on main, and both read the right value

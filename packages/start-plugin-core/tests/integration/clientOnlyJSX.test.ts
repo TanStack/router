@@ -137,6 +137,34 @@ export function Page({ heading, label, title, }: { heading: string; label: strin
     </div>
   )
 }`,
+  // A hook that needs the browser whose value only the children read: the
+  // server drops its call with the declaration, as main, and renders the
+  // fallback. Source: coverage-review-C 2 (`co-browser-hook`).
+  browserHook: `import { ClientOnly } from '@tanstack/react-router'
+import { useViewport } from '../browser-hook'
+export function Page() {
+  const vp = useViewport()
+  return <section><p>outside</p><ClientOnly fallback={<p>fallback</p>}><p>{vp}</p></ClientOnly></section>
+}`,
+  // The same hook through `useMemo`, the children reading the memo.
+  // Source: design-hooks-clientonly-hydrate `co-chain`.
+  browserHookChain: `import * as React from 'react'
+import { ClientOnly } from '@tanstack/react-router'
+import { useViewport } from '../browser-hook'
+export function Page() {
+  const vp = useViewport()
+  const label = React.useMemo(() => vp.toUpperCase(), [vp])
+  return <section><p>outside</p><ClientOnly fallback={<p>fallback</p>}><p>{label}</p></ClientOnly></section>
+}`,
+  // The hook imported from a `*.client.*` file import protection denies on
+  // the server: the import goes with the call, and the build passes.
+  // Source: design-hooks-clientonly-hydrate `co-client`.
+  browserHookClientFile: `import { ClientOnly } from '@tanstack/react-router'
+import { useClientViewport } from '../viewport.client'
+export function Page() {
+  const vp = useClientViewport()
+  return <section><p>outside</p><ClientOnly fallback={<p>fallback</p>}><p>{vp}</p></ClientOnly></section>
+}`,
 }
 
 let app: HydrationApp
@@ -158,6 +186,18 @@ beforeAll(async () => {
 export const WindowSize = () => <size-el />
 `,
       'src/chart.client.tsx': `export const Chart = () => <client-chart-el data-mark="MARK_CLIENT_CHART" />\n`,
+      'src/browser-hook.ts': `import { useState } from 'react'
+export function useViewport() {
+  const [width] = useState(() => (window.innerWidth > 0 ? 'vp-wide' : 'vp-narrow'))
+  return width
+}
+`,
+      'src/viewport.client.ts': `import { useState } from 'react'
+export function useClientViewport() {
+  const [width] = useState(() => (window.innerWidth > 0 ? 'cvp-wide' : 'cvp-narrow'))
+  return width
+}
+`,
     },
     registerCleanup: (cleanup) => cleanups.push(cleanup),
   })
@@ -215,6 +255,21 @@ describe('<ClientOnly> in a hydrated page', () => {
       props: { heading: 'Menu', label: 'Account', title: 'Signed in' },
       server: '<div><h1>Menu</h1><div>Loading...</div></div>',
       client: '<div><h1>Menu</h1><span title="Signed in">Account</span></div>',
+    },
+    {
+      name: 'browserHook',
+      server: '<section><p>outside</p><p>fallback</p></section>',
+      client: '<section><p>outside</p><p>vp-wide</p></section>',
+    },
+    {
+      name: 'browserHookChain',
+      server: '<section><p>outside</p><p>fallback</p></section>',
+      client: '<section><p>outside</p><p>VP-WIDE</p></section>',
+    },
+    {
+      name: 'browserHookClientFile',
+      server: '<section><p>outside</p><p>fallback</p></section>',
+      client: '<section><p>outside</p><p>cvp-wide</p></section>',
     },
   ])(
     '$name: the server renders the fallback and the hydrated page the children',
