@@ -259,32 +259,27 @@ describe('a separate provider env with derived provider modules (Vite RSC)', () 
   // the handler (the factory, its options, the middleware) stays with it.
   it.each([
     [
-      'a function',
-      `export function make() {
-  const fn = createServerFn({ method: METHOD }).middleware([mw]).handler(() => db.q())
-  return fn
+      'an object literal',
+      `export const api = {
+  fn: createServerFn({ method: METHOD }).middleware([mw]).handler(() => db.q()),
 }
 `,
     ],
     [
-      'a top-level block',
+      'an assignment',
       `export let fn
-if (globalThis.flag) {
-  fn = createServerFn({ method: METHOD }).middleware([mw]).handler(() => db.q())
-}
+fn = createServerFn({ method: METHOD }).middleware([mw]).handler(() => db.q())
 `,
     ],
     [
-      'a class method',
+      'a class static field',
       `export class Api {
-  make() {
-    return createServerFn({ method: METHOD }).middleware([mw]).handler(() => db.q())
-  }
+  static fn = createServerFn({ method: METHOD }).middleware([mw]).handler(() => db.q())
 }
 `,
     ],
   ])(
-    'keeps what a server fn nested in %s reads in the env module',
+    'keeps what a server fn hoisted from %s reads in the env module',
     async (_name, body) => {
       const code = `import { createServerFn, createMiddleware } from '@tanstack/react-start'
 import { db } from './db.server'
@@ -586,7 +581,7 @@ export const reset = createServerFn().handler(async () => { clear(); return db.q
   })
 })
 
-describe('a server fn nested in a function (J4.6): hoisted when it captures nothing', () => {
+describe('a server fn nested in a function (J4.6): a capture is refused at the capture', () => {
   const rsc = envInfo({
     name: 'rsc',
     type: 'server',
@@ -669,61 +664,143 @@ import { db } from './db.server'
       }
     },
   )
+})
 
-  it('hoists a nested server fn capturing nothing in every env', async () => {
-    const code = `${head}export function make() {
-  const fn = createServerFn().handler(() => db.q(1))
-  return fn
-}
+// A refused server fn names its real position (R162; F4, review-phase3):
+// an `if` or a loop holds its body in a block, the message names the `if` or
+// the loop; a function around it is the reason, whatever is inside it
+describe('a refused server fn: the message names its position', () => {
+  const head = `import { createServerFn } from '@tanstack/react-start'
+export const api: Record<string, unknown> = {}
+const flag = Math.random() >= 0
 `
-    for (const [envName, env, config] of envs) {
-      const r = await compile(code, { env, config, files })
-      expectValid(r.code)
-      expect(r.out.diagnostics, envName).toEqual([])
-      expect(r.code, envName).toContain('export function make()')
-      if (env.type === 'client') {
-        expect(r.code).toContain('createClientRpc')
-        expect(r.code).not.toContain('db.q(1)')
-        expect(r.code).not.toContain('./db.server')
-      } else if (env.isProvider) {
-        expect(r.code).toContain('createSsrRpc')
-        expect(r.code).not.toContain('db.q(1)')
-      } else {
-        // the in-place provider's handlers live in its handler module
-        expect(r.code).not.toContain('db.q(1)')
-        expect(await r.derived(`${FILE}?tss-serverfn-handler`)).toContain(
-          'db.q(1)',
-        )
-      }
+  const fn = `createServerFn().handler(async () => 1)`
+  const envs: Array<[string, EnvInfo]> = [
+    ['client', clientEnv],
+    ['ssr', ssrEnv],
+  ]
+  const errorsOf = async (code: string, env: EnvInfo) =>
+    (await compile(code, { env })).out.diagnostics.filter(
+      (d) => d.severity === 'error',
+    )
+
+  it.each([
+    ['an if body', `if (flag) {\n  api.a = ${fn}\n}`, 'under a condition'],
+    [
+      'an else body',
+      `if (!flag) {\n} else {\n  api.a = ${fn}\n}`,
+      'under a condition',
+    ],
+    [
+      'a ternary branch',
+      `export const t = flag ? ${fn} : null`,
+      'under a condition',
+    ],
+    [
+      'a for body',
+      `for (const k of ['a']) {\n  api[k] = ${fn}\n}`,
+      'in a loop',
+    ],
+    ['a while body', `while (!flag) {\n  api.w = ${fn}\n}`, 'in a loop'],
+    ['a try block', `try {\n  api.t = ${fn}\n} catch {}`, 'in a block'],
+    [
+      'a switch case',
+      `switch (typeof api) {\n  case 'object':\n    api.s = ${fn}\n}`,
+      'in a block',
+    ],
+    [
+      'a namespace body',
+      `export namespace N {\n  export const f = ${fn}\n}`,
+      'in a block',
+    ],
+    ['a block', `{\n  api.b = ${fn}\n}`, 'in a block'],
+    [
+      'a function in an if body',
+      `if (flag) {\n  api.f = () => ${fn}\n}`,
+      'inside a function',
+    ],
+    [
+      'an instance field',
+      `export class A {\n  foo = ${fn}\n}`,
+      'in a class instance field',
+    ],
+    [
+      'a destructuring default',
+      `export const { d = ${fn} } = api as { d?: unknown }`,
+      'a default value',
+    ],
+  ])('%s', async (_name, body, says) => {
+    const code = `${head}${body}`
+    for (const [envName, env] of envs) {
+      const errors = await errorsOf(code, env)
+      expect(
+        errors.map((d) => d.range?.start),
+        envName,
+      ).toEqual([code.indexOf(fn)])
+      expect(errors[0]!.message, envName).toContain(says)
     }
   })
 
-  // the nested chain goes with the handler stubbed on the client, whichever
-  // import binding of the factory each chain is written with (the nested
-  // chain's binding is declared first: its site is enumerated first)
-  it('registers a server fn nested in a handler on the server envs only', async () => {
-    const code = `import { createServerFn as innerFn } from '@tanstack/react-start'
-import { createServerFn } from '@tanstack/react-start'
-import { db } from './db.server'
-export const outer = createServerFn().handler(async () => {
-  const nested = innerFn().handler(() => db.q(1))
-  return nested()
-})
-`
-    for (const [envName, env, config] of envs) {
-      const r = await compile(code, { env, config, files })
-      const facts = r.out.facts.planners[START_ENV] as {
-        serverFns: Array<{ name: string }>
-      }
-      expectValid(r.code)
-      expect(r.out.diagnostics, envName).toEqual([])
+  // a name the hoisted `const` would not see or would read too early: the
+  // message names it and says why, at the name
+  it.each([
+    [
+      "a class static block's local",
+      `export class Api {\n  static foo: unknown\n  static {\n    const m = 'POST' as const\n    Api.foo = createServerFn({ method: m }).handler(async () => 1)\n  }\n}`,
+      'm }',
+      'a local of the class static block',
+    ],
+    [
+      "a class expression's own name",
+      `export const B = class A {\n  static k = 'k'\n  static foo = createServerFn().handler(async () => A.k)\n}`,
+      'A.k)',
+      'the name the class expression around it gives itself',
+    ],
+    [
+      '`this` in a static field',
+      `export class A {\n  static mws = []\n  static foo = createServerFn().middleware(this.mws).handler(async () => 1)\n}`,
+      'this.mws',
+      '`this` of the class it is written in',
+    ],
+    [
+      'a declaration of its own statement, when the module loads',
+      `export const mws = [],\n  o = { foo: createServerFn().middleware(mws).handler(async () => 1) }`,
+      'mws).',
+      'its own statement or a later one',
+    ],
+    [
+      'a later `const`, when the module loads',
+      `export const o = { foo: createServerFn().validator(check).handler(async () => 1) }\nconst check = (d: unknown) => d`,
+      'check).',
+      'its own statement or a later one',
+    ],
+  ])('%s', async (_name, body, at, says) => {
+    const code = `${head}${body}`
+    for (const [envName, env] of envs) {
+      const errors = await errorsOf(code, env)
       expect(
-        facts.serverFns.map((f) => f.name),
+        errors.map((d) => d.range?.start),
         envName,
-      ).toEqual(env.type === 'client' ? ['outer'] : ['outer', 'nested'])
-      if (env.type === 'client') {
-        expect(r.code).not.toContain('db.q(1)')
-      }
+      ).toEqual([code.indexOf(at)])
+      expect(errors[0]!.message, envName).toContain(says)
+    }
+  })
+
+  // F6: decorators are evaluated once, with the class: the hoisted `const`
+  // goes above the class
+  it('hoists a decorator argument above its class', async () => {
+    const code = `${head}const dec = (_f: unknown) => (c: unknown) => c
+@dec(${fn})
+export class Decorated {}
+`
+    for (const [envName, env] of envs) {
+      const r = await compile(code, { env })
+      expect(
+        r.out.diagnostics.filter((d) => d.severity === 'error'),
+        envName,
+      ).toEqual([])
+      expectValid(r.code)
+      expect(r.code.indexOf('@dec('), envName).toBeGreaterThan(-1)
     }
   })
 })
@@ -802,13 +879,10 @@ export const fn = createServerFn().handler(createServerOnlyFn(async () => db.get
     expect(h).toContain('db.get(2)')
   })
 
-  it('moves the handler of a hoisted nested server fn', async () => {
+  it('moves the handler of a hoisted server fn', async () => {
     const r = await compile(
       `${FNS}import { db } from './db.server'
-export function makeFns() {
-  const inner = createServerFn().handler(async () => db.get(3))
-  return { inner }
-}
+export const fns = { inner: createServerFn().handler(async () => db.get(3)) }
 `,
       { env: ssrEnv, files },
     )
@@ -828,9 +902,7 @@ export function makeFns() {
       `${FNS}import { load } from './db.server'
 let label: unknown = 'initial'
 label = load(label)
-export function makeFn() {
-  return createServerFn().handler(async () => label)
-}
+export const fns = { fn: createServerFn().handler(async () => label) }
 `,
       { env: ssrEnv, files },
     )

@@ -10,26 +10,20 @@
  */
 import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
-import {
-  isExpressionWrapper,
-  namespaceName,
-  patternIdentifiers,
-} from './source'
+import { namespaceName, patternIdentifiers } from './source'
 import { SymbolTable, valueBinding } from './symbols'
-import { buildItems, buildUnits, memberUse, runsWhenPassed } from './units'
-import { MutationModel, writeConstruct, writeKind } from './mutation'
+import { buildItems, buildUnits } from './units'
+import { MutationModel } from './mutation'
 import {
-  languagePurity,
-  linkedBuilder,
   noteBuilderConsts,
   seedNoSideEffectDeclarations,
   statementHasEffects,
 } from './purity'
 import { ownEntry } from './strings'
-import type { BuilderPurity, PurityContext } from './purity'
+import type { PurityContext } from './purity'
 import type { Header, Range } from './header'
 import type { SymbolId } from './symbols'
-import type { EvaluatedCalls, TopLevelItem, Unit, UnitId } from './units'
+import type { TopLevelItem, Unit, UnitId } from './units'
 import type { Binding, Node, SourceFile } from 'yuku'
 import type { SourceText } from './output-builder'
 import type { RecognizerTable } from './values'
@@ -140,19 +134,9 @@ export interface ClassifiedRef {
   range: Range
   kind: RefKind
   ctx: RefContext
-  /** Evaluated at module load (not inside any function body). */
-  eager: boolean
   /** `export { a }` (true) vs `export { a as b }` (false); only for exportSpec. */
   exportShorthand?: boolean
-  /** The root of a member write (`a.p = …`, `a.p.q++`, `delete a.p`, `a.list.push(…)`, `Object.assign(a, …)`); always present (one object shape for every reference). */
-  memberWrite: boolean
-  /** It reads the contents of the object it names where it evaluates (`a.p`, `{ ...a }`, `const { p } = a`, `(a ?? {}).p`, a member write's `a.p.q = …`: `memberUse`), which may be another binding's object; always present. */
-  readsThrough: boolean
 }
-
-/** Whether the reference observes its value's identity (`newCallee`, `identity`): a copy of a function used so is a second constructor or sentinel. */
-export const observesIdentity = (ref: ClassifiedRef): boolean =>
-  ref.ctx === 'newCallee' || ref.ctx === 'identity'
 
 interface FreeRef {
   name: string
@@ -241,8 +225,6 @@ export interface Tier1 {
   declaringUnits: ReadonlyMap<SymbolId, ReadonlyArray<UnitId>>
   /** What writes each binding, and where (one model for every mutation rule). */
   mutation: MutationModel
-  /** The planners' purity (`ModuleAnalysis.purity`): what extraction and the statement rule's "what it changes" ask. */
-  purity: PurityContext
   /**
    * Whether `export default x` at `at` (the value `x` has when the statement
    * runs) may not be the binding: `x` is assigned (`live`: in code an output
@@ -262,16 +244,6 @@ export interface Tier1 {
    * block or static field initialiser).
    */
   isLazyAt: (offset: number) => boolean
-  /**
-   * Whether code at `offset` that evaluates when the module loads may run
-   * after the code written after it: the body of an immediately invoked
-   * async function (after an `await`) or generator (when resumed), an
-   * instance field initialiser (at each `new`). Its references count as
-   * eager reads (a read there observes every write but the eager ones
-   * before it, which have run by then in any case); its writes have not
-   * happened where they are written (the write table, placement).
-   */
-  runsLaterAt: (offset: number) => boolean
   /** Whether `offset` sits inside a function's scope (a declaration there is local to it, whenever it runs). */
   inFunctionAt: (offset: number) => boolean
   parentOf: (node: Node) => Node | null
@@ -292,23 +264,6 @@ interface ModuleAnalysisOptions {
    * `pureDefaultNamespaces`) are pure callees.
    */
   recognizer?: RecognizerTable
-  /**
-   * A compile's environment type: the planners' purity takes the
-   * recognizer's builder chains with pure arguments as no effect there
-   * (`builderCall`; what that environment's compile erases does not count).
-   * Both types take them, so both compiles home a builder alike. A builder
-   * is one instance in every output of an environment: a call result is
-   * never copied (the server-fn provider, the module's instance in another
-   * layer, copies what it reaches whatever its purity). A link called on a
-   * `const` holding a builder is no effect either; for a kind whose links
-   * write the builder they are called on (a middleware's assign its
-   * options, which another link of it then reads; `builderLinksWrite`) it
-   * is a write of that builder (R139) wherever it stands: its receiver is
-   * a member write (`linkedBuilder`). Another kind's link (a server fn's
-   * copies the options) only reads it.
-   * Raw reads give none (`effects()` derives each one's).
-   */
-  env?: 'client' | 'server'
 }
 
 /** Per environment type, whether a module's own statements have effects there. */
@@ -354,14 +309,13 @@ export class ModuleAnalysis {
   readonly markers: Marker
   readonly sourceType: 'module' | 'script' | 'commonjs'
   readonly hasImportOrExport: boolean
-  /** The planners' purity (with a compile's builder chains: `env`). */
-  readonly purity: PurityContext
-  /** The purity the unit model judges top-level effects with, for placement: the planners', where language operations are no effect (rule L, `languagePurity`). */
-  readonly effectPurity: PurityContext
-  /** The purity of the module's own statements, whatever the environment (`effects()` derives each one's). */
-  private readonly ownPurity: PurityContext
-  /** The recognizer's chain factories the module imports, if any (each environment's builder purity). */
-  private readonly builderImports: BuilderImports | null
+  /** The recognizer `effects()` reads (pure calls, builder chains). */
+  private readonly recognizer: RecognizerTable | undefined
+  /** `effects()`'s purity: of the module's own statements, and the recognizer's chain factories it imports (each environment's builder purity). */
+  private effectsPurity: {
+    own: PurityContext
+    builderImports: BuilderImports | null
+  } | null = null
   private tier1: Tier1 | null = null
   private readonly importByStatement = new Map<number, number>()
   /**
@@ -380,11 +334,7 @@ export class ModuleAnalysis {
     this.source = source
     this.path = opts.path
     this.header = analyzeHeader(file)
-    const noSideEffectCallees = new Set<number>()
-    const pureNamespaces = new Map<number, ReadonlySet<string>>()
-    let namespaceImports: Set<number> | null = null
-    const pureCalls = opts.recognizer?.pureCalls
-    const pureDefaults = opts.recognizer?.pureDefaultNamespaces
+    this.recognizer = opts.recognizer
     const markers = opts.markerSpecifiers ?? DEFAULT_MARKERS
     const imports: Array<ImportEntry> = []
     const exportEntries: Array<ExportEntry> = []
@@ -402,82 +352,11 @@ export class ModuleAnalysis {
     const declarations = new Map<number, Node>()
     this.declarations = declarations
     const importLocals = new Map<number, SymbolId>()
-    // the imports of the recognizer's chain factories (`BuilderImports`),
-    // in the same pass (a record's fields are decoded on every read)
-    const chains = opts.recognizer?.builderLinks ? opts.recognizer : null
-    const chainFactories = chains && factoryTable(chains)
-    let builderImports: BuilderImports | null = null
     for (const record of file.imports) {
       const local = record.local
       if (local) {
         importLocals.set(record.node.start, local.id as SymbolId)
-        if (record.typeOnly) {
-          continue
-        }
-        const kind = record.kind
-        if (kind === 'namespace') {
-          ;(namespaceImports ??= new Set()).add(local.id)
-        }
-        const specifier = pureCalls || chainFactories ? record.specifier : ''
-        // an import of a known package's pure export: before any
-        // statement is classified (a call may precede its hoisted import)
-        const pure = pureCalls && ownEntry(pureCalls, specifier)
-        const factories = chainFactories?.get(specifier)
-        const name = pure || factories ? record.name : null
-        if (pure) {
-          if (
-            kind === 'namespace' ||
-            (name === 'default' && pureDefaults?.has(specifier) === true)
-          ) {
-            pureNamespaces.set(local.id, pure)
-          } else if (kind === 'named' && name !== null && pure.has(name)) {
-            noSideEffectCallees.add(local.id)
-          }
-        }
-        if (factories) {
-          builderImports ??= {
-            table: chains!,
-            factories: new Map(),
-            namespaces: new Map(),
-          }
-          if (kind === 'namespace') {
-            builderImports.namespaces.set(local.name, {
-              binding: local.id,
-              factories,
-            })
-          } else if (kind === 'named' && name !== null) {
-            const factory = ownEntry(factories, name)
-            // (a chain's: other kinds need no per-environment purity)
-            if (
-              factory !== undefined &&
-              (ownEntry(chains!.builderLinks!, factory) !== undefined ||
-                ownEntry(chains!.envOnlyKinds, factory) !== undefined)
-            ) {
-              builderImports.factories.set(local.name, {
-                binding: local.id,
-                kind: factory,
-              })
-            }
-          }
-        }
       }
-    }
-    if (
-      builderImports?.factories.size === 0 &&
-      builderImports.namespaces.size === 0
-    ) {
-      builderImports = null
-    }
-    this.builderImports = builderImports
-    const ownPurity: PurityContext = {
-      file,
-      comments: file.comments,
-      noSideEffectCallees,
-      pureNamespaces,
-      namespaceImports: namespaceImports ?? NO_NAMESPACES,
-      // (every context has the same shape: the per-environment ones below
-      // set it, and the purity checks run on both)
-      builders: undefined,
     }
     const exportLocals = new Map<number, SymbolId>()
     for (const record of file.exports) {
@@ -487,13 +366,6 @@ export class ModuleAnalysis {
       }
     }
     const body = file.program.body
-    seedNoSideEffectDeclarations(ownPurity, noSideEffectCallees, body)
-    this.ownPurity = ownPurity
-    this.purity =
-      opts.env && builderImports
-        ? builderPurityOf(ownPurity, builderImports, opts.env).ctx
-        : ownPurity
-    this.effectPurity = languagePurity(this.purity)
     for (let i = this.header.directiveCount; i < body.length; i++) {
       const stmt = body[i]!
       switch (stmt.type) {
@@ -742,21 +614,119 @@ export class ModuleAnalysis {
   }
 
   /**
+   * `effects()`'s purity, built when it is first asked (a compile never
+   * asks): the module's own statements' (pure exports of known packages,
+   * `#__NO_SIDE_EFFECTS__` declarations) and the recognizer's chain
+   * factories the module imports.
+   */
+  private purityForEffects(): NonNullable<ModuleAnalysis['effectsPurity']> {
+    if (this.effectsPurity !== null) {
+      return this.effectsPurity
+    }
+    const file = this.file
+    const noSideEffectCallees = new Set<number>()
+    const pureNamespaces = new Map<number, ReadonlySet<string>>()
+    let namespaceImports: Set<number> | null = null
+    const pureCalls = this.recognizer?.pureCalls
+    const pureDefaults = this.recognizer?.pureDefaultNamespaces
+    // the imports of the recognizer's chain factories (`BuilderImports`),
+    // in the same pass (a record's fields are decoded on every read)
+    const chains = this.recognizer?.builderLinks ? this.recognizer : null
+    const chainFactories = chains && factoryTable(chains)
+    let builderImports: BuilderImports | null = null
+    for (const record of file.imports) {
+      const local = record.local
+      if (local) {
+        if (record.typeOnly) {
+          continue
+        }
+        const kind = record.kind
+        if (kind === 'namespace') {
+          ;(namespaceImports ??= new Set()).add(local.id)
+        }
+        const specifier = pureCalls || chainFactories ? record.specifier : ''
+        // an import of a known package's pure export: before any
+        // statement is classified (a call may precede its hoisted import)
+        const pure = pureCalls && ownEntry(pureCalls, specifier)
+        const factories = chainFactories?.get(specifier)
+        const name = pure || factories ? record.name : null
+        if (pure) {
+          if (
+            kind === 'namespace' ||
+            (name === 'default' && pureDefaults?.has(specifier) === true)
+          ) {
+            pureNamespaces.set(local.id, pure)
+          } else if (kind === 'named' && name !== null && pure.has(name)) {
+            noSideEffectCallees.add(local.id)
+          }
+        }
+        if (factories) {
+          builderImports ??= {
+            table: chains!,
+            factories: new Map(),
+            namespaces: new Map(),
+          }
+          if (kind === 'namespace') {
+            builderImports.namespaces.set(local.name, {
+              binding: local.id,
+              factories,
+            })
+          } else if (kind === 'named' && name !== null) {
+            const factory = ownEntry(factories, name)
+            // (a chain's: other kinds need no per-environment purity)
+            if (
+              factory !== undefined &&
+              (ownEntry(chains!.builderLinks!, factory) !== undefined ||
+                ownEntry(chains!.envOnlyKinds, factory) !== undefined)
+            ) {
+              builderImports.factories.set(local.name, {
+                binding: local.id,
+                kind: factory,
+              })
+            }
+          }
+        }
+      }
+    }
+    if (
+      builderImports?.factories.size === 0 &&
+      builderImports.namespaces.size === 0
+    ) {
+      builderImports = null
+    }
+    const ownPurity: PurityContext = {
+      file,
+      comments: file.comments,
+      noSideEffectCallees,
+      pureNamespaces,
+      namespaceImports: namespaceImports ?? NO_NAMESPACES,
+      // (every context has the same shape: the per-environment ones below
+      // set it, and the purity checks run on both)
+      builders: undefined,
+    }
+    seedNoSideEffectDeclarations(
+      ownPurity,
+      noSideEffectCallees,
+      file.program.body,
+    )
+    this.effectsPurity = { own: ownPurity, builderImports }
+    return this.effectsPurity
+  }
+
+  /**
    * The module's own effects, classified statement by statement (raw facts
    * ask, for a module read as a target; a compile never does). The
    * recognizer's builder chains are no effect per environment
-   * (`RecognizerTable.builderLinks`; the planners' purity takes the
-   * compile's environment's: `env`).
+   * (`RecognizerTable.builderLinks`).
    */
   effects(): ModuleEffects {
     const file = this.file
     const body = file.program.body
     const code: CodeEffects = { client: false, server: false }
+    const { own, builderImports } = this.purityForEffects()
     // the purity of each environment type, with its builder chains
-    const envPurity = this.builderImports
-      ? ENV_TYPES.map((env) =>
-          builderPurityOf(this.ownPurity, this.builderImports!, env),
-        )
+    const envPurity = builderImports
+      ? ENV_TYPES.map((env) => builderPurityOf(own, builderImports, env))
       : null
     for (let i = this.header.directiveCount; i < body.length; i++) {
       const stmt = body[i]!
@@ -773,7 +743,7 @@ export class ModuleAnalysis {
         stmt.type === 'ExportDefaultDeclaration'
           ? stmt.declaration
           : stmt
-      if (statementHasEffects(this.ownPurity, stmt)) {
+      if (statementHasEffects(own, stmt)) {
         if (!envPurity) {
           code.client = code.server = true
           continue
@@ -1007,42 +977,18 @@ export class ModuleAnalysis {
     const file = this.file
     const symbols = new SymbolTable(file)
     const items = buildItems(file, this.header)
-    const { units, declaringUnits } = buildUnits(
-      file,
-      items,
-      symbols,
-      this.effectPurity,
-      (s) => this.importIndexOfStatement(s),
+    const { units, declaringUnits } = buildUnits(file, items, symbols, (s) =>
+      this.importIndexOfStatement(s),
     )
 
     // Function ranges from the scope table: every function's scope (a
     // declaration inside is local to it), and the lazily evaluated ones
     // (an immediately invoked function runs where it is written). Each
     // set is reduced to its outermost ranges and searched by offset.
-    // Also the code that evaluates with the module but may run after what
-    // follows it: an immediately invoked async function's body (after an
-    // `await`) or generator's (when resumed), an instance field's
-    // initialiser (at each `new`).
     const fnRanges: Array<Range> = []
     const lazyRanges: Array<Range> = []
-    const laterRanges: Array<Range> = []
     for (const scope of file.scopes) {
       const n = scope.node
-      if (scope.kind === 'class') {
-        if (n.type === 'ClassDeclaration' || n.type === 'ClassExpression') {
-          for (const el of n.body.body) {
-            if (
-              (el.type === 'PropertyDefinition' ||
-                el.type === 'AccessorProperty') &&
-              !el.static &&
-              el.value !== null
-            ) {
-              laterRanges.push({ start: el.value.start, end: el.value.end })
-            }
-          }
-        }
-        continue
-      }
       if (scope.kind !== 'function') {
         continue
       }
@@ -1050,21 +996,10 @@ export class ModuleAnalysis {
       fnRanges.push(r)
       if (!isImmediatelyInvoked(file, n)) {
         lazyRanges.push(r)
-      } else if (
-        (n.type === 'ArrowFunctionExpression' ||
-          n.type === 'FunctionExpression') &&
-        (n.async || n.generator)
-      ) {
-        laterRanges.push(r)
       }
     }
     lazyRanges.sort((a, b) => a.start - b.start || b.end - a.end)
     const isLazyAt = offsetTest(outermost(lazyRanges))
-    laterRanges.sort((a, b) => a.start - b.start || b.end - a.end)
-    const runsLaterAt =
-      laterRanges.length === 0
-        ? () => false
-        : offsetTest(outermost(laterRanges))
     // the scope question is asked for function-local orphans only
     let inFunction: ((offset: number) => boolean) | null = null
     const inFunctionAt = (offset: number): boolean => {
@@ -1078,9 +1013,6 @@ export class ModuleAnalysis {
     const refs: Array<ClassifiedRef> = []
     const freeRefs: Array<FreeRef> = []
     const names = new Set<string>(symbols.names())
-    const builders = this.purity.builders
-    /** Each write reference's expression or statement (`MutationModel.visitValues` reads what it writes). */
-    const constructs = new Map<ClassifiedRef, Range>()
     for (const ref of file.references) {
       if (ref.inTypePosition || ref.space === 'type') {
         continue
@@ -1099,26 +1031,14 @@ export class ModuleAnalysis {
         continue
       }
       const c = classify(file, ref)
-      const use =
-        c.kind !== 'value'
-          ? null
-          : builders !== undefined && linksOn(file, builders, node)
-            ? 'write'
-            : memberUse(file, node)
       const r: ClassifiedRef = {
         sym: symbols.ofBinding(b),
         range: { start: node.start, end: node.end },
         kind: c.kind,
         ctx: c.ctx,
-        eager: !isLazyAt(node.start),
         exportShorthand: c.exportShorthand,
-        memberWrite: use === 'write' || use === 'write-through',
-        readsThrough: use === 'through' || use === 'write-through',
       }
       refs.push(r)
-      if (writeKind(r) !== null) {
-        constructs.set(r, writeConstruct(file, node))
-      }
     }
 
     // a `var` declared again: what that declaration gives it is a write, like
@@ -1149,12 +1069,8 @@ export class ModuleAnalysis {
             sym,
             range: { start: id.start, end: id.end },
             ...classify(file, { node: id, isWrite: true }),
-            eager: !isLazyAt(id.start),
-            memberWrite: false,
-            readsThrough: false,
           }
           refs.push(r)
-          constructs.set(r, writeConstruct(file, id))
         }
       })
     }
@@ -1180,9 +1096,6 @@ export class ModuleAnalysis {
             range: { start: name.name.start, end: name.name.end },
             kind: 'value',
             ctx: 'plain',
-            eager: !isLazyAt(n.start),
-            memberWrite: false,
-            readsThrough: false,
           })
         },
       })
@@ -1191,7 +1104,7 @@ export class ModuleAnalysis {
       (a, b) => a.range.start - b.range.start || a.range.end - b.range.end,
     )
     const refIndex = new RefIndex(refs, units)
-    const mutation = new MutationModel(refIndex, constructs, () => tier1)
+    const mutation = new MutationModel(refIndex)
 
     const exportNames = new Set<string>()
     for (const e of this.exports) {
@@ -1200,7 +1113,6 @@ export class ModuleAnalysis {
       }
     }
 
-    const purity = this.purity
     const tier1: Tier1 = {
       items,
       units,
@@ -1211,7 +1123,6 @@ export class ModuleAnalysis {
       exportNames,
       declaringUnits,
       mutation,
-      purity,
       snapshotDiffers: (sym, at, live) => {
         if (mutation.isReassigned(sym, live)) {
           return true
@@ -1231,7 +1142,6 @@ export class ModuleAnalysis {
         })
       },
       isLazyAt,
-      runsLaterAt,
       inFunctionAt,
       parentOf: (node) => file.parentOf(node),
       nodeAt: (offset) => file.nodeAt(offset),
@@ -1318,9 +1228,7 @@ function offsetTest(outer: ReadonlyArray<Range>): (offset: number) => boolean {
  * `(async () => …)()`, `(() => …)?.()`, `new (function () { … })()`), through
  * the wrappers a value passes (`(f)`, `f as T`, `f!`, `f satisfies T`,
  * `<T>f`, `f<T>`) and `.call(…)`, `.apply(…)` or `.bind(…)(…)`. Its body
- * evaluates with the surrounding code: eager (an async one's body after an
- * `await`, a generator's, runs later: eager is the safe classification of
- * its reads, `runsLaterAt` answers for its writes). Asked of the parents: the text around the function
+ * evaluates with the surrounding code. Asked of the parents: the text around the function
  * cannot tell (`const f = () => { … }` followed by a line starting with
  * `(` is two statements).
  */
@@ -1504,100 +1412,6 @@ function declarationAssigns(file: SourceFile, id: Node): boolean {
     }
   }
   return true
-}
-
-/**
- * What an evaluation runs: the one definition of "runs at load" (README,
- * "effects and mutable state"), asked of one evaluation at a time. `text`
- * holds the references of the text the evaluation evaluates; `calls`, what
- * that text calls (`callsWhenEvaluated`; null when it calls nothing). The
- * evaluation runs the eager references of its text and, when it calls
- * anything, those of the functions it passes to a call
- * (`['x'].map((k) => n + k)`) and the text of every module-level
- * declaration a running reference names (`bodyOf`): the callee can be an
- * alias, a method of an object it reads (`o.m()`, `read.call()`), a
- * function it returns, or take the function as an argument
- * (`apply(read)`); what such a body names may run too, transitively. A
- * name's value is its declaration and the statements writing it when the
- * module loads (`handlers.count = () => n`, `g = () => n`): a call
- * reaching the name may run what they attach, so their text runs too.
- * Holding a function runs nothing (`const config = { read }`), nor does
- * writing one of its properties (`Page.displayName = …`, the root of a
- * member write), nor a method nested in an object argument
- * (`defineComponent({ setup() {} })`).
- *
- * The object a binding names is its value: its declaration and those
- * statements (the mutation model's `visitValues`, which also walks the
- * bodies). A reference reading that object's contents (`readsThrough`:
- * `alias.v`, `{ ...alias }`, `const { v } = alias`) reads what the value
- * holds when the module loads, which may be another binding's object
- * (`const alias = cfg`, `const holder = { cfg }`, `holder.c = cfg`): it
- * runs the eager references of that value, transitively, as if read in
- * place (an evaluation that calls something runs all of it already).
- *
- * `visit(ref, at)` sees each reference that runs with where it runs: its
- * own position in the evaluation's text, in a body the position of the
- * reference that reached the body first in source order (`const snap =
- * read()` above `function read() { … }` runs the body at `snap`). True
- * from `visit` ends the walk; the result says whether it did.
- */
-export function visitRuns(
-  t1: Pick<Tier1, 'mutation'>,
-  text: ReadonlyArray<ClassifiedRef>,
-  calls: EvaluatedCalls | null,
-  bodyOf: (u: UnitId) => ReadonlyArray<ClassifiedRef>,
-  visit: (ref: ClassifiedRef, at: number) => boolean,
-  /** Sees each body or value text the walk enters (`MutationModel.visitValues`). */
-  entered?: (u: UnitId, at: number, within: Range | undefined) => boolean,
-): boolean {
-  /** With a call: every reference but a member write's root (a body it names may run); without: those reading through their binding (only their values' eager references run). */
-  const roots: Array<ClassifiedRef> = []
-  for (const ref of text) {
-    if (
-      !ref.eager &&
-      (calls === null || !runsWhenPassed(calls, ref.range.start))
-    ) {
-      continue
-    }
-    if (visit(ref, ref.range.start)) {
-      return true
-    }
-    if (calls === null) {
-      if (ref.readsThrough) {
-        roots.push(ref)
-      }
-    } else if (!ref.memberWrite) {
-      roots.push(ref)
-    }
-  }
-  return (
-    roots.length > 0 &&
-    t1.mutation.visitValues(roots, calls === null, bodyOf, visit, null, entered)
-  )
-}
-
-/** Whether identifier `node` is the receiver of a link on a writing builder (`linkedBuilder`: `b.server(f)`), parentheses and casts aside. */
-function linksOn(file: SourceFile, b: BuilderPurity, node: Node): boolean {
-  const outer = (n: Node): Node => {
-    let parent = file.parentOf(n)
-    while (parent !== null && isExpressionWrapper(parent)) {
-      n = parent
-      parent = file.parentOf(n)
-    }
-    return n
-  }
-  const object = outer(node)
-  const member = file.parentOf(object)
-  if (member?.type !== 'MemberExpression' || member.object !== object) {
-    return false
-  }
-  const callee = outer(member)
-  const call = file.parentOf(callee)
-  return (
-    call?.type === 'CallExpression' &&
-    call.callee === callee &&
-    linkedBuilder(file, b, call) === node
-  )
 }
 
 /** The wrappers a value passes through unchanged (`(X)`, `X as T`, `X!`, `X satisfies T`, `<T>X`). */
@@ -1988,7 +1802,6 @@ interface BuilderImports {
 }
 
 const ENV_TYPES = ['client', 'server'] as const
-const NO_KINDS: ReadonlySet<string> = new Set()
 
 /** The purity of one environment type with the recognizer's builder chains the module imports. */
 function builderPurityOf(
@@ -2005,7 +1818,6 @@ function builderPurityOf(
         env,
         links: table.builderLinks!,
         envOnly: table.envOnlyKinds,
-        writes: table.builderLinksWrite ?? NO_KINDS,
         factories: imports.factories,
         namespaces: imports.namespaces,
         terminal: table.terminal,

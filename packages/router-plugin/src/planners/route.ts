@@ -48,13 +48,7 @@ type OptionsResolution =
   | { kind: 'object'; node: Node }
   | {
       kind: 'opaque'
-      reason:
-        | 'imported'
-        | 'call'
-        | 'written'
-        | 'shared'
-        | 'reassigned'
-        | 'other'
+      reason: 'imported' | 'call' | 'shared' | 'reassigned' | 'other'
     }
   /** `createRootRoute()`: no options to split or remove */
   | { kind: 'none' }
@@ -206,15 +200,6 @@ export function boundValueOf(
   return { node, syms }
 }
 
-/** Whether a const a value was named through is written to in the env output (`boundValueOf`'s `syms`). */
-export function chainWritten(
-  ctx: PlanContext,
-  syms: ReadonlyArray<SymbolId>,
-): boolean {
-  const live = liveInEnv(ctx)
-  return syms.some((sym) => ctx.t1.mutation.isMutated(sym, live))
-}
-
 /** Whether each const a value was named through has that one use, unexported (`boundValueOf`'s `syms`). */
 export function chainSoleUse(
   ctx: PlanContext,
@@ -350,8 +335,6 @@ export function recognizeRoute(
     if (node.type === 'ObjectExpression') {
       if (last === undefined) {
         options = { kind: 'object', node }
-      } else if (chainWritten(ctx, syms)) {
-        options = { kind: 'opaque', reason: 'written' }
       } else if (!chainSoleUse(ctx, syms)) {
         options = { kind: 'opaque', reason: 'shared' }
       } else {

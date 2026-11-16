@@ -484,6 +484,7 @@ export function startAnalysisOf(
   const settle = (p: Node, outer: Node, value: AbstractValue) => {
     switch (p.type) {
       case 'MemberExpression': // a member the climb judged
+      case 'SequenceExpression': // a discarded operand: its value goes nowhere
       case 'ExportDefaultDeclaration':
       case 'ExportSpecifier': // summaries follow exports
         return
@@ -768,8 +769,8 @@ export function startAnalysisOf(
       }
       if (p.type === 'SequenceExpression') {
         if (p.expressions[p.expressions.length - 1] !== outer) {
-          // a discarded operand
-          return
+          // a discarded operand: the chain ends here, created and dropped
+          break
         }
         node = p
         continue

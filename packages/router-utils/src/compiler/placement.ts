@@ -1,6 +1,7 @@
 /**
- * Placement of every plan but one with a `split` output and no route module
- * (the core's toy planners: R155, `reach.ts` `onOldEngine`). A route file (`PlanContext.setRouteModule`):
+ * Placement, a generic service: planners supply roots and derived outputs;
+ * the core decides what each output contains and what it imports, for every
+ * plan (R155). A route file (`PlanContext.setRouteModule`):
  * what route code splitting on `main` does, by its outcome, on the core's
  * analysis (spec-main-splitting 1.1-1.8). Any other plan (a server fn's
  * handler module, the RSC provider copy, erasure only) by the same rules,
@@ -59,28 +60,112 @@
  *   planner keeps it in place.
  */
 import { deriveId } from './identity'
-import { buildClusters } from './placement/clusters'
-import { readIndex } from './placement/reads'
-import { readFromRemoved } from './placement/roots'
-import type { ClusterId } from './placement/clusters'
-import type {
-  ExtractedExport,
-  Fallback,
-  Home,
-  OutputDecl,
-  Placement,
-  PlacementInput,
-  RootRef,
-  RouteModule,
-} from './reach'
+import { buildClusters } from './clusters'
+import { readFromRemoved, readIndex } from './reads'
+import type { ClusterId } from './clusters'
+import type { Tier1 } from './analysis'
 import type { SymbolId } from './symbols'
 import type { RegionId, UnitId } from './units'
-import type { GenUnitId, OutputId } from './rewrite'
+import type { GenUnitId, OutputId, RewriteSet } from './rewrite'
+
+export type RootRef =
+  | { t: 'unit'; id: UnitId }
+  | { t: 'gen'; id: GenUnitId }
+  /** A module binding a derived output's root reads as its value. */
+  | { t: 'sym'; id: SymbolId }
+
+export type OutputKind =
+  | 'env'
+  | 'split'
+  | 'shared'
+  | 'hydrate'
+  | 'provider'
+  | 'custom'
+
+export interface HeaderPolicy {
+  dropDirectives?: ReadonlyArray<string>
+  addDirective?: string
+}
+
+export interface OutputDecl {
+  id: OutputId
+  kind: OutputKind
+  /** Short key for shared-module ids and diagnostics (`component`, `h1`, …). */
+  key: string
+  /** The derived canonical id (null for env). */
+  derivedId: string | null
+  roots: Array<RootRef>
+  header?: HeaderPolicy
+  /** How the core's diagnostics name the output (`` `<Hydrate>` boundary ``; default its key). */
+  describe?: string
+  /**
+   * A `hydrate` output: the module bindings it imports from the module that
+   * holds them; it copies the others (H2 (a), spec-phase2-hydrate: the per-output
+   * form of `RouteModule.imported`).
+   */
+  imported?: ReadonlySet<SymbolId>
+}
+
+export type Home = OutputId | 'duplicate' | 'removed'
+
+export interface Fallback {
+  region: RegionId
+  reason: /** A derived output would assign a binding it imports, or (a `<Hydrate>` chunk) its copy of one the env module keeps. */
+    | 'shared-writer'
+    /** The planning rounds did not settle: every sub-region is kept in place (reported by the pipeline). */
+    | 'exhausted'
+}
+
+export interface PlacementInput {
+  t1: Tier1
+  rewrites: RewriteSet
+  outputs: Map<OutputId, OutputDecl>
+  canonicalId: string
+  /** The module's text. */
+  code: string
+  /** A route file (`PlanContext.setRouteModule`): placed as route splitting on `main` places it. */
+  routeModule: RouteModule | null
+}
+
+export interface SharedExport {
+  output: OutputId
+  /** The exported symbols of the cluster (the env module re-exports them from `output`). */
+  syms: Array<SymbolId>
+}
+
+/** A route file's placement input (`PlanContext.setRouteModule`). */
+export interface RouteModule {
+  /** The module bindings a split chunk imports from the route module when it reads them (it copies the others). */
+  imported: ReadonlySet<SymbolId>
+  /** The names `main` shares (`computeSharedBindings`): an exported one only chunks read moves to the shared module, which the route module re-exports it from. */
+  shared: ReadonlySet<SymbolId>
+  /** The route binding (`Route`): a `<Hydrate>` chunk imports it too, whatever encloses the boundary (H2 (a)). */
+  route?: SymbolId
+}
+
+export interface Placement {
+  clusterOfRegion: Map<RegionId, ClusterId>
+  clusterOfGen: Map<GenUnitId, ClusterId>
+  home: Map<ClusterId, Home>
+  /** Clusters each output contains (homed or duplicated). */
+  included: Map<OutputId, Set<ClusterId>>
+  /** o → (home output → symbols o imports from it). */
+  imports: Map<OutputId, Map<OutputId, Set<SymbolId>>>
+  /** Symbols each output must export for other outputs. */
+  exportsNeeded: Map<OutputId, Set<SymbolId>>
+  fallbacks: Array<Fallback>
+  /** Outputs created by placement (lazy shared modules). */
+  created: Array<OutputDecl>
+  /** Exported clusters homed in the shared module (the env module re-exports them). */
+  sharedExports: Array<SharedExport>
+  /** Type units the env module drops (TypeScript-only specifiers that follow their statement's value specifiers); every other type unit stays there, whatever its cluster. */
+  droppedTypeUnits: Set<UnitId>
+}
 
 /** A plan that is no route file: no name a chunk imports, none `main` shares. */
 const NO_ROUTE: RouteModule = { imported: new Set(), shared: new Set() }
 
-export function computeRoutePlacement(input: PlacementInput): Placement {
+export function computePlacement(input: PlacementInput): Placement {
   const { t1, rewrites, outputs } = input
   const {
     imported,
@@ -88,7 +173,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
     route: routeBinding,
   } = input.routeModule ?? NO_ROUTE
   const { units, items } = t1
-  const graph = buildClusters(input, true)
+  const graph = buildClusters(input)
   const reads = readIndex(input, graph)
   const { clusters, clusterOfSym } = graph
   const gens = rewrites.generated
@@ -183,9 +268,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
     [...clusters[c]!.declares].some((s) => imported.has(s))
 
   // ---- the env module --------------------------------------------------------
-  const derived = [...outputs.values()].filter(
-    (o) => o.id !== 'env' && o.kind !== 'export',
-  )
+  const derived = [...outputs.values()].filter((o) => o.id !== 'env')
   const rootedElsewhere = new Set<ClusterId>()
   for (const o of derived) {
     for (const r of liveRoots(o)) {
@@ -285,7 +368,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
           (graph.writesOfSym.get(s) ?? []).some((w) => {
             // (code the env module erases, a server function's handler on
             // the client, writes nothing in this environment)
-            if (w.member || w.augment || envView.isErasedAt(w.at)) {
+            if (envView.isErasedAt(w.at)) {
               return false
             }
             const by =
@@ -984,17 +1067,11 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   // would be written, the env module's read); code the env module holds too
   // (a helper both call) writes each side's own copy. One check of the
   // outcome, on the write table every placement shares.
-  const writers = new Map<ClusterId, SymbolId>()
+  const writers = new Set<ClusterId>()
   for (const w of graph.writes) {
     const c = w.owner === null ? undefined : graph.clusterOfRegion.get(w.owner)
     const d = clusterOfSym.get(w.sym)
-    if (
-      w.member ||
-      w.augment ||
-      c === undefined ||
-      d === undefined ||
-      c === d
-    ) {
+    if (c === undefined || d === undefined || c === d) {
       continue
     }
     for (const h of all) {
@@ -1008,17 +1085,17 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         // handler, assigns nothing there)
         !graph.viewOf(h).isErasedAt(w.at)
       ) {
-        writers.set(c, w.sym)
+        writers.add(c)
       }
     }
   }
   const fallbacks: Array<Fallback> = []
   if (writers.size > 0) {
     const fellBack = new Set<RegionId>()
-    const fallBack = (region: RegionId, binding: SymbolId) => {
+    const fallBack = (region: RegionId) => {
       if (!fellBack.has(region)) {
         fellBack.add(region)
-        fallbacks.push({ region, reason: 'shared-writer', binding })
+        fallbacks.push({ region, reason: 'shared-writer' })
       }
     }
     for (const o of derived) {
@@ -1026,11 +1103,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         continue
       }
       for (const root of rootsOf(o)) {
-        let binding: SymbolId | undefined
-        for (const c of reachFrom(o.id, [root])) {
-          binding ??= writers.get(c)
-        }
-        if (binding === undefined) {
+        if (![...reachFrom(o.id, [root])].some((c) => writers.has(c))) {
           continue
         }
         // the root's place in the source: its claimed text, or the
@@ -1038,24 +1111,24 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         if (root.t === 'gen') {
           for (const r of clusters[graph.clusterOfGen.get(root.id)!]!.regions) {
             if (rewrites.claims.has(r)) {
-              fallBack(r, binding)
+              fallBack(r)
             }
           }
         } else if (root.t === 'sym') {
           for (const u of t1.declaringUnits.get(root.id) ?? []) {
             if (units[u]!.kind !== 'type') {
-              fallBack(units[u]!.region, binding)
+              fallBack(units[u]!.region)
             }
           }
         } else {
-          fallBack(units[root.id]!.region, binding)
+          fallBack(units[root.id]!.region)
         }
       }
     }
   }
 
   // ---- the shared exports: re-exported by the env module ---------------------
-  const extracted: Array<ExtractedExport> = []
+  const sharedExports: Array<SharedExport> = []
   if (shared !== null) {
     const { id } = shared
     const syms = [...sharedRoots]
@@ -1066,7 +1139,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
       )
       .flatMap((c) => [...clusters[c]!.declares])
     if (syms.length > 0) {
-      extracted.push({ output: id, syms })
+      sharedExports.push({ output: id, syms })
       let exported = exportsNeeded.get(id)
       if (!exported) {
         exportsNeeded.set(id, (exported = new Set()))
@@ -1116,9 +1189,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
     exportsNeeded,
     fallbacks,
     created,
-    extracted,
-    kept: [],
+    sharedExports,
     droppedTypeUnits,
-    check: () => undefined,
   }
 }

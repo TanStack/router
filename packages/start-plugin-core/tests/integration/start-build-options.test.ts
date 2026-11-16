@@ -140,8 +140,8 @@ return { id, value: await callById(id) }`,
   )
 
   // A generator that embeds the documented inputs in a readable id: every
-  // server fn of the module, also of a name the module repeats or nested in
-  // functions, gets an id the client's request carries whole to the server
+  // server fn of the module, also of a name the module repeats, gets an id
+  // the client's request carries whole to the server
   // (a URL path segment), and the call runs its own handler. functionName
   // is the handler name earlier versions generated, so custom ids survive
   // the upgrade.
@@ -153,24 +153,11 @@ return { id, value: await callById(id) }`,
         bundler,
         files: {
           'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
-let first
-let second
-{
-  const twice = createServerFn().handler(async () => 'the first twice')
-  first = twice
-}
-{
-  const twice = createServerFn().handler(async () => 'the second twice')
-  second = twice
-}
-export { first, second }
-export function outer() {
-  const fn = createServerFn().handler(async () => 'in outer')
-  function inner() {
-    const fn = createServerFn().handler(async () => 'in inner')
-    return fn
-  }
-  return { fn, inner }
+export const first = { twice: createServerFn().handler(async () => 'the first twice') }
+export const second = { twice: createServerFn().handler(async () => 'the second twice') }
+export const outer = {
+  fn: createServerFn().handler(async () => 'in outer'),
+  inner: { fn: createServerFn().handler(async () => 'in inner') },
 }
 `,
           'src/client-entry.ts': `export * from './fns'\n`,
@@ -189,10 +176,10 @@ ${callByIdExports}`,
       })
       const urls = (
         await client.run(`return {
-  first: entry.first.url,
-  second: entry.second.url,
-  outer: entry.outer().fn.url,
-  inner: entry.outer().inner().url,
+  first: entry.first.twice.url,
+  second: entry.second.twice.url,
+  outer: entry.outer.fn.url,
+  inner: entry.outer.inner.fn.url,
 }`)
       ).result as Record<string, string>
       expect(

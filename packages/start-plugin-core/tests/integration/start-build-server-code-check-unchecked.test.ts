@@ -22,8 +22,12 @@ const timeout = 60_000
 
 const SECRET = 'MARK_SECRET'
 
-/** The route's loader, split into its own chunk; `body` is its body. */
-const routeModule = (body: string) =>
+/**
+ * The route's loader, split into its own chunk: `loader` is its value (a
+ * server fn, which is created once, when the module loads: R162), or
+ * `body` its function's body.
+ */
+const routeModule = ({ body, loader }: { body?: string; loader?: string }) =>
   `import { createFileRoute } from '@tanstack/react-router'
 import {
   createIsomorphicFn,
@@ -32,25 +36,21 @@ import {
   createServerOnlyFn,
 } from '@tanstack/react-start'
 export const Route = createFileRoute('/')({
-  loader: async () => {
-${body}
-  },
+  loader: ${loader ?? `async () => {\n${body}\n  }`},
   component: () => 'MARK_COMPONENT',
 })
 `
 
-const KINDS: Array<{ kind: string; body: string }> = [
+const KINDS: Array<{ kind: string; body?: string; loader?: string }> = [
   {
     kind: "a server function's handler",
-    body: `    const fn = createServerFn().handler(async () => '${SECRET}')
-    return fn`,
+    loader: `createServerFn().handler(async () => '${SECRET}')`,
   },
   {
     kind: "a server function's validator",
-    body: `    const fn = createServerFn()
-      .validator((data: string) => data + '${SECRET}')
-      .handler(async ({ data }) => data)
-    return fn`,
+    loader: `createServerFn()
+    .validator((data: string) => data + '${SECRET}')
+    .handler(async ({ data }) => data)`,
   },
   {
     kind: "a middleware's server implementation",
@@ -139,8 +139,8 @@ export const getRouter = () => createRouter({ routeTree })
 
   test.each(KINDS)(
     'the client build of $kind in a split loader holds none of it, without an error',
-    async ({ body }) => {
-      expectServerOnly(await build(routeModule(body)))
+    async (kind) => {
+      expectServerOnly(await build(routeModule(kind)))
     },
     timeout,
   )

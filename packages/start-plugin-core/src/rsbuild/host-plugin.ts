@@ -15,7 +15,6 @@ import {
   compilerCacheKey,
   emittedMapTexts,
   identify,
-  initialChunkResources,
   invariantDiagnostic,
   invariantViolated,
   locateDiagnostics,
@@ -23,8 +22,6 @@ import {
   normalizePath,
   rebuildModules,
   reportingFailure,
-  warnEagerExports,
-  webpackImporters,
 } from '@tanstack/router-utils/compiler'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
 import { heldIn, outputKey } from '../import-protection/session'
@@ -514,28 +511,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             )) {
               compilation.fileDependencies.add(path.normalize(file))
             }
-          })
-        }
-        if (
-          session.start.opts.mode === 'build' &&
-          environment.type === 'client'
-        ) {
-          // an extracted-export output an initial chunk holds is eager
-          // whatever the splitter did: say so once per file and export (J2.8)
-          compilation.hooks.processAssets.tap(PLUGIN_NAME, () => {
-            warnEagerExports(
-              initialChunkResources(compilation as never).map(
-                canonicalResource,
-              ),
-              'webpack',
-              session.start.warnings,
-              (m) => compilation.warnings.push(new WebpackError(m)),
-              webpackImporters(compilation as never, canonicalResource),
-              {
-                root: session.start.opts.root,
-                routeTree: opts.generator.clientRouteTree.path(),
-              },
-            )
           })
         }
         const ipEnv = ipEnvOf()

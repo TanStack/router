@@ -148,7 +148,7 @@ async function compile(
     throw new Error('the module was not compiled')
   }
   // the chunks the output imports, directly or through the module's other
-  // outputs (a boundary in a component an extracted-export module holds)
+  // outputs (a boundary in a component a shared module holds)
   const extracted: Compiled['extracted'] = []
   const chunks: Record<string, string> = {}
   const chunkOutputs: Record<string, CompileOutput> = {}
@@ -1832,5 +1832,57 @@ function Tree({ n }) {
         `return <><input ref={«p».${setter}} onClick={() => «p».el?.focus()} />{«p».count}{«p».label}</> }`,
       ),
     )
+  })
+})
+
+// A boundary inside a top-level statement (a member assignment, a call
+// argument): the chunk holds the children, the file keeps the statement
+// once, and the compiler's self-checks pass (spec-phase3 4.3 V1: the
+// chunk's wrapper text, mapped to the boundary, is the generated unit's own,
+// not the statement's). Source: the Hydrate gate's probes f_b01, f_b04, f_a03.
+describe('a boundary inside a top-level statement', () => {
+  const files = {
+    '/app/src/chart.tsx': 'export const Chart = (p: { t: string }) => p.t\n',
+    '/app/src/register.ts':
+      'export const register = (..._: Array<unknown>) => {}\n',
+  }
+  const head = `${REACT}import { Chart } from './chart'
+const tone = 'x'
+function Heavy() { return <Chart t={tone} /> }
+`
+  it.each([
+    {
+      name: 'a member assignment',
+      code: `${head}function Tabs() { return <div /> }
+Tabs.Panel = function Panel() { return <Hydrate when="visible"><Heavy /></Hydrate> }
+export { Tabs }
+`,
+      statement: 'Tabs.Panel = function Panel()',
+    },
+    {
+      name: 'a call argument',
+      code: `${head}import { register } from './register'
+register('panel', () => <Hydrate when="visible"><Heavy /></Hydrate>)
+`,
+      statement: "register('panel',",
+    },
+    {
+      name: 'a member assignment next to a default export',
+      code: `import { memo } from 'react'
+${head}function Tabs() { return <div /> }
+Tabs.Panel = function Panel() { return <Hydrate when="visible"><Heavy /></Hydrate> }
+export default memo(() => <Hydrate when="idle"><Heavy /></Hydrate>)
+export { Tabs }
+`,
+      statement: 'Tabs.Panel = function Panel()',
+    },
+  ])('compiles in $name', async ({ code, statement }) => {
+    const r = await compile(code, { env: buildClientEnv, files })
+    expect(r.errors).toEqual([])
+    expect(r.code.split(statement)).toHaveLength(2)
+    expect(r.extracted.length).toBeGreaterThan(0)
+    for (const { id } of r.extracted) {
+      expect(r.chunks[id]).toContain('<Heavy')
+    }
   })
 })

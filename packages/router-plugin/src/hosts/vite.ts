@@ -23,10 +23,8 @@ import {
   releaseEnvironment,
   reloadStaleModules,
   resolveSameFileSpecifier,
-  rollupEntryModuleIds,
   staleHotUpdate,
   viteLog,
-  warnEagerExports,
   watchDependencies,
   withOwnSourcesNamedByFile,
 } from '@tanstack/router-utils/compiler'
@@ -302,22 +300,6 @@ export function createRouterCompilerVitePlugin(
       return withOwnSourcesNamedByFile(options)
     },
 
-    generateBundle(_options, bundle) {
-      if (this.environment.config.consumer !== 'client') {
-        return
-      }
-      // an extracted-export output an entry chunk (or a chunk it imports
-      // statically) holds is eager whatever the splitter did: say so (J2.8)
-      warnEagerExports(
-        rollupEntryModuleIds(bundle),
-        'rollup',
-        sessions.of(this.environment).compiler.warnings,
-        (m) => this.warn(m),
-        (id) => this.getModuleInfo(id)?.importers ?? [],
-        { root: ROOT, routeTree: userConfig.generatedRouteTree },
-      )
-    },
-
     resolveId: {
       filter: { id: SAME_FILE_SPECIFIER_RE },
       handler(source, importer) {
@@ -384,15 +366,7 @@ export function createRouterCompilerVitePlugin(
         if (identity.derived === null && out.code === code) {
           return null
         }
-        return {
-          code: out.code,
-          map: out.map,
-          // an extracted export's module runs nothing of its own: a bundler
-          // may skip it while nothing imports what it exports (the
-          // webpack-family hosts' rule on the query)
-          moduleSideEffects:
-            identity.derived?.kind === 'export' ? false : undefined,
-        }
+        return { code: out.code, map: out.map }
       },
     },
 

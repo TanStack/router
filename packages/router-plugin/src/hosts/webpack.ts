@@ -2,7 +2,7 @@
  * Rspack / webpack host of the router compiler: `apply`
  * installs the loader rule (every JS module outside `node_modules`: the
  * loader compiles route modules, env and derived ids, and passes the rest
- * through), the `sideEffects: false` rule for extracted-export outputs, the
+ * through), the
  * one invalidation operation on `watchRun` and on registry changes, whose
  * stale set the compiler takes at `finishMake` (`StaleSetDrain`), the plans
  * of the route modules a persistent cache restores (checked at the first
@@ -13,19 +13,15 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  EXTRACTED_EXPORT_QUERY_RE,
   StaleSetDrain,
   displayPath,
   emittedMapTexts,
   identify,
-  initialChunkResources,
   locateDiagnostics,
   normalizePath,
   pathsOf,
   reportingFailure,
   restorePlans,
-  warnEagerExports,
-  webpackImporters,
   webpackResourceId,
 } from '@tanstack/router-utils/compiler'
 import { getConfig } from '../core/config'
@@ -46,7 +42,6 @@ import type { Config } from '../core/config'
 import type {
   EmittedMapsCompilerLike,
   IdleCompilerLike,
-  InitialChunksLike,
   PersistedPlan,
   RebuildCompilationLike,
 } from '@tanstack/router-utils/compiler'
@@ -112,9 +107,8 @@ interface ModuleLike {
 }
 
 /** The parts of a compilation the host uses (webpack and Rspack). */
-interface CompilationLike extends InitialChunksLike {
+interface CompilationLike {
   hooks: {
-    processAssets: { tap: (name: string, fn: () => void) => void }
     afterSeal: { tap: (name: string, fn: () => void) => void }
     finishModules: {
       tap: (name: string, fn: (modules: Iterable<ModuleLike>) => void) => void
@@ -248,19 +242,12 @@ export function createRouterCompilerWebpackPlugin(
       // registry change rebuilds it in place (`StaleSetDrain`; Rspack never
       // calls a `rebuildModule` callback of a module whose rules match
       // otherwise)
-      compiler.options.module.rules.unshift(
-        {
-          test: JS_FILE_RE,
-          exclude: DEPENDENCY_RE,
-          enforce: 'pre',
-          use: [{ loader: routerLoaderPath(), options: { instance } }],
-        },
-        {
-          test: JS_FILE_RE,
-          resourceQuery: EXTRACTED_EXPORT_QUERY_RE,
-          sideEffects: false,
-        },
-      )
+      compiler.options.module.rules.unshift({
+        test: JS_FILE_RE,
+        exclude: DEPENDENCY_RE,
+        enforce: 'pre',
+        use: [{ loader: routerLoaderPath(), options: { instance } }],
+      })
       // the modules of the environment's stale set (the dependents of its
       // file events, the route files whose registry entry changed: the
       // bundler sees no file event for them) are built again in the
@@ -329,23 +316,6 @@ export function createRouterCompilerWebpackPlugin(
             }
           }
         })
-        if (envType === 'client' && mode === 'build') {
-          compilation.hooks.processAssets.tap(PLUGIN_NAME, () => {
-            // an extracted-export output an initial chunk holds is eager
-            // whatever the splitter did: say so (J2.8)
-            warnEagerExports(
-              initialChunkResources(compilation).map(webpackResourceId),
-              'webpack',
-              session.warnings,
-              (m) => compilation.warnings.push(new WebpackError(m)),
-              webpackImporters(compilation as never, webpackResourceId),
-              {
-                root: compiler.context,
-                routeTree: userConfig.generatedRouteTree,
-              },
-            )
-          })
-        }
       })
       // edits and removals, invalidated before the compilation starts (all
       // at once: calls for one path queue in the core)

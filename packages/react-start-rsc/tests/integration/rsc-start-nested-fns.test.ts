@@ -1,9 +1,10 @@
 /**
- * A server fn created inside a function (SPEC J4.6) with a separate
- * provider (Vite's `rsc` environment, Rsbuild's RSC layer): hoisted into the
- * provider when its chain captures nothing of the enclosing function, so the
- * function runs in every environment and the handler runs in the provider;
- * a capture is a positioned compile error in every environment.
+ * A server fn hoisted from where its module creates it once (an object's
+ * entry, SPEC J4.6, R162) with a separate provider (Vite's `rsc`
+ * environment, Rsbuild's RSC layer): hoisted into the provider, so the
+ * object holds a server fn in every environment and the handler runs in the
+ * provider; one created inside a function that captures a binding of it is
+ * a compile error at the capture in every environment.
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -17,13 +18,12 @@ import {
   waitForHydration,
 } from './rsc-app'
 
-/** `make()` creates a server fn whose chain reads module bindings only. */
+/** `fns.make` is a server fn whose chain reads module bindings only. */
 const hoistable = `import { createServerFn } from '@tanstack/react-start'
 import { secret } from './secret'
 const METHOD = 'POST'
-export function make() {
-  const fn = createServerFn({ method: METHOD }).handler(async () => secret())
-  return fn
+export const fns = {
+  make: createServerFn({ method: METHOD }).handler(async () => secret()),
 }
 `
 
@@ -71,9 +71,9 @@ const files = {
   'src/secret.ts': `export const secret = (x = 'MARK_NESTED') => x\n`,
   'src/fns.ts': hoistable,
   'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-import { make } from '../fns'
+import { fns } from '../fns'
 export const Route = createFileRoute('/')({
-  loader: () => make()(),
+  loader: () => fns.make(),
   component: Page,
 })
 function Page() {
@@ -92,14 +92,14 @@ function positionOf(code: string, at: string) {
 }
 
 describe('Vite dev with a separate RSC provider', () => {
-  test('a server fn nested in a function runs in every environment when its chain captures nothing', async () => {
+  test('a hoisted server fn runs in every environment', async () => {
     const server = await startRscDevServer({ browser: true, files })
-    // the `rsc` environment evaluates the module and the function (the
-    // factory, the options and the stub it reads stay with the chain)
+    // the `rsc` environment evaluates the module (the factory, the options
+    // and the stub it reads stay with the chain)
     const inProvider = await server.import('/src/fns.ts', 'rsc')
-    expect(typeof inProvider.make()).toBe('function')
+    expect(typeof inProvider.fns.make).toBe('function')
     const inSsr = await server.import('/src/fns.ts', 'ssr')
-    expect(typeof inSsr.make()).toBe('function')
+    expect(typeof inSsr.fns.make).toBe('function')
     const page = await openRscPage(server, '/')
     await page.waitForText('loaded MARK_NESTED', {
       selector: '[data-testid=label]',
@@ -140,7 +140,7 @@ describe('Vite dev with a separate RSC provider', () => {
 })
 
 describe('Rsbuild dev with an RSC layer', () => {
-  test('a server fn nested in a function runs when its chain captures nothing, and a capture is a compile error', async () => {
+  test('a hoisted server fn runs, and a capture in a function is a compile error', async () => {
     const server = await startRscRsbuildDevServer({ browser: true, files })
     expect(server.errors).toEqual([])
     const page = await openRscPage(server, '/')

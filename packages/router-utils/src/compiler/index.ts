@@ -13,7 +13,6 @@ export {
   canonicalJson,
   deriveId,
   digestOf,
-  EXTRACTED_EXPORT_QUERY_RE,
   identify,
   isAssetId,
   isSplitGroupValue,
@@ -56,7 +55,6 @@ export { valueBinding } from './symbols'
 export { derivedIdOf } from './rewrite'
 export type { SymbolId } from './symbols'
 export type { Range } from './header'
-export { isPureExpression } from './purity'
 export type { RegionId, Unit } from './units'
 export { ModuleAnalysis } from './analysis'
 export type { ClassifiedRef, ImportEntry, Tier1 } from './analysis'
@@ -135,7 +133,7 @@ export {
 } from './stats'
 
 // bundler-shaped helpers of the hosts (Vite builds, webpack-family loaders and
-// compilations, eager extracted exports, emitted source maps); nothing of the
+// compilations, emitted source maps); nothing of the
 // compiler model uses them
 export {
   isFinalBuild,
@@ -160,13 +158,6 @@ export {
   rspackCallsEveryRebuildCallback,
 } from './hosts/rebuild'
 export type { IdleCompilerLike, RebuildCompilationLike } from './hosts/rebuild'
-export {
-  initialChunkResources,
-  rollupEntryModuleIds,
-  warnEagerExports,
-  webpackImporters,
-} from './hosts/eager-exports'
-export type { InitialChunksLike } from './hosts/eager-exports'
 export { emittedMapTexts } from './hosts/emitted-maps'
 export type {
   EmittedMapsCompilerLike,

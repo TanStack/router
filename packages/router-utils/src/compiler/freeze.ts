@@ -26,7 +26,7 @@ import type {
   OutputRecipe,
   Segment,
 } from './plan'
-import type { OutputDecl, Placement } from './reach'
+import type { OutputDecl, Placement } from './placement'
 import type { SymbolId } from './symbols'
 import type { TopLevelItem, Unit, UnitId } from './units'
 import type {
@@ -96,7 +96,6 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
   }
 
   const renderer = new Renderer(plan, code)
-  const extractedOutputs = new Set(placement.extracted.map((e) => e.output))
   // the units of each import declaration, once for every output
   const unitsOfImport = new Map<number, Array<Unit>>()
   for (const u of plan.t1.units) {
@@ -111,11 +110,6 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
   }
 
   for (const [id, decl] of plan.outputs) {
-    // an extracted export the core kept in the env module produces no
-    // module: a request for it (a stale importer) emits `export {}`
-    if (decl.kind === 'export' && !extractedOutputs.has(id)) {
-      continue
-    }
     const included = placement.included.get(id) ?? new Set()
     const recipeEdges: Array<EdgeRecord> = []
     const importerId = decl.derivedId ?? plan.identity.canonicalId
@@ -346,7 +340,7 @@ function renderEnv(
     exportNameOf,
     anchored.map((a) => a.gen),
   )
-  // export glue at the end (re-exports of extracted exports first)
+  // export glue at the end (re-exports of the shared module's exports first)
   const exportsText = [
     ...reexportGlue(plan, placement, exportNameOf),
     ...exportGlue(
@@ -532,7 +526,7 @@ function glueImportText(
   return frags
 }
 
-/** `export { x as name, … } from '/path/file?tsr-split=export---name'` for every extracted cluster. */
+/** `export { x as name, … } from '/path/file?tsr-split=shared---…'` for every exported cluster the shared module holds (`Placement.sharedExports`). */
 function reexportGlue(
   plan: AnalysisPlan,
   placement: Placement,
@@ -554,7 +548,7 @@ function reexportGlue(
       envIncluded?.has(c) === true
     )
   }
-  for (const e of placement.extracted) {
+  for (const e of placement.sharedExports) {
     const decl = plan.outputs.get(e.output)
     if (!decl?.derivedId) {
       continue
@@ -626,10 +620,10 @@ function exportGlue(
     }
   }
   if (output === 'env') {
-    const extractedSyms = new Set(placement.extracted.flatMap((e) => e.syms))
+    const sharedSyms = new Set(placement.sharedExports.flatMap((e) => e.syms))
     for (const [sym, to] of plan.exportedRenames) {
-      if (extractedSyms.has(sym)) {
-        continue // re-exported from the extracted output under its public names
+      if (sharedSyms.has(sym)) {
+        continue // re-exported from the shared module under its public names
       }
       const local = 'sym' in to ? plan.symbols.name(to.sym) : null
       if (local === null) {
@@ -1130,6 +1124,13 @@ class Renderer {
   ): void {
     const unit = entering ?? owner
     const mergedEnv = mergeEnv(env, unit?.env)
+    // the generated unit's own body (not an edit, a placeholder, an insert
+    // or what a region renders): its mapped text stands for no source text
+    const ownBody =
+      owner !== null &&
+      entering === null &&
+      slices === null &&
+      frags === owner.body
     for (const f of frags) {
       switch (f.k) {
         case 'slice': {
@@ -1197,9 +1198,11 @@ class Renderer {
           }
           if (text.length > 0) {
             out.push(
-              f.mapTo !== undefined
-                ? { k: 'text', text, mapTo: f.mapTo }
-                : { k: 'text', text },
+              f.mapTo === undefined
+                ? { k: 'text', text }
+                : ownBody
+                  ? { k: 'text', text, mapTo: f.mapTo, gen: true }
+                  : { k: 'text', text, mapTo: f.mapTo },
             )
           }
           break

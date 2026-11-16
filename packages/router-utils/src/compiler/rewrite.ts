@@ -18,7 +18,7 @@
  * range.
  */
 import type { Range } from './header'
-import type { OutputKind } from './reach'
+import type { OutputKind } from './placement'
 import type { ClassifiedRef, RefContext } from './analysis'
 import type { SymbolId } from './symbols'
 import type { RegionId, UnitId } from './units'
@@ -409,15 +409,6 @@ export class RegionTable {
       }
     }
     return found
-  }
-
-  /** The innermost region owning a reference. */
-  ownerOf(ref: ClassifiedRef): RegionId {
-    const id = this.innermostAt(ref.range.start, ref.range.end)
-    if (id === null) {
-      throw new Error(`reference at ${ref.range.start} is outside every region`)
-    }
-    return id
   }
 
   /**

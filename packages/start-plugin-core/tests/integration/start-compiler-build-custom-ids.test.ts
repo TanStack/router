@@ -134,36 +134,16 @@ export const c = createServerFn().handler(async () => 'from c')
     })
     cases.named = await host.case({
       'named-ids.ts': `import { createServerFn } from '@tanstack/react-start'
-let first
-let second
-let third
-{
-  const twice = createServerFn().handler(async () => 'the first twice')
-  first = twice
-}
-{
-  const twice = createServerFn().handler(async () => 'the second twice')
-  second = twice
-}
-{
-  const twice = createServerFn().handler(async () => 'the third twice')
-  third = twice
-}
-export { first, second, third }
+export const first = { twice: createServerFn().handler(async () => 'the first twice') }
+export const second = { twice: createServerFn().handler(async () => 'the second twice') }
+export const third = { twice: createServerFn().handler(async () => 'the third twice') }
 export const $dollar = createServerFn().handler(async () => 'dollar')
 export const _under = createServerFn().handler(async () => 'under')
 export const café = createServerFn().handler(async () => 'café')
-export const again = (() => {
-  const _under = createServerFn().handler(async () => 'under again')
-  return _under
-})()
-export function outer() {
-  const fn = createServerFn().handler(async () => 'in outer')
-  function inner() {
-    const fn = createServerFn().handler(async () => 'in inner')
-    return fn
-  }
-  return { fn, inner }
+export const again = { _under: createServerFn().handler(async () => 'under again') }
+export const outer = {
+  fn: createServerFn().handler(async () => 'in outer'),
+  inner: { fn: createServerFn().handler(async () => 'in inner') },
 }
 `,
     })
@@ -216,15 +196,15 @@ export function outer() {
   // handler.
   test('embedding functionName: server fns of one name in one module each reach their own handler', async () => {
     const calls = {
-      first: 'module.first',
-      second: 'module.second',
-      third: 'module.third',
+      first: 'module.first.twice',
+      second: 'module.second.twice',
+      third: 'module.third.twice',
       dollar: 'module.$dollar',
       under: 'module._under',
-      underAgain: 'module.again',
+      underAgain: 'module.again._under',
       cafe: 'module.café',
-      outer: 'module.outer().fn',
-      inner: 'module.outer().inner()',
+      outer: 'module.outer.fn',
+      inner: 'module.outer.inner.fn',
     }
     const urls = await inPage<Array<string>>(
       cases.named!,

@@ -11,9 +11,9 @@
  * fn only a split component calls, on a builder imported from another module
  * (R159: the chunk holds a caller copy, the lazy module the one instance):
  * edits of the builder's module and of the handler reach HTTP calls. A
- * server fn nested in a plain file's exported function, which the file names
- * (R159: hoisted into a module the file and its lazy module import): an edit
- * of its handler reaches server code and HTTP calls. On
+ * server fn in a plain file's exported object, which the file names (R159:
+ * hoisted into a module the file and its lazy module import): an edit of its
+ * handler reaches server code and HTTP calls. On
  * Vite's and Rsbuild's dev servers.
  */
 import { describe, expect, onTestFinished, test } from 'vitest'
@@ -92,23 +92,20 @@ function Page() {
 `
 
 /**
- * `src/nested-fns.ts`: a server fn nested in an exported function of a plain
- * file, hoisted on the server; the file names it, so it lives in a module the
+ * `src/nested-fns.ts`: a server fn in an exported object of a plain file,
+ * hoisted on the server; the file names it, so it lives in a module the
  * file and its lazy module import (R159); `mark` is the handler's.
  */
 const nestedFns = (mark: string) =>
   `import { createServerFn } from '@tanstack/react-start'
-export function makeNested() {
-  const nested = createServerFn().handler(() => 'N:${mark}')
-  return nested
-}
+export const hoisted = { nested: createServerFn().handler(() => 'N:${mark}') }
 `
 
 /** `src/routes/nested-dev.tsx`: the loader (server render) and a button (HTTP) call the nested server fn. */
 const nestedRoute = `import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import { makeNested } from '../nested-fns'
-const nested = makeNested()
+import { hoisted } from '../nested-fns'
+const nested = hoisted.nested
 export const Route = createFileRoute('/nested-dev')({ loader: () => nested(), component: Page })
 function Page() {
   const [text, setText] = useState('idle')

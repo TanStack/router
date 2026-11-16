@@ -139,21 +139,19 @@ function Page() {
   return <p data-testid="label">{theme} {data}</p>
 }
 `,
-  // A route module whose server fn is created inside a function only the
-  // split component calls.
+  // A route module whose server fn is hoisted (an object's entry, R162) and
+  // only the split component calls.
   'src/routes/nested.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
-function makeFn() {
-  return createServerFn().handler(async () => 'MARK_NESTED_FN')
-}
+const fns = { make: createServerFn().handler(async () => 'MARK_NESTED_FN') }
 export const Route = createFileRoute('/nested')({ component: Page })
 function Page() {
   const [called, setCalled] = useState('')
   return (
     <main>
       <p data-testid="called">called {called}</p>
-      <button data-testid="call" onClick={() => makeFn()().then(setCalled)}>MARK_NESTED_PAGE</button>
+      <button data-testid="call" onClick={() => fns.make().then(setCalled)}>MARK_NESTED_PAGE</button>
     </main>
   )
 }
@@ -455,7 +453,7 @@ describe('Vite production build with RSC', () => {
   // `start-env` planner's claim of the nested chain for the provider
   // output only): a route's component code
   // is in no file of the rsc environment.
-  test('a server fn nested in a function only the split component calls', async () => {
+  test('a hoisted server fn only the split component calls', async () => {
     const page = await open('/nested')
     await waitForHydration(page)
     await page.page.locator('[data-testid=call]').click()

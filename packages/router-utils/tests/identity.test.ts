@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  EXTRACTED_EXPORT_QUERY_RE,
   SAME_FILE_SPECIFIER_RE,
   deriveId,
   identify,
@@ -128,7 +127,7 @@ describe('identity', () => {
     expect(deriveId(parsed.canonicalId, parsed.derived!)).toBe(shared)
   })
 
-  it('tells a split group value from a shared or an extracted-export value of the same key', () => {
+  it('tells a split group value from a shared value of the same groups', () => {
     for (const base of [
       '/app/page.tsx',
       '/app/Page.vue?vue&type=script&lang.ts',
@@ -138,17 +137,6 @@ describe('identity', () => {
         { kind: 'split', value: 'component~loader' },
         { kind: 'shared', value: 'component+errorComponent' },
         { kind: 'shared', value: 'component~errorComponent' },
-        ...[
-          'Card',
-          'a---b',
-          'shared',
-          'export',
-          'default',
-          '',
-          'a+b',
-          'x&y=z',
-          'é',
-        ].map((value) => ({ kind: 'export', value }) as const),
       ] as const) {
         const id = deriveId(base, q)
         const value = new URLSearchParams(id.slice(id.indexOf('?') + 1)).get(
@@ -157,33 +145,6 @@ describe('identity', () => {
         expect(isSplitGroupValue(value), id).toBe(q.kind === 'split')
       }
     }
-  })
-
-  it("names an extracted export after 'export', anything but a word character percent-encoded", () => {
-    expect(deriveId('/app/page.tsx', { kind: 'export', value: 'Card' })).toBe(
-      '/app/page.tsx?tsr-split=export---Card',
-    )
-    for (const [name, printed] of [
-      ['a/b.css!é', 'export---a%2fb%2ecss%21%c3%a9'],
-      ['a---b', 'export---a%2d%2d%2db'],
-      ['a~b+c', 'export---a%7eb%2bc'],
-      ['$x_1', 'export---$x_1'],
-      ['a&b%?#c', 'export---a%26b%25%3f%23c'],
-    ] as const) {
-      const id = deriveId('/app/page.tsx', { kind: 'export', value: name })
-      expect(id).toBe(`/app/page.tsx?tsr-split=${printed}`)
-      expect(identify(id).derived).toEqual({ kind: 'export', value: name })
-    }
-    expect(EXTRACTED_EXPORT_QUERY_RE.test('?tsr-split=export---Card')).toBe(
-      true,
-    )
-    expect(EXTRACTED_EXPORT_QUERY_RE.test('?x=1&tsr-split=export---a')).toBe(
-      true,
-    )
-    expect(EXTRACTED_EXPORT_QUERY_RE.test('?tsr-split=component')).toBe(false)
-    expect(
-      EXTRACTED_EXPORT_QUERY_RE.test('?tsr-split=shared---component'),
-    ).toBe(false)
   })
 
   it('keeps a trailing language key of a foreign query last', () => {

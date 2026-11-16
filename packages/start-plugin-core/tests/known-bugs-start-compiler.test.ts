@@ -696,9 +696,9 @@ export let read: () => unknown
   // server fn initializing a declarator below the top level (in a function,
   // a block or a switch case) is extracted on the client, but the server
   // has no handler for it. Rejecting a placement with a clear compile error
-  // at the call is a valid fix here; supporting it is the goal
-  // (createServerFn/declaration-sites.test.ts "supports a server fn in
-  // ..."), and a supported one must reach its handler through an RPC.
+  // at the call is the fix for a position R162 refuses (a function, a
+  // block, a condition); a supported position (load-positions.test.ts) must
+  // reach its handler through an RPC.
   // Impact: the handler and its server-only imports ship to the client
   // (createServerFn alone), or the server fails to serve the module
   // (another factory).

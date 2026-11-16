@@ -2,18 +2,14 @@
  * Registers Start's compiler on Rsbuild: the shared session,
  * one `pre` loader rule per Start environment (every JS/TS id, env and
  * derived alike), the late `post` pass over the JS output of other module
- * types (and of a Vue SFC's script block: `vue.ts`), the `sideEffects: false` rules for
- * extracted-export outputs and the import-protection runtime, the host
+ * types (and of a Vue SFC's script block: `vue.ts`), the `sideEffects: false` rule for
+ * the import-protection runtime, the host
  * plugin of each environment compiler, the generator session and the
  * client route tree transform.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import {
-  ASSET_QUERY_RE,
-  EXTRACTED_EXPORT_QUERY_RE,
-  identify,
-} from '@tanstack/router-utils/compiler'
+import { ASSET_QUERY_RE, identify } from '@tanstack/router-utils/compiler'
 import { ownFileRule } from '../import-protection/rules'
 import { StartRsbuildCompilerSession } from './compiler-session'
 import { createStartHostPlugin } from './host-plugin'
@@ -133,13 +129,6 @@ export function registerStartCompiler(
         use: [
           { loader: loaderPath, options: { environment: environment.name } },
         ],
-      },
-      // extracted-export outputs of the route splitter are side-effect free (Rspack
-      // matches the regex against the query with its leading `?`)
-      {
-        test: JS_FILE_RE,
-        resourceQuery: EXTRACTED_EXPORT_QUERY_RE,
-        sideEffects: false,
       },
     ]
     // the late pass (import protection and start-env)

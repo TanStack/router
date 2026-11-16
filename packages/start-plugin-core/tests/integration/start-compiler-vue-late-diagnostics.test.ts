@@ -60,8 +60,7 @@ describe('vite dev', () => {
       source: sfc(`import { ref } from 'vue'
 import { createServerFn } from '@tanstack/vue-start'
 const count = ref(0)
-const fn = createServerFn().handler(async () => 'MARK_SERVER_SECRET')
-console.log(fn, count)`),
+console.log(count)`),
       at: `import { createServerFn } from '@tanstack/vue-start'`,
     },
     {
@@ -69,8 +68,7 @@ console.log(fn, count)`),
       source: sfc(`import { ref } from 'vue'
 import { base } from './b'
 const count = ref(0)
-const fn = base.handler(async () => 'MARK_SERVER_SECRET')
-console.log(fn, count)`),
+console.log(count)`),
       at: `import { base } from './b'`,
     },
     {

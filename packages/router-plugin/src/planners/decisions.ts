@@ -186,13 +186,11 @@ export function splitPlanOf(
           ? 'imported from another module'
           : route.options.reason === 'call'
             ? 'returned by a call'
-            : route.options.reason === 'written'
-              ? 'written to after their declaration'
-              : route.options.reason === 'shared'
-                ? 'also used outside the route call'
-                : route.options.reason === 'reassigned'
-                  ? 'in a variable that is reassigned'
-                  : 'not an object literal'
+            : route.options.reason === 'shared'
+              ? 'also used outside the route call'
+              : route.options.reason === 'reassigned'
+                ? 'in a variable that is reassigned'
+                : 'not an object literal'
       const call =
         route.kind === 'root' ? 'createRootRoute' : 'createFileRoute(path)'
       const fix =

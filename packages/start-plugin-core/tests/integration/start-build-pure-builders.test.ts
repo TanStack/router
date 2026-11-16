@@ -1,27 +1,22 @@
 /**
- * Start's own builder chains are no effect in the client and the server
- * builds when their arguments are pure (the arguments an environment's
- * compile erases, on the client a server fn's handler and validator or a
- * middleware's server, do not count): a page-only
- * `createServerFn()…handler(…)`, `createMiddleware(…).client(…)` or
- * `createIsomorphicFn()…` loads with the split chunk although an inline
- * `validateSearch` call after it stays in the route module. Learned from
+ * Start's own builder chains a declaration only split code reads holds (a
+ * `createServerFn()…handler(…)`, a `createMiddleware(…).client(…)`, a
+ * `createIsomorphicFn()…`, a chain on a `const` holding a builder, one with
+ * a call in its argument) load with the split chunk that reads them, in the
+ * client and the server builds, although an inline `validateSearch` call
+ * after them stays in the route module; nothing is reported. Learned from
  * real apps: 94 of 188 kept-declaration warnings over 10,653 route files
  * (47 apps) were such chains. A builder exists once: one read by two split
  * options lives in one module both import, and a middleware a server fn and
- * split code read runs once per call. A link called on a `const` holding a
- * builder is a write of that builder (a middleware's links write the
- * options of the builder they are called on), which moves with it (R139). A
- * chain with an impure argument stays an effect (target facts), which two
- * split options reading it share in one lazy module too (R151).
- * Both environments agree, so a server fn nested in a function may take a
- * builder chain in its options (the server compile hoists it).
+ * split code read runs once per call. A server fn written in an object
+ * entry may take a builder chain in its options (it is created where its
+ * statement runs).
  *
  * Server fns the component reads, exported or not, next to one the route
  * module keeps or not: each module holding a client stub imports the stub's
- * runtime itself, as it would an import the source wrote (an extracted
- * module evaluates before the route module's body, so it reads nothing of
- * the route module then). Learned from the
+ * runtime itself, as it would an import the source wrote (a module of the
+ * file the route module imports evaluates before the route module's body,
+ * so it reads nothing of the route module then). Learned from the
  * server-functions e2e app (its `method-not-allowed/$method` route), whose
  * client build failed the compiler's self-checks.
  */
@@ -216,14 +211,12 @@ export function Panel() {
   )
 }
 `,
-            // an exported function creating a server fn: the chunk copies it
+            // an exported object holding a server fn the split component reads
             'src/routes/copied-fn.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-export function makeAction() {
-  return createServerFn().handler(() => 'made')
-}
+export const actions = { make: createServerFn().handler(() => 'made') }
 export const Route = createFileRoute('/copied-fn')({
-  component: () => <p data-url={makeAction().url}>MARK_copied-fn</p>,
+  component: () => <p data-url={actions.make.url}>MARK_copied-fn</p>,
 })
 `,
             'src/routes/two-exported.tsx': `import { createFileRoute } from '@tanstack/react-router'
@@ -298,12 +291,12 @@ const sending = `createMiddleware({ type: 'function' }).server(({ next }) => nex
 
 const serverFiles = {
   'src/schema.ts': files['src/schema.ts'],
-  // a server fn nested in a function, with a builder chain in its options
+  // a hoisted server fn (an object's entry), with a builder chain in its options
   'src/nested.ts': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
-export function makeLookup() {
-  return createServerFn()
+export const lookups = {
+  lookup: createServerFn()
     .middleware([${sending}])
-    .handler(async ({ context }) => context.via)
+    .handler(async ({ context }) => context.via),
 }
 `,
   // a middleware a server fn (called by the loader) and the split component
@@ -328,42 +321,42 @@ export const Route = createFileRoute('/identity')({
   component: () => <p>{'MARK_identity'}{typeof counted.options}</p>,
 })
 `,
-  // a middleware `const` only a server fn nested in split code reads: the
-  // server compile hoists that server fn into the route module, which keeps
-  // the middleware it reads
+  // a middleware `const` only a hoisted server fn split code calls reads:
+  // the server compile hoists that server fn in the route module, which
+  // keeps the middleware it reads
   'src/routes/hoisted.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { createMiddleware, createServerFn } from '@tanstack/react-start'
 import { makeSchema } from '../schema'
 const tagged = createMiddleware({ type: 'function' }).server(({ next }) =>
   next({ context: { via: 'MARK_hoisted' } }),
 )
-function lookup() {
-  return createServerFn()
+const lookups = {
+  lookup: createServerFn()
     .middleware([tagged])
-    .handler(async ({ context }) => context.via)()
+    .handler(async ({ context }) => context.via),
 }
 export const Route = createFileRoute('/hoisted')({
   validateSearch: makeSchema({ tab: 'string' }),
-  loader: () => lookup(),
+  loader: () => lookups.lookup(),
   component: () => <p>{Route.useLoaderData()}</p>,
 })
 `,
-  'client-entry.ts': `export { makeLookup } from './src/nested'
+  'client-entry.ts': `export { lookups } from './src/nested'
 `,
-  'ssr-entry.ts': `export { makeLookup } from './src/nested'
+  'ssr-entry.ts': `export { lookups } from './src/nested'
 ${callByIdExports}`,
 }
 
 describe.each(startBundlers)('a %s build', (bundler) => {
   test(
-    'runs a nested server fn whose options are a builder chain, and a shared middleware once per call',
+    'runs a hoisted server fn whose options are a builder chain, and a shared middleware once per call',
     async () => {
       const build = await buildStart({
         bundler,
         files: serverFiles,
         entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
       })
-      const url = (await build.client.run('return entry.makeLookup().url'))
+      const url = (await build.client.run('return entry.lookups.lookup.url'))
         .result
       const { result } = await build.ssr.run(`${callByIdPrelude}
 const runs = () => globalThis.__runs ?? 0

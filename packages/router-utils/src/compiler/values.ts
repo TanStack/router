@@ -100,20 +100,10 @@ export interface RecognizerTable {
    * module-level `const` holding one) with pure arguments is no effect, and
    * an argument the environment erases is not evaluated there; an env-only
    * kind's argument is kept in its environment alone (`envOnlyKinds`). Read
-   * by the per-environment code effects of raw facts (import protection)
-   * and by the planners' purity of every compile, for its environment type
-   * (there, a link called on a `const` is an effect: `ModuleAnalysisOptions.env`).
+   * by the per-environment code effects of raw facts (import protection's
+   * effect model).
    */
   builderLinks?: Record<Kind, Record<string, 'client' | 'server' | 'both'>>
-  /**
-   * The builder kinds whose links write the builder they are called on
-   * (`createMiddleware`'s assign its options, which the next link of it
-   * reads): a link on a `const` holding one is a write of that `const`
-   * (R139). A link of another kind copies the options into a new builder
-   * (`createServerFn`) and writes nothing: two chains on one shared base
-   * only read it.
-   */
-  builderLinksWrite?: ReadonlySet<Kind>
 }
 
 export const EMPTY_RECOGNIZER: RecognizerTable = {

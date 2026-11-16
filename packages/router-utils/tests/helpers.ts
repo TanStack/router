@@ -138,8 +138,13 @@ export interface ToySplitOptions {
   deleteNodes?: Array<string>
   /** Whether to add a dev HMR-like hoist of an inline component (claim → chunk). */
   hoist?: boolean
-  /** Allow every exported declaration but the route into an extracted-export output (§3.5.3). */
-  extractExports?: boolean
+  /**
+   * Names of module bindings a chunk imports from the route module when it
+   * reads them (`RouteModule.imported`, the router planner's `Route` and
+   * `export const|let|var`); it copies the others. Set, the plan is a route
+   * file (`setRouteModule`).
+   */
+  imported?: ReadonlyArray<string>
   /**
    * An identifier option value is replaced by an env-scoped edit (the real
    * splitter's shape: the binding travels by placement and the chunk roots
@@ -174,17 +179,16 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
         ctx.tagGlueExports(opts.glueTag)
       }
       const { options, unit } = found
-      if (opts.extractExports) {
-        for (const e of ctx.analysis.exports) {
-          if (e.kind !== 'local' || e.local === null || e.typeOnly) {
-            continue
-          }
-          const sym = e.local
-          if (unit.declares.includes(sym)) {
-            continue // the route itself stays, as the real splitter has it
-          }
-          ctx.extractExport(sym, e.name)
-        }
+      if (opts.imported !== undefined) {
+        const names = opts.imported
+        ctx.setRouteModule({
+          imported: new Set(
+            ctx.t1.units
+              .flatMap((u) => u.declares)
+              .filter((s) => names.includes(ctx.symbols.name(s))),
+          ),
+          shared: new Set(),
+        })
       }
       for (const key of opts.deleteNodes ?? []) {
         const p = propertyOf(options, key)
@@ -719,7 +723,7 @@ export function dedent(s: string): string {
  * children become a fixed-home chunk `?tss-hydrate=h<n>` whose component takes
  * `props`; captures are forwarded through the substitution environment, inner
  * boundaries first (bottom-up). A boundary the core reports a fallback for
- * (`hydrate-writer`: the children assign a binding the module keeps) stays
+ * (`shared-writer`: the children assign a binding the module keeps) stays
  * in place, as Start's planner keeps it, with the reason in the facts
  * (`kept`: by key).
  */

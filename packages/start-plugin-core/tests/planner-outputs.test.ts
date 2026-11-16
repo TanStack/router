@@ -12,7 +12,7 @@ import {
 } from '@tanstack/router-utils/compiler'
 import { startRecognizer } from '../src/compiler/recognizer'
 import { START_ENV, startPlanners } from '../src/planners'
-import { importedAs, namesIn, shape } from './generated-names'
+import { importedAs, namesIn } from './generated-names'
 import type { StartEnvConfig, StartEnvFacts } from '../src/planners'
 import type {
   CompileOutput,
@@ -64,15 +64,6 @@ function envInfo(env: Env): EnvInfo {
     isProvider: env === 'ssr' || env === 'rsc',
     mode: 'build',
   }
-}
-
-/** The module of the one static import of `code` (a same-file derived module). */
-function importedModule(code: string): string {
-  const specifiers = [...code.matchAll(/^import .* from '([^']+)'$/gm)].map(
-    (m) => m[1]!,
-  )
-  expect(specifiers).toHaveLength(1)
-  return specifiers[0]!
 }
 
 async function compile(
@@ -334,15 +325,15 @@ export const wrapped = wrap(wrap(createServerFn().handler(async () => 'w')))
     expect(client.code).toContain(
       `wrap(wrap(createServerFn().handler(${clientRpc(client.code)}(`,
     )
-    // the hoisted chain lives in one module the file and the lazy module
-    // import (the lazy module's re-export of the wrapper is its only root,
-    // R159), with its handler loaded on the first call
+    // the hoisted chain stays in the file, right above its statement (F1,
+    // review-phase3), with its handler loaded on the first call
     const ssr = (await compile(files, 'ssr'))!
-    const chain = (await compile(files, 'ssr', importedModule(ssr.code)))!
-    expect(chain.code).toMatch(
-      shape(
-        `.handler(«h», (...args) => «load»().then((m) => m.«impl»(...args)))`,
-      ),
+    const { hoisted } = namesIn(
+      ssr.code,
+      `const «hoisted» = createServerFn().handler(«h», (...args) => «load»().then((m) => m.«impl»(...args)))`,
+    )
+    expect(ssr.code).toContain(
+      `(...args)))\nexport const wrapped = wrap(wrap(${hoisted}))`,
     )
   })
 
@@ -375,74 +366,39 @@ export const fn = createIsomorphicFn()['server'](() => 'x').client(() => 'client
     }
   })
 
-  test('a nested server fn is hoisted on the server and stubbed in place on the client', async () => {
+  test('a server fn in an object literal is hoisted on the server and stubbed in place on the client', async () => {
     const files2 = {
       '/app/module.tsx': `${head}import { db } from './db.server'
-export function make() {
-  const inner = createServerFn().handler(async () => db.inner())
-  return inner
+export const api = {
+  inner: createServerFn().handler(async () => db.inner()),
 }
 `,
       '/app/db.server.ts': `export const db = { inner: () => 'inner' }\n`,
     }
     const client = (await compile(files2, 'client'))!
     expect(client.code).toContain(
-      `const inner = createServerFn().handler(${clientRpc(client.code)}(`,
+      `inner: createServerFn().handler(${clientRpc(client.code)}(`,
     )
     expect(client.code).not.toContain('db.server')
     const ssr = (await compile(files2, 'ssr'))!
-    // hoisted: the module-level fn the nested occurrence reads, in one
-    // module the file and the lazy module import (R159)
-    const chain = (await compile(files2, 'ssr', importedModule(ssr.code)))!
+    // hoisted: the module-level fn the nested occurrence reads, in the file
+    // right above its statement (F1, review-phase3); the handler module
+    // holds the handler, loaded on the first call
     const { hoisted } = namesIn(
-      chain.code,
+      ssr.code,
       `const «hoisted» = createServerFn().handler(«h», (...args) => «load»().then((m) => m.«impl»(...args)))`,
     )
     expect(ssr.code).not.toContain('db.server')
-    expect(chain.code).not.toContain('db.server')
     const handlers = (await compile(
       files2,
       'ssr',
       '/app/module.tsx?tss-serverfn-handler',
     ))!
     expect(handlers.code).toContain('= async () => db.inner()')
-    expect(ssr.code).toContain(`import { ${hoisted} }`)
-    expect(ssr.code).toContain(`const inner = ${hoisted}`)
-    expect(chain.code).toContain('name: "inner"')
-  })
-
-  // The nested site is judged against the stub of its enclosing handler
-  // whatever the order the analysis found the sites in (here the inner
-  // factory's import binding comes first): on the client the handler is a
-  // stub, so the nested fn is dead there and never registered as
-  // client-referenced (J4.2: only client-referenced fns are HTTP-callable).
-  test('a nested server fn inside a handler is not a client server fn, whichever import binding declares it', async () => {
-    const files3 = {
-      '/app/module.tsx': `import { createServerFn as inner } from '@tanstack/react-start'
-import { createServerFn } from '@tanstack/react-start'
-import { db } from './db.server'
-export const outer = createServerFn().handler(async () => {
-  const nested = inner().handler(async () => db.inner())
-  return nested()
-})
-`,
-      '/app/db.server.ts': `export const db = { inner: () => 'inner' }\n`,
-    }
-    const client = (await compile(files3, 'client'))!
-    expect(client.diagnostics).toEqual([])
-    expect(client.code).not.toContain('db.server')
-    expect(
-      (client.facts.planners[START_ENV] as StartEnvFacts).serverFns.map(
-        (fn) => fn.name,
-      ),
-    ).toEqual(['outer'])
-    const ssr = (await compile(files3, 'ssr'))!
-    expect(ssr.diagnostics).toEqual([])
-    expect(
-      (ssr.facts.planners[START_ENV] as StartEnvFacts).serverFns.map(
-        (fn) => fn.name,
-      ),
-    ).toEqual(['outer', 'nested'])
+    expect(ssr.code).toContain(
+      `(...args)))\nexport const api = {\n  inner: ${hoisted},`,
+    )
+    expect(ssr.code).toContain('name: "inner"')
   })
 
   test('a nested server fn capturing a local is refused at the capture', async () => {
@@ -1083,7 +1039,11 @@ export function setup(props: { t: string }) {
       ))!
       expect(
         out.diagnostics.map((d) => d.range!.start).sort((x, y) => x - y),
-      ).toEqual([at('base.handler'), at('props.t'), at('f()).handler')])
+      ).toEqual([
+        at('base.handler'),
+        at('props.t'),
+        at('createServerFn().validator'),
+      ])
       const facts = out.facts.planners[START_ENV] as StartEnvFacts
       expect(facts.vueHoists).toEqual(
         vue
@@ -1093,7 +1053,7 @@ export function setup(props: { t: string }) {
                 reads: { name: 'base', builder: true },
               },
               { at: at('props.t'), reads: { name: 'props', builder: false } },
-              { at: at('f()).handler'), option: '`f()`' },
+              { at: at('createServerFn().validator') },
             ]
           : undefined,
       )

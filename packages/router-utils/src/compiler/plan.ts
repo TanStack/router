@@ -2,15 +2,14 @@
  * The two-layer plan: the ephemeral `AnalysisPlan` holds
  * the analysis, the rewrite set, the declared outputs and the planners'
  * facts for one compile attempt; `resolve()` runs the core phase (claims,
- * clusters, movable effects, roots, homes, inclusion, glue needs; `reach.ts`
- * over `placement/`)
+ * clusters, roots, homes, inclusion, glue needs: `placement.ts` over
+ * `clusters.ts` and `reads.ts`)
  * and `freeze()` renders everything into a plain `EmitPlan` from which no
  * Yuku object is reachable (`freeze.ts`).
  */
 import { deriveId, edgeKeyOf } from './identity'
 import { NameAllocator } from './names'
-import { computePlacement } from './reach'
-import { annotatable, keptDiagnostic } from './kept-diagnostics'
+import { computePlacement } from './placement'
 import { freezePlan } from './freeze'
 import { cleanOrphanedDeclarations } from './orphans'
 import { RegionTable, RewriteSet } from './rewrite'
@@ -22,7 +21,7 @@ import type {
   Placement,
   RootRef,
   RouteModule,
-} from './reach'
+} from './placement'
 import type { ModuleAnalysis, Tier1 } from './analysis'
 import type { Diagnostic } from './diagnostics'
 import type { Range } from './header'
@@ -52,7 +51,7 @@ export type {
   RootRef,
   HeaderPolicy,
   Fallback,
-} from './reach'
+} from './placement'
 
 export interface EnvInfo {
   name: string
@@ -85,7 +84,14 @@ export interface EdgeRecord {
 
 export type Segment =
   | { k: 'slice'; start: number; end: number; edgeKey?: string }
-  | { k: 'text'; text: string; mapTo?: number; edgeKey?: string }
+  | {
+      k: 'text'
+      text: string
+      mapTo?: number
+      edgeKey?: string
+      /** A generated unit's own body text: `mapTo` is where its map points, not source text this output renders. */
+      gen?: true
+    }
 
 export interface OutputRecipe {
   kind: OutputKind
@@ -114,12 +120,6 @@ export interface FallbackRecord {
   range: Range
   kind: RegionKind
   reason: Fallback['reason']
-  /** The name of the binding a writer fallback writes (`ordered-effect`: writes or reads). */
-  binding?: string
-  /** `ordered-effect`: the value writes `binding`, which other code uses or which stays where it does not evaluate (`Fallback.writes`). */
-  writes?: 'used' | 'kept'
-  /** `writes: 'kept'`: nothing but the value uses `binding`, and marking its initialiser `/* @__PURE__ *\/` frees it (`annotatable`). */
-  annotate?: true
 }
 
 interface OutputSpec {
@@ -155,16 +155,8 @@ export interface PlanContext<TName extends string = string> {
   declareOutput: (spec: OutputSpec) => OutputId
   addRoot: (output: OutputId, root: RootRef) => void
   /**
-   * Allows an exported, pure, unwritten declaration into its extracted-export
-   * output: the core moves it there when only derived outputs need it, and the
-   * env module re-exports it. The output takes the first name the module
-   * exports the binding under (`export { x as Public }`: the id and the
-   * diagnostics say `Public`).
-   */
-  extractExport: (sym: SymbolId, exportName: string) => void
-  /**
    * The module is a route file: placed as route splitting on `main` places
-   * it (`route-placement.ts`). `imported`: the bindings a split chunk
+   * it (`placement.ts`). `imported`: the bindings a split chunk
    * imports from the route module when it reads them; it copies the rest.
    */
   setRouteModule: (route: RouteModule) => void
@@ -237,7 +229,6 @@ export class AnalysisPlan implements PlanContext {
     unlessLive: ReadonlyArray<Range>
   }> = []
   readonly facts: PlannerFactsByName = {}
-  readonly extractions = new Map<SymbolId, OutputId>()
   /** Whether the module has a value `export * from …` (`glueExportBase`). */
   private starExports: boolean | undefined
   /** `tagGlueExports` (`glueExportBase`). */
@@ -334,20 +325,6 @@ export class AnalysisPlan implements PlanContext {
       throw new Error(`addRoot: unknown output ${output}`)
     }
     decl.roots.push(root)
-  }
-
-  extractExport(sym: SymbolId, exportName: string): void {
-    if (this.extractions.has(sym)) {
-      return
-    }
-    this.extractions.set(
-      sym,
-      this.declareOutput({
-        kind: 'export',
-        key: `export~${exportName}`,
-        derived: { kind: 'export', value: exportName },
-      }),
-    )
   }
 
   setRouteModule(route: RouteModule): void {
@@ -509,14 +486,9 @@ export class AnalysisPlan implements PlanContext {
       canonicalId: this.identity.canonicalId,
       code: this.analysis.source.code,
       routeModule: this.routeModule,
-      extractions: this.extractions,
-      extractedOutputs: this.env.mode === 'build',
     })
     for (const created of placement.created) {
       this.outputs.set(created.id, created)
-    }
-    for (const k of placement.kept) {
-      this.diagnostic(keptDiagnostic(this, k))
     }
     for (const { d, at, unlessLive } of this.liveDiagnostics) {
       if (
@@ -556,20 +528,6 @@ export class AnalysisPlan implements PlanContext {
   }
 
   /** Fallbacks of the last `resolve()`, keyed by range (planners re-plan with them). */
-  /** Whether every reference of `sym` is in `range` or in its own declarations. */
-  private usedOnlyIn(sym: SymbolId, range: Range): boolean {
-    const own = (this.t1.declaringUnits.get(sym) ?? []).map(
-      (u) => this.t1.units[u]!.range,
-    )
-    return this.t1.refs
-      .refsOf(sym)
-      .every((r) =>
-        [range, ...own].some(
-          (o) => o.start <= r.range.start && r.range.end <= o.end,
-        ),
-      )
-  }
-
   fallbackRecords(): Array<FallbackRecord> {
     const out: Array<FallbackRecord> = []
     for (const f of this.placement?.fallbacks ?? []) {
@@ -578,14 +536,6 @@ export class AnalysisPlan implements PlanContext {
         range: r.range,
         kind: r.kind,
         reason: f.reason,
-        ...(f.binding !== undefined && {
-          binding: this.symbols.name(f.binding),
-        }),
-        ...(f.writes !== undefined && { writes: f.writes }),
-        ...(f.writes === 'kept' &&
-          f.binding !== undefined &&
-          this.usedOnlyIn(f.binding, r.range) &&
-          annotatable(this, [f.binding]) && { annotate: true }),
       })
     }
     return out

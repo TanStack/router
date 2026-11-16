@@ -45,6 +45,30 @@ export function valueBinding(scope: Scope, name: string): Binding | null {
 
 type SymbolKind = 'source' | 'generated' | 'ambient' | 'synthetic'
 
+/**
+ * When a module binding gets its value, by the language's initialisation
+ * rule, which decides what code evaluated before its declaration reads:
+ * - `start`: an import is initialised when the module is linked, and a
+ *   function declaration (an async or generator one too) when the module's
+ *   scope is created, before any statement runs.
+ * - `undefined`: a `var` is `undefined` until its declarator runs, and
+ *   TypeScript compiles an `enum` and a `namespace` to a `var` their
+ *   statement assigns.
+ * - `declaration`: a `let`, a `const` and a class are uninitialised until
+ *   their declaration runs (reading one before it throws).
+ */
+export type Initialisation = 'start' | 'undefined' | 'declaration'
+
+function initialisationOf(b: Binding): Initialisation {
+  if (b.has(BindingFlags.Import) || b.has(BindingFlags.Function)) {
+    return 'start'
+  }
+  if (b.has(BindingFlags.BlockScopedVariable) || b.has(BindingFlags.Class)) {
+    return 'declaration'
+  }
+  return 'undefined'
+}
+
 interface SymbolInfo {
   name: string
   kind: SymbolKind
@@ -54,6 +78,7 @@ interface SymbolInfo {
   scopeRange: { start: number; end: number } | null
   /** Whether a source binding is a `let`/`var`/parameter (reassignable). */
   reassignable: boolean
+  initialisation: Initialisation
 }
 
 export class SymbolTable {
@@ -77,6 +102,7 @@ export class SymbolTable {
           !b.has(BindingFlags.Function) &&
           !b.has(BindingFlags.Class) &&
           !b.has(BindingFlags.Import),
+        initialisation: initialisationOf(b),
       })
     }
     this.sourceCount = this.infos.length
@@ -111,6 +137,8 @@ export class SymbolTable {
       isImport: false,
       scopeRange: null,
       reassignable: false,
+      // (a generated declaration is a `const`)
+      initialisation: 'declaration',
     })
     return (this.infos.length - 1) as SymbolId
   }
@@ -121,6 +149,11 @@ export class SymbolTable {
 
   isModuleLevel(s: SymbolId): boolean {
     return this.infos[s]!.moduleLevel
+  }
+
+  /** When the binding gets its value (`Initialisation`). */
+  initialisation(s: SymbolId): Initialisation {
+    return this.infos[s]!.initialisation
   }
 
   isImport(s: SymbolId): boolean {

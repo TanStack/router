@@ -291,70 +291,7 @@ return requestsOf((options) => (typeof loader === 'function' ? loader : loader.h
     timeout,
   )
 
-  // A server fn defined inside an option the server build deletes: the
-  // client keeps the option and calls the server fn, which the server
-  // still serves (as it does one declared at the top level of the file).
-  test(
-    'router.codeSplittingOptions.deleteNodes: a server fn defined inside a deleted option runs on the server',
-    async () => {
-      const { client, ssr } = await buildStart({
-        bundler,
-        files: {
-          ...routeFiles,
-          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
-export const Route = createFileRoute('/')({
-  loader: () => {
-    const greet = createServerFn().handler(async () => 'MARK_NESTED_FN')
-    return { greet }
-  },
-  component: () => 'MARK_COMPONENT',
-})
-`,
-          'src/client-entry.ts': `export { getRouter } from './router'\n`,
-          'src/ssr-entry.ts': `export { getRouter } from './router'
-${callByIdExports}`,
-        },
-        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-        start: {
-          router: { codeSplittingOptions: { deleteNodes: ['loader'] } },
-        },
-      })
-      const route = `const route = Object.values(entry.getRouter().routeTree.children).find(
-  (candidate) => candidate.options.id === '/',
-)
-`
-      const url = (
-        await client.run(
-          `${route}return (await route.options.loader()).greet.url`,
-        )
-      ).result
-      expect(
-        (
-          await ssr.run(
-            `${callByIdPrelude}${route}return {
-  loader: route.options.loader ?? null,
-  called: await callById(serverFnId(${JSON.stringify(url)})),
-}`,
-          )
-        ).result,
-      ).toEqual({ loader: null, called: 'MARK_NESTED_FN' })
-    },
-    timeout,
-  )
-
   test.each([
-    {
-      shape: 'a server fn nested in another one',
-      declarations: '',
-      loader: `() => {
-    const outer = createServerFn().handler(async () => {
-      const inner = createServerFn().handler(async () => 'MARK_NESTED_FN')
-      return inner()
-    })
-    return { greet: outer }
-  }`,
-    },
     {
       shape: 'an array element only the loader reads',
       declarations: `const [greet, title] = [createServerFn().handler(async () => 'MARK_NESTED_FN'), 'T']`,

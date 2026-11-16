@@ -30,10 +30,8 @@ import {
   loadDerivedSource,
   normalizePath,
   resolveSameFileSpecifier,
-  rollupEntryModuleIds,
   staleHotUpdate,
   takeStaleModules,
-  warnEagerExports,
   watchDependencies,
   watchLoadedFile,
   withOwnSourcesNamedByFile,
@@ -184,14 +182,7 @@ function envCompilerPlugins(
     if (identity.derived === null && out.code === code) {
       return null
     }
-    return {
-      code: out.code,
-      map: out.map as never,
-      // an extracted export's module runs nothing of its own (the router
-      // plugin's hosts' rule)
-      moduleSideEffects:
-        identity.derived?.kind === 'export' ? false : undefined,
-    }
+    return { code: out.code, map: out.map as never }
   }
   const plugin: Plugin = {
     name: `tanstack-start:compiler:${env.name}`,
@@ -524,23 +515,6 @@ function envCompilerPlugins(
         return
       }
       const s = state.sessionOf(this.environment)
-      if (env.type === 'client') {
-        // an extracted-export output an entry chunk (or a chunk it imports
-        // statically) holds is eager whatever the splitter did: say so
-        // once per file and export (J2.8)
-        warnEagerExports(
-          rollupEntryModuleIds(bundle as never),
-          'rollup',
-          s.start.warnings,
-          (m) => this.warn(m),
-          (id) => this.getModuleInfo(id)?.importers ?? [],
-          {
-            root: s.start.opts.root,
-            routeTree:
-              state.opts.getConfig().startConfig.router.generatedRouteTree,
-          },
-        )
-      }
       if (!s.start.ip) {
         return
       }

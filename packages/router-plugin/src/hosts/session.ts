@@ -22,7 +22,6 @@ import {
 } from '@tanstack/router-utils/compiler'
 import {
   ROUTER_PLANNER,
-  knownPureCalls,
   routerPlanner,
   routerPlannerApplies,
   routerPlannerConfigDigest,
@@ -122,8 +121,7 @@ export class RouterCompiler {
       readFile: (p) => fs.promises.readFile(p, 'utf8').catch(() => null),
       modifiedAt: fileModifiedAt,
       loadVirtual: () => Promise.resolve(null),
-      // the router's and the frameworks' pure APIs
-      recognizer: { ...EMPTY_RECOGNIZER, ...knownPureCalls() },
+      recognizer: EMPTY_RECOGNIZER,
     })
     this.caches = createCompilerCaches(
       rawFacts,

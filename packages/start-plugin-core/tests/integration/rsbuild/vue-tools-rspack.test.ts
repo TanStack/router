@@ -3,9 +3,11 @@
  * configured through `tools.rspack` (its rule and its `VueLoaderPlugin`)
  * instead of `@rsbuild/plugin-vue` (SPEC J4.12, G5): the SFC's script block
  * is a module of the app, and Start compiles it as with the plugin
- * (`vue-sfc.test.ts`). Its server fn keeps its handler on the server and the
- * client calls it by id, with vue-loader's inline match resource and
- * without it, and with the app's own subclass of `VueLoaderPlugin`.
+ * (`vue-sfc.test.ts`). A plain `<script>`'s server fn keeps its handler on
+ * the server and the client calls it by id, and a `<script setup>` block's
+ * isomorphic fn runs its client implementation (a server fn there is a
+ * compile error: R162), with vue-loader's inline match resource and without
+ * it, and with the app's own subclass of `VueLoaderPlugin`.
  */
 import { createRequire } from 'node:module'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
@@ -40,13 +42,15 @@ export default {}
 </template>
 `,
   'src/Setup.vue': `<script setup lang="ts">
-import { createServerFn } from '@tanstack/vue-start'
-const fn = createServerFn().handler(async () => 'MARK_SETUP_TS')
-defineExpose({ fn })
+import { createIsomorphicFn } from '@tanstack/vue-start'
+const iso = createIsomorphicFn()
+  .server(() => 'MARK_SETUP_TS')
+  .client(() => 'client implementation')
+defineExpose({ iso })
 </script>
 
 <template>
-  <p>server fn</p>
+  <p>isomorphic</p>
 </template>
 `,
   'src/entry.ts': `import { createApp } from 'vue'
@@ -109,27 +113,21 @@ describe.each([
   }, timeout)
   afterAll(() => dispose?.())
 
-  test.each([
-    {
-      name: 'a plain <script>',
-      read: 'entry.plainFn.url',
-      mark: 'MARK_PLAIN',
-    },
-    {
-      name: 'a <script setup lang="ts"> block',
-      read: 'entry.mount(entry.Setup).fn.url',
-      mark: 'MARK_SETUP_TS',
-    },
-  ])(
-    'a server fn of $name keeps its handler on the server, and the client calls it by id',
-    async ({ read, mark }) => {
-      expect(build.client.where(mark)).toBe('nowhere')
-      expect(build.ssr.where(mark)).not.toBe('nowhere')
-      const url = (await build.client.run(`return ${read}`)).result
-      const { result } = await build.ssr.run(
-        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
-      )
-      expect(result).toBe(mark)
-    },
-  )
+  test('a server fn of a plain <script> keeps its handler on the server, and the client calls it by id', async () => {
+    expect(build.client.where('MARK_PLAIN')).toBe('nowhere')
+    expect(build.ssr.where('MARK_PLAIN')).not.toBe('nowhere')
+    const url = (await build.client.run(`return entry.plainFn.url`)).result
+    const { result } = await build.ssr.run(
+      `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+    )
+    expect(result).toBe('MARK_PLAIN')
+  })
+
+  test('an isomorphic fn of a <script setup lang="ts"> block runs its client implementation in the client', async () => {
+    expect(build.client.where('MARK_SETUP_TS')).toBe('nowhere')
+    const { result } = await build.client.run(
+      `return entry.mount(entry.Setup).iso()`,
+    )
+    expect(result).toBe('client implementation')
+  })
 })

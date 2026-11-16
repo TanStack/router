@@ -133,7 +133,9 @@ export async function expectNoClientHandler(
     await startCase.ssr()
   }
   if (options.read !== undefined) {
-    if (served.client !== undefined) {
+    // (a client call reaches a server that compiled the module: one that
+    // rejects it fails the build, a valid outcome)
+    if (served.client !== undefined && served.ssr !== undefined) {
       expect(
         await callFromClient(startCase, options.read),
         'the handler a client call reaches',
