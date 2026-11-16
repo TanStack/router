@@ -323,7 +323,7 @@ function removeDeclarator(
   return true
 }
 
-/** Whether a statement in `parent` stands in a statement list (it may become another statement or go). */
+/** Whether a statement in `parent` stands in a statement list (so it can go). */
 function isStatementPosition(parent: Node | null): boolean {
   return (
     parent !== null &&

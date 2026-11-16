@@ -141,8 +141,10 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   `let`/`const`/`class` of the same statement throws at load (a `var` reads `undefined`). `main` fails the build on
   every such shape.
 
-- **A hook call only removed code reads goes, so a hook that takes an id shifts the ids after it** (R166, as `main`;
-  SPEC G16). `<ClientOnly>` children and a `<Hydrate>` `fallback` on the server, the other environment's half of an
+- **A hook call only removed code reads goes, so a hook that takes an id shifts the ids after it** (R166; SPEC G16;
+  as `main` for `<ClientOnly>` children and for a `<Hydrate>` `fallback` in a split route chunk; `main` keeps the
+  call for a `fallback` in any other file, where a hook taking an id works and a browser-only hook crashes the
+  server render: review-r166-drop-hooks 2). `<ClientOnly>` children and a `<Hydrate>` `fallback` on the server, the other environment's half of an
   env-only function: a declaration only that code read goes with its initialiser, a hook call included, and so does
   the import only it used. A hook that needs the browser then renders on the server (`integration/clientOnlyJSX.test.ts`:
   "browserHook…"; `integration/hydrate-build-cases.ts`: "a browser-only hook only the fallback reads lets the server
