@@ -316,10 +316,18 @@ ${body}`
   it.each([
     ['a second argument', `async () => 'first', async () => db.q()`],
     ['a spread and a trailing comma', `async () => 'first', other, ...[db.q],`],
+    [
+      'an env-only call as the second argument',
+      `async () => 'first', createServerOnlyFn(() => db.q())`,
+    ],
+    [
+      'an env-only call as the first argument',
+      `createServerOnlyFn(async () => 'first'), () => db.q()`,
+    ],
   ])(
     'stubs the whole argument list of a handler called with %s',
     async (_name, args) => {
-      const code = `import { createServerFn } from '@tanstack/react-start'
+      const code = `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { db } from './db.server'
 const other = 1
 export const fn = (createServerFn() as any).handler(${args})
@@ -342,9 +350,10 @@ export const fn = (createServerFn() as any).handler(${args})
       }
       const provider = await results[2].derived(PROVIDER)
       expectValid(provider)
-      // (the provider's list as written, after the wrapper it passes first)
+      // (the provider's list, after the wrapper it passes first)
       expect(provider).toMatch(/\.handler\([\w$]+, /)
-      expect(provider).toContain(`, ${args})`)
+      expect(provider).toContain("'first'")
+      expect(provider).toContain('db.q')
     },
   )
 

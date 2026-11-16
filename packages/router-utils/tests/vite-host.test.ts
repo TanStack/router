@@ -62,4 +62,13 @@ describe('reloadStaleModules', () => {
     expect(invalidated.sort()).toEqual([gone, kept].sort())
     expect(sent).toEqual([kept])
   })
+
+  // a virtual module's file is no path on disk: its update is still sent
+  it('sends the update of a module whose file is no absolute path', () => {
+    const caches = new MemoryHost({ files: {} }).caches
+    caches.stale.add('client', '\0virtual:routes')
+    const { env, sent } = environment(['\0virtual:routes'])
+    reloadStaleModules(caches, env, false, '[test]')
+    expect(sent).toEqual(['\0virtual:routes'])
+  })
 })
