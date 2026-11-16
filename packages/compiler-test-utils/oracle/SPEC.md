@@ -729,8 +729,9 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   each get their own chunk; `prefetch`'s `preload()` loads that chunk (and resolves at once with `split={false}`).
   The chunk holds its own copy of the module-level declarations the children reach, as `main`'s does (R155, R161:
   a second instance, no top-level statement), and imports only what a copy cannot be: a binding leading back to the
-  boundary (the route, a component rendering itself), a name a top-level statement declares, what another module of
-  the file holds. Children assigning such an import are rejected (J5.5); the copy's limits are KNOWN-BUGS'.
+  boundary (the route, a component rendering itself), a name a top-level statement declares (and a declaration such a
+  statement reads, as split chunks do), what another module of the file holds. Children assigning such an import are
+  rejected (J5.5); the copy's limits are KNOWN-BUGS'.
 - **J5.3 Server output.** Children still render to HTML (G1); the server renders a boundary marker; `fallback` is
   removed when statically visible (a direct prop, an inline object spread, a single-use `const` spread) and may stay
   otherwise.

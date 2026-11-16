@@ -130,7 +130,8 @@ per-output read walk (`readIndex`):
 - **a `<Hydrate>` chunk** (spec-phase2-hydrate H1/H2) copies every declaration its children reach, by binding and
   transitively, exported or not, and no top-level statement; it imports only what cannot be a copy: a binding its
   planner names (`OutputDecl.imported`: a declaration leading back to the boundary, the route or a recursive
-  component), a name a statement declares, what another module of the file holds (a shared name, a generated
+  component), a name a statement declares and a declaration such a statement reads (KNOWN-BUGS), what another module
+  of the file holds (a shared name, a generated
   declaration with its own home). It is no home of anything: two chunks reaching one helper each copy it.
 - Another planner's derived output (the server-fn handler module, one per file) imports what the env module keeps,
   and what it alone needs moves there; a provider output copies what it reaches (R157). A

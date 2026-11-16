@@ -191,6 +191,13 @@ start-build-lazy-handlers.test.ts`, "SSR (R159) %s: …" and "SSR: a server fn a
 - **A `<Hydrate>` chunk copies a destructuring declarator whole** (`const { a, b } = make()` with children reading
   `a`): `main`'s copy keeps `{ a }` only. Lazy bytes only (+4 B on the probe); the chunk evaluates `make()` once on
   both; pruning a pattern changes which getters run. No test (the outcome is the limit).
+- **A `<Hydrate>` chunk imports a declaration that a `var`-declaring top-level statement reads** (the rule split
+  chunks follow, `main`'s router splitter deletes such a declarator; `main`'s Hydrate transform copies it;
+  review-phase2-final 3.2, 4.2). `const cfg = { n: detect() }; if (typeof window !== 'undefined') { var extra =
+cfg.n }` with children reading `cfg`: the module exports `cfg` and the chunk imports it (+21 B eager on the probe;
+  `detect()` runs once, `main` runs it again in its copy). With `let cfg` assigned in the children, the boundary is
+  refused (`hydrate-module-write`), where `main`'s chunk assigns its copy; the PR's base refuses it too. Rare (a
+  top-level statement declaring a `var` and reading module state the children use). No test.
 
 ## Fixed, kept as regression tests
 

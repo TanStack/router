@@ -620,8 +620,9 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   const isChunk = (o: OutputId) => outputs.get(o)?.kind === 'split'
   /**
    * A `<Hydrate>` chunk: it copies the declarations its children reach and
-   * no statement (H1); it imports what its planner names and a name a
-   * statement declares (H2 (a), (b)), and what another module of the file
+   * no statement (H1); it imports what its planner names, a name a
+   * statement declares and a declaration such a statement reads (H2 (a),
+   * (b); the last as split chunks, KNOWN-BUGS), and what another module of the file
    * holds by the rules above (H2 (c)). No needer and no home: it holds
    * what it reached, as a provider copy does.
    */
