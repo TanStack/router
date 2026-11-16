@@ -1,5 +1,12 @@
 # @tanstack/vue-router-devtools
 
+## 1.167.3
+
+### Patch Changes
+
+- Updated dependencies [[`bbf9b75`](https://github.com/TanStack/router/commit/bbf9b75808d8eee497a6dd1663f0cf08426512e0)]:
+  - @tanstack/router-devtools-core@1.168.3
+
 ## 1.167.2
 
 ### Patch Changes

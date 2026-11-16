@@ -23,7 +23,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createRsbuild } from '@rsbuild/core'
-import { createBuilder, createServer } from 'vite'
+import { createBuilder, createLogger, createServer } from 'vite'
 import { onTestFinished } from 'vitest'
 import type { ViteDevServer } from 'vite'
 
@@ -129,6 +129,8 @@ export interface StartBuild {
   client: string
   /** The server build's JavaScript. */
   server: string
+  /** The warnings a Vite build logged (not collected for Rsbuild). */
+  warnings: Array<string>
 }
 
 /** Builds the app as `vite build` or `rsbuild build` does. */
@@ -138,11 +140,15 @@ export async function buildStartApp(
   options: StartOptions = {},
 ): Promise<StartBuild> {
   const plugin = await startPlugin(bundler, options)
+  const warnings: Array<string> = []
   if (bundler === 'vite') {
+    const customLogger = createLogger('error')
+    customLogger.warn = (message) => warnings.push(message)
+    customLogger.warnOnce = customLogger.warn
     const builder = await createBuilder({
       root: app.root,
       configFile: false,
-      logLevel: 'error',
+      customLogger,
       plugins: [plugin],
     })
     await builder.buildApp()
@@ -157,6 +163,7 @@ export async function buildStartApp(
   return {
     client: await emittedCode(path.join(app.root, 'dist/client')),
     server: await emittedCode(path.join(app.root, 'dist/server')),
+    warnings,
   }
 }
 

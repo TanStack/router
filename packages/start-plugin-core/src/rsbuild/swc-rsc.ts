@@ -3,6 +3,7 @@ import type { ModifyRspackConfigFn, Rspack } from '@rsbuild/core'
 
 type RspackConfig = Parameters<ModifyRspackConfigFn>[0]
 type RspackRule = Rspack.RuleSetRule
+type Falsy = false | 0 | '' | null | undefined
 
 /**
  * Walk the rspack config's module.rules and inject
@@ -27,7 +28,12 @@ export function enableSwcReactServerComponents(
       return []
     }
 
-    return typeof use === 'function' ? [] : Array.isArray(use) ? use : [use]
+    const loaders =
+      typeof use === 'function' ? [] : Array.isArray(use) ? use : [use]
+    // Rspack allows falsy entries in `use` for conditionally disabled loaders.
+    return loaders.filter(
+      (loader): loader is Exclude<typeof loader, Falsy> => !!loader,
+    )
   }
   const getLoaderPath = (
     loader: ReturnType<typeof getRuleLoaders>[number],
@@ -66,7 +72,9 @@ export function enableSwcReactServerComponents(
     }
 
     if (Array.isArray(use)) {
-      return use.map((loader) => cloneLoader(loader)) as RspackRule['use']
+      return use.map((loader) =>
+        loader ? cloneLoader(loader) : loader,
+      ) as RspackRule['use']
     }
 
     return cloneLoader(use) as RspackRule['use']

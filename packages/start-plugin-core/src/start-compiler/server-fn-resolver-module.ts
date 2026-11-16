@@ -31,7 +31,8 @@ export function generateServerFnResolverModule(
         ? `,\n    isClientReferenced: ${fn.isClientReferenced ?? true}`
         : ''
 
-      return `'${id}': {
+      // (a custom id can hold `'`)
+      return `'${id.replace(/[\\']/g, '\\$&')}': {
     functionName: '${fn.functionName}',
     ${moduleAccess}${clientReferenced}
   }`

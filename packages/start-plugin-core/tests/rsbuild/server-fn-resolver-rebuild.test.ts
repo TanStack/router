@@ -23,7 +23,7 @@ function setup(opts: { action?: 'dev' | 'build'; rsc?: boolean } = {}) {
       modifyRspackConfig: () => {},
     } as any,
     {
-      root: '/app',
+      getRoot: () => '/app',
       getConfig: () => {
         throw new Error('getConfig is not used by these tests')
       },
