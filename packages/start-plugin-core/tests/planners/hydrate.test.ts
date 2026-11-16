@@ -1200,20 +1200,16 @@ describe('the server output (J5.3)', () => {
     },
   )
 
-  it('keeps the effects of a local only the fallback read, and its other declarators', async () => {
-    const code = `${REACT}import { useSpinner } from './spinner'
-export function Page({ a, b }) {
-  const s = useSpinner()
+  it('keeps the other declarators of a local only the fallback read', async () => {
+    const code = `${REACT}export function Page({ a, b }) {
   const label = 'child', icon = <i />
-  return <Hydrate fallback={<>{s}{icon}{a}</>}><p>{label}{b}</p></Hydrate>
+  return <Hydrate fallback={<>{icon}{a}</>}><p>{label}{b}</p></Hydrate>
 }
 `
     const server = await compile(code, { env: ssrEnv })
-    // (Adjusted: the core's orphan cleanup keeps the call as `useSpinner();`
-    // where the former Hydrate pass wrote `(useSpinner());`, and prunes the
-    // `a` prop only the fallback read from the parameter pattern.)
+    // (Adjusted: the core's orphan cleanup prunes the `a` prop only the
+    // fallback read from the parameter pattern.)
     expect(server.code).toContain(`export function Page({ b }) {
-  useSpinner();
   const label = 'child'
   return <Hydrate h="${idAt(code)}"><p>{label}{b}</p></Hydrate>`)
   })

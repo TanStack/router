@@ -193,12 +193,11 @@ where main's chunk runs it again (never a declaration already unused: better tha
   runtime value (`valueBinding`). JSX is no read of the classic runtime's factory: the classic runtime is not supported
   with splitting.
 - **below the units** (`orphans.ts` `cleanOrphanedDeclarations`): function-local declarators, destructuring leaves,
-  function and class declarations only erased code reads go, with their initialisers whatever they do, as main's
-  dead-code elimination did. One naming convention keeps code: a hook call (`useX(…)`, `ns.useX(…)`, React's contract
-  for hooks) in a function stays as a statement with the import it reads, so every output calls the same hooks in the
-  same order (R160). The core runs that cleanup once after every planner, in every output when edits addressed to every
-  output orphaned it, else in the env module only. A module-level destructuring leaf stays while it is exported or
-  another output takes it; a property a live rest element keeps loses only its default value.
+  function and class declarations only erased code reads go, with their initialisers whatever they do (a hook call
+  too, R166), as main's dead-code elimination did. The core runs that cleanup once after every planner, in every output
+  when edits addressed to every output orphaned it, else in the env module only. A module-level destructuring leaf
+  stays while it is exported or another output takes it; a property a live rest element keeps loses only its default
+  value.
 - **planning rounds**: a derived output that would assign a binding it imports reports a _fallback_
   (`ctx.fallbackAt(range)` on the next round), and `compileModule` re-runs the planners with that region kept in
   place, until no new region is reported (a kept region can free the next one; every round keeps one more, so the

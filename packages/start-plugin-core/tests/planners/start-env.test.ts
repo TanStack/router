@@ -137,56 +137,6 @@ export {}
     expect(r.code).not.toMatch(/\bconst a\b/)
   })
 
-  it('keeps impure initialisers of a function (hook calls) as declarators', async () => {
-    const r = await compile(`${HEAD}const useX = () => 1, useY = () => 2
-export function useThing() {
-  const x = useX(), y = useY()
-  return createIsomorphicFn().server(() => x + y).client(() => 0)
-}
-`)
-    expectValid(r.code)
-    expect(r.code).toContain('const x = useX(), y = useY()')
-  })
-
-  // Hook calls are never dropped: the call stays as a statement with the
-  // import it reads, even when nothing else reads that import, so the hook
-  // order stays equal between the server and the client.
-  it('keeps orphaned hook calls and their imports (client)', async () => {
-    const r = await compile(`${HEAD}import { useRef, useState } from 'react'
-import { secret } from './db.server'
-export function Comp() {
-  const r = useRef(null)
-  const [s] = useState(0)
-  const run = createServerOnlyFn(() => secret() + r.current + s)
-  return run()
-}
-`)
-    expectValid(r.code)
-    expect(r.code).toContain("import { useRef, useState } from 'react'")
-    expect(r.code).toContain('  useRef(null);\n  useState(0);\n')
-    expect(r.code).not.toContain('./db.server')
-    expect(r.code).not.toContain('secret')
-  })
-
-  it('keeps an orphaned hook call only <ClientOnly> children read (server)', async () => {
-    const r = await compile(
-      `import { ClientOnly } from '@tanstack/react-router'
-import { useId } from 'react'
-import { useChartData, Chart } from './chart'
-export function Comp() {
-  const id = useId()
-  const chart = useChartData()
-  return <div id={id}><ClientOnly><Chart data={chart} /></ClientOnly></div>
-}
-`,
-      { env: ssrEnv },
-    )
-    expectValid(r.code)
-    expect(r.code).toContain('const id = useId()\n  useChartData();\n')
-    expect(r.code).toContain("import { useChartData } from './chart'")
-    expect(r.code).toContain('<ClientOnly/>')
-  })
-
   it('cascades: a declarator read only by an orphaned sibling goes with it', async () => {
     const r = await compile(`${HEAD}export function Comp() {
   const a = 1, b = a + 1, c = 3

@@ -539,25 +539,6 @@ export function Page() {
     const client = await compile(files, 'client')
     expect(client?.code ?? files['/app/module.tsx']).toContain('<Chart />')
   })
-
-  test('a hook call only the removed implementation read keeps running', async () => {
-    const out = (await compile(
-      {
-        '/app/module.tsx': `import { createIsomorphicFn } from '@tanstack/react-start'
-import { useId } from 'react'
-export function useField() {
-  const serverId = useId()
-  const describe = createIsomorphicFn().server(() => serverId).client(() => 'client')
-  const inputId = useId()
-  return [describe(), inputId]
-}
-`,
-      },
-      'client',
-    ))!
-    expect(out.code).toContain('useId();')
-    expect(out.code).not.toContain('const serverId')
-  })
 })
 
 describe('rsc-css', () => {

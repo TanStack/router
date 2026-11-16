@@ -167,6 +167,20 @@ static made = … }` off the client also when the kept loader, the split compone
   `let`/`const`/`class` of the same statement throws at load (a `var` reads `undefined`). `main` fails the build on
   every such shape.
 
+- **A hook call only removed code reads goes, so a hook that takes an id shifts the ids after it** (R166; SPEC G16;
+  as `main` for `<ClientOnly>` children and for a `<Hydrate>` `fallback` in a split route chunk; `main` keeps the
+  call for a `fallback` in any other file, where a hook taking an id works and a browser-only hook crashes the
+  server render: review-r166-drop-hooks 2). `<ClientOnly>` children and a `<Hydrate>` `fallback` on the server, the other environment's half of an
+  env-only function: a declaration only that code read goes with its initialiser, a hook call included, and so does
+  the import only it used. A hook that needs the browser then renders on the server (`integration/clientOnlyJSX.test.ts`:
+  "browserHook…"; `integration/hydrate-build-cases.ts`: "a browser-only hook only the fallback reads lets the server
+  render the children, …"). A dropped hook that takes an id (`useId`, a custom hook that calls it, Solid's
+  `createUniqueId`) changes the ids the server gives the component's later `useId` calls and the components below it:
+  React reports a hydration mismatch (#418) and renders the tree again on the client; Solid does not hydrate the page.
+  `const label = useLabel()` (calling `useId`) with `<ClientOnly>{label}</ClientOnly>` and a later `useId()`.
+  Workaround: call the hook in a component inside the boundary and render that component (the docs' fix for a hook
+  call in `<Hydrate>` children, deferred-hydration.md). No test (the outcome is the limit).
+
 - **Root routes are not split** (R60, SPEC J2.7): their components render on every page, or on error and not-found
   responses, where a lazy chunk only adds a round trip. `router-plugin/tests/integration/known-bugs-code-splitter-page-
 code.test.ts`: "a root route's components load with the route module" (Vite and Rspack).
@@ -817,9 +831,6 @@ Paths under `start-plugin-core/tests/` unless noted.
 - **Re-exports are looked up by local name only**, so distinct aliases and shadowing locals resolve to the wrong
   factory. SPEC J4.5, G15. `known-bugs-start-compiler.test.ts`: "distinct re-export aliases of two factories keep their
   own kind"; "%s: parameters and locals shadowing the factories are left alone next to a compiled factory call".
-- **Removing the other env's implementation, or `<ClientOnly>` children on the server, deletes hook calls only it
-  read**: a later `useId` gets another id on the server than on the client (hydration error). SPEC G3, J4.9.
-  `known-bugs-start-compiler.test.ts`: "$output: hook calls read only by the removed implementation still run".
 - **Env-specific functions inside a handler are not compiled on the server.** SPEC J4.10.
   `start-compiler-factories.test.ts`: "the server compiles env-specific functions inside a server fn handler".
 - **A provider module keeps the source's `'use client'`**, so RSC makes its exports client references. SPEC J4.2,

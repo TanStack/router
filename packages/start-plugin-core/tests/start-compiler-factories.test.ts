@@ -707,8 +707,6 @@ export const value = createServerFn()
 
   // Source: babel-dead-code-elimination "variable" > "within for...in";
   // #8504 start-compiler-factories.test.ts (top-level block row)
-  // Hook calls are different (dropping one changes the hook order; pinned
-  // separately); a plain server call like these must go.
   test('the client drops vars nested in blocks that only the server implementation reads', async () => {
     const served = await serve(
       `${head}import { connect, serverCall } from './db.server'

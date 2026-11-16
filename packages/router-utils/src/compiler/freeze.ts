@@ -1247,8 +1247,8 @@ class Renderer {
    * A `;` before text rendered at `offset` when it starts a statement of a
    * list, what renders before it does not end with a `;` and its first token
    * could continue that (`const x = foo` + `(() => 1)()` would be a call of
-   * `foo`): an edit replacing a call with a parenthesised function, an orphaned
-   * initialiser kept as a statement, a placeholder, or the source statement
+   * `foo`): an edit replacing a call with a parenthesised function, a
+   * placeholder, or the source statement
    * after an edit that removed the one before it (`let y = foo`, removed
    * `const local = 1;`, `(mk)()`). What renders before it may be generated, or
    * the statement before the one the source wrote there.

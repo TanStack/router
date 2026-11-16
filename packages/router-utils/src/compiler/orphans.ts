@@ -6,13 +6,8 @@
  * module's liveness. Module-level declarations, imports and their
  * provenance are placement's (`placement.ts`).
  */
-import { walk } from 'yuku'
 import { extendOverTrailingLine } from './header'
-import {
-  nextToken,
-  opensNonExpressionStatement,
-  patternIdentifiers,
-} from './source'
+import { nextToken, patternIdentifiers } from './source'
 import type { Node } from 'yuku'
 import type { ClassifiedRef } from './analysis'
 import type { Range } from './header'
@@ -31,7 +26,6 @@ import type {
 type CoreContext = PlanContext & { readonly rewrites: RewriteSet }
 
 const text = (part: string): Frag => ({ k: 'text', parts: [part] })
-const slice = (range: Range): Frag => ({ k: 'slice', range })
 const rangeOf = (n: Node): Range => ({ start: n.start, end: n.end })
 
 const BY = 'core:orphans'
@@ -69,9 +63,8 @@ const prune = (
  * Function-local declarators (and `var`/block declarators of the module
  * level the core's units do not model) and destructuring leaves all of
  * whose references are erased in the env output: the initialiser goes with
- * the declarator whatever it does (J4.12, documented removal), but for a
- * hook call at function level, which stays as an expression statement so
- * the hook order is the same in every output. Iterates to a fixpoint.
+ * the declarator whatever it does, a hook call included (J4.12, documented
+ * removal, as main). Iterates to a fixpoint.
  */
 export function cleanOrphanedDeclarations(
   ctx: CoreContext,
@@ -288,10 +281,8 @@ function takenElsewhere(
 
 /**
  * Removes a declarator all of whose bindings are orphaned, or reports that
- * it cannot: a single declarator's statement goes, or becomes its
- * initialiser when that calls a hook at function level; a declarator of
- * several is pruned with its neighbours (`prunedDecls`) unless it calls a
- * hook there.
+ * it cannot: a single declarator's statement goes; a declarator of several
+ * is pruned with its neighbours (`prunedDecls`).
  */
 function removeDeclarator(
   ctx: CoreContext,
@@ -313,42 +304,26 @@ function removeDeclarator(
   if (!statement || statement.type !== 'VariableDeclaration') {
     return false
   }
-  const effectsGo =
-    declarator.init === null ||
-    !ctx.t1.inFunctionAt(declarator.start) ||
-    !callsHook(declarator.init)
   if (statement.declarations.length === 1) {
     if (!isStatementPosition(file.parentOf(statement))) {
       return false
     }
-    ctx.rewrites.scopedEdit(
-      effectsGo
-        ? {
-            range: {
-              start: statement.start,
-              end: extendOverTrailingLine(code, statement.end),
-            },
-            body: [],
-            scope: scopeOf(refs),
-            by: BY,
-          }
-        : {
-            range: { start: statement.start, end: statement.end },
-            body: expressionStatement(code, declarator.init!),
-            scope: scopeOf(refs),
-            by: BY,
-          },
-    )
+    ctx.rewrites.scopedEdit({
+      range: {
+        start: statement.start,
+        end: extendOverTrailingLine(code, statement.end),
+      },
+      body: [],
+      scope: scopeOf(refs),
+      by: BY,
+    })
     return true
-  }
-  if (!effectsGo) {
-    return false
   }
   prune(prunedDecls, statement, declarator, refs)
   return true
 }
 
-/** Whether a statement in `parent` stands in a statement list (it may become another statement or go). */
+/** Whether a statement in `parent` stands in a statement list (so it can go). */
 function isStatementPosition(parent: Node | null): boolean {
   return (
     parent !== null &&
@@ -394,19 +369,6 @@ function orphanedPatternDeclarator(
     }
   }
   return node
-}
-
-/**
- * `init;` in place of a declaration statement: parenthesised when its first
- * token would start a block, a declaration or a `let` declaration instead
- * (`{ a: f() };`, `function () {}();`). The renderer guards a statement
- * start whose first token could continue the previous line.
- */
-function expressionStatement(code: string, init: Node): Array<Frag> {
-  if (opensNonExpressionStatement(code, init.start)) {
-    return [text('('), slice(rangeOf(init)), text(');')]
-  }
-  return [slice(rangeOf(init)), text(';')]
 }
 
 /**
@@ -560,41 +522,6 @@ function removeItems(
     }
     i = j
   }
-}
-
-const HOOK_NAME = /^use[A-Z0-9_]/
-
-/**
- * Whether an initialiser calls a hook (`useX(...)`, `ns.useX(...)`): a hook
- * call is never dropped, whatever it reads, so the hook order stays equal on
- * both sides (the call stays as a statement with its import). `main` drops
- * such calls and mismatches `useId` at hydration (R160). Possible later
- * optimisation, not done: a hook call could go when no `useId` call and no
- * custom hook (which may call `useId`) follows it in the same function.
- */
-function callsHook(init: Node): boolean {
-  let found = false
-  walk(init, {
-    enter: (n, wctx) => {
-      if (n.type !== 'CallExpression') {
-        return
-      }
-      const callee = n.callee
-      const name =
-        callee.type === 'Identifier'
-          ? callee.name
-          : callee.type === 'MemberExpression' &&
-              !callee.computed &&
-              callee.property.type === 'Identifier'
-            ? callee.property.name
-            : null
-      if (name !== null && HOOK_NAME.test(name)) {
-        found = true
-        wctx.stop()
-      }
-    },
-  })
-  return found
 }
 
 /**
