@@ -699,9 +699,10 @@ function sharedNamesOnMain(
    * The names `main` collects in a range (`collectModuleLevelRefsFromNode`,
    * Babel's `t.isReferenced`): an assignment's target (`x = …`, `x += …`,
    * `[x] = …`) is none; an update (`x++`) and a member write's object are.
-   * `main` reads the text Start leaves in the route module: what an earlier
-   * planner moved to another output (a server fn's handler, in its lazy
-   * module) reads nothing here (R158).
+   * `main` reads the text Start leaves in the route module: text an earlier
+   * planner erased in this environment (a server fn's handler on the
+   * client) or moved to another output (in its lazy module, R158) reads
+   * nothing here.
    */
   const { file } = ctx.analysis
   const env = ctx.rewrites.view('env')
@@ -713,7 +714,8 @@ function sharedNamesOnMain(
           (r.kind !== 'write' ||
             file.parentOf(file.nodeAt(r.range.start)!)?.type ===
               'UpdateExpression') &&
-          !env.isRelocatedAt(r.range.start),
+          !env.isRelocatedAt(r.range.start) &&
+          !env.isErasedAt(r.range.start),
       )
       .map((r) => r.sym)
   /** `buildDependencyGraph`: what each declaration reads (with the route binding: `fullDepGraph`). */
