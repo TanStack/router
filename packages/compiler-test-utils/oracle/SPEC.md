@@ -652,12 +652,16 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   member (`createServerFn()['handler'](…)`, `createMiddleware()['server'](…)`) or a server-only fn whose result is
   member-called (`createServerOnlyFn(…).bind(null)`), the client holds no server code, or the build fails with an
   error at the call. Look-alikes are left alone (G15).
-- **J4.6 Declaration sites.** Server functions declared at module top level work everywhere. A `createServerFn`
-  nested in a function works when its handler captures no local binding (a goal pin). When it captures locals or is
-  otherwise not extractable, the compiler either keeps the full semantics safely (client calls by id reach a server
-  handler with the same result; nothing leaks) or reports a clear error naming the capture; a broken or leaking
-  function is a bug. Other positions (default export, assignment, object property, class field, block) work or fail
-  with a clear error naming the file.
+- **J4.6 Declaration sites.** Server functions declared at module top level work everywhere. A `createServerFn` that
+  is not a top-level declarator's value works where its module creates it exactly once, unconditionally, when the
+  module loads (R162): any expression position a top-level statement evaluates (an object or array entry, an
+  argument, a callee or a member's object, an operand, a template's or JSX's expression, a spread, `export default`,
+  an assignment's right-hand side, a class's static fields and static blocks, a top-level `await`), created in source
+  order, with the values the source gives. Anywhere else the build fails with a clear error at the server fn: a
+  ternary's branch, the right operand of `&&`, `||`, `??` or of a logical assignment, after `?.`, a destructuring
+  default, a class instance field, a function (its body or a default parameter, a component, an immediately invoked
+  function, a Vue `<script setup>` block), a loop, `if`, a block, `try`, `switch`, a namespace's body; one that reads
+  a local of a function is reported at the local. Nothing leaks either way.
 - **J4.7 Import form independence.** A module's client output does not depend on how importers import it (static,
   dynamic, re-export, barrel); a dynamic import never leaks server code.
 - **J4.8 `createMiddleware`.** Client: `.server()` implementations and `.validator()` code (and their imports) are
@@ -914,8 +918,7 @@ A compiler may do any of these and still be correct; tests must not fail on them
 - **§5.10** (removed: root routes are not split, J2.7).
 - **§5.11 Dev-only extras**: HMR accept code shape, hot-data layout, Refresh registration mechanics, dev diagnostics.
 - **§5.12** (removed: now required, J4.11).
-- **§5.13 How a nested `createServerFn` is supported** (hoisting or any technique giving J4.6), and whether a
-  capturing one is supported safely or rejected clearly.
+- **§5.13 How a `createServerFn` created once at load is supported** (hoisting or any technique giving J4.6).
 - **§5.14 Source-map granularity and layout** beyond "positions resolve to the user's line and column"; no mappings
   for generated support code; absent optional report fields (J6.5).
 - **§5.15 Parser and printer** (Babel, Oxc/Yuku, SWC), and whether a module without the detection pattern is parsed

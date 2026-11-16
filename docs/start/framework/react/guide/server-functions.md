@@ -67,6 +67,30 @@ export const saveData = createServerFn({ method: 'POST' }).handler(async () => {
 })
 ```
 
+## Where to Define Server Functions
+
+A server function must be created exactly once, when its module loads, because the server needs that one instance before any of your code runs. Define it as a top-level `const`, or in an expression the module evaluates once when it loads: an object or array literal, a call argument, `export default`, or a class's static field.
+
+The build fails at a server function created anywhere else: inside a function or a component, a condition, a loop, or a block. Define it at the top level instead, and pass what it needs as its input:
+
+```tsx
+// ❌ created each time the component renders: a build error
+function Profile({ id }: { id: string }) {
+  const getUser = createServerFn().handler(async () => findUser(id))
+  // ...
+}
+
+// ✅ created once, called with its input
+const getUser = createServerFn()
+  .validator((id: string) => id)
+  .handler(async ({ data }) => findUser(data))
+
+function Profile({ id }: { id: string }) {
+  const user = getUser({ data: id })
+  // ...
+}
+```
+
 ## Where to Call Server Functions
 
 Call server functions from:

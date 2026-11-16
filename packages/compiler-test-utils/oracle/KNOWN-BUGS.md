@@ -82,8 +82,10 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   the imports the template uses), and the template can attach server code to it (`{{ base.handler(…) }}`), so the
   refusal is right and no server code ships. Hit by a JavaScript block importing a builder or factory, and by any block
   whose local holds an open builder. The refusal names the binding at its declaration in the SFC when the input map
-  maps it (dev; a build with `build.sourcemap`), with the recipe: `lang="ts"`, builders and middleware in a `.ts` module
-  (a module-scope `<script lang="ts">` fails the same way in dev), one chain, or the value passed as input. Accepted, R92 amendment 3: a fix must not need a
+  maps it (dev; a build with `build.sourcemap`), with the recipe: `lang="ts"`, builders, middleware and server
+  functions in a `.ts` module (a module-scope `<script lang="ts">` fails the same way in dev for a builder; a server
+  function there written as one chain builds). A server function in a `<script setup>` block is a compile error in any
+  case (it is created in the setup function, R162, SPEC J4.6). Accepted, R92 amendment 3: a fix must not need a
   special case for the plugin's output (skipping `__returned__` ships a template-attached handler). Upstream option:
   compiler-sfc exposing only the template's imports for JavaScript as for TypeScript. SPEC J4.5.
   `start-plugin-core/tests/integration/known-bugs-start-compiler-vue-script-setup.test.ts`: "$name compiles"; must stay
@@ -698,10 +700,8 @@ Paths under `start-plugin-core/tests/` unless noted.
   and the shape works, or the build fails at the call". (Same cause in J7: "renderServerComponent styles the server
   component when its result is chained".)
 - **Server fns outside a top-level variable declaration are left untransformed, broken or rejected without a
-  position.** SPEC J4.6. `createServerFn/declaration-sites.test.ts`: "a server fn declared in $name never ships its
-  nested handler to the client"; "supports a server fn in $name"; "with %s imported, supports a server fn in the
-  handler of another server fn"; "with %s imported, supports server fns of the same name in two functions"; "a server
-  fn created through an optional call chain compiles like a plain chain or is rejected";
+  position.** SPEC J4.6. `createServerFn/declaration-sites.test.ts`: "a server fn created through an optional call
+  chain compiles like a plain chain or is rejected";
   `known-bugs-start-compiler.test.ts`: "a createServerFn in $name does not ship its handler to the client"; "with
   another Start factory imported, a server fn in $name works or is rejected at the call"; "with %s imported, a nested
   server fn whose handler reads a local of its function is supported or rejected at the capture".
