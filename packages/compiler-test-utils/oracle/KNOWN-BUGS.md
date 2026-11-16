@@ -119,6 +119,13 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
 
 ## Accepted limits
 
+- **The server namespace of a module with a lazy handler module has extra keys** (R164, coverage-review-B F2;
+  accepted: "people shouldn't be inspecting the modules of something we compile"). The handler module imports what
+  the file keeps, so the file exports it under generated names (an exported server fn's RPC wrapper, a kept local a
+  handler reads, the loader): `Object.keys(ns)` of an `import * as ns` of such a module lists them on the server and
+  not on the client, and rendering it fails hydration (React #418). `Object.values(ns)` gets each server fn twice.
+  Member reads (`ns.alpha()`) are unaffected. Workaround: enumerate an explicit list.
+
 - **With RSC, a `<ClientOnly>` in a server component outside a server fn's handler shows its fallback for good**
   (as `main`; review-coverage-fix-batch 1): the environment that renders server components keeps `<ClientOnly>`
   children only in handler text, since it also evaluates modules whose components only SSR and the browser render,
