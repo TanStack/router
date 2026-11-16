@@ -571,31 +571,6 @@ function plan(ctx: PlanContext<typeof HYDRATE_PLANNER>): void {
       )
     }
   }
-  if (planned.size > 0) {
-    extractExports(ctx)
-  }
-}
-
-/**
- * Extracted-export outputs for Hydrate chunks, as for split routes (J5.4 "an
- * export only the children use loads lazily"): every exported binding may
- * leave for an extracted-export output (`?tsr-split=export---<name>`, side-effect
- * free), which the parent re-exports; the core moves a pure, unwritten
- * declaration there only when the parent itself does not read it and a chunk
- * needs it (the chunk copies it when the copy is functions and primitives
- * nothing writes, else imports it from there; in dev the declaration stays in
- * the parent: `placement/settle.ts`), so a component a boundary renders and nothing
- * else imports is not in the eager code. (A route file is placed by
- * `route-placement.ts`, which extracts nothing: an export stays in the route
- * module, R153.)
- */
-function extractExports(ctx: PlanContext): void {
-  for (const e of ctx.analysis.exports) {
-    if (e.kind !== 'local' || e.local === null || e.typeOnly) {
-      continue
-    }
-    ctx.extractExport(e.local, e.name)
-  }
 }
 
 /**
@@ -880,22 +855,29 @@ function validate(
 }
 
 /**
- * Whether the children of `b` read, through module-level declarations, the
- * unexported top-level declaration holding the boundary (a recursive
- * component rendering itself inside its own boundary): that declaration is
- * then the chunk's, and so is the lazy const only it reads.
+ * The children's walk to the top-level declaration holding `b`, by name
+ * through module-level declarations (names on the source only):
+ * - `leadsBack`: the bindings the children reach that reach that
+ *   declaration, it included (H2 (a), spec-phase2-hydrate: the route, a
+ *   recursive component). A copy of one would hold the boundary again; the
+ *   chunk imports each the module keeps (`OutputSpec.imported`);
+ * - `enclosingUnexported`: the children reach that declaration and it is
+ *   unexported (a recursive component): when the module does not keep it,
+ *   the chunk holds it, and the lazy const only it reads, next to the chunk
+ *   component, so the two need distinct names.
  */
-function reachesEnclosingDeclaration(
+function leadsBackToBoundary(
   ctx: PlanContext,
   b: Boundary,
   region: Range,
-): boolean {
+): { leadsBack: Set<SymbolId>; enclosingUnexported: boolean } {
   const { t1, symbols } = ctx
+  const none = { leadsBack: new Set<SymbolId>(), enclosingUnexported: false }
   const item = t1.items.find(
     (it) => it.range.start <= b.element.start && b.element.start < it.range.end,
   )
   if (!item) {
-    return false
+    return none
   }
   const enclosing = item.units
     .map((u) => t1.units[u]!)
@@ -905,36 +887,55 @@ function reachesEnclosingDeclaration(
   if (
     !enclosing ||
     enclosing.kind !== 'declaration' ||
-    enclosing.exported.length > 0 ||
     enclosing.declares.length === 0
   ) {
-    return false
+    return none
   }
   const target = new Set(enclosing.declares)
-  const seen = new Set<SymbolId>()
+  // what the children reach, and what each reached binding's declarations name
+  const named = new Map<SymbolId, Array<SymbolId>>()
   const work: Array<SymbolId> = []
-  const push = (range: Range) => {
+  const namesIn = (range: Range) => {
+    const out: Array<SymbolId> = []
     for (const ref of t1.refs.refsIn(range)) {
-      if (symbols.isModuleLevel(ref.sym) && !seen.has(ref.sym)) {
-        seen.add(ref.sym)
-        work.push(ref.sym)
+      if (symbols.isModuleLevel(ref.sym)) {
+        out.push(ref.sym)
+        if (!named.has(ref.sym)) {
+          named.set(ref.sym, [])
+          work.push(ref.sym)
+        }
       }
     }
+    return out
   }
-  push(region)
+  namesIn(region)
   while (work.length > 0) {
     const sym = work.pop()!
-    if (target.has(sym)) {
-      return true
-    }
+    const out: Array<SymbolId> = []
     for (const u of t1.declaringUnits.get(sym) ?? []) {
       const unit = t1.units[u]!
       if (unit.kind === 'declaration') {
-        push(unit.range)
+        out.push(...namesIn(unit.range))
+      }
+    }
+    named.set(sym, out)
+  }
+  const leadsBack = new Set<SymbolId>([...target].filter((t) => named.has(t)))
+  for (let changed = leadsBack.size > 0; changed; ) {
+    changed = false
+    for (const [sym, out] of named) {
+      if (!leadsBack.has(sym) && out.some((t) => leadsBack.has(t))) {
+        leadsBack.add(sym)
+        changed = true
       }
     }
   }
-  return false
+  return {
+    leadsBack,
+    enclosingUnexported:
+      enclosing.exported.length === 0 &&
+      [...target].some((t) => leadsBack.has(t)),
+  }
 }
 
 function declaredWithin(ctx: PlanContext, s: SymbolId, region: Range): boolean {
@@ -989,25 +990,10 @@ function isNode(v: unknown): v is Node {
 
 /** Core fallbacks (placement constraints found after planning) that refuse an extraction. */
 const FALLBACK_REASONS: Record<string, { code: string; message: string }> = {
-  'hydrate-writer': {
-    code: 'hydrate-module-write',
-    message:
-      'Hydrate cannot code-split JSX that assigns a module-level binding the rest of the module also uses: split code cannot assign a binding it imports. Move the code that assigns it into a component defined outside the boundary, and render that component inside it, or use split={false}.',
-  },
-  'multi-writer': {
-    code: 'hydrate-module-write',
-    message:
-      'Hydrate cannot code-split JSX that assigns a module-level binding other split code also assigns. Move the state into one component, or use split={false}.',
-  },
   'shared-writer': {
     code: 'hydrate-module-write',
     message:
-      'Hydrate cannot code-split JSX that assigns a module-level binding the rest of the module also uses: split code cannot assign a binding it imports. Move the code that assigns it into a component defined outside the boundary, and render that component inside it, or use split={false}.',
-  },
-  'ordered-effect': {
-    code: 'hydrate-ordered-effect',
-    message:
-      'Hydrate cannot code-split JSX that uses, when the module loads, a binding other code of the module changes later or reads after it: the split would change what one of them sees. Use split={false}.',
+      'Hydrate cannot code-split JSX that assigns a module-level binding other code of the module also uses: the split code would assign its own copy of it, or a binding it imports, not the one the module reads. Use split={false}.',
   },
 }
 
@@ -1142,11 +1128,13 @@ function extract(
   }
 
   // ---- outputs, names, symbols
+  const { leadsBack, enclosingUnexported } = leadsBackToBoundary(ctx, b, region)
   const out = ctx.declareOutput({
     kind: 'hydrate',
     key: b.id,
     derived: { kind: 'hydrate', value: b.id },
     describe: '`<Hydrate>` boundary',
+    imported: leadsBack,
   })
   const chunkId = derivedIdOf(out)
   // the parent's lazy const: same name as the chunk component, its own symbol
@@ -1155,7 +1143,7 @@ function extract(
   // declaration holding the boundary (a recursive component): that
   // declaration then moves into the chunk with the lazy const, next to the
   // chunk component, and the two need distinct names
-  const lazy = reachesEnclosingDeclaration(ctx, b, region)
+  const lazy = enclosingUnexported
     ? ctx.names.alloc(comp.name).sym
     : symbols.declare(comp.name)
   const propOf = new Map<SymbolId, string>()

@@ -1,6 +1,6 @@
 /**
- * Placement of every plan but a `<Hydrate>` one outside a route file (R155,
- * `reach.ts` `onOldEngine`). A route file (`PlanContext.setRouteModule`):
+ * Placement of every plan but one with a `split` output and no route module
+ * (the core's toy planners: R155, `reach.ts` `onOldEngine`). A route file (`PlanContext.setRouteModule`):
  * what route code splitting on `main` does, by its outcome, on the core's
  * analysis (spec-main-splitting 1.1-1.8). Any other plan (a server fn's
  * handler module, the RSC provider copy, erasure only) by the same rules,
@@ -12,6 +12,8 @@
  *   longer holds (a claimed option value, erased text: `readFromRemoved`)
  *   leaves it, with its initialiser, when nothing that stays reads it by
  *   value; enums and namespaces are declarations like any other (R155).
+ *   A fixed home says where a generated declaration lives, not whether it
+ *   does: a claim's owner whose output no longer keeps the claim is unused.
  *   Statements (R154), exports and code already unused stay; an import
  *   already unused (a bare one included)
  *   moves to the shared module when the env module imports it, a
@@ -32,10 +34,19 @@
  *   copies too. Import specifiers are copied where they are read.
  * - A planner renders its text in split chunks with a `{ kinds }` scope
  *   (Start's caller copy of a server fn, R159).
- * - Another planner's derived output (a server function's handler module,
- *   `<Hydrate>` children's) imports what the env module keeps; what it
- *   alone needs moves there, what several need is one module they import;
- *   a provider output (another layer's instance of the module) copies what
+ * - A `<Hydrate>` chunk copies every declaration its children reach, by
+ *   binding and transitively, exported or not, and no top-level statement
+ *   (H1, spec-phase2-hydrate). It imports only what cannot be a copy (H2): a
+ *   binding its planner names (`OutputDecl.imported`: a declaration leading
+ *   back to the boundary, a recursive component) and the route binding
+ *   (`RouteModule.route`), a name a statement declares and a declaration
+ *   such a statement reads, what another module of the file holds (a shared
+ *   name, a generated declaration with its own home). Code that left the env
+ *   module assigning such an import, or its copy of a binding the env module
+ *   keeps, falls back (H4).
+ * - Another planner's derived output (a server function's handler module)
+ *   imports what the env module keeps; what it alone needs moves there; a
+ *   provider output (another layer's instance of the module) copies what
  *   it reaches (R157).
  * - A declaration a planner's lazy module (`custom`: Start's server-fn
  *   handler module) reaches stays in the env module when evaluating it
@@ -64,19 +75,43 @@ import type {
 } from './reach'
 import type { SymbolId } from './symbols'
 import type { RegionId, UnitId } from './units'
-import type { OutputId } from './rewrite'
+import type { GenUnitId, OutputId } from './rewrite'
 
 /** A plan that is no route file: no name a chunk imports, none `main` shares. */
 const NO_ROUTE: RouteModule = { imported: new Set(), shared: new Set() }
 
 export function computeRoutePlacement(input: PlacementInput): Placement {
   const { t1, rewrites, outputs } = input
-  const { imported, shared: sharedNames } = input.routeModule ?? NO_ROUTE
+  const {
+    imported,
+    shared: sharedNames,
+    route: routeBinding,
+  } = input.routeModule ?? NO_ROUTE
   const { units, items } = t1
   const graph = buildClusters(input, true)
   const reads = readIndex(input, graph)
   const { clusters, clusterOfSym } = graph
   const gens = rewrites.generated
+  /**
+   * The removal rule on generated code: a fixed home says where a generated
+   * declaration lives, not whether it does. The owner of a claim exists for
+   * its placeholder and for generated code that reads it; when the output it
+   * lives in keeps neither (`hasClaim`: an erasure removed the occurrence,
+   * e.g. a `<Hydrate>` boundary in a route option the router deletes on the
+   * client), our changes made it unused: no root, no home, not rendered.
+   */
+  const unused = new Set<GenUnitId>()
+  for (const claim of rewrites.claims.values()) {
+    const h = gens[claim.owner]!.home
+    if (
+      typeof h === 'string' &&
+      !graph.viewOf(h === 'auto' ? 'env' : h).hasClaim(claim.region)
+    ) {
+      unused.add(claim.owner)
+    }
+  }
+  const liveRoots = (o: OutputDecl): ReadonlyArray<RootRef> =>
+    o.roots.filter((r) => r.t !== 'gen' || !unused.has(r.id))
 
   // ---- what each cluster is -------------------------------------------------
   /** The output a generated unit is homed in by its planner. */
@@ -85,6 +120,9 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   const envReaders: Array<ClusterId> = []
   for (const g of gens) {
     const c = graph.clusterOfGen.get(g.id)!
+    if (unused.has(g.id)) {
+      continue
+    }
     if (typeof g.home === 'string' && g.home !== 'auto') {
       fixedHome.set(c, g.home)
     } else if (typeof g.home === 'object') {
@@ -150,7 +188,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   )
   const rootedElsewhere = new Set<ClusterId>()
   for (const o of derived) {
-    for (const r of o.roots) {
+    for (const r of liveRoots(o)) {
       if (r.t === 'gen') {
         rootedElsewhere.add(graph.clusterOfGen.get(r.id)!)
       }
@@ -304,7 +342,11 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   }
   for (const cl of clusters) {
     const c = cl.id
-    if (envReaders.includes(c) || isType(c)) {
+    if (
+      envReaders.includes(c) ||
+      isType(c) ||
+      cl.gens.some((g) => unused.has(g))
+    ) {
       continue
     }
     if (fixedHome.get(c) === 'env') {
@@ -403,7 +445,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
           work.push(c)
         }
       }
-      for (const r of o.roots) {
+      for (const r of liveRoots(o)) {
         visit(
           r.t === 'unit'
             ? graph.clusterOfRegion.get(units[r.id]!.region)
@@ -413,7 +455,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         )
       }
       for (const g of gens) {
-        if (g.home === o.id) {
+        if (g.home === o.id && !unused.has(g.id)) {
           visit(graph.clusterOfGen.get(g.id))
         }
       }
@@ -521,14 +563,17 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
     [...clusters[st]!.declares].some((d) => t1.symbols.kind(d) !== 'synthetic')
   /**
    * What a chunk imports from the env module instead of copying it: what
-   * `main` imports (`importedFromEnv`), a statement declaring a name, a
-   * declaration such a statement names (`main` deletes that declarator and
-   * runs the statement once). A provider copy imports nothing.
+   * `main` imports (a split chunk: `importedFromEnv`; a `<Hydrate>` chunk:
+   * its planner's set, H2 (a)), a statement declaring a name, a declaration
+   * such a statement names (`main` deletes that declarator and runs the
+   * statement once; H2 (b)). A provider copy imports nothing.
    */
   const importsFromEnv = (c: ClusterId, o: OutputId) =>
     !copying(o) &&
-    isChunk(o) &&
-    (importedFromEnv(c) ||
+    (isChunk(o) || isHydrate(o)) &&
+    ((isHydrate(o)
+      ? [...clusters[c]!.declares].some((s) => hydrateImported(o).has(s))
+      : importedFromEnv(c)) ||
       (clusters[c]!.kind === 'effect' && declaresInStatement(c)) ||
       (statementsOf.get(c) ?? []).some(declaresInStatement))
   const reachingCode = new Map<string, Array<ClusterId>>()
@@ -581,6 +626,32 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
    */
   const isChunk = (o: OutputId) => outputs.get(o)?.kind === 'split'
   /**
+   * A `<Hydrate>` chunk: it copies the declarations its children reach and
+   * no statement (H1); it imports what its planner names, a name a
+   * statement declares and a declaration such a statement reads (H2 (a),
+   * (b); the last as split chunks, KNOWN-BUGS), and what another module of the file
+   * holds by the rules above (H2 (c)). No needer and no home: it holds
+   * what it reached, as a provider copy does.
+   */
+  const isHydrate = (o: OutputId) => outputs.get(o)?.kind === 'hydrate'
+  /**
+   * H2 (a): what a `<Hydrate>` chunk imports by binding: its planner's set
+   * (what leads back to the boundary) and the route binding, as a split
+   * chunk imports it (R153's list), whatever encloses the boundary.
+   */
+  const hydrateImports = new Map<OutputId, ReadonlySet<SymbolId>>()
+  const hydrateImported = (o: OutputId): ReadonlySet<SymbolId> => {
+    let set = hydrateImports.get(o)
+    if (!set) {
+      set = new Set([
+        ...(outputs.get(o)!.imported ?? []),
+        ...(routeBinding === undefined ? [] : [routeBinding]),
+      ])
+      hydrateImports.set(o, set)
+    }
+    return set
+  }
+  /**
    * The imports already unused in the source: an import nothing in the
    * source references, by value or in a type (an export is a use), a bare
    * `import './polyfill'` or `import './a.css'` included. When the env
@@ -615,9 +686,9 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   }
   /** The roots of a derived output: what its planners rooted there, and the generated units homed there. */
   const rootsOf = (o: OutputDecl): Array<RootRef> => [
-    ...o.roots,
+    ...liveRoots(o),
     ...gens
-      .filter((g) => g.home === o.id)
+      .filter((g) => g.home === o.id && !unused.has(g.id))
       .map((g) => ({ t: 'gen' as const, id: g.id })),
   ]
   const SHARED = 'shared' as OutputId
@@ -662,7 +733,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         // would run it twice)
         if (
           !copying(o) &&
-          (!isChunk(o) ||
+          ((!isChunk(o) && !isHydrate(o)) ||
             importsFromEnv(t, o) ||
             clusters[t]!.kind === 'effect')
         ) {
@@ -670,12 +741,14 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         }
         // copied (a chunk, a provider copy), with the top-level code
         // reaching it: a statement as it stands, a declaration by these same
-        // rules
-        for (const c of codeReaching(t, o)) {
-          if (isStatement(c)) {
-            take(c)
-          } else {
-            read(c)
+        // rules; a `<Hydrate>` chunk copies the declaration alone (H1)
+        if (!isHydrate(o)) {
+          for (const c of codeReaching(t, o)) {
+            if (isStatement(c)) {
+              take(c)
+            } else {
+              read(c)
+            }
           }
         }
       }
@@ -705,18 +778,18 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
     return seen
   }
   /**
-   * The outputs of other planners (not copying, not chunks) reaching each
-   * declaration the env module does not keep: one home, theirs, or a module
-   * the several import. A chunk copies what it reaches, as on `main`; it is
-   * a home only of what no other output needs.
+   * The output of another planner (not copying, not a chunk: Start's
+   * server-fn handler module, one per file) reaching each declaration the
+   * env module does not keep: its home. A chunk copies what it reaches, as
+   * on `main`; a split chunk is a home only of what no other output needs.
    */
-  const needers = new Map<ClusterId, Set<OutputId>>()
+  const needer = new Map<ClusterId, OutputId>()
   const reached = new Map<OutputId, Set<ClusterId>>()
   const chunkOwner = new Map<ClusterId, OutputId>()
   for (const o of derived) {
     const seen = reachFrom(o.id, rootsOf(o))
     reached.set(o.id, seen)
-    if (copying(o.id)) {
+    if (copying(o.id) || isHydrate(o.id)) {
       continue
     }
     for (const c of seen) {
@@ -727,12 +800,8 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
         if (!chunkOwner.has(c)) {
           chunkOwner.set(c, o.id)
         }
-      } else {
-        let set = needers.get(c)
-        if (!set) {
-          needers.set(c, (set = new Set()))
-        }
-        set.add(o.id)
+      } else if (!needer.has(c)) {
+        needer.set(c, o.id)
       }
     }
   }
@@ -778,24 +847,9 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
       }
     }
   }
-  // what other planners' outputs need: one home, or a common module
-  let common: OutputDecl | null = null
-  for (const [c, set] of needers) {
-    if (set.size === 1) {
-      home.set(c, [...set][0]!)
-    } else {
-      common ??= sharedOutput(
-        [
-          ...new Set(
-            [...needers.values()].flatMap((n) => (n.size > 1 ? [...n] : [])),
-          ),
-        ]
-          .map((o) => outputs.get(o)!.key)
-          .sort()
-          .join('+'),
-      )
-      home.set(c, common.id)
-    }
+  // what another planner's output needs lives there
+  for (const [c, o] of needer) {
+    home.set(c, o)
   }
   for (const [c, o] of chunkOwner) {
     if (!home.has(c)) {
@@ -854,7 +908,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
       }
       // what a chunk copies (from the env module, or a declaration another
       // module holds too)
-      if (isChunk(o)) {
+      if (isChunk(o) || isHydrate(o)) {
         for (const c of reached.get(o)!) {
           set.add(c)
         }
@@ -919,12 +973,16 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
     }
   }
 
-  // ---- an output that would assign a binding it imports --------------------
+  // ---- an output that would assign a binding it imports, or its copy -------
   // A module cannot assign a binding it imports: a derived output that would
   // assign (`=`, `++`, `+=`, …) a binding another module of the file holds
   // does not take the root that brings that code (a split option's value, a
   // server function's handler, `<Hydrate>` children). The root falls back:
-  // its planner keeps it in place in the next round. One check of the
+  // its planner keeps it in place in the next round. Its copy analogue (H4):
+  // a `<Hydrate>` chunk whose code that left the env module assigns the
+  // chunk's copy of a binding the env module keeps falls back alike (the copy
+  // would be written, the env module's read); code the env module holds too
+  // (a helper both call) writes each side's own copy. One check of the
   // outcome, on the write table every placement shares.
   const writers = new Map<ClusterId, SymbolId>()
   for (const w of graph.writes) {
@@ -944,7 +1002,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
       if (
         !copying(h) &&
         set.has(c) &&
-        !set.has(d) &&
+        (!set.has(d) || (isHydrate(h) && env.has(d) && !env.has(c))) &&
         home.get(d) !== 'removed' &&
         // (a write in text that output erases, a client's stubbed server-fn
         // handler, assigns nothing there)

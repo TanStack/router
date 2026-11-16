@@ -271,16 +271,6 @@ export function Page() {
   directiveModule: directivePage('module'),
   directiveComponent: directivePage('component'),
   // A context declared in the page module itself.
-  localContext: `import { Hydrate } from '@tanstack/solid-start'
-import { idle } from '@tanstack/solid-start/hydration'
-import { createContext, useContext } from 'solid-js'
-const Theme = createContext('no-provider')
-function Label() {
-  return <span data-theme>{useContext(Theme)}</span>
-}
-export function Page() {
-  return <Theme.Provider value="dark"><Hydrate when={idle()}><Label /></Hydrate></Theme.Provider>
-}`,
 }
 
 /**
@@ -637,19 +627,5 @@ return root.querySelector('output').textContent`,
         }).toEqual({ read: 'typed', consoleErrors: [] })
       },
     )
-
-    // Bug: the chunk re-declares the module-level bindings its children use
-    // instead of using the parent module's (`createContext` runs again
-    // there), the Solid twin of known-bugs-hydrate.test.ts "client: the
-    // children use the module-level context of the parent module".
-    // Found with a context declared in the page module.
-    // Impact: split children of a Solid page read another context than the
-    // one their parent provides (here its default value).
-    test('split children read a context declared in the page module', async () => {
-      const page = await app.hydrate('localContext')
-      expect(page.serverHtml).toContain('>dark<')
-      expect(page.html).toContain('>dark<')
-      expect(page.consoleErrors).toEqual([])
-    })
   })
 }

@@ -723,7 +723,14 @@ export function dedent(s: string): string {
  * in place, as Start's planner keeps it, with the reason in the facts
  * (`kept`: by key).
  */
-export function toyHydratePlanner(hydrateSpec = 'toy-start'): Planner {
+/**
+ * `opts.imported`: names of module bindings each chunk imports instead of
+ * copying (`OutputSpec.imported`, the Hydrate planner's H2 (a) set).
+ */
+export function toyHydratePlanner(
+  hydrateSpec = 'toy-start',
+  opts: { imported?: Array<string> } = {},
+): Planner {
   return {
     name: 'toy-hydrate',
     tier: 1,
@@ -781,6 +788,13 @@ export function toyHydratePlanner(hydrateSpec = 'toy-start'): Planner {
           key: `h${n}`,
           derived: { kind: 'hydrate', value: `h${n}` },
           describe: '`<Hydrate>` boundary',
+          imported: opts.imported
+            ? new Set(
+                t1.units
+                  .flatMap((u) => u.declares)
+                  .filter((s) => opts.imported!.includes(ctx.symbols.name(s))),
+              )
+            : undefined,
         })
         const comp = ctx.names.alloc(`TsrHydrate${n}`, { jsxTag: true })
         const captures = new Set<SymbolId>(t1.capturesOf(b.children))

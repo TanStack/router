@@ -2,9 +2,9 @@
  * Placement, a generic service: planners supply roots and derived outputs;
  * the core decides what each output contains and what it imports.
  * `computePlacement` places every plan with `route-placement.ts` (route
- * files, server-fn handler modules, the RSC provider copy, erasure only),
- * except the ones the engine below still places (`onOldEngine`: `<Hydrate>`
- * outside a route file, a `split` output without a route module), R155.
+ * files, server-fn handler modules, the RSC provider copy, erasure only,
+ * `<Hydrate>` chunks), except the ones the engine below still places
+ * (`onOldEngine`: a `split` output without a route module), R155.
  * That engine: clusters, reachability, provenance-based orphans, the event
  * table's order rules and needers/homes (see README.md, "Reachability =
  * splitting = dead-code removal"), the stages in `placement/` composed in an
@@ -62,6 +62,12 @@ export interface OutputDecl {
   header?: HeaderPolicy
   /** How the core's diagnostics name the output (`` `<Hydrate>` boundary ``; default its key). */
   describe?: string
+  /**
+   * A `hydrate` output: the module bindings it imports from the module that
+   * holds them; it copies the others (H2 (a), spec-phase2-hydrate: the per-output
+   * form of `RouteModule.imported`).
+   */
+  imported?: ReadonlySet<SymbolId>
 }
 
 export type Home = OutputId | 'duplicate' | 'removed'
@@ -187,6 +193,8 @@ export interface RouteModule {
   imported: ReadonlySet<SymbolId>
   /** The names `main` shares (`computeSharedBindings`): an exported one only chunks read moves to the shared module, which the route module re-exports it from. */
   shared: ReadonlySet<SymbolId>
+  /** The route binding (`Route`): a `<Hydrate>` chunk imports it too, whatever encloses the boundary (H2 (a)). */
+  route?: SymbolId
 }
 
 export interface Placement {
@@ -217,16 +225,14 @@ export interface Placement {
   check: () => InvariantViolation | undefined
 }
 
-/** R155 phases 1-2: the plans the old engine still places. Deleted with the engine in phase 3. */
+/** R155: the plans the old engine still places. Deleted with the engine in phase 3. */
 function onOldEngine(input: PlacementInput): boolean {
   if (input.routeModule) {
     return false
   }
   for (const o of input.outputs.values()) {
-    // `<Hydrate>` outside a route file (its chunks, and the `export` outputs
-    // only its planner declares); `split` without `setRouteModule`: the
-    // core's toy planners
-    if (o.kind === 'hydrate' || o.kind === 'export' || o.kind === 'split') {
+    // `split` without `setRouteModule`: the core's toy planners
+    if (o.kind === 'split') {
       return true
     }
   }

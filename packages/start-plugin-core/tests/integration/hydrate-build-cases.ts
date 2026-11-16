@@ -351,6 +351,145 @@ export function hydrateBuildSuite(bundler: StartBundler) {
       timeout,
     )
 
+    // A route file exporting the component its boundary's children render
+    // (spec-phase2-hydrate r2): the chunk holds its own copy, as on main, so
+    // in an app marked `"sideEffects": false` the route module's unused
+    // export and its import drop, and the module that component imports
+    // loads with the chunk, not with the route module; the boundary
+    // hydrates. (Without the hint the route module's import evaluates that
+    // module eagerly, on main too.)
+    test(
+      'an exported component of a route file that only the children render loads its imports with the chunk',
+      async () => {
+        const build = await buildStart({
+          bundler,
+          entry,
+          sideEffects: false,
+          files: {
+            ...pageEntries,
+            'src/toggle.tsx': toggleSource,
+            'src/comments-chart.tsx': `import { Toggle } from './toggle'
+export const CommentsChart = () => <Toggle label="route-export-marker" />
+`,
+            'src/routes/comments.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { Hydrate } from '@tanstack/react-start'
+import { interaction } from '@tanstack/react-start/hydration'
+import { CommentsChart } from '../comments-chart'
+export function Comments() { return <CommentsChart /> }
+function Page() { return <article><Hydrate when={interaction()}><Comments /></Hydrate></article> }
+export const Route = createFileRoute('/comments')({ component: Page })
+`,
+            'src/pages.ts': `import { createElement } from 'react'
+import { routeTree } from './routeTree.gen'
+const route = (Object.values((routeTree as any).children) as Array<any>).find(
+  (candidate) => candidate.options.path === '/comments',
+)
+export function routes() {
+  return createElement(route.options.component)
+}
+`,
+          },
+        })
+        expect(build.client.where('route-export-marker')).toBe('lazy')
+        const html = (await renderPages(build)).routes
+        expect(typeof html).toBe('string')
+        expect(
+          await hydratePage(build, html as string, 'routes', [
+            'route-export-marker',
+          ]),
+        ).toEqual({
+          text: 'route-export-marker clicked',
+          recoverableErrors: [],
+          consoleErrors: [],
+        })
+      },
+      timeout,
+    )
+
+    // A helper both the page and the children call, which writes a module
+    // `let` (a lazily built cache, a scratch variable): each side holds its
+    // own copy, as on main, and both read the right value
+    // (review-phase2-fixes 1.2).
+    test(
+      'a lazily built cache and a scratch variable the page and the children both use build and read their values',
+      async () => {
+        const build = await buildStart({
+          bundler,
+          entry,
+          files: {
+            ...pageEntries,
+            'src/toggle.tsx': toggleSource,
+            'src/pages/cache.tsx': `import { Hydrate } from '@tanstack/react-start'
+import { interaction } from '@tanstack/react-start/hydration'
+import { Toggle } from '../toggle'
+let table: { n: number } | null = null
+function getTable() { if (table === null) { table = { n: 42 } } return table }
+let tmp = 0
+function twice(n: number) { tmp = n * 2; return tmp }
+export function Page() {
+  return <section><i>{'outside-' + getTable().n + '-' + twice(5)}</i><Hydrate when={interaction()}><Toggle label={'cache-' + getTable().n + '-' + twice(21)} /></Hydrate></section>
+}
+`,
+            'src/pages.ts': `export { Page as cache } from './pages/cache'
+`,
+          },
+        })
+        expect(problems(build.diagnostics)).toEqual([])
+        const html = (await renderPages(build)).cache
+        expect(typeof html).toBe('string')
+        expect(
+          await hydratePage(build, html as string, 'cache', ['cache-42-42']),
+        ).toEqual({
+          text: 'outside-42-10cache-42-42 clicked',
+          recoverableErrors: [],
+          consoleErrors: [],
+        })
+      },
+      timeout,
+    )
+
+    // Children reading the route of a boundary outside the route's
+    // component (an exported component another page renders): the chunk
+    // imports the route, as split chunks do, so the children read the one
+    // route the route tree updated (its `path`), not a second
+    // `createFileRoute(…)` (measure-phase2, finding 2; `main` reads `Route`
+    // unbound there).
+    test(
+      'children reading the route of a boundary outside its component use the one route',
+      async () => {
+        const build = await buildStart({
+          bundler,
+          entry,
+          files: {
+            ...pageEntries,
+            'src/toggle.tsx': toggleSource,
+            'src/routes/badge.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { Hydrate } from '@tanstack/react-start'
+import { interaction } from '@tanstack/react-start/hydration'
+import { Toggle } from '../toggle'
+export const Route = createFileRoute('/badge')({ component: Page })
+function Badge() { return <Toggle label={'badge-' + Route.options.path} /> }
+export function PostBadge() { return <Hydrate when={interaction()}><Badge /></Hydrate> }
+function Page() { return <div>page</div> }
+`,
+            'src/pages.ts': `import './routeTree.gen'
+export { PostBadge as badge } from './routes/badge'
+`,
+          },
+        })
+        const html = (await renderPages(build)).badge
+        expect(typeof html).toBe('string')
+        expect(
+          await hydratePage(build, html as string, 'badge', ['badge-/badge']),
+        ).toEqual({
+          text: 'badge-/badge clicked',
+          recoverableErrors: [],
+          consoleErrors: [],
+        })
+      },
+      timeout,
+    )
+
     // Control for the pin below (same build): an unused export without a
     // boundary is not in the client.
     test(
@@ -399,72 +538,29 @@ export function hydrateBuildSuite(bundler: StartBundler) {
       timeout,
     )
 
-    // An export only the children use, initialized by a call, moves with
-    // the chunk (one instance, initialized once). Source:
-    // hydrate-when-transform.test.ts "unwraps exported declarations needed
-    // by extracted virtual modules".
+    // An exported let the children of a `split={false}` boundary assign
+    // stays live: the children run in the page, and a click's assignment is
+    // what the page's importers read (`split={false}` keeps one instance;
+    // a split boundary's chunk holds its own copy, as on main).
     test(
-      'an export only the children use, initialized by a call, is initialized once and hydrates',
+      'an exported let the children of a split={false} boundary assign stays live',
       async () => {
-        const build = await sharedApp()
-        expect(build.client.where('widgetCall-boundary-marker')).toBe('lazy')
-        expect(
-          await hydrateShared(
-            'widgetCall',
-            ['widgetCall-marker'],
-            'globalThis.__initialized?.widgetCall',
-          ),
-        ).toEqual({
-          text: 'widgetCall-marker clicked widgetCall-boundary-marker',
-          recoverableErrors: [],
-          consoleErrors: [],
-          read: 1,
-        })
-      },
-      timeout,
-    )
-
-    // R101: each fix the build error offers for children that assign an
-    // exported `let` (`hydrate-module-write`, the planner rows of
-    // tests/planners/hydrate.test.ts), applied: the build reports nothing
-    // for the page, the children hydrate, and a click's assignment is what
-    // the page's importers read (the live binding, not a snapshot).
-    // `split={false}` keeps the children's code in the page; where the
-    // component declared outside the boundary loads is the bundler's call.
-    test.each([
-      {
-        name: 'split={false}',
-        page: 'moduleWriteSplitFalse',
-        file: 'src/pages/module-write-split-false.tsx',
-        clicks: 'splitFalseClicks',
-        where: ['eager'],
-      },
-      {
-        name: 'the writer in a component declared outside the boundary',
-        page: 'moduleWriteOutside',
-        file: 'src/pages/module-write-outside.tsx',
-        clicks: 'outsideClicks',
-        where: ['eager', 'lazy'],
-      },
-    ])(
-      'an exported let the children assign, fixed with $name, builds and stays live',
-      async ({ page, file, clicks, where }) => {
         const build = await sharedApp()
         expect(
           findDiagnostics(problems(build.diagnostics), {
-            file,
+            file: 'src/pages/module-write-split-false.tsx',
             root: build.root,
           }),
         ).toEqual([])
-        expect(where).toContain(build.client.where(`${page}-marker`))
+        expect(build.client.where('moduleWriteSplitFalse-marker')).toBe('eager')
         expect(
           await hydrateShared(
-            page,
-            [`${page}-marker`],
-            `entry.pages.${clicks}`,
+            'moduleWriteSplitFalse',
+            ['moduleWriteSplitFalse-marker'],
+            'entry.pages.splitFalseClicks',
           ),
         ).toEqual({
-          text: `${page}-marker clicked`,
+          text: 'moduleWriteSplitFalse-marker clicked',
           recoverableErrors: [],
           consoleErrors: [],
           read: 1,
@@ -691,14 +787,14 @@ export { Other } from './other.js'
  * (`globalThis.__initialized`), so only a purity hint lets the bundler drop
  * a call of it.
  */
-const widgetPage = (name: string, widget: string, more = '') => ({
+const widgetPage = (name: string, widget: string) => ({
   [`src/pages/${name}.tsx`]: `import { useState } from 'react'
 import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
 import { initialize } from '../initialize'
 export const Widget = ${widget}
 export function Page() {
-  return <Hydrate when={load()}><Widget />${more}</Hydrate>
+  return <Hydrate when={load()}><Widget /></Hydrate>
 }
 `,
 })
@@ -796,11 +892,6 @@ export function UsedPlainWidget() {
     'widgetPureCall',
     `/* @__PURE__ */ initialize('widgetPureCall', ${widgetComponent('widgetPureCall')})`,
   ),
-  ...widgetPage(
-    'widgetCall',
-    `initialize('widgetCall', ${widgetComponent('widgetCall')})`,
-    `<i> widgetCall-boundary-marker</i>`,
-  ),
   'src/pages/module-write-split-false.tsx': `import { useState } from 'react'
 import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
@@ -814,18 +905,6 @@ export function Page() {
   )
 }
 `,
-  'src/pages/module-write-outside.tsx': `import { useState } from 'react'
-import { Hydrate } from '@tanstack/react-start'
-import { load } from '@tanstack/react-start/hydration'
-export let outsideClicks = 0
-function Counter() {
-  const [clicked, setClicked] = useState(false)
-  return <button onClick={() => { outsideClicks++; setClicked(true) }}>moduleWriteOutside-marker{clicked ? ' clicked' : ''}</button>
-}
-export function Page() {
-  return <Hydrate when={load()}><Counter /></Hydrate>
-}
-`,
   'src/pages.ts': `export { Page as chartProject } from './pages/chart-project'
 export { Page as chartPlainWidgets } from './pages/chart-plain-widgets'
 export { Page as chartPureWidgets } from './pages/chart-pure-widgets'
@@ -833,13 +912,11 @@ export { Page as twoBoundaries } from './pages/two-boundaries'
 export { Page as moduleLevel } from './pages/module-level'
 export { Page as widgetFunction } from './pages/widgetFunction'
 export { Page as widgetPureCall } from './pages/widgetPureCall'
-export { Page as widgetCall } from './pages/widgetCall'
 export { routes } from './route-pages'
 export { UsedHydratedWidget } from './hydrated-widgets'
 export { UsedPlainWidget } from './plain-widgets'
 export { Page as throwing } from './pages/throwing'
 export { Page as moduleWriteSplitFalse, splitFalseClicks } from './pages/module-write-split-false'
-export { Page as moduleWriteOutside, outsideClicks } from './pages/module-write-outside'
 `,
   'src/route-pages.ts': routesPageModule(sharedRoutes),
 }

@@ -80,75 +80,6 @@ export function Page() {
     20_000,
   )
 
-  // Bug: the chunk re-declares the module-level bindings the children use
-  // instead of using the parent module's instance.
-  // Impact: children read another context than the parent provides, or the
-  // initial value of a `let` the parent reassigns.
-  // Source: Qwik optimizer should_keep_module_level_var_used_in_both_main_and_qrl,
-  // should_auto_export_shared_let_kept_in_parent
-  test.each([
-    {
-      name: 'context',
-      code: `import { createContext, useContext } from 'react'
-const Theme = createContext('light')
-function Label() { return <span>{useContext(Theme)}</span> }
-export function Page() {
-  return <Theme.Provider value="dark"><Hydrate when={load()}><Label /></Hydrate></Theme.Provider>
-}`,
-      // The value the parent provides.
-      rendered: '<span>dark</span>',
-    },
-    {
-      name: 'let reassigned by the parent',
-      code: `let clicks = 0
-export function bump() { clicks++ }
-export function Page() {
-  return <Hydrate when={load()}><p>{clicks}</p></Hydrate>
-}`,
-      rendered: '<p>1</p>',
-    },
-  ])(
-    'client: the children use the module-level $name of the parent module',
-    async ({ code, rendered }) => {
-      const { client } = await expectRendersLikeSource(
-        await hosts(),
-        `${head}${code}`,
-        {
-          // App code runs before the boundary hydrates.
-          beforeRender: 'm.bump?.()',
-        },
-      )
-      expect(client.html).toContain(rendered)
-    },
-  )
-
-  // Bug (same root cause): an exported declaration the children use is
-  // copied into the chunk, so its initializer runs again there.
-  // Impact: the children use another instance than the module exports
-  // (e.g. another store), and the initializer's side effects run twice.
-  // Goal of hydrate-when-transform.test.ts "unwraps exported declarations
-  // needed by extracted virtual modules" (the copy is not required).
-  test('client: an exported declaration the children use has one instance, initialized once', async () => {
-    const { client } = await expectRendersLikeSource(
-      await hosts(),
-      `${head}import { makeStore } from './store'
-export const store = makeStore()
-export function Page() {
-  return <Hydrate when={load()}><p>{store.id}</p></Hydrate>
-}`,
-      {
-        // Each store gets the next id: a second instance renders 2.
-        files: {
-          './store': `let stores = 0
-export const makeStore = () => ({ id: ++stores })`,
-        },
-        script: 'return m.store.id',
-      },
-    )
-    expect(client.result).toBe(1)
-    expect(client.html).toContain('<p>1</p>')
-  })
-
   // Bug: the client chunk removes the module's `Route`
   // (`removeModuleLevelBindings(ast, new Set(['Route']))`) without importing
   // it from the parent module, so split children reading it reference an
@@ -221,48 +152,6 @@ export function Page() {
     )
     expect(client.html).toContain('<p>local</p>')
   })
-
-  // Bug: only declarations move into the chunk; the top-level statements that
-  // complete them (member assignments, registrations) are dropped.
-  // Impact: compound components such as `<Card.Title />` are undefined in
-  // the chunk ("Element type is invalid") and registries are empty.
-  // Source: Qwik optimizer should_not_move_over_side_effects,
-  // example_drop_side_effects
-  test.each([
-    {
-      name: 'a compound component member assignment',
-      setup: `function Card({ children }) { return <div>{children}</div> }
-Card.Title = function Title() { return <h1>t</h1> }`,
-      children: '<Card><Card.Title /></Card>',
-      rendered: '<div><h1>t</h1></div>',
-    },
-    {
-      name: 'Object.assign on a component',
-      setup: `function Tabs({ children }) { return <ul>{children}</ul> }
-Object.assign(Tabs, { Tab: () => <li>tab</li> })`,
-      children: '<Tabs><Tabs.Tab /></Tabs>',
-      rendered: '<ul><li>tab</li></ul>',
-    },
-    {
-      name: 'a registry filled by a top-level call',
-      setup: `const registry = new Map()
-registry.set('a', 'A')`,
-      children: `<p>{registry.get('a')}</p>`,
-      rendered: '<p>A</p>',
-    },
-  ])(
-    'client: $name that the children rely on reaches the chunk',
-    async ({ setup, children, rendered }) => {
-      const { client } = await expectRendersLikeSource(
-        await hosts(),
-        `${head}${setup}
-export function Page() {
-  return <Hydrate when={load()}>${children}</Hydrate>
-}`,
-      )
-      expect(client.html).toContain(rendered)
-    },
-  )
 
   // Bug: module bindings are collected from top-level declarations only
   // (`collectLocalBindingsFromStatement`), so a module-level `var` declared

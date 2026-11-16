@@ -134,31 +134,63 @@ describe('clusters and the single-writer rule', () => {
     expect(r.chunks.component).toBe('export {}\n')
   })
 
-  // the same rule for a `<Hydrate>` boundary: its chunk cannot assign the
-  // exported `let` the module keeps for its importers, so the boundary
-  // stays in place, as Start's planner keeps it (and reports it) on the
-  // core's `hydrate-writer` fallback
-  it.each(['build', 'dev'] as const)(
-    'keeps a <Hydrate> boundary whose children assign an exported let in place (hydrate-writer, %s)',
-    async (mode) => {
-      const code = dedent(`
-        import { Hydrate } from 'toy-start'
-        export let count = 0
-        export function Page() { return <Hydrate><button onClick={() => count++}>{count}</button></Hydrate> }
-      `)
+  // spec-phase2-hydrate H1, H2, H4 on the core: a `<Hydrate>` chunk copies
+  // the declarations its children reach and no statement; it imports what
+  // its planner names (`imported`); one assigning such an import falls back
+  describe('a <Hydrate> chunk', () => {
+    const buildEnv = { env: envInfo({ mode: 'build' }) }
+    const source = (children: string) =>
+      dedent(`
+      import { Hydrate } from 'toy-start'
+      import { register } from './register'
+      export let theme = { c: 1 }
+      register(theme)
+      export function Page() { return <Hydrate>${children}</Hydrate> }
+    `)
+    const reads = '<p>{theme.c}</p>'
+    const assigns = '<p onClick={() => { theme = { c: 2 } }}>{theme.c}</p>'
+    const compileBoth = async (code: string, imported?: Array<string>) => {
       const host = new MemoryHost({ files: { '/app/mod.tsx': code } })
-      const out = await host.compile('/app/mod.tsx', [toyHydratePlanner()], {
-        env: envInfo({ mode }),
-      })
-      expect(out!.facts.planners['toy-hydrate']).toEqual({
-        kept: { h0: 'hydrate-writer' },
-      })
-      expect(out!.code).toContain(
-        'export let count = 0\nexport function Page() { return <Hydrate><button onClick={() => count++}>{count}</button></Hydrate> }',
+      const planners = [toyHydratePlanner('toy-start', { imported })]
+      const env = await host.compile('/app/mod.tsx', planners, buildEnv)
+      const h = await host.compile(
+        '/app/mod.tsx?tss-hydrate=h0',
+        planners,
+        buildEnv,
       )
-      expect(out!.code).not.toContain('tss-hydrate')
-    },
-  )
+      return { env: env!, chunk: h!.code }
+    }
+
+    it('copies the declarations the children reach, without the statements reaching them (H1)', async () => {
+      const r = await compileBoth(source(reads))
+      expect(r.env.facts.planners['toy-hydrate']).toBeUndefined()
+      expect(r.chunk).toContain('let theme = { c: 1 }')
+      expect(r.chunk).not.toContain('register')
+      expect(r.chunk).not.toContain("from '/app/mod.tsx'")
+      expect(r.env.code).toContain(
+        'export let theme = { c: 1 }\nregister(theme)',
+      )
+    })
+
+    it('imports a binding its planner names (H2)', async () => {
+      const r = await compileBoth(source(reads), ['theme'])
+      expect(r.chunk).toContain("import { theme } from '/app/mod.tsx'")
+      expect(r.chunk).not.toContain('let theme')
+    })
+
+    // H4: assigning an import, or the chunk's copy of a binding the env
+    // module keeps (the copy would be written, the env module's read)
+    it.each([
+      ['an import', ['theme']],
+      ['its copy of a binding the module keeps', undefined],
+    ])('falls back when the children assign %s (H4)', async (_, imported) => {
+      const r = await compileBoth(source(assigns), imported)
+      expect(r.env.facts.planners['toy-hydrate']).toEqual({
+        kept: { h0: 'shared-writer' },
+      })
+      expect(r.env.code).not.toContain('tss-hydrate')
+    })
+  })
 
   // the same rule for a component declared on its own: a top-level writer
   // joins the binding it writes, which the route module keeps for its
@@ -6924,26 +6956,6 @@ describe('declarations only split code needs that stay in the route module', () 
       ),
     }
   }
-
-  // the planners word what the core reports: a Hydrate chunk is named as
-  // its boundary, and a module no planner describes is just "the module"
-  it('names the split outputs and the module with the words their planners give', async () => {
-    const code = dedent(`
-      import { Hydrate } from 'toy-start'
-      let n = 0
-      export function inc() { n++ }
-      const confetti = [n]
-      export function Page() { return <Hydrate><p>{confetti}</p></Hydrate> }
-    `)
-    const host = new MemoryHost({ files: { '/app/mod.tsx': code } })
-    const out = await host.compile('/app/mod.tsx', [toyHydratePlanner()], {
-      env: envInfo({ mode: 'build' }),
-    })
-    expect(out!.diagnostics).toMatchObject([{ code: 'eager-split:state' }])
-    expect(out!.diagnostics[0]!.message).toMatch(
-      /^`confetti` in \/app\/mod\.tsx stays in the module because .*, so `confetti` can load with the split `<Hydrate>` boundary\.$/,
-    )
-  })
 
   it('reports an effect several split options need, writes and reads of state', async () => {
     const code = dedent(`

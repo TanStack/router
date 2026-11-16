@@ -1,9 +1,8 @@
 /**
  * Start's code in a route file under the route file's placement. A derived
- * output (a server function's lazy handler module, a `<Hydrate>` chunk) that
- * would assign a binding it imports from another module of the file is not
- * made; its code stays in place (the handler in the route module; the
- * boundary is reported, as for any module). What only server code the client
+ * output (a server function's lazy handler module) that would assign a
+ * binding it imports from another module of the file is not made; its code
+ * stays in place (the handler in the route module). What only server code the client
  * erases reads leaves the client's route module.
  */
 import { describe, expect, it } from 'vitest'
@@ -14,7 +13,6 @@ import {
   routerPlannerConfigFrom,
 } from '@tanstack/router-plugin/planners'
 import { startRecognizer } from '../../src/compiler/recognizer'
-import { createHydratePlanner } from '../../src/planners/hydrate'
 import { START_ENV, startPlanners } from '../../src/planners'
 import { MemoryHost, clientEnv, ssrEnv } from './memory-host'
 import type {
@@ -30,7 +28,7 @@ const HANDLER_ID = `${FILE}?tss-serverfn-handler`
 function compile(
   code: string,
   env: EnvInfo,
-  opts: { hydrate?: boolean; id?: string } = {},
+  opts: { id?: string } = {},
 ): Promise<CompileOutput | null> {
   const memory = new MemoryHost(
     { [FILE]: code },
@@ -55,7 +53,6 @@ function compile(
       env,
       planners: startPlanners({
         router: routerPlanner(),
-        hydrate: opts.hydrate ? createHydratePlanner() : null,
       }),
       config: {
         configKey: `cfg-${env.name}`,
@@ -73,7 +70,6 @@ function compile(
             hmrStyle: 'vite',
             start: true,
           }),
-          hydrate: { root: ROOT },
         },
       },
       wantMap: false,
@@ -114,31 +110,6 @@ export const Route = createFileRoute('/')({
     expect(out!.diagnostics.filter((d) => d.severity === 'error')).toEqual([])
     expect(out!.code).toContain('count++')
     expect(out!.code).not.toContain('?tss-serverfn-handler')
-  })
-})
-
-describe('<Hydrate> children in a route file (client)', () => {
-  it('reports children that assign a `let` the route file keeps, and makes no chunk', async () => {
-    const code = `import { createFileRoute } from '@tanstack/react-router'
-import { Hydrate } from '@tanstack/react-start'
-let clicks = 0
-function Page() {
-  return <Hydrate><p onClick={() => clicks++}>{clicks}</p></Hydrate>
-}
-export const Route = createFileRoute('/')({
-  loader: () => clicks,
-  component: Page,
-})
-`
-    const out = await compile(code, clientEnv, { hydrate: true })
-    expect(
-      out!.diagnostics
-        .filter((d) => d.severity === 'error')
-        .map((d) => ({ code: d.code, start: d.range?.start })),
-    ).toEqual([
-      { code: 'hydrate-module-write', start: code.indexOf('<Hydrate') },
-    ])
-    expect(out!.code).not.toContain('?tss-hydrate=')
   })
 })
 
