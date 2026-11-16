@@ -55,8 +55,6 @@ export interface BuilderPurity {
   links: Readonly<Record<string, Record<string, 'client' | 'server' | 'both'>>>
   /** Env-only kind → the environment keeping its argument (`RecognizerTable.envOnlyKinds`). */
   envOnly: Readonly<Record<string, 'client' | 'server'>>
-  /** The kinds whose links write their receiver (`RecognizerTable.builderLinksWrite`). */
-  writes: ReadonlySet<string>
   /**
    * Local names of imports of known packages' chain factories → the import's
    * binding and the kind. A callee of that name is the factory when it
@@ -381,46 +379,6 @@ export function builderCall(
   // (an env-only fn is a function, no builder)
   return keptPure(only ?? 'both')
     ? { kind: factory, open: only === undefined }
-    : null
-}
-
-/**
- * The receiver of call `call` when it is a link (`b.server(f)`) on a
- * module-level `const` holding a builder of a kind whose links write the
- * builder they are called on (`BuilderPurity.writes`: a middleware's
- * assign its options; R139): the identifier naming the builder, else null.
- * It writes that builder wherever it stands, whatever its arguments (a
- * member write of it: the reference's classification).
- */
-export function linkedBuilder(
-  file: SourceFile,
-  b: BuilderPurity,
-  call: Node,
-): Node | null {
-  if (call.type !== 'CallExpression') {
-    return null
-  }
-  const callee = unwrapExpression(call.callee)
-  if (
-    callee.type !== 'MemberExpression' ||
-    callee.computed ||
-    callee.property.type !== 'Identifier'
-  ) {
-    return null
-  }
-  const object = unwrapExpression(callee.object as Node)
-  if (object.type !== 'Identifier') {
-    return null
-  }
-  // (`locals` holds module-level names: a function's own binding of the
-  // name is another one)
-  const kind = b.locals.get(object.name)
-  const binding = file.referenceOf(object)?.binding
-  return kind !== undefined &&
-    b.writes.has(kind) &&
-    binding?.scope === file.rootScope &&
-    ownEntry(b.links[kind] ?? {}, callee.property.name) !== undefined
-    ? object
     : null
 }
 

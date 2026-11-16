@@ -10,22 +10,17 @@
  */
 import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
-import {
-  isExpressionWrapper,
-  namespaceName,
-  patternIdentifiers,
-} from './source'
+import { namespaceName, patternIdentifiers } from './source'
 import { SymbolTable, valueBinding } from './symbols'
-import { buildItems, buildUnits, memberUse } from './units'
+import { buildItems, buildUnits } from './units'
 import { MutationModel } from './mutation'
 import {
-  linkedBuilder,
   noteBuilderConsts,
   seedNoSideEffectDeclarations,
   statementHasEffects,
 } from './purity'
 import { ownEntry } from './strings'
-import type { BuilderPurity, PurityContext } from './purity'
+import type { PurityContext } from './purity'
 import type { Header, Range } from './header'
 import type { SymbolId } from './symbols'
 import type { TopLevelItem, Unit, UnitId } from './units'
@@ -141,8 +136,6 @@ export interface ClassifiedRef {
   ctx: RefContext
   /** `export { a }` (true) vs `export { a as b }` (false); only for exportSpec. */
   exportShorthand?: boolean
-  /** The root of a member write (`a.p = …`, `a.p.q++`, `delete a.p`, `a.list.push(…)`, `Object.assign(a, …)`); always present (one object shape for every reference). */
-  memberWrite: boolean
 }
 
 interface FreeRef {
@@ -1023,7 +1016,6 @@ export class ModuleAnalysis {
     const refs: Array<ClassifiedRef> = []
     const freeRefs: Array<FreeRef> = []
     const names = new Set<string>(symbols.names())
-    const builders = this.purity.builders
     for (const ref of file.references) {
       if (ref.inTypePosition || ref.space === 'type') {
         continue
@@ -1042,19 +1034,12 @@ export class ModuleAnalysis {
         continue
       }
       const c = classify(file, ref)
-      const use =
-        c.kind !== 'value'
-          ? null
-          : builders !== undefined && linksOn(file, builders, node)
-            ? 'write'
-            : memberUse(file, node)
       const r: ClassifiedRef = {
         sym: symbols.ofBinding(b),
         range: { start: node.start, end: node.end },
         kind: c.kind,
         ctx: c.ctx,
         exportShorthand: c.exportShorthand,
-        memberWrite: use === 'write' || use === 'write-through',
       }
       refs.push(r)
     }
@@ -1087,7 +1072,6 @@ export class ModuleAnalysis {
             sym,
             range: { start: id.start, end: id.end },
             ...classify(file, { node: id, isWrite: true }),
-            memberWrite: false,
           }
           refs.push(r)
         }
@@ -1115,7 +1099,6 @@ export class ModuleAnalysis {
             range: { start: name.name.start, end: name.name.end },
             kind: 'value',
             ctx: 'plain',
-            memberWrite: false,
           })
         },
       })
@@ -1432,30 +1415,6 @@ function declarationAssigns(file: SourceFile, id: Node): boolean {
     }
   }
   return true
-}
-
-/** Whether identifier `node` is the receiver of a link on a writing builder (`linkedBuilder`: `b.server(f)`), parentheses and casts aside. */
-function linksOn(file: SourceFile, b: BuilderPurity, node: Node): boolean {
-  const outer = (n: Node): Node => {
-    let parent = file.parentOf(n)
-    while (parent !== null && isExpressionWrapper(parent)) {
-      n = parent
-      parent = file.parentOf(n)
-    }
-    return n
-  }
-  const object = outer(node)
-  const member = file.parentOf(object)
-  if (member?.type !== 'MemberExpression' || member.object !== object) {
-    return false
-  }
-  const callee = outer(member)
-  const call = file.parentOf(callee)
-  return (
-    call?.type === 'CallExpression' &&
-    call.callee === callee &&
-    linkedBuilder(file, b, call) === node
-  )
 }
 
 /** The wrappers a value passes through unchanged (`(X)`, `X as T`, `X!`, `X satisfies T`, `<T>X`). */
@@ -1846,7 +1805,6 @@ interface BuilderImports {
 }
 
 const ENV_TYPES = ['client', 'server'] as const
-const NO_KINDS: ReadonlySet<string> = new Set()
 
 /** The purity of one environment type with the recognizer's builder chains the module imports. */
 function builderPurityOf(
@@ -1863,7 +1821,6 @@ function builderPurityOf(
         env,
         links: table.builderLinks!,
         envOnly: table.envOnlyKinds,
-        writes: table.builderLinksWrite ?? NO_KINDS,
         factories: imports.factories,
         namespaces: imports.namespaces,
         terminal: table.terminal,

@@ -3384,9 +3384,6 @@ describe('builder chains in a compile', () => {
       },
       middleware: { middleware: 'both', server: 'server' },
     },
-    // a middleware's links assign the options of the builder they are
-    // called on; a server fn's copy them into a new one
-    builderLinksWrite: new Set(['middleware']),
   }
   async function compile(code: string, type: 'client' | 'server') {
     const host = new MemoryHost({
