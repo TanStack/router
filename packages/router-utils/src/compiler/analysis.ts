@@ -16,8 +16,8 @@ import {
   patternIdentifiers,
 } from './source'
 import { SymbolTable, valueBinding } from './symbols'
-import { buildItems, buildUnits, memberUse, runsWhenPassed } from './units'
-import { MutationModel, writeConstruct, writeKind } from './mutation'
+import { buildItems, buildUnits, memberUse } from './units'
+import { MutationModel } from './mutation'
 import {
   linkedBuilder,
   noteBuilderConsts,
@@ -28,7 +28,7 @@ import { ownEntry } from './strings'
 import type { BuilderPurity, PurityContext } from './purity'
 import type { Header, Range } from './header'
 import type { SymbolId } from './symbols'
-import type { EvaluatedCalls, TopLevelItem, Unit, UnitId } from './units'
+import type { TopLevelItem, Unit, UnitId } from './units'
 import type { Binding, Node, SourceFile } from 'yuku'
 import type { SourceText } from './output-builder'
 import type { RecognizerTable } from './values'
@@ -145,8 +145,6 @@ export interface ClassifiedRef {
   exportShorthand?: boolean
   /** The root of a member write (`a.p = …`, `a.p.q++`, `delete a.p`, `a.list.push(…)`, `Object.assign(a, …)`); always present (one object shape for every reference). */
   memberWrite: boolean
-  /** It reads the contents of the object it names where it evaluates (`a.p`, `{ ...a }`, `const { p } = a`, `(a ?? {}).p`, a member write's `a.p.q = …`: `memberUse`), which may be another binding's object; always present. */
-  readsThrough: boolean
 }
 
 interface FreeRef {
@@ -1071,8 +1069,6 @@ export class ModuleAnalysis {
     const freeRefs: Array<FreeRef> = []
     const names = new Set<string>(symbols.names())
     const builders = this.purity.builders
-    /** Each write reference's expression or statement (`MutationModel.visitValues` reads what it writes). */
-    const constructs = new Map<ClassifiedRef, Range>()
     for (const ref of file.references) {
       if (ref.inTypePosition || ref.space === 'type') {
         continue
@@ -1105,12 +1101,8 @@ export class ModuleAnalysis {
         eager: !isLazyAt(node.start),
         exportShorthand: c.exportShorthand,
         memberWrite: use === 'write' || use === 'write-through',
-        readsThrough: use === 'through' || use === 'write-through',
       }
       refs.push(r)
-      if (writeKind(r) !== null) {
-        constructs.set(r, writeConstruct(file, node))
-      }
     }
 
     // a `var` declared again: what that declaration gives it is a write, like
@@ -1143,10 +1135,8 @@ export class ModuleAnalysis {
             ...classify(file, { node: id, isWrite: true }),
             eager: !isLazyAt(id.start),
             memberWrite: false,
-            readsThrough: false,
           }
           refs.push(r)
-          constructs.set(r, writeConstruct(file, id))
         }
       })
     }
@@ -1174,7 +1164,6 @@ export class ModuleAnalysis {
             ctx: 'plain',
             eager: !isLazyAt(n.start),
             memberWrite: false,
-            readsThrough: false,
           })
         },
       })
@@ -1183,7 +1172,7 @@ export class ModuleAnalysis {
       (a, b) => a.range.start - b.range.start || a.range.end - b.range.end,
     )
     const refIndex = new RefIndex(refs, units)
-    const mutation = new MutationModel(refIndex, constructs, () => tier1)
+    const mutation = new MutationModel(refIndex)
 
     const exportNames = new Set<string>()
     for (const e of this.exports) {
@@ -1496,76 +1485,6 @@ function declarationAssigns(file: SourceFile, id: Node): boolean {
     }
   }
   return true
-}
-
-/**
- * What an evaluation runs: the one definition of "runs at load" (README,
- * "effects and mutable state"), asked of one evaluation at a time. `text`
- * holds the references of the text the evaluation evaluates; `calls`, what
- * that text calls (`callsWhenEvaluated`; null when it calls nothing). The
- * evaluation runs the eager references of its text and, when it calls
- * anything, those of the functions it passes to a call
- * (`['x'].map((k) => n + k)`) and the text of every module-level
- * declaration a running reference names (`bodyOf`): the callee can be an
- * alias, a method of an object it reads (`o.m()`, `read.call()`), a
- * function it returns, or take the function as an argument
- * (`apply(read)`); what such a body names may run too, transitively. A
- * name's value is its declaration and the statements writing it when the
- * module loads (`handlers.count = () => n`, `g = () => n`): a call
- * reaching the name may run what they attach, so their text runs too.
- * Holding a function runs nothing (`const config = { read }`), nor does
- * writing one of its properties (`Page.displayName = …`, the root of a
- * member write), nor a method nested in an object argument
- * (`defineComponent({ setup() {} })`).
- *
- * The object a binding names is its value: its declaration and those
- * statements (the mutation model's `visitValues`, which also walks the
- * bodies). A reference reading that object's contents (`readsThrough`:
- * `alias.v`, `{ ...alias }`, `const { v } = alias`) reads what the value
- * holds when the module loads, which may be another binding's object
- * (`const alias = cfg`, `const holder = { cfg }`, `holder.c = cfg`): it
- * runs the eager references of that value, transitively, as if read in
- * place (an evaluation that calls something runs all of it already).
- *
- * `visit(ref, at)` sees each reference that runs with where it runs: its
- * own position in the evaluation's text, in a body the position of the
- * reference that reached the body first in source order (`const snap =
- * read()` above `function read() { … }` runs the body at `snap`). True
- * from `visit` ends the walk; the result says whether it did.
- */
-export function visitRuns(
-  t1: Pick<Tier1, 'mutation'>,
-  text: ReadonlyArray<ClassifiedRef>,
-  calls: EvaluatedCalls | null,
-  bodyOf: (u: UnitId) => ReadonlyArray<ClassifiedRef>,
-  visit: (ref: ClassifiedRef, at: number) => boolean,
-  /** Sees each body or value text the walk enters (`MutationModel.visitValues`). */
-  entered?: (u: UnitId, at: number, within: Range | undefined) => boolean,
-): boolean {
-  /** With a call: every reference but a member write's root (a body it names may run); without: those reading through their binding (only their values' eager references run). */
-  const roots: Array<ClassifiedRef> = []
-  for (const ref of text) {
-    if (
-      !ref.eager &&
-      (calls === null || !runsWhenPassed(calls, ref.range.start))
-    ) {
-      continue
-    }
-    if (visit(ref, ref.range.start)) {
-      return true
-    }
-    if (calls === null) {
-      if (ref.readsThrough) {
-        roots.push(ref)
-      }
-    } else if (!ref.memberWrite) {
-      roots.push(ref)
-    }
-  }
-  return (
-    roots.length > 0 &&
-    t1.mutation.visitValues(roots, calls === null, bodyOf, visit, null, entered)
-  )
 }
 
 /** Whether identifier `node` is the receiver of a link on a writing builder (`linkedBuilder`: `b.server(f)`), parentheses and casts aside. */

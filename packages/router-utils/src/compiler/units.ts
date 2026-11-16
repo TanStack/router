@@ -18,9 +18,7 @@ import {
   patternIdentifiers,
   unwrapExpression,
 } from './source'
-import {
-  noteBuilderConsts,
-} from './purity'
+import { noteBuilderConsts } from './purity'
 import type { PurityContext } from './purity'
 import type { Header, Range } from './header'
 import type { Node, SourceFile } from 'yuku'
@@ -175,52 +173,6 @@ function writeTargets(node: Node): ReadonlyArray<Node> {
 }
 
 const NO_TARGETS: ReadonlyArray<Node> = []
-
-/**
- * Whether a declaration gives its binding a value of its own: a function,
- * class, enum or namespace, a literal, a function or class expression, a
- * call's result. Not another binding's (`const alias = E`, `import F = E`), whose members a
- * write of it would write too. A write of a member of such a binding writes
- * only what it names (R139), while nothing reassigns it
- * (`MutationModel.ownsObject`); a write through another one may write
- * whatever its value holds (`objectsWrittenBy`), as a read through a
- * binding reads it (`const holder = { cfg }` owns its object and holds
- * `cfg`'s).
- */
-export function ownsItsValue(u: Unit): boolean {
-  const n = u.node
-  switch (n.type) {
-    case 'FunctionDeclaration':
-    case 'ClassDeclaration':
-    case 'TSEnumDeclaration':
-    case 'TSModuleDeclaration':
-      return true
-    case 'VariableDeclarator':
-      return (
-        n.id.type === 'Identifier' && n.init !== null && createsItsValue(n.init)
-      )
-    default:
-      return false
-  }
-}
-
-/** Whether expression `e` evaluates to a value of its own (`ownsItsValue`): a literal, a function or class expression, a call's result. */
-export function createsItsValue(e: Node): boolean {
-  switch (unwrapExpression(e).type) {
-    case 'ObjectExpression':
-    case 'ArrayExpression':
-    case 'FunctionExpression':
-    case 'ArrowFunctionExpression':
-    case 'ClassExpression':
-    case 'Literal':
-    case 'TemplateLiteral':
-    case 'CallExpression':
-    case 'NewExpression':
-      return true
-    default:
-      return false
-  }
-}
 
 /**
  * How a reference (an identifier) uses the object it names, in one climb
