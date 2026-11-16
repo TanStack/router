@@ -565,7 +565,9 @@ export function Page() {
     )
   })
 
-  it('renames props React keeps for itself (key, ref, children)', async () => {
+  // `children` is an ordinary prop of the self-closing placeholder, as on
+  // main (coverage review C, finding 3)
+  it('renames props React keeps for itself (key, ref)', async () => {
     const { code, chunk, client } =
       await capturesOf(`export function Page({ children }) {
   const key = 'k'
@@ -573,14 +575,12 @@ export function Page() {
   return <Hydrate><p>{key}{ref}{children}</p></Hydrate>
 }`)
     const lazy = lazyOf(code, client.extracted[0]!.id).name
-    const { k, r, c } = shape(
-      `<${lazy} «k»={key} «r»={ref} «c»={children}/>`,
+    const { k, r } = shape(
+      `<${lazy} «k»={key} «r»={ref} children={children}/>`,
     ).exec(code)!.groups!
     // the captures travel under props React does not keep for itself
-    expect(
-      [k, r, c].filter((n) => ['key', 'ref', 'children'].includes(n!)),
-    ).toEqual([])
-    expect(chunk).toContain(`({ ${k}: key, ${r}: ref, ${c}: children })`)
+    expect([k, r].filter((n) => ['key', 'ref'].includes(n!))).toEqual([])
+    expect(chunk).toContain(`({ ${k}: key, ${r}: ref, children })`)
   })
 
   it('passes the enclosing function’s arguments as a prop, through nested boundaries', async () => {

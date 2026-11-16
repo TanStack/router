@@ -202,6 +202,16 @@ export function Page() {
   dynamicSplit: `${head}export function Page({ flag }: { flag: boolean }) {
   return <div><Hydrate when={idle()} split={flag}><Counter label="dynamic" /></Hydrate><Hydrate when={idle()}><Counter label="after" /></Hydrate></div>
 }`,
+  // Children a component receives, rendered in its boundary: the capture
+  // named `children` travels as the placeholder's `children` prop
+  // (coverage review C, finding 3)
+  capturedChildren: `${head}import type { ReactNode } from 'react'
+function Wrap({ children }: { children: ReactNode }) {
+  return <Hydrate when={idle()}><div>{children}</div></Hydrate>
+}
+export function Page() {
+  return <Wrap><Counter label="wrapped" /></Wrap>
+}`,
   // A let the component reassigns before the boundary renders: the
   // hydrated children read its latest value.
   latestLet: `${head}export function Page({ active }: { active: boolean }) {
@@ -638,6 +648,10 @@ return [button('outer').textContent, button('inner').textContent]`,
             })
           },
         )
+
+        test('a boundary rendering the children its component receives', async () => {
+          await expectChildrenHydrate('capturedChildren', ['wrapped'])
+        })
 
         test('children reading a let reassigned before the boundary show its latest value', async () => {
           await expectChildrenHydrate('latestLet', ['second'], {
