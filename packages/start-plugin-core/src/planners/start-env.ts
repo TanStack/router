@@ -20,7 +20,6 @@ import {
   derivedIdOf,
   identifierBase,
   isExpressionWrapper,
-  isPureExpression,
   opensNonExpressionStatement,
   patternIdentifiers,
   revision,
@@ -1809,23 +1808,31 @@ function hoist(
     }
     eagerArgs.push(...l.call.arguments)
   }
-  for (const a of eagerArgs) {
-    if (!isPureExpression(ctx.analysis.purity, a)) {
-      const fn = innermostFunctionName(file, X)
-      const fnText = fn === null ? 'the enclosing function' : `\`${fn}\``
-      const source = ctx.analysis.source.code.slice(a.start, a.end)
-      const expr =
-        source.length <= 40 && !/[\n`]/.test(source)
-          ? `\`${source}\``
-          : 'an expression'
-      return refuse(
-        `A server function nested in ${fnText} is moved to the module top level when compiled, so ${expr} in its options would run when the module loads instead of when ${fnText} runs, and the compiler cannot tell that it is free of side effects. Move ${expr === 'an expression' ? 'that expression' : expr} into a module-level \`const\` and pass the \`const\` instead, or move the whole server function to the module top level.`,
-        rangeOf(a),
-        { option: expr },
-      )
-    }
+  // WIP (phase 3b, not to be merged): the hoist's rule awaits the
+  // maintainer's decision (review-kept-analyses 4.1); until then it refuses
+  // wherever it asked purity
+  const firstArg = eagerArgs.at(0)
+  if (firstArg !== undefined) {
+    return refuse(
+      'A server function nested in a function cannot be hoisted when its options hold an expression (pending rule). Move the server function to the module top level.',
+      rangeOf(firstArg),
+    )
   }
-  // module-level reads outside the handler: no mutated let/var; anchor after their declarations
+  // WIP (phase 3b, not to be merged): refuses wherever it asked `isMutated`
+  const outside = t1.refs
+    .refsIn(xRange)
+    .find(
+      (r) =>
+        !(r.range.start >= hRange.start && r.range.end <= hRange.end) &&
+        symbols.isModuleLevel(r.sym),
+    )
+  if (outside !== undefined) {
+    return refuse(
+      `A server function nested in a function cannot be hoisted when it reads \`${symbols.name(outside.sym)}\`, a module binding, outside its handler (pending rule). Move the server function to the module top level.`,
+      outside.range,
+    )
+  }
+  // module-level reads outside the handler: anchor after their declarations
   let maxItem = -1
   let maxUnit: number | null = null
   for (const r of t1.refs.refsIn(xRange)) {
@@ -1834,14 +1841,6 @@ function hoist(
     }
     if (!symbols.isModuleLevel(r.sym)) {
       continue
-    }
-    if (t1.mutation.isMutated(r.sym)) {
-      // hoisted, the read runs when the module loads instead of when the
-      // enclosing function runs: a binding something writes may differ
-      return refuse(
-        `A server function nested in a function cannot be hoisted: it reads \`${symbols.name(r.sym)}\`, a module binding that is reassigned or mutated. Move the server function to the module top level.`,
-        r.range,
-      )
     }
     for (const u of t1.declaringUnits.get(r.sym) ?? []) {
       const unit = t1.units[u]!
