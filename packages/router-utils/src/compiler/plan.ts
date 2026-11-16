@@ -84,7 +84,14 @@ export interface EdgeRecord {
 
 export type Segment =
   | { k: 'slice'; start: number; end: number; edgeKey?: string }
-  | { k: 'text'; text: string; mapTo?: number; edgeKey?: string }
+  | {
+      k: 'text'
+      text: string
+      mapTo?: number
+      edgeKey?: string
+      /** A generated unit's own body text: `mapTo` is where its map points, not source text this output renders. */
+      gen?: true
+    }
 
 export interface OutputRecipe {
   kind: OutputKind

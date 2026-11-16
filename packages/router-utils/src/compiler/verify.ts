@@ -143,14 +143,13 @@ export function verifyPlan(
     }
   }
   // (d) every surviving effect unit is emitted exactly once across the
-  // outputs that import from the env module (a copying output excepted),
-  // unless placement removed its cluster (an augmentation of a binding our
-  // edits orphaned leaves with it): then nowhere; or homed it in a copying
-  // output (a write to state only the provider's handlers read, recheck
-  // ruling E): then in that output alone. An output holds the unit
-  // when a segment of it comes from the unit's range (a slice, or text
-  // standing for a reference there), outside the sub-regions other outputs
-  // claim (Hydrate children inside a statement render in their chunk); of a
+  // outputs that import from the env module (a copying output excepted), and
+  // once more by each chunk that copies it, unless placement removed its
+  // cluster: then nowhere. An output holds the unit when a segment of it
+  // comes from the unit's range (a slice, or text standing for source there;
+  // a generated unit's own text, `gen`, stands for none), outside the
+  // sub-regions other outputs claim (Hydrate children inside a statement
+  // render in their chunk); of a
   // claim of the statement's whole text (a bare server-fn statement the
   // provider hoists, R162), the output holding its placeholder holds the
   // statement.
@@ -169,8 +168,6 @@ export function verifyPlan(
     const cluster = placement?.clusterOfRegion.get(u.region)
     const home =
       cluster === undefined ? undefined : placement?.home.get(cluster)
-    const copy = home === undefined ? undefined : outputs.get(home as OutputId)
-    const inCopy = copy !== undefined && copies(copy.recipe.kind)
     // (a route file's split chunk copying a statement holds it too, as on `main`)
     const chunkCopies =
       cluster === undefined
@@ -181,7 +178,7 @@ export function verifyPlan(
               !copies(recipe.kind) &&
               placement!.included.get(o)?.has(cluster) === true,
           ).length
-    const expected = home === 'removed' || inCopy ? 0 : 1 + chunkCopies
+    const expected = home === 'removed' ? 0 : 1 + chunkCopies
     // (a claim of the statement's whole text: its placeholder stands for it)
     const whole = claimedRanges.find((r) => r.start <= start && r.end >= end)
     const inClaimed = (a: number, b: number) =>
@@ -191,6 +188,7 @@ export function verifyPlan(
         s.k === 'slice'
           ? s.start < end && s.end > start && !inClaimed(s.start, s.end)
           : s.mapTo !== undefined &&
+            s.gen !== true &&
             s.mapTo >= start &&
             s.mapTo < end &&
             (!inClaimed(s.mapTo, s.mapTo + 1) || s.mapTo === whole?.start),
@@ -205,9 +203,6 @@ export function verifyPlan(
       problems.push(
         `the effect at ${start} is emitted ${n} times (expected ${expected})`,
       )
-    }
-    if (inCopy && !holds(copy.recipe)) {
-      problems.push(`${home}: does not emit the effect at ${start} it holds`)
     }
   }
   // (f) planner facts are JSON data: a cached plan retains them as they are

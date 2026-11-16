@@ -1124,6 +1124,13 @@ class Renderer {
   ): void {
     const unit = entering ?? owner
     const mergedEnv = mergeEnv(env, unit?.env)
+    // the generated unit's own body (not an edit, a placeholder, an insert
+    // or what a region renders): its mapped text stands for no source text
+    const ownBody =
+      owner !== null &&
+      entering === null &&
+      slices === null &&
+      frags === owner.body
     for (const f of frags) {
       switch (f.k) {
         case 'slice': {
@@ -1191,9 +1198,11 @@ class Renderer {
           }
           if (text.length > 0) {
             out.push(
-              f.mapTo !== undefined
-                ? { k: 'text', text, mapTo: f.mapTo }
-                : { k: 'text', text },
+              f.mapTo === undefined
+                ? { k: 'text', text }
+                : ownBody
+                  ? { k: 'text', text, mapTo: f.mapTo, gen: true }
+                  : { k: 'text', text, mapTo: f.mapTo },
             )
           }
           break
