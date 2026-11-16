@@ -139,8 +139,6 @@ export interface ClassifiedRef {
   range: Range
   kind: RefKind
   ctx: RefContext
-  /** Evaluated at module load (not inside any function body). */
-  eager: boolean
   /** `export { a }` (true) vs `export { a as b }` (false); only for exportSpec. */
   exportShorthand?: boolean
   /** The root of a member write (`a.p = …`, `a.p.q++`, `delete a.p`, `a.list.push(…)`, `Object.assign(a, …)`); always present (one object shape for every reference). */
@@ -234,8 +232,6 @@ export interface Tier1 {
   declaringUnits: ReadonlyMap<SymbolId, ReadonlyArray<UnitId>>
   /** What writes each binding, and where (one model for every mutation rule). */
   mutation: MutationModel
-  /** The planners' purity (`ModuleAnalysis.purity`): what extraction and the statement rule's "what it changes" ask. */
-  purity: PurityContext
   /**
    * Whether `export default x` at `at` (the value `x` has when the statement
    * runs) may not be the binding: `x` is assigned (`live`: in code an output
@@ -255,16 +251,6 @@ export interface Tier1 {
    * block or static field initialiser).
    */
   isLazyAt: (offset: number) => boolean
-  /**
-   * Whether code at `offset` that evaluates when the module loads may run
-   * after the code written after it: the body of an immediately invoked
-   * async function (after an `await`) or generator (when resumed), an
-   * instance field initialiser (at each `new`). Its references count as
-   * eager reads (a read there observes every write but the eager ones
-   * before it, which have run by then in any case); its writes have not
-   * happened where they are written (the write table, placement).
-   */
-  runsLaterAt: (offset: number) => boolean
   /** Whether `offset` sits inside a function's scope (a declaration there is local to it, whenever it runs). */
   inFunctionAt: (offset: number) => boolean
   parentOf: (node: Node) => Node | null
@@ -1009,30 +995,10 @@ export class ModuleAnalysis {
     // declaration inside is local to it), and the lazily evaluated ones
     // (an immediately invoked function runs where it is written). Each
     // set is reduced to its outermost ranges and searched by offset.
-    // Also the code that evaluates with the module but may run after what
-    // follows it: an immediately invoked async function's body (after an
-    // `await`) or generator's (when resumed), an instance field's
-    // initialiser (at each `new`).
     const fnRanges: Array<Range> = []
     const lazyRanges: Array<Range> = []
-    const laterRanges: Array<Range> = []
     for (const scope of file.scopes) {
       const n = scope.node
-      if (scope.kind === 'class') {
-        if (n.type === 'ClassDeclaration' || n.type === 'ClassExpression') {
-          for (const el of n.body.body) {
-            if (
-              (el.type === 'PropertyDefinition' ||
-                el.type === 'AccessorProperty') &&
-              !el.static &&
-              el.value !== null
-            ) {
-              laterRanges.push({ start: el.value.start, end: el.value.end })
-            }
-          }
-        }
-        continue
-      }
       if (scope.kind !== 'function') {
         continue
       }
@@ -1040,21 +1006,10 @@ export class ModuleAnalysis {
       fnRanges.push(r)
       if (!isImmediatelyInvoked(file, n)) {
         lazyRanges.push(r)
-      } else if (
-        (n.type === 'ArrowFunctionExpression' ||
-          n.type === 'FunctionExpression') &&
-        (n.async || n.generator)
-      ) {
-        laterRanges.push(r)
       }
     }
     lazyRanges.sort((a, b) => a.start - b.start || b.end - a.end)
     const isLazyAt = offsetTest(outermost(lazyRanges))
-    laterRanges.sort((a, b) => a.start - b.start || b.end - a.end)
-    const runsLaterAt =
-      laterRanges.length === 0
-        ? () => false
-        : offsetTest(outermost(laterRanges))
     // the scope question is asked for function-local orphans only
     let inFunction: ((offset: number) => boolean) | null = null
     const inFunctionAt = (offset: number): boolean => {
@@ -1098,7 +1053,6 @@ export class ModuleAnalysis {
         range: { start: node.start, end: node.end },
         kind: c.kind,
         ctx: c.ctx,
-        eager: !isLazyAt(node.start),
         exportShorthand: c.exportShorthand,
         memberWrite: use === 'write' || use === 'write-through',
       }
@@ -1133,7 +1087,6 @@ export class ModuleAnalysis {
             sym,
             range: { start: id.start, end: id.end },
             ...classify(file, { node: id, isWrite: true }),
-            eager: !isLazyAt(id.start),
             memberWrite: false,
           }
           refs.push(r)
@@ -1162,7 +1115,6 @@ export class ModuleAnalysis {
             range: { start: name.name.start, end: name.name.end },
             kind: 'value',
             ctx: 'plain',
-            eager: !isLazyAt(n.start),
             memberWrite: false,
           })
         },
@@ -1181,7 +1133,6 @@ export class ModuleAnalysis {
       }
     }
 
-    const purity = this.purity
     const tier1: Tier1 = {
       items,
       units,
@@ -1192,7 +1143,6 @@ export class ModuleAnalysis {
       exportNames,
       declaringUnits,
       mutation,
-      purity,
       snapshotDiffers: (sym, at, live) => {
         if (mutation.isReassigned(sym, live)) {
           return true
@@ -1212,7 +1162,6 @@ export class ModuleAnalysis {
         })
       },
       isLazyAt,
-      runsLaterAt,
       inFunctionAt,
       parentOf: (node) => file.parentOf(node),
       nodeAt: (offset) => file.nodeAt(offset),
@@ -1299,9 +1248,7 @@ function offsetTest(outer: ReadonlyArray<Range>): (offset: number) => boolean {
  * `(async () => …)()`, `(() => …)?.()`, `new (function () { … })()`), through
  * the wrappers a value passes (`(f)`, `f as T`, `f!`, `f satisfies T`,
  * `<T>f`, `f<T>`) and `.call(…)`, `.apply(…)` or `.bind(…)(…)`. Its body
- * evaluates with the surrounding code: eager (an async one's body after an
- * `await`, a generator's, runs later: eager is the safe classification of
- * its reads, `runsLaterAt` answers for its writes). Asked of the parents: the text around the function
+ * evaluates with the surrounding code. Asked of the parents: the text around the function
  * cannot tell (`const f = () => { … }` followed by a line starting with
  * `(` is two statements).
  */
