@@ -132,8 +132,9 @@ per-output read walk (`readIndex`):
   planner names (`OutputDecl.imported`: a declaration leading back to the boundary, a recursive component), the route
   binding (`RouteModule.route`, whatever encloses the boundary), a name a statement declares and a declaration such a
   statement reads (KNOWN-BUGS), what another module of the file holds (a shared name, a generated declaration with
-  its own home). It is no home of anything: two chunks reaching one helper each copy it. Children assigning such an
-  import, or their copy of a binding the env module keeps, fall back (`shared-writer`).
+  its own home). It is no home of anything: two chunks reaching one helper each copy it. Code that left the env module
+  (the children, what only they use) assigning such an import, or its copy of a binding the env module keeps, falls
+  back (`shared-writer`); a helper the env module holds too writes each side's own copy.
 - Another planner's derived output (the server-fn handler module, one per file) imports what the env module keeps,
   and what it alone needs moves there; a provider output copies what it reaches (R157). A
   declaration a planner's lazy module (`custom`, the server-fn handler module) reaches stays in the env module when

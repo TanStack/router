@@ -406,6 +406,48 @@ export function routes() {
       timeout,
     )
 
+    // A helper both the page and the children call, which writes a module
+    // `let` (a lazily built cache, a scratch variable): each side holds its
+    // own copy, as on main, and both read the right value
+    // (review-phase2-fixes 1.2).
+    test(
+      'a lazily built cache and a scratch variable the page and the children both use build and read their values',
+      async () => {
+        const build = await buildStart({
+          bundler,
+          entry,
+          files: {
+            ...pageEntries,
+            'src/toggle.tsx': toggleSource,
+            'src/pages/cache.tsx': `import { Hydrate } from '@tanstack/react-start'
+import { interaction } from '@tanstack/react-start/hydration'
+import { Toggle } from '../toggle'
+let table: { n: number } | null = null
+function getTable() { if (table === null) { table = { n: 42 } } return table }
+let tmp = 0
+function twice(n: number) { tmp = n * 2; return tmp }
+export function Page() {
+  return <section><i>{'outside-' + getTable().n + '-' + twice(5)}</i><Hydrate when={interaction()}><Toggle label={'cache-' + getTable().n + '-' + twice(21)} /></Hydrate></section>
+}
+`,
+            'src/pages.ts': `export { Page as cache } from './pages/cache'
+`,
+          },
+        })
+        expect(problems(build.diagnostics)).toEqual([])
+        const html = (await renderPages(build)).cache
+        expect(typeof html).toBe('string')
+        expect(
+          await hydratePage(build, html as string, 'cache', ['cache-42-42']),
+        ).toEqual({
+          text: 'outside-42-10cache-42-42 clicked',
+          recoverableErrors: [],
+          consoleErrors: [],
+        })
+      },
+      timeout,
+    )
+
     // Children reading the route of a boundary outside the route's
     // component (an exported component another page renders): the chunk
     // imports the route, as split chunks do, so the children read the one

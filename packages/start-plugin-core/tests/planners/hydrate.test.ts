@@ -769,6 +769,43 @@ export const Page = () => <Hydrate><button onClick={() => { renders++ }}>x</butt
     }
   })
 
+  // A helper both the module and the children call, which writes a module
+  // `let` (a lazily built cache, a scratch variable): the module keeps the
+  // helper, so each side holds its own self-consistent copy, as on main
+  // (review-phase2-fixes 1.2); only code that left the module and assigns
+  // its copy of kept state is refused
+  it.each([
+    [
+      'a lazily built cache',
+      `let table: { n: number } | null = null
+function getTable() { if (table === null) { table = { n: 42 } } return table }`,
+      '{getTable().n}',
+      'let table',
+    ],
+    [
+      'a scratch variable',
+      `let tmp = 0
+function twice(n: number) { tmp = n * 2; return tmp }`,
+      '{twice(21)}',
+      'let tmp',
+    ],
+  ])(
+    'copies a helper the module also calls that writes a module let (%s)',
+    async (_, decls, read, copy) => {
+      const code = `${REACT}${decls}
+export const Page = () => <div>${read}<Hydrate><p>${read}</p></Hydrate></div>
+`
+      for (const env of [clientEnv, buildClientEnv]) {
+        const client = await compile(code, { env })
+        const [b] = client.extracted
+        expect(client.errors).toEqual([])
+        expect(client.chunks[b!.id]).toContain(copy)
+        expect(client.chunks[b!.id]).not.toContain(`'${FILE}`)
+        expect(client.code).toContain(copy)
+      }
+    },
+  )
+
   // H1: a `let` only the children use, which two boundaries assign: each
   // chunk holds its own copy, as on main (a5); the module keeps none
   it('lets two boundaries assign one module let: each chunk holds its own copy', async () => {
@@ -1561,6 +1598,22 @@ function Page() {
       expect(client.chunks).toEqual({})
     },
   )
+
+  // A lazily built cache the loader and the children both call: the route
+  // module keeps the helper, so each side holds its own copy (as on main)
+  it('a route file: copies a lazily built cache the loader also calls', async () => {
+    const code = `import { createFileRoute } from '@tanstack/react-router'
+${REACT}let table: { n: number } | null = null
+function getTable() { if (table === null) { table = { n: 42 } } return table }
+export const Route = createFileRoute('/')({ loader: () => getTable().n, component: Page })
+function Page() { return <div><Hydrate><p>{getTable().n}</p></Hydrate></div> }
+`
+    const client = await compile(code, { env: buildClientEnv, start: 'route' })
+    const [b] = client.extracted
+    expect(client.errors).toEqual([])
+    expect(client.chunks[b!.id]).toContain('let table')
+    expect(client.chunks[b!.id]).toContain('function getTable()')
+  })
 
   // The children read the route, but the boundary is not in the route's
   // component: the chunk imports the route as split chunks do, never a

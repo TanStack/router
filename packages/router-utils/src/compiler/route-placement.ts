@@ -41,9 +41,9 @@
  *   back to the boundary, a recursive component) and the route binding
  *   (`RouteModule.route`), a name a statement declares and a declaration
  *   such a statement reads, what another module of the file holds (a shared
- *   name, a generated declaration with its own home). Children assigning
- *   such an import, or their copy of a binding the env module keeps, fall
- *   back (H4).
+ *   name, a generated declaration with its own home). Code that left the env
+ *   module assigning such an import, or its copy of a binding the env module
+ *   keeps, falls back (H4).
  * - Another planner's derived output (a server function's handler module)
  *   imports what the env module keeps; what it alone needs moves there; a
  *   provider output (another layer's instance of the module) copies what
@@ -978,10 +978,12 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
   // assign (`=`, `++`, `+=`, …) a binding another module of the file holds
   // does not take the root that brings that code (a split option's value, a
   // server function's handler, `<Hydrate>` children). The root falls back:
-  // its planner keeps it in place in the next round. A `<Hydrate>` chunk
-  // assigning its copy of a binding the env module keeps falls back alike:
-  // the copy would be written and the env module's read (H4). One check of
-  // the outcome, on the write table every placement shares.
+  // its planner keeps it in place in the next round. Its copy analogue (H4):
+  // a `<Hydrate>` chunk whose code that left the env module assigns the
+  // chunk's copy of a binding the env module keeps falls back alike (the copy
+  // would be written, the env module's read); code the env module holds too
+  // (a helper both call) writes each side's own copy. One check of the
+  // outcome, on the write table every placement shares.
   const writers = new Map<ClusterId, SymbolId>()
   for (const w of graph.writes) {
     const c = w.owner === null ? undefined : graph.clusterOfRegion.get(w.owner)
@@ -1000,7 +1002,7 @@ export function computeRoutePlacement(input: PlacementInput): Placement {
       if (
         !copying(h) &&
         set.has(c) &&
-        (!set.has(d) || (isHydrate(h) && env.has(d))) &&
+        (!set.has(d) || (isHydrate(h) && env.has(d) && !env.has(c))) &&
         home.get(d) !== 'removed' &&
         // (a write in text that output erases, a client's stubbed server-fn
         // handler, assigns nothing there)

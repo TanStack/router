@@ -182,14 +182,24 @@ start-build-lazy-handlers.test.ts`, "SSR (R159) %s: …" and "SSR: a server fn a
      undefined in the copy ("Element type is invalid");
   7. `Object.assign(Tabs, { Tab })`, children `<Tabs.Tab />`: the same;
   8. a registry filled by a top-level call: `const registry = new Map(); registry.set('a', 'A')`, children
-     `{registry.get('a')}`: empty in the copy.
+     `{registry.get('a')}`: empty in the copy;
+  9. a helper both the module and the children call, writing a module `let` (review-phase2-fixes 1.2): an id counter
+     (`let next = 0; const uid = () => 'id' + next++`) gives duplicate ids on both sides; a run-once flag (`let done;
+function init() { if (!done) { done = true; register() } }`) registers twice; a setter pair (`export function
+setTheme(t) { theme = t }`, `export function getTheme()`), children calling the setter, kept code the getter:
+     the getter stays at the old value. (A lazily built cache or a scratch variable of that form is correct on both
+     sides: each reads the copy it wrote.)
+  10. a `let` the route's component reads (in its split chunk), assigned by its boundary's children, nothing in the
+      route module reading it: two copies, the component shows the old value. The refusal below tests the route module
+      only as the keeper.
 
   `split={false}` keeps one instance (`hydrate-build-cases.ts`: "an exported let the children of a split={false}
   boundary assign stays live"). A binding leading back to the boundary (a recursive component), the route binding and
-  a name a top-level statement declares are imported, not copied (H2). Children that would assign their copy of a
-  binding the module also keeps (an exported `let` a component outside the boundary assigns, a `let` the loader
-  reads) are refused with `hydrate-module-write` (H4) instead of being copied. No test holds the eight: they are the
-  limit itself.
+  a name a top-level statement declares are imported, not copied (H2). Code that left the module (the children, a
+  component only they render) and would assign the chunk's copy of a binding the module also keeps (an exported `let`
+  a component outside the boundary assigns, a `let` the loader reads) is refused with `hydrate-module-write` (H4)
+  instead of being copied; code the module holds too (item 9) is copied. No test holds the ten: they are the limit
+  itself.
 
 - **A `<Hydrate>` chunk copies a destructuring declarator whole** (`const { a, b } = make()` with children reading
   `a`): `main`'s copy keeps `{ a }` only. Lazy bytes only (+4 B on the probe); the chunk evaluates `make()` once on
