@@ -163,8 +163,11 @@ export async function prerender({
           ).split(/[?#]/)[0]!
 
           const contentType = res.headers.get('content-type') || ''
+          // Media type tokens are case-insensitive, so normalize before
+          // classifying the response.
+          const mediaType = contentType.toLowerCase()
           const isImplicitHTML =
-            !cleanPagePath.endsWith('.html') && contentType.includes('html')
+            !cleanPagePath.endsWith('.html') && mediaType.includes('html')
 
           const routeWithIndex = cleanPagePath.endsWith('/')
             ? cleanPagePath + 'index'
@@ -194,8 +197,14 @@ export async function prerender({
           // fonts, archives). Decoding those as text replaces every invalid
           // UTF-8 sequence with U+FFFD and corrupts the output, so only HTML is
           // read as a string and everything else is written as raw bytes.
-          const isHTMLResponse =
-            contentType.includes('html') || cleanPagePath.endsWith('.html')
+          //
+          // An explicit content type wins. The `.html` output suffix is only a
+          // fallback for responses that do not declare a type at all, so a
+          // binary response written to an `.html` path is still written as
+          // bytes.
+          const isHTMLResponse = contentType
+            ? mediaType.includes('html')
+            : cleanPagePath.endsWith('.html')
           const html = isHTMLResponse ? await res.text() : ''
           const binaryBody = isHTMLResponse
             ? undefined

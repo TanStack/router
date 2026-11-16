@@ -61,4 +61,45 @@ describe('prerender binary responses', () => {
 
     expect([...written.subarray(0, JPEG_MAGIC.length)]).toEqual(JPEG_MAGIC)
   })
+
+  it('treats a mixed-case HTML content type as HTML', async () => {
+    const html = '<html><body><a href="/about">About</a></body></html>'
+    const requested: Array<string> = []
+
+    const handler: PrerenderHandler = {
+      getClientOutputDirectory: () => outputDir,
+      request: async (requestPath) => {
+        requested.push(requestPath)
+        return new Response(
+          requestPath.replace(/\/$/, '') === '/about'
+            ? '<html><body>About</body></html>'
+            : html,
+          {
+            status: 200,
+            headers: { 'content-type': 'Text/HTML; charset=utf-8' },
+          },
+        )
+      },
+    }
+
+    const onSuccessCalls: Array<{ path: string; html: string }> = []
+
+    const startConfig = makeStartConfig(['/'])
+    startConfig.prerender.onSuccess = (opts: any) => {
+      onSuccessCalls.push({ path: opts.page.path, html: opts.html })
+      return undefined
+    }
+    startConfig.prerender.crawlLinks = true
+
+    await prerender({ startConfig, handler })
+
+    const written = await fsp.readFile(
+      path.join(outputDir, 'index.html'),
+      'utf8',
+    )
+
+    expect(written).toBe(html)
+    expect(onSuccessCalls).toContainEqual({ path: '/', html })
+    expect(requested.some((p) => p.replace(/\/$/, '') === '/about')).toBe(true)
+  })
 })
