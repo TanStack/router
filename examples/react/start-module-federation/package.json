@@ -6,5 +6,8 @@
     "dev": "pnpm --parallel --filter ./remote --filter ./host dev",
     "build": "pnpm --filter ./remote --filter ./host build",
     "preview": "pnpm --parallel --filter ./remote --filter ./host preview"
+  },
+  "nx": {
+    "includedScripts": []
   }
 }
