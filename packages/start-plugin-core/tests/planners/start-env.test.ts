@@ -769,8 +769,8 @@ const flag = Math.random() >= 0
       'its own statement or a later one',
     ],
     [
-      'a later declaration, when the module loads',
-      `export const o = { foo: createServerFn().validator(check).handler(async () => 1) }\nfunction check(d: unknown) {\n  return d\n}`,
+      'a later `const`, when the module loads',
+      `export const o = { foo: createServerFn().validator(check).handler(async () => 1) }\nconst check = (d: unknown) => d`,
       'check).',
       'its own statement or a later one',
     ],

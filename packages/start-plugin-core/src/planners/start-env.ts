@@ -1879,7 +1879,8 @@ function ownedWord(n: Node): string {
  * name only the code around it sees (a static block's local, a class
  * expression's own name), `this`/`super`/`new.target`/`arguments` or a
  * private name of the class it is in, and one reading, when the module
- * loads, a declaration of its own statement or a later one.
+ * loads, a binding not initialised yet where it is created (its own
+ * statement or a later one declares it: `symbols.initialisation`).
  */
 function hoist(
   ctx: PlanContext,
@@ -2021,10 +2022,10 @@ function hoist(
   const own = t1.items.find(
     (it) => it.range.start <= statement.start && statement.start < it.range.end,
   )!
-  // what the chain reads when the module loads is declared above its
-  // statement: the hoisted `const` evaluates it there, before the rest of the
-  // statement (what a function of the chain reads, its handler's code
-  // included, runs when it is called)
+  // what the chain reads when the module loads has the value there that the
+  // source reads: the hoisted `const` evaluates it before its own statement
+  // runs (what a function of the chain reads, its handler's code included,
+  // runs when it is called)
   const functions: Array<Range> = []
   walk(X, {
     enter: (n) => {
@@ -2044,14 +2045,24 @@ function hoist(
     ) {
       continue
     }
-    const below = (t1.declaringUnits.get(r.sym) ?? []).some((u) => {
-      const unit = t1.units[u]!
-      return unit.kind !== 'import-specifier' && unit.item >= own.index
-    })
-    if (below) {
+    const declaring = (t1.declaringUnits.get(r.sym) ?? [])
+      .map((u) => t1.units[u]!)
+      .filter((u) => u.kind !== 'import-specifier' && u.item >= own.index)
+    // (`Initialisation`: an import or a function declaration has its value
+    // before any statement runs; a `var` is `undefined` until its declarator
+    // runs, which only a declarator of its own statement before the chain
+    // has done in the source; a `let`, a `const` or a class its own statement
+    // or a later one declares is not initialised yet)
+    const initialisation = symbols.initialisation(r.sym)
+    const differs =
+      initialisation === 'declaration'
+        ? declaring.length > 0
+        : initialisation === 'undefined' &&
+          declaring.some((u) => u.item === own.index && u.range.start < X.start)
+    if (differs) {
       const name = symbols.name(r.sym)
       return refuse(
-        `A server function cannot be created before \`${name}\`, which its own statement or a later one declares and which it reads when the module loads. Declare \`${name}\` above the statement holding the server function, or read it in a function (the handler, a validator).`,
+        `A server function cannot be created before \`${name}\` is initialised: its own statement or a later one declares it, and the server function reads it when the module loads, before that declaration runs. Declare \`${name}\` above the statement holding the server function, or read it in a function (the handler, a validator).`,
         r.range,
       )
     }

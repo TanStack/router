@@ -354,6 +354,41 @@ export const api = {
     )
   })
 
+  // a binding a later statement declares, read when the module loads, has
+  // the same value above the server fn's statement as in it: a function
+  // declaration is initialised before any statement runs, a `var` is
+  // `undefined` until its declarator runs
+  test('reads a function declared below when the module loads, with the value of the source', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}export const api = {
+  foo: createServerFn()
+    .validator(check)
+    .handler(async ({ data }) => \`checked \${data}\`),
+}
+function check(value: unknown) {
+  return \`\${String(value)}!\`
+}`,
+      ...files,
+    })
+    expect(
+      await callServerFnThroughCallers(served, 'module.api.foo', 'x'),
+    ).toBe('checked x!')
+  })
+
+  test('reads a var declared below when the module loads, undefined as in the source', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}export const api = {
+  foo: createServerFn({ method: later ?? 'POST' }).handler(async () => db.inner()),
+}
+var later: 'GET' | undefined = 'GET'`,
+      ...files,
+    })
+    expect((await served.ssr()).api.foo.method).toBe('POST')
+    expect(await callServerFnThroughCallers(served, 'module.api.foo')).toBe(
+      'inner',
+    )
+  })
+
   // b13: a bare statement creates a server fn nothing names; the module
   // still builds and loads in every environment
   test('builds as a bare statement', async () => {
@@ -461,10 +496,11 @@ const reg = { add: <T,>(f: T) => f }
   )
 
   // a name only the code around the server fn sees (a class static block's
-  // local, a class expression's own name), and a declaration its hoisted
-  // `const` would read before it is set (one of its own statement, or a
-  // later one, read when the module loads: F3, review-phase3): a compile
-  // error at the name
+  // local, a class expression's own name), and a binding its hoisted
+  // `const` would read, when the module loads, before it has the value the
+  // source reads (a `let`, `const` or class its own statement or a later one
+  // declares, a `var` its own statement declared before the server fn): a
+  // compile error at the name
   test.each([
     {
       name: "a class static block's local",
@@ -487,9 +523,19 @@ const reg = { add: <T,>(f: T) => f }
       at: 'Api.mws',
     },
     {
-      name: 'a declaration of a later statement, when the module loads',
-      code: `export const api = { foo: createServerFn().validator(check).handler(async () => db.inner()) }\nfunction check(d: unknown) {\n  return d\n}`,
+      name: 'a `const` a later statement declares, when the module loads',
+      code: `export const api = { foo: createServerFn().validator(check).handler(async () => db.inner()) }\nconst check = (d: unknown) => d`,
       at: 'check).',
+    },
+    {
+      name: 'a class a later statement declares, when the module loads',
+      code: `export const api = { foo: createServerFn().validator(Check.run).handler(async () => db.inner()) }\nclass Check {\n  static run = (d: unknown) => d\n}`,
+      at: 'Check.run',
+    },
+    {
+      name: 'a `var` its own statement declared before the server fn, when the module loads',
+      code: `export var mws: Array<never> = [],\n  o = { foo: createServerFn().middleware(mws).handler(async () => db.inner()) }`,
+      at: 'mws).',
     },
   ])('is a compile error when it reads $name', async ({ code, at }) => {
     const source = `${head}${code}`

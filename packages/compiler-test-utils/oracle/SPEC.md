@@ -648,8 +648,10 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   immediately invoked function, a Vue `<script setup>` block), a loop, `if`, a block, `try`, `switch`, a namespace's
   body. Reported at the name instead: a read of a local of the function around it, of a class static block's local,
   of a class expression's own name, of `this`, `super` or a private name of its class, and a read, when the module
-  loads (not in a function of the chain), of a declaration of its own statement or a later one. Nothing leaks either
-  way.
+  loads (not in a function of the chain), of a binding not yet initialised before its statement: a `let`, `const` or
+  class its own statement or a later one declares, a `var` its own statement declares before it (an import and a
+  function declaration are initialised before any statement runs; a `var` declared later is `undefined` in both
+  places). Nothing leaks either way.
 - **J4.7 Import form independence.** A module's client output does not depend on how importers import it (static,
   dynamic, re-export, barrel); a dynamic import never leaks server code.
 - **J4.8 `createMiddleware`.** Client: `.server()` implementations and `.validator()` code (and their imports) are
