@@ -8,7 +8,7 @@
  * module keeps; everything the module keeps is imported back: one instance,
  * R157);
  * middleware links, isomorphic implementations and env-only fns are
- * selected per env; `<ClientOnly>` children leave server envs; nested
+ * selected per env; `<ClientOnly>` children leave envs rendering HTML; nested
  * server fns are hoisted on the server when that is safe, else refused at
  * the capture. Everything the removed code alone referenced is dropped by
  * the core: its removal rule at the module level (`placement.ts`:
@@ -857,8 +857,13 @@ function planStartEnv(
     }
   }
 
-  // ---- 5. <ClientOnly> children on server envs
-  if (isServer) {
+  // ---- 5. <ClientOnly> children where HTML is rendered
+  // Not in the env rendering server components (RSC): a Flight render
+  // serialises `<ClientOnly>`'s props for the browser, so the children travel
+  // in the payload and the browser renders them after hydration
+  const rendersHtml =
+    isServer && !(ctx.env.isProvider && config.providerSeparate)
+  if (rendersHtml) {
     for (const el of analysis.clientOnlyElements) {
       if (!el.closingElement) {
         continue

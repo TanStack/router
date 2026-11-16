@@ -668,7 +668,8 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
 - **J4.10 `createServerOnlyFn` / `createClientOnlyFn`.** In the owning env the function runs unchanged; in the other
   env calling it throws (checked by the throw; the message is free, §5.7), and the wrapped body and imports only it
   used are gone.
-- **J4.11 `<ClientOnly>`.** Server envs render only the `fallback` (children removed). On the server, declarations,
+- **J4.11 `<ClientOnly>`.** Environments that render HTML render only the `fallback` (children removed); the
+  environment that renders server components (RSC) keeps the children, which travel in the Flight payload. On the server, declarations,
   imports and initialiser effects only client-only code reads (`<ClientOnly>` children, `createClientOnlyFn` bodies,
   isomorphic `.client()` implementations) are dropped through every shape of G16, whatever the imported file is: a
   `*.client.*` file, a client-only-marked module, a neutral module or a package. A default server build reports no

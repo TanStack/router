@@ -348,6 +348,44 @@ export const fn = (createServerFn() as any).handler(${args})
     },
   )
 
+  // A Flight render serialises `<ClientOnly>`'s props for the browser: the
+  // env rendering server components keeps the children (handler JSX and a
+  // server component function alike), the env rendering HTML erases them
+  // (coverage review C, finding 1)
+  it('keeps <ClientOnly> children where server components render, erases them where HTML renders', async () => {
+    const code = `import { ClientOnly } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+import { Widget } from './widget'
+export function Panel() {
+  return <div><ClientOnly fallback={<i>fb</i>}><Widget label="panel" /></ClientOnly></div>
+}
+export const getPanel = createServerFn().handler(async () =>
+  renderServerComponent(<div><ClientOnly fallback={<i>fb</i>}><Widget label="handler" /></ClientOnly><Panel /></div>),
+)
+`
+    const widget = {
+      '/app/src/widget.tsx': `'use client'\nexport function Widget(props: { label: string }) { return <b>{props.label}</b> }\n`,
+    }
+    const env = await compile(code, { env: rsc, config, files: widget })
+    expectValid(env.code)
+    expect(env.code).toContain('<Widget label="panel" />')
+    expect(env.code).toContain("import { Widget } from './widget'")
+    const provider = await env.derived(PROVIDER)
+    expectValid(provider)
+    expect(provider).toContain('<Widget label="handler" />')
+    expect(provider).toContain("import { Widget } from './widget'")
+    const ssr = await compile(code, {
+      env: envInfo({ name: 'ssr', type: 'server', isProvider: false }),
+      config,
+      files: widget,
+    })
+    expectValid(ssr.code)
+    expect(ssr.code).toContain('<ClientOnly fallback={<i>fb</i>}/>')
+    expect(ssr.code).not.toContain('<Widget')
+    expect(ssr.code).not.toContain('./widget')
+  })
+
   it('stubs a top-level server fn in the env module (control)', async () => {
     const r = await compile(
       `import { createServerFn } from '@tanstack/react-start'\nimport { db } from './db.server'\nexport const fn = createServerFn().handler(() => db.q())\n`,
