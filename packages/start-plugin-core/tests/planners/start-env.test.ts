@@ -309,6 +309,45 @@ ${body}`
     },
   )
 
+  // The types allow one argument; with a cast a second one is code of the
+  // same call: the stub replaces the whole argument list wherever the
+  // handler is replaced (client, SSR caller, env module), and the provider
+  // keeps the list as written (coverage review B, F1)
+  it.each([
+    ['a second argument', `async () => 'first', async () => db.q()`],
+    ['a spread and a trailing comma', `async () => 'first', other, ...[db.q],`],
+  ])(
+    'stubs the whole argument list of a handler called with %s',
+    async (_name, args) => {
+      const code = `import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+const other = 1
+export const fn = (createServerFn() as any).handler(${args})
+`
+      const results = await Promise.all([
+        compile(code, { files }),
+        compile(code, {
+          env: envInfo({ name: 'ssr', type: 'server', isProvider: false }),
+          config,
+          files,
+        }),
+        compile(code, { env: rsc, config, files }),
+      ])
+      for (const r of results) {
+        expectValid(r.code)
+        expect(r.code).toMatch(/\.handler\([\w$]+\([^()]*\),?\)/)
+        expect(r.code).not.toContain('db.q')
+        expect(r.code).not.toContain('./db.server')
+        expect(r.code).not.toContain("'first'")
+      }
+      const provider = await results[2].derived(PROVIDER)
+      expectValid(provider)
+      // (the provider's list as written, after the wrapper it passes first)
+      expect(provider).toMatch(/\.handler\([\w$]+, /)
+      expect(provider).toContain(`, ${args})`)
+    },
+  )
+
   it('stubs a top-level server fn in the env module (control)', async () => {
     const r = await compile(
       `import { createServerFn } from '@tanstack/react-start'\nimport { db } from './db.server'\nexport const fn = createServerFn().handler(() => db.q())\n`,

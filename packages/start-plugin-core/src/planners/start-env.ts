@@ -250,6 +250,12 @@ interface ServerFnSite {
   handler: Node
   /** `.handler`'s type and argument lists (`<T>(fn)`): a split chunk's caller copy replaces them (R159). */
   handlerArgs: Range
+  /**
+   * `.handler`'s arguments, the first's start to the last's end (a trailing
+   * comma outside): what an RPC stub replaces. The types allow one; a
+   * further argument (with a cast) is code of the same call.
+   */
+  stubbed: Range
   base: string
   stableKey: string
   /** What a custom `generateFunctionId` receives (`handlerFunctionName`). */
@@ -702,6 +708,10 @@ function planStartEnv(
       chain,
       handler: handlerLink.arg,
       handlerArgs: { start: handlerLink.member.end, end: handlerLink.call.end },
+      stubbed: {
+        start: handlerLink.arg.start,
+        end: handlerLink.call.arguments.at(-1)!.end,
+      },
       base: described.base || 'fn',
       stableKey,
       functionName: handlerFunctionName(described.base || 'fn', functionNames),
@@ -908,9 +918,9 @@ function planStartEnv(
         config.idMode === 'dev'
           ? `(${moduleLiteral(id)}, ${moduleLiteral((devRevision ??= revision(ctx.analysis.source.code)))})`
           : `(${moduleLiteral(id)})`
-      erased.push(rangeOf(h))
+      erased.push(site.stubbed)
       rewrites.placeholder({
-        range: rangeOf(h),
+        range: site.stubbed,
         body: [text({ sym: rpc, ctx: 'callee' }, args)],
         scope: 'all-outputs',
         by,
@@ -925,7 +935,7 @@ function planStartEnv(
       // the handler's place: its text (an env-only or isomorphic call's,
       // compiled) renders in the provider output
       rewrites.placeholder({
-        range: rangeOf(h),
+        range: site.stubbed,
         body: [text({ sym: rpc, ctx: 'callee' }, `(${moduleLiteral(id)})`)],
         scope: role === 'ssr-caller' ? 'all-outputs' : envScope,
         by,
