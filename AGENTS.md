@@ -15,10 +15,12 @@
 - For sandbox-blocked registry/store access, escalate the same command; report the blocker if unavailable. Do not change stores, delete dependencies/lockfiles, use `--force`/`--ignore-scripts`, or weaken workspace trust/build policies to bypass it.
 - Never manually edit `pnpm-lock.yaml` or any `routeTree.gen.ts`. Regenerate the lockfile with `pnpm install --no-frozen-lockfile` after intentional dependency changes; regenerate route trees through app builds/dev servers or the generator fixture harness.
 - Always use control-flow braces. Run `pnpm format` before validation.
-- Use Nx: workspace imports consume built packages, so direct runners can test stale dependencies. Inspect resolved targets; some are inferred.
+- Use Nx: workspace imports consume built packages, so direct runners can test stale dependencies. Inspect resolved targets with `pnpm nx show project <project> --json`; some are inferred.
+- Run finite validation through `run-many` with explicit projects and targets, including a single project/target. Nx automatically selects `summary` output when it detects an AI agent: omit `--outputStyle` for normal runs. Read the reported full log files for failures; use `--outputStyle=summary` if agent detection is unavailable.
+- Use `--outputStyle=static` or `pnpm nx run <project>:<target>` only when diagnosing a task and its full output is needed. Continuous/watch targets may use live output.
 
 ```sh
-CI=1 NX_DAEMON=false pnpm nx run <project>:<target> --outputStyle=stream --skipRemoteCache
+CI=1 NX_DAEMON=false pnpm nx run-many -p <project> -t <target> --skipRemoteCache
 ```
 
 - Run one Nx command at a time. For a ~20-second startup/graph stall, stop, run `pnpm nx reset`, and retry once, then escalate. Do not apply that timeout to running tests.

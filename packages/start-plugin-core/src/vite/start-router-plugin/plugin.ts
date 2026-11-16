@@ -6,11 +6,10 @@ import {
 import path from 'pathe'
 import { normalizePath } from 'vite'
 import { VITE_ENVIRONMENT_NAMES } from '../../constants'
-import { routesManifestPlugin } from '../../start-router-plugin/generator-plugins/routes-manifest-plugin'
-import { prerenderRoutesPlugin } from '../../start-router-plugin/generator-plugins/prerender-routes-plugin'
-import { buildRouteTreeFileFooterFromConfig } from '../../start-router-plugin/route-tree-footer'
+import { startGeneratorConfig } from '../../start-router-plugin/generator-config'
 import { pruneServerOnlySubtrees } from '../../start-router-plugin/pruneServerOnlySubtrees'
 import { SERVER_PROP } from '../../start-router-plugin/constants'
+import { escapeRegExp } from '../../utils'
 import type { GetConfigFn } from '../../types'
 import type { TanStackStartVitePluginCoreOptions } from '../types'
 import type {
@@ -72,22 +71,6 @@ export function tanStackStartRouter(
     },
   }
 
-  let routeTreeFileFooter: Array<string> | null = null
-
-  function getRouteTreeFileFooter() {
-    if (routeTreeFileFooter) {
-      return routeTreeFileFooter
-    }
-    routeTreeFileFooter = [
-      ...buildRouteTreeFileFooterFromConfig({
-        generatedRouteTreePath: getGeneratedRouteTreePath(),
-        getConfig,
-        corePluginOpts,
-      }),
-    ]
-    return routeTreeFileFooter
-  }
-
   let resolvedGeneratedRouteTreePath: string | null = null
   const clientTreePlugin: Plugin = {
     name: 'tanstack-start:route-tree-client-plugin',
@@ -104,8 +87,13 @@ export function tanStackStartRouter(
       resolvedGeneratedRouteTreePath = normalizePath(
         getGeneratedRouteTreePath(),
       )
+      // The route tree module itself, by its exact id (a query aside)
       ;(clientTreePlugin.load as LoadObjectHook).filter = {
-        id: { include: new RegExp(resolvedGeneratedRouteTreePath) },
+        id: {
+          include: new RegExp(
+            `^${escapeRegExp(resolvedGeneratedRouteTreePath)}(?:\\?.*)?$`,
+          ),
+        },
       }
     },
 
@@ -113,7 +101,13 @@ export function tanStackStartRouter(
       filter: {
         // this will be set in the config hook above since it relies on `config` hook being called first
       },
-      async handler() {
+      async handler(id) {
+        if (
+          normalizePath(id.replace(/\?.*$/, '')) !==
+          resolvedGeneratedRouteTreePath
+        ) {
+          return null
+        }
         if (!generatorInstance) {
           throw new Error('Generator instance not initialized')
         }
@@ -144,19 +138,16 @@ export function tanStackStartRouter(
   }
   return [
     clientTreePlugin,
-    tanstackRouterGenerator(() => {
-      const routerConfig = getConfig().startConfig.router
-      const plugins = [clientTreeGeneratorPlugin, routesManifestPlugin()]
-      if (startPluginOpts.prerender?.enabled === true) {
-        plugins.push(prerenderRoutesPlugin())
-      }
-      return {
-        ...routerConfig,
-        target: corePluginOpts.framework,
-        routeTreeFileFooter: getRouteTreeFileFooter,
-        plugins,
-      }
-    }, routerPluginContext),
+    tanstackRouterGenerator(
+      () =>
+        startGeneratorConfig({
+          getConfig,
+          corePluginOpts,
+          prerender: startPluginOpts.prerender?.enabled === true,
+          clientRouteTree: clientTreeGeneratorPlugin,
+        }),
+      routerPluginContext,
+    ),
     tanStackRouterCodeSplitter(() => {
       const routerConfig = getConfig().startConfig.router
       return {

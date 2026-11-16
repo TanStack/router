@@ -28,7 +28,6 @@ const RSC_HMR_VIRTUAL_ID = 'virtual:tanstack-rsc-hmr'
 const RSC_BROWSER_DECODE_VIRTUAL_ID = 'virtual:tanstack-rsc-browser-decode'
 const RSC_SSR_DECODE_VIRTUAL_ID = 'virtual:tanstack-rsc-ssr-decode'
 export const START_MANIFEST_PLACEHOLDER = '__TSS_START_MANIFEST_PLACEHOLDER__'
-const DEV_START_MANIFEST_GLOBAL = '__TSS_DEV_START_MANIFEST__'
 /**
  * VirtualModulesPlugin resolves module paths relative to compiler.context.
  * Prefix them under the app root so they are unique and watcher-friendly.
@@ -43,10 +42,14 @@ function virtualPath(root: string, moduleId: string): string {
 export interface VirtualModuleState {
   /** Call to update manifest content after client build completes */
   updateManifest: (clientBuild: NormalizedClientBuild) => void
+  /** Number of times the dev manifest module was written */
+  getDevManifestWriteCount: () => number
   /** Call to update server fn resolver content after compilation discovers fns */
   updateServerFnResolver: () => void
-  /** Try to write explicit resolver content now; queues if env not ready */
+  /** Write explicit server resolver content; queues if env not ready */
   tryUpdateServerFnResolver: (content: string) => void
+  /** Number of times the server fn resolver was written for an environment */
+  getServerFnResolverWriteCount: (environmentName: string) => number
   /** Get the virtual path for a given module ID */
   getVirtualPath: (moduleId: string) => string
   /** Generate resolver module content from current serverFnsById state.
@@ -81,36 +84,24 @@ function getEntryScriptAttrs(
     : `{ async: true, src: '${entryUrl}' }`
 }
 
-function generateManifestModuleDev(
+/**
+ * Dev manifest used until the first client build completes. The server bundle
+ * may run outside the build process (e.g. in workerd), so the real manifest is
+ * written into this module rather than shared through build-process globals.
+ */
+function generateFallbackManifestModuleDev(
   devClientEntryUrl: string,
   scriptFormat: ScriptFormat,
 ): string {
   const scriptFormatProperty = getScriptFormatProperty(scriptFormat)
-  return `const fallbackManifest = {
+  return `export const tsrStartManifest = () => ({
 ${scriptFormatProperty}  routes: {
     __root__: {
       preloads: ['${devClientEntryUrl}'],
       scripts: [{ attrs: ${getEntryScriptAttrs(devClientEntryUrl, scriptFormat)} }],
     },
   },
-}
-export const tsrStartManifest = () => globalThis[${JSON.stringify(DEV_START_MANIFEST_GLOBAL)}] ?? fallbackManifest`
-}
-
-function buildStartManifestData(
-  clientBuild: NormalizedClientBuild,
-  publicBase: string,
-  inlineCss: InlineCssOptions,
-  scriptFormat: ScriptFormat,
-) {
-  const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
-  return buildStartManifest({
-    clientBuild,
-    routeTreeRoutes,
-    basePath: publicBase,
-    inlineCss,
-    scriptFormat,
-  })
+})`
 }
 
 function serializeStartManifestData(
@@ -120,7 +111,13 @@ function serializeStartManifestData(
   scriptFormat: ScriptFormat,
 ): string {
   return JSON.stringify(
-    buildStartManifestData(clientBuild, publicBase, inlineCss, scriptFormat),
+    buildStartManifest({
+      clientBuild,
+      routeTreeRoutes: globalThis.TSS_ROUTES_MANIFEST,
+      basePath: publicBase,
+      inlineCss,
+      scriptFormat,
+    }),
   )
 }
 
@@ -221,7 +218,8 @@ export function setupRscHmr() {
 // ---------------------------------------------------------------------------
 
 export interface RegisterVirtualModulesOptions {
-  root: string
+  /** The resolved project root (read when the first Rspack config is built, after `modifyRsbuildConfig`). */
+  getRoot: () => string
   getConfig: GetConfigFn
   serverFnsById: Record<string, ServerFn>
   providerEnvName: string
@@ -249,24 +247,42 @@ export function registerVirtualModules(
   opts: RegisterVirtualModulesOptions,
 ): VirtualModuleState {
   const isDev = api.context.action === 'dev'
-  const root = opts.root
-
-  // Virtual module paths keyed by module ID
-  const paths = {
-    manifest: virtualPath(root, VIRTUAL_MODULES.startManifest),
-    serverFnResolver: virtualPath(root, VIRTUAL_MODULES.serverFnResolver),
-    pluginAdapters: virtualPath(root, VIRTUAL_MODULES.pluginAdapters),
-  }
-
-  // RSC virtual module paths (only defined when RSC is enabled)
-  const rscPaths = opts.rscEnabled
-    ? {
-        rscRuntime: virtualPath(root, RSC_RUNTIME_VIRTUAL_ID),
-        rscHmr: virtualPath(root, RSC_HMR_VIRTUAL_ID),
-        rscBrowserDecode: virtualPath(root, RSC_BROWSER_DECODE_VIRTUAL_ID),
-        rscSsrDecode: virtualPath(root, RSC_SSR_DECODE_VIRTUAL_ID),
+  // Virtual module paths keyed by module ID, under the resolved root (never `process.cwd()`)
+  let resolvedPaths:
+    | {
+        manifest: string
+        serverFnResolver: string
+        pluginAdapters: string
+        rsc: {
+          rscRuntime: string
+          rscHmr: string
+          rscBrowserDecode: string
+          rscSsrDecode: string
+        } | null
       }
-    : null
+    | undefined
+  const pathsOf = () => {
+    if (!resolvedPaths) {
+      const root = opts.getRoot()
+      resolvedPaths = {
+        manifest: virtualPath(root, VIRTUAL_MODULES.startManifest),
+        serverFnResolver: virtualPath(root, VIRTUAL_MODULES.serverFnResolver),
+        pluginAdapters: virtualPath(root, VIRTUAL_MODULES.pluginAdapters),
+        rsc: opts.rscEnabled
+          ? {
+              rscRuntime: virtualPath(root, RSC_RUNTIME_VIRTUAL_ID),
+              rscHmr: virtualPath(root, RSC_HMR_VIRTUAL_ID),
+              rscBrowserDecode: virtualPath(
+                root,
+                RSC_BROWSER_DECODE_VIRTUAL_ID,
+              ),
+              rscSsrDecode: virtualPath(root, RSC_SSR_DECODE_VIRTUAL_ID),
+            }
+          : null,
+      }
+    }
+    return resolvedPaths
+  }
 
   // Track VirtualModulesPlugin instances per environment for dynamic updates
   const vmPlugins: Record<string, RspackVirtualModulesPlugin> = {}
@@ -274,8 +290,11 @@ export function registerVirtualModules(
   const pendingWrites = new Map<string, Map<string, string>>()
 
   let clientBuild: NormalizedClientBuild | undefined
+  let lastDevManifestContent: string | undefined
+  let devManifestWriteCount = 0
   const lastResolverContentByEnvironment: Record<string, string | undefined> =
     {}
+  const resolverWriteCountByEnvironment: Record<string, number> = {}
   const hasSeparateProviderEnvironment =
     !opts.rscEnabled &&
     opts.providerEnvName !== RSBUILD_ENVIRONMENT_NAMES.server
@@ -307,7 +326,9 @@ export function registerVirtualModules(
       content !== lastResolverContentByEnvironment[environmentName]
     ) {
       lastResolverContentByEnvironment[environmentName] = content
-      tryWriteModule(environmentName, paths.serverFnResolver, content)
+      resolverWriteCountByEnvironment[environmentName] =
+        (resolverWriteCountByEnvironment[environmentName] ?? 0) + 1
+      tryWriteModule(environmentName, pathsOf().serverFnResolver, content)
     }
   }
 
@@ -370,6 +391,8 @@ export function registerVirtualModules(
   function getInitialContent(environmentName: string): Record<string, string> {
     // Safe to call getConfig() here — this runs inside modifyRspackConfig
     const { resolvedStartConfig, startConfig } = opts.getConfig()
+    const paths = pathsOf()
+    const rscPaths = paths.rsc
     const isServerEnv = environmentName === RSBUILD_ENVIRONMENT_NAMES.server
     const isClientEnv = environmentName === RSBUILD_ENVIRONMENT_NAMES.client
     const content: Record<string, string> = {}
@@ -380,7 +403,10 @@ export function registerVirtualModules(
         resolvedStartConfig.basePaths.publicBase,
       )
       content[paths.manifest] = isDev
-        ? generateManifestModuleDev(devClientEntryUrl, opts.scriptFormat)
+        ? generateFallbackManifestModuleDev(
+            devClientEntryUrl,
+            opts.scriptFormat,
+          )
         : generateManifestModuleBuild(
             clientBuild,
             resolvedStartConfig.basePaths.publicBase,
@@ -445,21 +471,22 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
   // Build a map from virtual module IDs to their virtual file paths.
   // Scheme-like IDs are rewritten with NormalModuleReplacementPlugin because
   // rspack validates request schemes before normal alias resolution.
-  const aliasMap: Record<string, string> = {
-    [VIRTUAL_MODULES.startManifest]: paths.manifest,
-    [VIRTUAL_MODULES.serverFnResolver]: paths.serverFnResolver,
-  }
-
-  if (hasSerializationAdapters) {
-    aliasMap[VIRTUAL_MODULES.pluginAdapters] = paths.pluginAdapters
-  }
-
-  // Add RSC virtual module aliases
-  if (rscPaths) {
-    aliasMap[RSC_RUNTIME_VIRTUAL_ID] = rscPaths.rscRuntime
-    aliasMap[RSC_HMR_VIRTUAL_ID] = rscPaths.rscHmr
-    aliasMap[RSC_BROWSER_DECODE_VIRTUAL_ID] = rscPaths.rscBrowserDecode
-    aliasMap[RSC_SSR_DECODE_VIRTUAL_ID] = rscPaths.rscSsrDecode
+  const aliasMapOf = (): Record<string, string> => {
+    const paths = pathsOf()
+    const aliasMap: Record<string, string> = {
+      [VIRTUAL_MODULES.startManifest]: paths.manifest,
+      [VIRTUAL_MODULES.serverFnResolver]: paths.serverFnResolver,
+    }
+    if (hasSerializationAdapters) {
+      aliasMap[VIRTUAL_MODULES.pluginAdapters] = paths.pluginAdapters
+    }
+    if (paths.rsc) {
+      aliasMap[RSC_RUNTIME_VIRTUAL_ID] = paths.rsc.rscRuntime
+      aliasMap[RSC_HMR_VIRTUAL_ID] = paths.rsc.rscHmr
+      aliasMap[RSC_BROWSER_DECODE_VIRTUAL_ID] = paths.rsc.rscBrowserDecode
+      aliasMap[RSC_SSR_DECODE_VIRTUAL_ID] = paths.rsc.rscSsrDecode
+    }
+    return aliasMap
   }
 
   // Register VirtualModulesPlugin per environment via modifyRspackConfig
@@ -490,6 +517,7 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
     })
 
     // Rewrite scheme-like IDs to the VirtualModulesPlugin-backed file paths.
+    const aliasMap = aliasMapOf()
     for (const [moduleId, virtualFilePath] of Object.entries(aliasMap)) {
       const NMR = utils.rspack.NormalModuleReplacementPlugin
       config.plugins.push(
@@ -499,23 +527,20 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
 
     const resolve = config.resolve
     const resolveAlias = (resolve.alias ??= {}) as Record<string, string>
-    resolveAlias[VIRTUAL_MODULES.serverFnResolver] = paths.serverFnResolver
-    if (hasSerializationAdapters) {
-      resolveAlias[VIRTUAL_MODULES.pluginAdapters] = paths.pluginAdapters
-    }
-
-    // Add RSC-specific resolve aliases
-    if (rscPaths) {
-      resolveAlias[RSC_RUNTIME_VIRTUAL_ID] = rscPaths.rscRuntime
-      resolveAlias[RSC_HMR_VIRTUAL_ID] = rscPaths.rscHmr
-      resolveAlias[RSC_BROWSER_DECODE_VIRTUAL_ID] = rscPaths.rscBrowserDecode
-      resolveAlias[RSC_SSR_DECODE_VIRTUAL_ID] = rscPaths.rscSsrDecode
+    for (const [moduleId, virtualFilePath] of Object.entries(aliasMap)) {
+      if (moduleId !== VIRTUAL_MODULES.startManifest) {
+        resolveAlias[moduleId] = virtualFilePath
+      }
     }
   })
 
   return {
-    serverFnResolverPath: paths.serverFnResolver,
-    manifestPath: paths.manifest,
+    get serverFnResolverPath() {
+      return pathsOf().serverFnResolver
+    },
+    get manifestPath() {
+      return pathsOf().manifest
+    },
     vmPlugins,
 
     generateCurrentResolverContent(forProvider?: boolean): string {
@@ -556,18 +581,26 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
 
     updateManifest(newClientBuild: NormalizedClientBuild) {
       clientBuild = newClientBuild
+      if (!isDev) {
+        return
+      }
+
       // Safe to call getConfig() here — runs after client build
       const { resolvedStartConfig } = opts.getConfig()
-      if (isDev) {
-        ;(
-          globalThis as typeof globalThis & {
-            [DEV_START_MANIFEST_GLOBAL]?: ReturnType<typeof buildStartManifest>
-          }
-        )[DEV_START_MANIFEST_GLOBAL] = buildStartManifestData(
-          clientBuild,
-          resolvedStartConfig.basePaths.publicBase,
-          { enabled: false, transformAssets: false },
-          opts.scriptFormat,
+      const content = `export const tsrStartManifest = () => (${serializeStartManifestData(
+        clientBuild,
+        resolvedStartConfig.basePaths.publicBase,
+        { enabled: false, transformAssets: false },
+        opts.scriptFormat,
+      )})`
+      // Only rewrite on change: each write rebuilds the server environment.
+      if (content !== lastDevManifestContent) {
+        lastDevManifestContent = content
+        devManifestWriteCount++
+        tryWriteModule(
+          RSBUILD_ENVIRONMENT_NAMES.server,
+          pathsOf().manifest,
+          content,
         )
       }
     },
@@ -591,17 +624,19 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
     },
 
     tryUpdateServerFnResolver(content: string) {
-      lastResolverContentByEnvironment[RSBUILD_ENVIRONMENT_NAMES.server] =
-        content
-      tryWriteModule(
-        RSBUILD_ENVIRONMENT_NAMES.server,
-        paths.serverFnResolver,
-        content,
-      )
+      writeResolverContent(RSBUILD_ENVIRONMENT_NAMES.server, content)
+    },
+
+    getDevManifestWriteCount(): number {
+      return devManifestWriteCount
+    },
+
+    getServerFnResolverWriteCount(environmentName: string): number {
+      return resolverWriteCountByEnvironment[environmentName] ?? 0
     },
 
     getVirtualPath(moduleId: string): string {
-      return virtualPath(root, moduleId)
+      return virtualPath(opts.getRoot(), moduleId)
     },
   }
 }

@@ -1505,7 +1505,10 @@ export function registerImportProtection(
     applyUserConfig()
 
     const envName = utils.environment.name
+    // When import protection is disabled, register nothing, as the Vite plugin
+    // does, so modules do not pass through the loader.
     if (
+      !config.enabled ||
       !opts.environments.some((environment) => environment.name === envName)
     ) {
       return

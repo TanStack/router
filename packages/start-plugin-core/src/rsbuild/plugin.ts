@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { joinURL } from 'ufo'
 import {
@@ -27,6 +27,7 @@ import {
 } from './virtual-modules'
 import { createServerSetup } from './server-middleware'
 import { registerClientBuildCapture } from './normalized-client-build'
+import { tapServerFnResolverRebuild } from './server-fn-resolver-rebuild'
 import { registerRouterPlugins } from './start-router-plugin'
 import { postBuildWithRsbuild } from './post-build'
 import { enableSwcReactServerComponents } from './swc-rsc'
@@ -112,10 +113,15 @@ export function tanStackStartRsbuild(
       // 1. modifyRsbuildConfig — resolve config, set up environments
       // ---------------------------------------------------------------
       api.modifyRsbuildConfig((rsbuildConfig, { mergeRsbuildConfig }) => {
-        const root =
-          typeof rsbuildConfig.root === 'string'
+        // Rsbuild passes `root` on as written; its resolved root (against its
+        // `cwd`) is `rootPath`. Canonical (no trailing separator), as the
+        // virtual modules' paths must match Rspack's module paths.
+        const root = resolve(
+          typeof rsbuildConfig.root === 'string' &&
+            isAbsolute(rsbuildConfig.root)
             ? rsbuildConfig.root
-            : process.cwd()
+            : api.context.rootPath,
+        )
 
         const serverBase = rsbuildConfig.server?.base
         const assetPrefix = rsbuildConfig.output?.assetPrefix
@@ -209,6 +215,18 @@ export function tanStackStartRsbuild(
               'process.env.TSS_ROUTER_BASEPATH': JSON.stringify(routerBasepath),
               'import.meta.env.TSS_ROUTER_BASEPATH':
                 JSON.stringify(routerBasepath),
+              // In dev, SPA mode answers the shell (as Vite's dev server);
+              // a build leaves it to the prerendered shell (#8543)
+              ...(isDev
+                ? {
+                    'process.env.TSS_SHELL': JSON.stringify(
+                      startConfig.spa?.enabled ? 'true' : 'false',
+                    ),
+                    'import.meta.env.TSS_SHELL': JSON.stringify(
+                      startConfig.spa?.enabled ? 'true' : 'false',
+                    ),
+                  }
+                : {}),
               'process.env.TSS_DEV_SERVER': JSON.stringify(
                 isDev ? 'true' : 'false',
               ),
@@ -250,9 +268,15 @@ export function tanStackStartRsbuild(
             rsbuildConfig.server.printUrls === true
               ? { printUrls: ({ urls }: { urls: Array<string> }) => urls }
               : {}),
-            // Rsbuild compression currently treats Node's raw header array
-            // writeHead form as an object, which corrupts SSR response headers.
-            compress: false,
+            // Off unless the app turns it on (#8544): compressed SSR streams
+            // reach the browser only when they end (the SSR middleware's
+            // srvx response does not flush the compression middleware), and
+            // @rsbuild/core < 2.0.5 corrupted the SSR response headers.
+            // `rsbuildConfig` already holds Rsbuild's default (`true`), so
+            // read the app's own config.
+            ...(api.getRsbuildConfig('original').server?.compress === undefined
+              ? { compress: false }
+              : {}),
             // SSR apps render every route on the server — disable HTML
             // fallback so rsbuild doesn't intercept /_serverFn/ URLs.
             htmlFallback: false,
@@ -320,7 +344,7 @@ export function tanStackStartRsbuild(
       //    RSC runtime, RSC HMR
       // ---------------------------------------------------------------
       const virtualModuleState = registerVirtualModules(api, {
-        root: resolvedStartConfig.root || process.cwd(),
+        getRoot: () => resolvedStartConfig.root,
         getConfig,
         serverFnsById,
         providerEnvName: serverFnProviderEnv,
@@ -343,22 +367,24 @@ export function tanStackStartRsbuild(
             return
           }
 
+          const environmentName = utils.environment.name
           config.plugins.push({
             apply(compiler: RspackCompiler) {
-              compiler.hooks.finishMake.tapPromise(
-                {
-                  name: 'TanStackStartServerFnResolverRebuild',
-                  stage: -10,
-                },
-                async (compilation: RspackCompilationExtended) => {
+              tapServerFnResolverRebuild(compiler, {
+                name: 'TanStackStartServerFnResolverRebuild',
+                updateResolver: () => {
                   virtualModuleState.updateServerFnResolver()
-
-                  await rebuildModulesContaining(
+                },
+                getResolverWriteCount: () =>
+                  virtualModuleState.getServerFnResolverWriteCount(
+                    environmentName,
+                  ),
+                rebuildResolver: (compilation) =>
+                  rebuildModulesContaining(
                     compilation,
                     virtualModuleState.serverFnResolverPath,
-                  )
-                },
-              )
+                  ),
+              })
             },
           })
         })
@@ -377,11 +403,9 @@ export function tanStackStartRsbuild(
       //     patching emitted server assets afterwards.
       // ---------------------------------------------------------------
       if (api.context.action !== 'dev') {
-        const normalizedManifestPath = normalizePath(
-          virtualModuleState.manifestPath,
-        )
+        // (read when a module is transformed: the virtual paths need the resolved root)
         const matchesManifestPath = (id: string) =>
-          normalizePath(id) === normalizedManifestPath
+          normalizePath(id) === normalizePath(virtualModuleState.manifestPath)
 
         api.transform(
           {
@@ -537,57 +561,70 @@ export function tanStackStartRsbuild(
 
             config.plugins.push({
               apply(compiler: RspackCompiler) {
+                tapServerFnResolverRebuild(compiler, {
+                  name: 'TanStackStartRscServerFnResolverRebuild',
+                  updateResolver: () => {
+                    virtualModuleState.tryUpdateServerFnResolver(
+                      virtualModuleState.generateCurrentResolverContent(true),
+                    )
+                  },
+                  getResolverWriteCount: () =>
+                    virtualModuleState.getServerFnResolverWriteCount(
+                      RSBUILD_ENVIRONMENT_NAMES.server,
+                    ),
+                  rebuildResolver: (compilation) =>
+                    rebuildModulesContaining(
+                      compilation,
+                      virtualModuleState.serverFnResolverPath,
+                    ),
+                })
+              },
+            })
+
+            config.plugins.push({
+              apply(compiler: RspackCompiler) {
+                // Dev manifest write count this compiler last rebuilt from.
+                let rebuiltAtWriteCount: number | undefined
+
                 compiler.hooks.finishMake.tapPromise(
                   {
-                    name: 'TanStackStartRscServerFnResolverRebuild',
-                    stage: -10,
+                    name: 'TanStackStartRscManifestRebuild',
+                    // The native RSC ServerPlugin completes the client-entry
+                    // handoff during its finishMake hook. Rebuild the manifest
+                    // after that point so it reflects the client build: the
+                    // build transform emits the final source instead of the
+                    // placeholder, and dev picks up a manifest written while
+                    // this compilation was already running.
+                    stage: 10,
                   },
                   async (compilation: RspackCompilationExtended) => {
-                    const resolverContent =
-                      virtualModuleState.generateCurrentResolverContent(true)
-                    virtualModuleState.tryUpdateServerFnResolver(
-                      resolverContent,
-                    )
+                    const clientBuild = getClientBuild()
+
+                    if (!clientBuild) {
+                      return
+                    }
+
+                    virtualModuleState.updateManifest(clientBuild)
+
+                    if (api.context.action === 'dev') {
+                      // Only rebuild when the manifest changed: rebuilding an
+                      // unchanged module can rebuild the whole chunk graph.
+                      const writeCount =
+                        virtualModuleState.getDevManifestWriteCount()
+                      if (writeCount === rebuiltAtWriteCount) {
+                        return
+                      }
+                      rebuiltAtWriteCount = writeCount
+                    }
 
                     await rebuildModulesContaining(
                       compilation,
-                      virtualModuleState.serverFnResolverPath,
+                      virtualModuleState.manifestPath,
                     )
                   },
                 )
               },
             })
-
-            if (api.context.action !== 'dev') {
-              config.plugins.push({
-                apply(compiler: RspackCompiler) {
-                  compiler.hooks.finishMake.tapPromise(
-                    {
-                      name: 'TanStackStartRscManifestRebuild',
-                      // The native RSC ServerPlugin completes the client-entry
-                      // handoff during its finishMake hook. Rebuild the manifest
-                      // after that point so the transform hook can emit the final
-                      // manifest source instead of the placeholder.
-                      stage: 10,
-                    },
-                    async (compilation: RspackCompilationExtended) => {
-                      const clientBuild = getClientBuild()
-
-                      if (!clientBuild) {
-                        return
-                      }
-
-                      virtualModuleState.updateManifest(clientBuild)
-
-                      await rebuildModulesContaining(
-                        compilation,
-                        virtualModuleState.manifestPath,
-                      )
-                    },
-                  )
-                },
-              })
-            }
           }
 
           if (isClientEnv) {

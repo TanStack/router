@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "main",
+  "bust": "nx24-exclusive-e2e-16-medium-baseline-2026-10-25-05",
   "nxCloudId": "6442f7de8226a6291646a813",
   "useInferencePlugins": false,
   "parallel": 5,
@@ -10,7 +11,10 @@
   "namedInputs": {
     "sharedGlobals": [
       "{workspaceRoot}/.npmrc",
-      "{workspaceRoot}/.nx/workflows/sandboxing-config.yaml",
+      "{workspaceRoot}/nx.json",
+      "{workspaceRoot}/.github/workflows/pr.yml",
+      "{workspaceRoot}/.nx/ci-config.yaml",
+      "{workspaceRoot}/.nx/workflows/ultracache-config.yaml",
       "{workspaceRoot}/.nvmrc",
       "{workspaceRoot}/package.json",
       "{workspaceRoot}/tsconfig.json"
@@ -41,7 +45,7 @@
   "targetDefaults": {
     "test:docs": {
       "cache": true,
-      "inputs": ["{workspaceRoot}/docs/**/*"]
+      "inputs": ["sharedGlobals", "{workspaceRoot}/docs/**/*"]
     },
     "test:eslint": {
       "cache": true,

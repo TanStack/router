@@ -197,6 +197,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           >
             Client Only
           </Link>{' '}
+          <Link to="/execution-rpc" preload={false}>
+            Server function loader
+          </Link>{' '}
           <Link
             to="/raw-stream"
             activeProps={{

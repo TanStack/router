@@ -13,35 +13,6 @@ type RspackRouterPluginOptions = Partial<Config> | (() => Partial<Config>)
 const defaultRouterPluginContext = createRouterPluginContext()
 
 /**
- * Rspack uses webpack-compatible `module.hot` / `import.meta.webpackHot` HMR.
- * Force `plugin.hmr.style = 'webpack'` so the router HMR adapter emits
- * `module.hot`-style accept/dispose code instead of Vite's callback-receive
- * variant, regardless of what the user passes (or doesn't pass).
- */
-function withWebpackHmrStyle(
-  options: RspackRouterPluginOptions | undefined,
-): RspackRouterPluginOptions {
-  const mergeHmrStyle = (
-    config: Partial<Config> | undefined,
-  ): Partial<Config> => ({
-    ...config,
-    plugin: {
-      ...config?.plugin,
-      hmr: {
-        ...config?.plugin?.hmr,
-        style: 'webpack',
-      },
-    },
-  })
-
-  if (typeof options === 'function') {
-    return () => mergeHmrStyle(options())
-  }
-
-  return mergeHmrStyle(options)
-}
-
-/**
  * @example
  * ```ts
  * export default defineConfig({
@@ -68,6 +39,9 @@ const TanStackRouterGeneratorRspack = (
 }
 
 /**
+ * Rspack uses webpack-compatible `import.meta.webpackHot` HMR, which the
+ * code splitter emits for it.
+ *
  * @example
  * ```ts
  * export default defineConfig({
@@ -87,10 +61,9 @@ const TanStackRouterCodeSplitterRspack = (
   const pluginContext = routerPluginContext ?? defaultRouterPluginContext
   return createRspackPlugin((pluginOptions) =>
     createRouterCodeSplitterPlugin(
-      withWebpackHmrStyle(
-        pluginOptions as RspackRouterPluginOptions | undefined,
-      ) as Partial<Config | (() => Config)>,
+      pluginOptions as Partial<Config | (() => Config)> | undefined,
       pluginContext,
+      'webpack',
     ),
   )(options)
 }
@@ -109,13 +82,7 @@ const TanStackRouterCodeSplitterRspack = (
  * ```
  */
 const TanStackRouterRspack = /* #__PURE__ */ createRspackPlugin(
-  (options, meta) =>
-    unpluginRouterComposedFactory(
-      withWebpackHmrStyle(
-        options as RspackRouterPluginOptions | undefined,
-      ) as Partial<Config | (() => Config)>,
-      meta,
-    ),
+  unpluginRouterComposedFactory,
 )
 const tanstackRouter = TanStackRouterRspack
 export default TanStackRouterRspack

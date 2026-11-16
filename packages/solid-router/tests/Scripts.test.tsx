@@ -447,6 +447,11 @@ describe('ssr scripts', () => {
         .querySelector('link[rel="modulepreload"]')
         ?.getAttribute('crossorigin'),
     ).toBe('anonymous')
+    expect(
+      document.head
+        .querySelector('link[rel="modulepreload"]')
+        ?.getAttribute('fetchpriority'),
+    ).toBe('low')
   })
 
   test('renders runtime manifest inlineStyle', async () => {
@@ -501,7 +506,7 @@ describe('ssr scripts', () => {
     ).toBe('.runtime{color:red}')
   })
 
-  test('renders preload as script links for iife manifest preloads', async () => {
+  test('renders iife manifest preloads as low priority script links', async () => {
     const history = createTestBrowserHistory()
 
     const rootRoute = createRootRoute({
@@ -541,6 +546,11 @@ describe('ssr scripts', () => {
     })
 
     expect(document.head.querySelector('link[rel="modulepreload"]')).toBeFalsy()
+    expect(
+      document.head
+        .querySelector('link[rel="preload"][as="script"]')
+        ?.getAttribute('fetchpriority'),
+    ).toBe('low')
   })
 })
 

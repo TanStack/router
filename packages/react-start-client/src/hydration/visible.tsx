@@ -26,19 +26,21 @@ function HydrationBoundary(props: {
   o?: () => void
   children?: React.ReactNode
 }) {
-  const { g, o } = props
-
-  if (!g.r) {
-    if (!reactUse) {
-      throw g.p
-    }
-
-    reactUse(g.p)
-  }
-
+  // Above the gate: a replay after `use` suspended can find the gate open and
+  // skip `use`, and only `use` leaves the replay's dispatcher, which rejects a
+  // hook the first attempt did not reach.
+  const { o } = props
   React.useEffect(() => {
     o?.()
   }, [o])
+
+  if (!props.g.r) {
+    if (!reactUse) {
+      throw props.g.p
+    }
+
+    reactUse(props.g.p)
+  }
 
   return props.children as React.JSX.Element
 }

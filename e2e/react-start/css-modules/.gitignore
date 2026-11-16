@@ -3,3 +3,4 @@ dist
 test-results
 playwright-report
 port*.txt
+.cloudflare

@@ -1,5 +1,11 @@
 # @tanstack/router-devtools-core
 
+## 1.168.3
+
+### Patch Changes
+
+- [#8888](https://github.com/TanStack/router/pull/8888) [`bbf9b75`](https://github.com/TanStack/router/commit/bbf9b75808d8eee497a6dd1663f0cf08426512e0) - Fix broken styling of the embedded `TanStackRouterDevtoolsPanel` (including inside shadow DOM) by giving the devtools size tokens a `1rem` fallback when `--tsrd-font-size` is not set.
+
 ## 1.168.2
 
 ### Patch Changes

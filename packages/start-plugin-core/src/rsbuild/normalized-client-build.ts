@@ -219,6 +219,7 @@ function computeDynamicImports(chunk: RspackCompilationChunk): Array<string> {
 function computeStaticDependencyChunks(
   compilation: RspackCompilation,
   chunk: RspackCompilationChunk,
+  chunksOfModule: (module: RspackModule) => Array<RspackCompilationChunk>,
 ): Array<RspackCompilationChunk> {
   const importedChunks: Array<RspackCompilationChunk> = []
   const seen = new Set<RspackCompilationChunk>([chunk])
@@ -230,31 +231,56 @@ function computeStaticDependencyChunks(
   // A shared chunk can belong to several route groups. Group membership
   // limits where dependencies can be loaded from; it does not establish
   // an import from the shared chunk back to every route in those groups.
-  const availableChunks = new Set<RspackCompilationChunk>()
-  const groups = new Set(chunk.groupsIterable)
-  for (const group of groups) {
-    for (const availableChunk of group.chunks) {
-      availableChunks.add(availableChunk)
+  // A chunk counts as available only when every group of this chunk (or
+  // one of its ancestors) has it: a module duplicated into each route's
+  // chunk is satisfied per group, by that group's own chunk, so neither
+  // route's chunk is a dependency of the shared chunk (#8780).
+  let availableChunks: Set<RspackCompilationChunk> | undefined
+  for (const group of chunk.groupsIterable) {
+    const groupChunks = new Set<RspackCompilationChunk>()
+    const ancestors = new Set([group])
+    for (const ancestor of ancestors) {
+      for (const availableChunk of ancestor.chunks) {
+        groupChunks.add(availableChunk)
+      }
+      for (const parent of ancestor.getParents()) {
+        ancestors.add(parent)
+      }
     }
-    for (const parent of group.getParents()) {
-      groups.add(parent)
+    if (availableChunks === undefined) {
+      availableChunks = groupChunks
+    } else {
+      for (const availableChunk of availableChunks) {
+        if (!groupChunks.has(availableChunk)) {
+          availableChunks.delete(availableChunk)
+        }
+      }
     }
   }
+  availableChunks ??= new Set()
 
+  // Every connection to a module adds the same chunks, so a module counts
+  // once, from its first active connection (an inactive one adds nothing and
+  // leaves the module to a later active one).
+  const counted = new Set<RspackModule>()
   for (const module of modules) {
     for (const dependency of module.dependencies) {
       const connection = compilation.moduleGraph.getConnection(dependency)
       const importedModule = connection?.module
-      if (!connection || !importedModule || localModules.has(importedModule)) {
+      if (
+        !connection ||
+        !importedModule ||
+        localModules.has(importedModule) ||
+        counted.has(importedModule)
+      ) {
         continue
       }
       if (connection.getActiveState(runtime) === false) {
         continue
       }
+      counted.add(importedModule)
 
-      for (const importedChunk of compilation.chunkGraph.getModuleChunksIterable(
-        importedModule,
-      )) {
+      for (const importedChunk of chunksOfModule(importedModule)) {
         if (availableChunks.has(importedChunk) && !seen.has(importedChunk)) {
           seen.add(importedChunk)
           importedChunks.push(importedChunk)
@@ -273,17 +299,34 @@ type GetStaticDependencyChunks = (
 /**
  * Memoize static dependency resolution per chunk. Every chunk is resolved once
  * for its own `imports`, and CSS-only chunks are resolved again from each
- * importer that reaches them.
+ * importer that reaches them. A module's chunks are read once, for every chunk
+ * that imports it. Both memos live as long as the resolver, which is created
+ * per normalized compilation.
  */
 function createStaticDependencyChunkResolver(
   compilation: RspackCompilation,
 ): GetStaticDependencyChunks {
   const cache = new Map<RspackCompilationChunk, Array<RspackCompilationChunk>>()
+  const moduleChunks = new Map<RspackModule, Array<RspackCompilationChunk>>()
+  const chunksOfModule = (module: RspackModule) => {
+    let chunks = moduleChunks.get(module)
+    if (!chunks) {
+      chunks = Array.from(
+        compilation.chunkGraph.getModuleChunksIterable(module),
+      )
+      moduleChunks.set(module, chunks)
+    }
+    return chunks
+  }
 
   return (chunk) => {
     let importedChunks = cache.get(chunk)
     if (!importedChunks) {
-      importedChunks = computeStaticDependencyChunks(compilation, chunk)
+      importedChunks = computeStaticDependencyChunks(
+        compilation,
+        chunk,
+        chunksOfModule,
+      )
       cache.set(chunk, importedChunks)
     }
     return importedChunks

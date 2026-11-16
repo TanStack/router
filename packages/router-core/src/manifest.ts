@@ -43,6 +43,7 @@ export function getScriptPreloadAttrs(
   rel: 'modulepreload' | 'preload'
   as?: 'script'
   href: string
+  fetchPriority: 'low'
   crossOrigin?: AssetCrossOrigin
 } {
   const preloadLink = resolveManifestAssetLink(link)
@@ -54,6 +55,7 @@ export function getScriptPreloadAttrs(
       ? { rel: 'preload', as: 'script' }
       : { rel: 'modulepreload' }),
     href: preloadLink.href,
+    fetchPriority: 'low',
     ...(crossOrigin ? { crossOrigin } : {}),
   }
 }

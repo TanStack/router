@@ -8,5 +8,5 @@
 - Backpressure tests are excluded from normal unit runs. For buffering/backpressure changes, run the gated suite below. Its memory case requires exposed GC; bypass Nx cache so a previous run with the gate disabled cannot count as validation.
 
 ```sh
-RUN_BACKPRESSURE_PERF=1 CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-core:test:unit --outputStyle=stream --skipRemoteCache --skipNxCache -- tests/transformStreamBackpressure.perf.test.ts --pool=forks --execArgv=--expose-gc
+RUN_BACKPRESSURE_PERF=1 CI=1 NX_DAEMON=false pnpm nx run-many -p @tanstack/router-core -t test:unit --skipRemoteCache --skipNxCache -- tests/transformStreamBackpressure.perf.test.ts --pool=forks --execArgv=--expose-gc
 ```

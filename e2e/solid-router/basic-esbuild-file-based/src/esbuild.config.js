@@ -6,7 +6,6 @@ export default {
   plugins: [
     tanstackRouter({
       target: 'solid',
-      autoCodeSplitting: true,
     }),
     solidPlugin(),
   ],

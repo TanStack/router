@@ -5,6 +5,8 @@ const mode = process.env.MODE ?? 'ssr'
 const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
 
 const distDir = process.env.E2E_DIST_DIR ?? 'dist'
+// The dev runs start the dev server and run only the SPA shell spec
+const devServer = process.env.E2E_DEV_SERVER === 'true'
 
 const PORT = Number(process.env.E2E_APP_PORT ?? 0)
 const baseURL = `http://localhost:${PORT}`
@@ -12,12 +14,26 @@ const previewCommand =
   toolchain === 'rsbuild'
     ? `pnpm preview:rsbuild --host 0.0.0.0 --port ${PORT}`
     : `pnpm preview --host 0.0.0.0 --outDir ${distDir} --port ${PORT}`
-const commandByMode = mode === 'preview' ? previewCommand : 'pnpm start'
+const devCommand =
+  toolchain === 'rsbuild'
+    ? `pnpm dev:rsbuild --port ${PORT}`
+    : `pnpm dev:vite --port ${PORT}`
+const commandByMode = devServer
+  ? devCommand
+  : mode === 'preview'
+    ? previewCommand
+    : 'pnpm start'
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
   testDir: './tests',
+  ...(devServer
+    ? {
+        testMatch: 'spa-shell.spec.ts',
+        globalSetup: './tests/setup/dev-server.setup.ts',
+      }
+    : {}),
   workers: 1,
   reporter: [['line']],
 

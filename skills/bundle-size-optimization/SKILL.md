@@ -7,7 +7,7 @@ description: Use when working in this repository on JS bundle size, gzip regress
 
 ## Overview
 
-Optimize measured client bundles, not source text. The source of truth is `@benchmarks/bundle-size:build`, `benchmarks/bundle-size/results/current.json`, and emitted JS in `benchmarks/bundle-size/dist/`.
+Optimize measured client bundles, not source text. The source of truth is `@benchmarks/bundle-size:measure`, `benchmarks/bundle-size/results/current.json`, and emitted JS in `benchmarks/bundle-size/dist/`.
 Use `benchmark:bundle-size:run` for local iterations. It uses the same measurement script and builds the selected packages through Nx.
 
 ## Commands

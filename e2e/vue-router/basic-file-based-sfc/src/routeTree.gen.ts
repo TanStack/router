@@ -454,7 +454,7 @@ declare module '@tanstack/vue-router' {
     '/(group)/_layout': {
       id: '/(group)/_layout'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof groupLayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
