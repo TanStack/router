@@ -400,37 +400,32 @@ directives, never license comments.
   the route registry says the router package's constructor made it (`RouteRegistry.lookup().routerConstructor`): the
   Start prefetch takes it as a value it knows and records a `route-registry` dependency, so the route tree's imports
   read no route file.
-- **Pure declarations** (`purity.ts` `isPureDeclarator`): a declarator is pure when its initialiser is, and so is
-  every default value and computed key of its pattern (`const { beta = track() } = flags` runs `track` where it is
-  written, as `flags.beta ?? track()` would).
-- **Pure calls** (`purity.ts`): a call with pure arguments is pure when its callee is declared
-  `#__NO_SIDE_EFFECTS__` in the module, or is a known package's export the recognizer lists in `pureCalls`
-  (audited APIs of TanStack's router packages, e.g. `getRouteApi`, and of the frameworks, e.g. React `memo`, Vue
-  `defineComponent`; the router planners own the table, Start's recognizer reuses it).
+- **Purity** (`purity.ts`) is import protection's effect model, and nothing else asks it: `ModuleAnalysis.effects()`
+  classifies, per environment type, the statements of a module read as an import-protection target (raw facts), and
+  the effect witness reads the result: whether an unused import of a denied module counts as a violation in a build.
+  It decides that report, never what an output contains; placement and erasure read names, references and
+  assignments only. Its contexts are built when a module is first asked about (`purityForEffects`), never by a compile.
+- **Pure declarations** (`isPureDeclarator`): a declarator is pure when its initialiser is, and so is every default
+  value and computed key of its pattern (`const { beta = track() } = flags` runs `track` where it is written, as
+  `flags.beta ?? track()` would).
+- **Pure calls**: a call with pure arguments is pure when its callee is declared `#__NO_SIDE_EFFECTS__` in the module,
+  or is a known package's export the recognizer lists in `pureCalls` (audited APIs of TanStack's router packages,
+  e.g. `getRouteApi`, and of the frameworks, e.g. React `memo`, Vue `defineComponent`; Start's import protection owns
+  the table: `start-plugin-core/src/import-protection/pure-calls.ts`).
   Tier 0 recognises imports of such an export from the package itself by binding (renamed, a namespace member, or a
   member of a default import the recognizer lists in `pureDefaultNamespaces`: React's, a CommonJS package's exports);
   an app module re-exporting it is not followed, and no other package's purity is assumed. A member of a namespace
   import (`Icons.Home` of `import * as Icons`) is a pure read: a module namespace's [[Get]] reads the module's binding
-  and runs no code, as an imported identifier does. So is a member of a plain enum of the module (`E.A`, a data property):
-  no namespace merged in, and every value use a read of a member it declares or an export, so whatever writes it is in
-  the mutation model. A property of any other value may be a getter, and that includes an enum that escapes (`w(E)`, `const a = E`,
-  `E.__defineGetter__(…)`),
-  an imported enum (one module can't tell it from any other value) and a `declare enum` (whatever the global is).
-  Placement's own judgement of a top-level evaluation (the unit model, `ModuleAnalysis.effectPurity`) adds rule L
-  (`languagePurity`): a member read, a spread, `in`/`instanceof`, a call or `new` of a standard global
-  (`Object.keys`, `new Set`, `Math.max`, `JSON.stringify`, `new Intl.NumberFormat`) and a method of what one returns
-  or of a literal (`Object.entries(x).map(f)`), with pure arguments, are no effect; a function such a call is handed
-  runs there, so an inline one's calls are judged the same way, a named one of the module too, and an imported one
-  is an effect. Getters, proxies, iterators and `toString` stay outside the model, as for reads (R97). Rule L decides
-  when code runs, nothing else: `effects()` of raw facts counts every operation that may run code or throw.
-- **Builder chains** (`purity.ts` `builderCall`): a recognizer's `builderLinks` (Start's: `createServerFn()…handler()`,
+  and runs no code, as an imported identifier does. So is a member of a plain enum of the module (`E.A`, a data
+  property): no namespace merged in, and every value use a read of a member it declares or an export. A property of
+  any other value may be a getter, and that includes an enum that escapes (`w(E)`, `const a = E`,
+  `E.__defineGetter__(…)`), an imported enum (one module can't tell it from any other value) and a `declare enum`
+  (whatever the global is).
+- **Builder chains** (`builderCall`): a recognizer's `builderLinks` (Start's: `createServerFn()…handler()`,
   `createMiddleware()…server()`, `createIsomorphicFn()…`) name each link's argument and the environment that keeps it.
   In one environment's purity, a chain whose kept arguments are pure is no effect: an argument the environment's
-  compile erases (a server fn's handler on the client) does not count, and its reads are erased with it. Raw facts use
-  it per environment for a target's code effects (`ModuleAnalysis.effects()`); the planners of a compile use their
-  environment type's (`ModuleAnalysisOptions.env`), so a page-only chain can move with the split chunk in either
-  environment. Factories are recognised by binding, as `pureCalls`. A link called on a `const` holding a builder
-  stays an effect (a middleware's links write the options of the builder they are called on).
+  compile erases (a server fn's handler on the client) does not count, and its reads are erased with it. Factories
+  are recognised by binding, as `pureCalls`.
 - `RawFactsCache` retains, per canonical id, the facts of one read and its revision, and serves summaries and
   import-protection _target facts_ (marker, export names, effect classification, evaluation and lazy imports) from it.
 
