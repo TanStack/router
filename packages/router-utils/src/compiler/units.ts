@@ -16,8 +16,6 @@ import {
   nextToken,
   patternIdentifiers,
 } from './source'
-import { noteBuilderConsts } from './purity'
-import type { PurityContext } from './purity'
 import type { Header, Range } from './header'
 import type { Node, SourceFile } from 'yuku'
 import type { SymbolId, SymbolTable } from './symbols'
@@ -195,12 +193,11 @@ interface UnitBuildResult {
   declaringUnits: Map<SymbolId, Array<UnitId>>
 }
 
-/** The unit model; `purity` holds the compile's builder chains (`noteBuilderConsts` records `const` builders there). */
+/** The unit model. */
 export function buildUnits(
   file: SourceFile,
   items: Array<TopLevelItem>,
   symbols: SymbolTable,
-  purity: PurityContext,
   importIndexOfStatement: (stmtStart: number) => number | null,
 ): UnitBuildResult {
   const units: Array<Unit> = []
@@ -434,9 +431,6 @@ export function buildUnits(
             u.declNameRanges.push(bindingNameRange(file.source, id))
           }
           out.push(add(item, u))
-        }
-        if (purity.builders !== undefined) {
-          noteBuilderConsts(purity, purity.builders, decl)
         }
         break
       }

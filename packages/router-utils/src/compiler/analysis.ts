@@ -264,23 +264,6 @@ interface ModuleAnalysisOptions {
    * `pureDefaultNamespaces`) are pure callees.
    */
   recognizer?: RecognizerTable
-  /**
-   * A compile's environment type: the planners' purity takes the
-   * recognizer's builder chains with pure arguments as no effect there
-   * (`builderCall`; what that environment's compile erases does not count).
-   * Both types take them, so both compiles home a builder alike. A builder
-   * is one instance in every output of an environment: a call result is
-   * never copied (the server-fn provider, the module's instance in another
-   * layer, copies what it reaches whatever its purity). A link called on a
-   * `const` holding a builder is no effect either; for a kind whose links
-   * write the builder they are called on (a middleware's assign its
-   * options, which another link of it then reads; `builderLinksWrite`) it
-   * is a write of that builder (R139) wherever it stands: its receiver is
-   * a member write (`linkedBuilder`). Another kind's link (a server fn's
-   * copies the options) only reads it.
-   * Raw reads give none (`effects()` derives each one's).
-   */
-  env?: 'client' | 'server'
 }
 
 /** Per environment type, whether a module's own statements have effects there. */
@@ -326,12 +309,13 @@ export class ModuleAnalysis {
   readonly markers: Marker
   readonly sourceType: 'module' | 'script' | 'commonjs'
   readonly hasImportOrExport: boolean
-  /** The planners' purity (with a compile's builder chains: `env`). */
-  readonly purity: PurityContext
-  /** The purity of the module's own statements, whatever the environment (`effects()` derives each one's). */
-  private readonly ownPurity: PurityContext
-  /** The recognizer's chain factories the module imports, if any (each environment's builder purity). */
-  private readonly builderImports: BuilderImports | null
+  /** The recognizer `effects()` reads (pure calls, builder chains). */
+  private readonly recognizer: RecognizerTable | undefined
+  /** `effects()`'s purity: of the module's own statements, and the recognizer's chain factories it imports (each environment's builder purity). */
+  private effectsPurity: {
+    own: PurityContext
+    builderImports: BuilderImports | null
+  } | null = null
   private tier1: Tier1 | null = null
   private readonly importByStatement = new Map<number, number>()
   /**
@@ -350,11 +334,7 @@ export class ModuleAnalysis {
     this.source = source
     this.path = opts.path
     this.header = analyzeHeader(file)
-    const noSideEffectCallees = new Set<number>()
-    const pureNamespaces = new Map<number, ReadonlySet<string>>()
-    let namespaceImports: Set<number> | null = null
-    const pureCalls = opts.recognizer?.pureCalls
-    const pureDefaults = opts.recognizer?.pureDefaultNamespaces
+    this.recognizer = opts.recognizer
     const markers = opts.markerSpecifiers ?? DEFAULT_MARKERS
     const imports: Array<ImportEntry> = []
     const exportEntries: Array<ExportEntry> = []
@@ -372,82 +352,11 @@ export class ModuleAnalysis {
     const declarations = new Map<number, Node>()
     this.declarations = declarations
     const importLocals = new Map<number, SymbolId>()
-    // the imports of the recognizer's chain factories (`BuilderImports`),
-    // in the same pass (a record's fields are decoded on every read)
-    const chains = opts.recognizer?.builderLinks ? opts.recognizer : null
-    const chainFactories = chains && factoryTable(chains)
-    let builderImports: BuilderImports | null = null
     for (const record of file.imports) {
       const local = record.local
       if (local) {
         importLocals.set(record.node.start, local.id as SymbolId)
-        if (record.typeOnly) {
-          continue
-        }
-        const kind = record.kind
-        if (kind === 'namespace') {
-          ;(namespaceImports ??= new Set()).add(local.id)
-        }
-        const specifier = pureCalls || chainFactories ? record.specifier : ''
-        // an import of a known package's pure export: before any
-        // statement is classified (a call may precede its hoisted import)
-        const pure = pureCalls && ownEntry(pureCalls, specifier)
-        const factories = chainFactories?.get(specifier)
-        const name = pure || factories ? record.name : null
-        if (pure) {
-          if (
-            kind === 'namespace' ||
-            (name === 'default' && pureDefaults?.has(specifier) === true)
-          ) {
-            pureNamespaces.set(local.id, pure)
-          } else if (kind === 'named' && name !== null && pure.has(name)) {
-            noSideEffectCallees.add(local.id)
-          }
-        }
-        if (factories) {
-          builderImports ??= {
-            table: chains!,
-            factories: new Map(),
-            namespaces: new Map(),
-          }
-          if (kind === 'namespace') {
-            builderImports.namespaces.set(local.name, {
-              binding: local.id,
-              factories,
-            })
-          } else if (kind === 'named' && name !== null) {
-            const factory = ownEntry(factories, name)
-            // (a chain's: other kinds need no per-environment purity)
-            if (
-              factory !== undefined &&
-              (ownEntry(chains!.builderLinks!, factory) !== undefined ||
-                ownEntry(chains!.envOnlyKinds, factory) !== undefined)
-            ) {
-              builderImports.factories.set(local.name, {
-                binding: local.id,
-                kind: factory,
-              })
-            }
-          }
-        }
       }
-    }
-    if (
-      builderImports?.factories.size === 0 &&
-      builderImports.namespaces.size === 0
-    ) {
-      builderImports = null
-    }
-    this.builderImports = builderImports
-    const ownPurity: PurityContext = {
-      file,
-      comments: file.comments,
-      noSideEffectCallees,
-      pureNamespaces,
-      namespaceImports: namespaceImports ?? NO_NAMESPACES,
-      // (every context has the same shape: the per-environment ones below
-      // set it, and the purity checks run on both)
-      builders: undefined,
     }
     const exportLocals = new Map<number, SymbolId>()
     for (const record of file.exports) {
@@ -457,12 +366,6 @@ export class ModuleAnalysis {
       }
     }
     const body = file.program.body
-    seedNoSideEffectDeclarations(ownPurity, noSideEffectCallees, body)
-    this.ownPurity = ownPurity
-    this.purity =
-      opts.env && builderImports
-        ? builderPurityOf(ownPurity, builderImports, opts.env).ctx
-        : ownPurity
     for (let i = this.header.directiveCount; i < body.length; i++) {
       const stmt = body[i]!
       switch (stmt.type) {
@@ -711,21 +614,119 @@ export class ModuleAnalysis {
   }
 
   /**
+   * `effects()`'s purity, built when it is first asked (a compile never
+   * asks): the module's own statements' (pure exports of known packages,
+   * `#__NO_SIDE_EFFECTS__` declarations) and the recognizer's chain
+   * factories the module imports.
+   */
+  private purityForEffects(): NonNullable<ModuleAnalysis['effectsPurity']> {
+    if (this.effectsPurity !== null) {
+      return this.effectsPurity
+    }
+    const file = this.file
+    const noSideEffectCallees = new Set<number>()
+    const pureNamespaces = new Map<number, ReadonlySet<string>>()
+    let namespaceImports: Set<number> | null = null
+    const pureCalls = this.recognizer?.pureCalls
+    const pureDefaults = this.recognizer?.pureDefaultNamespaces
+    // the imports of the recognizer's chain factories (`BuilderImports`),
+    // in the same pass (a record's fields are decoded on every read)
+    const chains = this.recognizer?.builderLinks ? this.recognizer : null
+    const chainFactories = chains && factoryTable(chains)
+    let builderImports: BuilderImports | null = null
+    for (const record of file.imports) {
+      const local = record.local
+      if (local) {
+        if (record.typeOnly) {
+          continue
+        }
+        const kind = record.kind
+        if (kind === 'namespace') {
+          ;(namespaceImports ??= new Set()).add(local.id)
+        }
+        const specifier = pureCalls || chainFactories ? record.specifier : ''
+        // an import of a known package's pure export: before any
+        // statement is classified (a call may precede its hoisted import)
+        const pure = pureCalls && ownEntry(pureCalls, specifier)
+        const factories = chainFactories?.get(specifier)
+        const name = pure || factories ? record.name : null
+        if (pure) {
+          if (
+            kind === 'namespace' ||
+            (name === 'default' && pureDefaults?.has(specifier) === true)
+          ) {
+            pureNamespaces.set(local.id, pure)
+          } else if (kind === 'named' && name !== null && pure.has(name)) {
+            noSideEffectCallees.add(local.id)
+          }
+        }
+        if (factories) {
+          builderImports ??= {
+            table: chains!,
+            factories: new Map(),
+            namespaces: new Map(),
+          }
+          if (kind === 'namespace') {
+            builderImports.namespaces.set(local.name, {
+              binding: local.id,
+              factories,
+            })
+          } else if (kind === 'named' && name !== null) {
+            const factory = ownEntry(factories, name)
+            // (a chain's: other kinds need no per-environment purity)
+            if (
+              factory !== undefined &&
+              (ownEntry(chains!.builderLinks!, factory) !== undefined ||
+                ownEntry(chains!.envOnlyKinds, factory) !== undefined)
+            ) {
+              builderImports.factories.set(local.name, {
+                binding: local.id,
+                kind: factory,
+              })
+            }
+          }
+        }
+      }
+    }
+    if (
+      builderImports?.factories.size === 0 &&
+      builderImports.namespaces.size === 0
+    ) {
+      builderImports = null
+    }
+    const ownPurity: PurityContext = {
+      file,
+      comments: file.comments,
+      noSideEffectCallees,
+      pureNamespaces,
+      namespaceImports: namespaceImports ?? NO_NAMESPACES,
+      // (every context has the same shape: the per-environment ones below
+      // set it, and the purity checks run on both)
+      builders: undefined,
+    }
+    seedNoSideEffectDeclarations(
+      ownPurity,
+      noSideEffectCallees,
+      file.program.body,
+    )
+    this.effectsPurity = { own: ownPurity, builderImports }
+    return this.effectsPurity
+  }
+
+  /**
    * The module's own effects, classified statement by statement (raw facts
    * ask, for a module read as a target; a compile never does). The
    * recognizer's builder chains are no effect per environment
-   * (`RecognizerTable.builderLinks`; the planners' purity takes the
-   * compile's environment's: `env`).
+   * (`RecognizerTable.builderLinks`).
    */
   effects(): ModuleEffects {
     const file = this.file
     const body = file.program.body
     const code: CodeEffects = { client: false, server: false }
+    const { own, builderImports } = this.purityForEffects()
     // the purity of each environment type, with its builder chains
-    const envPurity = this.builderImports
-      ? ENV_TYPES.map((env) =>
-          builderPurityOf(this.ownPurity, this.builderImports!, env),
-        )
+    const envPurity = builderImports
+      ? ENV_TYPES.map((env) => builderPurityOf(own, builderImports, env))
       : null
     for (let i = this.header.directiveCount; i < body.length; i++) {
       const stmt = body[i]!
@@ -742,7 +743,7 @@ export class ModuleAnalysis {
         stmt.type === 'ExportDefaultDeclaration'
           ? stmt.declaration
           : stmt
-      if (statementHasEffects(this.ownPurity, stmt)) {
+      if (statementHasEffects(own, stmt)) {
         if (!envPurity) {
           code.client = code.server = true
           continue
@@ -976,12 +977,8 @@ export class ModuleAnalysis {
     const file = this.file
     const symbols = new SymbolTable(file)
     const items = buildItems(file, this.header)
-    const { units, declaringUnits } = buildUnits(
-      file,
-      items,
-      symbols,
-      this.purity,
-      (s) => this.importIndexOfStatement(s),
+    const { units, declaringUnits } = buildUnits(file, items, symbols, (s) =>
+      this.importIndexOfStatement(s),
     )
 
     // Function ranges from the scope table: every function's scope (a

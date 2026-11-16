@@ -476,7 +476,6 @@ async function runAttempt(
     path: identity.path,
     markerSpecifiers: host.rawFacts.markerSpecifiers,
     recognizer: host.rawFacts.recognizer,
-    env: env.type,
   })
   const cjs = t0.sourceType !== 'module' || isCommonJsPath(identity.path)
   const gateCtx = (p: Planner) => ({
