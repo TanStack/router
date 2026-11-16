@@ -411,15 +411,6 @@ export class RegionTable {
     return found
   }
 
-  /** The innermost region owning a reference. */
-  ownerOf(ref: ClassifiedRef): RegionId {
-    const id = this.innermostAt(ref.range.start, ref.range.end)
-    if (id === null) {
-      throw new Error(`reference at ${ref.range.start} is outside every region`)
-    }
-    return id
-  }
-
   /**
    * The tree node on exactly `range`, added under the innermost node holding
    * it (none for an empty range). A range that partly overlaps another one

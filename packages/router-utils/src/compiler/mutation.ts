@@ -112,7 +112,6 @@ export function writeConstruct(file: SourceFile, node: Node): Range {
 
 const NO_UNITS: ReadonlyArray<UnitId> = []
 const NO_SYMS: ReadonlyArray<SymbolId> = []
-const NO_REFS: ReadonlyArray<ClassifiedRef> = []
 
 export class MutationModel {
   private sites: Map<SymbolId, ReadonlyArray<ClassifiedRef>> | null = null
@@ -213,11 +212,6 @@ export class MutationModel {
   /** The other bindings whose objects member write `ref` may write: what its name's value holds (none when it writes the object its name owns). */
   objectsWrittenBy(ref: ClassifiedRef): ReadonlyArray<SymbolId> {
     return this.throughWrites().objects.get(ref) ?? NO_SYMS
-  }
-
-  /** The member writes through another name that may write the object `sym` names (`objectsWrittenBy`). */
-  writesThrough(sym: SymbolId): ReadonlyArray<ClassifiedRef> {
-    return this.throughWrites().writes.get(sym) ?? NO_REFS
   }
 
   /**

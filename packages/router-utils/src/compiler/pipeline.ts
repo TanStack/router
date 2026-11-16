@@ -35,7 +35,7 @@ import {
 import { isVirtualId } from './facts'
 import { registerCompilerStats } from './stats'
 import { exportKeyOf, summaryDigest } from './summary'
-import { SELF_CHECKS, invariantDiagnostic } from './self-checks'
+import { SELF_CHECKS } from './self-checks'
 import { verifyPlan } from './verify'
 import { checkServerCode } from './server-code'
 import type { CacheEntry, Settled } from './cache'
@@ -48,7 +48,6 @@ import type {
   PlanContext,
 } from './plan'
 import type { PlanKey, SourceIdentity } from './identity'
-import type { InvariantViolation } from './self-checks'
 import type { OutputId } from './rewrite'
 import type {
   CompileInput,
@@ -698,15 +697,6 @@ async function runAttempt(
         break
       }
       fallbacks = [...fallbacks, ...fresh]
-    }
-    // a violated invariant of the plan the module is compiled with, whatever
-    // fallbacks it keeps (only when the run reports it: our test runs throw
-    // at the check): one diagnostic for the module
-    const report = (v: InvariantViolation) =>
-      invariantDiagnostic(tagOf(host), displayFile, v)
-    const violation = plan.placement?.check()
-    if (violation !== undefined) {
-      plan.diagnostic(report(violation))
     }
     emitPlan = plan.freeze(rev)
     if (langFromId(input.id) === null && plan.outputs.size > 1) {

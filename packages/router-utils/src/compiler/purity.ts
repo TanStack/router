@@ -873,25 +873,6 @@ function isPureCallee(ctx: PurityContext, callee: Node): boolean {
   return false
 }
 
-/**
- * Whether the purity model knows that calling `call` (a call or `new`)
- * changes nothing it is called on: a language operation (rule L:
- * `JSON.parse`, `Object.keys`, a method of a literal), a pure export of a
- * known package or a `#__NO_SIDE_EFFECTS__` function. The statement rule's
- * "what it changes" asks it of a method call (`changesObject`); a member of
- * a namespace import is another module's object (`Sentry.init()`).
- */
-export function callChangesNothing(ctx: PurityContext, call: Node): boolean {
-  if (call.type !== 'CallExpression' && call.type !== 'NewExpression') {
-    return false
-  }
-  const callee = unwrapExpression(call.callee as Node)
-  return (
-    languageCallee(ctx, callee, call.type === 'NewExpression') ||
-    isPureCallee(ctx, callee)
-  )
-}
-
 /** A JSX tag whose element runs no code of its own: intrinsic (`div`), or bound (`<Page>`, `<ui.Card>`). */
 function isPureJsxTag(ctx: PurityContext, name: Node): boolean {
   if (name.type === 'JSXNamespacedName') {

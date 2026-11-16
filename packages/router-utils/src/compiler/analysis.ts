@@ -150,10 +150,6 @@ export interface ClassifiedRef {
   readsThrough: boolean
 }
 
-/** Whether the reference observes its value's identity (`newCallee`, `identity`): a copy of a function used so is a second constructor or sentinel. */
-export const observesIdentity = (ref: ClassifiedRef): boolean =>
-  ref.ctx === 'newCallee' || ref.ctx === 'identity'
-
 interface FreeRef {
   name: string
   range: Range

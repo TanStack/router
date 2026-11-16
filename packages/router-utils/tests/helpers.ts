@@ -723,7 +723,7 @@ export function dedent(s: string): string {
  * children become a fixed-home chunk `?tss-hydrate=h<n>` whose component takes
  * `props`; captures are forwarded through the substitution environment, inner
  * boundaries first (bottom-up). A boundary the core reports a fallback for
- * (`hydrate-writer`: the children assign a binding the module keeps) stays
+ * (`shared-writer`: the children assign a binding the module keeps) stays
  * in place, as Start's planner keeps it, with the reason in the facts
  * (`kept`: by key).
  */

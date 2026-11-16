@@ -565,7 +565,7 @@ describe('extracted-export outputs', () => {
         planners,
         extra,
       )
-    return { host, env, chunk, extracted, diagnostics: out?.diagnostics ?? [] }
+    return { host, env, chunk, extracted }
   }
 
   // `export default count` holds the value `count` has when it runs: of a
@@ -780,69 +780,6 @@ describe('extracted-export outputs', () => {
       expect(prov?.code).toContain("import { db } from './db'")
       expect(prov?.code).toContain('() => db.q()')
     })
-  })
-
-  // R101: an exported declaration the route module needs anyway is not
-  // reported, whatever keeps it there: the loader reads it (the shape of
-  // webdevcody/tanstack-course-platform `learn/$slug/_layout.tsx`), split
-  // code reaches it only through `Route` (`Route.useLoaderData()`), or it
-  // writes state the route module keeps
-  it.each([
-    [
-      'its initialiser has effects and the loader reads it',
-      dedent(`
-        import { createFileRoute } from 'toy-router'
-        import { queryOptions } from './query'
-        export const postOpts = queryOptions({ queryKey: ['p'] })
-        function Page() { return postOpts.queryKey[0] }
-        export const Route = createFileRoute('/')({
-          loader: () => postOpts.queryKey,
-          component: Page,
-        })
-      `),
-    ],
-    [
-      'the loader reads it and split code reads `Route`',
-      dedent(`
-        import { createFileRoute } from 'toy-router'
-        export const fetchPost = async () => ({ title: 'a' })
-        function Page() { return Route.useLoaderData().title }
-        export const Route = createFileRoute('/')({
-          loader: () => fetchPost(),
-          component: Page,
-        })
-      `),
-    ],
-    [
-      'it writes a binding split code reads',
-      dedent(`
-        import { createFileRoute } from 'toy-router'
-        let base = 'x'
-        export const setBase = (b) => { base = b }
-        function Page() { return base }
-        export const Route = createFileRoute('/')({ component: Page })
-      `),
-    ],
-  ])(
-    'does not report an exported declaration the module needs anyway: %s',
-    async (_, code) => {
-      const r = await extract(code)
-      expect(r.diagnostics).toEqual([])
-    },
-  )
-
-  it('does not report an export the route module needs through a declaration it re-exports', async () => {
-    const code = dedent(`
-      import { createFileRoute } from 'toy-router'
-      import { make, wrap } from './lib'
-      export const api = make()
-      const plugin = wrap(api)
-      export { plugin }
-      function Page() { return api.x }
-      export const Route = createFileRoute('/')({ component: Page })
-    `)
-    const r = await extract(code)
-    expect(r.diagnostics).toEqual([])
   })
 
   // the executing property (toy planner, seeds 2578, 7394, 9413, 9430): a
@@ -1986,9 +1923,6 @@ describe('what an evaluation runs: one walk for every rule', () => {
       main,
       env: main?.code ?? '',
       chunk: chunk?.code ?? '',
-      kept: (main?.diagnostics ?? []).filter((d) =>
-        d.code?.startsWith('eager-'),
-      ),
     }
   }
 
@@ -2010,7 +1944,6 @@ describe('what an evaluation runs: one walk for every rule', () => {
     expect(r.env).toContain('const warm = getCached()')
     expect(r.env).not.toContain('const api')
     expect(r.chunk).toContain('const api = { getCached }')
-    expect(r.kept).toEqual([])
   })
 
   // F1-3a: a method nested in an object argument runs only when called,
@@ -2042,7 +1975,6 @@ describe('what an evaluation runs: one walk for every rule', () => {
       expect(r.main?.facts.planners['toy-split']).toBeUndefined()
       expect(r.env).not.toContain('define({')
       expect(r.chunk).toContain('define({ setup() { return getClient() } })')
-      expect(r.kept).toEqual([])
     },
   )
 
@@ -2099,7 +2031,6 @@ describe('what an evaluation runs: one walk for every rule', () => {
     const dev = await compile(snapshot, planners, envInfo({ mode: 'dev' }))
     expect(build.env).toBe(dev.env)
     expect(build.chunk).toBe(dev.chunk)
-    expect(build.kept).toEqual(dev.kept)
   })
 })
 
@@ -2125,8 +2056,6 @@ describe('readers and writers of state written at load', () => {
     '/app/lib.ts':
       'export const f = (x: unknown) => x\nexport const track = (x: unknown) => x\nexport const open = {}\n',
   }
-  const eager = (r: Awaited<ReturnType<typeof split>>) =>
-    (r.main?.diagnostics ?? []).filter((d) => d.code?.startsWith('eager-'))
 
   it('moves a reader, its binding and the write after it together when one chunk needs them', async () => {
     const r = await split(
@@ -2138,7 +2067,6 @@ describe('readers and writers of state written at load', () => {
     )
     expect(r.env).not.toContain('const x')
     expect(r.chunks.component).toContain('const a = {}\nconst x = [a]\na.v = 1')
-    expect(eager(r)).toEqual([])
   })
 
   it('splits an option value that writes a member of a binding only its chunk needs', async () => {
@@ -2363,8 +2291,6 @@ describe('round 1 F2-1/F2-2: state written through a local name', () => {
       '  component: () => initial,',
       '})',
     ].join('\n')
-  const eager = (r: Awaited<ReturnType<typeof split>>) =>
-    (r.main?.diagnostics ?? []).filter((d) => d.code?.startsWith('eager-'))
 
   it.each([
     [
@@ -2382,7 +2308,6 @@ describe('round 1 F2-1/F2-2: state written through a local name', () => {
       const r = await split(route(write))
       expect(r.env).not.toContain('const initial = S.theme')
       expect(r.chunks.component).toContain('const initial = S.theme')
-      expect(eager(r)).toEqual([])
     },
   )
 })
@@ -2437,8 +2362,6 @@ describe('effectful declarations reading each other (R138)', () => {
         ${options.split('\n').join('\n        ')}
       })
     `)
-  const eager = (r: Awaited<ReturnType<typeof split>>) =>
-    (r.main?.diagnostics ?? []).filter((d) => d.code?.startsWith('eager-'))
 
   it.each([
     [
@@ -2467,7 +2390,6 @@ describe('effectful declarations reading each other (R138)', () => {
         expect(r.env).not.toContain(line)
       }
       expect(r.chunks.component).toContain(decls)
-      expect(eager(r)).toEqual([])
     },
   )
 
@@ -2507,7 +2429,6 @@ describe('effectful declarations reading each other (R138)', () => {
     expect(r.chunks.component).toContain(
       "import { createColumnHelper, useTable } from '@tanstack/react-table'",
     )
-    expect(eager(r)).toEqual([])
   })
 
   // an unknown call in the route options the client keeps runs after them
@@ -2530,7 +2451,6 @@ describe('effectful declarations reading each other (R138)', () => {
     expect(r.env).not.toContain('createColumnHelper()')
     expect(r.env).toContain("createSchema({ page: 'number' })")
     expect(r.chunks.component).toContain(helperAndColumns)
-    expect(eager(r)).toEqual([])
   })
 
   // `a` stays (the loader reads it), `b` only the component uses. A `let`
@@ -2556,7 +2476,6 @@ describe('effectful declarations reading each other (R138)', () => {
       )
       expect(r.env).not.toContain('const b =')
       expect(r.chunks.component).toContain('const b = [a')
-      expect(eager(r)).toEqual([])
     },
   )
 })
@@ -2572,9 +2491,6 @@ describe('declarations only split code needs that stay in the route module', () 
     const out = await host.compile('/app/route.tsx', planners, { env })
     return {
       env: out?.code ?? '',
-      diagnostics: (out?.diagnostics ?? []).filter((d) =>
-        d.code?.startsWith('eager-'),
-      ),
     }
   }
 
@@ -2592,7 +2508,6 @@ describe('declarations only split code needs that stay in the route module', () 
     `)
     const r = await kept(code)
     expect(r.env).not.toContain('const label')
-    expect(r.diagnostics).toEqual([])
   })
 
   it('moves an effectful declaration a bare import follows (module loading is hoisted: no effect stays after it)', async () => {
@@ -2609,7 +2524,6 @@ describe('declarations only split code needs that stay in the route module', () 
     )
     expect(r.env).toContain("import './side.css'")
     expect(r.env).not.toContain('new JSConfetti()')
-    expect(r.diagnostics).toEqual([])
   })
 })
 
@@ -2644,9 +2558,6 @@ describe('pure calls of known packages', () => {
     return {
       env: main?.code ?? '',
       chunk: chunk?.code ?? '',
-      kept: (main?.diagnostics ?? [])
-        .filter((d) => d.code?.startsWith('eager-'))
-        .map((d) => /`(\w+)` in \//.exec(d.message)![1]!),
     }
   }
   // the route module keeps the API (its loader reads it) after `confetti`
@@ -2676,7 +2587,6 @@ describe('pure calls of known packages', () => {
       expect(r.env, api).toContain(`const routeApi = ${api}`)
       expect(r.env, api).not.toContain('new JSConfetti')
       expect(r.chunk, api).toContain('const confetti = new JSConfetti()')
-      expect(r.kept, api).toEqual([])
     }
   })
 })
@@ -2700,8 +2610,6 @@ describe('language operations are no effect (rule L)', () => {
         ${options.split('\n').join('\n        ')}
       })
     `)
-  const eager = (r: Awaited<ReturnType<typeof split>>) =>
-    (r.main?.diagnostics ?? []).filter((d) => d.code?.startsWith('eager-'))
 
   // the schemas note's decision 1
   it('moves options built from standard globals past a schema the route module keeps', async () => {
@@ -2716,7 +2624,6 @@ describe('language operations are no effect (rule L)', () => {
     expect(r.env).not.toContain('ROLE_OPTIONS =')
     expect(r.env).not.toContain('const LABELS')
     expect(r.chunks.component).toContain(decl)
-    expect(eager(r)).toEqual([])
   })
 
   it.each([
@@ -2740,7 +2647,6 @@ describe('language operations are no effect (rule L)', () => {
     expect(r.env).not.toContain(decl)
     expect(r.env).toContain("track('after')")
     expect(r.chunks.component).toContain(decl)
-    expect(eager(r)).toEqual([])
   })
 
   // a read and a later write of one object at load evaluate in one module,
@@ -2833,8 +2739,6 @@ describe('no order rule: bindings decide', () => {
         ${options.split('\n').join('\n        ')}
       })
     `)
-  const eager = (r: Awaited<ReturnType<typeof split>>) =>
-    (r.main?.diagnostics ?? []).filter((d) => d.code?.startsWith('eager-'))
 
   it('moves a schema only the component reads past the schema `validateSearch` keeps', async () => {
     const r = await split(
@@ -2848,7 +2752,6 @@ describe('no order rule: bindings decide', () => {
     expect(r.chunks.component).toContain(
       'const Schema = z.object({ email: z.string() })',
     )
-    expect(eager(r)).toEqual([])
   })
 
   it('moves the snapshot when the call after it is not handed what it read', async () => {
@@ -2890,7 +2793,6 @@ describe('no order rule: bindings decide', () => {
       expect(r.env).not.toContain('createStore()')
       expect(r.env).toContain('hydrateStores()')
       expect(r.chunks.component).toContain('const store = createStore()')
-      expect(eager(r)).toEqual([])
     })
 
     // a top-level await that moves no longer delays what follows it
@@ -2982,8 +2884,6 @@ describe('statements follow what they change', () => {
         ${options.split('\n').join('\n        ')}
       })
     `)
-  const eager = (r: Awaited<ReturnType<typeof split>>) =>
-    (r.main?.diagnostics ?? []).filter((d) => d.code?.startsWith('eager-'))
 
   it('keeps the base schema `validateSearch` reads and moves its extension (2)', async () => {
     const r = await split(
@@ -2997,7 +2897,6 @@ describe('statements follow what they change', () => {
     expect(r.chunks.component).toContain(
       'const Full = Base.extend({ q: z.string() })',
     )
-    expect(eager(r)).toEqual([])
   })
 
   it('moves an awaited value only the component reads (5)', async () => {
@@ -3088,7 +2987,6 @@ describe('statements follow what they change', () => {
       )
       expect(r.env).not.toContain('createTable()')
       expect(r.env).toContain('connectAuthEmulator()')
-      expect(eager(r)).toEqual([])
     })
   })
 })
@@ -3271,31 +3169,8 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     return {
       env: out?.code ?? '',
       chunks,
-      diagnostics: (out?.diagnostics ?? []).filter((d) =>
-        d.code?.startsWith('eager-'),
-      ),
     }
   }
-
-  // the route options' declaration writing a binding at load (a component
-  // value `(n = 5, () => …)`) joins its cluster too, but is no unused
-  // declaration: exported, holding the options (spelling-variants suites,
-  // code-splitter-value-own-writes `flags`)
-  it('reports no binding the route options use as kept by their declaration', async () => {
-    const code = dedent(`
-      import { createFileRoute } from 'toy-router'
-      let n = 1
-      export const Route = createFileRoute('/')({
-        loader: () => flags,
-        component: (n = 5, () => flags),
-      })
-      const flags = [n]
-    `)
-    const r = await report(code, ['loader', 'component'])
-    expect(
-      r.diagnostics.filter((d) => d.code === 'eager-split:written'),
-    ).toEqual([])
-  })
 
   // an import a statement changes is no declaration of the module: the
   // statement stays, the chunk imports the import itself, nothing reported
@@ -3311,7 +3186,6 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     expect(r.env).toContain('store.add(persistPlugin)')
     expect(r.env).not.toContain('export { store }')
     expect(r.chunks.component).toContain("import { store } from './lib'")
-    expect(r.diagnostics).toEqual([])
   })
 
   // (the spelling variants: a hoisted component the route's value holds
@@ -3329,7 +3203,6 @@ describe('eager-split:written: why a statement that changes it stays', () => {
     )
     expect(r.env).toContain('registerRoute(Route)')
     expect(r.chunks.component).toContain('const Page = () => 1')
-    expect(r.diagnostics).toEqual([])
   })
 })
 
@@ -3544,9 +3417,6 @@ describe('builder chains in a compile', () => {
     const main = await host.compile('/app/route.tsx', planners, { env })
     return {
       env: main?.code ?? '',
-      kept: (main?.diagnostics ?? [])
-        .filter((d) => d.code?.startsWith('eager-'))
-        .map((d) => /`(\w+)` in \//.exec(d.message)![1]!),
     }
   }
   const route = (declarations: string) =>
@@ -3569,7 +3439,6 @@ describe('builder chains in a compile', () => {
     for (const type of ['client', 'server'] as const) {
       const r = await compile(code, type)
       expect(r.env, type).not.toContain('createServerFn()')
-      expect(r.kept, type).toEqual([])
     }
   })
 
@@ -3583,7 +3452,6 @@ describe('builder chains in a compile', () => {
     for (const type of ['client', 'server'] as const) {
       const r = await compile(code, type)
       expect(r.env, type).not.toContain('const fn =')
-      expect(r.kept, type).toEqual([])
     }
   })
 
@@ -3599,7 +3467,6 @@ describe('builder chains in a compile', () => {
     for (const type of ['client', 'server'] as const) {
       const r = await compile(code, type)
       expect(r.env, type).not.toContain('createServerFn()')
-      expect(r.kept, type).toEqual([])
     }
   })
 

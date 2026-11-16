@@ -8,10 +8,9 @@
  * (`events.ts`). Also the module's write table and the two halves of the
  * mutation model every later rule asks (`lateWrite`, `laterWrite`).
  */
-import { observesIdentity } from '../analysis'
 import { writeKind } from '../mutation'
 import { callsWhenEvaluated, runsWhenPassed } from '../units'
-import type { ClassifiedRef, Tier1 } from '../analysis'
+import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { Range } from '../header'
 import type { EvaluatedCalls, RegionId, Unit, UnitId } from '../units'
@@ -107,18 +106,10 @@ export interface ClusterGraph {
   ownedRefs: Map<RegionId, Array<ClassifiedRef>>
   writes: Array<Write>
   writesOfSym: Map<SymbolId, Array<Write>>
-  /** The sub-regions (not units) writing a module binding live, per written declaration (the single-writer rule). */
-  subRegionWriters: Array<{ cluster: ClusterId; writers: Set<RegionId> }>
-  /** Module-level symbols a sub-region writes (a cluster holding one is never an extracted export: the single-writer rule decides). */
-  regionWrittenSyms: Set<SymbolId>
   /** What an output renders of the source (`OutputView`). */
   viewOf: (o: OutputId) => OutputView
   /** Whether a reference renders in output `o` (it is not inside text `o` erases). */
   isLive: (ref: ClassifiedRef, o: OutputId) => boolean
-  /** The effect units that only augment bindings their cluster's pure declarations declare: decided with that cluster. */
-  ownAugmentations: ReadonlySet<UnitId>
-  /** Whether a unit survives in the env module (its statement is not erased there). */
-  unitSurvives: (u: UnitId) => boolean
   /**
    * What evaluating region `r` calls (`callsWhenEvaluated`), null when it
    * calls nothing: a unit's own; a region nested in one, its unit's calls
@@ -127,27 +118,6 @@ export interface ClusterGraph {
    * region evaluates a function, the call around it may run it).
    */
   callsOf: (r: RegionId) => EvaluatedCalls | null
-  /**
-   * The late half of the mutation model (V): a live write of `sym` by
-   * another cluster than `by` at an unknown time (inside a function, or in
-   * code evaluated with the module that runs later), or by `by` in a
-   * function its evaluation passes to a call (`passed`): it may run before
-   * or after any evaluation, wherever that evaluation is.
-   */
-  lateWrite: (sym: SymbolId, by: ClusterId) => Write | undefined
-  /** Every write `lateWrite` would answer for `sym` and `by` (recheck ruling C asks where each runs). */
-  lateWrites: (sym: SymbolId, by: ClusterId) => Array<Write>
-  /**
-   * The eager half (O): a live write of `sym` by another cluster than `by`
-   * when the module loads, after a read evaluated at `readAt`. Whether it
-   * changes order with the read depends on where both evaluate (the event
-   * table's `writeConflict`); a write by the reading cluster travels with it.
-   */
-  laterWrite: (
-    sym: SymbolId,
-    readAt: number,
-    by: ClusterId,
-  ) => Write | undefined
 }
 
 class UnionFind {
@@ -188,67 +158,6 @@ export const READ_KINDS = new Set(['value', 'jsxTag', 'exportSpecifier'])
  * `x++` alone make a region depend on `x`).
  */
 export const NEED_KINDS = new Set([...READ_KINDS, 'write'])
-
-/** A cluster as a person knows it: the bindings it declares and where (the invariants' internal details). */
-export function describeCluster(input: PlacementInput, cl: Cluster): string {
-  const line = input.code.slice(0, cl.start).split('\n').length
-  return `${namesOf(input, cl) ?? 'the statement'} (${input.canonicalId}:${line})`
-}
-
-/** The bindings a cluster declares, `` `a`, `b` `` (an invariant warning's words); none for a statement. */
-export function namesOf(input: PlacementInput, cl: Cluster): string | null {
-  const names = [...cl.declares].map((s) => `\`${input.t1.symbols.name(s)}\``)
-  return names.length > 0 ? names.join(', ') : null
-}
-
-/** Where a cluster starts in the source (an invariant warning's position); none for generated code alone. */
-export function clusterRange(
-  input: PlacementInput,
-  cl: Cluster,
-): { start: number; end: number } | undefined {
-  const r = cl.regions[0]
-  return r === undefined ? undefined : input.rewrites.regions.get(r).range
-}
-
-/**
- * Whether an output may hold its own copy of the cluster without anyone
- * noticing: its declarations are functions or primitives (`identityFree`),
- * pure, nothing writes them and nothing observes their identity (`new`,
- * `instanceof`, `===`, `.prototype`; `live`: in code an output keeps). An
- * object, array, class, call result or regex has an identity (`instanceof`,
- * a sentinel, a context, a registry); a function used as a constructor or
- * a sentinel has one too; a written binding is state. Either exists once:
- * in the env module, or in one derived output. The one predicate behind
- * the copy of an extracted export, the duplicate home and placement's
- * self-check. A primitive constant (`copyable`) has nothing to observe.
- */
-export function isDuplicable(
-  cl: Cluster,
-  t1: Pick<Tier1, 'mutation' | 'refs'>,
-  live?: (ref: ClassifiedRef) => boolean,
-): boolean {
-  if (cl.copyable) {
-    return true
-  }
-  if (!cl.identityFree || cl.effectful) {
-    return false
-  }
-  for (const s of cl.declares) {
-    // (written through another name too: a copy would not see it)
-    if (
-      t1.mutation.isMutated(s, live) ||
-      t1.mutation.writesThrough(s).some((r) => live === undefined || live(r))
-    ) {
-      return false
-    }
-    for (const r of t1.refs.refsOf(s)) {
-      if (observesIdentity(r) && (live === undefined || live(r))) {
-        return false
-      }
-    }
-  }
-  return true
-}
 
 /** The symbols generated text reads (its `SymRef`s and reference rewrites), pushed into `out`. */
 export function symRefsOf(
@@ -310,14 +219,6 @@ export function buildClusters(
       start,
       end: input.code.charCodeAt(end - 1) === 59 ? end - 1 : end,
     })
-  const unitSurvives = (u: UnitId): boolean => {
-    const unit = units[u]!
-    const item = items[unit.item]!
-    return unit.range.start === item.range.start
-      ? statementSurvives(item.nodeRange)
-      : !envView.isErasedAt(unit.range.start)
-  }
-
   const callsOfUnit: Array<EvaluatedCalls | undefined> = []
   const unitCalls = (u: UnitId): EvaluatedCalls =>
     (callsOfUnit[u] ??= callsWhenEvaluated(units[u]!.node))
@@ -498,23 +399,6 @@ export function buildClusters(
     }
   }
 
-  // per written binding, what lets the mutation predicate answer "none"
-  // without a scan: whether a live write runs at an unknown time, and where
-  // its last live eager write is (a registry filled by n statements and read
-  // by n declarations asks it n² times)
-  const lateWritten = new Set<SymbolId>()
-  const lastEagerWrite = new Map<SymbolId, number>()
-  for (const w of writes) {
-    if (!w.live) {
-      continue
-    }
-    if (!w.eager) {
-      lateWritten.add(w.sym)
-    } else if (w.at > (lastEagerWrite.get(w.sym) ?? -1)) {
-      lastEagerWrite.set(w.sym, w.at)
-    }
-  }
-
   // ---- a binding's writers at load join its cluster -----------------------
   // A live top-level writer (a unit assigning it, or writing a member of it
   // when the module loads: `const y = f(cfg.x = 1)`) and an augmentation
@@ -526,8 +410,6 @@ export function buildClusters(
   // declaration of the module (another module evaluates it; every output
   // imports it itself), and the write table still orders it (R149: a
   // statement writing one follows the module bindings it uses).
-  const writersOfMember = new Map<number, Set<RegionId>>() // declaring member → writer sub-regions
-  const regionWrittenSyms = new Set<SymbolId>()
   for (const w of writes) {
     const d = declMember.get(w.sym)
     if (
@@ -547,14 +429,6 @@ export function buildClusters(
       if (!byUnit) {
         uf.union(w.owner, d)
       }
-    } else {
-      regionWrittenSyms.add(w.sym)
-      let set = writersOfMember.get(d)
-      if (!set) {
-        set = new Set()
-        writersOfMember.set(d, set)
-      }
-      set.add(w.owner)
     }
   }
 
@@ -751,47 +625,7 @@ export function buildClusters(
   for (const [s, m] of declMember) {
     clusterOfSym.set(s, clusterOfMember(m))
   }
-  const subRegionWriters: ClusterGraph['subRegionWriters'] = []
-  for (const [d, writers] of writersOfMember) {
-    subRegionWriters.push({ cluster: clusterOfMember(d), writers })
-  }
 
-  // ---- the mutation predicates -------------------------------------------
-  // (a claimed region is in its owner's cluster: a write there is the owner's)
-  const byOther = (w: Write, by: ClusterId) =>
-    w.owner === null || clusterOfRegion.get(w.owner) !== by
-  const lateWrite = (sym: SymbolId, by: ClusterId): Write | undefined => {
-    if (!lateWritten.has(sym)) {
-      return undefined
-    }
-    for (const w of writesOfSym.get(sym)!) {
-      if (w.live && !w.eager && (w.passed || byOther(w, by))) {
-        return w
-      }
-    }
-    return undefined
-  }
-  const lateWrites = (sym: SymbolId, by: ClusterId): Array<Write> =>
-    lateWritten.has(sym)
-      ? writesOfSym
-          .get(sym)!
-          .filter((w) => w.live && !w.eager && (w.passed || byOther(w, by)))
-      : []
-  const laterWrite = (
-    sym: SymbolId,
-    readAt: number,
-    by: ClusterId,
-  ): Write | undefined => {
-    if ((lastEagerWrite.get(sym) ?? -1) <= readAt) {
-      return undefined
-    }
-    for (const w of writesOfSym.get(sym)!) {
-      if (w.live && w.eager && w.at > readAt && byOther(w, by)) {
-        return w
-      }
-    }
-    return undefined
-  }
   return {
     clusters,
     clusterOfRegion,
@@ -800,15 +634,8 @@ export function buildClusters(
     ownedRefs,
     writes,
     writesOfSym,
-    subRegionWriters,
-    regionWrittenSyms,
     viewOf,
     isLive,
-    ownAugmentations,
-    unitSurvives,
     callsOf,
-    lateWrite,
-    lateWrites,
-    laterWrite,
   }
 }

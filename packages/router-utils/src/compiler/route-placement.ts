@@ -983,7 +983,7 @@ export function computePlacement(input: PlacementInput): Placement {
   // would be written, the env module's read); code the env module holds too
   // (a helper both call) writes each side's own copy. One check of the
   // outcome, on the write table every placement shares.
-  const writers = new Map<ClusterId, SymbolId>()
+  const writers = new Set<ClusterId>()
   for (const w of graph.writes) {
     const c = w.owner === null ? undefined : graph.clusterOfRegion.get(w.owner)
     const d = clusterOfSym.get(w.sym)
@@ -1007,17 +1007,17 @@ export function computePlacement(input: PlacementInput): Placement {
         // handler, assigns nothing there)
         !graph.viewOf(h).isErasedAt(w.at)
       ) {
-        writers.set(c, w.sym)
+        writers.add(c)
       }
     }
   }
   const fallbacks: Array<Fallback> = []
   if (writers.size > 0) {
     const fellBack = new Set<RegionId>()
-    const fallBack = (region: RegionId, binding: SymbolId) => {
+    const fallBack = (region: RegionId) => {
       if (!fellBack.has(region)) {
         fellBack.add(region)
-        fallbacks.push({ region, reason: 'shared-writer', binding })
+        fallbacks.push({ region, reason: 'shared-writer' })
       }
     }
     for (const o of derived) {
@@ -1025,11 +1025,7 @@ export function computePlacement(input: PlacementInput): Placement {
         continue
       }
       for (const root of rootsOf(o)) {
-        let binding: SymbolId | undefined
-        for (const c of reachFrom(o.id, [root])) {
-          binding ??= writers.get(c)
-        }
-        if (binding === undefined) {
+        if (![...reachFrom(o.id, [root])].some((c) => writers.has(c))) {
           continue
         }
         // the root's place in the source: its claimed text, or the
@@ -1037,17 +1033,17 @@ export function computePlacement(input: PlacementInput): Placement {
         if (root.t === 'gen') {
           for (const r of clusters[graph.clusterOfGen.get(root.id)!]!.regions) {
             if (rewrites.claims.has(r)) {
-              fallBack(r, binding)
+              fallBack(r)
             }
           }
         } else if (root.t === 'sym') {
           for (const u of t1.declaringUnits.get(root.id) ?? []) {
             if (units[u]!.kind !== 'type') {
-              fallBack(units[u]!.region, binding)
+              fallBack(units[u]!.region)
             }
           }
         } else {
-          fallBack(units[root.id]!.region, binding)
+          fallBack(units[root.id]!.region)
         }
       }
     }
@@ -1116,8 +1112,6 @@ export function computePlacement(input: PlacementInput): Placement {
     fallbacks,
     created,
     extracted,
-    kept: [],
     droppedTypeUnits,
-    check: () => undefined,
   }
 }

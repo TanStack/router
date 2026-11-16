@@ -10,7 +10,6 @@
 import { deriveId, edgeKeyOf } from './identity'
 import { NameAllocator } from './names'
 import { computePlacement } from './route-placement'
-import { annotatable, keptDiagnostic } from './kept-diagnostics'
 import { freezePlan } from './freeze'
 import { cleanOrphanedDeclarations } from './orphans'
 import { RegionTable, RewriteSet } from './rewrite'
@@ -114,12 +113,6 @@ export interface FallbackRecord {
   range: Range
   kind: RegionKind
   reason: Fallback['reason']
-  /** The name of the binding a writer fallback writes (`ordered-effect`: writes or reads). */
-  binding?: string
-  /** `ordered-effect`: the value writes `binding`, which other code uses or which stays where it does not evaluate (`Fallback.writes`). */
-  writes?: 'used' | 'kept'
-  /** `writes: 'kept'`: nothing but the value uses `binding`, and marking its initialiser `/* @__PURE__ *\/` frees it (`annotatable`). */
-  annotate?: true
 }
 
 interface OutputSpec {
@@ -515,9 +508,6 @@ export class AnalysisPlan implements PlanContext {
     for (const created of placement.created) {
       this.outputs.set(created.id, created)
     }
-    for (const k of placement.kept) {
-      this.diagnostic(keptDiagnostic(this, k))
-    }
     for (const { d, at, unlessLive } of this.liveDiagnostics) {
       if (
         this.ships(placement, at) &&
@@ -556,20 +546,6 @@ export class AnalysisPlan implements PlanContext {
   }
 
   /** Fallbacks of the last `resolve()`, keyed by range (planners re-plan with them). */
-  /** Whether every reference of `sym` is in `range` or in its own declarations. */
-  private usedOnlyIn(sym: SymbolId, range: Range): boolean {
-    const own = (this.t1.declaringUnits.get(sym) ?? []).map(
-      (u) => this.t1.units[u]!.range,
-    )
-    return this.t1.refs
-      .refsOf(sym)
-      .every((r) =>
-        [range, ...own].some(
-          (o) => o.start <= r.range.start && r.range.end <= o.end,
-        ),
-      )
-  }
-
   fallbackRecords(): Array<FallbackRecord> {
     const out: Array<FallbackRecord> = []
     for (const f of this.placement?.fallbacks ?? []) {
@@ -578,14 +554,6 @@ export class AnalysisPlan implements PlanContext {
         range: r.range,
         kind: r.kind,
         reason: f.reason,
-        ...(f.binding !== undefined && {
-          binding: this.symbols.name(f.binding),
-        }),
-        ...(f.writes !== undefined && { writes: f.writes }),
-        ...(f.writes === 'kept' &&
-          f.binding !== undefined &&
-          this.usedOnlyIn(f.binding, r.range) &&
-          annotatable(this, [f.binding]) && { annotate: true }),
       })
     }
     return out
