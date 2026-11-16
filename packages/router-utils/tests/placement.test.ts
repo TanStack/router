@@ -539,33 +539,23 @@ describe('glue and renames (lane router)', () => {
 })
 
 describe('extracted-export outputs', () => {
-  // extracted-export outputs exist in a build; in dev the same clusters stay
-  // in the env module (the last cases of this block)
+  // exported declarations a chunk needs: the route module keeps them, a
+  // chunk copies or imports them (a build)
   const build = { env: envInfo({ mode: 'build' }) }
-  async function extract(
-    code: string,
-    keys = ['component'],
-    extra: { env: EnvInfo } = build,
-  ) {
+  async function extract(code: string, keys = ['component']) {
     const host = new MemoryHost({ files: { '/app/route.tsx': code } })
     const planners = [toySplitPlanner({ keys })]
-    const out = await host.compile('/app/route.tsx', planners, extra)
+    const out = await host.compile('/app/route.tsx', planners, build)
     const env = out?.code ?? ''
     const chunk =
       (
         await host.compile(
           '/app/route.tsx?tsr-split=component',
           planners,
-          extra,
+          build,
         )
       )?.code ?? ''
-    const extracted = async (name: string) =>
-      await host.compile(
-        `/app/route.tsx?tsr-split=export---${name}`,
-        planners,
-        extra,
-      )
-    return { host, env, chunk, extracted }
+    return { host, env, chunk }
   }
 
   // `export default count` holds the value `count` has when it runs: of a
@@ -582,7 +572,6 @@ describe('extracted-export outputs', () => {
     const r = await extract(code)
     expect(r.env).toContain('let count = 0')
     expect(r.env).toContain('export default count')
-    expect(r.env).not.toContain('export---')
   })
 
   it('keeps a default export of an expression reading a candidate in the env module (it is no re-export)', async () => {
@@ -595,7 +584,6 @@ describe('extracted-export outputs', () => {
     const r = await extract(code)
     expect(r.env).toContain('export default () => Page()')
     expect(r.env).toContain('export function Page()')
-    expect(r.env).not.toContain('export---')
   })
 
   it('keeps an import a cancelled extraction candidate reads when an erased range read it too', async () => {
@@ -637,7 +625,6 @@ describe('extracted-export outputs', () => {
     expect(r.env).toContain("const Shared = () => 'shared'")
     expect(r.env).toContain('export const Page = Shared')
     expect(r.env).toContain('export const Alias = Shared')
-    expect(r.env).not.toContain('export---')
   })
 
   it('does not extract a declaration reading what an effectful declaration a chunk needs reads', async () => {
@@ -662,7 +649,6 @@ describe('extracted-export outputs', () => {
     const env = (await host.compile('/app/route.tsx', planners))?.code ?? ''
     expect(env).not.toContain('const store = see(Shared)')
     expect(env).toContain('export const Page = Shared')
-    expect(env).not.toContain('export---')
   })
 
   // What the copy never carries: another export (imported from its module
@@ -798,7 +784,6 @@ describe('extracted-export outputs', () => {
     const r = await extract(code, ['component', 'loader'])
     expect(r.env).toContain('export const Route = createFileRoute(')
     expect(r.env).toContain('export const o0 = { v: 1 }')
-    expect(r.env).not.toContain('export---')
   })
 
   it('keeps an augmented export whose augmentation reads what the env module keeps at its evaluation', async () => {
@@ -813,7 +798,6 @@ describe('extracted-export outputs', () => {
     const r = await extract(code)
     expect(r.env).toContain('export function Page()')
     expect(r.env).toContain('Page.label = config.label')
-    expect(r.env).not.toContain('export---')
   })
 })
 
@@ -3361,7 +3345,6 @@ describe('generated imports', () => {
     const out = await compileAll(code, ['[3]'], [id], { imported: ['Route'] })
     expect(out[id]).toContain('function make() { return tsrStub([3]) }')
     expect(out[id]).toContain(imported)
-    expect(out[id]).not.toContain('export---make')
   })
 
   it('are dropped when no output reads them', async () => {
@@ -3484,7 +3467,6 @@ describe('builder chains in a compile', () => {
       for (const id of [
         '/app/route.tsx',
         '/app/route.tsx?tsr-split=component',
-        '/app/route.tsx?tsr-split=export---fn',
       ]) {
         const o = await host.compile(id, planners, { env })
         out.push(o?.code ?? '')

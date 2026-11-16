@@ -182,9 +182,7 @@ export function computePlacement(input: PlacementInput): Placement {
     [...clusters[c]!.declares].some((s) => imported.has(s))
 
   // ---- the env module --------------------------------------------------------
-  const derived = [...outputs.values()].filter(
-    (o) => o.id !== 'env' && o.kind !== 'export',
-  )
+  const derived = [...outputs.values()].filter((o) => o.id !== 'env')
   const rootedElsewhere = new Set<ClusterId>()
   for (const o of derived) {
     for (const r of liveRoots(o)) {

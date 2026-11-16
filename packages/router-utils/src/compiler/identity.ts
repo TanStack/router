@@ -9,20 +9,14 @@
  */
 import { hash } from 'node:crypto'
 
-type DerivedKind =
-  | 'split'
-  | 'shared'
-  | 'export'
-  | 'hydrate'
-  | 'provider'
-  | 'handler'
+type DerivedKind = 'split' | 'shared' | 'hydrate' | 'provider' | 'handler'
 
 export interface DerivedQuery {
   kind: DerivedKind
   /**
    * Split keys (`component~loader`), the keys of the outputs needing a
    * shared module (`a+b`; parsed from an id: `a~b`, see `ownedQueryPair`),
-   * export name, hydrate id, or '' for a provider.
+   * hydrate id, or '' for a provider.
    */
   value: string
 }
@@ -85,18 +79,12 @@ function splitQuery(id: string): { base: string; query: string; hash: string } {
  * a split group's options, sorted, joined by `---`. The modules main had no
  * counterpart for are named in that style after a first key no route option
  * has (the options are a closed set of identifiers: `splitRouteIdentNodes`
- * of the router plugin): `shared---<keys>`, `export---<name>`. One owner: a
+ * of the router plugin): `shared---<keys>`. One owner: a
  * later switch of the format is this module alone (the compiler's cache keys
  * follow its built code: `compilerCacheKey`).
  */
 const KEY_SEPARATOR = '---'
 const SHARED_PREFIX = `shared${KEY_SEPARATOR}`
-const EXPORT_PREFIX = `export${KEY_SEPARATOR}`
-
-/** The query of an extracted-export output (a `resourceQuery` of the webpack-family hosts' `sideEffects: false` rule). */
-export const EXTRACTED_EXPORT_QUERY_RE = new RegExp(
-  `[?&]${OWNED_QUERY_KEYS.split}=${EXPORT_PREFIX}`,
-)
 
 function parseDerived(key: string, value: string): DerivedQuery | null {
   if (key === OWNED_QUERY_KEYS.hydrate) {
@@ -115,9 +103,6 @@ function parseDerived(key: string, value: string): DerivedQuery | null {
         value: splitKeys(value.slice(SHARED_PREFIX.length)),
       }
     }
-    if (value.startsWith(EXPORT_PREFIX)) {
-      return { kind: 'export', value: value.slice(EXPORT_PREFIX.length) }
-    }
     return { kind: 'split', value: splitKeys(value) }
   }
   return null
@@ -125,8 +110,7 @@ function parseDerived(key: string, value: string): DerivedQuery | null {
 
 /**
  * Whether a decoded `tsr-split` value names a split group (`component---loader`),
- * not a module the file's outputs share (`shared---…`) or an extracted
- * export (`export---…`).
+ * not a module the file's outputs share (`shared---…`).
  */
 export function isSplitGroupValue(value: string): boolean {
   return parseDerived(OWNED_QUERY_KEYS.split, value)?.kind === 'split'
@@ -135,18 +119,6 @@ export function isSplitGroupValue(value: string): boolean {
 /** `a---b` → the planners' `a~b`. */
 function splitKeys(value: string): string {
   return value.split(KEY_SEPARATOR).join('~')
-}
-
-/**
- * An export name may be any string (`export { x as 'a.css' }`), and a bundler
- * reads an id's end as its language, a `/` as a directory and a `!` as a loader
- * separator: anything else than word characters is percent-encoded (`-` too,
- * so that the name never holds the key separator).
- */
-function encodeExportName(name: string): string {
-  return name.replace(/[^\w$]/gu, (c) =>
-    Buffer.from(c).toString('hex').replace(/../g, '%$&'),
-  )
 }
 
 function ownedQueryPair(q: DerivedQuery): string {
@@ -161,8 +133,6 @@ function ownedQueryPair(q: DerivedQuery): string {
         .split(/[~+]/)
         .sort()
         .join(KEY_SEPARATOR)}`
-    case 'export':
-      return `${OWNED_QUERY_KEYS.split}=${EXPORT_PREFIX}${encodeExportName(q.value)}`
     case 'hydrate':
       return `${OWNED_QUERY_KEYS.hydrate}=${q.value}`
     case 'provider':

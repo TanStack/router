@@ -20,7 +20,6 @@ export type OutputKind =
   | 'env'
   | 'split'
   | 'shared'
-  | 'export'
   | 'hydrate'
   | 'provider'
   | 'custom'
@@ -64,18 +63,10 @@ export interface PlacementInput {
   rewrites: RewriteSet
   outputs: Map<OutputId, OutputDecl>
   canonicalId: string
-  /** The module's text, for the invariants' messages (`self-checks.ts`). */
+  /** The module's text. */
   code: string
   /** A route file (`PlanContext.setRouteModule`): placed by `route-placement.ts`. */
   routeModule: RouteModule | null
-  /** Exported symbols a planner allows into an extracted-export output. */
-  extractions?: ReadonlyMap<SymbolId, OutputId>
-  /**
-   * Whether extracted-export outputs are emitted (a build) or folded into
-   * the env module (dev: `env.mode !== 'build'`); the decision which exports
-   * leave, and which of them chunks copy, is the same either way.
-   */
-  extractedOutputs: boolean
 }
 
 export interface ExtractedExport {
@@ -107,7 +98,7 @@ export interface Placement {
   fallbacks: Array<Fallback>
   /** Outputs created by placement (lazy shared modules). */
   created: Array<OutputDecl>
-  /** Exported clusters homed in an extracted-export output (the env module re-exports them). */
+  /** Exported clusters homed in the shared module (the env module re-exports them). */
   extracted: Array<ExtractedExport>
   /** Type units the env module drops (TypeScript-only specifiers that follow their statement's value specifiers); every other type unit stays there, whatever its cluster. */
   droppedTypeUnits: Set<UnitId>

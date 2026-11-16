@@ -13,7 +13,6 @@ export {
   canonicalJson,
   deriveId,
   digestOf,
-  EXTRACTED_EXPORT_QUERY_RE,
   identify,
   isAssetId,
   isSplitGroupValue,
@@ -160,13 +159,6 @@ export {
   rspackCallsEveryRebuildCallback,
 } from './hosts/rebuild'
 export type { IdleCompilerLike, RebuildCompilationLike } from './hosts/rebuild'
-export {
-  initialChunkResources,
-  rollupEntryModuleIds,
-  warnEagerExports,
-  webpackImporters,
-} from './hosts/eager-exports'
-export type { InitialChunksLike } from './hosts/eager-exports'
 export { emittedMapTexts } from './hosts/emitted-maps'
 export type {
   EmittedMapsCompilerLike,

@@ -110,7 +110,6 @@ describe.each([
     for (const derived of [
       { kind: 'split', value: 'component~loader' },
       { kind: 'shared', value: 'component+errorComponent' },
-      { kind: 'export', value: 'Card' },
     ] as const) {
       const id = deriveId(routeId, derived)
       const resolved = await resolve(routesDir, sameFileSpecifier(id))

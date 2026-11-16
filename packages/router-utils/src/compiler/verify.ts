@@ -7,20 +7,17 @@
  * instead of emitting a module that breaks at run time.
  */
 import { isDeepStrictEqual } from 'node:util'
-import { ModuleAnalysis, visitRuns } from './analysis'
-import { callsWhenEvaluated } from './units'
+import { ModuleAnalysis } from './analysis'
 import { emitRecipe } from './emit'
 import { SourceText } from './output-builder'
 import { resolveSameFileSpecifier } from './identity'
 import { parseModule } from './source'
 import { hasRuntimeValue } from './symbols'
-import type { ClassifiedRef, Tier1 } from './analysis'
 import type { SourceIdentity } from './identity'
 import type { AnalysisPlan, EmitPlan, OutputRecipe } from './plan'
 import type { OutputId } from './rewrite'
 import type { SymbolId } from './symbols'
 import type { OutputKind } from './reach'
-import type { UnitId } from './units'
 
 /** An output that copies what it reaches (another layer's instance of the module), not one importing from the env module. */
 const copies = (kind: OutputKind) => kind === 'provider'
@@ -78,9 +75,7 @@ export function verifyPlan(
   for (const f of t1.freeRefs) {
     moduleNames.delete(f.name)
   }
-  /** What each extracted export's module imports of the others (check (h)). */
-  const extractedImports = new Map<OutputId, Set<OutputId>>()
-  for (const [id, { analysis, recipe }] of outputs) {
+  for (const [id, { analysis }] of outputs) {
     const out = analysis.t1()
     // (a) no output assigns a binding it imports
     for (const ref of out.refs.all) {
@@ -106,13 +101,6 @@ export function verifyPlan(
       const home = target === undefined ? undefined : outputs.get(target)
       if (home === undefined) {
         continue
-      }
-      if (recipe.kind === 'export' && home.recipe.kind === 'export') {
-        let set = extractedImports.get(id)
-        if (!set) {
-          extractedImports.set(id, (set = new Set()))
-        }
-        set.add(target!)
       }
       // (b) a glue import names an export of its home output that has a
       // runtime value (an `export { X }` of a type-only binding is erased
@@ -141,24 +129,6 @@ export function verifyPlan(
           }
         }
       }
-      // (e) an extracted export's module (evaluated before the env
-      // module's body) never reads a binding of the env module at its
-      // evaluation (a TDZ through the re-export cycle), in its own text or
-      // in a function it calls then
-      if (recipe.kind === 'export' && target === 'env') {
-        const atLoad = loadRuns(out)
-        for (const s of imp.specifiers) {
-          if (
-            out.refs
-              .refsOf(s.local)
-              .some((r) => atLoad.has(r) && r.kind !== 'write')
-          ) {
-            problems.push(
-              `${id}: reads ${s.localName} of the env module at its evaluation`,
-            )
-          }
-        }
-      }
     }
     // (g) no output reads a module binding of the source, or a generated
     // binding, it neither declares nor imports (the read would fall through
@@ -170,23 +140,6 @@ export function verifyPlan(
       problems.push(
         `${id}: reads ${name}, which it neither declares nor imports`,
       )
-    }
-  }
-  // (h) no two extracted modules import each other: which evaluates first
-  // would depend on the bundler, and a read at evaluation can crash
-  for (const start of extractedImports.keys()) {
-    const seen = new Set<OutputId>()
-    const work = [...extractedImports.get(start)!]
-    while (work.length > 0) {
-      const o = work.pop()!
-      if (o === start) {
-        problems.push(`${start}: is in an import cycle of extracted modules`)
-        break
-      }
-      if (!seen.has(o)) {
-        seen.add(o)
-        work.push(...(extractedImports.get(o) ?? []))
-      }
     }
   }
   // (d) every surviving effect unit is emitted exactly once across the
@@ -263,24 +216,4 @@ export function verifyPlan(
       `compiler invariants violated for ${identity.canonicalId}:\n${problems.join('\n')}`,
     )
   }
-}
-
-/** The references a module's evaluation runs: what each of its units runs when it evaluates (`visitRuns`). */
-function loadRuns(out: Tier1): Set<ClassifiedRef> {
-  const runs = new Set<ClassifiedRef>()
-  const textOf = (u: UnitId) => out.refs.refsIn(out.units[u]!.range)
-  for (const unit of out.units) {
-    const calls = callsWhenEvaluated(unit.node)
-    visitRuns(
-      out,
-      textOf(unit.id),
-      calls.calls.length > 0 ? calls : null,
-      textOf,
-      (ref) => {
-        runs.add(ref)
-        return false
-      },
-    )
-  }
-  return runs
 }

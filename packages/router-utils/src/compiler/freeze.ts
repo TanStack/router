@@ -96,7 +96,6 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
   }
 
   const renderer = new Renderer(plan, code)
-  const extractedOutputs = new Set(placement.extracted.map((e) => e.output))
   // the units of each import declaration, once for every output
   const unitsOfImport = new Map<number, Array<Unit>>()
   for (const u of plan.t1.units) {
@@ -111,11 +110,6 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
   }
 
   for (const [id, decl] of plan.outputs) {
-    // an extracted export the core kept in the env module produces no
-    // module: a request for it (a stale importer) emits `export {}`
-    if (decl.kind === 'export' && !extractedOutputs.has(id)) {
-      continue
-    }
     const included = placement.included.get(id) ?? new Set()
     const recipeEdges: Array<EdgeRecord> = []
     const importerId = decl.derivedId ?? plan.identity.canonicalId
@@ -532,7 +526,7 @@ function glueImportText(
   return frags
 }
 
-/** `export { x as name, … } from '/path/file?tsr-split=export---name'` for every extracted cluster. */
+/** `export { x as name, … } from '/path/file?tsr-split=shared---…'` for every exported cluster the shared module holds (`Placement.extracted`). */
 function reexportGlue(
   plan: AnalysisPlan,
   placement: Placement,

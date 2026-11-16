@@ -148,14 +148,6 @@ export interface PlanContext<TName extends string = string> {
   declareOutput: (spec: OutputSpec) => OutputId
   addRoot: (output: OutputId, root: RootRef) => void
   /**
-   * Allows an exported, pure, unwritten declaration into its extracted-export
-   * output: the core moves it there when only derived outputs need it, and the
-   * env module re-exports it. The output takes the first name the module
-   * exports the binding under (`export { x as Public }`: the id and the
-   * diagnostics say `Public`).
-   */
-  extractExport: (sym: SymbolId, exportName: string) => void
-  /**
    * The module is a route file: placed as route splitting on `main` places
    * it (`route-placement.ts`). `imported`: the bindings a split chunk
    * imports from the route module when it reads them; it copies the rest.
@@ -230,7 +222,6 @@ export class AnalysisPlan implements PlanContext {
     unlessLive: ReadonlyArray<Range>
   }> = []
   readonly facts: PlannerFactsByName = {}
-  readonly extractions = new Map<SymbolId, OutputId>()
   /** Whether the module has a value `export * from …` (`glueExportBase`). */
   private starExports: boolean | undefined
   /** `tagGlueExports` (`glueExportBase`). */
@@ -327,20 +318,6 @@ export class AnalysisPlan implements PlanContext {
       throw new Error(`addRoot: unknown output ${output}`)
     }
     decl.roots.push(root)
-  }
-
-  extractExport(sym: SymbolId, exportName: string): void {
-    if (this.extractions.has(sym)) {
-      return
-    }
-    this.extractions.set(
-      sym,
-      this.declareOutput({
-        kind: 'export',
-        key: `export~${exportName}`,
-        derived: { kind: 'export', value: exportName },
-      }),
-    )
   }
 
   setRouteModule(route: RouteModule): void {
@@ -502,8 +479,6 @@ export class AnalysisPlan implements PlanContext {
       canonicalId: this.identity.canonicalId,
       code: this.analysis.source.code,
       routeModule: this.routeModule,
-      extractions: this.extractions,
-      extractedOutputs: this.env.mode === 'build',
     })
     for (const created of placement.created) {
       this.outputs.set(created.id, created)
