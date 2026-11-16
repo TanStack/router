@@ -334,12 +334,29 @@ function findExportedSharedBindings(
 /**
  * Remove declarations of shared bindings from the AST.
  * Handles both plain and exported declarations, including destructured patterns.
- * Removes the entire statement if all bindings in it are shared.
+ * Removes the entire statement if all bindings in it are shared; a shared
+ * default-exported declaration is reduced to `export default <name>`.
  * TypeScript overload signatures of a shared function are removed along with
  * its implementation: left behind, they read as a local declaration of the
  * same name and shadow the import from the shared module.
  */
 function removeSharedDeclarations(ast: t.File, sharedBindings: Set<string>) {
+  // `export default function Layout() {}` declares `Layout` as well. With the
+  // declaration gone the default export still has to be there, so it becomes
+  // `export default Layout` and picks up the import from the shared module.
+  ast.program.body = ast.program.body.map((stmt) => {
+    if (
+      t.isExportDefaultDeclaration(stmt) &&
+      (t.isFunctionDeclaration(stmt.declaration) ||
+        t.isClassDeclaration(stmt.declaration)) &&
+      stmt.declaration.id &&
+      sharedBindings.has(stmt.declaration.id.name)
+    ) {
+      return t.exportDefaultDeclaration(t.identifier(stmt.declaration.id.name))
+    }
+    return stmt
+  })
+
   ast.program.body = ast.program.body.filter((stmt) => {
     const decl =
       t.isExportNamedDeclaration(stmt) && stmt.declaration
@@ -901,7 +918,8 @@ export function compileCodeSplitVirtualRoute(
 
   const knownExportedIdents = new Set<string>()
   // local name -> the name the reference file exports it under, e.g.
-  // `export { Layout as PublicLayout }` maps `Layout` to `PublicLayout`
+  // `export { Layout as PublicLayout }` maps `Layout` to `PublicLayout` and
+  // `export default Layout` maps `Layout` to `default`
   const exportedNameByLocal = new Map<string, string>()
 
   babel.traverse(ast, {
@@ -962,17 +980,24 @@ export function compileCodeSplitVirtualRoute(
                       // If the node is exported, we need to remove
                       // the export from the split file
                       if (isExported && t.isIdentifier(value)) {
-                        exportedNameByLocal.set(
+                        const exportedName = findRuntimeExportName(
+                          ast,
                           value.name,
-                          findExportedName(ast, value.name),
                         )
                         removeExports(ast, value)
-                        // `export { Layout as PublicLayout }` leaves the
-                        // `function Layout() {}` declaration behind. The
-                        // reference file keeps that declaration, so drop the
-                        // copy here; if another split node still needs it, it
-                        // is imported from the reference file below.
-                        removeModuleLevelDeclaration(ast, value.name)
+                        if (exportedName !== undefined) {
+                          exportedNameByLocal.set(value.name, exportedName)
+                          // `export { Layout as PublicLayout }` and `export
+                          // default Layout` leave the `function Layout() {}`
+                          // declaration behind. The reference file keeps that
+                          // declaration, so drop the copy here; if another
+                          // split node still needs it, it is imported from
+                          // the reference file below.
+                          removeModuleLevelDeclaration(ast, value.name)
+                        }
+                        // A binding with only a type export (`export type {
+                        // Layout }`) has no runtime export to import, so its
+                        // declaration stays for the split nodes that use it.
                       } else {
                         const meta = SPLIT_NODES_CONFIG.get(splitType)!
                         trackedNodesToSplitByType[splitType] = {
@@ -1224,12 +1249,25 @@ export function compileCodeSplitVirtualRoute(
             const [importPath] = programPath.unshiftContainer(
               'body',
               t.importDeclaration(
-                [...unresolvedExportedIdents].map((name) =>
-                  t.importSpecifier(
-                    t.identifier(name),
-                    t.identifier(exportedNameByLocal.get(name) ?? name),
+                [...unresolvedExportedIdents]
+                  .map((name) => ({
+                    name,
+                    exportedName: exportedNameByLocal.get(name) ?? name,
+                  }))
+                  // a default specifier has to come first
+                  .sort(
+                    (a, b) =>
+                      Number(b.exportedName === 'default') -
+                      Number(a.exportedName === 'default'),
+                  )
+                  .map(({ name, exportedName }) =>
+                    exportedName === 'default'
+                      ? t.importDefaultSpecifier(t.identifier(name))
+                      : t.importSpecifier(
+                          t.identifier(name),
+                          t.identifier(exportedName),
+                        ),
                   ),
-                ),
                 t.stringLiteral(
                   removeSplitSearchParamFromFilename(opts.filename),
                 ),
@@ -1239,7 +1277,8 @@ export function compileCodeSplitVirtualRoute(
             importPath.traverse({
               Identifier(identPath) {
                 if (
-                  identPath.parentPath.isImportSpecifier() &&
+                  (identPath.parentPath.isImportSpecifier() ||
+                    identPath.parentPath.isImportDefaultSpecifier()) &&
                   identPath.key === 'local'
                 ) {
                   refIdents.add(identPath)
@@ -1765,14 +1804,41 @@ function hasLocalExportSpecifier(
 }
 
 /**
- * Returns the name a module-level binding is exported under. A declaration
- * export (`export function Layout() {}`) and `export { Layout }` give back the
- * local name; `export { Layout as PublicLayout }` gives back `PublicLayout`.
- * Falls back to the local name when no export is found.
+ * Returns the name a module-level binding can be imported under at runtime. A
+ * declaration export (`export function Layout() {}`) and `export { Layout }`
+ * give back the local name, `export { Layout as PublicLayout }` gives back
+ * `PublicLayout`, and a binding that is only the default export gives back
+ * `default`. Type-only exports (`export type { Layout }`, `export { type
+ * Layout }`) have no runtime value, so a binding with nothing else gives back
+ * `undefined`.
  */
-function findExportedName(ast: t.File, localName: string): string {
+function findRuntimeExportName(
+  ast: t.File,
+  localName: string,
+): string | undefined {
+  let isDefaultExport = false
+
   for (const stmt of ast.program.body) {
-    if (!t.isExportNamedDeclaration(stmt) || stmt.source) continue
+    if (t.isExportDefaultDeclaration(stmt)) {
+      const declaration = stmt.declaration
+      if (
+        (t.isIdentifier(declaration) && declaration.name === localName) ||
+        ((t.isFunctionDeclaration(declaration) ||
+          t.isClassDeclaration(declaration)) &&
+          declaration.id?.name === localName)
+      ) {
+        isDefaultExport = true
+      }
+      continue
+    }
+
+    if (
+      !t.isExportNamedDeclaration(stmt) ||
+      stmt.source ||
+      stmt.exportKind === 'type'
+    ) {
+      continue
+    }
 
     if (stmt.declaration) {
       if (
@@ -1795,6 +1861,7 @@ function findExportedName(ast: t.File, localName: string): string {
     for (const specifier of stmt.specifiers) {
       if (
         t.isExportSpecifier(specifier) &&
+        specifier.exportKind !== 'type' &&
         t.isIdentifier(specifier.local) &&
         specifier.local.name === localName
       ) {
@@ -1805,7 +1872,7 @@ function findExportedName(ast: t.File, localName: string): string {
     }
   }
 
-  return localName
+  return isDefaultExport ? 'default' : undefined
 }
 
 /**

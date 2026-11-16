@@ -835,10 +835,13 @@ export function retainModuleLevelDeclarations(
   ast.program.body = ast.program.body.filter((statement) => {
     if (t.isImportDeclaration(statement)) return true
 
+    // `export default function Layout() {}` declares `Layout` too
     const declaration =
       t.isExportNamedDeclaration(statement) && statement.declaration
         ? statement.declaration
-        : statement
+        : t.isExportDefaultDeclaration(statement)
+          ? statement.declaration
+          : statement
 
     if (t.isVariableDeclaration(declaration)) {
       declaration.declarations = declaration.declarations.filter((declarator) =>

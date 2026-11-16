@@ -26,9 +26,16 @@ it.each(groupings)(
   30_000,
 )
 
-// Shared extraction currently duplicates named default function declarations and
-// drops TypeScript enum/namespace dependencies. Keep their intended contracts.
-it.fails.each(['named-default', 'enum', 'namespace'] as const)(
+it('preserves executable route contracts with shared named-default declarations', async () => {
+  await assertRuntimeContracts({
+    groupings: [['component'], ['loader']],
+    syntax: 'named-default',
+  })
+}, 30_000)
+
+// Shared extraction currently drops TypeScript enum/namespace dependencies.
+// Keep their intended contracts.
+it.fails.each(['enum', 'namespace'] as const)(
   'preserves executable route contracts with shared %s declarations',
   async (syntax) => {
     await assertRuntimeContracts({
