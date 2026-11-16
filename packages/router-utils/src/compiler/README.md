@@ -121,12 +121,14 @@ The rules, per output:
   value, erased text, the type-only export statements main deletes first; a use in a type counts) goes with its
   initialiser when nothing that stays reads it by value.
   Top-level statements (R154), exports, code already unused in the source and what they reach stay; enums and
-  namespaces are declarations like any other (R155).
+  namespaces are declarations like any other (R155). In a route module, a class, enum or namespace declaration a
+  split chunk reaches stays, with what it reads, unless it is a name main shares (R163: main's removal rule never
+  removes one, so its body runs at load); what only Start's outputs read goes by the rule above.
 - **a split chunk** takes what its option's value reads, transitively. What the env module also keeps it imports from
   there when main does (`RouteModule.imported`, from the router planner: the route binding, `export const|let|var`)
   and copies otherwise, with the top-level code reaching what it copies through the names it references (R1: every
-  statement and every declaration nothing references (an export is a reference, as in main's removal rule) whose
-  names reach it, transitively; main's second instance,
+  statement, every class, enum and namespace (R163) and every declaration nothing references (an export is a
+  reference, as in main's removal rule) whose names reach it, transitively; main's second instance,
   spec-main-splitting.md §1.8; `export default <expression>` is such a statement, rendered there as
   `void (<expression>)`); a binding a statement declares (`if (…) { var x }`) is imported. A derived output drops
   only the `export` (`default`) keywords of what it copies: comments and annotations stay with the copy.

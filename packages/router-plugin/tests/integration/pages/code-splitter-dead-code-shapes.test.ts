@@ -28,12 +28,15 @@ interface Removal {
   routeOptions?: RouteAppOptions
   /** The page script that gives what the removed option gives, and its value. */
   check: (expected: unknown) => { script: string; expected: unknown }
+  /** A class the removed code reads stays (R163: a split option). */
+  keepsClasses?: true
 }
 
 const removals: Array<Removal> = [
   {
     name: 'a split component',
     options: (root) => `component: () => <p>{${root}}</p>,`,
+    keepsClasses: true,
     check: (expected) => ({
       script: `return render('component')`,
       expected: `<p>${expected}</p>`,
@@ -81,6 +84,10 @@ ${loader}${removal.options(shape.root)}
         expect(await route.run(`return options.loader()`)).toEqual(
           shape.kept.expected,
         )
+      } else if (removal.keepsClasses && /\bclass \w/.test(shape.setup)) {
+        // R163: a class split code reads stays in the route module, with
+        // what it reads, as on `main` (its removal rule never removes one)
+        expect(await route.requested()).toContain('/dep.ts')
       } else {
         expect(await route.requested()).not.toContain('/dep.ts')
       }

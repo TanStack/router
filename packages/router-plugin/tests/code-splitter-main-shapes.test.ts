@@ -576,6 +576,15 @@ const _boot = registry.set('a', 1)`,
       read: "registry.get('a')",
       html: '<p>1</p>',
     },
+    // (review-phase1 r5; R163: a class stays and is copied as a statement is)
+    {
+      name: 'a class static block whose class only an export reads',
+      decls: `const routes: Array<string> = []
+class Boot { static { routes.push('boot') } }
+export const boot = Boot`,
+      read: 'routes.length',
+      html: '<p>1</p>',
+    },
   ])('$name', async ({ decls, read, html }) => {
     const route = await loadRoute(
       `${head}${decls}
@@ -603,6 +612,106 @@ export const Route = createFileRoute('/')({ component: Comp })
     await expectValidModules(route)
     expect(await route.isLazy('component')).toBe(true)
     expect(await route.run(`return render('component')`)).toBe('<p>0/1</p>')
+  })
+})
+
+// R163 (coverage-review-A 1): `main` never removes a class, an enum or a
+// namespace from the route module, so its body runs when the route module
+// loads, also when only a split option reads it; the chunk copies it. A
+// loader reading what the body did reads it before the chunk loads.
+describe('a class, enum or namespace only split code reads runs with the route module (R163)', () => {
+  it.each([
+    {
+      name: 'a class static block',
+      decls: `const handlers = new Map<string, () => string>()
+class PageModel { static { handlers.set('page', () => 'handled') } title = 'model' }`,
+      loader: `handlers.get('page')?.() ?? 'missing'`,
+      read: 'new PageModel().title',
+      values: ['handled', '<p>model</p>'],
+    },
+    {
+      name: 'a class static field initialiser',
+      decls: `class Feature { static enabled = ((globalThis as any).caseFeature = 'on') }`,
+      loader: `(globalThis as any).caseFeature ?? 'off'`,
+      read: 'Feature.enabled',
+      values: ['on', '<p>on</p>'],
+    },
+    {
+      name: 'a class extending an import whose module has an effect',
+      decls: `import { Base } from './base'
+class Model extends Base { title = 'model' }`,
+      loader: `(globalThis as any).caseBase ?? 'not-loaded'`,
+      read: 'new Model().title',
+      values: ['loaded', '<p>model</p>'],
+    },
+    {
+      name: 'a class static block filling a registry the loader reads',
+      decls: `const registry: Array<string> = []
+class Entry { static { registry.push('entry') } }`,
+      loader: 'registry.length',
+      read: 'typeof Entry',
+      values: [1, '<p>function</p>'],
+    },
+    {
+      name: 'a namespace body',
+      decls: `namespace Boot { (globalThis as any).caseBoot = 'booted'; export function name() { return 'boot' } }`,
+      loader: `(globalThis as any).caseBoot ?? 'not-booted'`,
+      read: 'Boot.name()',
+      values: ['booted', '<p>boot</p>'],
+    },
+    {
+      name: 'an enum member initialiser',
+      decls: `const seen: Array<string> = []
+enum Kind { A = (seen.push('enum'), 'a') }`,
+      loader: 'seen.length',
+      read: 'Kind.A',
+      values: [1, '<p>a</p>'],
+    },
+  ])('$name', async ({ decls, loader, read, values }) => {
+    const route = await loadRoute(
+      `${head}${decls}
+function Page() { return <p>{String(${read})}</p> }
+export const Route = createFileRoute('/')({
+  loader: () => ${loader},
+  component: Page,
+})
+`,
+      {
+        files: {
+          'base.ts': `export class Base {}
+;(globalThis as any).caseBase = 'loaded'
+`,
+        },
+      },
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(
+      await route.run(`const loaded = await options.loader()
+return [loaded, await render('component')]`),
+    ).toEqual(values)
+  })
+
+  // `main` shares a class two option groups read (§1.3): one instance, its
+  // body run once, in the module both chunks import
+  it('creates a class two split options read once', async () => {
+    const route = await loadRoute(
+      `${head}const registry: Array<string> = []
+class Entry { static { registry.push('entry') } }
+export const Route = createFileRoute('/')({
+  component: () => <p>{registry.length}{String(new Entry() instanceof Entry)}</p>,
+  errorComponent: () => <p>{registry.length}{typeof Entry}</p>,
+})
+`,
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.isLazy('errorComponent')).toBe(true)
+    expect(
+      await route.run(
+        `return [await render('component'), await render('errorComponent')]`,
+      ),
+    ).toEqual(['<p>1true</p>', '<p>1function</p>'])
   })
 })
 
@@ -705,22 +814,6 @@ function Page() { return <p>{Status.Active}</p> }`,
 const renderers = { [Kind.A]: () => Kind.A }
 function Page() { return <p>{renderers[Kind.A]()}</p> }`,
       html: '<p>MARK_HELPER</p>',
-    },
-    // R155: an enum or a namespace goes by the removal rule like any
-    // declaration (main keeps it in the route module and copies it into the
-    // chunk)
-    {
-      name: 'a namespace',
-      decls: `namespace Labels { export const quiet = 'MARK_HELPER' }
-function Page() { return <p>{Labels.quiet}</p> }`,
-      html: '<p>MARK_HELPER</p>',
-    },
-    {
-      name: 'an enum with a computed member',
-      decls: `const measure = (s: string) => s.length
-enum Size { Large = measure('MARK_HELPER') }
-function Page() { return <p>{Size.Large}</p> }`,
-      html: '<p>11</p>',
     },
     {
       name: 'an overloaded function',

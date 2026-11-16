@@ -12,7 +12,9 @@
  *   the source used, by value or in a type, from text the env module no
  *   longer holds (a claimed option value, erased text: `readFromRemoved`)
  *   leaves it, with its initialiser, when nothing that stays reads it by
- *   value; enums and namespaces are declarations like any other (R155).
+ *   value; enums and namespaces are declarations like any other (R155),
+ *   but for a class, `enum` or `namespace` split code reaches: it stays in
+ *   a route module, as `main`'s removal rule never removes one (R163).
  *   A fixed home says where a generated declaration lives, not whether it
  *   does: a claim's owner whose output no longer keeps the claim is unused.
  *   Statements (R154), exports and code already unused stay; an import
@@ -29,7 +31,8 @@
  *   imports it (the route binding, `export const|let|var`:
  *   `RouteModule.imported`) and copies otherwise, with the top-level code
  *   reaching what it copies through the names it references (R1: the
- *   statements and the never-read declarations whose names reach it,
+ *   statements, classes, enums, namespaces (R163) and never-read
+ *   declarations whose names reach it,
  *   transitively; `main`'s second instance, in `main`'s shapes, 1.8); so it
  *   copies what the env module does not keep, also what another chunk
  *   copies too. Import specifiers are copied where they are read.
@@ -197,6 +200,19 @@ export function computePlacement(input: PlacementInput): Placement {
   }
   const liveRoots = (o: OutputDecl): ReadonlyArray<RootRef> =>
     o.roots.filter((r) => r.t !== 'gen' || !unused.has(r.id))
+  /** The roots of a derived output: what its planners rooted there, and the generated units homed there. */
+  const rootsOf = (o: OutputDecl): Array<RootRef> => [
+    ...liveRoots(o),
+    ...gens
+      .filter((g) => g.home === o.id && !unused.has(g.id))
+      .map((g) => ({ t: 'gen' as const, id: g.id })),
+  ]
+  const clusterOfRoot = (r: RootRef): ClusterId | undefined =>
+    r.t === 'unit'
+      ? graph.clusterOfRegion.get(units[r.id]!.region)
+      : r.t === 'gen'
+        ? graph.clusterOfGen.get(r.id)
+        : clusterOfSym.get(r.id)
 
   // ---- what each cluster is -------------------------------------------------
   /** The output a generated unit is homed in by its planner. */
@@ -257,6 +273,15 @@ export function computePlacement(input: PlacementInput): Placement {
     })
   }
   const isType = (c: ClusterId) => clusters[c]!.kind === 'type'
+  /** A class, `enum` or `namespace` declaration (R163; a type-only namespace is a type unit). */
+  const isClassLike = (c: ClusterId) =>
+    clusters[c]!.units.some(
+      (u) =>
+        units[u]!.kind === 'declaration' &&
+        (units[u]!.node.type === 'ClassDeclaration' ||
+          units[u]!.node.type === 'TSEnumDeclaration' ||
+          units[u]!.node.type === 'TSModuleDeclaration'),
+    )
   /** Copied where it is read: an import specifier, a planner's generated import. */
   const isImport = (c: ClusterId) => clusters[c]!.kind === 'import'
 
@@ -393,6 +418,47 @@ export function computePlacement(input: PlacementInput): Placement {
       (claim) => rewrites.regions.get(claim.region).range,
     ),
   ])
+  /**
+   * R163: `main`'s removal rule never removes a class, an enum or a
+   * namespace, so its body runs when the route module loads. One that split
+   * code reaches stays in the env module, and a chunk reading it copies it,
+   * as on `main`; a name `main` shares lives in the shared module, as there.
+   * Split chunks only: what only Start's outputs (erasure, a handler module,
+   * a `<Hydrate>` chunk) read goes by the removal rule as any declaration.
+   */
+  const keptBySplit = new Set<ClusterId>()
+  for (const o of derived) {
+    if (o.kind !== 'split') {
+      continue
+    }
+    const seen = new Set<ClusterId>()
+    const work: Array<ClusterId> = []
+    const visit = (c: ClusterId | undefined) => {
+      if (
+        c !== undefined &&
+        !seen.has(c) &&
+        !isType(c) &&
+        !inShared.has(c) &&
+        !importedFromEnv(c) &&
+        (fixedHome.get(c) ?? o.id) === o.id
+      ) {
+        seen.add(c)
+        work.push(c)
+      }
+    }
+    for (const r of rootsOf(o)) {
+      visit(clusterOfRoot(r))
+    }
+    while (work.length > 0) {
+      const c = work.pop()!
+      if (isClassLike(c)) {
+        keptBySplit.add(c)
+      }
+      for (const t of reads.successors(c, o.id, true)) {
+        visit(t)
+      }
+    }
+  }
   /** The shared declarations the env module reads or exports: roots of the shared module. */
   const sharedRoots = new Set<ClusterId>()
   const env = new Set<ClusterId>()
@@ -446,7 +512,8 @@ export function computePlacement(input: PlacementInput): Placement {
       if (
         !removable(c) ||
         cl.units.some((u) => units[u]!.exported.length > 0) ||
-        !fromRemoved.has(c)
+        !fromRemoved.has(c) ||
+        keptBySplit.has(c)
       ) {
         keepInEnv(c)
       }
@@ -611,10 +678,11 @@ export function computePlacement(input: PlacementInput): Placement {
   /**
    * The top-level code reaching each declaration the env module keeps
    * through the names it references, transitively (R1): every statement,
-   * and every declaration nothing in the module references (an export is a
-   * reference, as in `main`'s removal rule: `main`'s copy strips its exports
-   * and deletes what only they read), whose code names the declaration, or
-   * names a declaration whose
+   * for a split chunk every class, `enum` and `namespace` (R163: `main`'s
+   * removal rule never removes one), and every declaration nothing in the
+   * module references (an export is a reference, as in `main`'s removal
+   * rule: `main`'s copy strips its exports and deletes what only they
+   * read), whose code names the declaration, or names a declaration whose
    * code names it, and so on. A chunk copying the declaration takes them,
    * as `main`'s chunk keeps every statement reading a name it still
    * declares, every class and every never-read declaration, and `main`'s
@@ -690,6 +758,7 @@ export function computePlacement(input: PlacementInput): Placement {
           !isImport(r) &&
           !isType(r) &&
           (isStatement(r) ||
+            (isChunk(o) && isClassLike(r)) ||
             (!readersInEnv.has(r) &&
               cl.units.every((u) => units[u]!.exported.length === 0)))
         ) {
@@ -767,13 +836,6 @@ export function computePlacement(input: PlacementInput): Placement {
       }
     }
   }
-  /** The roots of a derived output: what its planners rooted there, and the generated units homed there. */
-  const rootsOf = (o: OutputDecl): Array<RootRef> => [
-    ...liveRoots(o),
-    ...gens
-      .filter((g) => g.home === o.id && !unused.has(g.id))
-      .map((g) => ({ t: 'gen' as const, id: g.id })),
-  ]
   const SHARED = 'shared' as OutputId
   /** The shared declarations derived outputs read, and the outputs reading them. */
   const sharedRead = new Set<ClusterId>()
@@ -824,7 +886,9 @@ export function computePlacement(input: PlacementInput): Placement {
         }
         // copied (a chunk, a provider copy), with the top-level code
         // reaching it: a statement as it stands, a declaration by these same
-        // rules; a `<Hydrate>` chunk copies the declaration alone (H1)
+        // rules (taken first: two classes may reach each other); a
+        // `<Hydrate>` chunk copies the declaration alone (H1)
+        take(t)
         if (!isHydrate(o)) {
           for (const c of codeReaching(t, o)) {
             if (isStatement(c)) {

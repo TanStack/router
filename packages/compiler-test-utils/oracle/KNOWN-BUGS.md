@@ -119,14 +119,6 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
 
 ## Accepted limits
 
-- **A class whose only reader is an export is not copied with what its code reaches** (R1, review-phase1 r5; accepted:
-  niche, no corpus file): a split chunk copies the top-level code that reaches what it copies
-  by name, and an export is no root, so `class Boot { static { routes.push('boot') } }; export const boot = Boot` with
-  a split component reading `routes` gives the copy `routes` without `Boot`'s static block (0). `main`
-  keeps every class in every copy (its removal rule never removes one) and reads 1.
-  (Server-fn handler modules import the module's one instance since R157: "r5b" in
-  `start-plugin-core/tests/start-compiler-erasure-parity.test.ts` gives 1.)
-
 - **With RSC, a `<ClientOnly>` in a server component outside a server fn's handler shows its fallback for good**
   (as `main`; review-coverage-fix-batch 1): the environment that renders server components keeps `<ClientOnly>`
   children only in handler text, since it also evaluates modules whose components only SSR and the browser render,
@@ -566,9 +558,9 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
   split or reported as not code-split".
 - **Parameter decorators do not parse.** SPEC §2.1, G1. `pages/known-bugs-code-splitter-bindings.test.ts`: "a class
   with a parameter decorator that the split component uses compiles into parseable modules". A decorator on a
-  parameter, as on the class or a member, makes the class an effect (it runs when the class is defined), which keeps
-  its order with the effects after it: `router-plugin/tests/code-splitter-effect-timing.test.ts`: "runs its decorator
-  before the effects written after it".
+  parameter, as on the class or a member, runs when the class is defined; the class stays in the route module (R163),
+  so it runs at load, in source order: `router-plugin/tests/code-splitter-effect-timing.test.ts`: "runs its decorator
+  when the route module loads, before the effects written after it".
 - **A namespace is copied into a chunk without its body.** SPEC G1. `pages/known-bugs-code-splitter-bindings.test.ts`:
   "a namespace the split component reads keeps its body".
 - **Vite dev: the maps of the split and shared modules name the route file with the splitter's query**

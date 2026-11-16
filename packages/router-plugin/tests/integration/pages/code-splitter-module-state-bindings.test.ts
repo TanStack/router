@@ -247,7 +247,21 @@ return {
                 : readers[reader]!.length,
             ),
         )
-        expect(observed.initCalls).toBe(inits)
+        // R163: a class whose readers are all one split group's stays in the
+        // route module, as on `main`, and the chunk copies it: its body runs
+        // in both, as on `main`
+        const groupsOfReaders = new Set(
+          Object.keys(readers).map((reader) =>
+            codeSplitGroupings.findIndex((group) =>
+              (group as Array<string>).includes(reader),
+            ),
+          ),
+        )
+        const copiedClass =
+          declarations.includes('class ') &&
+          groupsOfReaders.size === 1 &&
+          !groupsOfReaders.has(-1)
+        expect(observed.initCalls).toBe(copiedClass ? 2 * inits : inits)
         expect(observed.distinct).toEqual(
           Object.fromEntries(names.map((name) => [name, 1])),
         )
