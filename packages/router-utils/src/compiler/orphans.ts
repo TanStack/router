@@ -8,7 +8,6 @@
  */
 import { walk } from 'yuku'
 import { extendOverTrailingLine } from './header'
-import { isPureClass } from './purity'
 import {
   nextToken,
   opensNonExpressionStatement,
@@ -221,12 +220,6 @@ export function cleanOrphanedDeclarations(
       ) {
         const stmtParent = file.parentOf(parent)
         if (!stmtParent || stmtParent.type !== 'BlockStatement') {
-          continue
-        }
-        if (
-          parent.type === 'ClassDeclaration' &&
-          !isPureClass(ctx.analysis.purity, parent)
-        ) {
           continue
         }
         handled.add(b.id)

@@ -313,24 +313,28 @@ describe('function-level call initialisers (hook calls)', () => {
 })
 
 describe('function-local declarations only erased code read', () => {
-  it('drops a pure function and class declaration, keeps a class whose evaluation has effects', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        export function Comp() {
-          function helper() {
-            return 1
-          }
-          class Pure {}
-          class Impure extends make() {}
-          const fn = wrapServer(() => helper() + new Pure() + new Impure())
-          return fn
+  // a class goes like any declaration: what its evaluation does is no
+  // question (review-kept-analyses 3.1), and so does the import only it read
+  it('drops a function and class declarations only erased code reads, whatever their evaluation does', async () => {
+    const out = await client(`
+      import { wrapServer } from 'toy-start'
+      import { secret } from './db.server'
+      export function Comp() {
+        function helper() {
+          return 1
         }
-      `),
-    ).toBe(
-      // the removed declarations' indentation stays (whitespace is free)
-      'export function Comp() {\n      class Impure extends make() {}\n  const fn = tsrStub()\n  return fn\n}\n',
-    )
+        class Pure {}
+        class Impure extends make() {}
+        class WithStatic { static x = secret() }
+        const fn = wrapServer(
+          () => helper() + new Pure() + new Impure() + new WithStatic(),
+        )
+        return fn
+      }
+    `)
+    expect(out).not.toMatch(/function helper|class /)
+    expect(out).not.toContain('db.server')
+    expect(out).toContain('const fn = tsrStub(')
   })
 
   it('prunes the orphaned declarators of one statement as runs, keeping the rest', async () => {
