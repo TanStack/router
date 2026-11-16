@@ -1,6 +1,5 @@
 /**
- * Statements next to the declarations Start generates, and server fns
- * defined inside code one environment erases, in real builds through Start's
+ * Statements next to the declarations Start generates, in real builds through Start's
  * Vite and Rsbuild plugins (build-harness.ts; split from
  * start-build-options.test.ts to keep each file within the per-file time
  * limit).
@@ -17,14 +16,16 @@ import { routeFiles } from './start-build-route-app'
 const timeout = 60_000
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  // A generated declaration, or the statement rendered before the one the
-  // source wrote there, must not take the next statement for its call.
+  // A generated declaration (here the server fn hoisted immediately above
+  // the statement holding it, R162), or the statement rendered before the
+  // one the source wrote there, must not take the next statement for its
+  // call.
   test.each([
     {
       shape: 'a license comment between it and the generated declaration',
       statements: `const mw = createMiddleware().server(({ next }) => next());
-/*! license */
-(globalThis).marker = 'MARK_STATEMENT'`,
+(globalThis).marker = 'MARK_STATEMENT';
+/*! license */`,
     },
     {
       shape: 'an isomorphic call the server rewrites',
@@ -36,7 +37,7 @@ createIsomorphicFn().server(() => { globalThis.marker = 'MARK_STATEMENT' })();`,
       statements: `globalThis.before = 1 // a comment;
 import { createFileRoute } from '@tanstack/react-router';
 createIsomorphicFn().server(() => { globalThis.marker = 'MARK_STATEMENT' })();
-const mw = createMiddleware().server(({ next }) => next())`,
+const mw = createMiddleware().server(({ next }) => next());`,
     },
   ])(
     'a statement starting with a parenthesis stays a statement after $shape',
@@ -51,12 +52,10 @@ const mw = createMiddleware().server(({ next }) => next())`,
   createServerFn,
 } from '@tanstack/react-start'
 ${statements}
-export const load = () => {
-  const greet = createServerFn()
-    .middleware([mw])
-    .handler(async () => globalThis.marker)
-  return greet
-}
+(globalThis as any).greet = createServerFn()
+  .middleware([mw])
+  .handler(async () => globalThis.marker)
+export const load = () => (globalThis as any).greet
 export const Route = createFileRoute('/')({
   component: () => 'MARK_COMPONENT',
 })
@@ -84,7 +83,7 @@ ${callByIdExports}`,
 
   // A type of a value's name, declared first, gives the value nothing.
   test(
-    'a nested server fn reads a const a type of its name precedes',
+    'a hoisted server fn reads a const a type of its name precedes',
     async () => {
       const { client, ssr } = await buildStart({
         bundler,
@@ -94,24 +93,25 @@ ${callByIdExports}`,
 import { createServerFn } from '@tanstack/react-start'
 export type Check = (data: string) => string
 export const Check: Check = (data) => data
-export const load = () =>
-  createServerFn()
+export const fns = {
+  load: createServerFn()
     .validator(Check)
-    .handler(async () => 'MARK_FN')
+    .handler(async () => 'MARK_FN'),
+}
 export const Route = createFileRoute('/')({
   component: () => 'MARK_COMPONENT',
 })
 `,
           'src/client-entry.ts': `export { getRouter } from './router'
-export { load } from './routes/index'
+export { fns } from './routes/index'
 `,
           'src/ssr-entry.ts': `export { getRouter } from './router'
-export { load } from './routes/index'
+export { fns } from './routes/index'
 ${callByIdExports}`,
         },
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
       })
-      const id = (await client.run(`return entry.load().url`)).result
+      const id = (await client.run(`return entry.fns.load.url`)).result
       expect(
         (
           await ssr.run(
@@ -119,101 +119,6 @@ ${callByIdExports}`,
           )
         ).result,
       ).toBe('MARK_FN')
-    },
-    timeout,
-  )
-
-  // Code the server erases may run on the client, which then calls a server
-  // fn defined inside it: the server serves that fn all the same.
-  test.each([
-    {
-      shape: 'a createClientOnlyFn',
-      definition: `export const pick = createClientOnlyFn(() => {
-  const greet = createServerFn().handler(async () => 'MARK_ERASED_FN')
-  return greet
-})`,
-      url: `entry.pick().url`,
-    },
-    {
-      shape: "an isomorphic fn's client implementation",
-      definition: `export const pick = createIsomorphicFn()
-  .client(() => {
-    const greet = createServerFn().handler(async () => 'MARK_ERASED_FN')
-    return greet
-  })
-  .server(() => null)`,
-      url: `entry.pick().url`,
-    },
-    {
-      shape: 'the children of <ClientOnly>',
-      definition: `const Button = () => null
-export const pick = () => (
-  <ClientOnly>
-    <Button greet={createServerFn().handler(async () => 'MARK_ERASED_FN')} />
-  </ClientOnly>
-)`,
-      url: `entry.pick().props.children.props.greet.url`,
-    },
-    {
-      shape: 'a createClientOnlyFn next to a route option the server erases',
-      definition: `export const pick = createClientOnlyFn(() => {
-  const greet = createServerFn().handler(async () => 'MARK_ERASED_FN')
-  return greet
-})`,
-      component: `createClientOnlyFn(() => 'MARK_COMPONENT')`,
-      url: `entry.pick().url`,
-    },
-    {
-      shape: 'a server fn nested in another one',
-      definition: `export const pick = createClientOnlyFn(() =>
-  createServerFn().handler(async () => {
-    const inner = createServerFn().handler(async () => 'MARK_INNER_FN')
-    return [await inner(), 'MARK_ERASED_FN'].join()
-  }),
-)`,
-      url: `entry.pick().url`,
-      called: 'MARK_INNER_FN,MARK_ERASED_FN',
-    },
-  ])(
-    'a server fn defined inside $shape runs on the server',
-    async ({
-      definition,
-      url,
-      called = 'MARK_ERASED_FN',
-      component = `() => 'MARK_COMPONENT'`,
-    }) => {
-      const { client, ssr } = await buildStart({
-        bundler,
-        files: {
-          ...routeFiles,
-          'src/routes/index.tsx': `import { ClientOnly, createFileRoute } from '@tanstack/react-router'
-import {
-  createClientOnlyFn,
-  createIsomorphicFn,
-  createServerFn,
-} from '@tanstack/react-start'
-${definition}
-export const Route = createFileRoute('/')({
-  component: ${component},
-})
-`,
-          'src/client-entry.ts': `export { getRouter } from './router'
-export { pick } from './routes/index'
-`,
-          'src/ssr-entry.ts': `export { getRouter } from './router'
-export { pick } from './routes/index'
-${callByIdExports}`,
-        },
-        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-      })
-      const id = (await client.run(`return ${url}`)).result
-      expect(
-        (
-          await ssr.run(
-            `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(id)}))`,
-          )
-        ).result,
-      ).toBe(called)
     },
     timeout,
   )

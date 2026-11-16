@@ -47,7 +47,7 @@ const SETUP =
 function setupHoistMessage(d: Diagnostic, hoist: VueHoist): string {
   const reads = hoist.reads
   if (reads?.builder) {
-    return `${SETUP}, so this server function is built on \`${reads.name}\`, a local of that function, and cannot be compiled. Define \`${reads.name}\` in a \`.ts\` module and import it, or write the server function as one chain: \`createServerFn().handler(…)\`.`
+    return `${SETUP}, so this server function is built on \`${reads.name}\`, a local of that function, and cannot be compiled. Define the server function in a \`.ts\` module, with \`${reads.name}\` there too, and import it.`
   }
   if (reads) {
     return `${SETUP}, so this server function reads \`${reads.name}\`, a local of that function, and cannot be compiled. Pass it in the server function's input instead: declare it with \`.validator()\` and call the server function with \`{ data: … }\`.`

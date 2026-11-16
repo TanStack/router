@@ -1634,32 +1634,19 @@ const REFUSED_POSITION = {
   block: 'in a block (`try`, `switch`, a namespace or `{ … }`)',
   instance:
     'in a class instance field, so it would be created for each instance',
-  other:
-    'in an expression that is not evaluated exactly once when the module loads',
+  default: 'a default value, used only when the value is `undefined`',
 } as const
 
 /**
  * Whether the top-level statement holding `node` evaluates it exactly once,
- * unconditionally, when the module loads (R162), and that statement. The
- * path from the statement to `node` may only pass positions the language
- * evaluates once and unconditionally whenever what holds them evaluates:
- * - the entries of an object or array literal (each is evaluated once, in
- *   order, when the literal is);
- * - an argument of a call or of `new` (evaluated once before the call),
- *   but no optional call or anything under optional chaining (`a?.b(x)`
- *   skips its arguments when `a` is nullish);
- * - `export default` (its expression is evaluated once, where it stands);
- * - the right-hand side of an assignment, and so a declarator's
- *   initialiser (evaluated once), but no logical assignment (`&&=`, `||=`,
- *   `??=` may skip it);
- * - a class static field's initialiser and a static block (each evaluated
- *   once, when the class definition is);
- * - parentheses, `as`, `<T>x`, `satisfies` and `!` (no evaluation of their
- *   own) and the last operand of a sequence (every operand is evaluated
- *   once, in order).
- * Anything else may evaluate it never, several times or later: a condition,
- * a logical operand, a loop, `try`, `switch`, a block, a function body (an
- * immediately invoked one included) and every other expression.
+ * unconditionally, when the module loads (R162), and that statement. Every
+ * expression position the statement evaluates is once and unconditional
+ * (an operand, an argument, a callee, a member's object, an entry, a key,
+ * a template's or JSX's expression, a spread, a sequence's operand, an
+ * assignment's right-hand side and so a declarator's initialiser, a class's
+ * static parts, a top-level `await`'s operand), except where the language
+ * may skip it, repeat it or run it later, which the path from the
+ * statement to `node` must not pass (`refusedKind`).
  */
 function loadPosition(
   file: PlanContext['analysis']['file'],
@@ -1670,117 +1657,103 @@ function loadPosition(
   let n = node
   let p = file.parentOf(n)
   while (p !== null) {
-    switch (p.type) {
-      case 'Program':
-        return { k: 'once', statement: n }
-      case 'ParenthesizedExpression':
-      case 'TSAsExpression':
-      case 'TSTypeAssertion':
-      case 'TSSatisfiesExpression':
-      case 'TSNonNullExpression':
-      case 'ArrayExpression':
-      case 'ObjectExpression':
-      case 'ExportDefaultDeclaration':
-      case 'ExportNamedDeclaration':
-      case 'VariableDeclaration':
-      case 'StaticBlock':
-      case 'ClassBody':
-      case 'ClassDeclaration':
-      case 'ClassExpression':
-        break
-      case 'SequenceExpression':
-        if (p.expressions.at(-1) === n) {
-          break
-        }
-        return { k: 'refused', why: 'other' }
-      case 'Property':
-        if (p.value === n && p.kind === 'init' && !p.method) {
-          break
-        }
-        return { k: 'refused', why: refusedAt(file, p) }
-      case 'CallExpression':
-      case 'NewExpression':
-        if (p.callee !== n && !(p.type === 'CallExpression' && p.optional)) {
-          break
-        }
-        return {
-          k: 'refused',
-          why:
-            p.type === 'CallExpression' && p.optional ? 'conditional' : 'other',
-        }
-      case 'AssignmentExpression':
-        if (p.right !== n) {
-          return { k: 'refused', why: 'other' }
-        }
-        if (
-          p.operator === '&&=' ||
-          p.operator === '||=' ||
-          p.operator === '??='
-        ) {
-          return { k: 'refused', why: 'conditional' }
-        }
-        break
-      case 'VariableDeclarator':
-        if (p.init === n) {
-          break
-        }
-        return { k: 'refused', why: 'other' }
-      case 'ExpressionStatement':
-        break
-      case 'PropertyDefinition':
-      case 'AccessorProperty':
-        if (p.value === n && p.static) {
-          break
-        }
-        return { k: 'refused', why: p.value === n ? 'instance' : 'other' }
-      default:
-        return { k: 'refused', why: refusedAt(file, p) }
+    if (p.type === 'Program') {
+      return { k: 'once', statement: n }
+    }
+    const why = refusedKind(p, n)
+    if (why !== null) {
+      return { k: 'refused', why }
     }
     n = p
     p = file.parentOf(n)
   }
-  return { k: 'refused', why: 'other' }
+  return { k: 'refused', why: 'block' }
 }
 
-/** Why the position at `p` is refused (`loadPosition`): a function around it first, then what `p` is. */
-function refusedAt(
-  file: PlanContext['analysis']['file'],
-  p: Node,
-): keyof typeof REFUSED_POSITION {
-  for (let a: Node | null = p; a !== null; a = file.parentOf(a)) {
-    if (
-      a.type === 'FunctionDeclaration' ||
-      a.type === 'FunctionExpression' ||
-      a.type === 'ArrowFunctionExpression'
-    ) {
-      return 'function'
-    }
-  }
+/**
+ * Why `p` may skip, repeat or defer evaluating its part `n`, or null when
+ * it evaluates `n` once whenever it is evaluated itself (the closed half of
+ * R162: every kind not listed is such a position).
+ */
+function refusedKind(p: Node, n: Node): keyof typeof REFUSED_POSITION | null {
   switch (p.type) {
-    case 'IfStatement':
+    // a body or a default parameter value runs when the function is called
+    case 'FunctionDeclaration':
+    case 'FunctionExpression':
+    case 'ArrowFunctionExpression':
+      return 'function'
+    // a branch runs only when the test selects it (the test always runs)
     case 'ConditionalExpression':
+      return p.test === n ? null : 'conditional'
+    // the right operand runs only when the left does not decide (`&&`, `||`, `??`)
     case 'LogicalExpression':
-    case 'ChainExpression':
-    case 'SwitchCase':
-    case 'SwitchStatement':
-      return p.type === 'SwitchCase' || p.type === 'SwitchStatement'
-        ? 'block'
-        : 'conditional'
+      return p.right === n ? 'conditional' : null
+    // a logical assignment's right-hand side runs only when the target does not decide
+    case 'AssignmentExpression':
+      return p.right === n &&
+        (p.operator === '&&=' || p.operator === '||=' || p.operator === '??=')
+        ? 'conditional'
+        : null
+    // what follows a `?.` in its chain runs only when the value before is not nullish
+    case 'CallExpression':
+      return n !== p.callee && (p.optional || optionalBefore(p.callee))
+        ? 'conditional'
+        : null
+    case 'MemberExpression':
+      return n !== p.object && optionalBefore(p) ? 'conditional' : null
+    // a destructuring default runs only when the value is `undefined`
+    case 'AssignmentPattern':
+      return p.right === n ? 'default' : null
+    // an instance field's initialiser runs for each instance (static: once, with the class)
+    case 'PropertyDefinition':
+    case 'AccessorProperty':
+      return p.value === n && !p.static ? 'instance' : null
+    // a branch runs only when its test selects it
+    case 'IfStatement':
+      return 'conditional'
+    // a loop's parts run several times or never
     case 'ForStatement':
     case 'ForInStatement':
     case 'ForOfStatement':
     case 'WhileStatement':
     case 'DoWhileStatement':
       return 'repeated'
+    // a block, `try` / `catch` / `finally`, a `switch` and a namespace's body
+    // are statements the module does not run as one evaluation
     case 'BlockStatement':
     case 'TryStatement':
     case 'CatchClause':
-    case 'LabeledStatement':
+    case 'SwitchStatement':
+    case 'SwitchCase':
     case 'TSModuleBlock':
     case 'TSModuleDeclaration':
       return 'block'
     default:
-      return 'other'
+      return null
+  }
+}
+
+/** Whether a member or call chain holds a `?.` link up to `n` (parentheses end the chain). */
+function optionalBefore(n: Node): boolean {
+  for (let c: Node = n; ; ) {
+    if (c.type === 'MemberExpression') {
+      if (c.optional) {
+        return true
+      }
+      c = c.object as Node
+    } else if (c.type === 'CallExpression') {
+      if (c.optional) {
+        return true
+      }
+      c = c.callee as Node
+    } else if (
+      c.type === 'TSNonNullExpression' ||
+      c.type === 'TSInstantiationExpression'
+    ) {
+      c = c.expression
+    } else {
+      return false
+    }
   }
 }
 
@@ -1880,7 +1853,7 @@ function hoist(
       first.range.start === site.chain.head.start
     return refuse(
       builder
-        ? `A server function nested in a function cannot be compiled when it is built on \`${name}\`, a local of the enclosing function. Define \`${name}\` at the module top level (export it to share it), or write the server function as one chain: \`createServerFn().handler(…)\`.`
+        ? `A server function nested in a function cannot be compiled when it is built on \`${name}\`, a local of the enclosing function. Define the server function at the module top level, with \`${name}\` there too (export it to share it), or as one chain there: \`export const fn = createServerFn().handler(…)\`.`
         : `A server function nested in a function cannot be compiled when its code reads \`${name}\`, a local of the enclosing function. Move the server function to the module top level and pass \`${name}\` in its input: declare it with \`.validator()\` and call the server function with \`{ data: … }\`.`,
       first ? first.range : xRange,
       { reads: { name, builder } },

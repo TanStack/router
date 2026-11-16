@@ -1,9 +1,9 @@
 /**
  * Refusals of the Start compiler and the fixes their messages give (SPEC
  * §5.7, G5: the user's file and position; no wording is required), in
- * production builds of Vite and Rsbuild: a nested server fn the compiler
- * cannot hoist (built on a local builder; an option with a call; a local
- * it reads) and a builder the compiler cannot follow (assigned after its
+ * production builds of Vite and Rsbuild: a server fn created in a function
+ * (R162: built on a local builder; anything else) and a builder the
+ * compiler cannot follow (assigned after its
  * declaration; kept in an object; a middleware kept in an object that gets
  * its server code later). Each fix builds, the client calls the
  * server fn by the id it was given, and the server answers with its
@@ -48,20 +48,12 @@ const refused = [
     at: 'base.handler',
   },
   {
-    name: 'a nested server fn whose validator is a call',
+    name: 'a server fn created in a function',
     module: `${head}export function make() {
-  return createServerFn({ method: 'POST' }).validator(makeSchema()).handler(async ({ data }) => 'MARK_SECRET' + data)
+  return createServerFn().handler(async () => 'MARK_SECRET')
 }
 `,
-    at: 'makeSchema()).handler',
-  },
-  {
-    name: 'a nested server fn whose middleware list makes a middleware',
-    module: `${head}export function make() {
-  return createServerFn().middleware([auth('admin')]).handler(async () => 'MARK_SECRET')
-}
-`,
-    at: "[auth('admin')]",
+    at: 'createServerFn().handler',
   },
   {
     name: 'a builder assigned after its declaration',
@@ -110,40 +102,23 @@ export const make = () => fn
 /** The fixes the messages give: `make()` returns a server fn, called with `data`. */
 const fixes = [
   {
-    name: 'the builder at the module top level',
+    name: 'the server fn and its builder at the module top level',
     module: `${head}const base = createServerFn()
+const fn = base.handler(async () => 'MARK_FIX_TOP')
 export function make() {
-  return base.handler(async () => 'MARK_FIX_TOP')
+  return fn
 }
 `,
     mark: 'MARK_FIX_TOP',
   },
   {
-    name: 'one chain',
-    module: `${head}export function make() {
-  return createServerFn().handler(async () => 'MARK_FIX_CHAIN')
+    name: 'one chain at the module top level',
+    module: `${head}export const fn = createServerFn().handler(async () => 'MARK_FIX_CHAIN')
+export function make() {
+  return fn
 }
 `,
     mark: 'MARK_FIX_CHAIN',
-  },
-  {
-    name: 'the validator call in a module-level const',
-    module: `${head}const schema = makeSchema()
-export function make() {
-  return createServerFn({ method: 'POST' }).validator(schema).handler(async ({ data }) => 'MARK_FIX_SCHEMA:' + data)
-}
-`,
-    mark: 'MARK_FIX_SCHEMA:x',
-    data: 'x',
-  },
-  {
-    name: 'the middleware in a module-level const',
-    module: `${head}const adminAuth = auth('admin')
-export function make() {
-  return createServerFn().middleware([adminAuth]).handler(async () => 'MARK_FIX_MW')
-}
-`,
-    mark: 'MARK_FIX_MW',
   },
   {
     name: 'a local passed in the input',

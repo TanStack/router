@@ -3,8 +3,10 @@
  * `@rsbuild/plugin-vue` (rspack-vue-loader), as a Vue Start app's
  * `rsbuild.config.ts` lists it: the SFC's script block, `<script setup>` or
  * a plain `<script>`, is a module of the app, and Start compiles it like any
- * other (SPEC J4.12, G5). Its server fns keep their handlers on the server
- * and the client calls them by id; an isomorphic fn runs its client
+ * other (SPEC J4.12, G5). The server fns of a plain `<script>` keep their
+ * handlers on the server and the client calls them by id; a `<script setup>`
+ * block runs in the component's setup function, so a server fn there is a
+ * compile error at it (R162); an isomorphic fn runs its client
  * implementation in the client. With vue-loader's inline match resource (the
  * plugin's default, which requests the block as `x.vue.js?vue&type=script…`)
  * and without it (`x.vue?vue&type=script…`); in a production build and on
@@ -112,9 +114,7 @@ describe.each(vueOptions)('rsbuild build, $name', ({ inlineMatchResource }) => {
       framework: 'vue',
       files: {
         ...files,
-        'src/entry.ts': `${mountExport}export { default as SetupJs } from './SetupJs.vue'
-export { default as SetupTs } from './SetupTs.vue'
-export { default as IsoJs } from './IsoJs.vue'
+        'src/entry.ts': `${mountExport}export { default as IsoJs } from './IsoJs.vue'
 export { default as IsoTs } from './IsoTs.vue'
 export { fn as plainFn } from './Plain.vue'
 `,
@@ -131,28 +131,6 @@ export { createClientRpc } from '@tanstack/vue-start/client-rpc'
     })
   }, timeout)
   afterAll(() => dispose?.())
-
-  test.each([
-    { name: '<script setup>', component: 'SetupJs', mark: 'MARK_SETUP_JS' },
-    {
-      name: '<script setup lang="ts">',
-      component: 'SetupTs',
-      mark: 'MARK_SETUP_TS',
-    },
-  ])(
-    'a server fn of a $name block keeps its handler on the server, and the client calls it by id',
-    async ({ component, mark }) => {
-      expect(build.client.where(mark)).toBe('nowhere')
-      expect(build.ssr.where(mark)).not.toBe('nowhere')
-      const url = (
-        await build.client.run(`return entry.mount(entry.${component}).fn.url`)
-      ).result
-      const { result } = await build.ssr.run(
-        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
-      )
-      expect(result).toBe(mark)
-    },
-  )
 
   test('a server fn a plain <script> exports keeps its handler on the server, and the client calls it by id', async () => {
     expect(build.client.where('MARK_PLAIN')).toBe('nowhere')
@@ -196,15 +174,17 @@ describe.each(vueOptions)('rsbuild dev, $name', ({ inlineMatchResource }) => {
       files: {
         ...files,
         // (the refused blocks only behind an import the page never runs)
-        'src/entry.ts': `${mountExport}import SetupTs from './SetupTs.vue'
-import IsoTs from './IsoTs.vue'
+        'src/entry.ts': `${mountExport}import IsoTs from './IsoTs.vue'
 import { fn as plainFn } from './Plain.vue'
 globalThis.__vueRows = {
   mount,
-  SetupTs,
   IsoTs,
   plainFn,
-  refused: () => [import('./SetupJs.vue'), import('./IsoJs.vue')],
+  refused: () => [
+    import('./SetupJs.vue'),
+    import('./SetupTs.vue'),
+    import('./IsoJs.vue'),
+  ],
 }
 `,
       },
@@ -214,15 +194,16 @@ globalThis.__vueRows = {
   const outputsWith = async (env: 'client' | 'ssr', mark: string) =>
     Object.values(await server.outputs(env)).some((code) => code.includes(mark))
 
-  test('a server fn of a <script setup lang="ts"> block keeps its handler on the server, and the page calls it', async () => {
+  // R162: a `<script setup>` block runs in the component's setup function
+  test('a server fn of a <script setup lang="ts"> block is refused at it, and its handler does not reach the client', async () => {
+    // (the chain is line 3 of the SFC)
+    expectDiagnostic(server.diagnostics, {
+      severity: 'error',
+      file: 'src/SetupTs.vue',
+      root: server.root,
+      position: { line: 3 },
+    })
     expect(await outputsWith('client', 'MARK_SETUP_TS')).toBe(false)
-    expect(await outputsWith('ssr', 'MARK_SETUP_TS')).toBe(true)
-    expect(
-      await runInClient(
-        server,
-        `const rows = globalThis.__vueRows\nreturn await rows.mount(rows.SetupTs).fn()`,
-      ),
-    ).toEqual({ result: 'MARK_SETUP_TS' })
   })
 
   test('a server fn a plain <script> exports keeps its handler on the server, and the page calls it', async () => {

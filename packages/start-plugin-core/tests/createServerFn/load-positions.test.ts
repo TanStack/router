@@ -16,6 +16,7 @@ import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callServerFnThroughCallers,
   compileError,
+  inPage,
   serveCase,
   useStartHost,
 } from '../regression-helpers'
@@ -89,6 +90,56 @@ describe('a server fn created once when its module loads', () => {
       code: `export const api = { foo: (0, ${fn}) }`,
       read: 'module.api.foo',
     },
+    {
+      name: 'an operand of a sequence before the last',
+      code: `const all: Array<unknown> = []\nexport const seq = (all.push(${fn}), all)`,
+      read: 'module.seq[0]',
+    },
+    {
+      name: 'the object of a member expression',
+      code: `export const bound = ${fn}.bind(null)`,
+      read: 'module.bound',
+    },
+    {
+      name: 'a tagged template substitution',
+      code: `const tag = (_: TemplateStringsArray, f: unknown) => f\nexport const tagged = tag\`\${${fn}}\``,
+      read: 'module.tagged',
+    },
+    {
+      name: 'a spread element',
+      code: `export const spread = [...[${fn}]]`,
+      read: 'module.spread[0]',
+    },
+    {
+      name: 'a spread argument',
+      code: `const first = (...fs: Array<unknown>) => fs[0]\nexport const spreadArg = first(...[${fn}])`,
+      read: 'module.spreadArg',
+    },
+    {
+      name: 'the operand of a top-level await',
+      code: `export const awaited = [await ${fn}][0]`,
+      read: 'module.awaited',
+    },
+    {
+      name: 'a JSX attribute value',
+      code: `export const el = <div data-fn={${fn}} />`,
+      read: "module.el.props['data-fn']",
+    },
+    {
+      name: 'a JSX child',
+      code: `export const kids = <>{${fn}}</>`,
+      read: 'module.kids.props.children',
+    },
+    {
+      name: "a ternary's test",
+      code: `const picked: Array<unknown> = []\nexport const tested = (picked.push(${fn}), picked)[0] ? picked : null`,
+      read: 'module.tested[0]',
+    },
+    {
+      name: 'the left operand of a logical operator',
+      code: `export const left = ${fn} || null`,
+      read: 'module.left',
+    },
   ]
 
   test.each(positions)(
@@ -102,6 +153,73 @@ describe('a server fn created once when its module loads', () => {
       expect(await callServerFnThroughCallers(served, read)).toBe('inner')
     },
   )
+
+  // where the value is no server fn: an operator's operand, a template's
+  // expression, a computed key (each creates the server fn once, when the
+  // module loads); the module builds and gives the source's value
+  const valued = [
+    {
+      name: 'the operand of a unary operator',
+      code: `export const value = typeof ${fn}`,
+      expected: 'function',
+    },
+    {
+      name: 'an operand of a binary operator',
+      code: `export const value = ${fn} !== null`,
+      expected: true,
+    },
+    {
+      name: 'a template literal expression',
+      code: `export const value = \`\${typeof ${fn}}\``,
+      expected: 'function',
+    },
+    {
+      name: 'a computed key of an object literal',
+      code: `export const value = Object.keys({ [typeof ${fn}]: 1 })[0]`,
+      expected: 'function',
+    },
+    {
+      name: 'a computed key of a class member',
+      code: `class K {\n  static [typeof ${fn}] = 1\n}\nexport const value = Object.keys(K)[0]`,
+      expected: 'function',
+    },
+  ]
+
+  test.each(valued)(
+    'builds in $name, with the value of the source',
+    async ({ code, expected }) => {
+      const served = await serveCase(await host(), {
+        'module.tsx': `${head}${code}`,
+        ...files,
+      })
+      expectNotLoaded(await served.loads(), ['./db.server'])
+      expect(await inPage(served, 'return module.value')).toEqual(expected)
+      expect((await served.ssr()).value).toEqual(expected)
+    },
+  )
+
+  // a callee or a tag calls the server fn when the module loads: compiled
+  // only (both environments serve the module, the client without the handler)
+  test.each([
+    {
+      name: "a call's callee",
+      code: `export const p = ${fn}({ data: undefined })`,
+    },
+    { name: "a tagged template's tag", code: `export const p = ${fn}\`x\`` },
+  ])('compiles in $name, the client without the handler', async ({ code }) => {
+    const startCase = await (
+      await host()
+    ).case({ 'module.tsx': `${head}${code}`, ...files })
+    for (const environment of ['client', 'ssr'] as const) {
+      expect(
+        await compileError(startCase, environment),
+        environment,
+      ).toBeUndefined()
+    }
+    expect(await startCase.served('module.tsx', 'client')).not.toContain(
+      'db.inner',
+    )
+  })
 
   // d22 (inventory-serverfn-shapes): the server fn is created where its
   // statement runs, after the statements before it, so a middleware list
@@ -187,6 +305,30 @@ const reg = { add: <T,>(f: T) => f }
     {
       name: 'a class instance field',
       code: `export class Api {\n  foo = ${fn}\n}`,
+    },
+    {
+      name: 'a getter body',
+      code: `export const o = {\n  get foo() {\n    return ${fn}\n  },\n}`,
+    },
+    {
+      name: 'a class method body',
+      code: `export class Api {\n  static make() {\n    return ${fn}\n  }\n}`,
+    },
+    {
+      name: 'a default parameter value',
+      code: `export const make = (f = ${fn}) => f`,
+    },
+    {
+      name: 'a destructuring default',
+      code: `export const { d = ${fn} } = api as { d?: unknown }`,
+    },
+    {
+      name: 'a member access after ?.',
+      code: `export const t = reg?.add.call(null, ${fn})`,
+    },
+    {
+      name: 'a logical assignment',
+      code: `api.x ??= ${fn}`,
     },
   ]
 

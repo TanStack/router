@@ -4,8 +4,9 @@
  * SFC, and no other position, in a production build and on the dev server
  * of Vite (`@vitejs/plugin-vue`) and Rsbuild (`@rsbuild/plugin-vue`). The
  * plugins compile the block into the component's setup function, so a
- * server fn there is nested in a function; a production build's plugin
- * makes no source map. The fixes the messages give build, with the
+ * server fn there is in a function and refused (R162); a production build's
+ * plugin makes no source map. The fixes the messages give (the server fn in
+ * a `<script lang="ts">` block next to `<script setup>`) build, with the
  * handler on the server only. Import protection reports a denied import of
  * the block at its position in the SFC too, with the SFC in its code frame
  * (review round 2 F4-2: without a map, it reported the position in the
@@ -79,8 +80,8 @@ const refusedInDev = [
 
 <script setup>
 import { createServerFn } from '@tanstack/vue-start'
-const getX = createServerFn().handler(async () => 'MARK_SERVER_SECRET')
-defineExpose({ getX })
+const label = 'page'
+defineExpose({ label })
 </script>
 `,
     at: 'createServerFn }',
@@ -105,26 +106,45 @@ defineExpose({ getX })
   },
 ]
 
+/** An SFC whose `<script lang="ts">` block (module scope) holds `module` and whose `<script setup>` block holds `setup`. */
+const moduleSfc = (module: string, setup: string) => `<template>
+  <p>page</p>
+</template>
+
+<script lang="ts">
+import { createServerFn } from '@tanstack/vue-start'
+${module}
+</script>
+
+<script setup lang="ts">
+${setup}
+defineExpose({ getX })
+</script>
+`
+
 /**
- * The fixes the refusals give: one chain (also the factory called where
- * its builder is needed, not returned from a getter); the value passed in
- * the input.
+ * The fixes the refusals give: one chain in a `<script lang="ts">` block
+ * (also the factory called where its builder is needed, not returned from a
+ * getter); the value passed in the input.
  */
 const fixes = [
   {
     name: 'one chain',
-    sfc: sfc(
-      `const getX = createServerFn().handler(async () => 'MARK_FIX_CHAIN')`,
+    sfc: moduleSfc(
+      `export const getX = createServerFn().handler(async () => 'MARK_FIX_CHAIN')`,
+      '',
     ),
     mark: 'MARK_FIX_CHAIN',
   },
   {
     name: 'the props passed in the input',
-    sfc: sfc(`const props = defineProps<{ t?: string }>()
-const getX0 = createServerFn()
+    sfc: moduleSfc(
+      `export const getX0 = createServerFn()
   .validator((t?: string) => t)
-  .handler(async ({ data }) => 'MARK_FIX_INPUT' + data)
-const getX = () => getX0({ data: props.t })`),
+  .handler(async ({ data }) => 'MARK_FIX_INPUT' + data)`,
+      `const props = defineProps<{ t?: string }>()
+const getX = () => getX0({ data: props.t })`,
+    ),
     mark: 'MARK_FIX_INPUT',
   },
 ]
