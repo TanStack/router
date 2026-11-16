@@ -87,7 +87,7 @@ export function computePlacement(input: PlacementInput): Placement {
     route: routeBinding,
   } = input.routeModule ?? NO_ROUTE
   const { units, items } = t1
-  const graph = buildClusters(input, true)
+  const graph = buildClusters(input)
   const reads = readIndex(input, graph)
   const { clusters, clusterOfSym } = graph
   const gens = rewrites.generated
@@ -282,7 +282,7 @@ export function computePlacement(input: PlacementInput): Placement {
           (graph.writesOfSym.get(s) ?? []).some((w) => {
             // (code the env module erases, a server function's handler on
             // the client, writes nothing in this environment)
-            if (w.member || w.augment || envView.isErasedAt(w.at)) {
+            if (envView.isErasedAt(w.at)) {
               return false
             }
             const by =
@@ -985,13 +985,7 @@ export function computePlacement(input: PlacementInput): Placement {
   for (const w of graph.writes) {
     const c = w.owner === null ? undefined : graph.clusterOfRegion.get(w.owner)
     const d = clusterOfSym.get(w.sym)
-    if (
-      w.member ||
-      w.augment ||
-      c === undefined ||
-      d === undefined ||
-      c === d
-    ) {
+    if (c === undefined || d === undefined || c === d) {
       continue
     }
     for (const h of all) {

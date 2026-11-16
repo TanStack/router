@@ -1,19 +1,14 @@
 /**
- * Placement, stage 1: the clusters. Units, the regions planners registered
- * and generated units are joined into the clusters placement moves as one:
- * the declarations of a symbol, a claimed region and the generated unit
- * owning it, a binding and its writers at load (a unit assigning it or
- * writing a member of it, an augmentation). A reader of a written binding
- * is a cluster of its own, which the event table orders against the writes
- * (`events.ts`). Also the module's write table and the two halves of the
- * mutation model every later rule asks (`lateWrite`, `laterWrite`).
+ * The clusters placement moves as one: units, the regions planners
+ * registered and generated units, joined when they declare one symbol, a
+ * claimed region with the generated unit owning it, an unclaimed
+ * sub-region with the region around it; nothing else (one cluster per
+ * unit). Also the module's write table: the assignments of its bindings.
  */
-import { writeKind } from '../mutation'
-import { callsWhenEvaluated, runsWhenPassed } from '../units'
 import type { ClassifiedRef } from '../analysis'
 import type { SymbolId } from '../symbols'
 import type { Range } from '../header'
-import type { EvaluatedCalls, RegionId, Unit, UnitId } from '../units'
+import type { RegionId, Unit, UnitId } from '../units'
 import type {
   Frag,
   GenFrag,
@@ -32,18 +27,6 @@ export interface Cluster {
   gens: Array<GenUnitId>
   units: Array<UnitId>
   declares: Set<SymbolId>
-  /**
-   * It has an effect (a surviving effectful unit) or an effectful generated unit. A write
-   * of pure values to a binding it declares (`Page.displayName = …`) is no
-   * effect (R139): such a cluster may be an extracted export, and its
-   * output stays side-effect free.
-   */
-  effectful: boolean
-  /** It writes, when the module loads, a binding it declares (an augmentation, a link on its builder, a unit's member write): its readers before the write need its slot. */
-  writer: boolean
-  exported: boolean
-  /** Source position for ordering (min start of members). */
-  start: number
   kind:
     | 'import'
     | 'import-effect'
@@ -53,47 +36,17 @@ export interface Cluster {
     | 'effect'
     | 'gen'
     | 'region'
-  copyable: boolean
-  /**
-   * Every declaration of the cluster is a function or a primitive and
-   * nothing else is in it (no augmentation, no generated unit): a copy of
-   * the cluster has no identity of its own to observe (`isDuplicable`).
-   */
-  identityFree: boolean
-  envPinned: boolean
 }
 
 /**
- * A write of a module binding. The module's mutation model (`t1.mutation`:
- * every assignment of a binding and every write of a member of one, eager
- * or lazy) restricted to module-level bindings, with what placement adds:
- * `live` (not inside a range the env module erases), `augment` (a
- * top-level augmentation unit, `X.p = …`, `X.push(…)`, `X = …` as a
- * statement: its `owner` is the unit's region). Every rule that asks what
- * writes a binding reads this table: clustering (a binding's writers at load
- * join it), the lazy slot's "nothing outside writes it", the single-writer
- * rule, and the two halves of the mutation model behind the event table's
- * rules (`events.ts`): a write at an unknown time (`lateWrite`, V) and one
- * after a read when the module loads (`laterWrite`, O).
+ * An assignment of a module binding a unit or a generated unit declares
+ * (`x = …`, `x++`, `x += …`), with the evaluation holding it: the unit, or
+ * the claimed region (an option value a chunk owns), around it.
  */
 export interface Write {
   sym: SymbolId
   at: number
-  /** When the module loads (not inside a function, nor in code that runs later). */
-  eager: boolean
-  live: boolean
-  /** The evaluation writing it: the unit, or the claimed region (an option value a chunk owns), holding it (a planner's unclaimed region is its unit's text). */
   owner: RegionId | null
-  /**
-   * In a function its owner's evaluation passes to a call (`track(() => {
-   * cfg.x = 1 })`): the call may run it then, or keep it and run it later
-   * (`runs`), so it is a write at an unknown time of that evaluation too,
-   * as when the function is named (`track(set)`).
-   */
-  passed: boolean
-  augment: boolean
-  /** A member write (`x.p = …`, `x.push(…)`), not an assignment of the binding. */
-  member: boolean
 }
 
 export interface ClusterGraph {
@@ -110,14 +63,6 @@ export interface ClusterGraph {
   viewOf: (o: OutputId) => OutputView
   /** Whether a reference renders in output `o` (it is not inside text `o` erases). */
   isLive: (ref: ClassifiedRef, o: OutputId) => boolean
-  /**
-   * What evaluating region `r` calls (`callsWhenEvaluated`), null when it
-   * calls nothing: a unit's own; a region nested in one, its unit's calls
-   * inside it but for those inside a function it holds that only a call
-   * around it receives (`createServerFn().handler(() => …)`: the handler's
-   * region evaluates a function, the call around it may run it).
-   */
-  callsOf: (r: RegionId) => EvaluatedCalls | null
 }
 
 class UnionFind {
@@ -185,18 +130,9 @@ const importsOnly = (g: GeneratedUnit): boolean =>
   !g.effectful &&
   (g.imports?.length ?? 0) > 0
 
-/**
- * `byUnit`: one cluster per unit (merged declarations together), a claimed
- * region with its owner and an unclaimed sub-region with the region around
- * it, and nothing else: a binding's writers stay clusters of their own (the
- * route-file placement, `route-placement.ts`, decides per unit).
- */
-export function buildClusters(
-  input: PlacementInput,
-  byUnit = false,
-): ClusterGraph {
+export function buildClusters(input: PlacementInput): ClusterGraph {
   const { t1, rewrites } = input
-  const { units, refs, items } = t1
+  const { units, refs } = t1
   const { regions } = rewrites
   const regionCount = regions.regions.length
   const gens = rewrites.generated
@@ -205,60 +141,8 @@ export function buildClusters(
   const uf = new UnionFind(regionCount + gens.length)
 
   const viewOf = (o: OutputId): OutputView => rewrites.view(o)
-  const envView = viewOf('env')
   const isLive = (ref: ClassifiedRef, o: OutputId) =>
     !viewOf(o).isErasedAt(ref.range.start)
-  /**
-   * Whether a statement stays: an edit that starts with it may keep the rest
-   * (`createIsomorphicFn().server(f)()` keeps `f` and the call), and only an
-   * edit that leaves nothing of it but its `;` removes it.
-   */
-  const statementSurvives = ({ start, end }: Range): boolean =>
-    !envView.isErasedAt(start) ||
-    !envView.isErasedRange({
-      start,
-      end: input.code.charCodeAt(end - 1) === 59 ? end - 1 : end,
-    })
-  const callsOfUnit: Array<EvaluatedCalls | undefined> = []
-  const unitCalls = (u: UnitId): EvaluatedCalls =>
-    (callsOfUnit[u] ??= callsWhenEvaluated(units[u]!.node))
-  const callsOfRegion: Array<EvaluatedCalls | null | undefined> = []
-  const callsOf = (id: RegionId): EvaluatedCalls | null => {
-    const hit = callsOfRegion[id]
-    if (hit !== undefined) {
-      return hit
-    }
-    const r = regions.get(id)
-    let result: EvaluatedCalls | null = null
-    if (r.unit !== null) {
-      const all = unitCalls(r.unit)
-      result = all.calls.length > 0 ? all : null
-    } else {
-      const unit = regions.unitAt(r.range.start, r.range.end)?.unit
-      if (unit !== undefined && unit !== null) {
-        const all = unitCalls(unit)
-        const { start, end } = r.range
-        const inside = (x: Range) => x.start >= start && x.end <= end
-        // (a function only a call around the region is handed)
-        const around = all.callbacks.filter((f) => inside(f) && !inside(f.call))
-        const own = (x: Range) =>
-          inside(x) && !around.some((f) => x.start >= f.start && x.end <= f.end)
-        const calls = all.calls.filter(own)
-        result =
-          calls.length === 0
-            ? null
-            : {
-                calls,
-                callbacks: all.callbacks.filter(
-                  (f) => own(f) && inside(f.call),
-                ),
-                names: all.names.filter((n) => own(n) && inside(n.call)),
-              }
-      }
-    }
-    callsOfRegion[id] = result
-    return result
-  }
 
   // ---- owner index: refs by owning region --------------------------------
   const ownedRefs = new Map<RegionId, Array<ClassifiedRef>>()
@@ -301,27 +185,17 @@ export function buildClusters(
   for (const claim of rewrites.claims.values()) {
     uf.union(claim.region, memberOfGen(claim.owner))
   }
-  if (byUnit) {
-    for (const r of regions.regions) {
-      const parent = regions.parentOf(r.id)
-      if (r.unit === null && parent !== null && !rewrites.claims.has(r.id)) {
-        uf.union(r.id, parent)
-      }
+  // an unclaimed sub-region is its unit's text
+  for (const r of regions.regions) {
+    const parent = regions.parentOf(r.id)
+    if (r.unit === null && parent !== null && !rewrites.claims.has(r.id)) {
+      uf.union(r.id, parent)
     }
   }
 
-  // ---- writes: every write of a module binding, one table -----------------
+  // ---- writes: every assignment of a module binding, one table ------------
   const writes: Array<Write> = []
   const writesOfSym = new Map<SymbolId, Array<Write>>()
-  const addWrite = (w: Write) => {
-    writes.push(w)
-    let list = writesOfSym.get(w.sym)
-    if (!list) {
-      list = []
-      writesOfSym.set(w.sym, list)
-    }
-    list.push(w)
-  }
   // the evaluation owning a write: the innermost unit or claimed region
   // holding it (an unclaimed region is its unit's text)
   const claimedRegions = new Set<RegionId>()
@@ -340,146 +214,22 @@ export function buildClusters(
     return r
   }
   for (const ref of refs.all) {
-    // (a link on a `const` holding a writing builder is a member write of
-    // it: R139, `linkedBuilder`)
-    const kind = writeKind(ref)
-    // (a member write through a local name writes only what it may hold:
-    // `function set(o) { o.v = 1 }` with `set(cfg)`, `objectsWrittenBy`)
-    const own = declMember.has(ref.sym)
-    if (
-      kind === null ||
-      (!own && (kind !== 'member' || t1.symbols.isModuleLevel(ref.sym)))
-    ) {
+    if (ref.kind !== 'write' || !declMember.has(ref.sym)) {
       continue
     }
-    const owner = evaluationAt(ref.range)
-    const calls = ref.eager || owner === null ? null : callsOf(owner)
-    const row: Write = {
+    const w: Write = {
       sym: ref.sym,
       at: ref.range.start,
-      // (code evaluated with the module that runs later, `runsLaterAt`:
-      // its write has not happened where it is written)
-      eager: ref.eager && !t1.runsLaterAt(ref.range.start),
-      live: isLive(ref, 'env'),
-      owner,
-      passed: calls !== null && runsWhenPassed(calls, ref.range.start),
-      augment: false,
-      member: kind === 'member',
+      owner: evaluationAt(ref.range),
     }
-    if (own) {
-      addWrite(row)
+    writes.push(w)
+    let list = writesOfSym.get(w.sym)
+    if (!list) {
+      list = []
+      writesOfSym.set(w.sym, list)
     }
-    // a member write through a name that may hold other bindings' objects
-    // writes each of them (`alias.v = 1`, `holder.c.v = 1`, `o.v = 1` in
-    // `function set(o)`: the mutation model's `objectsWrittenBy`)
-    if (kind === 'member' && ref.kind === 'value') {
-      for (const s of t1.mutation.objectsWrittenBy(ref)) {
-        if (declMember.has(s)) {
-          addWrite({ ...row, sym: s })
-        }
-      }
-    }
+    list.push(w)
   }
-  for (const u of units) {
-    if (u.augments.length === 0) {
-      continue
-    }
-    const live = !envView.isErasedAt(items[u.item]!.nodeRange.start)
-    for (const s of u.augments) {
-      addWrite({
-        sym: s,
-        at: u.range.start,
-        eager: true,
-        live,
-        owner: u.region,
-        passed: false,
-        augment: true,
-        member: false,
-      })
-    }
-  }
-
-  // ---- a binding's writers at load join its cluster -----------------------
-  // A live top-level writer (a unit assigning it, or writing a member of it
-  // when the module loads: `const y = f(cfg.x = 1)`) and an augmentation
-  // travel with the binding, so whoever evaluates the binding evaluates its
-  // writes in source order. A unit that writes a member only inside a
-  // function (`function set() { cfg.v = 1 }`) is a late writer, not joined
-  // (V orders it); a sub-region assigning it is the single-writer rule's.
-  // A write of an import (a member, an augmentation) joins nothing: it is no
-  // declaration of the module (another module evaluates it; every output
-  // imports it itself), and the write table still orders it (R149: a
-  // statement writing one follows the module bindings it uses).
-  for (const w of writes) {
-    const d = declMember.get(w.sym)
-    if (
-      !w.live ||
-      d === undefined ||
-      w.owner === null ||
-      t1.symbols.isImport(w.sym)
-    ) {
-      continue
-    }
-    const unitOwner = regions.get(w.owner).kind === 'unit'
-    if (w.member) {
-      if (w.eager && unitOwner && !byUnit) {
-        uf.union(w.owner, d)
-      }
-    } else if (w.augment || unitOwner) {
-      if (!byUnit) {
-        uf.union(w.owner, d)
-      }
-    }
-  }
-
-  /**
-   * Whether an augmentation is a write of pure values to bindings of its
-   * cluster that name objects of their own (R139): it assigns the binding,
-   * or writes a member of one that owns its object (`ownsObject`). A write
-   * through an alias (`const alias = E; alias.A = …`, `import F = E`) or a
-   * member's value (`holder.e.A = …`, `writesOnly`) writes another
-   * binding's object: an effect.
-   */
-  /** The bindings each unit writes a member of (the write table's member writes it owns). */
-  const memberWritesOf = new Map<RegionId, Set<SymbolId>>()
-  for (const w of writes) {
-    if (w.member && w.owner !== null) {
-      let set = memberWritesOf.get(w.owner)
-      if (!set) {
-        set = new Set()
-        memberWritesOf.set(w.owner, set)
-      }
-      set.add(w.sym)
-    }
-  }
-  const pureWrite = (
-    unit: Unit,
-    own: boolean,
-    augmentEffects = unit.augmentEffects,
-  ): boolean =>
-    !augmentEffects &&
-    own &&
-    unit.augments.every(
-      (sym) =>
-        !(memberWritesOf.get(unit.region)?.has(sym) ?? false) ||
-        t1.mutation.ownsObject(sym),
-    )
-
-  /**
-   * Whether cluster `cl` has an effect: what placement's purity calls one, but for a write of pure values to a binding it
-   * declares (R139: `Page.displayName = …`, a link on a `const` builder),
-   * which is a write (the write table), ordered against what reads the
-   * binding.
-   */
-  const hasEffects = (cl: Cluster): boolean =>
-    cl.units.some((u) => {
-      const unit = units[u]!
-      return (
-        unit.effectful &&
-        statementSurvives(items[unit.item]!.nodeRange) &&
-        !pureWrite(unit, ownAugmentations.has(u), unit.augmentEffects)
-      )
-    })
 
   // ---- materialise clusters ------------------------------------------------
   const clusters: Array<Cluster> = []
@@ -496,34 +246,24 @@ export function buildClusters(
         gens: [],
         units: [],
         declares: new Set(),
-        effectful: false,
-        writer: false,
-        exported: false,
-        start: Infinity,
         kind: 'region',
-        copyable: false,
-        identityFree: false,
-        envPinned: false,
       })
     }
     return c
   }
   const clusterOfRegion = new Map<RegionId, ClusterId>()
   const clusterOfGen = new Map<GenUnitId, ClusterId>()
-  const ownAugmentations = new Set<UnitId>()
   for (const r of regions.regions) {
     const c = clusterOfMember(r.id)
     clusterOfRegion.set(r.id, c)
     const cl = clusters[c]!
     cl.regions.push(r.id)
-    cl.start = Math.min(cl.start, r.range.start)
     if (r.unit !== null) {
       const u = units[r.unit]!
       cl.units.push(u.id)
       for (const s of u.declares) {
         cl.declares.add(s)
       }
-      cl.exported ||= u.exported.length > 0
     }
   }
   for (const g of gens) {
@@ -534,41 +274,10 @@ export function buildClusters(
     for (const s of g.declares) {
       cl.declares.add(s)
     }
-    cl.effectful ||= g.effectful
   }
   for (const cl of clusters) {
     const kinds = (...ks: Array<Unit['kind']>) =>
       cl.units.some((u) => ks.includes(units[u]!.kind))
-    // `ownAugmentation` of each unit, from one pass over the cluster (a
-    // registry of n statements is one cluster)
-    let effectfulDecl = false
-    const declared = new Set<SymbolId>()
-    for (const u of cl.units) {
-      const unit = units[u]!
-      if (unit.kind === 'declaration') {
-        effectfulDecl ||= unit.effectful
-        for (const d of unit.declares) {
-          declared.add(d)
-        }
-      }
-    }
-    // an effect unit augmenting only bindings its cluster's declarations
-    // declare (`Page.displayName = …` after `function Page`): the binding
-    // and its writers are one cluster, moved or kept together; an effectful
-    // initialiser among them (`init()` between two `plugins.push`) keeps
-    // the whole cluster an effect root
-    for (const u of cl.units) {
-      const unit = units[u]!
-      if (
-        unit.kind === 'effect' &&
-        unit.augments.length > 0 &&
-        !effectfulDecl &&
-        unit.augments.every((a) => declared.has(a))
-      ) {
-        ownAugmentations.add(u)
-      }
-    }
-    const own = (unit: Unit): boolean => ownAugmentations.has(unit.id)
     if (cl.units.length === 0) {
       // generated units that only import (a planner's runtime helper, e.g.
       // the client stub's `createClientRpc`) are an import like one the
@@ -580,9 +289,7 @@ export function buildClusters(
               cl.gens.every((g) => importsOnly(gens[g]!))
             ? 'import'
             : 'gen'
-    } else if (
-      cl.units.some((u) => units[u]!.kind === 'effect' && !own(units[u]!))
-    ) {
+    } else if (kinds('effect')) {
       cl.kind = 'effect'
     } else if (kinds('import-effect')) {
       cl.kind = 'import-effect'
@@ -595,37 +302,11 @@ export function buildClusters(
     } else if (kinds('type')) {
       cl.kind = 'type'
     }
-    cl.copyable =
-      (cl.kind === 'import' && cl.units.length === 0) ||
-      (cl.units.length === 1 &&
-        cl.gens.length === 0 &&
-        (units[cl.units[0]!]!.copyable ||
-          units[cl.units[0]!]!.kind === 'import-specifier'))
-    cl.identityFree =
-      cl.kind === 'declaration' &&
-      cl.gens.length === 0 &&
-      cl.units.every((u) => {
-        const unit = units[u]!
-        return unit.kind === 'declaration'
-          ? unit.identityFree
-          : unit.kind === 'type'
-      })
-    if (cl.kind === 'type') {
-      cl.envPinned = true
-    }
-    cl.effectful ||= hasEffects(cl)
-  }
-  for (const w of writes) {
-    if (w.live && w.eager && w.owner !== null) {
-      const c = clusterOfRegion.get(w.owner)!
-      clusters[c]!.writer ||= clusters[c]!.declares.has(w.sym)
-    }
   }
   const clusterOfSym = new Map<SymbolId, ClusterId>()
   for (const [s, m] of declMember) {
     clusterOfSym.set(s, clusterOfMember(m))
   }
-
   return {
     clusters,
     clusterOfRegion,
@@ -636,6 +317,5 @@ export function buildClusters(
     writesOfSym,
     viewOf,
     isLive,
-    callsOf,
   }
 }
