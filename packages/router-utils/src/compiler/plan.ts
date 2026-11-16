@@ -9,7 +9,7 @@
  */
 import { deriveId, edgeKeyOf } from './identity'
 import { NameAllocator } from './names'
-import { computePlacement } from './reach'
+import { computePlacement } from './route-placement'
 import { annotatable, keptDiagnostic } from './kept-diagnostics'
 import { freezePlan } from './freeze'
 import { cleanOrphanedDeclarations } from './orphans'

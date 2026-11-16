@@ -1,29 +1,9 @@
 /**
  * Placement, a generic service: planners supply roots and derived outputs;
- * the core decides what each output contains and what it imports.
- * `computePlacement` places every plan with `route-placement.ts` (route
- * files, server-fn handler modules, the RSC provider copy, erasure only,
- * `<Hydrate>` chunks), except the ones the engine below still places
- * (`onOldEngine`: a `split` output without a route module), R155.
- * That engine: clusters, reachability, provenance-based orphans, the event
- * table's order rules and needers/homes (see README.md, "Reachability =
- * splitting = dead-code removal"), the stages in `placement/` composed in an
- * order that carries meaning: two of them change what earlier stages
- * produced, in place (see there).
+ * the core decides what each output contains and what it imports. The
+ * types of the placement's input and result; `route-placement.ts` places
+ * every plan.
  */
-import { buildClusters } from './placement/clusters'
-import { eventTable } from './placement/events'
-import { readIndex } from './placement/reads'
-import { seedRoots } from './placement/roots'
-import {
-  extractedExports,
-  foldExtractions,
-  settleRoots,
-} from './placement/settle'
-import { keptDeclarations } from './placement/kept'
-import { assignHomes } from './placement/homes'
-import { includeAndImport } from './placement/inclusion'
-import { computeRoutePlacement } from './route-placement'
 import type { ClusterId } from './placement/clusters'
 import type { Tier1 } from './analysis'
 import type { InvariantViolation } from './self-checks'
@@ -223,85 +203,4 @@ export interface Placement {
    * planned again, and the last one may keep a fallback nobody acted on.
    */
   check: () => InvariantViolation | undefined
-}
-
-/** R155: the plans the old engine still places. Deleted with the engine in phase 3. */
-function onOldEngine(input: PlacementInput): boolean {
-  if (input.routeModule) {
-    return false
-  }
-  for (const o of input.outputs.values()) {
-    // `split` without `setRouteModule`: the core's toy planners
-    if (o.kind === 'split') {
-      return true
-    }
-  }
-  return false
-}
-
-/**
- * The stages' order is load-bearing, and a reorder still compiles:
- * - `keptDeclarations` reads the settled `roots`, so it precedes
- *   `foldExtractions`, which rewrites them (dev folds extracted exports back
- *   into the route module: the "kept" reasons describe the build's placement;
- *   it leaves `copied`, so dev's chunks copy or import as a build's do);
- * - `extractedExports` adds to `seeds.deadClusters`, and `assignHomes` reads
- *   them, so it runs after `foldExtractions` and before `assignHomes`;
- * - `assignHomes` roots nothing: what it homes in the env module (an effect,
- *   an identity an extracted module and another output share) `settleRoots`
- *   rooted, inside its fixed point, so that a candidate reading it at load
- *   was cancelled;
- * - `includeAndImport` reads the final `roots` and homes.
- */
-export function computePlacement(input: PlacementInput): Placement {
-  if (!onOldEngine(input)) {
-    // a route file, a server function's handler module, erasure only: what
-    // route splitting on `main` does, its removal rule (`route-placement.ts`)
-    return computeRoutePlacement(input)
-  }
-  // 1. clusters (a binding with its writers at load), the write table
-  const graph = buildClusters(input)
-  // 2. what each cluster reads, per output, and what each evaluation runs;
-  // the event table and its rules, asked lazily
-  const reads = readIndex(input, graph)
-  const events = eventTable(input, graph, reads)
-  // 3. the roots planners and the module declare, extraction candidates, provenance
-  const seeds = seedRoots(input, graph, reads)
-  // 4. the solver: env roots, slots and extracted exports, one fixed point
-  const roots = settleRoots(input, graph, reads, events, seeds)
-  // 5. what only split code needs that stays, and why
-  const kept = keptDeclarations(input, graph, reads, events, seeds, roots)
-  if (!input.extractedOutputs) {
-    foldExtractions(reads, roots)
-  }
-  const extracted = extractedExports(input, graph, seeds, roots)
-  // 6. homes, the single-writer rule
-  const homes = assignHomes(input, graph, seeds, roots)
-  // 7. inclusion, imports and exports
-  const inclusion = includeAndImport(
-    input,
-    graph,
-    reads,
-    roots,
-    homes,
-    extracted,
-  )
-  const fallbacks = [
-    ...events.fallbacks(homes.home, inclusion.included),
-    ...homes.fallbacks,
-  ]
-  return {
-    clusterOfRegion: graph.clusterOfRegion,
-    clusterOfGen: graph.clusterOfGen,
-    home: homes.home,
-    included: inclusion.included,
-    imports: inclusion.imports,
-    exportsNeeded: inclusion.exportsNeeded,
-    fallbacks,
-    created: homes.created,
-    extracted,
-    kept,
-    droppedTypeUnits: inclusion.droppedTypeUnits,
-    check: () => inclusion.violation,
-  }
 }

@@ -1,6 +1,5 @@
 /**
- * Placement of every plan but one with a `split` output and no route module
- * (the core's toy planners: R155, `reach.ts` `onOldEngine`). A route file (`PlanContext.setRouteModule`):
+ * Placement of every plan (R155). A route file (`PlanContext.setRouteModule`):
  * what route code splitting on `main` does, by its outcome, on the core's
  * analysis (spec-main-splitting 1.1-1.8). Any other plan (a server fn's
  * handler module, the RSC provider copy, erasure only) by the same rules,
@@ -80,7 +79,7 @@ import type { GenUnitId, OutputId } from './rewrite'
 /** A plan that is no route file: no name a chunk imports, none `main` shares. */
 const NO_ROUTE: RouteModule = { imported: new Set(), shared: new Set() }
 
-export function computeRoutePlacement(input: PlacementInput): Placement {
+export function computePlacement(input: PlacementInput): Placement {
   const { t1, rewrites, outputs } = input
   const {
     imported,
