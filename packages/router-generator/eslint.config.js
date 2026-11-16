@@ -1,9 +1,10 @@
 // @ts-check
 
-import rootConfig from '../../eslint.config.js'
+import rootConfig, { compilerSourceConfig } from '../../eslint.config.js'
 
 export default [
   ...rootConfig,
+  ...compilerSourceConfig,
   {
     // The generator's fixture apps (route files, virtual route configs):
     // inputs the tests generate route trees from, most outside the

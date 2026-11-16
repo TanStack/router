@@ -689,7 +689,14 @@ export class RewriteSet {
     of: Map<Edit, RangeNode>
   } | null = null
 
-  constructor(readonly regions: RegionTable) {}
+  constructor(
+    readonly regions: RegionTable,
+    /** The plan's outputs, for their kinds (`{ kinds }` scopes); an output placement creates has none. */
+    private readonly outputs: ReadonlyMap<
+      OutputId,
+      { readonly kind: OutputKind }
+    >,
+  ) {}
 
   /**
    * The text of `range` in every output where it renders: `body` in place
@@ -905,9 +912,6 @@ export class RewriteSet {
     return this.changes
   }
 
-  /** The kind of each output (`{ kinds }` scopes); the plan sets it (an output placement creates has none). */
-  outputKind: (output: OutputId) => OutputKind | undefined = () => undefined
-
   /** Whether `output` is in `scope`. */
   inScope(scope: EditScope, output: OutputId): boolean {
     if (scope === 'all-outputs') {
@@ -917,7 +921,7 @@ export class RewriteSet {
       return !scope.except.includes(output)
     }
     if ('kinds' in scope) {
-      const kind = this.outputKind(output)
+      const kind = this.outputs.get(output)?.kind
       return kind !== undefined && scope.kinds.includes(kind)
     }
     return scope.includes(output)
