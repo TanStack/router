@@ -75,7 +75,7 @@ const ROUTE = (opts: string, rest = '') =>
     })
   `)
 
-describe('clusters and the single-writer rule', () => {
+describe('clusters and the write table', () => {
   it('lets the sole writing group own a module binding it writes', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -94,7 +94,7 @@ describe('clusters and the single-writer rule', () => {
     ['assigns', 'next = 1'],
     ['updates', '++next'],
   ])(
-    'homes a module binding the sole group only %s in its chunk (writes need the binding)',
+    'moves a module binding the sole group only %s into its chunk (a write needs the binding)',
     async (_, write) => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
@@ -186,9 +186,9 @@ describe('clusters and the single-writer rule', () => {
     })
   })
 
-  // the same rule for a component declared on its own: a top-level writer
-  // joins the binding it writes, which the route module keeps for its
-  // other reader, so the option would only re-export it from there
+  // the same fallback for a component declared on its own: the route module
+  // keeps the binding for its other reader, so the chunk would assign a
+  // binding it imports
   it.each([
     [
       'updates a binding the loader reads',
@@ -538,7 +538,7 @@ describe('glue and renames (lane router)', () => {
   })
 })
 
-describe('extracted-export outputs', () => {
+describe('exported declarations a chunk reads', () => {
   // exported declarations a chunk needs: the route module keeps them, a
   // chunk copies or imports them (a build)
   const build = { env: envInfo({ mode: 'build' }) }
@@ -561,7 +561,7 @@ describe('extracted-export outputs', () => {
   // `export default count` holds the value `count` has when it runs: of a
   // reassigned `count` it is no re-export of the binding, and no name a
   // chunk can import the binding by.
-  it('keeps `export default x` of a reassigned `x` next to an extracted function writing it', async () => {
+  it('keeps `export default x` of a reassigned `x` in the env module beside an exported function writing it', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       let count = 0
@@ -574,7 +574,7 @@ describe('extracted-export outputs', () => {
     expect(r.env).toContain('export default count')
   })
 
-  it('keeps a default export of an expression reading a candidate in the env module (it is no re-export)', async () => {
+  it('keeps a default export of an expression reading an exported function in the env module (it is no re-export)', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       export function Page() { return 'page' }
@@ -586,12 +586,11 @@ describe('extracted-export outputs', () => {
     expect(r.env).toContain('export function Page()')
   })
 
-  it('keeps an import a cancelled extraction candidate reads when an erased range read it too', async () => {
-    // `Page` is a candidate nothing extracted needs, so it stays an env root;
-    // the client erases the `wrapServer` argument, the only other reader of
-    // `fmt`. Orphans are decided on the final env liveness, not before the
-    // candidate came back (a `<Hydrate>` after erased server code lost its
-    // import this way).
+  it('keeps an import an exported function reads when erased code read it too', async () => {
+    // `Page` is exported, so it stays in the env module; the client erases
+    // the `wrapServer` argument, the only other reader of `fmt`, which stays
+    // since `Page` still reads it by value (a `<Hydrate>` after erased server
+    // code lost its import this way).
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { wrapServer } from 'toy-start'
@@ -608,12 +607,8 @@ describe('extracted-export outputs', () => {
     expect(env).toContain("export function Page() { return fmt('p') }")
   })
 
-  // The env module re-exports an extracted declaration, so one reading
-  // eagerly what the env module keeps would evaluate before it (a cycle).
-  // What the env module keeps is known once every candidate and every move
-  // is decided: a candidate kept for another reason, and an effectful
-  // declaration a chunk needs that cannot move, make what they read stay.
-  it('does not extract a declaration reading what another kept candidate reads', async () => {
+  // An export stays in the env module, and so does what it reads by value.
+  it('keeps two exports reading one declaration, and that declaration, in the env module', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       const Shared = () => 'shared'
@@ -627,10 +622,9 @@ describe('extracted-export outputs', () => {
     expect(r.env).toContain('export const Alias = Shared')
   })
 
-  it('does not extract a declaration reading what an effectful declaration a chunk needs reads', async () => {
+  it('moves a declaration only the chunk and erased code read, and keeps the export beside it', async () => {
     // `store` is only read by the chunk and by code the env planner erases:
-    // it moves (no order rule), and the chunk imports `Shared` from the env
-    // module, which keeps it for `Page`
+    // it moves; the env module keeps `Shared` for the export `Page`
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { wrapServer } from 'toy-start'
@@ -651,11 +645,9 @@ describe('extracted-export outputs', () => {
     expect(env).toContain('export const Page = Shared')
   })
 
-  // What the copy never carries: another export (imported from its module
-  // or copied under its own decision), an effectful cluster, an eager
-  // reader of state and what the route module's own roots keep alive are
-  // one instance by construction, so they do not stop the copy.
-  describe('what a copy does not carry', () => {
+  // A chunk copies a declaration the env module keeps and does not export;
+  // a provider output takes an import only it reads.
+  describe('what a chunk and a provider output take', () => {
     /** A provider output whose generated wrapper reads the exported `fn` (the shape of the J4.14 tests). */
     const toyProviderPlanner = (): Planner => ({
       name: 'toy-provider',
@@ -719,7 +711,7 @@ describe('extracted-export outputs', () => {
       },
     })
 
-    it('duplicates a primitive constant whatever writes a member of it (nothing to observe)', async () => {
+    it('copies a constant the env module keeps into the chunk, a member write of it notwithstanding (no assignment of the binding)', async () => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
         const N = 1
@@ -739,7 +731,7 @@ describe('extracted-export outputs', () => {
     // An import only a server fn's handler reads is orphaned in the env
     // module (the handler is a stub there) and needed by the provider output
     // alone: it goes with the provider, not nowhere (the Start planner tests
-    // caught a homes change that dropped it).
+    // caught a placement change that dropped it).
     it('keeps an import only a provider output needs for the provider', async () => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
@@ -769,9 +761,8 @@ describe('extracted-export outputs', () => {
   })
 
   // the executing property (toy planner, seeds 2578, 7394, 9413, 9430): a
-  // route option value writing an export at load joins the route to the
-  // export's cluster; an export the planner keeps (the route) is never
-  // extracted, so neither is that cluster
+  // route option value writes an export at load; the export stays in the
+  // route module, as every export does, with the route
   it('keeps an export a route option value writes in the route module with the route', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -786,7 +777,7 @@ describe('extracted-export outputs', () => {
     expect(r.env).toContain('export const o0 = { v: 1 }')
   })
 
-  it('keeps an augmented export whose augmentation reads what the env module keeps at its evaluation', async () => {
+  it('keeps an exported function and the statement augmenting it in the env module', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       const config = { label: 'label' }
@@ -824,7 +815,7 @@ describe('a statement relying on the `;` that ends the one before it', () => {
     )
   })
 
-  it('gets a `;` when it moves after another statement', async () => {
+  it('gets a `;` when a chunk copies it after another statement', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { see } from './see'
@@ -947,10 +938,9 @@ describe('route-module specifics (lane router)', () => {
     expect(r.env).toContain('function Unused() { return Button() + 1 }')
   })
 
-  // an unused declaration with an effect of its own reading only imports
-  // stays where it was written: imports' users place only what runs
-  // nothing (the dead-code page: a namespace calling `track`)
-  it('keeps an unused declaration with an effect of its own reading only imports', async () => {
+  // code already unused stays where it was written, whatever its
+  // initialiser calls (the dead-code page: a namespace calling `track`)
+  it('keeps an unused declaration calling an import in the env module', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { track } from './track'
@@ -1150,7 +1140,7 @@ describe('generated units after the imports of a derived output', () => {
 })
 
 describe('provenance-based orphans', () => {
-  it('keeps a pre-existing disconnected effectful cycle', async () => {
+  it('keeps a self-referencing declaration already unused in the source', async () => {
     const code = ROUTE(
       '  component: () => null,',
       'const b = register(() => b)',
@@ -1159,7 +1149,7 @@ describe('provenance-based orphans', () => {
     expect(r.env).toContain('const b = register(() => b)')
   })
 
-  it('removes declarations orphaned by an erased handler with their initialiser effects (J4.11)', async () => {
+  it('removes declarations orphaned by an erased handler with their initialisers (J4.11)', async () => {
     const code = dedent(`
       import { wrapServer } from 'toy-start'
       import { loadSecret } from './secret.server'
@@ -1199,8 +1189,8 @@ describe('provenance-based orphans', () => {
   })
 })
 
-describe('ordered evaluation and movable effects', () => {
-  it('moves an effectful initialiser followed only by the route factory chain', async () => {
+describe('a declaration only a chunk reads moves with its initialiser', () => {
+  it('moves a call initialiser only the chunk reads', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { createStore } from './store'
@@ -1217,7 +1207,7 @@ describe('ordered evaluation and movable effects', () => {
     expect(r.chunks.component).toContain('const store = createStore()')
   })
 
-  it('extracts an exported class without decorators', async () => {
+  it('splits a component reading an exported class without diagnostics', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       export class Service { constructor(readonly dep: unknown) {} }
@@ -1229,7 +1219,7 @@ describe('ordered evaluation and movable effects', () => {
     expect(r.main?.diagnostics).toEqual([])
   })
 
-  it('moves consecutive effectful initialisers one chunk needs together, in source order', async () => {
+  it('moves consecutive call initialisers one chunk reads together, in source order', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { make } from './make'
@@ -1265,7 +1255,7 @@ describe('ordered evaluation and movable effects', () => {
     expect(r.chunks.component).toContain("const page = make('page')")
   })
 
-  it('a /* @__PURE__ */ initialiser simply moves', async () => {
+  it('moves a /* @__PURE__ */ initialiser like any other', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { make } from './make'
@@ -1314,7 +1304,7 @@ describe('ordered evaluation and movable effects', () => {
   })
 })
 
-describe('needers and homes', () => {
+describe('names, imports and type units', () => {
   it('allocates collision-free names from the file universe', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -1692,7 +1682,7 @@ describe('overridden placeholders', () => {
 })
 
 describe('pre-existing dead code (G16)', () => {
-  it('keeps a dead pure cycle like a dead self-recursive function', async () => {
+  it('keeps a dead cycle of functions like a dead self-recursive function', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { helper } from './helper'
@@ -1709,7 +1699,7 @@ describe('pre-existing dead code (G16)', () => {
   })
 })
 
-describe('one mutation model: eager reads of state something writes', () => {
+describe('declarations reading state the module writes', () => {
   it.each([
     [
       'the write ran before it',
@@ -1764,7 +1754,7 @@ describe('one mutation model: eager reads of state something writes', () => {
       false,
     ],
   ])(
-    'classifies a function that is %s as %s',
+    'moves a declaration holding a function that is %s with the component (in the route module: %s)',
     async (_, declaration, eager) => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
@@ -1782,18 +1772,16 @@ describe('one mutation model: eager reads of state something writes', () => {
           '/app/state.ts': 'export const wrap = (f: () => number) => f\n',
         },
       })
-      // an eager read of a binding a function writes keeps the declaration
-      // in the route module; a lazy one lets it move with the component
+      // `eager`: the declaration stays in the route module; otherwise it
+      // moves with the component
       const initial = declaration.slice(declaration.lastIndexOf('\n') + 1)
       expect(r.env.includes(initial)).toBe(eager)
       expect((r.chunks.component ?? '').includes(initial)).toBe(!eager)
     },
   )
 
-  // what the statement's evaluation runs keeps it in the route module, and
-  // with it, a later write (`seen = n` in the callback) keeps its readers
-  // (design 2 step 3: a reader of `seen` after its last write at load, the
-  // assignment's, moves; the row asserted that it travelled with `seen`)
+  // a top-level statement stays in the route module (R154), whatever its
+  // callback reads
   it.each([
     [
       'an assignment of a call',
@@ -1801,7 +1789,7 @@ describe('one mutation model: eager reads of state something writes', () => {
       'seen = wrap(() => n)()',
     ],
   ])(
-    'counts a callback passed in %s at the top level as run at load',
+    'keeps %s at the top level in the route module',
     async (_, statement, stays) => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
@@ -1828,7 +1816,7 @@ describe('one mutation model: eager reads of state something writes', () => {
   it.each([
     ['reads nothing written', 'function wrap(C) { return () => C() }', true],
   ])(
-    'an option value calling a helper that %s splits accordingly',
+    'splits an option value calling a module helper that %s',
     async (_, helper, splits) => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
@@ -1843,7 +1831,7 @@ describe('one mutation model: eager reads of state something writes', () => {
     },
   )
 
-  it('a component that reads state moves when the route options are built by an effectful call', async () => {
+  it('moves a component reading a `let` an exported function assigns', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       let n = 0
@@ -1880,13 +1868,11 @@ describe('one mutation model: eager reads of state something writes', () => {
   })
 })
 
-// What a declaration's evaluation reads, writes and calls has one
-// definition, asked of each declaration (design 2, P1): its own text that
-// runs (unclaimed regions inside it included), the callbacks it passes to a
-// call, and, when it calls anything, the bodies of the module's functions
-// those name. Source: review of 2026-11-10, F1 (F1-1, F1-2, F1-3a, F1-5a,
-// Q2).
-describe('what an evaluation runs: one walk for every rule', () => {
+// What a function a declaration or an option value holds, passes to a call
+// or calls at load does decides nothing: placement reads names, references
+// and assignments. Source: review of 2026-11-10, F1 (F1-1,
+// F1-2, F1-3a, F1-5a, Q2).
+describe('functions held, passed or called at load', () => {
   const files = {
     '/app/lib.ts':
       'export const open = () => ({})\nexport const wrap = (x: unknown) => x\nexport const define = (x: unknown) => x\nexport const f = (x: unknown) => x\n',
@@ -1910,7 +1896,8 @@ describe('what an evaluation runs: one walk for every rule', () => {
     }
   }
 
-  // F1-5a: holding a function runs nothing, whoever else calls it at load
+  // F1-5a: a holder of a function moves with the chunk reading it, whoever
+  // else calls the function at load
   it('moves a holder of a function another declaration calls at load with the chunk', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
@@ -1930,8 +1917,8 @@ describe('what an evaluation runs: one walk for every rule', () => {
     expect(r.chunk).toContain('const api = { getCached }')
   })
 
-  // F1-3a: a method nested in an object argument runs only when called,
-  // in an option value as in a declaration
+  // F1-3a: an option value passing a method to a call splits, written
+  // inline or as a const
   it.each([
     [
       'written inline',
@@ -1944,7 +1931,7 @@ describe('what an evaluation runs: one walk for every rule', () => {
       'Page',
     ],
   ])(
-    'splits an option value passing a method reading lazily written state to a call, %s',
+    'splits an option value passing a method that calls a module function to a call, %s',
     async (_, declarations, value) => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
@@ -1962,10 +1949,10 @@ describe('what an evaluation runs: one walk for every rule', () => {
     },
   )
 
-  // a function passed to a call evaluates nothing itself: what reads state
-  // in it runs when the call around it calls it (a server fn's handler)
+  // a custom region in an exported declaration's call argument (a server
+  // fn's handler) falls back for nothing
   it.each([['a function passed to a call', '() => String(n)', null]])(
-    'reports a region that is %s as observing lazily written state accordingly',
+    'reports no fallback for a custom region that is %s',
     async (_, argument, reason) => {
       const code = dedent(`
         import { createFileRoute } from 'toy-router'
@@ -1995,10 +1982,8 @@ describe('what an evaluation runs: one walk for every rule', () => {
     },
   )
 
-  // F1-2: an extracted export's module evaluates when something first
-  // imports it (with the chunk, once nothing imports the binding through
-  // the route file): a snapshot of state the route module's functions write
-  // would then see a later value, so it stays (V on candidates).
+  // F1-2: an exported snapshot of state a function writes stays in the
+  // route module, as every export does, in a build as in dev
   const snapshot = dedent(`
     import { createFileRoute } from 'toy-router'
     let n = 0
@@ -2018,14 +2003,10 @@ describe('what an evaluation runs: one walk for every rule', () => {
   })
 })
 
-// A declaration only split code needs that the movable test keeps in the
-// route module (evaluation order, writes, eager reads) is reported once, at its
-// cause, positioned at the declaration and naming why; nothing is reported
-// when it moves, or when the split code needs nothing pinned.
-// design 2 step 3: a reader of written state is a cluster of its own, placed
-// by the order rule against the writes on both sides' slots; a binding's
-// writers at load stay in its cluster
-describe('readers and writers of state written at load', () => {
+// A declaration only split code reads moves with it, and an option value
+// splits, whatever it or the functions it reaches write: only an
+// assignment of a binding the chunk imports falls back.
+describe('split code reading and writing module bindings', () => {
   const route = (decls: string, options: string, extra = '') =>
     dedent(`
       import { createFileRoute } from 'toy-router'
@@ -2041,7 +2022,7 @@ describe('readers and writers of state written at load', () => {
       'export const f = (x: unknown) => x\nexport const track = (x: unknown) => x\nexport const open = {}\n',
   }
 
-  it('moves a reader, its binding and the write after it together when one chunk needs them', async () => {
+  it('moves a reader and its binding to the chunk, which copies the write after them', async () => {
     const r = await split(
       route(
         'const a = {}\nconst x = [a]\na.v = 1',
@@ -2075,9 +2056,8 @@ describe('readers and writers of state written at load', () => {
     expect(r.chunks.component).toContain('open.page = 1')
   })
 
-  // REVIEW-design2-step4 finding 3: that write pins the value only when
-  // the binding is not confined to its chunk, as a write at load by the
-  // value (rulings 2 and 3): nothing else touching it, it splits, with the
+  // REVIEW-design2-step4 finding 3: an option value whose call runs a
+  // function writing a binding nothing else touches splits, with the
   // binding, inline or named.
   it.each([
     [
@@ -2118,9 +2098,7 @@ describe('readers and writers of state written at load', () => {
     },
   )
 
-  // REVIEW-design2-final finding 5 (architect: one rule): the same holds
-  // for a declaration. A binding only its own callback writes, which
-  // nothing else touches when the module loads, does not pin it: the
+  // REVIEW-design2-final finding 5: the same for a declaration: the
   // `const` spelling moves as the option value splits.
   it.each([
     [
@@ -2150,11 +2128,9 @@ describe('readers and writers of state written at load', () => {
     },
   )
 
-  // small item 2b under R152: a write at an unknown time that only the
-  // value's chunk runs pins the value only when another evaluation touches
-  // the binding at load, not because the binding stays in the route module
-  // for a later reader: a function the value reaches other than as a name
-  // handed to its call splits as its inline spelling does
+  // small item 2b under R152: an option value reaching a function that
+  // writes a member of a binding the loader reads splits, inline or named;
+  // the route module keeps the binding
   it.each([
     [
       'inline',
@@ -2187,18 +2163,10 @@ describe('readers and writers of state written at load', () => {
   )
 })
 
-// R138 (design 2 step 5): the order rule is judged on the slots of both
-// sides. An effectful declaration reading another one at load moves when
-// the one it reads evaluates in the same chunk (source order there), or
-// stays in the route module as a `const`; each is still ordered against
-// the effects that stay.
-// REVIEW-design2-step4 findings 1 and 2: state reached through another
-// name. A read through an alias, a holder or a spread reads the object
-// the other name names (what its declaration and its writes at load name,
-// as a call would follow), so it is ordered against a write of the
-// original. A method named like a mutator (`push`, `set`, `add`) of an
-// object the module defines is its own code: a call, an effect (R65).
-describe('state reached through another name', () => {
+// REVIEW-design2-step4 findings 1 and 2: a declaration reading an object
+// through an alias or a holder moves with the chunk reading it, whatever
+// writes the object's members.
+describe('reads through another name', () => {
   const route = (decls: string, options: string) =>
     dedent(`
       import { createFileRoute } from 'toy-router'
@@ -2227,11 +2195,9 @@ describe('state reached through another name', () => {
   })
 })
 
-// REVIEW-design2-final finding 1: a write through another name of an
-// object (an alias, a holder, a destructured name) writes that object, so
-// a read of it through any of its names is ordered against the write (O)
-// or pinned by it (V), as a write through its first name is.
-describe('state written through another name', () => {
+// REVIEW-design2-final finding 1: the env module keeps an export and a
+// top-level statement (R154), and what that statement reads by value.
+describe('aliases of an object a statement writes', () => {
   const route = (decls: string, options: string) =>
     dedent(`
       import { createFileRoute } from 'toy-router'
@@ -2243,9 +2209,9 @@ describe('state written through another name', () => {
     `)
 
   // Source: the executing placement property, toy planner, seed 305 (the
-  // design 2 closing lane: red at its base, where the extracted `l4` saw
+  // design 2 closing lane: red at its base, where a moved `l4` saw
   // `{ v: 1 }` and the source gives `{ v: 7 }`)
-  it('keeps an extracted export of an object written through a chain of aliases with the write', async () => {
+  it('keeps an export, the alias a statement writes through and that statement in the env module', async () => {
     const r = await split(
       route(
         'const o1 = { v: 1 }\nlet l3 = o1\nexport const l4 = l3\nconst l6 = l4\nObject.assign(l6, { v: 7 })',
@@ -2259,11 +2225,11 @@ describe('state written through another name', () => {
   })
 })
 
-// Review round 1, findings F2-1 and F2-2: a local name (a parameter, a
-// `for…of` or `catch` variable, a function's own `const`) holds what its
-// value comes from, so a write through it writes that object: a read of it
-// at load before the write is kept, as for a write through its first name.
-describe('round 1 F2-1/F2-2: state written through a local name', () => {
+// Review round 1, findings F2-1 and F2-2: a write through a local name (a
+// parameter, a `for…in` variable, a function's own `const`) is no
+// assignment of a module binding: a read at load before it moves with the
+// component.
+describe('round 1 F2-1/F2-2: writes through a local name', () => {
   const route = (write: string) =>
     [
       "import { createFileRoute } from 'toy-router'",
@@ -2287,7 +2253,7 @@ describe('round 1 F2-1/F2-2: state written through a local name', () => {
       "function set() { const t = { theme: S.theme }; t.theme = 'dark' }\nset()",
     ],
   ])(
-    'moves a read at load past a write through %s, which writes another object (control)',
+    'moves a read at load before a write through %s (control)',
     async (_, write) => {
       const r = await split(route(write))
       expect(r.env).not.toContain('const initial = S.theme')
@@ -2296,11 +2262,10 @@ describe('round 1 F2-1/F2-2: state written through a local name', () => {
   )
 })
 
-// Review round 1, finding F2-3: a write in a function of the module that a
-// split option's value calls (its wrapper's own body) runs when the value
-// evaluates, as one written inline in it: the value stays unless the state
-// it writes goes with it.
-describe('round 1 F2-3: writes a split value runs in a function it calls', () => {
+// Review round 1, finding F2-3: a split option value calling a module
+// function that writes state only the chunk uses splits, with that
+// function and the state.
+describe('round 1 F2-3: a split value calling a module function that writes state', () => {
   const route = (decls: string, component: string) =>
     [
       "import { createFileRoute } from 'toy-router'",
@@ -2334,7 +2299,7 @@ describe('round 1 F2-3: writes a split value runs in a function it calls', () =>
   )
 })
 
-describe('effectful declarations reading each other (R138)', () => {
+describe('declarations reading each other', () => {
   const route = (decls: string, options: string) =>
     dedent(`
       import { createFileRoute } from 'toy-router'
@@ -2415,10 +2380,9 @@ describe('effectful declarations reading each other (R138)', () => {
     )
   })
 
-  // an unknown call in the route options the client keeps runs after them
-  // in the route module's body, and before them from the chunk: no order
-  // rule
-  it('moves the column helper and the columns when a route option the route module keeps calls an unknown function (no order rule)', async () => {
+  // a call in a route option the route module keeps keeps neither: they
+  // move to the chunk
+  it('moves the column helper and the columns when a route option the route module keeps calls an unknown function', async () => {
     const code = dedent(`
       import { createFileRoute } from 'toy-router'
       import { createColumnHelper, useTable } from '@tanstack/react-table'
@@ -2437,13 +2401,9 @@ describe('effectful declarations reading each other (R138)', () => {
     expect(r.chunks.component).toContain(helperAndColumns)
   })
 
-  // `a` stays (the loader reads it), `b` only the component uses. A `let`
-  // nothing assigns reads like a `const`: the chunk imports the one
-  // instance the route module evaluated first, whether or not `b` has an
-  // effect of its own. An assigned one is judged by the writes, with that
-  // reason: a write after the read would run before it from the chunk.
-  // Source: NOTE-small-items 2d (R67's "a kept `let` still pins" revised;
-  // the first and the fifth row stayed, reported `eager-split:reads`).
+  // `a` stays (the loader reads it), `b` only the component reads: `b`
+  // moves to the chunk, whether `a` is a `const` or a `let`, assigned at
+  // load or not. Source: NOTE-small-items 2d.
   it.each([
     ['a `let` nothing assigns', 'let a = make()\nconst b = [a, make()]'],
     ['a `let` nothing assigns, read alone', 'let a = make()\nconst b = [a]'],
@@ -2464,7 +2424,7 @@ describe('effectful declarations reading each other (R138)', () => {
   )
 })
 
-describe('declarations only split code needs that stay in the route module', () => {
+describe('declarations only split code needs', () => {
   async function kept(
     code: string,
     keys = ['component'],
@@ -2494,7 +2454,7 @@ describe('declarations only split code needs that stay in the route module', () 
     expect(r.env).not.toContain('const label')
   })
 
-  it('moves an effectful declaration a bare import follows (module loading is hoisted: no effect stays after it)', async () => {
+  it('moves a declaration a bare import follows, and keeps the bare import', async () => {
     const r = await kept(
       dedent(`
         import { createFileRoute } from 'toy-router'
@@ -2511,11 +2471,11 @@ describe('declarations only split code needs that stay in the route module', () 
   })
 })
 
-// A call of a known package's pure export (`RecognizerTable.pureCalls`)
-// with pure arguments is pure, recognised by import binding to the package's
-// export (renamed, namespace member, a member of the default import of a
-// package whose default export is its namespace: `pureDefaultNamespaces`).
-describe('pure calls of known packages', () => {
+// A call of a known package's pure export (`RecognizerTable.pureCalls`),
+// however imported (renamed, a namespace member, a member of a
+// `pureDefaultNamespaces` default import), stays with its reader, the
+// route module; a declaration only the component reads moves.
+describe('a known package call the route module keeps', () => {
   const recognizer = {
     ...EMPTY_RECOGNIZER,
     pureCalls: {
@@ -2565,7 +2525,7 @@ describe('pure calls of known packages', () => {
     ["import { default as C } from 'toy-cjs'", "C.getRouteApi('/x')"],
   ] as const
 
-  it('pins no earlier effect where the route module keeps it', async () => {
+  it('moves a declaration only the component reads, beside a call the route module keeps', async () => {
     for (const [imports, api] of direct) {
       const r = await compile(shared(imports, api))
       expect(r.env, api).toContain(`const routeApi = ${api}`)
@@ -2575,13 +2535,11 @@ describe('pure calls of known packages', () => {
   })
 })
 
-// rule L (DESIGN-order-guarantee-schemas.md, decision 1): a member read, a
-// spread, `in`/`instanceof`, a call or `new` of a standard global (and a
-// method of the value one returns, or of a literal) with pure arguments,
-// a callback's body judged the same way, is no effect of placement's
-// model: the declaration moves with its only reader, whatever follows it.
-// Getters, proxies, iterators and `toString` stay outside the model (R97).
-describe('language operations are no effect (rule L)', () => {
+// Placement reads names, references and assignments, never what code does
+// (DESIGN-order-guarantee-schemas.md, decision 1): a declaration built from
+// member reads, spreads, `in` and standard globals moves with its only
+// reader, whatever follows it.
+describe('declarations built from language operations and globals', () => {
   const route = (decls: string, options: string, after = '') =>
     dedent(`
       import { createFileRoute } from 'toy-router'
@@ -2633,9 +2591,8 @@ describe('language operations are no effect (rule L)', () => {
     expect(r.chunks.component).toContain(decl)
   })
 
-  // a read and a later write of one object at load evaluate in one module,
-  // in source order (`inOrder`): all of it in the chunk, or the read stays
-  // with the write when the route module keeps the object (the loader)
+  // `inOrder`: the output holding the read holds the later write after it,
+  // in source order
   const inOrder = (
     r: Awaited<ReturnType<typeof split>>,
     read: string,
@@ -2653,9 +2610,8 @@ describe('language operations are no effect (rule L)', () => {
       })
     `)
 
-  // the executing property (seed 1919): `o0` is reassigned, so it owns no
-  // object, but its declaration creates the one `h3` holds: the write
-  // through the holder writes `o0`
+  // the executing property (seed 1919): a reassigned `o0` whose object the
+  // holder `h3` holds, written through the holder after the read
   it.each([
     ['alone', ''],
     ['with the holder the loader keeps', 'loader: () => h3,\n'],
@@ -2669,8 +2625,8 @@ describe('language operations are no effect (rule L)', () => {
     },
   )
 
-  // the executing property (seed 309): `'p' in l8` reads what `l8` holds
-  // (`o0`, through a conditional alias): `in` reads through its name
+  // the executing property (seed 309): an `in` through a conditional alias
+  // of `o0`, and a write through a holder of `o0` after it
   it.each([
     ['alone', ''],
     ['with the object the loader keeps', 'loader: () => o0,\n'],
@@ -2684,11 +2640,10 @@ describe('language operations are no effect (rule L)', () => {
     },
   )
 
-  // the executing property (seeds 555, 1880), reported: a spread of an
-  // object's member is no effect under rule L, and an unknown method called
-  // on it in a route option's function writes nothing it is handed, so the
-  // copy moves and may run after the call that changes the object (a
-  // recognised builder's link is a write, R139, and keeps it)
+  // the executing property (seeds 555, 1880), reported: a copy of an
+  // object's member moves with the component though a route option's
+  // function calls a method on the object; from the chunk the copy may run
+  // after that call
   it('moves a copy of an object past a method call on it in a route option function', async () => {
     const r = await split(
       dedent(`
@@ -2708,11 +2663,9 @@ describe('language operations are no effect (rule L)', () => {
   })
 })
 
-// No order rule: code moves by the bindings it reads and writes; what moves
-// keeps its source order in its chunk, what stays its order in the route
-// module. A write through another name writes the object (design 2
-// closing); a call the model does not know writes nothing it is handed.
-describe('no order rule: bindings decide', () => {
+// Code moves by the bindings that read it: what moves keeps its source
+// order in its chunk, what stays its order in the route module.
+describe('bindings decide where code goes', () => {
   const route = (decls: string, options: string) =>
     dedent(`
       import { createFileRoute } from 'toy-router'
@@ -2738,7 +2691,7 @@ describe('no order rule: bindings decide', () => {
     )
   })
 
-  it('moves the snapshot when the call after it is not handed what it read', async () => {
+  it('moves a snapshot and the object it reads when only the component reads them', async () => {
     const r = await split(
       route(
         "const table = createTable()\nconst other = createTable()\nconst columns = snapshot(table)\nother.addColumn('x')",
@@ -2751,10 +2704,9 @@ describe('no order rule: bindings decide', () => {
     )
   })
 
-  // the write through `alias` writes `cfg`: one cluster with it, which
-  // `seen` reads before the write, so all of it moves together, in source
-  // order (the snapshot sees `v: 1` as in the source)
-  it('moves a snapshot with the object it reads and a write through another name after it, in source order', async () => {
+  // the chunk takes `seen` and what it reads, and the write through `alias`
+  // after them, in source order (the snapshot sees `v: 1` as in the source)
+  it('gives the chunk a snapshot, the object it reads and a write through another name after it, in source order', async () => {
     const decls =
       'const cfg = { v: 1 }\nconst alias = cfg\nconst seen = snap(cfg)\nalias.v = 2'
     const r = await split(route(decls, 'component: () => seen,'))
@@ -2762,7 +2714,7 @@ describe('no order rule: bindings decide', () => {
     expect(r.chunks.component).toContain(decls)
   })
 
-  // what no order rule reorders (DESIGN-order-none.md §3, DESIGN-order-
+  // what moving by bindings reorders (DESIGN-order-none.md §3, DESIGN-order-
   // guarantee-aggressive.md S-1 to S-3): the module then runs them in
   // another order, without a warning. The router-plugin build test
   // (`code-splitter-effect-order`) runs S-1, S-2 and (a).
@@ -2851,12 +2803,10 @@ describe('no order rule: bindings decide', () => {
   })
 })
 
-// A bare statement (it declares nothing: a call, an assignment, an
-// `if`/`try`/loop block) moves into a chunk when every module binding it
-// touches goes to that chunk (its bindings and the objects their values
-// hold), in source order there; one touching an import, or bindings that
-// stay or go elsewhere, stays in the route module.
-describe('statements follow what they change', () => {
+// A top-level statement that is no declaration (a call, an assignment, an
+// `if`/`try`/loop block) stays in the route module (R154); declarations
+// move by what reads them.
+describe('statements and the declarations beside them', () => {
   const route = (decls: string, options: string, imports = '') =>
     dedent(`
       import { createFileRoute } from 'toy-router'
@@ -2927,13 +2877,12 @@ describe('statements follow what they change', () => {
     )
   })
 
-  // what the rule changes (reported): an effect outside the bindings the
-  // compiler sees runs when the chunk loads
+  // what moves later (reported): what a declaration runs at load runs
+  // when the chunk loads
   describe('what it moves later', () => {
     // the executing property (real planner, builders off: seeds 1302,
-    // 1141, 1055): an unknown method of an object the route module or
-    // another chunk keeps writes nothing it is handed, so a member read of
-    // the object (rule L) moves past or away from it
+    // 1141, 1055): a copy of a member of an object a split option value
+    // calls a method on moves to the chunk reading it
     describe('an unknown method call around a member read of its object', () => {
       const mwRoute = (decls: string, options: string) =>
         dedent(`
@@ -2953,15 +2902,15 @@ describe('statements follow what they change', () => {
           ),
           { keys: ['loader', 'component'] },
         )
-        // (`b4`, two chunks' effect, goes to their shared module: R151)
+        // (`b4`, which two chunks read, goes to their shared module)
         expect(r.env).not.toContain('const b4 = mw()')
         expect(r.chunks.loader).toContain('b4.server(() => 16)')
         expect(r.chunks.component).toContain('const r6 = { ...b4.o }')
       })
     })
 
-    // a value only the component reads moves past a bare call after it, and
-    // nothing is reported (it is no kept declaration)
+    // a value only the component reads moves past a bare call after it;
+    // nothing is reported
     it('moves a value past a bare call after it, unreported', async () => {
       const r = await split(
         route(
@@ -2975,21 +2924,9 @@ describe('statements follow what they change', () => {
   })
 })
 
-// R146 amendment (the user's rule): what keeps a bare statement in the route
-// module is what it changes (the objects it writes or calls a method on,
-// directly or in the local functions it calls), not what it names. It stays
-// when it changes something the rest of the app can see: another module's
-// object, a global, `import.meta`, a dynamically imported module; else it
-// follows the bindings it changes. Calling or passing an import changes
-// nothing. One rule for statements and a declaration's own writes.
-// R149 (the user's rule): a statement follows the module bindings it uses
-// (reads or changes, and what they hold, also in the local functions it
-// calls) into the one chunk they all go to; otherwise it stays. Nothing
-// outside the module (imports, globals, `import.meta`, `import()`) keeps
-// it; a statement using no binding that moves stays; a statement using a
-// binding that stays (exported, needed by the route module or another
-// chunk) stays. A declaration's own writes are judged the same way.
-describe('statements follow the bindings they use (R149)', () => {
+// A top-level statement that is no declaration stays in the route module
+// (R154), whatever it uses, and the component chunk holds none of it.
+describe('top-level statements stay in the route module (R154)', () => {
   const route = (decls: string, options: string, imports = '') =>
     dedent(`
       import { createFileRoute } from 'toy-router'
@@ -3011,7 +2948,7 @@ describe('statements follow the bindings they use (R149)', () => {
     }
   }
 
-  describe('stays when a binding it uses stays, or it uses none that moves', () => {
+  describe('stays, using an import or a binding the module keeps', () => {
     it.each([
       ['`Sentry.init({ dsn })`', "Sentry.init({ dsn: 'x' })"],
       ['`i18n.use(backend)`', 'i18n.use(backend)'],
@@ -3040,12 +2977,10 @@ describe('statements follow the bindings they use (R149)', () => {
   })
 })
 
-// R151 (user + architect): a lazy shared module may hold effects. An
-// effectful cluster several split outputs need (and nothing that stays
-// needs) goes to one lazy shared module those outputs import, evaluated
-// once when the first of them loads; a statement and dead code (R148) whose
-// bindings go to several split outputs join them there.
-describe('lazy shared modules hold effects (R151)', () => {
+// The names `main` shares (two option groups read them) live in one shared
+// module per file; a binding code outside the set assigns leaves it, and a
+// top-level statement stays in the route module (R154).
+describe('the shared module of a route file', () => {
   const keys = ['component', 'loader']
   async function compile(code: string) {
     const host = new MemoryHost({ files: { '/app/route.tsx': code } })
@@ -3086,8 +3021,8 @@ describe('lazy shared modules hold effects (R151)', () => {
       export const Route = createFileRoute('/')({ ${options} })
     `)
 
-  // ... and stays when a later writer is elsewhere (V)
-  it('keeps a load-time reader a later writer in another chunk writes', async () => {
+  // a statement stays, whoever writes what it reads
+  it('keeps a statement reading a binding another chunk writes', async () => {
     const r = await compile(
       route(
         'const cache = new Map()\nlink(cache)',
@@ -3097,11 +3032,11 @@ describe('lazy shared modules hold effects (R151)', () => {
     expect(r.env).toContain('link(cache)')
   })
 
-  // the executing property (toy planner, seed 11838): a binding a split
-  // option writes lives with that writer (single-writer rule); unused code
-  // joined with it goes there too, or the shared module would import the
-  // chunk that imports it (a cycle: `w14` read before initialisation)
-  it('puts a joined follower with its binding where the single-writer rule homes it', async () => {
+  // the executing property (toy planner, seed 11838): a binding the loader
+  // assigns leaves the shared set, and no shared module imports the loader
+  // chunk (a cycle: `w14` read before initialisation); the chunk copies the
+  // unused declaration reading what it copies (R1)
+  it('copies an unused declaration into the chunk taking what it reads, which no shared module imports', async () => {
     const code = route(
       'let o10 = { v: 6 }\nconst w14 = Object.assign(o10, { p: 8 })\nconst l17 = w14 ? 1 : 0',
       'component: () => w14, loader: () => { o10 = w14; return 1 }',
@@ -3125,14 +3060,10 @@ describe('lazy shared modules hold effects (R151)', () => {
   })
 })
 
-// Finding 3 (part B) and the fresh review's finding 5: a declaration a
-// statement uses stays with that statement, and the warning says why the
-// statement stays (a binding it also uses that the route module keeps or
-// another split option uses, several split options using what it changes,
-// code that runs later changing it, or dead code that reads it), with
-// `changes` or `uses` as the statement does each; each offered fix, applied,
-// lets the declaration load with its chunk (R100)
-describe('eager-split:written: why a statement that changes it stays', () => {
+// Finding 3 (part B) and the fresh review's finding 5: a top-level
+// statement stays in the route module (R154); what it reads is imported or
+// moves as for any other reader.
+describe('statements that change an import or hand it the route', () => {
   async function report(
     code: string,
     keys = ['component'],
@@ -3157,8 +3088,8 @@ describe('eager-split:written: why a statement that changes it stays', () => {
   }
 
   // an import a statement changes is no declaration of the module: the
-  // statement stays, the chunk imports the import itself, nothing reported
-  it('reports nothing for an import a statement changes', async () => {
+  // statement stays, the chunk imports the import itself
+  it('keeps a statement changing an import, which the chunk imports itself', async () => {
     const r = await report(
       dedent(`
         import { createFileRoute } from 'toy-router'
@@ -3173,9 +3104,8 @@ describe('eager-split:written: why a statement that changes it stays', () => {
   })
 
   // (the spelling variants: a hoisted component the route's value holds
-  // moves, so a staying statement handing the route to an import reports
-  // nothing)
-  it('reports nothing that moves, for a statement that stays', async () => {
+  // moves; a statement handing the route to an import stays)
+  it('keeps a statement handing the route to an import and moves the component', async () => {
     const r = await report(
       dedent(`
         import { createFileRoute } from 'toy-router'
@@ -3190,11 +3120,9 @@ describe('eager-split:written: why a statement that changes it stays', () => {
   })
 })
 
-// Rule L reads objects through language operations: a write of the object
-// through another name after the read is one of that object, ordered
-// against the read (the mutation model's owner of "the object a binding
-// names").
-describe('rule L: an object written through another name', () => {
+// A read of an enum or namespace member and a write through another name
+// after it keep their source order in the output holding the read.
+describe('an enum or namespace written through another name', () => {
   const run = (decls: string) =>
     split(
       dedent(`
@@ -3245,9 +3173,8 @@ describe('rule L: an object written through another name', () => {
 describe('generated imports', () => {
   // A planner's runtime helper (Start's server-fn stubs `createClientRpc`,
   // `createSsrRpc`) is an import like one the source wrote: every output
-  // reading it imports it itself, never through the env module (an
-  // extracted module evaluates before the env module's body: the verifier's
-  // rule (e)), and one nothing reads is dropped.
+  // reading it imports it itself, never through the env module (the
+  // verifier's rule (e)), and one nothing reads is dropped.
   /** A planner importing `stub` (as `tsrStub`) and wrapping each of `literals` in a call of it. */
   const wrapping = (literals: Array<string>): Planner => ({
     name: 'toy-wrap',
@@ -3360,11 +3287,10 @@ describe('generated imports', () => {
   })
 })
 
-// A compile's builder chains (`RecognizerTable.builderLinks`) with pure
-// arguments are no effect for the planners, in either environment: what the
-// environment erases (on the client a server fn's validator and handler)
-// does not count, what it keeps does. A link on a `const` holding a builder
-// stays an effect (a middleware's links write that builder's options).
+// A compile's builder chains (`RecognizerTable.builderLinks`) are placed as
+// any declaration, in either environment: a chain only split code reads
+// leaves the route module, on a `const` builder too, and an exported one
+// built on a `const` builder compiles as the inline chain.
 describe('builder chains in a compile', () => {
   const recognizer: RecognizerTable = {
     ...EMPTY_RECOGNIZER,
@@ -3422,9 +3348,9 @@ describe('builder chains in a compile', () => {
     }
   })
 
-  // two split options alone: one shared module, the effect included
-  // (R151); which argument is an effect in which environment is a target
-  // fact (facts.test, "builder chains per environment")
+  // two split options alone: their shared module; which argument is an
+  // effect in which environment is a target fact (facts.test, "builder
+  // chains per environment")
   it('puts a chain two split options read in their shared module, in both environments', async () => {
     const code = route(
       'const fn = createServerFn().middleware([track()]).handler(async () => 1)',
@@ -3435,11 +3361,8 @@ describe('builder chains in a compile', () => {
     }
   })
 
-  // A link on a builder held in a `const` writes the builder (a
-  // middleware's links assign its options): a write with pure operands,
-  // ordered against what reads the builder, not an opaque effect (R139).
-  // The builder and its link are one cluster, which moves as the inline
-  // chain does.
+  // A chain on a builder held in a `const` moves as the inline chain does
+  // (R139).
   it('moves a page-only chain on a const builder into the chunk in both environments', async () => {
     const code = route(
       'const base = createServerFn()\nconst fn = base.handler(async () => 1)',
@@ -3489,7 +3412,7 @@ describe('builder chains in a compile', () => {
 })
 
 describe('a statement an edit rewrites from its first byte', () => {
-  it('stays an effect: what the rest of it reads stays with it', async () => {
+  it('stays, and what the rest of it reads stays with it', async () => {
     const code = dedent(`
       import { clientOnly } from 'toy-start'
       const label = 'L'
@@ -3605,7 +3528,7 @@ describe('a comment after a statement, before code on the same line', () => {
   })
 
   it('a statement ended by its brace keeps the annotation on the next code', async () => {
-    // (R149: the call uses no binding that moves, so it stays)
+    // (R154: a top-level statement stays)
     const { env } = await outputs(
       moved('', 'function f() { return a } /* @__PURE__ */ mk(f)'),
     )

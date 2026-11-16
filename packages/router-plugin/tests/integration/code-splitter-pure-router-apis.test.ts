@@ -1,18 +1,14 @@
 /**
- * (No order rule: the effect before the API and the API load with the
- * chunk, whatever follows them, unreported.)
- * The router's own APIs that are pure at module level, first
- * `getRouteApi`, are no effect: a module-level `const { useParams } =
- * getRouteApi(…)` only the split component reads loads with its chunk, and
- * the API the route module keeps (its loader reads it) does not pin an
- * effectful declaration before it. Learned from a real app (tamery): five of
- * its six eager-split warnings were `getRouteApi` destructurings an inline
- * `validateSearch: type({…})` call after them kept in the route module; the
- * effectful `confetti` before them stays and is the only warning. Recognised
- * by binding to the router package's export, not by name: a renamed import
- * is recognised, an impure argument keeps the call an effect, and
- * `Route.useParams()` inside the split component is unchanged. Vite, Rspack,
- * webpack and Rsbuild builds.
+ * A module-level declaration only the split component reads loads with its
+ * chunk, whatever its initialiser calls: `const { useParams } =
+ * getRouteApi(…)` (renamed or not, with a call in its argument) and a
+ * `new Marker(…)` before it, whatever follows them (an inline
+ * `validateSearch` call the route module keeps); one the route module keeps
+ * (its loader reads it) stays there without keeping the declaration before
+ * it, and `Route.useParams()` inside the split component is unchanged.
+ * Nothing is reported. Learned from a real app (tamery): `getRouteApi`
+ * destructurings before an inline `validateSearch: type({…})` call. Vite,
+ * Rspack, webpack and Rsbuild builds.
  */
 import { describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
@@ -109,9 +105,8 @@ describe.each(builds)('a %s client build', (name, create) => {
           file: `routes/${file}.tsx`,
           root: app.root,
         })
-      // no order rule: the effect before the API, the API (pure or not) and
-      // the `validateSearch` call after them have no order; each loads where
-      // what reads it does, unreported
+      // each declaration loads where what reads it does, whatever it calls
+      // and whatever follows it, unreported
       for (const path of ['direct', 'renamed', 'impure']) {
         expect(app.where(`MARK_api_${path}`), path).toBe('lazy')
         expect(app.where(`MARK_${path}_END`), path).toBe('lazy')

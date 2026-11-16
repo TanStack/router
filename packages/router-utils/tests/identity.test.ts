@@ -127,7 +127,7 @@ describe('identity', () => {
     expect(deriveId(parsed.canonicalId, parsed.derived!)).toBe(shared)
   })
 
-  it('tells a split group value from a shared or an extracted-export value of the same key', () => {
+  it('tells a split group value from a shared value of the same groups', () => {
     for (const base of [
       '/app/page.tsx',
       '/app/Page.vue?vue&type=script&lang.ts',

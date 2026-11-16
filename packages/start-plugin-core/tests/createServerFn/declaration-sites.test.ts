@@ -167,11 +167,11 @@ test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
   },
 )
 
-// SPEC J4.6: a server fn nested in a function is hoisted only when its
-// whole chain captures nothing of the enclosing function. A capture (by the
-// handler, the options, the middleware or the validator) is a positioned
-// compile error naming the binding, in every environment: never a silent
-// leak or a handler running with another closure.
+// SPEC J4.6: a server fn nested in a function is a compile error; when its
+// chain reads a binding of the enclosing function (in the handler, the
+// options, the middleware or the validator), the error is at the binding and
+// names it, in every environment: never a silent leak or a handler running
+// with another closure.
 describe('a nested server fn capturing a binding of its function', () => {
   const captures = [
     {

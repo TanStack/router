@@ -71,7 +71,7 @@ import type { GenUnitId, OutputId, RewriteSet } from './rewrite'
 export type RootRef =
   | { t: 'unit'; id: UnitId }
   | { t: 'gen'; id: GenUnitId }
-  /** A module binding a derived output's root reads as its value (J2.8: reported when its effects keep it in the env module). */
+  /** A module binding a derived output's root reads as its value. */
   | { t: 'sym'; id: SymbolId }
 
 export type OutputKind =
@@ -127,7 +127,7 @@ export interface PlacementInput {
   routeModule: RouteModule | null
 }
 
-export interface ExtractedExport {
+export interface SharedExport {
   output: OutputId
   /** The exported symbols of the cluster (the env module re-exports them from `output`). */
   syms: Array<SymbolId>
@@ -157,7 +157,7 @@ export interface Placement {
   /** Outputs created by placement (lazy shared modules). */
   created: Array<OutputDecl>
   /** Exported clusters homed in the shared module (the env module re-exports them). */
-  extracted: Array<ExtractedExport>
+  sharedExports: Array<SharedExport>
   /** Type units the env module drops (TypeScript-only specifiers that follow their statement's value specifiers); every other type unit stays there, whatever its cluster. */
   droppedTypeUnits: Set<UnitId>
 }
@@ -1128,7 +1128,7 @@ export function computePlacement(input: PlacementInput): Placement {
   }
 
   // ---- the shared exports: re-exported by the env module ---------------------
-  const extracted: Array<ExtractedExport> = []
+  const sharedExports: Array<SharedExport> = []
   if (shared !== null) {
     const { id } = shared
     const syms = [...sharedRoots]
@@ -1139,7 +1139,7 @@ export function computePlacement(input: PlacementInput): Placement {
       )
       .flatMap((c) => [...clusters[c]!.declares])
     if (syms.length > 0) {
-      extracted.push({ output: id, syms })
+      sharedExports.push({ output: id, syms })
       let exported = exportsNeeded.get(id)
       if (!exported) {
         exportsNeeded.set(id, (exported = new Set()))
@@ -1189,7 +1189,7 @@ export function computePlacement(input: PlacementInput): Placement {
     exportsNeeded,
     fallbacks,
     created,
-    extracted,
+    sharedExports,
     droppedTypeUnits,
   }
 }

@@ -1,27 +1,22 @@
 /**
- * Start's own builder chains are no effect in the client and the server
- * builds when their arguments are pure (the arguments an environment's
- * compile erases, on the client a server fn's handler and validator or a
- * middleware's server, do not count): a page-only
- * `createServerFn()…handler(…)`, `createMiddleware(…).client(…)` or
- * `createIsomorphicFn()…` loads with the split chunk although an inline
- * `validateSearch` call after it stays in the route module. Learned from
+ * Start's own builder chains a declaration only split code reads holds (a
+ * `createServerFn()…handler(…)`, a `createMiddleware(…).client(…)`, a
+ * `createIsomorphicFn()…`, a chain on a `const` holding a builder, one with
+ * a call in its argument) load with the split chunk that reads them, in the
+ * client and the server builds, although an inline `validateSearch` call
+ * after them stays in the route module; nothing is reported. Learned from
  * real apps: 94 of 188 kept-declaration warnings over 10,653 route files
  * (47 apps) were such chains. A builder exists once: one read by two split
  * options lives in one module both import, and a middleware a server fn and
- * split code read runs once per call. A link called on a `const` holding a
- * builder is a write of that builder (a middleware's links write the
- * options of the builder they are called on), which moves with it (R139). A
- * chain with an impure argument stays an effect (target facts), which two
- * split options reading it share in one lazy module too (R151).
- * Both environments agree, so a server fn nested in a function may take a
- * builder chain in its options (the server compile hoists it).
+ * split code read runs once per call. A server fn written in an object
+ * entry may take a builder chain in its options (it is created where its
+ * statement runs).
  *
  * Server fns the component reads, exported or not, next to one the route
  * module keeps or not: each module holding a client stub imports the stub's
- * runtime itself, as it would an import the source wrote (an extracted
- * module evaluates before the route module's body, so it reads nothing of
- * the route module then). Learned from the
+ * runtime itself, as it would an import the source wrote (a module of the
+ * file the route module imports evaluates before the route module's body,
+ * so it reads nothing of the route module then). Learned from the
  * server-functions e2e app (its `method-not-allowed/$method` route), whose
  * client build failed the compiler's self-checks.
  */

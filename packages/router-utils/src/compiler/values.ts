@@ -100,9 +100,8 @@ export interface RecognizerTable {
    * module-level `const` holding one) with pure arguments is no effect, and
    * an argument the environment erases is not evaluated there; an env-only
    * kind's argument is kept in its environment alone (`envOnlyKinds`). Read
-   * by the per-environment code effects of raw facts (import protection)
-   * and by the planners' purity of every compile, for its environment type
-   * (there, a link called on a `const` is an effect: `ModuleAnalysisOptions.env`).
+   * by the per-environment code effects of raw facts (import protection's
+   * effect model).
    */
   builderLinks?: Record<Kind, Record<string, 'client' | 'server' | 'both'>>
 }

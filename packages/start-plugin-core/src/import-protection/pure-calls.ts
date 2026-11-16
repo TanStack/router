@@ -2,18 +2,16 @@ import type { RecognizerTable } from '@tanstack/router-utils/compiler'
 
 /**
  * The package exports whose call is pure when its arguments are
- * (`RecognizerTable.pureCalls`), for every host of the router planner and
- * Start's: the core recognises them by import binding from these packages
- * (renamed, a namespace member, or a member of React's default import; app
- * re-exports are not followed), so a
- * module-level declaration they create is no effect and loads with the
- * split code that reads it. Each was read in the package's source,
+ * (`RecognizerTable.pureCalls`), for import protection's effect model: the
+ * core recognises them by import binding from these packages (renamed, a
+ * namespace member, or a member of React's default import; app re-exports
+ * are not followed), so a module-level declaration they create is no effect
+ * of the module's own code. Each was read in the package's source,
  * development builds included: the call constructs and returns a value,
  * reads no global or module state, registers nothing, calls none of its
- * arguments and never throws. A call result has an identity, so a split
- * chunk never copies it; an export whose result must be one instance for
- * the program to work (a context) stays out all the same (Start's server-fn
- * provider copies what it reaches), as does one holding reactive state.
+ * arguments and never throws. An export whose result must be one instance
+ * for the program to work (a context) stays out, as does one holding
+ * reactive state.
  */
 
 /**

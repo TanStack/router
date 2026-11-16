@@ -540,7 +540,7 @@ function isPureJsxChild(ctx: PurityContext, ch: Node): boolean {
   }
 }
 
-export function isPureClass(
+function isPureClass(
   ctx: PurityContext,
   node: Extract<Node, { type: 'ClassDeclaration' | 'ClassExpression' }>,
 ): boolean {

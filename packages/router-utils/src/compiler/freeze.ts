@@ -526,7 +526,7 @@ function glueImportText(
   return frags
 }
 
-/** `export { x as name, … } from '/path/file?tsr-split=shared---…'` for every exported cluster the shared module holds (`Placement.extracted`). */
+/** `export { x as name, … } from '/path/file?tsr-split=shared---…'` for every exported cluster the shared module holds (`Placement.sharedExports`). */
 function reexportGlue(
   plan: AnalysisPlan,
   placement: Placement,
@@ -548,7 +548,7 @@ function reexportGlue(
       envIncluded?.has(c) === true
     )
   }
-  for (const e of placement.extracted) {
+  for (const e of placement.sharedExports) {
     const decl = plan.outputs.get(e.output)
     if (!decl?.derivedId) {
       continue
@@ -620,10 +620,10 @@ function exportGlue(
     }
   }
   if (output === 'env') {
-    const extractedSyms = new Set(placement.extracted.flatMap((e) => e.syms))
+    const sharedSyms = new Set(placement.sharedExports.flatMap((e) => e.syms))
     for (const [sym, to] of plan.exportedRenames) {
-      if (extractedSyms.has(sym)) {
-        continue // re-exported from the extracted output under its public names
+      if (sharedSyms.has(sym)) {
+        continue // re-exported from the shared module under its public names
       }
       const local = 'sym' in to ? plan.symbols.name(to.sym) : null
       if (local === null) {
