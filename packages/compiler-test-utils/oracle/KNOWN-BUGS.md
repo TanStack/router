@@ -119,13 +119,39 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
 
 ## Accepted limits
 
-- **A class whose only reader is an export is not copied with what its code reaches** (R1, review-phase1 r5; accepted:
-  niche, no corpus file): a split chunk copies the top-level code that reaches what it copies
-  by name, and an export is no root, so `class Boot { static { routes.push('boot') } }; export const boot = Boot` with
-  a split component reading `routes` gives the copy `routes` without `Boot`'s static block (0). `main`
-  keeps every class in every copy (its removal rule never removes one) and reads 1.
-  (Server-fn handler modules import the module's one instance since R157: "r5b" in
-  `start-plugin-core/tests/start-compiler-erasure-parity.test.ts` gives 1.)
+- **The server namespace of a module with a lazy handler module has extra keys** (R164, coverage-review-B F2;
+  accepted: "people shouldn't be inspecting the modules of something we compile"). The handler module imports what
+  the file keeps, so the file exports it under generated names (an exported server fn's RPC wrapper, a kept local a
+  handler reads, the loader): `Object.keys(ns)` of an `import * as ns` of such a module lists them on the server and
+  not on the client, and rendering it fails hydration (React #418). `Object.values(ns)` gets each server fn twice.
+  Member reads (`ns.alpha()`) are unaffected. Workaround: enumerate an explicit list.
+
+- **A class, enum or namespace only a server fn handler reads runs at the first call on the server** (R163 round-2
+  rulings (c), review-a1-classes-stay-round2 3, `s13`; accepted: R157/R158 cover classes like any declaration): the
+  lazy handler module holds what only the handler reads, so `class Repo { static made = registry.add('repo') }`
+  read by a handler alone registers when the server fn is first called, where `main` runs it at route load; a
+  loader reading `registry` before the first call sees it empty. The same as a `const` on `main`. R157 rule 4 keeps
+  it at load when its body reads a declaration the file keeps. Workaround: read it from code that runs at load.
+
+- **A class, enum or namespace that erased text and staying text both name only in types leaves with the erased text**
+  (R163 round-3 rulings, review-a1-classes-stay-round3 3, `v1`, `v2`, `v7`, `v12`; accepted: leaks first, as `d8`
+  and `u9`): with `deleteNodes: ['server']`, a deleted handler holding `const d: M | null = null` takes `class M {
+static made = … }` off the client also when the kept loader, the split component or a `type` alias names `M` in a
+  type, so its body does not run there, where `main` keeps it (and ships what it imports). A by-value read from
+  staying code keeps it. Workaround: read it by value from code that stays, or drop the type mention from the erased
+  code.
+
+- **A declaration the source reads only in types is removed when split code reaches it** (R163 round-2 rulings (d),
+  review-a1-classes-stay-round2 5, `q4`; accepted): `const defaults = (routes.push('home'), { a: 1 })` named only by
+  `loader: (): keyof typeof defaults => 'a'`, with a split component reading `Route`, leaves the route module and its
+  initialiser never runs. The same when the split component's own annotation names it, when a `const` the chunk
+  takes names it in a type, and when erased text names it (through a `type` alias it stays). `main` never removes a
+  declaration the source reads only in types (its "read in the original" counts values), but removes one a split
+  option read by value even when a kept annotation still names it;
+  ours counts type uses in "the source used it" (R153 amendment) so that a value import a split component names only
+  in a type leaves with it. Counting every type reference in text that stays as a use was tried: it changed 1,345
+  corpus compiles in 303 files, putting value imports used only as types (`hono`, `elysia`, `zod`, generated API
+  types) back into client route modules. Workaround: read it by value from code that stays.
 
 - **With RSC, a `<ClientOnly>` in a server component outside a server fn's handler shows its fallback for good**
   (as `main`; review-coverage-fix-batch 1): the environment that renders server components keeps `<ClientOnly>`
@@ -566,9 +592,9 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
   split or reported as not code-split".
 - **Parameter decorators do not parse.** SPEC §2.1, G1. `pages/known-bugs-code-splitter-bindings.test.ts`: "a class
   with a parameter decorator that the split component uses compiles into parseable modules". A decorator on a
-  parameter, as on the class or a member, makes the class an effect (it runs when the class is defined), which keeps
-  its order with the effects after it: `router-plugin/tests/code-splitter-effect-timing.test.ts`: "runs its decorator
-  before the effects written after it".
+  parameter, as on the class or a member, runs when the class is defined; the class stays in the route module (R163),
+  so it runs at load, in source order: `router-plugin/tests/code-splitter-effect-timing.test.ts`: "runs its decorator
+  when the route module loads, before the effects written after it".
 - **A namespace is copied into a chunk without its body.** SPEC G1. `pages/known-bugs-code-splitter-bindings.test.ts`:
   "a namespace the split component reads keeps its body".
 - **Vite dev: the maps of the split and shared modules name the route file with the splitter's query**

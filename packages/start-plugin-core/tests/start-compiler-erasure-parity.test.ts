@@ -67,6 +67,94 @@ const check = createServerFn({ method: 'POST' })
   .handler(() => Response.json(schemaBuilds()))
 export const Route = createFileRoute('/schema-once')({ component: Page })
 ${page('check')}`,
+    // a handler-only initialiser naming a declaration the route module keeps
+    // (R157 rule 4): it runs once, at load (review-a1-classes-stay 2)
+    ...Object.fromEntries(
+      ['class', 'const'].map((key) => [
+        `src/inits-${key}.ts`,
+        `export const inits: Array<string> = []
+export const track = (name: string, ..._rest: Array<unknown>) => {
+  inits.push(name)
+  return name
+}
+export const count = (name: string) => inits.filter((n) => n === name).length
+`,
+      ]),
+    ),
+    'src/routes/handler-init-class.tsx': `${head}import { count, track } from '../inits-class'
+class K { static made = track('K-static'); v() { return 'k' } }
+const k = (track('k-init'), new K())
+const getK = createServerFn({ method: 'POST' }).handler(() => Response.json([k.v(), count('k-init')]))
+function Page() { return <p data-url={getK.url}>{new K().v()}</p> }
+export const Route = createFileRoute('/handler-init-class')({ component: Page })
+`,
+    'src/routes/handler-init-const.tsx': `${head}import { count, track } from '../inits-const'
+const cfg = { v: 'k' }
+track('stmt', cfg.v)
+const k = (track('k-init'), [cfg])
+const getK = createServerFn({ method: 'POST' }).handler(() => Response.json([k[0]!.v, count('k-init')]))
+function Page() { return <p data-url={getK.url}>{cfg.v}</p> }
+export const Route = createFileRoute('/handler-init-const')({ component: Page })
+`,
+    // a declaration only its own text names, next to state the component
+    // reads (review-a1-classes-stay-round2 s11): the split chunk's copy of
+    // `routes` takes it, as main's chunk does
+    'src/routes/self-named-init.tsx': `${head}const routes: Array<string> = []
+const reg: any = (routes.push('x'), { again: () => reg })
+const count = createServerFn({ method: 'POST' }).handler(() => Response.json(routes.length))
+function Page() { return <p data-n={routes.length} data-url={count.url}>page</p> }
+export const Route = createFileRoute('/self-named-init')({ component: Page })
+`,
+    // a class a handler names only in a type, reading a `.server` module
+    // (review-a1-classes-stay-round2 s8): it leaves the client with it, and
+    // on the server it runs at load with it (round 3 s8 server); the loader
+    // reports what ran
+    'src/class-type-db.server.ts': `;(globalThis as any).caseClassTypeDb = 'loaded'
+export const db = { all: () => ['row'] }
+`,
+    'src/routes/class-type-in-handler.tsx': `${head}import { db } from '../class-type-db.server'
+class Repo { static made = ((globalThis as any).caseClassTypeRepo = 'made'); all() { return db.all() } }
+const list = createServerFn({ method: 'POST' }).handler(() => { const r: Repo | null = null; return Response.json(String(r)) })
+function Page() { return <p data-loaded={Route.useLoaderData()} data-url={list.url}>page</p> }
+export const Route = createFileRoute('/class-type-in-handler')({
+  loader: () => [(globalThis as any).caseClassTypeRepo, (globalThis as any).caseClassTypeDb].map(String).join(','),
+  component: Page,
+})
+`,
+    // a class or enum a handler names only in a type (review-a1-classes-stay-round3
+    // s16, s18): the server runs it at route load, as main; the loader reads
+    // what it registered
+    ...Object.fromEntries(
+      ['class', 'enum'].map((key) => [
+        `src/registry-${key}.ts`,
+        `const items: Array<string> = []
+export const registry = {
+  add: (name: string) => (items.push(name), name),
+  list: () => items.join(','),
+}
+`,
+      ]),
+    ),
+    'src/routes/handler-type-class.tsx': `${head}import { registry } from '../registry-class'
+class Repo { static made = registry.add('repo'); all() { return 1 } }
+const list = createServerFn({ method: 'POST' }).handler(() => { const r: Repo | null = null; return Response.json(String(r)) })
+function Page() { return <p data-loaded={Route.useLoaderData()} data-url={list.url}>page</p> }
+export const Route = createFileRoute('/handler-type-class')({ loader: () => registry.list(), component: Page })
+`,
+    'src/routes/handler-type-enum.tsx': `${head}import { registry } from '../registry-enum'
+enum Kind { A = registry.add('kind') as any }
+const list = createServerFn({ method: 'POST' }).handler((): Kind | null => null)
+function Page() { return <p data-loaded={Route.useLoaderData()} data-url={list.url}>page</p> }
+export const Route = createFileRoute('/handler-type-enum')({ loader: () => registry.list(), component: Page })
+`,
+    // a class only <Hydrate> children name, in a type (round 3 s17): it
+    // stays in the client route module and runs when it loads, as main
+    'src/routes/hydrate-type-class.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { Hydrate } from '@tanstack/react-start'
+class Chart { static made = ((globalThis as any).caseHydrateTypeChart = 'made'); draw() { return 'chart' } }
+function Page() { return <div><Hydrate when="visible"><p>{((c: Chart | null) => String(c))(null)}</p></Hydrate></div> }
+export const Route = createFileRoute('/hydrate-type-class')({ component: Page })
+`,
     'src/routes/schema-read.tsx': `${head}import { countedSchema, schemaBuilds } from '../schema-read'
 const schema = countedSchema()
 const check = createServerFn({ method: 'POST' })
@@ -927,6 +1015,77 @@ describe('a server fn has one instance on the server', () => {
   test('a schema the component also reads is copied into the chunk, as on main', async () => {
     expect(await renderThenCall('/schema-read', 1)).toBe(2)
   })
+
+  test('a declaration only its own text names is copied with the state it fills, on the server', async () => {
+    const run = await (
+      await host()
+    ).run<unknown>(`(async () => {
+  const html = await (await fetch('/self-named-init')).text()
+  return /data-n="([^"]+)"/.exec(html)?.[1] ?? html.slice(0, 300)
+})()`)
+    expect(run.errors).toEqual([])
+    expect(run.result).toBe('1')
+  })
+
+  test('a class a handler names only in a type leaves the client with its server-only import', async () => {
+    const run = await (
+      await host()
+    ).run<unknown>(`(async () => {
+  const route = await import('/src/routes/class-type-in-handler.tsx')
+  await route.Route.options.component.preload?.()
+  return [String(globalThis.caseClassTypeRepo), String(globalThis.caseClassTypeDb)]
+})()`)
+    expect(run.errors).toEqual([])
+    expect(run.result).toEqual(['undefined', 'undefined'])
+  })
+
+  /** The `data-loaded` attribute of a route's server render (its loader's value). */
+  async function serverLoaded(route: string) {
+    const run = await (
+      await host()
+    ).run<unknown>(`(async () => {
+  const html = await (await fetch(${JSON.stringify(route)})).text()
+  return /data-loaded="([^"]*)"/.exec(html)?.[1] ?? html.slice(0, 300)
+})()`)
+    expect(run.errors).toEqual([])
+    return run.result
+  }
+
+  test('a class a handler names only in a type runs at route load on the server, with its server-only import', async () => {
+    expect(await serverLoaded('/class-type-in-handler')).toBe('made,loaded')
+  })
+
+  test.each([
+    ['a class', 'class', 'repo'],
+    ['an enum', 'enum', 'kind'],
+  ])(
+    '%s a handler names only in a type runs at route load on the server',
+    async (_name, key, registered) => {
+      expect(await serverLoaded(`/handler-type-${key}`)).toBe(registered)
+    },
+  )
+
+  test('a class only <Hydrate> children name in a type runs when the client route module loads', async () => {
+    const run = await (
+      await host()
+    ).run<unknown>(`(async () => {
+  await import('/src/routes/hydrate-type-class.tsx')
+  return String(globalThis.caseHydrateTypeChart)
+})()`)
+    expect(run.errors).toEqual([])
+    expect(run.result).toBe('made')
+  })
+
+  // a handler-only declaration whose initialiser names a class (R163) or a
+  // const (a statement keeps it) the component reads: the route module
+  // keeps it (R157 rule 4), and the server's split chunk, which copies the
+  // class or const, does not run it again (main, and the source: once)
+  test.each(['class', 'const'])(
+    'a handler-only initialiser naming a %s the component reads runs once on the server',
+    async (key) => {
+      expect(await renderThenCall(`/handler-init-${key}`, 1)).toEqual(['k', 1])
+    },
+  )
 
   // main: one provider copy runs both handlers: 1 2 3 4 (02f8d6b8bd:
   // 1 1 2 2, `a`'s handler module holding its own `b`)

@@ -56,9 +56,9 @@ describe('on the Vite dev server, an effect setting state only the split compone
 
 // A decorator runs user code when its class is defined (TypeScript
 // `experimentalDecorators`, as dependency injection libraries use them, on a
-// parameter as on the class): a class carrying one is an effect, which has no
-// order with the effects after it (no order rule): it runs when the split
-// component loads.
+// parameter as on the class). `main` never removes a class from the route
+// module (R163): it runs when the route module loads, in source order (the
+// chunk's copy runs it again, as on `main`).
 describe.each([
   [
     'a constructor parameter',
@@ -75,7 +75,7 @@ describe.each([
 ])(
   'on the Vite dev server, a class only the split component uses with a decorator on %s',
   (_name, declaration) => {
-    it('runs its decorator when the component loads, after the effects written after it', async () => {
+    it('runs its decorator when the route module loads, before the effects written after it', async () => {
       const route = await loadRoute(
         `${head}import { Inject, Register } from './di'
 ${declaration}
@@ -100,20 +100,15 @@ export const Register = () => (_target: unknown) => {
       const run = await route.run<{
         atLoad: Array<string>
         html: string
-        after: Array<string>
       }>(
         `const atLoad = [...globalThis.seeded]
 const html = await render('component')
-return { atLoad, html, after: [...globalThis.seeded] }`,
+return { atLoad, html }`,
         {
           before: `globalThis.seeded = []; globalThis.seed = (name) => globalThis.seeded.push(name)`,
         },
       )
-      expect(run).toEqual({
-        atLoad: ['after'],
-        html: '<p>1</p>',
-        after: ['after', 'decorator'],
-      })
+      expect(run).toEqual({ atLoad: ['decorator', 'after'], html: '<p>1</p>' })
     })
   },
 )

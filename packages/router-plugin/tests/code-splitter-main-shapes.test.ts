@@ -576,6 +576,33 @@ const _boot = registry.set('a', 1)`,
       read: "registry.get('a')",
       html: '<p>1</p>',
     },
+    // (review-a1-classes-stay-round2 q1, q3: only its own text or a type names
+    // it, so nothing else of the source reads it: `main`'s chunk keeps it)
+    {
+      name: 'a declaration only it names itself',
+      decls: `const routes: Array<string> = []
+const reg: any = (routes.push('x'), { again: () => reg })`,
+      read: 'routes.length',
+      html: '<p>1</p>',
+    },
+    {
+      name: 'a declaration only a type names',
+      decls: `const routes: Array<string> = []
+const defaults = (routes.push('home'), { a: 1 })
+type Defaults = typeof defaults
+export function format(d: Defaults) { return JSON.stringify(d) }`,
+      read: 'routes.length',
+      html: '<p>1</p>',
+    },
+    // (review-phase1 r5; R163: a class stays and is copied as a statement is)
+    {
+      name: 'a class static block whose class only an export reads',
+      decls: `const routes: Array<string> = []
+class Boot { static { routes.push('boot') } }
+export const boot = Boot`,
+      read: 'routes.length',
+      html: '<p>1</p>',
+    },
   ])('$name', async ({ decls, read, html }) => {
     const route = await loadRoute(
       `${head}${decls}
@@ -603,6 +630,266 @@ export const Route = createFileRoute('/')({ component: Comp })
     await expectValidModules(route)
     expect(await route.isLazy('component')).toBe(true)
     expect(await route.run(`return render('component')`)).toBe('<p>0/1</p>')
+  })
+})
+
+// R163 (coverage-review-A 1): `main` never removes a class, an enum or a
+// namespace from the route module, so its body runs when the route module
+// loads, also when only a split option reads it; the chunk copies it. A
+// loader reading what the body did reads it before the chunk loads.
+describe('a class, enum or namespace only split code reads runs with the route module (R163)', () => {
+  it.each([
+    {
+      name: 'a class static block',
+      decls: `const handlers = new Map<string, () => string>()
+class PageModel { static { handlers.set('page', () => 'handled') } title = 'model' }`,
+      loader: `handlers.get('page')?.() ?? 'missing'`,
+      read: 'new PageModel().title',
+      values: ['handled', '<p>model</p>'],
+    },
+    {
+      name: 'a class static field initialiser',
+      decls: `class Feature { static enabled = ((globalThis as any).caseFeature = 'on') }`,
+      loader: `(globalThis as any).caseFeature ?? 'off'`,
+      read: 'Feature.enabled',
+      values: ['on', '<p>on</p>'],
+    },
+    {
+      name: 'a class extending an import whose module has an effect',
+      decls: `import { Base } from './base'
+class Model extends Base { title = 'model' }`,
+      loader: `(globalThis as any).caseBase ?? 'not-loaded'`,
+      read: 'new Model().title',
+      values: ['loaded', '<p>model</p>'],
+    },
+    {
+      name: 'a class static block filling a registry the loader reads',
+      decls: `const registry: Array<string> = []
+class Entry { static { registry.push('entry') } }`,
+      loader: 'registry.length',
+      read: 'typeof Entry',
+      values: [1, '<p>function</p>'],
+    },
+    {
+      name: 'a namespace body',
+      decls: `namespace Boot { (globalThis as any).caseBoot = 'booted'; export function name() { return 'boot' } }`,
+      loader: `(globalThis as any).caseBoot ?? 'not-booted'`,
+      read: 'Boot.name()',
+      values: ['booted', '<p>boot</p>'],
+    },
+    {
+      name: 'an enum member initialiser',
+      decls: `const seen: Array<string> = []
+enum Kind { A = (seen.push('enum'), 'a') }`,
+      loader: 'seen.length',
+      read: 'Kind.A',
+      values: [1, '<p>a</p>'],
+    },
+  ])('$name', async ({ decls, loader, read, values }) => {
+    const route = await loadRoute(
+      `${head}${decls}
+function Page() { return <p>{String(${read})}</p> }
+export const Route = createFileRoute('/')({
+  loader: () => ${loader},
+  component: Page,
+})
+`,
+      {
+        files: {
+          'base.ts': `export class Base {}
+;(globalThis as any).caseBase = 'loaded'
+`,
+        },
+      },
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(
+      await route.run(`const loaded = await options.loader()
+return [loaded, await render('component')]`),
+    ).toEqual(values)
+  })
+
+  // `main` shares a class two option groups read (§1.3): one instance, its
+  // body run once, in the module both chunks import
+  it('creates a class two split options read once', async () => {
+    const route = await loadRoute(
+      `${head}const registry: Array<string> = []
+class Entry { static { registry.push('entry') } }
+export const Route = createFileRoute('/')({
+  component: () => <p>{registry.length}{String(new Entry() instanceof Entry)}</p>,
+  errorComponent: () => <p>{registry.length}{typeof Entry}</p>,
+})
+`,
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.isLazy('errorComponent')).toBe(true)
+    expect(
+      await route.run(
+        `return [await render('component'), await render('errorComponent')]`,
+      ),
+    ).toEqual(['<p>1true</p>', '<p>1function</p>'])
+  })
+})
+
+// R163 clarification (review-a1-classes-stay 1): route splitting never
+// removes a class, enum or namespace, whatever names it, by value or in a
+// type, in split or kept text: its body runs when the route module loads, as
+// on `main`, and so does an import only it reads.
+describe('a class, enum or namespace named only in a type runs with the route module (R163)', () => {
+  const G = '(globalThis as any)'
+  it.each([
+    {
+      name: 'a class in a type annotation of the component',
+      decls: `class M { static made = (${G}.caseM = 'made'); v = 1 }
+function Page() { const m: M | null = null; return <p>{String(m)}</p> }`,
+      loader: `${G}.caseM ?? 'not-made'`,
+      values: ['made', '<p>null</p>'],
+    },
+    {
+      name: 'an enum as a type of the component',
+      decls: `const mark = (s: string) => { ${G}.caseE = 'made'; return s }
+enum Kind { A = mark('a') as any }
+function Page() { const k: Kind | null = null; return <p>{String(k)}</p> }`,
+      loader: `${G}.caseE ?? 'not-made'`,
+      values: ['made', '<p>null</p>'],
+    },
+    {
+      name: 'a namespace whose type the component names',
+      decls: `namespace Boot { ${G}.caseBoot = 'booted'; export type T = string; export const v = 1 }
+function Page() { const t: Boot.T | null = null; return <p>{String(t)}</p> }`,
+      loader: `${G}.caseBoot ?? 'not-booted'`,
+      values: ['booted', '<p>null</p>'],
+    },
+    {
+      name: 'a class the component names through typeof',
+      decls: `class M { static made = (${G}.caseM = 'made'); v = 1 }
+function Page() { const m: typeof M | null = null; return <p>{String(m)}</p> }`,
+      loader: `${G}.caseM ?? 'not-made'`,
+      values: ['made', '<p>null</p>'],
+    },
+    {
+      name: 'a class extending an import with an effect, as a prop type',
+      decls: `import { Base } from './base'
+class Model extends Base { title = 'model' }
+function Page(props: { m?: Model }) { return <p>{String(props.m)}</p> }`,
+      loader: `${G}.caseBase ?? 'not-loaded'`,
+      values: ['loaded', '<p>undefined</p>'],
+    },
+    {
+      name: 'a decorated class the component names as a type',
+      decls: `const define = (tag: string) => (_target: unknown) => { ${G}.caseDefined = tag }
+@define('x-el')
+class XEl {}
+function Page() { const el: XEl | null = null; return <p>{String(el)}</p> }`,
+      loader: `${G}.caseDefined ?? 'not-defined'`,
+      values: ['x-el', '<p>null</p>'],
+    },
+    // (the component reads the route, whose options name the class in a
+    // type: the split leaves the class's readers unchanged)
+    {
+      name: 'a class in a type annotation of the loader that stays',
+      decls: `class M { static made = (${G}.caseM = 'made'); v = 1 }
+function Page() { return <p>{typeof Route}</p> }`,
+      loader: `{ const m: M | null = null; return String(m) + (${G}.caseM ?? 'not-made') }`,
+      values: ['nullmade', '<p>object</p>'],
+    },
+  ])('$name', async ({ decls, loader, values }) => {
+    const route = await loadRoute(
+      `${head}${decls}
+export const Route = createFileRoute('/')({
+  loader: () => ${loader},
+  component: Page,
+})
+`,
+      {
+        tsconfig: { experimentalDecorators: true },
+        files: {
+          'base.ts': `export class Base {}
+;(globalThis as any).caseBase = 'loaded'
+`,
+        },
+      },
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(
+      await route.run(`const loaded = await options.loader()
+return [loaded, await render('component')]`),
+    ).toEqual(values)
+  })
+})
+
+// Only erasure removes one: a class, enum or namespace that an erased option
+// (`deleteNodes`, Start's client `server`) names, by value or in a type, and
+// that nothing staying reads by value leaves the client with its imports,
+// against `main`, which ships it (leaks block whatever `main` does;
+// review-a1-classes-stay 3, round 2 (b)).
+describe('a class, enum or namespace only a deleted option names stays off the client', () => {
+  const G = '(globalThis as any)'
+  const handlers = (value: string) =>
+    `server: { handlers: { GET: () => new Response(String(${value})) } },`
+  it.each([
+    {
+      name: 'a class',
+      decls: `class Db { static made = (${G}.caseDb = 'made'); q() { return 'SERVER_ONLY_CANARY' } }
+function Page() { return <p>{String(${G}.caseDb)}</p> }`,
+      server: handlers('new Db().q()'),
+    },
+    {
+      name: 'a class reading an import',
+      decls: `import { secret } from './secret'
+class Db { static made = (${G}.caseDb = 'made'); q() { return secret } }
+function Page() { return <p>{String(${G}.caseDb)}</p> }`,
+      server: handlers('new Db().q()'),
+    },
+    {
+      name: 'a namespace',
+      decls: `namespace Srv { ${G}.caseDb = 'made'; export const key = () => 'SERVER_ONLY_CANARY' }
+function Page() { return <p>{String(${G}.caseDb)}</p> }`,
+      server: handlers('Srv.key()'),
+    },
+    // (R163 round 2 (b): erased text naming it in a type is enough)
+    {
+      name: 'a class reading an import, which the deleted option names in a type',
+      decls: `import { secret } from './secret'
+class Db { static made = (${G}.caseDb = 'made'); q() { return secret } }
+function Page() { return <p>{String(${G}.caseDb)}</p> }`,
+      server: `server: { handlers: { GET: () => { const d: Db | null = null; return new Response(String(d)) } } },`,
+    },
+    {
+      name: 'a class the component names as a type',
+      decls: `class Db { static made = (${G}.caseDb = 'made'); q() { return 'SERVER_ONLY_CANARY' } }
+function Page(props: { db?: Db }) { return <p>{String(${G}.caseDb)}{String(props.db)}</p> }`,
+      server: handlers('new Db().q()'),
+    },
+  ])('$name', async ({ decls, server }) => {
+    const route = await loadRoute(
+      `${head}${decls}
+export const Route = createFileRoute('/')({
+  ${server}
+  component: Page,
+})
+`,
+      {
+        deleteNodes: ['server'],
+        files: {
+          'secret.ts': `export const secret = 'SERVER_ONLY_CANARY'
+`,
+        },
+      },
+    )
+    await expectValidModules(route)
+    expect(
+      await route.run(
+        `return ['server' in options, await render('component'), globalThis.caseDb]`,
+      ),
+    ).toEqual([false, expect.stringMatching(/^<p>undefined/), undefined])
+    expect(await route.requested()).not.toContain('/secret.ts')
+    expect((await route.production()).where('SERVER_ONLY_CANARY')).toBe(
+      'nowhere',
+    )
   })
 })
 
@@ -705,22 +992,6 @@ function Page() { return <p>{Status.Active}</p> }`,
 const renderers = { [Kind.A]: () => Kind.A }
 function Page() { return <p>{renderers[Kind.A]()}</p> }`,
       html: '<p>MARK_HELPER</p>',
-    },
-    // R155: an enum or a namespace goes by the removal rule like any
-    // declaration (main keeps it in the route module and copies it into the
-    // chunk)
-    {
-      name: 'a namespace',
-      decls: `namespace Labels { export const quiet = 'MARK_HELPER' }
-function Page() { return <p>{Labels.quiet}</p> }`,
-      html: '<p>MARK_HELPER</p>',
-    },
-    {
-      name: 'an enum with a computed member',
-      decls: `const measure = (s: string) => s.length
-enum Size { Large = measure('MARK_HELPER') }
-function Page() { return <p>{Size.Large}</p> }`,
-      html: '<p>11</p>',
     },
     {
       name: 'an overloaded function',
