@@ -133,6 +133,16 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   loader reading `registry` before the first call sees it empty. The same as a `const` on `main`. R157 rule 4 keeps
   it at load when its body reads a declaration the file keeps. Workaround: read it from code that runs at load.
 
+- **A declaration the source reads only in types is removed when split code reaches it** (R163 round-2 rulings (d),
+  review-a1-classes-stay-round2 5, `q4`; accepted): `const defaults = (routes.push('home'), { a: 1 })` named only by
+  `loader: (): keyof typeof defaults => 'a'`, with a split component reading `Route`, leaves the route module and its
+  initialiser never runs. `main` never removes a declaration the source reads only in types (its "read in the
+  original" counts values), but removes one a split option read by value even when a kept annotation still names it;
+  ours counts type uses in "the source used it" (R153 amendment) so that a value import a split component names only
+  in a type leaves with it. Counting every type reference in text that stays as a use was tried: it changed 1,345
+  corpus compiles in 303 files, putting value imports used only as types (`hono`, `elysia`, `zod`, generated API
+  types) back into client route modules. Workaround: read it by value from code that stays.
+
 - **With RSC, a `<ClientOnly>` in a server component outside a server fn's handler shows its fallback for good**
   (as `main`; review-coverage-fix-batch 1): the environment that renders server components keeps `<ClientOnly>`
   children only in handler text, since it also evaluates modules whose components only SSR and the browser render,
