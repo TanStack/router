@@ -383,8 +383,8 @@ dir)` is not a conflict by itself.
   reach stay, and so does every class, enum and namespace declaration, whatever names it (by value or in a type, in
   split or kept text), with what it reads (R163: main never removes one, so its body runs when the route module
   loads), unless it is a name main shares; only erasure removes one (`deleteNodes`, Start's environment erasure, a
-  handler module's or `<Hydrate>` chunk's claim), when such text names it, by value or in a type, and no split
-  chunk reads it by value. An import nothing in the source references (a bare or CSS one included) moves to the shared
+  handler module's or `<Hydrate>` chunk's claim), when such text reads it by value, or erased text names it in a
+  type, and no split chunk reads it by value. An import nothing in the source references (a bare or CSS one included) moves to the shared
   module when the route module imports it, in source order; chunks and Start's derived outputs load after the route
   module and repeat none (React's classic JSX runtime is not supported with splitting). A declaration already unused (`const unused = register('x')`) stays in the route module only
   and runs once, where main's chunks run it again (better than main, by decision). A split chunk takes what its

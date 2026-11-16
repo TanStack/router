@@ -425,10 +425,11 @@ export function computePlacement(input: PlacementInput): Placement {
    * module splitting never removes one, whatever names it (by value or in a
    * type, in split or kept text); a chunk reading it copies it, as on
    * `main`, and a name `main` shares lives in the shared module, as there.
-   * Only erasure removes one: when text the env module erases, or another
-   * planner's output claims (a handler module, a `<Hydrate>` chunk), names
-   * it, by value or in a type (`erasedUse`), and no split chunk reads it by
-   * value (`keptBySplit`): leaks block whatever `main` does (round-2 (b)).
+   * Only erasure removes one: when text the env module erases names it, by
+   * value or in a type, or text another planner's output claims (a handler
+   * module, a `<Hydrate>` chunk, which takes what it reads) reads it by value
+   * (`erasedUse`), and no split chunk reads it by value (`keptBySplit`):
+   * leaks block whatever `main` does (round-2 (b), round-3 rulings).
    */
   const keptBySplit = new Set<ClusterId>()
   const erasedUse =
@@ -452,7 +453,7 @@ export function computePlacement(input: PlacementInput): Placement {
               })
               .map((claim) => rewrites.regions.get(claim.region).range),
           ],
-          true,
+          envView.erasedParts(),
         )
   /** A class, enum or namespace the env module of a route module keeps (R163). */
   const classStays = (c: ClusterId) =>

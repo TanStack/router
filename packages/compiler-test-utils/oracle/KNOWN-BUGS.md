@@ -133,11 +133,21 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   loader reading `registry` before the first call sees it empty. The same as a `const` on `main`. R157 rule 4 keeps
   it at load when its body reads a declaration the file keeps. Workaround: read it from code that runs at load.
 
+- **A class, enum or namespace that erased text and staying text both name only in types leaves with the erased text**
+  (R163 round-3 rulings, review-a1-classes-stay-round3 3, `v1`, `v2`, `v7`, `v12`; accepted: leaks first, as `d8`
+  and `u9`): with `deleteNodes: ['server']`, a deleted handler holding `const d: M | null = null` takes `class M {
+static made = … }` off the client also when the kept loader, the split component or a `type` alias names `M` in a
+  type, so its body does not run there, where `main` keeps it (and ships what it imports). A by-value read from
+  staying code keeps it. Workaround: read it by value from code that stays, or drop the type mention from the erased
+  code.
+
 - **A declaration the source reads only in types is removed when split code reaches it** (R163 round-2 rulings (d),
   review-a1-classes-stay-round2 5, `q4`; accepted): `const defaults = (routes.push('home'), { a: 1 })` named only by
   `loader: (): keyof typeof defaults => 'a'`, with a split component reading `Route`, leaves the route module and its
-  initialiser never runs. `main` never removes a declaration the source reads only in types (its "read in the
-  original" counts values), but removes one a split option read by value even when a kept annotation still names it;
+  initialiser never runs. The same when the split component's own annotation names it, when a `const` the chunk
+  takes names it in a type, and when erased text names it (through a `type` alias it stays). `main` never removes a
+  declaration the source reads only in types (its "read in the original" counts values), but removes one a split
+  option read by value even when a kept annotation still names it;
   ours counts type uses in "the source used it" (R153 amendment) so that a value import a split component names only
   in a type leaves with it. Counting every type reference in text that stays as a use was tried: it changed 1,345
   corpus compiles in 303 files, putting value imports used only as types (`hono`, `elysia`, `zod`, generated API

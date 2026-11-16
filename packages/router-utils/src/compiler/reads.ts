@@ -581,17 +581,20 @@ export function readFromRemoved(
   reads: ReadIndex,
   removed: Iterable<{ start: number; end: number }>,
   /**
-   * What erased text names (R163 round 2 (b)): its references by value or in
-   * a type, followed by value only; type references elsewhere and the
-   * type-only export statements are no use.
+   * What erased text names (R163 round 2 (b), round 3): its references by
+   * value, and in a type inside these ranges only (the env module's erased
+   * parts, not text another output claims), followed by value only; type
+   * references elsewhere and the type-only export statements are no use.
    */
-  erasedNames = false,
+  typeSeeds?: ReadonlyArray<{ start: number; end: number }>,
 ): Set<ClusterId> {
   const { refs, symbols } = input.t1
   const seeds = new Set<ClusterId>()
+  const erasedNames = typeSeeds !== undefined
   const parts = erasedNames
     ? [...removed]
     : [...removed, ...typeOnlyExportRanges(input.t1.items)]
+  const typeParts = typeSeeds ?? parts
   for (const part of parts) {
     for (const ref of refs.refsIn(part)) {
       // a write names the binding too: an initialiser only an erased
@@ -617,7 +620,7 @@ export function readFromRemoved(
         continue
       }
       const at = ref.node.start
-      if (parts.some((p) => at >= p.start && at < p.end)) {
+      if (typeParts.some((p) => at >= p.start && at < p.end)) {
         seeds.add(d)
         continue
       }

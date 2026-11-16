@@ -125,8 +125,8 @@ The rules, per output:
   namespace declaration, whatever names it (by value or in a type, in split or kept text), and it keeps what it
   reads, unless it is a name main shares (R163: main's removal rule never removes one, so its body runs at load).
   Only erasure removes one: when text the module erases, or another planner's output claims (a handler module, a
-  `<Hydrate>` chunk), names it, by value or in a type, and no split chunk reads it by value (leaks first, R163
-  round 2 (b)).
+  `<Hydrate>` chunk) reads it by value, or erased text names it in a type, and no split chunk reads it by value
+  (leaks first, R163 round 2 (b) and round 3).
 - **a split chunk** takes what its option's value reads, transitively. What the env module also keeps it imports from
   there when main does (`RouteModule.imported`, from the router planner: the route binding, `export const|let|var`)
   and copies otherwise, with the top-level code reaching what it copies through the names it references (R1: every
