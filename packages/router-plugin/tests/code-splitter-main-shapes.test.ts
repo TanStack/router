@@ -576,6 +576,24 @@ const _boot = registry.set('a', 1)`,
       read: "registry.get('a')",
       html: '<p>1</p>',
     },
+    // (review-a1-classes-stay-round2 q1, q3: only its own text or a type names
+    // it, so nothing else of the source reads it: `main`'s chunk keeps it)
+    {
+      name: 'a declaration only it names itself',
+      decls: `const routes: Array<string> = []
+const reg: any = (routes.push('x'), { again: () => reg })`,
+      read: 'routes.length',
+      html: '<p>1</p>',
+    },
+    {
+      name: 'a declaration only a type names',
+      decls: `const routes: Array<string> = []
+const defaults = (routes.push('home'), { a: 1 })
+type Defaults = typeof defaults
+export function format(d: Defaults) { return JSON.stringify(d) }`,
+      read: 'routes.length',
+      html: '<p>1</p>',
+    },
     // (review-phase1 r5; R163: a class stays and is copied as a statement is)
     {
       name: 'a class static block whose class only an export reads',
@@ -803,11 +821,12 @@ return [loaded, await render('component')]`),
   })
 })
 
-// Only erasure removes one: a class, enum or namespace that only an erased
-// option (`deleteNodes`, Start's client `server`) reads by value leaves the
-// client, against `main`, which ships it (leaks block whatever `main` does;
-// review-a1-classes-stay 3).
-describe('a class, enum or namespace only a deleted option reads by value stays off the client', () => {
+// Only erasure removes one: a class, enum or namespace that an erased option
+// (`deleteNodes`, Start's client `server`) names, by value or in a type, and
+// that nothing staying reads by value leaves the client with its imports,
+// against `main`, which ships it (leaks block whatever `main` does;
+// review-a1-classes-stay 3, round 2 (b)).
+describe('a class, enum or namespace only a deleted option names stays off the client', () => {
   const G = '(globalThis as any)'
   const handlers = (value: string) =>
     `server: { handlers: { GET: () => new Response(String(${value})) } },`
@@ -830,6 +849,14 @@ function Page() { return <p>{String(${G}.caseDb)}</p> }`,
       decls: `namespace Srv { ${G}.caseDb = 'made'; export const key = () => 'SERVER_ONLY_CANARY' }
 function Page() { return <p>{String(${G}.caseDb)}</p> }`,
       server: handlers('Srv.key()'),
+    },
+    // (R163 round 2 (b): erased text naming it in a type is enough)
+    {
+      name: 'a class reading an import, which the deleted option names in a type',
+      decls: `import { secret } from './secret'
+class Db { static made = (${G}.caseDb = 'made'); q() { return secret } }
+function Page() { return <p>{String(${G}.caseDb)}</p> }`,
+      server: `server: { handlers: { GET: () => { const d: Db | null = null; return new Response(String(d)) } } },`,
     },
     {
       name: 'a class the component names as a type',

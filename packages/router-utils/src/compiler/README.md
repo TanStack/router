@@ -125,13 +125,15 @@ The rules, per output:
   namespace declaration, whatever names it (by value or in a type, in split or kept text), and it keeps what it
   reads, unless it is a name main shares (R163: main's removal rule never removes one, so its body runs at load).
   Only erasure removes one: when text the module erases, or another planner's output claims (a handler module, a
-  `<Hydrate>` chunk), read it by value and no split chunk reads it by value.
+  `<Hydrate>` chunk), names it, by value or in a type, and no split chunk reads it by value (leaks first, R163
+  round 2 (b)).
 - **a split chunk** takes what its option's value reads, transitively. What the env module also keeps it imports from
   there when main does (`RouteModule.imported`, from the router planner: the route binding, `export const|let|var`)
   and copies otherwise, with the top-level code reaching what it copies through the names it references (R1: every
-  statement, every class, enum and namespace (R163) and every declaration nothing in the source references (an
-  export is a reference, as in main's removal rule; a read by another output, a server fn handler's, is one) whose
-  names reach it, transitively; main's second instance,
+  statement, every class, enum and namespace (R163) and every declaration no other declaration or statement of the
+  source reads by value (an export is a reference, as in main's removal rule; a read by another output's text, a
+  server fn handler's, is one; its own text and a type are none) whose names reach it, transitively; main's second
+  instance,
   spec-main-splitting.md §1.8; `export default <expression>` is such a statement, rendered there as
   `void (<expression>)`); a binding a statement declares (`if (…) { var x }`) is imported. A derived output drops
   only the `export` (`default`) keywords of what it copies: comments and annotations stay with the copy.

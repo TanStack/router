@@ -426,9 +426,9 @@ export function computePlacement(input: PlacementInput): Placement {
    * type, in split or kept text); a chunk reading it copies it, as on
    * `main`, and a name `main` shares lives in the shared module, as there.
    * Only erasure removes one: when text the env module erases, or another
-   * planner's output claims (a handler module, a `<Hydrate>` chunk), read it
-   * by value (`erasedUse`) and no split chunk reads it by value
-   * (`keptBySplit`): leaks block whatever `main` does.
+   * planner's output claims (a handler module, a `<Hydrate>` chunk), names
+   * it, by value or in a type (`erasedUse`), and no split chunk reads it by
+   * value (`keptBySplit`): leaks block whatever `main` does (round-2 (b)).
    */
   const keptBySplit = new Set<ClusterId>()
   const erasedUse =
@@ -713,19 +713,24 @@ export function computePlacement(input: PlacementInput): Placement {
    * through the names it references, transitively (R1): every statement,
    * for a split chunk every class, `enum` and `namespace` (R163: `main`'s
    * removal rule never removes one), and every declaration nothing in the
-   * source references (`sourceUsed`; an export is a reference, as in
-   * `main`'s removal rule: `main`'s copy strips its exports and deletes what
-   * only they read; a declaration another output reads, a server fn
-   * handler's, is read), whose code names the declaration, or names a
-   * declaration whose code names it, and so on. A chunk copying the
+   * source reads by value but its own text (`sourceRead`; an export is a
+   * reference, as in `main`'s removal rule: `main`'s copy strips its exports
+   * and deletes what only they read; a declaration another output reads, a
+   * server fn handler's, is read; a type names nothing), whose code names
+   * the declaration, or names a declaration whose code names it, and so on. A chunk copying the
    * declaration takes them, as `main`'s chunk keeps every statement reading
    * a name it still declares, every class and every never-read declaration,
    * and `main`'s provider runs the whole file. Names only: no value, call or
    * write analysis.
    */
-  const sourceUsed = readFromRemoved(input, graph, reads, [
-    { start: 0, end: input.code.length },
-  ])
+  const sourceRead = new Set<ClusterId>()
+  for (const cl of clusters) {
+    for (const t of reads.successors(cl.id, 'env', false)) {
+      if (t !== cl.id) {
+        sourceRead.add(t)
+      }
+    }
+  }
   const readersInEnv = new Map<ClusterId, Array<ClusterId>>()
   for (const c of env) {
     const r = reads.clusterReads(c, 'env', true)
@@ -796,7 +801,7 @@ export function computePlacement(input: PlacementInput): Placement {
           !isType(r) &&
           (isStatement(r) ||
             (isChunk(o) && isClassLike(r)) ||
-            (!sourceUsed.has(r) &&
+            (!sourceRead.has(r) &&
               cl.units.every((u) => units[u]!.exported.length === 0)))
         ) {
           found.push(r)
@@ -856,6 +861,9 @@ export function computePlacement(input: PlacementInput): Placement {
    * effect again.
    */
   const unusedImports: Array<ClusterId> = []
+  const sourceUsed = readFromRemoved(input, graph, reads, [
+    { start: 0, end: input.code.length },
+  ])
   for (const cl of clusters) {
     if (
       cl.units.length > 0 &&

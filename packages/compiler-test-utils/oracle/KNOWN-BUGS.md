@@ -126,6 +126,13 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   not on the client, and rendering it fails hydration (React #418). `Object.values(ns)` gets each server fn twice.
   Member reads (`ns.alpha()`) are unaffected. Workaround: enumerate an explicit list.
 
+- **A class, enum or namespace only a server fn handler reads runs at the first call on the server** (R163 round-2
+  rulings (c), review-a1-classes-stay-round2 3, `s13`; accepted: R157/R158 cover classes like any declaration): the
+  lazy handler module holds what only the handler reads, so `class Repo { static made = registry.add('repo') }`
+  read by a handler alone registers when the server fn is first called, where `main` runs it at route load; a
+  loader reading `registry` before the first call sees it empty. The same as a `const` on `main`. R157 rule 4 keeps
+  it at load when its body reads a declaration the file keeps. Workaround: read it from code that runs at load.
+
 - **With RSC, a `<ClientOnly>` in a server component outside a server fn's handler shows its fallback for good**
   (as `main`; review-coverage-fix-batch 1): the environment that renders server components keeps `<ClientOnly>`
   children only in handler text, since it also evaluates modules whose components only SSR and the browser render,

@@ -96,6 +96,26 @@ const getK = createServerFn({ method: 'POST' }).handler(() => Response.json([k[0
 function Page() { return <p data-url={getK.url}>{cfg.v}</p> }
 export const Route = createFileRoute('/handler-init-const')({ component: Page })
 `,
+    // a declaration only its own text names, next to state the component
+    // reads (review-a1-classes-stay-round2 s11): the split chunk's copy of
+    // `routes` takes it, as main's chunk does
+    'src/routes/self-named-init.tsx': `${head}const routes: Array<string> = []
+const reg: any = (routes.push('x'), { again: () => reg })
+const count = createServerFn({ method: 'POST' }).handler(() => Response.json(routes.length))
+function Page() { return <p data-n={routes.length} data-url={count.url}>page</p> }
+export const Route = createFileRoute('/self-named-init')({ component: Page })
+`,
+    // a class a handler names only in a type, reading a `.server` module
+    // (review-a1-classes-stay-round2 s8): it leaves the client with it
+    'src/class-type-db.server.ts': `;(globalThis as any).caseClassTypeDb = 'loaded'
+export const db = { all: () => ['row'] }
+`,
+    'src/routes/class-type-in-handler.tsx': `${head}import { db } from '../class-type-db.server'
+class Repo { static made = ((globalThis as any).caseClassTypeRepo = 'made'); all() { return db.all() } }
+const list = createServerFn({ method: 'POST' }).handler(() => { const r: Repo | null = null; return Response.json(String(r)) })
+function Page() { return <p data-url={list.url}>page</p> }
+export const Route = createFileRoute('/class-type-in-handler')({ component: Page })
+`,
     'src/routes/schema-read.tsx': `${head}import { countedSchema, schemaBuilds } from '../schema-read'
 const schema = countedSchema()
 const check = createServerFn({ method: 'POST' })
@@ -955,6 +975,29 @@ describe('a server fn has one instance on the server', () => {
   // chunk does, and imports only the server fn (main: 2)
   test('a schema the component also reads is copied into the chunk, as on main', async () => {
     expect(await renderThenCall('/schema-read', 1)).toBe(2)
+  })
+
+  test('a declaration only its own text names is copied with the state it fills, on the server', async () => {
+    const run = await (
+      await host()
+    ).run<unknown>(`(async () => {
+  const html = await (await fetch('/self-named-init')).text()
+  return /data-n="([^"]+)"/.exec(html)?.[1] ?? html.slice(0, 300)
+})()`)
+    expect(run.errors).toEqual([])
+    expect(run.result).toBe('1')
+  })
+
+  test('a class a handler names only in a type leaves the client with its server-only import', async () => {
+    const run = await (
+      await host()
+    ).run<unknown>(`(async () => {
+  const route = await import('/src/routes/class-type-in-handler.tsx')
+  await route.Route.options.component.preload?.()
+  return [String(globalThis.caseClassTypeRepo), String(globalThis.caseClassTypeDb)]
+})()`)
+    expect(run.errors).toEqual([])
+    expect(run.result).toEqual(['undefined', 'undefined'])
   })
 
   // a handler-only declaration whose initialiser names a class (R163) or a

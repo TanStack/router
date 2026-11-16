@@ -580,12 +580,16 @@ export function readFromRemoved(
   graph: ClusterGraph,
   reads: ReadIndex,
   removed: Iterable<{ start: number; end: number }>,
-  /** By value only: no type-position reference, no type-only export. */
-  valuesOnly = false,
+  /**
+   * What erased text names (R163 round 2 (b)): its references by value or in
+   * a type, followed by value only; type references elsewhere and the
+   * type-only export statements are no use.
+   */
+  erasedNames = false,
 ): Set<ClusterId> {
   const { refs, symbols } = input.t1
   const seeds = new Set<ClusterId>()
-  const parts = valuesOnly
+  const parts = erasedNames
     ? [...removed]
     : [...removed, ...typeOnlyExportRanges(input.t1.items)]
   for (const part of parts) {
@@ -604,7 +608,7 @@ export function readFromRemoved(
   // the type-position references: in removed text, a seed; elsewhere, a
   // use by the cluster holding them
   const typeUses = new Map<ClusterId, Array<ClusterId>>()
-  for (const [s, d] of valuesOnly ? [] : graph.clusterOfSym) {
+  for (const [s, d] of graph.clusterOfSym) {
     if (!symbols.isModuleLevel(s)) {
       continue
     }
@@ -615,6 +619,9 @@ export function readFromRemoved(
       const at = ref.node.start
       if (parts.some((p) => at >= p.start && at < p.end)) {
         seeds.add(d)
+        continue
+      }
+      if (erasedNames) {
         continue
       }
       const r = input.rewrites.regions.innermostAt(at)
