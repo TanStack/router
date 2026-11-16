@@ -62,6 +62,28 @@ describe('prerender binary responses', () => {
     expect([...written.subarray(0, JPEG_MAGIC.length)]).toEqual(JPEG_MAGIC)
   })
 
+  it('writes raw bytes when a binary response is given an .html output path', async () => {
+    const body = new Uint8Array([...JPEG_MAGIC, 0xff, 0xd9])
+
+    const handler: PrerenderHandler = {
+      getClientOutputDirectory: () => outputDir,
+      request: async () =>
+        new Response(body, {
+          status: 200,
+          headers: { 'content-type': 'image/jpeg' },
+        }),
+    }
+
+    const startConfig = makeStartConfig(['/image'])
+    startConfig.pages[0].prerender = { outputPath: '/image.html' }
+
+    await prerender({ startConfig, handler })
+
+    const written = await fsp.readFile(path.join(outputDir, 'image.html'))
+
+    expect([...written.subarray(0, JPEG_MAGIC.length)]).toEqual(JPEG_MAGIC)
+  })
+
   it('treats a mixed-case HTML content type as HTML', async () => {
     const html = '<html><body><a href="/about">About</a></body></html>'
     const requested: Array<string> = []
