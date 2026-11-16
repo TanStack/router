@@ -730,8 +730,9 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   The chunk holds its own copy of the module-level declarations the children reach, as `main`'s does (R155, R161:
   a second instance, no top-level statement), and imports only what a copy cannot be: a binding leading back to the
   boundary (the route, a component rendering itself), a name a top-level statement declares (and a declaration such a
-  statement reads, as split chunks do), what another module of the file holds. Children assigning such an import are
-  rejected (J5.5); the copy's limits are KNOWN-BUGS'.
+  statement reads, as split chunks do), the route binding, what another module of the file holds. Children assigning
+  such an import, or their copy of a binding the module also keeps, are rejected (J5.5); the copy's limits are
+  KNOWN-BUGS'.
 - **J5.3 Server output.** Children still render to HTML (G1); the server renders a boundary marker; `fallback` is
   removed when statically visible (a direct prop, an inline object spread, a single-use `const` spread) and may stay
   otherwise.
@@ -746,7 +747,7 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   calls directly inside the extracted JSX (React; Solid children may call them, R101) and `this`/`super` captures give
   a compile error naming the fix (`split={false}` or a child component); so does, on React, a read of a reassigned
   `let` inside a function of the children (R123; the fix is `useRef`), and children assigning a module binding the
-  chunk imports (J5.2; the fix is `split={false}`). Dynamic `split` counts as split. A boundary with literal `split={false}` is
+  chunk imports, or its copy of one the module also keeps (J5.2; the fix is `split={false}`). Dynamic `split` counts as split. A boundary with literal `split={false}` is
   neither extracted nor rejected, and its runtime behaviour is the framework's (C8). These rejections are the
   specified outcome, not a limitation to remove (G5's "our limitation is a bug" does not apply). Each compilation
   that attempts the extraction rejects (the client compilation included).

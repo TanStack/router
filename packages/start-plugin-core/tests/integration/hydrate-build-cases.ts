@@ -406,6 +406,48 @@ export function routes() {
       timeout,
     )
 
+    // Children reading the route of a boundary outside the route's
+    // component (an exported component another page renders): the chunk
+    // imports the route, as split chunks do, so the children read the one
+    // route the route tree updated (its `path`), not a second
+    // `createFileRoute(…)` (measure-phase2, finding 2; `main` reads `Route`
+    // unbound there).
+    test(
+      'children reading the route of a boundary outside its component use the one route',
+      async () => {
+        const build = await buildStart({
+          bundler,
+          entry,
+          files: {
+            ...pageEntries,
+            'src/toggle.tsx': toggleSource,
+            'src/routes/badge.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { Hydrate } from '@tanstack/react-start'
+import { interaction } from '@tanstack/react-start/hydration'
+import { Toggle } from '../toggle'
+export const Route = createFileRoute('/badge')({ component: Page })
+function Badge() { return <Toggle label={'badge-' + Route.options.path} /> }
+export function PostBadge() { return <Hydrate when={interaction()}><Badge /></Hydrate> }
+function Page() { return <div>page</div> }
+`,
+            'src/pages.ts': `import './routeTree.gen'
+export { PostBadge as badge } from './routes/badge'
+`,
+          },
+        })
+        const html = (await renderPages(build)).badge
+        expect(typeof html).toBe('string')
+        expect(
+          await hydratePage(build, html as string, 'badge', ['badge-/badge']),
+        ).toEqual({
+          text: 'badge-/badge clicked',
+          recoverableErrors: [],
+          consoleErrors: [],
+        })
+      },
+      timeout,
+    )
+
     // Control for the pin below (same build): an unused export without a
     // boundary is not in the client.
     test(

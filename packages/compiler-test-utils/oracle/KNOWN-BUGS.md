@@ -178,23 +178,26 @@ start-build-lazy-handlers.test.ts`, "SSR (R159) %s: …" and "SSR: a server fn a
      runs twice;
   5. an export initialised by a call: `export const Widget = initialize('w', function Widget() {…})`, children
      `<Widget />`: `initialize` runs twice;
-  6. an exported `let` a component outside the boundary assigns: `export let clicks = 0; function Counter() {
-… clicks++ … }`, children `<Counter />`: the module's export stays 0;
-  7. a compound component: `function Card() {…}; Card.Title = function Title() {…}`, children `<Card.Title />`:
+  6. a compound component: `function Card() {…}; Card.Title = function Title() {…}`, children `<Card.Title />`:
      undefined in the copy ("Element type is invalid");
-  8. `Object.assign(Tabs, { Tab })`, children `<Tabs.Tab />`: the same;
-  9. a registry filled by a top-level call: `const registry = new Map(); registry.set('a', 'A')`, children
+  7. `Object.assign(Tabs, { Tab })`, children `<Tabs.Tab />`: the same;
+  8. a registry filled by a top-level call: `const registry = new Map(); registry.set('a', 'A')`, children
      `{registry.get('a')}`: empty in the copy.
-     `split={false}` keeps one instance (`hydrate-build-cases.ts`: "an exported let the children of a split={false}
-     boundary assign stays live"). A binding leading back to the boundary (the route, a recursive component) and a name
-     a top-level statement declares are imported, not copied (H2). No test holds the nine: they are the limit itself.
+
+  `split={false}` keeps one instance (`hydrate-build-cases.ts`: "an exported let the children of a split={false}
+  boundary assign stays live"). A binding leading back to the boundary (a recursive component), the route binding and
+  a name a top-level statement declares are imported, not copied (H2). Children that would assign their copy of a
+  binding the module also keeps (an exported `let` a component outside the boundary assigns, a `let` the loader
+  reads) are refused with `hydrate-module-write` (H4) instead of being copied. No test holds the eight: they are the
+  limit itself.
+
 - **A `<Hydrate>` chunk copies a destructuring declarator whole** (`const { a, b } = make()` with children reading
   `a`): `main`'s copy keeps `{ a }` only. Lazy bytes only (+4 B on the probe); the chunk evaluates `make()` once on
   both; pruning a pattern changes which getters run. No test (the outcome is the limit).
 - **A `<Hydrate>` chunk imports a declaration that a `var`-declaring top-level statement reads** (the rule split
   chunks follow, `main`'s router splitter deletes such a declarator; `main`'s Hydrate transform copies it;
-  review-phase2-final 3.2, 4.2). `const cfg = { n: detect() }; if (typeof window !== 'undefined') { var extra =
-cfg.n }` with children reading `cfg`: the module exports `cfg` and the chunk imports it (+21 B eager on the probe;
+  review-phase2-final 3.2, 4.2). `const cfg = { n: detect() }; if (typeof window !== 'undefined') { var extra = cfg.n }`
+  with children reading `cfg`: the module exports `cfg` and the chunk imports it (+21 B eager on the probe;
   `detect()` runs once, `main` runs it again in its copy). With `let cfg` assigned in the children, the boundary is
   refused (`hydrate-module-write`), where `main`'s chunk assigns its copy; the PR's base refuses it too. Rare (a
   top-level statement declaring a `var` and reading module state the children use). No test.

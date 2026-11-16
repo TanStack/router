@@ -993,7 +993,7 @@ const FALLBACK_REASONS: Record<string, { code: string; message: string }> = {
   'shared-writer': {
     code: 'hydrate-module-write',
     message:
-      'Hydrate cannot code-split JSX that assigns a module-level binding the split code imports (one a top-level statement declares, or one leading back to the boundary, such as the route): split code cannot assign a binding it imports. Use split={false}.',
+      'Hydrate cannot code-split JSX that assigns a module-level binding other code of the module also uses: the split code would assign its own copy of it, or a binding it imports, not the one the module reads. Use split={false}.',
   },
 }
 

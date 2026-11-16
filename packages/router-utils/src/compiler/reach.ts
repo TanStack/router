@@ -193,6 +193,8 @@ export interface RouteModule {
   imported: ReadonlySet<SymbolId>
   /** The names `main` shares (`computeSharedBindings`): an exported one only chunks read moves to the shared module, which the route module re-exports it from. */
   shared: ReadonlySet<SymbolId>
+  /** The route binding (`Route`): a `<Hydrate>` chunk imports it too, whatever encloses the boundary (H2 (a)). */
+  route?: SymbolId
 }
 
 export interface Placement {

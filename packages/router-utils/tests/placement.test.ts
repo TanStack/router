@@ -138,15 +138,18 @@ describe('clusters and the single-writer rule', () => {
   // the declarations its children reach and no statement; it imports what
   // its planner names (`imported`); one assigning such an import falls back
   describe('a <Hydrate> chunk', () => {
-    const code = dedent(`
+    const buildEnv = { env: envInfo({ mode: 'build' }) }
+    const source = (children: string) =>
+      dedent(`
       import { Hydrate } from 'toy-start'
       import { register } from './register'
       export let theme = { c: 1 }
       register(theme)
-      export function Page() { return <Hydrate><p onClick={() => { theme = { c: 2 } }}>{theme.c}</p></Hydrate> }
+      export function Page() { return <Hydrate>${children}</Hydrate> }
     `)
-    const buildEnv = { env: envInfo({ mode: 'build' }) }
-    const chunk = async (imported?: Array<string>) => {
+    const reads = '<p>{theme.c}</p>'
+    const assigns = '<p onClick={() => { theme = { c: 2 } }}>{theme.c}</p>'
+    const compileBoth = async (code: string, imported?: Array<string>) => {
       const host = new MemoryHost({ files: { '/app/mod.tsx': code } })
       const planners = [toyHydratePlanner('toy-start', { imported })]
       const env = await host.compile('/app/mod.tsx', planners, buildEnv)
@@ -159,7 +162,7 @@ describe('clusters and the single-writer rule', () => {
     }
 
     it('copies the declarations the children reach, without the statements reaching them (H1)', async () => {
-      const r = await chunk()
+      const r = await compileBoth(source(reads))
       expect(r.env.facts.planners['toy-hydrate']).toBeUndefined()
       expect(r.chunk).toContain('let theme = { c: 1 }')
       expect(r.chunk).not.toContain('register')
@@ -169,29 +172,23 @@ describe('clusters and the single-writer rule', () => {
       )
     })
 
-    it('imports a binding its planner names; children assigning it fall back (H2, H4)', async () => {
-      const r = await chunk(['theme'])
+    it('imports a binding its planner names (H2)', async () => {
+      const r = await compileBoth(source(reads), ['theme'])
+      expect(r.chunk).toContain("import { theme } from '/app/mod.tsx'")
+      expect(r.chunk).not.toContain('let theme')
+    })
+
+    // H4: assigning an import, or the chunk's copy of a binding the env
+    // module keeps (the copy would be written, the env module's read)
+    it.each([
+      ['an import', ['theme']],
+      ['its copy of a binding the module keeps', undefined],
+    ])('falls back when the children assign %s (H4)', async (_, imported) => {
+      const r = await compileBoth(source(assigns), imported)
       expect(r.env.facts.planners['toy-hydrate']).toEqual({
         kept: { h0: 'shared-writer' },
       })
       expect(r.env.code).not.toContain('tss-hydrate')
-    })
-
-    it('imports a binding its planner names (H2)', async () => {
-      const host = new MemoryHost({
-        files: {
-          '/app/mod.tsx': code.replace('{ theme = { c: 2 } }', '{}'),
-        },
-      })
-      const planners = [toyHydratePlanner('toy-start', { imported: ['theme'] })]
-      await host.compile('/app/mod.tsx', planners, buildEnv)
-      const h = await host.compile(
-        '/app/mod.tsx?tss-hydrate=h0',
-        planners,
-        buildEnv,
-      )
-      expect(h!.code).toContain("import { theme } from '/app/mod.tsx'")
-      expect(h!.code).not.toContain('let theme')
     })
   })
 

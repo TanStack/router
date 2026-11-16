@@ -752,23 +752,25 @@ export const Page = () => <Hydrate><b>{new Tag() instanceof Tag ? Tag.label : ''
     }
   })
 
-  // spec-phase2-hydrate H1: a chunk copies what its children reach; the
-  // children assign their own copy, as on main (h4, a5)
-  it('lets the children assign a module let an export reads: the chunk holds its own copy', async () => {
+  // A module `let` an export also reads, assigned by the children: the
+  // chunk's copy would be written while the module's is read, so the
+  // boundary is refused (h4; the copy analogue of assigning an import)
+  it('rejects children that assign a module let an export reads', async () => {
     const code = `${REACT}let renders = 0
 export function getRenders() { return renders }
 export const Page = () => <Hydrate><button onClick={() => { renders++ }}>x</button></Hydrate>
 `
     for (const env of [clientEnv, buildClientEnv]) {
       const client = await compile(code, { env })
-      const [b] = client.extracted
-      expect(client.errors).toEqual([])
-      expect(client.chunks[b!.id]).toContain('let renders = 0')
-      expect(client.chunks[b!.id]).not.toContain(`'${FILE}`)
-      expect(client.code).toContain('let renders = 0')
+      expect(client.errors).toEqual([
+        { code: 'hydrate-module-write', start: code.indexOf('<Hydrate') },
+      ])
+      expect(client.chunks).toEqual({})
     }
   })
 
+  // H1: a `let` only the children use, which two boundaries assign: each
+  // chunk holds its own copy, as on main (a5); the module keeps none
   it('lets two boundaries assign one module let: each chunk holds its own copy', async () => {
     const code = `${REACT}let n = 0
 export const Page = () => <div><Hydrate><button onClick={() => { n++ }}>a</button></Hydrate><Hydrate><button onClick={() => { n++ }}>{n}</button></Hydrate></div>
@@ -1518,6 +1520,65 @@ export const Route = createFileRoute('/')({ component: Page })
       expect(client.code).toMatch(/export (function|const) Comments/)
     },
   )
+
+  // A module `let` the route keeps (the loader and the page read it) that
+  // the children assign: a copy in the chunk would be written while the
+  // route module's is read, so the boundary is refused (the copy analogue
+  // of assigning an import; measure-phase2 finding 1; `main` fails the
+  // build with ASSIGN_TO_IMPORT)
+  it.each([
+    [
+      'a counter',
+      'let clicks = 0',
+      'loader: () => clicks',
+      '{clicks}',
+      'clicks++',
+    ],
+    [
+      'a store',
+      'let store = { rows: [] as Array<number> }',
+      'loader: () => { store.rows.push(1) }',
+      '{store.rows.length}',
+      'store = { rows: [] }',
+    ],
+  ])(
+    'a route file: rejects children that assign a module let the route module keeps (%s)',
+    async (_, decl, loader, read, write) => {
+      const code = `import { createFileRoute } from '@tanstack/react-router'
+${REACT}${decl}
+export const Route = createFileRoute('/')({ ${loader}, component: Page })
+function Page() {
+  return <div>${read}<Hydrate><button onClick={() => { ${write} }}>x</button></Hydrate></div>
+}
+`
+      const client = await compile(code, {
+        env: buildClientEnv,
+        start: 'route',
+      })
+      expect(client.errors).toEqual([
+        { code: 'hydrate-module-write', start: code.indexOf('<Hydrate') },
+      ])
+      expect(client.chunks).toEqual({})
+    },
+  )
+
+  // The children read the route, but the boundary is not in the route's
+  // component: the chunk imports the route as split chunks do, never a
+  // second `createFileRoute(…)` (measure-phase2 finding 2)
+  it('a route file: the chunk imports the route when the boundary is outside the route component', async () => {
+    const code = `import { createFileRoute } from '@tanstack/react-router'
+${REACT}export const Route = createFileRoute('/')({ component: Page })
+function Badge() { const p = Route.useParams(); return <b>{p.id}</b> }
+export function PostBadge() { return <Hydrate><Badge /></Hydrate> }
+function Page() { return <div>page</div> }
+`
+    const client = await compile(code, { env: buildClientEnv, start: 'route' })
+    const [b] = client.extracted
+    const chunk = client.chunks[b!.id]!
+    expect(client.errors).toEqual([])
+    expect(chunk).toContain(`import { Route } from '${FILE}'`)
+    expect(chunk).not.toContain('createFileRoute')
+  })
 
   // H2 (a): a child component reading the route leads back to the boundary
   // (`Route` -> `component: Page` -> the boundary); the chunk imports the
