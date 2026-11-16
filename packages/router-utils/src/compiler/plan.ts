@@ -2,14 +2,14 @@
  * The two-layer plan: the ephemeral `AnalysisPlan` holds
  * the analysis, the rewrite set, the declared outputs and the planners'
  * facts for one compile attempt; `resolve()` runs the core phase (claims,
- * clusters, movable effects, roots, homes, inclusion, glue needs; `reach.ts`
- * over `placement/`)
+ * clusters, roots, homes, inclusion, glue needs: `placement.ts` over
+ * `clusters.ts` and `reads.ts`)
  * and `freeze()` renders everything into a plain `EmitPlan` from which no
  * Yuku object is reachable (`freeze.ts`).
  */
 import { deriveId, edgeKeyOf } from './identity'
 import { NameAllocator } from './names'
-import { computePlacement } from './route-placement'
+import { computePlacement } from './placement'
 import { freezePlan } from './freeze'
 import { cleanOrphanedDeclarations } from './orphans'
 import { RegionTable, RewriteSet } from './rewrite'
@@ -21,7 +21,7 @@ import type {
   Placement,
   RootRef,
   RouteModule,
-} from './reach'
+} from './placement'
 import type { ModuleAnalysis, Tier1 } from './analysis'
 import type { Diagnostic } from './diagnostics'
 import type { Range } from './header'
@@ -51,7 +51,7 @@ export type {
   RootRef,
   HeaderPolicy,
   Fallback,
-} from './reach'
+} from './placement'
 
 export interface EnvInfo {
   name: string
@@ -156,7 +156,7 @@ export interface PlanContext<TName extends string = string> {
   addRoot: (output: OutputId, root: RootRef) => void
   /**
    * The module is a route file: placed as route splitting on `main` places
-   * it (`route-placement.ts`). `imported`: the bindings a split chunk
+   * it (`placement.ts`). `imported`: the bindings a split chunk
    * imports from the route module when it reads them; it copies the rest.
    */
   setRouteModule: (route: RouteModule) => void

@@ -5,10 +5,10 @@
  * sub-region with the region around it; nothing else (one cluster per
  * unit). Also the module's write table: the assignments of its bindings.
  */
-import type { ClassifiedRef } from '../analysis'
-import type { SymbolId } from '../symbols'
-import type { Range } from '../header'
-import type { RegionId, Unit, UnitId } from '../units'
+import type { ClassifiedRef } from './analysis'
+import type { SymbolId } from './symbols'
+import type { Range } from './header'
+import type { RegionId, Unit, UnitId } from './units'
 import type {
   Frag,
   GenFrag,
@@ -16,8 +16,8 @@ import type {
   GeneratedUnit,
   OutputId,
   OutputView,
-} from '../rewrite'
-import type { PlacementInput } from '../reach'
+} from './rewrite'
+import type { PlacementInput } from './placement'
 
 export type ClusterId = number
 

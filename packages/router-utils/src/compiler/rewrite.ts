@@ -18,7 +18,7 @@
  * range.
  */
 import type { Range } from './header'
-import type { OutputKind } from './reach'
+import type { OutputKind } from './placement'
 import type { ClassifiedRef, RefContext } from './analysis'
 import type { SymbolId } from './symbols'
 import type { RegionId, UnitId } from './units'

@@ -26,7 +26,7 @@ import type {
   OutputRecipe,
   Segment,
 } from './plan'
-import type { OutputDecl, Placement } from './reach'
+import type { OutputDecl, Placement } from './placement'
 import type { SymbolId } from './symbols'
 import type { TopLevelItem, Unit, UnitId } from './units'
 import type {

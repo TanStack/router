@@ -17,7 +17,7 @@ import type { SourceIdentity } from './identity'
 import type { AnalysisPlan, EmitPlan, OutputRecipe } from './plan'
 import type { OutputId } from './rewrite'
 import type { SymbolId } from './symbols'
-import type { OutputKind } from './reach'
+import type { OutputKind } from './placement'
 
 /** An output that copies what it reaches (another layer's instance of the module), not one importing from the env module. */
 const copies = (kind: OutputKind) => kind === 'provider'

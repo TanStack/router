@@ -76,7 +76,7 @@ emits its own output. Nothing depends on transform order.
   is read where the unit is). An insert where no unit holds the position (a statement's keyword, between
   statements, the module's end) is refused: nothing would read what it names. A slice that cuts a node rewritten in that output fails the
   compile in every mode (it would copy the text the node replaces). The renderer (`freeze.ts`), placement's reads
-  (`placement/reads.ts`) and the erased parts are the walk's visitors; the point questions (whether a byte renders,
+  (`reads.ts`) and the erased parts are the walk's visitors; the point questions (whether a byte renders,
   the claims an output keeps) climb the tree from a position's innermost range asking each node the same two
   questions: a place without an owner erases the text, a claim's relocates it. A question costs the nesting depth,
   not the number of edits. Whether a region is claimed is asked per output (`OutputView.isClaimed`): a member reads
@@ -96,7 +96,7 @@ emits its own output. Nothing depends on transform order.
   unknown, they are the compiler's own (`tsr$x`). A planner can name a binding's glue export ahead
   (`glueExportName`: React route HMR lists them for plugin-react to ignore).
 
-### The one placement (`route-placement.ts`, R153, R155)
+### The one placement (`placement.ts`, R153, R155)
 
 A plan a planner marks as a route file (`PlanContext.setRouteModule`, the router planner's split part) is placed by
 `computeRoutePlacement`, which does what route splitting on main does, by its outcome. So is every other plan
@@ -566,13 +566,13 @@ Fixed order per env (an array the host passes): `start-env` → `hydrate` → `r
 planning round runs each planner's `plan` in that order; a planner sees the regions, edits and generated names of the
 planners before it. The router plugin alone runs only the `router` planner.
 
-| planner        | job                                                                     | file                                                                                                                                         |
-| -------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `router`       | route option splitting (`route-placement.ts`), `deleteNodes`, route HMR | `router-plugin/src/planners/router.ts` (`split.ts`, `hmr.ts`); runtime in `router-core/src/hmr.ts` and `{react,solid,vue}-router/src/hmr.ts` |
-| `start-env`    | server functions, middleware, isomorphic/env-only fns, `<ClientOnly>`   | `start-plugin-core/src/planners/start-env.ts`; recognition `src/compiler/`; ids/registry/resolver `src/server-fns/`                          |
-| `hydrate`      | `<Hydrate>` extraction into chunks                                      | `start-plugin-core/src/planners/hydrate.ts`                                                                                                  |
-| `rsc-css`      | RSC CSS injection in the provider env                                   | `start-plugin-core/src/planners/rsc-css.ts`                                                                                                  |
-| `import-edges` | import protection: per-output edges, mock substitution (policy phase)   | `start-plugin-core/src/planners/edges.ts`; rules, verdicts, reports `src/import-protection/`                                                 |
+| planner        | job                                                                   | file                                                                                                                                         |
+| -------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `router`       | route option splitting (`placement.ts`), `deleteNodes`, route HMR     | `router-plugin/src/planners/router.ts` (`split.ts`, `hmr.ts`); runtime in `router-core/src/hmr.ts` and `{react,solid,vue}-router/src/hmr.ts` |
+| `start-env`    | server functions, middleware, isomorphic/env-only fns, `<ClientOnly>` | `start-plugin-core/src/planners/start-env.ts`; recognition `src/compiler/`; ids/registry/resolver `src/server-fns/`                          |
+| `hydrate`      | `<Hydrate>` extraction into chunks                                    | `start-plugin-core/src/planners/hydrate.ts`                                                                                                  |
+| `rsc-css`      | RSC CSS injection in the provider env                                 | `start-plugin-core/src/planners/rsc-css.ts`                                                                                                  |
+| `import-edges` | import protection: per-output edges, mock substitution (policy phase) | `start-plugin-core/src/planners/edges.ts`; rules, verdicts, reports `src/import-protection/`                                                 |
 
 Composition: `startPlanners()` in `start-plugin-core/src/planners/index.ts`; the router planner and its configuration
 builder (`routerPlannerConfigFrom`) are exported from `@tanstack/router-plugin/planners`.

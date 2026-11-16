@@ -37,7 +37,7 @@ The ids and the specifiers importing them (the route file's absolute path) keep 
 which apps' chunk naming reads; `router-utils/src/compiler/identity.ts` owns it (core README, "Hosts").
 
 All of them come from one plan: whichever id the bundler asks first computes the plan, the others reuse it. A route
-file is placed as route splitting on main places it (R153; `router-utils/src/compiler/route-placement.ts`, core README
+file is placed as route splitting on main places it (R153; `router-utils/src/compiler/placement.ts`, core README
 "Route files"): the route module keeps its statements and exports and what they reach (R154); a chunk imports from it
 what main imports (`Route`, `export const|let|var`, `decisions.ts` `chunkImportsOnMain`) and copies the rest, with the
 statements that read or write it (an `export default <expression>` among them), as main does, comments and

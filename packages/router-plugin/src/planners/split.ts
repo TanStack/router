@@ -6,7 +6,7 @@
  * value (claimed region) and, in the route module, a placeholder calling
  * `lazyRouteComponent` / `lazyFn` with one importer const per group. The
  * core places everything else as route splitting on `main` does
- * (`setRouteModule`, the core's `route-placement.ts`). `deleteNodes` erases
+ * (`setRouteModule`, the core's `placement.ts`). `deleteNodes` erases
  * properties in every output.
  */
 import {
