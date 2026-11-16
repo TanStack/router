@@ -16,9 +16,11 @@ stylesheets are in the initial HTML, and they hydrate in the browser.
 
 ## Getting Started
 
-From your terminal:
+The host and the remote are two packages in one pnpm workspace. Create the
+workspace file, then install and start both apps:
 
 ```sh
+cp pnpm-workspace.yaml.example pnpm-workspace.yaml
 pnpm install
 pnpm dev
 ```
