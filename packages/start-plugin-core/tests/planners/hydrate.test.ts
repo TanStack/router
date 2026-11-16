@@ -565,7 +565,9 @@ export function Page() {
     )
   })
 
-  it('renames props React keeps for itself (key, ref, children)', async () => {
+  // `children` is an ordinary prop of the self-closing placeholder, as on
+  // main (coverage review C, finding 3)
+  it('renames props React keeps for itself (key, ref)', async () => {
     const { code, chunk, client } =
       await capturesOf(`export function Page({ children }) {
   const key = 'k'
@@ -573,14 +575,23 @@ export function Page() {
   return <Hydrate><p>{key}{ref}{children}</p></Hydrate>
 }`)
     const lazy = lazyOf(code, client.extracted[0]!.id).name
-    const { k, r, c } = shape(
-      `<${lazy} «k»={key} «r»={ref} «c»={children}/>`,
+    const { k, r } = shape(
+      `<${lazy} «k»={key} «r»={ref} children={children}/>`,
     ).exec(code)!.groups!
     // the captures travel under props React does not keep for itself
-    expect(
-      [k, r, c].filter((n) => ['key', 'ref', 'children'].includes(n!)),
-    ).toEqual([])
-    expect(chunk).toContain(`({ ${k}: key, ${r}: ref, ${c}: children })`)
+    expect([k, r].filter((n) => ['key', 'ref'].includes(n!))).toEqual([])
+    expect(chunk).toContain(`({ ${k}: key, ${r}: ref, children })`)
+  })
+
+  // a layout's boundary around the children it receives, the common form
+  it('passes the children a component receives to a boundary rendering only them', async () => {
+    const { code, chunk, client } =
+      await capturesOf(`export function Layout({ children }) {
+  return <Hydrate>{children}</Hydrate>
+}`)
+    const lazy = lazyOf(code, client.extracted[0]!.id).name
+    expect(code).toContain(`<${lazy} children={children}/>`)
+    expect(chunk).toContain('({ children })')
   })
 
   it('passes the enclosing function’s arguments as a prop, through nested boundaries', async () => {
@@ -662,21 +673,22 @@ describe('Solid (J5.2)', () => {
     ])
   })
 
-  it('renames ref and children props for Solid too, and passes arguments through props', async () => {
+  it('renames ref for Solid too, keeps children, and passes arguments through props', async () => {
     const code = `${SOLID}export function Page() {
   const ref = 'r'
-  return <Hydrate><p>{ref}{arguments.length}</p></Hydrate>
+  const children = 'c'
+  return <Hydrate><p>{ref}{children}{arguments.length}</p></Hydrate>
 }
 `
     const client = await compile(code, { env: clientEnv })
     const [b] = client.extracted
     const lazy = lazyOf(client.code, b!.id).name
-    const { r, a } = shape(`<${lazy} «r»={ref} «a»={arguments}/>`).exec(
-      client.code,
-    )!.groups!
+    const { r, a } = shape(
+      `<${lazy} «r»={ref} children={children} «a»={arguments}/>`,
+    ).exec(client.code)!.groups!
     expect(r).not.toBe('ref')
     expect(client.chunks[b!.id]).toMatch(
-      shape(`return (<p>{«p».${r}}{«p».${a}.length}</p>)`),
+      shape(`return (<p>{«p».${r}}{«p».children}{«p».${a}.length}</p>)`),
     )
   })
 })

@@ -79,19 +79,12 @@ export interface RecognizerTable {
   startMembers?: Record<string, Kind>
   /**
    * specifier → exports whose call is pure when its arguments are
-   * (TanStack's own APIs and the frameworks' component wrappers, audited
+   * (TanStack's own APIs and Solid's `lazy`, audited
    * per package by the planner that supplies them). Recognised by import binding (renamed, or a namespace member),
    * never by spelling; re-exports are not followed; nothing else is assumed
    * pure.
    */
   pureCalls?: Record<string, ReadonlySet<string>>
-  /**
-   * Specifiers of `pureCalls` whose default export is the module's
-   * namespace (a CommonJS package without `__esModule`, whose default import
-   * every bundler binds to its `module.exports`: React): a default import's
-   * members are recognised as a namespace import's.
-   */
-  pureDefaultNamespaces?: ReadonlySet<string>
   /**
    * Builder kind → the link methods of its runtime builder → the
    * environment whose compile keeps the method's argument (`both`: every

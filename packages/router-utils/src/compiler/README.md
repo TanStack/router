@@ -237,10 +237,9 @@ directives, never license comments.
   `flags.beta ?? track()` would).
 - **Pure calls**: a call with pure arguments is pure when its callee is declared `#__NO_SIDE_EFFECTS__` in the module,
   or is a known package's export the recognizer lists in `pureCalls` (audited APIs of TanStack's router packages,
-  e.g. `getRouteApi`, and of the frameworks, e.g. React `memo`, Vue `defineComponent`; Start's import protection owns
-  the table: `start-plugin-core/src/import-protection/pure-calls.ts`).
-  Tier 0 recognises imports of such an export from the package itself by binding (renamed, a namespace member, or a
-  member of a default import the recognizer lists in `pureDefaultNamespaces`: React's, a CommonJS package's exports);
+  e.g. `getRouteApi`, and Solid's `lazy`; Start's import protection owns the table:
+  `start-plugin-core/src/import-protection/pure-calls.ts`).
+  Tier 0 recognises imports of such an export from the package itself by binding (renamed, or a namespace member);
   an app module re-exporting it is not followed, and no other package's purity is assumed. A member of a namespace
   import (`Icons.Home` of `import * as Icons`) is a pure read: a module namespace's [[Get]] reads the module's binding
   and runs no code, as an imported identifier does. So is a member of a plain enum of the module (`E.A`, a data

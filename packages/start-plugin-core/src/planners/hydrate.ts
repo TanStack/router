@@ -79,8 +79,12 @@ export interface HydratePlannerConfig {
 export const HYDRATE_PLANNER = 'hydrate'
 
 const HOOK_RE = /^use[A-Z0-9]/
-/** Props React (and Solid, for `ref`) keep for themselves, or that the chunk component must not receive. */
-const RESERVED_PROPS = new Set(['key', 'ref', 'children'])
+/**
+ * Props React (and Solid, for `ref`) keep for themselves: a capture of such a
+ * name travels under another. `children` is an ordinary prop of the
+ * self-closing placeholder (`<Lazy children={children}/>`), as on main.
+ */
+const RESERVED_PROPS = new Set(['key', 'ref'])
 
 declare module '@tanstack/router-utils/compiler' {
   interface PlannerData {

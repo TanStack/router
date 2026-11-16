@@ -70,7 +70,7 @@ interface CompileRequest {
 export const JS_ID_RE = /\.[cm]?[jt]sx?(\?|$)/
 
 /** The derived outputs the router planner declares (`?tsr-split=`). */
-const ROUTER_DERIVED_KINDS = new Set(['split', 'shared', 'export'])
+const ROUTER_DERIVED_KINDS = new Set(['split', 'shared'])
 
 /** The router planner's configuration of an environment type, and the compile config holding it. */
 interface EnvConfig {

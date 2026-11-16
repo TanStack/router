@@ -2472,17 +2472,14 @@ describe('declarations only split code needs', () => {
 })
 
 // A call of a known package's pure export (`RecognizerTable.pureCalls`),
-// however imported (renamed, a namespace member, a member of a
-// `pureDefaultNamespaces` default import), stays with its reader, the
+// however imported (renamed, a namespace member), stays with its reader, the
 // route module; a declaration only the component reads moves.
 describe('a known package call the route module keeps', () => {
   const recognizer = {
     ...EMPTY_RECOGNIZER,
     pureCalls: {
       'toy-router': new Set(['getRouteApi']),
-      'toy-cjs': new Set(['getRouteApi']),
     },
-    pureDefaultNamespaces: new Set(['toy-cjs']),
   }
   async function compile(code: string, files: Record<string, string> = {}) {
     const host = new MemoryHost({
@@ -2521,8 +2518,6 @@ describe('a known package call the route module keeps', () => {
     ["import { getRouteApi } from 'toy-router'", "getRouteApi('/x')"],
     ["import { getRouteApi as g } from 'toy-router'", "g('/x')"],
     ["import * as R from 'toy-router'", "R.getRouteApi('/x')"],
-    ["import C from 'toy-cjs'", "C.getRouteApi('/x')"],
-    ["import { default as C } from 'toy-cjs'", "C.getRouteApi('/x')"],
   ] as const
 
   it('moves a declaration only the component reads, beside a call the route module keeps', async () => {

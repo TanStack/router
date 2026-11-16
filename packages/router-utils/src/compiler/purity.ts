@@ -4,8 +4,7 @@
  * templates, `/*#__PURE__*\/` calls with pure arguments, calls with pure
  * arguments of `#__NO_SIDE_EFFECTS__` callee declarations and of the pure
  * exports of known packages (`RecognizerTable.pureCalls`: by import
- * binding, namespace member or a member of a default import that is the
- * package's namespace, `pureDefaultNamespaces`; re-exports are not followed), JSX with bound/intrinsic tags and
+ * binding or namespace member; re-exports are not followed), JSX with bound/intrinsic tags and
  * pure attributes and children, and a member of a module namespace import (`ns.x`: its [[Get]]
  * reads the module's binding and runs no code, as an imported identifier does) or of a
  * plain enum of the module (`isPlainEnum`; a property of any other object may be a getter).
@@ -34,7 +33,7 @@ export interface PurityContext {
    * known package.
    */
   noSideEffectCallees: ReadonlySet<number>
-  /** Namespace imports (binding ids) of known packages, and default imports that are their namespace (`pureDefaultNamespaces`) → their pure exports. */
+  /** Namespace imports (binding ids) of known packages → their pure exports. */
   pureNamespaces: ReadonlyMap<number, ReadonlySet<string>>
   /** Value namespace imports (binding ids): `import * as ns from '…'`. */
   namespaceImports: ReadonlySet<number>

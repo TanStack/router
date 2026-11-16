@@ -1,5 +1,7 @@
 /** Helpers of the Vite hosts (router and Start). */
+import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
+import { isAbsolute } from 'node:path'
 import { deriveId, identify } from '../identity'
 import { positionSuffix } from '../diagnostics'
 import type { DiagnosticPosition } from '../diagnostics'
@@ -188,9 +190,12 @@ export async function staleHotUpdate<
 /**
  * Outside a hot update (a registry change, a dev server without HMR): the
  * environment's stale set taken, each module invalidated and its update
- * sent (`reloadModule`; nothing is sent without HMR). A failure to send one
- * is the dev server's to print (`tag`: the plugin, as messages name it);
- * the others are still sent.
+ * sent (`reloadModule`; nothing is sent without HMR). Not for a file that is
+ * gone (a route file the registry dropped as it was removed): its removal is
+ * Vite's own event, which sends what the page needs, and an update now
+ * would make the page fetch it first. A virtual module's update is still
+ * sent. A failure to send one is the dev server's to print (`tag`: the
+ * plugin, as messages name it); the others are still sent.
  */
 export function reloadStaleModules<TNode extends { file: string | null }>(
   caches: CompilerCaches,
@@ -202,6 +207,9 @@ export function reloadStaleModules<TNode extends { file: string | null }>(
   tag: string,
 ): void {
   for (const node of takeStaleModules(caches, environment, held)) {
+    if (node.file !== null && isAbsolute(node.file) && !existsSync(node.file)) {
+      continue
+    }
     environment.reloadModule(node).catch((error: unknown) => {
       environment.logger.error(
         `${tag} sending the update of ${node.file ?? 'a module'} failed: ${String(error)}`,

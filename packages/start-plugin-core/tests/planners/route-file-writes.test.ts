@@ -225,6 +225,42 @@ export const Route = createFileRoute('/')({
   )
 })
 
+// `main`'s shared names are read in the text Start leaves: on the client a
+// server fn's handler is erased, so a server fn only another one's handler
+// and the split component name is the component's alone (coverage review E,
+// finding 1: `consistent.tsx` of the server-functions e2e apps)
+describe('a server fn only an erased handler and the split component read (client)', () => {
+  const code = `import { createFileRoute } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+export const Route = createFileRoute('/')({
+  component: Page,
+  loader: async () => outerFn(),
+})
+const innerFn = createServerFn().handler(async () => 'inner')
+const outerFn = createServerFn().handler(async () => innerFn())
+function Page() {
+  return <button onClick={() => innerFn()}>{typeof outerFn}</button>
+}
+`
+
+  it('declares it in the component chunk only', async () => {
+    const env = (await compile(code, clientEnv))!.code
+    const chunk = (await compile(code, clientEnv, {
+      id: `${FILE}?tsr-split=component`,
+    }))!.code
+    const shared = /from '[^']*\?(tsr-split=shared[^']*)'/.exec(env)
+    expect(shared, env).not.toBeNull()
+    const sharedCode = (await compile(code, clientEnv, {
+      id: `${FILE}?${shared![1]}`,
+    }))!.code
+    expect(sharedCode).toMatch(/const outerFn = createServerFn\(\)/)
+    expect(chunk).toMatch(/const innerFn = createServerFn\(\)/)
+    for (const other of [env, sharedCode]) {
+      expect(other).not.toMatch(/\binnerFn\b/)
+    }
+  })
+})
+
 // A use in a type is a use: an import or declaration only removed code
 // reads in a type leaves the module (TypeScript keeps an import of a class
 // or of what `typeof` reads under `verbatimModuleSyntax`)

@@ -260,8 +260,7 @@ interface ModuleAnalysisOptions {
   markerSpecifiers?: Record<string, 'server-only' | 'client-only'>
   /**
    * The recognizer: the pure exports of its known packages
-   * (`RecognizerTable.pureCalls`, members of the default imports of
-   * `pureDefaultNamespaces`) are pure callees.
+   * (`RecognizerTable.pureCalls`) are pure callees.
    */
   recognizer?: RecognizerTable
 }
@@ -628,7 +627,6 @@ export class ModuleAnalysis {
     const pureNamespaces = new Map<number, ReadonlySet<string>>()
     let namespaceImports: Set<number> | null = null
     const pureCalls = this.recognizer?.pureCalls
-    const pureDefaults = this.recognizer?.pureDefaultNamespaces
     // the imports of the recognizer's chain factories (`BuilderImports`),
     // in the same pass (a record's fields are decoded on every read)
     const chains = this.recognizer?.builderLinks ? this.recognizer : null
@@ -651,10 +649,7 @@ export class ModuleAnalysis {
         const factories = chainFactories?.get(specifier)
         const name = pure || factories ? record.name : null
         if (pure) {
-          if (
-            kind === 'namespace' ||
-            (name === 'default' && pureDefaults?.has(specifier) === true)
-          ) {
+          if (kind === 'namespace') {
             pureNamespaces.set(local.id, pure)
           } else if (kind === 'named' && name !== null && pure.has(name)) {
             noSideEffectCallees.add(local.id)

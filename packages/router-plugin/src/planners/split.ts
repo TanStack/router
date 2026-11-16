@@ -4,7 +4,8 @@
  * Per split option: a derived output `?tsr-split=<group>`, a generated
  * unit homed there that declares the chunk's export from the option's
  * value (claimed region) and, in the route module, a placeholder calling
- * `lazyRouteComponent` / `lazyFn` with one importer const per group. The
+ * `lazyRouteComponent` / `lazyFn` with the group's importer (written in the
+ * placeholder, or one const for a group read more than once). The
  * core places everything else as route splitting on `main` does
  * (`setRouteModule`, the core's `placement.ts`). `deleteNodes` erases
  * properties in every output.
@@ -22,15 +23,14 @@ import { ROUTER_PLANNER } from './config'
 import type { SplitDecision } from './decisions'
 import type { RouterRound } from './router'
 import type {
-  Anchor,
   GenFrag,
   GlueImport,
   OutputId,
+  PlaceFrag,
   PlanContext,
   RegionId,
   SymRef,
   SymbolId,
-  Unit,
 } from '@tanstack/router-utils/compiler'
 import type { Node } from 'yuku'
 
@@ -116,30 +116,23 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
   // TEMPORARY WORKAROUND of web-infra-dev/rspack#16594: `chunkImporterCall`
   const importerCall = chunkImporterCall(ctx, round, helperImports)
 
-  // each importer right before the statement holding its group's first
-  // placeholder (the options object, or an option's object declared by
-  // itself): no effects between them, so a minifier inlines it there
-  const firstReader = new Map<string, Unit>()
-  const { units } = ctx.t1
+  // a group's importer is no declaration when one placeholder reads it
+  // (every group of the default groupings): the placeholder holds
+  // `() => import(…)` itself, so no binding stands between the route's
+  // statements for a minifier to move. A group read by several options, or
+  // wrapped (`chunkImporterCall`), gets one const after the imports: it
+  // separates no statements of the module there. (An arrow function
+  // expression has no effect when created and nothing can name it, so
+  // where it is created cannot be observed.)
+  const readers = new Map<string, number>()
   for (const d of plan.decisions) {
-    const unit = ctx.t1.unitAt(d.region)
-    const prev = firstReader.get(d.groupKey)
-    if (
-      unit !== null &&
-      (!prev || units[unit]!.range.start < prev.range.start)
-    ) {
-      firstReader.set(d.groupKey, units[unit]!)
-    }
-  }
-  const anchorOf = (groupKey: string): Anchor => {
-    const unit = firstReader.get(groupKey)
-    return unit ? { k: 'before-unit', unit: unit.id } : { k: 'after-header' }
+    readers.set(d.groupKey, (readers.get(d.groupKey) ?? 0) + 1)
   }
 
-  // one importer const and one output per group
+  // one importer and one output per group
   const groups = new Map<
     string,
-    { output: OutputId; derivedId: string; importer: SymbolId }
+    { output: OutputId; derivedId: string; importer: Array<PlaceFrag> }
   >()
   const groupOf = (d: SplitDecision) => {
     let g = groups.get(d.groupKey)
@@ -152,33 +145,39 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       derived: { kind: 'split', value: d.groupKey },
     })
     const derivedId = derivedIdOf(output)
-    const importer = names.alloc(
-      `tsrImport${d.groupKey.split('~').map(pascal).join('')}`,
-    )
     const spec = sameFileSpecifier(derivedId)
     const [open, close] = importerCall(d.groupKey)
-    ctx.rewrites.addGenerated({
-      body: [
-        {
-          k: 'text',
-          parts: [`const ${importer.name} = `, ...open, '() => import('],
-        },
-        {
-          k: 'spec',
-          specifier: spec,
-          edgeKey: ctx.edgeKey(spec, 'dynamic', 'runtime'),
-          provenance: { origin: 'runtime' },
-          form: 'dynamic',
-        },
-        { k: 'text', parts: [`)${close}\n`] },
-      ],
-      declares: [importer.sym],
-      effectful: false,
-      anchor: anchorOf(d.groupKey),
-      home: 'auto',
-      by: ROUTER_PLANNER,
-    })
-    g = { output, derivedId, importer: importer.sym }
+    const importFrags: Array<PlaceFrag> = [
+      { k: 'text', parts: [...open, '() => import('] },
+      {
+        k: 'spec',
+        specifier: spec,
+        edgeKey: ctx.edgeKey(spec, 'dynamic', 'runtime'),
+        provenance: { origin: 'runtime' },
+        form: 'dynamic',
+      },
+      { k: 'text', parts: [`)${close}`] },
+    ]
+    let importer = importFrags
+    if (readers.get(d.groupKey)! > 1 || open.length > 0) {
+      const named = names.alloc(
+        `tsrImport${d.groupKey.split('~').map(pascal).join('')}`,
+      )
+      ctx.rewrites.addGenerated({
+        body: [
+          { k: 'text', parts: [`const ${named.name} = `] },
+          ...importFrags,
+          { k: 'text', parts: ['\n'] },
+        ],
+        declares: [named.sym],
+        effectful: false,
+        anchor: { k: 'after-header' },
+        home: 'auto',
+        by: ROUTER_PLANNER,
+      })
+      importer = [{ k: 'text', parts: [{ sym: named.sym }] }]
+    }
+    g = { output, derivedId, importer }
     groups.set(d.groupKey, g)
     return g
   }
@@ -266,22 +265,22 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
 
     // the route module's placeholder (pure for the client's tree shaking;
     // a server bundle keeps every route and the comment would only cost bytes)
-    const call: Array<string | SymRef> = [
-      ctx.env.type === 'client' ? '/* @__PURE__ */ ' : '',
-      { sym: helperSym, ctx: 'callee' },
-      '(',
-      { sym: g.importer },
-      `, ${stringLiteral(d.exportName)})`,
+    const call = (prefix: string): Array<PlaceFrag> => [
+      {
+        k: 'text',
+        parts: [
+          `${prefix}${ctx.env.type === 'client' ? '/* @__PURE__ */ ' : ''}`,
+          { sym: helperSym, ctx: 'callee' },
+          '(',
+        ],
+      },
+      ...g.importer,
+      { k: 'text', parts: [`, ${stringLiteral(d.exportName)})`] },
     ]
     if (region === null) {
       ctx.rewrites.placeholder({
         range: d.region,
-        body: [
-          {
-            k: 'text',
-            parts: d.wholeProperty ? [`${d.keyText}: `, ...call] : call,
-          },
-        ],
+        body: call(d.wholeProperty ? `${d.keyText}: ` : ''),
         scope: ['env'],
         by: ROUTER_PLANNER,
       })
@@ -289,7 +288,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       ctx.rewrites.claim({
         region,
         owner,
-        placeholder: [{ k: 'text', parts: call }],
+        placeholder: call(''),
         by: ROUTER_PLANNER,
       })
     }

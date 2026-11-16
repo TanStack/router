@@ -309,6 +309,93 @@ ${body}`
     },
   )
 
+  // The types allow one argument; with a cast a second one is code of the
+  // same call: the stub replaces the whole argument list wherever the
+  // handler is replaced (client, SSR caller, env module), and the provider
+  // keeps the list as written (coverage review B, F1)
+  it.each([
+    ['a second argument', `async () => 'first', async () => db.q()`],
+    ['a spread and a trailing comma', `async () => 'first', other, ...[db.q],`],
+    [
+      'an env-only call as the second argument',
+      `async () => 'first', createServerOnlyFn(() => db.q())`,
+    ],
+    [
+      'an env-only call as the first argument',
+      `createServerOnlyFn(async () => 'first'), () => db.q()`,
+    ],
+  ])(
+    'stubs the whole argument list of a handler called with %s',
+    async (_name, args) => {
+      const code = `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
+import { db } from './db.server'
+const other = 1
+export const fn = (createServerFn() as any).handler(${args})
+`
+      const results = await Promise.all([
+        compile(code, { files }),
+        compile(code, {
+          env: envInfo({ name: 'ssr', type: 'server', isProvider: false }),
+          config,
+          files,
+        }),
+        compile(code, { env: rsc, config, files }),
+      ])
+      for (const r of results) {
+        expectValid(r.code)
+        expect(r.code).toMatch(/\.handler\([\w$]+\([^()]*\),?\)/)
+        expect(r.code).not.toContain('db.q')
+        expect(r.code).not.toContain('./db.server')
+        expect(r.code).not.toContain("'first'")
+      }
+      const provider = await results[2].derived(PROVIDER)
+      expectValid(provider)
+      // (the provider's list, after the wrapper it passes first)
+      expect(provider).toMatch(/\.handler\([\w$]+, /)
+      expect(provider).toContain("'first'")
+      expect(provider).toContain('db.q')
+    },
+  )
+
+  // A Flight render serialises `<ClientOnly>`'s props for the browser: the
+  // env rendering server components keeps the children written in a server
+  // fn's handler (coverage review C, finding 1) and erases the others, as
+  // `main` (the env only evaluates them, and they may read browser-only
+  // code); the env rendering HTML erases them all
+  it('keeps <ClientOnly> children in a handler where server components render, erases the rest', async () => {
+    const code = `import { ClientOnly } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+import { Widget } from './widget'
+export function Panel() {
+  return <div><ClientOnly fallback={<i>fb</i>}><Widget label="panel" /></ClientOnly></div>
+}
+export const getPanel = createServerFn().handler(async () =>
+  renderServerComponent(<div><ClientOnly fallback={<i>fb</i>}><Widget label="handler" /></ClientOnly><Panel /></div>),
+)
+`
+    const widget = {
+      '/app/src/widget.tsx': `'use client'\nexport function Widget(props: { label: string }) { return <b>{props.label}</b> }\n`,
+    }
+    const env = await compile(code, { env: rsc, config, files: widget })
+    expectValid(env.code)
+    expect(env.code).toContain('<ClientOnly fallback={<i>fb</i>}/>')
+    expect(env.code).not.toContain('<Widget label="panel" />')
+    const provider = await env.derived(PROVIDER)
+    expectValid(provider)
+    expect(provider).toContain('<Widget label="handler" />')
+    expect(provider).toContain("import { Widget } from './widget'")
+    const ssr = await compile(code, {
+      env: envInfo({ name: 'ssr', type: 'server', isProvider: false }),
+      config,
+      files: widget,
+    })
+    expectValid(ssr.code)
+    expect(ssr.code).toContain('<ClientOnly fallback={<i>fb</i>}/>')
+    expect(ssr.code).not.toContain('<Widget')
+    expect(ssr.code).not.toContain('./widget')
+  })
+
   it('stubs a top-level server fn in the env module (control)', async () => {
     const r = await compile(
       `import { createServerFn } from '@tanstack/react-start'\nimport { db } from './db.server'\nexport const fn = createServerFn().handler(() => db.q())\n`,

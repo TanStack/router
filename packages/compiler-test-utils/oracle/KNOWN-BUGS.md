@@ -127,6 +127,14 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   (Server-fn handler modules import the module's one instance since R157: "r5b" in
   `start-plugin-core/tests/start-compiler-erasure-parity.test.ts` gives 1.)
 
+- **With RSC, a `<ClientOnly>` in a server component outside a server fn's handler shows its fallback for good**
+  (as `main`; review-coverage-fix-batch 1): the environment that renders server components keeps `<ClientOnly>`
+  children only in handler text, since it also evaluates modules whose components only SSR and the browser render,
+  and their children may read browser-only code (a `.client` file, `window`). A `Panel` component holding
+  `<ClientOnly fallback={…}><Widget /></ClientOnly>`, rendered by a handler, sends only the fallback in the Flight
+  payload. Workaround: write the `<ClientOnly>` in the handler's JSX or in a client component.
+  `start-plugin-core/tests/planners/start-env.test.ts` ("keeps <ClientOnly> children in a handler…").
+
 - **A hoisted server fn whose chain runs a function at load that reads its own statement's declaration is not
   refused** (R162; review-phase3-fixes; accepted: niche, no corpus file): the order refusal counts reads at load
   outside the chain's functions, so an IIFE, a synchronous callback or a getter inside the chain that reads a
@@ -212,6 +220,18 @@ setTheme(t) { theme = t }`, `export function getTheme()`), children calling the 
 - **A `<Hydrate>` chunk copies a destructuring declarator whole** (`const { a, b } = make()` with children reading
   `a`): `main`'s copy keeps `{ a }` only. Lazy bytes only (+4 B on the probe); the chunk evaluates `make()` once on
   both; pruning a pattern changes which getters run. No test (the outcome is the limit).
+- **React on Vite: an edit that only changes `codeSplitGroupings` resets the component's state** (coverage review A,
+  finding 2; recorded, not ruled). The edit moves the component into another chunk (or back into the route module),
+  and React Refresh mounts it anew there: a counter shows 0 after the default groupings become
+  `[['loader', 'component']]`, `[['loader'], ['component']]` or `[]`. No reload, and every edit shows. `main` keeps
+  the state through the move (on Rsbuild `main` does not show these edits at all). Edits that add or remove an option
+  lose state on both. No test.
+- **Vite: a server fn of a `node_modules` library the app does not list in its `package.json`, called during SSR,
+  throws** (coverage review B, F3; `main` is broken there too). Start's library discovery does not bundle such a
+  library (a transitive or hoisted dependency) for SSR, so its `.handler(fn)` is not compiled, and the SSR call reads
+  the missing `serverFnMeta`: `TypeError: Cannot read properties of undefined (reading 'id')`, page 500 (build and
+  dev). `main` resolves `undefined` and renders the page without the value. The browser's HTTP call works on both, and
+  so does everything once the library is declared. Rsbuild bundles and compiles it. No test.
 - **A `<Hydrate>` chunk imports a declaration that a `var`-declaring top-level statement reads** (the rule split
   chunks follow, `main`'s router splitter deletes such a declarator; `main`'s Hydrate transform copies it;
   review-phase2-final 3.2, 4.2). `const cfg = { n: detect() }; if (typeof window !== 'undefined') { var extra = cfg.n }`
@@ -415,6 +435,13 @@ those that remain are main's bugs our output does not have.
 
 Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `integration/pages/`.
 
+- **Under `verbatimModuleSyntax`, a split chunk keeps an unused `import { Route }` of its route module** (coverage
+  review E, finding 2; spec-coverage-fix-batch section 3): `main`'s splitter leaves the import for the TypeScript
+  transform to drop, and `verbatimModuleSyntax: true` keeps it, so a chunk that never uses `Route` statically imports
+  the route module (openstory: 30 chunks). Rolldown partitions that graph differently: openstory's PR build is
+  +1,595 B eager / +4,206 B total against `main`, and 146 B smaller in total with `main`'s 30 chunk texts replayed.
+  Without the setting both builds have the same edges and the PR is 138 B smaller. No test: the outcome is
+  Rolldown's partition.
 - **Imported route options are not read** (only an object literal of the route file is): nothing is split or
   deleted, silently. SPEC J2.8, J2.14. `code-splitter-imported-options.test.ts`: "are split, or reported once naming
   the route file"; "lose the options of deleteNodes and what only they import, or are reported once naming the route

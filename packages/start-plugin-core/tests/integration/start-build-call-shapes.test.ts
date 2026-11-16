@@ -251,6 +251,20 @@ export const read = createServerOnlyFn(() => db.x()).bind(null)
     },
   },
   {
+    // the types allow one argument; with a cast the client stub replaces the
+    // whole list (coverage review B, F1, its c18)
+    name: 'a server fn handler called with a second argument',
+    slug: 'secondArgument',
+    source: (db) => `import { createServerFn } from '@tanstack/react-start'
+import { db } from './${db}'
+export const fn = (createServerFn() as any).handler(async () => 'first', async () => db.x())
+`,
+    at: 'createServerFn()',
+    client: clientServerFn('shape.fn'),
+    ssr: ssrServerFn('shape.fn'),
+    expectWorks: ({ client, ssr }) => expectServerFnWorks(client, ssr, 'first'),
+  },
+  {
     name: 'a server fn declared in a top-level block',
     slug: 'topLevelBlock',
     source: (db) => `import { createServerFn } from '@tanstack/react-start'

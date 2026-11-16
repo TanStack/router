@@ -120,6 +120,20 @@ export const ref = getUsers`,
     )
   })
 
+  // The types allow one argument; with a cast, a second one is code the
+  // client must not load either: the stub replaces the argument list, and
+  // the server fn runs its first argument (coverage review B, F1)
+  test('a handler called with a second argument leaves the client with it', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export const fn = (createServerFn() as any).handler(async () => 'first', async () => db.x())`,
+      'db.server.ts': `export const db = { x: () => 'second' }\n`,
+    })
+    expectNotLoaded(await served.loads(), ['./db.server'])
+    expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('first')
+  })
+
   test('keeps query-bearing virtual module identities distinct', async () => {
     // Two virtual modules that differ only by their query (a user plugin
     // serves them): the public one re-exports the factory the

@@ -8,7 +8,8 @@
  * module keeps; everything the module keeps is imported back: one instance,
  * R157);
  * middleware links, isomorphic implementations and env-only fns are
- * selected per env; `<ClientOnly>` children leave server envs; nested
+ * selected per env; `<ClientOnly>` children leave server envs (RSC: but a
+ * handler's); nested
  * server fns are hoisted on the server when that is safe, else refused at
  * the capture. Everything the removed code alone referenced is dropped by
  * the core: its removal rule at the module level (`placement.ts`:
@@ -250,6 +251,12 @@ interface ServerFnSite {
   handler: Node
   /** `.handler`'s type and argument lists (`<T>(fn)`): a split chunk's caller copy replaces them (R159). */
   handlerArgs: Range
+  /**
+   * `.handler`'s arguments, the first's start to the last's end (a trailing
+   * comma outside): what an RPC stub replaces. The types allow one; a
+   * further argument (with a cast) is code of the same call.
+   */
+  stubbed: Range
   base: string
   stableKey: string
   /** What a custom `generateFunctionId` receives (`handlerFunctionName`). */
@@ -702,6 +709,10 @@ function planStartEnv(
       chain,
       handler: handlerLink.arg,
       handlerArgs: { start: handlerLink.member.end, end: handlerLink.call.end },
+      stubbed: {
+        start: handlerLink.arg.start,
+        end: handlerLink.call.arguments.at(-1)!.end,
+      },
       base: described.base || 'fn',
       stableKey,
       functionName: handlerFunctionName(described.base || 'fn', functionNames),
@@ -848,9 +859,24 @@ function planStartEnv(
   }
 
   // ---- 5. <ClientOnly> children on server envs
+  // Except, in the env rendering server components (RSC), inside a server
+  // fn's handler: a Flight render serialises `<ClientOnly>`'s props for the
+  // browser, so the children travel in the payload and the browser renders
+  // them after hydration. Elsewhere that env only evaluates the module, and
+  // the children may read browser-only code, as on `main`
   if (isServer) {
+    const rendersComponents = ctx.env.isProvider && config.providerSeparate
     for (const el of analysis.clientOnlyElements) {
       if (!el.closingElement) {
+        continue
+      }
+      if (
+        rendersComponents &&
+        sites.some(
+          (site) =>
+            site.handler.start <= el.start && el.end <= site.handler.end,
+        )
+      ) {
         continue
       }
       rewrites.edit({
@@ -908,9 +934,9 @@ function planStartEnv(
         config.idMode === 'dev'
           ? `(${moduleLiteral(id)}, ${moduleLiteral((devRevision ??= revision(ctx.analysis.source.code)))})`
           : `(${moduleLiteral(id)})`
-      erased.push(rangeOf(h))
+      erased.push(site.stubbed)
       rewrites.placeholder({
-        range: rangeOf(h),
+        range: site.stubbed,
         body: [text({ sym: rpc, ctx: 'callee' }, args)],
         scope: 'all-outputs',
         by,
@@ -925,7 +951,7 @@ function planStartEnv(
       // the handler's place: its text (an env-only or isomorphic call's,
       // compiled) renders in the provider output
       rewrites.placeholder({
-        range: rangeOf(h),
+        range: site.stubbed,
         body: [text({ sym: rpc, ctx: 'callee' }, `(${moduleLiteral(id)})`)],
         scope: role === 'ssr-caller' ? 'all-outputs' : envScope,
         by,
