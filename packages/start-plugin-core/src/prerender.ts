@@ -190,7 +190,16 @@ export async function prerender({
             routerBasePath,
           )
 
-          const html = await res.text()
+          // Responses that are not HTML may contain arbitrary bytes (images,
+          // fonts, archives). Decoding those as text replaces every invalid
+          // UTF-8 sequence with U+FFFD and corrupts the output, so only HTML is
+          // read as a string and everything else is written as raw bytes.
+          const isHTMLResponse =
+            contentType.includes('html') || cleanPagePath.endsWith('.html')
+          const html = isHTMLResponse ? await res.text() : ''
+          const binaryBody = isHTMLResponse
+            ? undefined
+            : new Uint8Array(await res.arrayBuffer())
           const resolvedOutputDir = path.resolve(outputDir)
           const filepath = path.resolve(outputDir, filename.replace(/^\/+/, ''))
           const outputPrefix = resolvedOutputDir.endsWith(path.sep)
@@ -209,7 +218,7 @@ export async function prerender({
             recursive: true,
           })
 
-          await fsp.writeFile(filepath, html)
+          await fsp.writeFile(filepath, binaryBody ?? html)
 
           prerendered.add(page.path)
 
@@ -219,7 +228,7 @@ export async function prerender({
             Object.assign(page, newPage)
           }
 
-          if (prerenderOptions.crawlLinks ?? true) {
+          if (isHTMLResponse && (prerenderOptions.crawlLinks ?? true)) {
             const links = extractLinks(html)
             for (const link of links) {
               addCrawlPageTask({ path: link, fromCrawl: true })
