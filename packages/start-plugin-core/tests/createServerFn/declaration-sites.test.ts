@@ -1,9 +1,8 @@
 /**
- * Where a `createServerFn` can be written (SPEC J4.6):
- * top-level server fns work everywhere; a server fn nested in a function
- * whose handler reads no local of the function works too (goal pins); any
- * other position works or is rejected with a clear error at the call, and
- * never ships its handler to the client. Observed through the public Start
+ * Where a `createServerFn` can be written (SPEC J4.6, R162):
+ * top-level server fns work everywhere; any other position works or is
+ * rejected with a clear error at the call, and never ships its handler to
+ * the client (the positions themselves: load-positions.test.ts). Observed through the public Start
  * host: what each environment serves or rejects, what a page loads, and
  * calls of the server fns from the client (by id, through Start's server
  * entry) and from server code.
@@ -17,7 +16,6 @@ import {
   compileError,
   expectCompileError,
   expectNoClientHandler,
-  inPage,
   serveCase,
   serverFnUrls,
   useStartHost,
@@ -101,37 +99,6 @@ test.each(literalPlacements)(
         if (hasTop) {
           expect(await callOnServer(startCase, 'module.top')).toBe('top')
         }
-      }
-    }
-  },
-)
-
-// Bug: dependency-free nested handlers remain in successful client output.
-// The rows: the four public make/pick usages below.
-// Impact: client calls execute the server handler locally instead of using RPC.
-test.each(literalPlacements)(
-  'a server fn declared in $name never ships its nested handler to the client',
-  async ({ code, hasTop, read }) => {
-    // Keep the original literal-returning input, as well as a distinct
-    // executable canary. Required nested support has no rejection branch.
-    for (const body of [
-      code,
-      code.replaceAll(
-        "async () => 'nested'",
-        "async () => ['MARK_LITERAL_NESTED_HANDLER', 'nested'][1]",
-      ),
-    ]) {
-      const served = await serveCase(await host(), {
-        'module.tsx': `${head}${body}`,
-      })
-      expect(served.code.client).not.toContain('MARK_LITERAL_NESTED_HANDLER')
-      // The client gets an RPC: a server fn with its public url.
-      expect(await inPage(served, `return typeof (${read}).url`)).toBe('string')
-      // RPC absence cannot skip server execution or excuse a local handler.
-      expect(await callFromClient(served, read)).toBe('nested')
-      expect(await callOnServer(served, read)).toBe('nested')
-      if (hasTop) {
-        expect(await callFromClient(served, 'module.top')).toBe('top')
       }
     }
   },
@@ -257,21 +224,6 @@ describe('a nested server fn capturing a binding of its function', () => {
       }
     },
   )
-
-  test('is hoisted, and runs on the server, when it captures nothing', async () => {
-    const served = await serveCase(await host(), {
-      'module.tsx': `${head}import { db } from './db.server'
-export function make() {
-  const fn = createServerFn().handler(async () => db.inner())
-  return fn
-}`,
-      ...dbFiles,
-    })
-    expectNotLoaded(await served.loads(), ['./db.server'])
-    expect(await callServerFnThroughCallers(served, 'module.make()')).toBe(
-      'inner',
-    )
-  })
 })
 
 // Malformed-input diagnostic control (SPEC §8, G5): `.validator()` without
@@ -289,89 +241,6 @@ export const fn = createServerFn().validator().handler(async () => 1)`
     })
   }
 })
-
-// Goal (SPEC J4.6): a server fn nested in a function is supported
-// like a top-level one when its handler reads no local of the function: the
-// client gets an RPC, and the server runs its handler under the id the
-// client uses. (One whose handler reads a local may also be rejected:
-// pinned in known-bugs-start-compiler.test.ts.) Today these are left
-// untransformed, rejected or extracted into an invalid server module (pins
-// in known-bugs-start-compiler.test.ts).
-describe.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
-  'with %s imported',
-  (importHead) => {
-    test.each(
-      placements.filter(
-        (placement) =>
-          placement.nested &&
-          placement.name !== 'the handler of another server fn',
-      ),
-    )('supports a server fn in $name', async ({ code, read }) => {
-      const served = await serveCase(await host(), {
-        'module.tsx': placementModule(importHead, code),
-        ...dbFiles,
-      })
-      expectNotLoaded(await served.loads(), ['./db.server'])
-      expect(await callServerFnThroughCallers(served, read!)).toBe('inner')
-    })
-  },
-)
-
-// Goal (SPEC J4.6): a server fn created in the handler of another
-// one is supported. The client gets an RPC of the outer server fn, its
-// handler runs on the server under the id the client uses and calls the
-// inner one there; how the inner one is compiled is left open. Today it is
-// left untransformed or extracted into an invalid server module (pins in
-// known-bugs-start-compiler.test.ts).
-// Source: SolidStart compile.spec.ts "keeps client and server ids aligned
-// around nested server functions"; #8504 declaration-sites.test.ts
-test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
-  'with %s imported, supports a server fn in the handler of another server fn',
-  async (importHead) => {
-    const placement = placements.find(
-      ({ name }) => name === 'the handler of another server fn',
-    )!
-    const served = await serveCase(await host(), {
-      'module.tsx': placementModule(importHead, placement.code),
-      ...dbFiles,
-    })
-    expectNotLoaded(await served.loads(), ['./db.server'])
-    expect(served.code.client, 'client').not.toContain('MARK_INNER_HANDLER')
-    // The outer handler returns what the inner server fn returns.
-    expect(await callServerFnThroughCallers(served, placement.read!)).toBe(
-      'inner',
-    )
-  },
-)
-
-// Goal (SPEC J4.6): two functions of a module each declare a
-// server fn under the same local name; each runs its own handler.
-// Today they are left untransformed, rejected or extracted into an invalid
-// server module (pins in known-bugs-start-compiler.test.ts, placement "a
-// function body").
-test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
-  'with %s imported, supports server fns of the same name in two functions',
-  async (importHead) => {
-    const served = await serveCase(await host(), {
-      'module.tsx': placementModule(
-        importHead,
-        `export function makeInner() {
-  const fn = createServerFn().handler(async () => db.inner())
-  return fn
-}
-export function makeTop() {
-  const fn = createServerFn().handler(async () => db.top())
-  return fn
-}`,
-      ),
-      ...dbFiles,
-    })
-    expect([
-      await callServerFnThroughCallers(served, 'module.makeInner()'),
-      await callServerFnThroughCallers(served, 'module.makeTop()'),
-    ]).toEqual(['inner', 'top'])
-  },
-)
 
 // Sources: TanStack/router#5496 and #5892, where `.handler<T>(...)` was not
 // recognized as a server fn and its body reached the client.
@@ -438,13 +307,11 @@ export const fn = createServerFn()?.handler(async () => db.inner() ?? 'MARK_INNE
 
 // SPEC J4.6: a server fn nested in a function whose chain needs what only
 // the enclosing function's call provides (its `this`, `arguments`,
-// `new.target`, an `await` of it), whose options run code with effects,
-// that reads a module binding other code reassigns, or that sits in a
-// top-level block above a declaration its chain reads, either keeps its
-// semantics (the client gets an RPC, server code and the client get the
-// enclosing call's result) or is a compile error at that code, in every
-// environment. Never a handler that ships to the client or runs with
-// other values.
+// `new.target`, an `await` of it), or that sits in a top-level block above
+// a declaration its chain reads, either keeps its semantics (the client
+// gets an RPC, server code and the client get the enclosing call's result)
+// or is a compile error at that code, in every environment. Never a handler
+// that ships to the client or runs with other values.
 describe('a nested server fn whose chain cannot move out of its function', () => {
   const cases = [
     {
@@ -489,35 +356,6 @@ export async function make() {
       result: 'awaited',
     },
     {
-      name: 'options calling a function with effects',
-      code: `export let picked = 0
-const pick = () => {
-  picked++
-  return 'GET' as const
-}
-export function make() {
-  const fn = createServerFn({ method: pick() }).handler(async () => 'effect')
-  return fn
-}`,
-      at: '{ method: pick() }',
-      read: 'module.make()',
-      result: 'effect',
-    },
-    {
-      name: 'options reading a module binding other code reassigns',
-      code: `let method: 'GET' | 'POST' = 'GET'
-export const usePost = () => {
-  method = 'POST'
-}
-export function make() {
-  const fn = createServerFn({ method }).handler(async () => 'reassigned')
-  return fn
-}`,
-      at: 'method }',
-      read: 'module.make()',
-      result: 'reassigned',
-    },
-    {
       name: 'a top-level block above a declaration its chain reads',
       code: `export const registry: Array<unknown> = []
 {
@@ -557,69 +395,37 @@ function check(value: unknown) {
   )
 })
 
-// SPEC J4.6, G1: server fns at many declaration sites of one module (in
-// arrow functions, object methods and properties, function expressions,
-// class methods, default exports, two blocks of one function, two objects
-// with the same key) each get their own id: every call, from the client
-// (an RPC) and from server code, runs its own handler, and no handler
-// reaches the client.
+// SPEC J4.6, G1: server fns at many declaration sites of one module (object
+// properties, nested and quoted, an array, a class static field, a default
+// export, two calls of one statement kind, two objects with the same key)
+// each get their own id: every call, from the client (an RPC) and from
+// server code, runs its own handler, and no handler reaches the client.
 test('server fns at many declaration sites of one module each run their own handler', async () => {
   const sites = {
-    arrow: `export const arrow = () => {
-  const fn = createServerFn().handler(async () => 'SITE_arrow')
-  return fn
+    object: `export const object = {
+  method: createServerFn().handler(async () => 'SITE_method'),
+  nested: { property: createServerFn().handler(async () => 'SITE_property') },
 }`,
-    method: `export const object = {
-  method() {
-    const fn = createServerFn().handler(async () => 'SITE_method')
-    return fn
-  },
-  property: () => {
-    const fn = createServerFn().handler(async () => 'SITE_property')
-    return fn
-  },
-}`,
-    named: `export const callbacks = [
-  function named() {
-    const fn = createServerFn().handler(async () => 'SITE_named')
-    return fn
-  },
-]`,
+    array: `export const callbacks = [createServerFn().handler(async () => 'SITE_named')]`,
     static: `export class Api {
-  static make() {
-    const fn = createServerFn().handler(async () => 'SITE_static')
-    return fn
-  }
+  static make = createServerFn().handler(async () => 'SITE_static')
 }`,
-    default: `export default function () {
-  const fn = createServerFn().handler(async () => 'SITE_default')
-  return fn
-}`,
-    blocks: `export function both() {
-  const made: Array<unknown> = []
-  {
-    const fn = createServerFn().handler(async () => 'SITE_first')
-    made.push(fn)
-  }
-  {
-    const fn = createServerFn().handler(async () => 'SITE_second')
-    made.push(fn)
-  }
-  return made
-}`,
+    default: `export default createServerFn().handler(async () => 'SITE_default')`,
+    calls: `export const made: Array<unknown> = []
+made.push(createServerFn().handler(async () => 'SITE_first'))
+made.push(createServerFn().handler(async () => 'SITE_second'))`,
     keys: `export const a = { get: createServerFn().handler(async () => 'SITE_a') }
 export const b = { get: createServerFn().handler(async () => 'SITE_b') }
 export const quoted = { 'get-it': createServerFn().handler(async () => 'SITE_quoted') }`,
   }
   const reads = {
-    'module.arrow()': 'SITE_arrow',
-    'module.object.method()': 'SITE_method',
-    'module.object.property()': 'SITE_property',
-    'module.callbacks[0]()': 'SITE_named',
-    'module.Api.make()': 'SITE_static',
-    'module.default()': 'SITE_default',
-    'module.both()[0]': 'SITE_first',
-    'module.both()[1]': 'SITE_second',
+    'module.object.method': 'SITE_method',
+    'module.object.nested.property': 'SITE_property',
+    'module.callbacks[0]': 'SITE_named',
+    'module.Api.make': 'SITE_static',
+    'module.default': 'SITE_default',
+    'module.made[0]': 'SITE_first',
+    'module.made[1]': 'SITE_second',
     'module.a.get': 'SITE_a',
     'module.b.get': 'SITE_b',
     "module.quoted['get-it']": 'SITE_quoted',

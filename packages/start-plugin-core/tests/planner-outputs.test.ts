@@ -375,19 +375,18 @@ export const fn = createIsomorphicFn()['server'](() => 'x').client(() => 'client
     }
   })
 
-  test('a nested server fn is hoisted on the server and stubbed in place on the client', async () => {
+  test('a server fn in an object literal is hoisted on the server and stubbed in place on the client', async () => {
     const files2 = {
       '/app/module.tsx': `${head}import { db } from './db.server'
-export function make() {
-  const inner = createServerFn().handler(async () => db.inner())
-  return inner
+export const api = {
+  inner: createServerFn().handler(async () => db.inner()),
 }
 `,
       '/app/db.server.ts': `export const db = { inner: () => 'inner' }\n`,
     }
     const client = (await compile(files2, 'client'))!
     expect(client.code).toContain(
-      `const inner = createServerFn().handler(${clientRpc(client.code)}(`,
+      `inner: createServerFn().handler(${clientRpc(client.code)}(`,
     )
     expect(client.code).not.toContain('db.server')
     const ssr = (await compile(files2, 'ssr'))!
@@ -407,42 +406,8 @@ export function make() {
     ))!
     expect(handlers.code).toContain('= async () => db.inner()')
     expect(ssr.code).toContain(`import { ${hoisted} }`)
-    expect(ssr.code).toContain(`const inner = ${hoisted}`)
+    expect(ssr.code).toContain(`inner: ${hoisted}`)
     expect(chain.code).toContain('name: "inner"')
-  })
-
-  // The nested site is judged against the stub of its enclosing handler
-  // whatever the order the analysis found the sites in (here the inner
-  // factory's import binding comes first): on the client the handler is a
-  // stub, so the nested fn is dead there and never registered as
-  // client-referenced (J4.2: only client-referenced fns are HTTP-callable).
-  test('a nested server fn inside a handler is not a client server fn, whichever import binding declares it', async () => {
-    const files3 = {
-      '/app/module.tsx': `import { createServerFn as inner } from '@tanstack/react-start'
-import { createServerFn } from '@tanstack/react-start'
-import { db } from './db.server'
-export const outer = createServerFn().handler(async () => {
-  const nested = inner().handler(async () => db.inner())
-  return nested()
-})
-`,
-      '/app/db.server.ts': `export const db = { inner: () => 'inner' }\n`,
-    }
-    const client = (await compile(files3, 'client'))!
-    expect(client.diagnostics).toEqual([])
-    expect(client.code).not.toContain('db.server')
-    expect(
-      (client.facts.planners[START_ENV] as StartEnvFacts).serverFns.map(
-        (fn) => fn.name,
-      ),
-    ).toEqual(['outer'])
-    const ssr = (await compile(files3, 'ssr'))!
-    expect(ssr.diagnostics).toEqual([])
-    expect(
-      (ssr.facts.planners[START_ENV] as StartEnvFacts).serverFns.map(
-        (fn) => fn.name,
-      ),
-    ).toEqual(['outer', 'nested'])
   })
 
   test('a nested server fn capturing a local is refused at the capture', async () => {
@@ -1083,7 +1048,11 @@ export function setup(props: { t: string }) {
       ))!
       expect(
         out.diagnostics.map((d) => d.range!.start).sort((x, y) => x - y),
-      ).toEqual([at('base.handler'), at('props.t'), at('f()).handler')])
+      ).toEqual([
+        at('base.handler'),
+        at('props.t'),
+        at('createServerFn().validator'),
+      ])
       const facts = out.facts.planners[START_ENV] as StartEnvFacts
       expect(facts.vueHoists).toEqual(
         vue
@@ -1093,7 +1062,7 @@ export function setup(props: { t: string }) {
                 reads: { name: 'base', builder: true },
               },
               { at: at('props.t'), reads: { name: 'props', builder: false } },
-              { at: at('f()).handler'), option: '`f()`' },
+              { at: at('createServerFn().validator') },
             ]
           : undefined,
       )

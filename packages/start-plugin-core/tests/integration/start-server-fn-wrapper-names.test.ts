@@ -2,9 +2,8 @@
  * SPEC J4.4: a server fn called from the client runs its own handler. The
  * provider exports one wrapper per server fn, and the client's call reaches
  * it by the id the client printed. Here a top-level server fn's name
- * (`fn_1`) is also what the provider derives for a server fn nested in an
- * isomorphic fn's `.server()` (the second of two), which the client
- * erases: the client still calls the top-level fn. On Vite's and Rsbuild's
+ * (`fn_1`) is also what the provider derives for an unnamed server fn of
+ * an array (the second of two): the client still calls the top-level fn. On Vite's and Rsbuild's
  * dev servers (the server renders the page first, so it compiles the file
  * before the client) and in their builds, served like a deployed app.
  */
@@ -35,22 +34,20 @@ const timeout = 60_000
 const app = {
   'src/router.ts': routerFile,
   'src/routes/__root.tsx': rootDocument(),
-  'src/fns.ts': `import { createIsomorphicFn, createServerFn } from '@tanstack/react-start'
-export const run = createIsomorphicFn()
-  .server(() => [
-    createServerFn().handler(() => 'MARK_NESTED_A'),
-    createServerFn().handler(() => 'MARK_NESTED_B'),
-  ])
-  .client(() => [])
+  'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const listed = [
+  createServerFn().handler(() => 'MARK_NESTED_A'),
+  createServerFn().handler(() => 'MARK_NESTED_B'),
+]
 export const fn_1 = createServerFn().handler(() => 'MARK_TOP')
 `,
   'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import { fn_1, run } from '../fns'
+import { fn_1, listed } from '../fns'
 export const Route = createFileRoute('/')({ component: Page })
 function Page() {
   const [text, setText] = useState('idle')
-  const probe = async () => setText('fn_1=' + (await fn_1().then(String, String)) + ' run=' + run().length)
+  const probe = async () => setText('fn_1=' + (await fn_1().then(String, String)) + ' listed=' + listed.length)
   return <button data-testid="probe" onClick={probe}>{text}</button>
 }
 `,
@@ -91,14 +88,14 @@ async function probe(page: {
 
 describe.each(Object.keys(devServers))('%s dev', (bundler) => {
   test(
-    'the client calls the top-level server fn, not the nested one the provider named alike',
+    'the client calls the top-level server fn, not the hoisted one the provider named alike',
     async () => {
       const url = await devServers[bundler]!()
       const page = await openPage(url, { registerCleanup: onTestFinished })
       await page.waitForText('hydrated', {
         selector: '[data-testid=hydrated]',
       })
-      expect(await probe(page)).toBe('fn_1=MARK_TOP run=0')
+      expect(await probe(page)).toBe('fn_1=MARK_TOP listed=2')
     },
     timeout,
   )
@@ -127,12 +124,12 @@ describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
   })
 
   test(
-    'the client calls the top-level server fn, not the nested one the provider named alike',
+    'the client calls the top-level server fn, not the hoisted one the provider named alike',
     async () => {
       const page = await openAppPage({ url }, '/', {
         registerCleanup: onTestFinished,
       })
-      expect(await probe(page)).toBe('fn_1=MARK_TOP run=0')
+      expect(await probe(page)).toBe('fn_1=MARK_TOP listed=2')
     },
     timeout,
   )

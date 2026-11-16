@@ -194,10 +194,7 @@ export const getHeavy = createServerFn().handler(async () => heavy)
 export const getSlow = createServerFn().handler(async () => slow)
 export const readLabel = createServerFn().handler(async () => label)
 export const bump = createServerFn().handler(async () => ++count)
-export function makeNested() {
-  const nested = createServerFn().handler(async () => deep)
-  return nested
-}
+export const hoisted = { nested: createServerFn().handler(async () => deep) }
 `,
   // two handlers writing one binding nothing else of the module uses
   'writers.ts': `${head}let calls = 0
@@ -261,37 +258,6 @@ for await (const result of [tlaForFn()]) {
   results.push(result)
 }
 `,
-  // a route whose split component defines a server fn: the chain is hoisted
-  // into the route module, the component moves to its chunk
-  'route-dep.server.ts': counted('MARK_ROUTE_DEP'),
-  'src/routes/nested.tsx': `import { createFileRoute } from '@tanstack/react-router'
-${head}import { value } from '../../route-dep.server'
-function Page() {
-  const load = createServerFn().handler(async () => value)
-  ;(globalThis as any).__routeLoad = load
-  return 'MARK_ROUTE_PAGE'
-}
-export const Route = createFileRoute('/nested')({ component: Page })
-`,
-  // the same with a middleware: the hoisted chain is lazy too (R159), its
-  // middleware's module loads with the chunk, the handler's at the call
-  'nested-mw.ts': `${counted('MARK_NESTED_MW')}import { createMiddleware } from '@tanstack/react-start'
-export const nestedMw = createMiddleware({ type: 'function' }).server(async ({ next }) => next())
-`,
-  'nested-mw-dep.server.ts': counted(
-    'MARK_NESTED_MW_DEP',
-    `'MARK_NESTED_MW_DEP'`,
-  ),
-  'src/routes/nested-mw.tsx': `import { createFileRoute } from '@tanstack/react-router'
-${head}import { nestedMw } from '../../nested-mw'
-import { value } from '../../nested-mw-dep.server'
-function Page() {
-  const load = createServerFn().middleware([nestedMw]).handler(async () => value)
-  ;(globalThis as any).__nestedMwLoad = load
-  return 'MARK_NESTED_MW_PAGE'
-}
-export const Route = createFileRoute('/nested-mw')({ component: Page })
-`,
   // a top-level statement names a server fn the split component calls: the
   // file holds it; one instance answers the chunk's calls and HTTP calls
   'register.ts': `export const register = (fn: unknown) => {
@@ -336,24 +302,6 @@ export const Route = createFileRoute('/shared-log')({
 function Page() {
   return <p onClick={() => listLogged()}>MARK_SHARED_LOG_PAGE {PAGE_SIZE}</p>
 }
-`,
-  // a server fn nested in an exported class only the split component reads:
-  // the class leaves the route module, which holds the hoisted fn, and each
-  // of the two imports the other
-  'src/routes/nested-class.tsx': `import { createFileRoute } from '@tanstack/react-router'
-${head}export class K {
-  label() {
-    return 'MARK_CLASS'
-  }
-  make() {
-    return createServerFn().handler(async () => new K().label())
-  }
-}
-function Page() {
-  ;(globalThis as any).__classLoad = new K().make()
-  return 'MARK_CLASS_PAGE'
-}
-export const Route = createFileRoute('/nested-class')({ component: Page })
 `,
   // R158, R159: server fns only a route's split component calls (the route
   // file's code does not name them) live in the file's lazy module with
@@ -630,96 +578,16 @@ return { atLoad, values, after: globalThis.seeded }`)
   )
 
   test(
-    'SSR: the server-only module of a nested server fn loads on its first call',
+    'SSR: the server-only module of a hoisted server fn loads on its first call',
     async () => {
       const { result } = await build.ssr
-        .run(`${counters}const fn = entry.makeNested()
+        .run(`${counters}const fn = entry.hoisted.nested
 const before = counts('deep')
 return { before, called: await fn(), after: counts('deep') }`)
       expect(result).toEqual({
         before: { deep: 0 },
         called: 'MARK_DEEP',
         after: { deep: 1 },
-      })
-    },
-    timeout,
-  )
-
-  test(
-    'SSR: a server fn nested in an exported class only the split component reads runs, directly and over HTTP',
-    async () => {
-      const { result } = await build.ssr
-        .run(`${callByIdPrelude}const { routeTree } = entry.getRouter()
-const rendered = await entry.renderPath(routeTree, '/nested-class')
-const load = globalThis.__classLoad
-return {
-  rendered: rendered.includes('MARK_CLASS_PAGE'),
-  called: await load(),
-  overHttp: await callById(serverFnId(load)),
-}`)
-      expect(result).toEqual({
-        rendered: true,
-        called: 'MARK_CLASS',
-        overHttp: 'MARK_CLASS',
-      })
-    },
-    timeout,
-  )
-
-  test(
-    "SSR: a server fn nested in a route's split component runs, directly and over HTTP, loading its handler's module on the first call",
-    async () => {
-      const { result } = await build.ssr
-        .run(`${callByIdPrelude}${counters}const { routeTree } = entry.getRouter()
-const rendered = await entry.renderPath(routeTree, '/nested')
-const load = globalThis.__routeLoad
-const before = counts('route_dep')
-return {
-  rendered: rendered.includes('MARK_ROUTE_PAGE'),
-  before,
-  called: await load(),
-  overHttp: await callById(serverFnId(load)),
-  after: counts('route_dep'),
-}`)
-      expect(result).toEqual({
-        rendered: true,
-        before: { route_dep: 0 },
-        called: 'MARK_ROUTE_DEP',
-        overHttp: 'MARK_ROUTE_DEP',
-        after: { route_dep: 1 },
-      })
-    },
-    timeout,
-  )
-
-  test(
-    "SSR (R159): a server fn nested in a route's split component, with a middleware: nothing loads at server start, the middleware with the chunk, the handler's module at the first call",
-    async () => {
-      const { result } = await build.ssr
-        .run(`${callByIdPrelude}const marks = () => ({
-  mw: globalThis.MARK_NESTED_MW ?? 0,
-  dep: globalThis.MARK_NESTED_MW_DEP ?? 0,
-})
-const atStart = marks()
-const { routeTree } = entry.getRouter()
-const rendered = (await entry.renderPath(routeTree, '/nested-mw')).includes('MARK_NESTED_MW_PAGE')
-const afterRender = marks()
-const load = globalThis.__nestedMwLoad
-return {
-  atStart,
-  rendered,
-  afterRender,
-  called: await load(),
-  overHttp: await callById(serverFnId(load)),
-  end: marks(),
-}`)
-      expect(result).toEqual({
-        atStart: { mw: 0, dep: 0 },
-        rendered: true,
-        afterRender: { mw: 1, dep: 0 },
-        called: 'MARK_NESTED_MW_DEP',
-        overHttp: 'MARK_NESTED_MW_DEP',
-        end: { mw: 1, dep: 1 },
       })
     },
     timeout,

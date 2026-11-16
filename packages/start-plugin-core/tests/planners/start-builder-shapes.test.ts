@@ -212,11 +212,6 @@ const supported: Array<Shape> = [
     code: `${P}const base = Math.random() > 2 ? createServerFn({ method: 'POST' }) : createServerFn()\nexport const fn = base.handler(async () => db.x())`,
   },
   {
-    name: 'a ternary of two server fns',
-    code: `${P}export const fn = Math.random() > 2 ? createServerFn().handler(async () => db.x()) : createServerFn().handler(async () => db.y())`,
-    body: 'db.y()',
-  },
-  {
     name: 'a ternary as the receiver of `.handler()`',
     code: `${P}export const fn = (Math.random() > 2 ? createServerFn() : createServerFn({ method: 'POST' })).handler(async () => db.x())`,
   },
@@ -313,10 +308,6 @@ const supported: Array<Shape> = [
   {
     name: 'a server fn in an array',
     code: `${P}export const fns = [createServerFn().handler(async () => db.x())]`,
-  },
-  {
-    name: 'a server fn as a class field',
-    code: `${P}export class Api {\n  getX = createServerFn().handler(async () => db.x())\n}`,
   },
   {
     name: 'a server fn as the default export',

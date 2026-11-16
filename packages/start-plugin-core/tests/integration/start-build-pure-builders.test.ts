@@ -216,14 +216,12 @@ export function Panel() {
   )
 }
 `,
-            // an exported function creating a server fn: the chunk copies it
+            // an exported object holding a server fn the split component reads
             'src/routes/copied-fn.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-export function makeAction() {
-  return createServerFn().handler(() => 'made')
-}
+export const actions = { make: createServerFn().handler(() => 'made') }
 export const Route = createFileRoute('/copied-fn')({
-  component: () => <p data-url={makeAction().url}>MARK_copied-fn</p>,
+  component: () => <p data-url={actions.make.url}>MARK_copied-fn</p>,
 })
 `,
             'src/routes/two-exported.tsx': `import { createFileRoute } from '@tanstack/react-router'
@@ -298,12 +296,12 @@ const sending = `createMiddleware({ type: 'function' }).server(({ next }) => nex
 
 const serverFiles = {
   'src/schema.ts': files['src/schema.ts'],
-  // a server fn nested in a function, with a builder chain in its options
+  // a hoisted server fn (an object's entry), with a builder chain in its options
   'src/nested.ts': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
-export function makeLookup() {
-  return createServerFn()
+export const lookups = {
+  lookup: createServerFn()
     .middleware([${sending}])
-    .handler(async ({ context }) => context.via)
+    .handler(async ({ context }) => context.via),
 }
 `,
   // a middleware a server fn (called by the loader) and the split component
@@ -328,42 +326,42 @@ export const Route = createFileRoute('/identity')({
   component: () => <p>{'MARK_identity'}{typeof counted.options}</p>,
 })
 `,
-  // a middleware `const` only a server fn nested in split code reads: the
-  // server compile hoists that server fn into the route module, which keeps
-  // the middleware it reads
+  // a middleware `const` only a hoisted server fn split code calls reads:
+  // the server compile hoists that server fn in the route module, which
+  // keeps the middleware it reads
   'src/routes/hoisted.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { createMiddleware, createServerFn } from '@tanstack/react-start'
 import { makeSchema } from '../schema'
 const tagged = createMiddleware({ type: 'function' }).server(({ next }) =>
   next({ context: { via: 'MARK_hoisted' } }),
 )
-function lookup() {
-  return createServerFn()
+const lookups = {
+  lookup: createServerFn()
     .middleware([tagged])
-    .handler(async ({ context }) => context.via)()
+    .handler(async ({ context }) => context.via),
 }
 export const Route = createFileRoute('/hoisted')({
   validateSearch: makeSchema({ tab: 'string' }),
-  loader: () => lookup(),
+  loader: () => lookups.lookup(),
   component: () => <p>{Route.useLoaderData()}</p>,
 })
 `,
-  'client-entry.ts': `export { makeLookup } from './src/nested'
+  'client-entry.ts': `export { lookups } from './src/nested'
 `,
-  'ssr-entry.ts': `export { makeLookup } from './src/nested'
+  'ssr-entry.ts': `export { lookups } from './src/nested'
 ${callByIdExports}`,
 }
 
 describe.each(startBundlers)('a %s build', (bundler) => {
   test(
-    'runs a nested server fn whose options are a builder chain, and a shared middleware once per call',
+    'runs a hoisted server fn whose options are a builder chain, and a shared middleware once per call',
     async () => {
       const build = await buildStart({
         bundler,
         files: serverFiles,
         entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
       })
-      const url = (await build.client.run('return entry.makeLookup().url'))
+      const url = (await build.client.run('return entry.lookups.lookup.url'))
         .result
       const { result } = await build.ssr.run(`${callByIdPrelude}
 const runs = () => globalThis.__runs ?? 0

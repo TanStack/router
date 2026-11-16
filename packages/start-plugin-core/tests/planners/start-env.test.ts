@@ -259,32 +259,27 @@ describe('a separate provider env with derived provider modules (Vite RSC)', () 
   // the handler (the factory, its options, the middleware) stays with it.
   it.each([
     [
-      'a function',
-      `export function make() {
-  const fn = createServerFn({ method: METHOD }).middleware([mw]).handler(() => db.q())
-  return fn
+      'an object literal',
+      `export const api = {
+  fn: createServerFn({ method: METHOD }).middleware([mw]).handler(() => db.q()),
 }
 `,
     ],
     [
-      'a top-level block',
+      'an assignment',
       `export let fn
-if (globalThis.flag) {
-  fn = createServerFn({ method: METHOD }).middleware([mw]).handler(() => db.q())
-}
+fn = createServerFn({ method: METHOD }).middleware([mw]).handler(() => db.q())
 `,
     ],
     [
-      'a class method',
+      'a class static field',
       `export class Api {
-  make() {
-    return createServerFn({ method: METHOD }).middleware([mw]).handler(() => db.q())
-  }
+  static fn = createServerFn({ method: METHOD }).middleware([mw]).handler(() => db.q())
 }
 `,
     ],
   ])(
-    'keeps what a server fn nested in %s reads in the env module',
+    'keeps what a server fn hoisted from %s reads in the env module',
     async (_name, body) => {
       const code = `import { createServerFn, createMiddleware } from '@tanstack/react-start'
 import { db } from './db.server'
@@ -586,7 +581,7 @@ export const reset = createServerFn().handler(async () => { clear(); return db.q
   })
 })
 
-describe('a server fn nested in a function (J4.6): hoisted when it captures nothing', () => {
+describe('a server fn nested in a function (J4.6): a capture is refused at the capture', () => {
   const rsc = envInfo({
     name: 'rsc',
     type: 'server',
@@ -669,63 +664,6 @@ import { db } from './db.server'
       }
     },
   )
-
-  it('hoists a nested server fn capturing nothing in every env', async () => {
-    const code = `${head}export function make() {
-  const fn = createServerFn().handler(() => db.q(1))
-  return fn
-}
-`
-    for (const [envName, env, config] of envs) {
-      const r = await compile(code, { env, config, files })
-      expectValid(r.code)
-      expect(r.out.diagnostics, envName).toEqual([])
-      expect(r.code, envName).toContain('export function make()')
-      if (env.type === 'client') {
-        expect(r.code).toContain('createClientRpc')
-        expect(r.code).not.toContain('db.q(1)')
-        expect(r.code).not.toContain('./db.server')
-      } else if (env.isProvider) {
-        expect(r.code).toContain('createSsrRpc')
-        expect(r.code).not.toContain('db.q(1)')
-      } else {
-        // the in-place provider's handlers live in its handler module
-        expect(r.code).not.toContain('db.q(1)')
-        expect(await r.derived(`${FILE}?tss-serverfn-handler`)).toContain(
-          'db.q(1)',
-        )
-      }
-    }
-  })
-
-  // the nested chain goes with the handler stubbed on the client, whichever
-  // import binding of the factory each chain is written with (the nested
-  // chain's binding is declared first: its site is enumerated first)
-  it('registers a server fn nested in a handler on the server envs only', async () => {
-    const code = `import { createServerFn as innerFn } from '@tanstack/react-start'
-import { createServerFn } from '@tanstack/react-start'
-import { db } from './db.server'
-export const outer = createServerFn().handler(async () => {
-  const nested = innerFn().handler(() => db.q(1))
-  return nested()
-})
-`
-    for (const [envName, env, config] of envs) {
-      const r = await compile(code, { env, config, files })
-      const facts = r.out.facts.planners[START_ENV] as {
-        serverFns: Array<{ name: string }>
-      }
-      expectValid(r.code)
-      expect(r.out.diagnostics, envName).toEqual([])
-      expect(
-        facts.serverFns.map((f) => f.name),
-        envName,
-      ).toEqual(env.type === 'client' ? ['outer'] : ['outer', 'nested'])
-      if (env.type === 'client') {
-        expect(r.code).not.toContain('db.q(1)')
-      }
-    }
-  })
 })
 
 // In-place provider (SSR = provider): handlers move to one lazy handler
@@ -802,13 +740,10 @@ export const fn = createServerFn().handler(createServerOnlyFn(async () => db.get
     expect(h).toContain('db.get(2)')
   })
 
-  it('moves the handler of a hoisted nested server fn', async () => {
+  it('moves the handler of a hoisted server fn', async () => {
     const r = await compile(
       `${FNS}import { db } from './db.server'
-export function makeFns() {
-  const inner = createServerFn().handler(async () => db.get(3))
-  return { inner }
-}
+export const fns = { inner: createServerFn().handler(async () => db.get(3)) }
 `,
       { env: ssrEnv, files },
     )
@@ -828,9 +763,7 @@ export function makeFns() {
       `${FNS}import { load } from './db.server'
 let label: unknown = 'initial'
 label = load(label)
-export function makeFn() {
-  return createServerFn().handler(async () => label)
-}
+export const fns = { fn: createServerFn().handler(async () => label) }
 `,
       { env: ssrEnv, files },
     )

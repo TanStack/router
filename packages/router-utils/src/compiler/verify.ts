@@ -150,13 +150,14 @@ export function verifyPlan(
   // ruling E): then in that output alone. An output holds the unit
   // when a segment of it comes from the unit's range (a slice, or text
   // standing for a reference there), outside the sub-regions other outputs
-  // claim (Hydrate children inside a statement render in their chunk).
+  // claim (Hydrate children inside a statement render in their chunk); of a
+  // claim of the statement's whole text (a bare server-fn statement the
+  // provider hoists, R162), the output holding its placeholder holds the
+  // statement.
   const placement = plan.placement
   const claimedRanges = [...plan.rewrites.claims.values()].map(
     (c) => plan.regions.get(c.region).range,
   )
-  const inClaimed = (start: number, end: number) =>
-    claimedRanges.some((r) => start >= r.start && end <= r.end)
   for (const u of t1.units) {
     if (u.kind !== 'effect' && u.kind !== 'import-effect') {
       continue
@@ -181,6 +182,10 @@ export function verifyPlan(
               placement!.included.get(o)?.has(cluster) === true,
           ).length
     const expected = home === 'removed' || inCopy ? 0 : 1 + chunkCopies
+    // (a claim of the statement's whole text: its placeholder stands for it)
+    const whole = claimedRanges.find((r) => r.start <= start && r.end >= end)
+    const inClaimed = (a: number, b: number) =>
+      claimedRanges.some((r) => a >= r.start && b <= r.end)
     const holds = (recipe: OutputRecipe) =>
       recipe.segments.some((s) =>
         s.k === 'slice'
@@ -188,7 +193,7 @@ export function verifyPlan(
           : s.mapTo !== undefined &&
             s.mapTo >= start &&
             s.mapTo < end &&
-            !inClaimed(s.mapTo, s.mapTo + 1),
+            (!inClaimed(s.mapTo, s.mapTo + 1) || s.mapTo === whole?.start),
       )
     let n = 0
     for (const { recipe } of outputs.values()) {

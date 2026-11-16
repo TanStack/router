@@ -104,21 +104,19 @@ export interface StartEnvFacts {
    */
   lateEscapes?: Array<LateEscape>
   /**
-   * A Vue SFC's module (its path ends with `.vue`): each nested server fn
-   * refused as not hoistable, by its diagnostic's offset, and the local it
-   * reads, if that is why (`compiler/vue.ts` words it for `<script setup>`).
+   * A Vue SFC's module (its path ends with `.vue`): each server fn refused as
+   * not hoistable, by its diagnostic's offset, and the local it reads, if
+   * that is why (`compiler/vue.ts` words it for `<script setup>`).
    */
   vueHoists?: Array<VueHoist>
 }
 
-/** A nested server fn of a Vue SFC's module that cannot be hoisted. */
+/** A server fn of a Vue SFC's module that cannot be hoisted. */
 export interface VueHoist {
   /** Its diagnostic's range start. */
   at: number
-  /** The local of the enclosing function it reads, and whether that local holds the server fn's builder. */
+  /** The local of the enclosing function it reads, and whether that local holds the server fn's builder (else: its position, R162). */
   reads?: { name: string; builder: boolean }
-  /** The option it evaluates that may have side effects, quoted (`` `z.string()` ``), or `an expression`. */
-  option?: string
 }
 
 /** An escape of the late pass that hands on a binding of the module. */
@@ -200,41 +198,6 @@ function needsParens(
     default:
       return false
   }
-}
-
-/** The name of the innermost function enclosing `node` (its declaration, or the binding, property or method it is), or null when that function has none. */
-function innermostFunctionName(
-  file: PlanContext['analysis']['file'],
-  node: Node,
-): string | null {
-  for (let a = file.parentOf(node); a !== null; a = file.parentOf(a)) {
-    if (a.type === 'FunctionDeclaration') {
-      return a.id ? a.id.name : null
-    }
-    if (
-      a.type === 'FunctionExpression' ||
-      a.type === 'ArrowFunctionExpression'
-    ) {
-      const p = file.parentOf(a)
-      if (p?.type === 'VariableDeclarator' && p.id.type === 'Identifier') {
-        return p.id.name
-      }
-      if (
-        (p?.type === 'Property' ||
-          p?.type === 'MethodDefinition' ||
-          p?.type === 'PropertyDefinition') &&
-        !p.computed &&
-        p.key.type === 'Identifier'
-      ) {
-        return p.key.name
-      }
-      return a.type === 'FunctionExpression' && a.id ? a.id.name : null
-    }
-    if (a.type === 'StaticBlock') {
-      return null
-    }
-  }
-  return null
 }
 
 function enclosingFunctionNames(
@@ -1642,13 +1605,221 @@ function serverFnFact(
   }
 }
 
+/** The chain a terminal stands for: the last operand of a sequence, inside parentheses and casts. */
+function chainExpression(terminal: Node): Node {
+  let n = terminal
+  for (;;) {
+    if (n.type === 'SequenceExpression') {
+      n = n.expressions.at(-1)!
+    } else if (
+      n.type === 'ParenthesizedExpression' ||
+      n.type === 'TSAsExpression' ||
+      n.type === 'TSTypeAssertion' ||
+      n.type === 'TSSatisfiesExpression' ||
+      n.type === 'TSNonNullExpression'
+    ) {
+      n = n.expression
+    } else {
+      return n
+    }
+  }
+}
+
+/** Why a server fn's position is refused (`loadPosition`), as the message says it. */
+const REFUSED_POSITION = {
+  function:
+    'inside a function, so it would be created each time the function runs',
+  conditional: 'under a condition, so it may never be created',
+  repeated: 'in a loop, so it may be created several times or never',
+  block: 'in a block (`try`, `switch`, a namespace or `{ … }`)',
+  instance:
+    'in a class instance field, so it would be created for each instance',
+  other:
+    'in an expression that is not evaluated exactly once when the module loads',
+} as const
+
 /**
- * Hoists a nested server-fn chain to module level on the server (J4.6): the
- * chain region is claimed by a generated `const`, the occurrence becomes a
- * reference to it. Refuses, positioned, when the chain captures a local,
- * `this`/`arguments`/`super`/`new.target`/`await`/`yield` of an enclosing
- * function, evaluates an impure eager expression or reads a mutated module
- * binding.
+ * Whether the top-level statement holding `node` evaluates it exactly once,
+ * unconditionally, when the module loads (R162), and that statement. The
+ * path from the statement to `node` may only pass positions the language
+ * evaluates once and unconditionally whenever what holds them evaluates:
+ * - the entries of an object or array literal (each is evaluated once, in
+ *   order, when the literal is);
+ * - an argument of a call or of `new` (evaluated once before the call),
+ *   but no optional call or anything under optional chaining (`a?.b(x)`
+ *   skips its arguments when `a` is nullish);
+ * - `export default` (its expression is evaluated once, where it stands);
+ * - the right-hand side of an assignment, and so a declarator's
+ *   initialiser (evaluated once), but no logical assignment (`&&=`, `||=`,
+ *   `??=` may skip it);
+ * - a class static field's initialiser and a static block (each evaluated
+ *   once, when the class definition is);
+ * - parentheses, `as`, `<T>x`, `satisfies` and `!` (no evaluation of their
+ *   own) and the last operand of a sequence (every operand is evaluated
+ *   once, in order).
+ * Anything else may evaluate it never, several times or later: a condition,
+ * a logical operand, a loop, `try`, `switch`, a block, a function body (an
+ * immediately invoked one included) and every other expression.
+ */
+function loadPosition(
+  file: PlanContext['analysis']['file'],
+  node: Node,
+):
+  | { k: 'once'; statement: Node }
+  | { k: 'refused'; why: keyof typeof REFUSED_POSITION } {
+  let n = node
+  let p = file.parentOf(n)
+  while (p !== null) {
+    switch (p.type) {
+      case 'Program':
+        return { k: 'once', statement: n }
+      case 'ParenthesizedExpression':
+      case 'TSAsExpression':
+      case 'TSTypeAssertion':
+      case 'TSSatisfiesExpression':
+      case 'TSNonNullExpression':
+      case 'ArrayExpression':
+      case 'ObjectExpression':
+      case 'ExportDefaultDeclaration':
+      case 'ExportNamedDeclaration':
+      case 'VariableDeclaration':
+      case 'StaticBlock':
+      case 'ClassBody':
+      case 'ClassDeclaration':
+      case 'ClassExpression':
+        break
+      case 'SequenceExpression':
+        if (p.expressions.at(-1) === n) {
+          break
+        }
+        return { k: 'refused', why: 'other' }
+      case 'Property':
+        if (p.value === n && p.kind === 'init' && !p.method) {
+          break
+        }
+        return { k: 'refused', why: refusedAt(file, p) }
+      case 'CallExpression':
+      case 'NewExpression':
+        if (p.callee !== n && !(p.type === 'CallExpression' && p.optional)) {
+          break
+        }
+        return {
+          k: 'refused',
+          why:
+            p.type === 'CallExpression' && p.optional ? 'conditional' : 'other',
+        }
+      case 'AssignmentExpression':
+        if (p.right !== n) {
+          return { k: 'refused', why: 'other' }
+        }
+        if (
+          p.operator === '&&=' ||
+          p.operator === '||=' ||
+          p.operator === '??='
+        ) {
+          return { k: 'refused', why: 'conditional' }
+        }
+        break
+      case 'VariableDeclarator':
+        if (p.init === n) {
+          break
+        }
+        return { k: 'refused', why: 'other' }
+      case 'ExpressionStatement':
+        break
+      case 'PropertyDefinition':
+      case 'AccessorProperty':
+        if (p.value === n && p.static) {
+          break
+        }
+        return { k: 'refused', why: p.value === n ? 'instance' : 'other' }
+      default:
+        return { k: 'refused', why: refusedAt(file, p) }
+    }
+    n = p
+    p = file.parentOf(n)
+  }
+  return { k: 'refused', why: 'other' }
+}
+
+/** Why the position at `p` is refused (`loadPosition`): a function around it first, then what `p` is. */
+function refusedAt(
+  file: PlanContext['analysis']['file'],
+  p: Node,
+): keyof typeof REFUSED_POSITION {
+  for (let a: Node | null = p; a !== null; a = file.parentOf(a)) {
+    if (
+      a.type === 'FunctionDeclaration' ||
+      a.type === 'FunctionExpression' ||
+      a.type === 'ArrowFunctionExpression'
+    ) {
+      return 'function'
+    }
+  }
+  switch (p.type) {
+    case 'IfStatement':
+    case 'ConditionalExpression':
+    case 'LogicalExpression':
+    case 'ChainExpression':
+    case 'SwitchCase':
+    case 'SwitchStatement':
+      return p.type === 'SwitchCase' || p.type === 'SwitchStatement'
+        ? 'block'
+        : 'conditional'
+    case 'ForStatement':
+    case 'ForInStatement':
+    case 'ForOfStatement':
+    case 'WhileStatement':
+    case 'DoWhileStatement':
+      return 'repeated'
+    case 'BlockStatement':
+    case 'TryStatement':
+    case 'CatchClause':
+    case 'LabeledStatement':
+    case 'TSModuleBlock':
+    case 'TSModuleDeclaration':
+      return 'block'
+    default:
+      return 'other'
+  }
+}
+
+/** A private name (`#x`) the code of `node` reads of a class around it, if any (none of a class `node` itself declares). */
+function privateNameOutside(node: Node): (Node & { name: string }) | null {
+  const found: { node: (Node & { name: string }) | null } = { node: null }
+  walk(node, {
+    enter: (n, wctx) => {
+      if (found.node) {
+        wctx.stop()
+        return
+      }
+      if (
+        n.type === 'PrivateIdentifier' &&
+        !wctx
+          .ancestors()
+          .some(
+            (a) =>
+              a !== node && a.start >= node.start && a.type === 'ClassBody',
+          )
+      ) {
+        found.node = n as Node & { name: string }
+      }
+    },
+  })
+  return found.node
+}
+
+/**
+ * Hoists a server-fn chain that is no top-level declarator's value to module
+ * level on the server (J4.6, R162): the chain region is claimed by a
+ * generated `const` placed immediately above the top-level statement holding
+ * it, the occurrence becomes a reference to it. Only a chain its statement
+ * evaluates exactly once, unconditionally, when the module loads
+ * (`loadPosition`) moves, so it is created as often and in the same order as
+ * the source creates it. Refuses, positioned, a chain in any other position,
+ * one capturing a local, `this`/`arguments`/`super`/`new.target`/`await`/
+ * `yield` or a private name of an enclosing class, and one reading a
+ * declaration of its own statement or a later one outside its handler.
  */
 function hoist(
   ctx: PlanContext,
@@ -1660,13 +1831,15 @@ function hoist(
   recordRefusal?: (refused: VueHoist) => void,
 ): {
   sym: SymbolId
-  anchor: { k: 'after-header' } | { k: 'after-unit'; unit: number }
+  anchor: { k: 'before-unit'; unit: number }
   /** Adds the hoist unit and its claim (called after the wrapper unit exists, so it renders first). */
   commit: () => void
 } | null {
   const { t1, symbols, names, rewrites } = ctx
   const file = ctx.analysis.file
-  const X = site.chain.terminal
+  // (the chain itself: a sequence's earlier operands stay where its
+  // statement evaluates them, `(0, createServerFn()…)`)
+  const X = chainExpression(site.chain.terminal)
   const xRange = rangeOf(X)
   const h = site.handler
   const hRange = rangeOf(h)
@@ -1794,80 +1967,48 @@ function hoist(
       rangeOf(o),
     )
   }
-  // eager sub-expressions outside the handler must be pure
-  const eagerArgs: Array<Node> = []
-  if (
-    site.chain.headIsFactoryCall &&
-    site.chain.head.type === 'CallExpression'
-  ) {
-    eagerArgs.push(...site.chain.head.arguments)
-  }
-  for (const l of site.chain.links) {
-    if (l.method === 'handler') {
-      continue
-    }
-    eagerArgs.push(...l.call.arguments)
-  }
-  // WIP (phase 3b, not to be merged): the hoist's rule awaits the
-  // maintainer's decision (review-kept-analyses 4.1); until then it refuses
-  // wherever it asked purity
-  const firstArg = eagerArgs.at(0)
-  if (firstArg !== undefined) {
+  // created exactly once, unconditionally, when the module loads (R162)
+  const position = loadPosition(file, X)
+  if (position.k === 'refused') {
     return refuse(
-      'A server function nested in a function cannot be hoisted when its options hold an expression (pending rule). Move the server function to the module top level.',
-      rangeOf(firstArg),
+      `A server function must be created exactly once, when its module loads: this one is ${REFUSED_POSITION[position.why]}. Define it at the module top level (\`export const fn = createServerFn()…\`) and pass what it needs as its input.`,
+      xRange,
     )
   }
-  // WIP (phase 3b, not to be merged): refuses wherever it asked `isMutated`
-  const outside = t1.refs
-    .refsIn(xRange)
-    .find(
-      (r) =>
-        !(r.range.start >= hRange.start && r.range.end <= hRange.end) &&
-        symbols.isModuleLevel(r.sym),
-    )
-  if (outside !== undefined) {
+  // a private name of a class the chain is written in cannot leave it (d19)
+  const privateName = privateNameOutside(X)
+  if (privateName) {
     return refuse(
-      `A server function nested in a function cannot be hoisted when it reads \`${symbols.name(outside.sym)}\`, a module binding, outside its handler (pending rule). Move the server function to the module top level.`,
-      outside.range,
+      `A server function cannot be compiled when its code reads \`#${privateName.name}\`, a private name of the class it is written in: the server runs it outside the class. Define it at the module top level and read the value through a static method or a module-level binding.`,
+      rangeOf(privateName),
     )
   }
-  // module-level reads outside the handler: anchor after their declarations
-  let maxItem = -1
-  let maxUnit: number | null = null
+  const statement = position.statement
+  const own = t1.items.find(
+    (it) => it.range.start <= statement.start && statement.start < it.range.end,
+  )!
+  // what the chain reads outside its handler is declared above its statement:
+  // the hoisted `const` evaluates it there
   for (const r of t1.refs.refsIn(xRange)) {
-    if (r.range.start >= hRange.start && r.range.end <= hRange.end) {
+    if (
+      (r.range.start >= hRange.start && r.range.end <= hRange.end) ||
+      !symbols.isModuleLevel(r.sym)
+    ) {
       continue
     }
-    if (!symbols.isModuleLevel(r.sym)) {
-      continue
-    }
-    for (const u of t1.declaringUnits.get(r.sym) ?? []) {
+    const below = (t1.declaringUnits.get(r.sym) ?? []).some((u) => {
       const unit = t1.units[u]!
-      if (unit.kind === 'import-specifier') {
-        continue
-      }
-      if (unit.item > maxItem) {
-        maxItem = unit.item
-        maxUnit = u
-      }
-    }
-  }
-  if (!t1.isLazyAt(X.start) && maxItem >= 0) {
-    const own = t1.items.find(
-      (it) => it.range.start <= X.start && X.start < it.range.end,
-    )
-    if (own && own.index <= maxItem) {
+      return unit.kind !== 'import-specifier' && unit.item >= own.index
+    })
+    if (below) {
+      const name = symbols.name(r.sym)
       return refuse(
-        'A server function in a top-level block cannot be hoisted above the declarations it reads. Move it to the module top level.',
-        xRange,
+        `A server function cannot be created before \`${name}\`, which its own statement or a later one declares and which it reads outside its handler. Declare \`${name}\` above the statement holding the server function.`,
+        r.range,
       )
     }
   }
-  const anchor =
-    maxUnit === null
-      ? ({ k: 'after-header' } as const)
-      : ({ k: 'after-unit', unit: maxUnit } as const)
+  const anchor = { k: 'before-unit', unit: own.units[0]! } as const
   const hoisted = names.alloc(`tsrServerFn$${identifierBase(site.base)}`)
   const commit = () => {
     const region = ctx.region(xRange, 'nested-chain')
@@ -1886,7 +2027,11 @@ function hoist(
     rewrites.claim({
       region,
       owner,
-      placeholder: [text({ sym: hoisted.sym })],
+      // (mapped to the chain: the reference stands for it, a bare statement
+      // included, whose whole text the claim takes)
+      placeholder: [
+        { k: 'text', parts: [{ sym: hoisted.sym }], mapTo: X.start },
+      ],
       // (homed in a provider output: the env module keeps the chain in place,
       // with its handler's stub, instead of importing the hoisted binding,
       // which would evaluate the provider module and what its handlers
