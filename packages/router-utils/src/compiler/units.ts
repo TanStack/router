@@ -19,14 +19,7 @@ import {
   unwrapExpression,
 } from './source'
 import {
-  isIdentityFreeValue,
-  isPrimitiveLiteral,
-  isPureClass,
-  isPureDeclarator,
-  isPureExpression,
-  linkedBuilder,
   noteBuilderConsts,
-  statementHasEffects,
 } from './purity'
 import type { PurityContext } from './purity'
 import type { Header, Range } from './header'
@@ -90,22 +83,6 @@ export interface Unit {
   declares: Array<SymbolId>
   /** Export names this unit provides directly (`export const a`, `export { a as b }`, `default`). */
   exported: Array<string>
-  /** Its evaluation has an effect, as placement judges one (`ModuleAnalysis.effectPurity`: language operations are none, rule L). */
-  effectful: boolean
-  /** Effect units that augment/write module bindings (`X.p = …`, `X.push(…)`, `X = …`). */
-  augments: Array<SymbolId>
-  /** An augmentation that does more than write what it augments (`Page.x = track()`): observable without it (placement's purity, as `effectful`). */
-  augmentEffects: boolean
-  /** Single unexported unwritten `const` with a primitive initialiser: may be duplicated. */
-  copyable: boolean
-  /**
-   * A declaration whose value is a function or a primitive (`isIdentityFreeValue`;
-   * a function declaration, a declarator of one identifier with such an
-   * initialiser): a copy of it is indistinguishable from the original
-   * unless something writes it. A class, an enum, a namespace, a
-   * destructuring and every other unit kind: false.
-   */
-  identityFree: boolean
   /** Import entries (Tier 0 index) for import units. */
   importIndex: number | null
   /** The ranges of the names as written, without an annotation (what a rename replaces). */
@@ -198,151 +175,6 @@ function writeTargets(node: Node): ReadonlyArray<Node> {
 }
 
 const NO_TARGETS: ReadonlyArray<Node> = []
-
-/**
- * Whether a top-level write does nothing but write its targets: a pure
- * value, key or argument, written to a member chain of a binding
- * (`Page.displayName = 'Page'`, `Object.assign(Page, { a: 1 })`).
- */
-function writesOnly(purity: PurityContext, expr: Node): boolean {
-  // the binding, or a member of what it names (`Page.meta.title = …` writes
-  // whatever `Page.meta` holds, which may be another binding's object)
-  const pureTarget = (target: Node, depth = 0): boolean => {
-    const t = unwrapExpression(target)
-    return (
-      t.type === 'Identifier' ||
-      (depth === 0 &&
-        t.type === 'MemberExpression' &&
-        (!t.computed || isPureExpression(purity, t.property as Node)) &&
-        pureTarget(t.object, 1))
-    )
-  }
-  const e = unwrapExpression(expr)
-  switch (e.type) {
-    case 'AssignmentExpression':
-      return pureTarget(e.left) && isPureExpression(purity, e.right)
-    case 'CallExpression': {
-      // `Object.assign(X, …)`, a link on a builder, or a mutating method of
-      // a collection (`X.push(…)`); a method of that name on another object
-      // is its own code: a call (R65), which also writes its receiver
-      const callee = unwrapExpression(e.callee)
-      const mutator =
-        callee.type === 'MemberExpression' &&
-        !callee.computed &&
-        callee.property.type === 'Identifier' &&
-        MUTATORS.has(callee.property.name)
-      return (
-        (isObjectMutator(callee) ||
-          (mutator
-            ? builtinCollection(purity.file, callee.object)
-            : pureTarget(e.callee))) &&
-        e.arguments.every(
-          (a) => a.type !== 'SpreadElement' && isPureExpression(purity, a),
-        )
-      )
-    }
-    default:
-      return false
-  }
-}
-
-const COLLECTIONS = new Set(['Map', 'Set', 'WeakMap', 'WeakSet'])
-
-/**
- * Whether the methods `MUTATORS` names are the built-in ones on the object
- * `receiver` names: a `const` declared with an array literal or a `new` of
- * the global `Map`, `Set`, `WeakMap` or `WeakSet`, whose methods of those
- * names nothing replaces (`x.push = …`, `x['push'] = …`, `Object.assign(x,
- * …)`). Any other object's `push` or `set` is code of the module's own.
- */
-function builtinCollection(file: SourceFile, receiver: Node): boolean {
-  const id = unwrapExpression(receiver)
-  if (id.type !== 'Identifier') {
-    return false
-  }
-  const b = file.referenceOf(id)?.binding
-  if (!b || !b.has(BindingFlags.Const)) {
-    return false
-  }
-  const [name, ...more] = b.declarations
-  if (name === undefined || more.length > 0) {
-    return false
-  }
-  const declarator = file.parentOf(name)
-  if (
-    declarator?.type !== 'VariableDeclarator' ||
-    declarator.id.start !== name.start ||
-    declarator.init === null
-  ) {
-    return false
-  }
-  const init = unwrapExpression(declarator.init)
-  if (
-    init.type !== 'ArrayExpression' &&
-    !(
-      init.type === 'NewExpression' &&
-      init.callee.type === 'Identifier' &&
-      COLLECTIONS.has(init.callee.name) &&
-      !file.referenceOf(init.callee)?.binding
-    )
-  ) {
-    return false
-  }
-  for (const ref of b.references) {
-    let n: Node = ref.node
-    let parent = file.parentOf(n)
-    while (parent !== null && isExpressionWrapper(parent)) {
-      n = parent
-      parent = file.parentOf(n)
-    }
-    if (parent?.type === 'CallExpression') {
-      if (
-        parent.arguments[0] === n &&
-        isObjectMutator(unwrapExpression(parent.callee))
-      ) {
-        return false
-      }
-      continue
-    }
-    if (parent?.type !== 'MemberExpression' || parent.object !== n) {
-      continue
-    }
-    const key = parent.computed
-      ? parent.property.type === 'Literal'
-        ? String(parent.property.value)
-        : null
-      : parent.property.type === 'Identifier'
-        ? parent.property.name
-        : null
-    if (key !== null && MUTATORS.has(key) && writeTargetOf(file, parent)) {
-      return false
-    }
-  }
-  return true
-}
-
-/** Whether member expression `m` is what an assignment, update, `delete`, for-in/of or destructuring writes. */
-function writeTargetOf(file: SourceFile, m: Node): boolean {
-  let n = m
-  let parent = file.parentOf(n)
-  while (parent !== null && isExpressionWrapper(parent)) {
-    n = parent
-    parent = file.parentOf(n)
-  }
-  if (parent === null) {
-    return false
-  }
-  const construct =
-    parent.type === 'Property' && parent.value === n
-      ? file.parentOf(parent)
-      : parent
-  // (a call of the method is no write of it)
-  return (
-    construct !== null &&
-    construct.type !== 'CallExpression' &&
-    writeTargets(construct).includes(n)
-  )
-}
 
 /**
  * Whether a declaration gives its binding a value of its own: a function,
@@ -539,19 +371,6 @@ function writesAt(
   return construct !== null && writeTargets(construct).includes(n)
 }
 
-/** The node types `unwrapExpression` looks through. */
-/** The root identifier of `a.b.c` / `a?.b[c]`, or the identifier itself. */
-function rootIdentifier(node: Node): Node | null {
-  let n = unwrapExpression(node)
-  for (;;) {
-    if (n.type === 'MemberExpression') {
-      n = unwrapExpression(n.object)
-      continue
-    }
-    return n.type === 'Identifier' ? n : null
-  }
-}
-
 /** `pos` past the whitespace there (not past a comment). */
 function pastSpaces(code: string, pos: number): number {
   let i = pos
@@ -660,39 +479,7 @@ interface UnitBuildResult {
   declaringUnits: Map<SymbolId, Array<UnitId>>
 }
 
-/**
- * Whether evaluating `node`, the code of a unit of its own, has an effect
- * under `purity`: a declarator's initialiser, a class (its heritage,
- * computed keys and static parts), an enum's or a namespace's body, an
- * expression statement, an `export default` expression; nothing else a
- * unit holds evaluates code. The one judge of a unit's code: `buildUnits`
- * asks it with placement's purity (`Unit.effectful`).
- */
-function evaluationHasEffects(purity: PurityContext, node: Node): boolean {
-  switch (node.type) {
-    case 'VariableDeclarator':
-      return !isPureDeclarator(purity, node)
-    case 'ClassDeclaration':
-      return !node.declare && !isPureClass(purity, node)
-    case 'TSEnumDeclaration':
-    case 'TSModuleDeclaration':
-      return statementHasEffects(purity, node)
-    case 'ExpressionStatement':
-      return !isPureExpression(purity, node.expression)
-    case 'ExportDefaultDeclaration': {
-      const d = node.declaration
-      return d.type === 'ClassDeclaration'
-        ? !isPureClass(purity, d)
-        : d.type !== 'FunctionDeclaration' &&
-            d.type !== 'TSInterfaceDeclaration' &&
-            !isPureExpression(purity, d)
-    }
-    default:
-      return false
-  }
-}
-
-/** The unit model; `purity` judges effects (`ModuleAnalysis.effectPurity`). */
+/** The unit model; `purity` holds the compile's builder chains (`noteBuilderConsts` records `const` builders there). */
 export function buildUnits(
   file: SourceFile,
   items: Array<TopLevelItem>,
@@ -748,11 +535,6 @@ export function buildUnits(
     range,
     declares: [],
     exported: [],
-    effectful: false,
-    augments: [],
-    augmentEffects: false,
-    copyable: false,
-    identityFree: false,
     importIndex: null,
     declNameRanges: [],
     node,
@@ -770,7 +552,6 @@ export function buildUnits(
             node.importKind === 'type' ? 'type' : 'import-effect',
             itemRange,
           )
-          u.effectful = node.importKind !== 'type'
           u.importIndex = importIndex
           add(item, u)
           break
@@ -802,7 +583,6 @@ export function buildUnits(
           node.exportKind === 'type' ? 'type' : 'reexport',
           itemRange,
         )
-        u.effectful = node.exportKind !== 'type'
         if (node.exported) {
           u.exported.push(
             node.exported.type === 'Identifier'
@@ -825,7 +605,6 @@ export function buildUnits(
             break
           }
           const u = base(node, 'reexport', itemRange)
-          u.effectful = true
           for (const spec of node.specifiers) {
             u.exported.push(moduleExportName(spec.exported))
           }
@@ -867,13 +646,11 @@ export function buildUnits(
         const u = base(node, 'export-default', itemRange)
         u.declares.push(symbols.declare('default', 'synthetic'))
         u.exported.push('default')
-        u.effectful = evaluationHasEffects(purity, node)
         add(item, u)
         break
       }
       case 'TSExportAssignment': {
         const u = base(node, 'effect', itemRange)
-        u.effectful = true
         add(item, u)
         break
       }
@@ -892,28 +669,7 @@ export function buildUnits(
         declarationUnits(item, node, false)
         break
       case 'ExpressionStatement': {
-        const u = base(node, 'effect', itemRange)
-        u.effectful = evaluationHasEffects(purity, node)
-        u.augments = augmentationsOf(node.expression)
-        // a link on a `const` holding a writing builder writes it (R139),
-        // also under the links chained on it (`b.middleware([a]).server(f)`)
-        for (
-          let call = unwrapExpression(node.expression);
-          purity.builders !== undefined && call.type === 'CallExpression';
-          call = unwrapExpression(
-            (unwrapExpression(call.callee) as { object?: Node }).object ??
-              call.callee,
-          )
-        ) {
-          const receiver = linkedBuilder(purity.file, purity.builders, call)
-          const s = receiver === null ? null : moduleSymOf(receiver)
-          if (s !== null && !u.augments.includes(s)) {
-            u.augments.push(s)
-          }
-        }
-        u.augmentEffects =
-          u.augments.length > 0 && !writesOnly(purity, node.expression)
-        add(item, u)
+        add(item, base(node, 'effect', itemRange))
         break
       }
       case 'EmptyStatement': {
@@ -922,7 +678,6 @@ export function buildUnits(
       }
       default: {
         const u = base(node, 'effect', itemRange)
-        u.effectful = true
         add(item, u)
       }
     }
@@ -949,7 +704,6 @@ export function buildUnits(
           out.push(add(item, base(decl, 'type', itemRange)))
           break
         }
-        const single = decl.declarations.length === 1
         for (const d of decl.declarations) {
           const u = base(d, 'declaration', { start: d.start, end: d.end })
           const ids = patternIdentifiers(d.id)
@@ -963,26 +717,6 @@ export function buildUnits(
             }
             u.declNameRanges.push(bindingNameRange(file.source, id))
           }
-          u.effectful =
-            decl.kind === 'using' ||
-            decl.kind === 'await using' ||
-            evaluationHasEffects(purity, d)
-          u.identityFree =
-            d.id.type === 'Identifier' &&
-            decl.kind !== 'using' &&
-            decl.kind !== 'await using' &&
-            isIdentityFreeValue(d.init)
-          if (
-            single &&
-            !exported &&
-            decl.kind === 'const' &&
-            d.id.type === 'Identifier' &&
-            d.init !== null &&
-            isPrimitiveLiteral(d.init)
-          ) {
-            const b = file.bindingOf(d.id)
-            u.copyable = b !== null && !b.references.some((r) => r.isWrite)
-          }
           out.push(add(item, u))
         }
         if (purity.builders !== undefined) {
@@ -993,7 +727,6 @@ export function buildUnits(
       case 'FunctionDeclaration':
       case 'TSDeclareFunction': {
         const u = base(decl, decl.declare ? 'type' : 'declaration', itemRange)
-        u.identityFree = u.kind === 'declaration'
         if (decl.id) {
           const s = symOf(decl.id)
           if (s !== null) {
@@ -1019,13 +752,11 @@ export function buildUnits(
           }
           u.declNameRanges.push({ start: decl.id.start, end: decl.id.end })
         }
-        u.effectful = evaluationHasEffects(purity, decl)
         out.push(add(item, u))
         break
       }
       case 'TSEnumDeclaration': {
         const u = base(decl, decl.declare ? 'type' : 'declaration', itemRange)
-        u.effectful = evaluationHasEffects(purity, decl)
         const s = symOf(decl.id)
         if (s !== null) {
           u.declares.push(s)
@@ -1050,7 +781,6 @@ export function buildUnits(
           }
           u.declNameRanges.push({ start: id!.start, end: id!.end })
         }
-        u.effectful = runtime && evaluationHasEffects(purity, decl)
         out.push(add(item, u))
         break
       }
@@ -1067,9 +797,6 @@ export function buildUnits(
             u.exported.push(decl.id.name)
           }
         }
-        u.effectful =
-          u.kind === 'declaration' &&
-          decl.moduleReference.type === 'TSExternalModuleReference'
         u.declNameRanges.push({ start: decl.id.start, end: decl.id.end })
         out.push(add(item, u))
         break
@@ -1080,52 +807,8 @@ export function buildUnits(
         break
       default: {
         const u = base(decl, 'effect', itemRange)
-        u.effectful = true
         out.push(add(item, u))
       }
-    }
-    return out
-  }
-
-  function moduleSymOf(node: Node | null): SymbolId | null {
-    if (!node) {
-      return null
-    }
-    const root = rootIdentifier(node)
-    if (!root) {
-      return null
-    }
-    const b = file.referenceOf(root)?.binding ?? null
-    if (!b || b.scope !== file.rootScope) {
-      return null
-    }
-    return symbols.ofBinding(b)
-  }
-
-  /** The module bindings a top-level expression statement writes (`writeTargets`), through destructuring patterns. */
-  function augmentationsOf(expr: Node): Array<SymbolId> {
-    const out: Array<SymbolId> = []
-    const visit = (target: Node) => {
-      const t = unwrapExpression(target)
-      switch (t.type) {
-        case 'ArrayPattern':
-        case 'ObjectPattern':
-        case 'RestElement':
-        case 'AssignmentPattern':
-          for (const inner of writeTargets(t)) {
-            visit(inner)
-          }
-          return
-        default: {
-          const s = moduleSymOf(t)
-          if (s !== null && !out.includes(s)) {
-            out.push(s)
-          }
-        }
-      }
-    }
-    for (const target of writeTargets(unwrapExpression(expr))) {
-      visit(target)
     }
     return out
   }
