@@ -127,6 +127,14 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   (Server-fn handler modules import the module's one instance since R157: "r5b" in
   `start-plugin-core/tests/start-compiler-erasure-parity.test.ts` gives 1.)
 
+- **With RSC, a `<ClientOnly>` in a server component outside a server fn's handler shows its fallback for good**
+  (as `main`; review-coverage-fix-batch 1): the environment that renders server components keeps `<ClientOnly>`
+  children only in handler text, since it also evaluates modules whose components only SSR and the browser render,
+  and their children may read browser-only code (a `.client` file, `window`). A `Panel` component holding
+  `<ClientOnly fallback={…}><Widget /></ClientOnly>`, rendered by a handler, sends only the fallback in the Flight
+  payload. Workaround: write the `<ClientOnly>` in the handler's JSX or in a client component.
+  `start-plugin-core/tests/planners/start-env.test.ts` ("keeps <ClientOnly> children in a handler…").
+
 - **A hoisted server fn whose chain runs a function at load that reads its own statement's declaration is not
   refused** (R162; review-phase3-fixes; accepted: niche, no corpus file): the order refusal counts reads at load
   outside the chain's functions, so an IIFE, a synchronous callback or a getter inside the chain that reads a
