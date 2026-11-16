@@ -133,7 +133,7 @@ export {
 } from './stats'
 
 // bundler-shaped helpers of the hosts (Vite builds, webpack-family loaders and
-// compilations, eager extracted exports, emitted source maps); nothing of the
+// compilations, emitted source maps); nothing of the
 // compiler model uses them
 export {
   isFinalBuild,

@@ -16,8 +16,8 @@ Yuku's semantic model (summaries are a separate read of the raw text: see "Value
 re-parses, re-prints or reads another job's output. The plan yields:
 
 - the env module (the code returned for the requested id),
-- every derived module of the same source in that env: split chunks (`?tsr-split=…`), lazy shared modules,
-  extracted exports (`?tsr-split=export---Name`), Hydrate chunks (`?tss-hydrate=…`), server-function provider modules
+- every derived module of the same source in that env: split chunks (`?tsr-split=…`), the shared module
+  (`?tsr-split=shared---…`), Hydrate chunks (`?tss-hydrate=…`), server-function provider modules
   (`?tss-serverfn-split`), server-function handler modules (`?tss-serverfn-handler`),
 - facts: surviving import edges (import protection), server-function registry entries, diagnostics, file
   dependencies, per-planner data.
@@ -98,12 +98,23 @@ emits its own output. Nothing depends on transform order.
 
 ### The one placement (`placement.ts`, R153, R155)
 
-A plan a planner marks as a route file (`PlanContext.setRouteModule`, the router planner's split part) is placed by
-`computeRoutePlacement`, which does what route splitting on main does, by its outcome. So is every other plan
-(server-fn handler modules, the RSC provider copy, erasure only, `<Hydrate>` chunks), with no name a chunk imports and
-none main shares, except the ones the engine below still places (`onOldEngine` in `reach.ts`: a `split` output without
-a route module, the core's toy planners; R155 phase 3 deletes the engine). One cluster per unit (`buildClusters(input, true)`: no writer joins its binding) and the engine's
-per-output read walk (`readIndex`):
+Every plan is placed by `computePlacement`. A plan a planner marks as a route file (`PlanContext.setRouteModule`, the
+router planner's split part) is placed as route splitting on main places it, by its outcome; every other plan
+(server-fn handler modules, the RSC provider copy, erasure only, `<Hydrate>` chunks) by the same rules, with no name a
+chunk imports and none main shares. It reads names, references and assignments only, never what code does:
+
+- **clusters** (`clusters.ts` `buildClusters`): one per unit (units declaring one symbol are one), a claimed region
+  with the generated unit owning it, an unclaimed sub-region with the region around it. Its kind comes from the unit
+  kinds, which statement syntax sets.
+- **the write table**: every assignment of a module binding (`ref.kind === 'write'`), with the unit or claimed region
+  holding it. It answers two questions: a shared name some code outside the set assigns, and an output that would
+  assign a binding it imports (or a `<Hydrate>` chunk its copy).
+- **reads** (`reads.ts` `readIndex`): what a cluster reads in an output is what the walk of its members' text there
+  renders (`OutputView.walk`): the references of the source it renders and the symbols generated text names; its
+  successors are the clusters those lead to. `readFromRemoved` (the removal rule's first half, below) walks the
+  source's text, rendered or not.
+
+The rules, per output:
 
 - **the env module** loses only what the split made unused (the R153 amendment, `readFromRemoved`, the rule erasure
   uses): a declaration or import specifier the source used from text the module no longer holds (a claimed option
@@ -160,216 +171,32 @@ set(cfg)`): it runs at load, as in the source; a declaration that is exactly a f
 A chunk's copies are main's: state is one instance where main has one, and a statement runs again in a chunk only
 where main's chunk runs it again (never a declaration already unused: better than main).
 
-### Reachability = splitting = dead-code removal (`reach.ts`, `placement/`)
+### Removal (`reads.ts` `readFromRemoved`, `orphans.ts`)
 
-Per output: roots → closure over _live_ value references (not inside removed ranges; type positions never keep
-anything alive) at cluster granularity (a binding with all its writers and augmentations travels together) → the
-units that output contains. `computePlacement` composes seven stages, each a function of what the previous ones
-produced: `clusters` (clusters, the write table), `reads` (what each cluster reads per output,
-`reach`), `roots` (the roots planners and the module declare, extraction candidates, provenance), `settle` (the env
-roots, the slots and the extracted exports: one solver over the event table, `events`), `kept`, `homes` (homes, the single-writer
-rule) and `inclusion` (what each output contains, imports and exports). The same computation decides:
-
-- **placement**: a cluster only one split group needs goes to that chunk; one the route module needs stays there and
-  chunks import it; one several groups need goes to a lazy shared module, effects too (R151: evaluated once, when
-  the first of those chunks loads); copyable primitives and import specifiers
-  are duplicated (a planner's generated import, such as a client stub's `createClientRpc`, is an import specifier
-  too). An exported binding only split code needs leaves the route module for a side-effect-free extracted
-  module (`?tsr-split=export---Name`) that the route module re-exports, so other modules importing it from the route
-  file still get one instance and the route module keeps none of its code or imports. The rule for the route's own
-  chunks: when a copy would be indistinguishable from the original, the chunk carries its own copy and never
-  imports the extracted module. A copy carries the binding and what it reaches that no output keeps once, and
-  every piece carried must be a function or a primitive constant nothing writes and whose identity nothing observes
-  (`new`, `instanceof`, `===`, `switch`/`case`, `.prototype`; `isDuplicable`: types and imports
-  are free; another export is imported from its module or copied under its own decision; an effectful cluster
-  stays in the route module or moves, one instance). Anything with an identity in that closure (an object or array
-  literal, a class, a `new`, a call result however pure, a regex, an enum) or any written binding (a `listeners`
-  array behind `subscribe`/`emit`, a `let`) makes the export non-copyable: the chunk imports its extracted module,
-  one instance, as an export with effects or state always did (an effectful initialiser, an assigned `let`, a
-  reader of mutable state, an augmented binding: imported from the extracted module when only it needs it, else
-  from the route module). A pure cluster with an identity, or a written one, that an extracted module and another
-  output both need stays in the route module (one instance every output imports); a function or primitive in that
-  position is copied into each. Writes inside code the environment erases impose nothing (the mutation model is
-  read through the env output's liveness). Exports that read each other (`class Z { o() { return A } }` and `class A
-extends Z`, directly or through what they carry) share the module of the first in the source: in two modules importing each other
-  the one evaluated first depends on the bundler, and a read at evaluation can find the other uninitialised. Nothing but importers of the route file reach the extracted module of
-  a copied export, so a bundler drops it when unused; a non-copied export's module is imported by the route's
-  chunks too, and a bundler that places it with the entry (Rolldown < 1.1.5, a user `manualChunks` group that
-  merges into the entry) loads the export eagerly: the build says so (`eager-exports.ts`). In dev nothing is
-  bundled and the static re-export would only load the extracted module one request level deeper: the same
-  clusters stay in the route module as written, and chunks import them where a build's chunks import them from the
-  extracted module; a declaration a build copies into a chunk with the export reading it (a function or primitive)
-  is imported from the route module in dev. Every decision but these homes is the same, so state and identity
-  agree between dev and a build. An exported declaration a chunk needs that stays in the route module
-  (read by the route module, reading what it keeps; a unit assigning it is in its cluster and leaves with it) is
-  reported
-  once per export with the reason (`eager-export:<reason>`), and so is an unexported declaration only split code
-  needs that the movable rule below keeps (`eager-split:<reason>`: `written`, changed
-  outside its declaration at load; `state`, reading what the module writes; `shared`, a value with an identity or state that an extracted export's module and other
-  split code both read, one instance; `unused`, what unused code keeps there, and `shared-split:unused`, what unused
-  code puts in one shared module), once at the cause (a cluster kept only because another kept one reads it is not
-  reported; `Placement.kept`, worded by `kept-diagnostics.ts` with the words the planners give their outputs and
-  modules, deduped per file and wording by the hosts' ledgers); every
-  host also warns after a client build when an extracted module landed in an entry chunk (another module imports
-  the binding through the route file, or the bundler's chunk assignment put a module the route's chunks import with
-  the entry);
-- **dead code, by provenance**: a declaration or import specifier is removed only if _our_ edits orphaned it (its
-  readers, by value or in a type, disappeared because a planner removed or moved them, and nothing left reads it by
-  value: `readFromRemoved`). A top-level statement that is no declaration (`x.p =
-v`, `x.push(v)`, `x = v`) is never removed with what only erased code read: it stays a root of the env module with
-  everything it names (`roots.ts`), as main kept it, since whether it changes only that binding has no syntactic
-  answer (another name for another module's object, a setter, a call in the value). Code already unreferenced in the source keeps
-  running: an import nothing reads stays in the env module, so its module still evaluates there (one removed code read
-  only in a type leaves it, as TypeScript's elision would: under `verbatimModuleSyntax` it would load the module). Type units stay in the env module
-  as written whatever their cluster (`import type { X }` next to a value `X` that moves stays whole and type-only),
-  never in a derived output; only the TypeScript-only specifiers (an inline `type` specifier, an `export { X }` of a
-  type-only binding) follow their statement's value specifiers (`droppedTypeUnits`). Type-only export syntax
-  (`export type { X }`, `export type { X } from`, `export type * from`, `export { type X }`, a `type X` specifier of an
-  `export { … } from`) is in no output, as main's `stripTypeExports` removed it (`isTypeOnlyExport`): its binding may be
-  an inline type specifier that left, and a Babel plugin after the compiler rejects an export nothing declares. Below the units, function-local
-  declarators and destructuring leaves only erased code read go too (`orphans.ts`), with their initialisers whatever
-  they do (a call of a helper, a global's method), as main's dead-code elimination did; a hook call (`useX(…)`,
-  `ns.useX(…)`) in a function stays as a statement with the import it reads, so every output calls the same hooks in
-  the same order. The core runs that cleanup once after every planner, removing each in every output when edits
-  addressed to every output orphaned it, else in the env module only. A module-level destructuring leaf stays while it is exported or another output takes it (one of
-  its roots names it, or a claimed region reads it); a property a live rest element keeps (its key stays out of the
-  rest) loses only its default value. The initialiser stays as written: a value in a destructured literal
-  (`{ a, b } = { a: 1, b: f() }`) is not chased, so `b`'s value stays where `a` needs the declaration. A read the core
-  synthesises from a
-  name rather than from a reference (a Solid `use:` directive) binds only to a declaration with a runtime value
-  (`valueBinding`). JSX is no read of the classic runtime's factory: the classic runtime is not supported with
-  splitting;
-- **effects and mutable state**: statements and impure, still-referenced declarations evaluate once, in the env
-  module unless the rules below move them, never duplicated or lost. One model (`mutation.ts`, `t1.mutation`) holds every write of a
-  binding (assignment or member write, eager or lazy, wherever it is). A binding's writers when the module loads
-  (a unit assigning it or writing a member of it, `const y = f(cfg.x = 1)`; an augmentation statement) are its
-  cluster, so they evaluate wherever it does; a reader is a cluster of its own. A write of pure values to a binding
-  its cluster declares (`Page.displayName = …`, `plugins.push(a)` on an array literal or a `new Map`/`Set`: a
-  method of that name on another object is its own code, a call, R65; a link on a `const` holding a builder of a kind
-  whose links write it, `RecognizerTable.builderLinksWrite`: a middleware's assign its options, a server fn's copy
-  them and only read the builder; R139) is a write, not an effect: ordered against what touches that binding, nothing else. A
-  write's owner is the evaluation holding it (its unit, or a claimed option value); one in a function that
-  evaluation passes to a call (`track(() => { cfg.x = 1 })`) is also that evaluation's write at an unknown time,
-  as when the function is named. The writes have two halves, each
-  asked by one rule: a read evaluated at module load _observes mutable state_ when something outside the reading
-  cluster writes the binding at an unknown time (inside a function; and code that evaluates with the module but
-  runs later: an async or generator function invoked where it is written, an instance field's initialiser,
-  `t1.runsLaterAt`), wherever both evaluate (V); and it is _ordered_ against a write when the module loads after
-  it, judged on where both evaluate (O): the reader leaves the route module only for the slot the write evaluates
-  in, in source order there (`const a = {}; const x = [a]; a.v = 1`, all three needed by one chunk, move
-  together). An extracted export's module is unordered with the route module and the chunks, so for it a write
-  there before the read conflicts too; only an extracted module it imports evaluates first. A read after the
-  last write at load observes nothing and moves freely. "After it" compares positions where the code runs: a
-  read inside a function an evaluation calls runs where that evaluation reaches it. What an evaluation runs has one definition, asked
-  of each evaluation, never of the module (`ReadIndex.runs`, `visitRuns`): the references of its text in the env
-  module (a region nested in it that the env module does not claim is its text; a claimed one evaluates with its
-  owner) and, when it calls something, those of the functions it passes directly (`['x'].map((k) => n + k)`)
-  and the text of the module's declarations its running references name and of the statements writing those names
-  when the module loads (`handlers.count = () => n`: a call reaching `handlers` may run it), transitively (`n++`, `n += 1` and
-  `n = v` count as reads: a cluster whose load assigns state, `init()` writing `mode`, is ordered like one
-  reading it); and, by the same rules, the bindings the generated text of all of it names (a server fn a planner
-  moved to the module top level out of a function the evaluation calls). A read through a name (`alias.v`, `{ ...alias }`, `const { v } = alias`, `'v' in alias`, and the same through
-  any expression handing the name's value on: `(alias ?? {}).v`, `(on ? alias : null)?.v`, `[alias][0].v`) reads what that name's
-  value holds when the module loads, transitively (`const alias = cfg`, `const holder = { cfg }`, `holder.c = cfg`:
-  it reads `cfg`), so it is ordered against a write of the original. A member write through a name whose
-  declaration does not create its value (`const alias = cfg; alias.v = 1`, `let cur = cfg`) or through a nested
-  member (`holder.c.v = 1`, `holder[0].push(x)`) writes whatever that value may hold: it is a write of each of
-  those bindings too (`cfg`), ordered against every read of them and joining their cluster when it runs at load.
-  A local name holds what its value comes from (`localValue`): its initialiser and assignments, the elements a
-  `for…of` loop runs over, the module's thrown values for a `catch` parameter, and for a parameter its default and
-  the arguments of the calls that may reach its function (`handedTo`: a callee naming a value that holds it,
-  `set(cfg)`, `api.set(cfg)`, `set.call(null, cfg)`, `new Store().apply(cfg)`; for a call it is handed to,
-  `[cfg].forEach(fn)`, the call's other arguments and receiver). So `function set(o) { o.v = 1 }` with `set(cfg)`
-  writes `cfg` when it runs; it writes only the argument's own object when every argument creates one
-  (`set({ ...cfg })`). A write through `arguments` is not seen (it has no binding).
-  One owner answers both sides: the mutation model (`visitValues`, `objectsWrittenBy`). A method nested in an object argument
-  (`defineComponent({ setup() {} })`) and a function it only holds (`const api = { getCached }`) run nothing, and a
-  function declaration evaluates nothing. A claimed
-  region is such an evaluation too. A call may run what it is handed (`ordered-effect` for an option value; a declaration kept for a read
-  only there, a wrapped sub-component used as a JSX tag among them, is reported as one that _may_ use the binding),
-  as for the extraction check (`readsKept`) and the verifier: an extracted module may load
-  before the route module. Outside the model (R97): a getter (`api.latest`, a destructured property),
-  `toString`, a spread or an array pattern's iterator running user code, and writes through `this` or another
-  module: the code they run is not seen to run at load.
-  A reader of such state (V) never leaves the route module, pure or not, for a lazy output or an extracted export's module
-  (`const initial = [n]` next to `function inc() { n++ }` keeps the source's `[0]`: an extracted module evaluates
-  with the first chunk importing it once nothing imports it through the route file); an option value that reads
-  one is kept in place (`ordered-effect`), unless that write is only its output's code (a function only that
-  output holds) and the binding is confined there, the rule for an option value's writes at load (it evaluates in
-  that output, and nothing else anywhere touches it). A member write in a function of the module that an
-  evaluation calls when it loads (`component: withLog(Page)`, `withLog` pushing to `hits`; what that body calls too;
-  not a function only handed to a call) is that evaluation's write at load (`ran`), judged as one written inline:
-  the option value stays unless the binding goes with it, and a declaration making it may take a lazy slot only
-  where that binding evaluates (an assignment there joins the binding's cluster already). A write only an evaluation's own text makes (a function it
-  passes to a call: `memo(function Page() { didInit = true })`, in an option value or a declaration alike), of a
-  binding nothing else touches when the module loads, pins neither: it runs only through what that evaluation
-  returns, never before it (`ownLate`). An effectful,
-  unexported cluster moves with its only needer (lazy initialisation is allowed; within-module order is
-  preserved) when nothing outside it writes it eagerly and it observes no mutable state. What it reads at load
-  of another cluster evaluates first wherever that goes: in the same chunk, in source order (`const columnHelper =
-createColumnHelper(); const columns = [columnHelper.accessor('name')]`, both needed by one chunk, move together,
-  R138), or in a module the chunk imports (the route module, an extracted export's, a shared one). A `let` nothing
-  assigns reads like a `const`; an assigned one is judged by its writes. Imports are read lazily (the chunk loads
-  after the route module). Effects have no order of their own (no order rule): what moves keeps
-  its source order in its output, what stays its order in the route module, and code moves by the bindings it reads
-  and writes. A call the model does not know writes nothing it is handed (`snapshot(table)` reads `table`), and its result is not
-  what it was handed (R149 answer F, accepted break): a write through `const store = reactive(settings)` is no write
-  of `settings`, so a read of `settings` only a chunk needs moves past it. A
-  bare statement (it declares nothing: a call, an assignment, an `if`/`try`/loop block), and dead code (R148),
-  follows the module bindings it uses (R149, `Events.statementChanges`): those it names or runs (`ReadIndex.runs`)
-  and the objects their values hold (`MutationModel.heldBy`, the owner of "the object a binding names"), into the
-  one chunk they all go to, in source order there (`const table = createTable(); const columns = snapshot(table);
-  table.addColumn('x')`, only the component reading `columns`, all move); bindings of several split outputs: it joins
-  them in their lazy shared module (R151: the follower is rooted in each of those outputs, so they all reach it and
-  what it uses, one cluster for them; a joined follower one of whose bindings comes to stay stays with it). It
-  stays, keeping what it uses, when a binding it uses stays (the route module needs it, it is exported and not
-  extracted) or goes to an extracted export's module beside a split output (no module serves both). Nothing outside the
-  module keeps it (`Sentry.init(cfg)`, `window.x = cfg`, `console.log(cfg)`, `import()`, `import.meta.hot` move with
-  `cfg`); a statement using no binding that moves stays (`Sentry.init({ dsn })`, `i18n.use(backend)`); a write of
-  an import's member is no write of a declaration of the module (the import is not joined by it). Unused code that
-  runs nothing and uses only imports goes with their users' one chunk. Followers are judged together in settle's
-  round 0 (`placement/settle.ts`); the warning (`eager-split:written`) names the binding that keeps the statement
-  with its line, `changes` or `uses` as the statement does each (`changesObject`, `changesAsArgument`); unused code
-  gets one warning at it naming everything it keeps in the route module (`eager-split:unused`) or puts in one shared
-  module (`shared-split:unused`), fix: delete it. Inside imported code the compiler sees nothing
-  (`registry.install()` patching `fetch` runs when the chunk loads). Both sides
-  are judged on their slots in one fixed point (a demoted read cluster re-judges its reader). An
-  extracted export's module is a destination like a chunk (R149, extended): a binding being extracted gives its
-  module as a follower's only place (every reader imports it from there), so `applyOverrides(flags)` goes into
-  `flags`'s module, and an export with effects of its own (`export const store = createStore()`) is extracted
-  like any other, with what only it needs. The module stays flagged side-effect free (every host flags it by its
-  kind, the webpack family by its query): it runs when something uses the export, and a bundler drops it, with
-  its statements, while nothing does, like a chunk that never loads. An export with a follower in its module is
-  imported, never copied (the follower runs only where the module does); in dev the followers stay with their
-  extracted bindings in the route module. An extracted declaration is one identity every output imports: one
-  that some output renders otherwise (a placeholder or claim scoped away from it, a server function's handler
-  where its provider holds it) is no candidate. An exported binding leaves with its writes at load
-  (`Page.displayName = …`, static props, `Page.x = track()`), whatever effects surround it (chunks import an
-  augmented export: its augmentation runs once). A cluster that writes what it declares at load takes its only lazy needer's slot (a
-  reader before the write may evaluate there too); several needers give it a shared module, which its readers
-  import (they evaluate after it; a reader before the write is judged as if it stayed, and keeps it).
-  Every one of these
-  rules is asked of the event table (`placement/events.ts`: each member's evaluation, what it touches through
-  what it runs, its effect, the module's writes), and answers with the violated pair (the kind, the other event,
-  the binding), from which the warnings are worded. The env roots, the slots and the extracted exports are one
-  monotone fixed point (`settleRoots`): every round recomputes derived reach, env liveness and the slots (the
-  evaluation-order condition is a greatest fixed point over them), demotes the effectful clusters and the readers
-  of mutable state that stay and that some output needs to env roots, then cancels extraction candidates the env
-  module keeps, that read at their evaluation a binding it keeps (a TDZ through the re-export cycle) or that
-  observe mutable state. Each round that goes on demotes a cluster or roots a follower in one more split output (a
-  follower whose bindings' places grew to several joins them, R151), so the rounds end within the cluster count plus
-  the followers' outputs;
-  past it the compile fails naming the file. Nothing is rooted after homes are assigned. The time model is checked
-  by running modules: the cases the executing placement property (a development tool kept outside the repository)
-  found, running random modules and their outputs as ES modules, are static tests (`tests/placement.test.ts`). When a split would break single-writer or evaluation-order
-  rules, the core reports a _fallback_ (`ctx.fallbackAt(range)` on the next round) and `compileModule` re-runs the
-  planners with that region kept in place, until no new region is reported (a kept region can free the next one;
-  every round keeps one more, so the rounds end within the module's region count). Past that bound every
-  sub-region is kept in place, which is always correct, and a warning (`fallback-rounds-exhausted`) says so;
-- **pre-existing dead code** (R148): a declaration cluster nothing reads, or a dead cycle, is never removed: it
-  follows what it changes or reads, like a statement (a follower), into that one chunk (`function Unused() { return
-<Page /> }` with `Page`, `const check = JSON.parse(cols.schema)` with `cols`) or several split outputs' shared module
-  (R151), else stays in the env module; the bundler decides. What erased code reaches is not dead: it goes with that code (orphaned by us).
+- **by provenance**: a declaration or import specifier is removed only if _our_ edits orphaned it: the source used it
+  (by value or in a type) from text an output no longer holds (a claimed option value, erased text, the type-only
+  export statements main deletes first), and nothing left reads it by value. A top-level statement that is no
+  declaration (`x.p = v`, `x.push(v)`, `x = v`) is never removed with what only erased code read (R154), and code
+  already unreferenced in the source keeps running: an import nothing reads stays (one removed code read only in a type
+  leaves, as TypeScript's elision would). Type units stay in the env module as written whatever their cluster, never in
+  a derived output; only the TypeScript-only specifiers (an inline `type` specifier, an `export { X }` of a type-only
+  binding) follow their statement's value specifiers (`droppedTypeUnits`). Type-only export syntax (`export type { X }`,
+  `export type * from`, `export { type X }`, …) is in no output (`isTypeOnlyExport`), as main's `stripTypeExports`
+  removed it. A read the core synthesises from a name (a Solid `use:` directive) binds only to a declaration with a
+  runtime value (`valueBinding`). JSX is no read of the classic runtime's factory: the classic runtime is not supported
+  with splitting.
+- **below the units** (`orphans.ts` `cleanOrphanedDeclarations`): function-local declarators, destructuring leaves,
+  function and class declarations only erased code reads go, with their initialisers whatever they do, as main's
+  dead-code elimination did. One naming convention keeps code: a hook call (`useX(…)`, `ns.useX(…)`, React's contract
+  for hooks) in a function stays as a statement with the import it reads, so every output calls the same hooks in the
+  same order (R160). The core runs that cleanup once after every planner, in every output when edits addressed to every
+  output orphaned it, else in the env module only. A module-level destructuring leaf stays while it is exported or
+  another output takes it; a property a live rest element keeps loses only its default value.
+- **planning rounds**: a derived output that would assign a binding it imports reports a _fallback_
+  (`ctx.fallbackAt(range)` on the next round), and `compileModule` re-runs the planners with that region kept in
+  place, until no new region is reported (a kept region can free the next one; every round keeps one more, so the
+  rounds end within the module's region count). Past that bound every sub-region is kept in place, which is always
+  correct, and a warning (`fallback-rounds-exhausted`) says so.
 
 ### Emit and source maps (`emit.ts`, `output-builder.ts`)
 
@@ -538,7 +365,7 @@ text compiles waits for it and emits its own output from the result.
 
 The bundler-shaped helpers the hosts share (a Vite build's last pass, derived ids' `load`, module-graph
 invalidation and live modules of a hot update, a webpack-family loader's map and module id,
-the webpack-family stale-set drain (`StaleSetDrain`: rebuilds at `finishMake`, a compilation for an idle compiler), eager extracted exports, emitted maps' text, the key of a persistent cache, a loader's
+the webpack-family stale-set drain (`StaleSetDrain`: rebuilds at `finishMake`, a compilation for an idle compiler), emitted maps' text, the key of a persistent cache, a loader's
 diagnostics at their positions) live in
 `hosts/`, exported apart from the core model, which uses none of them.
 
@@ -547,9 +374,9 @@ compiler packages' manifests, and their built scripts outside `node_modules`).
 
 Derived ids and the specifiers that import them keep the Babel splitter's format, which apps' chunk naming reads
 (webpack/Rspack `chunkGroup.origins[].request`, Vite module ids): `identity.ts` alone prints and parses it. A split
-group is `<path>?tsr-split=<a>---<b>` (the options sorted); the modules main had no counterpart for follow that style
-after a first key no route option has (`tsr-split=shared---<keys>`, `tsr-split=export---<name>`,
-`EXTRACTED_EXPORT_QUERY_RE`); Hydrate is `?tss-hydrate=<id>`. An output imports another output of its file (and the
+group is `<path>?tsr-split=<a>---<b>` (the options sorted); the shared module, which main names `?tsr-shared=1`,
+follows that style after a first key no route option has (`tsr-split=shared---<keys>`); Hydrate is
+`?tss-hydrate=<id>`. An output imports another output of its file (and the
 route module itself) by the file's absolute path (`sameFileSpecifier`), a `#` of the path escaped as `\0#` (the
 webpack-family request escape); under a path with a `!` (loader syntax there, no escape), by its basename
 (`./route.tsx?…`). webpack and Rspack resolve it themselves; the Vite hosts resolve it with
@@ -595,8 +422,12 @@ builder (`routerPlannerConfigFrom`) are exported from `@tanstack/router-plugin/p
 ## Testing
 
 - Core unit tests: `packages/router-utils/tests/` (`pipeline`, `placement`, `rewrite`, `output-builder`, `values`,
-  `facts`, `edges`, `identity`, `heap`), driven by toy planners and a `MemoryHost` (`helpers.ts`). Run
-  `@tanstack/router-utils:test:unit`.
+  `facts`, `edges`, `identity`, `verify`, `heap`), driven by toy planners and a `MemoryHost` (`helpers.ts`). Run
+  `@tanstack/router-utils:test:unit`. `placement.test.ts` covers the placement's own mechanisms on toy plans (the
+  toy splitter's `imported` makes a plan a route file): the `shared-writer` fallback, glue and renames, copies and
+  imports of a chunk, the shared module, provenance, statement boundaries, type units, generated units and their
+  anchors; what route files, handler modules and `<Hydrate>` chunks do for real plans is covered by the consumers'
+  suites.
 - Behaviour: the oracle in `packages/compiler-test-utils/oracle/` ([README](../../../compiler-test-utils/oracle/README.md),
   [SPEC](../../../compiler-test-utils/oracle/SPEC.md), [KNOWN-BUGS](../../../compiler-test-utils/oracle/KNOWN-BUGS.md)):
   `test:unit` and `test:integration` of router-generator, router-plugin, start-plugin-core and react-start-rsc. Real
@@ -617,17 +448,16 @@ nothing per compile.
   changes. Use it on a report of stale or wrong output after an edit (HMR serving old code, a split that ignores a
   changed dependency, a dev/build mismatch): if `all` fixes it, an invalidation is missing; bisect with the single
   names to find the cache, then reproduce in `tests/cache.test.ts` or `tests/pipeline.test.ts`.
-- `TSR_COMPILER_VERIFY=1`: after every compile, each emitted output is re-parsed and checked against the plan's
-  invariants (`verify.ts`): no output assigns a binding it imports, every glue import names an export of its home
-  output, every surviving effect statement is emitted exactly once across
-  the outputs that import from the env module, an extracted export's module never reads a binding of the env
-  module at its evaluation, and no output reads a module binding of the source or a generated binding it neither declares
-  nor imports, and no two extracted modules import each other. A violation fails the compile. Every test run sets it (the shared run-directory setup and
-  the core's own config); unset, it costs one boolean per compile. It is the one switch of the compiler's self-checks
-  (`self-checks.ts`): set, the internal asserts run and a violated placement invariant (`homes.ts`, `inclusion.ts`)
-  throws; unset (users' dev servers, builds and their own tests), they are still checked and a violation is one
-  `internal-invariant` warning for the module (an internal compiler error, please report it: the output may be
-  wrong).
+- `TSR_COMPILER_VERIFY=1`: after every compile, each emitted output is re-parsed and checked against the plan
+  (`verify.ts`), independently of what placement believes: every output parses; no output assigns a binding it
+  imports (a); a same-file import names a runtime export of its home (b); every surviving top-level statement is
+  emitted once in its home and once per chunk that copies it, counting the source text an output renders, not a
+  generated unit's own text (`Segment.gen`) (d); planner facts are JSON (f); no output reads a module binding of the
+  source, or a generated one, it neither declares nor imports (g). A violation fails the compile. Every test run sets
+  it (the shared run-directory setup and the core's own config); unset, it costs one boolean per compile. It is the
+  one switch of the compiler's self-checks (`self-checks.ts`): set, the internal asserts run and a violated invariant
+  throws; unset (users' dev servers, builds and their own tests), a violation is one `internal-invariant` warning for
+  the module (an internal compiler error, please report it: the output may be wrong).
 - `TSR_COMPILER_STATS=1`: every cache owner (the compiler caches, the router and Start host sessions with their
   import-protection and server-function state, the route generator) registers a reader of its entry counts and
   approximate bytes in a process-global registry, held through a `WeakRef` and read by a function outside the owner's

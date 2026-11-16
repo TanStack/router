@@ -94,7 +94,8 @@ const CASES: Array<{
     check:
       '(g) generated text in a derived output naming a module binding it neither declares nor imports',
     error: 'which it neither declares nor imports',
-    edit: (ctx) => brokenText(ctx, chunkOf(ctx), 'console.log(createFileRoute)\n'),
+    edit: (ctx) =>
+      brokenText(ctx, chunkOf(ctx), 'console.log(createFileRoute)\n'),
   },
   {
     check: 'parse: generated text that is no syntax',

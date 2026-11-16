@@ -4,7 +4,9 @@
  * references of the source it renders, the symbols the generated text and
  * the placeholders it renders name; its successors are the clusters those
  * reads lead to. Memoised per output: a pure function of the cluster and
- * the output's tree.
+ * the output's tree. And what the source used: the clusters text an output
+ * no longer holds references (`readFromRemoved`, the removal rule's first
+ * half).
  */
 import { NEED_KINDS, symRefsOf } from './clusters'
 import type { Cluster, ClusterGraph, ClusterId } from './clusters'

@@ -376,8 +376,8 @@ export async function loadDerivedSource(
  * The modules of a file's hot update that the file's current plan still
  * produces: the file's own modules, and its derived modules
  * (`?tsr-split=…`) whose output the plan declares. A derived module of a
- * layout the file no longer has (an extracted export once the export went,
- * a split chunk once the file stopped splitting) stays in Vite's module
+ * layout the file no longer has (a shared module once nothing shares, a
+ * split chunk once the file stopped splitting) stays in Vite's module
  * graph, imported by the chunk or route module until those re-import: nothing
  * on the page holds its next evaluation, and an update of it either
  * dead-ends into a full reload or, as a React Refresh boundary, invalidates

@@ -2,7 +2,7 @@
  * Rspack / webpack host of the router compiler: `apply`
  * installs the loader rule (every JS module outside `node_modules`: the
  * loader compiles route modules, env and derived ids, and passes the rest
- * through), the `sideEffects: false` rule for extracted-export outputs, the
+ * through), the
  * one invalidation operation on `watchRun` and on registry changes, whose
  * stale set the compiler takes at `finishMake` (`StaleSetDrain`), the plans
  * of the route modules a persistent cache restores (checked at the first

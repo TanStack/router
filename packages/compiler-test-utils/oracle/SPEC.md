@@ -174,7 +174,7 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
 
 - **G1 Semantics are preserved.** In every env the compiled program behaves as the source program would in that env
   under the documented runtime contract: same rendered output, loader and handler results, thrown errors, `Route`
-  object, and exports an importer sees. When top-level code runs follows G3, with the accepted breaks it lists. Every
+  object, and exports an importer sees. When top-level code runs follows G3. Every
   emitted module parses and evaluates (no new free names outside dead code, G8). (R1)
 - **G2 Only what is needed ships to each environment and chunk.** Code an env or chunk cannot execute is absent:
   server-only code in the client (hard, J4.12), split options in the route module (J2.5), code a chunk does not need
@@ -182,28 +182,12 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
   (including what the split modules it emits contain, J2.5); final chunk and bundle contents are asserted on builds,
   per bundler, with `sideEffects` and `@__PURE__` hints varied. (R2)
 - **G3 Surviving code runs once per environment, never duplicated or lost; when it runs follows the code that needs
-  it.** (Route files: J2.0 decides where code goes and when it runs; server-function handler modules: J4.2 (R157);
-  what follows applies to Start's other derived outputs, Hydrate chunks, and to route files where J2.0 does not say
-  otherwise.) After the documented removals (server-only code on the client, J4; client-only code on the server, J4.11;
-  type-only imports, J2.5; `deleteNodes`, J2.14), everything at the top level of a module exists once and runs once per
-  environment: splitting never duplicates an effect across derived modules and never loses one. Shared module state
-  initialises once when evaluated, and every consumer sees the same value and instance (J2.4). Where code runs is
-  decided by bindings; no order between effects is kept (R146, R148 to R151). A top-level statement, an unread
-  declaration and an effectful declaration go where all the module bindings they use go: one split chunk, one
-  extracted export's module, one lazy module that several chunks share, on the server a handlers module. They run when
-  that output first loads, in source order within it. They stay in the route module when a binding they use stays
-  there. Code that stays together, or moves together, keeps the order it was written in ("Rules page confirmations"),
-  so what is kept is the order of the reads and writes of a module binding that the file itself shows (by its
-  name, through an alias or a holder): a value read at load from state the file writes later does not move, and a
-  statement that changes a binding which stays, stays. Accepted breaks, where the compiled program can compute another
-  value than the source, with no warning (the guide lists them under "What the compiler doesn't see"): what imported
-  code does to what it is handed or to other modules (`mutate(prefs)`; an `initializeApp()` that moves past a staying
-  `connectEmulator()`; a statement on a global such as `Sentry.init(cfg)` moving with `cfg`; R146, R149); a call's
-  result that is the object it was handed (R149 answer F); a callback handed to a call, which is taken to run later:
-  registered at load, it moves with what it writes, and what it assigns is not seen at load (R149 answer D, "B4
-  widened"); a binding two chunks use, one of them assigning it inline, which goes with the chunk that assigns it, so
-  loading the other chunk loads that one ("Row 8 and exported `let`", "Rules page confirmations"); startup work only a server function uses, which starts with its first call (R149 answer A);
-  an extracted export, which evaluates before the module's own top-level code (R150); getters, `toString` and coercions (R97). Printed
+  it.** After the documented removals (server-only code on the client, J4; client-only code on the server, J4.11;
+  type-only imports, J2.5; `deleteNodes`, J2.14), everything at the top level of a module exists once per environment.
+  Where it goes is one placement: route files as J2.0 says, server-function handler modules as J4.2 (R157),
+  `<Hydrate>` chunks as J5.2, erasure only as J4. Top-level statements stay in the module (R154): they run once, when
+  it loads, in source order; a chunk copies what J2.0 and J5.2 say it copies, as `main` does. Shared module state
+  initialises once when evaluated, and every consumer sees the same value and instance (J2.4). Printed
   statement and import order is free. How to check: an initializer counter plus real consumers detects duplication and
   inconsistent values; a load marker detects where a statement or a declaration landed; an order between effects of
   different outputs is not a valid check, nor is a single total source-order trace; tests must not force an

@@ -148,7 +148,7 @@ async function compile(
     throw new Error('the module was not compiled')
   }
   // the chunks the output imports, directly or through the module's other
-  // outputs (a boundary in a component an extracted-export module holds)
+  // outputs (a boundary in a component a shared module holds)
   const extracted: Compiled['extracted'] = []
   const chunks: Record<string, string> = {}
   const chunkOutputs: Record<string, CompileOutput> = {}

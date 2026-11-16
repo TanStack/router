@@ -340,7 +340,7 @@ function renderEnv(
     exportNameOf,
     anchored.map((a) => a.gen),
   )
-  // export glue at the end (re-exports of extracted exports first)
+  // export glue at the end (re-exports of the shared module's exports first)
   const exportsText = [
     ...reexportGlue(plan, placement, exportNameOf),
     ...exportGlue(

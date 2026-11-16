@@ -2,8 +2,8 @@
  * Registers Start's compiler on Rsbuild: the shared session,
  * one `pre` loader rule per Start environment (every JS/TS id, env and
  * derived alike), the late `post` pass over the JS output of other module
- * types (and of a Vue SFC's script block: `vue.ts`), the `sideEffects: false` rules for
- * extracted-export outputs and the import-protection runtime, the host
+ * types (and of a Vue SFC's script block: `vue.ts`), the `sideEffects: false` rule for
+ * the import-protection runtime, the host
  * plugin of each environment compiler, the generator session and the
  * client route tree transform.
  */
