@@ -3,9 +3,8 @@ import type { RecognizerTable } from '@tanstack/router-utils/compiler'
 /**
  * The package exports whose call is pure when its arguments are
  * (`RecognizerTable.pureCalls`), for import protection's effect model: the
- * core recognises them by import binding from these packages (renamed, a
- * namespace member, or a member of React's default import; app re-exports
- * are not followed), so a module-level declaration they create is no effect
+ * core recognises them by import binding from these packages (renamed, or a
+ * namespace member; app re-exports are not followed), so a module-level declaration they create is no effect
  * of the module's own code. Each was read in the package's source,
  * development builds included: the call constructs and returns a value,
  * reads no global or module state, registers nothing, calls none of its
@@ -34,9 +33,7 @@ const ROUTER_EXPORTS = [
   'stringifySearchWith',
 ]
 
-type PureCallTable = Required<
-  Pick<RecognizerTable, 'pureCalls' | 'pureDefaultNamespaces'>
->
+type PureCallTable = Required<Pick<RecognizerTable, 'pureCalls'>>
 
 let table: PureCallTable | null = null
 
@@ -53,23 +50,13 @@ export function knownPureCalls(): PureCallTable {
         ...ROUTER_EXPORTS,
         'createRouterConfig',
       ]),
-      // the frameworks' component wrappers: React `memo` and `forwardRef` return
-      // an element type (development warns on an invalid argument, stateless, and
-      // reads only its `length`, `defaultProps` or `$$typeof`); `lazy` (React,
-      // Solid) and Vue's `defineAsyncComponent` wrap a loader they call on first
-      // render; Vue's `defineComponent` returns its options (or wraps a setup
-      // function, reading its `name`). Not pure: `createContext` (React, Solid:
-      // two instances are two contexts), `createRef`, React's `cache` (its
-      // identity keys the cache), Solid's signals, stores and computations, Vue's
-      // `ref`/`reactive` & co. (state), `markRaw` (writes its argument), `h`
-      // (reads the current render instance), `defineCustomElement` (a class).
-      react: new Set(['memo', 'forwardRef', 'lazy']),
+      // Solid's `lazy` wraps a loader it calls on first render. Not pure:
+      // `createContext` (two instances are two contexts), signals, stores and
+      // computations. React and Vue have no rows: neither declares
+      // `sideEffects: false`, so importing one already makes a module effectful
+      // (`edges.ts`, `describeTarget`)
       'solid-js': new Set(['lazy']),
-      vue: new Set(['defineComponent', 'defineAsyncComponent']),
     },
-    // React is CommonJS without `__esModule`: every bundler binds its
-    // default import to its exports (Vue and Solid have no default export)
-    pureDefaultNamespaces: new Set(['react']),
   }
   return table
 }
