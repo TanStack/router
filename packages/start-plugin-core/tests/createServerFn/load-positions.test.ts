@@ -3,9 +3,9 @@
  * (SPEC J4.6, R162): where its expression is evaluated exactly once,
  * unconditionally, when the module loads (an object or array literal entry, a
  * call or `new` argument, `export default`, an assignment's right-hand side,
- * a class static field or static block, through parentheses, casts and the
- * last operand of a sequence), it works like a top-level one, created where
- * its statement runs. Anywhere else (a condition, a loop, a block, a
+ * a class static field or static block, through parentheses, casts and any
+ * operand of a sequence), it works like a top-level one, created where its
+ * statement runs. Anywhere else (a condition, a loop, a block, a
  * function body) the build fails at the server fn. Observed through the
  * public Start host: what each environment serves or rejects, and calls of
  * the server fns from the client (by id, through Start's server entry) and
@@ -140,6 +140,29 @@ describe('a server fn created once when its module loads', () => {
       code: `export const left = ${fn} || null`,
       read: 'module.left',
     },
+    {
+      name: 'a labeled statement',
+      code: `export const api: Record<string, unknown> = {}\nlabeled: api.foo = ${fn}`,
+      read: 'module.api.foo',
+    },
+    // what the chain reads in a function of its own runs when that function
+    // is called, after the module loaded: a declaration of a later statement
+    // or of its own (F3, review-phase3)
+    {
+      name: 'a chain reading a later declaration in a function of its own',
+      code: `export const api = {\n  foo: createServerFn()\n    .validator((d: unknown) => check(d))\n    .handler(async () => db.inner()),\n}\nconst check = (d: unknown) => d`,
+      read: 'module.api.foo',
+    },
+    {
+      name: 'a static field reading its own class in a function of its own',
+      code: `export class Api {\n  static check = (d: unknown) => d\n  static foo = createServerFn()\n    .validator((d: unknown) => Api.check(d))\n    .handler(async () => db.inner())\n}`,
+      read: 'module.Api.foo',
+    },
+    {
+      name: 'options reading a top-level await',
+      code: `export const api = {\n  foo: createServerFn({ method: await Promise.resolve('POST' as const) }).handler(\n    async () => db.inner(),\n  ),\n}`,
+      read: 'module.api.foo',
+    },
   ]
 
   test.each(positions)(
@@ -183,6 +206,11 @@ describe('a server fn created once when its module loads', () => {
       code: `class K {\n  static [typeof ${fn}] = 1\n}\nexport const value = Object.keys(K)[0]`,
       expected: 'function',
     },
+    {
+      name: 'an enum member',
+      code: `enum E {\n  A = typeof ${fn} === 'function' ? 1 : 0,\n}\nexport const value = E.A`,
+      expected: 1,
+    },
   ]
 
   test.each(valued)(
@@ -221,6 +249,27 @@ describe('a server fn created once when its module loads', () => {
     )
   })
 
+  // F2 (review-phase3): an operand a sequence discards is evaluated once
+  // too: compiled like any other position, its handler off the client
+  test.each([
+    {
+      name: 'an operand of a sequence its statement discards',
+      code: `const other = () => 1\nexport const value = (${fn}, other())`,
+    },
+    {
+      name: 'an operand of a bare sequence statement',
+      code: `const other = () => 1\n${fn}, other()\nexport const value = other()`,
+    },
+  ])('compiles as $name, the client without the handler', async ({ code }) => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head}${code}`,
+      ...files,
+    })
+    expectNotLoaded(await served.loads(), ['./db.server'])
+    expect(served.code.client).not.toContain('db.inner')
+    expect((await served.ssr()).value).toBe(1)
+  })
+
   // d22 (inventory-serverfn-shapes): the server fn is created where its
   // statement runs, after the statements before it, so a middleware list
   // they fill is complete when `.middleware()` copies it
@@ -246,6 +295,62 @@ export const seen = createMiddleware({ type: 'function' }).server(({ next }) =>
     })
     expect(await callServerFnThroughCallers(served, 'module.api.foo')).toBe(
       'middleware',
+    )
+  })
+
+  // F1 (review-phase3): also when the chain reads only imports, a call's
+  // result or a global, the server fn is created where its statement runs,
+  // after the statements before it (the hoisted `const` stays in the module)
+  const middlewares = `import { createMiddleware } from '@tanstack/react-start'
+const seen = createMiddleware({ type: 'function' }).server(({ next }) =>
+  next({ context: { seen: 'middleware' } }),
+)
+export const list: Array<typeof seen> = []
+export const fill = () => {
+  list.push(seen)
+}
+export const getMws = () => [...list]
+`
+  const seenHandler = `.handler(async ({ context }) => (context as { seen?: string }).seen ?? 'none')`
+  test.each([
+    {
+      name: 'an imported list an earlier statement fills',
+      code: `import { list, fill } from './mws'\nfill()\nexport const api = { foo: createServerFn().middleware(list)${seenHandler} }`,
+      read: 'module.api.foo',
+    },
+    {
+      name: 'an imported list an earlier statement fills, in a static field',
+      code: `import { list, fill } from './mws'\nfill()\nexport class Api {\n  static foo = createServerFn().middleware(list)${seenHandler}\n}`,
+      read: 'module.Api.foo',
+    },
+    {
+      name: 'an imported call made after an earlier statement',
+      code: `import { fill, getMws } from './mws'\nfill()\nexport const api = { foo: createServerFn().middleware(getMws())${seenHandler} }`,
+      read: 'module.api.foo',
+    },
+  ])(
+    'is created after the statements before its own when it reads $name',
+    async ({ code, read }) => {
+      const served = await serveCase(await host(), {
+        'module.tsx': `${head}${code}`,
+        'mws.ts': middlewares,
+        ...files,
+      })
+      expect(await callServerFnThroughCallers(served, read)).toBe('middleware')
+    },
+  )
+
+  test('is created after the statement setting a global its options read', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `${head};(globalThis as any).fnOptions = { method: 'POST' }
+export const api = {
+  foo: createServerFn((globalThis as any).fnOptions).handler(async () => db.inner()),
+}`,
+      ...files,
+    })
+    expect((await served.ssr()).api.foo.method).toBe('POST')
+    expect(await callServerFnThroughCallers(served, 'module.api.foo')).toBe(
+      'inner',
     )
   })
 
@@ -330,6 +435,10 @@ const reg = { add: <T,>(f: T) => f }
       name: 'a logical assignment',
       code: `api.x ??= ${fn}`,
     },
+    {
+      name: 'a namespace body',
+      code: `export namespace N {\n  export const f = ${fn}\n}`,
+    },
   ]
 
   test.each(refused)(
@@ -350,6 +459,49 @@ const reg = { add: <T,>(f: T) => f }
       }
     },
   )
+
+  // a name only the code around the server fn sees (a class static block's
+  // local, a class expression's own name), and a declaration its hoisted
+  // `const` would read before it is set (one of its own statement, or a
+  // later one, read when the module loads: F3, review-phase3): a compile
+  // error at the name
+  test.each([
+    {
+      name: "a class static block's local",
+      code: `export class Api {\n  static foo: unknown\n  static {\n    const m = 'POST' as const\n    Api.foo = createServerFn({ method: m }).handler(async () => db.inner())\n  }\n}`,
+      at: 'm }',
+    },
+    {
+      name: "a class expression's own name",
+      code: `export const B = class A {\n  static k = 'k'\n  static foo = createServerFn().handler(async () => db.inner() + A.k)\n}`,
+      at: 'A.k)',
+    },
+    {
+      name: 'a declaration of its own statement, when the module loads',
+      code: `export const mws: Array<never> = [],\n  o = { foo: createServerFn().middleware(mws).handler(async () => db.inner()) }`,
+      at: 'mws).',
+    },
+    {
+      name: 'its own class, when the module loads',
+      code: `export class Api {\n  static mws: Array<never> = []\n  static foo = createServerFn().middleware(Api.mws).handler(async () => db.inner())\n}`,
+      at: 'Api.mws',
+    },
+    {
+      name: 'a declaration of a later statement, when the module loads',
+      code: `export const api = { foo: createServerFn().validator(check).handler(async () => db.inner()) }\nfunction check(d: unknown) {\n  return d\n}`,
+      at: 'check).',
+    },
+  ])('is a compile error when it reads $name', async ({ code, at }) => {
+    const source = `${head}${code}`
+    const startCase = await (
+      await host()
+    ).case({ 'module.tsx': source, ...files })
+    for (const environment of ['client', 'ssr'] as const) {
+      const failure = await compileError(startCase, environment)
+      expect(failure, `${environment} serves the module`).toBeDefined()
+      expectCompileError(failure, { source, at, column: true })
+    }
+  })
 
   // d19: a private name of the class can't leave it: a static server fn
   // whose code reads one is a compile error at the name

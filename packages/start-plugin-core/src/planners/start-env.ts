@@ -1654,31 +1654,29 @@ function loadPosition(
 ):
   | { k: 'once'; statement: Node }
   | { k: 'refused'; why: keyof typeof REFUSED_POSITION } {
+  /**
+   * The reason the message gives: a function around it (its body is a block,
+   * its code a condition's or a loop's), else the first refused position
+   * that is no block (an `if` or a loop holds its body in one).
+   */
+  let why: keyof typeof REFUSED_POSITION | null = null
   let n = node
   let p = file.parentOf(n)
-  while (p !== null) {
-    if (p.type === 'Program') {
-      return { k: 'once', statement: n }
+  while (p !== null && p.type !== 'Program') {
+    const here = refusedKind(p, n)
+    if (here === 'function') {
+      return { k: 'refused', why: here }
     }
-    const why = refusedKind(p, n)
-    if (why !== null) {
-      // (a function around it is the reason the message gives: its body is
-      // a block, its code a condition's or a loop's)
-      for (let a: Node | null = p; a !== null; a = file.parentOf(a)) {
-        if (
-          a.type === 'FunctionDeclaration' ||
-          a.type === 'FunctionExpression' ||
-          a.type === 'ArrowFunctionExpression'
-        ) {
-          return { k: 'refused', why: 'function' }
-        }
-      }
-      return { k: 'refused', why }
+    if (here !== null && (why === null || why === 'block')) {
+      why = here
     }
     n = p
     p = file.parentOf(n)
   }
-  return { k: 'refused', why: 'block' }
+  if (p === null) {
+    return { k: 'refused', why: why ?? 'block' }
+  }
+  return why === null ? { k: 'once', statement: n } : { k: 'refused', why }
 }
 
 /**
@@ -1794,16 +1792,94 @@ function privateNameOutside(node: Node): (Node & { name: string }) | null {
 }
 
 /**
+ * The first `this`, `super`, `new.target` or `arguments` (and, with `awaits`,
+ * `await` or `yield`) in `node` that belongs to the code around it, not to a
+ * function or a class of its own.
+ */
+function enclosingCallCode(
+  node: Node,
+  /** Whether an identifier refers to a declared binding (an `arguments` the code declares). */
+  bound: (n: Node) => boolean,
+  awaits = true,
+): Node | null {
+  const found: { node: Node | null } = { node: null }
+  walk(node, {
+    enter: (n, wctx) => {
+      if (found.node) {
+        wctx.stop()
+        return
+      }
+      const inside = (types: ReadonlyArray<string>) =>
+        wctx
+          .ancestors()
+          .some(
+            (a) =>
+              a !== node && a.start >= node.start && types.includes(a.type),
+          )
+      switch (n.type) {
+        case 'ThisExpression':
+        case 'Super':
+        case 'MetaProperty':
+        case 'Identifier':
+          if (
+            (n.type !== 'MetaProperty' || n.meta.name === 'new') &&
+            (n.type !== 'Identifier' ||
+              (n.name === 'arguments' && !bound(n))) &&
+            !inside(['FunctionExpression', 'FunctionDeclaration', 'ClassBody'])
+          ) {
+            found.node = n
+          }
+          break
+        case 'AwaitExpression':
+        case 'YieldExpression':
+          if (
+            awaits &&
+            !inside([
+              'FunctionExpression',
+              'FunctionDeclaration',
+              'ArrowFunctionExpression',
+            ])
+          ) {
+            found.node = n
+          }
+          break
+        default:
+          break
+      }
+    },
+  })
+  return found.node
+}
+
+/** How a message names the code `enclosingCallCode` found. */
+function ownedWord(n: Node): string {
+  return n.type === 'ThisExpression'
+    ? 'this'
+    : n.type === 'Super'
+      ? 'super'
+      : n.type === 'MetaProperty'
+        ? 'new.target'
+        : n.type === 'AwaitExpression'
+          ? 'await'
+          : n.type === 'YieldExpression'
+            ? 'yield'
+            : 'arguments'
+}
+
+/**
  * Hoists a server-fn chain that is no top-level declarator's value to module
  * level on the server (J4.6, R162): the chain region is claimed by a
  * generated `const` placed immediately above the top-level statement holding
- * it, the occurrence becomes a reference to it. Only a chain its statement
- * evaluates exactly once, unconditionally, when the module loads
- * (`loadPosition`) moves, so it is created as often and in the same order as
- * the source creates it. Refuses, positioned, a chain in any other position,
- * one capturing a local, `this`/`arguments`/`super`/`new.target`/`await`/
- * `yield` or a private name of an enclosing class, and one reading a
- * declaration of its own statement or a later one outside its handler.
+ * it, in the module that keeps that statement, the occurrence becomes a
+ * reference to it. Only a chain its statement evaluates exactly once,
+ * unconditionally, when the module loads (`loadPosition`) moves, so it is
+ * created as often and in the same order as the source creates it, before
+ * the rest of its own statement. Refuses, positioned, a chain in any other
+ * position (with the local it captures in a function, if any), one reading a
+ * name only the code around it sees (a static block's local, a class
+ * expression's own name), `this`/`super`/`new.target`/`arguments` or a
+ * private name of the class it is in, and one reading, when the module
+ * loads, a declaration of its own statement or a later one.
  */
 function hoist(
   ctx: PlanContext,
@@ -1825,8 +1901,6 @@ function hoist(
   // statement evaluates them, `(0, createServerFn()…)`)
   const X = chainExpression(site.chain.terminal)
   const xRange = rangeOf(X)
-  const h = site.handler
-  const hRange = rangeOf(h)
   // the claim is dead where the enclosing code is erased: no diagnostics
   // there. Except on the provider: what it erases may run on the client
   // (`createClientOnlyFn`, `<ClientOnly>` children), which calls the server
@@ -1852,111 +1926,87 @@ function hoist(
     recordRefusal?.({ at: range.start, ...why })
     return null
   }
-  // captures of enclosing functions
   const captures = t1.capturesOf(xRange)
-  if (captures.length > 0) {
+  const firstCapture = () => {
     const first = t1.refs.refsIn(xRange).find((r) => captures.includes(r.sym))
-    const name = symbols.name(first ? first.sym : captures[0]!)
-    // `base.handler(…)` with `const base = createServerFn()` in the function
-    const builder =
-      !!first &&
-      !site.chain.headIsFactoryCall &&
-      first.range.start === site.chain.head.start
-    return refuse(
-      builder
-        ? `A server function nested in a function cannot be compiled when it is built on \`${name}\`, a local of the enclosing function. Define the server function at the module top level, with \`${name}\` there too (export it to share it), or as one chain there: \`export const fn = createServerFn().handler(…)\`.`
-        : `A server function nested in a function cannot be compiled when its code reads \`${name}\`, a local of the enclosing function. Move the server function to the module top level and pass \`${name}\` in its input: declare it with \`.validator()\` and call the server function with \`{ data: … }\`.`,
-      first ? first.range : xRange,
-      { reads: { name, builder } },
-    )
-  }
-  // this / arguments / super / new.target / await / yield owned by an enclosing function
-  const found: { node: Node | null } = { node: null }
-  walk(X, {
-    enter: (n, wctx) => {
-      if (found.node) {
-        wctx.stop()
-        return
-      }
-      const inFn = wctx
-        .ancestors()
-        .some(
-          (a) =>
-            a !== X &&
-            a.start >= X.start &&
-            (a.type === 'FunctionExpression' ||
-              a.type === 'FunctionDeclaration' ||
-              a.type === 'ClassBody'),
-        )
-      const inAnyFn = wctx
-        .ancestors()
-        .some(
-          (a) =>
-            a !== X &&
-            a.start >= X.start &&
-            (a.type === 'FunctionExpression' ||
-              a.type === 'FunctionDeclaration' ||
-              a.type === 'ArrowFunctionExpression'),
-        )
-      switch (n.type) {
-        case 'ThisExpression':
-        case 'Super':
-          if (!inFn) {
-            found.node = n
-          }
-          break
-        case 'MetaProperty':
-          if (!inFn && n.meta.name === 'new') {
-            found.node = n
-          }
-          break
-        case 'Identifier':
-          if (
-            n.name === 'arguments' &&
-            !inFn &&
-            !file.referenceOf(n)?.binding
-          ) {
-            found.node = n
-          }
-          break
-        case 'AwaitExpression':
-        case 'YieldExpression':
-          if (!inAnyFn) {
-            found.node = n
-          }
-          break
-        default:
-          break
-      }
-    },
-  })
-  if (found.node) {
-    const o = found.node
-    const what =
-      o.type === 'ThisExpression'
-        ? 'this'
-        : o.type === 'Super'
-          ? 'super'
-          : o.type === 'MetaProperty'
-            ? 'new.target'
-            : o.type === 'AwaitExpression'
-              ? 'await'
-              : o.type === 'YieldExpression'
-                ? 'yield'
-                : 'arguments'
-    return refuse(
-      what === 'await' || what === 'yield'
-        ? `A server function nested in a function cannot be compiled when its code uses \`${what}\` of the enclosing function outside its handler. Move it to the module top level.`
-        : `A server function nested in a function cannot be compiled when its code uses \`${what}\` of the enclosing function. Move it to the module top level and pass what it reads from \`${what}\` in its input: declare it with \`.validator()\` and call the server function with \`{ data: … }\`.`,
-      rangeOf(o),
-    )
+    return { first, name: symbols.name(first ? first.sym : captures[0]!) }
   }
   // created exactly once, unconditionally, when the module loads (R162)
   const position = loadPosition(file, X)
   if (position.k === 'refused') {
+    if (position.why === 'function' && captures.length > 0) {
+      // a capture of the enclosing function: the fix names it
+      const { first, name } = firstCapture()
+      // `base.handler(…)` with `const base = createServerFn()` in the function
+      const builder =
+        !!first &&
+        !site.chain.headIsFactoryCall &&
+        first.range.start === site.chain.head.start
+      return refuse(
+        builder
+          ? `A server function nested in a function cannot be compiled when it is built on \`${name}\`, a local of the enclosing function. Define the server function at the module top level, with \`${name}\` there too (export it to share it), or as one chain there: \`export const fn = createServerFn().handler(…)\`.`
+          : `A server function nested in a function cannot be compiled when its code reads \`${name}\`, a local of the enclosing function. Move the server function to the module top level and pass \`${name}\` in its input: declare it with \`.validator()\` and call the server function with \`{ data: … }\`.`,
+        first ? first.range : xRange,
+        { reads: { name, builder } },
+      )
+    }
+    const bound = (n: Node) => !!file.referenceOf(n)?.binding
+    const owned =
+      position.why === 'function' ? enclosingCallCode(X, bound) : null
+    if (owned) {
+      const what = ownedWord(owned)
+      return refuse(
+        what === 'await' || what === 'yield'
+          ? `A server function nested in a function cannot be compiled when its code uses \`${what}\` of the enclosing function outside its handler. Move it to the module top level.`
+          : `A server function nested in a function cannot be compiled when its code uses \`${what}\` of the enclosing function. Move it to the module top level and pass what it reads from \`${what}\` in its input: declare it with \`.validator()\` and call the server function with \`{ data: … }\`.`,
+        rangeOf(owned),
+      )
+    }
     return refuse(
       `A server function must be created exactly once, when its module loads: this one is ${REFUSED_POSITION[position.why]}. Define it at the module top level (\`export const fn = createServerFn()…\`) and pass what it needs as its input.`,
       xRange,
+    )
+  }
+  // a name only the code around it sees: a class static block's local, the
+  // name a class expression gives itself (the hoisted `const` is outside)
+  if (captures.length > 0) {
+    const { first, name } = firstCapture()
+    const scope = symbols.scopeRange(first ? first.sym : captures[0]!)
+    let owner: Node | null = file.parentOf(X)
+    while (
+      owner !== null &&
+      !(scope && owner.start === scope.start && owner.end === scope.end)
+    ) {
+      owner = file.parentOf(owner)
+    }
+    const what =
+      owner?.type === 'StaticBlock'
+        ? 'a local of the class static block it is written in'
+        : owner?.type === 'ClassExpression'
+          ? 'the name the class expression around it gives itself'
+          : 'a name of the code around it'
+    return refuse(
+      `A server function cannot be compiled when its code reads \`${name}\`, ${what}: the server function is created at the module top level, where \`${name}\` does not exist. Declare what it reads at the module top level, above the statement holding the server function, or pass it in its input.`,
+      first ? first.range : xRange,
+    )
+  }
+  // `this`, `super`, `new.target`, `arguments` of a class's static parts: the
+  // class's own, which the hoisted `const` outside the class does not have
+  // (at the module top level they mean the same there)
+  let classAround = false
+  for (let a = file.parentOf(X); a !== null; a = file.parentOf(a)) {
+    if (a.type === 'ClassBody') {
+      classAround = true
+      break
+    }
+  }
+  const classCode = classAround
+    ? enclosingCallCode(X, (n) => !!file.referenceOf(n)?.binding, false)
+    : null
+  if (classCode) {
+    return refuse(
+      `A server function cannot be compiled when its code uses \`${ownedWord(classCode)}\` of the class it is written in: the server function is created at the module top level, outside the class. Read the class by its name in the handler, or declare what it reads above the class.`,
+      rangeOf(classCode),
     )
   }
   // a private name of a class the chain is written in cannot leave it (d19)
@@ -1971,11 +2021,25 @@ function hoist(
   const own = t1.items.find(
     (it) => it.range.start <= statement.start && statement.start < it.range.end,
   )!
-  // what the chain reads outside its handler is declared above its statement:
-  // the hoisted `const` evaluates it there
+  // what the chain reads when the module loads is declared above its
+  // statement: the hoisted `const` evaluates it there, before the rest of the
+  // statement (what a function of the chain reads, its handler's code
+  // included, runs when it is called)
+  const functions: Array<Range> = []
+  walk(X, {
+    enter: (n) => {
+      if (
+        n.type === 'FunctionExpression' ||
+        n.type === 'FunctionDeclaration' ||
+        n.type === 'ArrowFunctionExpression'
+      ) {
+        functions.push(rangeOf(n))
+      }
+    },
+  })
   for (const r of t1.refs.refsIn(xRange)) {
     if (
-      (r.range.start >= hRange.start && r.range.end <= hRange.end) ||
+      functions.some((f) => r.range.start >= f.start && r.range.end <= f.end) ||
       !symbols.isModuleLevel(r.sym)
     ) {
       continue
@@ -1987,7 +2051,7 @@ function hoist(
     if (below) {
       const name = symbols.name(r.sym)
       return refuse(
-        `A server function cannot be created before \`${name}\`, which its own statement or a later one declares and which it reads outside its handler. Declare \`${name}\` above the statement holding the server function.`,
+        `A server function cannot be created before \`${name}\`, which its own statement or a later one declares and which it reads when the module loads. Declare \`${name}\` above the statement holding the server function, or read it in a function (the handler, a validator).`,
         r.range,
       )
     }
@@ -2005,7 +2069,10 @@ function hoist(
       declares: [hoisted.sym],
       effectful: false,
       anchor,
-      home,
+      // (where its statement runs, at the anchor: never moved to a shared or
+      // derived module, which would create it before every statement of the
+      // file; the other outputs import it, as what the file keeps)
+      home: home === 'auto' ? 'env' : home,
       by,
     })
     rewrites.claim({

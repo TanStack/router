@@ -666,6 +666,145 @@ import { db } from './db.server'
   )
 })
 
+// A refused server fn names its real position (R162; F4, review-phase3):
+// an `if` or a loop holds its body in a block, the message names the `if` or
+// the loop; a function around it is the reason, whatever is inside it
+describe('a refused server fn: the message names its position', () => {
+  const head = `import { createServerFn } from '@tanstack/react-start'
+export const api: Record<string, unknown> = {}
+const flag = Math.random() >= 0
+`
+  const fn = `createServerFn().handler(async () => 1)`
+  const envs: Array<[string, EnvInfo]> = [
+    ['client', clientEnv],
+    ['ssr', ssrEnv],
+  ]
+  const errorsOf = async (code: string, env: EnvInfo) =>
+    (await compile(code, { env })).out.diagnostics.filter(
+      (d) => d.severity === 'error',
+    )
+
+  it.each([
+    ['an if body', `if (flag) {\n  api.a = ${fn}\n}`, 'under a condition'],
+    [
+      'an else body',
+      `if (!flag) {\n} else {\n  api.a = ${fn}\n}`,
+      'under a condition',
+    ],
+    [
+      'a ternary branch',
+      `export const t = flag ? ${fn} : null`,
+      'under a condition',
+    ],
+    [
+      'a for body',
+      `for (const k of ['a']) {\n  api[k] = ${fn}\n}`,
+      'in a loop',
+    ],
+    ['a while body', `while (!flag) {\n  api.w = ${fn}\n}`, 'in a loop'],
+    ['a try block', `try {\n  api.t = ${fn}\n} catch {}`, 'in a block'],
+    [
+      'a switch case',
+      `switch (typeof api) {\n  case 'object':\n    api.s = ${fn}\n}`,
+      'in a block',
+    ],
+    [
+      'a namespace body',
+      `export namespace N {\n  export const f = ${fn}\n}`,
+      'in a block',
+    ],
+    ['a block', `{\n  api.b = ${fn}\n}`, 'in a block'],
+    [
+      'a function in an if body',
+      `if (flag) {\n  api.f = () => ${fn}\n}`,
+      'inside a function',
+    ],
+    [
+      'an instance field',
+      `export class A {\n  foo = ${fn}\n}`,
+      'in a class instance field',
+    ],
+    [
+      'a destructuring default',
+      `export const { d = ${fn} } = api as { d?: unknown }`,
+      'a default value',
+    ],
+  ])('%s', async (_name, body, says) => {
+    const code = `${head}${body}`
+    for (const [envName, env] of envs) {
+      const errors = await errorsOf(code, env)
+      expect(
+        errors.map((d) => d.range?.start),
+        envName,
+      ).toEqual([code.indexOf(fn)])
+      expect(errors[0]!.message, envName).toContain(says)
+    }
+  })
+
+  // a name the hoisted `const` would not see or would read too early: the
+  // message names it and says why, at the name
+  it.each([
+    [
+      "a class static block's local",
+      `export class Api {\n  static foo: unknown\n  static {\n    const m = 'POST' as const\n    Api.foo = createServerFn({ method: m }).handler(async () => 1)\n  }\n}`,
+      'm }',
+      'a local of the class static block',
+    ],
+    [
+      "a class expression's own name",
+      `export const B = class A {\n  static k = 'k'\n  static foo = createServerFn().handler(async () => A.k)\n}`,
+      'A.k)',
+      'the name the class expression around it gives itself',
+    ],
+    [
+      '`this` in a static field',
+      `export class A {\n  static mws = []\n  static foo = createServerFn().middleware(this.mws).handler(async () => 1)\n}`,
+      'this.mws',
+      '`this` of the class it is written in',
+    ],
+    [
+      'a declaration of its own statement, when the module loads',
+      `export const mws = [],\n  o = { foo: createServerFn().middleware(mws).handler(async () => 1) }`,
+      'mws).',
+      'its own statement or a later one',
+    ],
+    [
+      'a later declaration, when the module loads',
+      `export const o = { foo: createServerFn().validator(check).handler(async () => 1) }\nfunction check(d: unknown) {\n  return d\n}`,
+      'check).',
+      'its own statement or a later one',
+    ],
+  ])('%s', async (_name, body, at, says) => {
+    const code = `${head}${body}`
+    for (const [envName, env] of envs) {
+      const errors = await errorsOf(code, env)
+      expect(
+        errors.map((d) => d.range?.start),
+        envName,
+      ).toEqual([code.indexOf(at)])
+      expect(errors[0]!.message, envName).toContain(says)
+    }
+  })
+
+  // F6: decorators are evaluated once, with the class: the hoisted `const`
+  // goes above the class
+  it('hoists a decorator argument above its class', async () => {
+    const code = `${head}const dec = (_f: unknown) => (c: unknown) => c
+@dec(${fn})
+export class Decorated {}
+`
+    for (const [envName, env] of envs) {
+      const r = await compile(code, { env })
+      expect(
+        r.out.diagnostics.filter((d) => d.severity === 'error'),
+        envName,
+      ).toEqual([])
+      expectValid(r.code)
+      expect(r.code.indexOf('@dec('), envName).toBeGreaterThan(-1)
+    }
+  })
+})
+
 // In-place provider (SSR = provider): handlers move to one lazy handler
 // module the defining module imports on the first call; what only they read
 // moves with them, what the defining module also reads stays and is

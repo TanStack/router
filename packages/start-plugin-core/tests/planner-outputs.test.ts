@@ -12,7 +12,7 @@ import {
 } from '@tanstack/router-utils/compiler'
 import { startRecognizer } from '../src/compiler/recognizer'
 import { START_ENV, startPlanners } from '../src/planners'
-import { importedAs, namesIn, shape } from './generated-names'
+import { importedAs, namesIn } from './generated-names'
 import type { StartEnvConfig, StartEnvFacts } from '../src/planners'
 import type {
   CompileOutput,
@@ -64,15 +64,6 @@ function envInfo(env: Env): EnvInfo {
     isProvider: env === 'ssr' || env === 'rsc',
     mode: 'build',
   }
-}
-
-/** The module of the one static import of `code` (a same-file derived module). */
-function importedModule(code: string): string {
-  const specifiers = [...code.matchAll(/^import .* from '([^']+)'$/gm)].map(
-    (m) => m[1]!,
-  )
-  expect(specifiers).toHaveLength(1)
-  return specifiers[0]!
 }
 
 async function compile(
@@ -334,15 +325,15 @@ export const wrapped = wrap(wrap(createServerFn().handler(async () => 'w')))
     expect(client.code).toContain(
       `wrap(wrap(createServerFn().handler(${clientRpc(client.code)}(`,
     )
-    // the hoisted chain lives in one module the file and the lazy module
-    // import (the lazy module's re-export of the wrapper is its only root,
-    // R159), with its handler loaded on the first call
+    // the hoisted chain stays in the file, right above its statement (F1,
+    // review-phase3), with its handler loaded on the first call
     const ssr = (await compile(files, 'ssr'))!
-    const chain = (await compile(files, 'ssr', importedModule(ssr.code)))!
-    expect(chain.code).toMatch(
-      shape(
-        `.handler(«h», (...args) => «load»().then((m) => m.«impl»(...args)))`,
-      ),
+    const { hoisted } = namesIn(
+      ssr.code,
+      `const «hoisted» = createServerFn().handler(«h», (...args) => «load»().then((m) => m.«impl»(...args)))`,
+    )
+    expect(ssr.code).toContain(
+      `(...args)))\nexport const wrapped = wrap(wrap(${hoisted}))`,
     )
   })
 
@@ -390,24 +381,24 @@ export const api = {
     )
     expect(client.code).not.toContain('db.server')
     const ssr = (await compile(files2, 'ssr'))!
-    // hoisted: the module-level fn the nested occurrence reads, in one
-    // module the file and the lazy module import (R159)
-    const chain = (await compile(files2, 'ssr', importedModule(ssr.code)))!
+    // hoisted: the module-level fn the nested occurrence reads, in the file
+    // right above its statement (F1, review-phase3); the handler module
+    // holds the handler, loaded on the first call
     const { hoisted } = namesIn(
-      chain.code,
+      ssr.code,
       `const «hoisted» = createServerFn().handler(«h», (...args) => «load»().then((m) => m.«impl»(...args)))`,
     )
     expect(ssr.code).not.toContain('db.server')
-    expect(chain.code).not.toContain('db.server')
     const handlers = (await compile(
       files2,
       'ssr',
       '/app/module.tsx?tss-serverfn-handler',
     ))!
     expect(handlers.code).toContain('= async () => db.inner()')
-    expect(ssr.code).toContain(`import { ${hoisted} }`)
-    expect(ssr.code).toContain(`inner: ${hoisted}`)
-    expect(chain.code).toContain('name: "inner"')
+    expect(ssr.code).toContain(
+      `(...args)))\nexport const api = {\n  inner: ${hoisted},`,
+    )
+    expect(ssr.code).toContain('name: "inner"')
   })
 
   test('a nested server fn capturing a local is refused at the capture', async () => {

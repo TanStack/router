@@ -639,13 +639,17 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
 - **J4.6 Declaration sites.** Server functions declared at module top level work everywhere. A `createServerFn` that
   is not a top-level declarator's value works where its module creates it exactly once, unconditionally, when the
   module loads (R162): any expression position a top-level statement evaluates (an object or array entry, an
-  argument, a callee or a member's object, an operand, a template's or JSX's expression, a spread, `export default`,
-  an assignment's right-hand side, a class's static fields and static blocks, a top-level `await`), created in source
-  order, with the values the source gives. Anywhere else the build fails with a clear error at the server fn: a
-  ternary's branch, the right operand of `&&`, `||`, `??` or of a logical assignment, after `?.`, a destructuring
-  default, a class instance field, a function (its body or a default parameter, a component, an immediately invoked
-  function, a Vue `<script setup>` block), a loop, `if`, a block, `try`, `switch`, a namespace's body; one that reads
-  a local of a function is reported at the local. Nothing leaks either way.
+  argument, a callee or a member's object, an operand, any operand of a sequence, a template's or JSX's expression, a
+  spread, `export default`, an assignment's right-hand side, a class's static fields and static blocks, a decorator, a
+  top-level `await`), created in source order, after the statements before its own and before the rest of its own
+  statement, with the values the source gives. Anywhere else the build fails with a clear error at the server fn
+  naming the position: a ternary's branch, the right operand of `&&`, `||`, `??` or of a logical assignment, after
+  `?.`, a destructuring default, a class instance field, a function (its body or a default parameter, a component, an
+  immediately invoked function, a Vue `<script setup>` block), a loop, `if`, a block, `try`, `switch`, a namespace's
+  body. Reported at the name instead: a read of a local of the function around it, of a class static block's local,
+  of a class expression's own name, of `this`, `super` or a private name of its class, and a read, when the module
+  loads (not in a function of the chain), of a declaration of its own statement or a later one. Nothing leaks either
+  way.
 - **J4.7 Import form independence.** A module's client output does not depend on how importers import it (static,
   dynamic, re-export, barrel); a dynamic import never leaks server code.
 - **J4.8 `createMiddleware`.** Client: `.server()` implementations and `.validator()` code (and their imports) are
