@@ -127,6 +127,12 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   (Server-fn handler modules import the module's one instance since R157: "r5b" in
   `start-plugin-core/tests/start-compiler-erasure-parity.test.ts` gives 1.)
 
+- **A hoisted server fn whose chain runs a function at load that reads its own statement's declaration is not
+  refused** (R162; review-phase3-fixes; accepted: niche, no corpus file): the order refusal counts reads at load
+  outside the chain's functions, so an IIFE, a synchronous callback or a getter inside the chain that reads a
+  `let`/`const`/`class` of the same statement throws at load (a `var` reads `undefined`). `main` fails the build on
+  every such shape.
+
 - **Root routes are not split** (R60, SPEC J2.7): their components render on every page, or on error and not-found
   responses, where a lazy chunk only adds a round trip. `router-plugin/tests/integration/known-bugs-code-splitter-page-
 code.test.ts`: "a root route's components load with the route module" (Vite and Rspack).
