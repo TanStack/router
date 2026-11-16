@@ -1662,6 +1662,17 @@ function loadPosition(
     }
     const why = refusedKind(p, n)
     if (why !== null) {
+      // (a function around it is the reason the message gives: its body is
+      // a block, its code a condition's or a loop's)
+      for (let a: Node | null = p; a !== null; a = file.parentOf(a)) {
+        if (
+          a.type === 'FunctionDeclaration' ||
+          a.type === 'FunctionExpression' ||
+          a.type === 'ArrowFunctionExpression'
+        ) {
+          return { k: 'refused', why: 'function' }
+        }
+      }
       return { k: 'refused', why }
     }
     n = p
