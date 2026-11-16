@@ -13,8 +13,9 @@
  *   longer holds (a claimed option value, erased text: `readFromRemoved`)
  *   leaves it, with its initialiser, when nothing that stays reads it by
  *   value; enums and namespaces are declarations like any other (R155),
- *   but for a class, `enum` or `namespace` split code reaches: it stays in
- *   a route module, as `main`'s removal rule never removes one (R163).
+ *   but in a route module splitting removes no class, `enum` or
+ *   `namespace`, as `main`'s removal rule never removes one; only erasure
+ *   does (R163, `classStays`).
  *   A fixed home says where a generated declaration lives, not whether it
  *   does: a claim's owner whose output no longer keeps the claim is unused.
  *   Statements (R154), exports and code already unused stay; an import
@@ -31,8 +32,8 @@
  *   imports it (the route binding, `export const|let|var`:
  *   `RouteModule.imported`) and copies otherwise, with the top-level code
  *   reaching what it copies through the names it references (R1: the
- *   statements, classes, enums, namespaces (R163) and never-read
- *   declarations whose names reach it,
+ *   statements, classes, enums, namespaces (R163) and the declarations the
+ *   source never read whose names reach it,
  *   transitively; `main`'s second instance, in `main`'s shapes, 1.8); so it
  *   copies what the env module does not keep, also what another chunk
  *   copies too. Import specifiers are copied where they are read.
@@ -420,13 +421,45 @@ export function computePlacement(input: PlacementInput): Placement {
   ])
   /**
    * R163: `main`'s removal rule never removes a class, an enum or a
-   * namespace, so its body runs when the route module loads. One that split
-   * code reaches stays in the env module, and a chunk reading it copies it,
-   * as on `main`; a name `main` shares lives in the shared module, as there.
-   * Split chunks only: what only Start's outputs (erasure, a handler module,
-   * a `<Hydrate>` chunk) read goes by the removal rule as any declaration.
+   * namespace, so its body runs when the route module loads. In a route
+   * module splitting never removes one, whatever names it (by value or in a
+   * type, in split or kept text); a chunk reading it copies it, as on
+   * `main`, and a name `main` shares lives in the shared module, as there.
+   * Only erasure removes one: when text the env module erases, or another
+   * planner's output claims (a handler module, a `<Hydrate>` chunk), read it
+   * by value (`erasedUse`) and no split chunk reads it by value
+   * (`keptBySplit`): leaks block whatever `main` does.
    */
   const keptBySplit = new Set<ClusterId>()
+  const erasedUse =
+    input.routeModule === null
+      ? new Set<ClusterId>()
+      : readFromRemoved(
+          input,
+          graph,
+          reads,
+          [
+            ...envView.erasedParts(),
+            ...[...rewrites.claims.values()]
+              .filter((claim) => {
+                const h = gens[claim.owner]!.home
+                return (
+                  typeof h === 'string' &&
+                  h !== 'auto' &&
+                  h !== 'env' &&
+                  outputs.get(h)?.kind !== 'split'
+                )
+              })
+              .map((claim) => rewrites.regions.get(claim.region).range),
+          ],
+          true,
+        )
+  /** A class, enum or namespace the env module of a route module keeps (R163). */
+  const classStays = (c: ClusterId) =>
+    input.routeModule !== null &&
+    isClassLike(c) &&
+    !inShared.has(c) &&
+    (keptBySplit.has(c) || !erasedUse.has(c))
   for (const o of derived) {
     if (o.kind !== 'split') {
       continue
@@ -513,7 +546,7 @@ export function computePlacement(input: PlacementInput): Placement {
         !removable(c) ||
         cl.units.some((u) => units[u]!.exported.length > 0) ||
         !fromRemoved.has(c) ||
-        keptBySplit.has(c)
+        classStays(c)
       ) {
         keepInEnv(c)
       }
@@ -680,15 +713,19 @@ export function computePlacement(input: PlacementInput): Placement {
    * through the names it references, transitively (R1): every statement,
    * for a split chunk every class, `enum` and `namespace` (R163: `main`'s
    * removal rule never removes one), and every declaration nothing in the
-   * module references (an export is a reference, as in `main`'s removal
-   * rule: `main`'s copy strips its exports and deletes what only they
-   * read), whose code names the declaration, or names a declaration whose
-   * code names it, and so on. A chunk copying the declaration takes them,
-   * as `main`'s chunk keeps every statement reading a name it still
-   * declares, every class and every never-read declaration, and `main`'s
-   * provider runs the whole file. Names only: no value, call or write
-   * analysis.
+   * source references (`sourceUsed`; an export is a reference, as in
+   * `main`'s removal rule: `main`'s copy strips its exports and deletes what
+   * only they read; a declaration another output reads, a server fn
+   * handler's, is read), whose code names the declaration, or names a
+   * declaration whose code names it, and so on. A chunk copying the
+   * declaration takes them, as `main`'s chunk keeps every statement reading
+   * a name it still declares, every class and every never-read declaration,
+   * and `main`'s provider runs the whole file. Names only: no value, call or
+   * write analysis.
    */
+  const sourceUsed = readFromRemoved(input, graph, reads, [
+    { start: 0, end: input.code.length },
+  ])
   const readersInEnv = new Map<ClusterId, Array<ClusterId>>()
   for (const c of env) {
     const r = reads.clusterReads(c, 'env', true)
@@ -759,7 +796,7 @@ export function computePlacement(input: PlacementInput): Placement {
           !isType(r) &&
           (isStatement(r) ||
             (isChunk(o) && isClassLike(r)) ||
-            (!readersInEnv.has(r) &&
+            (!sourceUsed.has(r) &&
               cl.units.every((u) => units[u]!.exported.length === 0)))
         ) {
           found.push(r)
@@ -819,21 +856,16 @@ export function computePlacement(input: PlacementInput): Placement {
    * effect again.
    */
   const unusedImports: Array<ClusterId> = []
-  {
-    const used = readFromRemoved(input, graph, reads, [
-      { start: 0, end: input.code.length },
-    ])
-    for (const cl of clusters) {
-      if (
-        cl.units.length > 0 &&
-        (cl.kind === 'import-effect' ||
-          (cl.kind === 'import' &&
-            !used.has(cl.id) &&
-            removable(cl.id) &&
-            !cl.units.some((u) => units[u]!.exported.length > 0)))
-      ) {
-        unusedImports.push(cl.id)
-      }
+  for (const cl of clusters) {
+    if (
+      cl.units.length > 0 &&
+      (cl.kind === 'import-effect' ||
+        (cl.kind === 'import' &&
+          !sourceUsed.has(cl.id) &&
+          removable(cl.id) &&
+          !cl.units.some((u) => units[u]!.exported.length > 0)))
+    ) {
+      unusedImports.push(cl.id)
     }
   }
   const SHARED = 'shared' as OutputId

@@ -84,7 +84,7 @@ ${loader}${removal.options(shape.root)}
         expect(await route.run(`return options.loader()`)).toEqual(
           shape.kept.expected,
         )
-      } else if (removal.keepsClasses && /\bclass \w/.test(shape.setup)) {
+      } else if (removal.keepsClasses && shape.declaresClass) {
         // R163: a class split code reads stays in the route module, with
         // what it reads, as on `main` (its removal rule never removes one)
         expect(await route.requested()).toContain('/dep.ts')

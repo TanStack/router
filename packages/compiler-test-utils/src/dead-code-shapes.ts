@@ -37,6 +37,11 @@ export interface DeadCodeShape {
    * it still runs where the removal happens.
    */
   alreadyDead?: true
+  /**
+   * `setup` declares a class: route splitting keeps it in the route module,
+   * with what it reads (R163: main never removes one); erasure removes it.
+   */
+  declaresClass?: true
 }
 
 /** The module only the removed code needs (`'DEP'`). */
@@ -95,6 +100,7 @@ class Repo {
 }`,
     root: 'Repo.registry.make().read()',
     expected: 'dep',
+    declaresClass: true,
   },
   {
     name: 'a helper kept code reads too',

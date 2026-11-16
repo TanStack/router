@@ -25,8 +25,9 @@ type CodeSplitGroupings = NonNullable<CodeSplittingOptions['defaultBehavior']>
 // its body or initializer, whatever the compiler names or prints). A route
 // whose readers do not include the component gets one reading no binding,
 // so that what loading it loads can be checked, except next to a class.
-// (Where a const or class only the component reads is initialised, and so
-// when, is free.)
+// (Where a const only the component reads is initialised, and so when, is
+// free. A class whose readers are all one split group's stays in the route
+// module and the chunk copies it, as on `main` (R163): `init` runs in both.)
 describe('module-level bindings read by route options', () => {
   type Kind = 'const' | 'function' | 'class'
   type Reader = 'loader' | 'component' | 'beforeLoad'
@@ -73,6 +74,8 @@ describe('module-level bindings read by route options', () => {
     readers: Partial<Record<Reader, Array<string>>>
     /** How many times `init` runs: once per const or class binding. */
     inits: number
+    /** The declarations are classes (R163: one split group's runs twice). */
+    classes?: true
     /** Identities that must be the same object, as expressions over `values`. */
     same?: Array<[string, string]>
     /**
@@ -100,7 +103,12 @@ describe('module-level bindings read by route options', () => {
         name: `a ${kind} the component and beforeLoad read`,
         readers: { component: ['x'], beforeLoad: ['x'] },
       },
-    ].map((row) => ({ ...row, declarations, inits }))
+    ].map((row) => ({
+      ...row,
+      declarations,
+      inits,
+      ...(kind === 'class' ? { classes: true as const } : {}),
+    }))
   })
 
   const cases: Array<Case> = [
@@ -110,6 +118,7 @@ describe('module-level bindings read by route options', () => {
       declarations: declare('class', 'x'),
       readers: { loader: ['x'] },
       inits: 1,
+      classes: true,
       nextToComponent: true,
     },
     {
@@ -165,6 +174,7 @@ export const seen = (reader: string, values: Record<string, unknown>) => {
         inits,
         same,
         nextToComponent,
+        classes,
       }: Case) => {
         const options = (['loader', 'component', 'beforeLoad'] as const)
           .filter((reader) => readers[reader])
@@ -175,8 +185,7 @@ export const seen = (reader: string, values: Record<string, unknown>) => {
               : `  ${reader}: () => seen('${reader}', ${values}),`
           })
         const addedComponent =
-          !readers.component &&
-          (nextToComponent === true || !declarations.includes('class '))
+          !readers.component && (nextToComponent === true || classes !== true)
         if (addedComponent) {
           options.push(`  component: () => <p>no binding</p>,`)
         }
@@ -258,7 +267,7 @@ return {
           ),
         )
         const copiedClass =
-          declarations.includes('class ') &&
+          classes === true &&
           groupsOfReaders.size === 1 &&
           !groupsOfReaders.has(-1)
         expect(observed.initCalls).toBe(copiedClass ? 2 * inits : inits)

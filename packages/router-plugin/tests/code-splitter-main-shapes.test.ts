@@ -715,6 +715,157 @@ export const Route = createFileRoute('/')({
   })
 })
 
+// R163 clarification (review-a1-classes-stay 1): route splitting never
+// removes a class, enum or namespace, whatever names it, by value or in a
+// type, in split or kept text: its body runs when the route module loads, as
+// on `main`, and so does an import only it reads.
+describe('a class, enum or namespace named only in a type runs with the route module (R163)', () => {
+  const G = '(globalThis as any)'
+  it.each([
+    {
+      name: 'a class in a type annotation of the component',
+      decls: `class M { static made = (${G}.caseM = 'made'); v = 1 }
+function Page() { const m: M | null = null; return <p>{String(m)}</p> }`,
+      loader: `${G}.caseM ?? 'not-made'`,
+      values: ['made', '<p>null</p>'],
+    },
+    {
+      name: 'an enum as a type of the component',
+      decls: `const mark = (s: string) => { ${G}.caseE = 'made'; return s }
+enum Kind { A = mark('a') as any }
+function Page() { const k: Kind | null = null; return <p>{String(k)}</p> }`,
+      loader: `${G}.caseE ?? 'not-made'`,
+      values: ['made', '<p>null</p>'],
+    },
+    {
+      name: 'a namespace whose type the component names',
+      decls: `namespace Boot { ${G}.caseBoot = 'booted'; export type T = string; export const v = 1 }
+function Page() { const t: Boot.T | null = null; return <p>{String(t)}</p> }`,
+      loader: `${G}.caseBoot ?? 'not-booted'`,
+      values: ['booted', '<p>null</p>'],
+    },
+    {
+      name: 'a class the component names through typeof',
+      decls: `class M { static made = (${G}.caseM = 'made'); v = 1 }
+function Page() { const m: typeof M | null = null; return <p>{String(m)}</p> }`,
+      loader: `${G}.caseM ?? 'not-made'`,
+      values: ['made', '<p>null</p>'],
+    },
+    {
+      name: 'a class extending an import with an effect, as a prop type',
+      decls: `import { Base } from './base'
+class Model extends Base { title = 'model' }
+function Page(props: { m?: Model }) { return <p>{String(props.m)}</p> }`,
+      loader: `${G}.caseBase ?? 'not-loaded'`,
+      values: ['loaded', '<p>undefined</p>'],
+    },
+    {
+      name: 'a decorated class the component names as a type',
+      decls: `const define = (tag: string) => (_target: unknown) => { ${G}.caseDefined = tag }
+@define('x-el')
+class XEl {}
+function Page() { const el: XEl | null = null; return <p>{String(el)}</p> }`,
+      loader: `${G}.caseDefined ?? 'not-defined'`,
+      values: ['x-el', '<p>null</p>'],
+    },
+    // (the component reads the route, whose options name the class in a
+    // type: the split leaves the class's readers unchanged)
+    {
+      name: 'a class in a type annotation of the loader that stays',
+      decls: `class M { static made = (${G}.caseM = 'made'); v = 1 }
+function Page() { return <p>{typeof Route}</p> }`,
+      loader: `{ const m: M | null = null; return String(m) + (${G}.caseM ?? 'not-made') }`,
+      values: ['nullmade', '<p>object</p>'],
+    },
+  ])('$name', async ({ decls, loader, values }) => {
+    const route = await loadRoute(
+      `${head}${decls}
+export const Route = createFileRoute('/')({
+  loader: () => ${loader},
+  component: Page,
+})
+`,
+      {
+        tsconfig: { experimentalDecorators: true },
+        files: {
+          'base.ts': `export class Base {}
+;(globalThis as any).caseBase = 'loaded'
+`,
+        },
+      },
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(
+      await route.run(`const loaded = await options.loader()
+return [loaded, await render('component')]`),
+    ).toEqual(values)
+  })
+})
+
+// Only erasure removes one: a class, enum or namespace that only an erased
+// option (`deleteNodes`, Start's client `server`) reads by value leaves the
+// client, against `main`, which ships it (leaks block whatever `main` does;
+// review-a1-classes-stay 3).
+describe('a class, enum or namespace only a deleted option reads by value stays off the client', () => {
+  const G = '(globalThis as any)'
+  const handlers = (value: string) =>
+    `server: { handlers: { GET: () => new Response(String(${value})) } },`
+  it.each([
+    {
+      name: 'a class',
+      decls: `class Db { static made = (${G}.caseDb = 'made'); q() { return 'SERVER_ONLY_CANARY' } }
+function Page() { return <p>{String(${G}.caseDb)}</p> }`,
+      server: handlers('new Db().q()'),
+    },
+    {
+      name: 'a class reading an import',
+      decls: `import { secret } from './secret'
+class Db { static made = (${G}.caseDb = 'made'); q() { return secret } }
+function Page() { return <p>{String(${G}.caseDb)}</p> }`,
+      server: handlers('new Db().q()'),
+    },
+    {
+      name: 'a namespace',
+      decls: `namespace Srv { ${G}.caseDb = 'made'; export const key = () => 'SERVER_ONLY_CANARY' }
+function Page() { return <p>{String(${G}.caseDb)}</p> }`,
+      server: handlers('Srv.key()'),
+    },
+    {
+      name: 'a class the component names as a type',
+      decls: `class Db { static made = (${G}.caseDb = 'made'); q() { return 'SERVER_ONLY_CANARY' } }
+function Page(props: { db?: Db }) { return <p>{String(${G}.caseDb)}{String(props.db)}</p> }`,
+      server: handlers('new Db().q()'),
+    },
+  ])('$name', async ({ decls, server }) => {
+    const route = await loadRoute(
+      `${head}${decls}
+export const Route = createFileRoute('/')({
+  ${server}
+  component: Page,
+})
+`,
+      {
+        deleteNodes: ['server'],
+        files: {
+          'secret.ts': `export const secret = 'SERVER_ONLY_CANARY'
+`,
+        },
+      },
+    )
+    await expectValidModules(route)
+    expect(
+      await route.run(
+        `return ['server' in options, await render('component'), globalThis.caseDb]`,
+      ),
+    ).toEqual([false, expect.stringMatching(/^<p>undefined/), undefined])
+    expect(await route.requested()).not.toContain('/secret.ts')
+    expect((await route.production()).where('SERVER_ONLY_CANARY')).toBe(
+      'nowhere',
+    )
+  })
+})
+
 describe('what main leaves lazy (§1.6-1.8)', () => {
   it.each([
     {

@@ -67,6 +67,35 @@ const check = createServerFn({ method: 'POST' })
   .handler(() => Response.json(schemaBuilds()))
 export const Route = createFileRoute('/schema-once')({ component: Page })
 ${page('check')}`,
+    // a handler-only initialiser naming a declaration the route module keeps
+    // (R157 rule 4): it runs once, at load (review-a1-classes-stay 2)
+    ...Object.fromEntries(
+      ['class', 'const'].map((key) => [
+        `src/inits-${key}.ts`,
+        `export const inits: Array<string> = []
+export const track = (name: string, ..._rest: Array<unknown>) => {
+  inits.push(name)
+  return name
+}
+export const count = (name: string) => inits.filter((n) => n === name).length
+`,
+      ]),
+    ),
+    'src/routes/handler-init-class.tsx': `${head}import { count, track } from '../inits-class'
+class K { static made = track('K-static'); v() { return 'k' } }
+const k = (track('k-init'), new K())
+const getK = createServerFn({ method: 'POST' }).handler(() => Response.json([k.v(), count('k-init')]))
+function Page() { return <p data-url={getK.url}>{new K().v()}</p> }
+export const Route = createFileRoute('/handler-init-class')({ component: Page })
+`,
+    'src/routes/handler-init-const.tsx': `${head}import { count, track } from '../inits-const'
+const cfg = { v: 'k' }
+track('stmt', cfg.v)
+const k = (track('k-init'), [cfg])
+const getK = createServerFn({ method: 'POST' }).handler(() => Response.json([k[0]!.v, count('k-init')]))
+function Page() { return <p data-url={getK.url}>{cfg.v}</p> }
+export const Route = createFileRoute('/handler-init-const')({ component: Page })
+`,
     'src/routes/schema-read.tsx': `${head}import { countedSchema, schemaBuilds } from '../schema-read'
 const schema = countedSchema()
 const check = createServerFn({ method: 'POST' })
@@ -927,6 +956,17 @@ describe('a server fn has one instance on the server', () => {
   test('a schema the component also reads is copied into the chunk, as on main', async () => {
     expect(await renderThenCall('/schema-read', 1)).toBe(2)
   })
+
+  // a handler-only declaration whose initialiser names a class (R163) or a
+  // const (a statement keeps it) the component reads: the route module
+  // keeps it (R157 rule 4), and the server's split chunk, which copies the
+  // class or const, does not run it again (main, and the source: once)
+  test.each(['class', 'const'])(
+    'a handler-only initialiser naming a %s the component reads runs once on the server',
+    async (key) => {
+      expect(await renderThenCall(`/handler-init-${key}`, 1)).toEqual(['k', 1])
+    },
+  )
 
   // main: one provider copy runs both handlers: 1 2 3 4 (02f8d6b8bd:
   // 1 1 2 2, `a`'s handler module holding its own `b`)
