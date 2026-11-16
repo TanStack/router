@@ -3,7 +3,7 @@
  * `RecognizerTable` the core's value analysis and summaries use. Known
  * packages are never resolved; their exports map to kinds.
  */
-import { knownPureCalls } from '@tanstack/router-plugin/planners'
+import { knownPureCalls } from '../import-protection/pure-calls'
 import { escapeRegExp } from '../utils'
 import type { RecognizerTable } from '@tanstack/router-utils/compiler'
 import type { CompileStartFrameworkOptions } from '../types'
@@ -126,7 +126,7 @@ export function startRecognizer(): RecognizerTable {
     },
     startKind: START_KINDS.start,
     startMembers: { createMiddleware: START_KINDS.middleware },
-    // the router's and the frameworks' pure APIs: the router planner's table, not a copy
+    // import protection's effect model: the router's and the frameworks' pure APIs
     ...knownPureCalls(),
   }
   return table
