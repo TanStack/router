@@ -9,6 +9,7 @@ import {
   createTokenRegex,
   determineInitialRoutePath,
   determineInitialRoutePathFromExplicitPath,
+  ensureUniqueVariableNames,
   hasEscapedLeadingUnderscore,
   hasEscapedTrailingUnderscore,
   inferFullPath,
@@ -1068,5 +1069,29 @@ describe('sortRouteNodes', () => {
     for (const permutation of permutations(routePaths)) {
       expect(sortPaths(permutation)).toEqual(reference)
     }
+  })
+})
+
+describe('ensureUniqueVariableNames', () => {
+  const node = (variableName: string) =>
+    ({ variableName, filePath: '', fullPath: '' }) as RouteNode
+
+  it("numbers colliding names without taking another file's name", () => {
+    const nodes = [node('Auth'), node('Auth'), node('Auth2'), node('root')]
+    ensureUniqueVariableNames(nodes)
+    expect(nodes.map((n) => n.variableName)).toEqual([
+      'Auth',
+      'Auth3',
+      'Auth2',
+      'root2',
+    ])
+  })
+
+  it('restores the base name once the collision is gone', () => {
+    const [layout, route] = [node('Auth'), node('Auth')]
+    ensureUniqueVariableNames([layout, route])
+    expect(route.variableName).toBe('Auth2')
+    ensureUniqueVariableNames([route])
+    expect(route.variableName).toBe('Auth')
   })
 })

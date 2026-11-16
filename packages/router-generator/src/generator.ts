@@ -24,6 +24,7 @@ import {
   createRouteNodesByTo,
   createTokenRegex,
   determineNodePath,
+  ensureUniqueVariableNames,
   findParent,
   format,
   getImportForRouteNode,
@@ -484,6 +485,8 @@ export class Generator {
     for (const node of routeFileResult) {
       Generator.handleNode(node, acc, prefixMap, this.config)
     }
+
+    ensureUniqueVariableNames(acc.routeNodes)
 
     this.crawlingResult = { rootRouteNode, routeFileResult, acc }
 
