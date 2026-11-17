@@ -315,8 +315,7 @@ export function readIndex(
         // a claimed region nested in it: its place, or its text when
         // claimed only for other outputs
         if (view.isClaimed(n)) {
-          const place = view.placeholderAt(n)!
-          symRefsOf('owner' in place ? place.placeholder : place.body, into)
+          symRefsOf(n.claim!.placeholder, into)
         } else {
           refReads(ownedRefs.get(nested) ?? NO_REFS, n.start, n.end, into)
           textReads(nested, o, into)

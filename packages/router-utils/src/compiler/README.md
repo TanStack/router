@@ -42,10 +42,9 @@ emits its own output. Nothing depends on transform order.
   (`{ k: 'region' }`, its only way to name source text), wherever the owner is placed, and the claim's placeholder
   stands at its place, in the outputs of the claim's scope. An erasure enclosing the occurrence kills the claim and
   its owner, unless other generated code (a unit, a placeholder) reads the owner (the provider's hoisted server fn
-  its RPC wrapper calls): then only the placeholder goes. In an output outside the claim's scope a placeholder of
-  that output stands at the place, and the text renders in the owner if it is read; with none, the region's text is
-  the text around it (Start's nested server-fn chain stays in place in the RSC env module, with its handler's stub,
-  while the provider output hoists it). Text and place never conflict: a handler that is itself an env-only or
+  its RPC wrapper calls): then only the placeholder goes. In an output outside the claim's scope the region's text
+  is the text around it (Start's nested server-fn chain stays in place in the RSC env module, with its handler's
+  stub, while the provider output hoists it). Text and place never conflict: a handler that is itself an env-only or
   isomorphic call has its stub as its place and its compiled call as its text, which renders in the provider or
   handler module. Two edits, or two placeholders (a claim's included), on one range in one output conflict. A route
   option written as a method claims its function; an edit of the property writes the key before the placeholder.

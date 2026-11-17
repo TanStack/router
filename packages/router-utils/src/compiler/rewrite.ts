@@ -1160,15 +1160,12 @@ export class OutputView {
   }
 
   /**
-   * Whether node `n`'s region is claimed in this output: its text is its
-   * owner's (a claim in scope, or a placeholder of this output at the place
-   * of a region claimed for others), not part of the text around it.
+   * Whether node `n`'s region is claimed in this output (a claim in scope):
+   * its text is its owner's, not part of the text around it. Outside the
+   * claim's scope the region is text of what holds it.
    */
   isClaimed(n: RangeNode): boolean {
-    const claim = n.claim
-    return (
-      claim !== null && (this.applies(claim) || this.ownPlaceholder(n) !== null)
-    )
+    return n.claim !== null && this.applies(n.claim)
   }
 
   /** What a planner put at exactly `range`'s place for this output, kept or not: a claim in scope, or a placeholder. */
@@ -1570,19 +1567,13 @@ export class OutputView {
   }
 
   /**
-   * Whether this output keeps the claim: its placeholder in scope and its
-   * occurrence renders, or other generated code reads its owner (in scope,
-   * or with a placeholder of this output at its place).
+   * Whether this output keeps the claim: in scope, and its occurrence
+   * renders or other generated code reads its owner.
    */
   private keeps(claim: RegionClaim): boolean {
-    if (this.applies(claim)) {
-      return (
-        !this.occurrenceErased(claim) || this.set.readOwners().has(claim.owner)
-      )
-    }
     return (
-      this.ownPlaceholder(this.set.claimNodes.get(claim)!) !== null &&
-      this.set.readOwners().has(claim.owner)
+      this.applies(claim) &&
+      (!this.occurrenceErased(claim) || this.set.readOwners().has(claim.owner))
     )
   }
 
@@ -1607,11 +1598,7 @@ export class OutputView {
   private decides(x: RangeNode): 'owner' | 'erased' | null {
     const p = this.placeholderOf(x)
     const claim = x.claim
-    if (claim !== null && (p !== null || this.applies(claim))) {
-      if (p !== null && p !== claim) {
-        // (the placeholder of this output at the place of a region claimed for others)
-        return this.set.readOwners().has(claim.owner) ? 'owner' : 'erased'
-      }
+    if (claim !== null && this.applies(claim)) {
       return this.occurrenceErased(claim) &&
         this.set.readOwners().has(claim.owner)
         ? 'owner'
