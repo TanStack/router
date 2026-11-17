@@ -298,16 +298,36 @@ describe('layouts and groups', () => {
   // the inferred full paths of all routes, pathless layouts included).
   // Impact: creating `_auth.tsx` before its first child route stops route
   // generation for the whole app.
+  // The same for a route group's layout without child routes yet
+  // (`(group)/_layout.tsx`, `(marketing)/route.tsx`).
   test.each([
-    { name: '_auth.tsx', file: '_auth.tsx', constructor: 'createFileRoute' },
+    {
+      name: '_auth.tsx',
+      file: '_auth.tsx',
+      id: '/_auth',
+      constructor: 'createFileRoute',
+    },
     {
       name: '_auth.lazy.tsx',
       file: '_auth.lazy.tsx',
+      id: '/_auth',
       constructor: 'createLazyFileRoute',
+    },
+    {
+      name: '(group)/_layout.tsx',
+      file: '(group)/_layout.tsx',
+      id: '/(group)/_layout',
+      constructor: 'createFileRoute',
+    },
+    {
+      name: '(marketing)/route.tsx',
+      file: '(marketing)/route.tsx',
+      id: '/(marketing)',
+      constructor: 'createFileRoute',
     },
   ])(
     'a pathless layout without child routes yet ($name) next to the index route is added to the route tree',
-    ({ file, constructor }) =>
+    ({ file, id, constructor }) =>
       checkApp({
         name: `a childless ${file} next to the index route`,
         files: {
@@ -323,7 +343,7 @@ describe('layouts and groups', () => {
         expected: {
           __root__: ['/', null],
           '/': ['/', '__root__'],
-          '/_auth': ['/', '__root__'],
+          [id]: ['/', '__root__'],
         },
         visits: { '/': '/' },
         pages: { '/': ['root', 'home'] },
@@ -646,6 +666,24 @@ describe('conflicting routes', () => {
       })
     }
   })
+
+  // A pathless layout whose directory has no route file of its own
+  // (`foo/_layout.tsx` without `foo.tsx`) carries the directory's path, so
+  // it conflicts with another route at `/foo`.
+  test.each(['(group)/foo.tsx', 'foo_.tsx'])(
+    'a pathless layout without child routes yet that adds a path conflicts with %s at the same URL, naming both files',
+    async (file) => {
+      const root = await appWithRoutes(['foo/_layout.tsx', file])
+
+      const error = await captureThrow(() => generate(root))
+      for (const named of [
+        'src/routes/foo/_layout.tsx',
+        `src/routes/${file}`,
+      ]) {
+        expectDiagnostic(error, { severity: 'error', file: named, root })
+      }
+    },
+  )
 
   // The docs' example of a physical directory merged at the current level
   // (virtual-file-routes.md, "Merging Physical Routes at Current Level"): an

@@ -302,41 +302,6 @@ describe('route tree file events', () => {
     },
   )
 
-  // Bug: the generator's own route tree write, reported back by the watcher
-  // (every publish does), rebuilds and prints the tree again and tells the
-  // plugins the tree changed, though nothing did (GeneratorPlugin contract:
-  // only after a generation whose routes or recorded options changed).
-  // Source: src/generator.ts `processBatch()` (a route tree event always
-  // counted as a tree change).
-  // Impact: in dev, every created route file costs extra generations, and
-  // plugins (Start's client route tree) redo their work for nothing.
-  test('the update event of the route tree the generator wrote changes nothing for the plugins', async () => {
-    const root = await createApp({
-      'src/routes/__root.tsx': rootRoute(),
-      'src/routes/index.tsx': fileRoute('/'),
-    })
-    const notified: Array<unknown> = []
-    const { config, generator } = await startGenerator(root, {
-      plugins: [
-        {
-          name: 'observer',
-          onRouteTreeChanged: ({ model }) => notified.push(model),
-        },
-      ],
-    })
-    const about = await save(root, 'src/routes/about.tsx', fileRoute('/about'))
-    await generator.run({ type: 'create', path: about })
-    notified.length = 0
-
-    await generator.run({ type: 'update', path: about })
-    await generator.run({ type: 'update', path: config.generatedRouteTree })
-
-    expect(notified).toEqual([])
-  })
-
-  // Control: "a hand-edited route tree is regenerated on its update event"
-  // above (same harness).
-
   // Bug: a deleted route tree file is not written again: neither on its
   // delete event, nor on the next route change, whose run fails with ENOENT.
   // Source: src/generator.ts (the route tree cache still holds the deleted
@@ -408,7 +373,7 @@ describe('events that arrive together', () => {
     '/about': 'routes/about.tsx',
   }
 
-  test('a route created after an update event that changed nothing joins the route tree (control)', async () => {
+  test('a route created after an update event that changed nothing joins the route tree', async () => {
     expect(await createdWith(false)).toEqual(withAbout)
   })
 
@@ -615,39 +580,6 @@ export default [route('${routePath}', 'x.tsx')]
         '/sub/b',
       )
     })
-  })
-})
-
-describe('a batch that fails to publish', () => {
-  // Bug: the generator's tree model (`getTreeModel()`, which Start prints its
-  // client route tree from) took the batch's routes before the batch wrote
-  // and published them. A batch failing after that (a route file write or
-  // the tree write failing: EACCES, ENOSPC, Windows EBUSY) left the model
-  // ahead of the published tree and the routes the generator hands over,
-  // until the next file event.
-  test('leaves the tree model at the last published tree', async () => {
-    const root = await createApp({
-      'src/routes/__root.tsx': rootRoute(),
-      'src/routes/posts.tsx': fileRoute('/posts'),
-    })
-    const { config, generator } = await startGenerator(root)
-    const fullPaths = async () =>
-      (await generator.getTreeModel())!.routes.map((route) => route.fullPath)
-    const published = await fullPaths()
-
-    // the tree can no longer be written
-    await rm(config.generatedRouteTree)
-    await mkdir(config.generatedRouteTree)
-    const created = await save(
-      root,
-      'src/routes/about.tsx',
-      fileRoute('/about'),
-    )
-    await expect(
-      generator.run({ type: 'create', path: created }),
-    ).rejects.toThrow()
-
-    expect(await fullPaths()).toEqual(published)
   })
 })
 

@@ -1,9 +1,18 @@
 /**
  * Unusual but valid route files split like any other: route files with
- * non-ASCII names and JavaScript route files, in real builds.
+ * non-ASCII names and JavaScript route files, an import of a package named
+ * like a member of `Object.prototype`, a BOM and a source map comment, in
+ * real builds.
  */
 import { expect, test } from 'vitest'
-import { build, clientMountEntry, head, rootRoute } from '../build-harness'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  build,
+  clientMountEntry,
+  head,
+  rootRoute,
+  routeApp,
+} from '../build-harness'
 
 /**
  * One app per bundler holds both unusual route files: a route
@@ -234,6 +243,74 @@ test.each(unterminated.map((row, i) => [row.name, i] as const))(
   async (_name, i) => {
     unterminatedResults ??= buildUnterminated()
     expect((await unterminatedResults)[i]).toBe('<p>MARK</p>')
+  },
+  60_000,
+)
+
+// A specifier naming a member of Object.prototype must not find it in a table
+// of known packages or markers.
+test.each(['constructor', '__proto__', 'toString'])(
+  'an import from a package named %s builds',
+  async (name) => {
+    const app = await build({
+      bundler: 'vite',
+      env: 'client',
+      minify: false,
+      files: routeApp(
+        `${head}import { x } from '${name}'
+export const Route = createFileRoute('/')({ component: () => <p>{x}</p> })
+`,
+        {
+          env: 'client',
+          files: {
+            'entry.ts': clientMountEntry,
+            [`node_modules/${name}/package.json`]: JSON.stringify({
+              name,
+              type: 'module',
+              exports: './index.js',
+            }),
+            [`node_modules/${name}/index.js`]: `export const x = 'MARK_X'\n`,
+          },
+        },
+      ),
+    })
+    expect(app.where('MARK_X')).toBe('lazy')
+  },
+  60_000,
+)
+
+const stateRoute = `${head}let state = 0
+export const Route = createFileRoute('/')({
+  loader: () => 1,
+  component: () => <p>{state}</p>,
+})
+`
+
+// The text of every id of the file differs from the file's only by what no
+// plugin wrote: nothing is reported
+test.each([
+  ['a BOM', `\uFEFF${stateRoute}`],
+  [
+    'a source map comment',
+    `${stateRoute}//# sourceMappingURL=data:application/json,{}\n`,
+  ],
+])(
+  'a route file with %s builds without a report',
+  async (_name, route) => {
+    const app = await build({
+      bundler: 'vite',
+      env: 'client',
+      minify: false,
+      files: routeApp(route, {
+        env: 'client',
+        files: { 'entry.ts': clientMountEntry },
+      }),
+    })
+    expect(
+      findDiagnostics(app.warnings, { severity: 'warning' }).filter(
+        ({ text }) => text.includes('routes/index.tsx'),
+      ),
+    ).toEqual([])
   },
   60_000,
 )

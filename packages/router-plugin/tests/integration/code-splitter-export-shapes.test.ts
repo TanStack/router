@@ -139,7 +139,7 @@ return typeof entry.Route.options.component`)
   )
 })
 
-describe('a default export of a component the split component renders (control)', () => {
+describe('a default export of a component the split component renders', () => {
   it(
     'builds, renders, and gives importers the default export',
     async () => {

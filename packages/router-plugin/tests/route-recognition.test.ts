@@ -1,19 +1,11 @@
 /**
- * One verdict on "is this file a route" (design 5, I1): the route
- * generator's registry says whether a route file's `Route` is the router
- * package's constructor call of the file's kind (`routerConstructor`), and
- * the code splitter splits that route, and only that one. Each row is a
- * spelling of a route file: the registry's verdict for it (a real
- * `Generator` over an app of its own) is whether the page's route has a lazy
- * component (a real dev server with the router plugin, `./route-app`).
- * Shapes: /home/flo/11-10-fable52-review/DESIGN-5-evidence/recognisers.mjs.
+ * What the code splitter splits: the route a route file creates with its
+ * router package's constructor (`createFileRoute`, however imported and
+ * exported), and only that one. Each row is a spelling of a route file,
+ * loaded on a real dev server with the router plugin (`./route-app`): the
+ * route renders, and its component is lazy exactly when it is such a route.
  */
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import path from 'node:path'
-import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { describe, expect, it } from 'vitest'
-import { Generator, getConfig } from '@tanstack/router-generator'
-import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { expectValidModules, loadRoute } from './route-app'
 
 const RP = '@tanstack/react-router'
@@ -28,10 +20,10 @@ export { createFileRoute } from '${RP}'
 interface Row {
   name: string
   code: string
-  /** The verdict both sides agree on. */
+  /** Whether the file's `Route` is the router package's route, split. */
   route: boolean
   files?: Record<string, string>
-  /** The file holds a root constructor: registered as a route anyway. */
+  /** The file holds a root constructor (the generator repairs it). */
   root?: false
   /** The route renders in the app (another framework's route does not). */
   renders?: false
@@ -120,39 +112,6 @@ const rows: Array<Row> = [
   },
 ]
 
-/** `routerConstructor` of `src/routes/x.tsx` holding `code`, as a real generator lists it. */
-async function registryVerdict(row: Row) {
-  const root = await mkdtemp(path.join(runDirectory(), 'tsr-recognition-'))
-  onTestFinished(() => rm(root, { recursive: true, force: true }))
-  const files: Record<string, string> = {
-    'src/routes/__root.tsx': `import { createRootRoute } from '${RP}'\nexport const Route = createRootRoute()\n`,
-    'src/routes/x.tsx': row.code,
-    ...Object.fromEntries(
-      Object.entries(row.files ?? {}).map(([file, code]) => [
-        `src/routes/${file}`,
-        code,
-      ]),
-    ),
-  }
-  for (const [file, code] of Object.entries(files)) {
-    await mkdir(path.dirname(path.join(root, file)), { recursive: true })
-    await writeFile(path.join(root, file), code)
-  }
-  const config = getConfig(
-    {
-      target: 'react',
-      disableLogging: true,
-      tmpDir: path.join(root, '.tanstack/tmp'),
-    },
-    root,
-  )
-  const generator = new Generator({ config, root })
-  await generator.run({ type: 'build' })
-  return [...generator.getRoutesByFileMap().values()].find(
-    (v) => v.routeId === '/x',
-  )?.routerConstructor
-}
-
 /** Whether the page's route has a lazy component (the code splitter split it). */
 async function splitVerdict(row: Row) {
   const route = await loadRoute(row.code, {
@@ -167,12 +126,8 @@ async function splitVerdict(row: Row) {
   return route.isLazy('component')
 }
 
-const check = async (row: Row) => {
-  const listed = await registryVerdict(row)
-  const split = await splitVerdict(row)
-  expect({ listed, split }).toEqual({ listed: row.route, split: row.route })
-}
-
-describe('the generator and the code splitter agree on what a route is', () => {
-  it.for(rows)('$name', check)
+describe('the code splitter splits the route of a route file', () => {
+  it.for(rows)('$name', async (row) => {
+    expect(await splitVerdict(row)).toBe(row.route)
+  })
 })

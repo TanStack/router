@@ -236,7 +236,7 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
     expect(await treeRoutes(app.root)).toEqual(['/'])
   }, 60_000)
 
-  // Source: review round 2 F3-1 (Vite's watcher reports the files of the
+  // (Vite's watcher reports the files of the
   // bundle only: the created route file never joined the tree, not even at
   // a later rebuild)
   test.each([
@@ -244,7 +244,7 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
     { plugins: 'the config file', watch: 'each environment', inline: false },
     { plugins: 'inline plugins', watch: 'the top level', inline: true },
   ])(
-    'round 2 F3-1: a watch build with $plugins, watching at $watch, follows a route file created while it watches',
+    'a watch build with $plugins, watching at $watch, follows a route file created while it watches',
     async ({ watch, inline }) => {
       const { createBuilder } = await vite()
       const app = await routerApp(major)
@@ -285,7 +285,7 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
     60_000,
   )
 
-  test('round 2 F3-1: a watch build whose watchers closed no longer generates the route tree', async () => {
+  test('a watch build whose watchers closed no longer generates the route tree', async () => {
     const { createBuilder } = await vite()
     const app = await routerApp(major)
     const { close } = await watchBuild(
@@ -324,9 +324,9 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
     expect(await treeRoutes(app.root)).toEqual(['/', '/about'])
   }, 60_000)
 
-  // Source: review round 1 F5-4 (each config resolution's generation
+  // (each config resolution's generation
   // printed the generator's warnings again: three lines in one build)
-  test('round 1 F5-4: builds given the same plugin objects inline print a generator warning once each', async () => {
+  test('builds given the same plugin objects inline print a generator warning once each', async () => {
     const { createBuilder } = await vite()
     const app = await routerApp(major)
     await writeFile(

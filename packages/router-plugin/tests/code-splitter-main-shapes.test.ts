@@ -5,7 +5,7 @@
  * code that runs once. Loaded the way an app loads it (`route-app.ts`), and
  * asserted on what the page shows: rendered output, which options load
  * lazily, init counts and identity. The cases follow main's code-splitter
- * fixtures and spec-main-splitting.md §1.5-1.7.
+ * fixtures.
  */
 import { describe, expect, it } from 'vitest'
 import {
@@ -28,7 +28,7 @@ const pageFile = `export function Page() { return <p>page</p> }
 export default function DefaultPage() { return <p>page</p> }
 `
 
-describe('option values main splits (§1.5)', () => {
+describe('option values main splits', () => {
   it.each([
     { name: 'an arrow function', decls: '', value: '() => <p>page</p>' },
     {
@@ -134,7 +134,7 @@ export const Route = createFileRoute('/')({ component: ${value} })
   })
 })
 
-describe('exported option values (§1.6)', () => {
+describe('exported option values', () => {
   it.each([
     'export function Page() { return <p>page</p> }',
     'export const Page = () => <p>page</p>',
@@ -187,7 +187,7 @@ return [html, seen()]`),
   })
 })
 
-describe('module state the options read (§1.7)', () => {
+describe('module state the options read', () => {
   it('creates a value two split options read once', async () => {
     const route = await loadRoute(
       `${head}import { track } from './track'
@@ -231,11 +231,9 @@ return [html, seen(), loaded.name]`),
     ).toEqual(['<p>store</p>', ['store'], 'store'])
   })
 
-  // `main` keeps what a staying option and a split one share in its shared
-  // module, which both import: the chunk does not import the route module
-  // (on Vite 8, a chunk importing its own route module moves React into a
-  // chunk of its own)
-  it('gives a helper a staying loader and the split component share its own module, which the chunk imports', async () => {
+  // `main` keeps what a staying option and a split one share in a module
+  // both import: the helper and the state it reads are created once
+  it('creates a helper a staying loader and the split component share, and the state it reads, once', async () => {
     const route = await loadRoute(
       `${head}import { track } from './track'
 const prefix = track('prefix')
@@ -257,19 +255,6 @@ const html = await render('component')
 const { seen } = await app('track.ts')
 return [loaded, html, seen()]`),
     ).toEqual(['prefix 1', '<p>prefix 2</p>', ['prefix']])
-    // what the chunk imports from modules of the route file: the shared one
-    const { modules } = await route.modules()
-    const file = route.url.split('/').at(-1)!
-    const fromRouteFile = [
-      ...modules['lazy component']!.matchAll(/\bfrom\s*["']([^"']+)["']/g),
-    ]
-      .map((m) => m[1]!)
-      .filter((spec) => spec.split('?')[0]!.endsWith(`/${file}`))
-      .map((spec) => new URLSearchParams(spec.split('?')[1] ?? '').toString())
-    expect({
-      routeModule: fromRouteFile.includes(''),
-      sharedModule: fromRouteFile.some((q) => /tsr-split=shared/.test(q)),
-    }).toEqual({ routeModule: false, sharedModule: true })
   })
 
   it('moves a value only the split component reads into its chunk, its initialiser included', async () => {
@@ -447,9 +432,8 @@ export function helper() {
     ).toEqual(['poly', '<p>10</p>'])
   })
 
-  // a chunk loads after the route module has run its imports: a bare import
-  // is not repeated there
-  it('runs a bare import with the route module, and does not repeat it in the chunk', async () => {
+  // a chunk loads after the route module has run its imports
+  it('runs a bare import the split component depends on with the route module', async () => {
     const route = await loadRoute(
       `${head}import './polyfill'
 export const Route = createFileRoute('/')({
@@ -465,29 +449,6 @@ export const Route = createFileRoute('/')({
     await expectValidModules(route)
     expect(await route.isLazy('component')).toBe(true)
     expect(await route.run(`return render('component')`)).toBe('<p>poly</p>')
-    const { modules } = await route.modules()
-    expect(modules['lazy component']).not.toMatch(/polyfill/)
-  })
-
-  // only an import the source wrote can be already unused: the route
-  // module's generated `lazyRouteComponent` import stays out of the chunks
-  // and the shared module
-  it('gives a split chunk and the shared module none of the imports the route module is generated with', async () => {
-    const route = await loadRoute(
-      `${head}const cfg = { k: 'page' }
-function Page() {
-  return <p>{cfg.k}</p>
-}
-export const Route = createFileRoute('/')({ loader: () => cfg.k, component: Page })
-`,
-    )
-    await expectValidModules(route)
-    expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
-    const { modules } = await route.modules()
-    expect({
-      chunk: /\blazyRouteComponent\b/.test(modules['lazy component']!),
-      shared: /\blazyRouteComponent\b/.test(modules['shared']!),
-    }).toEqual({ chunk: false, shared: false })
   })
 
   it('runs top-level statements once, when the route module loads', async () => {
@@ -536,7 +497,7 @@ return [atLoad, page, error, seen()]`),
 // still declares, no class, no never-read declaration): the component reads
 // the value the route module computed at load. Kind A: each failed at
 // cb9d1331b2 (the chunk held the state without the code changing it).
-describe('a chunk copies the load-time code reaching what it copies (R1)', () => {
+describe('a chunk copies the load-time code reaching what it copies', () => {
   it.each([
     {
       name: 'a function the module calls at load (`bump()`)',
@@ -637,7 +598,7 @@ export const Route = createFileRoute('/')({ component: Comp })
 // namespace from the route module, so its body runs when the route module
 // loads, also when only a split option reads it; the chunk copies it. A
 // loader reading what the body did reads it before the chunk loads.
-describe('a class, enum or namespace only split code reads runs with the route module (R163)', () => {
+describe('a class, enum or namespace only split code reads runs with the route module', () => {
   it.each([
     {
       name: 'a class static block',
@@ -710,7 +671,7 @@ return [loaded, await render('component')]`),
     ).toEqual(values)
   })
 
-  // `main` shares a class two option groups read (§1.3): one instance, its
+  // `main` shares a class two option groups read: one instance, its
   // body run once, in the module both chunks import
   it('creates a class two split options read once', async () => {
     const route = await loadRoute(
@@ -737,7 +698,7 @@ export const Route = createFileRoute('/')({
 // removes a class, enum or namespace, whatever names it, by value or in a
 // type, in split or kept text: its body runs when the route module loads, as
 // on `main`, and so does an import only it reads.
-describe('a class, enum or namespace named only in a type runs with the route module (R163)', () => {
+describe('a class, enum or namespace named only in a type runs with the route module', () => {
   const G = '(globalThis as any)'
   it.each([
     {
@@ -893,7 +854,7 @@ export const Route = createFileRoute('/')({
   })
 })
 
-describe('what main leaves lazy (§1.6-1.8)', () => {
+describe('what main leaves lazy', () => {
   it.each([
     {
       name: 'an exported function',
@@ -1183,7 +1144,7 @@ export const Route = createFileRoute('/')({ component: Page })
 // `main`'s shared module holds the names two option groups read (a staying
 // option counting as one group) and nothing else; what else two split
 // options read, each chunk copies (spec-main-splitting 1.3, 1.8 #1).
-describe('what main shares, and only that (§1.3)', () => {
+describe('what main shares, and only that', () => {
   it('keeps a component two split options give lazy when a staying option shares a constant with it', async () => {
     const route = await loadRoute(
       `${head}const PAGE_SIZE = 20

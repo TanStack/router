@@ -254,7 +254,7 @@ const value = { element: <Tracked /> }`,
       effects: 0,
     },
     {
-      name: 'a pure-annotated call (control)',
+      name: 'a pure-annotated call',
       declaration: 'const value = /* @__PURE__ */ register()',
     },
   ])('$name runs once', async ({ declaration, effects: expected = 1 }) => {

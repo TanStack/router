@@ -53,7 +53,7 @@ async function loadLocal(options: RouteAppOptions = {}) {
   return route
 }
 
-describe('route options held in a local object (control)', () => {
+describe('route options held in a local object', () => {
   it('splits the component and keeps the route working, with nothing reported', async () => {
     const route = await loadLocal()
     expect(await route.isLazy('component')).toBe(true)

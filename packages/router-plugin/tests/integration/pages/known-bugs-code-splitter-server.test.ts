@@ -756,7 +756,7 @@ export const Route = createFileRoute('/')(
 )`,
     },
   ])(
-    'a server-only option given through $name stays, and the user is told so (J2.8)',
+    'a server-only option given through $name stays, and the user is told so',
     async ({ code }) => {
       const route = await loadForClient(
         `${head}import { db } from './secret-db'\n${code}`,

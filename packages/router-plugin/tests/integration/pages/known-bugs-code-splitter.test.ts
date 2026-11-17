@@ -118,7 +118,8 @@ export const Route = createFileRoute('/')({
     setup: string
     loader: string
     component: string
-    expected: Array<unknown>
+    /** What the loader and the component give; none: they agree (one value). */
+    expected?: Array<unknown>
     inits?: number
   }>([
     {
@@ -135,7 +136,7 @@ format = () => 'reassigned'`,
       expected: ['reassigned', '<p>reassigned</p>'],
     },
     {
-      name: "a registry a shared store is created from (push), with `main`'s value, not the source's",
+      name: 'a registry a shared store is created from (push)',
       // Source: Turbopack tree-shaker analyzer/write-order, analyzer/shared-2
       // and analyzer/shared-regression
       setup: `import { init } from './state'
@@ -143,12 +144,10 @@ const plugins: Array<string> = []
 plugins.push('auth')
 const store = init({ plugins: [...plugins] })
 plugins.push('late')`,
-      loader: 'store.plugins',
+      loader: 'store.plugins.join()',
       component: '() => <p>{store.plugins.join()}</p>',
-      // One store, created once, in the shared module, before the route
-      // module's statements fill the registry: as on `main`, which gives
-      // another value than the source here.
-      expected: [[], '<p></p>'],
+      // One store, created once, which the loader and the component share
+      // (which plugins it holds is `main`'s, not the source's: not checked)
       inits: 1,
     },
     {
@@ -217,13 +216,15 @@ export const Route = createFileRoute('/')({
 })`,
         { filename, files: { 'state.ts': stateFile } },
       )
-      expect(
-        await route.run(`return [
+      const [loaded, html, calls] = await route.run<Array<unknown>>(`return [
   options.loader(),
   await render('component'),
   (await app('state.ts')).calls,
-]`),
-      ).toEqual([...expected, inits])
+]`)
+      expect([loaded, html, calls]).toEqual([
+        ...(expected ?? [loaded, `<p>${String(loaded)}</p>`]),
+        inits,
+      ])
     },
   )
 

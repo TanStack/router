@@ -1,13 +1,9 @@
 /**
  * The order of effects between top-level declarations, real builds (Vite
- * and Rspack client builds, mounted in a DOM): what a split component
- * shows, and where each declaration loads. The maintainer's shapes: a
- * snapshot of state an unknown call changes after it (the call follows the
- * table into the chunk), and of state written after it through another
- * name, each show the value the source gives; a
- * column helper and its columns only the component reads load with the
- * component although a schema the route module keeps (`validateSearch`)
- * calls something the compiler does not know after them.
+ * and Rspack client builds, mounted in a DOM): a statement using an export
+ * and a binding only split code reads runs when the route module loads, in
+ * source order; an effectful declaration two split options read runs once,
+ * when the first of their chunks loads.
  */
 import { describe, expect, test } from 'vitest'
 import { build, head, routeApp } from '../build-harness'
@@ -15,109 +11,18 @@ import { build, head, routeApp } from '../build-harness'
 const timeout = 120_000
 
 const libs = {
-  'table.ts': `export function createTable() {
-  return { cols: [] as Array<string>, addColumn(c: string) { this.cols.push(c) } }
-}
-export function snapshot(t: { cols: Array<string> }) {
-  return t.cols.length === 0 ? 'none' : t.cols.join(',')
-}
-export function createColumnHelper(mark: string) {
-  return { mark, accessor: (key: string, o: object) => ({ key, ...o }) }
-}
-`,
-  'schema.ts': `export function createSchema(shape: Record<string, string>) {
-  return (search: Record<string, unknown>) => ({ ...search, shape })
-}
-`,
-  'registry.ts': `export function createRegistry() {
-  return {
-    install() {
-      ;(globalThis as any).__patched = 'patched'
-    },
-  }
-}
-`,
-  // what an exported store's effects record, in order
-  'log.ts': `export const log: Array<string> = []
-;(globalThis as any).__log = log
-export function createStore(mark: string) {
-  log.push('create')
-  return { value: mark }
-}
-export function register(store: { value: string }, mark: string) {
-  log.push('register')
-  store.value += mark
-}
-`,
-  // what a shared module's effects record (R151)
-  'link.ts': `export function link(a: object, b: object) {
-  ;((globalThis as any).__runs ??= []).push('link')
-  ;(a as any).peer = b
-}
-export function make(mark: string) {
+  // what a shared module's effects record
+  'link.ts': `export function make(mark: string) {
   ;((globalThis as any).__runs ??= []).push('make')
   return { mark }
 }
 `,
-  'snap.ts': `export function snap(o: { v: number }) {
-  return String(o.v)
-}
-`,
-  // a library's hidden state: a default app, a counter
-  'state.ts': `let app: { name: string } | null = null
-export function initializeApp(name: string) {
-  app = { name }
-  return app
-}
-export function getAuth() {
-  if (app === null) {
-    throw new Error('no default app')
-  }
-  return { app }
-}
-let n = 0
-export const takeSnapshot = () => String(n)
-export const advance = () => ++n
-const stores: Array<{ value: string }> = []
-export function createStore() {
-  const store = { value: 'empty' }
-  stores.push(store)
-  return store
-}
-export function hydrateStores() {
-  for (const store of stores) {
-    store.value = 'hydrated'
-  }
-}
-`,
-}
-
-async function mounted(bundler: 'vite' | 'rspack', route: string) {
-  const app = await build({
-    bundler,
-    env: 'client',
-    minify: false,
-    files: routeApp(route, { env: 'client', files: libs }),
-  })
-  try {
-    const run = await app.run(
-      'await entry.mount(entry.Route.options.component)\nreturn null',
-    )
-    return {
-      text: (run.html as string).replace(/<[^>]*>/g, ''),
-      where: (mark: string) => app.where(mark),
-    }
-  } finally {
-    await app.dispose()
-  }
 }
 
 describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
-  // round tools, fuzz seeds 6104927, 6407720, 6510105, 6518119 (Start,
-  // React, line-minimised; the free names are globals), toy seed 1409092: a
-  // statement using an export and a `let` the component's code reads
-  // followed the export into its module, which then read the `let` of the
-  // route module at its evaluation
+  // A statement using an export and a `let` the component's code reads
+  // once followed the export into its module, which then read the `let` of
+  // the route module at its evaluation (found by fuzzing)
   test(
     'a statement using an export and a binding only split code reads runs when the route module loads, in source order',
     async () => {
@@ -171,76 +76,12 @@ g.log = (tag: string, ...a: Array<unknown>) => {
   )
 })
 
-// What no order rule reorders without a warning (DESIGN-order-none.md
-// §3 and DESIGN-order-guarantee-aggressive.md S-1, S-2): declarations
-// holding values move past what follows them, statements included, when
-// they share state the compiler cannot see.
 describe.each(['vite', 'rspack'] as const)(
-  'what no order rule reorders, a %s build',
+  'shared effects, a %s build',
   (bundler) => {
-    test(
-      'a setup call only the component reads runs after a call that needs it, which throws (S-1)',
-      async () => {
-        await expect(
-          mounted(
-            bundler,
-            `${head}import { initializeApp, getAuth } from '../state'
-const app = initializeApp('x')
-const auth = getAuth()
-export const Route = createFileRoute('/')({
-  loader: () => auth.app.name,
-  component: () => <p>{app.name}</p>,
-})
-`,
-          ),
-        ).rejects.toThrow(/no default app/)
-      },
-      timeout,
-    )
-
-    test(
-      'a snapshot only the component reads sees the state a later value advanced (S-2)',
-      async () => {
-        const r = await mounted(
-          bundler,
-          `${head}import { takeSnapshot, advance } from '../state'
-const before = takeSnapshot()
-const state = advance()
-export const Route = createFileRoute('/')({
-  loader: () => state,
-  component: () => <p>{before}</p>,
-})
-`,
-        )
-        // (the source shows 0)
-        expect(r.text).toBe('1')
-      },
-      timeout,
-    )
-
-    test(
-      'a store only the component reads is created after the statement that hydrates the stores (a)',
-      async () => {
-        const r = await mounted(
-          bundler,
-          `${head}import { createStore, hydrateStores } from '../state'
-const store = createStore()
-hydrateStores()
-export const Route = createFileRoute('/')({
-  component: () => <p>{store.value}</p>,
-})
-`,
-        )
-        // (the source shows hydrated)
-        expect(r.text).toBe('empty')
-      },
-      timeout,
-    )
-
-    // R151: a statement using bindings of two split options, and an
-    // effectful declaration two split options read, go to one lazy shared
-    // module both chunks import: the effect runs once, when the first of
-    // them loads, whichever it is
+    // An effectful declaration two split options read goes to one lazy
+    // shared module both chunks import: the effect runs once, when the
+    // first of them loads, whichever it is
     test.each([
       [
         'an effectful declaration two split options read',

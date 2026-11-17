@@ -1,5 +1,3 @@
-// Slow-tier half of this suite: the tests that need a real tool. Its
-// page tests are in pages/code-splitter-plugin-pipeline(-routes).test.ts.
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import {
@@ -7,7 +5,9 @@ import {
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { expect, it } from 'vitest'
-import { build, routeApp } from '../build-harness'
+import { tanstackRouter } from '../../src/vite'
+import { build, clientMountEntry, head, routeApp } from '../build-harness'
+import type { RouterPluginOptions } from '../build-harness'
 
 // A route file that both imports and declares `Route` is invalid TypeScript
 // (TS2440). A real build either fails with an error, or
@@ -112,4 +112,89 @@ return { data, loaded }`)
     componentLoadedWithLoader: [],
     html: '<div id="root"><ul>MARK_COMPONENT</ul></div>',
   })
+}, 60_000)
+
+const routeWarnings = (diagnostics: unknown) =>
+  findDiagnostics(diagnostics, { severity: 'warning' }).filter(({ text }) =>
+    text.includes('routes/index.tsx'),
+  )
+
+/**
+ * A Vite `pre` plugin whose filter is anchored at the file's extension: it
+ * transforms `route.tsx`, and not `route.tsx?tsr-split=…`, whose text the
+ * compiler reads from disk.
+ */
+function anchoredPrePlugin(rewrite: (code: string) => string) {
+  return (config: RouterPluginOptions) => [
+    {
+      name: 'anchored-pre-plugin',
+      enforce: 'pre',
+      transform(code: string, id: string) {
+        return /routes\/index\.tsx$/.test(id) ? rewrite(code) : null
+      },
+    },
+    tanstackRouter(config),
+  ]
+}
+
+const stateRoute = `${head}let state = 0
+export const Route = createFileRoute('/')({
+  loader: () => 1,
+  component: () => <p>{state}</p>,
+})
+`
+
+// Two texts, two plans: the plugin's text writes `state`, so its plan keeps
+// `state` in the route module; the chunk's text (no plugin) never writes it,
+// so its plan gives the chunk a copy. Each id compiles from its own text, by
+// design, and the build warns naming the route file.
+it('a pre plugin that only the route module goes through is reported', async () => {
+  const app = await build({
+    bundler: 'vite',
+    env: 'client',
+    minify: false,
+    routerPlugins: anchoredPrePlugin((code) =>
+      code
+        .replace(
+          'let state = 0',
+          'let state = 0\n;(globalThis as any).__bump = () => { state = 42 }',
+        )
+        .replace(
+          'loader: () => 1',
+          'loader: () => { (globalThis as any).__bump(); return state }',
+        ),
+    ),
+    files: routeApp(stateRoute, {
+      env: 'client',
+      files: { 'entry.ts': clientMountEntry },
+    }),
+  })
+  expect(routeWarnings(app.warnings).length).toBeGreaterThan(0)
+}, 60_000)
+
+// A plugin whose filter accepts queries gives every id of the file the same
+// text: nothing is reported
+it('a pre plugin that handles every id of the route file is not reported', async () => {
+  const app = await build({
+    bundler: 'vite',
+    env: 'client',
+    minify: false,
+    routerPlugins: (config: RouterPluginOptions) => [
+      {
+        name: 'query-agnostic-pre-plugin',
+        enforce: 'pre',
+        transform(code: string, id: string) {
+          return /routes\/index\.tsx(\?|$)/.test(id)
+            ? code.replace('let state = 0', 'let state = 1')
+            : null
+        },
+      },
+      tanstackRouter(config),
+    ],
+    files: routeApp(stateRoute, {
+      env: 'client',
+      files: { 'entry.ts': clientMountEntry },
+    }),
+  })
+  expect(routeWarnings(app.warnings)).toEqual([])
 }, 60_000)
