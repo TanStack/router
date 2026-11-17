@@ -157,7 +157,9 @@ describe('route HMR (React)', () => {
     expect(firstImporter).toHaveBeenCalledTimes(patchImporter.mock.calls.length)
     const firstImporterCalls = firstImporter.mock.calls.length
 
-    // Any other failure of the new importer is not covered up.
+    // Any other failure of the new importer is not covered up by the first
+    // importer; the page keeps the component it shows, as on main (the
+    // bundler's HMR client reports the failure).
     evaluate({
       component: lazyRouteComponent(
         (): Promise<Module> => Promise.reject(new Error('syntax error')),
@@ -166,7 +168,7 @@ describe('route HMR (React)', () => {
     })
     await act(async () => {})
     expect(firstImporter).toHaveBeenCalledTimes(firstImporterCalls)
-    expect(screen.queryByRole('button', { name: /v1/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'v1 0' })).toBeInTheDocument()
   })
 
   test('an update for a route another router holds leaves both routers alone', () => {

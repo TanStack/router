@@ -1,30 +1,37 @@
 /**
  * An edit that breaks a route's split chunk (the chunk throws when it
- * evaluates, the route module does not) shows the route's error component;
- * the edit that fixes it shows the fixed component in place, also when the
- * refresh runtime keeps the component the page held (the fixed chunk exports
- * the same component family). The chunk holds the component and the loader,
- * so it is no React Refresh boundary (its loader export is no component): the
- * route module's hot import of the chunk is what fails, then succeeds. A real
- * dev server with React Refresh, a real page (`route-hmr-page.ts`). (Solid
- * reloads the page on such edits: its route boundary marks the router for a
- * reload.)
+ * evaluates, the route module does not), then the edit that fixes it, as on
+ * main (R153): a chunk holding only the component keeps the component the
+ * page shows (the bundler's HMR client reports the failure) and the fix
+ * patches it in place with its state; a chunk holding the loader too fails
+ * the route's load, which shows the route's error component (or the root's
+ * error, without a reload), and the fix shows the fixed component in place,
+ * also when the refresh runtime keeps the component the page held (the
+ * fixed chunk exports the same component family). The route module's hot
+ * import of the chunk is what fails, then succeeds. A real dev server with
+ * React Refresh, a real page (`route-hmr-page.ts`).
  */
 import { describe, expect, test } from 'vitest'
 import { openRouteHmrPage } from '../route-hmr-page'
 
 const timeout = 60_000
 
-/** The index route: its component reads `settings`, a module value only the component's chunk needs. */
-const route = (settings: string) =>
+/**
+ * The index route: its component reads `settings`, a module value only the
+ * component's chunk needs; `loader` puts a loader into that chunk,
+ * `errorComponent` gives the route an error component.
+ */
+const route = (
+  settings: string,
+  { loader, errorComponent }: { loader: boolean; errorComponent: boolean },
+) =>
   `import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 const settings = JSON.parse(${JSON.stringify(settings)})
 export const Route = createFileRoute('/')({
-  loader: () => 'loaded',
+  ${loader ? `loader: () => 'loaded',\n  codeSplitGroupings: [['component', 'loader']],` : ''}
   component: Page,
-  errorComponent: Failed,
-  codeSplitGroupings: [['component', 'loader']],
+  ${errorComponent ? 'errorComponent: Failed,' : ''}
 })
 function Failed({ error }: { error: Error }) {
   return <p>failed {error.name}</p>
@@ -34,26 +41,64 @@ function Page() {
   return <button onClick={() => setCount(count + 1)}>{settings.label} {count}</button>
 }
 `
-const healthy = (label: string) => route(JSON.stringify({ label }))
+const healthy = (label: string, shape: Parameters<typeof route>[1]) =>
+  route(JSON.stringify({ label }), shape)
 // JSON.parse throws a SyntaxError where the chunk evaluates
-const broken = route('{')
+const broken = (shape: Parameters<typeof route>[1]) => route('{', shape)
 
 describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
-  test(
-    'after an edit that breaks the split chunk, the fixing edit shows the component in place',
-    async ({ onTestFinished }) => {
+  test.for([false, true])(
+    'a component chunk the edit breaks keeps the component on the page, the fixing edit patches it in place (error component: %s)',
+    async (errorComponent, { onTestFinished }) => {
+      const shape = { loader: false, errorComponent }
       const app = await openRouteHmrPage({
         bundler,
         onTestFinished,
-        files: { 'routes/index.tsx': healthy('page v1') },
+        files: { 'routes/index.tsx': healthy('page v1', shape) },
         ready: 'page v1 0',
       })
       await app.click('#app button')
       await app.page.waitForText('page v1 1', { selector: '#app' })
 
       const failed = await app.edit(
-        { 'routes/index.tsx': broken },
-        'failed SyntaxError',
+        { 'routes/index.tsx': broken(shape) },
+        'page v1 1',
+      )
+      // the bundler's HMR client reports the chunk's failure
+      await expect
+        .poll(() => failed.errors.some((e) => e.includes('SyntaxError')))
+        .toBe(true)
+      expect(
+        await app.evaluate('document.querySelector("#app").innerText'),
+      ).toBe('page v1 1')
+      expect(failed.reloaded).toBe(false)
+
+      const fixed = await app.edit(
+        { 'routes/index.tsx': healthy('page v3', shape) },
+        'page v3 1',
+      )
+      expect(fixed.reloaded).toBe(false)
+    },
+    timeout,
+  )
+
+  test.for([true, false])(
+    'after an edit that breaks the split chunk holding the loader, the fixing edit shows the component in place (error component: %s)',
+    async (errorComponent, { onTestFinished }) => {
+      const shape = { loader: true, errorComponent }
+      const app = await openRouteHmrPage({
+        bundler,
+        onTestFinished,
+        files: { 'routes/index.tsx': healthy('page v1', shape) },
+        ready: 'page v1 0',
+      })
+      await app.click('#app button')
+      await app.page.waitForText('page v1 1', { selector: '#app' })
+
+      const failed = await app.edit(
+        { 'routes/index.tsx': broken(shape) },
+        // the route's error component, or the root's default one
+        errorComponent ? 'failed SyntaxError' : /Something went wrong/,
       )
       // The edit applies in place: the route module's hot import of the
       // chunk fails, the path this test is about. (Vite's client reloads the
@@ -64,7 +109,7 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
       expect(failed.reloaded).toBe(false)
 
       const fixed = await app.edit(
-        { 'routes/index.tsx': healthy('page v3') },
+        { 'routes/index.tsx': healthy('page v3', shape) },
         /page v3 \d/,
       )
       expect(fixed.reloaded).toBe(false)
