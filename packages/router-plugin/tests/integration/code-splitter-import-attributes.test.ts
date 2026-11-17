@@ -16,6 +16,10 @@ describe('the attribute of an import moved into the chunk still applies (webpack
   it.each([
     { name: 'an import attribute', attribute: `with { type: 'json' }` },
     { name: 'an import assertion', attribute: `assert { type: 'json' }` },
+    {
+      name: 'an import assertion after a comment naming it',
+      attribute: `/* assert */ assert { type: 'json' }`,
+    },
   ])('$name', async ({ attribute }) => {
     const app = await build({
       bundler: 'webpack',

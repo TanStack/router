@@ -217,6 +217,14 @@ const Home = () => <p>MARK</p> /* first
 second */ const unused = 1
 const alsoUnused = 2`,
   },
+  // (a line comment ending with `{` or `;` ends no statement)
+  ...['{', ';'].map((end) => ({
+    name: `a line comment ending with \`${end}\` is the last text before a statement that moves`,
+    route: `${head}globalThis.first = 'MARK' // first ${end}
+const Home = () => <p>{globalThis.first}</p>
+export const Route = createFileRoute('/')({ component: Home })
+`,
+  })),
   {
     name: 'a comment holds the line break before the route, which gets the importer',
     route: `${head}globalThis.first = 'MARK' /* first

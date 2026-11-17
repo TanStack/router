@@ -68,7 +68,28 @@ return [value === Route.options.component, await renderComponent(value)]`),
     },
   )
 
-  // R3-G7-2: the lowercase component is one binding of an exported
+  // A lowercase component the route HMR code renames for React Refresh,
+  // declared by a shorthand destructuring (its key stays) or by a `var`
+  // declared again (every declaration renamed once)
+  it.each([
+    ['a shorthand destructuring', `const { page } = { page: () => <p>hi</p> }`],
+    [
+      'a var declared again',
+      `var page = () => <p>first</p>\nvar page = () => <p>hi</p>`,
+    ],
+  ])(
+    'a lowercase component declared by %s renders as the route component (autoCodeSplitting: false)',
+    async (_, declaration) => {
+      const route = await loadRoute(
+        `${head}${declaration}\nexport const Route = createFileRoute('/page')({ component: page })`,
+        { ...unsplit, routeId: '/page', tsconfig: appTsconfig },
+      )
+      await expectValidModules(route)
+      expect(await route.run(`return render('component')`)).toBe('<p>hi</p>')
+    },
+  )
+
+  // the lowercase component is one binding of an exported
   // declaration with others; each export keeps its own binding
   describe.each([
     ['autoCodeSplitting: false', unsplit],
