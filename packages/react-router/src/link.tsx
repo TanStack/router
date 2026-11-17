@@ -645,6 +645,9 @@ type LinkRef = React.RefObject<Element | null> & {
   t?: ReturnType<typeof setTimeout>
 }
 const cancelPreload = (ref: LinkRef) => {
+  if (ref.t === undefined) {
+    return
+  }
   clearTimeout(ref.t)
   ref.t = undefined
 }
