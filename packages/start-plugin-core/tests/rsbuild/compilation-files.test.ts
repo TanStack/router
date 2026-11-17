@@ -4,9 +4,10 @@
  * before), or nothing (a directory a compilation watched). A file is created
  * only when no environment's last compilation depended on it: under RSC,
  * Rspack's coordinator tells the client compiler about the server's changed
- * files, which the client's own compilation never read (review round 3,
- * R3-G5-2; ruling F1: tested through the session's own record, no timed dev
- * servers).
+ * files, which the client's own compilation never read.
+ * Not an oracle test: it reads the Rsbuild session's own record
+ * (`CompilationFiles`), as the race it guards needs a timed dev server
+ * otherwise (review round 3, R3-G5-2, ruling F1).
  */
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'

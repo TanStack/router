@@ -209,7 +209,7 @@ export const createPost = createServerFn().handler(async () =>
 
   // The server may repeat the module's top-level code or run the handler in
   // the module itself; it runs once is the goal pinned in
-  // known-bugs-start-compiler.test.ts ("SSR: a server fn module is
+  // integration/start-build-server-fn-cases.test.ts ("SSR: a server fn module is
   // initialised once ...").
   // Source: Next.js server-actions fixtures client-graph/2
   test('side-effect imports and top-level statements stay in the callers, and the handler runs next to them', async () => {

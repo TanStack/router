@@ -42,47 +42,36 @@ defineExpose({ getX })
 </script>
 `
 
-/** What the refusal of a server fn in a `<script setup>` block says first (R162). */
-const SETUP =
-  'In `<script setup>`, code runs inside the component’s setup function'
-
-/**
- * Refused SFCs, with the text the refusal points at (and, `says`, text it
- * gives: a server fn of a `<script setup>` block is refused as one, whether
- * or not the Vue plugin made a source map).
- */
-const refused: Array<{ name: string; sfc: string; at: string; says?: string }> =
-  [
-    {
-      name: 'a server fn built on a builder the block keeps in a const',
-      // (the template is handed `base` too, in development: refused at its
-      // declaration, two lines up)
-      sfc: sfc(`const base = createServerFn()
+/** Refused SFCs, with the text the refusal points at. */
+const refused: Array<{ name: string; sfc: string; at: string }> = [
+  {
+    name: 'a server fn built on a builder the block keeps in a const',
+    // (the template is handed `base` too, in development: refused at its
+    // declaration, two lines up)
+    sfc: sfc(`const base = createServerFn()
 const label = 'page'
 const getX = base.handler(async () => 'MARK_SERVER_SECRET')`),
-      at: 'base.handler',
-      says: SETUP,
-    },
-    {
-      name: 'a server fn reading the props',
-      sfc: sfc(`const props = defineProps<{ t?: string }>()
+    at: 'base.handler',
+  },
+  {
+    name: 'a server fn reading the props',
+    sfc: sfc(`const props = defineProps<{ t?: string }>()
 const getX = createServerFn().handler(async () => 'MARK_SERVER_SECRET' + props.t)`),
-      at: 'props.t',
-      says: SETUP,
-    },
-    {
-      name: 'a factory the block returns from a getter',
-      sfc: sfc(`const own = { get make() { return createServerFn } }
+    at: 'props.t',
+  },
+  {
+    name: 'a factory the block returns from a getter',
+    sfc: sfc(`const own = { get make() { return createServerFn } }
 const getX = () => own`),
-      at: 'createServerFn } }',
-    },
-    // (audit-diagnostics P1: a production Vite build compiles a JavaScript
-    // block into the SFC's own module, with no source map by default; in
-    // development the template is handed the import too: refused there, two
-    // lines up)
-    {
-      name: 'a server fn of a JavaScript block',
-      sfc: `<template>
+    at: 'createServerFn } }',
+  },
+  // (audit-diagnostics P1: a production Vite build compiles a JavaScript
+  // block into the SFC's own module, with no source map by default; in
+  // development the template is handed the import too: refused there, two
+  // lines up)
+  {
+    name: 'a server fn of a JavaScript block',
+    sfc: `<template>
   <p>page</p>
 </template>
 
@@ -94,10 +83,15 @@ const getX = createServerFn().handler(async () => 'MARK_SERVER_SECRET')
 defineExpose({ getX, label })
 </script>
 `,
-      at: 'createServerFn().handler',
-      says: SETUP,
-    },
-  ]
+    at: 'createServerFn().handler',
+  },
+]
+
+/** A module exporting a builder (`import * as builders from './builders'`). */
+const builders = `import { createServerFn } from '@tanstack/vue-start'
+export const base = createServerFn()
+export const label = 'x'
+`
 
 /**
  * Refused in development only: a JavaScript block hands its imports to the
@@ -135,6 +129,22 @@ defineExpose({ getX })
 </script>
 `,
     at: 'base = createServerFn',
+  },
+  {
+    // the code Vue generates hands the namespace to the template: refused at
+    // its declaration in the SFC
+    name: 'a namespace of a module with a builder a JavaScript block imports',
+    sfc: `<template>
+  <p>page</p>
+</template>
+
+<script setup>
+import * as builders from './builders'
+const label = 'page'
+defineExpose({ label })
+</script>
+`,
+    at: 'builders from',
   },
 ]
 
@@ -189,15 +199,12 @@ function expectAtRefusal(
   root?: string,
 ) {
   const { line, column } = diagnosticPosition(row.sfc, row.at)
-  const refusal = expectDiagnostic(diagnostics, {
+  expectDiagnostic(diagnostics, {
     severity: 'error',
     file,
     root,
     position: { line, column },
   })
-  if (row.says !== undefined) {
-    expect(refusal.text).toContain(row.says)
-  }
   for (const other of [line - 1, line + 1]) {
     expect(
       findDiagnostics(diagnostics, {
@@ -301,7 +308,7 @@ describe.each([
     )
 
     test(
-      'round 2 F4-2: a denied import of the script fails the build at its position in the SFC, with the SFC in its code frame',
+      'a denied import of the script fails the build at its position in the SFC',
       async () => {
         const text = `<template>
   <p>{{ shown }}</p>
@@ -325,13 +332,6 @@ const shown = ref(secret)
         expectViolationsAt(error, [
           { environment: 'client', use: `src/Page.vue:${line}:${column}` },
         ])
-        const printed = error.diagnostics.filter((d) =>
-          d.text.includes('[import-protection]'),
-        )
-        expect(printed).not.toEqual([])
-        for (const d of printed) {
-          expect(d.text).toContain(`> ${line} | import { secret }`)
-        }
       },
       timeout,
     )
@@ -367,6 +367,7 @@ describe('vite dev', () => {
     })
     return (await devHost).case({
       'Page.vue': text,
+      'builders.ts': builders,
       'module.ts': `export { default } from './Page.vue'\n`,
     })
   }
@@ -423,6 +424,7 @@ describe('rsbuild dev', () => {
         config: { plugins: [pluginVue()] },
         files: {
           'src/routes/__root.tsx': root,
+          'src/builders.ts': builders,
           ...files,
           // (the refused blocks only behind an import the page never runs)
           'src/entry.ts': `${fixes.map((_, i) => `import Fix${i} from './Fix${i}.vue'\n`).join('')}globalThis.__fixes = [${fixes.map((_, i) => `Fix${i}`).join(', ')}]

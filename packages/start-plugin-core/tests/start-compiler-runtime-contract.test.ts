@@ -4,7 +4,8 @@
  * an isomorphic fn, called from the client in a real page (Start's client
  * RPC sends its request to the dev server, whose server entry runs the
  * middleware and the handler) and from server code in a real request; and
- * a failing handler, whose error reaches both callers.
+ * a failing handler, whose error reaches both callers. The same module in a
+ * Solid app.
  * Source: review.
  */
 import { beforeAll, describe, expect, test } from 'vitest'
@@ -39,6 +40,7 @@ const hostDefaults = {
 }
 
 const host = useStartHost(hostDefaults)
+const solidHost = useStartHost({ ...hostDefaults, framework: 'solid' })
 beforeAll(async () => {
   await (await host()).page()
 }, 60_000)
@@ -93,6 +95,27 @@ export const env = () => where()`
     expect(await callOnServer(served, 'module.getUser', { n: 1 })).toEqual(
       expected('server'),
     )
+  })
+
+  // The factories of `@tanstack/solid-start` (SPEC J4.5), in a Solid app.
+  test('runs on Start’s runtime in a Solid app', async () => {
+    const served = await serveCase(await solidHost(), {
+      'module.tsx': code.replace(
+        "from '@tanstack/react-start'",
+        "from '@tanstack/solid-start'",
+      ),
+      ...files,
+    })
+    expect(served.code.client).not.toContain('MARK_MIDDLEWARE_SERVER')
+    expect(await inPage(served, `return module.env()`)).toBe('client')
+    expect(await callFromClient(served, 'module.getUser', { n: 1 })).toEqual({
+      n: 2,
+      user: 'user-from-client',
+      method: 'POST',
+      name: 'getUser',
+      where: 'server',
+    })
+    expect((await served.ssr()).env()).toBe('server')
   })
 
   // An HTTP call by id without client context: a request that is not Start's

@@ -7,13 +7,6 @@
  * from that page (Start's client RPC, by id, through the built server
  * entry) and from server code of the build (inside its real requests).
  *
- * Moved here from createServerFn/createServerFn.test.ts ("dedupes custom
- * ids, the same way across compiler instances"),
- * createServerFn/exports-and-directives.test.ts ("build providers have no
- * dev HMR code", the build row of "ids are repeatable ...", "build ids do
- * not ship source names", the build rows of "a provider for a module ending
- * in a line comment ...").
- *
  * No row for a server fn under a directory whose name contains `#`
  * (formerly createServerFn/declaration-sites.test.ts, "a .ts module in a
  * directory whose name contains # compiles as TypeScript"): Vite's resolver
@@ -48,8 +41,6 @@ interface DefaultCases {
 let defaultHost: StartHost | undefined
 let defaultPreview: StartPreview
 let defaults: DefaultCases
-let customHost: StartHost | undefined
-let customCase: StartCase
 
 beforeAll(async () => {
   defaultHost = await createStartHost({ serve: false })
@@ -90,25 +81,10 @@ beforeAll(async () => {
     ],
   }
   defaultPreview = await defaultHost.preview()
-
-  // `generateFunctionId` gives every server fn the same id.
-  customHost = await createStartHost({
-    serve: false,
-    start: { serverFns: { generateFunctionId: () => 'constant_id' } },
-  })
-  customCase = await customHost.case({
-    'submit-post-formdata.tsx': `${head}export const greetUser = createServerFn().handler(async () => 'first')`,
-    'formdata-redirect/index.tsx': `${head}export const greetUser = createServerFn().handler(async () => 'second')`,
-    'module.tsx': `export { greetUser as first } from './submit-post-formdata'
-export { greetUser as second } from './formdata-redirect'
-`,
-  })
-  await customHost.preview()
 }, 120_000)
 
 afterAll(async () => {
   await defaultHost?.close()
-  await customHost?.close()
 })
 
 describe('production builds', () => {
@@ -194,20 +170,4 @@ describe('production builds', () => {
       )
     },
   )
-
-  // Two server fns of the same name in different files, both given the
-  // same id by a custom `generateFunctionId`: the build dedupes them, so
-  // each has its own id, which the client and the server agree on, and each
-  // id runs its own handler.
-  test('dedupes custom ids, the same way across compiler instances', async () => {
-    expect(await serverFnUrls(customCase)).toHaveLength(2)
-    const ssr = await customCase.ssr()
-    expect(
-      await inPage(customCase, 'return [module.first.url, module.second.url]'),
-    ).toEqual([ssr.first.url, ssr.second.url])
-    expect([
-      await callServerFnThroughCallers(customCase, 'module.first'),
-      await callServerFnThroughCallers(customCase, 'module.second'),
-    ]).toEqual(['first', 'second'])
-  })
 })

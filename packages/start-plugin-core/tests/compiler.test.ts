@@ -324,7 +324,7 @@ describe('re-export chain resolution', () => {
 
   // The dev-edit concepts of this suite (an edited module a re-export
   // chain ends in recompiles its importers) are pinned through real dev
-  // edits in known-bugs-start-compiler.test.ts "dev edits".
+  // edits in start-compiler-cases.test.ts "dev edits".
 
   // A binding whose initializer reads itself (code saved mid-edit): serving
   // the module settles, with a result or an error, instead of looping.

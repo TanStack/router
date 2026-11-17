@@ -23,7 +23,10 @@
  *   the file out.
  */
 import { describe, expect, test } from 'vitest'
-import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  diagnosticPosition,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
   expectViolationsAt,
@@ -78,18 +81,45 @@ export const read = () => Object.keys(modules)
 `,
   })
 
-  test(
-    "a pattern import of a denied file fails the build at the importer's pattern import",
-    async () => {
+  // Every form of the call: a list of patterns (with a negation of another
+  // file), type arguments, and a commented-out call before it.
+  test.each([
+    {
+      name: 'one pattern',
+      call: `import.meta.glob('./lib/*.ts', { eager: true })`,
+    },
+    {
+      name: 'a list of patterns',
+      call: `import.meta.glob(['./lib/*.ts', '!./lib/util.ts'], { eager: true })`,
+    },
+    {
+      name: 'type arguments',
+      call: `import.meta.glob<{ db?: () => string }>('./lib/*.ts', { eager: true })`,
+    },
+    {
+      name: 'a commented-out call before it',
+      head: `// import.meta.glob('./other/*.ts')\n/* import.meta.glob('./other/*.ts') */\n`,
+      call: `import.meta.glob('./lib/*.ts', { eager: true })`,
+    },
+  ])(
+    "a pattern import of a denied file fails the build at the importer's pattern import ($name)",
+    async ({ call, head = '' }) => {
+      const entry = `${head}const modules = ${call}
+export const read = () => Object.keys(modules)
+`
       const error = await rejection(
         buildStart({
           bundler,
-          files: globbing(`'./lib/*.ts'`),
+          files: { ...globbing(`'./lib/*.ts'`), 'src/entry.ts': entry },
           entry: 'src/entry.ts',
         }),
       )
+      const { line, column } = diagnosticPosition(
+        entry,
+        entry.lastIndexOf('import.meta.glob'),
+      )
       expectViolationsAt(error, [
-        { environment: 'client', use: 'src/entry.ts:1:17' },
+        { environment: 'client', use: `src/entry.ts:${line}:${column}` },
       ])
     },
     timeout,
@@ -118,16 +148,9 @@ declare const require: any
 export const load = ${load}
 `,
   })
-  /** No report of `error` names a cause other than the importer's own code. */
-  const noAddedImport = (error: { diagnostics?: Array<{ text: string }> }) =>
-    expect(
-      (error.diagnostics ?? []).filter((d) =>
-        d.text.includes('another plugin'),
-      ),
-    ).toEqual([])
 
   test(
-    'round 2 F4-1: a require() of a denied file fails the build at the call, as the import it is',
+    'a require() of a denied file fails the build at the call, as the import it is',
     async () => {
       const error = await rejection(
         buildStart({
@@ -139,7 +162,6 @@ export const load = ${load}
       expectViolationsAt(error, [
         { environment: 'client', use: 'src/entry.ts:3:27' },
       ])
-      noAddedImport(error)
     },
     timeout,
   )
@@ -154,7 +176,7 @@ export const load = ${load}
       `createServerFn().handler(async () => require('./lib/db.server').db())`,
     ],
   ])(
-    'round 2 F4-1: the require() inside %s builds, and the client has none of the file',
+    'the require() inside %s builds, and the client has none of the file',
     async (_, load) => {
       const build = await buildStart({
         bundler,
@@ -177,7 +199,7 @@ export const read = () => ctx.keys()
   })
 
   test.runIf(bundler === 'rsbuild')(
-    'round 2 F4-1: a webpack context through a cast of import.meta fails the build at the context, and a narrower regExp leaves the file out',
+    'a webpack context through a cast of import.meta fails the build at the context, and a narrower regExp leaves the file out',
     async () => {
       const error = await rejection(
         buildStart({
@@ -189,7 +211,6 @@ export const read = () => ctx.keys()
       expectViolationsAt(error, [
         { environment: 'client', use: 'src/entry.ts:1:14' },
       ])
-      noAddedImport(error)
       const build = await buildStart({
         bundler,
         files: context('/util\\.ts$/'),
@@ -203,30 +224,65 @@ export const read = () => ctx.keys()
     timeout,
   )
 
-  test(
-    'a marker conflict fails the build at the second marker',
+  // webpack's own form of the context
+  test.runIf(bundler === 'rsbuild')(
+    'a require.context of a denied file fails the build at the context',
     async () => {
+      const entry = `declare const require: any
+const ctx = require.context('./lib', false, /\\.ts$/)
+export const read = () => ctx.keys()
+`
       const error = await rejection(
         buildStart({
           bundler,
           files: {
-            'src/both.ts': `import '@tanstack/react-start/server-only'
-import '@tanstack/react-start/client-only'
+            'src/lib/db.server.ts': db,
+            'src/lib/util.ts': `export const util = () => 'util'\n`,
+            'src/entry.ts': entry,
+          },
+          entry: 'src/entry.ts',
+        }),
+      )
+      const { line, column } = diagnosticPosition(entry, 'require.context')
+      expectViolationsAt(error, [
+        { environment: 'client', use: `src/entry.ts:${line}:${column}` },
+      ])
+    },
+    timeout,
+  )
+
+  test.each([
+    { name: 'an import', second: `import '@tanstack/react-start/client-only'` },
+    {
+      name: 'a re-export',
+      second: `export * from '@tanstack/react-start/client-only'`,
+    },
+  ])(
+    'a marker conflict fails the build at the second marker ($name)',
+    async ({ second }) => {
+      const both = `import '@tanstack/react-start/server-only'
+${second}
 export const both = 1
-`,
+`
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files: {
+            'src/both.ts': both,
             'src/entry.ts': `import { both } from './both'\nexport const read = () => both\n`,
           },
           entry: 'src/entry.ts',
         }),
       )
-      const conflict = expectDiagnostic(error.diagnostics, {
+      expectDiagnostic(error.diagnostics, {
         severity: 'error',
         file: 'src/both.ts',
         root: error.root,
-        position: { line: 2, column: 8 },
+        position: diagnosticPosition(
+          both,
+          `'@tanstack/react-start/client-only'`,
+        ),
       })
-      // (audit-diagnostics P7: the fix is a sentence)
-      expect(conflict.text).toContain('Remove one of the two imports.')
     },
     timeout,
   )

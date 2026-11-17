@@ -1,7 +1,7 @@
 /**
  * The CSS a route imports in a real page of a React Start app, run for each
- * bundler by its own test file (`known-bugs-route-css.test.ts`: Vite,
- * `known-bugs-route-css-rsbuild.test.ts`: Rsbuild), on the bundler's dev
+ * bundler by its own test file (`route-css.test.ts`: Vite,
+ * `route-css-rsbuild.test.ts`: Rsbuild), on the bundler's dev
  * server (Vite: `startDevServer`; Rsbuild: `startRsbuildStartDevServer`)
  * and in a production build served as the bundler's preview serves it,
  * Start's server entry rendering the pages (Vite: `createStartHost({

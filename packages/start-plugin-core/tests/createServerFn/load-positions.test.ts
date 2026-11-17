@@ -14,6 +14,7 @@
 import { describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
+  callFromClient,
   callServerFnThroughCallers,
   compileError,
   inPage,
@@ -140,6 +141,18 @@ describe('a server fn created once when its module loads', () => {
       code: `export const left = ${fn} || null`,
       read: 'module.left',
     },
+    // a decorator runs once, with its class (TypeScript's decorators, as an
+    // app's tsconfig turns them on)
+    {
+      name: 'a decorator argument',
+      code: `const decorated: Array<unknown> = []\nconst dec = (f: unknown) => (c: unknown) => (decorated.push(f), c)\n@dec(${fn})\nclass Decorated {}\nexport { Decorated, decorated }`,
+      read: 'module.decorated[0]',
+      files: {
+        'tsconfig.json': JSON.stringify({
+          compilerOptions: { experimentalDecorators: true },
+        }),
+      },
+    },
     {
       name: 'a labeled statement',
       code: `export const api: Record<string, unknown> = {}\nlabeled: api.foo = ${fn}`,
@@ -165,12 +178,18 @@ describe('a server fn created once when its module loads', () => {
     },
   ]
 
-  test.each(positions)(
+  test.each<{
+    name: string
+    code: string
+    read: string
+    files?: Record<string, string>
+  }>(positions)(
     'works in $name: the client gets an RPC, the server runs the handler',
-    async ({ code, read }) => {
+    async ({ code, read, files: own }) => {
       const served = await serveCase(await host(), {
         'module.tsx': `${head}${code}`,
         ...files,
+        ...own,
       })
       expectNotLoaded(await served.loads(), ['./db.server'])
       expect(await callServerFnThroughCallers(served, read)).toBe('inner')
@@ -403,6 +422,21 @@ var later: 'GET' | undefined = 'GET'`,
   })
 })
 
+// SPEC J4.2: a server fn defined in code the server erases and the client
+// runs (`<ClientOnly>` children at the module top level) still answers the
+// client.
+test('a server fn in <ClientOnly> children at the module top level answers the client', async () => {
+  const served = await serveCase(await host(), {
+    'module.tsx': `${head}import { ClientOnly } from '@tanstack/react-router'
+export const el = <ClientOnly fallback={null}><b data-fn={${fn}} /></ClientOnly>`,
+    ...files,
+  })
+  expectNotLoaded(await served.loads(), ['./db.server'])
+  expect(
+    await callFromClient(served, "module.el.props.children.props['data-fn']"),
+  ).toBe('inner')
+})
+
 describe('a server fn not created exactly once when its module loads', () => {
   const declarations = `export const api: Record<string, unknown> = {}
 const flag = Math.random() >= 0
@@ -511,6 +545,11 @@ const reg = { add: <T,>(f: T) => f }
       name: "a class expression's own name",
       code: `export const B = class A {\n  static k = 'k'\n  static foo = createServerFn().handler(async () => db.inner() + A.k)\n}`,
       at: 'A.k)',
+    },
+    {
+      name: '`this` of the class it is written in',
+      code: `export class Api {\n  static mws: Array<never> = []\n  static foo = createServerFn().middleware(this.mws).handler(async () => db.inner())\n}`,
+      at: 'this.mws',
     },
     {
       name: 'a declaration of its own statement, when the module loads',

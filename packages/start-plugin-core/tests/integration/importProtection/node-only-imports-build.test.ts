@@ -23,7 +23,7 @@ import {
   typeRemainder,
   valueRemainder,
 } from './node-only-imports-cases'
-import { importersIn } from './v2-hosts'
+import { importersIn } from './hosts'
 import type { Plugin } from 'vite'
 import type { StartBuildError, StartBundler } from '../../build-harness'
 

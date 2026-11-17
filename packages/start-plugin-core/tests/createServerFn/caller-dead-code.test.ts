@@ -323,12 +323,8 @@ ${code}`,
     },
   )
 
-  // Bug: these TypeScript positions named like the import (an enum member,
-  // an overload signature parameter, a constructor parameter property) count
-  // as references to it, so the callers keep the server-only import after
-  // the handler that read it is gone.
-  // Impact: the client loads the server-only module (its top-level code
-  // runs in the browser).
+  // On main, the client loads the server-only module (its top-level code runs
+  // in the browser).
   // Source: #8504 caller-dead-code.test.ts (typescript-eslint scope fixtures;
   // red on main)
   test.each<{
@@ -472,12 +468,9 @@ export const fn = createServerFn({ method: 'POST' })
 
   // The validator only runs on the server, so the client drops it and the
   // imports only it reads, also when a cast wraps the chain link.
-  // Bug: a `.validator()` link wrapped in `satisfies` / `as` is not stripped
-  // from the callers.
-  // Impact: the validator and its imports ship to the client, code the
-  // client never runs.
-  // Source: #8504 caller-dead-code.test.ts (differential fuzzing; red on
-  // main)
+  // On main, the validator and its imports ship to the client, code the client
+  // never runs.
+  // Source: #8504 caller-dead-code.test.ts (differential fuzzing; red on main)
   test.each([
     { name: 'satisfies', wrap: (link: string) => `(${link} satisfies any)` },
     { name: 'cast', wrap: (link: string) => `(${link} as any)` },
@@ -494,15 +487,10 @@ export const fn = ${wrap(`createServerFn().validator(schema)`)}.handler(async ({
     },
   )
 
-  // Bug: a `.validator()` link on a builder stored in a variable is not
-  // stripped from the callers: the client follows the handler's chain only
-  // up to the identifier (`withPost.handler(...)`), so the variable's
-  // declaration keeps its validator. An inline chain is stripped ("when the
-  // handler only reads it through a validator or a middleware", above).
-  // Source: start-compiler/compiler.ts:1296-1330 (the chain walk stops at an
+  // Source: main's start-compiler/compiler.ts:1296-1330 (the chain walk stops at an
   // identifier), start-compiler/handleCreateServerFn.ts:277-290; fuzzing.
-  // Impact: the validator and its imports (schemas, server-only modules)
-  // ship to the client, which never runs them.
+  // On main, the validator and its imports (schemas, server-only modules) ship
+  // to the client, which never runs them.
   test.each([
     {
       name: 'one handler',
@@ -672,11 +660,7 @@ export const secretKeyName = 'apiKey'
 })
 
 describe('declarations only the handler needs', () => {
-  // Bug: a function whose body declares a local of the function's own name
-  // (`function session() { const session = ... }`) counts as used by that
-  // local, so the callers keep it, and the server-only import it reads,
-  // after the handler that called it is gone.
-  // Impact: the client loads the server-only module.
+  // On main, the client loads the server-only module.
   // Source: React Compiler fixture context-variable-as-jsx-element-tag.js;
   // #8504 caller-dead-code.test.ts (red on main)
   test('callers drop a handler-only function that declares a local of its own name', async () => {

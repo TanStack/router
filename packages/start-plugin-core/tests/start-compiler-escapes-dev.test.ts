@@ -5,7 +5,10 @@
  * module at the use.
  */
 import { expect, test } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  diagnosticPosition,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { compileError, useStartHost } from './regression-helpers'
 import { expectCompileError } from './diagnostics'
 
@@ -25,10 +28,7 @@ export const fn = wrap(createServerFn()).handler(async () => 'secret')`
 })
 
 test('a parameter only server code reads warns once, at the definition', async () => {
-  const startCase = await (
-    await host()
-  ).case({
-    'module.tsx': `import { createMiddleware } from '@tanstack/react-start'
+  const code = `import { createMiddleware } from '@tanstack/react-start'
 export const requireRole = (role: string) =>
   createMiddleware().server(async ({ next }) => {
     if (role === 'none') {
@@ -36,17 +36,21 @@ export const requireRole = (role: string) =>
     }
     return next()
   })
-`,
-  })
+`
+  const startCase = await (await host()).case({ 'module.tsx': code })
   expect(await compileError(startCase)).toBeUndefined()
   expect(await compileError(startCase, 'ssr')).toBeUndefined()
   expect(await compileError(startCase)).toBeUndefined()
   const warnings = findDiagnostics(startCase.diagnostics(), {
+    severity: 'warning',
     file: startCase.file(),
-  }).filter((d) => d.severity === 'warning')
-  expect(warnings.map((d) => d.text)).toEqual([
-    expect.stringContaining('`role` is read only by server-only code'),
-  ])
+  })
+  expect(warnings).toHaveLength(1)
+  expect(
+    findDiagnostics(warnings, {
+      position: diagnosticPosition(code, 'role: string'),
+    }),
+  ).toHaveLength(1)
 })
 
 // Source: review round 3 (R3-G2-2): the join of the two isomorphic fns lost

@@ -19,7 +19,7 @@ import {
   startBrowserRsbuildStartDevServer,
   startBrowserStartDevServer,
 } from './client-pages'
-import { importersIn } from './v2-hosts'
+import { importersIn } from './hosts'
 
 const timeout = 60_000
 const compileTimeout = timeout

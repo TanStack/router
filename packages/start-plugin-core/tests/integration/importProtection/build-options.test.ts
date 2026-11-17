@@ -6,6 +6,10 @@
  * effect).
  */
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
+import {
+  expectDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
@@ -122,7 +126,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
     // Source: review of 2026-11-09, round 2 (the warning said "Denied by
     // marker pattern: undefined").
     test(
-      'srcDirectory: an importer outside it gets a mock of a server-only-marked module, with a warning naming the marker',
+      'srcDirectory: an importer outside it gets a mock of a server-only-marked module, with a warning naming it',
       async () => {
         const built = await buildStart({
           bundler,
@@ -133,14 +137,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
           },
           entry: 'src/entry.ts',
         })
-        const unchecked = problems(built.diagnostics)
-          .map(({ text }) => text)
-          .filter((text) => text.includes('for importers that are not checked'))
-        expect(unchecked).toHaveLength(1)
-        expect(unchecked[0]).toContain(
-          'Denied by marker: src/secret.ts imports "@tanstack/react-start/server-only" (line 1), which restricts it to the server',
-        )
-        expect(unchecked[0]).toContain('Denied file: src/secret.ts')
+        expectDiagnostic(problems(built.diagnostics), {
+          severity: 'warning',
+          file: 'src/secret.ts',
+          root: built.root,
+          times: 1,
+        })
         expect(built.client.where('MARK_SECRET')).toBe('nowhere')
       },
       timeout,
@@ -372,7 +374,7 @@ export const secret = () => 'MARK_SECRET'
     // ("skips file and marker checks for excluded resolved files").
     // NEW bug (Vite): the Vite adapter checks a server-only marker when it
     // resolves the marker import, for any importer, and never applies
-    // `excludeFiles` to the marked module (vite/import-protection-plugin/
+    // `excludeFiles` to the marked module (main's vite/import-protection-plugin/
     // plugin.ts, marker handling in `resolveId`), so the build fails with a
     // marker violation of `node_modules/db-lib/index.js`. The docs: "By
     // default, resolved files inside `node_modules` are excluded from
@@ -392,13 +394,8 @@ export const secret = () => 'MARK_SECRET'
       timeout,
     )
 
-    // Bug (Rsbuild): with `excludeFiles: []`, the Rsbuild adapter still
-    // skips the marker check of files under `node_modules` (the build
-    // succeeds without any report); `excludeFiles` is documented as the
-    // files the file-pattern and marker checks skip (guide/import-protection.md),
-    // and Vite checks them.
-    // Impact: on Rsbuild, a project cannot opt in to checking the
-    // server-only markers of its dependencies.
+    // On main, on Rsbuild, a project cannot opt in to checking the server-only
+    // markers of its dependencies.
     // Source: review (this row ran on Vite only; the docs decide).
     test(
       '[] checks the markers of dependencies: a server-only-marked dependency fails the build',
@@ -492,6 +489,36 @@ export const read = () => getRequest()
           { environment: 'client', use, also: ['src/entry.ts:1', ...others] },
         ])
         expect(distinct(seen.map((info) => info.type))).toEqual([type])
+      },
+      timeout,
+    )
+
+    // The callback is app code: an error it throws is the build's.
+    test(
+      'a callback that throws fails the build with its error',
+      async () => {
+        const error = await rejection(
+          buildStart({
+            bundler,
+            files: {
+              ...secretServer,
+              'src/entry.ts': userOf('./secret.server'),
+            },
+            entry: 'src/entry.ts',
+            start: {
+              importProtection: {
+                onViolation: () => {
+                  throw new Error('MARK_THROWN')
+                },
+              },
+            },
+          }),
+        )
+        expect(
+          findDiagnostics(error.diagnostics, { severity: 'error' }).some(
+            ({ text }) => text.includes('MARK_THROWN'),
+          ),
+        ).toBe(true)
       },
       timeout,
     )

@@ -13,7 +13,7 @@ const hosts = useHydrateHost()
 // on a dev server, `render.ts`). How the values reach the split code is left
 // open. React keeps the `key` and `ref` props
 // for itself, so no captured local here is named like them (pinned in
-// known-bugs-hydrate.test.ts).
+// hydrate-ids-and-captures.test.ts).
 
 const head = `import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
@@ -372,7 +372,7 @@ export const cleanup = names`,
   })
 
   // Module-level bindings with these names that the children read (or
-  // shadow) are pinned in known-bugs-hydrate.test.ts.
+  // shadow) are pinned in hydrate-ids-and-captures.test.ts.
   // Source: Qwik optimizer example_qwik_conflict, import_collision_with_renaming
   test.each([
     { scope: 'module', reads: `['child']` },
@@ -448,7 +448,7 @@ test('client: a nested boundary reads the locals of the component around its enc
 })
 
 // The local is not named `key`: React keeps a `key` prop for itself (pinned
-// in known-bugs-hydrate.test.ts).
+// in hydrate-ids-and-captures.test.ts).
 // Source: hydrate-when-transform.test.ts "captures identifiers used by
 // shorthand objects and computed members"
 test('client: the children read locals through a shorthand property and a computed member', async () => {
@@ -482,7 +482,7 @@ test('client: the children read locals through a property value and a computed m
 })
 
 // Optional members, method keys and other property names are pinned in
-// known-bugs-hydrate.test.ts.
+// hydrate-ids-and-captures.test.ts.
 test('client: member names and object keys are no reads of a local declared later', async () => {
   expect(
     await renderPage(

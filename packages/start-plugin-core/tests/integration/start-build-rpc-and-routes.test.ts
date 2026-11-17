@@ -3,7 +3,9 @@
  * fn is Start's RPC on the client and runs on the server, directly and by
  * the id the client calls (SPEC J4.1, J4.4); the router generator and code
  * splitter run, so the route tree links a route whose component loads on
- * demand (J1.4, J2.2, J2.6).
+ * demand (J1.4, J2.2, J2.6). A Vite build passes the app's own Rolldown
+ * warnings to its `onwarn` and adds none about the server-fn resolver's
+ * imports.
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -119,3 +121,42 @@ return {
     timeout,
   )
 })
+
+// Start composes the app's `onwarn` (it drops Rolldown's chunking hint about
+// the server-fn resolver's lazy imports, a warning about Start's code): the
+// app's own warnings still reach it, and none names the resolver.
+test(
+  "vite: the app's onwarn gets its own warnings and none about the server-fn resolver",
+  async () => {
+    const seen: Array<string> = []
+    await buildStart({
+      files: {
+        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const greet = createServerFn().handler(async () => 'hello')
+`,
+        'src/heavy.ts': `export const heavy = () => 'heavy'\n`,
+        'src/page.ts': `export const loadHeavy = () => import('./heavy')\n`,
+        'src/entry.ts': `export { greet } from './fns'
+export { heavy } from './heavy'
+export { loadHeavy } from './page'
+`,
+      },
+      entry: 'src/entry.ts',
+      viteConfig: {
+        build: {
+          rolldownOptions: {
+            onwarn: (warning: { code?: string; message: string }) => {
+              seen.push(`${warning.code}: ${warning.message}`)
+            },
+          },
+        },
+      },
+    })
+    const ineffective = seen.filter((w) =>
+      w.startsWith('INEFFECTIVE_DYNAMIC_IMPORT'),
+    )
+    expect(ineffective.filter((w) => w.includes('heavy'))).not.toEqual([])
+    expect(ineffective.filter((w) => !w.includes('heavy'))).toEqual([])
+  },
+  timeout,
+)

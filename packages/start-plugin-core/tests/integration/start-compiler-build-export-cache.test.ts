@@ -1,6 +1,6 @@
 /**
  * Start compiler behaviour that only a production build exercises
- * (build-mode export caches), moved from known-bugs-start-compiler.test.ts
+ * (build-mode export caches), moved from start-build-server-fn-cases.test.ts
  * onto the production mode of the public Start host
  * (`createStartHost({ serve: false })` + `preview()`: `vite build` with
  * Start's plugin of the built `@tanstack/react-start`, Start's preview
@@ -94,21 +94,14 @@ describe('server code in the client bundle', () => {
     })
   })
 
-  // Bug: build-mode export lookups are cached per module, but the parallel
-  // `export *` branches of one lookup share one visited set: in a diamond
-  // (a -> b -> d, a -> c -> d) the branch that reaches `d` second finds it
-  // visited and caches its own module (`b` or `c`) as not exporting
-  // `base`; in a cycle (a -> b -> a, a -> d) the lookup through `a` caches
-  // `b` the same way. An importer compiled after that, through the module
-  // cached as "not found", is left untransformed.
-  // Impact: that importer's handler and the server-only module it reads
-  // ship to the client, and its server fn never reaches the server (the
-  // client call resolves to `undefined`).
+  // On main, that importer's handler and the server-only module it reads ship
+  // to the client, and its server fn never reaches the server (the client call
+  // resolves to `undefined`).
   // Fix-agnostic: no server-only module in the client build, and every
   // importer's server fn reaches its handler.
-  // Source: known-bugs-start-compiler.test.ts "export * $name do not poison the
-  // build-mode export cache" (formerly a pin on the internal compiler; kept as
-  // a passing regression test, not reproduced through a real build). The
+  // Source: start-build-server-fn-cases.test.ts "export * $name do not poison
+  // the build-mode export cache" (formerly a pin on the internal compiler; kept
+  // as a passing regression test, not reproduced through a real build). The
   // intermittent failure of the diamond row (about 1 in 10 runs, when every
   // importer compiled in parallel) was this bug, reached when the build
   // happened to compile an importer after the lookup that poisoned the cache.

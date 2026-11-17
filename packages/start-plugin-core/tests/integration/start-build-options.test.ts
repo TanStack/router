@@ -262,11 +262,8 @@ export const getRouter = async () =>
     timeout,
   )
 
-  // Bug: Start's footer of the route tree (its Register augmentation) is
-  // printed with single quotes and no semicolons whatever router.quoteStyle
-  // and router.semicolons say, so the route tree mixes both styles.
   // Source: src/start-router-plugin/route-tree-footer.ts (hardcoded quotes).
-  // Impact: a project formatting with double quotes and semicolons gets a
+  // On main, a project formatting with double quotes and semicolons gets a
   // route tree its formatter or linter rewrites (#8437's footer churn).
   test(
     'the route tree, Start footer included, follows router.quoteStyle and router.semicolons',
@@ -321,11 +318,9 @@ export const getRouter = async () => createRouter({ routeTree })
     timeout,
   )
 
-  // Bug: generator plugins given as router.plugins never run: Start's own
-  // generator plugins replace them.
   // Source: src/vite/start-router-plugin/plugin.ts, src/rsbuild/
   // router-generator.ts (`plugins` set after the user's router options).
-  // Impact: #7768: a generator plugin works with the router plugin but is
+  // On main, #7768: a generator plugin works with the router plugin but is
   // silently ignored in a Start app.
   test(
     'generator plugins of router.plugins see the route tree',

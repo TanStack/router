@@ -544,13 +544,10 @@ export const useThing = () => (useId(), idle())`,
     },
   )
 
-  // Bug: hook calls are only detected when the callee is a bare identifier,
-  // so `React.useId()` in the children moves into the split code instead of
-  // being rejected (SPEC J5.5).
-  // Impact: the hook runs in another component on the client than on the
+  // On main, the hook runs in another component on the client than on the
   // server (`useId` mismatches, hydration errors).
-  // Source: Qwik optimizer example_use_optimization. #8504 has no test for
-  // it and still moves `React.useId()` into the chunk.
+  // Source: Qwik optimizer example_use_optimization. #8504 has no test for it
+  // and still moves `React.useId()` into the chunk.
   test('client: a hook called through a namespace is rejected at the boundary', async () => {
     await expectExtractionRejected(
       await hosts(),
@@ -570,6 +567,63 @@ ${childrenPage('<p id={React.useId()}>x</p>')}`,
       at: diagnosticPosition(code, '<Hydrate').line,
     })
   })
+
+  // Children writing state the split code would hold a copy of (a local
+  // of the component; a `var` a top-level statement declares, which the
+  // chunk imports), and a Solid `ref` of a `let` outside two nested
+  // boundaries: the client rejects them at the boundary.
+  const solidHead = `import { Hydrate } from '@tanstack/solid-start'\n`
+  const capturedLocal = (hydrate: string) => `${hydrate}export function Page() {
+  let count = 0
+  return <Hydrate><button onClick={() => count++}>{count}</button></Hydrate>
+}`
+  test.each([
+    {
+      name: 'assigning a captured local (React)',
+      framework: 'react',
+      code: capturedLocal(head),
+    },
+    {
+      name: 'assigning a captured local (Solid)',
+      framework: 'solid',
+      code: capturedLocal(solidHead),
+    },
+    {
+      name: 'assigning a var a top-level statement declares',
+      framework: 'react',
+      code: `${head}if (typeof window !== 'undefined') { var flag: unknown = globalThis.length }
+export const Page = () => <Hydrate><button onClick={() => { flag = 1 }}>{String(flag)}</button></Hydrate>`,
+    },
+    {
+      name: 'reading new.target of the component',
+      framework: 'react',
+      code: `${head}export function Page() {
+  return <Hydrate when={load()}><p>{String(new.target)}</p></Hydrate>
+}`,
+    },
+    {
+      name: 'with a ref of a let declared outside two nested boundaries (Solid)',
+      framework: 'solid',
+      code: `${solidHead}export function Page() {
+  let input
+  return <Hydrate><section><Hydrate><input ref={input} /></Hydrate></section></Hydrate>
+}`,
+    },
+  ] as const)(
+    'client: children $name are rejected at the boundary',
+    async ({ framework, code }) => {
+      const start =
+        framework === 'solid'
+          ? (await solidHost()).start
+          : (await hosts()).start
+      const startCase = await start.case({ 'module.tsx': code })
+      expectCompileError(await compileError(startCase, 'client'), {
+        source: code,
+        at: '<Hydrate',
+        column: true,
+      })
+    },
+  )
 })
 
 describe('nested boundaries', () => {
@@ -874,6 +928,28 @@ function Widget(props: { title: string }) {
     expect(mounted.lazy.filter(isReact)).toEqual([])
     expect(mounted.loads.filter(isReact)).toEqual([])
     expect(mounted.serverLoads.filter(isReact)).toEqual([])
+  })
+
+  // A directive (`use:name`) of the component, used by the children: the
+  // split children get it, and it runs on their element.
+  test('Solid: a directive of the component the children use runs in the split children', async () => {
+    const solid = await solidHost()
+    const mounted =
+      await solid.mount(`import { Hydrate } from '@tanstack/solid-start'
+import { visible } from '@tanstack/solid-start/hydration'
+export function Page() {
+  const mark = (el: HTMLElement, value: () => string) => {
+    el.dataset.mark = value()
+  }
+  return (
+    <Hydrate when={visible()}>
+      <p use:mark={'MARK_DIRECTIVE'}>child</p>
+    </Hydrate>
+  )
+}`)
+    expect(mounted.errors).toEqual([])
+    expect(mounted.html).toContain('data-mark="MARK_DIRECTIVE"')
+    expect(mounted.lazy).not.toEqual([])
   })
 
   test('Solid: a Hydrate the app re-exports splits', async () => {

@@ -5,7 +5,10 @@
  * the dev server of Vite and of Rsbuild. The fix its message gives, the
  * helper wrapped in `createServerOnlyFn(…)` that only server code calls,
  * builds for production on both bundlers and renders the server component
- * on the page.
+ * on the page. A server fn in a module another plugin compiles from a file
+ * that is no JavaScript (`.mdx`) is refused at its chain: with RSC the
+ * provider is a module derived from the file, which such a module cannot
+ * have.
  */
 import { expect, test } from 'vitest'
 import {
@@ -112,3 +115,48 @@ for (const bundler of ['vite', 'rsbuild'] as const) {
     timeout,
   )
 }
+
+/** An app plugin compiling `.mdx` pages to JavaScript before Start (as `@mdx-js/rollup` does). */
+const mdxLike = {
+  name: 'app:mdx-like',
+  enforce: 'pre' as const,
+  transform(code: string, id: string) {
+    return id.endsWith('.mdx') ? code.replace(/^# .*$/m, '') : undefined
+  },
+}
+
+test(
+  'vite dev: a server fn of a module compiled from an .mdx file is refused at its chain',
+  async () => {
+    const page = `# A page
+
+import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 'MARK_MDX')
+`
+    const server = await startRscDevServer({
+      config: { plugins: [mdxLike] },
+      files: {
+        'src/page.mdx': page,
+        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { fn } from '../page.mdx'
+export const Route = createFileRoute('/')({
+  component: () => <button onClick={() => fn()}>call</button>,
+})
+`,
+      },
+    })
+    const mark = server.diagnostics.length
+    const thrown = await server.transform('/src/page.mdx', 'client').then(
+      () => undefined,
+      (error: unknown) => error,
+    )
+    expect(thrown, 'the client serves the module').toBeDefined()
+    expectDiagnostic([thrown, ...server.diagnostics.slice(mark)], {
+      severity: 'error',
+      file: 'src/page.mdx',
+      root: server.root,
+      position: diagnosticPosition(page, 'createServerFn()'),
+    })
+  },
+  timeout,
+)

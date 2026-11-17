@@ -8,26 +8,24 @@ import { tanstackViteConfig } from '@tanstack/vite-config'
 import packageJson from './package.json'
 // Main's tests of features that are not compilers (Start manifest, sitemap,
 // prerender, config schema, entries, build output, dev styles), at main's
-// paths and unchanged: `test:noncompiler` runs them; the compiler test
-// projects and ESLint leave them out. Paths relative to `tests/`.
+// paths and unchanged but for this PR's additions to the prerender, Rsbuild
+// build output and manifest tests: `test:noncompiler` runs them; the
+// compiler test projects and ESLint leave them out. Paths relative to
+// `tests/`.
 import noncompilerTests from './tests/noncompiler-tests.json' with { type: 'json' }
 
 /**
- * Slow-tier tests that read process-global state (the compiler's stats knob,
- * `TSR_COMPILER_STATS`; the self-checks switch, `TSR_COMPILER_VERIFY`, read
- * once when the compiler loads): each runs in a process of its own (project
- * `integration-alone`), as a state an earlier file left in a shared process
- * would count too (Vite 8 keeps the plugins of every finished build and
- * closed server, and so their Start sessions, alive: Rolldown's native
- * plugins hold Vite's callbacks strongly, and those reach the plugins again).
+ * Slow-tier tests that read process-global state (the self-checks switch,
+ * `TSR_COMPILER_VERIFY`, read once when the compiler loads; the compiler's
+ * stats knob, `TSR_COMPILER_STATS`, in `perf-guards/`): each runs in a
+ * process of its own (projects `integration-alone` and `perf-guards`), as a
+ * state an earlier file left in a shared process would count too (Vite 8
+ * keeps the plugins of every finished build and closed server, and so their
+ * Start sessions, alive: Rolldown's native plugins hold Vite's callbacks
+ * strongly, and those reach the plugins again).
  */
 const aloneTests = [
-  'integration/start-build-environment-release.test.ts',
-  'integration/start-build-compile-scope.test.ts',
-  'integration/start-dev-cache-dir.test.ts',
-  'integration/start-build-split-wrapped-values-unchecked.test.ts',
   'integration/start-build-server-code-check-unchecked.test.ts',
-  'integration/rsbuild/dev-created-deleted-stats.test.ts',
 ]
 
 /** This package's build output (`dist`), as its `exports` name it. */
@@ -45,6 +43,8 @@ const smokeTests = [
   'integration/importProtection/build.test.ts',
   'integration/start-compose-project-path.test.ts',
   'integration/start-build-unparsed-module.test.ts',
+  // server fn ids and metadata on Windows paths (main's relative filename)
+  'integration/start-build-server-fn-format.test.ts',
   // dev on macOS and Windows (phase 6 decision): a file removed and written
   // back on an Rsbuild dev server, and file events through Vite's dev
   // server (this list runs without a browser: the page test of the latter
@@ -76,7 +76,12 @@ const integrationProject = {
     // started with (see `test-scope-setup`)
     isolate: false,
     include: ['integration/**/*.test.ts'],
-    exclude: [...configDefaults.exclude, 'integration/pages/**', ...aloneTests],
+    exclude: [
+      ...configDefaults.exclude,
+      'integration/pages/**',
+      'integration/perf-guards/**',
+      ...aloneTests,
+    ],
     testTimeout: 30_000,
     hookTimeout: 30_000,
     // The tests import this package's built public entries
@@ -153,6 +158,20 @@ const config = defineConfig({
         test: {
           name: 'integration-alone',
           include: aloneTests,
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
+          server: { deps: { external: [builtPackage] } },
+        },
+      },
+      {
+        // Work and memory guards (`test:integration` runs them; not oracle
+        // tests: they count what the compiler does, plans, compiles and
+        // resolutions, which a correct compiler need not match), each file
+        // in a process of its own.
+        extends: true,
+        test: {
+          name: 'perf-guards',
+          include: ['integration/perf-guards/**/*.test.ts'],
           testTimeout: 30_000,
           hookTimeout: 30_000,
           server: { deps: { external: [builtPackage] } },

@@ -5,7 +5,12 @@
  * calls `build()` again on an Rsbuild instance builds with the same
  * plugins. Each build is a build of its own, as with a config file (new
  * plugin objects each time): it compiles the files as they are now, and its
- * own server build lists the server fns of its own client build.
+ * own server build lists the server fns of its own client build. A Vite
+ * build whose server environment builds before the client's (an app
+ * plugin's `buildApp`, a hand-written `createBuilder().build(ssr)`), in the
+ * first build or a later one, fails instead of producing a server that
+ * answers no client call: the server's manifest of HTTP-callable server
+ * fns lists what the client build references.
  */
 import { expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
@@ -45,6 +50,57 @@ export const greet = defineFn().handler(() => 'MARK_HANDLER')
     expect((await second.ssr.run(`return await entry.greet()`)).result).toBe(
       'MARK_HANDLER',
     )
+  },
+  timeout,
+)
+
+/** An app plugin building the server environment first. */
+const serverFirstPlugin: Plugin = {
+  name: 'app:server-first',
+  async buildApp(builder) {
+    await builder.build(builder.environments.ssr!)
+  },
+}
+
+test(
+  'a Vite build of the server environment before the client fails',
+  async () => {
+    const outcome = await buildStart({
+      files: {
+        'fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const greet = createServerFn().handler(async () => 'MARK_GREETING')
+`,
+        'client-entry.ts': `export { greet } from './fns'\n`,
+        'ssr-entry.ts': `export { greet } from './fns'\n${callByIdExports}`,
+      },
+      entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+      viteConfig: { plugins: [serverFirstPlugin] },
+    }).then(
+      async (build) => {
+        const url = (await build.client.run(`return entry.greet.url`)).result
+        const call = await build.ssr
+          .run(
+            `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+          )
+          .then(
+            ({ result }) => result,
+            (error: unknown) => String(error),
+          )
+        return { built: true as const, call }
+      },
+      (error: unknown) => {
+        if (!(error instanceof StartBuildError)) {
+          throw error
+        }
+        return { built: false as const, diagnostics: error.diagnostics }
+      },
+    )
+    if (outcome.built) {
+      expect.fail(
+        `the build succeeded; a client call of the server fn gives ${JSON.stringify(outcome.call)}`,
+      )
+    }
+    expectDiagnostic(outcome.diagnostics, { severity: 'error' })
   },
   timeout,
 )

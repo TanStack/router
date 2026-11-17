@@ -6,7 +6,7 @@
  * name is one character away from the generated route tree's
  * (`src/routeTree-gen.ts`) is the file it is, not the client route tree.
  * Built with Start's Vite plugin (Rsbuild as a control: it has no client
- * route tree of its own yet, see known-bugs-route-options.test.ts).
+ * route tree of its own yet, see start-build-route-option-keys.test.ts).
  *
  * An app under a directory whose name carries a `#` (`C#`, `project #2`)
  * compiles like any other (SPEC J4.12, J2.15): its server function
@@ -79,14 +79,7 @@ return { ids, page: await entry.renderPath(entry.getRouter().routeTree, '/') }`,
       })
     })
 
-    // Bug: Start's Vite plugin matches the module to serve the client route
-    // tree for with `new RegExp(<path of the generated route tree>)`
-    // (vite/start-router-plugin/plugin.ts, `clientTreePlugin.load.filter`),
-    // the path unescaped, so under a path with `(`, `)` or `+` the
-    // expression never matches the file and the client gets the full tree.
-    // Rsbuild: no client route tree at all (known-bugs-route-options.test.ts
-    // "a route with only server handlers is not in the client route tree").
-    // Impact: the client bundle ships the server-only routes' entries and
+    // On main, the client bundle ships the server-only routes' entries and
     // modules; a page can navigate to a route that has no page.
     test('the client route tree leaves out the server-only route', async () => {
       expect((await build.client.run(clientRouteIds)).result).toEqual(['/'])
@@ -119,11 +112,8 @@ export { sibling } from './routeTree-gen'
     }, timeout)
     afterAll(() => dispose?.())
 
-    // Bug: the same unescaped `new RegExp(<path>)` (above): its `.` before
-    // `gen` matches any character, so `src/routeTree-gen.ts` is served the
-    // client route tree instead of its own code.
-    // Impact: the build fails (the file's exports are gone) or the app
-    // reads the wrong module.
+    // On main, the build fails (the file's exports are gone) or the app reads
+    // the wrong module.
     test('the client gets the file, not the client route tree', async () => {
       if (!build) {
         throw failure

@@ -43,7 +43,7 @@ import {
   timeout,
   uses,
 } from './served-verdict-app'
-import { importersIn, settledAcrossTurn } from './v2-hosts'
+import { importersIn, settledAcrossTurn } from './hosts'
 import type { StartBuild } from '../../build-harness'
 import type { Plugin } from 'vite'
 
@@ -165,7 +165,7 @@ describe.each(['vite', 'rsbuild'] as const)('%s build, R147', (bundler) => {
 
 // R147 with an import another plugin added (no pattern import anywhere)
 test(
-  'vite build, R147: an exempt plain importer and a checked module a plugin adds an import to: the build fails, naming both',
+  'vite build: an exempt plain importer and a checked module a plugin adds an import to: the build fails, naming both',
   async () => {
     const files = {
       ...app({ bundler: 'vite', glob: 'src', first: 'plain' }),

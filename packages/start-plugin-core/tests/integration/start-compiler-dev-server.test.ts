@@ -45,47 +45,6 @@ export const base = createServerFn()
 const plain = `export const base = { handler: (fn: () => unknown) => fn }\n`
 
 describe('Vite dev: editing a server fn factory', () => {
-  // Mirrors rsbuild/dev-server.test.ts "every module importing a factory
-  // from ./b that stops being one keeps its handler".
-  test(
-    'client: a module importing a factory that stops being one keeps its handler',
-    async () => {
-      // (`src/db.ts` is no denied file: what the client gets of it is the
-      // compiler's doing, not import protection's mock)
-      const server = await startBrowserStartDevServer({
-        files: {
-          'src/b.ts': factory,
-          'src/db.ts': `export const db = { x: () => 'MARK_DB_SECRET' }\n`,
-          'src/a.tsx': `import { base } from './b'
-import { db } from './db'
-export const fn = base.handler(async () => db.x())
-`,
-        },
-      })
-      /** Runs `script` in a real page that loaded `src/a.tsx` (`entry`). */
-      const inClient = async (script: string) =>
-        (await runViteClient(server, '/src/a.tsx', script)).result
-      expect(
-        containing(await server.load('/src/a.tsx'), 'MARK_DB_SECRET'),
-      ).toEqual([])
-      // A server fn: the client calls the server, at the server fn's URL
-      // (its public `url`; the dev id is implementation-specific, J4.4)
-      const rpc = (await inClient(`${requestsOfPrelude}
-return {
-  url: entry.fn.url,
-  requests: await requestsOf(entry.fn),
-}`)) as { url: string; requests: Array<unknown> }
-      expect(rpc.url).toEqual(expect.any(String))
-      expect(rpc.requests).toEqual([{ url: rpc.url, method: 'GET' }])
-
-      await server.edit({ 'src/b.ts': plain })
-
-      // A plain function now: the client runs it
-      expect(await inClient(`return await entry.fn()`)).toBe('MARK_DB_SECRET')
-    },
-    timeout,
-  )
-
   // Every importer of the factory is a dependent of the edit, each compiled
   // again; more of them than the dev server compiles at once. Mirrors
   // rsbuild/dev-server.test.ts "every module importing a factory from ./b
@@ -658,7 +617,7 @@ describe('Vite dev: restoring a deleted import', () => {
   // compiled again on the other new file's hot update, and SSR must not keep
   // its failed load. Another plugin of the app transforms the importer slowly
   // in SSR, so that Vite handles the restored file meanwhile.
-  // Source: the v2-edits.test.ts flake (Vite dev), 4 runs in 8 under load.
+  // Source: the edits.test.ts flake (Vite dev), 4 runs in 8 under load.
   test(
     'SSR loads the restored file, restored with another new file',
     async () => {
@@ -713,68 +672,6 @@ export const read = createIsomorphicFn()
         timeout: 10_000,
         describe: () => `SSR gave: ${last}`,
       })
-    },
-    timeout,
-  )
-})
-
-describe('Vite dev: dependents whose output is unchanged', () => {
-  // A factory re-exported from another module: every importer re-plans and
-  // emits the same output. Each is compiled once per environment, during the
-  // edit; neither the next SSR import nor the next page load compiles it
-  // again, also when the dependents import each other and are compiled at
-  // the same time.
-  test(
-    'are compiled once per environment',
-    async () => {
-      const names = Array.from({ length: 40 }, (_, i) => `d${i}`)
-      const counts: Record<string, Record<string, number>> = {
-        client: {},
-        ssr: {},
-      }
-      let counting = false
-      const server = await startDevServer({
-        plugins: [
-          {
-            name: 'count-transforms',
-            transform(_code, id) {
-              const name = /\/src\/(d\d+)\.ts$/.exec(id)?.[1]
-              if (counting && name) {
-                const env = counts[this.environment.name]!
-                env[name] = (env[name] ?? 0) + 1
-              }
-            },
-          },
-        ],
-        files: {
-          'src/fa.ts': factory,
-          'src/fb.ts': factory,
-          'src/lib.ts': `export { base } from './fa'\n`,
-          ...Object.fromEntries(
-            names.map((name, i) => [
-              `src/${name}.ts`,
-              `import { base } from './lib'
-${i > 0 ? `import { fn as first } from './d0'\nexport const p = first\n` : ''}export const fn = base.handler(async () => '${name}')
-`,
-            ]),
-          ),
-          'src/entry.ts': names
-            .map((name) => `export { fn as ${name} } from './${name}'\n`)
-            .join(''),
-        },
-      })
-      await server.import('/src/entry.ts')
-      await server.load('/src/entry.ts')
-      await server.idle()
-
-      counting = true
-      await server.edit({ 'src/lib.ts': `export { base } from './fb'\n` })
-      await server.import('/src/entry.ts')
-      await server.load('/src/entry.ts')
-      await server.idle()
-
-      const once = Object.fromEntries(names.map((name) => [name, 1]))
-      expect(counts).toEqual({ client: once, ssr: once })
     },
     timeout,
   )

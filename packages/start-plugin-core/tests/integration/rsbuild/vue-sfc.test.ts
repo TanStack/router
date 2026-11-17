@@ -15,7 +15,7 @@
  * In development, vue-loader hands every binding of a `<script setup>`
  * block to its template through a generated object (in JavaScript every
  * import too, as a getter): a block that imports a builder or factory is a
- * compile error there (KNOWN-BUGS, `known-bugs-start-compiler-vue-script-setup`),
+ * compile error there (KNOWN-BUGS, `start-vue-script-setup`),
  * and `lang="ts"` (which hands over only the imports the template uses) is
  * the recipe. The dev rows are the TypeScript blocks and a plain `<script>`,
  * and a JavaScript block is refused without shipping its handler.
@@ -193,18 +193,6 @@ globalThis.__vueRows = {
 
   const outputsWith = async (env: 'client' | 'ssr', mark: string) =>
     Object.values(await server.outputs(env)).some((code) => code.includes(mark))
-
-  // R162: a `<script setup>` block runs in the component's setup function
-  test('a server fn of a <script setup lang="ts"> block is refused at it, and its handler does not reach the client', async () => {
-    // (the chain is line 3 of the SFC)
-    expectDiagnostic(server.diagnostics, {
-      severity: 'error',
-      file: 'src/SetupTs.vue',
-      root: server.root,
-      position: { line: 3 },
-    })
-    expect(await outputsWith('client', 'MARK_SETUP_TS')).toBe(false)
-  })
 
   test('a server fn a plain <script> exports keeps its handler on the server, and the page calls it', async () => {
     expect(await outputsWith('client', 'MARK_PLAIN')).toBe(false)

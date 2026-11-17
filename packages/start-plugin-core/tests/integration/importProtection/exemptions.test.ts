@@ -112,12 +112,8 @@ type Outcome = {
   reported: Array<string>
 }
 
-// Bug: an exempt importer is only left out of the reports: it still gets
-// the mock, because the denied file is mocked by its own transform, for
-// every importer (vite/import-protection-plugin/plugin.ts:2158 self-denial;
-// the Rsbuild adapter behaves the same). SPEC J6.7.
-// Impact: code a project exempts on purpose (tests, generated code)
-// silently gets a mock instead of the module it imports.
+// On main, code a project exempts on purpose (tests, generated code) silently
+// gets a mock instead of the module it imports.
 const expectExemptGetsRealModule = (outcome: Outcome) =>
   expect({
     exempt: outcome.exempt,
@@ -133,7 +129,7 @@ const expectExemptGetsRealModule = (outcome: Outcome) =>
 // NEW bug (`include` rows): with `importProtection.include`, a denied file
 // outside the patterns is never mocked, because its own transform skips
 // files out of scope before the self-denial
-// (vite/import-protection-plugin/plugin.ts:2139 `shouldCheckImporter(file)`;
+// (main's vite/import-protection-plugin/plugin.ts:2139 `shouldCheckImporter(file)`;
 // Rsbuild: same outcome). An included importer is reported, but a mock-mode
 // build ships the real server-only module to the client, and in Vite dev the
 // importer's rewrite (`import __tss_deny_0 from '/src/secret.server.ts'`)

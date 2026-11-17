@@ -3,7 +3,7 @@
  * (start-compiler-factories.test.ts, compiler.test.ts,
  * createServerFn/handler-scope.test.ts, createServerFn/createServerFn.test.ts,
  * integration/pages/start-compiler-import-forms.test.ts, and the dev edits
- * of known-bugs-start-compiler.test.ts) and in production builds
+ * of start-compiler-cases.test.ts) and in production builds
  * (integration/start-compiler-build-inputs.test.ts; the edits in an Rsbuild
  * watch build). Each gives the modules a user writes and what its rows
  * expect; how each mode observes it is the test file's.

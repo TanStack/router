@@ -19,8 +19,8 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
 
 - **A route module's CSS import loads on every page**: the code splitter keeps the bare import in the route module,
   which the route tree imports eagerly (in dev the CSS is injected once the client runs; a build merges it into the
-  entry's CSS). SPEC J2.22. `start-plugin-core/tests/integration/known-bugs-route-css.test.ts` (Vite) and
-  `known-bugs-route-css-rsbuild.test.ts` (Rsbuild), rows of `route-css-cases.ts`: "the CSS of the /${name} route
+  entry's CSS). SPEC J2.22. `start-plugin-core/tests/integration/route-css.test.ts` (Vite) and
+  `route-css-rsbuild.test.ts` (Rsbuild), rows of `route-css-cases.ts`: "the CSS of the /${name} route
   applies only once the route matches" (the five `shows-*` rows; dev and build). Fix: the CSS loads when its route
   matches.
 - **Rsbuild: a route module's first server fn breaks the hot update of its loaded component chunk** when Rspack's
@@ -68,7 +68,7 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   in the client" (Rsbuild).
 - **Rsbuild checks importers by file extension** (JS/TS only): a custom module type's denied specifier is never
   checked (a denied file it imports is: it is its own violation in the client). SPEC J6.1, §2.1.
-  `start-plugin-core/tests/integration/importProtection/known-bugs-dev.test.ts`: "a module of a custom type importing
+  `start-plugin-core/tests/integration/importProtection/dev-outcomes.test.ts`: "a module of a custom type importing
   a denied specifier is reported, and its real code does not run".
 
 - **A Vue `<script setup>` block that hands a Start builder or factory to its template is a compile error on the dev
@@ -85,7 +85,7 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   case (it is created in the setup function, R162, SPEC J4.6). Accepted, R92 amendment 3: a fix must not need a
   special case for the plugin's output (skipping `__returned__` ships a template-attached handler). Upstream option:
   compiler-sfc exposing only the template's imports for JavaScript as for TypeScript. SPEC J4.5.
-  `start-plugin-core/tests/integration/known-bugs-start-compiler-vue-script-setup.test.ts`: "$name compiles"; must stay
+  `start-plugin-core/tests/integration/start-vue-script-setup.test.ts`: "$name compiles"; must stay
   refused (dev, and a `prodDevtools` build): "a template attaching a handler to a builder a $name block hands it is
   refused", "… fails the build"; the recipe: "$name compiles", "$name builds, and no server code reaches the client".
 - **Forms that reach a denied file's text past import protection, on a Vite client build, unreported, as on main**
@@ -97,7 +97,7 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
 - **An isomorphic fn whose chain passes through a helper throws when its module loads**
   (`withBuilder(createIsomorphicFn().server(f)).client(g)`): the inner `.server(f)` compiles on its own into a plain
   function, so `.client` isn't there to call, on the client and on the server. No server code ships: `.server()` finished
-  the value, and a wrapper is not followed (R92). SPEC J4.5. `start-plugin-core/tests/known-bugs-start-compiler.test.ts`:
+  the value, and a wrapper is not followed (R92). SPEC J4.5. `start-plugin-core/tests/start-compiler-cases.test.ts`:
   "each output keeps its implementation of an isomorphic fn whose chain passes through a helper function". Fix: each
   output keeps its implementation, or the build fails at the helper.
 
@@ -109,7 +109,7 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   server serves the mock and reports the denied file; a build serves the mock and prints one warning per denied file
   whose every importer is exempt or outside the scope, naming the file, its importers and the fix (not a violation: no
   `onViolation` call, no failure with the `error` behaviour).
-  `start-plugin-core/tests/integration/importProtection/known-bugs-rejections.test.ts` (Vite build, Vite dev, Vite
+  `start-plugin-core/tests/integration/importProtection/unchecked-importers.test.ts` (Vite build, Vite dev, Vite
   bundled dev, Rsbuild build, Rsbuild dev): "an importer outside srcDirectory gets the real module of an in-scope
   denied file it imports, and is not reported"; its controls show exempt importers' plain imports get the real module.
   Workaround: import the file from a module inside the scope.
@@ -188,7 +188,7 @@ code.test.ts`: "a root route's components load with the route module" (Vite and 
   `import()`, Rsbuild's `import.meta.webpackContext` / `require.context`. A pattern importer, exempt or outside the
   scope, gets the denied file as its plain importers make it served; with none, the mock, and a build warns once about
   the file, naming it, its importers and the fix (import the file statically from a module that `exclude` or
-  `ignoreImporters` exempts inside the scope). `known-bugs-rejections.test.ts`: "a build warns once about each denied
+  `ignoreImporters` exempts inside the scope). `unchecked-importers.test.ts`: "a build warns once about each denied
   file whose every importer is exempt or outside srcDirectory, …", "a build with the error behaviour does not fail on
   them, and warns the same", "a dev server reports each denied file only an unchecked importer reaches".
 - **A Vite build serves a denied file reached by an exempt plain importer and an exempt pattern importer as it
@@ -297,7 +297,7 @@ classic factory, on `main` and here: the classic runtime is not supported with s
 - `start-plugin-core/tests/start-compiler-jsx-pragma.test.ts`: "inserted server function imports stay below the
   @jsxImportSource pragma: %s"; "client: the parent keeps selecting the pragma JSX runtime when the import it sits on
   $name".
-- `start-plugin-core/tests/integration/pages/known-bugs-hydrate-module-level.test.ts`: "server: a module with a
+- `start-plugin-core/tests/integration/pages/hydrate-module-level.test.ts`: "server: a module with a
   classic JSX pragma renders through its factory".
 
 - `router-plugin/tests/code-splitter-pragmas.test.ts`: "keeps a @jsxImportSource written after the imports as
@@ -313,9 +313,9 @@ classic factory, on `main` and here: the classic runtime is not supported with s
 - `start-plugin-core/tests/start-compiler-jsx-pragma.test.ts`: "inserted server function imports stay below the
   @jsxImportSource pragma: %s"; "client: the parent keeps selecting the pragma JSX runtime when the import it sits on
   $name".
-- `start-plugin-core/tests/known-bugs-start-compiler.test.ts`: "client: the factory of a classic JSX pragma stays
+- `start-plugin-core/tests/start-compiler-cases.test.ts`: "client: the factory of a classic JSX pragma stays
   imported"; "ssr: a module with a classic JSX runtime pragma keeps its React import".
-- `start-plugin-core/tests/integration/pages/known-bugs-hydrate-module-level.test.ts`: "client: a module with a
+- `start-plugin-core/tests/integration/pages/hydrate-module-level.test.ts`: "client: a module with a
   classic JSX pragma renders through its factory".
 
 **S2. Dead-code elimination keeps what only types or non-reads mention, and never removes some declaration kinds.** The
@@ -325,12 +325,12 @@ enums, namespaces, overloaded functions or redeclared `var`s. Server-only import
 client-only imports on the server). SPEC J4.12, J4.11, J2.5, G16. Fix: code only server code (or only types) reads is
 gone from the client, with its imports, and code only client-only code reads is gone from the server.:
 
-- `start-plugin-core/tests/known-bugs-start-compiler.test.ts`: "client: $name does not load its server-only import";
+- `start-plugin-core/tests/start-compiler-cases.test.ts`: "client: $name does not load its server-only import";
   "client: a server-only import last mentioned by a type alias is not loaded with verbatimModuleSyntax"; "client: a
   validator schema that a type alias reads with typeof is not loaded"; "ssr: a declaration a client-only fn reads and
   a type alias reads with typeof is not loaded"; "ssr: a class only a client-only fn uses does not load its
   client-only import".
-- `start-plugin-core/tests/integration/known-bugs-start-compiler.test.ts`: "client: the server-only module of a class
+- `start-plugin-core/tests/integration/start-build-server-fn-cases.test.ts`: "client: the server-only module of a class
   only server code uses is not bundled"; "client: a server-only module a type mentions is not bundled with
   verbatimModuleSyntax".
 - `start-plugin-core/tests/integration/start-build-user-code.test.ts`: "the decorated class only a server fn handler
@@ -364,7 +364,7 @@ still compiles and the type export is erased.:
 
 - `router-plugin/tests/integration/pages/known-bugs-code-splitter-bindings.test.ts`: "a type-only import re-exported
   as `export { Settings }` is erased (%s)".
-- `start-plugin-core/tests/known-bugs-start-compiler.test.ts`: "client and SSR: a type-only import re-exported as
+- `start-plugin-core/tests/start-compiler-cases.test.ts`: "client and SSR: a type-only import re-exported as
   `export { Settings }` is erased (%s)".
 
 **S6. Generated names collide with user bindings.** SPEC G15, §5.1. Fix: no generated name shadows or redeclares a
@@ -377,10 +377,10 @@ user binding.:
   injected HMR code".
 - `router-plugin/tests/known-bugs-route-hmr-bindings.test.ts`: "a route file importing a binding named Map renders
   with route HMR".
-- `start-plugin-core/tests/known-bugs-start-compiler.test.ts`: "a user binding named %s does not collide with
+- `start-plugin-core/tests/start-compiler-cases.test.ts`: "a user binding named %s does not collide with
   generated code"; "a server fn named opts runs on the server"; "no name the compiler introduces collides with a user
   binding or a server fn of that name" (adaptive).
-- `start-plugin-core/tests/integration/pages/known-bugs-hydrate-module-level.test.ts`: "client: module-level $name,
+- `start-plugin-core/tests/integration/pages/hydrate-module-level.test.ts`: "client: module-level $name,
   named like the generated bindings, do not collide".
 
 **S7. Dead-code elimination removes the const half of a class and const cycle.** When only removed code used a class
@@ -627,16 +627,16 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
 Paths under `start-plugin-core/tests/integration/`.
 
 - **Rsbuild does not prune server-only routes from the client route tree.** SPEC J2.15.
-  `known-bugs-route-options.test.ts`: "a route with only server handlers is not in the client route tree" (two
+  `start-build-route-option-keys.test.ts`: "a route with only server handlers is not in the client route tree" (two
   tables); `start-build-manifest.test.ts`: "the client route tree is the SSR route tree without the server-only
   subtree"; `start-compose-server-only-routes.test.ts`: "the client route tree leaves out the server-only subtree";
   "client-side navigation to a server-only route finds nothing".
 - **The generator records only plain option keys**, so a route with server handlers and computed, method or spread
-  client options is pruned. SPEC J1.9, J2.15. `known-bugs-route-options.test.ts`: "a route with server handlers and these
+  client options is pruned. SPEC J1.9, J2.15. `start-build-route-option-keys.test.ts`: "a route with server handlers and these
   options is in the client route tree"; `start-compose-server-only-routes.test.ts`: "the client route tree keeps the
   page whose component is spread in"; "client-side navigation reaches the page whose component is spread in". Fix:
   never prune because a key was missed.
-- **Options in a cast skip `deleteNodes`** (see J2). `known-bugs-route-options.test.ts`: "the server handler code of
+- **Options in a cast skip `deleteNodes`** (see J2). `start-build-route-option-keys.test.ts`: "the server handler code of
   the route is not in the client bundle".
 - **Imported route options keep `server.handlers` on the client** (see J2). `start-compose-imported-options.test.ts`:
   "the client build never ships the server handlers of imported route options silently".
@@ -753,83 +753,83 @@ Paths under `start-plugin-core/tests/` unless noted.
   `integration/start-build-env-separation.test.ts`: "an isomorphic fn whose $name is stored in a variable runs its
   implementation in each build"; `start-compiler-factories.test.ts`: "each output keeps its implementation of an
   isomorphic fn whose $name is stored in a variable"; "each output keeps its implementation of an isomorphic fn with a
-  wrapped chain link: %s"; `known-bugs-start-compiler.test.ts`: "each output keeps its implementation of an isomorphic
+  wrapped chain link: %s"; `start-compiler-cases.test.ts`: "each output keeps its implementation of an isomorphic
   fn whose chain passes through a helper function".
 - **A factory callee wrapped in `as any` is not resolved.** SPEC J4.5. `start-compiler-factories.test.ts`: "each output
   keeps its implementation of $shape with the callee in $name".
 - **Builders are traced through identifiers and member expressions only**: namespace members, a re-exported Start
   namespace, a builder returned by a call or passed through a helper, `wrap(wrap(...))`, a library function creating
-  server fns. SPEC J4.5, J4.12. `known-bugs-start-compiler.test.ts`: "client builds compile a builder read from a
+  server fns. SPEC J4.5, J4.12. `start-compiler-cases.test.ts`: "client builds compile a builder read from a
   namespace import"; "client builds compile factories of a re-exported Start namespace"; "client builds compile a
   builder returned by a function of $name"; "a server fn whose builder passes through a helper function fails the
   client"; `createServerFn/declaration-sites.test.ts`: "with %s imported, a server fn wrapped in two calls works like
-  an unwrapped one"; `integration/known-bugs-start-compiler.test.ts`: "a server fn created by a library function: the
+  an unwrapped one"; `integration/start-build-server-fn-cases.test.ts`: "a server fn created by a library function: the
   handler is not in the client bundle, or the build fails clearly". Fix: the client has no server code, or the build
   fails at the call.
 - **The bundler plugins choose modules by their text** (a factory name, `.handler(`, `<ClientOnly`): builders from
   other modules, comments inside a chain and namespace `ClientOnly` are missed, and a CommonJS dependency whose text
   matches is parsed as an ES module. SPEC J4.5, J4.11, J4.16, §5.15. `createServerFn/createServerFn.test.ts`: "a
-  handler called with ${name} is extracted"; `known-bugs-start-compiler.test.ts`: "client builds compile $name finished
+  handler called with ${name} is extracted"; `start-compiler-cases.test.ts`: "client builds compile $name finished
   or called in another module"; `integration/pages/start-compiler-import-forms.test.ts`: "$name alone in its module: the
   other environment neither loads nor runs the implementation"; "through a namespace member";
   `integration/start-build-call-shapes.test.ts`: "$name are recognised: the client bundle holds no server code and the
-  shape works"; `integration/known-bugs-start-compiler.test.ts`: "a CommonJS dependency with a top-level return builds
+  shape works"; `integration/start-build-server-fn-cases.test.ts`: "a CommonJS dependency with a top-level return builds
   and keeps its meaning"; "a CommonJS dependency with a top-level return compiles and keeps its meaning".
 - **Nested env-only factories are found by the factory's exported name**, so a renamed import or local alias is
-  missed. SPEC J4.5, J4.10. `known-bugs-start-compiler.test.ts`: "client: a createServerOnlyFn called through $name is
+  missed. SPEC J4.5, J4.10. `start-compiler-cases.test.ts`: "client: a createServerOnlyFn called through $name is
   compiled"; "a createServerOnlyFn local alias called in a top-level block works in each environment, or is rejected at
   the call".
 - **A chain method called through a computed member, or a call whose result is member-called, is never visited.**
-  SPEC J4.5, J4.12. `known-bugs-start-compiler.test.ts`: "$name: the client holds no server code, or the module is
+  SPEC J4.5, J4.12. `start-compiler-cases.test.ts`: "$name: the client holds no server code, or the module is
   rejected at the call"; `integration/start-build-call-shapes.test.ts`: "$name: the client bundle holds no server code
   and the shape works, or the build fails at the call". (Same cause in J7: "renderServerComponent styles the server
   component when its result is chained".)
 - **Server fns outside a top-level variable declaration are left untransformed, broken or rejected without a
   position.** SPEC J4.6. `createServerFn/declaration-sites.test.ts`: "a server fn created through an optional call
   chain compiles like a plain chain or is rejected";
-  `known-bugs-start-compiler.test.ts`: "a createServerFn in $name does not ship its handler to the client"; "with
+  `start-compiler-cases.test.ts`: "a createServerFn in $name does not ship its handler to the client"; "with
   another Start factory imported, a server fn in $name works or is rejected at the call"; "with %s imported, a nested
   server fn whose handler reads a local of its function is supported or rejected at the capture".
 - **A handler that is a `createIsomorphicFn()` or `createServerOnlyFn()` call is compiled first, and the caller never
   becomes an RPC.** SPEC J4.1, J4.2, G5. `createServerFn/handler-scope.test.ts`: "the handler can be a
-  createIsomorphicFn call, or the module is reported"; `known-bugs-start-compiler.test.ts`: "%s: a server fn whose
+  createIsomorphicFn call, or the module is reported"; `start-compiler-cases.test.ts`: "%s: a server fn whose
   handler is a createServerOnlyFn call returns the handler result, or is reported";
   `integration/start-build-call-shapes.test.ts`: "$name: the server fn works, or the build fails naming the file" (in a
   build, the server entry throws while it loads). Fix: the server fn works, or the build fails with an error naming the
   file (in dev, an error or a warning naming the file).
 - **Dev edits of a factory module do not recompile its (transitive) importers.** SPEC J4.5, G10.
-  `integration/known-bugs-dev-server.test.ts`: "client: a module importing an edited factory module through a
+  `integration/start-dev-edits.test.ts`: "client: a module importing an edited factory module through a
   re-export ($name) loads no server code"; "SSR: a module importing an edited factory module through a re-export
-  ($name) gets a server fn"; `known-bugs-start-compiler.test.ts`: "a dev edit of a module a re-export chain ends in
+  ($name) gets a server fn"; `start-compiler-cases.test.ts`: "a dev edit of a module a re-export chain ends in
   recompiles its importers"; `start-compiler-factories.test.ts`: "dev: editing a factory module recompiles its
   importers against the new code".
 - **Dev lookups go through a derived id** (`?server-fn-module-lookup`) a virtual-module plugin or a fresh server does
   not know. SPEC J4.4, G11. `createServerFn/createServerFn.test.ts`: "a server fn whose factory a virtual module serves by
-  its exact id compiles in dev"; `integration/known-bugs-start-compiler-dev.test.ts`: "calls a server fn id on a fresh
+  its exact id compiles in dev"; `integration/start-dev-compile-cases.test.ts`: "calls a server fn id on a fresh
   dev server that has not compiled its module". A fresh server compiles the module of an id only for an app source
   (J4.4, R176); outside `srcDirectory` it answers only ids the session registered
   (`integration/start-dev-server-fn-scope.test.ts`).
 - **The dev client compiler loads a top-level callee's module from inside the transform**, which deadlocks with
-  Vite's dependency optimizer. SPEC G1. `integration/known-bugs-start-compiler-dev.test.ts`: "transforms a client module
+  Vite's dependency optimizer. SPEC G1. `integration/start-dev-compile-cases.test.ts`: "transforms a client module
   with a server fn and a top-level call of a pre-bundled dependency".
 - **A Vue SFC `<script lang="ts">` block is parsed as TSX** (the parser is chosen from the id without its query).
-  SPEC §2.1. `integration/known-bugs-start-compiler-vue-sfc.test.ts`: "build: a server fn in a <script lang="ts"> block
+  SPEC §2.1. `integration/start-vue-sfc-script-ts.test.ts`: "build: a server fn in a <script lang="ts"> block
   may use angle-bracket type assertions".
 - **With SSR as the provider, a module is two instances in the SSR bundle**, so its top-level code runs twice. SPEC
   J4.14, G3. Fixed (R157; also #8656): the lazy handler module imports what the module keeps.
-  `integration/known-bugs-start-compiler.test.ts`: "SSR: a server fn module is initialised once and shares its state
+  `integration/start-build-server-fn-cases.test.ts`: "SSR: a server fn module is initialised once and shares its state
   with SSR code"; `integration/start-compose-server-fn-route.test.ts`: "the server runs the route module once".
 - **Production builds: server fns no client code references answer HTTP calls by id.** SPEC J4.2.
-  `integration/known-bugs-start-compiler.test.ts`: "SSR: a server fn only server code references is not callable over
+  `integration/start-build-server-fn-cases.test.ts`: "SSR: a server fn only server code references is not callable over
   HTTP".
 - **Vite: the production server-fn resolver is generated before the SSR build found every server fn** (#7213). SPEC
-  J4.2, G4. `integration/known-bugs-start-compiler.test.ts`: "is callable, the app files written %s"; "its caller only
+  J4.2, G4. `integration/start-build-server-fn-cases.test.ts`: "is callable, the app files written %s"; "its caller only
   client code imports: the caller is callable over HTTP, the app files written %s".
 - **Library discovery reads the `package.json` of `process.cwd()`, not Vite's root.** SPEC J4.16.
-  `integration/known-bugs-start-compiler.test.ts`: "a build run from another directory: a library's server fn runs in
+  `integration/start-build-server-fn-cases.test.ts`: "a build run from another directory: a library's server fn runs in
   the SSR build".
 - **Rsbuild SSR: an isomorphic fn makes the compiler resolve the module's `createMiddleware` import.** SPEC J4.8.
-  `integration/known-bugs-start-compiler.test.ts`: "a module with a middleware and an isomorphic fn builds, and its
+  `integration/start-build-server-fn-cases.test.ts`: "a module with a middleware and an isomorphic fn builds, and its
   middleware runs on the server".
 - **Collision suffixes follow discovery order across fresh builds.** SPEC J4.4, G4.
   `integration/start-build-determinism.test.ts`: "fresh builds keep the function-to-id mapping when discovery order
@@ -843,7 +843,7 @@ Paths under `start-plugin-core/tests/` unless noted.
   `rsbuild build` rows of the `export *` chains that re-export the package). Fix: the build resolves the package as the
   bundler does, and the rows work.
 - **Re-exports are looked up by local name only**, so distinct aliases and shadowing locals resolve to the wrong
-  factory. SPEC J4.5, G15. `known-bugs-start-compiler.test.ts`: "distinct re-export aliases of two factories keep their
+  factory. SPEC J4.5, G15. `start-compiler-cases.test.ts`: "distinct re-export aliases of two factories keep their
   own kind"; "%s: parameters and locals shadowing the factories are left alone next to a compiled factory call".
 - **Env-specific functions inside a handler are not compiled on the server.** SPEC J4.10.
   `start-compiler-factories.test.ts`: "the server compiles env-specific functions inside a server fn handler".
@@ -873,30 +873,30 @@ Paths under `start-plugin-core/tests/integration/`; `pages/` means `integration/
   `hydrate-pages-solid.ts`: "a namespace-imported Start.Hydrate loads its children when it hydrates".
 - **Module-level declarations reach the chunk only for some forms** (nested `var`s, `import X = ns.X`,
   default-exported functions, enums, namespaces, assigned `let`s are dropped). SPEC G1.
-  `pages/known-bugs-hydrate-module-level.test.ts`: "client: a var declared in a nested block that the children read
+  `pages/hydrate-module-level.test.ts`: "client: a var declared in a nested block that the children read
   reaches the chunk"; "client: a TypeScript import
   alias used by the split children is declared in the chunk"; "client: $name used by the children reaches the chunk".
 - **The chunk removes any binding named `Route` without importing the route.** SPEC G1, J2.4.
-  `pages/known-bugs-hydrate-module-level.test.ts`: "client: split children reading Route $name use the one route";
+  `pages/hydrate-module-level.test.ts`: "client: split children reading Route $name use the one route";
   "client: an unexported component named Route that the children render reaches the chunk".
 - **A hook called through a namespace (`React.useId()`) is not rejected.** SPEC J5.5.
   `pages/hydrate-boundary-forms.test.ts`: "client: a hook called through a namespace is rejected at the boundary".
 - **Children are read from JSX children only, never from a `children` prop or spread.** SPEC J5.2, J5.4.
   `pages/hydrate-split-modules.test.ts`: "client: the children prop ($name) of a self-closing boundary is deferred";
-  `pages/known-bugs-hydrate.test.ts`: "client: children passed through $name render without unused chunks"; "client: a
+  `pages/hydrate-ids-and-captures.test.ts`: "client: children passed through $name render without unused chunks"; "client: a
   boundary nested in a children prop hydrates with the id the server renders".
-- **`<Hydrate>` is matched by name, not binding.** SPEC G15. `pages/known-bugs-hydrate.test.ts`: "client: a local
+- **`<Hydrate>` is matched by name, not binding.** SPEC G15. `pages/hydrate-ids-and-captures.test.ts`: "client: a local
   component named Hydrate is left alone".
 - **Server and client number boundaries differently** (a boundary in a `fallback`, a copied component, code other
-  transforms removed first). SPEC J5.4. `pages/known-bugs-hydrate.test.ts`: "a Hydrate inside a fallback does not shift
+  transforms removed first). SPEC J5.4. `pages/hydrate-ids-and-captures.test.ts`: "a Hydrate inside a fallback does not shift
   the chunks of later boundaries"; "client: $name hydrates like the server renders it"; "a later boundary keeps its id
   and its children next to $name".
 - **Text children move as raw strings** (no JSX line collapsing; edge spaces dropped). SPEC G1, J5.9.
-  `pages/known-bugs-hydrate.test.ts`: "client: a text-only child renders like JSX text: $name"; "client: spaces around a
+  `pages/hydrate-ids-and-captures.test.ts`: "client: a text-only child renders like JSX text: $name"; "client: spaces around a
   single child on one line render like on the server".
 - **Capture analysis is wrong**: locals named `key`/`ref` become React props; tags starting with `_`, `$` or non-ASCII
   letters, member-expression tags and enums are not passed; bindings declared inside the children and property names
-  are taken for captures; `arguments` changes meaning. SPEC J5.2. `pages/known-bugs-hydrate.test.ts`: "client: captured
+  are taken for captures; `arguments` changes meaning. SPEC J5.2. `pages/hydrate-ids-and-captures.test.ts`: "client: captured
   locals named key and ref reach the split children"; "client: the split children render a local component named %s";
   "client: the split children render member-expression tags of $name"; "client: the split children render a component
   bound inside them"; "client: property names, method keys and optional members are no reads of a local"; "client: the
@@ -907,11 +907,11 @@ Paths under `start-plugin-core/tests/integration/`; `pages/` means `integration/
 - **A Solid `ref={input}` to a `let` of the component assigns the chunk's own copy**: the `let` is passed to the
   chunk as a prop, so the component never sees the element. SPEC J5.8. `hydrate-pages-solid.ts`: "a ref in split
   children binds the let of their component".
-- **A `this` owned by a function inside the children is rejected.** SPEC J5.5. `pages/known-bugs-hydrate.test.ts`:
+- **A `this` owned by a function inside the children is rejected.** SPEC J5.5. `pages/hydrate-ids-and-captures.test.ts`:
   "client: split children may use the own `this` of $name".
-- **`await` in children moves into a synchronous chunk component.** SPEC J5.5, G1. `pages/known-bugs-hydrate.test.ts`:
+- **`await` in children moves into a synchronous chunk component.** SPEC J5.5, G1. `pages/hydrate-ids-and-captures.test.ts`:
   "client: await in split children is rejected at the boundary or renders".
-- **A text-only boundary's chunk has an empty source map.** SPEC G6. `pages/known-bugs-hydrate.test.ts`: "client: the
+- **A text-only boundary's chunk has an empty source map.** SPEC G6. `pages/hydrate-ids-and-captures.test.ts`: "client: the
   split text of a text-only boundary maps to its line and column".
 
 ### J6 Import protection
@@ -922,10 +922,10 @@ Paths under `start-plugin-core/tests/integration/`; `ip/` means `integration/imp
   `allowImport`): the mock was already chosen. SPEC J6.6.
   `ip/build-markers.test.ts`: "allows the import of %s: the build succeeds and the client gets the real module";
   `ip/dev.test.ts`: "allowImport returning true: the client gets the real module"; "with behavior "error", an
-  import of a denied file it allows gets the real module"; `ip/v2-policy.test.ts`: "the client gets the real module".
+  import of a denied file it allows gets the real module"; `ip/policy.test.ts`: "the client gets the real module".
 - **Exempt importers get the mock** (the denied file is mocked in its own transform, for every importer). SPEC J6.7.
   `ip/exemptions.test.ts`: "the exempt importer gets the real module, and is not reported" (two tables);
-  `ip/v2-policy.test.ts`: "an importer $how gets the real module".
+  `ip/policy.test.ts`: "an importer $how gets the real module".
 - **With `include`, a denied file outside the patterns is never mocked.** SPEC J6.8. `ip/exemptions.test.ts`: "an
   importer that is not exempt gets the mock and is reported" (two tables).
 - **Marker violations ignore which importer is exempt** (Vite reports the marked module; Rsbuild mocks it for every
@@ -935,7 +935,7 @@ Paths under `start-plugin-core/tests/integration/`; `ip/` means `integration/imp
   reported"; "imported by an ignored importer and, further from the entry, another importer: the violation blames the
   other importer".
 - **A denied file only a module of a custom type imports is mocked but not reported** (Rsbuild: the importer is not
-  compiled). SPEC J6.1. `ip/known-bugs-dev.test.ts`: "a module of a custom type importing a denied file is reported,
+  compiled). SPEC J6.1. `ip/dev-outcomes.test.ts`: "a module of a custom type importing a denied file is reported,
   and its real code does not run".
 - **`mockAccess` is ignored in production and server mocks** (always silent). SPEC J6.3. `ip/build-mock.test.ts`:
   "with mockAccess $mockAccess, using the mock of $denied is reported as an $severity naming the import";
@@ -945,7 +945,7 @@ Paths under `start-plugin-core/tests/integration/`; `ip/` means `integration/imp
   `ip/build-mock.test.ts`: "%s is mocked, with a warning".
 - **`export *` from a denied module re-exports nothing** (`undefined` in an Rsbuild build; the importer fails to load
   in dev). SPEC J6.8. `ip/build-mock.test.ts`: "a name re-exported with `export \*` from a denied specifier is a safe
-  mock, or the build fails"; `known-bugs-dev-server.test.ts`: "client: a name re-exported with `export \*` from $name is
+  mock, or the build fails"; `start-dev-edits.test.ts`: "client: a name re-exported with `export \*` from $name is
   a mock, or the server warns at the `export \*`".
 - **`excludeFiles` and dependency markers are handled inconsistently** (Vite checks a dependency's marker whatever
   `excludeFiles` says; Rsbuild skips it even with `excludeFiles: []`; with `excludeFiles: []` dev rewrites to the real
@@ -956,14 +956,14 @@ Paths under `start-plugin-core/tests/integration/`; `ip/` means `integration/imp
   does not load it"; "the server reports the dependency file it denies".
 - **Rsbuild builds count denied modules the client bundle dropped.** SPEC J6.4. `ip/build.test.ts`: "a
   server-only-marked module re-exported by a barrel the client uses other exports of builds without any report";
-  `ip/known-bugs.test.ts`: "a denied module the client bundle drops does not fail the build"; "in mock mode, an unused
+  `ip/build-outcomes.test.ts`: "a denied module the client bundle drops does not fail the build"; "in mock mode, an unused
   denied module leaves nothing in the client bundle and no warning".
 - **Dev logs only violations reachable from Start's router and start entries.** SPEC J6.9. `ip/dev-page.test.ts`: "a
   denied import of a module the client entry imports is logged"; "a client-only import of a module the server entry
   imports is mocked on the server and logged".
 - **An edit drops every import-graph edge pointing at the edited module**, so new violations are discarded. SPEC
   J6.13. `ip/dev.test.ts`: "added by an edit of the importer is logged at its original import or surviving use, with a
-  trace from the entry"; "'always' logs a violation again after an edit"; `ip/v2-edits-page.test.ts`: "the step reports
+  trace from the entry"; "'always' logs a violation again after an edit"; `ip/edits-page.test.ts`: "the step reports
   its violations, and only those".
 - **`log` counts are wrong in dev** (one import logged for the specifier and again for the mock's resolved path, and
   twice per load with `'always'`). SPEC J6.5. `ip/dev.test.ts`: "'once' logs one warning for one import"; "'always' logs
@@ -972,15 +972,15 @@ Paths under `start-plugin-core/tests/integration/`; `ip/` means `integration/imp
   warning names the .mdx page, located in its original mapped source".
 - **Dev reads `getModuleInfo(importer).code`, which Vite's dev server does not support.** SPEC J6.8.
   `ip/dev.test.ts`: "importing a denied specifier gets the mock, and the dev server logs a warning naming it";
-  `known-bugs-dev-server.test.ts`: "client: a server fn module calling a function of a denied specifier at the top
+  `start-dev-edits.test.ts`: "client: a server fn module calling a function of a denied specifier at the top
   level loads".
 - **Marker state is known only after a transform**, and Vite keeps importers' transforms after an edit. SPEC J6.11,
   J6.13. `ip/dev.test.ts`: "is mocked when the client loads the importer first"; "after an edit adds the marker, the
-  violation is logged"; "after an edit adds the marker, the importer gets the mock"; `known-bugs-dev-server.test.ts`:
+  violation is logged"; "after an edit adds the marker, the importer gets the mock"; `start-dev-edits.test.ts`:
   "client: the importer of a module whose server-only marker was removed loads the module".
 - **Server-fn lookups pre-transform modules and silence them** (recorded as lookup modules by path). SPEC J6.4.
   `ip/dev.test.ts`: "a helper a server fn factory module uses only inside .server() is not logged";
-  `ip/known-bugs-dev.test.ts`: "a server fn factory module calling a denied import at the top level fails to load"; "a
+  `ip/dev-outcomes.test.ts`: "a server fn factory module calling a denied import at the top level fails to load"; "a
   module a server fn factory module imports, calling a denied import at the top level, fails to load".
 - **A map's relative `sources` are taken as the importer's file.** SPEC J6.5, §5.7. `ip/dev.test.ts`: "a denied import
   of a module a server fn factory module re-exports is reported at its original import or use, with its path".
@@ -998,12 +998,12 @@ Paths under `start-plugin-core/tests/integration/`; `ip/` means `integration/imp
 - **`maxTraceDepth` is applied from the entry side** and loses the importer. SPEC J6.5. `ip/dev.test.ts`: "with
   maxTraceDepth, a deeper trace is cut, keeping the importer".
 - **A specifier mock exports only statically read names, and an Rsbuild mock build inlines enum values.** SPEC J6.8.
-  `ip/known-bugs-dev.test.ts`: "vite dev: ${name}."
+  `ip/dev-outcomes.test.ts`: "vite dev: ${name}."
 - **Rsbuild: a dynamic `import()` of a denied specifier is neither reported nor mocked.** SPEC J6.1.
-  `ip/known-bugs.test.ts`: "a client dynamic import of a denied specifier fails the build, reporting one client
+  `ip/build-outcomes.test.ts`: "a client dynamic import of a denied specifier fails the build, reporting one client
   violation".
 - **Denied non-JS/TS files (`.server.json`, `.server.cjs`) keep their content or fail the build.** SPEC J6.8.
-  `ip/known-bugs.test.ts`: "in mock mode, a denied .server.json file is mocked, with a warning"; "in mock mode, a denied
+  `ip/build-outcomes.test.ts`: "in mock mode, a denied .server.json file is mocked, with a warning"; "in mock mode, a denied
   .server.cjs file is mocked, with a warning".
 - **Traces skip modules outside the source directory (Vite) or collapse when a module imports the entry back
   (Rsbuild).** SPEC J6.5. `ip/reported-location-trace.test.ts`: "the trace goes through modules outside the source
@@ -1014,7 +1014,7 @@ Paths under `start-plugin-core/tests/integration/`; `ip/` means `integration/imp
 - **Rsbuild names the importer after the source map URL** (`webpack://…/./src/a.tsx`). SPEC J6.5, §5.7.
   `ip/reported-location.test.ts`: "$channel ($name): a JSX element."
 - **A violation through a vite-tsconfig-paths alias reports the mapped specifier, without a location.** SPEC J6.5,
-  G11. `ip/v2-alias.test.ts`: "the build fails, reporting the aliased specifier at its original line".
+  G11. `ip/alias.test.ts`: "the build fails, reporting the aliased specifier at its original line".
 - **Rsbuild `source.transformImport` bypasses specifier denials, and its locations do not map back.** SPEC J6.1,
   J6.5. `rsbuild/import-protection.test.ts`: "the file rule denies the module it resolves to: the importer is reported at
   the import or the use"; "denied as written, the build fails on it, reporting the importer at the import or the use".
@@ -1046,7 +1046,7 @@ Paths under `react-start-rsc/tests/integration/`.
 
 | Tool                                                            | Symptom                                                                                                                                                                                                                                                              | What the suite does                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Rspack 2.2 (vendored watchpack 2.5.2)                           | a file removal that lands while a compile runs is lost (fixed in watchpack 2.6.0, webpack/watchpack#345)                                                                                                                                                             | Rsbuild tests delete or recreate one file per edit and settle before the next write (`start-plugin-core/tests/integration/importProtection/v2-edits*.test.ts`, `v2-hosts.ts`, `integration/rsbuild/dev-server.test.ts`). Remove when Rspack bundles watchpack ≥ 2.6.                                                                                                                                                                                    |
+| Rspack 2.2 (vendored watchpack 2.5.2)                           | a file removal that lands while a compile runs is lost (fixed in watchpack 2.6.0, webpack/watchpack#345)                                                                                                                                                             | Rsbuild tests delete or recreate one file per edit and settle before the next write (`start-plugin-core/tests/integration/importProtection/edits*.test.ts`, `hosts.ts`, `integration/rsbuild/dev-server.test.ts`). Remove when Rspack bundles watchpack ≥ 2.6.                                                                                                                                                                                          |
 | Rspack 2.2.7–2.2.9 HMR runtime (webpack 5.110 has the same gap) | a hot update whose module gained imports that `splitChunks` moved to a new async chunk re-executes it before that chunk loads: `Cannot read properties of undefined (reading 'call')`                                                                                | pinned (J3): `start-plugin-core/tests/integration/rsbuild/first-server-fn-import.test.ts`; rspack#11324/#11922 call it expected (a React Refresh reload the bare `TypeError` never triggers; still failing on 2.2.9, rspack#16288). Remove when Rspack loads an updated chunk's new siblings first.                                                                                                                                                     |
 | Vite 8.3.4–8.3.7 module runner                                  | a `full-reload` clears `evaluatedModules` while an import is evaluating; the import goes on in the new generation, sharing route modules with the requests after the reload                                                                                          | pinned (J3.3): `start-plugin-core/tests/integration/start-dev-ssr-reload-in-flight.test.ts`; vitejs/vite#24046. Remove when the runner's reload waits for the evaluations in flight (or keeps them in their generation).                                                                                                                                                                                                                                |
 | Rspack 2.2 (vendored watchpack 2.5.2)                           | a file deleted during the watcher's first scan is never reported                                                                                                                                                                                                     | the Rsbuild dev harness resolves once every compiler's watcher has scanned the app, and writes the initial files with past modification times (`compiler-test-utils/src/rsbuild-dev-server.ts`). This is what "the server is up" means; it may stay.                                                                                                                                                                                                    |

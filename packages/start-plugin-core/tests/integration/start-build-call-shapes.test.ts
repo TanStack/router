@@ -18,7 +18,7 @@
  * re-exports and namespace members are forms SPEC J4.5 lists as recognised:
  * those shapes must work.
  *
- * The compile-level twins: ../known-bugs-start-compiler.test.ts ("the
+ * The compile-level twins: ../start-compiler-cases.test.ts ("the
  * client holds no server code, or the module is rejected at the call", and
  * the placement "a block at the module top level"),
  * ../start-compiler-factories.test.ts (string export names),
@@ -521,15 +521,9 @@ describe.each(startBundlers)('%s build', (bundler) => {
     expectWorks(shape, outcome.observed)
   }
 
-  // Bug: chain methods called through a computed member
-  // (`builder['handler'](...)`, `['server'](...)`), a server-only fn whose
-  // result is member-called (`.bind(null)`), and a server fn in a top-level
-  // block (with createServerFn the only factory imported) are left
-  // untransformed by the client compiler (in-process pins in
-  // ../known-bugs-start-compiler.test.ts), and the build succeeds.
   // Source: #8630 pins; SPEC J4.5, J4.6, J4.12.
-  // Impact: the server implementation and its server-only module ship in
-  // the client bundle and run in the browser.
+  // On main, the server implementation and its server-only module ship in the
+  // client bundle and run in the browser.
   test.each(
     shapes.filter(
       (shape) =>
@@ -567,19 +561,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
     timeout,
   )
 
-  // Bug: the bundler plugins choose the modules the Start compiler
-  // transforms by their text (a factory name, or `.handler(`). A module
-  // whose only Start calls are `factory.serverOnly(...)` and
-  // `factory.clientOnly(...)` names none, so it is left untransformed and
-  // the build succeeds; next to a server fn the same calls are compiled
-  // (shape above). In-process twin:
-  // ../start-compiler-import-forms.test.ts "... alone in its module".
-  // Source: start-compiler/compiler.ts `KindDetectionPatterns` and
-  // `detectKindsInCode` (used by vite/start-compiler-plugin/plugin.ts and
+  // Source: main's start-compiler/compiler.ts `KindDetectionPatterns` and
+  // `detectKindsInCode` (used by main's vite/start-compiler-plugin/plugin.ts and
   // rsbuild/start-compiler-host.ts); SPEC J4.5, J4.10, J4.12.
-  // Impact: the server-only implementation and its server-only module ship
-  // in the client bundle and run in the browser; the client-only one runs
-  // during SSR.
+  // On main, the server-only implementation and its server-only module ship in
+  // the client bundle and run in the browser; the client-only one runs during
+  // SSR.
   test.each(shapes.filter((shape) => pinnedForms.includes(shape.slug)))(
     '$name are recognised: the client bundle holds no server code and the shape works',
     async (shape) => {
@@ -588,18 +575,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
     timeout,
   )
 
-  // Bug: when the handler passed to `.handler()` is a createServerOnlyFn
-  // call or a createIsomorphicFn chain, that call is compiled first and the
-  // caller is never rewritten into an RPC, and the build succeeds without a
-  // report (the dev twins: ../createServerFn/handler-scope.test.ts and
-  // ../known-bugs-start-compiler.test.ts).
-  // Impact: the server fn cannot be called, and the SSR build's server
-  // entry throws while it loads ("Cannot create property 'method' on
-  // string"), so the production server does not start. (Built on their
-  // own, outside the shared build.)
-  // Source: TanStack/router#8446. The outcome (SPEC J4.1, J4.2, G5): the
-  // server fn works, or the build fails with an error naming the file (a
-  // warning alone does not count in a build).
+  // On main, the server fn cannot be called, and the SSR build's server entry
+  // throws while it loads ("Cannot create property 'method' on string"), so the
+  // production server does not start.
+  // Source: TanStack/router#8446. The outcome (SPEC J4.1, J4.2, G5): the server
+  // fn works, or the build fails with an error naming the file (a warning alone
+  // does not count in a build).
   test.each(shapes.filter((shape) => envFnHandlers.includes(shape.slug)))(
     '$name: the server fn works, or the build fails naming the file',
     async (shape) => {

@@ -173,7 +173,7 @@ describe.each(startBundlers)('%s production build, served', (bundler) => {
     timeout,
   )
 
-  // Same bug as known-bugs-start-compiler.test.ts "SSR: a server fn module
+  // Same bug as start-build-server-fn-cases.test.ts "SSR: a server fn module
   // is initialised once and shares its state with SSR code": the SSR bundle
   // holds the route module twice (the SSR module and the server fn provider
   // module of the same file), so its top-level code runs twice.

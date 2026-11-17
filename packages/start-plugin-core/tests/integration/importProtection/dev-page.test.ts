@@ -124,37 +124,19 @@ hydrateRoot(document, createElement(StartClient))
 `,
   }
 
-  // Control for the pin below (same app, same page): the page runs the
-  // app's client entry, whose denied import is a safe mock.
+  // A denied import reached only from the app's client entry, which Start's
+  // dev client entry loads, is mocked and logged as the build reports it.
+  // Source: mutation testing (looking for edges without transform data).
   test(
-    "the page runs the app's client entry, and its denied import is a safe mock",
+    "the page runs the app's client entry; its denied import is a safe mock, and logged",
     async () => {
-      const { browser } = await openApp(clientEntryApp)
+      const { browser, server } = await openApp(clientEntryApp)
       expect(
         await browser.page.evaluate(`(() => {
 ${describeValuePrelude}
 return describeValue(window.leaked(), 'MARK_SECRET')
 })()`),
       ).toBe('a safe mock')
-    },
-    timeout,
-  )
-
-  // Bug: dev import protection only logs violations it can reach from the
-  // entries it registers, Start's router entry and start entry
-  // (vite/import-protection-plugin/plugin.ts `registerEntries`). The app's
-  // client entry is not one, and the browser loads it from Start's dev
-  // client entry, a virtual module whose imports import protection does not
-  // record, so the modules only the client entry imports are unreachable
-  // and their violations are discarded.
-  // Impact: in dev (mock mode), a denied import reached from the app's
-  // client entry (`src/client.tsx`) is mocked without any warning (the build
-  // reports it).
-  // Source: mutation testing (looking for edges without transform data).
-  test(
-    'a denied import of a module the client entry imports is logged',
-    async () => {
-      const { server } = await openApp(clientEntryApp)
       expectViolationsAt(server, [
         {
           environment: 'client',
@@ -195,30 +177,9 @@ export default { fetch: () => new Response(String(handler())) }
     return { server, response: await server.fetch('/') }
   }
 
-  // Control for the pin below (same harness): a request runs the app's
-  // server entry.
-  test(
-    "a request runs the app's server entry",
-    async () => {
-      const { response } = await request(
-        serverEntryApp(`export const handler = () => 'MARK_HANDLER'\n`),
-      )
-      expect(response.body).toBe('MARK_HANDLER')
-    },
-    timeout,
-  )
-
-  // Bug: dev import protection only logs violations it can reach from the
-  // entries it registers, Start's router entry and start entry
-  // (vite/import-protection-plugin/plugin.ts `registerEntries`). The app's
-  // server entry is not one, and the entry branch of `resolveId` (no
-  // importer) never runs in dev, where Vite passes `<root>/index.html` as
-  // the importer, so the modules only the server entry imports are
-  // unreachable and their violations are discarded. The server twin of the
-  // client entry pin above.
-  // Impact: in dev (mock mode), a client-only import reached from the app's
-  // custom server entry (`src/server.ts`) is mocked on the server without
-  // any warning (the request returns the mock's value).
+  // On main, in dev (mock mode), a client-only import reached from the app's
+  // custom server entry (`src/server.ts`) is mocked on the server without any
+  // warning (the request returns the mock's value).
   // Source: mutation testing.
   test(
     'a client-only import of a module the server entry imports is mocked on the server and logged',

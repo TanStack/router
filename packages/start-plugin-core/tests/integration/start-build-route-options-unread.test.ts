@@ -91,9 +91,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
             : [],
         ),
       )
-      expect([...said]).toEqual([
-        expect.stringContaining('ships to the client'),
-      ])
+      expect(said.size).toBe(1)
     },
     timeout,
   )

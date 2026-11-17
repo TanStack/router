@@ -6,7 +6,7 @@
  */
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { StartBuildError } from '../../build-harness'
-import { importersIn } from './v2-hosts'
+import { importersIn } from './hosts'
 import type { StartBuild } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 import type { Plugin } from 'vite'

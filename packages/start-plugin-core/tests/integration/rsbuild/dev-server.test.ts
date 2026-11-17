@@ -2,11 +2,14 @@
  * The Start compiler on a running Rsbuild dev server: editing a factory
  * module rebuilds every client module compiled against it.
  */
-import { describe, expect, onTestFinished, test, vi } from 'vitest'
-import { compilerStats } from '@tanstack/router-utils/compiler'
+import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
+import {
+  runInClient,
+  startRsbuildStartDevServer,
+} from '../../rsbuild-dev-server'
+import { runRsbuildSsr, ssrNodeOutput } from '../importProtection/hosts'
 import {
   rootDocument,
   routerFile,
@@ -369,54 +372,6 @@ export const ${name} = createServerFn().handler(async () => 'MARK_${name}')
   )
 })
 
-describe('Rsbuild dev: modules the app stops importing', () => {
-  // The compiler's caches are bounded by the live modules. Rspack
-  // reports a deleted file only while a module depends on it: a module the
-  // app stopped importing and then deleted got no invalidation, and its plans
-  // and raw facts stayed for the session (found by the compiler soak,
-  // benchmarks/compiler-perf `--scenarios soak --soak-bundlers rsbuild`).
-  // Measured through the documented stats knob (TSR_COMPILER_STATS=1); other
-  // sessions alive in this worker are idle, so the change is this server's.
-  test(
-    'leave no plans or raw facts behind once deleted',
-    async () => {
-      vi.stubEnv('TSR_COMPILER_STATS', '1')
-      onTestFinished(() => {
-        vi.unstubAllEnvs()
-      })
-      const server = await startRsbuildStartDevServer({
-        compileTimeout: 10_000,
-        files: {
-          'src/a.ts': `export const a = 'MARK_a'\n`,
-          'src/entry.ts': `export { a } from './a'\n`,
-        },
-      })
-      const counts = () => {
-        const s: Record<string, number> = compilerStats()['start:rsbuild'] ?? {}
-        return { plans: s.plans ?? 0, rawFacts: s.rawFacts ?? 0 }
-      }
-      const before = counts()
-      for (let i = 0; i < 3; i++) {
-        // a file nothing imports yet: Rspack does not watch it, no compile
-        await server.write({
-          [`src/m${i}.ts`]: `export const m = 'MARK_m${i}'\n`,
-        })
-        await server.edit({
-          'src/entry.ts': `export { a } from './a'\nexport { m } from './m${i}'\n`,
-        })
-        await server.edit({ 'src/entry.ts': `export { a } from './a'\n` })
-        // deleted once nothing imports it: Rspack reports no removal either
-        await server.write({ [`src/m${i}.ts`]: null })
-      }
-      expect(server.errors).toEqual([])
-      const after = counts()
-      expect(after.plans).toBeLessThanOrEqual(before.plans)
-      expect(after.rawFacts).toBeLessThanOrEqual(before.rawFacts)
-    },
-    timeout,
-  )
-})
-
 describe('Rsbuild dev: server fn ids', () => {
   // Server fns are called by id: two server fns sharing an id would run
   // each other's handler.
@@ -473,4 +428,86 @@ export { getData as b } from './b'
   // start-build-options.test.ts "serverFns.generateFunctionId returning an
   // id"; dev caller/provider agreement by the page calls of "Rsbuild dev:
   // with HMR: editing a server fn module" above.
+})
+
+// The constructs of each environment (SPEC J4.9-J4.11) in a React app on
+// the Rsbuild dev server: the page gets the client side of each and loads
+// none of the server's code; the server gets the server side and loads
+// nothing only `<ClientOnly>` children use.
+describe('Rsbuild dev: env-only fns, isomorphic fns, middleware and <ClientOnly>', () => {
+  const loaded = (name: string) =>
+    `;((globalThis as any).loaded ??= []).push('${name}')\n`
+  const files = {
+    'src/server-value.ts': `${loaded('server-value')}export const serverValue = (key: string) => 'MARK_SERVER:' + key\n`,
+    'src/chart.ts': `${loaded('chart')}export const chartText = () => 'MARK_CHART'\n`,
+    'src/constructs.tsx': `import { ClientOnly } from '@tanstack/react-router'
+import { createClientOnlyFn, createIsomorphicFn, createMiddleware, createServerOnlyFn } from '@tanstack/react-start'
+import { serverValue } from './server-value'
+import { chartText } from './chart'
+export const serverOnly = createServerOnlyFn(() => serverValue('server-only'))
+export const clientOnly = createClientOnlyFn(() => 'MARK_CLIENT_ONLY')
+export const iso = createIsomorphicFn().server(() => serverValue('iso')).client(() => 'MARK_ISO_CLIENT')
+export const mw = createMiddleware({ type: 'function' })
+  .client(({ next }) => next())
+  .server(({ next }) => {
+    serverValue('middleware')
+    return next()
+  })
+export const Panel = () => <ClientOnly fallback={<i>fallback</i>}><b>{chartText()}</b></ClientOnly>
+`,
+    'src/client.ts': `import * as constructs from './constructs'
+;(globalThis as any).constructs = constructs
+`,
+    'src/server.ts': `import * as constructs from './constructs'
+;(globalThis as any).constructs = constructs
+export default { fetch: () => new Response('ok') }
+`,
+  }
+  const read = `const c = globalThis.constructs
+const settle = (run) => {
+  try {
+    return run()
+  } catch {
+    return 'throws'
+  }
+}
+return {
+  loaded: [...(globalThis.loaded ?? [])].sort(),
+  serverOnly: settle(c.serverOnly),
+  clientOnly: settle(c.clientOnly),
+  iso: c.iso(),
+  middleware: typeof c.mw.options,
+}`
+
+  test(
+    'each environment runs its own side of each construct and loads only its code',
+    async () => {
+      const server = await startRsbuildStartDevServer({
+        compileTimeout: 20_000,
+        browser: true,
+        hmr: false,
+        config: ssrNodeOutput,
+        files,
+      })
+      expect(await runInClient(server, read)).toEqual({
+        result: {
+          loaded: ['chart'],
+          serverOnly: 'throws',
+          clientOnly: 'MARK_CLIENT_ONLY',
+          iso: 'MARK_ISO_CLIENT',
+          middleware: 'object',
+        },
+      })
+      expect(await runRsbuildSsr(server, read)).toEqual({
+        result: {
+          loaded: ['server-value'],
+          serverOnly: 'MARK_SERVER:server-only',
+          clientOnly: 'throws',
+          iso: 'MARK_SERVER:iso',
+          middleware: 'object',
+        },
+      })
+    },
+    timeout,
+  )
 })

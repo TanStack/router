@@ -2,21 +2,16 @@
  * Server fn ids of production builds (SPEC J4.4, G4) through the public
  * Start host in production mode (`createStartHost({ serve: false })`: real
  * `vite build` with the Start plugin's documented `serverFns` options and
- * Start's preview server; the client in the hydrated production page):
- * - the id a custom `generateFunctionId` returns is the one the client calls
- *   (its public `url`) and the server answers to; which spelling of the file
- *   name it receives is not specified (J4.4);
- * - a `generateFunctionId` returning `undefined` falls back to a working id;
- * - server fns given the same custom id (in one module, or in two) still
- *   each reach their own handler, from the client and from server code;
+ * Start's preview server; the client in the hydrated production page;
+ * a returned id and `undefined` on both bundlers: start-build-options.test.ts):
+ * - server fns of one module given the same custom id still each reach
+ *   their own handler, from the client and from server code (two modules:
+ *   start-build-determinism.test.ts "colliding custom ids");
  * - a generator that embeds `functionName` in the id gives each server fn
  *   of a module its own working id: two server fns of one name in one
  *   module, and server fns nested in functions;
  * - the same project at another root builds correctly (relocation is
  *   correctness, not id equality: G4).
- * Moved from the unit test start-compiler-determinism.test.ts, which
- * compiled through the internal compiler; its Windows-path rows are not
- * reachable through a POSIX host.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { expectRelocatable } from '@tanstack/compiler-test-utils/determinism'
@@ -67,8 +62,6 @@ async function callBothWays(startCase: StartCase, fn: string, file: string) {
 }
 
 describe('a custom generateFunctionId', () => {
-  /** The ids the custom function returned. */
-  const returned: Array<string> = []
   /** The names the custom function received for named-ids.ts. */
   const namesReceived = new Set<string>()
   let host: StartHost | undefined
@@ -89,17 +82,6 @@ describe('a custom generateFunctionId', () => {
             filename: string
             functionName: string
           }) => {
-            if (filename.includes('custom-ids')) {
-              // URL-safe: the id is a path segment of the server fn's url
-              // (any other id fails the build:
-              // start-build-function-id-url.test.ts)
-              const id = `custom_${Buffer.from(`${filename}:${functionName}`).toString('hex')}`
-              returned.push(id)
-              return id
-            }
-            if (filename.includes('no-ids')) {
-              return undefined
-            }
             if (filename.includes('same-ids')) {
               return 'same-id'
             }
@@ -115,22 +97,12 @@ describe('a custom generateFunctionId', () => {
         },
       },
     })
-    cases.custom = await host.case({
-      'custom-ids.ts': serverFnModule('fn', 'from the server'),
-    })
-    cases.fallback = await host.case({
-      'no-ids.ts': serverFnModule('fn', 'from the server'),
-    })
     cases.several = await host.case({
       'same-ids.ts': `import { createServerFn } from '@tanstack/react-start'
 export const a = createServerFn().handler(async () => 'from a')
 export const b = createServerFn().handler(async () => 'from b')
 export const c = createServerFn().handler(async () => 'from c')
 `,
-    })
-    cases.colliding = await host.case({
-      'same-ids-a.ts': serverFnModule('a', 'from a'),
-      'same-ids-b.ts': serverFnModule('b', 'from b'),
     })
     cases.named = await host.case({
       'named-ids.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -150,29 +122,6 @@ export const outer = {
     await host.preview()
   }, 60_000)
   afterAll(() => host?.close())
-
-  test('gives the id the client calls and the server answers to', async () => {
-    const [url] = await serverFnUrls(cases.custom!, 'module', {
-      file: 'custom-ids.ts',
-    })
-    expect(url).toEqual(expect.any(String))
-    expect(
-      returned.some((id) => url!.endsWith(id)),
-      `the url ${url} carries one of the ids the function returned: ${returned.join(', ')}`,
-    ).toBe(true)
-    expect(
-      await callBothWays(cases.custom!, 'module.fn', 'custom-ids.ts'),
-    ).toBe('from the server')
-  })
-
-  test('that returns undefined falls back to a working id', async () => {
-    expect(
-      await serverFnUrls(cases.fallback!, 'module', { file: 'no-ids.ts' }),
-    ).toEqual([expect.any(String)])
-    expect(await callBothWays(cases.fallback!, 'module.fn', 'no-ids.ts')).toBe(
-      'from the server',
-    )
-  })
 
   // The server gives each server fn of a module the id the client gave it,
   // also when the custom function gives them all the same id.
@@ -249,26 +198,6 @@ export const outer = {
         'under_createServerFn_handler_1',
       ].sort(),
     )
-  })
-
-  // Two server fns of two modules get the same custom id: the build tells
-  // them apart, and each environment pairs each with its own handler.
-  test('colliding custom ids of two modules stay paired', async () => {
-    const urls = [
-      ...(await serverFnUrls(cases.colliding!, 'module', {
-        file: 'same-ids-a.ts',
-      })),
-      ...(await serverFnUrls(cases.colliding!, 'module', {
-        file: 'same-ids-b.ts',
-      })),
-    ]
-    expect(new Set(urls).size).toBe(2)
-    expect(
-      await callBothWays(cases.colliding!, 'module.a', 'same-ids-a.ts'),
-    ).toBe('from a')
-    expect(
-      await callBothWays(cases.colliding!, 'module.b', 'same-ids-b.ts'),
-    ).toBe('from b')
   })
 })
 

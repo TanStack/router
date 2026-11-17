@@ -212,21 +212,10 @@ describe('the reported location of a violation is the leaking use or the import'
   )
 })
 
-// Bug (Rsbuild): when the app has source maps, a location import protection
-// finds in the compiled code of the importer and maps back through the
-// module's source map takes its file from the map's source URL
-// (`mapGeneratedToOriginal`, import-protection/sourceLocation.ts:248,
-// `file: orig.source`), which Rspack names after its
-// `devtoolModuleFilenameTemplate` (`webpack://<namespace>/./src/a.tsx`); the
-// report prints that file in place of the importer (`formatViolation`,
-// import-protection/trace.ts:203). Reachable with Rsbuild's defaults: its
-// development source maps (`cheap-module-source-map`) are on, and so are
-// production ones once an app sets `output.sourceMap.js`.
-// Impact: the importer is named `webpack:/src/a.tsx:...`, a path that is no
-// file of the app (editors and terminals do not open it), only for the
-// imports found in the compiled code (here a JSX element; the same happens
-// to an import `source.transformImport` rewrote). SPEC J6.5: the importer's
-// location in the original source, with or without source maps.
+// On main, the importer is named `webpack:/src/a.tsx:...`, a path that is no
+// file of the app (editors and terminals do not open it), only for the imports
+// found in the compiled code (here a JSX element; the same happens to an import
+// `source.transformImport` rewrote).
 // Source: review, reproduced with the public options of an app.
 describe('the reported importer is a file of the app, whatever source maps it has', () => {
   const jsx = cases.jsxElement!.code

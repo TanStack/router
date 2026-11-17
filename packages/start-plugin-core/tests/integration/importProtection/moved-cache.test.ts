@@ -14,7 +14,7 @@ import path from 'node:path'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { expect, test } from 'vitest'
 import { buildStart } from '../../build-harness'
-import { importersIn } from './v2-hosts'
+import { importersIn } from './hosts'
 import type { StartBuild } from '../../build-harness'
 
 const timeout = 120_000

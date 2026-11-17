@@ -8,7 +8,7 @@ import {
   runRsbuildClient,
   startBrowserRsbuildDevServer as startRsbuildDevServer,
 } from '../importProtection/client-pages'
-import { runRsbuildSsr, ssrNodeOutput } from '../importProtection/v2-hosts'
+import { runRsbuildSsr, ssrNodeOutput } from '../importProtection/hosts'
 import { buildStart } from '../../build-harness'
 import {
   describeValuePrelude,
@@ -934,14 +934,9 @@ export const read = () => button()
     ])
   }, 60_000)
 
-  // Bug: the report of a denied import `source.transformImport` rewrote
-  // points at neither the import nor the use of its binding
-  // (`src/entry.ts:2:25`, the arrow of `read`; the use `button()` is at
-  // 2:27): the location is only found in the rewritten code (through the
-  // mock module's path), whose positions do not map back to the source.
   // Source: rsbuild/import-protection.ts resolveImporterLocation
   // (transformedSources lookup); mutation testing.
-  // Impact: low; the code frame's caret points at the wrong column.
+  // On main, low; the code frame's caret points at the wrong column.
   test('the file rule denies the module it resolves to: the importer is reported at the import or the use', async () => {
     expect(reportedViolations(await fileRuleDenied())).toEqual([
       { environment: 'client', importer: atImportOrUse },
@@ -968,14 +963,9 @@ export const read = () => button()
     })
   }, 60_000)
 
-  // Bug: a specifier denied as the user wrote it is not denied once
-  // `source.transformImport` rewrote it: the loader matches the specifiers
-  // of the code SWC already transformed (`ui-lib/button`), so `'ui-lib'`
-  // never matches, and the build ships the library to the client without
-  // any error or warning.
   // Source: rsbuild/import-protection-loader.ts transformImportProtection
   // (`matchesAny(source, matchers.specifiers)` on the post-SWC imports).
-  // Impact: a client.specifiers rule on a library the app also lists in
+  // On main, a client.specifiers rule on a library the app also lists in
   // source.transformImport is silently bypassed.
   test('denied as written, the build fails on it, reporting the importer at the import or the use', async () => {
     expect(

@@ -19,7 +19,7 @@ import {
   typeRemainder,
   valueRemainder,
 } from './node-only-imports-cases'
-import { importersIn } from './v2-hosts'
+import { importersIn } from './hosts'
 
 const timeout = 60_000
 

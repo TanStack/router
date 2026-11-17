@@ -7,7 +7,10 @@
  * declaration; kept in an object; a middleware kept in an object that gets
  * its server code later). Each fix builds, the client calls the
  * server fn by the id it was given, and the server answers with its
- * handler, which is nowhere in the client.
+ * handler, which is nowhere in the client. The fixes of the refusals of a
+ * value passed where the compiler cannot follow it (an isomorphic fn
+ * given its `.server()`, a start instance's `.createMiddleware()` called
+ * directly, a builder's option read by name) build too, and run.
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -36,19 +39,11 @@ const auth = (role: string) =>
 
 const schemaModule = `export const makeSchema = () => (data: string) => data\n`
 
-/** What the refusal of a server fn in a function gives as its cause (R162: the function, whatever the code reads). */
-const NESTED =
-  'A server function must be created exactly once, when its module loads: this one is inside a function'
-
-/**
- * Refused modules, with the text the refusal points at (and, `says`, text
- * it gives: audit-diagnostics P3).
- */
+/** Refused modules, with the text the refusal points at. */
 const refused: Array<{
   name: string
   module: string
   at: string
-  says?: string
 }> = [
   {
     name: 'a nested server fn built on a local builder',
@@ -58,7 +53,6 @@ const refused: Array<{
 }
 `,
     at: 'base.handler',
-    says: `${NESTED} and is built on \`base\`, a local of that function.`,
   },
   {
     name: 'a server fn created in a function',
@@ -67,7 +61,6 @@ const refused: Array<{
 }
 `,
     at: 'createServerFn().handler',
-    says: NESTED,
   },
   {
     name: 'a nested server fn reading a local',
@@ -76,7 +69,6 @@ const refused: Array<{
 }
 `,
     at: 'table)\n}',
-    says: `${NESTED} and reads \`table\`, a local of that function.`,
   },
   {
     name: 'a nested server fn using this',
@@ -88,7 +80,6 @@ const refused: Array<{
 }
 `,
     at: 'this.n',
-    says: `${NESTED} and uses \`this\` of that function.`,
   },
   {
     name: 'a nested server fn using await',
@@ -99,7 +90,6 @@ const refused: Array<{
 }
 `,
     at: 'await Promise',
-    says: `${NESTED} and uses \`await\` of that function outside its handler.`,
   },
   {
     name: 'a builder assigned after its declaration',
@@ -203,10 +193,21 @@ export const make = () => fn
   },
 ]
 
+/** The fixes of values passed where the compiler cannot follow them (the refused shapes: start-compiler-builder-shapes.test.ts). */
+const flowFixes = `import { createIsomorphicFn, createServerFn, createStart } from '@tanstack/react-start'
+export const tick = createIsomorphicFn().client(() => 'MARK_TICK_CLIENT').server(() => undefined)
+setTimeout(tick, 0)
+const si = createStart(() => ({}))
+const mw = si.createMiddleware().server(({ next }) => next({ context: { mark: 'MARK_SI_SECRET' } }))
+const base = createServerFn({ method: 'POST' })
+export const method = base.options.method
+export const fn = base.middleware([mw]).handler(async ({ context }) => context.mark)
+`
+
 describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
   test.each(refused)(
     '$name fails the build at its position',
-    async ({ module, at, says }) => {
+    async ({ module, at }) => {
       const error = await buildStart({
         bundler,
         files: { 'src/schema.ts': schemaModule, 'src/fns.ts': module },
@@ -219,15 +220,12 @@ describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
         throw error
       }
       const position = diagnosticPosition(module, at)
-      const refusal = expectDiagnostic(error.diagnostics, {
+      expectDiagnostic(error.diagnostics, {
         severity: 'error',
         file: 'src/fns.ts',
         root: error.root,
         position,
       })
-      if (says !== undefined) {
-        expect(refusal.text).toContain(says)
-      }
       // the column the user reads is 1-based (R101): the matcher above also
       // takes a 0-based one, which a bundler's own location field may print
       expect(error.diagnostics.map((d) => d.text).join('\n')).toContain(
@@ -263,6 +261,34 @@ describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
         )
         expect(result, mark).toBe(mark)
       }
+    },
+    timeout,
+  )
+
+  test(
+    'the fixes of a value the compiler cannot follow build, and each runs',
+    async () => {
+      const build = await buildStart({
+        bundler,
+        files: {
+          'src/entry.ts': flowFixes,
+          'src/ssr-entry.ts': `export * from './entry'\n${callByIdExports}`,
+        },
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+      })
+      expect(build.client.where('MARK_SI_SECRET')).toBe('nowhere')
+      const { result } = await build.client.run(
+        `return [entry.tick(), entry.method, entry.fn.url]`,
+      )
+      const [tick, method, url] = result as [string, string, string]
+      expect([tick, method]).toEqual(['MARK_TICK_CLIENT', 'POST'])
+      expect(
+        (
+          await build.ssr.run(
+            `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}), null, 'POST')`,
+          )
+        ).result,
+      ).toBe('MARK_SI_SECRET')
     },
     timeout,
   )

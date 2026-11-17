@@ -732,9 +732,7 @@ export const fn = createServerFn().handler(async () => new Repository().read())`
   expect(await callFromClient(served, 'module.fn')).toBe('from repository')
 })
 
-// Bug: the client output prints an asserted update operand without its
-// parentheses (`count as number++`).
-// Impact: the module fails to parse, so the build fails.
+// On main, the module fails to parse, so the build fails.
 // Source: typescript-eslint type-assertion/increment/as-increment.js,
 // type-assertion/increment/non-null-increment.js, type-assertion/satisfies.js;
 // #8504 start-compiler-preserves-user-code.test.ts (red on main)
@@ -754,15 +752,7 @@ export function bump() {
   expect(await inPage(served, 'return module.bump()')).toBe(4)
 })
 
-// Bug: the client output prints a type assertion that is the test of a
-// conditional whose branch starts with a unary minus without its parentheses
-// (`a as any ? -x : y`), which does not parse (`any ? -x` reads as the start
-// of a conditional type). The root cause is upstream: @babel/generator 7.29.8
-// drops the parentheses (parse+generate of `f = ((a) as any) ? -x : y` gives
-// `f = a as any ? -x : y;`; no workaround here; router-utils/src/ast.ts:72
-// `generateFromAst` prints with it). The code splitter has the same bug (pin
-// in router-plugin/tests/known-bugs-code-splitter.test.ts).
-// Impact: the module fails to parse, so the build fails.
+// On main, the module fails to parse, so the build fails.
 // Source: fuzzing.
 test('keeps the parentheses of an asserted conditional test', async () => {
   const served = await serveCase(await host(), {

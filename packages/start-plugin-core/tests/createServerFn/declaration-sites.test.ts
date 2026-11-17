@@ -106,14 +106,14 @@ test.each(literalPlacements)(
 
 // Loosened regression, paired with the pins "with another Start factory
 // imported, a server fn in $name works or is rejected at the call" of
-// known-bugs-start-compiler.test.ts (main's rejection has no position).
+// start-compiler-cases.test.ts (main's rejection has no position).
 // Next to another Start factory, these placements never ship the handler
 // to the client: each environment rejects the code with a compile error
 // or serves a working module without the handler, and calling the server
 // fn from the client and from server code runs it. With createServerFn
 // alone, and for declarators below the top level (in a function, a switch
 // case or a top-level block), they are pinned in
-// known-bugs-start-compiler.test.ts.
+// start-compiler-cases.test.ts.
 test.each(placements.filter((placement) => !placement.declarator))(
   'next to another Start factory, a server fn in $name does not ship its handler to the client',
   async ({ code, read }) => {
@@ -146,13 +146,8 @@ test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
   },
 )
 
-// Bug: a server fn passed through calls of a user helper (`wrap(wrap(...))`,
-// e.g. helpers registering or typing it) is not extracted: the compiler
-// rejects it ("must be assigned to a variable"), although the server fn
-// itself initializes a top-level variable. Transparent wrappers are a
-// supported recognition form (SPEC J4.5), so rejecting is no fix here.
-// Impact: the build fails for a module whose server fn the user can only
-// write unwrapped.
+// On main, the build fails for a module whose server fn the user can only write
+// unwrapped.
 // Source: declaration-sites "wrapped in two calls".
 test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
   'with %s imported, a server fn wrapped in two calls works like an unwrapped one',
@@ -265,14 +260,11 @@ export const fn = createServerFn({ method: 'GET' })${handler}`,
   )
 })
 
-// Bug: `.handler()` called through an optional chain
-// (`createServerFn()?.handler(...)`) is not recognised: the module is left
-// untransformed.
-// Impact: the handler and its imports ship to the client, which calls it
-// in the browser instead of through an RPC.
+// On main, the handler and its imports ship to the client, which calls it in
+// the browser instead of through an RPC.
 // Fix-agnostic: compiling it like a plain chain (an RPC on the client, the
-// handler on the server) or rejecting it with a clear error at the call,
-// naming createServerFn, both pass.
+// handler on the server) or rejecting it with a clear error at the call, naming
+// createServerFn, both pass.
 // Source: #8504 declaration-sites.test.ts (red on main)
 test('a server fn created through an optional call chain compiles like a plain chain or is rejected', async () => {
   const code = `${head}import { db } from './db.server'
