@@ -205,6 +205,10 @@ const supported: Array<Shape> = [
     name: "a builder's options read by name",
     code: `${P}${MW}const base = createServerFn({ method: 'POST' })\nexport const method = base.options.method\nexport const mwType = mw.options.type\nexport const fn = base.handler(async () => db.x())`,
   },
+  {
+    name: "a builder's options destructured by name",
+    code: `${P}const base = createServerFn({ method: 'POST' })\nconst { method } = base.options\nexport const m = method\nexport const fn = base.handler(async () => db.x())`,
+  },
   // ---- joins
   {
     name: 'a builder chosen by a ternary',
@@ -549,6 +553,11 @@ const refused: Array<Refused> = [
     name: 'an isomorphic fn returning an open middleware, passed to a function',
     code: `${FH}const a = createMiddleware({ type: 'function' }).server(({ next }) => next())\nconst b = createMiddleware({ type: 'function' }).client(({ next }) => next())\nconst mw = createIsomorphicFn().server(() => a).client(() => b)\nregister(mw)`,
     at: 'mw)',
+  },
+  {
+    name: "a builder's middleware list destructured off its options",
+    code: `${FH}const base = createServerFn().middleware([])\nconst { middleware } = base.options\nexport const mws = middleware\nexport const fn = base.handler(async () => 'x')`,
+    at: 'base.options\nexport',
   },
   {
     name: "a builder's options passed on",

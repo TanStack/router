@@ -81,18 +81,45 @@ export const read = () => Object.keys(modules)
 `,
   })
 
-  test(
-    "a pattern import of a denied file fails the build at the importer's pattern import",
-    async () => {
+  // Every form of the call: a list of patterns (with a negation of another
+  // file), type arguments, and a commented-out call before it.
+  test.each([
+    {
+      name: 'one pattern',
+      call: `import.meta.glob('./lib/*.ts', { eager: true })`,
+    },
+    {
+      name: 'a list of patterns',
+      call: `import.meta.glob(['./lib/*.ts', '!./lib/util.ts'], { eager: true })`,
+    },
+    {
+      name: 'type arguments',
+      call: `import.meta.glob<{ db?: () => string }>('./lib/*.ts', { eager: true })`,
+    },
+    {
+      name: 'a commented-out call before it',
+      head: `// import.meta.glob('./other/*.ts')\n/* import.meta.glob('./other/*.ts') */\n`,
+      call: `import.meta.glob('./lib/*.ts', { eager: true })`,
+    },
+  ])(
+    "a pattern import of a denied file fails the build at the importer's pattern import ($name)",
+    async ({ call, head = '' }) => {
+      const entry = `${head}const modules = ${call}
+export const read = () => Object.keys(modules)
+`
       const error = await rejection(
         buildStart({
           bundler,
-          files: globbing(`'./lib/*.ts'`),
+          files: { ...globbing(`'./lib/*.ts'`), 'src/entry.ts': entry },
           entry: 'src/entry.ts',
         }),
       )
+      const { line, column } = diagnosticPosition(
+        entry,
+        entry.lastIndexOf('import.meta.glob'),
+      )
       expectViolationsAt(error, [
-        { environment: 'client', use: 'src/entry.ts:1:17' },
+        { environment: 'client', use: `src/entry.ts:${line}:${column}` },
       ])
     },
     timeout,
@@ -193,6 +220,33 @@ export const read = () => ctx.keys()
       expect(build.client.where('MARK_DB')).toBe('nowhere')
       const { result } = await build.client.run('return entry.read()')
       expect(result).toEqual(['./util.ts'])
+    },
+    timeout,
+  )
+
+  // webpack's own form of the context
+  test.runIf(bundler === 'rsbuild')(
+    'a require.context of a denied file fails the build at the context',
+    async () => {
+      const entry = `declare const require: any
+const ctx = require.context('./lib', false, /\\.ts$/)
+export const read = () => ctx.keys()
+`
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files: {
+            'src/lib/db.server.ts': db,
+            'src/lib/util.ts': `export const util = () => 'util'\n`,
+            'src/entry.ts': entry,
+          },
+          entry: 'src/entry.ts',
+        }),
+      )
+      const { line, column } = diagnosticPosition(entry, 'require.context')
+      expectViolationsAt(error, [
+        { environment: 'client', use: `src/entry.ts:${line}:${column}` },
+      ])
     },
     timeout,
   )

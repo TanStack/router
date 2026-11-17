@@ -595,6 +595,13 @@ ${childrenPage('<p id={React.useId()}>x</p>')}`,
 export const Page = () => <Hydrate><button onClick={() => { flag = 1 }}>{String(flag)}</button></Hydrate>`,
     },
     {
+      name: 'reading new.target of the component',
+      framework: 'react',
+      code: `${head}export function Page() {
+  return <Hydrate when={load()}><p>{String(new.target)}</p></Hydrate>
+}`,
+    },
+    {
       name: 'with a ref of a let declared outside two nested boundaries (Solid)',
       framework: 'solid',
       code: `${solidHead}export function Page() {

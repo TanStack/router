@@ -547,6 +547,11 @@ const reg = { add: <T,>(f: T) => f }
       at: 'A.k)',
     },
     {
+      name: '`this` of the class it is written in',
+      code: `export class Api {\n  static mws: Array<never> = []\n  static foo = createServerFn().middleware(this.mws).handler(async () => db.inner())\n}`,
+      at: 'this.mws',
+    },
+    {
       name: 'a declaration of its own statement, when the module loads',
       code: `export const mws: Array<never> = [],\n  o = { foo: createServerFn().middleware(mws).handler(async () => db.inner()) }`,
       at: 'mws).',
