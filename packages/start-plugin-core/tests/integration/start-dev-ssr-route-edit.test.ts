@@ -83,4 +83,44 @@ describe('Vite dev: the server render of an edited route', () => {
     },
     timeout,
   )
+
+  // the server environment splits route files too: an edit that stops
+  // splitting leaves the chunk the server loaded imported by nothing
+  test(
+    'a route file whose edits stop and resume splitting it: the server renders each edit',
+    async () => {
+      const route = (mark: string, split: boolean) =>
+        `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/page')({${split ? '' : '\n  codeSplitGroupings: [],'}
+  component: Page,
+})
+function Page() {
+  return <p>${mark}</p>
+}
+`
+      const server = await startDevServer({
+        start: {},
+        listen: true,
+        files: { ...files, 'src/routes/page.tsx': route('MARK_V1', true) },
+      })
+      expect((await server.fetch('/page')).body).toContain('MARK_V1')
+      for (const [mark, split] of [
+        ['MARK_V2', false],
+        ['MARK_V3', false],
+        ['MARK_V4', true],
+        ['MARK_V5', true],
+      ] as const) {
+        await server.edit({ 'src/routes/page.tsx': route(mark, split) })
+        let last = ''
+        await waitForOutcome({
+          applied: async () =>
+            (last = (await server.fetch('/page')).body).includes(mark),
+          timeout: 5_000,
+          describe: () =>
+            `the server render after ${mark}: ${last.slice(0, 300)}`,
+        })
+      }
+    },
+    timeout,
+  )
 })
