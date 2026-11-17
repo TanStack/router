@@ -12,5 +12,5 @@ Route HMR (development only) runs on a new runtime that the router plugin's dev 
 - **Solid: an edit always shows.** The router keeps the component it holds only when solid-refresh patched it in place (both are solid-refresh proxies of the same component name and file). The same shapes were stale, and on Rsbuild no Solid route edit showed. Split chunks carry the route file's leading `@refresh` pragmas (`// @refresh granular`), so a split component keeps its state where an unsplit one does. After a rename or a removed component in a split route, later edits show only after a reload (solidjs/solid-refresh#88).
 - On Rsbuild and webpack, a Solid split chunk that reads a binding the route module keeps gets that binding's edit; the component remounts.
 - Lazy route files (`createLazyFileRoute`, `*.lazy.tsx`) update in place instead of reloading the page, on Vite and Rsbuild, for React, Solid and Vue; a React component keeps its state when React Refresh can patch it.
-- On Rspack and webpack, an edit of a split loader or another non-component option refreshes the route.
+- On Rspack, an edit of a split loader refreshes the route; the page kept the old loader's data.
 - An update patches only the route its module exported, so another router in the same window (module federation) is left alone (#7921).

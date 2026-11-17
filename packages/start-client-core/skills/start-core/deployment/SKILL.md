@@ -296,19 +296,28 @@ Bun-specific deployment only works with React 19. Use Node.js deployment for Rea
 ### 3. MEDIUM: Child route loosening parent SSR config
 
 ```tsx
-// Parent sets ssr: false
 // WRONG — child cannot upgrade to ssr: true
-const parentRoute = createFileRoute('/dashboard')({ ssr: false })
-const childRoute = createFileRoute('/dashboard/stats')({
+// src/routes/dashboard.tsx
+export const Route = createFileRoute('/dashboard')({ ssr: false })
+
+// src/routes/dashboard.stats.tsx
+export const Route = createFileRoute('/dashboard/stats')({
   ssr: true, // IGNORED — parent false wins
 })
+```
 
+```tsx
 // CORRECT — children can only be MORE restrictive
-const parentRoute = createFileRoute('/dashboard')({ ssr: 'data-only' })
-const childRoute = createFileRoute('/dashboard/stats')({
+// src/routes/dashboard.tsx
+export const Route = createFileRoute('/dashboard')({ ssr: 'data-only' })
+
+// src/routes/dashboard.stats.tsx
+export const Route = createFileRoute('/dashboard/stats')({
   ssr: false, // OK — more restrictive than parent
 })
 ```
+
+Each route is its own file: a second `createFileRoute` call in a route file fails the build.
 
 ## Cross-References
 

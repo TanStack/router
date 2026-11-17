@@ -5,7 +5,7 @@
 
 Rspack, webpack and Rsbuild:
 
-- The router plugin uses its own loader, so project paths with `'`, `#` or spaces build (#7754). Paths with `'` or `#` build on Vite too.
+- The router plugin uses its own loader, so project paths with `'` or `#` build (#7754). Paths with `'` or `#` build on Vite too.
 - The router plugin's loader rule matches every JavaScript module outside `node_modules` (it leaves modules that aren't routes unchanged), so a file stays one module when it becomes a route or stops being one. Because the loader is now part of every app module's request, the deterministic module ids of those modules change with this release, and under pnpm (or any install whose paths hold the package version, such as Yarn Plug'n'Play) with each later update of the plugin too; with npm's `node_modules` layout they change once. The code doesn't change.
 - Route files under `node_modules` (a routes package, a `physical()` mount of an installed package) aren't code-split; the build warns once per file.
-- The router plugin's and Start's loaders pass a module they don't compile on as the bytes it came as: a binary file with a JavaScript extension imported as an asset (an MPEG transport stream segment named `.ts`, with `type: 'asset/resource'`) is emitted unchanged instead of corrupted, and a byte order mark is kept.
+- Start's Rsbuild loader passes a dependency's module it doesn't compile on as the bytes it came as: a package's binary file with a JavaScript extension imported as an asset (an MPEG transport stream segment named `.ts`, with `type: 'asset/resource'`) is emitted unchanged instead of corrupted, and a byte order mark is kept.

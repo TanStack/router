@@ -90,11 +90,7 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [
-    // MUST come before react()
-    tanstackStart(),
-    viteReact(),
-  ],
+  plugins: [tanstackStart(), viteReact()],
 })
 ```
 
@@ -177,15 +173,17 @@ function HomePage() {
 
 ## Common Mistakes
 
-### 1. CRITICAL: React plugin before Start plugin in Vite config
+### 1. CRITICAL: Solid plugin before Start plugin in Vite config
 
 ```ts
-// WRONG — route generation and server function compilation fail
-plugins: [react(), tanstackStart()]
+// WRONG — the build fails with a plugin-order error
+plugins: [solid(), tanstackStart()]
 
-// CORRECT — Start plugin must come first
-plugins: [tanstackStart(), react()]
+// CORRECT — Start plugin first
+plugins: [tanstackStart(), solid()]
 ```
+
+`@vitejs/plugin-react` and `@vitejs/plugin-vue` transform after Start's compiler in either order, so `tanstackStart()` may be listed before or after them.
 
 ### 2. HIGH: Enabling verbatimModuleSyntax in tsconfig
 
