@@ -923,6 +923,28 @@ function Widget(props: { title: string }) {
     expect(mounted.serverLoads.filter(isReact)).toEqual([])
   })
 
+  // A directive (`use:name`) of the component, used by the children: the
+  // split children get it, and it runs on their element.
+  test('Solid: a directive of the component the children use runs in the split children', async () => {
+    const solid = await solidHost()
+    const mounted =
+      await solid.mount(`import { Hydrate } from '@tanstack/solid-start'
+import { visible } from '@tanstack/solid-start/hydration'
+export function Page() {
+  const mark = (el: HTMLElement, value: () => string) => {
+    el.dataset.mark = value()
+  }
+  return (
+    <Hydrate when={visible()}>
+      <p use:mark={'MARK_DIRECTIVE'}>child</p>
+    </Hydrate>
+  )
+}`)
+    expect(mounted.errors).toEqual([])
+    expect(mounted.html).toContain('data-mark="MARK_DIRECTIVE"')
+    expect(mounted.lazy).not.toEqual([])
+  })
+
   test('Solid: a Hydrate the app re-exports splits', async () => {
     const solid = await solidHost()
     const mounted = await solid.mount(

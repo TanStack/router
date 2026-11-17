@@ -87,6 +87,12 @@ defineExpose({ getX, label })
   },
 ]
 
+/** A module exporting a builder (`import * as builders from './builders'`). */
+const builders = `import { createServerFn } from '@tanstack/vue-start'
+export const base = createServerFn()
+export const label = 'x'
+`
+
 /**
  * Refused in development only: a JavaScript block hands its imports to the
  * template through generated code; refused at the import.
@@ -123,6 +129,22 @@ defineExpose({ getX })
 </script>
 `,
     at: 'base = createServerFn',
+  },
+  {
+    // the code Vue generates hands the namespace to the template: refused at
+    // its declaration in the SFC
+    name: 'a namespace of a module with a builder a JavaScript block imports',
+    sfc: `<template>
+  <p>page</p>
+</template>
+
+<script setup>
+import * as builders from './builders'
+const label = 'page'
+defineExpose({ label })
+</script>
+`,
+    at: 'builders from',
   },
 ]
 
@@ -345,6 +367,7 @@ describe('vite dev', () => {
     })
     return (await devHost).case({
       'Page.vue': text,
+      'builders.ts': builders,
       'module.ts': `export { default } from './Page.vue'\n`,
     })
   }
@@ -401,6 +424,7 @@ describe('rsbuild dev', () => {
         config: { plugins: [pluginVue()] },
         files: {
           'src/routes/__root.tsx': root,
+          'src/builders.ts': builders,
           ...files,
           // (the refused blocks only behind an import the page never runs)
           'src/entry.ts': `${fixes.map((_, i) => `import Fix${i} from './Fix${i}.vue'\n`).join('')}globalThis.__fixes = [${fixes.map((_, i) => `Fix${i}`).join(', ')}]

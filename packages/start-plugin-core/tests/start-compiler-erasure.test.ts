@@ -200,6 +200,12 @@ export const Route = createFileRoute('/hydrate-in-${key}')({
 `,
       ]),
     ),
+    // a server fn created in an object (hoisted: a unit the compiler
+    // generates) that only the split component reads
+    'src/routes/hoisted-in-object.tsx': `${head}const fns = { a: createServerFn({ method: 'POST' }).handler(() => Response.json('MARK_HOISTED')) }
+function Page() { return <p data-url={fns.a.url}>page</p> }
+export const Route = createFileRoute('/hoisted-in-object')({ component: Page })
+`,
     'src/routes/schema-read.tsx': `${head}import { countedSchema, schemaBuilds } from '../schema-read'
 const schema = countedSchema()
 const check = createServerFn({ method: 'POST' })
@@ -1096,6 +1102,19 @@ describe('a server fn has one instance on the server', () => {
   // chunk does, and imports only the server fn (main: 2)
   test('a schema the component also reads is copied into the chunk, as on main', async () => {
     expect(await renderThenCall('/schema-read', 1)).toBe(2)
+  })
+
+  test('a server fn created in an object that only the split component reads answers from the page and from the client chunk', async () => {
+    expect(await renderThenCall('/hoisted-in-object', 1)).toBe('MARK_HOISTED')
+    const run = await (
+      await host()
+    ).run<unknown>(`(async () => {
+  const route = await import('/src/routes/hoisted-in-object.tsx')
+  const Page = (await route.Route.options.component.preload?.())?.default ?? route.Route.options.component
+  return typeof Page
+})()`)
+    expect(run.errors).toEqual([])
+    expect(run.result).toBe('function')
   })
 
   test('a declaration only its own text names is copied with the state it fills, on the server', async () => {

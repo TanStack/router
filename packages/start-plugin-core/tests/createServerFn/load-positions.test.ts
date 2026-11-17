@@ -14,6 +14,7 @@
 import { describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
+  callFromClient,
   callServerFnThroughCallers,
   compileError,
   inPage,
@@ -419,6 +420,21 @@ var later: 'GET' | undefined = 'GET'`,
       'inner',
     )
   })
+})
+
+// SPEC J4.2: a server fn defined in code the server erases and the client
+// runs (`<ClientOnly>` children at the module top level) still answers the
+// client.
+test('a server fn in <ClientOnly> children at the module top level answers the client', async () => {
+  const served = await serveCase(await host(), {
+    'module.tsx': `${head}import { ClientOnly } from '@tanstack/react-router'
+export const el = <ClientOnly fallback={null}><b data-fn={${fn}} /></ClientOnly>`,
+    ...files,
+  })
+  expectNotLoaded(await served.loads(), ['./db.server'])
+  expect(
+    await callFromClient(served, "module.el.props.children.props['data-fn']"),
+  ).toBe('inner')
 })
 
 describe('a server fn not created exactly once when its module loads', () => {

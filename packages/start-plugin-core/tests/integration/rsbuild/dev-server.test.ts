@@ -5,7 +5,11 @@
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
+import {
+  runInClient,
+  startRsbuildStartDevServer,
+} from '../../rsbuild-dev-server'
+import { runRsbuildSsr, ssrNodeOutput } from '../importProtection/hosts'
 import {
   rootDocument,
   routerFile,
@@ -424,4 +428,86 @@ export { getData as b } from './b'
   // start-build-options.test.ts "serverFns.generateFunctionId returning an
   // id"; dev caller/provider agreement by the page calls of "Rsbuild dev:
   // with HMR: editing a server fn module" above.
+})
+
+// The constructs of each environment (SPEC J4.9-J4.11) in a React app on
+// the Rsbuild dev server: the page gets the client side of each and loads
+// none of the server's code; the server gets the server side and loads
+// nothing only `<ClientOnly>` children use.
+describe('Rsbuild dev: env-only fns, isomorphic fns, middleware and <ClientOnly>', () => {
+  const loaded = (name: string) =>
+    `;((globalThis as any).loaded ??= []).push('${name}')\n`
+  const files = {
+    'src/server-value.ts': `${loaded('server-value')}export const serverValue = (key: string) => 'MARK_SERVER:' + key\n`,
+    'src/chart.ts': `${loaded('chart')}export const chartText = () => 'MARK_CHART'\n`,
+    'src/constructs.tsx': `import { ClientOnly } from '@tanstack/react-router'
+import { createClientOnlyFn, createIsomorphicFn, createMiddleware, createServerOnlyFn } from '@tanstack/react-start'
+import { serverValue } from './server-value'
+import { chartText } from './chart'
+export const serverOnly = createServerOnlyFn(() => serverValue('server-only'))
+export const clientOnly = createClientOnlyFn(() => 'MARK_CLIENT_ONLY')
+export const iso = createIsomorphicFn().server(() => serverValue('iso')).client(() => 'MARK_ISO_CLIENT')
+export const mw = createMiddleware({ type: 'function' })
+  .client(({ next }) => next())
+  .server(({ next }) => {
+    serverValue('middleware')
+    return next()
+  })
+export const Panel = () => <ClientOnly fallback={<i>fallback</i>}><b>{chartText()}</b></ClientOnly>
+`,
+    'src/client.ts': `import * as constructs from './constructs'
+;(globalThis as any).constructs = constructs
+`,
+    'src/server.ts': `import * as constructs from './constructs'
+;(globalThis as any).constructs = constructs
+export default { fetch: () => new Response('ok') }
+`,
+  }
+  const read = `const c = globalThis.constructs
+const settle = (run) => {
+  try {
+    return run()
+  } catch {
+    return 'throws'
+  }
+}
+return {
+  loaded: [...(globalThis.loaded ?? [])].sort(),
+  serverOnly: settle(c.serverOnly),
+  clientOnly: settle(c.clientOnly),
+  iso: c.iso(),
+  middleware: typeof c.mw.options,
+}`
+
+  test(
+    'each environment runs its own side of each construct and loads only its code',
+    async () => {
+      const server = await startRsbuildStartDevServer({
+        compileTimeout: 20_000,
+        browser: true,
+        hmr: false,
+        config: ssrNodeOutput,
+        files,
+      })
+      expect(await runInClient(server, read)).toEqual({
+        result: {
+          loaded: ['chart'],
+          serverOnly: 'throws',
+          clientOnly: 'MARK_CLIENT_ONLY',
+          iso: 'MARK_ISO_CLIENT',
+          middleware: 'object',
+        },
+      })
+      expect(await runRsbuildSsr(server, read)).toEqual({
+        result: {
+          loaded: ['server-value'],
+          serverOnly: 'MARK_SERVER:server-only',
+          clientOnly: 'throws',
+          iso: 'MARK_SERVER:iso',
+          middleware: 'object',
+        },
+      })
+    },
+    timeout,
+  )
 })
