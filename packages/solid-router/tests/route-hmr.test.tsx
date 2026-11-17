@@ -166,6 +166,34 @@ describe('route HMR (Solid)', () => {
     ).toBeInTheDocument()
   })
 
+  test('a re-imported split solid-refresh proxy of the same name and file is kept', async () => {
+    const { router, evaluate } = setup(() => ({
+      component: lazyRouteComponent(
+        (): Promise<Module> => Promise.resolve({ component: proxy('v1') }),
+        'component',
+      ),
+    }))
+    render(() => <RouterProvider router={router} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'v1 0' }))
+
+    const reimport = (component: any) => {
+      const importer = vi.fn(
+        (): Promise<Module> => Promise.resolve({ component }),
+      )
+      evaluate({ component: lazyRouteComponent(importer, 'component') })
+      return importer.mock.results[0]!.value
+    }
+    await reimport(proxy('v2', 'Page', 'src/routes/page.tsx:7:2'))
+    await Promise.resolve()
+    // solid-refresh (absent here) patches the kept proxy in place.
+    expect(screen.getByRole('button', { name: 'v1 1' })).toBeInTheDocument()
+
+    await reimport(proxy('v3', 'Renamed'))
+    expect(
+      await screen.findByRole('button', { name: 'v3 0' }),
+    ).toBeInTheDocument()
+  })
+
   test('a solid-refresh proxy of the same name from another file is replaced', async () => {
     const { router, evaluate } = setup(() => ({
       component: proxy('classic', 'Shell', 'src/layouts/classic.tsx:1:7'),

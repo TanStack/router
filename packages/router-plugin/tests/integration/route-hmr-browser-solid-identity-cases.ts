@@ -14,14 +14,11 @@
  * the module it patches. So a mount count of 1 per edit is solid-refresh's
  * patch, and 0 is a component kept with its state.
  *
- * Cells not asserted, with their reason: Vite with `autoCodeSplitting`
- * mounts a split component twice per save (once from solid-refresh's
- * patch, once from the lazy wrapper's swap to the new proxy; pinned below
- * and in oracle/KNOWN-BUGS.md); a rename or removal on Rsbuild with
- * `autoCodeSplitting` stops later hot updates (solid-refresh, upstream:
- * pinned below); a reload (a rename or removal in an unsplit route file:
- * solid-refresh invalidates the module, J3.3; Vite's rule for an import
- * cycle) restarts the counters.
+ * Cells not asserted, with their reason: a rename or removal with
+ * `autoCodeSplitting` stops later edits from showing (solid-refresh,
+ * upstream: pinned below); a reload (a rename or removal in an unsplit
+ * route file: solid-refresh invalidates the module, J3.3; Vite's rule for
+ * an import cycle) restarts the counters.
  *
  * One test file per bundler (`route-hmr-browser-solid-identity.test.ts`
  * for Vite, `-rsbuild.test.ts`), each with and without `autoCodeSplitting`.
@@ -106,9 +103,6 @@ const mounts =
   ({ bundler, split }: Cell) =>
     !split ? unsplit : bundler === 'vite' ? viteSplit : rsbuildSplit
 
-/** Vite, split: the double mount (not asserted, pinned below). */
-const twice = undefined
-
 /** A route file in versions 1-3; the edits are versions 2 and 3. */
 function versions(
   name: string,
@@ -153,6 +147,12 @@ export const Route = createFileRoute('/')({ component: Page, loader: () => ${JSO
 const afterRenameOnRsbuildSplit = ({ bundler, split }: Cell) =>
   bundler === 'rsbuild' && split ? 1 : undefined
 
+/** With `autoCodeSplitting`: later edits stop showing after a rename (upstream). */
+const afterRenameOnSplit = ({ split }: Cell) => (split ? 1 : undefined)
+
+/** With `autoCodeSplitting`: no edit shows from a removal on (upstream). */
+const fromTheRemovalOnSplit = ({ split }: Cell) => (split ? 0 : undefined)
+
 /** A page component module importing the route file, showing its loader data and `body v<v>`. */
 const cyclePage = (v: number) =>
   `${signal}import { Route } from '../routes/index'\nexport function Page() ${body(`{Route.useLoaderData()()} body v${v}`)}\n`
@@ -196,7 +196,7 @@ const granularChunkRow: Row = {
   edits: [2, 3].map((v) => ({
     files: { 'routes/index.tsx': pendingRoute(v) },
     shows: dataText(v),
-    mounts: mounts(0, twice, 0),
+    mounts: mounts(0, 0, 0),
   })),
 }
 
@@ -262,7 +262,7 @@ const groupedLoaderRows: Array<Row> = (
   edits: [2, 3].map((v) => ({
     files: { 'routes/index.tsx': groupedRoute(loader, v, 1) },
     shows: dataText(v),
-    mounts: mounts(1, twice, 1),
+    mounts: mounts(1, 1, 1),
   })),
 }))
 
@@ -311,12 +311,12 @@ const keptOptionRows: Array<Row> = [
       {
         files: { 'routes/index.tsx': groupedRoute(arrowLoader, 2, 1) },
         shows: dataText(2),
-        mounts: mounts(1, twice, 1),
+        mounts: mounts(1, 1, 1),
       },
       ...[2, 3].map((staleTime) => ({
         files: { 'routes/index.tsx': groupedRoute(arrowLoader, 2, staleTime) },
         shows: dataText(2),
-        mounts: mounts(1, twice, 0),
+        mounts: mounts(1, 1, 0),
       })),
     ],
   },
@@ -327,13 +327,13 @@ export const rows: Array<Row> = [
     'a function declaration',
     (v) => route(`function Page() ${body(bodyText(v))}`, 'component: Page'),
     bodyText,
-    { mounts: mounts(1, twice, 1) },
+    { mounts: mounts(1, 1, 1) },
   ),
   versions(
     'an inline arrow',
     (v) => route('', `component: () => ${body(bodyText(v))}`),
     bodyText,
-    { mounts: mounts(1, twice, 1) },
+    { mounts: mounts(1, 1, 1) },
   ),
   versions(
     'a lowercase function',
@@ -349,7 +349,7 @@ export const rows: Array<Row> = [
         'component: Page, loader: () => label',
       ),
     dataText,
-    { mounts: mounts(1, twice, 0) },
+    { mounts: mounts(1, 1, 0) },
   ),
   {
     // the component and the bindings it reads are unchanged: solid-refresh
@@ -364,7 +364,7 @@ export const rows: Array<Row> = [
     edits: [2, 3].map((v) => ({
       files: { 'routes/index.tsx': pureRoute(granular)(v) },
       shows: dataText(v),
-      mounts: mounts(0, twice, 0),
+      mounts: mounts(0, 0, 0),
     })),
   },
   granularChunkRow,
@@ -378,7 +378,7 @@ export const rows: Array<Row> = [
         granular,
       ),
     bodyText,
-    { mounts: mounts(1, twice, 1) },
+    { mounts: mounts(1, 1, 1) },
   ),
   // Bug: a split chunk evaluated again on its own (Rsbuild: solid-refresh
   // makes it self-accepting) never told the route's lazy wrapper that its
@@ -504,7 +504,7 @@ export const Route = createFileRoute('/')({ component: Page })
     edits: [2, 3].map((v) => ({
       files: { 'routes/index.tsx': cycleRoute(v) },
       shows: `${dataText(v)} body v1`,
-      mounts: mounts(0, 1, 0),
+      mounts: mounts(0, 0, 0),
     })),
   },
   {
@@ -521,7 +521,7 @@ export const Route = createFileRoute('/')({ component: Page })
       {
         files: { 'routes/index.tsx': cycleRoute(2) },
         shows: `${dataText(2)} body v1`,
-        mounts: mounts(0, 1, 0),
+        mounts: mounts(0, 0, 0),
       },
       ...[2, 3].map(
         (v): Edit => ({
@@ -529,33 +529,34 @@ export const Route = createFileRoute('/')({ component: Page })
           shows: `${dataText(2)} body v${v}`,
           failsThenReloads: ({ bundler, split }) =>
             bundler === 'vite' && !split,
-          mounts: mounts(1, undefined, 1),
+          mounts: mounts(1, 1, 1),
         }),
       ),
       {
         files: { 'routes/index.tsx': cycleRoute(3) },
         shows: `${dataText(3)} body v3`,
-        mounts: mounts(0, 1, 0),
+        mounts: mounts(0, 0, 0),
       },
     ],
   },
   // Unsplit: solid-refresh invalidates a module that lost a component,
   // which nothing above a route module accepts: the page reloads once (SPEC
   // J3.3).
-  // Bug (Rsbuild, split; this row and the next): solid-refresh keeps a
-  // removed component's name in the registry it stores in `hot.data`; every
-  // later evaluation of the module finds a name the new module lacks and
-  // calls `hot.invalidate()`, which on Rspack, outside an update (the lazy
-  // wrapper's `import()`), leaves the HMR status at `ready`, waiting for an
-  // `apply()` nobody calls. Upstream (oracle/KNOWN-BUGS.md).
-  // Impact: after a rename or a removed component in a split route on
-  // Rsbuild, no later hot update reaches the page until a reload.
-  // (Solid's `keepPatched` decides the rename only in the Rsbuild split
-  // cell, where the chunk evaluates on its own: the rename reloads an
-  // unsplit route, a Vite split chunk re-imported after a route update is
-  // decided by the core's same-object rule, and the body edits after it
-  // keep the name. So a `keepPatched` that always keeps turns only that
-  // cell red.)
+  // Bug (split; this row and the next two): solid-refresh keeps a removed
+  // component's name in the registry it stores in `hot.data`, and patches a
+  // module's components in registration order, only up to the first name
+  // the new module lacks: every later evaluation of the module finds that
+  // name and calls `hot.invalidate()`. On Rspack, outside an update (the
+  // lazy wrapper's `import()`), that leaves the HMR status at `ready`,
+  // waiting for an `apply()` nobody calls. On Vite the route module
+  // evaluates again and the lazy wrapper keeps the proxy of the same name
+  // and file it holds, which solid-refresh patched only if it reached it
+  // before the removed name (in the first helper row below it does, in the
+  // second it does not). Upstream (oracle/KNOWN-BUGS.md).
+  // Impact: after a rename in a split route, later edits do not show until
+  // a reload (Rsbuild: no later hot update at all); after a removed
+  // component solid-refresh reaches first, not even the removal shows. main
+  // on Vite shows neither.
   {
     name: 'a rename, then two body edits',
     counter: true,
@@ -578,60 +579,41 @@ export const Route = createFileRoute('/')({ component: Page })
       mounts: ({ bundler, split }) =>
         v === 2 && bundler === 'rsbuild' && split ? undefined : 1,
     })),
-    pinnedFrom: afterRenameOnRsbuildSplit,
+    pinnedFrom: afterRenameOnSplit,
   },
-  {
-    name: 'a helper component removed, then two body edits',
-    counter: true,
-    files: {
-      'routes/index.tsx': route(
-        `function Helper() {\n  return <span> helper</span>\n}\nfunction Page() ${body(`${bodyText(1)}<Helper />`)}`,
-        'component: Page',
-      ),
-    },
-    ready: `${bodyText(1)} helper`,
-    edits: [2, 3, 4].map((v) => ({
+  ...(
+    [
+      ['', 'before', afterRenameOnRsbuildSplit],
+      [' after the route component', 'after', fromTheRemovalOnSplit],
+    ] as const
+  ).map(([where, order, pinnedFrom]): Row => {
+    const helper = 'function Helper() {\n  return <span> helper</span>\n}\n'
+    const page = `function Page() ${body(`${bodyText(1)}<Helper />`)}\n`
+    return {
+      name: `a helper component${where} removed, then two body edits`,
+      counter: true,
       files: {
         'routes/index.tsx': route(
-          `function Page() ${body(bodyText(v))}`,
+          order === 'before' ? helper + page : page + helper,
           'component: Page',
         ),
       },
-      shows: bodyText(v),
-      reloads: ({ split }) => v === 2 && !split,
-      mounts: ({ bundler, split }) =>
-        !split ? 1 : bundler === 'vite' || v === 2 ? undefined : 1,
-    })),
-    pinnedFrom: afterRenameOnRsbuildSplit,
-  },
-]
-
-/**
- * Bug: Vite with `autoCodeSplitting`: a split Solid component mounts twice
- * per save, once from solid-refresh's patch of the chunk and once from the
- * lazy wrapper's swap to the re-imported chunk's new proxy (the router
- * keeps a re-imported chunk's component only when it is the same object:
- * keeping the patched proxy goes stale after a rename, see the upstream
- * pin above).
- * Impact: an effect of the component runs twice per save; under `@refresh
- * granular` its state is lost where solid-refresh keeps it.
- */
-export const mountPins: Array<Row & { cells: (cell: Cell) => boolean }> = [
-  {
-    ...versions(
-      'a split component mounts once per save',
-      (v) => route(`function Page() ${body(bodyText(v))}`, 'component: Page'),
-      bodyText,
-      { mounts: () => 1 },
-    ),
-    cells: ({ bundler, split }) => bundler === 'vite' && split,
-  },
-  {
-    ...granularChunkRow,
-    name: '@refresh granular: a split component keeps its state when solid-refresh keeps it',
-    edits: granularChunkRow.edits.map((edit) => ({ ...edit, mounts: () => 0 })),
-    cells: ({ bundler, split }) => bundler === 'vite' && split,
-  },
+      ready: `${bodyText(1)} helper`,
+      edits: [2, 3, 4].map((v) => ({
+        files: {
+          'routes/index.tsx': route(
+            `function Page() ${body(bodyText(v))}`,
+            'component: Page',
+          ),
+        },
+        shows: bodyText(v),
+        reloads: ({ split }) => v === 2 && !split,
+        mounts: ({ bundler, split }) =>
+          !split ? 1 : v === 2 && bundler === 'rsbuild' ? undefined : 1,
+      })),
+      pinnedFrom,
+    }
+  }),
 ]
 
 /** The count the page shows (`count <n>`), or `null`. */
@@ -701,12 +683,6 @@ export function solidIdentitySuite(bundler: Bundler) {
       if (pinned.length > 0) {
         // (the bug: the row's comment)
         test.for(pinned)('$name: every edit', { fails: true }, (row, ctx) =>
-          run(row, row.edits, ctx),
-        )
-      }
-      const pins = mountPins.filter((row) => row.cells(cell))
-      if (pins.length > 0) {
-        test.for(pins)('$name', { fails: true }, (row, ctx) =>
           run(row, row.edits, ctx),
         )
       }
