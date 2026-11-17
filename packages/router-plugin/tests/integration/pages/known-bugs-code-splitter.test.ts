@@ -360,8 +360,7 @@ track(widget)`,
     },
   )
 
-  // Control for the pin above (same harness): a top-level call that reads
-  // only imports and literals is stripped from the chunks.
+  // A top-level call that reads only imports and literals.
   test.each([
     { name: 'a call reading an import', effect: 'track(subscribe)' },
     { name: 'a call with literal arguments', effect: `track('a', 'b')` },

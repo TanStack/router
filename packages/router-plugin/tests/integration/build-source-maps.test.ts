@@ -204,7 +204,6 @@ async function expectModuleThrowMapsToRouteFile(
   expectFrameAtThrow(app, stack, source, { minify: false })
 }
 
-// Control for the pins below.
 describe('vite', () => {
   test.each(builds)(
     'a throw in a split component maps to its line in the route file ($name)',

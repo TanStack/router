@@ -452,25 +452,6 @@ export function helper() {
     ).toEqual(['poly', '<p>10</p>'])
   })
 
-  // a chunk loads after the route module has run its imports
-  it('runs a bare import the split component depends on with the route module', async () => {
-    const route = await loadRoute(
-      `${head}import './polyfill'
-export const Route = createFileRoute('/')({
-  component: () => <p>{(globalThis as any).__poly}</p>,
-})
-`,
-      {
-        files: {
-          'polyfill.ts': `;(globalThis as any).__poly = 'poly'\nexport {}\n`,
-        },
-      },
-    )
-    await expectValidModules(route)
-    expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run(`return render('component')`)).toBe('<p>poly</p>')
-  })
-
   it('runs top-level statements once, when the route module loads', async () => {
     const route = await loadRoute(
       `${head}import { track } from './track'

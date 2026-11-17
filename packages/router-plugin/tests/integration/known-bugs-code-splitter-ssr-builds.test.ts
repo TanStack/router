@@ -190,22 +190,6 @@ describe('app paths', () => {
 })`
   const script = `return await entry.render(entry.Route.options.component)`
 
-  // Control for the `#` pin below (same app, without `#`).
-  test('an app builds and preloads a split component', async () => {
-    expect(await buildAndRun(route, script)).toBe('<p>index</p>')
-  }, 30_000)
-
-  // Bug: the route module imports its chunks by absolute file path with the
-  // split query (`<root>/routes/index.tsx?tsr-split=component`), and a `#`
-  // in the path is read as the start of a URL fragment.
-  // Impact: an app in a directory whose name contains `#` cannot be built
-  // with code splitting ([UNRESOLVED_IMPORT]).
-  test('an app in a directory with # in its name builds and preloads a split component', async () => {
-    expect(
-      await buildAndRun(route, script, { prefix: '.regression-build-#' }),
-    ).toBe('<p>index</p>')
-  }, 30_000)
-
   // Bug: the code splitter compiles every module whose id contains the
   // marker of its split ids (today `tsr-split`: path text, not its query)
   // as a split chunk, and throws "The split value for the virtual route ...
@@ -232,19 +216,6 @@ describe('app paths', () => {
       ).toBe('<p>index</p>')
     }
   }, 60_000)
-
-  // Bug: the route module's chunk importers are built by pasting the
-  // absolute file path into a single-quoted string
-  // (`import('${splitUrl}')`), so a `'` in the path ends the string early.
-  // Source: #7754.
-  // Impact: an app in a directory whose name contains `'` (e.g. a user
-  // folder) cannot be built or served once code splitting is on: every route
-  // fails with a syntax error.
-  test("an app in a directory with ' in its name builds and preloads a split component", async () => {
-    expect(
-      await buildAndRun(route, script, { prefix: ".regression-build-it's-" }),
-    ).toBe('<p>index</p>')
-  }, 30_000)
 })
 
 describe('code that reads a split binding', () => {

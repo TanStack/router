@@ -60,6 +60,8 @@ const directories: Array<{
 }> = [
   { name: 'a # (C#, project #2)', prefix: '.project-path-C# project #2-' },
   { name: 'a %', prefix: '.project-path-100%-' },
+  // (#7754: a `'` ended the string literal of a chunk importer early)
+  { name: "a '", prefix: ".project-path-it's-" },
   {
     name: 'spaces, parentheses and non-ASCII',
     prefix: '.project-path-café 日本語 (2)+-',

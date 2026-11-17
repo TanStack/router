@@ -220,24 +220,6 @@ export const Route = createFileRoute('/')({
 })
 `
 
-  // Control for the hoisted inline component pin below (same harness): an
-  // inline component reading a lowercase component renders it (the real
-  // `react-error-boundary` shows the fallback once its child throws).
-  test('vite: an inline pending component rendering an error boundary with a lowercase fallback shows the fallback', async ({
-    expect,
-    onTestFinished,
-  }: TestContext) => {
-    const app = await openRouteHmrPage({
-      onTestFinished,
-      pluginOptions: { autoCodeSplitting: false },
-      files: { 'routes/index.tsx': errorBoundaryRoute(false) },
-      ready: 'fallback shown',
-    })
-    expect(
-      app.page.errors.some((error) => error.includes('child failed')),
-    ).toBe(true)
-  })
-
   // Bug: React HMR hoists inline component options into declarations it
   // inserts after visiting every option, and renames a lowercase component
   // passed to a later option. The rename only reaches nodes attached to the

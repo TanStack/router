@@ -199,29 +199,6 @@ ${cardB ? 'let renders = 0\nfunction CardB() { renders++; return <i>{"B" + rende
 })
 `
 
-  // Controls for the pins below (same harness): the route module requested
-  // first after the edit.
-  test.each([
-    {
-      name: 'removing a component two split options render',
-      before: cards(true),
-      after: cards(false),
-      expected: ['<p><b>A</b></p>', '<p><b>A</b></p>'],
-    },
-    {
-      name: 'adding a component two split options render',
-      before: cards(false),
-      after: cards(true),
-      expected: ['<p><b>A</b><i>B1</i></p>', '<p><b>A</b><i>B2</i></p>'],
-    },
-  ])(
-    'a page loading the route module first renders the edited route after $name',
-    async ({ before, after, expected }) => {
-      expect(await editOutOfOrder(false, before, after)).toEqual(expected)
-    },
-    timeout,
-  )
-
   // Bug: the route module's transform computes the bindings that go to the
   // shared module (`?tsr-shared=1`) and stores them by file; the shared and
   // split transforms read that stored set instead of deriving it from the

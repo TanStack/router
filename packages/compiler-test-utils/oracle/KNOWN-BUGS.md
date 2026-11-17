@@ -418,8 +418,7 @@ removal:
   `router-generator/tests/generator-dev.test.ts`: "a route created while an update event that changed nothing is
   checked joins the route tree". Fix: no delivered event is lost.
 - **An empty `.ts` route file is scaffolded with JSX, then parsed as TypeScript** and the run fails. SPEC J1.3.
-  `router-generator/tests/generator-options.test.ts`: "an empty .ts route file is scaffolded, and the other routes
-  still generate". Fix: a valid scaffold, and the other routes generate.
+  `router-generator/tests/generator-options.test.ts`: "an empty %s route file is scaffolded, and the other routes still generate". Fix: a valid scaffold, and the other routes generate.
 - **`importRoutesUsingAbsolutePaths` is not applied to lazy route imports.** SPEC J1.4.
   `router-generator/tests/generator-options.test.ts`: "importRoutesUsingAbsolutePaths imports the lazy route files by
   absolute paths too".
@@ -527,7 +526,7 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
   pendingComponent split by custom groupings renders, and an unsplit option renders it";
   `integration/known-bugs-code-splitter-ssr-builds.test.ts`: "an imported split component that head() reads renders,
   and head() reads it (%s build)"; `integration/known-bugs-code-splitter-client-builds.test.ts`: "a split component that
-  an unused object names renders (vite)"; `pages/known-bugs-code-splitter-bindings.test.ts`: "a split component renders
+  an unused object names renders (%s)"; `pages/known-bugs-code-splitter-bindings.test.ts`: "a split component renders
   the exported component of another option that reads Route ($name)".
   #8914 (an imported component, named or default, read by a split and an unsplit option):
   `pages/known-bugs-code-splitter-server.test.ts`: "an imported component read by a split and an unsplit option
@@ -574,10 +573,10 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
   `integration/build-production-webpack-unsplit.test.ts`: "a production %s client bundle without code splitting has no
   dev-only code" (these two count under J3).
 - **Chunk ids paste the absolute file path into a URL and a quoted string** (`#`, `'` and the split marker text in a
-  directory name break builds). SPEC G1, G11. `integration/known-bugs-code-splitter-ssr-builds.test.ts`: "an app in a
-  directory with # in its name builds and preloads a split component"; "an app in a directory whose name contains what
-  split module ids contain builds and preloads a split component"; "an app in a directory with ' in its name builds and
-  preloads a split component".
+  directory name break builds). SPEC G1, G11. `integration/code-splitter-project-path.test.ts`: "an app under a
+  directory with $name is code-split and renders ($bundler)" (`#`, `'`);
+  `integration/known-bugs-code-splitter-ssr-builds.test.ts`: "an app in a directory whose name contains what split
+  module ids contain builds and preloads a split component".
 - **A `let` reassigned in another module becomes a read-only import.** SPEC J2.4, G1.
   `integration/known-bugs-code-splitter-ssr-builds.test.ts`: "a let $name stays writable and the split component reads
   its value".

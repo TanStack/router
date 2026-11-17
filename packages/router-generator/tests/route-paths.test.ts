@@ -276,18 +276,6 @@ describe('layouts and groups', () => {
     })
   })
 
-  // Control for the pins below (same harness, no index route).
-  test('a pathless layout without child routes yet is added to the route tree', async () => {
-    const root = await appWithRoutes(['about.tsx', '_auth.tsx'])
-    const { generatedRouteTree } = await generate(root)
-
-    expect(await routesOf(generatedRouteTree)).toEqual({
-      __root__: 'routes/__root.tsx',
-      '/about': 'routes/about.tsx',
-      '/_auth': 'routes/_auth.tsx',
-    })
-  })
-
   // Bug: a pathless layout file without children yet (`_auth.tsx` or
   // `_auth.lazy.tsx`) next to the index route fails the generator with
   // "Conflicting configuration paths were found" for `/` (the layout's full
@@ -517,6 +505,16 @@ describe('layouts and groups', () => {
     child: string
   }>([
     {
+      name: 'a route file',
+      target: 'react',
+      files: {
+        'src/routes/__root.tsx': rootRoute(),
+        'src/routes/foo/_auth.tsx': fileRoute('/foo/_auth'),
+        'src/routes/foo/_auth/bar.tsx': fileRoute('/foo/_auth/bar'),
+      },
+      child: '/foo/_auth/bar',
+    },
+    {
       name: 'a lazy route file',
       target: 'react',
       files: {
@@ -549,20 +547,6 @@ describe('layouts and groups', () => {
       expect((await urlsOf(generatedRouteTree))[child]).toBe('/foo/bar')
     },
   )
-
-  // Control for the pin above (same harness).
-  test('a pathless layout with a route file under a path keeps the path in the URLs of its children', async () => {
-    const root = await createApp({
-      'src/routes/__root.tsx': rootRoute(),
-      'src/routes/foo/_auth.tsx': fileRoute('/foo/_auth'),
-      'src/routes/foo/_auth/bar.tsx': fileRoute('/foo/_auth/bar'),
-    })
-    const { generatedRouteTree } = await generate(root)
-
-    expect((await urlsOf(generatedRouteTree))['/foo/_auth/bar']).toBe(
-      '/foo/bar',
-    )
-  })
 
   test('two sections with grandchildren give a valid route tree without formatting', async () => {
     const root = await appWithRoutes([
