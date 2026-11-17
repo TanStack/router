@@ -474,6 +474,16 @@ const supported: Array<Shape> = [
   },
 ]
 
+/** Open middleware (`b`: no `.server()`) and a closed one (`a`), with every factory imported. */
+const MWH = `import { createClientOnlyFn, createIsomorphicFn, createMiddleware, createServerFn, createStart } from '@tanstack/react-start'
+const a = createMiddleware({ type: 'function' }).server(({ next }) => next())
+const b = createMiddleware({ type: 'function' }).client(({ next }) => next())
+`
+/** A local function the compiler does not follow values into. */
+const FH = `import { createIsomorphicFn, createMiddleware, createServerFn, createStart } from '@tanstack/react-start'
+const register = (x: unknown) => x
+`
+
 interface Refused extends Shape {
   /** The text the error starts at (its first occurrence in `file`). */
   at: string
@@ -484,6 +494,78 @@ interface Refused extends Shape {
 }
 
 const refused: Array<Refused> = [
+  // ---- values the compiler cannot follow (each refusal's message gives a fix: start-build-message-fixes.test.ts)
+  {
+    name: 'an open middleware returned from an isomorphic implementation',
+    code: `${MWH}const mws = createIsomorphicFn().server(() => [a, b]).client(() => [b])\nexport const startInstance = createStart(() => ({ functionMiddleware: mws() }))`,
+    at: 'b])\nexport',
+  },
+  {
+    name: 'an open middleware composed of others, returned from an isomorphic implementation',
+    code: `${MWH}const both = createMiddleware({ type: 'function' }).middleware([a, b])\nconst mws = createIsomorphicFn().server(() => [a, b]).client(() => [both])\nexport const startInstance = createStart(() => ({ functionMiddleware: mws() }))`,
+    at: 'both])',
+  },
+  {
+    name: 'an open middleware returned from a `createClientOnlyFn` implementation',
+    code: `${MWH}const mws = createClientOnlyFn(() => [b])\nexport const startInstance = createStart(() => ({ functionMiddleware: mws() }))`,
+    at: 'b])\nexport',
+  },
+  {
+    name: 'a function of a `createClientOnlyFn` returning an open middleware',
+    code: `${MWH}const mw = createClientOnlyFn(() => b)\nexport const startInstance = createStart(() => ({ functionMiddleware: [mw()] }))`,
+    at: '() => b)',
+  },
+  {
+    name: 'a client-only isomorphic fn returned from a factory with two returns',
+    code: `${FH}export function pick(on: boolean) {\n  if (on) { return createIsomorphicFn().client(() => 1) }\n  return createIsomorphicFn().client(() => 2)\n}`,
+    at: 'createIsomorphicFn().client(() => 1)',
+  },
+  {
+    name: 'an open middleware returned from a factory with two returns',
+    code: `${MWH}function makeB(on: boolean) {\n  if (!on) { return createMiddleware({ type: 'function' }).client(({ next }) => next()) }\n  return b\n}\nexport const fn = createServerFn().middleware([makeB(true)]).handler(async () => 'x')`,
+    at: "createMiddleware({ type: 'function' }).client(({ next }) => next()) }",
+  },
+  {
+    name: 'a builder in a `const`, passed to a local function',
+    code: `${FH}const base = createServerFn()\nregister(base)\nexport const fn = base.handler(async () => 'x')`,
+    at: 'base)',
+  },
+  {
+    name: 'a builder created inside a local call',
+    code: `${FH}export const fn = (register(createServerFn()) as any).handler(async () => 'x')`,
+    at: 'createServerFn())',
+  },
+  {
+    name: 'a factory passed to a local function',
+    code: `${FH}const make = (f: any) => f()\nexport const fn = make(createServerFn).handler(async () => 'x')`,
+    at: 'createServerFn)',
+  },
+  {
+    name: 'a function returning a builder, passed to a function',
+    code: `${FH}const make = () => createServerFn()\nregister(make)\nexport const fn = make().handler(async () => 'x')`,
+    at: 'make)',
+  },
+  {
+    name: 'an isomorphic fn returning an open middleware, passed to a function',
+    code: `${FH}const a = createMiddleware({ type: 'function' }).server(({ next }) => next())\nconst b = createMiddleware({ type: 'function' }).client(({ next }) => next())\nconst mw = createIsomorphicFn().server(() => a).client(() => b)\nregister(mw)`,
+    at: 'mw)',
+  },
+  {
+    name: "a builder's options passed on",
+    code: `${FH}const base = createServerFn({ method: 'POST' })\nregister(base.options)\nexport const fn = base.handler(async () => 'x')`,
+    at: 'base.options)',
+  },
+  {
+    name: 'a factory returned from a getter',
+    code: `${FH}const own = { get make() { return createServerFn } }\nexport const o = own`,
+    at: 'createServerFn } }',
+  },
+  {
+    name: 'a start instance passed to a function',
+    code: `${FH}const si = createStart(() => ({}))\nregister(si)\nexport const startInstance = si`,
+    at: 'si)',
+  },
+
   // ---- import forms
   {
     name: 'a computed member of the package namespace',

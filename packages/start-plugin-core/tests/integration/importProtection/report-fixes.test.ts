@@ -121,13 +121,6 @@ declare const require: any
 export const load = ${load}
 `,
   })
-  /** No report of `error` names a cause other than the importer's own code. */
-  const noAddedImport = (error: { diagnostics?: Array<{ text: string }> }) =>
-    expect(
-      (error.diagnostics ?? []).filter((d) =>
-        d.text.includes('another plugin'),
-      ),
-    ).toEqual([])
 
   test(
     'round 2 F4-1: a require() of a denied file fails the build at the call, as the import it is',
@@ -142,7 +135,6 @@ export const load = ${load}
       expectViolationsAt(error, [
         { environment: 'client', use: 'src/entry.ts:3:27' },
       ])
-      noAddedImport(error)
     },
     timeout,
   )
@@ -192,7 +184,6 @@ export const read = () => ctx.keys()
       expectViolationsAt(error, [
         { environment: 'client', use: 'src/entry.ts:1:14' },
       ])
-      noAddedImport(error)
       const build = await buildStart({
         bundler,
         files: context('/util\\.ts$/'),

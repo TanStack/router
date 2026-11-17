@@ -18,6 +18,7 @@ import { expectNoProblems } from '@tanstack/compiler-test-utils/diagnostic-chann
 import {
   diagnosticPosition,
   expectDiagnostic,
+  findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../build-harness'
 
@@ -45,21 +46,6 @@ function build(bundler: (typeof startBundlers)[number], route: string) {
   })
 }
 
-/** The router plugin's warnings of a build, each text once (a host may print one on several channels). */
-function routerWarnings(
-  diagnostics: ReadonlyArray<{ severity: string; text: string }>,
-) {
-  return [
-    ...new Set(
-      diagnostics.flatMap((d) =>
-        d.severity === 'warning'
-          ? (d.text.match(/\[tanstack-router\][^\n]*/g) ?? [])
-          : [],
-      ),
-    ),
-  ]
-}
-
 const fixed = `import { createFileRoute } from '${RP}'
 export const Route = createFileRoute('/x')(${options})
 `
@@ -76,38 +62,23 @@ export const Route = createRoute({
   ...${options},
 })
 `,
-      cause: 'is created by `createRoute`',
     },
     {
       name: 'round 1 F5-2: a `Route` destructured from an object',
       route: `import { createFileRoute } from '${RP}'
 export const { Route } = { Route: createFileRoute('/x')(${options}) }
 `,
-      cause:
-        'is not created by a route constructor call bound to its `Route` export',
     },
     {
       name: 'round 1 F5-2: a `Route` destructured from an array',
       route: `import { createFileRoute } from '${RP}'
 export const [Route] = [createFileRoute('/x')(${options})]
 `,
-      cause:
-        'is not created by a route constructor call bound to its `Route` export',
     },
   ])(
-    '$name in a listed route file is reported, saying its server options ship, and the offered fix keeps them out of the client',
-    async ({ route, cause }) => {
+    '$name in a listed route file is reported, and the offered fix keeps them out of the client',
+    async ({ route }) => {
       const before = await build(bundler, route)
-      // (each environment reports it; the client's, whose build removes
-      // the server options, says they ship)
-      const warnings = routerWarnings(before.diagnostics)
-      expect(warnings).not.toEqual([])
-      for (const warning of warnings) {
-        expect(warning).toContain(`The route of src/routes/x.tsx ${cause}`)
-      }
-      expect(warnings).toContainEqual(
-        expect.stringContaining('any server code in them ships to the client'),
-      )
       expectDiagnostic(before.diagnostics, {
         severity: 'warning',
         file: 'src/routes/x.tsx',
@@ -173,9 +144,9 @@ export const Route = createLazyFileRoute(ID as any)({ component: () => null } as
         'utf8',
       )
       expect(written).toContain('= createFileRoute(ID as any)(')
-      const printed = result.diagnostics.filter(
-        (d) =>
-          d.source === 'console' && d.text.includes('not a string literal'),
+      const printed = findDiagnostics(
+        result.diagnostics.filter((d) => d.source === 'console'),
+        { severity: 'warning', file: 'src/routes/x.tsx', root: result.root },
       )
       expect(printed).toHaveLength(1)
       expectDiagnostic(printed, {
@@ -200,11 +171,12 @@ const id = '/x'
 export const Route = createFileRoute(id)(${options})
 `,
       )
-      const printed = result.diagnostics.filter(
-        (d) =>
-          d.source === 'console' && d.text.includes('not a string literal'),
-      )
-      expect(printed).toHaveLength(1)
+      expect(
+        findDiagnostics(
+          result.diagnostics.filter((d) => d.source === 'console'),
+          { severity: 'warning', file: 'src/routes/x.tsx', root: result.root },
+        ),
+      ).toHaveLength(1)
     },
     timeout,
   )

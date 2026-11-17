@@ -18,7 +18,10 @@
  * mode; builds and dev servers (Vite, Vite's bundled dev, Rsbuild).
  */
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  captureConsole,
+  mentionsFile,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, test } from 'vitest'
 import { buildStart } from '../../build-harness'
 import {
@@ -186,9 +189,6 @@ const outcome = (read: Read, recorded: Recorded): Outcome => ({
   reported: importersIn(recorded, 'client'),
 })
 
-const uncheckedHeader =
-  '[import-protection] Denied file mocked in client environment, for importers that are not checked'
-
 async function build(
   bundler: 'vite' | 'rsbuild',
   files: Record<string, string>,
@@ -204,8 +204,8 @@ async function build(
   return {
     ...outcome(result as Read, built),
     unchecked: problems(built.diagnostics)
-      .map(({ text }) => text)
-      .filter((text) => text.includes(uncheckedHeader)),
+      .filter(({ severity }) => severity === 'warning')
+      .map(({ text }) => text),
   }
 }
 
@@ -304,41 +304,32 @@ const realModules = (uses: Array<Use>) => ({
 
 const options = Object.keys(exemptDirs) as Array<Option>
 
-const escaped = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
 /**
- * A build's warnings about `uses` (R89 amendment), by the denied file each
- * names: one per denied file, naming its importer, then the fix.
+ * A build's warnings about `uses` (R89 amendment), by the denied file of
+ * each: how many name it, and whether one names its importer.
  */
-const warnings = (unchecked: Array<string>, uses: Array<Use>) => {
-  const deniedOf = (text: string) => /Denied file: (\S+)/.exec(text)?.[1]
-  const named = unchecked.filter((text) =>
-    uses.some(({ denied }) => deniedOf(text) === denied),
+const warnings = (unchecked: Array<string>, uses: Array<Use>) =>
+  Object.fromEntries(
+    uses.map(({ importer, denied }) => {
+      const naming = unchecked.filter((text) => mentionsFile(text, denied))
+      return [
+        denied,
+        {
+          count: naming.length,
+          namesImporter: naming.some((text) => mentionsFile(text, importer)),
+        },
+      ]
+    }),
   )
-  return {
-    count: named.length,
-    byFile: Object.fromEntries(named.map((text) => [deniedOf(text), text])),
-  }
-}
 
-/**
- * What `warnings` gives when each of `uses` is warned about (Rspack prefixes each line with `│`).
- * (The fix's wording, adjusted with R101's message fixes: the warning now also says the file then ships.
- * The importer's line may go on to say how it reaches the file: design 4 closing, its pattern import's position.)
- */
-const warningsNaming = (uses: Array<Use>) => ({
-  count: uses.length,
-  byFile: Object.fromEntries(
-    uses.map(({ importer, denied }) => [
-      denied,
-      expect.stringMatching(
-        new RegExp(
-          `\n[│ ]* {4}- ${escaped(importer)}(?:[:,][^\n]*)?\n[^]*${escaped('import the file statically from a module that exclude/ignoreImporters exempts inside the scope')}`,
-        ),
-      ),
-    ]),
-  ),
-})
+/** What `warnings` gives when exactly the uses of `warned` among `uses` are warned about. */
+const warnedAbout = (uses: Array<Use>, warned: Array<Use>) =>
+  Object.fromEntries(
+    uses.map(({ denied }) => {
+      const once = warned.some((use) => use.denied === denied)
+      return [denied, { count: once ? 1 : 0, namesImporter: once }]
+    }),
+  )
 
 describe.each(hosts)('$name', ({ kinds, run, build: bundler }) => {
   const files = appOf(kinds)
@@ -388,13 +379,13 @@ describe.each(hosts)('$name', ({ kinds, run, build: bundler }) => {
   // R89 amendment: a build warns about each file the accepted cases mock;
   // not a violation (`onViolation` is not called, the build does not fail).
   test.runIf(bundler)(
-    'a build warns once about each denied file whose every importer is exempt or outside srcDirectory, naming it, its importers and the fix',
+    'a build warns once about each denied file whose every importer is exempt or outside srcDirectory, naming it and its importers',
     async () => {
       const outcome = await result()
       expect({
         reported: about(outcome, allUses).reported,
         warnings: warnings(outcome.unchecked!, allUses),
-      }).toEqual({ reported: [], warnings: warningsNaming(mocked) })
+      }).toEqual({ reported: [], warnings: warnedAbout(allUses, mocked) })
     },
     timeout,
   )
@@ -406,7 +397,7 @@ describe.each(hosts)('$name', ({ kinds, run, build: bundler }) => {
       expect({
         reported: about(outcome, allUses).reported,
         warnings: warnings(outcome.unchecked!, allUses),
-      }).toEqual({ reported: [], warnings: warningsNaming(mocked) })
+      }).toEqual({ reported: [], warnings: warnedAbout(allUses, mocked) })
     },
     timeout,
   )

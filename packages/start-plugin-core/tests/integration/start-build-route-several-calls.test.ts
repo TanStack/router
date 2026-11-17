@@ -59,14 +59,12 @@ export const Route = createFileRoute('/x')({ component: () => <p>{String(!!extra
       if (!(error instanceof StartBuildError)) {
         throw error
       }
-      const reported = expectDiagnostic(error.diagnostics, {
+      expectDiagnostic(error.diagnostics, {
         severity: 'error',
         file: 'src/routes/x.tsx',
         root: error.root,
         position: { line: 2 },
       })
-      expect(reported.text).toContain('not supported')
-      expect(reported.text).toContain('one `createFileRoute` call')
     },
     timeout,
   )

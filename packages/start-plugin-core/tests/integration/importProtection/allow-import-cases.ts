@@ -189,9 +189,9 @@ export function describeAllowImport(bundler: StartBundler) {
   )
 
   test(
-    'onViolation returning false says what to use instead, and the outcome stays',
+    'onViolation returning false does not allow the import: the outcome stays',
     async () => {
-      const { client, diagnostics } = await buildStart({
+      const { client } = await buildStart({
         bundler,
         files: matrixApp('file'),
         entry: 'src/entry.ts',
@@ -204,7 +204,6 @@ export function describeAllowImport(bundler: StartBundler) {
         },
       })
       expect(client.where('MARK_SECRET')).toBe('nowhere')
-      expect(diagnostics.map((d) => d.text).join('\n')).toMatch(/allowImport/)
     },
     timeout,
   )

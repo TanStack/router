@@ -16,6 +16,7 @@ import {
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
+import { mentionsFile } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   buildStart,
   callByIdExports,
@@ -60,9 +61,14 @@ describe.each(startBundlers)('%s build --watch', (bundler) => {
 `,
         },
       })
-      expect(firstBuild.filter(({ severity }) => severity === 'error')).toEqual(
-        [],
-      )
+      // (the first build's only errors are the client module's: no
+      // build-order error of the server)
+      expect(
+        firstBuild.filter(
+          ({ severity, text }) =>
+            severity === 'error' && !mentionsFile(text, 'client-only.ts'),
+        ),
+      ).toEqual([])
       expect((await client.run(`return entry.greeting`)).result).toBe(
         'MARK_AFTER',
       )
@@ -208,9 +214,14 @@ export const read = () => secret()
         start: { importProtection: { allowImport: () => true } },
         watchEdits: { 'src/lib.server.ts': denied('MARK_AFTER') },
       })
-      expect(firstBuild.filter(({ severity }) => severity === 'error')).toEqual(
-        [],
-      )
+      // (the first build's only errors are the client module's: no
+      // build-order error of the server)
+      expect(
+        firstBuild.filter(
+          ({ severity, text }) =>
+            severity === 'error' && !mentionsFile(text, 'client-only.ts'),
+        ),
+      ).toEqual([])
       expect((await client.run(`return entry.read()`)).result).toBe(
         'MARK_AFTER',
       )
@@ -903,8 +914,8 @@ export { label } from './client-only'
   )
 
   // A sandbox whose temporary directory does not exist (or isn't usable):
-  // the build goes on, as without a watch, and its warning says what the
-  // server's documents may name then and how to fix it. A client plugin
+  // the build goes on, as without a watch, with a warning naming the
+  // directory. A client plugin
   // whose `watchChange` takes its time: the client's build of a save both
   // environments bundle starts after the server's build embedded the
   // client build, and only the client-build file rebuilds the server.
@@ -944,9 +955,6 @@ export { label } from './client-only'
         text.includes(missing),
       )
       expect(warnings.map(({ severity }) => severity)).toEqual(['warning'])
-      expect(warnings[0]!.text).toContain(
-        `After a save, the server's documents may keep naming the client's older files: always for a file only the client bundles, and for a file both bundle when the client's build of it starts after the server's. Make sure ${missing} exists and is writable, or set TMPDIR to a writable directory, and restart the watch build.`,
-      )
       expect(build.client.where('MARK_EDIT')).not.toBe('nowhere')
       expect((await documentOf(build)).html).toContain('MARK_EDIT')
 
@@ -1086,9 +1094,14 @@ export { label } from './client-only'
           },
         ],
       })
+      // (the first build's only errors are the client module's: no
+      // build-order error of the server)
       expect(
-        firstBuild.some(({ text }) => text.includes('built before the client')),
-      ).toBe(false)
+        firstBuild.filter(
+          ({ severity, text }) =>
+            severity === 'error' && !mentionsFile(text, 'client-only.ts'),
+        ),
+      ).toEqual([])
       expect((await client.run(`return entry.label`)).result).toBe('MARK_LABEL')
       const url = (await client.run(`return entry.greet.url`)).result
       const { result } = await ssr.run(

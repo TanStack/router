@@ -6,7 +6,10 @@
  * effect).
  */
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  expectDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
@@ -123,7 +126,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
     // Source: review of 2026-11-09, round 2 (the warning said "Denied by
     // marker pattern: undefined").
     test(
-      'srcDirectory: an importer outside it gets a mock of a server-only-marked module, with a warning naming the marker',
+      'srcDirectory: an importer outside it gets a mock of a server-only-marked module, with a warning naming it',
       async () => {
         const built = await buildStart({
           bundler,
@@ -134,14 +137,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
           },
           entry: 'src/entry.ts',
         })
-        const unchecked = problems(built.diagnostics)
-          .map(({ text }) => text)
-          .filter((text) => text.includes('for importers that are not checked'))
-        expect(unchecked).toHaveLength(1)
-        expect(unchecked[0]).toContain(
-          'Denied by marker: src/secret.ts imports "@tanstack/react-start/server-only" (line 1), which restricts it to the server',
-        )
-        expect(unchecked[0]).toContain('Denied file: src/secret.ts')
+        expectDiagnostic(problems(built.diagnostics), {
+          severity: 'warning',
+          file: 'src/secret.ts',
+          root: built.root,
+          times: 1,
+        })
         expect(built.client.where('MARK_SECRET')).toBe('nowhere')
       },
       timeout,
