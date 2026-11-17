@@ -426,19 +426,14 @@ builder (`routerPlannerConfigFrom`) are exported from `@tanstack/router-plugin/p
    to it with `declare module '@tanstack/router-utils/compiler'`, and type it `Planner<typeof NAME>`: `ctx.config`,
    `ctx.prefetched.get(name)`, `setFacts` and `facts.planners[name]` then carry those types, for the planner and for the
    hosts reading its facts. Slot it into the host's planner array at its fixed position.
-4. Add core unit tests with a toy planner if the core needs a new capability (and keep the invariants above), and
-   oracle tests through the public plugins for the behaviour.
+4. Test the behaviour through the public plugins in the consumers' oracle suites (and keep the invariants above).
 
 ## Testing
 
-- Core unit tests: `packages/router-utils/tests/`, one file per core concern (`pipeline`, `placement`, `rewrite`,
-  `orphans`, `cache`, `summary`, `source`, `server-code`, `self-checks`, `heap`, …), driven by toy planners and a
-  `MemoryHost` (`helpers.ts`). Run
-  `@tanstack/router-utils:test:unit`. `placement.test.ts` covers the placement's own mechanisms on toy plans (the
-  toy splitter's `imported` makes a plan a route file): the `shared-writer` fallback, glue and renames, copies and
-  imports of a chunk, the shared module, provenance, statement boundaries, type units, generated units and their
-  anchors; what route files, handler modules and `<Hydrate>` chunks do for real plans is covered by the consumers'
-  suites.
+- Core unit tests: `packages/router-utils/tests/` holds only what no public input reaches (the safety nets
+  `verify`, `server-code`, `self-checks` and the cut check, pure functions, a filesystem assumption) and rows kept as
+  the sole coverage of a path the oracle does not reach yet ([AGENTS.md](../../AGENTS.md)), on toy planners and a
+  `MemoryHost` (`helpers.ts`). Run `@tanstack/router-utils:test:unit`.
 - Behaviour: the oracle in `packages/compiler-test-utils/oracle/` ([README](../../../compiler-test-utils/oracle/README.md),
   [SPEC](../../../compiler-test-utils/oracle/SPEC.md), [KNOWN-BUGS](../../../compiler-test-utils/oracle/KNOWN-BUGS.md)):
   `test:unit` and `test:integration` of router-generator, router-plugin, start-plugin-core and react-start-rsc. Real

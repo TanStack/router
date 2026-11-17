@@ -4,10 +4,8 @@
 // it, and expects the compile to fail; a sound plan of the same module
 // compiles.
 import { describe, expect, it } from 'vitest'
-import { identify, sameFileSpecifier } from '../src/compiler/identity'
-import { verifyPlan } from '../src/compiler/verify'
+import { sameFileSpecifier } from '../src/compiler/identity'
 import { MemoryHost, dedent, envInfo, toySplitPlanner } from './helpers'
-import { engine, rangeOf } from './engine'
 import type { OutputId, PlanContext, Planner } from '../src/compiler'
 
 const CODE = dedent(`
