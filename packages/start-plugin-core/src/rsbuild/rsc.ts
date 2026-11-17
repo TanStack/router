@@ -156,7 +156,7 @@ export function registerRsc(
 
       config.plugins.push({
         apply(compiler: RspackCompiler) {
-          // The dev manifest write count this compiler last rebuilt from
+          // The manifest write count this compiler last rebuilt from (dev)
           let rebuiltAtWriteCount: number | undefined
 
           compiler.hooks.finishMake.tapPromise(
@@ -165,10 +165,10 @@ export function registerRsc(
               // The native RSC ServerPlugin completes the client-entry
               // handoff during its finishMake hook. Rebuild the manifest
               // after that point so it reflects the client build: the
-              // build transform emits the final source instead of the
-              // placeholder, and dev picks up a manifest written while
-              // this compilation was already running (the client and
-              // server compile concurrently).
+              // module is the manifest written from it instead of the
+              // placeholder, also when it was written while this
+              // compilation was already running (the client and server
+              // compile concurrently).
               stage: 10,
             },
             (compilation: RspackCompilationExtended) =>
@@ -192,7 +192,7 @@ export function registerRsc(
                     // only when the manifest changed: rebuilding an
                     // unchanged module can rebuild the whole chunk graph
                     const writeCount =
-                      virtualModuleState.getDevManifestWriteCount()
+                      virtualModuleState.getManifestWriteCount()
                     if (writeCount === rebuiltAtWriteCount) {
                       return
                     }

@@ -171,44 +171,6 @@ export function tanStackStartRsbuild(
       const { getClientBuild } = registerClientBuildCapture(api, getConfig)
 
       // ---------------------------------------------------------------
-      // 4b. Server manifest module generation (build only)
-      //     For ordinary multi-environment builds, Rsbuild can compile the
-      //     server environment after the client environment finishes. Generate
-      //     the final manifest as module source in that phase instead of
-      //     patching emitted server assets afterwards.
-      // ---------------------------------------------------------------
-      if (api.context.action !== 'dev') {
-        // (read when a module is transformed: the virtual paths need the resolved root)
-        const matchesManifestPath = (id: string) =>
-          normalizePath(id) === normalizePath(virtualModuleState.manifestPath)
-
-        api.transform(
-          {
-            test: (id: string) => matchesManifestPath(id),
-            environments: [RSBUILD_ENVIRONMENT_NAMES.server],
-          },
-          ({ code }) => {
-            const clientBuild = getClientBuild()
-
-            if (clientBuild) {
-              return virtualModuleState.generateManifestContent(clientBuild)
-            }
-
-            if (!rscEnabled) {
-              throw new Error(
-                'TanStack Start could not generate the rsbuild server manifest before the client build completed',
-              )
-            }
-
-            // RSC builds cannot express the required client -> server ordering
-            // through MultiCompiler dependencies, so keep the placeholder for
-            // the RSC-only asset-patching fallback below.
-            return code
-          },
-        )
-      }
-
-      // ---------------------------------------------------------------
       // 6. Dev SSR middleware — registered via server.setup in
       //    modifyRsbuildConfig above (returned callback runs after
       //    built-ins but before fallback middleware)
@@ -299,6 +261,10 @@ export function tanStackStartRsbuild(
 
       // ---------------------------------------------------------------
       // 9. After client env compiles — refresh resolver + manifest
+      //    The manifest module's source becomes the client build's
+      //    manifest before the server compiles it (build: step 8's
+      //    ordering), so Rspack's persistent cache keys the module on the
+      //    client build and never restores an earlier build's manifest.
       // ---------------------------------------------------------------
       api.onAfterEnvironmentCompile(({ environment }) => {
         if (environment.name !== RSBUILD_ENVIRONMENT_NAMES.client) return
