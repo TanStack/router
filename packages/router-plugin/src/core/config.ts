@@ -30,7 +30,7 @@ export function groupingsProblem(value: unknown): string | null {
         typeof key !== 'string' ||
         !(splitRouteIdentNodes as ReadonlyArray<string>).includes(key)
       ) {
-        return `${JSON.stringify(key)} is not an option that can be split (${splitRouteIdentNodes.join(', ')})`
+        return `lists ${JSON.stringify(key)}, which is not an option that can be split (${splitRouteIdentNodes.join(', ')})`
       }
       if (seen.has(key)) {
         return `lists "${key}" twice: each option may be in one group only`

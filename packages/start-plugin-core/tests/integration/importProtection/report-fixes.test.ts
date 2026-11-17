@@ -219,12 +219,14 @@ export const both = 1
           entry: 'src/entry.ts',
         }),
       )
-      expectDiagnostic(error.diagnostics, {
+      const conflict = expectDiagnostic(error.diagnostics, {
         severity: 'error',
         file: 'src/both.ts',
         root: error.root,
         position: { line: 2, column: 8 },
       })
+      // (audit-diagnostics P7: the fix is a sentence)
+      expect(conflict.text).toContain('Remove one of the two imports.')
     },
     timeout,
   )

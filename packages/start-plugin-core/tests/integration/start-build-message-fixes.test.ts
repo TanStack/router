@@ -36,8 +36,20 @@ const auth = (role: string) =>
 
 const schemaModule = `export const makeSchema = () => (data: string) => data\n`
 
-/** Refused modules, with the text the refusal points at. */
-const refused = [
+/** What the refusal of a server fn in a function gives as its cause (R162: the function, whatever the code reads). */
+const NESTED =
+  'A server function must be created exactly once, when its module loads: this one is inside a function'
+
+/**
+ * Refused modules, with the text the refusal points at (and, `says`, text
+ * it gives: audit-diagnostics P3).
+ */
+const refused: Array<{
+  name: string
+  module: string
+  at: string
+  says?: string
+}> = [
   {
     name: 'a nested server fn built on a local builder',
     module: `${head}export function make() {
@@ -46,6 +58,7 @@ const refused = [
 }
 `,
     at: 'base.handler',
+    says: `${NESTED} and is built on \`base\`, a local of that function.`,
   },
   {
     name: 'a server fn created in a function',
@@ -54,6 +67,39 @@ const refused = [
 }
 `,
     at: 'createServerFn().handler',
+    says: NESTED,
+  },
+  {
+    name: 'a nested server fn reading a local',
+    module: `${head}export function make(table: string) {
+  return createServerFn().handler(async () => 'MARK_SECRET' + table)
+}
+`,
+    at: 'table)\n}',
+    says: `${NESTED} and reads \`table\`, a local of that function.`,
+  },
+  {
+    name: 'a nested server fn using this',
+    module: `${head}export class Svc {
+  n = 1
+  get() {
+    return createServerFn().handler(async () => 'MARK_SECRET' + this.n)
+  }
+}
+`,
+    at: 'this.n',
+    says: `${NESTED} and uses \`this\` of that function.`,
+  },
+  {
+    name: 'a nested server fn using await',
+    module: `${head}export async function make() {
+  return createServerFn({ method: 'POST' })
+    .validator(await Promise.resolve((d: string) => d))
+    .handler(async () => 'MARK_SECRET')
+}
+`,
+    at: 'await Promise',
+    says: `${NESTED} and uses \`await\` of that function outside its handler.`,
   },
   {
     name: 'a builder assigned after its declaration',
@@ -160,7 +206,7 @@ export const make = () => fn
 describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
   test.each(refused)(
     '$name fails the build at its position',
-    async ({ module, at }) => {
+    async ({ module, at, says }) => {
       const error = await buildStart({
         bundler,
         files: { 'src/schema.ts': schemaModule, 'src/fns.ts': module },
@@ -173,12 +219,15 @@ describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
         throw error
       }
       const position = diagnosticPosition(module, at)
-      expectDiagnostic(error.diagnostics, {
+      const refusal = expectDiagnostic(error.diagnostics, {
         severity: 'error',
         file: 'src/fns.ts',
         root: error.root,
         position,
       })
+      if (says !== undefined) {
+        expect(refusal.text).toContain(says)
+      }
       // the column the user reads is 1-based (R101): the matcher above also
       // takes a 0-based one, which a bundler's own location field may print
       expect(error.diagnostics.map((d) => d.text).join('\n')).toContain(

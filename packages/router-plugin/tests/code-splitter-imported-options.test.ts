@@ -268,6 +268,54 @@ export const options = {
   })
 })
 
+// A warning naming one option of deleteNodes says it in the singular
+// (audit-diagnostics P5; router-only apps configure their own list)
+describe('a warning naming one option of deleteNodes', () => {
+  it.each([
+    {
+      name: 'options imported from another module',
+      code: `${head}import { options } from './-x.options'
+export const Route = createFileRoute('/x')(options)
+`,
+      says: '`ssr` in them is not removed',
+    },
+    {
+      name: 'a spread of imported options',
+      code: `${head}import { options } from './-x.options'
+export const Route = createFileRoute('/x')({ ...options })
+`,
+      says: '`ssr` in it is not removed',
+    },
+    {
+      name: 'a route constructor called without its options call',
+      code: `${head}export const Route = createFileRoute('/x')
+`,
+      says: '`ssr` in its options is not removed',
+    },
+  ])('$name', async ({ code, says }) => {
+    const route = await loadRoute(code, {
+      filename: 'routes/x.tsx',
+      routeId: '/x',
+      deleteNodes: ['ssr'],
+      files: {
+        'routes/-x.options.tsx': `export const options = { ssr: false, component: () => 'MARK_X_PAGE' }\n`,
+      },
+      fresh: true,
+    })
+    try {
+      await route.transform()
+    } catch {
+      // (the route fails in the page: only the report is read)
+    }
+    const warning = expectDiagnostic(await route.diagnostics(), {
+      severity: 'warning',
+      file: route.host.file('routes/x.tsx'),
+      root: route.host.root,
+    })
+    expect(warning.text).toContain(says)
+  })
+})
+
 describe('a component option naming an import', () => {
   // The split chunk re-exports the imported component as it is; nothing of
   // this route's is written onto the foreign module's export (a frozen

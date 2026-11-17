@@ -118,6 +118,15 @@ export interface Fallback {
     | 'shared-writer'
     /** The planning rounds did not settle: every sub-region is kept in place (reported by the pipeline). */
     | 'exhausted'
+  /** `shared-writer`: the first assignment the root's code would make (what a planner's diagnostic names). */
+  write?: SharedWrite
+}
+
+/** An assignment a derived output cannot make: of `sym`, at offset `at`, which the output would import (else assign its copy). */
+export interface SharedWrite {
+  sym: SymbolId
+  at: number
+  imported: boolean
 }
 
 export interface PlacementInput {
@@ -1172,7 +1181,8 @@ export function computePlacement(input: PlacementInput): Placement {
   // would be written, the env module's read); code the env module holds too
   // (a helper both call) writes each side's own copy. One check of the
   // outcome, on the write table every placement shares.
-  const writers = new Set<ClusterId>()
+  // (each writing cluster with its first such assignment)
+  const writers = new Map<ClusterId, SharedWrite>()
   for (const w of graph.writes) {
     const c = w.owner === null ? undefined : graph.clusterOfRegion.get(w.owner)
     const d = clusterOfSym.get(w.sym)
@@ -1190,17 +1200,20 @@ export function computePlacement(input: PlacementInput): Placement {
         // handler, assigns nothing there)
         !graph.viewOf(h).isErasedAt(w.at)
       ) {
-        writers.add(c)
+        const first = writers.get(c)
+        if (first === undefined || w.at < first.at) {
+          writers.set(c, { sym: w.sym, at: w.at, imported: !set.has(d) })
+        }
       }
     }
   }
   const fallbacks: Array<Fallback> = []
   if (writers.size > 0) {
     const fellBack = new Set<RegionId>()
-    const fallBack = (region: RegionId) => {
+    const fallBack = (region: RegionId, write: SharedWrite) => {
       if (!fellBack.has(region)) {
         fellBack.add(region)
-        fallbacks.push({ region, reason: 'shared-writer' })
+        fallbacks.push({ region, reason: 'shared-writer', write })
       }
     }
     for (const o of derived) {
@@ -1208,7 +1221,14 @@ export function computePlacement(input: PlacementInput): Placement {
         continue
       }
       for (const root of rootsOf(o)) {
-        if (![...reachFrom(o.id, [root])].some((c) => writers.has(c))) {
+        let write: SharedWrite | undefined
+        for (const c of reachFrom(o.id, [root])) {
+          const w = writers.get(c)
+          if (w !== undefined && (write === undefined || w.at < write.at)) {
+            write = w
+          }
+        }
+        if (write === undefined) {
           continue
         }
         // the root's place in the source: its claimed text, or the
@@ -1216,17 +1236,17 @@ export function computePlacement(input: PlacementInput): Placement {
         if (root.t === 'gen') {
           for (const r of clusters[graph.clusterOfGen.get(root.id)!]!.regions) {
             if (rewrites.claims.has(r)) {
-              fallBack(r)
+              fallBack(r, write)
             }
           }
         } else if (root.t === 'sym') {
           for (const u of t1.declaringUnits.get(root.id) ?? []) {
             if (units[u]!.kind !== 'type') {
-              fallBack(units[u]!.region)
+              fallBack(units[u]!.region, write)
             }
           }
         } else {
-          fallBack(units[root.id]!.region)
+          fallBack(units[root.id]!.region, write)
         }
       }
     }

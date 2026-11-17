@@ -1652,6 +1652,10 @@ function chainExpression(terminal: Node): Node {
 }
 
 /** Why a server fn's position is refused (`loadPosition`), as the message says it. */
+/** The cause of a refusal of a server fn in a function, whatever it reads (R162); what it reads decides the fix. */
+const NESTED =
+  'A server function must be created exactly once, when its module loads: this one is inside a function'
+
 const REFUSED_POSITION = {
   function:
     'inside a function, so it would be created each time the function runs',
@@ -1971,8 +1975,8 @@ function hoist(
         first.range.start === site.chain.head.start
       return refuse(
         builder
-          ? `A server function nested in a function cannot be compiled when it is built on \`${name}\`, a local of the enclosing function. Define the server function at the module top level, with \`${name}\` there too (export it to share it), or as one chain there: \`export const fn = createServerFn().handler(…)\`.`
-          : `A server function nested in a function cannot be compiled when its code reads \`${name}\`, a local of the enclosing function. Move the server function to the module top level and pass \`${name}\` in its input: declare it with \`.validator()\` and call the server function with \`{ data: … }\`.`,
+          ? `${NESTED} and is built on \`${name}\`, a local of that function. Define the server function at the module top level, with \`${name}\` there too (export it to share it), or as one chain there: \`export const fn = createServerFn().handler(…)\`.`
+          : `${NESTED} and reads \`${name}\`, a local of that function. Define it at the module top level and pass \`${name}\` in its input: declare it with \`.validator()\` and call the server function with \`{ data: … }\`.`,
         first ? first.range : xRange,
         { reads: { name, builder } },
       )
@@ -1984,8 +1988,8 @@ function hoist(
       const what = ownedWord(owned)
       return refuse(
         what === 'await' || what === 'yield'
-          ? `A server function nested in a function cannot be compiled when its code uses \`${what}\` of the enclosing function outside its handler. Move it to the module top level.`
-          : `A server function nested in a function cannot be compiled when its code uses \`${what}\` of the enclosing function. Move it to the module top level and pass what it reads from \`${what}\` in its input: declare it with \`.validator()\` and call the server function with \`{ data: … }\`.`,
+          ? `${NESTED} and uses \`${what}\` of that function outside its handler. Define it at the module top level.`
+          : `${NESTED} and uses \`${what}\` of that function. Define it at the module top level and pass what it reads from \`${what}\` in its input: declare it with \`.validator()\` and call the server function with \`{ data: … }\`.`,
         rangeOf(owned),
       )
     }

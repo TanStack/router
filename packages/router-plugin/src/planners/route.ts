@@ -471,10 +471,15 @@ function reportUnrecognizedRoute(
       fix = `${writeIt}${entry.kind === 'root' ? ' (or `createRootRouteWithContext<Ctx>()({ … })`)' : ''}.`
       break
   }
-  const deleted = ctx.config.deleteNodes.map((k) => `\`${k}\``).join(', ')
+  const deleteNodes = ctx.config.deleteNodes
+  const deleted = deleteNodes.map((k) => `\`${k}\``).join(', ')
+  const removed =
+    deleteNodes.length === 1
+      ? `, and ${deleted} in its options is not removed, so any server code in it ships to the client`
+      : `, and ${deleted} in its options are not removed, so any server code in them ships to the client`
   ctx.diagnostic({
     severity: 'warning',
-    message: `[tanstack-router] The route of ${ctx.displayPath} ${cause}, so it is not code-split or hot-updated${deleted ? `, and ${deleted} in its options are not removed, so any server code in them ships to the client` : ''}. ${fix}`,
+    message: `[tanstack-router] The route of ${ctx.displayPath} ${cause}, so it is not code-split or hot-updated${deleted ? removed : ''}. ${fix}`,
     range: declarator
       ? { start: declarator.start, end: declarator.end }
       : routeExport?.range,

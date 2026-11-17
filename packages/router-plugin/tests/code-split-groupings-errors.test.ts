@@ -28,10 +28,19 @@ async function served(route: RouteApp) {
 
 describe('codeSplitGroupings the route file writes', () => {
   it.each([
-    ['an option that cannot be split', "[['loaderx'], ['component']]"],
-    ['an option listed twice', "[['component'], ['component', 'loader']]"],
-    ['a group that is no array', "['component']"],
-  ])('fail the module at the value: %s', async (_, groupings) => {
+    [
+      'an option that cannot be split',
+      "[['loaderx'], ['component']]",
+      // (audit-diagnostics P4: the sentence the problem completes)
+      'The `codeSplitGroupings` of route.tsx lists "loaderx", which is not an option that can be split',
+    ],
+    [
+      'an option listed twice',
+      "[['component'], ['component', 'loader']]",
+      undefined,
+    ],
+    ['a group that is no array', "['component']", undefined],
+  ])('fail the module at the value: %s', async (_, groupings, says) => {
     const code = `${head}export const Route = createFileRoute('/')({
   codeSplitGroupings: ${groupings},
   loader: () => 'data',
@@ -39,12 +48,15 @@ describe('codeSplitGroupings the route file writes', () => {
 })
 `
     const route = await loadRoute(code, { fresh: true })
-    expectDiagnostic(await served(route), {
+    const error = expectDiagnostic(await served(route), {
       severity: 'error',
       file: 'route.tsx',
       root: route.host.root,
       position: diagnosticPosition(code, groupings),
     })
+    if (says !== undefined) {
+      expect(error.text).toContain(says)
+    }
   })
 
   it('fail the module at an imported value', async () => {

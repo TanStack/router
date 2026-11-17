@@ -29,8 +29,8 @@ export interface OriginalPositions {
  * output from it. A Vue SFC's script: through the input map, with the
  * column of the offset in its statement when the mapped line has the
  * statement's text (a map of whole lines: vue-loader in development);
- * without a map, the line holding the offset's statement when the SFC has
- * its text once. Other files: `code`'s own positions when it is the file's
+ * without a map (or with one that has no segment), the line holding the
+ * offset's statement when the SFC has its text once. Other files: `code`'s own positions when it is the file's
  * text; else through the map (a position in a file it names), and where
  * there is none or it covers none, the statement's line by its text. Else
  * no position.
@@ -38,11 +38,18 @@ export interface OriginalPositions {
 export function originalPositions(
   file: string,
   code: string,
-  inputMap: () => InputSourceMap | null,
+  readMap: () => InputSourceMap | null,
 ): OriginalPositions {
+  // a map without a segment maps nothing: none (Vite's combined map when the
+  // plugin made none, a production build without source maps)
+  let segments: boolean | undefined
+  const inputMap = () => {
+    const map = readMap()
+    return map !== null && (segments ??= /[^;]/.test(map.mappings)) ? map : null
+  }
   const locator = new Locator(code, file, inputMap)
   let text: string | undefined
-  const original = () => (text ??= originalText(file, inputMap))
+  const original = () => (text ??= originalText(file, readMap))
   const reprinted = reprintedLocator(code, original)
   /**
    * Without a map, whether `code` is the file's text (else its positions
@@ -52,7 +59,7 @@ export function originalPositions(
   let ownText: boolean | undefined
   const own = () => {
     if (ownText === undefined) {
-      const read = file.endsWith('.vue') ? '' : readOriginal(file, inputMap)
+      const read = file.endsWith('.vue') ? '' : readOriginal(file, readMap)
       ownText = read === null || read === code
     }
     return ownText

@@ -110,12 +110,14 @@ export const Route = createFileRoute('/posts')({})
   const { diagnostics } = await captureDiagnostics(() =>
     generator.run({ type: 'update', path: posts }),
   )
-  expectDiagnostic(diagnostics, {
+  const warning = expectDiagnostic(diagnostics, {
     severity: 'warning',
     file: posts,
     root,
     position: { line: 1 },
   })
+  // (audit-diagnostics P6: the parser's message ends its sentence)
+  expect(warning.text).toContain('. The route tree keeps')
   expect(routeFiles(generator)).toContain(replaceBackslash(posts))
   expect(await readFile(config.generatedRouteTree, 'utf8')).toBe(tree)
 })

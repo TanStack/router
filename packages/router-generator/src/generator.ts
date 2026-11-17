@@ -930,8 +930,9 @@ export class Generator {
       )
     }
     for (const message of messages) {
+      // (the parser's message may end without a period)
       this.logger.warn(
-        `[tanstack-router] ${message} The route tree keeps this file's last good route until it parses.`,
+        `[tanstack-router] ${message}${/[.!?]$/.test(message) ? '' : '.'} The route tree keeps this file's last good route until it parses.`,
       )
     }
     return {
