@@ -49,6 +49,7 @@ const broken = (shape: Parameters<typeof route>[1]) => route('{', shape)
 describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
   test.for([false, true])(
     'a component chunk the edit breaks keeps the component on the page, the fixing edit patches it in place (error component: %s)',
+    { timeout },
     async (errorComponent, { onTestFinished }) => {
       const shape = { loader: false, errorComponent }
       const app = await openRouteHmrPage({
@@ -79,11 +80,11 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
       )
       expect(fixed.reloaded).toBe(false)
     },
-    timeout,
   )
 
   test.for([true, false])(
     'after an edit that breaks the split chunk holding the loader, the fixing edit shows the component in place (error component: %s)',
+    { timeout },
     async (errorComponent, { onTestFinished }) => {
       const shape = { loader: true, errorComponent }
       const app = await openRouteHmrPage({
@@ -114,6 +115,5 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
       )
       expect(fixed.reloaded).toBe(false)
     },
-    timeout,
   )
 })
