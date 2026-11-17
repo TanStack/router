@@ -11,6 +11,14 @@ import type { AnyRouter } from './router'
 export interface RouteHmrMeta {
   /** The module is a lazy route file: its `Route` holds the options the route of its id loads with its chunk. */
   lazy?: true
+  /**
+   * The module holds none of the route's component options (each is split
+   * into a lazy chunk, or absent): an update of it holds nothing the
+   * framework's refresh patches, so it applies without waiting for the
+   * refresh (`RouteHmrAdapter.settled`). The lazy wrappers still wait for
+   * it when their chunk evaluated again.
+   */
+  noComponents?: true
   /** React + Vite: the module id plugin-react uses and the export names it ignores (the route, the anchor, every module-level binding name the user does not export). */
   refreshExports?: { id: string; anchor: string; exports: Array<string> }
 }
@@ -445,9 +453,10 @@ function onStatus(status: string): void {
 
 /**
  * Refreshes the live route from one evaluation of its route module once the
- * adapter's refresh settled (`refreshRoute`). The live route's lazy wrappers
- * re-import now: a chunk import started after the refresh pass would wait
- * for a pass that isn't coming.
+ * adapter's refresh settled (`refreshRoute`), or at once when the module
+ * holds no component (`RouteHmrMeta.noComponents`). The live route's lazy
+ * wrappers re-import now: a chunk import started after the refresh pass
+ * would wait for a pass that isn't coming.
  */
 function scheduleRefresh(
   routeId: string,
@@ -469,6 +478,10 @@ function scheduleRefresh(
     for (const key of componentKeys) {
       retargetWrapper(live.options[key], next.options[key], adapter)
     }
+  }
+  if (meta.noComponents) {
+    refreshRoute(routeId, route, meta, adapter, known)
+    return
   }
   whenSettled(adapter, () => {
     refreshRoute(routeId, route, meta, adapter, known)
