@@ -6,7 +6,7 @@
  * name is one character away from the generated route tree's
  * (`src/routeTree-gen.ts`) is the file it is, not the client route tree.
  * Built with Start's Vite plugin (Rsbuild as a control: it has no client
- * route tree of its own yet, see known-bugs-route-options.test.ts).
+ * route tree of its own yet, see start-build-route-option-keys.test.ts).
  *
  * An app under a directory whose name carries a `#` (`C#`, `project #2`)
  * compiles like any other (SPEC J4.12, J2.15): its server function
@@ -84,7 +84,7 @@ return { ids, page: await entry.renderPath(entry.getRouter().routeTree, '/') }`,
     // (vite/start-router-plugin/plugin.ts, `clientTreePlugin.load.filter`),
     // the path unescaped, so under a path with `(`, `)` or `+` the
     // expression never matches the file and the client gets the full tree.
-    // Rsbuild: no client route tree at all (known-bugs-route-options.test.ts
+    // Rsbuild: no client route tree at all (start-build-route-option-keys.test.ts
     // "a route with only server handlers is not in the client route tree").
     // Impact: the client bundle ships the server-only routes' entries and
     // modules; a page can navigate to a route that has no page.

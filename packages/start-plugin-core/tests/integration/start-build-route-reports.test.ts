@@ -1,15 +1,14 @@
 /**
- * Route files of a Start app that review round 1 (Fable 5.2, 2026-11-13,
- * findings F5-1 to F5-4) found silent or misreported, on Vite and Rsbuild.
- * A listed route file whose `Route` the compiler does not read is reported,
- * naming the file and saying its server options ship (SPEC J2.8, J2.10, G5),
- * and the fix the report offers makes it a route whose server options stay
- * out of the client (R101); a parenthesised route id is a string literal the
- * generator keeps up; a generator warning prints once per build, also when
- * Start's plugins are passed inline to Vite (the same objects for every
- * config resolution). Review round 2 F5-2: the warning about the id of a
- * constructor the generator repairs prints once, at the id's position in the
- * file as the generator wrote it.
+ * Reports about route files of a Start app, on Vite and Rsbuild. A listed
+ * route file whose `Route` the compiler does not read is reported, naming
+ * the file (SPEC J2.8, J2.10, G5), and the fix the report offers makes it
+ * a route whose server options stay out of the client; a parenthesised
+ * route id is a string literal the generator keeps up; a generator warning
+ * prints once per build, also when Start's plugins are passed inline to
+ * Vite (the same objects for every config resolution); the warning about
+ * the id of a constructor the generator repairs prints once, at the id's
+ * position in the file as the generator wrote it. Source: review rounds 1
+ * and 2 (F5-1 to F5-4).
  */
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -105,7 +104,7 @@ export const [Route] = [createFileRoute('/x')(${options})]
     { name: 'the file’s own', id: `('/x')` },
     { name: 'a stale', id: `('/wrong')` },
   ])(
-    'round 1 F5-3: $name route id in parentheses is a string literal the generator keeps up, with no message',
+    '$name route id in parentheses is a string literal the generator keeps up, with no message',
     async ({ id }) => {
       const result = await build(
         bundler,
@@ -130,7 +129,7 @@ export const Route = createFileRoute(${id})(${options})
   // (the generator repairs `createLazyFileRoute` in a route file into
   // `createFileRoute`, four characters shorter, before the id it reports)
   test(
-    'round 2 F5-2: a non-literal id of a constructor the generator repairs is reported once, at its position in the repaired file',
+    'a non-literal id of a constructor the generator repairs is reported once, at its position in the repaired file',
     async () => {
       const result = await build(
         bundler,
@@ -162,7 +161,7 @@ export const Route = createLazyFileRoute(ID as any)({ component: () => null } as
   // (Vite: the harness passes Start's plugins inline, the same objects to
   // the top-level config resolution and to each environment's)
   test(
-    'round 1 F5-4: a generator warning is printed once per build',
+    'a generator warning is printed once per build',
     async () => {
       const result = await build(
         bundler,

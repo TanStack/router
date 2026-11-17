@@ -292,7 +292,7 @@ export const fn = createServerFn().handler(async () => 'fn')`,
     // is `factory.serverOnly(...)` names none, so it is left untransformed;
     // the same module next to a server fn is compiled (rows above). Same
     // cause as the renamed re-export pin "client builds compile a renamed
-    // createServerOnlyFn re-export ..." in known-bugs-start-compiler.test.ts.
+    // createServerOnlyFn re-export ..." in ../../start-compiler-cases.test.ts.
     // Impact: the client bundle gets the server-only implementation and the
     // modules it imports, and runs it; the client-only mirror runs during
     // SSR.

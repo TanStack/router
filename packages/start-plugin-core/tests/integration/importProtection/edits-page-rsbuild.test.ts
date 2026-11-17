@@ -1,5 +1,5 @@
 /**
- * The edits of v2-edits-page.test.ts (SPEC J6.13, G10) seen
+ * The edits of edits-page.test.ts (SPEC J6.13, G10) seen
  * by a real browser page of a Start app on Rsbuild's dev server (Start's
  * whole Rsbuild plugin, `@rsbuild/plugin-react` for React Refresh, as the
  * hydrate-dev Rsbuild rows): the component uses the server-only
@@ -24,7 +24,7 @@ import {
   recordedSince,
   secretServerModule,
   settledAcrossTurn,
-} from './v2-hosts'
+} from './hosts'
 
 const timeout = 60_000
 const compileTimeout = timeout

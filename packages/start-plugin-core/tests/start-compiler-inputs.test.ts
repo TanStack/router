@@ -6,7 +6,7 @@
  * J4.12, §2.1): the client in a real page, server fns called from the
  * client through the dev server and from server code in a real request.
  * The real builds of the same inputs are in
- * `integration/start-build-v2-*.test.ts`.
+ * `integration/start-build-jsx-and-builders.test.ts` and its neighbours.
  */
 import { describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'

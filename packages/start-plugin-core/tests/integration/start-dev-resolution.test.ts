@@ -1,7 +1,9 @@
 /**
- * Fact-check of external review 2 (claims 6 and 7), on running dev servers.
- * Each pin asserts the correct behaviour and fails on the current compiler
- * (a test without `.fails` is a pin the compiler has since fixed).
+ * What a dev server's compiles resolve, after edits that change no module
+ * the compiler compiled: a `package.json` edit changes what a specifier
+ * resolves to; the input texts the compiler reads differ between
+ * environments; a registry change with a resolver that throws. On running
+ * Vite and Rsbuild dev servers (source: external review 2, claims 5 to 7).
  */
 import { utimes, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -25,7 +27,7 @@ const packageJson = (target: string) =>
 const linkedExports = (target: string) =>
   JSON.stringify({ name: 'acme-lib', type: 'module', exports: { '.': target } })
 
-describe('claim 6: a package.json edit changes what a specifier resolves to', () => {
+describe('a package.json edit changes what a specifier resolves to', () => {
   const app = (first: string) => ({
     'package.json': packageJson(first),
     'src/lib/plain.ts': plain,
@@ -245,7 +247,7 @@ export const via = (Route as any)().handler(async () => 'MARK_VIA')
   )
 })
 
-describe('claim 5: differing input texts in dev', () => {
+describe('differing input texts in dev', () => {
   const route = `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: () => <p>MARK_V1</p> })
 `
@@ -312,7 +314,7 @@ export const Route = createRootRoute({})
   )
 })
 
-describe('claim 7: a registry change with a resolver that throws', () => {
+describe('a registry change with a resolver that throws', () => {
   // The invalidation asks the resolver (after a file event emptied its memo).
   // A rejection there would be unhandled and end a `vite dev` process. A
   // resolver that throws couldn't resolve the specifier (DECISIONS,

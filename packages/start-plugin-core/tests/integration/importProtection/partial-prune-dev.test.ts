@@ -25,7 +25,7 @@ import {
   partialPruneProtection,
   readLeaks,
 } from './partial-prune-cases'
-import { importersIn } from './v2-hosts'
+import { importersIn } from './hosts'
 
 const timeout = 60_000
 const compileTimeout = timeout

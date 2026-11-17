@@ -1,5 +1,5 @@
 /**
- * The edits of v2-edits.test.ts (SPEC J6.13, G10) seen by a
+ * The edits of edits.test.ts (SPEC J6.13, G10) seen by a
  * real browser page of a Start app on Vite's dev server: a component uses
  * the server-only `src/secret.server.ts` only in
  * `createIsomorphicFn().server()` (allowed), then also live (denied), then
@@ -27,7 +27,7 @@ import {
   pageWidget,
   recordedSince,
   secretServerModule,
-} from './v2-hosts'
+} from './hosts'
 
 const timeout = 30_000
 

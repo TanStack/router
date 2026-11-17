@@ -8,7 +8,7 @@ import {
   runRsbuildClient,
   startBrowserRsbuildDevServer as startRsbuildDevServer,
 } from '../importProtection/client-pages'
-import { runRsbuildSsr, ssrNodeOutput } from '../importProtection/v2-hosts'
+import { runRsbuildSsr, ssrNodeOutput } from '../importProtection/hosts'
 import { buildStart } from '../../build-harness'
 import {
   describeValuePrelude,

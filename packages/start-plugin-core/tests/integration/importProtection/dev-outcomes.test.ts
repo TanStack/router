@@ -1,5 +1,5 @@
 /**
- * Known import-protection bugs, continued from known-bugs.test.ts (two files,
+ * Import-protection cases main gets wrong, continued from build-outcomes.test.ts (two files,
  * to keep each within the per-file time budget): Vite dev with `behavior:
  * 'error'`, Rsbuild dev, and the app-level twins of the mock pins. Each test
  * asserts the correct behaviour for a bug main had; the ones today's compiler

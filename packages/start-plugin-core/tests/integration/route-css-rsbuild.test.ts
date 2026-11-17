@@ -6,7 +6,7 @@ import { routeCssSuite } from './route-css-cases'
 
 // Bug: the code splitter keeps the bare CSS import in the route module,
 // which the route tree imports eagerly, so the CSS is in the entry's CSS
-// (see known-bugs-route-css.test.ts).
+// (see route-css.test.ts).
 // Source: #4396; src/core/code-splitter/compilers.ts (router-plugin).
 // Impact: a route's styles apply on every page of the app.
 const routeModuleCss = [

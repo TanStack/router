@@ -251,7 +251,7 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
   )
 
   test(
-    "edits of a module only the lazy module's server fn imports and of its handler reach HTTP calls (R158)",
+    "edits of a module only the lazy module's server fn imports and of its handler reach HTTP calls",
     async () => {
       const server = await servers[bundler]!()
       /** What a client call over HTTP gives, from a fresh page of the route. */
@@ -288,7 +288,7 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
   )
 
   test(
-    'a hoisted server fn a plain file names: an edit of its handler reaches server code and HTTP calls (R159)',
+    'a hoisted server fn a plain file names: an edit of its handler reaches server code and HTTP calls',
     async () => {
       const server = await servers[bundler]!()
       const url = `${server.url}nested-dev`
@@ -337,7 +337,7 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
   )
 
   test(
-    "the step-4 stop's shape: an edit of a module only the lazy module's chain reads reaches HTTP calls, one instance (R158 amendment)",
+    "an edit of a module only the lazy module's chain reads reaches HTTP calls, one instance",
     async () => {
       const server = await servers[bundler]!()
       /** Two calls answered by the `mark` validator, one instance counting on (n, n + 1). */
@@ -357,7 +357,7 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
   )
 
   test(
-    "a server fn on an imported builder only the split component calls: edits of the builder's module and of the handler reach HTTP calls, one instance (R159)",
+    "a server fn on an imported builder only the split component calls: edits of the builder's module and of the handler reach HTTP calls, one instance",
     async () => {
       const server = await servers[bundler]!()
       /** Two calls answered with the builder's `builder` mark and the handler's `handler` mark, one instance counting on. */

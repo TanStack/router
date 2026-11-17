@@ -101,7 +101,7 @@ test.each(handlerRows)(
 // Bug: when the handler passed to `.handler()` is a `createIsomorphicFn()`
 // chain, the chain is compiled first and the caller is never rewritten into
 // an RPC (same cause as the createServerOnlyFn handler pin in
-// known-bugs-start-compiler.test.ts).
+// start-compiler-cases.test.ts).
 // Impact: the server fn cannot be called through an RPC (the client's `fn`
 // has no `url`) and its server implementation never runs: a call from the
 // client and one from server code both resolve to `undefined` (the client

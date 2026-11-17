@@ -632,7 +632,7 @@ return {
   )
 
   test(
-    "SSR (R159): a server fn only a route's split component calls loads nothing at server start; its chain loads with the chunk, as on main, its handler's imports at the first call",
+    "SSR: a server fn only a route's split component calls loads nothing at server start; its chain loads with the chunk, as on main, its handler's imports at the first call",
     async () => {
       const { result } = await build.ssr
         .run(`${callByIdPrelude}const marks = () => ({
@@ -669,7 +669,7 @@ return { atStart, rendered, afterRender, called, afterCall, overHttp, end: marks
   )
 
   test(
-    "SSR (R158): server fns only a route's split component calls share the module's state: chain state 1 2 3 4, validator state, a pinned snapshot, #8656's class and container",
+    "SSR: server fns only a route's split component calls share the module's state: chain state 1 2 3 4, validator state, a pinned snapshot, #8656's class and container",
     async () => {
       const { result } = await build.ssr
         .run(`${callByIdPrelude}const { routeTree } = entry.getRouter()
@@ -701,7 +701,7 @@ return {
   )
 
   test(
-    "SSR (R158 amendment): a server fn only the split component calls stays lazy beside one the route's loader calls; the chunk's caller copy has the server fn's url and method",
+    "SSR: a server fn only the split component calls stays lazy beside one the route's loader calls; the chunk's caller copy has the server fn's url and method",
     async () => {
       const { result } = await build.ssr
         .run(`${callByIdPrelude}const marks = () => ({
@@ -751,7 +751,7 @@ return {
   )
 
   test.each(Object.entries(builderShapes))(
-    "SSR (R159) %s: a server fn only a route's split component calls, on any chain shape, loads its chain (without its validator) with the chunk as on main and the handler's imports at the first call; one executing instance; the caller copy runs the middleware's client half and has the server fn's method and url; production lists its id",
+    "SSR %s: a server fn only a route's split component calls, on any chain shape, loads its chain (without its validator) with the chunk as on main and the handler's imports at the first call; one executing instance; the caller copy runs the middleware's client half and has the server fn's method and url; production lists its id",
     async (k, shape) => {
       const { result } = await build.ssr
         .run(`${callByIdPrelude}const g = globalThis
@@ -832,7 +832,7 @@ return {
   )
 
   test(
-    'SSR (R159): a server fn whose validator assigns an exported binding, only the split component calls it: the component is split on the server; one instance counts 1 2 3 4',
+    'SSR: a server fn whose validator assigns an exported binding, only the split component calls it: the component is split on the server; one instance counts 1 2 3 4',
     async () => {
       const { result } = await build.ssr
         .run(`${callByIdPrelude}const atStart = globalThis.MARK_VW_UI ?? 0
@@ -857,7 +857,7 @@ return { atStart, rendered, afterRender, calls, seen: entry.vwSeen }`)
   )
 
   test(
-    'SSR (R158): a server fn only the client side of an isomorphic fn calls loads nothing at server start (cubby)',
+    'SSR: a server fn only the client side of an isomorphic fn calls loads nothing at server start',
     async () => {
       const { result } = await build.ssr
         .run(`const atStart = globalThis.MARK_CUBBY_CONTRACT ?? 0
@@ -890,7 +890,7 @@ return {
   )
 
   test(
-    "SSR: an HTTP call loads its handler's imports before its middleware runs, as main's provider module does (R158 rule 3)",
+    "SSR: an HTTP call loads its handler's imports before its middleware runs, as main's provider module does",
     async () => {
       const { result } = await build.ssr
         .run(`${callByIdPrelude}const atLoad = globalThis.ORDER ?? []

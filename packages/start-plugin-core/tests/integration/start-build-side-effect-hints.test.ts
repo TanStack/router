@@ -351,7 +351,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
       expect(ssr.name).toBe('MARK_REGISTRY')
       // (How many times the SSR bundle initialises the module is the pin
       // "SSR: a server fn module is initialised once and shares its state
-      // with SSR code" of known-bugs-start-compiler.test.ts: the SSR
+      // with SSR code" of start-build-server-fn-cases.test.ts: the SSR
       // caller and the provider are two instances today.)
       expect(ssr.registries).toEqual(
         expect.arrayContaining(['MARK_PURE_REGISTRY', 'MARK_REGISTRY']),
@@ -393,7 +393,7 @@ return globalThis.__targetInits`)
       rejected: 'rejected',
       ssr: 'MARK_CANARY_HANDLER:"ssr"',
       // Once per SSR instance of the module (the SSR caller and provider
-      // instances are the known-bugs pin cited above).
+      // instances are the regression test cited above).
       inits: expect.arrayContaining(['target']),
     })
   })

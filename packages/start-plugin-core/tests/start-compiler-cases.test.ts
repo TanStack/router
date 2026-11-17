@@ -1,5 +1,5 @@
 /**
- * Known Start compiler bugs. Each test asserts the correct behaviour for a
+ * Start compiler cases main gets wrong. Each test asserts the correct behaviour for a
  * bug main had, which today's compiler fixes (a regression test,
  * oracle/KNOWN-BUGS.md).
  *
@@ -15,8 +15,8 @@
  * build exercises and which a real build does not reproduce (regression
  * tests now: integration/start-compiler-build-export-cache.test.ts); the
  * CommonJS dependency pins (SPEC J4.16), in
- * integration/known-bugs-start-compiler.test.ts; the Vue SFC pin, in
- * integration/known-bugs-start-compiler-vue-sfc.test.ts.
+ * integration/start-build-server-fn-cases.test.ts; the Vue SFC pin, in
+ * integration/start-vue-sfc-script-ts.test.ts.
  */
 
 import { describe, expect, test } from 'vitest'

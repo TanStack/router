@@ -18,7 +18,7 @@
  * re-exports and namespace members are forms SPEC J4.5 lists as recognised:
  * those shapes must work.
  *
- * The compile-level twins: ../known-bugs-start-compiler.test.ts ("the
+ * The compile-level twins: ../start-compiler-cases.test.ts ("the
  * client holds no server code, or the module is rejected at the call", and
  * the placement "a block at the module top level"),
  * ../start-compiler-factories.test.ts (string export names),
@@ -526,7 +526,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // result is member-called (`.bind(null)`), and a server fn in a top-level
   // block (with createServerFn the only factory imported) are left
   // untransformed by the client compiler (in-process pins in
-  // ../known-bugs-start-compiler.test.ts), and the build succeeds.
+  // ../start-compiler-cases.test.ts), and the build succeeds.
   // Source: #8630 pins; SPEC J4.5, J4.6, J4.12.
   // Impact: the server implementation and its server-only module ship in
   // the client bundle and run in the browser.
@@ -592,7 +592,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // call or a createIsomorphicFn chain, that call is compiled first and the
   // caller is never rewritten into an RPC, and the build succeeds without a
   // report (the dev twins: ../createServerFn/handler-scope.test.ts and
-  // ../known-bugs-start-compiler.test.ts).
+  // ../start-compiler-cases.test.ts).
   // Impact: the server fn cannot be called, and the SSR build's server
   // entry throws while it loads ("Cannot create property 'method' on
   // string"), so the production server does not start. (Built on their

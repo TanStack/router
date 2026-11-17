@@ -1,8 +1,8 @@
 // Slow-tier half of this suite: the tests that need a real build. Its
-// in-process tests are in ../known-bugs-start-compiler.test.ts (fast tier),
-// its Vite dev server tests in known-bugs-start-compiler-dev.test.ts.
+// in-process tests are in ../start-compiler-cases.test.ts (fast tier),
+// its Vite dev server tests in start-dev-compile-cases.test.ts.
 /**
- * Known Start compiler bugs. Each test asserts the correct behaviour for a
+ * Start compiler cases main gets wrong. Each test asserts the correct behaviour for a
  * bug main had, which today's compiler fixes (a regression test,
  * oracle/KNOWN-BUGS.md).
  */
@@ -57,7 +57,7 @@ export const db = { users: () => 'users' }
   // Bug: the client output keeps a class only server code uses, with its
   // server-only import (compiler pin "client: a class used by a server fn
   // handler does not load its server-only import" in
-  // ../known-bugs-start-compiler.test.ts). Tree-shaking drops the unused
+  // ../start-compiler-cases.test.ts). Tree-shaking drops the unused
   // class but keeps the import, so the server-only module's top-level code
   // is bundled and runs in the browser.
   // Impact: server-only modules (database clients, SDKs initialised with

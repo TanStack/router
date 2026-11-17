@@ -1,5 +1,5 @@
 /**
- * Known bugs in how Start reads route options from route files. Each test
+ * How Start reads route options from route files, where main is wrong. Each test
  * asserts the correct behaviour for a bug main had, which today's compiler
  * fixes (a regression test, oracle/KNOWN-BUGS.md). Each has a control test
  * that runs the same harness on a case that works.

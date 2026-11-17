@@ -617,7 +617,7 @@ describe('Vite dev: restoring a deleted import', () => {
   // compiled again on the other new file's hot update, and SSR must not keep
   // its failed load. Another plugin of the app transforms the importer slowly
   // in SSR, so that Vite handles the restored file meanwhile.
-  // Source: the v2-edits.test.ts flake (Vite dev), 4 runs in 8 under load.
+  // Source: the edits.test.ts flake (Vite dev), 4 runs in 8 under load.
   test(
     'SSR loads the restored file, restored with another new file',
     async () => {

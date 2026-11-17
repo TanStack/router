@@ -20,7 +20,7 @@ import {
   realMark,
   serverCaseApp,
 } from './partial-prune-cases'
-import { importersIn } from './v2-hosts'
+import { importersIn } from './hosts'
 
 const timeout = 90_000
 

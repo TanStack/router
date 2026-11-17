@@ -123,7 +123,7 @@ export const load = ${load}
   })
 
   test(
-    'round 2 F4-1: a require() of a denied file fails the build at the call, as the import it is',
+    'a require() of a denied file fails the build at the call, as the import it is',
     async () => {
       const error = await rejection(
         buildStart({
@@ -149,7 +149,7 @@ export const load = ${load}
       `createServerFn().handler(async () => require('./lib/db.server').db())`,
     ],
   ])(
-    'round 2 F4-1: the require() inside %s builds, and the client has none of the file',
+    'the require() inside %s builds, and the client has none of the file',
     async (_, load) => {
       const build = await buildStart({
         bundler,
@@ -172,7 +172,7 @@ export const read = () => ctx.keys()
   })
 
   test.runIf(bundler === 'rsbuild')(
-    'round 2 F4-1: a webpack context through a cast of import.meta fails the build at the context, and a narrower regExp leaves the file out',
+    'a webpack context through a cast of import.meta fails the build at the context, and a narrower regExp leaves the file out',
     async () => {
       const error = await rejection(
         buildStart({

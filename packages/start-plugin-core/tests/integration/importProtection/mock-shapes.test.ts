@@ -18,9 +18,9 @@
  * modules in process (`importProtection/analysis.exports.test.ts`,
  * `rewrite.test.ts`, deleted). The names today's mocks miss
  * (reserved words, namespace re-exports, enums, a member read before the
- * import, computed keys) are pinned in `known-bugs.test.ts` ("app-level
+ * import, computed keys) are pinned in `build-outcomes.test.ts` ("app-level
  * twins of the mock pins"); `export *` and `export * as ns` of a denied
- * module are pinned there and in `known-bugs-dev-server.test.ts`.
+ * module are pinned there and in `start-dev-edits.test.ts`.
  */
 import { afterAll, describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
@@ -257,7 +257,7 @@ export { ${oddNames.map((name) => `local as ${JSON.stringify(name)}`).join(', ')
 `,
     names: oddNames,
   },
-  // The enum itself is pinned (known-bugs.test.ts); it must not cost the
+  // The enum itself is pinned (build-outcomes.test.ts); it must not cost the
   // other exports.
   'an enum next to other exports': {
     code: `export enum Color { Red = 'MARK_SECRET' }

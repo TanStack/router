@@ -414,7 +414,7 @@ return describeValue(entry.v, 'MARK_SECRET')`)
   // re-exported with `export *` from a denied package is `undefined`: using
   // it throws instead of reaching a mock.
   // Source: SPEC J6.8, the build row of the dev pin in
-  // known-bugs-dev-server.test.ts.
+  // start-dev-edits.test.ts.
   test(
     'a name re-exported with `export *` from a denied specifier is a safe mock, or the build fails',
     () => expectStarReexportMockedOrBuildFails(starApp('a denied specifier')),

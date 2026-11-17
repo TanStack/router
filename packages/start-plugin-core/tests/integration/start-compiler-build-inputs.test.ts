@@ -484,7 +484,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   )
 })
 
-// The dev edits of known-bugs-start-compiler.test.ts ("dev edits"), in
+// The dev edits of ../start-compiler-cases.test.ts ("dev edits"), in
 // `rsbuild build --watch` (SPEC J4.5, G13): the first build fills the
 // build's resolution caches, then one module a factory comes from is
 // edited, which the module using the factory does not import directly.
@@ -525,7 +525,7 @@ export * as aliased from './edits/aliased/module'
       registerCleanup: (cleanup) => cleanups.push(cleanup),
     }))
 
-  // (The dev server's twin is pinned: known-bugs-start-compiler.test.ts
+  // (The dev server's twin: ../start-compiler-cases.test.ts
   // "a dev edit of a module a re-export chain ends in recompiles its
   // importers".)
   test(

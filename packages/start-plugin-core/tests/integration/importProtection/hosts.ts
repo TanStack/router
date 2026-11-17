@@ -12,7 +12,7 @@ import type { Recorded } from '../../importProtection/start-apps'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 // ---------------------------------------------------------------------------
-// The page app (v2-edits-page.test.ts on Vite, v2-edits-page-rsbuild
+// The page app (edits-page.test.ts on Vite, v2-edits-page-rsbuild
 // .test.ts on Rsbuild): a Start app a browser opens (Start's default server
 // and client entries, the real router over the generated route tree) whose
 // index route renders `Widget` on the client only (`ssr: false`).

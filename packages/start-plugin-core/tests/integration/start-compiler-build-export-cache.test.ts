@@ -1,6 +1,6 @@
 /**
  * Start compiler behaviour that only a production build exercises
- * (build-mode export caches), moved from known-bugs-start-compiler.test.ts
+ * (build-mode export caches), moved from start-build-server-fn-cases.test.ts
  * onto the production mode of the public Start host
  * (`createStartHost({ serve: false })` + `preview()`: `vite build` with
  * Start's plugin of the built `@tanstack/react-start`, Start's preview
@@ -106,7 +106,7 @@ describe('server code in the client bundle', () => {
   // client call resolves to `undefined`).
   // Fix-agnostic: no server-only module in the client build, and every
   // importer's server fn reaches its handler.
-  // Source: known-bugs-start-compiler.test.ts "export * $name do not poison the
+  // Source: start-build-server-fn-cases.test.ts "export * $name do not poison the
   // build-mode export cache" (formerly a pin on the internal compiler; kept as
   // a passing regression test, not reproduced through a real build). The
   // intermittent failure of the diamond row (about 1 in 10 runs, when every

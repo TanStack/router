@@ -1,11 +1,11 @@
 /**
- * Known Start compiler bug in a Vue single-file component, through the
+ * A server fn in a Vue single-file component, through the
  * public Start host (`createStartHost`): a Vue Start app with
  * `tanstackStart()` of `@tanstack/vue-start/plugin/vite` and Vue's own Vite
  * plugin (`@vitejs/plugin-vue`, which serves an SFC's `<script lang="ts">`
  * block in builds as its own module, `Page.vue?vue&type=script&lang.ts`),
  * built with `vite build` (`build()`). Formerly a pin on the internal
- * compiler in known-bugs-start-compiler.test.ts, moved here once
+ * compiler in ../start-compiler-cases.test.ts, moved here once
  * `@vitejs/plugin-vue` became a test-only devDependency.
  */
 import { afterAll, expect, test } from 'vitest'

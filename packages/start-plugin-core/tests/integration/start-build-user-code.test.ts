@@ -222,7 +222,7 @@ ${callByIdExports}`,
   // running the component, the server fn answers its HTTP call, and the
   // client renders the component. (That the route module's top-level code
   // runs once per environment is the goal pinned in
-  // known-bugs-start-compiler.test.ts "SSR: a server fn module is
+  // start-build-server-fn-cases.test.ts "SSR: a server fn module is
   // initialised once ...". An unconditional top-level `window` read is no
   // requirement, SPEC J4.14.)
   test(

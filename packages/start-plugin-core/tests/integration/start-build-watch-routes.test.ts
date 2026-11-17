@@ -46,7 +46,7 @@ test.each([
   { plugins: 'the config file', viteConfigFile: true },
   { plugins: 'inline plugins', viteConfigFile: false },
 ])(
-  'round 2 F3-1: vite build --watch with $plugins: a route file created while the build watches joins the route tree and the rebuild',
+  'vite build --watch with $plugins: a route file created while the build watches joins the route tree and the rebuild',
   async ({ viteConfigFile }) => {
     const build = await buildStart({
       bundler: 'vite',

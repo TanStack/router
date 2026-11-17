@@ -536,7 +536,7 @@ export function Page() {
 
 describe('the split chunk', () => {
   // The server renders the children as JSX text. Multi-line text is pinned
-  // in known-bugs-hydrate.test.ts.
+  // in hydrate-ids-and-captures.test.ts.
   // Source: #8504 hydrate-split-modules.test.ts (exact equality, numeric
   // entities)
   test.each([
@@ -1002,7 +1002,7 @@ export function Page() {
     expect(client.html).toContain('<p>A|d|{"extra":"x"}</p>')
   })
 
-  // A let the children only write is pinned in known-bugs-hydrate.test.ts.
+  // A let the children only write is pinned in hydrate-ids-and-captures.test.ts.
   // Source: Qwik optimizer should_preserve_let_when_migrated_into_segment
   test('client: a module-level let only the children use stays mutable', async () => {
     const { client } = await expectRendersLikeSource(
@@ -1065,7 +1065,7 @@ export function App() {
   // The split code declares its own copy of these declarations, as on main
   // (KNOWN-BUGS, accepted limits: the chunk's second instance); a
   // default-exported function, enums and namespaces are pinned in
-  // known-bugs-hydrate-module-level.test.ts; only the output is asserted here.
+  // hydrate-module-level.test.ts; only the output is asserted here.
   // Source: Qwik optimizer example_exports (#8504
   // hydrate-split-modules.test.ts)
   test('client: exported declarations of every form used by the children render', async () => {

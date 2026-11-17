@@ -44,7 +44,7 @@ import {
   timeout,
   uses,
 } from './served-verdict-app'
-import { settledAcrossTurn } from './v2-hosts'
+import { settledAcrossTurn } from './hosts'
 import type { Plugin } from 'vite'
 
 afterEach(() => {

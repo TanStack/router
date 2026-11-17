@@ -1,9 +1,9 @@
-// Slow-tier part of known-bugs-start-compiler: the Vite dev server tests
+// Slow-tier part of start-compiler-cases: the Vite dev server tests
 // (its own file, so that they run beside the build tests). Builds:
-// known-bugs-start-compiler.test.ts; in-process tests:
-// ../known-bugs-start-compiler.test.ts.
+// start-build-server-fn-cases.test.ts; in-process tests:
+// ../start-compiler-cases.test.ts.
 /**
- * Known Start compiler bugs. Each test asserts the correct behaviour for a
+ * Start compiler cases main gets wrong. Each test asserts the correct behaviour for a
  * bug main had; the ones today's compiler still fails are marked .fails
  * (oracle/KNOWN-BUGS.md, "Remaining pins").
  */

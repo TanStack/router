@@ -23,7 +23,7 @@ import {
   startBrowserStartDevServer as startDevServer,
   startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
 } from './client-pages'
-import { importersIn } from './v2-hosts'
+import { importersIn } from './hosts'
 import type { StartBuild } from '../../build-harness'
 
 const timeout = 60_000

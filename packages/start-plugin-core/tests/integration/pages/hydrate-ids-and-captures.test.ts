@@ -1,5 +1,5 @@
 /**
- * Known `<Hydrate>` split bugs. Each test asserts the correct behaviour for a
+ * `<Hydrate>` splits where main is wrong. Each test asserts the correct behaviour for a
  * bug main had, which today's compiler fixes (a regression test,
  * oracle/KNOWN-BUGS.md).
  *

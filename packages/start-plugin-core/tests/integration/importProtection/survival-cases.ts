@@ -360,7 +360,7 @@ export const cases: Array<WitnessCase> = [
     expect: { 'src/entry.js -> ./secret.server': false },
   },
   {
-    // The pure-annotated corpus of known-bugs.test.ts: the initializer has
+    // The pure-annotated corpus of build-outcomes.test.ts: the initializer has
     // effects but the annotation lets the bundler drop it.
     name: 'an unused import of a module with a pure-annotated effectful initializer (JavaScript)',
     entry: 'src/entry.js',

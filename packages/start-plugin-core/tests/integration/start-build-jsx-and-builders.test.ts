@@ -1,7 +1,7 @@
 /**
  * Two inputs a review found untested, in one real Vite production build through
  * Start's plugin (build-harness.ts), next to their compiler-level rows in
- * start-compiler-v2-inputs.test.ts:
+ * start-compiler-inputs.test.ts:
  * - `.jsx` modules (SPEC §2.1, J4.1, J2.1): a `.jsx` server fn module with
  *   JSX, and a `.jsx` route file whose component is split;
  * - a server fn builder reused as middleware (J4.5, J4.8):

@@ -27,7 +27,7 @@ import {
   startBrowserStartDevServer as startDevServer,
   startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
 } from './client-pages'
-import { importersIn } from './v2-hosts'
+import { importersIn } from './hosts'
 import type { InlineConfig } from 'vite'
 import type { RsbuildConfig } from '@rsbuild/core'
 

@@ -14,7 +14,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
-import { importersIn } from './v2-hosts'
+import { importersIn } from './hosts'
 
 const timeout = 120_000
 

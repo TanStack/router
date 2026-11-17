@@ -1,6 +1,6 @@
 /**
- * Known `<Hydrate>` split bugs of module-level code the split children use
- * (the other pins are in known-bugs-hydrate.test.ts; two files, to keep
+ * `<Hydrate>` splits of module-level code the split children use, where main is wrong
+ * (the other pins are in hydrate-ids-and-captures.test.ts; two files, to keep
  * each within the per-file time budget). Each test asserts the correct
  * behaviour for a bug of main's Babel transform; the Yuku Hydrate planner
  * fixes every one of them (former `.fails` pins, kept as regression tests).

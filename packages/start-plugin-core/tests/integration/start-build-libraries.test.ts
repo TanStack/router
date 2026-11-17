@@ -232,7 +232,7 @@ return report`)
           url: clientRun[name].url,
           sameShared: true,
           // (The SSR caller and provider instances of a server fn module
-          // are the known-bugs pin "SSR: a server fn module is initialised
+          // are the regression test "SSR: a server fn module is initialised
           // once ...".)
           inits: expect.any(Number),
         })

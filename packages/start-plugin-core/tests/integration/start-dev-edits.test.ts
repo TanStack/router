@@ -1,5 +1,5 @@
 /**
- * Known Start bugs that only show on a running dev server, after edits. Each
+ * Start on a running dev server, after edits, where main is wrong. Each
  * test asserts the correct behaviour for a bug main had, which today's
  * compiler fixes (a regression test, oracle/KNOWN-BUGS.md). Each has a
  * control test that runs the same harness on a case that works. The dev

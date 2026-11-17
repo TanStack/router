@@ -202,7 +202,7 @@ export const typedSchema = (_name: string) => (_data: unknown) =>
       // alias reads. The middleware module imports no server fn factory:
       // with one, the Rsbuild SSR build fails to resolve its
       // `createMiddleware` import (pin "a module with a middleware and an
-      // isomorphic fn builds ..." in known-bugs-start-compiler.test.ts).
+      // isomorphic fn builds ..." in start-build-server-fn-cases.test.ts).
       'src/builder-middleware.ts': `import { createMiddleware } from '@tanstack/react-start'
 import { builderMiddlewareValidator } from './deps/builderMiddlewareValidator'
 import { builderMiddlewareServer } from './deps/builderMiddlewareServer'
@@ -583,7 +583,7 @@ const get = async (path) =>
     // the client output with its initializer. The root cause is upstream
     // (babel-dead-code-elimination 1.0.12 counts a `typeof` type query as a
     // reference; no workaround here). Pinned at compiler level in
-    // known-bugs-start-compiler.test.ts.
+    // ../start-compiler-cases.test.ts.
     // Source: router-utils/src/ast.ts:190; fuzzing.
     // Impact: the validators and what they import load eagerly in the
     // client, which never runs them.

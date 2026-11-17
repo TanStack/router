@@ -14,7 +14,7 @@ describe('Vite dev: a separate RSC provider', () => {
   // exports into client references and the handler is not there to run.
   // Impact: a server fn co-located with a client component cannot be called.
   // Source: the compile-level pin in start-plugin-core
-  // tests/known-bugs-start-compiler.test.ts.
+  // tests/start-compiler-cases.test.ts.
   test("a server function of a 'use client' module runs on the server", async () => {
     const server = await startRscDevServer({
       browser: true,

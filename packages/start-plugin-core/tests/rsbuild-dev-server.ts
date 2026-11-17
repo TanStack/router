@@ -328,7 +328,7 @@ export async function withRecordedPage<T>(
  * Not for HMR checks: the document is fulfilled by the
  * test, not served by the dev server, so the page's HMR client never
  * connects. Every caller opens a fresh page per run and reads the code a
- * fresh load gives (e.g. `v2-edits.test.ts` after an edit); a check of a
+ * fresh load gives (e.g. `edits.test.ts` after an edit); a check of a
  * hot update needs a document the dev server serves (ctu
  * `rsbuild-plugin-host` `runClient`, or the `browser` mode of ctu's Rsbuild
  * dev server, which serves `index.html`).

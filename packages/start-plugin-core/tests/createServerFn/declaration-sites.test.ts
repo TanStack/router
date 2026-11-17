@@ -106,14 +106,14 @@ test.each(literalPlacements)(
 
 // Loosened regression, paired with the pins "with another Start factory
 // imported, a server fn in $name works or is rejected at the call" of
-// known-bugs-start-compiler.test.ts (main's rejection has no position).
+// start-compiler-cases.test.ts (main's rejection has no position).
 // Next to another Start factory, these placements never ship the handler
 // to the client: each environment rejects the code with a compile error
 // or serves a working module without the handler, and calling the server
 // fn from the client and from server code runs it. With createServerFn
 // alone, and for declarators below the top level (in a function, a switch
 // case or a top-level block), they are pinned in
-// known-bugs-start-compiler.test.ts.
+// start-compiler-cases.test.ts.
 test.each(placements.filter((placement) => !placement.declarator))(
   'next to another Start factory, a server fn in $name does not ship its handler to the client',
   async ({ code, read }) => {

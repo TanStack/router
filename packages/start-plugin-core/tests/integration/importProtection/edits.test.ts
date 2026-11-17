@@ -13,7 +13,7 @@
  * - `src/server-side.ts` uses the client-only `src/widget.client.ts` in
  *   `.client()` (the server never runs it), then also in `liveWidget`.
  * Vite and Rsbuild dev servers with Start's whole plugin; the same edits
- * seen by a browser page are in v2-edits-page.test.ts.
+ * seen by a browser page are in edits-page.test.ts.
  */
 import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, describe, expect, test } from 'vitest'
@@ -34,7 +34,7 @@ import {
   runRsbuildSsr,
   settledAcrossTurn,
   ssrNodeOutput,
-} from './v2-hosts'
+} from './hosts'
 
 const timeout = 60_000
 const compileTimeout = timeout
