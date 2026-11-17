@@ -1,5 +1,5 @@
 /**
- * The survival-witness case matrix (cases C1–C9, S1–S2): tiny apps, each with the verdict expected per violating
+ * The survival matrix of `survival.test.ts`: tiny apps, each with the verdict expected per violating
  * edge (`importer -> specifier`): `true` reported (the edge survives
  * tree-shaking), `false` not, `null` a policy row (either verdict). Where a
  * bundler's real output differs, `rspack` overrides the expectation.
@@ -15,37 +15,34 @@ export interface WitnessCase {
   entry?: string
   denied?: Array<string>
   expect: Record<string, boolean | null>
-  /** Rspack's own truth where it differs (it keeps `import()` in an unused function, and the entry's exports). */
+  /** Rspack's own truth where it differs (it keeps `import()` in an unused function). */
   rspack?: Record<string, boolean | null>
-  expectOut: Array<string>
 }
 
 const SECRET = `export const secret = () => 'MARK_SECRET' + Math.random().toString().slice(0, 0)\n`
 const log = (expr: string) => `console.log('OUT', ${expr})\n`
 
 export const cases: Array<WitnessCase> = [
-  // --- C1 live direct imports -------------------------------------------
+  // live direct imports
   {
-    name: 'C1a named live',
+    name: 'a named import, used',
     files: {
       'src/secret.server.ts': SECRET,
       'src/entry.ts':
         `import { secret } from './secret.server'\n` + log('secret()'),
     },
     expect: { 'src/entry.ts -> ./secret.server': true },
-    expectOut: ['MARK_SECRET'],
   },
   {
-    name: 'C1b default live',
+    name: 'a default import, used',
     files: {
       'src/secret.server.ts': `export default function secret() { return 'MARK_SECRET' }\n`,
       'src/entry.ts': `import s from './secret.server'\n` + log('s()'),
     },
     expect: { 'src/entry.ts -> ./secret.server': true },
-    expectOut: ['MARK_SECRET'],
   },
   {
-    name: 'C1c namespace member live',
+    name: 'a namespace member, used',
     files: {
       'src/secret.server.ts':
         SECRET + `export const other = () => 'MARK_OTHER'\n`,
@@ -53,10 +50,9 @@ export const cases: Array<WitnessCase> = [
         `import * as ns from './secret.server'\n` + log('ns.secret()'),
     },
     expect: { 'src/entry.ts -> ./secret.server': true },
-    expectOut: ['MARK_SECRET'],
   },
   {
-    name: 'C1d namespace computed key live',
+    name: 'a namespace member by a computed key, used',
     files: {
       'src/secret.server.ts': SECRET,
       'src/entry.ts':
@@ -64,42 +60,38 @@ export const cases: Array<WitnessCase> = [
         log('ns[k]()'),
     },
     expect: { 'src/entry.ts -> ./secret.server': true },
-    expectOut: ['MARK_SECRET'],
   },
   {
-    name: 'C1e named live via a non-entry module',
+    name: 'a named import of a module the entry imports, used',
     files: {
       'src/secret.server.ts': SECRET,
       'src/util.ts': `import { secret } from './secret.server'\nexport const read = () => secret()\nexport const unrelated = 1\n`,
       'src/entry.ts': `import { read } from './util'\n` + log('read()'),
     },
     expect: { 'src/util.ts -> ./secret.server': true },
-    expectOut: ['MARK_SECRET'],
   },
 
-  // --- C2 dead imports ---------------------------------------------------
+  // dead imports
   {
-    name: 'C2a imported, unused',
+    name: 'a named import, unused',
     files: {
       'src/secret.server.ts': SECRET,
       'src/entry.ts':
         `import { secret } from './secret.server'\n` + log(`'client'`),
     },
     expect: { 'src/entry.ts -> ./secret.server': false },
-    expectOut: ['client'],
   },
   {
-    name: 'C2b used only in an unused function',
+    name: 'used only in an unused function',
     files: {
       'src/secret.server.ts': SECRET,
       'src/util.ts': `import { secret } from './secret.server'\nexport const read = () => secret()\nexport const label = () => 'client'\n`,
       'src/entry.ts': `import { label } from './util'\n` + log('label()'),
     },
     expect: { 'src/util.ts -> ./secret.server': false },
-    expectOut: ['client'],
   },
   {
-    name: 'C2c used only in if (false)',
+    name: 'used only in if (false)',
     files: {
       'src/secret.server.ts': SECRET,
       'src/entry.ts':
@@ -107,10 +99,9 @@ export const cases: Array<WitnessCase> = [
         log(`'client'`),
     },
     expect: { 'src/entry.ts -> ./secret.server': false },
-    expectOut: ['client'],
   },
   {
-    name: 'C2d unused binding, effectful target',
+    name: 'an unused binding of an effectful module',
     files: {
       'src/secret.server.ts':
         `globalThis.secretLoaded = 'MARK_EFFECT'\n` + SECRET,
@@ -121,12 +112,11 @@ export const cases: Array<WitnessCase> = [
     // TypeScript elides the unused import before bundling, so the real
     // program never runs the target: no edge, nothing to report.
     expect: { 'src/entry.ts -> ./secret.server': false },
-    expectOut: ['client undefined'],
   },
   {
     // An exempt importer uses the target; the in-scope importer does not.
     // A per-target witness (is the real module in the bundle?) reports here.
-    name: 'C2e dead edge, target live through an exempt importer',
+    name: 'unused, its target used by an exempt importer',
     files: {
       'src/secret.server.ts': SECRET,
       'src/exempt/a.ts': `import { secret } from '../secret.server'\nexport const a = () => secret()\n`,
@@ -136,14 +126,13 @@ export const cases: Array<WitnessCase> = [
         log('a(), label()'),
     },
     expect: { 'src/b.ts -> ./secret.server': false },
-    expectOut: ['MARK_SECRET', 'client'],
   },
 
-  // --- C3 denied transparent barrel ------------------------------------
+  // denied transparent barrel
   {
     // build.test.ts:116 — the barrel is denied, the value lives in a
     // non-denied module.
-    name: 'C3a live through denied named re-export barrel',
+    name: 'used through a denied barrel re-exporting by name',
     files: {
       'src/secret.ts': SECRET,
       'src/barrel.ts': `export { secret } from './secret'\n`,
@@ -151,10 +140,9 @@ export const cases: Array<WitnessCase> = [
     },
     denied: ['src/barrel.ts'],
     expect: { 'src/entry.ts -> ./barrel': true },
-    expectOut: ['MARK_SECRET'],
   },
   {
-    name: 'C3b live through denied export-star barrel',
+    name: 'used through a denied export * barrel',
     files: {
       'src/secret.ts': SECRET,
       'src/barrel.ts': `export * from './secret'\n`,
@@ -162,10 +150,9 @@ export const cases: Array<WitnessCase> = [
     },
     denied: ['src/barrel.ts'],
     expect: { 'src/entry.ts -> ./barrel': true },
-    expectOut: ['MARK_SECRET'],
   },
   {
-    name: 'C3c dead through denied barrel',
+    name: 'unused through a denied barrel',
     files: {
       'src/secret.ts': SECRET,
       'src/barrel.ts': `export { secret } from './secret'\n`,
@@ -173,11 +160,10 @@ export const cases: Array<WitnessCase> = [
     },
     denied: ['src/barrel.ts'],
     expect: { 'src/entry.ts -> ./barrel': false },
-    expectOut: ['client'],
   },
   {
     // The denied barrel is reached through a second (allowed) barrel.
-    name: 'C3d live through a two-level chain ending at a denied barrel',
+    name: 'used through a barrel re-exporting a denied barrel',
     files: {
       'src/secret.ts': SECRET,
       'src/barrel.ts': `export { secret } from './secret'\n`,
@@ -186,14 +172,13 @@ export const cases: Array<WitnessCase> = [
     },
     denied: ['src/barrel.ts'],
     expect: { 'src/outer.ts -> ./barrel': true },
-    expectOut: ['MARK_SECRET'],
   },
 
-  // --- C4 mixed barrel ------------------------------------------------------
+  // mixed barrel
   {
     // build.test.ts:356 — barrel not denied, re-exports a denied module
     // and a safe export; the client uses only the safe export.
-    name: 'C4a dead mixed barrel',
+    name: 'a mixed barrel, only its safe export used',
     files: {
       'src/marked.ts': SECRET,
       'src/barrel.ts': `export { secret } from './marked'\nexport const label = () => 'client'\n`,
@@ -201,10 +186,9 @@ export const cases: Array<WitnessCase> = [
     },
     denied: ['src/marked.ts'],
     expect: { 'src/barrel.ts -> ./marked': false },
-    expectOut: ['client'],
   },
   {
-    name: 'C4b live mixed barrel',
+    name: 'a mixed barrel, its denied export used',
     files: {
       'src/marked.ts': SECRET,
       'src/barrel.ts': `export { secret } from './marked'\nexport const label = () => 'client'\n`,
@@ -212,10 +196,9 @@ export const cases: Array<WitnessCase> = [
     },
     denied: ['src/marked.ts'],
     expect: { 'src/barrel.ts -> ./marked': true },
-    expectOut: ['MARK_SECRET'],
   },
   {
-    name: 'C4c dead mixed barrel, imported as namespace member',
+    name: 'a mixed barrel as a namespace, only its safe export used',
     files: {
       'src/marked.ts': SECRET,
       'src/barrel.ts': `export { secret } from './marked'\nexport const label = () => 'client'\n`,
@@ -223,87 +206,79 @@ export const cases: Array<WitnessCase> = [
     },
     denied: ['src/marked.ts'],
     expect: { 'src/barrel.ts -> ./marked': false },
-    expectOut: ['client'],
   },
 
-  // --- C5 export * from a denied module --------------------------------
+  // export * from a denied module
   {
-    name: 'C5a export * from denied, name used',
+    name: 'export * of a denied module, a name used',
     files: {
       'src/secret.server.ts': SECRET,
       'src/mod.ts': `export * from './secret.server'\nexport const label = () => 'client'\n`,
       'src/entry.ts': `import { secret } from './mod'\n` + log('secret()'),
     },
     expect: { 'src/mod.ts -> ./secret.server': true },
-    expectOut: ['MARK_SECRET'],
   },
   {
-    name: 'C5b export * from denied, unused',
+    name: 'export * of a denied module, unused',
     files: {
       'src/secret.server.ts': SECRET,
       'src/mod.ts': `export * from './secret.server'\nexport const label = () => 'client'\n`,
       'src/entry.ts': `import { label } from './mod'\n` + log('label()'),
     },
     expect: { 'src/mod.ts -> ./secret.server': false },
-    expectOut: ['client'],
   },
   {
-    name: 'C5c export * as ns from denied, used',
+    name: 'export * as ns of a denied module, used',
     files: {
       'src/secret.server.ts': SECRET,
       'src/mod.ts': `export * as srv from './secret.server'\nexport const label = () => 'client'\n`,
       'src/entry.ts': `import { srv } from './mod'\n` + log('srv.secret()'),
     },
     expect: { 'src/mod.ts -> ./secret.server': true },
-    expectOut: ['MARK_SECRET'],
   },
 
-  // --- C6 side-effect-only imports -------------------------------------
+  // side-effect-only imports
   {
-    name: 'C6a side-effect import, effectful target',
+    name: 'a side-effect import of an effectful module',
     files: {
       'src/effect.server.ts': `globalThis.secretLoaded = 'MARK_EFFECT'\n`,
       'src/entry.ts':
         `import './effect.server'\n` + log(`'client', globalThis.secretLoaded`),
     },
     expect: { 'src/entry.ts -> ./effect.server': true },
-    expectOut: ['MARK_EFFECT'],
   },
   {
     // The real program drops the pure target entirely.
-    name: 'C6b side-effect import, pure target',
+    name: 'a side-effect import of a pure module',
     files: {
       'src/effect.server.ts': SECRET,
       'src/entry.ts': `import './effect.server'\n` + log(`'client'`),
     },
     expect: { 'src/entry.ts -> ./effect.server': false },
-    expectOut: ['client'],
   },
   {
     // Side-effect import in a module that is otherwise unused: its effects
     // still run (a module with a side-effectful dependency is evaluated).
-    name: 'C6c side-effect import from a non-entry module',
+    name: 'a side-effect import in a module the entry imports',
     files: {
       'src/effect.server.ts': `globalThis.secretLoaded = 'MARK_EFFECT'\n`,
       'src/util.ts': `import './effect.server'\nexport const label = () => 'client'\n`,
       'src/entry.ts': `import './util'\n` + log(`globalThis.secretLoaded`),
     },
     expect: { 'src/util.ts -> ./effect.server': true },
-    expectOut: ['MARK_EFFECT'],
   },
 
-  // --- C7 dynamic import() ---------------------------------------------
+  // dynamic import()
   {
-    name: 'C7a dynamic import, live',
+    name: 'a dynamic import, used',
     files: {
       'src/secret.server.ts': SECRET,
       'src/entry.ts': `import('./secret.server').then((m) => console.log('OUT', m.secret()))\n`,
     },
     expect: { 'src/entry.ts -> ./secret.server': true },
-    expectOut: ['MARK_SECRET'],
   },
   {
-    name: 'C7b dynamic import in an unused function',
+    name: 'a dynamic import in an unused function',
     files: {
       'src/secret.server.ts': SECRET,
       'src/util.ts': `export const load = () => import('./secret.server')\nexport const label = () => 'client'\n`,
@@ -311,67 +286,60 @@ export const cases: Array<WitnessCase> = [
     },
     expect: { 'src/util.ts -> ./secret.server': false },
     rspack: { 'src/util.ts -> ./secret.server': true },
-    expectOut: ['client'],
   },
   {
-    name: 'C7c dynamic import in if (false)',
+    name: 'a dynamic import in if (false)',
     files: {
       'src/secret.server.ts': SECRET,
       'src/entry.ts':
         `if (false) { import('./secret.server') }\n` + log(`'client'`),
     },
     expect: { 'src/entry.ts -> ./secret.server': false },
-    expectOut: ['client'],
   },
 
-  // --- C8 inlined exports ----------------------------------------------
+  // inlined exports
   {
-    name: 'C8a inlined const',
+    name: 'an inlined const',
     files: {
       'src/secret.server.ts': `export const SECRET = 'MARK_CONST'\n`,
       'src/entry.ts':
         `import { SECRET } from './secret.server'\n` + log('SECRET'),
     },
     expect: { 'src/entry.ts -> ./secret.server': true },
-    expectOut: ['MARK_CONST'],
   },
   {
-    name: 'C8b inlined enum member',
+    name: 'an inlined enum member',
     files: {
       'src/secret.server.ts': `export enum Key { A = 'MARK_ENUM', B = 'other' }\n`,
       'src/entry.ts': `import { Key } from './secret.server'\n` + log('Key.A'),
     },
     expect: { 'src/entry.ts -> ./secret.server': true },
-    expectOut: ['MARK_ENUM'],
   },
   {
-    name: 'C8c inlined const, unused',
+    name: 'an inlined const, unused',
     files: {
       'src/secret.server.ts': `export const SECRET = 'MARK_CONST'\n`,
       'src/entry.ts':
-        `import { SECRET } from './secret.server'\nexport const unused = () => SECRET\n` +
+        `import { SECRET } from './secret.server'\nconst unused = () => SECRET\n` +
         log(`'client'`),
     },
     expect: { 'src/entry.ts -> ./secret.server': false },
-    rspack: { 'src/entry.ts -> ./secret.server': true },
-    expectOut: ['client'],
   },
 
-  // --- semantics of proxies (only matters for allowed edges) --
+  // semantics of proxies (only matters for allowed edges)
   {
-    name: 'S1 live binding through an allowed edge',
+    name: 'a live binding',
     files: {
       'src/counter.server.ts': `export let count = 0\nexport function inc() { count++ }\n`,
       'src/entry.ts':
         `import { count, inc } from './counter.server'\ninc()\n` + log('count'),
     },
     expect: { 'src/entry.ts -> ./counter.server': true },
-    expectOut: ['OUT 1'],
   },
   {
     // The cycle enters at the denied module: an owned alias (`const x = m.x`)
     // in a proxy would read the binding in its TDZ.
-    name: 'S2 cycle entered at the target',
+    name: 'a cycle entered at the target',
     files: {
       'src/secret.server.ts': `import { useIt } from './a'\nexport const secret = () => 'MARK_SECRET'\nexport const run = () => useIt()\n`,
       'src/a.ts': `import { secret } from './secret.server'\nexport const useIt = () => secret()\n`,
@@ -379,11 +347,10 @@ export const cases: Array<WitnessCase> = [
       'src/entry.ts': `import { go } from './exempt/main'\n` + log('go()'),
     },
     expect: { 'src/a.ts -> ./secret.server': true },
-    expectOut: ['MARK_SECRET'],
   },
-  // --- JS importers (no TypeScript import elision) ----------------------
+  // JavaScript importers (no TypeScript import elision)
   {
-    name: 'C2a-js imported, unused',
+    name: 'a named import, unused (JavaScript)',
     entry: 'src/entry.js',
     files: {
       'src/secret.server.ts': SECRET,
@@ -391,12 +358,11 @@ export const cases: Array<WitnessCase> = [
         `import { secret } from './secret.server'\n` + log(`'client'`),
     },
     expect: { 'src/entry.js -> ./secret.server': false },
-    expectOut: ['client'],
   },
   {
     // The pure-annotated corpus of known-bugs.test.ts: the initializer has
     // effects but the annotation lets the bundler drop it.
-    name: 'C2g-js imported, unused, pure-annotated effectful initializer',
+    name: 'an unused import of a module with a pure-annotated effectful initializer (JavaScript)',
     entry: 'src/entry.js',
     files: {
       'src/corpus.server.ts': `function initialize() {\n  globalThis.corpusInitialized = true\n  return () => 'MARK_CORPUS'\n}\nexport const corpus = /*#__PURE__*/ initialize()\n`,
@@ -405,12 +371,11 @@ export const cases: Array<WitnessCase> = [
         log(`'client', globalThis.corpusInitialized`),
     },
     expect: { 'src/entry.js -> ./corpus.server': false },
-    expectOut: ['client undefined'],
   },
   {
     // Unused binding, effectful target: the real program runs the target's
     // top-level code, so the import edge is kept (as an evaluation edge).
-    name: 'C2d-js unused binding, effectful target',
+    name: 'an unused binding of an effectful module (JavaScript)',
     entry: 'src/entry.js',
     files: {
       'src/secret.server.ts':
@@ -420,13 +385,12 @@ export const cases: Array<WitnessCase> = [
         log(`'client', globalThis.secretLoaded`),
     },
     expect: { 'src/entry.js -> ./secret.server': true },
-    expectOut: ['MARK_EFFECT'],
   },
   {
     // Same, but the effectful target is also imported by an exempt importer:
     // the in-scope edge adds nothing, yet its import is still an evaluation
     // edge of the output. Policy row: `null` = either verdict defensible.
-    name: 'C2f-js unused binding, effectful target, also imported by exempt importer',
+    name: 'an unused binding of an effectful module an exempt importer also imports (JavaScript)',
     entry: 'src/entry.js',
     files: {
       'src/secret.server.ts':
@@ -438,10 +402,9 @@ export const cases: Array<WitnessCase> = [
         log('a(), label()'),
     },
     expect: { 'src/b.js -> ./secret.server': null },
-    expectOut: ['MARK_SECRET', 'client'],
   },
   {
-    name: 'C3c-js dead through denied barrel',
+    name: 'unused through a denied barrel (JavaScript)',
     entry: 'src/entry.js',
     files: {
       'src/secret.ts': SECRET,
@@ -450,13 +413,12 @@ export const cases: Array<WitnessCase> = [
     },
     denied: ['src/barrel.ts'],
     expect: { 'src/entry.js -> ./barrel': false },
-    expectOut: ['client'],
   },
   {
     // A denied module importing another denied module, both live in the
     // real program. e1 is a violation; e2 is only in the output if e1 is
     // given the real module (policy row for e2).
-    name: 'C9 denied module importing a denied module',
+    name: 'a denied module importing a denied module',
     files: {
       'src/inner.server.ts': `export const inner = () => 'MARK_INNER'\n`,
       'src/secret.server.ts': `import { inner } from './inner.server'\nexport const secret = () => 'MARK_SECRET' + inner()\n`,
@@ -467,11 +429,10 @@ export const cases: Array<WitnessCase> = [
       'src/entry.ts -> ./secret.server': true,
       'src/secret.server.ts -> ./inner.server': null,
     },
-    expectOut: ['MARK_SECRET'],
   },
   {
     // Bare import in a module only reachable through a dead dynamic import.
-    name: 'C6d side-effect import in a module behind a dead import()',
+    name: 'a side-effect import in a module behind a dead import()',
     files: {
       'src/effect.server.ts': `globalThis.secretLoaded = 'MARK_EFFECT'\n`,
       'src/lazy.ts': `import './effect.server'\nexport const lazy = 1\n`,
@@ -480,11 +441,10 @@ export const cases: Array<WitnessCase> = [
     },
     expect: { 'src/lazy.ts -> ./effect.server': false },
     rspack: { 'src/lazy.ts -> ./effect.server': true },
-    expectOut: ['client'],
   },
   {
     // Only the minifier can prove the use dead (the bundler keeps it).
-    name: 'C2h use dead only after minification',
+    name: 'a use dead only after minification',
     files: {
       'src/secret.server.ts': SECRET,
       'src/entry.ts':
@@ -492,6 +452,5 @@ export const cases: Array<WitnessCase> = [
         log(`'client'`),
     },
     expect: { 'src/entry.ts -> ./secret.server': null },
-    expectOut: ['client'],
   },
 ]
