@@ -1,40 +1,56 @@
 /**
- * Start builder and factory shapes on the client (SPEC J4.5, J4.12, G5): a
- * shape is either compiled (no server code, nothing server-only loaded, the
- * server fn becomes an RPC stub) or the client build fails at the use the
- * compiler cannot follow. Server environments compile every shape the
- * client refuses: recognition is the same in every environment, and a
- * server keeps its code. Through `compileModule` and an in-memory host.
+ * Start builder and factory shapes on the client (SPEC J4.5, J4.12, G5),
+ * through the public Start host (`./start-host`: a Vite dev server with
+ * `tanstackStart()`, a real page, real requests). A shape either compiles
+ * (the page loads nothing server-only and gets none of the server code, a
+ * server fn answers the page's call through the server) or the client
+ * refuses the module at the use the compiler cannot follow. The server
+ * compiles every shape the client refuses (recognition is the same in every
+ * environment, and a server keeps its code), unless every environment
+ * refuses it. A parameter that reaches server code by being read is a
+ * warning at the parameter, on the client only.
  */
-import { describe, expect, it } from 'vitest'
-import { parseSync } from 'vite'
-import { startRecognizer } from '../../src/compiler/recognizer'
-import { START_ENV, startEnvPlanner } from '../../src/planners'
-import { MemoryHost, envInfo, ssrEnv } from './memory-host'
-import type { StartEnvConfig } from '../../src/planners'
-import type { EnvInfo } from '@tanstack/router-utils/compiler'
+import { describe, expect, test } from 'vitest'
+import {
+  diagnosticPosition,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import {
+  callFromClient,
+  compileError,
+  expectCompileError,
+  serveCase,
+  useStartHost,
+} from './regression-helpers'
+import type { StartCase } from './regression-helpers'
 
-const ROOT = '/app'
-const FILE = '/app/src/module.tsx'
-const planners = [startEnvPlanner()]
+/**
+ * No import protection (its dev mock would hide a leaked import from the
+ * loads) and `verbatimModuleSyntax` (without it, the TypeScript transform
+ * drops imports nothing reads after the compiler and hides leaks).
+ */
+const host = useStartHost({
+  start: { importProtection: { enabled: false } },
+  files: {
+    'tsconfig.json': JSON.stringify({
+      compilerOptions: {
+        target: 'ES2022',
+        module: 'ESNext',
+        moduleResolution: 'Bundler',
+        jsx: 'react-jsx',
+        strict: true,
+        verbatimModuleSyntax: true,
+      },
+    }),
+  },
+})
+
 const DB = `export const db = { x: () => 'from the server', y: () => 'more from the server' }\n`
 const P = `import { createServerFn, createMiddleware, createIsomorphicFn, createServerOnlyFn, createStart } from '@tanstack/react-start'
 import { db } from './db.server'
 `
 const MW = `const mw = createMiddleware({ type: 'function' }).server(async ({ next }) => next())\n`
-
-const config: StartEnvConfig = {
-  framework: 'react',
-  root: ROOT,
-  providerSeparate: false,
-  idMode: 'dev',
-}
-const compileConfig = { configKey: 'cfg', perPlanner: { [START_ENV]: config } }
-
-const clientEnvs: Array<[string, EnvInfo]> = [
-  ['client (dev)', envInfo()],
-  ['client (build)', envInfo({ mode: 'build' })],
-]
 
 interface Shape {
   name: string
@@ -42,37 +58,26 @@ interface Shape {
   files?: Record<string, string>
   /** Server code the client must not hold (default `db.x()`). */
   body?: string
+  /** The server fn the page calls (default `module.fn` when the module exports `fn` and calls `.handler()`). */
+  call?: string
+  /** What that call answers (default `'from the server'`). */
+  returns?: unknown
 }
 
-function hostOf(shape: Shape): MemoryHost {
-  return new MemoryHost(
-    { [FILE]: shape.code, '/app/src/db.server.ts': DB, ...shape.files },
-    { recognizer: startRecognizer() },
-  )
-}
+/** Code the compiler does not see into: a module of opaque exports. */
+const SOME_LIB = `const opaque: any = (globalThis as any).someLib ?? ((x: unknown) => x)
+export const withRetry = opaque
+export const wrap = opaque
+export const Form = opaque
+export class QueryCache { constructor(readonly options: unknown) {} }
+`
 
-async function compileAll(shape: Shape, env: EnvInfo) {
-  const host = hostOf(shape)
-  const outputs = new Map<string, { code: string; errors: Array<number> }>()
-  for (const file of [FILE, ...Object.keys(shape.files ?? {})]) {
-    const out = await host.compile(file, planners, {
-      env,
-      config: compileConfig,
-    })
-    outputs.set(file, {
-      code: out?.code ?? host.files[file]!,
-      errors: (out?.diagnostics ?? [])
-        .filter((d) => d.severity === 'error')
-        .map((d) => d.range?.start ?? -1),
-    })
-  }
-  return outputs
-}
-
-function expectValid(code: string): void {
-  const { errors } = parseSync('module.tsx', code, { sourceType: 'module' })
-  expect(errors.map((e) => e.message)).toEqual([])
-}
+const caseFiles = (shape: Shape) => ({
+  'db.server.ts': DB,
+  'some-lib.ts': SOME_LIB,
+  ...shape.files,
+  'module.tsx': shape.code,
+})
 
 const supported: Array<Shape> = [
   // ---- import forms
@@ -91,24 +96,24 @@ const supported: Array<Shape> = [
   {
     name: 'an app re-export',
     files: {
-      '/app/src/f.ts': `export { createServerFn } from '@tanstack/react-start'\n`,
+      'f.ts': `export { createServerFn } from '@tanstack/react-start'\n`,
     },
     code: `import { createServerFn } from './f'\nimport { db } from './db.server'\nexport const fn = createServerFn().handler(async () => db.x())`,
   },
   {
     name: 'an app `export *`',
-    files: { '/app/src/f.ts': `export * from '@tanstack/react-start'\n` },
+    files: { 'f.ts': `export * from '@tanstack/react-start'\n` },
     code: `import { createServerFn } from './f'\nimport { db } from './db.server'\nexport const fn = createServerFn().handler(async () => db.x())`,
   },
   {
     name: 'a member of an app namespace',
-    files: { '/app/src/f.ts': `export * from '@tanstack/react-start'\n` },
+    files: { 'f.ts': `export * from '@tanstack/react-start'\n` },
     code: `import * as F from './f'\nimport { db } from './db.server'\nexport const fn = F.createServerFn().handler(async () => db.x())`,
   },
   {
     name: 'a const alias in another module',
     files: {
-      '/app/src/f.ts': `import { createServerFn } from '@tanstack/react-start'\nexport const csf = createServerFn\n`,
+      'f.ts': `import { createServerFn } from '@tanstack/react-start'\nexport const csf = createServerFn\n`,
     },
     code: `import { csf } from './f'\nimport { db } from './db.server'\nexport const fn = csf().handler(async () => db.x())`,
   },
@@ -119,16 +124,9 @@ const supported: Array<Shape> = [
   {
     name: 'the factory as the default export of an app module',
     files: {
-      '/app/src/f.ts': `import { createServerFn } from '@tanstack/react-start'\nexport default createServerFn\n`,
+      'f.ts': `import { createServerFn } from '@tanstack/react-start'\nexport default createServerFn\n`,
     },
     code: `import csf from './f'\nimport { db } from './db.server'\nexport const fn = csf().handler(async () => db.x())`,
-  },
-  {
-    name: 'a string export name re-export',
-    files: {
-      '/app/src/f.ts': `export { createServerFn as 'csf' } from '@tanstack/react-start'\n`,
-    },
-    code: `import { 'csf' as csf } from './f'\nimport { db } from './db.server'\nexport const fn = csf().handler(async () => db.x())`,
   },
   {
     name: 'a let alias never written',
@@ -152,13 +150,13 @@ const supported: Array<Shape> = [
   },
   {
     name: 'the factory destructured from an app namespace',
-    files: { '/app/src/f.ts': `export * from '@tanstack/react-start'\n` },
+    files: { 'f.ts': `export * from '@tanstack/react-start'\n` },
     code: `import * as F from './f'\nimport { db } from './db.server'\nconst { createServerFn } = F\nexport const fn = createServerFn().handler(async () => db.x())`,
   },
   {
     name: 'the factory destructured from the package namespace by another module',
     files: {
-      '/app/src/f.ts': `import * as Start from '@tanstack/react-start'\nexport const { createServerFn } = Start\n`,
+      'f.ts': `import * as Start from '@tanstack/react-start'\nexport const { createServerFn } = Start\n`,
     },
     code: `import { createServerFn } from './f'\nimport { db } from './db.server'\nexport const fn = createServerFn().handler(async () => db.x())`,
   },
@@ -178,7 +176,7 @@ const supported: Array<Shape> = [
   {
     name: 'a builder another module exports',
     files: {
-      '/app/src/b.ts': `import { createServerFn } from '@tanstack/react-start'\nexport const authed = createServerFn().middleware([])\n`,
+      'b.ts': `import { createServerFn } from '@tanstack/react-start'\nexport const authed = createServerFn().middleware([])\n`,
     },
     code: `import { authed } from './b'\nimport { db } from './db.server'\nexport const fn = authed.handler(async () => db.x())`,
   },
@@ -193,12 +191,13 @@ const supported: Array<Shape> = [
   {
     name: 'a called builder another module exports',
     files: {
-      '/app/src/b.ts': `import { createServerFn } from '@tanstack/react-start'\nexport const createAuthServerFn = createServerFn().middleware([])\n`,
+      'b.ts': `import { createServerFn } from '@tanstack/react-start'\nexport const createAuthServerFn = createServerFn().middleware([])\n`,
     },
     code: `import { createAuthServerFn } from './b'\nimport { db } from './db.server'\nexport const fn = createAuthServerFn().handler(async () => db.x())`,
   },
   {
     name: 'one builder handled twice',
+    call: 'module.a',
     code: `${P}const base = createServerFn()\nexport const a = base.handler(async () => db.x())\nexport const b = base.handler(async () => db.y())`,
     body: 'db.y()',
   },
@@ -231,8 +230,8 @@ const supported: Array<Shape> = [
   {
     name: 'a ternary of builders another module exports',
     files: {
-      '/app/src/b.ts': `import { createServerFn } from '@tanstack/react-start'\nimport { csf } from './f'\nexport const base = Math.random() > 2 ? csf({ method: 'POST' }) : createServerFn()\n`,
-      '/app/src/f.ts': `export { createServerFn as csf } from '@tanstack/react-start'\n`,
+      'b.ts': `import { createServerFn } from '@tanstack/react-start'\nimport { csf } from './f'\nexport const base = Math.random() > 2 ? csf({ method: 'POST' }) : createServerFn()\n`,
+      'f.ts': `export { createServerFn as csf } from '@tanstack/react-start'\n`,
     },
     code: `import { base } from './b'\nimport { db } from './db.server'\nexport const fn = base.handler(async () => db.x())`,
   },
@@ -244,7 +243,7 @@ const supported: Array<Shape> = [
   {
     name: 'an arrow factory of another module',
     files: {
-      '/app/src/b.ts': `import { createServerFn } from '@tanstack/react-start'\nexport const make = () => createServerFn({ method: 'POST' })\n`,
+      'b.ts': `import { createServerFn } from '@tanstack/react-start'\nexport const make = () => createServerFn({ method: 'POST' })\n`,
     },
     code: `import { make } from './b'\nimport { db } from './db.server'\nexport const fn = make().handler(async () => db.x())`,
   },
@@ -259,7 +258,7 @@ const supported: Array<Shape> = [
   {
     name: 'a factory with statements before its single return, in another module',
     files: {
-      '/app/src/b.ts': `import { createServerFn } from '@tanstack/react-start'\nexport function make() {\n  console.log('make')\n  return createServerFn()\n}\n`,
+      'b.ts': `import { createServerFn } from '@tanstack/react-start'\nexport function make() {\n  console.log('make')\n  return createServerFn()\n}\n`,
     },
     code: `import { make } from './b'\nimport { db } from './db.server'\nexport const fn = make().handler(async () => db.x())`,
   },
@@ -290,12 +289,12 @@ const supported: Array<Shape> = [
   // ---- wrappers and values passed around
   {
     name: 'a server fn passed to an unknown function',
-    code: `${P}import { withRetry } from 'some-lib'\nexport const fn = withRetry(createServerFn().handler(async () => db.x()))`,
+    code: `${P}import { withRetry } from './some-lib'\nexport const fn = withRetry(createServerFn().handler(async () => db.x()))`,
   },
   {
     name: 'createServerOnlyFn of an imported implementation',
     files: {
-      '/app/src/impl.server.ts': `export const impl = () => 'from the server'\n`,
+      'impl.server.ts': `export const impl = () => 'from the server'\n`,
     },
     code: `import { createServerOnlyFn } from '@tanstack/react-start'\nimport { impl } from './impl.server'\nexport const read = createServerOnlyFn(impl)`,
     body: './impl.server',
@@ -303,31 +302,35 @@ const supported: Array<Shape> = [
   // ---- containers of complete values, exports
   {
     name: 'a server fn as an object property',
+    call: 'module.api.getX',
     code: `${P}export const api = { getX: createServerFn().handler(async () => db.x()) }`,
   },
   {
     name: 'a server fn in an array',
+    call: 'module.fns[0]',
     code: `${P}export const fns = [createServerFn().handler(async () => db.x())]`,
   },
   {
     name: 'a server fn as the default export',
+    call: 'module.default',
     code: `${P}export default createServerFn().handler(async () => db.x())`,
   },
   {
     name: 'a builder as the default export, handled by an importer',
     files: {
-      '/app/src/b.ts': `import { createServerFn } from '@tanstack/react-start'\nexport default createServerFn({ method: 'POST' })\n`,
+      'b.ts': `import { createServerFn } from '@tanstack/react-start'\nexport default createServerFn({ method: 'POST' })\n`,
     },
     code: `import base from './b'\nimport { db } from './db.server'\nexport const fn = base.handler(async () => db.x())`,
   },
   {
     name: 'a server fn assigned to an object property',
+    call: 'module.reg.getX',
     code: `${P}export const reg: any = {}\nreg.getX = createServerFn().handler(async () => db.x())`,
   },
   {
     name: '`export { base as default }` of a builder',
     files: {
-      '/app/src/b.ts': `import { createServerFn } from '@tanstack/react-start'\nconst base = createServerFn()\nexport { base as default }\n`,
+      'b.ts': `import { createServerFn } from '@tanstack/react-start'\nconst base = createServerFn()\nexport { base as default }\n`,
     },
     code: `import base from './b'\nimport { db } from './db.server'\nexport const fn = base.handler(async () => db.x())`,
   },
@@ -368,14 +371,14 @@ const supported: Array<Shape> = [
   {
     name: 'createMiddleware destructured from a start instance of another module',
     files: {
-      '/app/src/s.ts': `import { createStart } from '@tanstack/react-start'\nexport const startInstance = createStart(() => ({}))\n`,
+      's.ts': `import { createStart } from '@tanstack/react-start'\nexport const startInstance = createStart(() => ({}))\n`,
     },
     code: `import { startInstance } from './s'\nimport { db } from './db.server'\nconst { createMiddleware } = startInstance\nexport const m = createMiddleware().server(async ({ next }: any) => { db.x(); return next() })`,
   },
   {
     name: 'a start instance of another module',
     files: {
-      '/app/src/s.ts': `import { createStart } from '@tanstack/react-start'\nexport const startInstance = createStart(() => ({}))\n`,
+      's.ts': `import { createStart } from '@tanstack/react-start'\nexport const startInstance = createStart(() => ({}))\n`,
     },
     code: `import { startInstance } from './s'\nimport { db } from './db.server'\nexport const m = startInstance.createMiddleware().server(async ({ next }) => { db.x(); return next() })`,
   },
@@ -390,12 +393,13 @@ const supported: Array<Shape> = [
   {
     name: 'a middleware’s `.client()` in one module and `.server()` in another',
     files: {
-      '/app/src/b.ts': `import { createMiddleware } from '@tanstack/react-start'\nexport const base = createMiddleware({ type: 'function' }).client(async ({ next }) => next())\n`,
+      'b.ts': `import { createMiddleware } from '@tanstack/react-start'\nexport const base = createMiddleware({ type: 'function' }).client(async ({ next }) => next())\n`,
     },
     code: `import { base } from './b'\nimport { db } from './db.server'\nexport const m = base.server(async ({ next }) => { db.x(); return next() })`,
   },
   {
     name: 'a middleware inline in `.middleware([…])`',
+    returns: 'ok',
     code: `${P}export const fn = createServerFn().middleware([createMiddleware({ type: 'function' }).server(async ({ next }) => { db.x(); return next() })]).handler(async () => 'ok')`,
   },
   {
@@ -470,38 +474,6 @@ const supported: Array<Shape> = [
   },
 ]
 
-describe('builder shapes the client compiles', () => {
-  it.each(supported)('$name', async (shape) => {
-    const body = shape.body ?? 'db.x()'
-    for (const [label, env] of clientEnvs) {
-      const outputs = await compileAll(shape, env)
-      for (const [file, out] of outputs) {
-        expect({ label, file, errors: out.errors }).toEqual({
-          label,
-          file,
-          errors: [],
-        })
-        expectValid(out.code)
-      }
-      const module = outputs.get(FILE)!.code
-      expect({
-        label,
-        holdsServerCode: module.includes(body),
-        loadsServerOnly: [...outputs.values()].some((o) =>
-          /\.server['"]/.test(o.code),
-        ),
-      }).toEqual({ label, holdsServerCode: false, loadsServerOnly: false })
-      if (/\.handler(\?\.)?\(/.test(shape.code)) {
-        expect(module).toContain('@tanstack/react-start/client-rpc')
-      }
-    }
-    const ssr = await compileAll(shape, ssrEnv)
-    for (const [file, out] of ssr) {
-      expect({ file, errors: out.errors }).toEqual({ file, errors: [] })
-    }
-  })
-})
-
 interface Refused extends Shape {
   /** The text the error starts at (its first occurrence in `file`). */
   at: string
@@ -526,7 +498,8 @@ const refused: Array<Refused> = [
   {
     name: 'a factory destructured with a default from the package namespace',
     code: `import * as S from '@tanstack/react-start'\nimport { db } from './db.server'\nconst { createServerFn = S.createServerFn } = S\nexport const fn = createServerFn().handler(async () => db.x())`,
-    at: 'createServerFn = S',
+    // (at the default value: the factory the default reads)
+    at: 'S.createServerFn } = S',
   },
   {
     name: 'the rest of the package namespace',
@@ -631,11 +604,11 @@ const refused: Array<Refused> = [
   {
     name: 'a factory of another module taking the handler',
     files: {
-      '/app/src/b.ts': `import { createServerFn } from '@tanstack/react-start'\nexport const make = (h: () => Promise<string>) => createServerFn().handler(h)\n`,
+      'b.ts': `import { createServerFn } from '@tanstack/react-start'\nexport const make = (h: () => Promise<string>) => createServerFn().handler(h)\n`,
     },
     code: `import { make } from './b'\nimport { db } from './db.server'\nexport const fn = make(async () => db.x())`,
     at: 'h)\n',
-    file: '/app/src/b.ts',
+    file: 'b.ts',
     everyEnv: true,
   },
   // ---- wrappers, values passed to unknown code
@@ -647,11 +620,11 @@ const refused: Array<Refused> = [
   {
     name: 'a wrapper of another module passing its argument to createServerOnlyFn',
     files: {
-      '/app/src/w.ts': `import { createServerOnlyFn } from '@tanstack/react-start'\nexport const serverOnly = <T extends () => unknown>(fn: T) => createServerOnlyFn(fn)\n`,
+      'w.ts': `import { createServerOnlyFn } from '@tanstack/react-start'\nexport const serverOnly = <T extends () => unknown>(fn: T) => createServerOnlyFn(fn)\n`,
     },
     code: `import { serverOnly } from './w'\nimport { db } from './db.server'\nexport const read = serverOnly(() => db.x())`,
     at: 'fn)\n',
-    file: '/app/src/w.ts',
+    file: 'w.ts',
   },
   {
     name: 'an isomorphic HOF',
@@ -690,7 +663,7 @@ const refused: Array<Refused> = [
   },
   {
     name: 'a builder passed to an unknown function',
-    code: `${P}import { wrap } from 'some-lib'\nexport const fn = wrap(createServerFn()).handler(async () => db.x())`,
+    code: `${P}import { wrap } from './some-lib'\nexport const fn = wrap(createServerFn()).handler(async () => db.x())`,
     at: 'createServerFn())',
   },
   {
@@ -710,12 +683,12 @@ const refused: Array<Refused> = [
   },
   {
     name: 'a builder as a JSX prop',
-    code: `${P}import { Form } from 'some-lib'\nexport const Page = () => <Form fn={createServerFn()} />`,
+    code: `${P}import { Form } from './some-lib'\nexport const Page = () => <Form fn={createServerFn()} />`,
     at: 'createServerFn()}',
   },
   {
     name: 'a client-only isomorphic fn passed to unknown code',
-    code: `${P}import { QueryCache } from 'some-lib'\nexport const cache = new QueryCache({ onError: createIsomorphicFn().client(() => 'client') })`,
+    code: `${P}import { QueryCache } from './some-lib'\nexport const cache = new QueryCache({ onError: createIsomorphicFn().client(() => 'client') })`,
     at: 'createIsomorphicFn().client',
   },
   {
@@ -752,11 +725,11 @@ const refused: Array<Refused> = [
   {
     name: 'a builder another module exports inside an object',
     files: {
-      '/app/src/b.ts': `import { createServerFn } from '@tanstack/react-start'\nexport const builders = { post: createServerFn({ method: 'POST' }) }\n`,
+      'b.ts': `import { createServerFn } from '@tanstack/react-start'\nexport const builders = { post: createServerFn({ method: 'POST' }) }\n`,
     },
     code: `import { builders } from './b'\nimport { db } from './db.server'\nexport const fn = builders.post.handler(async () => db.x())`,
     at: `createServerFn({ method: 'POST' })`,
-    file: '/app/src/b.ts',
+    file: 'b.ts',
   },
   {
     name: 'a middleware builder in an object',
@@ -776,32 +749,10 @@ const refused: Array<Refused> = [
   },
 ]
 
-describe('builder shapes the client refuses at the use', () => {
-  it.each(refused)('$name', async (shape) => {
-    const file = shape.file ?? FILE
-    const host = hostOf(shape)
-    const at = host.files[file]!.indexOf(shape.at)
-    expect(at).toBeGreaterThanOrEqual(0)
-    for (const [label, env] of clientEnvs) {
-      const outputs = await compileAll(shape, env)
-      expect({ label, errors: outputs.get(file)!.errors }).toEqual({
-        label,
-        errors: expect.arrayContaining([at]),
-      })
-    }
-    const ssr = await compileAll(shape, ssrEnv)
-    if (!shape.everyEnv) {
-      for (const [f, out] of ssr) {
-        expect({ file: f, errors: out.errors }).toEqual({ file: f, errors: [] })
-      }
-    }
-  })
-})
-
 interface Warned extends Shape {
   /** The parameter the warning starts at. */
   at: string
-  /** What the client still holds of the call's argument. */
+  /** Text of the call's argument the client still holds. */
   ships?: string
 }
 
@@ -810,14 +761,14 @@ const warned: Array<Warned> = [
     name: 'a middleware factory reading its parameter in `.server()`',
     code: `${P}const requireRole = (role: string) => createMiddleware().server(async ({ next }) => { if (db.x() !== role) throw new Error('no'); return next() })\nexport const fn = createServerFn().middleware([requireRole('admin')]).handler(async () => 'ok')`,
     at: 'role: string',
-    ships: `'admin'`,
+    ships: 'admin',
   },
   {
     name: 'an options parameter read in `.server()`',
     code: `${P}const guard = (options: { rules: string }) => createMiddleware().server(async ({ next }) => { db.y(options.rules); return next() })\nexport const m = guard({ rules: 'RULES' })`,
     at: 'options:',
     body: 'db.y',
-    ships: `'RULES'`,
+    ships: 'RULES',
   },
   {
     name: 'an isomorphic factory reading its parameter in `.server()`',
@@ -854,48 +805,95 @@ const unwarned: Array<Shape> = [
   },
 ]
 
-describe('a parameter that reaches server code by being read', () => {
-  const diagnosticsOf = async (shape: Shape, env: EnvInfo) => {
-    const out = await hostOf(shape).compile(FILE, planners, {
-      env,
-      config: compileConfig,
-    })
-    const of = (severity: string) =>
-      (out?.diagnostics ?? [])
-        .filter((d) => d.severity === severity && d.by === START_ENV)
-        .map((d) => d.range?.start)
-    return {
-      code: out?.code ?? '',
-      errors: of('error'),
-      warnings: of('warning'),
-    }
-  }
-
-  it.each(warned)('warns once at the definition: $name', async (shape) => {
-    const at = shape.code.indexOf(shape.at)
-    for (const [label, env] of clientEnvs) {
-      const { code, errors, warnings } = await diagnosticsOf(shape, env)
-      expect({ label, errors, warnings }).toEqual({
-        label,
-        errors: [],
-        warnings: [at],
-      })
-      expect(code).not.toContain(shape.body ?? 'db.x()')
-      if (shape.ships) {
-        expect(code).toContain(shape.ships)
+describe('builder shapes the client compiles', () => {
+  test.each(supported)('$name', async (shape) => {
+    const served = await serveCase(await host(), caseFiles(shape))
+    for (const file of Object.keys(shape.files ?? {})) {
+      for (const environment of ['client', 'ssr'] as const) {
+        expect(
+          await compileError(served, environment, file),
+          `${environment}: ${file}`,
+        ).toBeUndefined()
       }
     }
-    expect((await diagnosticsOf(shape, ssrEnv)).warnings).toEqual([])
+    const body = shape.body ?? 'db.x()'
+    expectNotLoaded(await served.loads(), [
+      body.startsWith('./') ? body : './db.server',
+    ])
+    expect(served.code.client).not.toContain(body)
+    const call =
+      shape.call ??
+      (/export const fn = /.test(shape.code) &&
+      /\.handler(\?\.)?\(/.test(shape.code)
+        ? 'module.fn'
+        : undefined)
+    if (call !== undefined) {
+      expect(await callFromClient(served, call)).toEqual(
+        shape.returns ?? 'from the server',
+      )
+    }
+  })
+})
+
+describe('builder shapes the client refuses at the use', () => {
+  test.each(refused)('$name', async (shape) => {
+    const startCase = await (await host()).case(caseFiles(shape))
+    const file = shape.file ?? 'module.tsx'
+    const source = file === 'module.tsx' ? shape.code : shape.files![file]!
+    expect(source).toContain(shape.at)
+    expectCompileError(await compileError(startCase, 'client', file), {
+      source,
+      at: shape.at,
+      column: true,
+    })
+    if (!shape.everyEnv) {
+      for (const f of Object.keys(caseFiles(shape))) {
+        expect(
+          await compileError(startCase, 'ssr', f),
+          `ssr: ${f}`,
+        ).toBeUndefined()
+      }
+    }
+  })
+})
+
+/** The warnings and errors of `file` an environment's compile of the case reports. */
+async function reportedBy(startCase: StartCase, environment: 'client' | 'ssr') {
+  const mark = startCase.diagnostics().length
+  const code = await startCase.served('module.tsx', environment)
+  const reported = startCase.diagnostics().slice(mark)
+  return {
+    code,
+    of: (severity: 'warning' | 'error') =>
+      findDiagnostics(reported, { severity, file: startCase.file() }),
+    reported,
+  }
+}
+
+describe('a parameter that reaches server code by being read', () => {
+  test.each(warned)('warns once at the definition: $name', async (shape) => {
+    const startCase = await (await host()).case(caseFiles(shape))
+    const client = await reportedBy(startCase, 'client')
+    expect(client.of('error')).toEqual([])
+    expect(
+      findDiagnostics(client.reported, {
+        severity: 'warning',
+        file: startCase.file(),
+        position: diagnosticPosition(shape.code, shape.at),
+        times: 1,
+      }),
+    ).toHaveLength(1)
+    expect(client.of('warning')).toHaveLength(1)
+    expect(client.code).not.toContain(shape.body ?? 'db.x()')
+    if (shape.ships) {
+      expect(client.code).toContain(shape.ships)
+    }
+    expect((await reportedBy(startCase, 'ssr')).of('warning')).toEqual([])
   })
 
-  it.each(unwarned)('says nothing: $name', async (shape) => {
-    for (const [label, env] of clientEnvs) {
-      const { errors, warnings } = await diagnosticsOf(shape, env)
-      expect({ label, errors, warnings }).toEqual({
-        label,
-        errors: [],
-        warnings: [],
-      })
-    }
+  test.each(unwarned)('says nothing: $name', async (shape) => {
+    const startCase = await (await host()).case(caseFiles(shape))
+    const client = await reportedBy(startCase, 'client')
+    expect([...client.of('error'), ...client.of('warning')]).toEqual([])
   })
 })

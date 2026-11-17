@@ -169,6 +169,37 @@ function Page() {
 function Err() { return <b data-q={filters.q}>err</b> }
 export const Route = createFileRoute('/shared-writer')({ component: Page, errorComponent: Err })
 `,
+    // a <Hydrate> boundary inside a route option the client deletes
+    // (`server`, `headers`): nothing of the option, its boundary included,
+    // loads on the client
+    'src/hydrate-heavy.server.tsx': `export const Heavy = () => <b>heavy</b>\n`,
+    'src/hydrate-render.server.ts': `export const render = (_: unknown) => 'rendered'\n`,
+    ...Object.fromEntries(
+      [
+        [
+          'server',
+          '',
+          `server: { handlers: { GET: async () => new Response(render(<Hydrate><Heavy /></Hydrate>)) } },`,
+        ],
+        [
+          'headers',
+          `const title = 'MARK_HEADERS_TITLE'\nfunction Mail() { return <h1>{title}</h1> }\n`,
+          `headers: () => ({ 'x-preview': render(<Hydrate><Mail /><Heavy /></Hydrate>) }),`,
+        ],
+      ].map(([key, decls, option]) => [
+        `src/routes/hydrate-in-${key}.tsx`,
+        `import { createFileRoute } from '@tanstack/react-router'
+import { Hydrate } from '@tanstack/react-start'
+import { Heavy } from '../hydrate-heavy.server'
+import { render } from '../hydrate-render.server'
+${decls}function Page() { return <p>page</p> }
+export const Route = createFileRoute('/hydrate-in-${key}')({
+  ${option}
+  component: Page,
+})
+`,
+      ]),
+    ),
     'src/routes/schema-read.tsx': `${head}import { countedSchema, schemaBuilds } from '../schema-read'
 const schema = countedSchema()
 const check = createServerFn({ method: 'POST' })
@@ -1113,6 +1144,24 @@ describe('a server fn has one instance on the server', () => {
     '%s a handler names only in a type runs at route load on the server',
     async (_name, key, registered) => {
       expect(await serverLoaded(`/handler-type-${key}`)).toBe(registered)
+    },
+  )
+
+  test.each(['server', 'headers'])(
+    'a <Hydrate> boundary inside the %s option the client deletes loads nothing of the option',
+    async (key) => {
+      const run = await (
+        await host()
+      ).run<unknown>(`(async () => {
+  const route = await import('/src/routes/hydrate-in-${key}.tsx')
+  await route.Route.options.component.preload?.()
+  return performance
+    .getEntriesByType('resource')
+    .map((entry) => new URL(entry.name).pathname)
+    .filter((path) => /hydrate-(heavy|render)/.test(path))
+})()`)
+      expect(run.errors).toEqual([])
+      expect(run.result).toEqual([])
     },
   )
 

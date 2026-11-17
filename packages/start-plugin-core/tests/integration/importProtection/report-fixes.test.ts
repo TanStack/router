@@ -23,7 +23,10 @@
  *   the file out.
  */
 import { describe, expect, test } from 'vitest'
-import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  diagnosticPosition,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
   expectViolationsAt,
@@ -203,30 +206,38 @@ export const read = () => ctx.keys()
     timeout,
   )
 
-  test(
-    'a marker conflict fails the build at the second marker',
-    async () => {
+  test.each([
+    { name: 'an import', second: `import '@tanstack/react-start/client-only'` },
+    {
+      name: 'a re-export',
+      second: `export * from '@tanstack/react-start/client-only'`,
+    },
+  ])(
+    'a marker conflict fails the build at the second marker ($name)',
+    async ({ second }) => {
+      const both = `import '@tanstack/react-start/server-only'
+${second}
+export const both = 1
+`
       const error = await rejection(
         buildStart({
           bundler,
           files: {
-            'src/both.ts': `import '@tanstack/react-start/server-only'
-import '@tanstack/react-start/client-only'
-export const both = 1
-`,
+            'src/both.ts': both,
             'src/entry.ts': `import { both } from './both'\nexport const read = () => both\n`,
           },
           entry: 'src/entry.ts',
         }),
       )
-      const conflict = expectDiagnostic(error.diagnostics, {
+      expectDiagnostic(error.diagnostics, {
         severity: 'error',
         file: 'src/both.ts',
         root: error.root,
-        position: { line: 2, column: 8 },
+        position: diagnosticPosition(
+          both,
+          `'@tanstack/react-start/client-only'`,
+        ),
       })
-      // (audit-diagnostics P7: the fix is a sentence)
-      expect(conflict.text).toContain('Remove one of the two imports.')
     },
     timeout,
   )

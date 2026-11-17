@@ -140,6 +140,18 @@ describe('a server fn created once when its module loads', () => {
       code: `export const left = ${fn} || null`,
       read: 'module.left',
     },
+    // a decorator runs once, with its class (TypeScript's decorators, as an
+    // app's tsconfig turns them on)
+    {
+      name: 'a decorator argument',
+      code: `const decorated: Array<unknown> = []\nconst dec = (f: unknown) => (c: unknown) => (decorated.push(f), c)\n@dec(${fn})\nclass Decorated {}\nexport { Decorated, decorated }`,
+      read: 'module.decorated[0]',
+      files: {
+        'tsconfig.json': JSON.stringify({
+          compilerOptions: { experimentalDecorators: true },
+        }),
+      },
+    },
     {
       name: 'a labeled statement',
       code: `export const api: Record<string, unknown> = {}\nlabeled: api.foo = ${fn}`,
@@ -165,12 +177,18 @@ describe('a server fn created once when its module loads', () => {
     },
   ]
 
-  test.each(positions)(
+  test.each<{
+    name: string
+    code: string
+    read: string
+    files?: Record<string, string>
+  }>(positions)(
     'works in $name: the client gets an RPC, the server runs the handler',
-    async ({ code, read }) => {
+    async ({ code, read, files: own }) => {
       const served = await serveCase(await host(), {
         'module.tsx': `${head}${code}`,
         ...files,
+        ...own,
       })
       expectNotLoaded(await served.loads(), ['./db.server'])
       expect(await callServerFnThroughCallers(served, read)).toBe('inner')

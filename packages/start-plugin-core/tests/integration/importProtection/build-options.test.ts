@@ -6,6 +6,7 @@
  * effect).
  */
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
@@ -492,6 +493,36 @@ export const read = () => getRequest()
           { environment: 'client', use, also: ['src/entry.ts:1', ...others] },
         ])
         expect(distinct(seen.map((info) => info.type))).toEqual([type])
+      },
+      timeout,
+    )
+
+    // The callback is app code: an error it throws is the build's.
+    test(
+      'a callback that throws fails the build with its error',
+      async () => {
+        const error = await rejection(
+          buildStart({
+            bundler,
+            files: {
+              ...secretServer,
+              'src/entry.ts': userOf('./secret.server'),
+            },
+            entry: 'src/entry.ts',
+            start: {
+              importProtection: {
+                onViolation: () => {
+                  throw new Error('MARK_THROWN')
+                },
+              },
+            },
+          }),
+        )
+        expect(
+          findDiagnostics(error.diagnostics, { severity: 'error' }).some(
+            ({ text }) => text.includes('MARK_THROWN'),
+          ),
+        ).toBe(true)
       },
       timeout,
     )

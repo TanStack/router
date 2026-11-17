@@ -570,6 +570,56 @@ ${childrenPage('<p id={React.useId()}>x</p>')}`,
       at: diagnosticPosition(code, '<Hydrate').line,
     })
   })
+
+  // Children writing state the split code would hold a copy of (a local
+  // of the component; a `var` a top-level statement declares, which the
+  // chunk imports), and a Solid `ref` of a `let` outside two nested
+  // boundaries: the client rejects them at the boundary.
+  const solidHead = `import { Hydrate } from '@tanstack/solid-start'\n`
+  const capturedLocal = (hydrate: string) => `${hydrate}export function Page() {
+  let count = 0
+  return <Hydrate><button onClick={() => count++}>{count}</button></Hydrate>
+}`
+  test.each([
+    {
+      name: 'assigning a captured local (React)',
+      framework: 'react',
+      code: capturedLocal(head),
+    },
+    {
+      name: 'assigning a captured local (Solid)',
+      framework: 'solid',
+      code: capturedLocal(solidHead),
+    },
+    {
+      name: 'assigning a var a top-level statement declares',
+      framework: 'react',
+      code: `${head}if (typeof window !== 'undefined') { var flag: unknown = globalThis.length }
+export const Page = () => <Hydrate><button onClick={() => { flag = 1 }}>{String(flag)}</button></Hydrate>`,
+    },
+    {
+      name: 'with a ref of a let declared outside two nested boundaries (Solid)',
+      framework: 'solid',
+      code: `${solidHead}export function Page() {
+  let input
+  return <Hydrate><section><Hydrate><input ref={input} /></Hydrate></section></Hydrate>
+}`,
+    },
+  ] as const)(
+    'client: children $name are rejected at the boundary',
+    async ({ framework, code }) => {
+      const start =
+        framework === 'solid'
+          ? (await solidHost()).start
+          : (await hosts()).start
+      const startCase = await start.case({ 'module.tsx': code })
+      expectCompileError(await compileError(startCase, 'client'), {
+        source: code,
+        at: '<Hydrate',
+        column: true,
+      })
+    },
+  )
 })
 
 describe('nested boundaries', () => {

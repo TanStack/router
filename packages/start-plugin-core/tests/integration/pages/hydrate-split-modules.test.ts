@@ -142,6 +142,155 @@ export function Page() {
     )
   })
 
+  // A boundary in a function a top-level statement holds (a member
+  // assignment, a call's argument, next to a default export) splits like
+  // any other: the page renders like the source, the children's module
+  // loading with the split code.
+  test.each([
+    {
+      name: 'a member assignment',
+      code: `function Tabs() { return <div /> }
+Tabs.Panel = function Panel() { return <Hydrate when={load()}><Heavy /></Hydrate> }
+export { Tabs }`,
+      render: 'h(m.Tabs.Panel)',
+    },
+    {
+      name: 'a call argument',
+      code: `import { register, registry } from './register'
+register('panel', () => <Hydrate when={load()}><Heavy /></Hydrate>)
+export { registry }`,
+      render: "h(m.registry.get('panel'))",
+    },
+    {
+      name: 'a member assignment next to a default export',
+      code: `import { memo } from 'react'
+function Tabs() { return <div /> }
+Tabs.Panel = function Panel() { return <Hydrate when={load()}><Heavy /></Hydrate> }
+export default memo(() => <Hydrate when={load()}><Heavy /></Hydrate>)
+export { Tabs }`,
+      render: "h('div', null, h(m.Tabs.Panel), h(m.default))",
+    },
+  ])(
+    'client: a boundary inside $name splits its children',
+    async ({ code, render }) => {
+      const { client } = await expectRendersLikeSource(
+        await hosts(),
+        `${head}import { Chart } from './chart'
+const tone = 'x'
+function Heavy() { return <Chart t={tone} /> }
+${code}`,
+        {
+          render,
+          files: {
+            './chart':
+              'export const Chart = (p: { t: string }) => <i>{p.t}</i>',
+            './register.ts': `export const registry = new Map<string, () => unknown>()
+export const register = (key: string, component: () => unknown) => { registry.set(key, component) }`,
+          },
+        },
+      )
+      expect(client.html).toContain('<i>x</i>')
+      expect(client.lazy).toContain('./chart')
+    },
+  )
+
+  // A boundary in code the client erases (a server-only fn, a component
+  // only server code renders, `<ClientOnly>` children on the server) is no
+  // boundary there: nothing of it loads, and the boundaries after it
+  // hydrate with the ids the server renders (SPEC J5.6).
+  const erasedFiles = {
+    './heavy': 'export const Heavy = () => <b>heavy</b>',
+    './db.server.ts': `export const db = { ok: (v: string) => v }`,
+    './chart': 'export const Chart = (p: { c?: unknown }) => <i>chart</i>',
+  }
+  test.each([
+    {
+      name: 'a server-only fn',
+      code: `import { createServerOnlyFn } from '@tanstack/react-start'
+import { Heavy } from './heavy'
+export const panel = createServerOnlyFn(() => <Hydrate when={load()}><Heavy /></Hydrate>)
+export const Page = () => <div><Hydrate when={load()}><p>b</p></Hydrate></div>`,
+    },
+    {
+      name: 'a component only a server-only fn renders',
+      code: `import { createServerOnlyFn } from '@tanstack/react-start'
+import { Heavy } from './heavy'
+function ServerPanel() { return <Hydrate when={load()}><Heavy /></Hydrate> }
+export const panel = createServerOnlyFn(() => <ServerPanel />)
+export const Page = () => <div><Hydrate when={load()}><p>b</p></Hydrate></div>`,
+    },
+    {
+      name: 'a function only a handler calls, assigning state an export reads',
+      code: `import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+import { Chart } from './chart'
+let cache: Map<string, number> | null = null
+function clear() { cache = null; return db.ok('SECRET') }
+export const reset = createServerFn().handler(async () => clear())
+export function getCache() { return (cache ??= new Map()) }
+export function Page() { return <Hydrate when={load()}><Chart /></Hydrate> }`,
+    },
+    {
+      name: 'a function only a handler calls, assigning state the children read',
+      code: `import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+import { Chart } from './chart'
+let cache: Map<string, number> | null = null
+function clear() { cache = null; return db.ok('SECRET') }
+export const reset = createServerFn().handler(async () => clear())
+function getCache() { return (cache ??= new Map()) }
+export function Page() { return <Hydrate when={load()}><Chart c={getCache()} /></Hydrate> }`,
+    },
+  ])(
+    'client: a boundary inside $name loads nothing of the erased code',
+    async ({ code }) => {
+      const { client } = await expectRendersLikeSource(
+        await hosts(),
+        `${head}${code}`,
+        { files: erasedFiles },
+      )
+      for (const erased of ['./heavy', './db.server']) {
+        expect(client.loaded).not.toContain(erased)
+        expect(client.lazy).not.toContain(erased)
+      }
+    },
+  )
+
+  // On the server, `<ClientOnly>` children are erased with the boundary
+  // they hold: the boundary after it hydrates with the id the server gave
+  // it.
+  test('client: a boundary after one inside <ClientOnly> children hydrates cleanly', async () => {
+    const client = await renderClient(
+      await hosts(),
+      `${head}import { ClientOnly } from '@tanstack/react-router'
+export const Page = () => <div><ClientOnly fallback={<i />}><Hydrate when={load()}><p>a</p></Hydrate></ClientOnly><Hydrate when={load()}><p>b</p></Hydrate></div>`,
+    )
+    expectHydratedCleanly(client)
+    expect(client.html).toContain('<p>b</p>')
+  })
+
+  // Its children are not judged where the code is erased: the client
+  // compiles a boundary whose children call a hook inside a server-only fn,
+  // which the server refuses.
+  test('client: a boundary with unsafe children inside a server-only fn compiles; the server refuses it', async () => {
+    const code = `${head}import { createServerOnlyFn } from '@tanstack/react-start'
+import { useThing } from './hooks'
+export const panel = createServerOnlyFn(() => <Hydrate when={load()}><p>{useThing()}</p></Hydrate>)
+export const Page = () => <div><Hydrate when={load()}><p>b</p></Hydrate></div>`
+    const startCase = await (
+      await hosts()
+    ).start.case({
+      'module.tsx': code,
+      'hooks.ts': `export const useThing = () => 'thing'`,
+    })
+    expect(await compileError(startCase, 'client')).toBeUndefined()
+    expectCompileError(await compileError(startCase, 'ssr'), {
+      source: code,
+      at: '<Hydrate',
+      column: true,
+    })
+  })
+
   test('client: the split shorthand splits the children', async () => {
     const { client } = await expectRendersLikeSource(
       await hosts(),

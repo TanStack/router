@@ -12,6 +12,9 @@
  * - Route code splitting and `<Hydrate>` in one route module: the split
  *   route component's boundaries hydrate the server's HTML (splitter
  *   composition).
+ * - An edit of an app module that starts or stops re-exporting the Start
+ *   `Hydrate` makes its importers' elements boundaries, or plain elements
+ *   (J5.1).
  *
  * The Rsbuild counterparts of the edit rows: hydrate-dev-rsbuild.test.ts.
  */
@@ -152,6 +155,65 @@ function Page() {
         ),
       ).toEqual([])
       expect(browser.errors).toEqual([])
+    },
+    timeout,
+  )
+
+  // The importer is unchanged: the edit of the module it imports `Hydrate`
+  // from decides whether its element is a boundary, both ways.
+  test(
+    'an edit of an app module that starts or stops re-exporting the Start Hydrate decides whether its importers split',
+    async () => {
+      const local = `export const Hydrate = (props: { when?: unknown; children?: unknown }) => props.children\n`
+      const server = await startDevServer({
+        start: {},
+        browser: true,
+        config: { optimizeDeps: reactOptimizeDeps },
+        plugins: [react()],
+        files: {
+          ...reactApp,
+          'src/ui.tsx': local,
+          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { interaction } from '@tanstack/react-start/hydration'
+import { Hydrate } from '../ui'
+import { Counter } from '../counter'
+export const Route = createFileRoute('/')({ component: Page })
+function Page() {
+  return (
+    <main>
+      <Hydrate when={interaction()}><Counter label="child" /></Hydrate>
+    </main>
+  )
+}
+`,
+        },
+      })
+      /** Whether a fresh page, hydrated, loaded the child's module before any interaction. */
+      const childLoaded = async () => {
+        const browser = await openPage(server.url!, {
+          registerCleanup: onTestFinished,
+        })
+        await browser.waitForText('hydrated', {
+          selector: '[data-testid=hydrated]',
+        })
+        await server.idle()
+        expect(await browser.text('#app')).toBe('child:0')
+        expect(browser.errors).toEqual([])
+        return browser.page.evaluate(() =>
+          performance
+            .getEntriesByType('resource')
+            .some(
+              (entry) => new URL(entry.name).pathname === '/src/counter.tsx',
+            ),
+        )
+      }
+      expect(await childLoaded(), 'a plain element').toBe(true)
+      await server.edit({
+        'src/ui.tsx': `export { Hydrate } from '@tanstack/react-start'\n`,
+      })
+      expect(await childLoaded(), 'a boundary').toBe(false)
+      await server.edit({ 'src/ui.tsx': local })
+      expect(await childLoaded(), 'a plain element again').toBe(true)
     },
     timeout,
   )
