@@ -30,18 +30,27 @@ const refreshSource = (component: any): string | undefined => {
     : undefined
 }
 
-// solid-refresh patches a module's first proxy of each name in place, per
-// module file: keeping it avoids remounting the route's subtree. A chunk
-// re-imported after a route update is kept only when it is the same object
-// (core's default): after a rename solid-refresh stops patching the chunk's
-// first proxy (an upstream bug: solid-refresh keeps a removed name,
-// https://github.com/solidjs/solid-refresh/issues/88; oracle KNOWN-BUGS,
-// "Upstream issues"). Relies on solid-refresh's proxies' `name` and
-// `location`, which it does not document (`refreshSource`).
+/**
+ * solid-refresh patches a module's first proxy of each name in place, per
+ * module file: keeping it avoids remounting the route's subtree, also for a
+ * chunk the route module imports again after an update (Vite), which
+ * solid-refresh patched in the same update.
+ *
+ * Known gap: after a rename or a removed component, solid-refresh stops
+ * patching the module (it keeps the removed name,
+ * https://github.com/solidjs/solid-refresh/issues/88; oracle KNOWN-BUGS,
+ * "Upstream issues"), so a kept proxy may show no later edit, not even the
+ * removal, until a reload.
+ * Relies on solid-refresh's proxies' `name` and `location`, which it does
+ * not document (`refreshSource`).
+ */
+const samePatched = (next: any, held: any) =>
+  refreshSource(held) !== undefined &&
+  refreshSource(held) === refreshSource(next)
+
 const adapter: RouteHmrAdapter = {
-  keepPatched: (next, held) =>
-    refreshSource(held) !== undefined &&
-    refreshSource(held) === refreshSource(next),
+  keep: samePatched,
+  keepPatched: samePatched,
   retire: forgetChunkExports,
 }
 
