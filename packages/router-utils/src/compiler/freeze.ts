@@ -500,7 +500,6 @@ function glueImportText(
         k: 'spec',
         specifier: sameFileSpecifier(targetId),
         edgeKey: plan.edgeKey(sameFileSpecifier(targetId), 'static', 'runtime'),
-        provenance: { origin: 'runtime' },
       })
       frags.push({ k: 'text', parts: ['\n'] })
     }
@@ -582,7 +581,6 @@ function reexportGlue(
         'reexport',
         'runtime',
       ),
-      provenance: { origin: 'runtime' },
     })
     frags.push({ k: 'text', parts: ['\n'] })
   }
@@ -1205,8 +1203,8 @@ class Renderer {
             kind: f.form === 'dynamic' ? 'evaluation' : 'binding',
             specifier: f.specifier,
             locations: [],
-            names: [...(f.names ?? [])],
-            provenance: f.provenance ?? { origin: 'runtime' },
+            names: [],
+            provenance: { origin: 'runtime' },
           })
           break
         }

@@ -102,7 +102,6 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
         k: 'spec',
         specifier: route.routerPackage,
         edgeKey: ctx.edgeKey(route.routerPackage, 'static', 'runtime'),
-        provenance: { origin: 'runtime' },
       },
     })
     if (name === 'lazyFn') {
@@ -153,7 +152,6 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
         k: 'spec',
         specifier: spec,
         edgeKey: ctx.edgeKey(spec, 'dynamic', 'runtime'),
-        provenance: { origin: 'runtime' },
         form: 'dynamic',
       },
       { k: 'text', parts: [`)${close}`] },
@@ -337,7 +335,6 @@ function chunkImporterCall(
           k: 'spec',
           specifier,
           edgeKey: ctx.edgeKey(specifier, 'static', 'runtime'),
-          provenance: { origin: 'runtime' },
         },
       })
     }

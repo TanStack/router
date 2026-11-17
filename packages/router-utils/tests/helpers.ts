@@ -259,7 +259,6 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
               k: 'spec',
               specifier: spec,
               edgeKey: ctx.edgeKey(spec, 'dynamic', 'runtime'),
-              provenance: { origin: 'runtime' },
               form: 'dynamic',
             },
             { k: 'text', parts: [')\n'] },
@@ -279,7 +278,6 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
                     k: 'spec',
                     specifier: ROUTER_SPEC,
                     edgeKey: ctx.edgeKey(ROUTER_SPEC, 'static', 'runtime'),
-                    provenance: { origin: 'runtime' },
                   },
                 },
               ]
@@ -871,7 +869,6 @@ export function toyHydratePlanner(
               k: 'spec',
               specifier: lazySpec,
               edgeKey: ctx.edgeKey(lazySpec, 'dynamic', 'runtime'),
-              provenance: { origin: 'runtime' },
               form: 'dynamic',
             },
             { k: 'text', parts: [`), '${comp.name}')\n`] },

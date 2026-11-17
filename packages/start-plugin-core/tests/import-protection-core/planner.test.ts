@@ -11,7 +11,6 @@ import { violationsOf } from '../../src/import-protection/violations'
 import { startRecognizer } from '../../src/compiler/recognizer'
 import { START_ENV, startEnvPlanner } from '../../src/planners'
 import { MemoryApp, ROOT } from './memory-host'
-import type { Planner } from '@tanstack/router-utils/compiler'
 import type { ViolationInfo } from '../../src/import-protection/trace'
 import type { ImportProtectionOptions } from '../../src/schema'
 
@@ -685,87 +684,7 @@ export const all = () => [p, c, k, k2]
   })
 })
 
-describe('forwarded glue and markers', () => {
-  /**
-   * A toy tier-1 planner that removes the user's `import { secret } from
-   * './secret.server'` and emits glue standing in for it (an effectful
-   * generated unit importing `secret` through a `spec` fragment with
-   * forwarded provenance), like an isomorphic-impl import: glue that replaces
-   * a user import carries its provenance and is policy-checked.
-   */
-  const forwardingPlanner = (): Planner => ({
-    name: 'toy-forward',
-    tier: 1,
-    gate: (t0) => t0.imports.some((i) => i.specifier === './secret.server'),
-    plan(ctx) {
-      const imp = ctx.analysis.imports.find(
-        (i) => i.specifier === './secret.server',
-      )!
-      // the import statement
-      const stmt = ctx.analysis.file.program.body.find(
-        (s) =>
-          s.start <= imp.specifierRange.start &&
-          imp.specifierRange.end <= s.end,
-      )!
-      ctx.rewrites.edit({
-        range: { start: stmt.start, end: stmt.end },
-        body: [],
-        by: 'toy-forward',
-      })
-      const local = ctx.names.alloc('forwardedSecret')
-      ctx.rewrites.addGenerated({
-        body: [
-          { k: 'text', parts: ['console.log(', { sym: local.sym }, '())\n'] },
-        ],
-        declares: [],
-        effectful: true,
-        anchor: { k: 'end' },
-        home: 'auto',
-        by: 'toy-forward',
-        imports: [
-          {
-            names: [{ imported: 'secret', local: local.sym }],
-            spec: {
-              k: 'spec',
-              specifier: '/app/src/secret.server.ts',
-              edgeKey: ctx.edgeKey('./secret.server', 'static'),
-              provenance: {
-                origin: 'forwarded',
-                importerId: ctx.identity.canonicalId,
-                span: imp.specifierRange,
-                rawSpecifier: './secret.server',
-              },
-              names: ['secret'],
-            },
-          },
-        ],
-      })
-    },
-  })
-
-  test('glue standing in for a user import is judged as the user edge: raw specifier, user span, substituted', async () => {
-    const rec = recorder()
-    const a = app(
-      {
-        'src/secret.server.ts': SECRET,
-        'src/a.ts': `import { secret } from './secret.server'\nexport const x = 1\n`,
-      },
-      { onViolation: rec.onViolation },
-    )
-    const { out } = await a.compile('src/a.ts', 'client', {
-      planners: [forwardingPlanner()],
-    })
-    expect(edgeImports(out!.code)).toHaveLength(1)
-    expect(out!.code).not.toContain('/app/src/secret.server.ts')
-    expect(
-      rec.calls.map((c) => [
-        c.specifier,
-        c.importerLoc?.line,
-        c.importerLoc?.column,
-      ]),
-    ).toEqual([['./secret.server', 1, 24]])
-  })
-
+describe('markers', () => {
   test('a marker conflict is located at the second marker, also when it is a re-export', async () => {
     for (const code of [
       `import '@tanstack/react-start/server-only'\nimport '@tanstack/react-start/client-only'\n`,

@@ -19,14 +19,14 @@ import type { PlanFacts } from '@tanstack/router-utils/compiler'
 export const IMPORT_EDGES_PLANNER = 'import-edges'
 
 export interface EdgeViolation {
-  /** The logical edge (one per user dependency; forwarded glue shares it). */
+  /** The logical edge (one per user dependency). */
   edgeKey: string
   env: string
   envType: EnvType
   rule: RuleRef
   /** The specifier as the importer wrote it. */
   specifier: string
-  /** Absolute path of the importing file (the user's, for forwarded glue). */
+  /** Absolute path of the importing file. */
   importer: string
   /** The bundler module id of the output that imports it (trace start). */
   importerId: string

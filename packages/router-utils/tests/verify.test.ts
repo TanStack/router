@@ -46,7 +46,6 @@ function brokenGlue(
           k: 'spec',
           specifier,
           edgeKey: ctx.edgeKey(specifier, 'static', 'runtime'),
-          provenance: { origin: 'runtime' },
         },
       },
     ],

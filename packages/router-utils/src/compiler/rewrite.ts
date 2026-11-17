@@ -47,15 +47,8 @@ export interface SymRef {
   ctx?: SymRefContext
 }
 
-export type EdgeProvenance =
-  | { origin: 'source' }
-  | {
-      origin: 'forwarded'
-      importerId: string
-      span: Range
-      rawSpecifier: string
-    }
-  | { origin: 'runtime' }
+/** Where an edge comes from: the user's source (policy-checked), or glue a planner generated (a runtime import, exempt). */
+export type EdgeProvenance = { origin: 'source' } | { origin: 'runtime' }
 
 /**
  * A fragment of an edit's body or of a placeholder. Source text enters a body
@@ -69,9 +62,6 @@ export type Frag =
       k: 'spec'
       specifier: string
       edgeKey: string
-      /** Policy-relevant facts of the glue edge (glue replacing a user import is policy-checked). Default: runtime (exempt). */
-      provenance?: EdgeProvenance
-      names?: ReadonlyArray<string>
       /** Edge form of the glue literal (default 'static'). */
       form?: 'static' | 'dynamic'
     }
