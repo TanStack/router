@@ -700,7 +700,7 @@ describe('claims, homes and substitution', () => {
         ],
         declares: [hoisted.sym],
         effectful: false,
-        anchor: { k: 'after-unit', unit: 0 },
+        anchor: { k: 'before-unit', unit: 1 }, // `opts`
         home: 'auto',
         by: 'env',
       })
@@ -782,7 +782,7 @@ describe('claims, homes and substitution', () => {
         ],
         declares: [hoisted.sym],
         effectful: false,
-        anchor: { k: 'after-unit', unit: 0 },
+        anchor: { k: 'before-unit', unit: 2 }, // `opts`
         home: 'auto',
         by: 'env',
       })
@@ -1352,51 +1352,6 @@ describe('generated units next to what the source wrote', () => {
       home: 'auto',
       by: 'toy',
     })
-
-  it('starts on its own line after a statement a license comment ends', () => {
-    const e = engine(`const a = 1 /*! a\nb */ const b = 2\n`)
-    e.ctx.addRoot('env', {
-      t: 'gen',
-      id: unit(e, { k: 'after-unit', unit: 0 }),
-    })
-    expect(e.render().code).toBe(
-      `const a = 1 \nconst gen = 1\n/*! a\nb */ const b = 2\n`,
-    )
-  })
-
-  it('gives a statement starting with a parenthesis its `;` past a license comment after the unit', () => {
-    const e = engine(`const a = 1;\n/*! l */\n(a).b = 1\n`)
-    e.ctx.addRoot('env', {
-      t: 'gen',
-      id: unit(e, { k: 'after-unit', unit: 0 }),
-    })
-    expect(e.render().code).toContain(`const gen = 1\n/*! l */\n;(a).b = 1`)
-  })
-
-  it('renders before the next statement in a derived output, as in the env module', () => {
-    const e = engine(`const a = 1\nconst b = 2\n`)
-    const out = e.ctx.declareOutput({
-      kind: 'hydrate',
-      key: 'h1',
-      derived: { kind: 'hydrate', value: 'h1' },
-    })
-    const gen = e.ctx.rewrites.addGenerated({
-      body: [{ k: 'text', parts: ['const gen = 1\n'] }],
-      declares: [e.ctx.names.alloc('gen').sym],
-      effectful: true,
-      anchor: { k: 'after-unit', unit: 0 },
-      home: out,
-      by: 'toy',
-    })
-    for (const output of ['env' as const, out]) {
-      e.ctx.addRoot(output, { t: 'gen', id: gen })
-      e.ctx.addRoot(output, { t: 'unit', id: 0 })
-      e.ctx.addRoot(output, { t: 'unit', id: 1 })
-    }
-    expect(e.render(out).code).toMatch(
-      /const a = 1\nconst gen = 1\nconst b = 2/,
-    )
-  })
 
   it('gives a statement starting with a parenthesis its `;`, after the unit', () => {
     const e = engine(`(a).b = 1\n`)
@@ -2160,7 +2115,7 @@ describe("the env module's pieces", () => {
     })
     e.ctx.addRoot('env', {
       t: 'gen',
-      id: unit(e, { k: 'after-unit', unit: 0 }),
+      id: unit(e, { k: 'before-unit', unit: 1 }),
     })
     expect(e.render().code).toBe(
       `const a = 1;\n/*i*/const gen = 1\n;(a).b = 2\n`,

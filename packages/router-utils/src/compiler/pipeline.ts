@@ -757,7 +757,7 @@ function tier0Plan(
     edgeKeyOf(env.name, env.layer, identity.canonicalId, raw, form)
   const edges: EmitPlan['edges'] = {
     env: dedupeEdges(
-      sourceEdges(t0, edgeKey, identity.canonicalId, wholeModule(t0)),
+      sourceEdges(t0, edgeKey, identity.canonicalId, wholeModule()),
     ),
   }
   return {

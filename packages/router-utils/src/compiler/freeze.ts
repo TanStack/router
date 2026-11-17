@@ -457,13 +457,9 @@ function anchoredGenerated(
         at = items[units[gen.anchor.unit]!.item]!.range.start
         order = 1
         break
-      case 'after-unit':
-        at = items[units[gen.anchor.unit]!.item]!.range.end
-        order = 2
-        break
       case 'end':
         at = code.length
-        order = 3
+        order = 2
         break
     }
     out.push({ at, order, gen })
@@ -737,7 +733,7 @@ function renderDerived(
             out,
           )
         } else {
-          renderer.renderFrags(recipe, null, null, out, null, {
+          renderer.renderFrags(recipe, null, null, out, {
             level: root,
             skipAt: null,
           })
@@ -753,15 +749,8 @@ function renderDerived(
           ? Infinity
           : a.at
     // after-header: after the last included import (it starts before its end),
-    // before a statement starting where it ends and what is anchored before it;
-    // after-unit: before the next statement (its anchor is where that one
-    // starts), after what is anchored before it, as in the env module
-    const order =
-      a.gen.anchor.k === 'after-header'
-        ? -1
-        : a.gen.anchor.k === 'before-unit'
-          ? 0
-          : 1
+    // before a statement starting where it ends and what is anchored before it
+    const order = a.gen.anchor.k === 'after-header' ? -1 : 0
     pieces.push({
       pos,
       order,
@@ -844,7 +833,7 @@ function outputView(
   segments: ReadonlyArray<Segment>,
   unitsOfImport: ReadonlyMap<number, ReadonlyArray<Unit>>,
 ): EdgeView {
-  const { units, refs } = plan.t1
+  const { units } = plan.t1
   const includedUnit = (u: Unit) => {
     const c = plan.placement!.clusterOfRegion.get(u.region)
     return c !== undefined && included.has(c)
@@ -949,7 +938,6 @@ class Renderer {
       gen,
       null,
       out,
-      null,
       end > start
         ? { level: this.plan.rewrites.regions.module, skipAt: start }
         : null,
@@ -1022,7 +1010,6 @@ class Renderer {
         this.spanOwner,
         this.spanEnv,
         out,
-        null,
         { level: n, skipAt: null },
       )
       this.guardStatementStart(n.start, out, at)
@@ -1119,18 +1106,12 @@ class Renderer {
     owner: GeneratedUnit | null,
     env: SubstEnv | null,
     out: Array<Segment>,
-    entering: GeneratedUnit | null = null,
     slices: SliceLevel | null = null,
   ): void {
-    const unit = entering ?? owner
-    const mergedEnv = mergeEnv(env, unit?.env)
+    const mergedEnv = mergeEnv(env, owner?.env)
     // the generated unit's own body (not an edit, a placeholder, an insert
     // or what a region renders): its mapped text stands for no source text
-    const ownBody =
-      owner !== null &&
-      entering === null &&
-      slices === null &&
-      frags === owner.body
+    const ownBody = owner !== null && slices === null && frags === owner.body
     for (const f of frags) {
       switch (f.k) {
         case 'slice': {
@@ -1148,7 +1129,7 @@ class Renderer {
             level,
             f.range.start,
             f.range.end,
-            unit,
+            owner,
             mergedEnv,
             out,
             slices!.skipAt === null
@@ -1160,7 +1141,11 @@ class Renderer {
         case 'region': {
           // a claimed region, rendered by its owner: its text
           const claim = this.plan.rewrites.claims.get(f.id)
-          if (claim === undefined || unit === null || claim.owner !== unit.id) {
+          if (
+            claim === undefined ||
+            owner === null ||
+            claim.owner !== owner.id
+          ) {
             throw new Error(
               `conflict: a generated unit renders region ${f.id}, which it does not claim`,
             )
@@ -1176,10 +1161,10 @@ class Renderer {
           }
           const text = this.view.textOf(node)
           if (text === null) {
-            this.renderSpan(node, node.start, node.end, unit, mergedEnv, out)
+            this.renderSpan(node, node.start, node.end, owner, mergedEnv, out)
           } else {
             const at = out.length
-            this.renderFrags(text, unit, mergedEnv, out, null, {
+            this.renderFrags(text, owner, mergedEnv, out, {
               level: node,
               skipAt: null,
             })

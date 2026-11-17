@@ -972,9 +972,7 @@ function planStartEnv(
     )
     const opts = names.alloc('opts')
     let fnSym: SymbolId
-    let anchor:
-      | { k: 'after-header' }
-      | { k: 'before-unit' | 'after-unit'; unit: number }
+    let anchor: { k: 'before-unit'; unit: number }
     const home: 'auto' | OutputId = providerOut ?? 'auto'
     let commitHoist: (() => void) | null = null
     if (!site.nested) {

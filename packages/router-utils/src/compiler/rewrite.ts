@@ -116,7 +116,7 @@ export type GenUnitId = number
 
 export type Anchor =
   | { k: 'after-header' }
-  | { k: 'before-unit' | 'after-unit'; unit: UnitId }
+  | { k: 'before-unit'; unit: UnitId }
   | { k: 'end' }
 
 export type SubstEnv = ReadonlyMap<SymbolId, RefTarget>
@@ -666,8 +666,6 @@ export interface WalkOptions {
 const NO_OPTIONS: WalkOptions = {}
 
 export class RewriteSet {
-  /** The edits of text and the inserts, in call order. */
-  readonly edits: Array<Edit> = []
   /** The inserts (zero-width edits), by position then call order. */
   readonly inserts: Array<Edit> = []
   /** The placeholders, in call order. */
@@ -790,7 +788,6 @@ export class RewriteSet {
       this.share(node)
       this.regions.mark(node)
     }
-    this.edits.push(e)
     this.bump()
   }
 

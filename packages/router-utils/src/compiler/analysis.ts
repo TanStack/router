@@ -110,23 +110,14 @@ type Marker = 'server-only' | 'client-only' | 'conflict' | null
 
 type RefKind = 'value' | 'write' | 'jsxTag' | 'exportSpecifier'
 
+/** Where a reference stands, as far as rendering a rewritten reference or a planner asks (`plain` otherwise). */
 export type RefContext =
   | 'plain'
   | 'callee'
   | 'shorthandProp'
   | 'shorthandPattern'
   | 'exportSpec'
-  | 'exportDecl'
   | 'jsxOpen'
-  | 'jsxClose'
-  | 'jsxTag'
-  | 'assignTarget'
-  /** The target of `n++`, `n += 1`, `n ??= x`: written, and read first. */
-  | 'updateTarget'
-  /** The callee of `new`: called at the reference, and its identity observed (a constructor). */
-  | 'newCallee'
-  /** An operand of `instanceof`, `===`, `!==`, `==` or `!=`, a `switch` value or `case` test, or the object of a `.prototype` read: the value's identity is observed. */
-  | 'identity'
   | 'declName'
 
 export interface ClassifiedRef {
@@ -237,13 +228,6 @@ export interface Tier1 {
     at: number,
     live?: (ref: ClassifiedRef) => boolean,
   ) => boolean
-  /**
-   * Whether code at `offset` evaluates lazily (not when the module loads):
-   * inside a function body other than one called where it is written (an
-   * immediately invoked function runs at module load, like a class static
-   * block or static field initialiser).
-   */
-  isLazyAt: (offset: number) => boolean
   /** Whether `offset` sits inside a function's scope (a declaration there is local to it, whenever it runs). */
   inFunctionAt: (offset: number) => boolean
   parentOf: (node: Node) => Node | null
@@ -977,24 +961,16 @@ export class ModuleAnalysis {
     )
 
     // Function ranges from the scope table: every function's scope (a
-    // declaration inside is local to it), and the lazily evaluated ones
-    // (an immediately invoked function runs where it is written). Each
-    // set is reduced to its outermost ranges and searched by offset.
+    // declaration inside is local to it), reduced to its outermost ranges
+    // and searched by offset.
     const fnRanges: Array<Range> = []
-    const lazyRanges: Array<Range> = []
     for (const scope of file.scopes) {
       const n = scope.node
       if (scope.kind !== 'function') {
         continue
       }
-      const r = { start: n.start, end: n.end }
-      fnRanges.push(r)
-      if (!isImmediatelyInvoked(file, n)) {
-        lazyRanges.push(r)
-      }
+      fnRanges.push({ start: n.start, end: n.end })
     }
-    lazyRanges.sort((a, b) => a.start - b.start || b.end - a.end)
-    const isLazyAt = offsetTest(outermost(lazyRanges))
     // the scope question is asked for function-local orphans only
     let inFunction: ((offset: number) => boolean) | null = null
     const inFunctionAt = (offset: number): boolean => {
@@ -1136,7 +1112,6 @@ export class ModuleAnalysis {
           )
         })
       },
-      isLazyAt,
       inFunctionAt,
       parentOf: (node) => file.parentOf(node),
       nodeAt: (offset) => file.nodeAt(offset),
@@ -1216,80 +1191,6 @@ function offsetTest(outer: ReadonlyArray<Range>): (offset: number) => boolean {
     return false
   }
 }
-
-/**
- * Whether a function node is invoked where it is written: the callee of a
- * call, a `new` or a tagged template (`(() => …)()`, `(function () { … })()`,
- * `(async () => …)()`, `(() => …)?.()`, `new (function () { … })()`), through
- * the wrappers a value passes (`(f)`, `f as T`, `f!`, `f satisfies T`,
- * `<T>f`, `f<T>`) and `.call(…)`, `.apply(…)` or `.bind(…)(…)`. Its body
- * evaluates with the surrounding code. Asked of the parents: the text around the function
- * cannot tell (`const f = () => { … }` followed by a line starting with
- * `(` is two statements).
- */
-function isImmediatelyInvoked(file: SourceFile, fn: Node): boolean {
-  if (
-    fn.type !== 'ArrowFunctionExpression' &&
-    fn.type !== 'FunctionExpression'
-  ) {
-    return false // a declaration is never a callee
-  }
-  let n = outermostWrapper(file, fn)
-  let parent = file.parentOf(n)
-  const method =
-    parent !== null &&
-    parent.type === 'MemberExpression' &&
-    parent.object === n &&
-    !parent.computed &&
-    parent.property.type === 'Identifier'
-      ? parent.property.name
-      : null
-  if (method === 'call' || method === 'apply' || method === 'bind') {
-    n = outermostWrapper(file, parent!)
-    parent = file.parentOf(n)
-    if (parent?.type !== 'CallExpression' || parent.callee !== n) {
-      return false
-    }
-    if (method !== 'bind') {
-      return true
-    }
-    // `.bind(…)` gives the function to invoke
-    n = outermostWrapper(file, parent)
-    parent = file.parentOf(n)
-  }
-  if (parent === null) {
-    return false
-  }
-  switch (parent.type) {
-    case 'CallExpression':
-    case 'NewExpression':
-      return parent.callee === n
-    case 'TaggedTemplateExpression':
-      return parent.tag === n
-    default:
-      return false
-  }
-}
-
-/** `node`, or the outermost of the wrappers around it that pass its value. */
-function outermostWrapper(file: SourceFile, node: Node): Node {
-  let n = node
-  let parent = file.parentOf(n)
-  while (parent !== null && WRAPPER_TYPES.has(parent.type)) {
-    n = parent
-    parent = file.parentOf(n)
-  }
-  return n
-}
-
-const WRAPPER_TYPES = new Set([
-  'ParenthesizedExpression',
-  'TSAsExpression',
-  'TSSatisfiesExpression',
-  'TSNonNullExpression',
-  'TSTypeAssertion',
-  'TSInstantiationExpression',
-])
 
 /** An import or re-export statement (it evaluates another module). */
 function loadsModule(stmt: Node): boolean {
@@ -1419,11 +1320,8 @@ const VALUE_WRAPPERS = new Set([
 ])
 
 /**
- * How the value a reference reads is used by its parent, looking through
- * the value wrappers: `callee` (a call, a tagged template), `newCallee`
- * (constructed: called, identity observed), `identity` (an operand of
- * `instanceof`, `===`, `!==`, `==`, `!=`, a `switch` value or `case` test,
- * the object of a `.prototype` read), else null.
+ * Whether the value a reference reads is called by its parent (a call, a
+ * tagged template), looking through the value wrappers: `callee`, else null.
  */
 function valueUse(
   file: SourceFile,
@@ -1442,30 +1340,8 @@ function valueUse(
   switch (p.type) {
     case 'CallExpression':
       return p.callee === child ? 'callee' : null
-    case 'NewExpression':
-      return p.callee === child ? 'newCallee' : null
     case 'TaggedTemplateExpression':
       return p.tag === child ? 'callee' : null
-    case 'BinaryExpression':
-      return p.operator === '===' ||
-        p.operator === '!==' ||
-        p.operator === '==' ||
-        p.operator === '!=' ||
-        (p.operator === 'instanceof' && p.right === child)
-        ? 'identity'
-        : null
-    case 'MemberExpression':
-      return p.object === child &&
-        !p.computed &&
-        p.property.type === 'Identifier' &&
-        p.property.name === 'prototype'
-        ? 'identity'
-        : null
-    // `switch` compares its value with each `case` by `===`
-    case 'SwitchStatement':
-      return p.discriminant === child ? 'identity' : null
-    case 'SwitchCase':
-      return p.test === child ? 'identity' : null
     default:
       return null
   }
@@ -1482,13 +1358,10 @@ function classify(
   const node = ref.node
   const parent = file.parentOf(node)
   if (node.type === 'JSXIdentifier') {
-    if (parent?.type === 'JSXOpeningElement') {
-      return { kind: 'jsxTag', ctx: 'jsxOpen' }
+    return {
+      kind: 'jsxTag',
+      ctx: parent?.type === 'JSXOpeningElement' ? 'jsxOpen' : 'plain',
     }
-    if (parent?.type === 'JSXClosingElement') {
-      return { kind: 'jsxTag', ctx: 'jsxClose' }
-    }
-    return { kind: 'jsxTag', ctx: 'jsxTag' }
   }
   if (parent === null) {
     return { kind: ref.isWrite ? 'write' : 'value', ctx: 'plain' }
@@ -1516,10 +1389,7 @@ function classify(
       if (property?.type === 'Property' && property.shorthand) {
         return { kind: 'write', ctx: 'shorthandPattern' }
       }
-      return {
-        kind: ref.isWrite ? 'write' : 'value',
-        ctx: ref.isWrite ? 'assignTarget' : 'plain',
-      }
+      return { kind: ref.isWrite ? 'write' : 'value', ctx: 'plain' }
     }
     case 'CallExpression':
       return { kind: 'value', ctx: parent.callee === node ? 'callee' : 'plain' }
@@ -1527,71 +1397,21 @@ function classify(
       return { kind: 'value', ctx: parent.tag === node ? 'callee' : 'plain' }
     case 'AssignmentExpression':
       // `n += 1`, `n ||= x` read `n` too, as `n++` does
-      return parent.left === node
-        ? {
-            kind: 'write',
-            ctx: parent.operator === '=' ? 'assignTarget' : 'updateTarget',
-          }
-        : { kind: 'value', ctx: 'plain' }
+      return { kind: parent.left === node ? 'write' : 'value', ctx: 'plain' }
     case 'UpdateExpression':
-      return { kind: 'write', ctx: 'updateTarget' }
-    // the identity uses, inline for the common parents (a member read is
-    // the most frequent parent of a reference): `valueUse` only walks the
-    // value wrappers
-    case 'MemberExpression':
-      return {
-        kind: ref.isWrite ? 'write' : 'value',
-        ctx: ref.isWrite
-          ? 'assignTarget'
-          : parent.object === node &&
-              !parent.computed &&
-              parent.property.type === 'Identifier' &&
-              parent.property.name === 'prototype'
-            ? 'identity'
-            : 'plain',
-      }
-    case 'NewExpression':
-      return {
-        kind: 'value',
-        ctx: parent.callee === node ? 'newCallee' : 'plain',
-      }
-    case 'BinaryExpression':
-      return {
-        kind: 'value',
-        ctx:
-          parent.operator === '===' ||
-          parent.operator === '!==' ||
-          parent.operator === '==' ||
-          parent.operator === '!=' ||
-          (parent.operator === 'instanceof' && parent.right === node)
-            ? 'identity'
-            : 'plain',
-      }
-    case 'SwitchStatement':
-      return {
-        kind: 'value',
-        ctx: parent.discriminant === node ? 'identity' : 'plain',
-      }
-    case 'SwitchCase':
-      return {
-        kind: 'value',
-        ctx: parent.test === node ? 'identity' : 'plain',
-      }
+      return { kind: 'write', ctx: 'plain' }
     case 'ParenthesizedExpression':
     case 'TSAsExpression':
     case 'TSSatisfiesExpression':
     case 'TSNonNullExpression':
     case 'TSTypeAssertion': {
       if (ref.isWrite) {
-        return { kind: 'write', ctx: 'assignTarget' }
+        return { kind: 'write', ctx: 'plain' }
       }
       return { kind: 'value', ctx: valueUse(file, node, parent) ?? 'plain' }
     }
     default:
-      return {
-        kind: ref.isWrite ? 'write' : 'value',
-        ctx: ref.isWrite ? 'assignTarget' : 'plain',
-      }
+      return { kind: ref.isWrite ? 'write' : 'value', ctx: 'plain' }
   }
 }
 

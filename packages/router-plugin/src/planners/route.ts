@@ -60,8 +60,6 @@ export interface RouteModuleInfo {
   routerPackage: string
   /** The local binding exported as `Route`. */
   routeSym: SymbolId
-  /** The declarator unit of that binding. */
-  routeUnit: Unit
   /** The call receiving the options. */
   optionsCall: Node
   options: OptionsResolution
@@ -136,10 +134,7 @@ function onlyValueUnit(ctx: PlanContext, sym: SymbolId): Unit | undefined {
   return values?.length === 1 ? values[0] : undefined
 }
 
-function declaratorOf(
-  ctx: PlanContext,
-  sym: SymbolId,
-): { unit: Unit; init: Node } | null {
+function declaratorOf(ctx: PlanContext, sym: SymbolId): Node | null {
   const { t1, symbols } = ctx
   if (!symbols.isModuleLevel(sym) || symbols.isImport(sym)) {
     return null
@@ -157,7 +152,7 @@ function declaratorOf(
   if (t1.mutation.isReassigned(sym, liveInEnv(ctx))) {
     return null
   }
-  return { unit, init: unit.node.init }
+  return unit.node.init
 }
 
 /**
@@ -180,10 +175,10 @@ export function boundValueOf(
     if (sym === null || syms.includes(sym)) {
       break
     }
-    const decl = declaratorOf(ctx, sym)
-    if (decl) {
+    const init = declaratorOf(ctx, sym)
+    if (init) {
       syms.push(sym)
-      node = unwrapExpression(decl.init)
+      node = unwrapExpression(init)
       continue
     }
     const unit = ctx.symbols.isModuleLevel(sym)
@@ -392,7 +387,6 @@ export function recognizeRoute(
     kind: entry.kind,
     routerPackage,
     routeSym,
-    routeUnit,
     optionsCall: outer,
     options,
     optionsUnit,

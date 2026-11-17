@@ -9,11 +9,7 @@ export interface Range {
   end: number
 }
 
-type PragmaKind = 'jsx' | 'jsxFrag' | 'jsxRuntime' | 'jsxImportSource'
-
 interface Pragma {
-  kind: PragmaKind
-  value: string
   range: Range
 }
 
@@ -40,13 +36,8 @@ export function isLicenseComment(c: Comment): boolean {
 export function pragmasOf(c: Comment): Array<Pragma> {
   const out: Array<Pragma> = []
   PRAGMA_RE.lastIndex = 0
-  let m: RegExpExecArray | null
-  while ((m = PRAGMA_RE.exec(c.value)) !== null) {
-    out.push({
-      kind: m[1] as PragmaKind,
-      value: m[2]!,
-      range: { start: c.start, end: c.end },
-    })
+  while (PRAGMA_RE.exec(c.value) !== null) {
+    out.push({ range: { start: c.start, end: c.end } })
   }
   return out
 }

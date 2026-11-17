@@ -127,8 +127,6 @@ interface OutputSpec {
   derived: DerivedQuery
   roots?: Array<RootRef>
   header?: HeaderPolicy
-  /** How the core's diagnostics name the output (default: its key, `` `component` ``). */
-  describe?: string
   /** A `hydrate` output: the module bindings it imports from the module that holds them; it copies the others (`OutputDecl.imported`). */
   imported?: ReadonlySet<SymbolId>
 }
@@ -310,7 +308,6 @@ export class AnalysisPlan implements PlanContext {
       derivedId,
       roots: [...(spec.roots ?? [])],
       header: spec.header,
-      describe: spec.describe,
       imported: spec.imported,
     })
     return id

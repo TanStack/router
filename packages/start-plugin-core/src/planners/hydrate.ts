@@ -261,7 +261,7 @@ interface Extracted {
   b: Boundary
   region: Range
   /** Symbols the placeholder reads (captures, setters, `arguments`), for enclosing boundaries. */
-  placeholderSyms: Array<{ sym: SymbolId; pos: number }>
+  placeholderSyms: Array<SymbolId>
   setterSyms: Set<SymbolId>
 }
 
@@ -1087,24 +1087,24 @@ function extract(
   }
   let args = scan.argumentsRefs.length > 0
   for (const e of direct) {
-    for (const p of e.placeholderSyms) {
-      if (p.sym === shared.args) {
+    for (const sym of e.placeholderSyms) {
+      if (sym === shared.args) {
         args = true
         continue
       }
-      if (symbols.isModuleLevel(p.sym) || declaredInside(p.sym)) {
+      if (symbols.isModuleLevel(sym) || declaredInside(sym)) {
         continue
       }
-      if (e.setterSyms.has(p.sym)) {
+      if (e.setterSyms.has(sym)) {
         boundaryError(
           ctx,
           b,
           'hydrate-nested-ref',
-          `Hydrate cannot code-split JSX whose nested boundary assigns \`${symbols.name(p.sym)}\` through \`ref\`, a local declared outside both boundaries. Use split={false} on one of them.`,
+          `Hydrate cannot code-split JSX whose nested boundary assigns \`${symbols.name(sym)}\` through \`ref\`, a local declared outside both boundaries. Use split={false} on one of them.`,
         )
         return null
       }
-      found.push({ sym: p.sym, pos: e.b.element.start })
+      found.push({ sym: sym, pos: e.b.element.start })
     }
   }
   // Solid: `use:x` reads `x` (a core value ref, captured above); a directive
@@ -1142,7 +1142,6 @@ function extract(
     kind: 'hydrate',
     key: b.id,
     derived: { kind: 'hydrate', value: b.id },
-    describe: '`<Hydrate>` boundary',
     imported: leadsBack,
   })
   const chunkId = derivedIdOf(out)
@@ -1257,7 +1256,7 @@ function extract(
   })
 
   // ---- the placeholder at the original occurrence
-  const placeholderSyms: Array<{ sym: SymbolId; pos: number }> = []
+  const placeholderSyms: Array<SymbolId> = []
   const parts: Array<string | SymRef> = ['<', { sym: lazy, ctx: 'jsxTag' }]
   for (const c of captures) {
     if (
@@ -1272,11 +1271,11 @@ function extract(
     } else {
       parts.push(` ${propOf.get(c)}={`, { sym: c }, '}')
     }
-    placeholderSyms.push({ sym: c, pos: b.element.start })
+    placeholderSyms.push(c)
   }
   if (args) {
     parts.push(` ${shared.argsCapture.name}={`, { sym: shared.args }, '}')
-    placeholderSyms.push({ sym: shared.args, pos: b.element.start })
+    placeholderSyms.push(shared.args)
   }
   for (const s of setterProps) {
     // Solid's own `ref` assignment: call a function ref, else assign the variable
@@ -1290,7 +1289,7 @@ function extract(
       { sym: s.sym },
       ` = ${el})}`,
     )
-    placeholderSyms.push({ sym: s.sym, pos: b.element.start })
+    placeholderSyms.push(s.sym)
   }
   parts.push('/>')
   ctx.rewrites.claim({

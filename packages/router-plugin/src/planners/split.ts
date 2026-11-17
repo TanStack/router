@@ -132,7 +132,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
   // one importer and one output per group
   const groups = new Map<
     string,
-    { output: OutputId; derivedId: string; importer: Array<PlaceFrag> }
+    { output: OutputId; importer: Array<PlaceFrag> }
   >()
   const groupOf = (d: SplitDecision) => {
     let g = groups.get(d.groupKey)
@@ -177,7 +177,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       })
       importer = [{ k: 'text', parts: [{ sym: named.sym }] }]
     }
-    g = { output, derivedId, importer }
+    g = { output, importer }
     groups.set(d.groupKey, g)
     return g
   }

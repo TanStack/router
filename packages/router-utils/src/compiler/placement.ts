@@ -100,8 +100,6 @@ export interface OutputDecl {
   derivedId: string | null
   roots: Array<RootRef>
   header?: HeaderPolicy
-  /** How the core's diagnostics name the output (`` `<Hydrate>` boundary ``; default its key). */
-  describe?: string
   /**
    * A `hydrate` output: the module bindings it imports from the module that
    * holds them; it copies the others (H2 (a), spec-phase2-hydrate: the per-output
@@ -110,7 +108,7 @@ export interface OutputDecl {
   imported?: ReadonlySet<SymbolId>
 }
 
-export type Home = OutputId | 'duplicate' | 'removed'
+export type Home = OutputId | 'removed'
 
 /** A region a derived output must not take: it would assign a binding it imports, or (a `<Hydrate>` chunk) its copy of one the env module keeps. */
 export interface Fallback {
@@ -1048,8 +1046,8 @@ export function computePlacement(input: PlacementInput): Placement {
     home.set(c, h)
   }
   for (const cl of clusters) {
-    if (!home.has(cl.id)) {
-      home.set(cl.id, isImport(cl.id) ? 'duplicate' : 'removed')
+    if (!home.has(cl.id) && !isImport(cl.id)) {
+      home.set(cl.id, 'removed')
     }
   }
 
@@ -1126,7 +1124,7 @@ export function computePlacement(input: PlacementInput): Placement {
           }
           continue
         }
-        importFrom(o, h as OutputId, s)
+        importFrom(o, h, s)
       }
     }
   }

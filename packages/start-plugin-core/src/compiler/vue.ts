@@ -44,7 +44,7 @@ const SETUP =
   'In `<script setup>`, code runs inside the component’s setup function'
 
 /** A refused nested server fn of a `<script setup>` block. */
-function setupHoistMessage(d: Diagnostic, hoist: VueHoist): string {
+function setupHoistMessage(hoist: VueHoist): string {
   const reads = hoist.reads
   if (reads?.builder) {
     return `${SETUP}, so this server function is built on \`${reads.name}\`, a local of that function, and cannot be compiled. Define the server function in a \`.ts\` module, with \`${reads.name}\` there too, and import it.`
@@ -98,7 +98,7 @@ export function vueReport(
         ...d,
         message:
           hoist && inScriptSetup(hoist.at)
-            ? setupHoistMessage(d, hoist)
+            ? setupHoistMessage(hoist)
             : d.message + HOIST_HINT,
       }
     }

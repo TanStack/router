@@ -4,7 +4,11 @@
  * which `deleteNodes` erases. The router planner computes them once per round: its
  * split part applies them, its HMR part hoists only what stays.
  */
-import { unwrapExpression, walk } from '@tanstack/router-utils/compiler'
+import {
+  patternIdentifiers,
+  unwrapExpression,
+  walk,
+} from '@tanstack/router-utils/compiler'
 import { propertyKeyName } from '@tanstack/router-generator'
 import { groupingsProblem } from '../core/config'
 import { splitRouteIdentNodes } from '../core/constants'
@@ -433,7 +437,7 @@ function exportedAsOnMain(
           (d.declarations as Array<Node>).some(
             (decl) =>
               decl.type === 'VariableDeclarator' &&
-              patternNames(decl.id).includes(name),
+              patternIdentifiers(decl.id).some((id) => id.name === name),
           )) ||
         (d?.type === 'FunctionDeclaration' && d.id?.name === name)
       )
@@ -447,32 +451,6 @@ function exportedAsOnMain(
     }
     return false
   })
-}
-
-/** The names a binding pattern declares (`collectIdentifiersFromPattern`). */
-function patternNames(id: Node): Array<string> {
-  switch (id.type) {
-    case 'Identifier':
-      return [id.name]
-    case 'ObjectPattern':
-      return (id.properties as Array<Node>).flatMap((p) =>
-        p.type === 'RestElement'
-          ? patternNames(p.argument)
-          : p.type === 'Property'
-            ? patternNames(p.value)
-            : [],
-      )
-    case 'ArrayPattern':
-      return (id.elements as Array<Node | null>).flatMap((e) =>
-        e === null ? [] : patternNames(e),
-      )
-    case 'RestElement':
-      return patternNames(id.argument)
-    case 'AssignmentPattern':
-      return patternNames(id.left)
-    default:
-      return []
-  }
 }
 
 /**

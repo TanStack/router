@@ -790,7 +790,6 @@ export function toyHydratePlanner(
           kind: 'hydrate',
           key: `h${n}`,
           derived: { kind: 'hydrate', value: `h${n}` },
-          describe: '`<Hydrate>` boundary',
           imported: opts.imported
             ? new Set(
                 t1.units
