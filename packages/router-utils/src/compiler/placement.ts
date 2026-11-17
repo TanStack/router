@@ -314,8 +314,6 @@ export function computePlacement(input: PlacementInput): Placement {
    * otherwise copies it.
    */
   const inShared = new Set<ClusterId>()
-  /** The shared module's view (no planner addresses it: what every output renders). */
-  const SHARED = 'shared' as OutputId
   const envView = graph.viewOf('env')
   {
     const envRooted = new Set(
@@ -344,10 +342,17 @@ export function computePlacement(input: PlacementInput): Placement {
         inShared.add(cl.id)
       }
     }
-    /** What each member reads in the shared module. */
+    /**
+     * What each member reads, on the env module's view. The shared module's
+     * own view (`reachFrom`'s `SHARED`) differs where a claim is scoped away
+     * from the env module: start-env's hoist homed in an RSC provider output
+     * (`except: ['env']`) applies there and not here. Read there, a route's
+     * server fn `main` shares leaves the set in the RSC env; this view keeps
+     * it in the shared module (the outputs at R170).
+     */
     const readsOf = new Map<ClusterId, Array<ClusterId>>()
     for (const c of inShared) {
-      const r = reads.clusterReads(c, SHARED, true)
+      const r = reads.clusterReads(c, 'env', true)
       readsOf.set(
         c,
         [...r].flatMap((s) => {
@@ -839,6 +844,7 @@ export function computePlacement(input: PlacementInput): Placement {
       unusedImports.push(cl.id)
     }
   }
+  const SHARED = 'shared' as OutputId
   /** The shared declarations derived outputs read, and the outputs reading them. */
   const sharedRead = new Set<ClusterId>()
   const sharedReaders = new Set<OutputId>()
