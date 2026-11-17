@@ -320,6 +320,8 @@ export function computePlacement(input: PlacementInput): Placement {
    * otherwise copies it.
    */
   const inShared = new Set<ClusterId>()
+  /** The shared module's view (no planner addresses it: what every output renders). */
+  const SHARED = 'shared' as OutputId
   const envView = graph.viewOf('env')
   {
     const envRooted = new Set(
@@ -348,10 +350,10 @@ export function computePlacement(input: PlacementInput): Placement {
         inShared.add(cl.id)
       }
     }
-    /** What each member reads (the env module's text: what the shared module renders). */
+    /** What each member reads in the shared module. */
     const readsOf = new Map<ClusterId, Array<ClusterId>>()
     for (const c of inShared) {
-      const r = reads.clusterReads(c, 'env', true)
+      const r = reads.clusterReads(c, SHARED, true)
       readsOf.set(
         c,
         [...r].flatMap((s) => {
@@ -549,13 +551,7 @@ export function computePlacement(input: PlacementInput): Placement {
     }
   }
   for (const r of outputs.get('env')!.roots) {
-    keepInEnv(
-      r.t === 'unit'
-        ? graph.clusterOfRegion.get(units[r.id]!.region)
-        : r.t === 'gen'
-          ? graph.clusterOfGen.get(r.id)
-          : clusterOfSym.get(r.id),
-    )
+    keepInEnv(clusterOfRoot(r))
   }
   closeEnv()
 
@@ -621,19 +617,8 @@ export function computePlacement(input: PlacementInput): Placement {
           work.push(c)
         }
       }
-      for (const r of liveRoots(o)) {
-        visit(
-          r.t === 'unit'
-            ? graph.clusterOfRegion.get(units[r.id]!.region)
-            : r.t === 'gen'
-              ? graph.clusterOfGen.get(r.id)
-              : clusterOfSym.get(r.id),
-        )
-      }
-      for (const g of gens) {
-        if (g.home === o.id && !unused.has(g.id)) {
-          visit(graph.clusterOfGen.get(g.id))
-        }
+      for (const r of rootsOf(o)) {
+        visit(clusterOfRoot(r))
       }
       while (work.length > 0) {
         const c = work.pop()!
@@ -683,21 +668,6 @@ export function computePlacement(input: PlacementInput): Placement {
   const isStatement = (c: ClusterId): boolean =>
     clusters[c]!.kind === 'effect' ||
     clusters[c]!.units.some((u) => units[u]!.kind === 'export-default')
-  /** The statements of the env module reading or writing each declaration it keeps: a name such a statement declares (`if (…) { var x }`) is imported by a chunk, not copied (`main` deletes the declarator and runs the statement once). */
-  const statementsOf = new Map<ClusterId, Array<ClusterId>>()
-  for (const c of env) {
-    const cl = clusters[c]!
-    if (!isStatement(c) || cl.units.length === 0) {
-      continue
-    }
-    for (const s of reads.clusterReads(c, 'env', true)) {
-      const t = clusterOfSym.get(s)
-      if (t !== undefined && t !== c && env.has(t) && !isImport(t)) {
-        statementsOf.set(t, [...(statementsOf.get(t) ?? []), c])
-      }
-    }
-  }
-
   /**
    * The top-level code reaching each declaration the env module keeps
    * through the names it references, transitively (R1): every statement,
@@ -744,6 +714,15 @@ export function computePlacement(input: PlacementInput): Placement {
   /** A statement declaring a name (`if (…) { var x = … }`; `export default`'s own `default` is none). */
   const declaresInStatement = (st: ClusterId) =>
     [...clusters[st]!.declares].some((d) => t1.symbols.kind(d) !== 'synthetic')
+  /** A statement of the env module reading or writing `c`, a declaration it keeps, declares a name: a chunk imports `c`, not copies it (`main` deletes the declarator and runs the statement once). */
+  const readByDeclaringStatement = (c: ClusterId) =>
+    !isImport(c) &&
+    (readersInEnv.get(c) ?? []).some(
+      (st) =>
+        isStatement(st) &&
+        clusters[st]!.units.length > 0 &&
+        declaresInStatement(st),
+    )
   /**
    * What a chunk imports from the env module instead of copying it: what
    * `main` imports (a split chunk: `importedFromEnv`; a `<Hydrate>` chunk:
@@ -758,7 +737,7 @@ export function computePlacement(input: PlacementInput): Placement {
       ? [...clusters[c]!.declares].some((s) => hydrateImported(o).has(s))
       : importedFromEnv(c)) ||
       (clusters[c]!.kind === 'effect' && declaresInStatement(c)) ||
-      (statementsOf.get(c) ?? []).some(declaresInStatement))
+      readByDeclaringStatement(c))
   const reachingCode = new Map<string, Array<ClusterId>>()
   /**
    * (The walk stops at what output `o` imports (O1): that binding is the
@@ -866,7 +845,6 @@ export function computePlacement(input: PlacementInput): Placement {
       unusedImports.push(cl.id)
     }
   }
-  const SHARED = 'shared' as OutputId
   /** The shared declarations derived outputs read, and the outputs reading them. */
   const sharedRead = new Set<ClusterId>()
   const sharedReaders = new Set<OutputId>()
@@ -933,13 +911,9 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     for (const r of roots) {
       if (r.t === 'sym') {
-        read(clusterOfSym.get(r.id))
+        read(clusterOfRoot(r))
       } else {
-        take(
-          r.t === 'unit'
-            ? graph.clusterOfRegion.get(units[r.id]!.region)!
-            : graph.clusterOfGen.get(r.id)!,
-        )
+        take(clusterOfRoot(r)!)
       }
     }
     while (work.length > 0) {
