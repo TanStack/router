@@ -1627,19 +1627,13 @@ function serverFnFact(
   }
 }
 
-/** The chain a terminal stands for: the last operand of a sequence, inside parentheses and casts. */
+/** The chain a terminal stands for: the last operand of a sequence, inside the wrappers a value passes unchanged (`isExpressionWrapper`). */
 function chainExpression(terminal: Node): Node {
   let n = terminal
   for (;;) {
     if (n.type === 'SequenceExpression') {
       n = n.expressions.at(-1)!
-    } else if (
-      n.type === 'ParenthesizedExpression' ||
-      n.type === 'TSAsExpression' ||
-      n.type === 'TSTypeAssertion' ||
-      n.type === 'TSSatisfiesExpression' ||
-      n.type === 'TSNonNullExpression'
-    ) {
+    } else if (isExpressionWrapper(n)) {
       n = n.expression
     } else {
       return n

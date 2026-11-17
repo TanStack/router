@@ -506,14 +506,14 @@ export function routeEntryDigest(entry: RouteEntryFacts | null): string | null {
     : null
 }
 
-/** Whether `value` means "fall back to the parent" (`undefined`, `null`, a boolean): kept as written. */
+/** Whether `value` means "fall back to the parent" (`undefined`, `null`, a boolean as written): kept as written. Callers unwrap what they look through first. */
 export function isFallbackLiteral(value: Node): boolean {
-  const v = unwrapExpression(value)
-  if (v.type === 'Identifier') {
-    return v.name === 'undefined'
+  if (value.type === 'Identifier') {
+    return value.name === 'undefined'
   }
   return (
-    v.type === 'Literal' && (v.value === null || typeof v.value === 'boolean')
+    value.type === 'Literal' &&
+    (value.value === null || typeof value.value === 'boolean')
   )
 }
 

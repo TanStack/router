@@ -28,6 +28,7 @@ export {
 } from './identity'
 export type { PlanKey } from './identity'
 export {
+  forEachChild,
   isExpressionWrapper,
   opensNonExpressionStatement,
   parseModule,

@@ -13,7 +13,12 @@ import { propertyKeyName } from '@tanstack/router-generator'
 import { groupingsProblem } from '../core/config'
 import { splitRouteIdentNodes } from '../core/constants'
 import { ROUTER_PLANNER } from './config'
-import { boundValueOf, chainSoleUse, identifierSymbol } from './route'
+import {
+  boundValueOf,
+  chainSoleUse,
+  identifierSymbol,
+  isFallbackLiteral,
+} from './route'
 import type { RouteModuleInfo, RouteOption } from './route'
 import type { RouterPlannerConfig } from './config'
 import type { CodeSplitGroupings } from '../core/constants'
@@ -29,7 +34,7 @@ import type { Node } from 'yuku'
 type SplitShape = 'init' | 'shorthand' | 'method'
 
 export interface SplitDecision {
-  /** The route option (`component`, `loader`, …). */
+  /** The route option (`component`, `loader`, …): the chunk exports the value under this name. */
   key: string
   /** `component`, `component~loader`: the chunk's owned query value. */
   groupKey: string
@@ -43,14 +48,10 @@ export interface SplitDecision {
   valueNode: Node
   /** The property (`loader() {…}`, `component: …`). */
   property: Range
-  /** The key as written, for whole-property placeholders (`component: …`). */
+  /** The key as written, for whole-property placeholders (a shorthand's: `component: …`). */
   keyText: string
-  /** Whether the placeholder replaces the whole property (shorthand). */
-  wholeProperty: boolean
   /** The module binding a shorthand denotes. */
   shorthandSym: SymbolId | null
-  /** The chunk's export: the option's name. */
-  exportName: string
 }
 
 export interface SplitPlan {
@@ -296,7 +297,8 @@ export function splitPlanOf(
         continue
       }
       const value = withoutParens(option.value)
-      if (fallsBackToParent(value)) {
+      // (the parent's option applies)
+      if (isFallbackLiteral(value)) {
         continue
       }
       if (exportedAsOnMain(ctx, value)) {
@@ -361,9 +363,7 @@ export function splitPlanOf(
         valueNode: value,
         property: { start: option.prop.start, end: option.prop.end },
         keyText: option.keyText,
-        wholeProperty: shorthand,
         shorthandSym: shorthand ? valueSym : null,
-        exportName: key,
       })
     }
   }
@@ -400,17 +400,6 @@ function withoutParens(value: Node): Node {
     v = v.expression
   }
   return v
-}
-
-/** `true`, `false`, `null` or `undefined` as written: the parent's option applies. */
-function fallsBackToParent(value: Node): boolean {
-  if (value.type === 'Identifier') {
-    return value.name === 'undefined'
-  }
-  return (
-    value.type === 'Literal' &&
-    (value.value === null || typeof value.value === 'boolean')
-  )
 }
 
 /**

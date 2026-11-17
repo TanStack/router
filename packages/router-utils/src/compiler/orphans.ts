@@ -412,13 +412,7 @@ function removeDeclarators(
   const scope = scopeOf(refs, goneBefore(decls, pruned, live))
   if (decls.every(gone)) {
     const stmtParent = ctx.analysis.file.parentOf(statement)
-    const asStatement =
-      stmtParent !== null &&
-      (stmtParent.type === 'BlockStatement' ||
-        stmtParent.type === 'Program' ||
-        stmtParent.type === 'SwitchCase' ||
-        stmtParent.type === 'StaticBlock')
-    if (asStatement) {
+    if (isStatementPosition(stmtParent)) {
       ctx.rewrites.scopedEdit({
         range: {
           start: statement.start,

@@ -31,6 +31,7 @@ import {
   LookupPath,
   UNKNOWN,
   derivedIdOf,
+  forEachChild,
   isKnownSpecifier,
   listEnd,
   ownEntry,
@@ -976,34 +977,6 @@ function hookName(callee: Node): string | null {
     return c.property.name
   }
   return null
-}
-
-/** Visits the child nodes of a Yuku node (plain objects with `type`). */
-function forEachChild(node: Node, fn: (child: Node) => void): void {
-  for (const key in node) {
-    if (key === 'comments') {
-      continue
-    }
-    const v = (node as unknown as Record<string, unknown>)[key]
-    if (Array.isArray(v)) {
-      for (const item of v) {
-        if (isNode(item)) {
-          fn(item)
-        }
-      }
-    } else if (isNode(v)) {
-      fn(v)
-    }
-  }
-}
-
-function isNode(v: unknown): v is Node {
-  return (
-    typeof v === 'object' &&
-    v !== null &&
-    typeof (v as { type?: unknown }).type === 'string' &&
-    typeof (v as { start?: unknown }).start === 'number'
-  )
 }
 
 /** Plans the client extraction of one live boundary; returns its lazy const. */

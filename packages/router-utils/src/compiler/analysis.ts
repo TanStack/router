@@ -10,7 +10,11 @@
  */
 import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
-import { namespaceName, patternIdentifiers } from './source'
+import {
+  isExpressionWrapper,
+  namespaceName,
+  patternIdentifiers,
+} from './source'
 import { SymbolTable, valueBinding } from './symbols'
 import { buildItems, buildUnits } from './units'
 import { MutationModel } from './mutation'
@@ -1310,18 +1314,10 @@ function declarationAssigns(file: SourceFile, id: Node): boolean {
   return true
 }
 
-/** The wrappers a value passes through unchanged (`(X)`, `X as T`, `X!`, `X satisfies T`, `<T>X`). */
-const VALUE_WRAPPERS = new Set([
-  'ParenthesizedExpression',
-  'TSAsExpression',
-  'TSSatisfiesExpression',
-  'TSNonNullExpression',
-  'TSTypeAssertion',
-])
-
 /**
  * Whether the value a reference reads is called by its parent (a call, a
- * tagged template), looking through the value wrappers: `callee`, else null.
+ * tagged template), looking through the wrappers a value passes unchanged
+ * (`isExpressionWrapper`): `callee`, else null.
  */
 function valueUse(
   file: SourceFile,
@@ -1330,7 +1326,7 @@ function valueUse(
 ): RefContext | null {
   let child = node
   let p: Node | null = parent
-  while (p !== null && VALUE_WRAPPERS.has(p.type)) {
+  while (p !== null && isExpressionWrapper(p)) {
     child = p
     p = file.parentOf(p)
   }
@@ -1400,17 +1396,11 @@ function classify(
       return { kind: parent.left === node ? 'write' : 'value', ctx: 'plain' }
     case 'UpdateExpression':
       return { kind: 'write', ctx: 'plain' }
-    case 'ParenthesizedExpression':
-    case 'TSAsExpression':
-    case 'TSSatisfiesExpression':
-    case 'TSNonNullExpression':
-    case 'TSTypeAssertion': {
-      if (ref.isWrite) {
-        return { kind: 'write', ctx: 'plain' }
-      }
-      return { kind: 'value', ctx: valueUse(file, node, parent) ?? 'plain' }
-    }
     default:
+      // (through the wrappers a value passes unchanged: `(f)()`, `f!()`, `f<T>()`)
+      if (!ref.isWrite && isExpressionWrapper(parent)) {
+        return { kind: 'value', ctx: valueUse(file, node, parent) ?? 'plain' }
+      }
       return { kind: ref.isWrite ? 'write' : 'value', ctx: 'plain' }
   }
 }

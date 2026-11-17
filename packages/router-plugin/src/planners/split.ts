@@ -250,7 +250,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
     }
     body.push({
       k: 'text',
-      parts: ['export { ', exported, ` as ${d.exportName} }\n`],
+      parts: ['export { ', exported, ` as ${d.key} }\n`],
     })
     const owner = ctx.rewrites.addGenerated({
       body,
@@ -273,12 +273,12 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
         ],
       },
       ...g.importer,
-      { k: 'text', parts: [`, ${stringLiteral(d.exportName)})`] },
+      { k: 'text', parts: [`, ${stringLiteral(d.key)})`] },
     ]
     if (region === null) {
       ctx.rewrites.placeholder({
         range: d.region,
-        body: call(d.wholeProperty ? `${d.keyText}: ` : ''),
+        body: call(d.shape === 'shorthand' ? `${d.keyText}: ` : ''),
         scope: ['env'],
         by: ROUTER_PLANNER,
       })

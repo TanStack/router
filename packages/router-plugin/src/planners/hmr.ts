@@ -94,7 +94,7 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
     const isSplit = split.has(key)
     if (
       option.kind !== 'method' &&
-      (isFallbackLiteral(value) ||
+      (isFallbackLiteral(unwrapExpression(value)) ||
         isAlreadyLazy(ctx, round.route.routerPackage, value))
     ) {
       continue
