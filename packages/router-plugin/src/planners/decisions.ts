@@ -570,8 +570,9 @@ function babelBinding(ctx: PlanContext, id: Node): Node | null {
  * copies whatever else it reads (spec-main-splitting 1.6-1.8): the route
  * binding, what `export const|let|var` declares (`compileCodeSplitVirtualRoute`
  * turns those statements into imports), and the shared names
- * (`computeSharedBindings`: `main` moves them to `?tsr-shared=1`; the route
- * module holds them here, one instance either way).
+ * (`computeSharedBindings`: `main` moves them to `?tsr-shared=1`; here they
+ * live in the shared module placement creates, which the route module and
+ * the chunks import).
  */
 export function chunkImportsOnMain(
   ctx: PlanContext,

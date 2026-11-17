@@ -117,7 +117,7 @@ The rules, per output:
 
 - **the env module** loses only what the split made unused (the R153 amendment, `readFromRemoved`, the rule erasure
   uses): a declaration or import specifier the source used from text the module no longer holds (a claimed option
-  value, erased text, the type-only export statements main deletes first; a use in a type counts) goes with its
+  value, erased text, the type export statements main strips first; a use in a type counts) goes with its
   initialiser when nothing that stays reads it by value.
   Top-level statements (R154), exports, code already unused in the source and what they reach stay; enums and
   namespaces are declarations like any other (R155). In a route module, splitting never removes a class, enum or
@@ -180,8 +180,10 @@ where main's chunk runs it again (never a declaration already unused: better tha
 ### Removal (`reads.ts` `readFromRemoved`, `orphans.ts`)
 
 - **by provenance**: a declaration or import specifier is removed only if _our_ edits orphaned it: the source used it
-  (by value or in a type) from text an output no longer holds (a claimed option value, erased text, the type-only
-  export statements main deletes first), and nothing left reads it by value. A top-level statement that is no
+  (by value or in a type) from text an output no longer holds (a claimed option value, erased text, the type export
+  statements main strips first: `strippedTypeExportRanges`), and nothing left reads it by value. An exported type
+  declaration (`export type X = typeof helper`, `export interface X`) is such text for provenance and still renders
+  in the env module: `helper` goes when nothing else reads it, the declaration stays. A top-level statement that is no
   declaration (`x.p = v`, `x.push(v)`, `x = v`) is never removed with what only erased code read (R154), and code
   already unreferenced in the source keeps running: an import nothing reads stays (one removed code read only in a type
   leaves, as TypeScript's elision would). Type units stay in the env module as written whatever their cluster, never in
@@ -425,8 +427,9 @@ builder (`routerPlannerConfigFrom`) are exported from `@tanstack/router-plugin/p
 
 ## Testing
 
-- Core unit tests: `packages/router-utils/tests/` (`pipeline`, `placement`, `rewrite`, `output-builder`, `values`,
-  `facts`, `edges`, `identity`, `verify`, `heap`), driven by toy planners and a `MemoryHost` (`helpers.ts`). Run
+- Core unit tests: `packages/router-utils/tests/`, one file per core concern (`pipeline`, `placement`, `rewrite`,
+  `orphans`, `cache`, `summary`, `source`, `server-code`, `self-checks`, `heap`, …), driven by toy planners and a
+  `MemoryHost` (`helpers.ts`). Run
   `@tanstack/router-utils:test:unit`. `placement.test.ts` covers the placement's own mechanisms on toy plans (the
   toy splitter's `imported` makes a plan a route file): the `shared-writer` fallback, glue and renames, copies and
   imports of a chunk, the shared module, provenance, statement boundaries, type units, generated units and their

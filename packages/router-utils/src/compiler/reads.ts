@@ -34,7 +34,7 @@ export interface ReadIndex {
   /**
    * What cluster `c` reads in output `o`: `live`, what renders there;
    * otherwise every reference of its text, erased or not (the env module's
-   * source, for provenance and the export companions).
+   * source, for provenance).
    */
   clusterReads: (c: ClusterId, o: OutputId, live: boolean) => ClusterReads
   /** The clusters `c`'s reads in `o` lead to (`live` as for `clusterReads`). */
@@ -290,7 +290,7 @@ export function readIndex(
 
   /**
    * What a region's text names, rendered or not (the env module's source:
-   * provenance and the export companions): the references it owns, the
+   * provenance): the references it owns, the
    * bodies of the edits, placeholders and inserts of `o` in its text, the
    * places of the regions claimed in `o` nested in it (the text of one
    * claimed only for other outputs is its own).
@@ -458,14 +458,16 @@ export function readIndex(
 }
 
 /**
- * The type-only export statements `main` deletes before its removal rule
+ * The type export statements `main` strips before its removal rule
  * (`stripTypeExports`): `export type X = …`, `export interface X {…}`,
- * `export type { X }`, and an `export { type X }` specifier. Their text is
- * removed text like an erased handler's: a value only they read was used by
- * the source and goes when nothing left reads it (F1). A re-export reads
- * nothing of the module.
+ * `export type { X }`, and an `export { type X }` specifier. For provenance
+ * their text is removed text like an erased handler's: a value only they
+ * read was used by the source and goes when nothing left reads it (F1). Not
+ * `isTypeOnlyExport`'s set: an exported type declaration still renders in
+ * the env module (types name nothing at runtime). A re-export reads nothing
+ * of the module.
  */
-function typeOnlyExportRanges(
+function strippedTypeExportRanges(
   items: ReadonlyArray<TopLevelItem>,
 ): Array<{ start: number; end: number }> {
   const out: Array<{ start: number; end: number }> = []
@@ -507,7 +509,7 @@ export function readFromRemoved(
    * What erased text names (R163 round 2 (b), round 3): its references by
    * value, and in a type inside these ranges only (the env module's erased
    * parts, not text another output claims), followed by value only; type
-   * references elsewhere and the type-only export statements are no use.
+   * references elsewhere and the stripped type export statements are no use.
    */
   typeSeeds?: ReadonlyArray<{ start: number; end: number }>,
 ): Set<ClusterId> {
@@ -516,7 +518,7 @@ export function readFromRemoved(
   const erasedNames = typeSeeds !== undefined
   const parts = erasedNames
     ? [...removed]
-    : [...removed, ...typeOnlyExportRanges(input.t1.items)]
+    : [...removed, ...strippedTypeExportRanges(input.t1.items)]
   const typeParts = typeSeeds ?? parts
   for (const part of parts) {
     for (const ref of refs.refsIn(part)) {

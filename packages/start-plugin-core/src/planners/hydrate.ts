@@ -20,8 +20,8 @@
  *   the core removes what only the fallback read).
  * - The client env claims the children for a fixed-home generated unit, the
  *   chunk component of `<file>?tss-hydrate=<id>`; the original occurrence
- *   renders `<TsrHydrate<n> a={a}/>` and a `/* @__PURE__ *\/` lazy const,
- *   placed by needers, loads the chunk. Captures are computed innermost
+ *   renders `<TsrHydrate<n> a={a}/>` and a `/* @__PURE__ *\/` lazy const
+ *   (an `auto` home: placed by the removal rule) loads the chunk. Captures are computed innermost
  *   first and include the reads of nested placeholders, so a Solid chunk
  *   forwards them through its substitution environment.
  */
@@ -1281,7 +1281,7 @@ function extract(
   return { sym: lazy, chunk: chunkId }
 }
 
-/** The parent's lazy const, placed by needers (a boundary in a split component homes with it). */
+/** The parent's lazy const, with an `auto` home: placement places it by the removal rule (a boundary in a split component homes with it). */
 function addLazyConst(
   ctx: PlanContext,
   b: Boundary,

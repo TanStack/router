@@ -680,7 +680,7 @@ export class RewriteSet {
 
   constructor(
     readonly regions: RegionTable,
-    /** The plan's outputs, for their kinds (`{ kinds }` scopes); an output placement creates has none. */
+    /** The plan's outputs, for their kinds (`{ kinds }` scopes); the shared module placement creates is added when placement runs (`AnalysisPlan.resolve`). */
     private readonly outputs: ReadonlyMap<
       OutputId,
       { readonly kind: OutputKind }
