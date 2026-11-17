@@ -128,6 +128,40 @@ describe('clusters and the write table', () => {
     expect(r.chunks.component).toBe('export {}\n')
   })
 
+  // the copy analogue between chunks: the reader's chunk would hold its own
+  // copy, which the writer's never assigns
+  it.each([
+    [
+      'the loader writes',
+      'loader: () => count++,',
+      'component: () => count,',
+      'loader',
+    ],
+    [
+      'the component writes',
+      'loader: () => count,',
+      'component: () => { count++; return count },',
+      'component',
+    ],
+  ])(
+    'falls back when another chunk copies the binding a chunk writes: %s (shared-writer)',
+    async (_, loader, component, writer) => {
+      const code = dedent(`
+        import { createFileRoute } from 'toy-router'
+        let count = 0
+        export const Route = createFileRoute('/')({
+          ${loader}
+          ${component}
+        })
+      `)
+      const r = await split(code, { keys: ['loader', 'component'] })
+      expect(r.main?.facts.planners['toy-split']).toMatchObject({
+        reasons: { [writer]: true },
+      })
+      expect(r.env).toContain(writer === 'loader' ? loader : component)
+    },
+  )
+
   // spec-phase2-hydrate H1, H2, H4 on the core: a `<Hydrate>` chunk copies
   // the declarations its children reach and no statement; it imports what
   // its planner names (`imported`); one assigning such an import falls back
@@ -3028,8 +3062,9 @@ describe('the shared module of a route file', () => {
 
   // the executing property (toy planner, seed 11838): a binding the loader
   // assigns leaves the shared set, and no shared module imports the loader
-  // chunk (a cycle: `w14` read before initialisation); the chunk copies the
-  // unused declaration reading what it copies (R1)
+  // chunk (a cycle: `w14` read before initialisation); the loader, assigning
+  // a binding the component's chunk copies too, stays (shared-writer), and
+  // that chunk copies the unused declaration reading what it copies (R1)
   it('copies an unused declaration into the chunk taking what it reads, which no shared module imports', async () => {
     const code = route(
       'let o10 = { v: 6 }\nconst w14 = Object.assign(o10, { p: 8 })\nconst l17 = w14 ? 1 : 0',
@@ -3039,7 +3074,8 @@ describe('the shared module of a route file', () => {
     for (const m of r.shared) {
       expect(m).not.toContain('?tsr-split=loader')
     }
-    expect(r.chunks.loader).toContain('const l17 = w14 ? 1 : 0')
+    expect(r.env).toContain('loader: () => { o10 = w14; return 1 }')
+    expect(r.chunks.component).toContain('const l17 = w14 ? 1 : 0')
   })
 
   it('keeps a statement using a binding the route module keeps', async () => {

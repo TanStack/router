@@ -309,7 +309,10 @@ export const Route = createFileRoute('/')({ loader: async () => getRows(), compo
 
 // A `let` two split options read and a server function's handler assigns:
 // on the client the handler is erased and writes nothing, so the `let` is
-// `main`'s shared name, one instance both chunks import
+// `main`'s shared name, one instance both chunks import. On the server the
+// handler assigns it: a handler module would assign its copy while the
+// chunks read theirs, so the handler stays in the route module (the core's
+// `shared-writer` fallback) and the chunks import its one instance
 describe('a `let` two split options read and a handler assigns', () => {
   const code = `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
@@ -343,10 +346,16 @@ export const Route = createFileRoute('/')({ component: Page, errorComponent: Err
     }
   })
 
-  it('splits both options and keeps the handler lazy on the server', async () => {
+  it('splits both options and gives them the instance the handler assigns on the server', async () => {
     const out = await compile(code, ssrEnv)
-    expect(chunkIds(out!.code)).toHaveLength(2)
-    expect(out!.code).toContain('?tss-serverfn-handler')
+    const ids = chunkIds(out!.code)
+    expect(ids).toHaveLength(2)
+    expect(out!.code).toContain("filters = { q: '' }")
+    for (const id of ids) {
+      const chunk = await compile(code, ssrEnv, { id })
+      expect(chunk!.code).toMatch(/import \{[^}]*\bfilters\b[^}]*\} from/)
+      expect(chunk!.code).not.toMatch(/let filters/)
+    }
   })
 })
 
