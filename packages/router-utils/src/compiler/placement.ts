@@ -352,13 +352,13 @@ export function computePlacement(input: PlacementInput): Placement {
     const readsOf = new Map<ClusterId, Array<ClusterId>>()
     for (const c of inShared) {
       const r = reads.clusterReads(c, 'env', true)
-      readsOf.set(c, [
-        ...[...r.syms].flatMap((s) => {
+      readsOf.set(
+        c,
+        [...r].flatMap((s) => {
           const t = clusterOfSym.get(s)
           return t === undefined || t === c ? [] : [t]
         }),
-        ...[...r.children].filter((t) => t !== c),
-      ])
+      )
     }
     /** The members reading each declaration (a generated one no member reads leaves). */
     const readersOf = new Map<ClusterId, Array<ClusterId>>()
@@ -510,11 +510,8 @@ export function computePlacement(input: PlacementInput): Placement {
   const closeEnv = () => {
     while (envWork.length > 0) {
       const r = reads.clusterReads(envWork.pop()!, 'env', true)
-      for (const s of r.syms) {
+      for (const s of r) {
         keepInEnv(clusterOfSym.get(s))
-      }
-      for (const child of r.children) {
-        keepInEnv(child)
       }
     }
   }
@@ -641,10 +638,7 @@ export function computePlacement(input: PlacementInput): Placement {
       while (work.length > 0) {
         const c = work.pop()!
         const r = reads.clusterReads(c, o.id, true)
-        for (const t of [
-          ...[...r.syms].map((s) => clusterOfSym.get(s)),
-          ...r.children,
-        ]) {
+        for (const t of [...r].map((s) => clusterOfSym.get(s))) {
           if (t === undefined || t === c) {
             continue
           }
@@ -696,7 +690,7 @@ export function computePlacement(input: PlacementInput): Placement {
     if (!isStatement(c) || cl.units.length === 0) {
       continue
     }
-    for (const s of reads.clusterReads(c, 'env', true).syms) {
+    for (const s of reads.clusterReads(c, 'env', true)) {
       const t = clusterOfSym.get(s)
       if (t !== undefined && t !== c && env.has(t) && !isImport(t)) {
         statementsOf.set(t, [...(statementsOf.get(t) ?? []), c])
@@ -730,8 +724,8 @@ export function computePlacement(input: PlacementInput): Placement {
   const readersInEnv = new Map<ClusterId, Array<ClusterId>>()
   for (const c of env) {
     const r = reads.clusterReads(c, 'env', true)
-    const named = new Set<ClusterId>(r.children)
-    for (const sym of r.syms) {
+    const named = new Set<ClusterId>()
+    for (const sym of r) {
       const t = clusterOfSym.get(sym)
       if (t !== undefined) {
         named.add(t)
@@ -951,11 +945,8 @@ export function computePlacement(input: PlacementInput): Placement {
     while (work.length > 0) {
       const c = work.pop()!
       const r = reads.clusterReads(c, o, true)
-      for (const s of r.syms) {
+      for (const s of r) {
         read(clusterOfSym.get(s))
-      }
-      for (const child of r.children) {
-        read(child)
       }
     }
     return seen
@@ -1110,7 +1101,7 @@ export function computePlacement(input: PlacementInput): Placement {
     const work = [...set]
     while (work.length > 0) {
       const c = work.pop()!
-      for (const s of reads.clusterReads(c, o, true).syms) {
+      for (const s of reads.clusterReads(c, o, true)) {
         const t = clusterOfSym.get(s)
         if (t === undefined || set.has(t) || isType(t)) {
           continue

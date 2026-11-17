@@ -27,10 +27,8 @@ import type { PlacementInput } from './placement'
 
 const NO_REFS: ReadonlyArray<ClassifiedRef> = []
 
-export interface ClusterReads {
-  syms: Set<SymbolId>
-  children: Set<ClusterId>
-}
+/** The symbols a cluster reads in one output. */
+export type ClusterReads = ReadonlySet<SymbolId>
 
 export interface ReadIndex {
   /**
@@ -47,21 +45,17 @@ export interface ReadIndex {
   ) => ReadonlyArray<ClusterId>
 }
 
-interface MemberReads {
-  syms: Array<SymbolId>
-  children: Array<RegionId>
-}
+/** The symbols a member (a region, a generated unit) reads, with repeats. */
+type MemberReads = Array<SymbolId>
 
 /**
- * Per region, derived once per plan from the sub-regions, the tree's nodes
- * and the inserts: the regions nesting directly in it (source order), where
- * a unit is in the tree, what its own text holds of the tree in walk order
+ * Per region, derived once per plan from the tree's nodes and the inserts:
+ * where a unit is in the tree, what its own text holds of the tree in walk order
  * (the nodes whose edits and placeholders are its text's, and the claimed
  * regions nested in it) and the inserts it holds
  * (`RegionTable.insertOwnerAt`).
  */
 interface RegionIndex {
-  children: Array<Array<RegionId> | undefined>
   /** Per unit region: the node on exactly its range (none: undefined). */
   ownNode: Array<RangeNode | undefined>
   /** Per unit region: the first marked node holding it whole (none: undefined, the module). */
@@ -70,7 +64,6 @@ interface RegionIndex {
   inserts: Array<Array<Edit> | undefined>
 }
 
-const NO_REGIONS: ReadonlyArray<RegionId> = []
 const NO_NODES: ReadonlyArray<RangeNode> = []
 const NO_INSERTS: ReadonlyArray<Edit> = []
 
@@ -81,7 +74,7 @@ export function readIndex(
   const { t1, rewrites } = input
   const { symbols } = t1
   const { regions } = rewrites
-  const { clusters, clusterOfRegion, clusterOfSym, ownedRefs } = graph
+  const { clusters, clusterOfSym, ownedRefs } = graph
   const { viewOf, isLive } = graph
   const regionCount = regions.regions.length
   const gens = rewrites.generated
@@ -92,7 +85,6 @@ export function readIndex(
     if (index !== null) {
       return index
     }
-    const children: RegionIndex['children'] = []
     const text: RegionIndex['text'] = []
     const inserts: RegionIndex['inserts'] = []
     const push = <T>(lists: Array<Array<T> | undefined>, id: RegionId, x: T) =>
@@ -100,17 +92,6 @@ export function readIndex(
     const unitRegions = regions.regions
       .filter((r) => r.unit !== null)
       .sort((x, y) => x.range.start - y.range.start)
-    const subRegions = regions.regions
-      .filter((r) => r.unit === null)
-      .sort(
-        (x, y) => x.range.start - y.range.start || y.range.end - x.range.end,
-      )
-    for (const r of subRegions) {
-      const parent = regions.parentOf(r.id)
-      if (parent !== null) {
-        push(children, parent, r.id)
-      }
-    }
     // one walk of the marked nodes: a node with a region starts that
     // region's text (a claimed one is read where it nests), the others are
     // the text of the region around them
@@ -155,7 +136,7 @@ export function readIndex(
         aroundNode[r.id] = n ?? regions.nodeAround(r.range)
       }
     }
-    index = { children, text, inserts, ownNode, aroundNode }
+    index = { text, inserts, ownNode, aroundNode }
     return index
   }
 
@@ -197,16 +178,7 @@ export function readIndex(
         continue
       }
       if (NEED_KINDS.has(ref.kind)) {
-        into.syms.push(ref.sym)
-      }
-    }
-  }
-
-  /** Pushes the regions nested in `id` that no output claims (its successors). */
-  const pushChildren = (id: RegionId, into: MemberReads) => {
-    for (const cid of regionIndex().children[id] ?? NO_REGIONS) {
-      if (!rewrites.claims.has(cid)) {
-        into.children.push(cid)
+        into.push(ref.sym)
       }
     }
   }
@@ -224,7 +196,7 @@ export function readIndex(
   let partial = false
   /** Pushes what generated text names. */
   const named = (body: ReadonlyArray<Frag | GenFrag>) => {
-    symRefsOf(body, into.syms)
+    symRefsOf(body, into)
   }
   /** What a body standing for node `n` reads (its slices walked, its references among `owned`). */
   const read = (n: RangeNode, body: ReadonlyArray<Frag>) => {
@@ -296,7 +268,6 @@ export function readIndex(
         read(n, text)
       }
       owned = outer
-      pushChildren(cid, into)
       return true
     },
   }
@@ -308,10 +279,10 @@ export function readIndex(
    * and the place of a claimed region nested in it read what their bodies
    * name. Whether the text renders at all is decided around it
    * (`OutputView.encloses`); when only part of it does, each read asks its
-   * position. The regions nested in it are its successors, unless claimed.
+   * position. An unclaimed region nested in it is in its cluster
+   * (`clusters.ts`): its reads are the cluster's.
    */
   function regionReads(r: Region, o: OutputId, to: MemberReads): void {
-    pushChildren(r.id, to)
     const { ownNode, aroundNode } = regionIndex()
     const id = r.id
     let at: RangeNode
@@ -360,10 +331,9 @@ export function readIndex(
     textReads(r.id, o, into)
     for (const e of inserts[r.id] ?? NO_INSERTS) {
       if (rewrites.inScope(e.scope, o)) {
-        symRefsOf(e.body, into.syms)
+        symRefsOf(e.body, into)
       }
     }
-    pushChildren(r.id, into)
   }
 
   /** What the tree holds in region `id`'s text in `o` (`sourceReads`). */
@@ -376,25 +346,21 @@ export function readIndex(
         // claimed only for other outputs
         if (view.isClaimed(n)) {
           const place = view.placeholderAt(n)!
-          symRefsOf(
-            'owner' in place ? place.placeholder : place.body,
-            into.syms,
-          )
+          symRefsOf('owner' in place ? place.placeholder : place.body, into)
         } else {
           refReads(ownedRefs.get(nested) ?? NO_REFS, n.start, n.end, null, into)
           textReads(nested, o, into)
-          pushChildren(nested, into)
         }
         continue
       }
       for (const e of n.edits ?? []) {
         if (rewrites.inScope(e.scope, o)) {
-          symRefsOf(e.body, into.syms)
+          symRefsOf(e.body, into)
         }
       }
       for (const p of n.places ?? []) {
         if (rewrites.inScope(p.scope, o)) {
-          symRefsOf(p.body, into.syms)
+          symRefsOf(p.body, into)
         }
       }
     }
@@ -417,7 +383,7 @@ export function readIndex(
     if (hit) {
       return hit
     }
-    const into: MemberReads = { syms: [], children: [] }
+    const into: MemberReads = []
     if (m < regionCount) {
       if (live) {
         regionReads(regions.get(m), o, into)
@@ -426,7 +392,7 @@ export function readIndex(
       }
     } else {
       // (a claimed region it names reads itself: the same cluster)
-      symRefsOf(gens[m - regionCount]!.body, into.syms)
+      symRefsOf(gens[m - regionCount]!.body, into)
     }
     byMember[m] = into
     return into
@@ -460,24 +426,18 @@ export function readIndex(
     if (hit) {
       return hit
     }
-    const syms = new Set<SymbolId>()
-    const children = new Set<ClusterId>()
+    const reads = new Set<SymbolId>()
     const cl: Cluster = clusters[c]!
-    const add = (reads: MemberReads) => {
-      for (const s of reads.syms) {
-        syms.add(s)
-      }
-      for (const ch of reads.children) {
-        children.add(clusterOfRegion.get(ch)!)
-      }
-    }
     for (const r of cl.regions) {
-      add(memberReads(r, o, live))
+      for (const s of memberReads(r, o, live)) {
+        reads.add(s)
+      }
     }
     for (const g of cl.gens) {
-      add(memberReads(regionCount + g, o, live))
+      for (const s of memberReads(regionCount + g, o, live)) {
+        reads.add(s)
+      }
     }
-    const reads: ClusterReads = { syms, children }
     byCluster[c] = reads
     return reads
   }
@@ -512,19 +472,13 @@ export function readIndex(
       return hit
     }
     const out: Array<ClusterId> = []
-    const { syms, children } = clusterReads(c, o, live)
-    for (const s of syms) {
+    for (const s of clusterReads(c, o, live)) {
       if (!symbols.isModuleLevel(s)) {
         continue
       }
       const d = clusterOfSym.get(s)
       if (d !== undefined && d !== c && !out.includes(d)) {
         out.push(d)
-      }
-    }
-    for (const ch of children) {
-      if (ch !== c && !out.includes(ch)) {
-        out.push(ch)
       }
     }
     byCluster[c] = out
