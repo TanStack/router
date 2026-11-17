@@ -1,0 +1,22 @@
+---
+'@tanstack/router-generator': minor
+'@tanstack/router-cli': patch
+'@tanstack/router-plugin': patch
+'@tanstack/start-plugin-core': patch
+---
+
+The route generator is rebuilt without Babel.
+
+**`routeTree.gen.ts` formatting changes.** The route tree is printed directly in your `quoteStyle` and `semicolons`, and `enableRouteTreeFormatting` now defaults to `false`: Prettier is loaded only when you set it to `true`. If your formatter ignores the file, as the installation guides recommend, commit the one-time diff. If a formatter runs over it, ignore the file or set `enableRouteTreeFormatting: true`: otherwise the generator and the formatter rewrite each other's output on every run. Custom scaffolding templates are inserted as written, and Start's route tree footer follows `quoteStyle` and `semicolons` too.
+
+- Route files are recognised by binding: an aliased `createFileRoute` import gets its id fixed; a `createFileRoute` the app declares itself is left alone; a plain template literal path (``createFileRoute(`/posts`)``) that doesn't match the file is rewritten to a string literal in your `quoteStyle`; a computed path (`${…}`, a variable) is reported, not rewritten (#7216).
+- The tree is rebuilt from the files on every change: deleting a layout keeps its children, a deleted `routeTree.gen.ts` is written again, edits of the virtual route config and of `__virtual.ts` files are picked up, and a moved route gets its new id without a content change.
+- Empty `.ts` route files get a scaffold without JSX (#8480); `.lazy.vue` files and `route.component.vue` pieces belong to their route; `importRoutesUsingAbsolutePaths` applies to lazy imports; unusual file names give valid trees.
+- Router-only builds fail on a route tree error (two files for one route, two routes with one id, conflicting paths, a missing root route) or a route file that doesn't parse, naming the files; they built with the route tree on disk, without the route. `tsr generate` also fails on a root route file that doesn't parse. A dev server or watch session prints the error and keeps the last good tree.
+- `disableLogging` silences the generator's warnings about route files too; a run that fails still throws.
+- Writes are atomic (also when `tmpDir` is on another filesystem), and the generator's own writes no longer trigger a regeneration. A dev server or `tsr watch` keeps writing the route tree after its temporary directory (`.tanstack/tmp` by default) is deleted under it (`git stash -u`, `git clean -fd`); every later route change failed until a restart.
+- `tsr watch` and the Rspack and webpack plugins watch every route root, including `physical()` mounts. `vite build --watch` picks up route files created while it watches.
+- The esbuild plugin (`@tanstack/router-plugin/esbuild`) generates the route tree at the start of every build and rebuild; an app without a committed route tree failed to build. esbuild watches only the files of the bundle, so a route file created in watch mode joins the tree at the next rebuild (or run `tsr watch` beside it).
+- A Vite build whose environments share the app's plugins (`builder.sharedPlugins`, as TanStack Start sets it) runs the generator once instead of once per config resolution, so a generator plugin's `onRouteTreeChanged` runs once.
+
+**API:** removed `format`, `inferFullPath`, `checkRouteFullPathUniqueness`, `writeIfDifferent` and the `ImportDeclaration`, `ImportSpecifier`, `HandleNodeAccumulator`, `TransformContext` and `TransformOptions` types. A generator plugin's `onRouteTreeChanged` receives `{ model, generator }`, and `afterTransform` is gone. The `Generator` takes an optional `logger`.
