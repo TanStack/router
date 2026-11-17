@@ -31,10 +31,14 @@ export const START_MANIFEST_PLACEHOLDER = '__TSS_START_MANIFEST_PLACEHOLDER__'
  * Prefix them under the app root so they are unique and watcher-friendly.
  */
 export interface VirtualModuleState {
-  /** Call to update manifest content after client build completes */
+  /**
+   * Writes the manifest module of the server environment from a completed
+   * client build (dev and build: the module's source is the manifest, so
+   * Rspack's persistent cache keys the module on it)
+   */
   updateManifest: (clientBuild: NormalizedClientBuild) => void
-  /** Number of times the dev manifest module was written (the server environment's) */
-  getDevManifestWriteCount: () => number
+  /** Number of times the manifest module was written (the server environment's) */
+  getManifestWriteCount: () => number
   /** Call to update server fn resolver content after compilation discovers fns */
   updateServerFnResolver: () => void
   /** Number of times the server fn resolver module was written (the server environment's) */
@@ -51,8 +55,6 @@ export interface VirtualModuleState {
   serverFnResolverPath: string
   /** The absolute virtual path of the manifest module */
   manifestPath: string
-  /** Generate manifest module content from a given client build */
-  generateManifestContent: (clientBuild: NormalizedClientBuild) => string
   /** Generate the serialized manifest value literal for asset patching */
   generateManifestValueLiteral: (clientBuild: NormalizedClientBuild) => string
   /** VirtualModulesPlugin instances keyed by environment name */
@@ -291,8 +293,8 @@ export function registerVirtualModules(
   const pendingWrites = new Map<string, Map<string, string>>()
 
   let clientBuild: NormalizedClientBuild | undefined
-  let lastDevManifestContent: string | undefined
-  let devManifestWriteCount = 0
+  let lastManifestContent: string | undefined
+  let manifestWriteCount = 0
   // the server fn resolver module lives in the server environment only
   let lastResolverContent: string | undefined
   let resolverWriteCount = 0
@@ -529,18 +531,6 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
       tryWriteModule(environmentName, filePath, content)
     },
 
-    generateManifestContent(newClientBuild: NormalizedClientBuild): string {
-      const { resolvedStartConfig, startConfig } = opts.getConfig()
-      return generateManifestModuleBuild(
-        newClientBuild,
-        resolvedStartConfig.basePaths.publicBase,
-        !isDev
-          ? startConfig.server.build.inlineCss
-          : { enabled: false, transformAssets: false },
-        opts.scriptFormat,
-      )
-    },
-
     generateManifestValueLiteral(
       newClientBuild: NormalizedClientBuild,
     ): string {
@@ -557,21 +547,20 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
 
     updateManifest(newClientBuild: NormalizedClientBuild) {
       clientBuild = newClientBuild
-      if (!isDev) {
-        return
-      }
       // Safe to call getConfig() here — runs after client build
-      const { resolvedStartConfig } = opts.getConfig()
-      const content = `export const tsrStartManifest = () => (${serializeStartManifestData(
+      const { resolvedStartConfig, startConfig } = opts.getConfig()
+      const content = generateManifestModuleBuild(
         clientBuild,
         resolvedStartConfig.basePaths.publicBase,
-        { enabled: false, transformAssets: false },
+        !isDev
+          ? startConfig.server.build.inlineCss
+          : { enabled: false, transformAssets: false },
         opts.scriptFormat,
-      )})`
+      )
       // only on a change: each write recompiles the server environment
-      if (content !== lastDevManifestContent) {
-        lastDevManifestContent = content
-        devManifestWriteCount++
+      if (content !== lastManifestContent) {
+        lastManifestContent = content
+        manifestWriteCount++
         tryWriteModule(
           RSBUILD_ENVIRONMENT_NAMES.server,
           pathsOf().manifest,
@@ -580,8 +569,8 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
       }
     },
 
-    getDevManifestWriteCount(): number {
-      return devManifestWriteCount
+    getManifestWriteCount(): number {
+      return manifestWriteCount
     },
 
     updateServerFnResolver() {
