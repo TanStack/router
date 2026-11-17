@@ -8,7 +8,7 @@
  */
 import { extendOverTrailingLine } from './header'
 import { nextToken, patternIdentifiers } from './source'
-import type { Node } from 'yuku'
+import type { Binding, Node } from 'yuku'
 import type { ClassifiedRef } from './analysis'
 import type { Range } from './header'
 import type { PlanContext } from './plan'
@@ -118,9 +118,9 @@ export function cleanOrphanedDeclarations(
       if (symbols.kind(sym) !== 'source') {
         continue
       }
-      // orphaned: read, and only by erased code (most bindings fail here)
+      // orphaned: used, and only by erased code (most bindings fail here)
       const refs = t1.refs.refsOf(sym)
-      if (refs.length === 0 || !refs.every((r) => !live.live(r))) {
+      if (!orphaned(b, refs, live)) {
         continue
       }
       const decl = b.declarations[0]
@@ -248,6 +248,26 @@ export function cleanOrphanedDeclarations(
 }
 
 /**
+ * Whether erasure orphans a binding, by the one removal rule (R153, as
+ * placement's `readFromRemoved`): the source used it, by value or in a type
+ * (`typeof cfg`), in text the env module no longer holds, and nothing left
+ * reads it by value (`refs`, its value references).
+ */
+function orphaned(
+  b: Binding,
+  refs: ReadonlyArray<ClassifiedRef>,
+  live: LivenessView,
+): boolean {
+  if (refs.some((r) => live.live(r))) {
+    return false
+  }
+  return (
+    refs.length > 0 ||
+    b.references.some((r) => r.inTypePosition && live.isErased(rangeOf(r.node)))
+  )
+}
+
+/**
  * Whether an output other than the env module takes a binding: one of its
  * roots names it (an identifier option value), or a claimed region reads
  * it where no edit addressed to every output erased the read (its owner's
@@ -363,8 +383,7 @@ function orphanedPatternDeclarator(
     if (!b) {
       return null
     }
-    const refs = ctx.t1.refs.refsOf(ctx.symbols.ofBinding(b))
-    if (refs.length === 0 || refs.some((r) => live.live(r))) {
+    if (!orphaned(b, ctx.t1.refs.refsOf(ctx.symbols.ofBinding(b)), live)) {
       return null
     }
   }
