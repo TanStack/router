@@ -417,7 +417,9 @@ dir)` is not a conflict by itself.
   imports it from the route module), and a value two options read (two split groups, or a staying option and a
   split one: one instance, in the shared module both import). Where main
   copies (another export form, a value only route-file code outside the options also reads, a class, an enum: §1.8),
-  a chunk holds its own copy. Prove identity through real consumers and effects, not declaration counts.
+  a chunk holds its own copy. A split option whose code would assign a binding another chunk copies too (`count++`
+  in the loader, `count` read by the split component) stays in the route module: one instance, as unsplit. Prove
+  identity through real consumers and effects, not declaration counts.
 - **J2.5 Each chunk holds only what it needs.** The split option's code (and bindings only it uses) is absent from
   the route module; a declaration the source never read that runs nothing (`function Unused() { return <Page /> }`)
   is dropped and keeps nothing there. An import used only for types is dropped, so its module never loads in the client for that
@@ -737,8 +739,8 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   a second instance, no top-level statement), and imports only what a copy cannot be: a binding leading back to the
   boundary (the route, a component rendering itself), a name a top-level statement declares (and a declaration such a
   statement reads, as split chunks do), the route binding, what another module of the file holds. Code that left the
-  module (the children, what only they use) assigning such an import, or its copy of a binding the module also keeps,
-  is rejected (J5.5); the copy's limits are KNOWN-BUGS'.
+  module (the children, what only they use) assigning such an import, or its copy of a binding the module or another
+  chunk of the file also holds, is rejected (J5.5); the copy's limits are KNOWN-BUGS'.
 - **J5.3 Server output.** Children still render to HTML (G1); the server renders a boundary marker; `fallback` is
   removed when statically visible (a direct prop, an inline object spread, a single-use `const` spread) and may stay
   otherwise.

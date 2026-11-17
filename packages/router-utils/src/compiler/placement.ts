@@ -1131,11 +1131,20 @@ export function computePlacement(input: PlacementInput): Placement {
   // does not take the root that brings that code (a split option's value, a
   // server function's handler, `<Hydrate>` children). The root falls back:
   // its planner keeps it in place in the next round. Its copy analogue (H4):
-  // a `<Hydrate>` chunk whose code that left the env module assigns the
-  // chunk's copy of a binding the env module keeps falls back alike (the copy
-  // would be written, the env module's read); code the env module holds too
-  // (a helper both call) writes each side's own copy. One check of the
-  // outcome, on the write table every placement shares.
+  // an output whose code assigns its copy of a binding another derived output
+  // holds too (two split chunks copying a `let` one of them assigns), or, for
+  // a `<Hydrate>` chunk, the env module keeps, falls back alike (the copy
+  // would be written, the other module's read); an output that holds the
+  // writing code too (a helper both call) writes its own copy. A split chunk
+  // imports from the env module what `main` shares and copies the rest, as
+  // `main`'s chunk does (R153). One check of the outcome, on the write table
+  // every placement shares.
+  /** Another output holding `d` but not the code `c` assigning it: it reads its own `d`, which `h`'s copy of the code never writes. */
+  const holdsUnwritten = (h: OutputId, d: ClusterId, c: ClusterId) =>
+    [...(isHydrate(h) ? ['env' as OutputId] : []), ...all].some((o) => {
+      const set = included.get(o)!
+      return o !== h && !copying(o) && set.has(d) && !set.has(c)
+    })
   // (each writing cluster with its first such assignment)
   const writers = new Map<ClusterId, SharedWrite>()
   for (const w of graph.writes) {
@@ -1149,7 +1158,7 @@ export function computePlacement(input: PlacementInput): Placement {
       if (
         !copying(h) &&
         set.has(c) &&
-        (!set.has(d) || (isHydrate(h) && env.has(d) && !env.has(c))) &&
+        (!set.has(d) || holdsUnwritten(h, d, c)) &&
         home.get(d) !== 'removed' &&
         // (a write in text that output erases, a client's stubbed server-fn
         // handler, assigns nothing there)
