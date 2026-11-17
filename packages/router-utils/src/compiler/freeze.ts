@@ -521,13 +521,12 @@ function glueImportText(
   return frags
 }
 
-/** `export { x as name, … } from '/path/file?tsr-split=shared---…'` for every exported cluster the shared module holds (`Placement.sharedExports`). */
+/** `export { x as name, … } from '/path/file?tsr-split=shared---…'` for the exported names the shared module holds (`Placement.sharedExports`). */
 function reexportGlue(
   plan: AnalysisPlan,
   placement: Placement,
   exportNameOf: Map<OutputId, Map<SymbolId, string>>,
 ): Array<Frag> {
-  const frags: Array<Frag> = []
   // (an export statement the env module keeps, `export { x as y }`, exports
   // the binding it imports itself)
   const envIncluded = placement.included.get('env')
@@ -543,48 +542,44 @@ function reexportGlue(
       envIncluded?.has(c) === true
     )
   }
-  for (const e of placement.sharedExports) {
-    const decl = plan.outputs.get(e.output)
-    if (!decl?.derivedId) {
-      continue
-    }
-    const parts: Array<string> = []
-    for (const s of [...e.syms].sort((a, b) => a - b)) {
-      const exported = exportNameOf.get(e.output)?.get(s) ?? plan.nameOf(s)
-      for (const x of plan.analysis.exports) {
-        if (
-          x.kind === 'local' &&
-          x.local === s &&
-          !x.typeOnly &&
-          !keptByEnv(x.range)
-        ) {
-          const part =
-            exported === x.name
-              ? exported
-              : `${exported} as ${specifierName(x.name)}`
-          // (merged declarations are one export row each)
-          if (!parts.includes(part)) {
-            parts.push(part)
-          }
+  const decl = placement.shared
+  if (decl === null || decl.derivedId === null) {
+    return []
+  }
+  const parts: Array<string> = []
+  for (const s of [...placement.sharedExports].sort((a, b) => a - b)) {
+    const exported = exportNameOf.get(decl.id)?.get(s) ?? plan.nameOf(s)
+    for (const x of plan.analysis.exports) {
+      if (
+        x.kind === 'local' &&
+        x.local === s &&
+        !x.typeOnly &&
+        !keptByEnv(x.range)
+      ) {
+        const part =
+          exported === x.name
+            ? exported
+            : `${exported} as ${specifierName(x.name)}`
+        // (merged declarations are one export row each)
+        if (!parts.includes(part)) {
+          parts.push(part)
         }
       }
     }
-    if (parts.length === 0) {
-      continue
-    }
-    frags.push({ k: 'text', parts: [`export { ${parts.join(', ')} } from `] })
-    frags.push({
-      k: 'spec',
-      specifier: sameFileSpecifier(decl.derivedId),
-      edgeKey: plan.edgeKey(
-        sameFileSpecifier(decl.derivedId),
-        'reexport',
-        'runtime',
-      ),
-    })
-    frags.push({ k: 'text', parts: ['\n'] })
   }
-  return frags
+  if (parts.length === 0) {
+    return []
+  }
+  const specifier = sameFileSpecifier(decl.derivedId)
+  return [
+    { k: 'text', parts: [`export { ${parts.join(', ')} } from `] },
+    {
+      k: 'spec',
+      specifier,
+      edgeKey: plan.edgeKey(specifier, 'reexport', 'runtime'),
+    },
+    { k: 'text', parts: ['\n'] },
+  ]
 }
 
 function exportGlue(
@@ -614,7 +609,7 @@ function exportGlue(
     }
   }
   if (output === 'env') {
-    const sharedSyms = new Set(placement.sharedExports.flatMap((e) => e.syms))
+    const sharedSyms = new Set(placement.sharedExports)
     for (const [sym, to] of plan.exportedRenames) {
       if (sharedSyms.has(sym)) {
         continue // re-exported from the shared module under its public names

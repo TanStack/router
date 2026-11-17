@@ -126,12 +126,6 @@ export interface PlacementInput {
   routeModule: RouteModule | null
 }
 
-export interface SharedExport {
-  output: OutputId
-  /** The exported symbols of the cluster (the env module re-exports them from `output`). */
-  syms: Array<SymbolId>
-}
-
 /** A route file's placement input (`PlanContext.setRouteModule`). */
 export interface RouteModule {
   /** The module bindings a split chunk imports from the route module when it reads them (it copies the others). */
@@ -153,10 +147,10 @@ export interface Placement {
   /** Symbols each output must export for other outputs. */
   exportsNeeded: Map<OutputId, Set<SymbolId>>
   fallbacks: Array<Fallback>
-  /** Outputs created by placement (lazy shared modules). */
-  created: Array<OutputDecl>
-  /** Exported clusters homed in the shared module (the env module re-exports them). */
-  sharedExports: Array<SharedExport>
+  /** `main`'s shared module, which placement creates when a shared name is read: the env module and the chunks import those names from it. */
+  shared: OutputDecl | null
+  /** The exported symbols the shared module holds (the env module re-exports them from it). */
+  sharedExports: Array<SymbolId>
   /** Type units the env module drops (TypeScript-only specifiers that follow their statement's value specifiers); every other type unit stays there, whatever its cluster. */
   droppedTypeUnits: Set<UnitId>
 }
@@ -956,22 +950,6 @@ export function computePlacement(input: PlacementInput): Placement {
 
   // ---- homes ------------------------------------------------------------------
   const home = new Map<ClusterId, Home>()
-  const created: Array<OutputDecl> = []
-  const sharedOutput = (key: string): OutputDecl => {
-    const derivedId = deriveId(input.canonicalId, {
-      kind: 'shared',
-      value: key,
-    })
-    const decl: OutputDecl = {
-      id: `derived:${derivedId}`,
-      kind: 'shared',
-      key: `shared~${key}`,
-      derivedId,
-      roots: [],
-    }
-    created.push(decl)
-    return decl
-  }
   // `main`'s shared module: the shared names the env module or a chunk reads
   let shared: OutputDecl | null = null
   {
@@ -984,12 +962,23 @@ export function computePlacement(input: PlacementInput): Placement {
     )
     const held = [...used].filter((c) => !isImport(c))
     if (held.length > 0) {
-      const key = derived
-        .filter((o) => sharedReaders.has(o.id))
-        .map((o) => o.key)
-        .sort()
-        .join('+')
-      shared = sharedOutput(key || 'route')
+      const key =
+        derived
+          .filter((o) => sharedReaders.has(o.id))
+          .map((o) => o.key)
+          .sort()
+          .join('+') || 'route'
+      const derivedId = deriveId(input.canonicalId, {
+        kind: 'shared',
+        value: key,
+      })
+      shared = {
+        id: `derived:${derivedId}`,
+        kind: 'shared',
+        key: `shared~${key}`,
+        derivedId,
+        roots: [],
+      }
       for (const c of held) {
         home.set(c, shared.id)
       }
@@ -1039,7 +1028,7 @@ export function computePlacement(input: PlacementInput): Placement {
   included.set('env', env)
   const all: Array<OutputId> = [
     ...derived.map((o) => o.id),
-    ...created.map((o) => o.id),
+    ...(shared !== null ? [shared.id] : []),
   ]
   for (const o of all) {
     const set = new Set<ClusterId>()
@@ -1193,7 +1182,7 @@ export function computePlacement(input: PlacementInput): Placement {
   }
 
   // ---- the shared exports: re-exported by the env module ---------------------
-  const sharedExports: Array<SharedExport> = []
+  const sharedExports: Array<SymbolId> = []
   if (shared !== null) {
     const { id } = shared
     const syms = [...sharedRoots]
@@ -1204,7 +1193,7 @@ export function computePlacement(input: PlacementInput): Placement {
       )
       .flatMap((c) => [...clusters[c]!.declares])
     if (syms.length > 0) {
-      sharedExports.push({ output: id, syms })
+      sharedExports.push(...syms)
       let exported = exportsNeeded.get(id)
       if (!exported) {
         exportsNeeded.set(id, (exported = new Set()))
@@ -1253,7 +1242,7 @@ export function computePlacement(input: PlacementInput): Placement {
     imports,
     exportsNeeded,
     fallbacks,
-    created,
+    shared,
     sharedExports,
     droppedTypeUnits,
   }

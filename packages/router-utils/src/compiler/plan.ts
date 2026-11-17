@@ -481,8 +481,8 @@ export class AnalysisPlan implements PlanContext {
       code: this.analysis.source.code,
       routeModule: this.routeModule,
     })
-    for (const created of placement.created) {
-      this.outputs.set(created.id, created)
+    if (placement.shared !== null) {
+      this.outputs.set(placement.shared.id, placement.shared)
     }
     for (const { d, at, unlessLive } of this.liveDiagnostics) {
       if (
