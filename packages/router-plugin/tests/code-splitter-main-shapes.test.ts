@@ -88,6 +88,26 @@ export const Route = createFileRoute('/')({ component: ${value} })
     expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
   })
 
+  it('splits a loader given as an imported function, which loads its data', async () => {
+    const route = await loadRoute(
+      `${head}import { fetchData } from './data'
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['loader'], ['component']],
+  loader: fetchData,
+  component: () => <p>page</p>,
+})
+`,
+      {
+        files: {
+          'data.ts': `export async function fetchData() {\n  return ['a', 'b']\n}\n`,
+        },
+      },
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('loader')).toBe(true)
+    expect(await route.run(`return options.loader()`)).toEqual(['a', 'b'])
+  })
+
   // Values main's chunk compile cannot take (it throws, or the chunk exports
   // a name it does not declare): the route keeps working with them, split
   // or not.

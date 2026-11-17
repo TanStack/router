@@ -90,7 +90,11 @@ export async function load() {
   return router.state.matches.map((match) => match.loaderData ?? null)
 }`
 
-  function loadWithSplitLoader(loader: string, declarations = '') {
+  function loadWithSplitLoader(
+    loader: string,
+    declarations = '',
+    files: Record<string, string> = {},
+  ) {
     return buildAndRun(
       `${head}${declarations}export const Route = createFileRoute('/')({
   loader: ${loader},
@@ -98,18 +102,24 @@ export async function load() {
 })`,
       `return await entry.load()`,
       {
-        files: { 'entry.ts': routerEntry },
+        files: { 'entry.ts': routerEntry, ...files },
         groupings: [['loader'], ['component']],
       },
     )
   }
 
-  // Control for the object-form loader pin below (same harness).
-  test('a split loader loads route data', async () => {
-    expect(await loadWithSplitLoader(`() => 'loaded'`)).toEqual([
-      null,
-      'loaded',
-    ])
+  // An imported function as the loader is split as main splits it (the
+  // e2e code-splitting apps' `loader: fetchPosts`)
+  test('a split loader given as an imported function loads route data', async () => {
+    expect(
+      await loadWithSplitLoader(
+        'fetchData',
+        `import { fetchData } from '../data'\n`,
+        {
+          'data.ts': `export async function fetchData() {\n  return 'loaded'\n}\n`,
+        },
+      ),
+    ).toEqual([null, 'loaded'])
   }, 30_000)
 
   // Bug: the object form `loader: { handler }` cannot be split: the virtual
