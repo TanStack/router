@@ -461,11 +461,11 @@ removal:
   `router-generator/tests/route-pieces.test.ts`: "pieces of the root route only are lazy components of their default
   export".
 - **Rsbuild: a route file created under a `physical()` mount outside the routes directory is never seen.** SPEC
-  J1.10. `router-plugin/tests/integration/known-bugs-rsbuild-generator-physical.test.ts`: "a route file created under a
-  physical() mount outside the routes directory reaches the live routes".
+  J1.10. `router-plugin/tests/integration/rsbuild-dev-server-generator.test.ts`: "a route file created, edited and
+  deleted under a physical() mount outside the routes directory reaches the live routes".
 - **Rsbuild: a route file the generator cannot parse is left out of the bundle, so its fix is never seen.** SPEC
-  J1.10, G5. `router-plugin/tests/integration/known-bugs-rsbuild-generator.test.ts`: "a created route file the
-  generator cannot parse is reported, and fixing it adds the route".
+  J1.10, G5. `router-plugin/tests/integration/rsbuild-dev-server-new-routes.test.ts`: "a created route file the
+  generator $name is reported, and fixing it adds the route".
 
 ### J2 Route code splitting
 
@@ -536,9 +536,10 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
 - **Export lists and aliases of a moved declaration are left without it** ("Export 'load' is not defined"). SPEC
   J2.12, J3.3. `pages/known-bugs-code-splitter-bindings.test.ts`: "a split loader exported through an export list keeps
   working"; `known-bugs-dev-server.test.ts`: "keep a $name component exported as the route option value";
-  `integration/known-bugs-route-hmr-components.test.ts`: "vite: a split component exported by an export list renders,
-  and an edit shows in place"; `known-bugs-route-hmr.test.ts`: "a component exported by an export list renders for a
-  module importing it and as the route component" (the last two count under J3).
+  `integration/route-hmr-browser-names.test.ts`: "declared lowercase as $name: an edit shows in place without mounting
+  it again (autoCodeSplitting: $autoCodeSplitting)" (an arrow function exported by an export list);
+  `known-bugs-route-hmr.test.ts`: "a component exported by an export list renders for a module importing it and as the
+  route component" (the last two count under J3).
 - **The user's own `import './Page'` is removed with the split component's import.** SPEC G3, J2.12.
   `pages/known-bugs-code-splitter-server.test.ts`: "a side-effect import of the split component's module runs when the
   route module loads".
@@ -650,14 +651,16 @@ Paths under `router-plugin/tests/` unless given.
 
 - **Inline components that are not plain functions** (`memo`, `forwardRef`, method shorthand, `as`/`satisfies`), and
   components inside a route helper function, **are not registered for React Refresh**, so edits do not show. SPEC J3.2,
-  J3.3. `integration/known-bugs-route-hmr-components.test.ts`: "vite: an edit of an inline component written as $name
-  shows in place (autoCodeSplitting: $pluginOptions.autoCodeSplitting)"; `integration/known-bugs-route-hmr.test.ts`:
-  "%s: an edit of a route a helper function creates shows its new component, reloading only when the file is reported
-  (autoCodeSplitting: false)".
+  J3.3. `integration/route-hmr-browser-options.test.ts`: "written inline as $name: an edit shows in place
+  (autoCodeSplitting: $autoCodeSplitting)", "written as a method: an edit shows in place without mounting it again
+  (autoCodeSplitting: %s)"; `integration/route-hmr-browser-plugin.test.ts`: "$shape shows (autoCodeSplitting:
+  $autoCodeSplitting)" (helper).
 - **Lowercase components break under React HMR** (renamed in a chunk, renamed in the route module after the code
-  splitter chose the shared bindings, not registered, or hoisted out of order). SPEC J3.2, J2.4, G1. `integration/known-bugs-route-hmr-components.test.ts`: "vite: an edit of a split component declared
-  lowercase as $name shows in place"; "vite: a lowercase function component that is also the unsplit pendingComponent
-  renders, and an edit shows in place"; `integration/known-bugs-route-hmr-removals.test.ts`: "vite: an inline pending
+  splitter chose the shared bindings, not registered, or hoisted out of order). SPEC J3.2, J2.4, G1.
+  `integration/route-hmr-browser-names.test.ts`: "declared lowercase as $name: an edit shows in place without mounting
+  it again (autoCodeSplitting: $autoCodeSplitting)"; `integration/route-hmr-browser-options.test.ts`: "a lowercase
+  function component that is also the unsplit pendingComponent renders, and an edit shows in place";
+  `integration/known-bugs-route-hmr-removals.test.ts`: "vite: an inline pending
   component hoisted before a renamed lowercase component renders it"; `known-bugs-route-hmr.test.ts`: "a lowercase
   function component split into two chunks renders with the module state they share"; "a lowercase function component
   shared with the loader renders with the module state it shares"; "a lowercase function component that is also the
@@ -669,27 +672,25 @@ Paths under `router-plugin/tests/` unless given.
   applies in place without errors".
 - **Route HMR keeps the previous component for React Refresh to patch**, also without a Refresh runtime and after a
   rename. SPEC J3.3. `integration/known-bugs-route-hmr-removals.test.ts`: "rsbuild without React Refresh: an edit of the
-  route component shows in place (autoCodeSplitting: %s)"; `integration/known-bugs-route-hmr.test.ts`: "renaming the
-  route component shows the renamed component in place (autoCodeSplitting: %s)".
+  route component shows in place (autoCodeSplitting: %s)"; `integration/route-hmr-browser-identity-cases.ts`: "a
+  rename" (Vite and Rsbuild).
 - **The HMR code reads the route through the identifier `Route`.** SPEC J3.1.
   `integration/known-bugs-route-hmr-removals.test.ts`: "a route exported under another local name is hot-updated in
   place".
 - **Solid and Vue split components get a new lazy component on every update.** SPEC J3.2.
-  `integration/known-bugs-route-hmr.test.ts`: "$bundler: an edit of a split $target route shows in place, keeping the
-  split component".
+  `integration/route-hmr-browser-frameworks.test.ts`: "shows the new code of an edited route file in place
+  (autoCodeSplitting: %s)".
 - **Vite: the accept call is on an alias (`const hot = import.meta.hot`)**, so the module is no HMR boundary and the
   page reloads. SPEC J3.1, G10. `integration/route-hmr-browser-frameworks.test.ts`: "shows the new code of an edited
-  route file in place (autoCodeSplitting: %s)" (Vue); `integration/known-bugs-route-hmr.test.ts`: "vite: an edit of a
-  React .ts route module shows its new loader data in place (autoCodeSplitting: %s)";
-  "vite: an edit of a route component in an app without @vitejs/plugin-react shows in place (autoCodeSplitting: %s)".
+  route file in place (autoCodeSplitting: %s)" (Vue); `integration/route-hmr-browser-plugin.test.ts`: "a React .ts
+  route module shows its new loader data in place (autoCodeSplitting: %s)"; "a route component in an app without
+  @vitejs/plugin-react shows in place (autoCodeSplitting: %s)".
 - **Rsbuild: an unsplit Solid route keeps rendering the old component**, the root route too (always unsplit). SPEC
   J3.3, J3.5. `integration/route-hmr-browser-frameworks.test.ts`: "shows the new code of an edited route file in place
-  (autoCodeSplitting: %s)" (Rsbuild, Solid); `integration/known-bugs-route-hmr.test.ts`: "rsbuild: an edit of a Solid
-  root route shows its new component in place (autoCodeSplitting:
-  %s)".
+  (autoCodeSplitting: %s)" (Rsbuild, Solid); "shows the new code of an edited root route in place (autoCodeSplitting:
+  %s)" (Rsbuild).
 - **Rsbuild: an edit of a split loader only never reaches the page** (the route module did not change). SPEC J3.3.
-  `integration/known-bugs-route-hmr.test.ts`: "rsbuild: an edit of a split loader (codeSplitGroupings: %s) shows its
-  data in place".
+  `integration/route-hmr-browser.test.ts`: "runs the edited loader once (codeSplitGroupings: %s)" (Rsbuild).
 - **Solid: the router kept the component it held when the compiler saw the same refresh identity** (a binding's name,
   `<specifier>#<export>` for an import) and solid-refresh's proxy had the same name, though the two proxies came from
   different modules (a layout through a barrel that switches module), which solid-refresh never patches into each

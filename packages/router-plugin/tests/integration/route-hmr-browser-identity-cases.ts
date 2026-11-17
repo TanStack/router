@@ -22,7 +22,7 @@ import { inPlace } from '../route-hmr-edit'
 import type { TestContext } from 'vitest'
 
 const head = `import { createFileRoute } from '@tanstack/react-router'
-import { useState, memo, Component } from 'react'
+import { useState, memo, forwardRef, Component } from 'react'
 `
 
 /** A component body showing `text`, with a counter. */
@@ -171,6 +171,16 @@ export const Route = createFileRoute('/')({ component: Shell })
     'memo(Page)',
     (v) =>
       route(`function Page() ${body(bodyText(v))}`, 'component: memo(Page)'),
+    bodyText,
+    1,
+  ),
+  versions(
+    'forwardRef(Page)',
+    (v) =>
+      route(
+        `function Page() ${body(bodyText(v))}`,
+        'component: forwardRef(Page)',
+      ),
     bodyText,
     1,
   ),

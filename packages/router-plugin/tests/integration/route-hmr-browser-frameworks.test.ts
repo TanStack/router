@@ -6,8 +6,8 @@
  * router package to a real browser page, and the test edits its route files
  * on disk (`route-hmr-page.ts`). An edit of a route file shows its new
  * code in place: the new loader's data and the new component body, without
- * a full reload (that the split component is kept, SPEC J3.2:
- * known-bugs-route-hmr.test.ts).
+ * a full reload, and a split route keeps the component the page rendered
+ * (SPEC J3.2).
  *
  * React apps: route-hmr-browser.test.ts.
  */
@@ -58,12 +58,20 @@ describe.concurrent.each([
       if (bundler === 'vite') {
         expect(app.splitOutputs() > 0, 'split').toBe(autoCodeSplitting)
       }
+      const liveComponent = `window.__APP_ROUTER__.routesById['/'].options.component`
+      await app.evaluate(`window.shownComponent = ${liveComponent}`)
       expect(
         await app.edit(
           { 'routes/index.tsx': route(target, 'v2') },
           'page v2 data v2',
         ),
       ).toEqual({ reloaded: false, errors: [] })
+      if (autoCodeSplitting) {
+        expect(
+          await app.evaluate(`window.shownComponent === ${liveComponent}`),
+          'the split component is kept',
+        ).toBe(true)
+      }
     },
   )
 })
@@ -80,32 +88,37 @@ function Root() {
 }
 `
 
-// SPEC J3.5: an edit of the root route (never split) hot-updates. On
-// Rsbuild: known-bugs-route-hmr.test.ts ("rsbuild: an edit of a Solid root
-// route"). React apps: route-hmr-browser.test.ts.
-describe.concurrent('vite: a solid app', () => {
-  it.for([true, false])(
-    'shows the new code of an edited root route in place (autoCodeSplitting: %s)',
-    { timeout },
-    async (
-      autoCodeSplitting: boolean,
-      { expect, onTestFinished }: TestContext,
-    ) => {
-      const app = await openRouteHmrPage({
-        target: 'solid',
-        onTestFinished,
-        pluginOptions: { autoCodeSplitting },
-        files: {
-          'routes/__root.tsx': solidRoot('v1'),
-          'routes/index.tsx': route('solid', 'v1'),
-        },
-        ready: /root v1[\s\S]*page v1 data v1/,
-      })
-      const result = await app.edit(
-        { 'routes/__root.tsx': solidRoot('v2') },
-        /root v2[\s\S]*page v1 data v1/,
-      )
-      expect(result).toEqual({ reloaded: false, errors: [] })
-    },
-  )
-})
+// SPEC J3.5: an edit of the root route (never split) hot-updates. On main,
+// Rsbuild kept showing the old Solid root component: the route HMR code set
+// `hot.data` before Solid Refresh read it as a previous run's data. React
+// apps: route-hmr-browser.test.ts.
+describe.concurrent.each(['vite', 'rsbuild'] as const)(
+  '%s: a solid app',
+  (bundler) => {
+    it.for([true, false])(
+      'shows the new code of an edited root route in place (autoCodeSplitting: %s)',
+      { timeout },
+      async (
+        autoCodeSplitting: boolean,
+        { expect, onTestFinished }: TestContext,
+      ) => {
+        const app = await openRouteHmrPage({
+          bundler,
+          target: 'solid',
+          onTestFinished,
+          pluginOptions: { autoCodeSplitting },
+          files: {
+            'routes/__root.tsx': solidRoot('v1'),
+            'routes/index.tsx': route('solid', 'v1'),
+          },
+          ready: /root v1[\s\S]*page v1 data v1/,
+        })
+        const result = await app.edit(
+          { 'routes/__root.tsx': solidRoot('v2') },
+          /root v2[\s\S]*page v1 data v1/,
+        )
+        expect(result).toEqual({ reloaded: false, errors: [] })
+      },
+    )
+  },
+)

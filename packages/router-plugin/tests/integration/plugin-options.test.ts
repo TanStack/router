@@ -1,5 +1,3 @@
-// Slow-tier half of this suite: the tests that need a real tool. Its
-// in-process tests are in ../plugin-options.test.ts (fast tier).
 /**
  * Router plugin options and entry points, through real builds: what each
  * option changes in the output or on disk.

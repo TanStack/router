@@ -8,10 +8,9 @@
  * router plugin and React's plugin (`route-app.ts`): the real hot context,
  * React Refresh, the real router.
  *
- * Pins of what the page shows after an edit (React Refresh keeping state,
- * lowercase, inline and exported components) run a real dev server and a
- * real browser page (`route-hmr-page.ts`):
- * integration/known-bugs-route-hmr.test.ts.
+ * What the page shows after an edit (React Refresh keeping state,
+ * lowercase, inline and exported components) runs a real dev server and a
+ * real browser page (`route-hmr-page.ts`): integration/route-hmr-browser*.test.ts.
  */
 import { parseSync } from 'vite'
 import { describe, expect, test } from 'vitest'
@@ -347,8 +346,8 @@ export const Route = createFileRoute('/')({
   // Impact: in development, the route's component chunk fails to load
   // (SyntaxError: Export 'SplitComponent' is not defined).
   // Source: #8504 react-refresh-route-components ("that is also the unsplit
-  // pendingComponent"). That edits of both show in place: the page pin in
-  // integration/known-bugs-route-hmr-components.test.ts.
+  // pendingComponent"). That edits of both show in place:
+  // integration/route-hmr-browser-options.test.ts.
   test('a lowercase function component that is also the unsplit pendingComponent renders as both', async () => {
     const route = await loadRoute(
       `${head}function page() {
@@ -472,8 +471,8 @@ export const Route = createFileRoute('/')({
   // ("keeps a component exported by specifier in the route module"), where it
   // passes. Whether the component is split is the code splitter's goal; either
   // way a module importing the export and the route render the same
-  // component. That edits show in place: the page pin in
-  // integration/known-bugs-route-hmr-components.test.ts.
+  // component. That edits show in place:
+  // integration/route-hmr-browser-names.test.ts.
   test('a component exported by an export list renders for a module importing it and as the route component', async () => {
     const route = await loadRoute(
       `${head}const page = () => <p>hi</p>
@@ -517,7 +516,7 @@ export const Route = createFileRoute('/')({
   })
 
   // Control for the hoisted inline component pin (a real page:
-  // integration/known-bugs-route-hmr.test.ts "an inline pending component
+  // integration/known-bugs-route-hmr-removals.test.ts "an inline pending component
   // hoisted before a renamed lowercase component"): with the route HMR
   // plugin (automatic code splitting off), an option that is not an inline
   // component, reading a lowercase component a later option passes, gets

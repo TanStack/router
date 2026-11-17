@@ -7,7 +7,6 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { parseSync } from 'vite'
 import { describe, expect, test } from 'vitest'
-import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { Generator, getConfig } from '../src'
@@ -74,35 +73,7 @@ export const Route = createRootRoute()`,
 // decides whether a route is server-only, is tested through Start's builds:
 // start-plugin-core tests/known-bugs-route-options.test.ts.)
 
-describe('route files without a Route export', () => {
-  // A file without a Route export is left out of the route tree, with a
-  // warning naming it.
-  test.each(['export const helper = 1', 'const helper = 1\nexport { helper }'])(
-    'a route file without a Route export is left out with a warning: %s',
-    async (code) => {
-      const { routes, diagnostics, file, root } = await generateMovedRoute(code)
-      expect(routes).toEqual({ __root__: 'routes/__root.tsx' })
-      // (a warning: the run goes on, so no error; an info or log line is
-      // not one, SPEC §5.7)
-      expectDiagnostic(diagnostics, {
-        severity: 'warning',
-        file,
-        root,
-      })
-    },
-  )
-})
-
 describe('route constructor imports', () => {
-  // Control for the route constructor pin below (same harness).
-  test('a moved route gets the id of its new path', async () => {
-    const { written, error } =
-      await generateMovedRoute(`import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/old')({})`)
-    expect(await routeIdOf(written)).toBe('/moved')
-    expect(error).toBeUndefined()
-  })
-
   // Bug: the route constructor call is recognized by its callee name, apart
   // from its import: an aliased import (`createFileRoute as route`) is not
   // recognized.

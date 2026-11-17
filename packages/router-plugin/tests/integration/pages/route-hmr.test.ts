@@ -331,8 +331,7 @@ export const Route = createFileRoute('/')({ loader: () => 'x' })`
   // An edit of a `.ts` route file, the environment name, plugin options
   // given as a function and a `tsr.config.json`
   // target, on a real page: integration/route-hmr-browser-plugin.test.ts
-  // (the environment the option names gets working route HMR) and
-  // known-bugs-route-hmr.test.ts. Here: the environment
+  // (the environment the option names gets working route HMR). Here: the environment
   // `plugin.vite.environmentName` excludes gets no route HMR code in any
   // module the environment serves from its route module: the router's
   // packages and any support module the compiler imports included. Left

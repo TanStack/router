@@ -9,7 +9,7 @@
  *
  * Solid and Vue apps: route-hmr-browser-frameworks.test.ts. The router
  * plugin's configurations and the route shapes it recognises:
- * route-hmr-browser-plugin.test.ts. Known bugs: known-bugs-route-hmr.test.ts.
+ * route-hmr-browser-plugin.test.ts.
  *
  * Several edits share one dev server and page. The tests run concurrently
  * (each has its own dev server and page; most of their time is waiting).
@@ -367,7 +367,7 @@ describe.concurrent.each(['vite', 'rsbuild'] as const)(
 
             // An edit that removes the component options the page loaded: the
             // route shows the router's default error component. Whether in
-            // place and without errors: pinned in known-bugs-route-hmr.test.ts
+            // place and without errors: pinned in known-bugs-route-hmr-removals.test.ts
             // ("removes a split option the page loaded"), per bundler and
             // split setting. Last, as the pinned failure may reload the page
             // later.
@@ -556,7 +556,7 @@ export const Route = createFileRoute('/')({
 // Each component counts its mounts in a state initializer (React runs it on
 // mount only; React Refresh keeps the state and re-runs effects): a body
 // edit React Refresh patches in place mounts nothing anew. Unsplit inline memo / forwardRef
-// components: pinned in known-bugs-route-hmr-components.test.ts.
+// components: route-hmr-browser-options.test.ts.
 describe.concurrent('vite: an edited React route component written', () => {
   const mounted = `useState(() => (window.mounts = (window.mounts ?? 0) + 1))`
   const rows = [
@@ -590,22 +590,6 @@ export const Route = createFileRoute('/')({
 `,
       shows: (version: string) => `inline ${version}`,
     },
-    {
-      name: 'as an inline arrow function, unsplit',
-      autoCodeSplitting: false,
-      route: (version: string) =>
-        `import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
-export const Route = createFileRoute('/')({
-  loader: () => 'data ${version}',
-  component: () => {
-    ${mounted}
-    return <p>inline ${version} {Route.useLoaderData()}</p>
-  },
-})
-`,
-      shows: (version: string) => `inline ${version} data ${version}`,
-    },
   ]
   it.for(rows)(
     '$name shows in place without mounting again',
@@ -633,11 +617,13 @@ export const Route = createFileRoute('/')({
 
 // An edit of a split loader runs the edited loader once: the update of the
 // route module refreshes the route, and the chunk evaluating again (its
-// re-import by the refreshed loader) does not refresh it a second time.
+// re-import by the refreshed loader) does not refresh it a second time. On
+// Rsbuild such an edit leaves the route module's code unchanged: the chunk's
+// own update refreshes the route.
 describe.concurrent.each(['vite', 'rsbuild'] as const)(
   '%s: an edit of a split loader',
   (bundler) => {
-    const route = (version: string) =>
+    const route = (groupings: string, version: string) =>
       `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({
   loader: () => {
@@ -646,26 +632,29 @@ export const Route = createFileRoute('/')({
     return 'data ${version}'
   },
   component: Page,
-  codeSplitGroupings: [['loader'], ['component']],
+  codeSplitGroupings: ${groupings},
 })
 function Page() {
   return <p>page {Route.useLoaderData()}</p>
 }
 `
-    it(
-      'runs the edited loader once',
+    it.for([`[['loader'], ['component']]`, `[['component', 'loader']]`])(
+      'runs the edited loader once (codeSplitGroupings: %s)',
       { timeout },
-      async ({ expect, onTestFinished }) => {
+      async (groupings: string, { expect, onTestFinished }) => {
         const app = await openRouteHmrPage({
           bundler,
           onTestFinished,
           pluginOptions: { autoCodeSplitting: true },
-          files: { 'routes/index.tsx': route('v1') },
+          files: { 'routes/index.tsx': route(groupings, 'v1') },
           ready: 'page data v1',
         })
         const runs = await app.evaluate<number>('window.__loaderRuns')
         expect(
-          await app.edit({ 'routes/index.tsx': route('v2') }, 'page data v2'),
+          await app.edit(
+            { 'routes/index.tsx': route(groupings, 'v2') },
+            'page data v2',
+          ),
         ).toEqual(inPlace)
         expect(await app.evaluate<number>('window.__loaderRuns')).toBe(runs + 1)
       },

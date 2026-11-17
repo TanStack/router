@@ -162,9 +162,7 @@ export const Route = ${call}
 // compiler warns naming the route file through a real channel (the dev
 // server's logger or console, or the page), possibly after a reload. A
 // warning never excuses an edit that does not show (SPEC G10;
-// `expectEditShownOrReportedFallback`). (A helper function
-// without automatic code splitting keeps its old component silently:
-// pinned in known-bugs-route-hmr.test.ts.)
+// `expectEditShownOrReportedFallback`).
 describe.concurrent.each(['vite', 'rsbuild'] as const)(
   '%s: an edit of a route created inside',
   (bundler) => {
@@ -198,17 +196,12 @@ export const Route = (() =>
     }
 
     it.for(
-      Object.keys(factoryRoutes)
-        .flatMap((shape) =>
-          [true, false].map((autoCodeSplitting) => ({
-            shape,
-            autoCodeSplitting,
-          })),
-        )
-        .filter(
-          ({ shape, autoCodeSplitting }) =>
-            shape !== 'helper' || autoCodeSplitting,
-        ),
+      Object.keys(factoryRoutes).flatMap((shape) =>
+        [true, false].map((autoCodeSplitting) => ({
+          shape,
+          autoCodeSplitting,
+        })),
+      ),
     )(
       '$shape shows (autoCodeSplitting: $autoCodeSplitting)',
       { timeout },
@@ -233,10 +226,12 @@ export const Route = (() =>
 )
 
 // Route files the framework plugin gives no refresh boundary: a React route
-// file without JSX (`.ts`), and a React app without `@vitejs/plugin-react`
-// (Vite compiles the JSX itself). An edit shows its new code, after a hot
-// update or a reload; whether in place: pinned in
-// known-bugs-route-hmr.test.ts.
+// file without JSX (`.ts`: React Refresh registers nothing in it), and a
+// React app without `@vitejs/plugin-react` (Vite compiles the JSX itself).
+// On main the route module's own accept call was on an alias, so every edit
+// reloaded the page. An edit shows its new code in place. (Without a refresh
+// runtime the new component may be mounted anew: a subtree replacement, not
+// a document reload.)
 describe.concurrent('vite: an edit of', () => {
   /** A root route rendering the loader data of the active matches. */
   const root = `import { createRootRoute, Outlet, useRouterState } from '@tanstack/react-router'
@@ -255,7 +250,7 @@ export const Route = createFileRoute('/')({ loader: () => 'data ${version}' })
 `
 
   it.for([true, false])(
-    'a route file without JSX (.ts) shows its new loader data (autoCodeSplitting: %s)',
+    'a React .ts route module shows its new loader data in place (autoCodeSplitting: %s)',
     { timeout },
     async (
       autoCodeSplitting: boolean,
@@ -270,16 +265,17 @@ export const Route = createFileRoute('/')({ loader: () => 'data ${version}' })
         },
         ready: 'root data v1',
       })
-      const { errors } = await app.edit(
-        { 'routes/index.ts': loaderRoute('v2') },
-        'root data v2',
-      )
-      expect(errors).toEqual([])
+      expect(
+        await app.edit(
+          { 'routes/index.ts': loaderRoute('v2') },
+          'root data v2',
+        ),
+      ).toEqual(inPlace)
     },
   )
 
   it.for([true, false])(
-    'a route component in an app without @vitejs/plugin-react shows (autoCodeSplitting: %s)',
+    'a route component in an app without @vitejs/plugin-react shows in place (autoCodeSplitting: %s)',
     { timeout },
     async (
       autoCodeSplitting: boolean,
@@ -292,11 +288,12 @@ export const Route = createFileRoute('/')({ loader: () => 'data ${version}' })
         files: { 'routes/index.tsx': indexRoute('react', 'v1') },
         ready: 'page v1 data v1',
       })
-      const { errors } = await app.edit(
-        { 'routes/index.tsx': indexRoute('react', 'v2') },
-        'page v2 data v2',
-      )
-      expect(errors).toEqual([])
+      expect(
+        await app.edit(
+          { 'routes/index.tsx': indexRoute('react', 'v2') },
+          'page v2 data v2',
+        ),
+      ).toEqual(inPlace)
     },
   )
 })

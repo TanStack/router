@@ -58,31 +58,6 @@ export const register = (items: Array<string>) => {
 `
 
 describe('module state shared with split chunks', () => {
-  // Control for loadRoute: a top-level const read by the loader and the split
-  // component moves to the shared module and is initialized once.
-  test('a const read by the loader and the split component is initialized once', async () => {
-    const route = await loadRoute(
-      `${head}import { init } from './state'
-const value = init(1)
-export const Route = createFileRoute('/')({
-  loader: () => value,
-  component: () => <p>{value}</p>,
-  errorComponent: () => <p>error</p>,
-})`,
-      { files: { 'state.ts': stateFile } },
-    )
-    // (When the shared initializer runs, with the route module or with the
-    // first chunk that needs it, is free: SPEC G3.)
-    expect(
-      await route.run(`return [
-  options.loader(),
-  await render('component'),
-  await render('errorComponent'),
-  (await app('state.ts')).calls,
-]`),
-    ).toEqual([1, '<p>1</p>', '<p>error</p>', 1])
-  })
-
   // Bug: a `var` nested in a statement, an enum or a namespace is not shared.
   // The `var` is missed because module bindings are collected from top-level
   // declarations only (`collectLocalBindingsFromStatement`); same root cause

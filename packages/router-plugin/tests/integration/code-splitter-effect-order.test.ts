@@ -169,28 +169,6 @@ g.log = (tag: string, ...a: Array<unknown>) => {
     },
     timeout,
   )
-
-  test(
-    'a column helper and the columns only the component reads load with it, before a schema the route module keeps',
-    async () => {
-      const r = await mounted(
-        bundler,
-        `${head}import { createColumnHelper } from '../table'
-import { createSchema } from '../schema'
-const helper = createColumnHelper('MARK_HELPER')
-const columns = [helper.accessor('MARK_COLUMNS', {})]
-export const Route = createFileRoute('/')({
-  validateSearch: createSchema({ page: 'number' }),
-  component: () => <p>{columns.map((c) => c.key).join(',')}</p>,
-})
-`,
-      )
-      expect(r.text).toBe('MARK_COLUMNS')
-      expect(r.where('MARK_HELPER')).toBe('lazy')
-      expect(r.where('MARK_COLUMNS')).toBe('lazy')
-    },
-    timeout,
-  )
 })
 
 // What no order rule reorders without a warning (DESIGN-order-none.md

@@ -144,6 +144,101 @@ export const Route = createFileRoute('/')({
     },
   )
 
+  // Inline components React Refresh's transform does not register as written
+  // (a TypeScript cast, `memo(...)` or `forwardRef(...)` around an inline
+  // function) on an unsplit route, and a root route's
+  // `React.memo(forwardRef(...))`. On main they were neither hoisted nor
+  // registered, so an edit did not show until a reload.
+  test.for([
+    ...[
+      ['as any', '', `(() => <p>inline VERSION</p>) as any`],
+      [
+        'satisfies',
+        `import type { FC } from 'react'`,
+        `(() => <p>inline VERSION</p>) satisfies FC`,
+      ],
+      [
+        'memo(() => ...)',
+        `import { memo } from 'react'`,
+        `memo(() => <p>inline VERSION</p>)`,
+      ],
+      [
+        'forwardRef(function () { ... })',
+        `import { forwardRef } from 'react'`,
+        `forwardRef(function (props, ref) {
+    return <p ref={ref}>inline VERSION</p>
+  })`,
+      ],
+    ].map(([name, imports, component]) => ({
+      name: name!,
+      file: 'routes/index.tsx',
+      autoCodeSplitting: false,
+      route: (version: string) =>
+        `import { createFileRoute } from '@tanstack/react-router'
+${imports}
+export const Route = createFileRoute('/')({
+  component: ${component!.replace('VERSION', version)},
+})
+`,
+      shows: (version: string) => `inline ${version}`,
+    })),
+    {
+      name: 'React.memo(forwardRef(...)) on a root route',
+      file: 'routes/__root.tsx',
+      autoCodeSplitting: true,
+      route: (version: string) => `import React, { forwardRef } from 'react'
+import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute({
+  component: React.memo(forwardRef(function Root(props, ref) {
+    return <p ref={ref}>root ${version}</p>
+  })),
+})
+`,
+      shows: (version: string) => `root ${version}`,
+    },
+  ])(
+    'written inline as $name: an edit shows in place (autoCodeSplitting: $autoCodeSplitting)',
+    async (
+      { file, autoCodeSplitting, route, shows },
+      { expect, onTestFinished }: TestContext,
+    ) => {
+      const app = await openRouteHmrPage({
+        onTestFinished,
+        pluginOptions: { autoCodeSplitting },
+        files: { [file]: route('v1') },
+        ready: shows('v1'),
+      })
+      expect(await app.edit({ [file]: route('v2') }, shows('v2'))).toEqual(
+        inPlace,
+      )
+    },
+  )
+
+  // A lowercase function component that is also the unsplit
+  // `pendingComponent`: on main, React HMR renamed it in the split chunk, so
+  // the chunk exported a binding nothing declared (SyntaxError) and the
+  // page never showed the route.
+  test('a lowercase function component that is also the unsplit pendingComponent renders, and an edit shows in place', async ({
+    expect,
+    onTestFinished,
+  }: TestContext) => {
+    const route = (version: string) =>
+      `import { createFileRoute } from '@tanstack/react-router'
+function page() {
+  return <p>page ${version}</p>
+}
+export const Route = createFileRoute('/')({ component: page, pendingComponent: page })
+`
+    const app = await openRouteHmrPage({
+      onTestFinished,
+      files: { 'routes/index.tsx': route('v1') },
+      ready: 'page v1',
+    })
+    expect(
+      await app.edit({ 'routes/index.tsx': route('v2') }, 'page v2'),
+    ).toEqual(inPlace)
+  })
+
   // #8688: a method using its own `super` or `this` stays a method (a
   // function expression holding `super` is a syntax error); it shows, and
   // an edit shows in place, without a reload or an error (it may remount)

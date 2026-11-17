@@ -1,12 +1,8 @@
-// Slow-tier pins of route HMR in a real page (continued from
-// known-bugs-route-hmr.test.ts: two files, to keep each within the per-file
-// time budget): edits that remove options, aliased route exports, and
-// error boundaries.
 /**
  * Known route HMR and React Refresh bugs. Each test asserts the correct
  * behaviour for a bug main had, which today's compiler fixes (a regression
- * test, oracle/KNOWN-BUGS.md). See known-bugs-route-hmr.test.ts for how the
- * pins observe the page.
+ * test, oracle/KNOWN-BUGS.md). An edit must show its new code without a full
+ * reload and without errors in the page (`route-hmr-page.ts`).
  */
 import { describe, test } from 'vitest'
 import { isAppError, openRouteHmrPage } from '../route-hmr-page'
