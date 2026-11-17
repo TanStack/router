@@ -30,6 +30,9 @@ Not the oracle: the tests of `@tanstack/compiler-test-utils` (the shared harness
 Not the oracle: `test:noncompiler` (start-plugin-core, react-start-rsc). It runs main's own tests of features that are
 not compilers (manifest, sitemap, prerender, RSC runtime, …), listed in each package's `tests/noncompiler-tests.json`.
 
+Not the oracle: start-plugin-core `tests/rsbuild/compilation-files.test.ts` and `hand-over-warnings.test.ts` (run by
+`test:unit`): they call the Rsbuild session's own logic for two races a timed dev server would otherwise be needed for.
+
 Not the oracle: the `perf-guards` project (start-plugin-core `tests/integration/perf-guards/`, run by
 `test:integration`). Its tests count what the compiler does (plans, raw facts, compiles, resolutions) to guard reported
 costs; a correct compiler need not match them.

@@ -4,9 +4,10 @@
  * module's warnings only in the compilation that built it, and a dev session
  * reports each warning once (LR-10), so a module the newer compilation built
  * again reports none of them itself: its recorded warnings are handed over
- * too (review round 3, R3-G5-3: a double save printed the warning zero
- * times; ruling F1: tested through the session's own logic, no timed dev
- * servers).
+ * too. Not an oracle test: it calls the Rsbuild session's own logic
+ * (`handOverWarnings`), as the race it guards (a double save printed the
+ * warning zero times) needs a timed dev server otherwise (review round 3,
+ * R3-G5-3, ruling F1).
  */
 import { describe, expect, test } from 'vitest'
 import { LOCATED_DIAGNOSTICS } from '../../src/rsbuild/compiler-session'
