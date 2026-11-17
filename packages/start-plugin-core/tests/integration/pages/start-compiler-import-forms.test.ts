@@ -286,20 +286,12 @@ export const fn = createServerFn().handler(async () => 'fn')`,
       },
     )
 
-    // Bug: the bundler plugins choose the modules the Start compiler
-    // transforms by their text (a factory name such as
-    // `createServerOnlyFn`, or `.handler(`). A module whose only Start call
-    // is `factory.serverOnly(...)` names none, so it is left untransformed;
-    // the same module next to a server fn is compiled (rows above). Same
-    // cause as the renamed re-export pin "client builds compile a renamed
-    // createServerOnlyFn re-export ..." in ../../start-compiler-cases.test.ts.
-    // Impact: the client bundle gets the server-only implementation and the
-    // modules it imports, and runs it; the client-only mirror runs during
-    // SSR.
-    // Source: start-compiler/compiler.ts `KindDetectionPatterns` and
-    // `detectKindsInCode` (used by vite/start-compiler-plugin/plugin.ts and
-    // rsbuild/start-compiler-host.ts). Outcome twin of main's printed-code
-    // test of #8758 (compiler.test.ts).
+    // On main, the client bundle gets the server-only implementation and the
+    // modules it imports, and runs it; the client-only mirror runs during SSR.
+    // Source: main's start-compiler/compiler.ts `KindDetectionPatterns` and
+    // `detectKindsInCode` (used by main's vite/start-compiler-plugin/plugin.ts and
+    // rsbuild/start-compiler-host.ts). Outcome twin of main's printed-code test
+    // of #8758 (compiler.test.ts).
     test.each(calls)(
       '$name alone in its module: the other environment neither loads nor runs the implementation',
       async (call) => {
@@ -365,10 +357,7 @@ return text`,
       await checkBoundary(imports, 'CO')
     })
 
-    // Bug: `<ClientOnly>` is detected by the `<ClientOnly` / imported
-    // `ClientOnly` text, so a boundary written as a member of a namespace
-    // import (`<Router.ClientOnly>`) is never compiled.
-    // Impact: the SSR environment keeps the children and the client-only
+    // On main, the SSR environment keeps the children and the client-only
     // modules they import: browser-only code runs during SSR.
     test('through a namespace member', async () => {
       await checkBoundary(

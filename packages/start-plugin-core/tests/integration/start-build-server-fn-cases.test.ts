@@ -54,18 +54,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
 export const db = { users: () => 'users' }
 `
 
-  // Bug: the client output keeps a class only server code uses, with its
-  // server-only import (compiler pin "client: a class used by a server fn
-  // handler does not load its server-only import" in
-  // ../start-compiler-cases.test.ts). Tree-shaking drops the unused
-  // class but keeps the import, so the server-only module's top-level code
-  // is bundled and runs in the browser.
-  // Impact: server-only modules (database clients, SDKs initialised with
+  // On main, server-only modules (database clients, SDKs initialised with
   // secrets) ship to the client and run their top-level code there.
-  // One bundler (Vite): the compiler decides, as the import it leaves in
-  // the client module loads the server-only module in any bundler; the
-  // in-process pin above decides it, and this cell is its build canary.
-  // (No Rsbuild cell: it was removed to save test time.)
+  // One bundler (Vite): the compiler decides, as the import it leaves in the
+  // client module loads the server-only module in any bundler; the in-process
+  // pin above decides it, and this cell is its build canary. (No Rsbuild cell:
+  // it was removed to save test time.)
   if (bundler === 'vite') {
     test(
       'client: the server-only module of a class only server code uses is not bundled',
@@ -116,13 +110,8 @@ export const fn = createServerFn().handler(async () => auth.get() as Session)
     timeout,
   )
 
-  // Bug (Vite): the client output keeps the server-only import that a
-  // `typeof` type query still mentions (compiler pin "client: a server-only
-  // import last mentioned by a type alias ..." above); with
-  // `verbatimModuleSyntax`, Vite's TypeScript transform keeps it. Rsbuild's
-  // transform of the same app drops it.
-  // Impact: the server-only module's top-level code is bundled and runs in
-  // the browser.
+  // On main, the server-only module's top-level code is bundled and runs in the
+  // browser.
   // A build canary of the in-process compiler pin.
   test(
     'client: a server-only module a type mentions is not bundled with verbatimModuleSyntax',
@@ -133,12 +122,7 @@ export const fn = createServerFn().handler(async () => auth.get() as Session)
     timeout,
   )
 
-  // Bug: with SSR as the server fn provider, the SSR caller module and the
-  // provider module (`?tss-serverfn-split`) are two module instances of the
-  // same file in the SSR bundle, and the provider repeats the file's
-  // top-level code (exports-and-directives.test.ts "side-effect imports and
-  // top-level statements stay in every output" asserts this).
-  // Impact: in one server process, the file's top-level side effects run
+  // On main, in one server process, the file's top-level side effects run
   // twice, handlers and SSR code of the file see different module state, and
   // `instanceof` fails for a class of the file passed to a server fn.
   // Source: PR #8656 (class identity).
@@ -268,19 +252,14 @@ export { default } from '@tanstack/react-start/server-entry'
     timeout,
   )
 
-  // Bug: with SSR as the provider, the production resolver lists every
-  // server fn the builds found and never checks the caller's origin
-  // (`includeClientReferencedCheck` is off, and the flag it would check is
-  // true for every SSR-caller compile, handleCreateServerFn.ts
-  // `isClientReferenced`).
-  // Impact: a server fn only server code uses (an SSR loader helper, a
+  // On main, a server fn only server code uses (an SSR loader helper, a
   // server-only module) is callable over HTTP by anyone who learns its id,
   // bypassing what the server code around it checks.
-  // SPEC J4.2: in a production build, only server fns client code
-  // references are HTTP-callable (dev may answer any).
-  // On Vite, when the SSR build loses the #7213 race (below), the server fn
-  // is missing from the resolver: the call from SSR code fails too, so the
-  // pin stays red (for #7213) and cannot pass by the missing server fn.
+  // SPEC J4.2: in a production build, only server fns client code references
+  // are HTTP-callable (dev may answer any). On Vite, when the SSR build loses
+  // the #7213 race (below), the server fn is missing from the resolver: the
+  // call from SSR code fails too, so the pin stays red (for #7213) and cannot
+  // pass by the missing server fn.
   test(
     'SSR: a server fn only server code references is not callable over HTTP',
     async () => {
@@ -293,30 +272,19 @@ export { default } from '@tanstack/react-start/server-entry'
     timeout,
   )
 
-  // Bug (Vite): the production server fn resolver is generated when the SSR
-  // build first loads it, from the server fns found so far. A server fn that
-  // only server code calls (another server fn's handler, a middleware
-  // `.server()`) is found when the SSR build compiles the module that calls
-  // it. When the SSR build reaches that module only through the resolver,
-  // the server fn is found after the resolver was generated and is missing
-  // from it. Only the resolver imports a server fn's handler (its provider
-  // module) and, when only client code imports a server fn, everything that
-  // server fn uses, its middleware included. Rsbuild rebuilds the resolver
-  // after the SSR compilation found every server fn.
-  // Impact: in production, calling it throws "Server function info not
-  // found" (works in dev), from SSR code and over HTTP alike.
+  // On main, in production, calling it throws "Server function info not found"
+  // (works in dev), from SSR code and over HTTP alike.
   // Source: issue #7213; SPEC J4.2 ("in any module processing order", G4).
   // When SSR code imports the server fn, or its caller, from another module,
   // the SSR build reaches the module that calls it and the resolver in
-  // parallel: then whether it is in the resolver is a race (see the
-  // controls above).
-  // Not run on Vite: the middleware caller (the one #7213 quotes) when SSR
-  // code imports the server fn that uses the middleware. The SSR build then
-  // reaches the middleware's module and the resolver in parallel, and
-  // whether it finds the server fn first is a race, which Vite usually wins
-  // by a few milliseconds and loses under heavy load; no app input orders
-  // the two. The rows where only client code imports that server fn pin
-  // this caller deterministically.
+  // parallel: then whether it is in the resolver is a race (see the controls
+  // above). Not run on Vite: the middleware caller (the one #7213 quotes) when
+  // SSR code imports the server fn that uses the middleware. The SSR build then
+  // reaches the middleware's module and the resolver in parallel, and whether
+  // it finds the server fn first is a race, which Vite usually wins by a few
+  // milliseconds and loses under heavy load; no app input orders the two. The
+  // rows where only client code imports that server fn pin this caller
+  // deterministically.
   const innerFn = `${head}export const inner = createServerFn().handler(async () => 'inner')
 `
   const calledByServerCode = {
@@ -402,15 +370,10 @@ export const outer = createServerFn()
 
   // Control: start-build-env-separation.test.ts "a library's server fn"
   // (a library exporting a top-level server fn).
-  // Bug: a library in node_modules that creates server fns for its users
-  // (`createLoggedServerFn(handler)` returning
-  // `createServerFn().handler(handler)`) is compiled like any module, but
-  // the user's module only calls the library's function, so the compiler
-  // never sees a server fn there, and nothing warns.
-  // Impact: the handler the user passes, and what it imports, ship to the
+  // On main, the handler the user passes, and what it imports, ship to the
   // client bundle and run there instead of on the server.
-  // SPEC J4.6: a server fn created inside a function is supported, or
-  // rejected clearly.
+  // SPEC J4.6: a server fn created inside a function is supported, or rejected
+  // clearly.
   const wrapperLibrary = `import { createServerFn } from '@tanstack/react-start'
 export function createLoggedServerFn(handler) {
   return createServerFn().handler(handler)
@@ -479,19 +442,14 @@ export const fn = createLoggedServerFn(async () => db.secret())
     timeout,
   )
 
-  // Bug (Vite): Start's Vite plugin looks for the Start libraries it bundles
-  // in SSR (`crawlFrameworkPkgs`: dependencies with a peer dependency on
-  // Start) in the package.json of the working directory (`root:
-  // process.cwd()`), not of Vite's root, which the plugin uses for its own
-  // root a few lines above.
   // Source: src/vite/plugin.ts:143 (Vite's root: :96); found when the build
   // harness ran Start's real runtime (it ran Vite builds outside the app).
-  // Impact: `vite build <app>` run from another directory (a monorepo root,
-  // a script) leaves a Start library external in the SSR build: Node loads
-  // it uncompiled, and an SSR call of its server fn returns undefined
-  // instead of the handler's result.
-  // Control: start-build-env-separation.test.ts "a library's server fn"
-  // (the same library, built in the app's directory).
+  // On main, `vite build <app>` run from another directory (a monorepo root, a
+  // script) leaves a Start library external in the SSR build: Node loads it
+  // uncompiled, and an SSR call of its server fn returns undefined instead of
+  // the handler's result.
+  // Control: start-build-env-separation.test.ts "a library's server fn" (the
+  // same library, built in the app's directory).
   test(
     "a build run from another directory: a library's server fn runs in the SSR build",
     async () => {
@@ -527,15 +485,8 @@ export const libFn = createServerFn().handler(async () => 'MARK_LIB_HANDLER')
     timeout,
   )
 
-  // Bug (Rsbuild): in the SSR build, compiling a module with an isomorphic
-  // fn makes the Start compiler resolve the module's `createMiddleware`
-  // import (the server lookup does not know that factory). The Rsbuild
-  // compiler host resolves it through the loader context, whose resolver
-  // does not match the package's `import`-only exports (those of
-  // `@tanstack/react-start`): the build fails with
-  // `PackagePathNotExported(".")` (start-compiler-host.ts `resolveId`).
-  // Impact: an app with a middleware and an isomorphic fn in one module
-  // does not build with Rsbuild.
+  // On main, an app with a middleware and an isomorphic fn in one module does
+  // not build with Rsbuild.
   test(
     'a module with a middleware and an isomorphic fn builds, and its middleware runs on the server',
     async () => {
@@ -582,15 +533,11 @@ ${callByIdExports}`,
     timeout,
   )
 
-  // Bug: the bundler plugins hand every module whose text matches a
-  // detection pattern (here `.handler(`) to the Start compiler, which parses
-  // it as an ES module and fails on a CommonJS script's top-level `return`.
-  // The same package without that text builds and runs on both bundlers.
-  // Impact: an app with such a dependency does not build (Vite: when client
+  // On main, an app with such a dependency does not build (Vite: when client
   // code imports it, or SSR code with `noExternal`; Rsbuild: client or SSR).
-  // SPEC J4.16. These apps replace the in-process compiler pin of this
-  // name. (Both hosts leave a module the compiler cannot parse as an ES
-  // module to the bundler's own parser.)
+  // SPEC J4.16. These apps replace the in-process compiler pin of this name.
+  // (Both hosts leave a module the compiler cannot parse as an ES module to the
+  // bundler's own parser.)
   test(
     'a CommonJS dependency with a top-level return builds and keeps its meaning',
     async () => {
@@ -608,9 +555,7 @@ ${callByIdExports}`,
 })
 
 describe('rsbuild dev', () => {
-  // Bug: same as the build pin above; Rsbuild's dev server compiles the
-  // same package without the `.handler(` text, and the page runs it.
-  // Impact: the dev server fails to compile an app with such a dependency.
+  // On main, the dev server fails to compile an app with such a dependency.
   // Source: as the build pin above.
   test('a CommonJS dependency with a top-level return compiles and keeps its meaning', async () => {
     const server = await startRsbuildStartDevServer({

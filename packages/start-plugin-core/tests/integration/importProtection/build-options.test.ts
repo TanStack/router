@@ -374,7 +374,7 @@ export const secret = () => 'MARK_SECRET'
     // ("skips file and marker checks for excluded resolved files").
     // NEW bug (Vite): the Vite adapter checks a server-only marker when it
     // resolves the marker import, for any importer, and never applies
-    // `excludeFiles` to the marked module (vite/import-protection-plugin/
+    // `excludeFiles` to the marked module (main's vite/import-protection-plugin/
     // plugin.ts, marker handling in `resolveId`), so the build fails with a
     // marker violation of `node_modules/db-lib/index.js`. The docs: "By
     // default, resolved files inside `node_modules` are excluded from
@@ -394,13 +394,8 @@ export const secret = () => 'MARK_SECRET'
       timeout,
     )
 
-    // Bug (Rsbuild): with `excludeFiles: []`, the Rsbuild adapter still
-    // skips the marker check of files under `node_modules` (the build
-    // succeeds without any report); `excludeFiles` is documented as the
-    // files the file-pattern and marker checks skip (guide/import-protection.md),
-    // and Vite checks them.
-    // Impact: on Rsbuild, a project cannot opt in to checking the
-    // server-only markers of its dependencies.
+    // On main, on Rsbuild, a project cannot opt in to checking the server-only
+    // markers of its dependencies.
     // Source: review (this row ran on Vite only; the docs decide).
     test(
       '[] checks the markers of dependencies: a server-only-marked dependency fails the build',

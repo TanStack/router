@@ -199,14 +199,7 @@ ${callByIdExports}`,
     timeout,
   )
 
-  // Bug: a class only a server fn handler uses stays in the client output
-  // (dead-code elimination never removes class declarations; same root
-  // cause as the pins "client: a class used by a server fn handler does
-  // not load its server-only import" and "client: the server-only module of
-  // a class only server code uses is not bundled"). A decorated class
-  // cannot even be dropped by the bundler (its decorators run when it is
-  // defined).
-  // Impact: the handler's class, and what its decorators and methods
+  // On main, the handler's class, and what its decorators and methods
   // reference, ship to the client and run their decorators there.
   test(
     'the decorated class only a server fn handler uses is not in the client bundle',

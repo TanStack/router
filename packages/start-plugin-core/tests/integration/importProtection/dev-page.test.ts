@@ -177,17 +177,9 @@ export default { fetch: () => new Response(String(handler())) }
     return { server, response: await server.fetch('/') }
   }
 
-  // Bug: dev import protection only logs violations it can reach from the
-  // entries it registers, Start's router entry and start entry
-  // (vite/import-protection-plugin/plugin.ts `registerEntries`). The app's
-  // server entry is not one, and the entry branch of `resolveId` (no
-  // importer) never runs in dev, where Vite passes `<root>/index.html` as
-  // the importer, so the modules only the server entry imports are
-  // unreachable and their violations are discarded. The server twin of the
-  // client entry pin above.
-  // Impact: in dev (mock mode), a client-only import reached from the app's
-  // custom server entry (`src/server.ts`) is mocked on the server without
-  // any warning (the request returns the mock's value).
+  // On main, in dev (mock mode), a client-only import reached from the app's
+  // custom server entry (`src/server.ts`) is mocked on the server without any
+  // warning (the request returns the mock's value).
   // Source: mutation testing.
   test(
     'a client-only import of a module the server entry imports is mocked on the server and logged',

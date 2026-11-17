@@ -213,20 +213,13 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
     )
   }, 30_000)
 
-  // Bug: next to a server fn, a top-level `const x = f()` may be a renamed or
-  // re-exported Start factory, so in dev the client compiler loads the module
-  // of `f` through the client environment, from inside the transform. For a
-  // pre-bundled dependency (here `zod`) with an empty dependency cache, that
-  // load waits for the dependency optimizer, which waits for this transform.
-  // (#8758 skips this load for `receiver.method()` calls on a named import,
-  // as in the regression test above, but not for a call of the import itself.)
   // Source: the pin of the `z.object()` row above, before #8758.
-  // Impact: with an empty dependency cache, such a module (an `object()`
+  // On main, with an empty dependency cache, such a module (an `object()`
   // schema from `import { object } from 'zod'` next to a server fn) never
   // finishes transforming when its transform is part of Vite's first crawl of
-  // static imports: requested before the server listens, or within about
-  // 50 ms of the dependency optimizer's start (`server.warmup`, the first
-  // request of a middleware-mode server), and the page hangs.
+  // static imports: requested before the server listens, or within about 50 ms
+  // of the dependency optimizer's start (`server.warmup`, the first request of
+  // a middleware-mode server), and the page hangs.
   test('transforms a client module with a server fn and a top-level call of a pre-bundled dependency', async () => {
     await expectClientRpc(
       `${head}import { object } from 'zod'
@@ -318,11 +311,7 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
     }
   }
 
-  // Bug: when a server fn id is not registered yet, the dev validator
-  // (`validate-server-fn-id`) transforms the source file under
-  // `?server-fn-module-lookup`, the one id the compiling transform excludes,
-  // so the id is never registered and the validator rejects it.
-  // Impact: after a dev server restart, calling a server fn whose module the
+  // On main, after a dev server restart, calling a server fn whose module the
   // new server has not compiled yet (e.g. from a page loaded before the
   // restart) fails with "Invalid server function ID" (500).
   // Source: issue #8447.

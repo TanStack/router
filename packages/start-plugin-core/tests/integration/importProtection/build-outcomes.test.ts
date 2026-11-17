@@ -52,16 +52,7 @@ export const nav = createServerFn().handler(async () => 1)
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  // Bug: the build check counts a denied module as surviving when the
-  // compilation contains it, whether or not the client uses it. Vite: the
-  // mock that replaces the module is never tree-shaken, because its exports
-  // read members of the mock (`export const corpus = mock.corpus`,
-  // import-protection/virtualModules.ts), which the bundler keeps (with
-  // side-effect-free exports, a scratch run passes this pin on Vite).
-  // Rsbuild: the report step walks every module of the module graph
-  // (connections are not filtered by whether they are used,
-  // INTERNALS-import-protection.md).
-  // Impact: a denied module that a client-reachable module imports, but that
+  // On main, a denied module that a client-reachable module imports, but that
   // the client never uses, still fails the build.
   // Source: issue #8101 (closed without a reproduction).
   test('a denied module the client bundle drops does not fail the build', async () => {
@@ -74,19 +65,14 @@ describe.each(startBundlers)('%s build', (bundler) => {
     expect(client.where('MARK_CORPUS')).toBe('nowhere')
   }, 60_000)
 
-  // Bug: same as above, in mock mode: the mock of a denied module the client
-  // never uses stays in the client bundle, and the build warns about it.
-  // The mock module is marked side-effect free (`@__NO_SIDE_EFFECTS__`,
-  // `@__PURE__`), but its exports read members of the mock.
-  // Impact: mock-mode builds ship mock code (a Proxy runtime) for unused
+  // On main, mock-mode builds ship mock code (a Proxy runtime) for unused
   // imports, and report violations the client never reaches.
   // Source: review (the check "returns mock code" of virtualModules.test.ts
   // asserted the purity annotations as text).
-  // Judged by what the user sees:
-  // no report on any channel, no code or effect of the module in the
-  // bundle; not by comparing the bundle's statements with another build's.
-  // The live-denial controls show the same harness sees a used mock: its
-  // report, its safe value, and the real value without protection.
+  // Judged by what the user sees: no report on any channel, no code or effect
+  // of the module in the bundle; not by comparing the bundle's statements with
+  // another build's. The live-denial controls show the same harness sees a used
+  // mock: its report, its safe value, and the real value without protection.
   test('in mock mode, an unused denied module leaves nothing in the client bundle and no warning', async () => {
     // (one build at a time: a Vite build runs in its app's directory)
     const mocked = await buildStart({
@@ -134,13 +120,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
 })
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  // Bug (Rsbuild): a dynamic `import('db-lib')` of a denied specifier is
-  // neither reported nor mocked: the Rsbuild loader only rewrites static
-  // imports and re-exports (`rewriteDeniedImports`,
-  // import-protection/rewrite.ts), and the build reports specifier
-  // violations only through the mock modules of rewritten imports
-  // (`processAssets` in rsbuild/import-protection.ts). Vite fails the build.
-  // Impact: the real module ships to the client in a lazy chunk and runs
+  // On main, the real module ships to the client in a lazy chunk and runs
   // there, without any error or warning.
   // Source: mutation testing.
   test('a client dynamic import of a denied specifier fails the build, reporting one client violation', async () => {
@@ -197,14 +177,7 @@ return describeValue(entry.read(), 'MARK_SECRET')`)
     }
   }
 
-  // Bug: in mock mode, a denied file that is not JavaScript or TypeScript
-  // keeps its content: Vite replaces a denied file with its mock in a
-  // transform hook whose filter only lets JS/TS modules through
-  // (`/\.[cm]?[tj]sx?($|\?)/`, transform-cache plugin of
-  // vite/import-protection-plugin/plugin.ts), and the Rsbuild loader rule
-  // only applies to JS/TS modules (`test: /\.[cm]?[tj]sx?$/`,
-  // rsbuild/import-protection.ts). Both warn.
-  // Impact: a mock-mode build ships the real content of a denied
+  // On main, a mock-mode build ships the real content of a denied
   // `*.server.json` (e.g. server configuration or credentials) to the client.
   // Source: mutation testing.
   test('in mock mode, a denied .server.json file is mocked, with a warning', async () => {
@@ -218,14 +191,7 @@ const secret = data.secret`,
     ).toEqual({ warned: true, hasRealCode: false, read: 'a safe mock' })
   }, 60_000)
 
-  // Bug: in mock mode, a denied CommonJS file (`.server.cjs`) fails the
-  // build: the mock that replaces the file is an ES module, which Vite's
-  // parser rejects in a `.cjs` file (`export default mock`), and whose named
-  // exports are the ES exports of the denied file, which a CommonJS file has
-  // none of, so Rspack cannot link the named import (`export 'secret' ...
-  // was not found`). With import protection off, both build the named
-  // import of the real module.
-  // Impact: a mock-mode build of a project with a `*.server.cjs` the client
+  // On main, a mock-mode build of a project with a `*.server.cjs` the client
   // imports fails instead of mocking it.
   // Source: mutation testing.
   test('in mock mode, a denied .server.cjs file is mocked, with a warning', async () => {

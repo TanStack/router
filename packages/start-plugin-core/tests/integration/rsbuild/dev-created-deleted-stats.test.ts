@@ -45,7 +45,6 @@ describe('Rsbuild dev: created and deleted files', () => {
   // compiled once). Afterwards every collection is as small as after the
   // first round, and the stale sets are empty: each compilation took what it
   // was to build again.
-  // Bug: the stale sets filled and no Rsbuild hook took them.
   // Source: F3-6a (Fable review 2026-11-10; design 3 §5).
   test(
     'keeps nothing of 200 created and deleted files, and no stale path at rest',

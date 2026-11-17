@@ -30,12 +30,8 @@ import { load } from '@tanstack/react-start/hydration'
 describe('module-level code used by the children', () => {
   // (First: its failure takes the page run bound, and the other tests run
   // meanwhile.)
-  // Bug: the chunk keeps the module-level bindings the children name (by
-  // name, even when a local shadows them) under their own names, so a
-  // binding named like one the compiler generates in the chunk (its export)
-  // collides with it.
-  // Impact: compiling the chunk fails ("Duplicate declaration"), so the
-  // build fails.
+  // On main, compiling the chunk fails ("Duplicate declaration"), so the build
+  // fails.
   test.each([
     {
       name: 'helpers the children call',
@@ -80,11 +76,7 @@ export function Page() {
     20_000,
   )
 
-  // Bug: the client chunk removes the module's `Route`
-  // (`removeModuleLevelBindings(ast, new Set(['Route']))`) without importing
-  // it from the parent module, so split children reading it reference an
-  // undeclared binding.
-  // Impact: the boundary throws "Route is not defined" when it hydrates.
+  // On main, the boundary throws "Route is not defined" when it hydrates.
   // Source: #8504 hydrate-split-modules.test.ts (rows directly, through a
   // module helper and exported under a specifier; red on main)
   test.each([
@@ -136,10 +128,7 @@ ${code}`,
     },
   )
 
-  // Bug: the client chunk takes any module-level binding named `Route` for
-  // the route and removes it (the removal of the pins above), even when the
-  // module does not export it and it is a plain component.
-  // Impact: the boundary throws "Route is not defined" when it hydrates.
+  // On main, the boundary throws "Route is not defined" when it hydrates.
   test('client: an unexported component named Route that the children render reaches the chunk', async () => {
     const { client } = await expectRendersLikeSource(
       await hosts(),
@@ -153,11 +142,7 @@ export function Page() {
     expect(client.html).toContain('<p>local</p>')
   })
 
-  // Bug: module bindings are collected from top-level declarations only
-  // (`collectLocalBindingsFromStatement`), so a module-level `var` declared
-  // in a nested block is dropped from the chunk. Same root cause as the
-  // nested `var` pins in router-plugin/tests/known-bugs-code-splitter.test.ts.
-  // Impact: the boundary throws "label is not defined" when it hydrates.
+  // On main, the boundary throws "label is not defined" when it hydrates.
   test('client: a var declared in a nested block that the children read reaches the chunk', async () => {
     const { client } = await expectRendersLikeSource(
       await hosts(),
@@ -171,10 +156,7 @@ export function Page() {
     expect(client.html).toContain('<p>nested</p>')
   })
 
-  // Bug: a TypeScript import alias (`import Card = ui.Card`) used only by the
-  // split children is not declared in the client chunk.
-  // Impact: the chunk throws "Card is not defined" when the boundary
-  // hydrates.
+  // On main, the chunk throws "Card is not defined" when the boundary hydrates.
   // Source: React Compiler fixture ts-import-equals-declaration.ts
   test('client: a TypeScript import alias used by the split children is declared in the chunk', async () => {
     const { client } = await expectRendersLikeSource(
@@ -197,11 +179,7 @@ export function Page() {
     expect(client.html).toContain('<b>hi</b>')
   })
 
-  // Bug: module-level declarations the children use are only moved into the
-  // chunk for some declaration forms and uses: a default-exported function,
-  // TypeScript enums and namespaces, and a `let` the children only assign
-  // are neither declared in the chunk nor imported from the parent.
-  // Impact: the boundary throws "DefaultFn is not defined" (or `Tone`,
+  // On main, the boundary throws "DefaultFn is not defined" (or `Tone`,
   // `Labels`, `renders`) when it hydrates.
   // Source: Qwik optimizer example_exports, example_ts_enums,
   // should_preserve_let_when_migrated_into_segment; React Compiler fixture

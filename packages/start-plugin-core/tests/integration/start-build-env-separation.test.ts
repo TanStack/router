@@ -573,20 +573,10 @@ const get = async (path) =>
       },
     )
 
-    // Bug: a `.validator()` link on a builder stored in a variable is not
-    // stripped from the client (server fn and middleware): the chain walk
-    // stops at the identifier. Pinned at compiler level in
-    // createServerFn/caller-dead-code.test.ts and
-    // start-compiler-factories.test.ts.
-    // Source: start-compiler/compiler.ts:1296-1330; fuzzing.
-    // Bug: a validator schema that a type alias reads with `typeof` stays in
-    // the client output with its initializer. The root cause is upstream
-    // (babel-dead-code-elimination 1.0.12 counts a `typeof` type query as a
-    // reference; no workaround here). Pinned at compiler level in
-    // ../start-compiler-cases.test.ts.
+    // Source: main's start-compiler/compiler.ts:1296-1330; fuzzing.
     // Source: router-utils/src/ast.ts:190; fuzzing.
-    // Impact: the validators and what they import load eagerly in the
-    // client, which never runs them.
+    // On main, the validators and what they import load eagerly in the client,
+    // which never runs them.
     test.each([
       {
         construct: 'a server fn validator on a builder variable',
@@ -626,13 +616,9 @@ const get = async (path) =>
       return { client: client.result, ssr: ssr.result }
     }
 
-    // Bug: an isomorphic fn whose first link is stored in a variable loses
-    // that link's implementation in its environment's build (no-op, returns
-    // undefined). Pinned at compiler level in
-    // start-compiler-factories.test.ts.
-    // Source: start-compiler/handleCreateIsomorphicFn.ts:17-25,
+    // Source: main's start-compiler/handleCreateIsomorphicFn.ts:17-25,
     // start-compiler/compiler.ts:1296-1330; fuzzing.
-    // Impact: the server (or client) call silently returns undefined.
+    // On main, the server (or client) call silently returns undefined.
     test.each([
       { name: '.server() link', run: `return entry.isoServerVar()` },
       { name: '.client() link', run: `return entry.isoClientVar()` },

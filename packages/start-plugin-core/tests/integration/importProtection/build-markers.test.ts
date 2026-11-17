@@ -94,15 +94,7 @@ async function clientRead(
   }
 }
 
-// Bug: `onViolation` runs after the build has replaced the denied module
-// (or import) with a mock: Vite substitutes the mock when it resolves the
-// import and calls `onViolation` in `generateBundle`
-// (vite/import-protection-plugin/plugin.ts `reportOrDeferViolation`);
-// Rsbuild mocks in its loader and calls it when reporting in `processAssets`
-// (rsbuild/import-protection.ts `reportViolation`). Returning `false` only
-// silences the report. (A Vite build of a server-only marker violation keeps
-// the real module either way, see the mock-mode pin above.)
-// Impact: an import a project allows with `allowImport` (documented:
+// On main, an import a project allows with `allowImport` (documented:
 // guide/import-protection.md) would be a mock in the client: its calls return
 // mocks in production, without any warning.
 // Source: review.
@@ -183,19 +175,10 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
     timeout,
   )
 
-  // Bug (Rsbuild): the Rsbuild adapter reports a marker violation at the
-  // marked module (SPEC J6.5 allows it) with the shortest import chain
-  // from the entry to the marked module (`traceOf`,
-  // import-protection/graph-trace.ts, a BFS to the nearest entry), whichever
-  // importer it runs through: here the exempt `src/ignored.ts`, two steps
-  // from the entry, while the importer the violation is for, `src/other.ts`,
-  // is three steps away. An exempt edge is no violation (SPEC J6.7), so a
-  // report whose chain ends with one names the wrong importer. Vite reports
-  // the violation at the importer's use, and blames the right one.
-  // Impact: on Rsbuild, the report of a server-only-marked module imported
-  // by an exempt importer and another one blames the exempt importer; the
-  // user looks at code the project ignores on purpose, and the real
-  // importer is not named.
+  // On main, on Rsbuild, the report of a server-only-marked module imported by
+  // an exempt importer and another one blames the exempt importer; the user
+  // looks at code the project ignores on purpose, and the real importer is not
+  // named.
   // Source: review.
   test(
     'imported by an ignored importer and, further from the entry, another importer: the violation blames the other importer',
@@ -257,14 +240,8 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
     timeout,
   )
 
-  // Bug: an importer `ignoreImporters` exempts still gets the mock of a
-  // server-only-marked module in a mock-mode build: Rsbuild replaces the
-  // marked module itself with a mock in its loader, for every importer
-  // (the exemption pins of exemptions.test.ts, SPEC J6.7); on
-  // Vite the marker violation is not exempt at all (the pin above), and in
-  // error mode the build fails.
-  // Impact: code a project exempts on purpose silently gets a mock instead
-  // of the module it imports.
+  // On main, code a project exempts on purpose silently gets a mock instead of
+  // the module it imports.
   test(
     'imported only by an ignored importer: the ignored importer gets the real module',
     async () => {
@@ -280,26 +257,8 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
     timeout,
   )
 
-  // Bug: in a mock-mode build, a server-only-marked module imported by an
-  // exempt importer and another importer is a mock for both (Rsbuild), or
-  // the real module for the other importer (Vite).
-  // - Rsbuild replaces the marked module itself with a mock in its loader,
-  //   for every importer, in every import order (the pin above).
-  // - Vite mocks an importer's import of a marked module only when the
-  //   marked module's own marker import was resolved first (`resolveId` in
-  //   vite/import-protection-plugin/plugin.ts reads `fileMarkerKind`);
-  //   otherwise that importer gets the real module (the "is mocked, with a
-  //   warning" pin of the mock-mode block). Only the exempt importer can load
-  //   the marked module before the other importer's import is resolved, so
-  //   the outcome is a race of the build: the other importer gets the real
-  //   module in every build when it is nearer the entry than the exempt
-  //   importer, in most builds when they are side by side, and in a few
-  //   when the exempt importer is nearer.
-  // The orders where the other importer is nearer come first: they keep the
-  // pin red on both bundlers in every run; the racy orders follow, so the
-  // pin passes only when no order leaks.
   // Source: review, with entry-order and indirection variants.
-  // Impact: exemptions either stop working (Rsbuild) or leak the denied real
+  // On main, exemptions either stop working (Rsbuild) or leak the denied real
   // value to the importer that is not exempt (Vite).
   // Blame is read from onViolation/trace: marker-origin display is allowed.
   test(

@@ -56,14 +56,9 @@ export const libFn = createServerFn().handler(async () => 'MARK_LIB_HANDLER')
   entry: 'src/entry.ts',
 }
 
-// Bug: Start's Vite plugin crawls Vite's root as configured for the Start
-// libraries it bundles in SSR. A relative root (`root: '.'`) made the crawl
-// walk up from `.` and stop at the working directory; a root through a
-// symlink walked up the link's parents, not the app's, where Vite resolves
-// the app's imports from.
-// Source: src/vite/plugin.ts (`crawlFrameworkPkgs({ root: viteConfig.root
-// || process.cwd() })`).
-// Impact: the library stays external in the SSR build: Node loads it
+// Source: src/vite/plugin.ts (`crawlFrameworkPkgs({ root: viteConfig.root ||
+// process.cwd() })`).
+// On main, the library stays external in the SSR build: Node loads it
 // uncompiled, and its server fn returns undefined during SSR.
 describe('Vite build of an app whose Start library is hoisted above it', () => {
   test(
@@ -140,13 +135,9 @@ async function servedApp(options: Partial<StartBuildOptions>) {
   }
 }
 
-// Bug: Start's Rsbuild plugin keeps Rsbuild's `root` as written for the
-// paths of its virtual modules (the manifest, the server-fn resolver):
-// relative, they resolve against each importer.
 // Source: src/rsbuild/plugin.ts (`modifyRsbuildConfig`: `root =
 // rsbuildConfig.root`), src/rsbuild/planning.ts `virtualPath`.
-// Impact: the build fails (Start's entries and virtual modules are not
-// found).
+// On main, the build fails (Start's entries and virtual modules are not found).
 describe('Rsbuild build of an app with a configured root', () => {
   // Control: the app's absolute directory.
   test(

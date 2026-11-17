@@ -364,12 +364,8 @@ export function solidPageSuite(bundler: StartBundler) {
       },
     )
 
-    // Bug: a captured local called at a statement's start became
-    // `(0, props.setOpen)(true)` in the chunk, with no `;` before it: in
-    // code without semicolons the statement continued the previous one
-    // (`setCount(…)(0, props.setOpen)(true)`). SPEC J5.2, G1.
-    // Impact: the click threw "… is not a function" and the second
-    // statement never ran.
+    // On main, the click threw "… is not a function" and the second statement
+    // never ran.
     test('a handler of statements without semicolons runs each of them', async () => {
       await expectChildrenHydrate('statements', ['statements'])
     })
@@ -380,15 +376,8 @@ export function solidPageSuite(bundler: StartBundler) {
       })
     })
 
-    // Bug: a Solid directive names its function in a JSX attribute only
-    // (`use:tip`), which the Hydrate transform does not take for a use of
-    // `tip`: the chunk neither declares a module-level `tip` nor receives a
-    // component's `tip` as a capture, and Solid's JSX transform turns the
-    // attribute into a call of `tip` in the chunk. SPEC G1, J5.2.
-    // Impact: the children throw "tip is not defined" when the boundary
+    // On main, the children throw "tip is not defined" when the boundary
     // hydrates, and stay the server's HTML.
-    // (A directive runs on the client only: its attribute shows that the
-    // children hydrated.)
     test.each([
       { where: 'module', fixture: 'directiveModule' },
       { where: 'component', fixture: 'directiveComponent' },
@@ -570,12 +559,7 @@ export function solidPageSuite(bundler: StartBundler) {
       expect(split.requested).not.toEqual([])
     })
 
-    // Bug: `ref={input}` in the children binds the element to the
-    // component's `let` (Solid assigns it), which code outside the boundary
-    // reads, as with `split={false}`. The chunk receives `input` as a prop
-    // and assigns its own parameter, so the component's `let` stays unset.
-    // SPEC J5.8 (extraction keeps legal `ref` behaviour).
-    // Impact: silently, the parent never sees the element (`input` stays
+    // On main, silently, the parent never sees the element (`input` stays
     // `undefined`): focusing or reading it does nothing.
     test('a ref in split children binds the let of their component', async () => {
       const script = `const counter = () => root.querySelector('button[data-label="child"]')
@@ -598,11 +582,7 @@ return root.querySelector('output').textContent`
       ])
     })
 
-    // Bug: only a bare identifier was taken for a ref assignment; Solid's
-    // JSX transform also unwraps `ref={input!}`, `ref={input as T}` and
-    // `ref={(input)}`, and assigned the element to the chunk's own props.
-    // SPEC J5.8.
-    // Impact: silently, the parent's `let` stays `undefined`.
+    // On main, silently, the parent's `let` stays `undefined`.
     test.each(['letRefNonNull', 'letRefCast', 'letRefParens'])(
       'a wrapped ref in split children binds the let of their component (%s)',
       async (fixture) => {

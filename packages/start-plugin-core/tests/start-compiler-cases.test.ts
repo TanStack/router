@@ -225,12 +225,7 @@ export const fn = createServerFn().handler(async () => db.x(input))`,
     }
   }
 
-  // Bug: middleware, isomorphic and env-only fns are detected by the
-  // `createMiddleware` / `createIsomorphicFn` / `createServerOnlyFn` text, so
-  // a module that only finishes a builder imported from another module, or
-  // calls a factory re-exported or aliased under another name, is never
-  // compiled.
-  // Impact: the `.server()` implementation (the server-only implementation,
+  // On main, the `.server()` implementation (the server-only implementation,
   // which the uncompiled factory returns as is) and its server-only imports
   // ship to the client.
   test.each<{
@@ -319,10 +314,7 @@ export const fn = authed.handler(async () => db.x())`,
     )
   })
 
-  // Bug: a server fn builder read as a member of a namespace import
-  // (`F.authed.handler`) is not resolved, unlike the same builder imported by
-  // name.
-  // Impact: the module is left untransformed and ships its handler and
+  // On main, the module is left untransformed and ships its handler and
   // server-only imports to the client.
   test('client builds compile a builder read from a namespace import', async () => {
     await expectServerFnThroughRpc(
@@ -335,9 +327,7 @@ export const fn = F.authed.handler(async () => db.x())`,
     )
   })
 
-  // Bug: a namespace of the Start package re-exported by a project module
-  // (`export * as Start from '@tanstack/react-start'`) is not resolved.
-  // Impact: `Start.createServerFn()` modules are left untransformed and ship
+  // On main, `Start.createServerFn()` modules are left untransformed and ship
   // their handler and server-only imports to the client.
   test('client builds compile factories of a re-exported Start namespace', async () => {
     await expectServerFnThroughRpc(
@@ -350,13 +340,7 @@ export const fn = Start.createServerFn().handler(async () => db.x())`,
     )
   })
 
-  // Bug: the builder of a `.handler()` chain is resolved through identifiers
-  // and member expressions only, so a builder returned by a function call
-  // (`authed().handler(...)`) is not traced. Builders returned by user
-  // factories are a supported recognition form (SPEC J4.5), so the fix
-  // supports it: the client calls an RPC and the server runs the handler
-  // (a rejection is no fix).
-  // Impact: the module is left untransformed and ships its handler and
+  // On main, the module is left untransformed and ships its handler and
   // server-only imports to the client, without an RPC.
   test.each<{
     name: string
@@ -449,11 +433,8 @@ export const getEnv = withBuilder(
     },
   )
 
-  // Bug: env-only factories nested in other code are found by the factory's
-  // exported name (`isNestedDirectCallCandidate`), so a renamed import or a
-  // local alias is only compiled as a top-level variable initializer.
-  // Impact: the implementation and its server-only imports ship to the
-  // client, where calling the server-only fn runs it instead of throwing.
+  // On main, the implementation and its server-only imports ship to the client,
+  // where calling the server-only fn runs it instead of throwing.
   test.each([
     {
       name: 'a renamed import in a function body',
@@ -585,26 +566,20 @@ export const db = {
     }
   }
 
-  // Bug: chain methods are only recognised when called through a static
-  // member (`.handler(...)`, `.server(...)`), and a call whose result is
-  // member-called (`createServerOnlyFn(...).bind(null)`) is taken for the
-  // inner call of a method chain and never visited as a candidate itself:
-  // each module below is left untransformed in every environment.
   // Source: #8630 pins; SPEC J4.5 ("unrecognised shapes must not silently
   // leak"), J4.12. tsc against the real declarations accepts every row.
-  // Impact: the server implementation and its server-only import ship to the
-  // client, where the server fn, isomorphic fn or server-only fn runs it in
-  // the browser.
-  // Fix-agnostic: each environment either rejects the module with a
-  // compile error at the call, or
-  // follows its contract: the client neither loads the server-only module
-  // nor holds the server code, and each environment runs what the runtime
-  // contract promises.
-  // The request middleware shape (`createMiddleware()['server'](...)`, the
-  // same root cause) is pinned once, in its build twin:
+  // On main, the server implementation and its server-only import ship to the
+  // client, where the server fn, isomorphic fn or server-only fn runs it in the
+  // browser.
+  // Fix-agnostic: each environment either rejects the module with a compile
+  // error at the call, or follows its contract: the client neither loads the
+  // server-only module nor holds the server code, and each environment runs
+  // what the runtime contract promises.
+  // The request middleware shape (`createMiddleware()['server'](...)`, the same
+  // root cause) is pinned once, in its build twin:
   // integration/start-build-call-shapes.test.ts runs it as the app's request
-  // middleware in a real request (same input, same outcomes), which this
-  // file's shared host has no start entry for.
+  // middleware in a real request (same input, same outcomes), which this file's
+  // shared host has no start entry for.
   test.each<CallShape>([
     {
       name: 'a server fn handler called through a computed member',
@@ -642,17 +617,13 @@ export const read = createServerOnlyFn(() => db.secret()).bind(null)`,
     },
   )
 
-  // Bug: env-only factories nested in other code are found by the factory's
-  // exported name (`isNestedDirectCallCandidate`), so a local alias of
-  // createServerOnlyFn called in a top-level block is neither compiled nor
-  // rejected.
   // Source: the known-bug row "a local alias in a top-level block" deleted in
   // a945fe4563, restored (the "block" position of SPEC J4.6).
-  // Impact: the implementation and its server-only import ship to the
-  // client, where calling the server-only fn runs it instead of throwing.
-  // Fix-agnostic: compiled per its contract (the client throws the
-  // server-only error and loads nothing server-only, SSR runs it) or
-  // rejected with a clear compile error at the call.
+  // On main, the implementation and its server-only import ship to the client,
+  // where calling the server-only fn runs it instead of throwing.
+  // Fix-agnostic: compiled per its contract (the client throws the server-only
+  // error and loads nothing server-only, SSR runs it) or rejected with a clear
+  // compile error at the call.
   test('a createServerOnlyFn local alias called in a top-level block works in each environment, or is rejected at the call', async () => {
     await expectWorksOrRejectedAtCall({
       name: 'a local alias in a top-level block',
@@ -671,18 +642,9 @@ export let read: () => unknown
     })
   })
 
-  // Bug: when createServerFn is the only factory imported, the compiler only
-  // visits top-level variable declarations, so a server fn anywhere else is
-  // neither extracted nor rejected. With another Start factory imported, a
-  // server fn initializing a declarator below the top level (in a function,
-  // a block or a switch case) is extracted on the client, but the server
-  // has no handler for it. Rejecting a placement with a clear compile error
-  // at the call is the fix for a position R162 refuses (a function, a
-  // block, a condition); a supported position (load-positions.test.ts) must
-  // reach its handler through an RPC.
-  // Impact: the handler and its server-only imports ship to the client
-  // (createServerFn alone), or the server fails to serve the module
-  // (another factory).
+  // On main, the handler and its server-only imports ship to the client
+  // (createServerFn alone), or the server fails to serve the module (another
+  // factory).
   // The block row covers the "block" position of SPEC J4.6.
   describe.each([
     { importHead: 'createServerFn alone' as const, rows: placements },
@@ -703,20 +665,11 @@ export let read: () => unknown
     )
   })
 
-  // Bug: next to another Start factory, a server fn that is not assigned to
-  // a variable (an object property, a class field, a default export, an
-  // assignment, a call argument, a JSX attribute, a conditional, a
-  // destructuring) is rejected with a plain `Error` ("createServerFn must
-  // be assigned to a variable!") that carries no position: the user is told
-  // the file (by the bundler) but not where in it.
-  // Source: start-compiler/handleCreateServerFn.ts:232 (the other rejections
-  // of this handler use `codeFrameError`); SPEC G5 ("errors about the
-  // user's source carry a position/code frame"), J4.6.
-  // Impact: in a module with several server fns the user has to find the
-  // misplaced one by hand. Loosened twin (any rejection, at no
-  // position): declaration-sites.test.ts "next to another Start factory, ...".
-  // (A declarator below the top level, e.g. in a top-level block, is
-  // extracted instead: pinned above.)
+  // Source: main's start-compiler/handleCreateServerFn.ts:232 (the other rejections of
+  // this handler use `codeFrameError`); SPEC G5 ("errors about the user's
+  // source carry a position/code frame"), J4.6.
+  // On main, in a module with several server fns the user has to find the
+  // misplaced one by hand.
   test.each(
     placements.filter(
       (placement) => !placement.nested && !placement.declarator,
@@ -732,15 +685,12 @@ export let read: () => unknown
     },
   )
 
-  // Bug: same cause as above; a server fn nested in a function whose
-  // handler reads a local of that function (here `id`) cannot run on its own
-  // on the server, and is neither supported nor rejected.
-  // Fix-agnostic (SPEC J4.6, §5.13): each environment independently rejects
-  // with a clear capture diagnostic or preserves each make(id) closure.
+  // Fix-agnostic: each environment independently rejects with a clear capture
+  // diagnostic or preserves each make(id) closure.
   // SSR may keep the handler inline; successful clients must use safe RPCs.
-  // Impact: its handler and server-only imports ship to the client
-  // (createServerFn alone), or the server fails to serve the module
-  // (another factory).
+  // On main, its handler and server-only imports ship to the client
+  // (createServerFn alone), or the server fails to serve the module (another
+  // factory).
   test.each(Object.keys(placementHeads) as Array<PlacementHead>)(
     'with %s imported, a nested server fn whose handler reads a local of its function is supported or rejected at the capture',
     async (importHead) => {
@@ -785,14 +735,11 @@ export let read: () => unknown
     },
   )
 
-  // Bug: the export a re-export forwards is looked up by its local name
-  // (`wrap`) only, so two re-exports of different modules' `wrap` under
-  // distinct names resolve to the same factory.
-  // Impact: here both aliases compile as createClientOnlyFn: the server-only
+  // On main, here both aliases compile as createClientOnlyFn: the server-only
   // implementation ships to the client and runs there, and throws on the
   // server.
-  // Source: #8504 compiler.test.ts "resolves distinct re-export aliases
-  // without conflating their source bindings" (red on main).
+  // Source: #8504 compiler.test.ts "resolves distinct re-export aliases without
+  // conflating their source bindings" (red on main).
   test('distinct re-export aliases of two factories keep their own kind', async () => {
     const startCase = await newCase({
       'barrel.ts': `export { wrap as allowed } from './server'
@@ -898,9 +845,7 @@ export function make(createServerFn) {
 })
 
 describe('server function handlers', () => {
-  // Bug: generated imports and handler names are not made unique against
-  // user bindings, so a user binding named like one of them collides with it.
-  // Impact: the module fails to build.
+  // On main, the module fails to build.
   test.each(['createClientRpc', 'createSsrRpc', 'createServerRpc'])(
     'a user binding named %s does not collide with generated code',
     async (binding) => {
@@ -913,10 +858,7 @@ export const fn = createServerFn().handler(async () => 'from the server')`,
     },
   )
 
-  // Bug: the server calls each server fn from a generated wrapper,
-  // `opts => fn.__executeServer(opts)`, whose `opts` parameter shadows a
-  // server fn named `opts`.
-  // Impact: every call of a server fn named `opts` fails on the server.
+  // On main, every call of a server fn named `opts` fails on the server.
   test('a server fn named opts runs on the server', async () => {
     const { results } = await callServerFns({
       'module.tsx': `${head}export const opts = createServerFn().handler(async () => 'from the server')`,
@@ -967,12 +909,8 @@ export const fn = createServerFn().handler(async () => 'from the server')`,
     )
   }
 
-  // Bug: the same as the two pins above, for whatever names the compiler
-  // introduces (adaptive: they are read from the served code, so a compiler
-  // that only renames its generated bindings still collides here, while one
-  // that keeps them apart from user bindings passes).
-  // Impact: a user binding or a server fn named like generated code breaks
-  // the module or its server calls.
+  // On main, a user binding or a server fn named like generated code breaks the
+  // module or its server calls.
   test('no name the compiler introduces collides with a user binding or a server fn of that name', async () => {
     const names = await introducedNames()
     expect(names.length, 'names the compiler introduced').toBeGreaterThan(0)
@@ -1005,16 +943,12 @@ export const fn = createServerFn().handler(async () => 'from the server')`,
     expect(failures).toEqual([])
   }, 30_000)
 
-  // Bug: when the handler passed to `.handler()` is a `createServerOnlyFn()`
-  // call, the inner call is compiled first and the caller is never rewritten
-  // into an RPC.
-  // Impact: the server fn cannot be called: calling it from the client
-  // throws the server-only error, and calling it from server code does not
-  // run the handler.
-  // The outcome (SPEC J4.1, J4.2, G5): a call from either side returns
-  // what the handler returns (how the call reaches it is free), or the
-  // module is reported: a compile error, or in dev a warning, naming the
-  // file.
+  // On main, the server fn cannot be called: calling it from the client throws
+  // the server-only error, and calling it from server code does not run the
+  // handler.
+  // The outcome (SPEC J4.1, J4.2, G5): a call from either side returns what the
+  // handler returns (how the call reaches it is free), or the module is
+  // reported: a compile error, or in dev a warning, naming the file.
   test.each(['client', 'ssr'] as const)(
     '%s: a server fn whose handler is a createServerOnlyFn call returns the handler result, or is reported',
     async (environment) => {
@@ -1066,20 +1000,14 @@ describe('dev edits', () => {
     return started.host.importServer(`/${dir}/module.tsx`, 'ssr')
   }
 
-  // Bug: after a dev edit of the module a re-export chain of an env-only
-  // factory ends in (here it now re-exports createClientOnlyFn under the
-  // createServerOnlyFn name), the module importing the factory, unchanged,
-  // keeps the code compiled for the old factory: its compiled output imports
-  // nothing of the chain, so no module graph links it to the edited module,
-  // and the compiler's own invalidation does not reach it.
-  // Impact: in dev, the importer keeps the old behaviour (here it runs a
-  // function that should now be client-only) until it is edited itself or
-  // the server restarts.
+  // On main, in dev, the importer keeps the old behaviour (here it runs a
+  // function that should now be client-only) until it is edited itself or the
+  // server restarts.
   // Source: rerouted compiler.test.ts "invalidateModule clears cached module
   // resolution state" (green through the internal compiler, which the test
   // invalidated and recompiled itself); reproduced through a real Vite dev
-  // edit. Unbundled client edits of a server fn factory are
-  // covered by integration/start-compiler-dev-server.test.ts.
+  // edit. Unbundled client edits of a server fn factory are covered by
+  // integration/start-compiler-dev-server.test.ts.
   test('a dev edit of a module a re-export chain ends in recompiles its importers', async () => {
     const started = await editHost()
     const dir = editDirs.reexportChain
@@ -1119,12 +1047,7 @@ describe('dev edits', () => {
 })
 
 describe('dead-code elimination', () => {
-  // Bug: a type-only import re-exported without `type` (`export { Settings }`,
-  // which TypeScript accepts unless verbatimModuleSyntax is on) loses its
-  // import in the client and SSR outputs, which keep the export that the
-  // TypeScript transform can then no longer erase. The code splitter has the
-  // same bug (pin in router-plugin/tests/known-bugs-code-splitter.test.ts).
-  // Impact: the module fails to load ("Export 'Settings' is not defined").
+  // On main, the module fails to load ("Export 'Settings' is not defined").
   test.each([
     `import type { Settings } from './settings'`,
     `import { type Settings } from './settings'`,
@@ -1187,11 +1110,7 @@ export const TaggedError = (tag: string) => () =>
     )
   }
 
-  // Bug: dead-code elimination (babel-dead-code-elimination) removes
-  // unreferenced functions and variables but never class declarations, TS
-  // enums, namespaces, overloaded functions or redeclared `var`s, so such a
-  // declaration that only server code used keeps its server-only import.
-  // Impact: the client (always in dev; in builds, the server module's
+  // On main, the client (always in dev; in builds, the server module's
   // top-level code, see the Vite build pin) loads the server-only module.
   // Source: review; #8504 caller-dead-code.test.ts:563 covers server fns.
   test.each([
@@ -1322,13 +1241,9 @@ export const fn = createServerFn().handler(async () => describeDb())`)
     )
   })
 
-  // Bug: dead-code elimination counts a `typeof auth` type query in a
-  // top-level type alias as a use of the `auth` import, so a server-only
-  // import that the handler read and that such a type still mentions stays a
-  // value import in the client output.
-  // Impact: with `verbatimModuleSyntax` (TypeScript keeps value imports),
-  // the client loads the server-only module and its top-level code ships
-  // (see the Vite build pin).
+  // On main, with `verbatimModuleSyntax` (TypeScript keeps value imports), the
+  // client loads the server-only module and its top-level code ships (see the
+  // Vite build pin).
   // Source: review.
   test('client: a server-only import last mentioned by a type alias is not loaded with verbatimModuleSyntax', async () => {
     const { loads } = await verbatimLoads(`${head}import { auth } from './auth'
@@ -1358,15 +1273,8 @@ export const setTheme = createServerFn({ method: 'POST' })
     })
   }
 
-  // Bug: same family as above, for a module-level declaration: a validator
-  // schema that a type alias also reads (`z.infer<typeof themeValidator>`)
-  // stays in the client output, with what its initializer imports, although
-  // types read no value at runtime. The root cause is upstream:
-  // babel-dead-code-elimination 1.0.12 counts a `typeof` type query as a
-  // reference (no workaround here; `deadCodeElimination` at
-  // router-utils/src/ast.ts:190 runs it).
   // Source: fuzzing (an unmodified file of a real app).
-  // Impact: the schema and its library (or server-only modules) ship to the
+  // On main, the schema and its library (or server-only modules) ship to the
   // client, which never runs them (see the build pin in
   // start-build-env-separation.test.ts).
   test('client: a validator schema that a type alias reads with typeof is not loaded', async () => {
@@ -1388,16 +1296,10 @@ const chart = createChart()
 ${typeAlias}
 export const draw = createClientOnlyFn(() => chart.draw())`
 
-  // Bug: same root cause as the pin above (upstream
-  // babel-dead-code-elimination 1.0.12 counts a `typeof` type query as a
-  // reference; no workaround here), mirrored on the server: a module-level
-  // declaration that only a client-only implementation and a `typeof` type
-  // query read stays in the SSR output, with its initializer and imports.
   // Source: fuzzing (an unmodified file of tanstack.com,
   // src/components/ThemeProvider.tsx).
-  // Impact: the server loads the client-only module and runs the
-  // initializer (e.g. `window.matchMedia(...)`), which can throw during
-  // SSR.
+  // On main, the server loads the client-only module and runs the initializer
+  // (e.g. `window.matchMedia(...)`), which can throw during SSR.
   test('ssr: a declaration a client-only fn reads and a type alias reads with typeof is not loaded', async () => {
     const startCase = await erasedCase(
       clientOnlyChartModule('type Chart = typeof chart'),
@@ -1405,13 +1307,9 @@ export const draw = createClientOnlyFn(() => chart.draw())`
     expectNotLoaded(await startCase.serverLoads(), ['./chart.client'])
   })
 
-  // Bug: the server twin of the class rows of "client: $name does not load
-  // its server-only import" above (dead-code elimination never removes a
-  // class declaration): a class only a client-only implementation uses
-  // stays in the SSR output with its client-only import (SPEC J4.11, G16).
-  // Impact: the server loads the client-only module and runs its top-level
-  // code; a browser-only package that reads `window` when it loads crashes
-  // SSR (Vite dev and build, Rsbuild build).
+  // On main, the server loads the client-only module and runs its top-level
+  // code; a browser-only package that reads `window` when it loads crashes SSR
+  // (Vite dev and build, Rsbuild build).
   // Source: review (dead-code investigation, server direction).
   test('ssr: a class only a client-only fn uses does not load its client-only import', async () => {
     const startCase =

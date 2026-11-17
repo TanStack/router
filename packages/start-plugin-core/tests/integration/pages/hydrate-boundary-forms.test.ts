@@ -544,13 +544,10 @@ export const useThing = () => (useId(), idle())`,
     },
   )
 
-  // Bug: hook calls are only detected when the callee is a bare identifier,
-  // so `React.useId()` in the children moves into the split code instead of
-  // being rejected (SPEC J5.5).
-  // Impact: the hook runs in another component on the client than on the
+  // On main, the hook runs in another component on the client than on the
   // server (`useId` mismatches, hydration errors).
-  // Source: Qwik optimizer example_use_optimization. #8504 has no test for
-  // it and still moves `React.useId()` into the chunk.
+  // Source: Qwik optimizer example_use_optimization. #8504 has no test for it
+  // and still moves `React.useId()` into the chunk.
   test('client: a hook called through a namespace is rejected at the boundary', async () => {
     await expectExtractionRejected(
       await hosts(),

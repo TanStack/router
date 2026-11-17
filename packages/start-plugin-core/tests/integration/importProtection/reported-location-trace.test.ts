@@ -212,16 +212,11 @@ export const page = () => c() + s()
       timeout,
     )
 
-    // Bug (Vite): the trace of a Vite build starts at the first module of the
-    // trace that is in the source directory and not in `node_modules`: the
-    // Vite adapter does not record the imports of other modules in its import
-    // graph (vite/import-protection-plugin/plugin.ts). Rsbuild traces through
-    // them (and from the harness's client entry, outside `src`).
-    // Impact: the trace of a Vite build leaves out how the client reaches the
+    // On main, the trace of a Vite build leaves out how the client reaches the
     // importer when the chain goes through a module outside `src` (a shared
     // directory of a monorepo, a dependency).
-    // Source: mutation testing.
-    // (Was a Vite pin: the Yuku host's trace follows the bundler graph.)
+    // Source: mutation testing. (Was a Vite pin: the Yuku host's trace follows
+    // the bundler graph.)
     const outsideSrcTest = test
     outsideSrcTest(
       'the trace goes through modules outside the source directory',

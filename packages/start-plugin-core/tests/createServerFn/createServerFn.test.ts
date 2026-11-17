@@ -160,15 +160,8 @@ export const fn = (createServerFn() as any).handler(async () => 'first', async (
   })
 })
 
-// Bug: in dev, the compiler looks up a module a server fn's factory comes
-// from under a derived id (the module's id with a query flag of its own
-// added), which the environment then loads: a user plugin serving a
-// virtual module by its exact id, as Vite documents it, does not know that
-// id, so the module that defines the server fn fails to compile ("Failed to
-// load url virtual:...?server-fn-module-lookup"). A build loads the
-// module under its own id.
-// Impact: `vite dev` cannot serve a server fn whose factory a virtual
-// module of the app (or of a plugin) provides.
+// On main, `vite dev` cannot serve a server fn whose factory a virtual module
+// of the app (or of a plugin) provides.
 // Fix-agnostic: however the compiler learns the factory's provenance, the
 // module compiles and its server fn works.
 // Source: the former test "keeps query-bearing virtual module identities

@@ -170,17 +170,8 @@ describe.each(pageSteps)('step $step (live use: $live)', ({ step, live }) => {
     )
   }
 
-  // Bug (step 2): the violation the edit adds is never logged. When a module
-  // changes, dev import protection drops the import graph edges that point
-  // to it (`hotUpdate` -> `ImportGraph.invalidate`, import-protection/
-  // trace.ts), its importer (the split route component) is not transformed
-  // again, and the violation found in the edited `src/widget.tsx` is
-  // unreachable from Start's entries, so `processPendingViolations`
-  // (vite/import-protection-plugin/plugin.ts) discards it. The page twin of
-  // the dev.test.ts pin "added by an edit of the importer is logged at the
-  // use"; a scratch run keeping the incoming edges passes this pin.
-  // Impact: a server-only import a developer adds to a component while the
-  // dev server runs is mocked in the page without any warning.
+  // On main, a server-only import a developer adds to a component while the dev
+  // server runs is mocked in the page without any warning.
   test(
     'the step reports its violations, and only those',
     async () => {

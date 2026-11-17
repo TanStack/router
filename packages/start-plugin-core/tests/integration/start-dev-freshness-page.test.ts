@@ -23,10 +23,6 @@ describe('Vite dev: a dependent that stops compiling', () => {
   // implementation: fine while `base` is a plain object, an error once it is
   // a server fn builder. After that edit of `b.ts` the error shows: the page
   // loads `d.ts` again, and the dev server reports its compile error.
-  // Bug: the host compiled each dependent itself to keep unchanged ones out
-  // of the update, and a dependent whose compile failed counted as
-  // unchanged: nothing loaded `d.ts` again, and its error showed only once
-  // something requested it.
   // Source: Fable 5.2 review of the Vite host (F6-5).
   test(
     'its error shows without a request of it',

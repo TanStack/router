@@ -112,13 +112,8 @@ describe('Rsbuild dev: a dependent saved while its dependency is invalidated', (
   // `a.ts`'s own event, in the next batch, must still re-plan `page.ts`,
   // which read `a.ts`'s `b`: `b` became a builder, so `page`'s handler leaves
   // the client. With 300 more importers of `l.ts`'s `base`, all stale too.
-  // Bug: the session recorded the files an invalidation found stale with a
-  // `stat` taken then, which saw the second write; that file's own event
-  // matched the record and was skipped, so `page.ts` kept the plan of the
-  // old `a.ts` (its handler stayed in the client) until `a.ts` was saved
-  // again.
-  // Source: F3-1 / F7-1 (Fable review 2026-11-10, F3-cache-repro; the
-  // shape: review of design 3 steps 0-1).
+  // Source: F3-1 / F7-1 (Fable review 2026-11-10, F3-cache-repro; the shape:
+  // review of design 3 steps 0-1).
   test.for([
     { name: 'one importer of the dependency', importers: 0 },
     { name: '300 importers of the dependency', importers: 300 },

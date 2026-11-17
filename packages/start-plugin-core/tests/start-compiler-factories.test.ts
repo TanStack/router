@@ -378,10 +378,7 @@ return links`
     )
 
     // The validator only runs on the server.
-    // Bug: a `.validator()` link wrapped in `satisfies` / `as` is not
-    // recognised as a link of the middleware chain on the client, so it is
-    // not stripped.
-    // Impact: the validator and its server-only imports ship to the client.
+    // On main, the validator and its server-only imports ship to the client.
     // Source: #8504 start-compiler-factories.test.ts "the client strips a
     // validator link wrapped in $name" (Vite and Rsbuild builds; red on main).
     test.each(
@@ -433,14 +430,9 @@ return links`
       expect(ssr).toEqual({ client: clientResult, server: serverResult })
     })
 
-    // Bug: a `.validator()` link of a middleware builder stored in a variable
-    // is not stripped on the client: the chain walk from `base.server(...)`
-    // stops at the identifier, so the variable's declaration keeps its
-    // validator (its `.server()` link is stripped, the control above).
-    // Source: start-compiler/compiler.ts:1296-1330 (the chain walk stops at
-    // an identifier), start-compiler/handleCreateMiddleware.ts:21-32;
-    // fuzzing.
-    // Impact: the validator and its server-only imports ship to the client.
+    // Source: main's start-compiler/compiler.ts:1296-1330 (the chain walk stops at an
+    // identifier), start-compiler/handleCreateMiddleware.ts:21-32; fuzzing.
+    // On main, the validator and its server-only imports ship to the client.
     test('the client strips a validator link of a builder stored in a variable', async () => {
       const { served, client, ssr } = await runLinks(
         builderVariableModule(validatorLink, serverLink),
@@ -468,18 +460,11 @@ return links`
     }
   }
 
-  // Bug: an isomorphic fn whose first link is stored in a variable
-  // (`const base = createIsomorphicFn().server(...)`, then
-  // `export const getEnv = base.client(...)`) loses that link's
-  // implementation: each call is compiled on its own, the chain walk from
-  // `base.client(...)` stops at the identifier, so the output of the stored
-  // link's environment gets a no-op. Same chain walk as the `.validator()`
-  // pin of a builder stored in a variable above.
-  // Source: start-compiler/handleCreateIsomorphicFn.ts:17-25,
+  // Source: main's start-compiler/handleCreateIsomorphicFn.ts:17-25,
   // start-compiler/compiler.ts:1296-1330; fuzzing (Vite and Rsbuild builds
   // return undefined too).
-  // Impact: the server (or client) call silently returns undefined instead
-  // of running its implementation.
+  // On main, the server (or client) call silently returns undefined instead of
+  // running its implementation.
   test.each([
     {
       name: '.server() link',
@@ -502,12 +487,10 @@ export const getEnv = base.server(() => 'server')`,
     },
   )
 
-  // Bug: an isomorphic chain link wrapped in `satisfies` / `as` is not
-  // followed: the implementation of the wrapped link is lost.
-  // Impact: the output that needs it gets a no-op isomorphic fn (the server
-  // or the client call returns undefined).
-  // Source: #8504 start-compiler-factories.test.ts (differential fuzzing,
-  // Vite and Rsbuild builds; red on main)
+  // On main, the output that needs it gets a no-op isomorphic fn (the server or
+  // the client call returns undefined).
+  // Source: #8504 start-compiler-factories.test.ts (differential fuzzing, Vite
+  // and Rsbuild builds; red on main)
   test.each([
     `(createIsomorphicFn().server(() => 'server') satisfies any).client(() => 'client')`,
     `(createIsomorphicFn().server(() => 'server') as any).client(() => 'client')`,
@@ -525,10 +508,8 @@ export const fn = ${chain}`,
     },
   )
 
-  // Bug: a factory callee wrapped in `as any` is not resolved, so the call
-  // is left untransformed.
-  // Impact: the client bundle ships the server implementation and its
-  // imports and runs it in the browser (the uncompiled factories return the
+  // On main, the client bundle ships the server implementation and its imports
+  // and runs it in the browser (the uncompiled factories return the
   // implementation); a client-only fn runs during SSR.
   // Source: #8504 start-compiler-factories.test.ts (Vite and Rsbuild builds;
   // red on main)
@@ -739,14 +720,11 @@ function settle(run: () => unknown) {
   }
 }`
 
-  // Bug: the server leaves env-specific functions declared inside a server
-  // fn handler uncompiled, with the client-only module they read still
-  // imported.
-  // Impact: on the server, a client-only fn called by a handler runs its
+  // On main, on the server, a client-only fn called by a handler runs its
   // client implementation (the uncompiled factory returns it) instead of
   // throwing, and the server bundle loads the client-only module (browser-only
-  // top-level code runs on the server; import protection rejects the
-  // `.client` import in the server build).
+  // top-level code runs on the server; import protection rejects the `.client`
+  // import in the server build).
   // Source: SolidStart directives plugin.ts transformFunction (directive
   // functions nested in a server function are compiled too); #8504
   // start-compiler-factories.test.ts "the provider compiles env-specific
@@ -997,18 +975,11 @@ export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
       return run.result
     }
 
-    // Bug: after a dev edit of a module a server fn builder comes from, the
-    // client keeps serving its importers compiled against the old builder:
-    // the importer is not compiled again (the dev server only refreshes its
-    // import timestamps), so its handler stays an RPC to a server fn the
-    // edited code no longer creates. The SSR environment, which compiles the
-    // importer afresh, gets it right. The former harness recompiled after an
-    // internal `invalidateModules` call, which hid this.
-    // Impact: until the dev server restarts, the page calls a server fn that
+    // On main, until the dev server restarts, the page calls a server fn that
     // no longer exists (here: Start's RPC fails), or keeps the old client
     // behaviour of an edited factory.
-    // Reproduced through a Vite dev server and the public Start plugin;
-    // served code read for the diagnosis only.
+    // Reproduced through a Vite dev server and the public Start plugin; served
+    // code read for the diagnosis only.
     test('dev: editing a factory module recompiles its importers against the new code', async () => {
       const started = await editHost()
       const dir = 'src/edits/factory'

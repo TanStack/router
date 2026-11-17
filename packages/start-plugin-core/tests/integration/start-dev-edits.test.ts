@@ -85,17 +85,11 @@ export const base = createServerFn()
     return { server, client: await server.load('/src/a.tsx') }
   }
 
-  // Bug: on a factory module edit, the client environment of the Start
-  // compiler's Vite plugin invalidates only the direct importers of the
-  // module; the walk through transitive importers runs for server
-  // environments only (vite/start-compiler-plugin/plugin.ts
-  // `invalidateCompilerState`). Vite soft-invalidates the other importers and
-  // serves their previous transform.
-  // Impact: after a factory module (e.g. a `createServerFn()` builder) is
-  // edited, a module two or more imports away keeps the code compiled
-  // against the old factory until a restart: when the builder becomes a
-  // server fn, its handler and server-only imports still load in the browser
-  // (and when it stops being one, the client keeps an RPC stub).
+  // On main, after a factory module (e.g. a `createServerFn()` builder) is
+  // edited, a module two or more imports away keeps the code compiled against
+  // the old factory until a restart: when the builder becomes a server fn, its
+  // handler and server-only imports still load in the browser (and when it
+  // stops being one, the client keeps an RPC stub).
   test.each([
     { name: 'export *', from: './c' },
     { name: 'an import and an export', from: './d' },
@@ -165,17 +159,11 @@ export const base = createServerFn()
     byId: 'MARK_DB_SECRET',
   }
 
-  // Bug: same as the client pin above, in the SSR environment: on a factory
-  // module edit, the server environments do walk the transitive importers
-  // (`getTransitiveImporters`), but only invalidate the compiler's state and
-  // the server-fn lookup modules of the importers it finds; Vite's module
-  // nodes of the importers two or more imports away are only
-  // soft-invalidated, and their previous transform is served.
-  // Impact: after a factory module is edited into a server fn builder, an
-  // SSR module importing it through a re-export keeps the code compiled
-  // against the old factory until a restart: its `fn` is no server fn (no
-  // id, so no HTTP endpoint, e.g. for a form action), and in the opposite
-  // edit it keeps a server fn that no longer exists.
+  // On main, after a factory module is edited into a server fn builder, an SSR
+  // module importing it through a re-export keeps the code compiled against the
+  // old factory until a restart: its `fn` is no server fn (no id, so no HTTP
+  // endpoint, e.g. for a form action), and in the opposite edit it keeps a
+  // server fn that no longer exists.
   // Replaces the former start-compiler-factories.test.ts test "dev: modules
   // reaching a factory through imports and export * are its transitive
   // importers", which only checked the walk.
@@ -251,13 +239,7 @@ export const fn = createServerFn().handler(async () => request)
     timeout,
   )
 
-  // Bug: when the Start compiler resolves an import of the module it is
-  // compiling (here the callee of a top-level call next to a server fn), import
-  // protection handles a denied specifier before the module's transform
-  // result exists, and falls back to `getModuleInfo(importer).code`, which
-  // Vite's dev server does not support: reading it throws
-  // (vite/import-protection-plugin/plugin.ts `resolveExportsForDeniedSpecifier`).
-  // Impact: in dev, the client transform of such a module fails (500), so the
+  // On main, in dev, the client transform of such a module fails (500), so the
   // client entry never loads and the page does not hydrate.
   // Source: issue #8554 (closed without a fix).
   test(
@@ -311,12 +293,7 @@ return typeof value === 'string' ? value : 'not the module value (' + typeof val
     )
   }
 
-  // Bug: import protection replaces a client import of a module it knows is
-  // server-only-marked with a mock when it resolves the import. On an edit of
-  // the marked module it only clears its own caches
-  // (vite/import-protection-plugin `hotUpdate`); Vite soft-invalidates the
-  // importers, which keep their transform, and so the import of the mock.
-  // Impact: after removing a server-only marker from a module, the modules
+  // On main, after removing a server-only marker from a module, the modules
   // that imported it keep a mock in dev until they are edited or the server
   // restarts: the client calls mocks and logs "Mocked import used in dev
   // client" errors.
@@ -361,18 +338,14 @@ return typeof value === 'string' ? value : 'not the module value (' + typeof val
   // from a denied module is a safe mock, or the server warns at the `export *`
   // (`src/b.ts`, line 1); either way the importer loads, and nothing the
   // client gets holds the denied module's value.
-  // Bug: in dev, a client module's `export * from` a denied module re-exports
-  // nothing: the mock edge of a denied specifier exports only the names its
-  // importer uses, and `export *` uses none; a denied file's `export *` is
-  // removed from the importer.
-  // Impact: a client module importing a name that another module re-exports
-  // with `export *` from a denied module fails to load (missing export), so
-  // the page does not hydrate.
-  // The rewrite of the same form (Rsbuild) also only removes the
-  // `export *` (today's `rewriteDeniedImports`).
-  // (Both pass with the Yuku host: the mock of a denied module exports the
-  // target's names, following `export *`; a denied specifier's target is
-  // the package's own entry, also while the dependency optimizer bundles it.)
+  // On main, a client module importing a name that another module re-exports
+  // with `export *` from a denied module fails to load (missing export), so the
+  // page does not hydrate.
+  // The rewrite of the same form (Rsbuild) also only removes the `export *`
+  // (today's `rewriteDeniedImports`). (Both pass with the Yuku host: the mock
+  // of a denied module exports the target's names, following `export *`; a
+  // denied specifier's target is the package's own entry, also while the
+  // dependency optimizer bundles it.)
   for (const app of starReexportApps) {
     test(
       `client: a name re-exported with \`export *\` from ${app.name} is a mock, or the server warns at the \`export *\``,

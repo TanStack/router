@@ -38,12 +38,9 @@ export const Route = createFileRoute('/')({
 }
 
 describe('Rsbuild dev server options', () => {
-  // Bug: Start's plugin turns compression off only when the config it
-  // receives has no `server.compress`, but Rsbuild fills in its default
-  // (`true`) before plugins see the config.
   // Source: src/rsbuild/plugin.ts (`rsbuildConfig.server?.compress ===
   // undefined`, read from the normalized config).
-  // Impact: dev compresses every response by default, and a compressed
+  // On main, dev compresses every response by default, and a compressed
   // streamed page reaches the browser only once its stream ends.
   test(
     'without server.compress, the server-rendered page is not compressed',
@@ -59,11 +56,9 @@ describe('Rsbuild dev server options', () => {
     timeout,
   )
 
-  // Bug: Start's plugin sets `server.compress: false` over the app's
-  // config, so `server.compress: true` has no effect.
   // Source: src/rsbuild/plugin.ts (`compress: false` merged last; it worked
   // around an Rsbuild bug fixed in @rsbuild/core 2.0.5).
-  // Impact: #8544: dev responses are never compressed.
+  // On main, #8544: dev responses are never compressed.
   test(
     'server.compress true compresses the server-rendered page, whose content stays intact',
     async () => {

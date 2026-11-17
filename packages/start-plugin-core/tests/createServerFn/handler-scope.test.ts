@@ -98,16 +98,12 @@ test.each(handlerRows)(
   },
 )
 
-// Bug: when the handler passed to `.handler()` is a `createIsomorphicFn()`
-// chain, the chain is compiled first and the caller is never rewritten into
-// an RPC (same cause as the createServerOnlyFn handler pin in
-// start-compiler-cases.test.ts).
-// Impact: the server fn cannot be called through an RPC (the client's `fn`
-// has no `url`) and its server implementation never runs: a call from the
-// client and one from server code both resolve to `undefined` (the client
-// module keeps `createServerFn().handler(() => 'client')`, the isomorphic
-// fn's client implementation passed as the handler; the call does not give
-// its 'client' either).
+// On main, the server fn cannot be called through an RPC (the client's `fn` has
+// no `url`) and its server implementation never runs: a call from the client
+// and one from server code both resolve to `undefined` (the client module keeps
+// `createServerFn().handler(() => 'client')`, the isomorphic fn's client
+// implementation passed as the handler; the call does not give its 'client'
+// either).
 // Source: TanStack/router#8446; #8504 handler-scope.test.ts
 // (imaimai17468/tanstack-start-handler-call-expression-repro; red on main)
 // The outcome (SPEC J4.1, J4.2, G5): the handler runs, or the module is

@@ -246,14 +246,8 @@ describe('excludeFiles: [] checks the files of a dependency', () => {
     'src/entry.ts': `export * from './uses/dep'\n`,
   }
 
-  // Bug: on the client in dev mock mode (the default), with
-  // `excludeFiles: []`, the denied import of a dependency's server file is
-  // rewritten to import the real file (`/node_modules/dep-pkg/db.server.js`,
-  // read as a `default` export it does not have) instead of a mock, and
-  // that rewritten import is reported a second time, at no position.
-  // Impact: the documented way to check third-party files still sends the
-  // dependency's server file to the browser, and the module reading it
-  // breaks.
+  // On main, the documented way to check third-party files still sends the
+  // dependency's server file to the browser, and the module reading it breaks.
   // Fix-agnostic: the import is reported at its place only, and the client
   // loads no code of the denied file.
   // Source: review (the default `excludeFiles` had no reachable contrast).
@@ -279,18 +273,11 @@ describe('excludeFiles: [] checks the files of a dependency', () => {
     timeout,
   )
 
-  // Bug: on the server in dev, with `excludeFiles: []`, a dependency's file
-  // the server denies (here `dep-pkg/widget`, which resolves to
-  // `widget.client.js`) is never reported: in mock mode (the dev default)
-  // the import is rewritten to read a `default` export of the real file
-  // (`/node_modules/dep-pkg/widget.client.js`, which has none), so loading
-  // the module fails ("does not provide an export named 'default'") without
-  // a report; in error mode nothing is reported and the real module loads.
-  // Impact: the documented way to check third-party files does nothing on
-  // the server in `vite dev`, and in mock mode breaks the module that
-  // imports the file.
-  // Fix-agnostic: the server reports the import at the importer, and the
-  // app loads.
+  // On main, the documented way to check third-party files does nothing on the
+  // server in `vite dev`, and in mock mode breaks the module that imports the
+  // file.
+  // Fix-agnostic: the server reports the import at the importer, and the app
+  // loads.
   // Source: review (the server's default `excludeFiles` had no reachable
   // contrast).
   test(

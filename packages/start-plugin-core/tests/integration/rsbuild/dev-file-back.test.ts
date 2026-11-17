@@ -82,13 +82,7 @@ function holdSsr(): RsbuildPlugin & { clientDone: () => Promise<void> } {
 }
 
 describe('Rsbuild dev: a file removed and back while another environment compiles', () => {
-  // Bug: the client compiler's event of the file's return was a change of
-  // a path the caches held nothing of (both removals were applied), which
-  // the invalidation dropped; the client's importer kept the plan its build
-  // made while the file was gone (the import unresolved: the handler stayed
-  // in the client), and SSR's own event of the return was a change too.
-  // Source: CI failure of property (b), seed 24344 (the probe of its
-  // report).
+  // Source: CI failure of property (b), seed 24344 (the probe of its report).
   test(
     "the importer's client output is compiled against the file",
     async () => {

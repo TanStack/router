@@ -79,14 +79,7 @@ return { ids, page: await entry.renderPath(entry.getRouter().routeTree, '/') }`,
       })
     })
 
-    // Bug: Start's Vite plugin matches the module to serve the client route
-    // tree for with `new RegExp(<path of the generated route tree>)`
-    // (vite/start-router-plugin/plugin.ts, `clientTreePlugin.load.filter`),
-    // the path unescaped, so under a path with `(`, `)` or `+` the
-    // expression never matches the file and the client gets the full tree.
-    // Rsbuild: no client route tree at all (start-build-route-option-keys.test.ts
-    // "a route with only server handlers is not in the client route tree").
-    // Impact: the client bundle ships the server-only routes' entries and
+    // On main, the client bundle ships the server-only routes' entries and
     // modules; a page can navigate to a route that has no page.
     test('the client route tree leaves out the server-only route', async () => {
       expect((await build.client.run(clientRouteIds)).result).toEqual(['/'])
@@ -119,11 +112,8 @@ export { sibling } from './routeTree-gen'
     }, timeout)
     afterAll(() => dispose?.())
 
-    // Bug: the same unescaped `new RegExp(<path>)` (above): its `.` before
-    // `gen` matches any character, so `src/routeTree-gen.ts` is served the
-    // client route tree instead of its own code.
-    // Impact: the build fails (the file's exports are gone) or the app
-    // reads the wrong module.
+    // On main, the build fails (the file's exports are gone) or the app reads
+    // the wrong module.
     test('the client gets the file, not the client route tree', async () => {
       if (!build) {
         throw failure

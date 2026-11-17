@@ -9,10 +9,7 @@ import {
 describe('Vite dev: a separate RSC provider', () => {
   // SPEC J4.2 / #7943: a server function declared in a `'use client'`
   // module runs on the server when the client calls it.
-  // Bug: the provider module (`?tss-serverfn-split`) keeps the `'use client'`
-  // directive of its source module, so the RSC bundler turns the provider's
-  // exports into client references and the handler is not there to run.
-  // Impact: a server fn co-located with a client component cannot be called.
+  // On main, a server fn co-located with a client component cannot be called.
   // Source: the compile-level pin in start-plugin-core
   // tests/start-compiler-cases.test.ts.
   test("a server function of a 'use client' module runs on the server", async () => {

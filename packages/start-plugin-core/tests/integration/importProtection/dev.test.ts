@@ -196,17 +196,9 @@ describe('a client import of a denied file', () => {
     timeout,
   )
 
-  // Bug: when a module changes, dev import protection drops every import
-  // graph edge that points to it (`hotUpdate` → `ImportGraph.invalidate`,
-  // import-protection/trace.ts, removes the edges where the file is the
-  // target, not only those where it is the importer). Its importers are not
-  // transformed again, so the edges do not come back, and a violation found
-  // when the edited module is transformed again is unreachable from Start's
-  // router entry: `processPendingViolations`
-  // (vite/import-protection-plugin/plugin.ts) discards it.
-  // Impact: in dev (mock mode), a denied import added to an existing module
-  // by an edit is mocked without any warning; with `log: 'always'`, a
-  // violation is not logged again after an edit (the 'always' pin below).
+  // On main, in dev (mock mode), a denied import added to an existing module by
+  // an edit is mocked without any warning; with `log: 'always'`, a violation is
+  // not logged again after an edit (the 'always' pin below).
   // A scratch run that keeps the incoming edges passes both pins.
   // Source: found registering Start's entries in the dev harness; the trace
   // part: mutation testing.
@@ -481,11 +473,7 @@ export const other = 1
     timeout,
   )
 
-  // Bug: same as "added by an edit of the importer is logged at the use"
-  // above: the edit drops the import graph edges to `src/a.ts`, and the
-  // violation found when it is transformed again is discarded as unreachable
-  // from Start's router entry.
-  // Impact: with `log: 'always'`, a violation is not logged again after an
+  // On main, with `log: 'always'`, a violation is not logged again after an
   // edit of its module.
   // Source: found registering Start's entries in the dev harness; this test
   // passed while the harness registered no entry.
@@ -603,14 +591,7 @@ export { b } from './b'
     timeout,
   )
 
-  // Bug: in dev, one client import of a denied file is logged twice: once
-  // for the import as written (`./secret.server`) and once for the resolved
-  // path the dev mock rewrite puts in its place, which Vite resolves again;
-  // the dedupe key of `log: 'once'` includes the specifier
-  // (`dedupeViolationKey`, import-protection/utils.ts), so the two do not
-  // dedupe (vite/import-protection-plugin/plugin.ts, transform-cache import
-  // loop and `resolveId`).
-  // Impact: every violation of a denied file appears twice in the dev server
+  // On main, every violation of a denied file appears twice in the dev server
   // output, the second time naming the resolved path as the import.
   // Source: found writing the `log` rows (review).
   test(
@@ -623,15 +604,8 @@ export { b } from './b'
     timeout,
   )
 
-  // Bug: with `log: 'always'`, one client import of a denied file is logged
-  // three times when the client loads its module once: twice for the import
-  // as written, because import protection finds the same violation both
-  // when the import resolves (`resolveId`) and when it checks the module's
-  // compiled imports (transform-cache import loop), and 'always' does not
-  // dedupe them (vite/import-protection-plugin/plugin.ts `hasSeen`), plus
-  // once for the resolved path (the 'once' pin above).
-  // Impact: with 'always', the dev server output repeats each violation of
-  // a denied file three times per load of its module.
+  // On main, with 'always', the dev server output repeats each violation of a
+  // denied file three times per load of its module.
   // Source: mutation testing (the 'always' rows of the reload tests above).
   test(
     "'always' logs one warning for one import each time its module is loaded",
@@ -831,19 +805,16 @@ export const leak = () => secret()
     timeout,
   )
 
-  // Bug: the warning drops original coordinates for an MDX file even
-  // though @mdx-js/rollup supplies a source map for its import and use.
-  // Source: start-plugin-core src/vite/import-protection-plugin/plugin.ts:
-  // 2116-2119: the transform cache records only `.[cm][tj]sx?` modules, so
-  // an `.mdx` importer has no transform result (code and composed source
-  // map), and each finder `resolveImporterLocation` (534-557) tries gives
-  // up on it (import-protection/sourceLocation.ts:412-415, 451-452,
-  // 482-483). A probe that let the cache record `.mdx`
-  // located the report at the use (7:27) but logged it twice, as written
-  // and as the resolved path: the "'once' logs one warning for one import"
-  // pin above (src/import-protection/utils.ts:61, the dedupe key includes
-  // the specifier), which this test also needs fixed.
-  // Impact: the user cannot navigate to the offending original source.
+  // Source: main's start-plugin-core src/vite/import-protection-plugin/plugin.ts:
+  // 2116-2119: the transform cache records only `.[cm][tj]sx?` modules, so an
+  // `.mdx` importer has no transform result (code and composed source map), and
+  // each finder `resolveImporterLocation` (534-557) tries gives up on it
+  // (main's import-protection/sourceLocation.ts:412-415, 451-452, 482-483). A probe
+  // that let the cache record `.mdx` located the report at the use (7:27) but
+  // logged it twice, as written and as the resolved path: the "'once' logs one
+  // warning for one import" pin above (src/import-protection/utils.ts:61, the
+  // dedupe key includes the specifier), which this test also needs fixed.
+  // On main, the user cannot navigate to the offending original source.
   test(
     'importing a denied file, the warning names the .mdx page, located in its original mapped source',
     async () => {
@@ -865,17 +836,9 @@ export const leak = () => secret()
     timeout,
   )
 
-  // Bug: to give the mock of a denied specifier the named exports its
-  // importer imports, import protection reads the importer's code from its
-  // own cache of compiled modules, which only has JavaScript and TypeScript
-  // files, and otherwise from Vite's `getModuleInfo(importer).code`, which
-  // Vite's dev server does not support: it throws "[vite] The "code"
-  // property of ModuleInfo is not supported."
-  // (vite/import-protection-plugin/plugin.ts
-  // `resolveExportsForDeniedSpecifier`).
-  // Impact: in dev, an `.mdx` (or other non-JS) module that imports a denied
-  // specifier fails to load with that internal error, instead of getting
-  // the mock and a warning.
+  // On main, in dev, an `.mdx` (or other non-JS) module that imports a denied
+  // specifier fails to load with that internal error, instead of getting the
+  // mock and a warning.
   // Source: mutation testing.
   test(
     'importing a denied specifier gets the mock, and the dev server logs a warning naming it',
@@ -1130,18 +1093,11 @@ export const peek = () => other()
     timeout,
   )
 
-  // Bug: import protection decides to mock an import of a server-only-marked
-  // module when it resolves the import, and only knows a module is marked
-  // once it has transformed it. A browser requests the importer first, so
-  // the import resolves to the real module; when the marker is then found,
-  // the violation is only logged (vite/import-protection-plugin/plugin.ts,
-  // retroactive marker check in `resolveId`), and the importer keeps its
-  // import of the real module.
-  // Impact: in dev, the browser runs the real code of server-only-marked
-  // modules (in mock mode the import should be a mock), unlike the build,
-  // which fails; whether the client gets the mock depends on load order.
-  // Source: found writing the pin "after an edit adds the marker, the
-  // violation is logged" below (review).
+  // On main, in dev, the browser runs the real code of server-only-marked
+  // modules (in mock mode the import should be a mock), unlike the build, which
+  // fails; whether the client gets the mock depends on load order.
+  // Source: found writing the pin "after an edit adds the marker, the violation
+  // is logged" below (review).
   test(
     'is mocked when the client loads the importer first',
     async () => {
@@ -1289,18 +1245,9 @@ export const read = () => query()
    */
   const options = { config: { optimizeDeps: { exclude: ['db-lib'] } } }
 
-  // Bug: in dev, the Vite adapter checks the server-only marker a
-  // dependency imports when it resolves the marker import, whatever
-  // `excludeFiles` says (vite/import-protection-plugin/plugin.ts, marker
-  // handling in `resolveId`; the build twin is pinned in
-  // build-options.test.ts), and then reads the importer's code from
-  // Vite's `getModuleInfo(importer).code`, which the dev server does not
-  // support: loading the dependency throws "[vite] The "code" property of
-  // ModuleInfo is not supported."
-  // Impact: in dev, a client module importing a dependency that marks
-  // itself server-only and is not pre-bundled (`optimizeDeps.exclude`)
-  // fails to load with an internal error, by default and with
-  // `excludeFiles: []` alike.
+  // On main, in dev, a client module importing a dependency that marks itself
+  // server-only and is not pre-bundled (`optimizeDeps.exclude`) fails to load
+  // with an internal error, by default and with `excludeFiles: []` alike.
   // Source: review (the dev row of SPEC J6.10 was missing).
   test(
     'by default, is not logged, and the client gets the real module',
@@ -1449,16 +1396,11 @@ export const read = () => widget()
     timeout,
   )
 
-  // Bug: the mock runtime of a violation in a server environment is always
-  // the silent one (`mockRuntimeModuleIdFromViolation`, import-protection/
-  // virtualModules.ts: `if (info.env !== 'client') return MOCK_MODULE_ID`),
-  // whatever `mockAccess` says; the client's runtime diagnostic has no
-  // server counterpart.
-  // Impact: on the server (SSR, the server fn provider), code that runs on
-  // a mocked client-only import does so without any console diagnostic; the
+  // On main, on the server (SSR, the server fn provider), code that runs on a
+  // mocked client-only import does so without any console diagnostic; the
   // violation warning of the dev server is the only trace of it.
-  // Source: review (the unit row demanded that silence); SPEC J6.3: mock
-  // mode always logs.
+  // Source: review (the unit row demanded that silence); SPEC J6.3: mock mode
+  // always logs.
   test.each([
     { mockAccess: undefined, severity: 'error' },
     { mockAccess: 'error', severity: 'error' },
@@ -1578,24 +1520,12 @@ export const createSecretFn = createServerFn().middleware([mw])
     }
   }
 
-  // Bug: with Vite's default pre-transform requests, the Start compiler's
-  // lookup of the server fn factory module (`?server-fn-module-lookup`, in
-  // the client environment) goes through Vite's import analysis, which
-  // pre-transforms `src/helper.ts` for the client. Import protection stores
-  // the lookup's transform under the factory's file
-  // (`cacheTransformResult`), so the factory → helper edge stays pending
-  // until the factory's own client transform lands, and the 'unknown'
-  // reachability fallback of `processPendingViolations`
-  // (vite/import-protection-plugin/plugin.ts) logs the helper's denied file
-  // import conservatively, when the helper's transform is processed before
-  // the factory's: `helperBeforeFactory` forces that order (on an idle
-  // machine the factory often wins, and the warning does not appear).
-  // Impact: in dev (Vite's defaults), a module a server fn factory uses only
-  // inside `.server()` is logged as a client violation, with a trace through
-  // an import the client never has; the client is correct (it never loads
-  // the helper). A false warning in the most common server fn layout.
-  // Source: mutation testing, hidden while the harness
-  // turned pre-transform requests off.
+  // On main, in dev (Vite's defaults), a module a server fn factory uses only
+  // inside `.server()` is logged as a client violation, with a trace through an
+  // import the client never has; the client is correct (it never loads the
+  // helper).
+  // Source: mutation testing, hidden while the harness turned pre-transform
+  // requests off.
   test(
     'a helper a server fn factory module uses only inside .server() is not logged',
     async () => {
@@ -1727,13 +1657,7 @@ ${factoryTopLevelCall}`
     timeout,
   )
 
-  // Bug: the location of the use is read from a source map of the module
-  // whose `sources` are relative to it (`other.ts`), and import protection
-  // takes the source as it is (import-protection/sourceLocation.ts
-  // `mapGeneratedToOriginal`, `orig.source`), so `Importer:` names the
-  // file without its directory. The trace, located from the module's id,
-  // is right.
-  // Impact: in dev, the warning for a module a server fn factory module
+  // On main, in dev, the warning for a module a server fn factory module
   // re-exports names `other.ts:2:24` instead of `src/other.ts:2:24` (low:
   // diagnostics only; an editor link does not open the file).
   // Source: found writing the test above.
@@ -1882,19 +1806,11 @@ export const q = () => [read(), request(), slow]
     timeout,
   )
 
-  // Bug: a module the dev server transforms before any importer of it is
-  // known (Vite's `server.warmup`, which transforms the listed files as the
-  // server starts, or any request that comes first) has its violations
-  // discarded as unreachable from Start's entries
-  // (vite/import-protection-plugin/plugin.ts `processPendingViolations`,
-  // `'unreachable'`; only bundled dev keeps them pending), and Vite caches
-  // its transform, so they are never checked again, even once the app loads
-  // the module from its entry.
-  // Impact: in dev (mock mode), denied imports of warmed-up modules are
-  // mocked without any warning (the build still reports them).
-  // Source: mutation testing (looking for edges without transform data);
-  // the control is "a client import of a denied file is mocked, and
-  // the dev server logs a warning naming the importer at the use".
+  // On main, in dev (mock mode), denied imports of warmed-up modules are mocked
+  // without any warning (the build still reports them).
+  // Source: mutation testing (looking for edges without transform data); the
+  // control is "a client import of a denied file is mocked, and the dev server
+  // logs a warning naming the importer at the use".
   test(
     'a denied import of a module warmed up before its importers is logged once the client loads the app',
     async () => {
@@ -1954,14 +1870,7 @@ export const read = () => secret()
     timeout,
   )
 
-  // Bug: with Vite's `server.perEnvironmentStartEndDuringDev`, each
-  // environment runs `buildStart` when it first handles a module, and import
-  // protection's `buildStart` clears the state of every environment
-  // (vite/import-protection-plugin/plugin.ts `clearEnvState` for each), so
-  // the server's first request drops the client's import graph: a module the
-  // client loads afterwards is unreachable from Start's entries and its
-  // violations are discarded.
-  // Impact: with that Vite option, dev import protection mocks the denied
+  // On main, with that Vite option, dev import protection mocks the denied
   // imports of modules loaded after the first server request without any
   // warning (low: opt-in option).
   // Source: mutation testing (clearEnvState mutants).
@@ -2203,16 +2112,9 @@ export const read = () => secret()
     timeout,
   )
 
-  // Bug: in full-bundle dev, import protection takes each client module of
-  // `src/routes` as an entry, so that a violation under a route the bundle
-  // reaches before the router entry's imports are known is not discarded
-  // (vite/import-protection-plugin/plugin.ts `resolveId`, bundled dev
-  // `env.graph.addEntry(normalizedImporter)`); the trace then stops at the
-  // first entry it meets.
-  // Impact: in full-bundle dev, the trace of a violation under a route
-  // starts at the route module: it does not show how the app reaches the
-  // route (unbundled dev and builds start at the router entry). Low:
-  // diagnostics only.
+  // On main, in full-bundle dev, the trace of a violation under a route starts
+  // at the route module: it does not show how the app reaches the route
+  // (unbundled dev and builds start at the router entry).
   // Source: mutation testing.
   test(
     'the trace of a denied file imported from a module of src/routes leads from the router entry',
@@ -2309,17 +2211,9 @@ export const fn = createSecretFn().handler(async () => 'data')
     timeout,
   )
 
-  // Bug: the Start compiler looks up the factory in the denied file's mock
-  // (`import mock from 'tanstack-start-import-protection:mock'`) with its
-  // lookup query, and the Vite adapter loads the silent mock only by its
-  // exact id (vite/import-protection-plugin/virtualModules.ts
-  // `loadResolvedVirtualModule`): Rolldown cannot load
-  // `\0tanstack-start-import-protection:mock?server-fn-module-lookup`. With
-  // the default `mockAccess`, the mock-runtime module hides it (the control
-  // above).
-  // Impact: in full-bundle dev with `mockAccess: 'off'`, an app with a server
+  // On main, in full-bundle dev with `mockAccess: 'off'`, an app with a server
   // fn built from a factory in a denied file fails to bundle the client
-  // (UNLOADABLE_DEPENDENCY). Low: opt-in option, unusual layout.
+  // (UNLOADABLE_DEPENDENCY).
   // Source: mutation testing.
   test(
     'with mockAccess off, a server fn built with a factory of a denied file gets the mock in the client bundle and is logged at its original import or use',
@@ -2501,17 +2395,9 @@ export const Page = () => <div>{String(1)}</div>
     timeout,
   )
 
-  // Bug: import protection keeps a module's source map for its diagnostics
-  // up front only when the module's compiled code names a denied module
-  // (`shouldCaptureDiagnosticSourceMap`, vite/import-protection-plugin/
-  // plugin.ts). Through an alias (here the app's package.json `imports`),
-  // the denied file is only known once the import resolves, and `resolveId`
-  // reports it (transform-cache import loop → `reportOrDeferViolation`)
-  // before the loop captures the map (`'devViolation'`), so the location is
-  // read from the compiled code.
-  // Impact: in dev, the warning for a denied file imported through an alias
-  // in a JSX module points at a line that is not in the source (here 4:77
-  // of a two-line module).
+  // On main, in dev, the warning for a denied file imported through an alias in
+  // a JSX module points at a line that is not in the source (here 4:77 of a
+  // two-line module).
   // Source: mutation testing (that late source map capture).
   test(
     'in a JSX module, a use of a denied file imported through a subpath import alias is located on its source line',
@@ -2612,15 +2498,7 @@ export const read = () => secret()
     timeout,
   )
 
-  // Bug: dev import protection replaces its trace (cut at `maxTraceDepth`)
-  // with the trace it finds in Vite's module graph whenever that one is
-  // longer (vite/import-protection-plugin/plugin.ts
-  // `rebuildAndAnnotateTrace`); the module graph trace runs from the entry
-  // and is only cut at `maxTraceDepth + 2` steps, from the entry side (so in
-  // a chain deeper than that, it does not reach the importer). A build cuts
-  // the trace, keeping the importer (build-options.test.ts "cuts a deeper
-  // trace, keeping the importer").
-  // Impact: in dev, `maxTraceDepth` does not cut traces (low: diagnostics
+  // On main, in dev, `maxTraceDepth` does not cut traces (low: diagnostics
   // only).
   // Source: mutation testing (module graph trace mutants).
   test(

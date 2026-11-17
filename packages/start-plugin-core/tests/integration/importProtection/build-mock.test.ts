@@ -237,19 +237,12 @@ export const secret = () => 'MARK_SECRET'
     timeout,
   )
 
-  // Bug: a mock-mode build serves self-contained mocks that never report
-  // their use (`generateSelfContainedMockModule`, import-protection/
-  // virtualModules.ts; the Vite transform's `isBuild` branch and the Rsbuild
-  // loader), whatever `mockAccess` says; only dev mocks carry the runtime
-  // diagnostic (`mockRuntimeModuleIdFromViolation`). `mockAccess` is
-  // documented for `behavior: 'mock'` without a dev restriction
-  // (schema.ts), and SPEC J6.3 applies it wherever a mock is served.
-  // Impact: in a production build with `behavior: { build: 'mock' }`, code
-  // that runs on a mocked import does so without any console diagnostic;
-  // the warning at build time is the only trace of it.
+  // On main, in a production build with `behavior: { build: 'mock' }`, code
+  // that runs on a mocked import does so without any console diagnostic; the
+  // warning at build time is the only trace of it.
   // Source: review (the rows above demanded silence with the default); the
-  // server rows: SPEC J6.3 (mock mode always logs: client and server, dev
-  // and build).
+  // server rows: SPEC J6.3 (mock mode always logs: client and server, dev and
+  // build).
   test.each(
     (
       [
@@ -281,19 +274,11 @@ export const secret = () => 'MARK_SECRET'
     },
   }
 
-  // Bug (Vite): in a build, a violation of a marker (server-only in the
-  // client, client-only in the server) only replaces the marker import
-  // itself with a mock (`handleViolation` in
-  // vite/import-protection-plugin/plugin.ts returns a mock edge for the
-  // marker specifier); the marked module keeps its code, and its importers
-  // import it. The Rsbuild adapter replaces the module with a mock
-  // (self-denial in its import-protection loader). Vite dev mocks the
-  // importers' import (see dev.test.ts).
-  // Impact: a mock-mode Vite build ships the marked module's real code in
-  // the bundle of the environment it is denied to, and runs it (only a
-  // warning is logged).
-  // Source: review; client-only row: mutation testing.
-  // (Was a Vite pin; the Yuku host substitutes every importer's edge.)
+  // On main, a mock-mode Vite build ships the marked module's real code in the
+  // bundle of the environment it is denied to, and runs it (only a warning is
+  // logged).
+  // Source: review; client-only row: mutation testing. (Was a Vite pin; the
+  // Yuku host substitutes every importer's edge.)
   const markerMockTest = test
   markerMockTest.each(Object.keys(markedModules))(
     '%s is mocked, with a warning',
@@ -405,16 +390,10 @@ return describeValue(entry.v, 'MARK_SECRET')`)
     () => expectStarReexportMockedOrBuildFails(starApp('a denied file')),
     timeout,
   )
-  // Bug (Rsbuild): the import-protection loader removes an `export * from` a
-  // denied specifier from the importer (today's `rewriteDeniedImports`), and
-  // the build of the module importing a name of it succeeds without that
-  // name. (Vite's build fails on the missing export, which SPEC J6.8
-  // accepts.)
-  // Impact: a mock-mode Rsbuild build ships a client in which a name
-  // re-exported with `export *` from a denied package is `undefined`: using
-  // it throws instead of reaching a mock.
-  // Source: SPEC J6.8, the build row of the dev pin in
-  // start-dev-edits.test.ts.
+  // On main, a mock-mode Rsbuild build ships a client in which a name
+  // re-exported with `export *` from a denied package is `undefined`: using it
+  // throws instead of reaching a mock.
+  // Source: SPEC J6.8, the build row of the dev pin in start-dev-edits.test.ts.
   test(
     'a name re-exported with `export *` from a denied specifier is a safe mock, or the build fails',
     () => expectStarReexportMockedOrBuildFails(starApp('a denied specifier')),

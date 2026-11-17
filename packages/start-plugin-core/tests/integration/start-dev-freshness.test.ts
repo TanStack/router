@@ -48,10 +48,6 @@ describe('Vite dev: one file event through each environment', () => {
   // `a.tsx` builds a server fn on `b.ts`'s `base`; `base` becomes a plain
   // object. Both environments re-plan `a.tsx`: the client keeps its
   // handler, and SSR's `fn` is the handler itself.
-  // Bug: the host handed each environment the one result of the event's
-  // invalidation through the identity of `read`; with a `read` per
-  // environment, SSR's hook asked again and got nothing, so SSR kept the
-  // server fn until a restart.
   // Source: Fable 5.2 review of the Vite host (F6-1).
   test(
     "each environment's dependents are compiled again",
@@ -90,9 +86,6 @@ describe('Vite dev: the first save of a file created empty', () => {
   // handler stays in the client: `base` is nothing yet). The first save is
   // in place: the editor truncates the file, the watcher reports it, and
   // the text lands a moment later (no event of its own).
-  // Bug: the event read the file empty, the empty text it had at its
-  // creation, and was dropped as a repeat without waiting for the text;
-  // `c.ts` kept its plan until `a.ts` was saved again.
   // Source: design 3 steps 0-1 review, finding 4b (a route file starts so).
   test(
     'its importers are compiled against the saved text',
@@ -155,9 +148,6 @@ describe('Vite dev: a dependent whose transform is in flight across the event', 
   // gets the mock, so its `d.ts` does not import `lib.ts`. While a request
   // of `d.ts` is held after the compiler's transform, `lib.ts` drops its
   // marker. `d.ts` is then served with `lib.ts` itself.
-  // Bug: the host invalidated `d.ts` as part of the hot update, which leaves
-  // a transform in flight to finish and be kept; comparing its output with
-  // the last one found no change, and `d.ts` kept the mock.
   // Source: Fable 5.2 review of the Vite host (F6-6).
   test(
     'it is served compiled against the file as it is after the event',

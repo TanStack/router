@@ -99,9 +99,7 @@ function boundaryRendering(html: string, children: string) {
 }
 
 describe('boundaries and ids', () => {
-  // Bug: the server and the client number boundaries without the Hydrate
-  // inside a `fallback`, but the chunk loader counts it.
-  // Impact: the boundary after it hydrates with the fallback's children.
+  // On main, the boundary after it hydrates with the fallback's children.
   test('a Hydrate inside a fallback does not shift the chunks of later boundaries', async () => {
     const { client } = await expectRendersLikeSource(
       await hosts(),
@@ -116,13 +114,9 @@ describe('boundaries and ids', () => {
     expect(client.html).toContain('<p>second</p>')
   })
 
-  // Bug: a component that declares a boundary and is rendered inside a
-  // boundary (its own, or another one) is copied into the chunk, and
-  // compiling the chunk numbers the copy's boundary after the chunk's own
-  // index.
-  // Impact: nested boundaries of recursive components (trees, threads) and
-  // of components with their own boundary render ids the server never
-  // emitted and lazy-load boundaries that do not exist.
+  // On main, nested boundaries of recursive components (trees, threads) and of
+  // components with their own boundary render ids the server never emitted and
+  // lazy-load boundaries that do not exist.
   // Source: Qwik optimizer root_level_self_referential_qrl,
   // example_self_referential_component_migration
   test.each([
@@ -172,8 +166,7 @@ export function Page() {
     20_000,
   )
 
-  // Bug: Hydrate elements are matched by name instead of by binding.
-  // Impact: a local component named `Hydrate` is split into a lazy chunk.
+  // On main, a local component named `Hydrate` is split into a lazy chunk.
   test('client: a local component named Hydrate is left alone', async () => {
     const code = `${head}export function Page() {
   return <Hydrate when={load()}><p>real</p></Hydrate>
@@ -218,14 +211,12 @@ export function Page() {
     await expectNoUnusedChunks(client)
   })
 
-  // Bug: the boundary's children are only read from JSX children, never from
-  // a `children` prop or spread.
-  // Impact: a self-closing boundary whose children come from a spread or a
+  // On main, a self-closing boundary whose children come from a spread or a
   // `children` prop ships an unused empty chunk (and the JSX of a `children`
-  // prop is not deferred).
-  // `split`: JSX passed as the `children` prop is split like JSX children.
-  // Children that only exist at run time (a spread) or plain text have no
-  // code to load lazily, so leaving them in place is accepted.
+  // prop is not deferred). `split`: JSX passed as the `children` prop is split
+  // like JSX children.
+  // Children that only exist at run time (a spread) or plain text have no code
+  // to load lazily, so leaving them in place is accepted.
   test.each([
     {
       name: 'a spread on a self-closing element',
@@ -282,12 +273,9 @@ export const cleanup = ['__spreadWhen']`,
     },
   )
 
-  // Bug: same root cause as above, for a `children` prop that holds another
-  // boundary: the client does not compile the JSX of the prop, so the nested
-  // boundary hydrates without the id the server renders it with.
   // Source: fuzzing (mutants of the repository's
   // e2e/react-start/deferred-hydration EnhancedNestedWidget.tsx).
-  // Impact: the nested boundary hydrates without its id (a hydration
+  // On main, the nested boundary hydrates without its id (a hydration
   // mismatch).
   test('client: a boundary nested in a children prop hydrates with the id the server renders', async () => {
     const { client } = await expectRendersLikeSource(
@@ -299,14 +287,12 @@ export const cleanup = ['__spreadWhen']`,
     expect(client.html).toContain('<p>inner</p>')
   })
 
-  // Bug: a multi-line text-only child moves into the chunk as a string
-  // literal of the raw text, without the line collapsing of JSX text.
-  // Impact: the client renders other text than the server (a hydration
+  // On main, the client renders other text than the server (a hydration
   // mismatch).
-  // Plain text has nothing to hydrate: splitting it or leaving it in place
-  // are both accepted, so the chunks are not asserted.
-  // (`idleHead`: `boundaryRendering` finds the boundary by the hydration id
-  // it renders; a `load()` boundary renders none.)
+  // Plain text has nothing to hydrate: splitting it or leaving it in place are
+  // both accepted, so the chunks are not asserted. (`idleHead`:
+  // `boundaryRendering` finds the boundary by the hydration id it renders; a
+  // `load()` boundary renders none.)
   // Source: #8504 hydrate-split-modules.test.ts (exact JSX-text equality, red
   // on main)
   test.each([
@@ -335,13 +321,10 @@ export const cleanup = ['__spreadWhen']`,
     },
   )
 
-  // Bug: whitespace-only text around a single child is dropped when the
-  // children move into the chunk, although JSX keeps whitespace on the line
-  // of the child as text (the server renders it).
-  // Impact: the client renders other text than the server (a hydration
+  // On main, the client renders other text than the server (a hydration
   // mismatch).
-  // Source: hydrate-when-transform.ts getMeaningfulChildren (mutation
-  // testing). (`idleHead`: see the text-only rows above.)
+  // Source: hydrate-when-transform.ts getMeaningfulChildren (mutation testing).
+  // (`idleHead`: see the text-only rows above.)
   test('client: spaces around a single child on one line render like on the server', async () => {
     const { source } = await expectRendersLikeSource(
       await hosts(),
@@ -353,18 +336,12 @@ export const cleanup = ['__spreadWhen']`,
     expect(boundaryRendering(source.html, ' <p>x</p> ')).toBeDefined()
   })
 
-  // Bug: the Hydrate plugin numbers boundaries after the other Start
-  // transforms removed environment-specific code (`<ClientOnly>` children on
-  // the server; server fn handlers, `createServerOnlyFn` bodies and
-  // isomorphic `.server()` implementations on the client), while the client
-  // chunk loader counts the boundaries of the original module.
-  // Impact: a boundary after such code hydrates with an id the server did
-  // not render it with, or loads the chunk of the removed boundary and
-  // renders its children instead of its own.
-  // Source: start-compiler/compiler.ts
-  // (built-in handlers, `<ClientOnly>` removal and dead-code elimination run
-  // before the AST plugins) vs hydrate-when-transform.ts
-  // `loadHydrateVirtualModule`.
+  // On main, a boundary after such code hydrates with an id the server did not
+  // render it with, or loads the chunk of the removed boundary and renders its
+  // children instead of its own.
+  // Source: main's start-compiler/compiler.ts (built-in handlers, `<ClientOnly>`
+  // removal and dead-code elimination run before the AST plugins) vs
+  // hydrate-when-transform.ts `loadHydrateVirtualModule`.
   const laterBoundaryRows = [
     {
       // `<ClientOnly>` renders its fallback on the server and, before
@@ -466,9 +443,7 @@ export function Page() {
 })
 
 describe('values captured by the children', () => {
-  // Bug: captured locals are passed to the lazy chunk component as props of
-  // the same name, so locals named `key` or `ref` become React's `key`/`ref`.
-  // Impact: the split children render without those values.
+  // On main, the split children render without those values.
   test('client: captured locals named key and ref reach the split children', async () => {
     const { client } = await expectRendersLikeSource(
       await hosts(),
@@ -481,13 +456,10 @@ describe('values captured by the children', () => {
     expect(client.html).toContain('<p>kr</p>')
   })
 
-  // Bug: a JSX tag is only taken for a read of a local when its name starts
-  // with an ASCII capital letter, so a local component named `_Local`,
-  // `$Local` or with a non-ASCII first letter is not passed to the chunk.
-  // Impact: the boundary throws "_Local is not defined" when it hydrates.
-  // Source: Qwik optimizer jsx_underscore_component_tag; React Compiler
-  // fixture jsx-underscore-prefix-component.js (#8504
-  // hydrate-captures.test.ts, red on main)
+  // On main, the boundary throws "_Local is not defined" when it hydrates.
+  // Source: Qwik optimizer jsx_underscore_component_tag; React Compiler fixture
+  // jsx-underscore-prefix-component.js (#8504 hydrate-captures.test.ts, red on
+  // main)
   test.each(['_Local', '$Local', 'ÉLocal', '组件'])(
     'client: the split children render a local component named %s',
     async (name) => {
@@ -503,9 +475,7 @@ describe('values captured by the children', () => {
     },
   )
 
-  // Bug: the object of a member-expression tag (`<ui.Home />`,
-  // `<Model.Item />`) is not taken for a read of a local.
-  // Impact: the boundary throws "ui is not defined" when it hydrates.
+  // On main, the boundary throws "ui is not defined" when it hydrates.
   // Source: Qwik optimizer jsx_member_tag_object_is_captured,
   // destructured_prop_used_as_member_tag (#8504 hydrate-captures.test.ts, red
   // on main); hydrate-when-transform.ts captureVisitors.JSXIdentifier
@@ -568,14 +538,9 @@ export function Icons({ ids }) {
     expect(client.html).toContain('<ul><li><i>a</i></li><li><i>a</i></li></ul>')
   })
 
-  // Bug: a JSX tag naming a binding declared inside the children (`const Icon
-  // = icons[id]` in a `.map()` callback) is taken for a capture of the
-  // component: the client parent passes `Icon={Icon}` to the chunk, where no
-  // `Icon` exists. The identifier visitor checks where a binding is declared,
-  // the JSX tag visitor does not.
   // Source: hydrate-when-transform.ts:439-447 (JSXIdentifier, without the
   // declared-inside check of :426-434); fuzzing.
-  // Impact: the parent throws "Icon is not defined" when it renders, so the
+  // On main, the parent throws "Icon is not defined" when it renders, so the
   // page fails on the client.
   test('client: the split children render a component bound inside them', async () => {
     const { client } = await expectRendersLikeSource(
@@ -598,11 +563,8 @@ export function Icons({ ids }) {
     expect(client.html).toContain('<ul><li><i>a</i></li><li><i>b</i></li></ul>')
   })
 
-  // Bug: property names, method keys and optional member names in the
-  // children are taken for reads of the local of the same name, which the
-  // parent then reads where the boundary renders.
-  // Impact: a boundary rendered before such a local is declared throws
-  // "Cannot access 'later' before initialization".
+  // On main, a boundary rendered before such a local is declared throws "Cannot
+  // access 'later' before initialization".
   // Source: Qwik optimizer jsx_tag_names_are_not_segment_uses (non-reference
   // identifiers) (#8504 hydrate-captures.test.ts, red on main)
   test('client: property names, method keys and optional members are no reads of a local', async () => {
@@ -619,9 +581,7 @@ export function Icons({ ids }) {
     expect(client.html).toContain('<p>L!</p>')
   })
 
-  // Bug: a TypeScript enum declared in the component is not passed to the
-  // chunk.
-  // Impact: the boundary throws "Color is not defined" when it hydrates.
+  // On main, the boundary throws "Color is not defined" when it hydrates.
   // Source: Qwik optimizer example_ts_enums (component-local enum) (#8504
   // hydrate-captures.test.ts, red on main)
   test('client: the split children read a local enum', async () => {
@@ -637,13 +597,10 @@ export function Icons({ ids }) {
     expect(client.html).toContain('<p>red</p>')
   })
 
-  // Bug: split children reading the component's `arguments` are moved into
-  // the chunk component unchanged, where `arguments` are the chunk's own
-  // props (`this` and `super` are rejected instead).
-  // Impact: the boundary silently hydrates with other values than the server
-  // rendered. Rejecting it at compile time is a valid fix.
-  // Source: SolidStart compile.spec.ts "rejects `arguments` in an arrow
-  // inside a function"
+  // On main, the boundary silently hydrates with other values than the server
+  // rendered.
+  // Source: SolidStart compile.spec.ts "rejects `arguments` in an arrow inside
+  // a function"
   test("client: split children reading the component's arguments render its props", async () => {
     const code = `${head}export function Page() {
   return <Hydrate when={load()}><p>{arguments[0].title}</p></Hydrate>
@@ -664,9 +621,7 @@ export function Icons({ ids }) {
     expect(client.html).toContain('<p>Hello</p>')
   })
 
-  // Bug: a `this` owned by a function, class or method in the children is
-  // rejected, on the client and the server.
-  // Impact: valid code fails to build.
+  // On main, valid code fails to build.
   // Source: SolidStart compile.spec.ts "allows `this` and `arguments` in a
   // function expression"
   test.each([
@@ -700,13 +655,8 @@ export function Icons({ ids }) {
     },
   )
 
-  // Bug: split children containing `await` (async server components) are
-  // moved as is into the synchronous chunk component the client compile
-  // emits, while the server renders them inline.
-  // Impact: the chunk does not parse (`await` outside an async function) and
-  // the client build fails without saying why. A clear compile-time error is
-  // a valid fix (React client components cannot be async), and so is valid
-  // output that renders the awaited value.
+  // On main, the chunk does not parse (`await` outside an async function) and
+  // the client build fails without saying why.
   test('client: await in split children is rejected at the boundary or renders', async () => {
     const code = `${head}import { loadData } from './data'
 export async function Page() {
@@ -763,12 +713,7 @@ describe('source maps of the split code', () => {
     expect(held, `the split code holds ${marker}`).toBeGreaterThan(0)
   }
 
-  // Bug: a boundary whose only child is text is split into code whose text
-  // is a new string the compiler creates without the text's position, and
-  // nothing else in that code comes from the user's file: the dev server
-  // serves it with an empty source map (no mappings, no sources). Found in
-  // review.
-  // Impact: the split code of such a boundary maps to nothing (SPEC G6):
+  // On main, the split code of such a boundary maps to nothing (SPEC G6):
   // devtools show it as generated code, not as the user's file, and its
   // component's frames in stacks resolve nowhere.
   test('client: the split text of a text-only boundary maps to its line and column', async () => {

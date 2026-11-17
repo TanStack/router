@@ -388,10 +388,7 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
     expect(await app.text(row)).toBe('MARK_CARD')
   })
 
-  // Bug: the transform only wraps an argument that is JSX itself, not a
-  // conditional or logical expression whose branches are all JSX, which is
-  // as safe to wrap.
-  // Impact: a stream of a conditionally chosen element has no CSS, so its
+  // On main, a stream of a conditionally chosen element has no CSS, so its
   // styles never arrive.
   // Source: SPEC J7.3.
   test.each([
@@ -474,9 +471,7 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
     expect(await app.text(rows.plainModel)).toBe('MARK_MODELMARK_CARD')
   })
 
-  // Bug: the transform silently skips a `renderToReadableStream` argument it
-  // cannot see the JSX of (a variable, a spread).
-  // Impact: the stream has no CSS, so its styles never arrive, and nothing
+  // On main, the stream has no CSS, so its styles never arrive, and nothing
   // tells the developer.
   // Source: SPEC J7.3: warn in dev only.
   test.each([
@@ -545,9 +540,7 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
   )
 
   describe('known bugs', () => {
-    // Bug: a comment before the JSX argument of `renderToReadableStream` is
-    // moved into the generated CSS fragment, where it becomes JSX text.
-    // Impact: the comment is rendered into the RSC payload as visible text.
+    // On main, the comment is rendered into the RSC payload as visible text.
     test.each([
       { name: 'a block comment', row: rows.blockComment },
       { name: 'a line comment', row: rows.lineComment },
@@ -559,14 +552,9 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
       },
     )
 
-    // Bug: a call whose result is immediately member-called
-    // (`renderServerComponent(...).then()`) is recorded as the inner call of
-    // a method chain and never visited as a candidate itself. The root cause
-    // is shared with the other Start factories (e.g. a
-    // `createServerOnlyFn(...).bind()`); this is its only pin.
-    // Source: start-plugin-core/src/start-compiler/compiler.ts, candidate
+    // Source: main's start-plugin-core/src/start-compiler/compiler.ts, candidate
     // detection ("inner call in a chain").
-    // Impact: the server component renders without its CSS.
+    // On main, the server component renders without its CSS.
     test('renderServerComponent styles the server component when its result is chained', async () => {
       expect(await cardBackground(rows.chained)).toBe(CARD_BACKGROUND)
     })

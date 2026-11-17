@@ -137,16 +137,10 @@ export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
     })
   })
 
-  // Bug: the route generator records only plain, non-computed, non-method
-  // property keys of the route options (`createFileRouteProps`), so a
-  // spread, a computed key, a method or an accessor is missed, and Start
-  // takes a route with server handlers and only such client options for a
-  // server-only route.
-  // Impact: the route is pruned from the client route tree: navigating to it
+  // On main, the route is pruned from the client route tree: navigating to it
   // in the browser finds no route.
-  // Source: #8504 router-generator transform.test.ts ("records
-  // method, async method and accessor option keys"), where the method and
-  // accessor rows pass.
+  // Source: #8504 router-generator transform.test.ts ("records method, async
+  // method and accessor option keys"), where the method and accessor rows pass.
   describe.each(pageOptions)('$name', ({ name }) => {
     // Rsbuild does not prune the client route tree yet (pinned above), so
     // the route stays.
@@ -155,13 +149,8 @@ export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
     })
   })
 
-  // Bug: route options wrapped in a cast (`as never`, `as any`,
-  // `satisfies`) are not recognised: the code splitter's `deleteNodes`
-  // (Start's list: `server`, `headers`, `ssr`) skips them, and the route
-  // generator records no option keys, so Start does not prune the route
-  // either.
-  // Impact: the route's server handlers and their server-only imports ship
-  // to the client bundle.
+  // On main, the route's server handlers and their server-only imports ship to
+  // the client bundle.
   // Real apps wrap route options in `as never` / `as any`.
   describe.each(casts)('options wrapped in $name', ({ name }) => {
     test('a route with server handlers and a component is in the client route tree', () => {

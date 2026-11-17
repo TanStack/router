@@ -190,9 +190,7 @@ export function h(type: unknown, props: unknown, ...children: Array<unknown>) {
 
 // Oxc (Vite 8's JSX transform) only reads JSX pragmas from the comments that
 // lead the file, so the imports the compiler inserts must stay below them.
-// Bug: the server fn runtime import (RPC or `createServerRpc`) is inserted
-// above the pragma comment that leads the file.
-// Impact: with Vite 8, a module with a server fn compiles its JSX with the
+// On main, with Vite 8, a module with a server fn compiles its JSX with the
 // default runtime: `css` props (Emotion) are ignored.
 // Source: #8504 start-compiler-jsx-pragma.test.ts (red on main); same root
 // cause as the code splitter's pragma pin

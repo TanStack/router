@@ -81,19 +81,12 @@ describe('Vite dev, behavior "error"', () => {
     ])
   }, 30_000)
 
-  // Bug: the Start compiler resolves the imports of a server fn factory
-  // module with a lookup query (`SERVER_FN_LOOKUP`), and import protection
-  // records the module as a lookup module by its path without the query
-  // (`serverFnLookupModules`, vite/import-protection-plugin/plugin.ts
-  // `resolveId`). The client's own transform of the module then counts as a
-  // lookup too, whose violations behavior "error" silences in dev (no later
-  // verification).
-  // Impact: in dev with behavior "error", the client of a server fn factory
+  // On main, in dev with behavior "error", the client of a server fn factory
   // module that calls a denied import (here `getRequest()` of
   // `@tanstack/react-start/server`) at the top level gets the real module,
   // without any error; in mock mode the same module is mocked and logged
-  // (dev.test.ts "a server fn factory module that also calls a denied import
-  // at the top level is logged").
+  // (dev.test.ts "a server fn factory module that also calls a denied import at
+  // the top level is logged").
   // Source: mutation testing.
   test('a server fn factory module calling a denied import at the top level fails to load', async () => {
     expect(await loadOutcome(topLevelCallApp('src/factory.ts'))).toEqual([
@@ -101,13 +94,7 @@ describe('Vite dev, behavior "error"', () => {
     ])
   }, 30_000)
 
-  // Bug: same cause as the pin above, one module further: when the Start
-  // compiler's lookup of a server fn factory module resolves the module's
-  // imports, import protection records each imported module as a lookup
-  // module too (vite/import-protection-plugin/plugin.ts `resolveId`,
-  // "Propagate pre-transform status transitively"), by its path, so the
-  // client's own transform of that module is silenced as well.
-  // Impact: in dev with behavior "error", any module a server fn factory
+  // On main, in dev with behavior "error", any module a server fn factory
   // module imports gets the real denied module when it calls it at the top
   // level, without any error (the control above fails to load).
   // Source: mutation testing.

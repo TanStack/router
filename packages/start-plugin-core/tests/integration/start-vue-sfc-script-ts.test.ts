@@ -65,15 +65,10 @@ test('build: a server fn in a <script lang="ts"> block', async () => {
 export const fn = createServerFn().handler(async () => db.x(input))`)
 })
 
-// Bug: the parser is chosen from the module id without its query, so the
-// `<script lang="ts">` block of a Vue SFC, which @vitejs/plugin-vue 6
-// serves in builds as `Page.vue?vue&type=script&lang.ts` (genScriptCode,
-// attrsToQuery), is parsed as TSX. (A `<script setup>` block cannot hold
-// the exported server fn.)
-// Impact: TypeScript-only syntax such as a `<string>value` assertion fails
-// the build.
-// Fix-agnostic: the build succeeds, the SFC is in the client build, and
-// the server-only module the handler reads is not.
+// On main, typeScript-only syntax such as a `<string>value` assertion fails the
+// build.
+// Fix-agnostic: the build succeeds, the SFC is in the client build, and the
+// server-only module the handler reads is not.
 test('build: a server fn in a <script lang="ts"> block may use angle-bracket type assertions', async () => {
   await expectSfcServerFnBuilds(`${head}const input = <string>(globalThis as any).input
 export const fn = createServerFn().handler(async () => db.x(input))`)
