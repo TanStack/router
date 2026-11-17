@@ -353,15 +353,6 @@ track(...names)`,
       effect: `function widget() {}
 track(widget)`,
     },
-  ])(
-    'an unreferenced top-level side effect ($name) runs once, with the route module',
-    async ({ effect }) => {
-      await expectEffectRunsOnce(effect)
-    },
-  )
-
-  // A top-level call that reads only imports and literals.
-  test.each([
     { name: 'a call reading an import', effect: 'track(subscribe)' },
     { name: 'a call with literal arguments', effect: `track('a', 'b')` },
   ])(

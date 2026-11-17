@@ -731,9 +731,8 @@ Paths under `router-plugin/tests/` unless given.
   chunk kept reading the exports of the route module's first evaluation, with no error, until a reload. The route
   module's evaluation now invalidates the modules of its file that read what it keeps (`env-readers` units) and
   refreshes the route once the update is applied. SPEC J3.3.
-  `integration/known-bugs-route-hmr-kept-binding.test.ts`: "rsbuild $target: $shape (the loader reads it:
-  $loaderReads) shows"; `integration/route-hmr-browser-kept-binding.test.ts`: "rsbuild $fw: $row.name", "webpack with
-  source maps $fw: $row.name"; `start-plugin-core/tests/integration/rsbuild/route-hmr-kept-binding.test.ts`: "$fw:
+  `integration/route-hmr-browser-kept-binding.test.ts`: "rsbuild $fw: $row.name";
+  `integration/route-hmr-browser-kept-binding-webpack-maps.test.ts`: "webpack with source maps $fw: $row.name"; `start-plugin-core/tests/integration/rsbuild/route-hmr-kept-binding.test.ts`: "$fw:
   $row.name".
 
 ### J4 Start environment separation

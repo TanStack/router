@@ -435,14 +435,19 @@ const suite = (
     }
   })
 
+// Every case on Vite 8, one case of each list on the other bundlers: what
+// state a chunk shares is the compiler's decision, the same for every host.
+const casesOn = (name: string, cases: Array<Case>) =>
+  name === 'vite 8' ? cases : cases.slice(0, 1)
+
 describe('private module state behind exported functions the chunk imports', () => {
   for (const { name, run } of runners) {
-    suite(name, moduleState, run)
+    suite(name, casesOn(name, moduleState), run)
   }
 })
 
 describe('identity of exported bindings the chunk imports', () => {
   for (const { name, run } of runners) {
-    suite(name, identity, run)
+    suite(name, casesOn(name, identity), run)
   }
 })

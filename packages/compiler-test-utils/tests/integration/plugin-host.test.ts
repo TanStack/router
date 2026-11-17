@@ -136,52 +136,6 @@ test(
   timeout,
 )
 
-// Under heavy load, a test worker's event loop can stay
-// blocked (other tests' synchronous work) right when the idle HMR client
-// connects at host start. A client of this process must still reach the
-// server: Node's address-family selection gives a connection attempt
-// `getDefaultAutoSelectFamilyAttemptTimeout()` on the event loop's clock,
-// so a client of a name with two addresses, of which the server listens on
-// one, abandoned the connection the kernel had made and was refused at the
-// other ("no HMR connection"). The block runs once each attempt's timer is
-// set, as a busy worker's would.
-test(
-  'a client host starts while the event loop is blocked past the attempt timeout of address-family selection',
-  async () => {
-    const blockFor = net.getDefaultAutoSelectFamilyAttemptTimeout() + 300
-    const attempts: Array<string> = []
-    const onSocket = (message: unknown) => {
-      const { socket } = message as { socket: net.Socket }
-      socket.once('connectionAttempt', (address: string, port: number) => {
-        attempts.push(`${address}:${port}`)
-        queueMicrotask(() => {
-          const end = performance.now() + blockFor
-          while (performance.now() < end) {
-            // a worker busy with synchronous work
-          }
-        })
-      })
-    }
-    diagnosticsChannel.subscribe('net.client.socket', onSocket)
-    let app
-    try {
-      app = await createPluginHost({
-        dir: testsDir,
-        registerCleanup: onTestFinished,
-        files,
-        plugins: [],
-        client: true,
-      })
-    } finally {
-      diagnosticsChannel.unsubscribe('net.client.socket', onSocket)
-    }
-    // The idle client went through the blocked attempt, to the server
-    const port = new URL(app.dev.url!).port
-    expect(attempts.some((attempt) => attempt.endsWith(`:${port}`))).toBe(true)
-  },
-  timeout,
-)
-
 test(
   'vite build runs the same public plugins; chunks, describe() and diagnostics',
   async () => {

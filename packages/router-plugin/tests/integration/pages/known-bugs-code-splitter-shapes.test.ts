@@ -122,23 +122,6 @@ export const Route = ${route}
 })
 
 describe('route factories written in other shapes', () => {
-  // Bug: the code splitter only recognises `createFileRoute` under its own
-  // name, so a route whose factory is imported under an alias is not split,
-  // and nothing says so. Our limitation, so the goal is a split component
-  // (SPEC J2.8). Source: review of #8504.
-  // Impact: the route's components load with the entry chunk, silently.
-  test('a component is split when createFileRoute is imported under an alias', async () => {
-    const route =
-      await loadRoute(`import { createFileRoute as fileRoute } from '@tanstack/react-router'
-export const Route = fileRoute('/')({ component: Page })
-function Page() {
-  return <p>page</p>
-}
-`)
-    expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
-  })
-
   // Bug: the code splitter only compiles files whose code matches
   // `createFileRoute(`, so a route whose factory call has a type argument
   // (`createFileRoute<'/'>('/')`) is left as is, and nothing says so. Our

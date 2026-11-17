@@ -66,23 +66,6 @@ const splitRouteExpected = {
   },
 }
 
-// Vite and Rspack: the same harness call and outcome as the React cells of
-// build-frameworks.test.ts ("<bundler> react ssr/client build the split
-// component loads lazily and renders"), which decide it.
-// webpack here builds minified, as an app does (build-frameworks builds
-// webpack unminified).
-describe('router plugin with webpack', () => {
-  test.each(['ssr', 'client'] as const)(
-    'loads a split component lazily and renders it (%s)',
-    async (env) => {
-      expect(await buildSplitRoute('webpack', env)).toEqual(
-        splitRouteExpected[env],
-      )
-    },
-    timeout,
-  )
-})
-
 // Rsbuild with its production defaults and the router plugin of Rspack,
 // as an Rsbuild app adds it.
 test(

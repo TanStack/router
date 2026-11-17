@@ -10,8 +10,7 @@
  * identity runs of #8817 (brain-dump `claude-tasks.ts`: `import { table,
  * type Row }` with `export type { Row }`). The route runs in a real browser
  * page (`./route-app`); the Start twin (server fns, client and server):
- * start-plugin-core tests/start-compiler-type-exports.test.ts; real builds:
- * tests/integration/build-babel-after-router.test.ts.
+ * start-plugin-core tests/start-compiler-type-exports.test.ts.
  */
 import { expect, test } from 'vitest'
 import babel from '@rolldown/plugin-babel'

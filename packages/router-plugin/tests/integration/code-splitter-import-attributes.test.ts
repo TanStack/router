@@ -6,8 +6,7 @@
  * `.txt` file holding JSON loads as JSON only through the attribute (without
  * it, the build fails parsing the file as JavaScript). The deprecated
  * `assert` form keeps working too. A client build: the import is in the
- * component's chunk, which loads on demand. Fast-tier counterpart (the moved import
- * keeps working in Vite): tests/code-splitter-imports-exports.test.ts.
+ * component's chunk, which loads on demand.
  */
 import { describe, expect, it } from 'vitest'
 import { build, routeApp } from '../build-harness'

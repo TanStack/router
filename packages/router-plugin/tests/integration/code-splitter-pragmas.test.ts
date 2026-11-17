@@ -1,7 +1,6 @@
-// Slow-tier half of this suite: what a route file's pragmas mean in a real
-// project, decided by the project's own tools (its JSX transform, its
-// framework's refresh runtime in a page). The in-process rows are in
-// ../code-splitter-pragmas.test.ts (fast tier).
+// What a route file's pragmas mean in a real project, decided by the
+// project's own tools (its JSX transform, its framework's refresh runtime in
+// a page). The dev-server rows are in ../code-splitter-pragmas.test.ts.
 import { describe, expect, test } from 'vitest'
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import {
@@ -74,18 +73,8 @@ return getComputedStyle(document.getElementById('styled')).color`)
     timeout,
   )
 
-  // Bug: the chunk of the split component starts with the pragma comment
-  // (the imports above it in the route file are gone from the chunk), so
-  // Oxc reads it there: the split component is styled by Emotion where the
-  // untouched route left the `css` prop as an attribute. Same bug as the
-  // fast-tier pin in ../code-splitter-pragmas.test.ts.
-  // Impact: with Vite 8, a route renders differently once its component is
-  // split.
-  test(
-    'means in the split route what it means in the untouched route (Vite: Oxc ignores it)',
-    () => expectSplitRendersLikeUntouched('vite', false),
-    timeout,
-  )
+  // (Vite, whose Oxc reads leading pragmas only: the fast tier,
+  // ../code-splitter-pragmas.test.ts)
 })
 
 // A framework JSX plugin registered before the router plugin is an order the

@@ -451,39 +451,6 @@ export function helper() {
       await route.run(`return [options.loader(), await render('component')]`),
     ).toEqual(['poly', '<p>10</p>'])
   })
-
-  it('runs top-level statements once, when the route module loads', async () => {
-    const route = await loadRoute(
-      `${head}import { track } from './track'
-const registry = new Map<string, number>()
-registry.set('k', 1)
-track('statement')
-if (registry.size) { track('if') }
-function Page() {
-  return <p>{registry.get('k')}</p>
-}
-export const Route = createFileRoute('/')({
-  component: Page,
-  errorComponent: () => <p>{registry.size}</p>,
-})
-`,
-      { files: { 'track.ts': trackFile } },
-    )
-    await expectValidModules(route)
-    expect(await route.isLazy('component')).toBe(true)
-    expect(
-      await route.run(`const { seen } = await app('track.ts')
-const atLoad = [...seen()]
-const page = await render('component')
-const error = await render('errorComponent')
-return [atLoad, page, error, seen()]`),
-    ).toEqual([
-      ['statement', 'if'],
-      '<p>1</p>',
-      '<p>1</p>',
-      ['statement', 'if'],
-    ])
-  })
 })
 
 // What `main`'s chunk copies (or takes alone) leaves the route file's

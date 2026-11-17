@@ -17,14 +17,7 @@ import {
   rootRoute as virtualRootRoute,
   route as virtualRoute,
 } from '@tanstack/virtual-file-routes'
-import {
-  createApp,
-  fileRoute,
-  generate,
-  lazyFileRoute,
-  read,
-  rootRoute,
-} from './app'
+import { createApp, fileRoute, generate, read, rootRoute } from './app'
 import { checkApp, page } from './real-router'
 import { matchesOf, routesOf, urlsOf } from './route-tree'
 import type { Config } from '../src'
@@ -514,16 +507,7 @@ describe('layouts and groups', () => {
       },
       child: '/foo/_auth/bar',
     },
-    {
-      name: 'a lazy route file',
-      target: 'react',
-      files: {
-        'src/routes/__root.tsx': rootRoute(),
-        'src/routes/foo/_auth.lazy.tsx': lazyFileRoute('/foo/_auth'),
-        'src/routes/foo/_auth/bar.tsx': fileRoute('/foo/_auth/bar'),
-      },
-      child: '/foo/_auth/bar',
-    },
+    // (a lazy route file: real-router.test.ts, through the real router)
     {
       name: 'a Vue component piece',
       target: 'vue',

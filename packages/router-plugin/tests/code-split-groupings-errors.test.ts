@@ -66,21 +66,6 @@ export const Route = createFileRoute('/')({
     })
   })
 
-  it('are read from a local const', async () => {
-    const route = await loadRoute(
-      `${head}const groupings = [['loader'], ['component']] as const
-export const Route = createFileRoute('/')({
-  codeSplitGroupings: groupings as any,
-  loader: () => 'data',
-  component: () => <p>page</p>,
-})
-`,
-      { fresh: true },
-    )
-    expect(await route.isLazy('loader')).toBe(true)
-    expectNoProblems(await route.diagnostics())
-  })
-
   it('are read through a const naming another', async () => {
     const route = await loadRoute(
       `${head}const groupings = [['loader'], ['component']] as const

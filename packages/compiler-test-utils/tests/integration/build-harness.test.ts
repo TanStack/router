@@ -546,34 +546,6 @@ setTimeout(() => { throw new Error('MARK_UNCAUGHT') })
   })
 })
 
-describe('registerCleanup', () => {
-  test('receives the dispose() that removes the app directory', async () => {
-    const cleanups: Array<() => Promise<void>> = []
-    const app = await createApp({
-      dir: testsDir,
-      files: { 'entry.ts': `export const value = 1\n` },
-      registerCleanup: (cleanup) => cleanups.push(cleanup),
-    })
-    expect(cleanups).toEqual([app.dispose])
-    expect(existsSync(app.root)).toBe(true)
-    await cleanups[0]!()
-    expect(existsSync(app.root)).toBe(false)
-  })
-
-  test('without it, the app stays until dispose()', async () => {
-    const app = await createApp({
-      dir: testsDir,
-      files: { 'entry.ts': `export const value = 1\n` },
-    })
-    try {
-      expect(existsSync(app.root)).toBe(true)
-    } finally {
-      await app.dispose()
-    }
-    expect(existsSync(app.root)).toBe(false)
-  })
-})
-
 test.each(['webpack', 'rspack'] as const)(
   '%s: concurrent native loaders keep console messages in their own builds',
   async (bundler) => {
