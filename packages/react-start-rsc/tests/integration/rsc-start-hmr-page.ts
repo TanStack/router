@@ -4,14 +4,16 @@
  * call button shows `text` and the answer, so a call from an edited
  * component is told apart from the answer the kept state shows. With
  * `baseFrom`, the function is built on the `base` export of that module
- * instead of `createServerFn()`.
+ * instead of `createServerFn()`, and the page shows the module's `baseText`
+ * (`[data-testid=base]`): an edit of that module alone shows in the page
+ * once React Refresh re-rendered it.
  */
 export const route = (
   handler: string,
   text: string,
   baseFrom?: string,
 ) => `import { createFileRoute } from '@tanstack/react-router'
-${baseFrom === undefined ? `import { createServerFn } from '@tanstack/react-start'` : `import { base } from '${baseFrom}'`}
+${baseFrom === undefined ? `import { createServerFn } from '@tanstack/react-start'` : `import { base, baseText } from '${baseFrom}'`}
 import { useState } from 'react'
 const getLabel = ${baseFrom === undefined ? 'createServerFn()' : 'base'}.handler(() => '${handler}')
 export const Route = createFileRoute('/')({
@@ -25,7 +27,7 @@ function Page() {
   return (
     <main>
       <p data-testid="text">${text} {label}</p>
-      <p data-testid="called">called {called}</p>
+${baseFrom === undefined ? '' : `      <p data-testid="base">{baseText}</p>\n`}      <p data-testid="called">called {called}</p>
       <button data-testid="call" onClick={() => getLabel().then((answer) => setCalled('${text} ' + answer))}>call</button>
       <button data-testid="count" onClick={() => setCount(count + 1)}>count {count}</button>
     </main>

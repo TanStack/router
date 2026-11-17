@@ -68,9 +68,12 @@ describe('Rsbuild dev: edits with a separate RSC provider (SPEC J3.6)', () => {
   // Source: F7-6 (Fable review 2026-11-10: Start and the coordinator both
   // started a client compilation for one edit).
   test('an edit that makes the import of a client module a server fn builder hot-updates the page once built', async () => {
-    const plainBase = `export const base = { handler: (fn: () => string) => fn }\n`
+    const plainBase = `export const base = { handler: (fn: () => string) => fn }
+export const baseText = 'base: plain'
+`
     const builderBase = `import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn()
+export const baseText = 'base: builder'
 `
     const server = await startRscRsbuildDevServer({
       browser: true,
@@ -100,6 +103,11 @@ export const base = createServerFn()
       ...Object.values(await server.hotUpdates('client')),
     ].join('\n')
     expect(client).not.toContain('MARK_HANDLER_V1')
+    // React Refresh re-renders 30 ms after the update applies, in one commit
+    // with the call button's new handler: click once the page shows the edit
+    await browser.waitForText('base: builder', {
+      selector: '[data-testid=base]',
+    })
     await callFromPage(browser, 'called Page v1 MARK_HANDLER_V1')
     expect(browser.loads()).toBe(1)
     expect(browser.errors).toEqual([])
