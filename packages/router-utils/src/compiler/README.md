@@ -195,15 +195,14 @@ where main's chunk runs it again (never a declaration already unused: better tha
 - **below the units** (`orphans.ts` `cleanOrphanedDeclarations`): function-local declarators, destructuring leaves,
   function and class declarations only erased code used go by the same rule (a use in a type in the erased text
   counts, R170), with their initialisers whatever they do (a hook call too, R166), as main's dead-code elimination
-  did. The core runs that cleanup once after every planner, in every output
-  when edits addressed to every output orphaned it, else in the env module only. A module-level destructuring leaf
-  stays while it is exported or another output takes it; a property a live rest element keeps loses only its default
-  value.
+  did. The core runs that cleanup once after every planner, in every output when edits addressed to every output
+  orphaned it, else in the env module only. A module-level destructuring leaf stays while it is exported or another
+  output takes it; a property a live rest element keeps loses only its default value.
 - **planning rounds**: a derived output that would assign a binding it imports reports a _fallback_
   (`ctx.fallbackAt(range)` on the next round), and `compileModule` re-runs the planners with that region kept in
-  place, until no new region is reported (a kept region can free the next one; every round keeps one more, so the
-  rounds end within the module's region count). Past that bound every sub-region is kept in place, which is always
-  correct, and a warning (`fallback-rounds-exhausted`) says so.
+  place, until no new region is reported (a kept region can free the next one). Every planner answers a fallback by
+  keeping that root in place, so every round keeps one more region and the rounds end within the module's region
+  count; past it is a compiler bug (an `internal-invariant`).
 
 ### Emit and source maps (`emit.ts`, `output-builder.ts`)
 

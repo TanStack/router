@@ -112,12 +112,9 @@ export interface OutputDecl {
 
 export type Home = OutputId | 'duplicate' | 'removed'
 
+/** A region a derived output must not take: it would assign a binding it imports, or (a `<Hydrate>` chunk) its copy of one the env module keeps. */
 export interface Fallback {
   region: RegionId
-  reason: /** A derived output would assign a binding it imports, or (a `<Hydrate>` chunk) its copy of one the env module keeps. */
-    | 'shared-writer'
-    /** The planning rounds did not settle: every sub-region is kept in place (reported by the pipeline). */
-    | 'exhausted'
 }
 
 export interface PlacementInput {
@@ -1200,7 +1197,7 @@ export function computePlacement(input: PlacementInput): Placement {
     const fallBack = (region: RegionId) => {
       if (!fellBack.has(region)) {
         fellBack.add(region)
-        fallbacks.push({ region, reason: 'shared-writer' })
+        fallbacks.push({ region })
       }
     }
     for (const o of derived) {

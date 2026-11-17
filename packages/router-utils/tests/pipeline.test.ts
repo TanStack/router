@@ -6,8 +6,6 @@ import {
   MemoryHost,
   dedent,
   envInfo,
-  findRouteOptions,
-  propertyOf,
   staleAfter,
   toyEdgePolicyPlanner,
   toyEnvPlanner,
@@ -1504,91 +1502,6 @@ function offsetOf(
   }
   return i + column
 }
-
-describe('planning rounds', () => {
-  // A planner that registers a new region every round and never honours the
-  // fallbacks it is handed (each round claims the component's first
-  // statement without a fallback into the chunk; each claim writes `a`, which the loader
-  // reads, so each round reports a fresh region). The rounds end at the
-  // bound (the region count after the first round) with every sub-region
-  // kept in place and one warning; a planner honours the exhausted
-  // fallbacks by splitting nothing.
-  it('end past the bound with everything kept in place and `fallback-rounds-exhausted`', async () => {
-    const statements = Array.from({ length: 12 }, (_, i) => `a = ${i + 1}`)
-    const code = dedent(`
-      import { createFileRoute } from 'toy-router'
-      let a = 0
-      export const Route = createFileRoute('/')({
-        loader: () => a,
-        component: () => { ${statements.join('; ')}; return null },
-      })
-    `)
-    const runaway: Planner = {
-      name: 'toy-runaway',
-      tier: 1,
-      gate: () => true,
-      plan(ctx) {
-        const found = findRouteOptions(ctx)
-        if (!found) {
-          return
-        }
-        const component = propertyOf(found.options, 'component')!.value
-        const body = (
-          component as { body: { body: Array<{ start: number; end: number }> } }
-        ).body.body
-        if (body.some((s) => ctx.fallbackAt(s)?.reason === 'exhausted')) {
-          return
-        }
-        // a route file whose chunk imports `a`: each claimed write of it falls back
-        ctx.setRouteModule({
-          imported: new Set(
-            ctx.t1.units
-              .flatMap((u) => u.declares)
-              .filter((sym) => ctx.symbols.name(sym) === 'a'),
-          ),
-          shared: new Set(),
-        })
-        const stmt = body.find((s) => ctx.fallbackAt(s) === undefined)
-        if (!stmt) {
-          return
-        }
-        const output = ctx.declareOutput({
-          kind: 'split',
-          key: 'component',
-          derived: { kind: 'split', value: 'component' },
-        })
-        const range = { start: stmt.start, end: stmt.end }
-        const owner = ctx.rewrites.addGenerated({
-          body: [
-            { k: 'text', parts: ['export const moved = () => { '] },
-            { k: 'region', id: ctx.region(range, 'custom') },
-            { k: 'text', parts: [' }\n'] },
-          ],
-          declares: [ctx.names.alloc('moved').sym],
-          effectful: false,
-          anchor: { k: 'end' },
-          home: output,
-          by: 'toy-runaway',
-        })
-        ctx.rewrites.claim({
-          region: ctx.region(range, 'custom'),
-          owner,
-          placeholder: [],
-          by: 'toy-runaway',
-        })
-      },
-    }
-    const host = new MemoryHost({ files: { '/app/route.tsx': code } })
-    const out = await host.compile('/app/route.tsx', [runaway])
-    expect(out!.diagnostics).toMatchObject([
-      { severity: 'warning', code: 'fallback-rounds-exhausted', by: 'core' },
-    ])
-    expect(out!.code).toContain(
-      `component: () => { ${statements.join('; ')}; return null }`,
-    )
-    expect(out!.code).not.toContain('moved')
-  })
-})
 
 describe('input-text-differs', () => {
   const route = (mark: string) =>

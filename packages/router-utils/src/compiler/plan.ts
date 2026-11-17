@@ -14,7 +14,6 @@ import { freezePlan } from './freeze'
 import { cleanOrphanedDeclarations } from './orphans'
 import { RegionTable, RewriteSet } from './rewrite'
 import type {
-  Fallback,
   HeaderPolicy,
   OutputDecl,
   OutputKind,
@@ -119,7 +118,6 @@ export interface EmitPlan {
 export interface FallbackRecord {
   range: Range
   kind: RegionKind
-  reason: Fallback['reason']
 }
 
 interface OutputSpec {
@@ -531,11 +529,7 @@ export class AnalysisPlan implements PlanContext {
     const out: Array<FallbackRecord> = []
     for (const f of this.placement?.fallbacks ?? []) {
       const r = this.regions.get(f.region)
-      out.push({
-        range: r.range,
-        kind: r.kind,
-        reason: f.reason,
-      })
+      out.push({ range: r.range, kind: r.kind })
     }
     return out
   }

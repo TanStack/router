@@ -1006,15 +1006,6 @@ function isNode(v: unknown): v is Node {
   )
 }
 
-/** Core fallbacks (placement constraints found after planning) that refuse an extraction. */
-const FALLBACK_REASONS: Record<string, { code: string; message: string }> = {
-  'shared-writer': {
-    code: 'hydrate-module-write',
-    message:
-      'Hydrate cannot code-split JSX that assigns a module-level binding other code of the module also uses: the split code would assign its own copy of it, or a binding it imports, not the one the module reads. Use split={false}.',
-  },
-}
-
 /** Plans the client extraction of one live boundary; returns its lazy const. */
 function extract(
   ctx: PlanContext,
@@ -1037,13 +1028,13 @@ function extract(
   if (!scan.ok) {
     return null
   }
-  const fallback = ctx.fallbackAt(region, 'hydrate-children')
-  if (fallback) {
-    const reason = FALLBACK_REASONS[fallback.reason] ?? {
-      code: `hydrate-${fallback.reason}`,
-      message: 'Hydrate cannot code-split these children. Use split={false}.',
-    }
-    boundaryError(ctx, b, reason.code, reason.message)
+  if (ctx.fallbackAt(region, 'hydrate-children')) {
+    boundaryError(
+      ctx,
+      b,
+      'hydrate-module-write',
+      'Hydrate cannot code-split JSX that assigns a module-level binding other code of the module also uses: the split code would assign its own copy of it, or a binding it imports, not the one the module reads. Use split={false}.',
+    )
     return null
   }
 

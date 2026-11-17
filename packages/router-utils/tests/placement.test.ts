@@ -180,7 +180,7 @@ describe('clusters and the write table', () => {
     ])('falls back when the children assign %s (H4)', async (_, imported) => {
       const r = await compileBoth(source(assigns), imported)
       expect(r.env.facts.planners['toy-hydrate']).toEqual({
-        kept: { h0: 'shared-writer' },
+        kept: { h0: true },
       })
       expect(r.env.code).not.toContain('tss-hydrate')
     })
@@ -214,7 +214,7 @@ describe('clusters and the write table', () => {
       const r = await split(code, { imported: ['count', 'last'] })
       expect(r.main?.facts.planners['toy-split']).toMatchObject({
         notSplittable: 'component',
-        reasons: { component: 'shared-writer' },
+        reasons: { component: true },
       })
       expect(r.env).toContain('component: Page,')
       expect(r.env).toContain('function Page()')
@@ -233,7 +233,7 @@ describe('clusters and the write table', () => {
     `)
     const r = await split(code, { imported: ['count'] })
     expect(r.main?.facts.planners['toy-split']).toMatchObject({
-      reasons: { component: 'shared-writer' },
+      reasons: { component: true },
     })
   })
 
@@ -1951,7 +1951,7 @@ describe('functions held, passed or called at load', () => {
 
   // a custom region in an exported declaration's call argument (a server
   // fn's handler) falls back for nothing
-  it.each([['a function passed to a call', '() => String(n)', null]])(
+  it.each([['a function passed to a call', '() => String(n)', false]])(
     'reports no fallback for a custom region that is %s',
     async (_, argument, reason) => {
       const code = dedent(`
@@ -1971,7 +1971,7 @@ describe('functions held, passed or called at load', () => {
           const range = { start, end: start + argument.length }
           ctx.region(range, 'custom')
           ctx.setFacts('toy-region', {
-            fallback: ctx.fallbackAt(range)?.reason ?? null,
+            fallback: ctx.fallbackAt(range) !== undefined,
           })
         },
       }
