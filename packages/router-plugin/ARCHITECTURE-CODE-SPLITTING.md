@@ -62,9 +62,19 @@ const|let|var`, `export default function`, `export default <name>`; main's `hasE
   and the build warns once, naming the file and the exports (main's warning). `Page as any` is split.
 - Values main cannot compile into a chunk stay in the route module, silently (`splitOnMain`, the cases of main's
   `compileCodeSplitVirtualRoute`: a member access, `satisfies`, `!`, a class, a namespace member, a global, an array
-  pattern, a sequence, an object, a call holding JSX or TypeScript syntax). A function with overload signatures is one
+  pattern, a sequence, an object other than an object-form loader (below), a call holding JSX or TypeScript
+  syntax). A function with overload signatures is one
   function. An option whose chunk would assign a binding it imports stays too (`assignsWhatItImports`:
   a core fallback, the core re-plans with it kept in place).
+- A `loader` written as an object literal (`loader: { handler, staleReloadMode }`, parentheses and TypeScript
+  wrappers around it allowed; #8753, R171) splits its `handler` in its place (`objectLoaderOf`, `loaderHandlerOf`):
+  the object's last `handler`, a plain property, a shorthand or a method, when no spread or computed key of unknown
+  name follows it. That value goes through every rule above, as a function-valued loader's would (same group, chunk,
+  copies, warnings); the object and its other keys stay in the route module, where the router reads them when the
+  route loads, and count as staying for the shared names. Any other object loader stays as written: no `handler`, a
+  getter, a spread or unknown computed key after it, or an object the route names (`loader: loaderObject`). An
+  imported binding holding a loader object can't be told from an imported function: it splits whole, as on main, and
+  the router then calls the object.
 - Routes whose options object cannot be read statically (imported from another module, built by a call) are not
   split; with `deleteNodes` the build warns that server code in them ships.
 - `deleteNodes` removes options (every property form) from the env output and what only they imported.

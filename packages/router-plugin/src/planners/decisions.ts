@@ -9,7 +9,12 @@ import { propertyKeyName } from '@tanstack/router-generator'
 import { groupingsProblem } from '../core/config'
 import { splitRouteIdentNodes } from '../core/constants'
 import { ROUTER_PLANNER } from './config'
-import { boundValueOf, chainSoleUse, identifierSymbol } from './route'
+import {
+  boundValueOf,
+  chainSoleUse,
+  describeOptions,
+  identifierSymbol,
+} from './route'
 import type { RouteModuleInfo, RouteOption } from './route'
 import type { RouterPlannerConfig } from './config'
 import type { CodeSplitGroupings } from '../core/constants'
@@ -291,7 +296,14 @@ export function splitPlanOf(
       if (!option || option.value === null) {
         continue
       }
-      const value = withoutParens(option.value)
+      // a loader written as an object literal: its `handler` splits in its
+      // place, by the rules below (R171); the object stays
+      const object = objectLoaderOf(option)
+      const target = object ? loaderHandlerOf(ctx, object) : option
+      if (!target || target.value === null) {
+        continue
+      }
+      const value = withoutParens(target.value)
       if (fallsBackToParent(value)) {
         continue
       }
@@ -300,6 +312,15 @@ export function splitPlanOf(
         // re-export (`main` leaves it, with a warning)
         exported.push(value.name)
         exportedAt ??= { start: value.start, end: value.end }
+        continue
+      }
+      if (
+        object === null &&
+        key === 'loader' &&
+        boundValueOf(ctx, value).node.type === 'ObjectExpression'
+      ) {
+        // an object-form loader the route names (`loader: loaderObject`):
+        // the router reads its keys when the route loads, so it stays
         continue
       }
       const valueSym = identifierSymbol(ctx, value)
@@ -323,13 +344,13 @@ export function splitPlanOf(
             own === 'this'
               ? `[tanstack-router] The \`${key}\` option of ${file} uses \`this\`, so it isn't code-split (splitting can change what \`this\` refers to). Use an arrow function or avoid \`this\` to split it.`
               : `[tanstack-router] The \`${key}\` option of ${file} uses \`super\`, so it isn't code-split (split, it would no longer be a method of the route options). Avoid \`super\` to split it.`,
-          range: { start: option.prop.start, end: option.prop.end },
+          range: { start: target.prop.start, end: target.prop.end },
         })
         continue
       }
-      const shorthand = option.kind === 'shorthand'
+      const shorthand = target.kind === 'shorthand'
       const region = shorthand
-        ? { start: option.prop.start, end: option.prop.end }
+        ? { start: target.prop.start, end: target.prop.end }
         : { start: inner.start, end: inner.end }
       // another planner already puts something at exactly this text's place
       // in the route module (Start hoists a server fn written in place): the
@@ -340,7 +361,7 @@ export function splitPlanOf(
           severity: 'warning',
           code: 'split-claimed',
           by: ROUTER_PLANNER,
-          message: `[tanstack-router] The \`${key}\` option of ${file} is not code-split: its value is ${('owner' in claimed ? claimed.subject : undefined) ?? 'moved elsewhere by the compiler'}, so it cannot move into a chunk as well. Declare it as a module-level \`const\` before the route and pass it by name: \`${option.keyText}: ${key}Fn\`.`,
+          message: `[tanstack-router] The \`${key}\` option of ${file} is not code-split: its value is ${('owner' in claimed ? claimed.subject : undefined) ?? 'moved elsewhere by the compiler'}, so it cannot move into a chunk as well. Declare it as a module-level \`const\` before the route and pass it by name: \`${target.keyText}: ${key}Fn\`.`,
           range: region,
         })
         continue
@@ -350,13 +371,13 @@ export function splitPlanOf(
         groupKey,
         shape: shorthand
           ? 'shorthand'
-          : option.kind === 'method'
+          : target.kind === 'method'
             ? 'method'
             : 'init',
         region,
         valueNode: value,
-        property: { start: option.prop.start, end: option.prop.end },
-        keyText: option.keyText,
+        property: { start: target.prop.start, end: target.prop.end },
+        keyText: target.keyText,
         wholeProperty: shorthand,
         shorthandSym: shorthand ? valueSym : null,
         exportName: key,
@@ -384,9 +405,47 @@ export function splitPlanOf(
     deleted,
     shadowing,
     ...(decisions.length > 0
-      ? chunkImportsOnMain(ctx, route, groupings)
+      ? chunkImportsOnMain(ctx, route, groupings, decisions)
       : { imported: none, shared: none }),
   }
+}
+
+/**
+ * The object literal of a `loader` written in object form (`loader: {
+ * handler, staleReloadMode }`, #8753), parentheses and TypeScript wrappers
+ * around it (`{ … } as const`) included; null for any other option or value.
+ */
+function objectLoaderOf(option: RouteOption): Node | null {
+  if (option.key !== 'loader' || option.kind !== 'init' || !option.value) {
+    return null
+  }
+  const object = unwrapExpression(option.value)
+  return object.type === 'ObjectExpression' ? object : null
+}
+
+/**
+ * The property of an object-form loader that splits in the loader's place
+ * (R171): its last `handler`, written as a plain property, a shorthand or a
+ * method, when no spread or computed key of unknown name follows it (its
+ * value could replace the handler). Null: the loader stays in the route
+ * module as written. Its value then goes through every rule of a
+ * function-valued loader; the object and its other keys stay in the route
+ * module, where the router reads them when the route loads.
+ */
+function loaderHandlerOf(ctx: PlanContext, object: Node): RouteOption | null {
+  const props = describeOptions(ctx, object)
+  for (let i = props.length - 1; i >= 0; i--) {
+    const p = props[i]!
+    if (p.kind === 'spread' || (p.kind === 'computed' && p.key === null)) {
+      return null
+    }
+    if (p.key === 'handler') {
+      return p.kind === 'init' || p.kind === 'shorthand' || p.kind === 'method'
+        ? p
+        : null
+    }
+  }
+  return null
 }
 
 /** The value inside its parentheses (Babel, which `main` parses with, keeps none). */
@@ -610,8 +669,9 @@ export function chunkImportsOnMain(
   ctx: PlanContext,
   route: RouteModuleInfo,
   groupings: CodeSplitGroupings,
+  decisions: ReadonlyArray<SplitDecision>,
 ): { imported: Set<SymbolId>; shared: Set<SymbolId> } {
-  const shared = sharedNamesOnMain(ctx, route, groupings)
+  const shared = sharedNamesOnMain(ctx, route, groupings, decisions)
   const imported = new Set(shared)
   imported.add(route.routeSym)
   for (const unit of ctx.t1.units) {
@@ -637,12 +697,16 @@ export function chunkImportsOnMain(
  * -1, kept or deleted alike); a destructuring declarator whose names are
  * read under two or more group numbers between them, or one of whose names
  * is shared, has all its names shared; a name whose declaration reads the
- * route binding, transitively, is not.
+ * route binding, transitively, is not. An object-form loader (`main` fails
+ * to compile one) is read as what stays and what splits: its text is group
+ * -1 but for its handler's value when that splits (R171), which is the
+ * loader's group.
  */
 function sharedNamesOnMain(
   ctx: PlanContext,
   route: RouteModuleInfo,
   groupings: CodeSplitGroupings,
+  decisions: ReadonlyArray<SplitDecision>,
 ): Set<SymbolId> {
   const { t1 } = ctx
   const shared = new Set<SymbolId>()
@@ -676,19 +740,40 @@ function sharedNamesOnMain(
   )
   const groupOf = (key: string) =>
     groupings.findIndex((group) => (group as Array<string>).includes(key))
+  /**
+   * Each option's text with its group number (`except`: the text of another
+   * part); `undefined` reads nothing and counts for no group.
+   */
+  const parts: Array<{ range: Range; group: number; except?: Range }> = []
+  for (const p of props) {
+    const v = p.value!
+    if (v.type === 'Identifier' && v.name === 'undefined') {
+      continue
+    }
+    const range = { start: v.start, end: v.end }
+    if (!objectLoaderOf(p)) {
+      parts.push({ range, group: groupOf(p.key!) })
+      continue
+    }
+    const handler = decisions.find(
+      (d) =>
+        d.key === 'loader' &&
+        d.region.start >= range.start &&
+        d.region.end <= range.end,
+    )?.region
+    parts.push({ range, group: -1, except: handler })
+    if (handler) {
+      parts.push({ range: handler, group: groupOf(p.key!) })
+    }
+  }
   {
     const splitGroups = new Set<number>()
     let nonSplit = false
-    for (const p of props) {
-      const v = p.value!
-      if (v.type === 'Identifier' && v.name === 'undefined') {
-        continue
-      }
-      const g = groupOf(p.key!)
-      if (g === -1) {
+    for (const { group } of parts) {
+      if (group === -1) {
         nonSplit = true
       } else {
-        splitGroups.add(g)
+        splitGroups.add(group)
       }
     }
     if (!nonSplit && splitGroups.size < 2) {
@@ -706,11 +791,14 @@ function sharedNamesOnMain(
    */
   const { file } = ctx.analysis
   const env = ctx.rewrites.view('env')
-  const namesIn = (range: Range): Array<SymbolId> =>
+  const namesIn = (range: Range, except?: Range): Array<SymbolId> =>
     t1.refs
       .refsIn(range)
       .filter(
         (r) =>
+          (except === undefined ||
+            r.range.start < except.start ||
+            r.range.start >= except.end) &&
           (r.kind !== 'write' ||
             file.parentOf(file.nodeAt(r.range.start)!)?.type ===
               'UpdateExpression') &&
@@ -738,14 +826,11 @@ function sharedNamesOnMain(
     return seen
   }
   const groupsOf = new Map<SymbolId, Set<number>>()
-  for (const p of props) {
-    const g = groupOf(p.key!)
-    const direct = namesIn({ start: p.value!.start, end: p.value!.end }).filter(
-      (s) => declarators.has(s),
-    )
+  for (const { range, group, except } of parts) {
+    const direct = namesIn(range, except).filter((s) => declarators.has(s))
     for (const s of closure(direct)) {
       if (declarators.has(s)) {
-        groupsOf.set(s, (groupsOf.get(s) ?? new Set()).add(g))
+        groupsOf.set(s, (groupsOf.get(s) ?? new Set()).add(group))
       }
     }
   }

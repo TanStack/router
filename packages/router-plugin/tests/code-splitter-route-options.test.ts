@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { expectNoProblems } from '@tanstack/compiler-test-utils/diagnostic-channel'
+import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectValidModules, head, holdsMarker, loadRoute } from './route-app'
 import { readsImport, servedImports } from './served-code'
 
@@ -620,6 +621,82 @@ export const Route = createFileRoute('/')({ ['component']: C })`,
     if (split) {
       expect(await route.isLazy('component')).toBe(true)
     }
+  })
+})
+
+// #8753: the router reads a loader object's other keys when the route loads,
+// and calls its handler, so the handler splits as a function-valued loader
+// does and the object stays
+describe('a loader in object form', () => {
+  const files = {
+    'api.ts': `export const fetchPosts = () => ['a', 'b']\n`,
+  }
+
+  it.for([
+    {
+      name: 'an arrow function',
+      loader: `{ staleReloadMode: 'blocking', handler: () => fetchPosts() }`,
+    },
+    {
+      name: 'a method',
+      loader: `{ async handler() { return fetchPosts() }, staleReloadMode: 'blocking' }`,
+    },
+  ])(
+    'splits its handler, written as $name, and the route renders its data',
+    async ({ loader }) => {
+      const route = await loadRoute(
+        `${head}import { fetchPosts } from './api'
+function Posts() {
+  return <ul>{Route.useLoaderData().length}</ul>
+}
+export const Route = createFileRoute('/posts')({
+  codeSplitGroupings: [['loader'], ['component']],
+  loader: ${loader},
+  component: Posts,
+})
+`,
+        { routeId: '/posts', files },
+      )
+      expect(await route.isLazy('loader')).toBe(true)
+      // what only the handler reads loads with it
+      expect(await route.requested()).not.toContain('/api.ts')
+      expect((await route.loadedBy('loader')).flatMap(servedImports)).toContain(
+        '/api.ts',
+      )
+      await expectValidModules(route)
+      expect(
+        await route.run(`return {
+  staleReloadMode: options.loader.staleReloadMode,
+  rendered: await renderRoute(),
+}`),
+      ).toEqual({ staleReloadMode: 'blocking', rendered: '<ul>2</ul>' })
+      expectNoProblems(await route.diagnostics())
+    },
+  )
+
+  it('keeps a handler method that uses `this` in the route module, with a warning at the handler', async () => {
+    const route = await loadRoute(
+      `${head}export const Route = createFileRoute('/posts')({
+  codeSplitGroupings: [['loader'], ['component']],
+  loader: {
+    handler() {
+      return typeof this
+    },
+  },
+  component: () => <p>{Route.useLoaderData()}</p>,
+})
+`,
+      { routeId: '/posts' },
+    )
+    expect(await route.isLazy('loader')).toBe(false)
+    expect(await route.run('return renderRoute()')).toBe('<p>undefined</p>')
+    expectDiagnostic(await route.diagnostics(), {
+      severity: 'warning',
+      file: 'route.tsx',
+      root: route.host.root,
+      position: { line: 5, column: 5 },
+      times: 1,
+    })
   })
 })
 
