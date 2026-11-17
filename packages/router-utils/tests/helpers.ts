@@ -202,7 +202,7 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
         }
       }
       let lazyImportSym: SymbolId | null = null
-      const reasons: Record<string, string> = {}
+      const reasons: Record<string, true> = {}
       for (const key of keys) {
         const p = propertyOf(options, key)
         if (!p) {
@@ -230,7 +230,7 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
             .map((r) => ctx.fallbackAt(r))
             .find((f) => f !== undefined)
         if (fallback && opts.ignoreFallbacks !== true) {
-          reasons[key] = fallback.reason
+          reasons[key] = true
           ctx.setFacts('toy-split', { notSplittable: key, reasons })
           continue
         }
@@ -259,7 +259,6 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
               k: 'spec',
               specifier: spec,
               edgeKey: ctx.edgeKey(spec, 'dynamic', 'runtime'),
-              provenance: { origin: 'runtime' },
               form: 'dynamic',
             },
             { k: 'text', parts: [')\n'] },
@@ -279,7 +278,6 @@ export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
                     k: 'spec',
                     specifier: ROUTER_SPEC,
                     edgeKey: ctx.edgeKey(ROUTER_SPEC, 'static', 'runtime'),
-                    provenance: { origin: 'runtime' },
                   },
                 },
               ]
@@ -723,9 +721,8 @@ export function dedent(s: string): string {
  * children become a fixed-home chunk `?tss-hydrate=h<n>` whose component takes
  * `props`; captures are forwarded through the substitution environment, inner
  * boundaries first (bottom-up). A boundary the core reports a fallback for
- * (`shared-writer`: the children assign a binding the module keeps) stays
- * in place, as Start's planner keeps it, with the reason in the facts
- * (`kept`: by key).
+ * (the children assign a binding the module keeps) stays in place, as
+ * Start's planner keeps it, and is listed in the facts (`kept`: by key).
  */
 /**
  * `opts.imported`: names of module bindings each chunk imports instead of
@@ -777,12 +774,12 @@ export function toyHydratePlanner(
       boundaries.sort((a, b) => b.children.start - a.children.start)
       const props = ctx.names.alloc('props')
       const placeholders = new Map<number, Array<SymbolId>>() // children.start → captures of that boundary
-      const kept: Record<string, string> = {}
+      const kept: Record<string, true> = {}
       boundaries.forEach((b, i) => {
         const n = boundaries.length - 1 - i
         const fallback = ctx.fallbackAt(b.children, 'hydrate-children')
         if (fallback) {
-          kept[`h${n}`] = fallback.reason
+          kept[`h${n}`] = true
           ctx.setFacts('toy-hydrate', { kept })
           return
         }
@@ -791,7 +788,6 @@ export function toyHydratePlanner(
           kind: 'hydrate',
           key: `h${n}`,
           derived: { kind: 'hydrate', value: `h${n}` },
-          describe: '`<Hydrate>` boundary',
           imported: opts.imported
             ? new Set(
                 t1.units
@@ -873,7 +869,6 @@ export function toyHydratePlanner(
               k: 'spec',
               specifier: lazySpec,
               edgeKey: ctx.edgeKey(lazySpec, 'dynamic', 'runtime'),
-              provenance: { origin: 'runtime' },
               form: 'dynamic',
             },
             { k: 'text', parts: [`), '${comp.name}')\n`] },

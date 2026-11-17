@@ -27,16 +27,14 @@ import type { PlacementInput } from './placement'
 
 const NO_REFS: ReadonlyArray<ClassifiedRef> = []
 
-export interface ClusterReads {
-  syms: Set<SymbolId>
-  children: Set<ClusterId>
-}
+/** The symbols a cluster reads in one output. */
+export type ClusterReads = ReadonlySet<SymbolId>
 
 export interface ReadIndex {
   /**
    * What cluster `c` reads in output `o`: `live`, what renders there;
    * otherwise every reference of its text, erased or not (the env module's
-   * source, for provenance and the export companions).
+   * source, for provenance).
    */
   clusterReads: (c: ClusterId, o: OutputId, live: boolean) => ClusterReads
   /** The clusters `c`'s reads in `o` lead to (`live` as for `clusterReads`). */
@@ -47,21 +45,17 @@ export interface ReadIndex {
   ) => ReadonlyArray<ClusterId>
 }
 
-interface MemberReads {
-  syms: Array<SymbolId>
-  children: Array<RegionId>
-}
+/** The symbols a member (a region, a generated unit) reads, with repeats. */
+type MemberReads = Array<SymbolId>
 
 /**
- * Per region, derived once per plan from the sub-regions, the tree's nodes
- * and the inserts: the regions nesting directly in it (source order), where
- * a unit is in the tree, what its own text holds of the tree in walk order
+ * Per region, derived once per plan from the tree's nodes and the inserts:
+ * where a unit is in the tree, what its own text holds of the tree in walk order
  * (the nodes whose edits and placeholders are its text's, and the claimed
  * regions nested in it) and the inserts it holds
  * (`RegionTable.insertOwnerAt`).
  */
 interface RegionIndex {
-  children: Array<Array<RegionId> | undefined>
   /** Per unit region: the node on exactly its range (none: undefined). */
   ownNode: Array<RangeNode | undefined>
   /** Per unit region: the first marked node holding it whole (none: undefined, the module). */
@@ -70,7 +64,6 @@ interface RegionIndex {
   inserts: Array<Array<Edit> | undefined>
 }
 
-const NO_REGIONS: ReadonlyArray<RegionId> = []
 const NO_NODES: ReadonlyArray<RangeNode> = []
 const NO_INSERTS: ReadonlyArray<Edit> = []
 
@@ -81,8 +74,8 @@ export function readIndex(
   const { t1, rewrites } = input
   const { symbols } = t1
   const { regions } = rewrites
-  const { clusters, clusterOfRegion, clusterOfSym, ownedRefs } = graph
-  const { viewOf, isLive } = graph
+  const { clusters, clusterOfSym, ownedRefs } = graph
+  const { viewOf } = graph
   const regionCount = regions.regions.length
   const gens = rewrites.generated
 
@@ -92,7 +85,6 @@ export function readIndex(
     if (index !== null) {
       return index
     }
-    const children: RegionIndex['children'] = []
     const text: RegionIndex['text'] = []
     const inserts: RegionIndex['inserts'] = []
     const push = <T>(lists: Array<Array<T> | undefined>, id: RegionId, x: T) =>
@@ -100,17 +92,6 @@ export function readIndex(
     const unitRegions = regions.regions
       .filter((r) => r.unit !== null)
       .sort((x, y) => x.range.start - y.range.start)
-    const subRegions = regions.regions
-      .filter((r) => r.unit === null)
-      .sort(
-        (x, y) => x.range.start - y.range.start || y.range.end - x.range.end,
-      )
-    for (const r of subRegions) {
-      const parent = regions.parentOf(r.id)
-      if (parent !== null) {
-        push(children, parent, r.id)
-      }
-    }
     // one walk of the marked nodes: a node with a region starts that
     // region's text (a claimed one is read where it nests), the others are
     // the text of the region around them
@@ -155,7 +136,7 @@ export function readIndex(
         aroundNode[r.id] = n ?? regions.nodeAround(r.range)
       }
     }
-    index = { children, text, inserts, ownNode, aroundNode }
+    index = { text, inserts, ownNode, aroundNode }
     return index
   }
 
@@ -167,15 +148,11 @@ export function readIndex(
     Array<MemberReads | undefined>
   >()
   const deadMemberReads: Array<MemberReads | undefined> = []
-  /**
-   * Pushes the reads of the references of `list` (sorted) starting in
-   * `[s, e)`, those live in `live` only when given.
-   */
+  /** Pushes the reads of the references of `list` (sorted) starting in `[s, e)`. */
   const refReads = (
     list: ReadonlyArray<ClassifiedRef>,
     s: number,
     e: number,
-    live: OutputId | null,
     into: MemberReads,
   ) => {
     let lo = 0
@@ -193,20 +170,8 @@ export function readIndex(
       if (ref.range.start >= e) {
         break
       }
-      if (live !== null && !isLive(ref, live)) {
-        continue
-      }
       if (NEED_KINDS.has(ref.kind)) {
-        into.syms.push(ref.sym)
-      }
-    }
-  }
-
-  /** Pushes the regions nested in `id` that no output claims (its successors). */
-  const pushChildren = (id: RegionId, into: MemberReads) => {
-    for (const cid of regionIndex().children[id] ?? NO_REGIONS) {
-      if (!rewrites.claims.has(cid)) {
-        into.children.push(cid)
+        into.push(ref.sym)
       }
     }
   }
@@ -214,17 +179,14 @@ export function readIndex(
   // ---- the live reads of a region: one walk of its text, one visitor ----
   // (the member being read; the walk does not re-enter a member's reads)
   let view!: OutputView
-  let output!: OutputId
   let into!: MemberReads
   /** Its own node (the walk renders its text), if any. */
   let own: RangeNode | null = null
   /** The references of the text being walked: the member's, or those of a region nested in it claimed only for other outputs. */
   let owned: ReadonlyArray<ClassifiedRef> = NO_REFS
-  /** Only part of its text renders: each read asks its position. */
-  let partial = false
   /** Pushes what generated text names. */
   const named = (body: ReadonlyArray<Frag | GenFrag>) => {
-    symRefsOf(body, into.syms)
+    symRefsOf(body, into)
   }
   /** What a body standing for node `n` reads (its slices walked, its references among `owned`). */
   const read = (n: RangeNode, body: ReadonlyArray<Frag>) => {
@@ -234,13 +196,7 @@ export function readIndex(
         view.walk(n, f.range.start, f.range.end, reader)
       } else if (f.k === 'ref') {
         // (a rewritten reference keeps the one it rewrites)
-        refReads(
-          owned,
-          f.range.start,
-          f.range.end,
-          partial ? output : null,
-          into,
-        )
+        refReads(owned, f.range.start, f.range.end, into)
       }
     }
   }
@@ -257,19 +213,15 @@ export function readIndex(
     }
   }
   const reader: WalkVisitor = {
-    source: (s, e) => refReads(owned, s, e, partial ? output : null, into),
+    source: (s, e) => refReads(owned, s, e, into),
     node: (n) => {
       if (n === own) {
         readOwn()
-      } else if (!(partial && view.isErasedAt(n.start))) {
+      } else {
         read(n, (view.placeOf(n) ?? view.textOf(n))!)
       }
     },
-    insert: (e) => {
-      if (!partial || !view.isErasedAt(e.range.start)) {
-        named(e.body)
-      }
-    },
+    insert: (e) => named(e.body),
     member: (n) => {
       if (n === own) {
         return false
@@ -281,7 +233,7 @@ export function readIndex(
       if (view.isClaimed(n)) {
         // its text is its owner's: what stands at its place is read here
         const place = view.placeOf(n)
-        if (place !== null && !(partial && view.isErasedAt(n.start))) {
+        if (place !== null) {
           named(place)
         }
         return true
@@ -292,11 +244,10 @@ export function readIndex(
       const text = view.textOf(n)
       if (text === null) {
         view.walk(n, n.start, n.end, reader)
-      } else if (!(partial && view.isErasedAt(n.start))) {
+      } else {
         read(n, text)
       }
       owned = outer
-      pushChildren(cid, into)
       return true
     },
   }
@@ -306,12 +257,11 @@ export function readIndex(
    * (`OutputView.walk`). The source it renders reads the references it owns
    * (inside it, outside the regions nested in it); an active node, an insert
    * and the place of a claimed region nested in it read what their bodies
-   * name. Whether the text renders at all is decided around it
-   * (`OutputView.encloses`); when only part of it does, each read asks its
-   * position. The regions nested in it are its successors, unless claimed.
+   * name. Whether the text renders is decided around it
+   * (`OutputView.encloses`), for all of it. An unclaimed region nested in it is in its cluster
+   * (`clusters.ts`): its reads are the cluster's.
    */
   function regionReads(r: Region, o: OutputId, to: MemberReads): void {
-    pushChildren(r.id, to)
     const { ownNode, aroundNode } = regionIndex()
     const id = r.id
     let at: RangeNode
@@ -323,14 +273,11 @@ export function readIndex(
       at = own!
     }
     view = viewOf(o)
-    const verdict = view.encloses(r.range, own, own !== null ? own.parent : at)
-    if (verdict === 'none') {
+    if (!view.encloses(r.range, own, own !== null ? own.parent : at)) {
       return
     }
-    output = o
     into = to
     owned = ownedRefs.get(id) ?? NO_REFS
-    partial = verdict === 'partial'
     if (own === null) {
       view.walk(at, r.range.start, r.range.end, reader)
     } else if (r.unit !== null && own.parent !== null) {
@@ -343,27 +290,20 @@ export function readIndex(
 
   /**
    * What a region's text names, rendered or not (the env module's source:
-   * provenance and the export companions): the references it owns, the
+   * provenance): the references it owns, the
    * bodies of the edits, placeholders and inserts of `o` in its text, the
    * places of the regions claimed in `o` nested in it (the text of one
    * claimed only for other outputs is its own).
    */
   function sourceReads(r: Region, o: OutputId, into: MemberReads): void {
     const { inserts } = regionIndex()
-    refReads(
-      ownedRefs.get(r.id) ?? NO_REFS,
-      r.range.start,
-      r.range.end,
-      null,
-      into,
-    )
+    refReads(ownedRefs.get(r.id) ?? NO_REFS, r.range.start, r.range.end, into)
     textReads(r.id, o, into)
     for (const e of inserts[r.id] ?? NO_INSERTS) {
       if (rewrites.inScope(e.scope, o)) {
-        symRefsOf(e.body, into.syms)
+        symRefsOf(e.body, into)
       }
     }
-    pushChildren(r.id, into)
   }
 
   /** What the tree holds in region `id`'s text in `o` (`sourceReads`). */
@@ -375,26 +315,21 @@ export function readIndex(
         // a claimed region nested in it: its place, or its text when
         // claimed only for other outputs
         if (view.isClaimed(n)) {
-          const place = view.placeholderAt(n)!
-          symRefsOf(
-            'owner' in place ? place.placeholder : place.body,
-            into.syms,
-          )
+          symRefsOf(n.claim!.placeholder, into)
         } else {
-          refReads(ownedRefs.get(nested) ?? NO_REFS, n.start, n.end, null, into)
+          refReads(ownedRefs.get(nested) ?? NO_REFS, n.start, n.end, into)
           textReads(nested, o, into)
-          pushChildren(nested, into)
         }
         continue
       }
       for (const e of n.edits ?? []) {
         if (rewrites.inScope(e.scope, o)) {
-          symRefsOf(e.body, into.syms)
+          symRefsOf(e.body, into)
         }
       }
       for (const p of n.places ?? []) {
         if (rewrites.inScope(p.scope, o)) {
-          symRefsOf(p.body, into.syms)
+          symRefsOf(p.body, into)
         }
       }
     }
@@ -417,7 +352,7 @@ export function readIndex(
     if (hit) {
       return hit
     }
-    const into: MemberReads = { syms: [], children: [] }
+    const into: MemberReads = []
     if (m < regionCount) {
       if (live) {
         regionReads(regions.get(m), o, into)
@@ -426,7 +361,7 @@ export function readIndex(
       }
     } else {
       // (a claimed region it names reads itself: the same cluster)
-      symRefsOf(gens[m - regionCount]!.body, into.syms)
+      symRefsOf(gens[m - regionCount]!.body, into)
     }
     byMember[m] = into
     return into
@@ -460,24 +395,18 @@ export function readIndex(
     if (hit) {
       return hit
     }
-    const syms = new Set<SymbolId>()
-    const children = new Set<ClusterId>()
+    const reads = new Set<SymbolId>()
     const cl: Cluster = clusters[c]!
-    const add = (reads: MemberReads) => {
-      for (const s of reads.syms) {
-        syms.add(s)
-      }
-      for (const ch of reads.children) {
-        children.add(clusterOfRegion.get(ch)!)
-      }
-    }
     for (const r of cl.regions) {
-      add(memberReads(r, o, live))
+      for (const s of memberReads(r, o, live)) {
+        reads.add(s)
+      }
     }
     for (const g of cl.gens) {
-      add(memberReads(regionCount + g, o, live))
+      for (const s of memberReads(regionCount + g, o, live)) {
+        reads.add(s)
+      }
     }
-    const reads: ClusterReads = { syms, children }
     byCluster[c] = reads
     return reads
   }
@@ -512,19 +441,13 @@ export function readIndex(
       return hit
     }
     const out: Array<ClusterId> = []
-    const { syms, children } = clusterReads(c, o, live)
-    for (const s of syms) {
+    for (const s of clusterReads(c, o, live)) {
       if (!symbols.isModuleLevel(s)) {
         continue
       }
       const d = clusterOfSym.get(s)
       if (d !== undefined && d !== c && !out.includes(d)) {
         out.push(d)
-      }
-    }
-    for (const ch of children) {
-      if (ch !== c && !out.includes(ch)) {
-        out.push(ch)
       }
     }
     byCluster[c] = out
@@ -535,14 +458,16 @@ export function readIndex(
 }
 
 /**
- * The type-only export statements `main` deletes before its removal rule
+ * The type export statements `main` strips before its removal rule
  * (`stripTypeExports`): `export type X = …`, `export interface X {…}`,
- * `export type { X }`, and an `export { type X }` specifier. Their text is
- * removed text like an erased handler's: a value only they read was used by
- * the source and goes when nothing left reads it (F1). A re-export reads
- * nothing of the module.
+ * `export type { X }`, and an `export { type X }` specifier. For provenance
+ * their text is removed text like an erased handler's: a value only they
+ * read was used by the source and goes when nothing left reads it (F1). Not
+ * `isTypeOnlyExport`'s set: an exported type declaration still renders in
+ * the env module (types name nothing at runtime). A re-export reads nothing
+ * of the module.
  */
-function typeOnlyExportRanges(
+function strippedTypeExportRanges(
   items: ReadonlyArray<TopLevelItem>,
 ): Array<{ start: number; end: number }> {
   const out: Array<{ start: number; end: number }> = []
@@ -584,7 +509,7 @@ export function readFromRemoved(
    * What erased text names (R163 round 2 (b), round 3): its references by
    * value, and in a type inside these ranges only (the env module's erased
    * parts, not text another output claims), followed by value only; type
-   * references elsewhere and the type-only export statements are no use.
+   * references elsewhere and the stripped type export statements are no use.
    */
   typeSeeds?: ReadonlyArray<{ start: number; end: number }>,
 ): Set<ClusterId> {
@@ -593,7 +518,7 @@ export function readFromRemoved(
   const erasedNames = typeSeeds !== undefined
   const parts = erasedNames
     ? [...removed]
-    : [...removed, ...typeOnlyExportRanges(input.t1.items)]
+    : [...removed, ...strippedTypeExportRanges(input.t1.items)]
   const typeParts = typeSeeds ?? parts
   for (const part of parts) {
     for (const ref of refs.refsIn(part)) {

@@ -541,6 +541,20 @@ test('client: the children render a local component and read a local value', asy
   ).toContain('<b>n</b><span>n</span>')
 })
 
+// A captured local called with type arguments (`who<number>()`) is a plain
+// call of it, as in the source: never a method call on what carries it to
+// the split code.
+test('client: the children call a captured local function with type arguments', async () => {
+  expect(
+    await renderPage(`export function Page() {
+  const who = function <T>(this: unknown): string {
+    return this === undefined ? 'plain' : 'method'
+  }
+  return <Hydrate when={load()}><p>{who<number>()}</p></Hydrate>
+}`),
+  ).toContain('<p>plain</p>')
+})
+
 // Function declarations below the JSX are
 // hoisted within this render, and can close over its current props.
 test('client: rows.map captures a local function declared below the JSX', async () => {

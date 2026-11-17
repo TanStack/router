@@ -3,7 +3,7 @@
  * per (env, module id, input text); the `SourceFile` lives only for the
  * compile attempt (nothing cached may reach a Yuku object).
  */
-import { parse } from 'yuku'
+import { CHILD_KEYS, parse } from 'yuku'
 import { SourceText } from './output-builder'
 import type { Node, SourceFile } from 'yuku'
 import type { Lang } from './identity'
@@ -88,6 +88,23 @@ export function isExpressionWrapper(node: Node): node is ExpressionWrapper {
       return true
     default:
       return false
+  }
+}
+
+/** Calls `fn` on each child node of `node` (Yuku's `CHILD_KEYS`, in source order). */
+export function forEachChild(node: Node, fn: (child: Node) => void): void {
+  const fields = node as unknown as Record<string, unknown>
+  for (const key of CHILD_KEYS[node.type] ?? []) {
+    const value = fields[key] as Node | ReadonlyArray<Node | null> | null
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item !== null) {
+          fn(item)
+        }
+      }
+    } else if (value != null) {
+      fn(value as Node)
+    }
   }
 }
 

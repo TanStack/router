@@ -20,8 +20,8 @@
  *   the core removes what only the fallback read).
  * - The client env claims the children for a fixed-home generated unit, the
  *   chunk component of `<file>?tss-hydrate=<id>`; the original occurrence
- *   renders `<TsrHydrate<n> a={a}/>` and a `/* @__PURE__ *\/` lazy const,
- *   placed by needers, loads the chunk. Captures are computed innermost
+ *   renders `<TsrHydrate<n> a={a}/>` and a `/* @__PURE__ *\/` lazy const
+ *   (an `auto` home: placed by the removal rule) loads the chunk. Captures are computed innermost
  *   first and include the reads of nested placeholders, so a Solid chunk
  *   forwards them through its substitution environment.
  */
@@ -31,6 +31,7 @@ import {
   LookupPath,
   UNKNOWN,
   derivedIdOf,
+  forEachChild,
   isKnownSpecifier,
   listEnd,
   ownEntry,
@@ -261,7 +262,7 @@ interface Extracted {
   b: Boundary
   region: Range
   /** Symbols the placeholder reads (captures, setters, `arguments`), for enclosing boundaries. */
-  placeholderSyms: Array<{ sym: SymbolId; pos: number }>
+  placeholderSyms: Array<SymbolId>
   setterSyms: Set<SymbolId>
 }
 
@@ -978,34 +979,6 @@ function hookName(callee: Node): string | null {
   return null
 }
 
-/** Visits the child nodes of a Yuku node (plain objects with `type`). */
-function forEachChild(node: Node, fn: (child: Node) => void): void {
-  for (const key in node) {
-    if (key === 'comments') {
-      continue
-    }
-    const v = (node as unknown as Record<string, unknown>)[key]
-    if (Array.isArray(v)) {
-      for (const item of v) {
-        if (isNode(item)) {
-          fn(item)
-        }
-      }
-    } else if (isNode(v)) {
-      fn(v)
-    }
-  }
-}
-
-function isNode(v: unknown): v is Node {
-  return (
-    typeof v === 'object' &&
-    v !== null &&
-    typeof (v as { type?: unknown }).type === 'string' &&
-    typeof (v as { start?: unknown }).start === 'number'
-  )
-}
-
 /**
  * The refusal of children whose chunk would assign a module-level binding
  * (the core's `shared-writer` fallback): the binding, and what assigns it,
@@ -1014,13 +987,10 @@ function isNode(v: unknown): v is Node {
 function moduleWriteMessage(
   ctx: PlanContext,
   region: Range,
-  write: { sym: SymbolId; at: number; imported: boolean } | undefined,
+  write: { sym: SymbolId; at: number; imported: boolean },
 ): string {
   const fix = (name: string) =>
     `Use split={false}, or move ${name} to a module of its own, with a function that assigns it, and import them.`
-  if (write === undefined) {
-    return `Hydrate cannot code-split these children: they, or code only they use, assign a module-level binding the rest of the module also uses. The split code would assign its own copy, not the one the module reads. ${fix('the binding')}`
-  }
   const { t1 } = ctx
   const name = `\`${t1.symbols.name(write.sym)}\``
   const at = { start: write.at, end: write.at }
@@ -1062,21 +1032,12 @@ function extract(
   }
   const fallback = ctx.fallbackAt(region, 'hydrate-children')
   if (fallback) {
-    if (fallback.reason === 'shared-writer') {
-      boundaryError(
-        ctx,
-        b,
-        'hydrate-module-write',
-        moduleWriteMessage(ctx, region, fallback.write),
-      )
-    } else {
-      boundaryError(
-        ctx,
-        b,
-        `hydrate-${fallback.reason}`,
-        'Hydrate cannot code-split these children. Use split={false}.',
-      )
-    }
+    boundaryError(
+      ctx,
+      b,
+      'hydrate-module-write',
+      moduleWriteMessage(ctx, region, fallback.write),
+    )
     return null
   }
 
@@ -1129,24 +1090,24 @@ function extract(
   }
   let args = scan.argumentsRefs.length > 0
   for (const e of direct) {
-    for (const p of e.placeholderSyms) {
-      if (p.sym === shared.args) {
+    for (const sym of e.placeholderSyms) {
+      if (sym === shared.args) {
         args = true
         continue
       }
-      if (symbols.isModuleLevel(p.sym) || declaredInside(p.sym)) {
+      if (symbols.isModuleLevel(sym) || declaredInside(sym)) {
         continue
       }
-      if (e.setterSyms.has(p.sym)) {
+      if (e.setterSyms.has(sym)) {
         boundaryError(
           ctx,
           b,
           'hydrate-nested-ref',
-          `Hydrate cannot code-split JSX whose nested boundary assigns \`${symbols.name(p.sym)}\` through \`ref\`, a local declared outside both boundaries. Use split={false} on one of them.`,
+          `Hydrate cannot code-split JSX whose nested boundary assigns \`${symbols.name(sym)}\` through \`ref\`, a local declared outside both boundaries. Use split={false} on one of them.`,
         )
         return null
       }
-      found.push({ sym: p.sym, pos: e.b.element.start })
+      found.push({ sym: sym, pos: e.b.element.start })
     }
   }
   // Solid: `use:x` reads `x` (a core value ref, captured above); a directive
@@ -1184,7 +1145,6 @@ function extract(
     kind: 'hydrate',
     key: b.id,
     derived: { kind: 'hydrate', value: b.id },
-    describe: '`<Hydrate>` boundary',
     imported: leadsBack,
   })
   const chunkId = derivedIdOf(out)
@@ -1299,7 +1259,7 @@ function extract(
   })
 
   // ---- the placeholder at the original occurrence
-  const placeholderSyms: Array<{ sym: SymbolId; pos: number }> = []
+  const placeholderSyms: Array<SymbolId> = []
   const parts: Array<string | SymRef> = ['<', { sym: lazy, ctx: 'jsxTag' }]
   for (const c of captures) {
     if (
@@ -1314,11 +1274,11 @@ function extract(
     } else {
       parts.push(` ${propOf.get(c)}={`, { sym: c }, '}')
     }
-    placeholderSyms.push({ sym: c, pos: b.element.start })
+    placeholderSyms.push(c)
   }
   if (args) {
     parts.push(` ${shared.argsCapture.name}={`, { sym: shared.args }, '}')
-    placeholderSyms.push({ sym: shared.args, pos: b.element.start })
+    placeholderSyms.push(shared.args)
   }
   for (const s of setterProps) {
     // Solid's own `ref` assignment: call a function ref, else assign the variable
@@ -1332,7 +1292,7 @@ function extract(
       { sym: s.sym },
       ` = ${el})}`,
     )
-    placeholderSyms.push({ sym: s.sym, pos: b.element.start })
+    placeholderSyms.push(s.sym)
   }
   parts.push('/>')
   ctx.rewrites.claim({
@@ -1351,7 +1311,7 @@ function extract(
   return { sym: lazy, chunk: chunkId }
 }
 
-/** The parent's lazy const, placed by needers (a boundary in a split component homes with it). */
+/** The parent's lazy const, with an `auto` home: placement places it by the removal rule (a boundary in a split component homes with it). */
 function addLazyConst(
   ctx: PlanContext,
   b: Boundary,
@@ -1377,7 +1337,6 @@ function addLazyConst(
         k: 'spec',
         specifier: spec,
         edgeKey: ctx.edgeKey(spec, 'dynamic', 'runtime'),
-        provenance: { origin: 'runtime' },
         form: 'dynamic',
       },
       { k: 'text', parts: [`), '${chunkExportName(b)}')\n`] },
@@ -1394,7 +1353,6 @@ function addLazyConst(
           k: 'spec',
           specifier: router,
           edgeKey: ctx.edgeKey(router, 'static', 'runtime'),
-          provenance: { origin: 'runtime' },
         },
       },
     ],

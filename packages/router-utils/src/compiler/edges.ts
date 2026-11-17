@@ -23,7 +23,7 @@ export interface EdgeView {
 }
 
 /** The module as written: every statement renders. */
-export function wholeModule(analysis: ModuleAnalysis): EdgeView {
+export function wholeModule(): EdgeView {
   return {
     importLocals: (imp) =>
       new Set(imp.specifiers.flatMap((s) => (s.typeOnly ? [] : [s.local]))),

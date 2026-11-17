@@ -35,7 +35,11 @@ import {
 import { isVirtualId } from './facts'
 import { registerCompilerStats } from './stats'
 import { exportKeyOf, summaryDigest } from './summary'
-import { SELF_CHECKS } from './self-checks'
+import {
+  SELF_CHECKS,
+  invariantDiagnostic,
+  invariantViolated,
+} from './self-checks'
 import { verifyPlan } from './verify'
 import { checkServerCode } from './server-code'
 import type { CacheEntry, Settled } from './cache'
@@ -621,23 +625,17 @@ async function runAttempt(
   if (!tier1Needed) {
     emitPlan = tier0Plan(t0, identity, env, rev)
   } else {
-    // Planning rounds: the core reports the regions a split would break
-    // (a chunk writing a binding the route module reads, a relocated read
-    // of mutated state, …) and the planners re-plan with them kept in
-    // place. A kept region can free the next one (a chain of writers), so
-    // the rounds continue until no new region is reported; each round keeps
-    // at least one more region of the module, so they end within the
-    // number of regions. Past that bound (a planner registering new regions
-    // every round) the module is planned with every sub-region kept in
-    // place (every sub-region of every round), which is always correct,
-    // and a warning says so. The bound is the region count after the first
-    // round, so a planner registering a new region every round cannot move
-    // it out of reach.
+    // Planning rounds: the core reports the regions a split would break (a
+    // chunk writing a binding the route module reads) and the planners
+    // re-plan with them kept in place. A kept region can free the next one
+    // (a chain of writers), so the rounds continue until no new region is
+    // reported. Every planner answers a fallback by keeping that root in
+    // place, so each round keeps at least one more region of the module and
+    // the rounds end within the region count after the first round; going
+    // past it is a compiler bug (an invariant).
     let fallbacks: Array<FallbackRecord> = []
     let plan!: AnalysisPlan
     let bound = 0
-    /** The sub-regions of the rounds so far, by range and kind (each plan has its own regions). */
-    const subRegions = new Map<string, FallbackRecord>()
     for (let round = 0; ; round++) {
       plan = planRound(
         t0,
@@ -664,35 +662,18 @@ async function runAttempt(
       if (fresh.length === 0) {
         break
       }
-      for (const r of plan.regions.regions) {
-        const key = `${r.range.start}:${r.range.end}:${r.kind}`
-        if (r.kind !== 'unit' && !subRegions.has(key)) {
-          subRegions.set(key, {
-            range: r.range,
-            kind: r.kind,
-            reason: 'exhausted',
-          })
-        }
-      }
       if (round >= bound) {
-        fallbacks = [...subRegions.values()]
-        plan = planRound(
-          t0,
-          identity,
-          env,
-          prefetched,
-          fallbacks,
-          planners,
-          input,
-          displayFile,
+        plan.diagnostic(
+          invariantDiagnostic(
+            tagOf(host),
+            displayFile,
+            invariantViolated({
+              effect: 'a split part may assign a binding the module reads',
+              detail: `The planning rounds of ${identity.path} did not settle within ${bound} rounds (a planner did not keep a fallback's region in place)`,
+              range: fresh[0]!.range,
+            }),
+          ),
         )
-        plan.diagnostic({
-          severity: 'warning',
-          message: `${tagOf(host)}The compiler could not settle which parts of ${displayFile} can be split, so nothing of it is split.`,
-          range: fresh[0]!.range,
-          by: 'core',
-          code: 'fallback-rounds-exhausted',
-        })
         break
       }
       fallbacks = [...fallbacks, ...fresh]
@@ -776,7 +757,7 @@ function tier0Plan(
     edgeKeyOf(env.name, env.layer, identity.canonicalId, raw, form)
   const edges: EmitPlan['edges'] = {
     env: dedupeEdges(
-      sourceEdges(t0, edgeKey, identity.canonicalId, wholeModule(t0)),
+      sourceEdges(t0, edgeKey, identity.canonicalId, wholeModule()),
     ),
   }
   return {

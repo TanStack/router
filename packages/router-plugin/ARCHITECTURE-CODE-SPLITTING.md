@@ -38,10 +38,11 @@ which apps' chunk naming reads; `router-utils/src/compiler/identity.ts` owns it 
 
 All of them come from one plan: whichever id the bundler asks first computes the plan, the others reuse it. A route
 file is placed as route splitting on main places it (R153; `router-utils/src/compiler/placement.ts`, core README
-"Route files"): the route module keeps its statements and exports and what they reach (R154); a chunk imports from it
-what main imports (`Route`, `export const|let|var`, `decisions.ts` `chunkImportsOnMain`) and copies the rest, with the
-statements that read or write it (an `export default <expression>` among them), as main does, comments and
-annotations included; a binding only one chunk needs moves into it with its initialiser, and
+"The one placement"): the route module keeps its statements and exports and what they reach (R154); a chunk imports
+from it what main imports (`Route`, `export const|let|var`, `decisions.ts` `chunkImportsOnMain`) and copies the rest,
+with the statements that read or write it (an `export default <expression>` among them), the classes, enums and
+namespaces naming it and the declarations the source never reads (R163), as main does, comments and annotations
+included; a binding only one chunk needs moves into it with its initialiser, and
 the names main shares (`sharedNamesOnMain`: two options read them, a staying one included) go to the shared module,
 which the route module and the chunks import, as main's `?tsr-shared=1`.
 

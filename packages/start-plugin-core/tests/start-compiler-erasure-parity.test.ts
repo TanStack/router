@@ -459,6 +459,26 @@ export const fn = createServerFn().handler(async () => [tool(), tool.version, E.
     ])
   })
 
+  // f1 (R170): one removal rule at every level: a function's local that only
+  // erased code names, in a type, goes with its import, as a module-level
+  // one does; `main` keeps both with `./db.server`
+  test('f1: a function local only erased code names in a type leaves the client with its import', async () => {
+    const served = await serveCase(await host(), {
+      ...dbServer(),
+      'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
+import { connect } from './db.server'
+export function make() {
+  const db = connect()
+  return createServerOnlyFn(() => { const c: typeof db | null = null; return c ?? 'none' })
+}`,
+    })
+    expectNotLoaded(await served.loads(), ['./db.server'])
+    expect(
+      await inPage(served, `return typeof (await load('module.tsx')).make()`),
+    ).toBe('function')
+    expect((await served.ssr()).make()()).toBe('none')
+  })
+
   // l6: `handler(createServerOnlyFn(f))`: `main`'s client stub throws
   // instead of calling the server
   test('l6: a handler that is a createServerOnlyFn call runs on the server when the client calls it', async () => {

@@ -14,13 +14,13 @@ import { freezePlan } from './freeze'
 import { cleanOrphanedDeclarations } from './orphans'
 import { RegionTable, RewriteSet } from './rewrite'
 import type {
-  Fallback,
   HeaderPolicy,
   OutputDecl,
   OutputKind,
   Placement,
   RootRef,
   RouteModule,
+  SharedWrite,
 } from './placement'
 import type { ModuleAnalysis, Tier1 } from './analysis'
 import type { Diagnostic } from './diagnostics'
@@ -119,9 +119,8 @@ export interface EmitPlan {
 export interface FallbackRecord {
   range: Range
   kind: RegionKind
-  reason: Fallback['reason']
-  /** `shared-writer`: the assignment the extraction would make (`Fallback.write`). */
-  write?: Fallback['write']
+  /** The assignment the extraction would make (`Fallback.write`). */
+  write: SharedWrite
 }
 
 interface OutputSpec {
@@ -131,8 +130,6 @@ interface OutputSpec {
   derived: DerivedQuery
   roots?: Array<RootRef>
   header?: HeaderPolicy
-  /** How the core's diagnostics name the output (default: its key, `` `component` ``). */
-  describe?: string
   /** A `hydrate` output: the module bindings it imports from the module that holds them; it copies the others (`OutputDecl.imported`). */
   imported?: ReadonlySet<SymbolId>
 }
@@ -314,7 +311,6 @@ export class AnalysisPlan implements PlanContext {
       derivedId,
       roots: [...(spec.roots ?? [])],
       header: spec.header,
-      describe: spec.describe,
       imported: spec.imported,
     })
     return id
@@ -488,8 +484,8 @@ export class AnalysisPlan implements PlanContext {
       code: this.analysis.source.code,
       routeModule: this.routeModule,
     })
-    for (const created of placement.created) {
-      this.outputs.set(created.id, created)
+    if (placement.shared !== null) {
+      this.outputs.set(placement.shared.id, placement.shared)
     }
     for (const { d, at, unlessLive } of this.liveDiagnostics) {
       if (
@@ -533,12 +529,7 @@ export class AnalysisPlan implements PlanContext {
     const out: Array<FallbackRecord> = []
     for (const f of this.placement?.fallbacks ?? []) {
       const r = this.regions.get(f.region)
-      out.push({
-        range: r.range,
-        kind: r.kind,
-        reason: f.reason,
-        write: f.write,
-      })
+      out.push({ range: r.range, kind: r.kind, write: f.write })
     }
     return out
   }

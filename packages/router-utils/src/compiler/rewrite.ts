@@ -17,6 +17,7 @@
  * the erased parts; the point questions climb it from a position's innermost
  * range.
  */
+import { SELF_CHECKS } from './self-checks'
 import type { Range } from './header'
 import type { OutputKind } from './placement'
 import type { ClassifiedRef, RefContext } from './analysis'
@@ -46,15 +47,8 @@ export interface SymRef {
   ctx?: SymRefContext
 }
 
-export type EdgeProvenance =
-  | { origin: 'source' }
-  | {
-      origin: 'forwarded'
-      importerId: string
-      span: Range
-      rawSpecifier: string
-    }
-  | { origin: 'runtime' }
+/** Where an edge comes from: the user's source (policy-checked), or glue a planner generated (a runtime import, exempt). */
+export type EdgeProvenance = { origin: 'source' } | { origin: 'runtime' }
 
 /**
  * A fragment of an edit's body or of a placeholder. Source text enters a body
@@ -68,9 +62,6 @@ export type Frag =
       k: 'spec'
       specifier: string
       edgeKey: string
-      /** Policy-relevant facts of the glue edge (glue replacing a user import is policy-checked). Default: runtime (exempt). */
-      provenance?: EdgeProvenance
-      names?: ReadonlyArray<string>
       /** Edge form of the glue literal (default 'static'). */
       form?: 'static' | 'dynamic'
     }
@@ -116,7 +107,7 @@ export type GenUnitId = number
 
 export type Anchor =
   | { k: 'after-header' }
-  | { k: 'before-unit' | 'after-unit'; unit: UnitId }
+  | { k: 'before-unit'; unit: UnitId }
   | { k: 'end' }
 
 export type SubstEnv = ReadonlyMap<SymbolId, RefTarget>
@@ -666,8 +657,6 @@ export interface WalkOptions {
 const NO_OPTIONS: WalkOptions = {}
 
 export class RewriteSet {
-  /** The edits of text and the inserts, in call order. */
-  readonly edits: Array<Edit> = []
   /** The inserts (zero-width edits), by position then call order. */
   readonly inserts: Array<Edit> = []
   /** The placeholders, in call order. */
@@ -691,7 +680,7 @@ export class RewriteSet {
 
   constructor(
     readonly regions: RegionTable,
-    /** The plan's outputs, for their kinds (`{ kinds }` scopes); an output placement creates has none. */
+    /** The plan's outputs, for their kinds (`{ kinds }` scopes); the shared module placement creates is added when placement runs (`AnalysisPlan.resolve`). */
     private readonly outputs: ReadonlyMap<
       OutputId,
       { readonly kind: OutputKind }
@@ -790,7 +779,6 @@ export class RewriteSet {
       this.share(node)
       this.regions.mark(node)
     }
-    this.edits.push(e)
     this.bump()
   }
 
@@ -1037,24 +1025,31 @@ export function erases(
   return true
 }
 
-/** How much of `range` a body keeps (its slices and references). */
-function keeps(
-  body: ReadonlyArray<Frag>,
-  range: Range,
-): 'all' | 'none' | 'partial' {
+/**
+ * Whether a body keeps `range` (one of its slices or references holds it).
+ * Bodies, regions and nodes are AST ranges, which nest or are disjoint, so
+ * a body never keeps part of one (a self-check; otherwise the whole range
+ * counts as kept: its reads are too many, never too few).
+ */
+function keeps(body: ReadonlyArray<Frag>, range: Range): boolean {
   let any = false
   for (const f of body) {
     if (f.k !== 'slice' && f.k !== 'ref') {
       continue
     }
     if (f.range.start <= range.start && range.end <= f.range.end) {
-      return 'all'
+      return true
     }
     if (f.range.start < range.end && range.start < f.range.end) {
       any = true
     }
   }
-  return any ? 'partial' : 'none'
+  if (any && SELF_CHECKS) {
+    throw new Error(
+      `a body keeps part of [${range.start}, ${range.end}) (a slice cuts a region)`,
+    )
+  }
+  return any
 }
 
 /** The index of the first item starting at or after `offset`. */
@@ -1165,15 +1160,12 @@ export class OutputView {
   }
 
   /**
-   * Whether node `n`'s region is claimed in this output: its text is its
-   * owner's (a claim in scope, or a placeholder of this output at the place
-   * of a region claimed for others), not part of the text around it.
+   * Whether node `n`'s region is claimed in this output (a claim in scope):
+   * its text is its owner's, not part of the text around it. Outside the
+   * claim's scope the region is text of what holds it.
    */
   isClaimed(n: RangeNode): boolean {
-    const claim = n.claim
-    return (
-      claim !== null && (this.applies(claim) || this.ownPlaceholder(n) !== null)
-    )
+    return n.claim !== null && this.applies(n.claim)
   }
 
   /** What a planner put at exactly `range`'s place for this output, kept or not: a claim in scope, or a placeholder. */
@@ -1438,37 +1430,33 @@ export class OutputView {
   }
 
   /**
-   * How much of a range what encloses it lets render: `own` is the node on
+   * Whether what encloses a range lets it render: `own` is the node on
    * exactly the range (its claim in this output relocates the range's text,
    * whose edits the caller reads), `around` the first node strictly holding
-   * it; they decide as for a position (`decide`). `partial`: ask the
-   * positions.
+   * it; they decide as for a position (`decide`).
    */
   encloses(
     range: Range,
     own: RangeNode | null,
     around: RangeNode | null,
-  ): 'all' | 'none' | 'partial' {
+  ): boolean {
     if (own !== null && own.claim !== null) {
       const d = this.decides(own)
       if (d !== null) {
-        return d === 'owner' ? 'all' : 'none'
+        return d === 'owner'
       }
     }
     for (let x = around; x !== null; x = x.parent) {
       const e = this.editOf(x)
-      if (e !== null) {
-        const k = keeps(e.body, range)
-        if (k !== 'all') {
-          return k
-        }
+      if (e !== null && !keeps(e.body, range)) {
+        return false
       }
       const d = this.decides(x)
       if (d !== null) {
-        return d === 'owner' ? 'all' : 'none'
+        return d === 'owner'
       }
     }
-    return 'all'
+    return true
   }
 
   // ---- point questions ------------------------------------------------------
@@ -1579,19 +1567,13 @@ export class OutputView {
   }
 
   /**
-   * Whether this output keeps the claim: its placeholder in scope and its
-   * occurrence renders, or other generated code reads its owner (in scope,
-   * or with a placeholder of this output at its place).
+   * Whether this output keeps the claim: in scope, and its occurrence
+   * renders or other generated code reads its owner.
    */
   private keeps(claim: RegionClaim): boolean {
-    if (this.applies(claim)) {
-      return (
-        !this.occurrenceErased(claim) || this.set.readOwners().has(claim.owner)
-      )
-    }
     return (
-      this.ownPlaceholder(this.set.claimNodes.get(claim)!) !== null &&
-      this.set.readOwners().has(claim.owner)
+      this.applies(claim) &&
+      (!this.occurrenceErased(claim) || this.set.readOwners().has(claim.owner))
     )
   }
 
@@ -1616,11 +1598,7 @@ export class OutputView {
   private decides(x: RangeNode): 'owner' | 'erased' | null {
     const p = this.placeholderOf(x)
     const claim = x.claim
-    if (claim !== null && (p !== null || this.applies(claim))) {
-      if (p !== null && p !== claim) {
-        // (the placeholder of this output at the place of a region claimed for others)
-        return this.set.readOwners().has(claim.owner) ? 'owner' : 'erased'
-      }
+    if (claim !== null && this.applies(claim)) {
       return this.occurrenceErased(claim) &&
         this.set.readOwners().has(claim.owner)
         ? 'owner'

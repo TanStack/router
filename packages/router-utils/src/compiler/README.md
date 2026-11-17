@@ -42,10 +42,9 @@ emits its own output. Nothing depends on transform order.
   (`{ k: 'region' }`, its only way to name source text), wherever the owner is placed, and the claim's placeholder
   stands at its place, in the outputs of the claim's scope. An erasure enclosing the occurrence kills the claim and
   its owner, unless other generated code (a unit, a placeholder) reads the owner (the provider's hoisted server fn
-  its RPC wrapper calls): then only the placeholder goes. In an output outside the claim's scope a placeholder of
-  that output stands at the place, and the text renders in the owner if it is read; with none, the region's text is
-  the text around it (Start's nested server-fn chain stays in place in the RSC env module, with its handler's stub,
-  while the provider output hoists it). Text and place never conflict: a handler that is itself an env-only or
+  its RPC wrapper calls): then only the placeholder goes. In an output outside the claim's scope the region's text
+  is the text around it (Start's nested server-fn chain stays in place in the RSC env module, with its handler's
+  stub, while the provider output hoists it). Text and place never conflict: a handler that is itself an env-only or
   isomorphic call has its stub as its place and its compiled call as its text, which renders in the provider or
   handler module. Two edits, or two placeholders (a claim's included), on one range in one output conflict. A route
   option written as a method claims its function; an edit of the property writes the key before the placeholder.
@@ -118,7 +117,7 @@ The rules, per output:
 
 - **the env module** loses only what the split made unused (the R153 amendment, `readFromRemoved`, the rule erasure
   uses): a declaration or import specifier the source used from text the module no longer holds (a claimed option
-  value, erased text, the type-only export statements main deletes first; a use in a type counts) goes with its
+  value, erased text, the type export statements main strips first; a use in a type counts) goes with its
   initialiser when nothing that stays reads it by value.
   Top-level statements (R154), exports, code already unused in the source and what they reach stay; enums and
   namespaces are declarations like any other (R155). In a route module, splitting never removes a class, enum or
@@ -181,8 +180,10 @@ where main's chunk runs it again (never a declaration already unused: better tha
 ### Removal (`reads.ts` `readFromRemoved`, `orphans.ts`)
 
 - **by provenance**: a declaration or import specifier is removed only if _our_ edits orphaned it: the source used it
-  (by value or in a type) from text an output no longer holds (a claimed option value, erased text, the type-only
-  export statements main deletes first), and nothing left reads it by value. A top-level statement that is no
+  (by value or in a type) from text an output no longer holds (a claimed option value, erased text, the type export
+  statements main strips first: `strippedTypeExportRanges`), and nothing left reads it by value. An exported type
+  declaration (`export type X = typeof helper`, `export interface X`) is such text for provenance and still renders
+  in the env module: `helper` goes when nothing else reads it, the declaration stays. A top-level statement that is no
   declaration (`x.p = v`, `x.push(v)`, `x = v`) is never removed with what only erased code read (R154), and code
   already unreferenced in the source keeps running: an import nothing reads stays (one removed code read only in a type
   leaves, as TypeScript's elision would). Type units stay in the env module as written whatever their cluster, never in
@@ -193,16 +194,16 @@ where main's chunk runs it again (never a declaration already unused: better tha
   runtime value (`valueBinding`). JSX is no read of the classic runtime's factory: the classic runtime is not supported
   with splitting.
 - **below the units** (`orphans.ts` `cleanOrphanedDeclarations`): function-local declarators, destructuring leaves,
-  function and class declarations only erased code reads go, with their initialisers whatever they do (a hook call
-  too, R166), as main's dead-code elimination did. The core runs that cleanup once after every planner, in every output
-  when edits addressed to every output orphaned it, else in the env module only. A module-level destructuring leaf
-  stays while it is exported or another output takes it; a property a live rest element keeps loses only its default
-  value.
+  function and class declarations only erased code used go by the same rule (a use in a type in the erased text
+  counts, R170), with their initialisers whatever they do (a hook call too, R166), as main's dead-code elimination
+  did. The core runs that cleanup once after every planner, in every output when edits addressed to every output
+  orphaned it, else in the env module only. A module-level destructuring leaf stays while it is exported or another
+  output takes it; a property a live rest element keeps loses only its default value.
 - **planning rounds**: a derived output that would assign a binding it imports reports a _fallback_
   (`ctx.fallbackAt(range)` on the next round), and `compileModule` re-runs the planners with that region kept in
-  place, until no new region is reported (a kept region can free the next one; every round keeps one more, so the
-  rounds end within the module's region count). Past that bound every sub-region is kept in place, which is always
-  correct, and a warning (`fallback-rounds-exhausted`) says so.
+  place, until no new region is reported (a kept region can free the next one). Every planner answers a fallback by
+  keeping that root in place, so every round keeps one more region and the rounds end within the module's region
+  count; past it is a compiler bug (an `internal-invariant`).
 
 ### Emit and source maps (`emit.ts`, `output-builder.ts`)
 
@@ -426,8 +427,9 @@ builder (`routerPlannerConfigFrom`) are exported from `@tanstack/router-plugin/p
 
 ## Testing
 
-- Core unit tests: `packages/router-utils/tests/` (`pipeline`, `placement`, `rewrite`, `output-builder`, `values`,
-  `facts`, `edges`, `identity`, `verify`, `heap`), driven by toy planners and a `MemoryHost` (`helpers.ts`). Run
+- Core unit tests: `packages/router-utils/tests/`, one file per core concern (`pipeline`, `placement`, `rewrite`,
+  `orphans`, `cache`, `summary`, `source`, `server-code`, `self-checks`, `heap`, …), driven by toy planners and a
+  `MemoryHost` (`helpers.ts`). Run
   `@tanstack/router-utils:test:unit`. `placement.test.ts` covers the placement's own mechanisms on toy plans (the
   toy splitter's `imported` makes a plan a route file): the `shared-writer` fallback, glue and renames, copies and
   imports of a chunk, the shared module, provenance, statement boundaries, type units, generated units and their

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { MemoryHost, dedent } from './helpers'
 import { engine, rangeOf } from './engine'
 import type { OutputId, PlanContext, Planner } from '../src/compiler'
-import type { Anchor, EditScope } from '../src/compiler/rewrite'
+import type { Anchor } from '../src/compiler/rewrite'
 
 describe('rewrite tree', () => {
   it('nests an inner edit inside a retained child slice and drops one inside erased text', () => {
@@ -440,95 +440,6 @@ describe('claims, homes and substitution', () => {
     expect(ctx.rewrites.view(lazy).isRelocatedAt(at('log(PAGE)'))).toBe(false)
   })
 
-  it('homes the hoist in the chunk when only the chunk roots the placeholder', () => {
-    const code = dedent(`
-      import { createFileRoute } from 'toy-router'
-      import { useThing } from './thing'
-      export const Route = createFileRoute('/')({
-        component: () => { useThing(); return <p>hi</p> },
-      })
-    `)
-    const e = engine(code)
-    const { ctx } = e
-    const value = rangeOf(code, '() => { useThing(); return <p>hi</p> }')
-    const region = ctx.region(value, 'option-value')
-    const hoisted = ctx.names.alloc('TsrComponent')
-    const owner = ctx.rewrites.addGenerated({
-      body: [
-        { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
-        { k: 'region', id: region },
-        { k: 'text', parts: ['\n'] },
-      ],
-      declares: [hoisted.sym],
-      effectful: false,
-      anchor: { k: 'before-unit', unit: 2 },
-      home: 'auto',
-      by: 'hmr',
-    })
-    // (the env module's place holds the split's lazy wrapper instead)
-    ctx.rewrites.claim({
-      region,
-      owner,
-      placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
-      scope: { except: ['env'] },
-      by: 'hmr',
-    })
-    // the router planner's split part claims nothing new: it re-roots the placeholder's symbol in the chunk
-    const chunk = ctx.declareOutput({
-      kind: 'split',
-      key: 'component',
-      derived: { kind: 'split', value: 'component' },
-    })
-    const split = ctx.names.alloc('TsrSplitComponent')
-    const exporter = ctx.rewrites.addGenerated({
-      body: [
-        {
-          k: 'text',
-          parts: [
-            'const ',
-            { sym: split.sym },
-            ' = ',
-            { sym: hoisted.sym },
-            '\nexport { ',
-            { sym: split.sym },
-            ' as component }\n',
-          ],
-        },
-      ],
-      declares: [split.sym],
-      effectful: false,
-      anchor: { k: 'end' },
-      home: chunk,
-      by: 'split',
-    })
-    void exporter
-    // the env's option value becomes a lazy wrapper
-    ctx.rewrites.placeholder({
-      range: value,
-      body: [{ k: 'text', parts: ['tsrLazy()'] }],
-      scope: ['env'],
-      by: 'split',
-    })
-    const env = e.render('env').code
-    const chunkCode = e.render(chunk).code
-    expect(env).toBe(
-      dedent(`
-      import { createFileRoute } from 'toy-router'
-      export const Route = createFileRoute('/')({
-        component: tsrLazy(),
-      })
-    `),
-    )
-    expect(chunkCode).toBe(
-      dedent(`
-      import { useThing } from './thing'
-      const TsrComponent = () => { useThing(); return <p>hi</p> }
-      const TsrSplitComponent = TsrComponent
-      export { TsrSplitComponent as component }
-    `),
-    )
-  })
-
   it("renders a claimed region's text, an edit's, in its owner and the placeholder at its place", () => {
     // an environment rewrite of exactly the hoisted value (the value is
     // itself an env-only call) is the value's text: it renders where the
@@ -700,7 +611,7 @@ describe('claims, homes and substitution', () => {
         ],
         declares: [hoisted.sym],
         effectful: false,
-        anchor: { k: 'after-unit', unit: 0 },
+        anchor: { k: 'before-unit', unit: 1 }, // `opts`
         home: 'auto',
         by: 'env',
       })
@@ -782,7 +693,7 @@ describe('claims, homes and substitution', () => {
         ],
         declares: [hoisted.sym],
         effectful: false,
-        anchor: { k: 'after-unit', unit: 0 },
+        anchor: { k: 'before-unit', unit: 2 }, // `opts`
         home: 'auto',
         by: 'env',
       })
@@ -1352,51 +1263,6 @@ describe('generated units next to what the source wrote', () => {
       home: 'auto',
       by: 'toy',
     })
-
-  it('starts on its own line after a statement a license comment ends', () => {
-    const e = engine(`const a = 1 /*! a\nb */ const b = 2\n`)
-    e.ctx.addRoot('env', {
-      t: 'gen',
-      id: unit(e, { k: 'after-unit', unit: 0 }),
-    })
-    expect(e.render().code).toBe(
-      `const a = 1 \nconst gen = 1\n/*! a\nb */ const b = 2\n`,
-    )
-  })
-
-  it('gives a statement starting with a parenthesis its `;` past a license comment after the unit', () => {
-    const e = engine(`const a = 1;\n/*! l */\n(a).b = 1\n`)
-    e.ctx.addRoot('env', {
-      t: 'gen',
-      id: unit(e, { k: 'after-unit', unit: 0 }),
-    })
-    expect(e.render().code).toContain(`const gen = 1\n/*! l */\n;(a).b = 1`)
-  })
-
-  it('renders before the next statement in a derived output, as in the env module', () => {
-    const e = engine(`const a = 1\nconst b = 2\n`)
-    const out = e.ctx.declareOutput({
-      kind: 'hydrate',
-      key: 'h1',
-      derived: { kind: 'hydrate', value: 'h1' },
-    })
-    const gen = e.ctx.rewrites.addGenerated({
-      body: [{ k: 'text', parts: ['const gen = 1\n'] }],
-      declares: [e.ctx.names.alloc('gen').sym],
-      effectful: true,
-      anchor: { k: 'after-unit', unit: 0 },
-      home: out,
-      by: 'toy',
-    })
-    for (const output of ['env' as const, out]) {
-      e.ctx.addRoot(output, { t: 'gen', id: gen })
-      e.ctx.addRoot(output, { t: 'unit', id: 0 })
-      e.ctx.addRoot(output, { t: 'unit', id: 1 })
-    }
-    expect(e.render(out).code).toMatch(
-      /const a = 1\nconst gen = 1\nconst b = 2/,
-    )
-  })
 
   it('gives a statement starting with a parenthesis its `;`, after the unit', () => {
     const e = engine(`(a).b = 1\n`)
@@ -1971,115 +1837,6 @@ describe('one region tree for every output', () => {
   })
 })
 
-// Source: the review of design 1, step 1 (finding 3, item 6): text stands at
-// a claimed region's place in one output only, and claims are read
-// elsewhere around and inside it. B, C and D are claimed (B and C read by
-// other generated code, D not), an erasure encloses B, and the env module
-// replaces C's placeholder with other text. C's text renders in C's owner,
-// so D, inside it, is kept and renders there; whichever claim is
-// registered first.
-describe('a claimed region whose place holds other text in one output', () => {
-  const code = dedent(`
-    import { b, c, d } from './m'
-    export const opts = { loader: () => b(c(d(1))) }
-  `)
-  const compile = (outerFirst: boolean) => {
-    const e = engine(code)
-    const { ctx } = e
-    const claim = (
-      text: string,
-      name: string,
-      read: boolean,
-      scope?: EditScope,
-    ) => {
-      const hoisted = ctx.names.alloc(name)
-      const region = ctx.region(rangeOf(code, text), 'nested-chain')
-      const owner = ctx.rewrites.addGenerated({
-        body: [
-          { k: 'text', parts: ['const ', { sym: hoisted.sym }, ' = '] },
-          { k: 'region', id: region },
-          { k: 'text', parts: ['\n'] },
-        ],
-        declares: [hoisted.sym],
-        effectful: false,
-        anchor: { k: 'end' },
-        home: 'auto',
-        by: 'toy-hoist',
-      })
-      if (read) {
-        const reader = ctx.names.alloc(`${name}Reader`)
-        const gen = ctx.rewrites.addGenerated({
-          body: [
-            {
-              k: 'text',
-              parts: [
-                'export const ',
-                { sym: reader.sym },
-                ' = () => ',
-                { sym: hoisted.sym },
-                '\n',
-              ],
-            },
-          ],
-          declares: [reader.sym],
-          effectful: false,
-          anchor: { k: 'end' },
-          home: 'auto',
-          by: 'toy-hoist',
-        })
-        ctx.addRoot('env', { t: 'gen', id: gen })
-      }
-      ctx.rewrites.claim({
-        region,
-        owner,
-        placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
-        ...(scope ? { scope } : {}),
-        by: 'toy-hoist',
-      })
-    }
-    const claims: Array<[string, string, boolean, EditScope?]> = [
-      ['b(c(d(1)))', 'gB', true],
-      ['c(d(1))', 'gC', true, { except: ['env'] }],
-      ['d(1)', 'gD', false],
-    ]
-    for (const args of outerFirst ? claims : [...claims].reverse()) {
-      claim(...args)
-    }
-    // the env module's text at C's place
-    ctx.rewrites.placeholder({
-      range: rangeOf(code, 'c(d(1))'),
-      body: [{ k: 'text', parts: ['0'] }],
-      scope: ['env'],
-      by: 'toy-env',
-    })
-    ctx.rewrites.edit({
-      range: rangeOf(code, 'loader: () => b(c(d(1))) '),
-      body: [],
-      by: 'toy-router',
-    })
-    const d = ctx.t1.refs.all.find(
-      (r) =>
-        code.slice(r.range.start, r.range.end) === 'd' && r.ctx === 'callee',
-    )!
-    const live = ctx.liveness('env').live(d)
-    return { live, code: e.render('env').code }
-  }
-
-  it.each([
-    ['outer', true],
-    ['inner', false],
-  ])(
-    'keeps D, rendered in the owner of C, with the %s claim registered first',
-    (_order, outerFirst) => {
-      const { live, code: out } = compile(outerFirst)
-      expect(live).toBe(true)
-      expect(out).toContain('const gB = b(0)')
-      expect(out).toContain('const gC = c(gD)')
-      expect(out).toContain('const gD = d(1)')
-    },
-  )
-})
-
 // Source: the review of design 1, step 2 (finding 2), invariant I5: an
 // insert belongs to the innermost region strictly holding its position. At
 // a unit's start that is the module, and the unit's member reads it: what
@@ -2160,7 +1917,7 @@ describe("the env module's pieces", () => {
     })
     e.ctx.addRoot('env', {
       t: 'gen',
-      id: unit(e, { k: 'after-unit', unit: 0 }),
+      id: unit(e, { k: 'before-unit', unit: 1 }),
     })
     expect(e.render().code).toBe(
       `const a = 1;\n/*i*/const gen = 1\n;(a).b = 2\n`,
@@ -2280,10 +2037,9 @@ describe('liveness of a claimed region, as the outputs hold it', () => {
   const names = ['c0_', 'c1_', 'a2_', 'c3_', 'a4_']
   const claimed = 'c3_(a4_)'
 
-  /** Claims `claimed` (read in the env module or not; for every output but `except`), after `before` registered its edit; records what `liveness` reports. */
+  /** Claims `claimed` (read in the env module or not), after `before` registered its edit; records what `liveness` reports. */
   const claiming = (
     read: boolean,
-    except: 'env' | 'other' | null,
     before: (ctx: PlanContext, other: OutputId) => void,
     reported: Map<'env' | 'other', Map<string, boolean>>,
   ): Planner => ({
@@ -2338,10 +2094,6 @@ describe('liveness of a claimed region, as the outputs hold it', () => {
         region,
         owner,
         placeholder: [{ k: 'text', parts: [{ sym: hoisted.sym }] }],
-        scope:
-          except === null
-            ? 'all-outputs'
-            : { except: [except === 'env' ? 'env' : other] },
         by: 'toy-claim',
       })
       for (const o of ['env', 'other'] as const) {
@@ -2357,11 +2109,10 @@ describe('liveness of a claimed region, as the outputs hold it', () => {
 
   async function check(
     read: boolean,
-    except: 'env' | 'other' | null,
     before: (ctx: PlanContext, other: OutputId) => void,
   ) {
     const reported = new Map<'env' | 'other', Map<string, boolean>>()
-    const planners = [claiming(read, except, before, reported)]
+    const planners = [claiming(read, before, reported)]
     const host = new MemoryHost({ files: { '/app/mod.ts': code } })
     const held = {
       env: (await host.compile('/app/mod.ts', planners))!.code,
@@ -2387,35 +2138,6 @@ describe('liveness of a claimed region, as the outputs hold it', () => {
     return held
   }
 
-  // One output's placeholder on exactly the region, claimed for the other
-  // outputs (an override): that output shows the placeholder's text at the
-  // place; the claimed text renders in its owner where something reads it.
-  // Source: rewrite-random (design 1 step 1: 183 of 3,000 seeds, e.g. seed
-  // 30, reported text live that did not render; steps 2-3: the override
-  // shape, 307 entries in 1,000 seeds at the step 3 base).
-  it.each([
-    ['the env module', 'read', 'env', true],
-    ['the env module', 'not read', 'env', false],
-    ['the derived output', 'read', 'other', true],
-    ['the derived output', 'not read', 'other', false],
-  ] as const)(
-    'reports the names of a claimed region %s replaces as it renders them (%s)',
-    async (_, _read, output, read) => {
-      const held = await check(read, output, (ctx, other) => {
-        const placed: OutputId = output === 'env' ? 'env' : other
-        ctx.rewrites.placeholder({
-          range: rangeOf(code, claimed),
-          body: [{ k: 'text', parts: ['0'] }],
-          scope: [placed],
-          by: 'toy-env',
-        })
-      })
-      if (output === 'env') {
-        expect(held.env).toContain('c0_(c1_(a2_, 0))')
-      }
-    },
-  )
-
   // An edit of the call around the region that keeps exactly its text (a
   // slice): the claim takes the kept text, and the edit renders the
   // placeholder where the slice stands.
@@ -2427,7 +2149,7 @@ describe('liveness of a claimed region, as the outputs hold it', () => {
   ])(
     'reports the names of a claimed region another edit keeps as a slice as it renders them (%s)',
     async (_, read) => {
-      const held = await check(read, null, (ctx) =>
+      const held = await check(read, (ctx) =>
         ctx.rewrites.edit({
           range: rangeOf(code, `c1_(a2_, ${claimed})`),
           body: [

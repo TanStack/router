@@ -4,7 +4,11 @@
  * which `deleteNodes` erases. The router planner computes them once per round: its
  * split part applies them, its HMR part hoists only what stays.
  */
-import { unwrapExpression, walk } from '@tanstack/router-utils/compiler'
+import {
+  patternIdentifiers,
+  unwrapExpression,
+  walk,
+} from '@tanstack/router-utils/compiler'
 import { propertyKeyName } from '@tanstack/router-generator'
 import { groupingsProblem } from '../core/config'
 import { splitRouteIdentNodes } from '../core/constants'
@@ -14,6 +18,7 @@ import {
   chainSoleUse,
   describeOptions,
   identifierSymbol,
+  isFallbackLiteral,
 } from './route'
 import type { RouteModuleInfo, RouteOption } from './route'
 import type { RouterPlannerConfig } from './config'
@@ -30,7 +35,7 @@ import type { Node } from 'yuku'
 type SplitShape = 'init' | 'shorthand' | 'method'
 
 export interface SplitDecision {
-  /** The route option (`component`, `loader`, …). */
+  /** The route option (`component`, `loader`, …): the chunk exports the value under this name. */
   key: string
   /** `component`, `component~loader`: the chunk's owned query value. */
   groupKey: string
@@ -44,14 +49,10 @@ export interface SplitDecision {
   valueNode: Node
   /** The property (`loader() {…}`, `component: …`). */
   property: Range
-  /** The key as written, for whole-property placeholders (`component: …`). */
+  /** The key as written, for whole-property placeholders (a shorthand's: `component: …`). */
   keyText: string
-  /** Whether the placeholder replaces the whole property (shorthand). */
-  wholeProperty: boolean
   /** The module binding a shorthand denotes. */
   shorthandSym: SymbolId | null
-  /** The chunk's export: the option's name. */
-  exportName: string
 }
 
 export interface SplitPlan {
@@ -305,7 +306,8 @@ export function splitPlanOf(
         continue
       }
       const value = withoutParens(target.value)
-      if (fallsBackToParent(value)) {
+      // (the parent's option applies)
+      if (isFallbackLiteral(value)) {
         continue
       }
       if (exportedAsOnMain(ctx, value)) {
@@ -379,9 +381,7 @@ export function splitPlanOf(
         valueNode: value,
         property: { start: target.prop.start, end: target.prop.end },
         keyText: target.keyText,
-        wholeProperty: shorthand,
         shorthandSym: shorthand ? valueSym : null,
-        exportName: key,
       })
     }
   }
@@ -458,17 +458,6 @@ function withoutParens(value: Node): Node {
   return v
 }
 
-/** `true`, `false`, `null` or `undefined` as written: the parent's option applies. */
-function fallsBackToParent(value: Node): boolean {
-  if (value.type === 'Identifier') {
-    return value.name === 'undefined'
-  }
-  return (
-    value.type === 'Literal' &&
-    (value.value === null || typeof value.value === 'boolean')
-  )
-}
-
 /**
  * `main`'s `hasExport(ast, value)`, called by `compileCodeSplitReferenceRoute`
  * on a value that is a bare identifier only (an `as any` around it is split):
@@ -493,7 +482,7 @@ function exportedAsOnMain(
           (d.declarations as Array<Node>).some(
             (decl) =>
               decl.type === 'VariableDeclarator' &&
-              patternNames(decl.id).includes(name),
+              patternIdentifiers(decl.id).some((id) => id.name === name),
           )) ||
         (d?.type === 'FunctionDeclaration' && d.id?.name === name)
       )
@@ -507,32 +496,6 @@ function exportedAsOnMain(
     }
     return false
   })
-}
-
-/** The names a binding pattern declares (`collectIdentifiersFromPattern`). */
-function patternNames(id: Node): Array<string> {
-  switch (id.type) {
-    case 'Identifier':
-      return [id.name]
-    case 'ObjectPattern':
-      return (id.properties as Array<Node>).flatMap((p) =>
-        p.type === 'RestElement'
-          ? patternNames(p.argument)
-          : p.type === 'Property'
-            ? patternNames(p.value)
-            : [],
-      )
-    case 'ArrayPattern':
-      return (id.elements as Array<Node | null>).flatMap((e) =>
-        e === null ? [] : patternNames(e),
-      )
-    case 'RestElement':
-      return patternNames(id.argument)
-    case 'AssignmentPattern':
-      return patternNames(id.left)
-    default:
-      return []
-  }
 }
 
 /**
@@ -663,8 +626,9 @@ function babelBinding(ctx: PlanContext, id: Node): Node | null {
  * copies whatever else it reads (spec-main-splitting 1.6-1.8): the route
  * binding, what `export const|let|var` declares (`compileCodeSplitVirtualRoute`
  * turns those statements into imports), and the shared names
- * (`computeSharedBindings`: `main` moves them to `?tsr-shared=1`; the route
- * module holds them here, one instance either way).
+ * (`computeSharedBindings`: `main` moves them to `?tsr-shared=1`; here they
+ * live in the shared module placement creates, which the route module and
+ * the chunks import).
  */
 export function chunkImportsOnMain(
   ctx: PlanContext,

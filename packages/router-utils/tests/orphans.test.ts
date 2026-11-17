@@ -253,6 +253,51 @@ describe('function-level call initialisers', () => {
       `),
     ).toBe('export function f() {\n    return tsrStub()\n}\n')
   })
+
+  // one removal rule at every level (R153, R170): "the source used it"
+  // counts a use in a type in the erased text, as placement does for the
+  // module-level declaration beside it
+  it('drops a declaration erased code names only in a type, with the import, as at module level', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        import { connect } from './db'
+        const top = connect()
+        export function f() {
+          const conn = connect()
+          return wrapServer(() => {
+            const c: typeof conn | typeof top | null = null
+            return c
+          })
+        }
+      `),
+    ).toBe('export function f() {\n    return tsrStub()\n}\n')
+  })
+
+  // a use in a type in kept code is no use the erasure removed: the
+  // declaration was already unused and stays
+  it('keeps a declaration only kept code names in a type', async () => {
+    expect(
+      await client(`
+        import { wrapServer } from 'toy-start'
+        import { connect } from './db'
+        export function f() {
+          const conn = connect()
+          const kept: typeof conn | null = null
+          return [kept, wrapServer(() => 1)]
+        }
+      `),
+    ).toBe(
+      dedent(`
+        import { connect } from './db'
+        export function f() {
+          const conn = connect()
+          const kept: typeof conn | null = null
+          return [kept, tsrStub()]
+        }
+      `),
+    )
+  })
 })
 
 describe('function-local declarations only erased code read', () => {

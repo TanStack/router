@@ -457,13 +457,9 @@ function anchoredGenerated(
         at = items[units[gen.anchor.unit]!.item]!.range.start
         order = 1
         break
-      case 'after-unit':
-        at = items[units[gen.anchor.unit]!.item]!.range.end
-        order = 2
-        break
       case 'end':
         at = code.length
-        order = 3
+        order = 2
         break
     }
     out.push({ at, order, gen })
@@ -504,7 +500,6 @@ function glueImportText(
         k: 'spec',
         specifier: sameFileSpecifier(targetId),
         edgeKey: plan.edgeKey(sameFileSpecifier(targetId), 'static', 'runtime'),
-        provenance: { origin: 'runtime' },
       })
       frags.push({ k: 'text', parts: ['\n'] })
     }
@@ -526,13 +521,12 @@ function glueImportText(
   return frags
 }
 
-/** `export { x as name, … } from '/path/file?tsr-split=shared---…'` for every exported cluster the shared module holds (`Placement.sharedExports`). */
+/** `export { x as name, … } from '/path/file?tsr-split=shared---…'` for the exported names the shared module holds (`Placement.sharedExports`). */
 function reexportGlue(
   plan: AnalysisPlan,
   placement: Placement,
   exportNameOf: Map<OutputId, Map<SymbolId, string>>,
 ): Array<Frag> {
-  const frags: Array<Frag> = []
   // (an export statement the env module keeps, `export { x as y }`, exports
   // the binding it imports itself)
   const envIncluded = placement.included.get('env')
@@ -548,49 +542,44 @@ function reexportGlue(
       envIncluded?.has(c) === true
     )
   }
-  for (const e of placement.sharedExports) {
-    const decl = plan.outputs.get(e.output)
-    if (!decl?.derivedId) {
-      continue
-    }
-    const parts: Array<string> = []
-    for (const s of [...e.syms].sort((a, b) => a - b)) {
-      const exported = exportNameOf.get(e.output)?.get(s) ?? plan.nameOf(s)
-      for (const x of plan.analysis.exports) {
-        if (
-          x.kind === 'local' &&
-          x.local === s &&
-          !x.typeOnly &&
-          !keptByEnv(x.range)
-        ) {
-          const part =
-            exported === x.name
-              ? exported
-              : `${exported} as ${specifierName(x.name)}`
-          // (merged declarations are one export row each)
-          if (!parts.includes(part)) {
-            parts.push(part)
-          }
+  const decl = placement.shared
+  if (decl === null || decl.derivedId === null) {
+    return []
+  }
+  const parts: Array<string> = []
+  for (const s of [...placement.sharedExports].sort((a, b) => a - b)) {
+    const exported = exportNameOf.get(decl.id)?.get(s) ?? plan.nameOf(s)
+    for (const x of plan.analysis.exports) {
+      if (
+        x.kind === 'local' &&
+        x.local === s &&
+        !x.typeOnly &&
+        !keptByEnv(x.range)
+      ) {
+        const part =
+          exported === x.name
+            ? exported
+            : `${exported} as ${specifierName(x.name)}`
+        // (merged declarations are one export row each)
+        if (!parts.includes(part)) {
+          parts.push(part)
         }
       }
     }
-    if (parts.length === 0) {
-      continue
-    }
-    frags.push({ k: 'text', parts: [`export { ${parts.join(', ')} } from `] })
-    frags.push({
-      k: 'spec',
-      specifier: sameFileSpecifier(decl.derivedId),
-      edgeKey: plan.edgeKey(
-        sameFileSpecifier(decl.derivedId),
-        'reexport',
-        'runtime',
-      ),
-      provenance: { origin: 'runtime' },
-    })
-    frags.push({ k: 'text', parts: ['\n'] })
   }
-  return frags
+  if (parts.length === 0) {
+    return []
+  }
+  const specifier = sameFileSpecifier(decl.derivedId)
+  return [
+    { k: 'text', parts: [`export { ${parts.join(', ')} } from `] },
+    {
+      k: 'spec',
+      specifier,
+      edgeKey: plan.edgeKey(specifier, 'reexport', 'runtime'),
+    },
+    { k: 'text', parts: ['\n'] },
+  ]
 }
 
 function exportGlue(
@@ -620,7 +609,7 @@ function exportGlue(
     }
   }
   if (output === 'env') {
-    const sharedSyms = new Set(placement.sharedExports.flatMap((e) => e.syms))
+    const sharedSyms = new Set(placement.sharedExports)
     for (const [sym, to] of plan.exportedRenames) {
       if (sharedSyms.has(sym)) {
         continue // re-exported from the shared module under its public names
@@ -737,7 +726,7 @@ function renderDerived(
             out,
           )
         } else {
-          renderer.renderFrags(recipe, null, null, out, null, {
+          renderer.renderFrags(recipe, null, null, out, {
             level: root,
             skipAt: null,
           })
@@ -753,15 +742,8 @@ function renderDerived(
           ? Infinity
           : a.at
     // after-header: after the last included import (it starts before its end),
-    // before a statement starting where it ends and what is anchored before it;
-    // after-unit: before the next statement (its anchor is where that one
-    // starts), after what is anchored before it, as in the env module
-    const order =
-      a.gen.anchor.k === 'after-header'
-        ? -1
-        : a.gen.anchor.k === 'before-unit'
-          ? 0
-          : 1
+    // before a statement starting where it ends and what is anchored before it
+    const order = a.gen.anchor.k === 'after-header' ? -1 : 0
     pieces.push({
       pos,
       order,
@@ -844,7 +826,7 @@ function outputView(
   segments: ReadonlyArray<Segment>,
   unitsOfImport: ReadonlyMap<number, ReadonlyArray<Unit>>,
 ): EdgeView {
-  const { units, refs } = plan.t1
+  const { units } = plan.t1
   const includedUnit = (u: Unit) => {
     const c = plan.placement!.clusterOfRegion.get(u.region)
     return c !== undefined && included.has(c)
@@ -949,7 +931,6 @@ class Renderer {
       gen,
       null,
       out,
-      null,
       end > start
         ? { level: this.plan.rewrites.regions.module, skipAt: start }
         : null,
@@ -1022,7 +1003,6 @@ class Renderer {
         this.spanOwner,
         this.spanEnv,
         out,
-        null,
         { level: n, skipAt: null },
       )
       this.guardStatementStart(n.start, out, at)
@@ -1119,18 +1099,12 @@ class Renderer {
     owner: GeneratedUnit | null,
     env: SubstEnv | null,
     out: Array<Segment>,
-    entering: GeneratedUnit | null = null,
     slices: SliceLevel | null = null,
   ): void {
-    const unit = entering ?? owner
-    const mergedEnv = mergeEnv(env, unit?.env)
+    const mergedEnv = mergeEnv(env, owner?.env)
     // the generated unit's own body (not an edit, a placeholder, an insert
     // or what a region renders): its mapped text stands for no source text
-    const ownBody =
-      owner !== null &&
-      entering === null &&
-      slices === null &&
-      frags === owner.body
+    const ownBody = owner !== null && slices === null && frags === owner.body
     for (const f of frags) {
       switch (f.k) {
         case 'slice': {
@@ -1148,7 +1122,7 @@ class Renderer {
             level,
             f.range.start,
             f.range.end,
-            unit,
+            owner,
             mergedEnv,
             out,
             slices!.skipAt === null
@@ -1160,7 +1134,11 @@ class Renderer {
         case 'region': {
           // a claimed region, rendered by its owner: its text
           const claim = this.plan.rewrites.claims.get(f.id)
-          if (claim === undefined || unit === null || claim.owner !== unit.id) {
+          if (
+            claim === undefined ||
+            owner === null ||
+            claim.owner !== owner.id
+          ) {
             throw new Error(
               `conflict: a generated unit renders region ${f.id}, which it does not claim`,
             )
@@ -1176,10 +1154,10 @@ class Renderer {
           }
           const text = this.view.textOf(node)
           if (text === null) {
-            this.renderSpan(node, node.start, node.end, unit, mergedEnv, out)
+            this.renderSpan(node, node.start, node.end, owner, mergedEnv, out)
           } else {
             const at = out.length
-            this.renderFrags(text, unit, mergedEnv, out, null, {
+            this.renderFrags(text, owner, mergedEnv, out, {
               level: node,
               skipAt: null,
             })
@@ -1220,8 +1198,8 @@ class Renderer {
             kind: f.form === 'dynamic' ? 'evaluation' : 'binding',
             specifier: f.specifier,
             locations: [],
-            names: [...(f.names ?? [])],
-            provenance: f.provenance ?? { origin: 'runtime' },
+            names: [],
+            provenance: { origin: 'runtime' },
           })
           break
         }

@@ -94,7 +94,7 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
     const isSplit = split.has(key)
     if (
       option.kind !== 'method' &&
-      (isFallbackLiteral(value) ||
+      (isFallbackLiteral(unwrapExpression(value)) ||
         isAlreadyLazy(ctx, round.route.routerPackage, value))
     ) {
       continue
@@ -286,7 +286,6 @@ export function planHmrBlock(
           k: 'spec',
           specifier: hmrSpecifier,
           edgeKey: ctx.edgeKey(hmrSpecifier, 'static', 'runtime'),
-          provenance: { origin: 'runtime' },
         },
       },
     ],
@@ -416,7 +415,6 @@ function chunkHmr(
             k: 'spec',
             specifier: hmrSpecifier,
             edgeKey: ctx.edgeKey(hmrSpecifier, 'static', 'runtime'),
-            provenance: { origin: 'runtime' },
           },
         },
       ],
@@ -464,7 +462,6 @@ function keptReaderHmr(
           k: 'spec',
           specifier: hmrSpecifier,
           edgeKey: ctx.edgeKey(hmrSpecifier, 'static', 'runtime'),
-          provenance: { origin: 'runtime' },
         },
       },
     ],

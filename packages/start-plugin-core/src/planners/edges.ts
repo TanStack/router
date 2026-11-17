@@ -346,14 +346,9 @@ export function importEdgesPlanner(
         if (e.provenance.origin === 'runtime') {
           return null
         }
-        const forwarded =
-          e.provenance.origin === 'forwarded' ? e.provenance : null
-        const raw = forwarded ? forwarded.rawSpecifier : e.specifier
-        const from = forwarded ? forwarded.importerId : e.importerId
+        const raw = e.specifier
+        const from = e.importerId
         const importerPath = identify(from).path
-        if (forwarded && !ip.inScope(importerPath)) {
-          return null
-        }
         let rule = matchSpecifier(rules, raw)
         // an entry's own marker denies it here (a server-only-marked client
         // entry): its marker import is the violating edge, located at the
@@ -399,14 +394,7 @@ export function importEdgesPlanner(
             }
           }
         }
-        let offset: number | undefined
-        if (forwarded) {
-          if (importerPath === ctx.identity.path) {
-            offset = forwarded.span.start
-          }
-        } else {
-          offset = e.locations[0]?.range.start
-        }
+        const offset = e.locations[0]?.range.start
         return { edge: e, raw, importerPath, resolved, rule, offset }
       }
 
@@ -457,10 +445,7 @@ export function importEdgesPlanner(
         const substitute =
           config.mode === 'build' || behavior === 'mock' || pending
         // a server rendering client-only code: whether it renders it as a component
-        const ownStatic =
-          envType === 'server' &&
-          j.offset !== undefined &&
-          j.edge.provenance.origin !== 'forwarded'
+        const ownStatic = envType === 'server' && j.offset !== undefined
         const offsets = j.edge.locations.map((l) => l.range.start)
         const rendered = ownStatic
           ? renderedUse(ctx.analysis, ctx.code, offsets)

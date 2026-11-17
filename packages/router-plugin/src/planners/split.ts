@@ -102,7 +102,6 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
         k: 'spec',
         specifier: route.routerPackage,
         edgeKey: ctx.edgeKey(route.routerPackage, 'static', 'runtime'),
-        provenance: { origin: 'runtime' },
       },
     })
     if (name === 'lazyFn') {
@@ -132,7 +131,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
   // one importer and one output per group
   const groups = new Map<
     string,
-    { output: OutputId; derivedId: string; importer: Array<PlaceFrag> }
+    { output: OutputId; importer: Array<PlaceFrag> }
   >()
   const groupOf = (d: SplitDecision) => {
     let g = groups.get(d.groupKey)
@@ -153,7 +152,6 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
         k: 'spec',
         specifier: spec,
         edgeKey: ctx.edgeKey(spec, 'dynamic', 'runtime'),
-        provenance: { origin: 'runtime' },
         form: 'dynamic',
       },
       { k: 'text', parts: [`)${close}`] },
@@ -177,7 +175,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       })
       importer = [{ k: 'text', parts: [{ sym: named.sym }] }]
     }
-    g = { output, derivedId, importer }
+    g = { output, importer }
     groups.set(d.groupKey, g)
     return g
   }
@@ -252,7 +250,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
     }
     body.push({
       k: 'text',
-      parts: ['export { ', exported, ` as ${d.exportName} }\n`],
+      parts: ['export { ', exported, ` as ${d.key} }\n`],
     })
     const owner = ctx.rewrites.addGenerated({
       body,
@@ -275,12 +273,12 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
         ],
       },
       ...g.importer,
-      { k: 'text', parts: [`, ${stringLiteral(d.exportName)})`] },
+      { k: 'text', parts: [`, ${stringLiteral(d.key)})`] },
     ]
     if (region === null) {
       ctx.rewrites.placeholder({
         range: d.region,
-        body: call(d.wholeProperty ? `${d.keyText}: ` : ''),
+        body: call(d.shape === 'shorthand' ? `${d.keyText}: ` : ''),
         scope: ['env'],
         by: ROUTER_PLANNER,
       })
@@ -337,7 +335,6 @@ function chunkImporterCall(
           k: 'spec',
           specifier,
           edgeKey: ctx.edgeKey(specifier, 'static', 'runtime'),
-          provenance: { origin: 'runtime' },
         },
       })
     }

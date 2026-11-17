@@ -61,8 +61,6 @@ export interface ClusterGraph {
   writesOfSym: Map<SymbolId, Array<Write>>
   /** What an output renders of the source (`OutputView`). */
   viewOf: (o: OutputId) => OutputView
-  /** Whether a reference renders in output `o` (it is not inside text `o` erases). */
-  isLive: (ref: ClassifiedRef, o: OutputId) => boolean
 }
 
 class UnionFind {
@@ -141,8 +139,6 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
   const uf = new UnionFind(regionCount + gens.length)
 
   const viewOf = (o: OutputId): OutputView => rewrites.view(o)
-  const isLive = (ref: ClassifiedRef, o: OutputId) =>
-    !viewOf(o).isErasedAt(ref.range.start)
 
   // ---- owner index: refs by owning region --------------------------------
   const ownedRefs = new Map<RegionId, Array<ClassifiedRef>>()
@@ -316,6 +312,5 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     writes,
     writesOfSym,
     viewOf,
-    isLive,
   }
 }
