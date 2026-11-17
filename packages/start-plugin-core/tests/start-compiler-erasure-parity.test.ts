@@ -155,6 +155,20 @@ class Chart { static made = ((globalThis as any).caseHydrateTypeChart = 'made');
 function Page() { return <div><Hydrate when="visible"><p>{((c: Chart | null) => String(c))(null)}</p></Hydrate></div> }
 export const Route = createFileRoute('/hydrate-type-class')({ component: Page })
 `,
+    // a `let` the component and the error component read (two split
+    // chunks) and a handler assigns: on the server the component reads what
+    // the handler wrote
+    'src/routes/shared-writer.tsx': `${head}let filters = { q: 'start' }
+const setQ = createServerFn({ method: 'POST' }).handler(() => {
+  filters = { q: 'set' }
+  return Response.json('ok')
+})
+function Page() {
+  return <p data-q={filters.q} data-url={setQ.url}>page</p>
+}
+function Err() { return <b data-q={filters.q}>err</b> }
+export const Route = createFileRoute('/shared-writer')({ component: Page, errorComponent: Err })
+`,
     'src/routes/schema-read.tsx': `${head}import { countedSchema, schemaBuilds } from '../schema-read'
 const schema = countedSchema()
 const check = createServerFn({ method: 'POST' })
@@ -926,6 +940,14 @@ export const ready = boot(cfg)
 export const f = createServerFn().handler(async () => cfg.url)`,
       expected: 'b',
     },
+    // a `var` a top-level statement declares, assigned by the handler: the
+    // handler assigns the module's binding, never an import of it
+    {
+      name: 'a handler assigning a var a top-level statement declares',
+      code: `if (typeof window === 'undefined') { var conn: unknown = 'loaded' }
+export const f = createServerFn().handler(async () => { conn = 'reset'; return conn })`,
+      expected: 'reset',
+    },
   ])('$name', async ({ code, expected }) => {
     const served = await serveCase(await host(), {
       'module.tsx': `${serverFn}${code}`,
@@ -1106,6 +1128,23 @@ describe('a server fn has one instance on the server', () => {
       expect(await renderThenCall(`/handler-init-${key}`, 1)).toEqual(['k', 1])
     },
   )
+
+  test('a `let` two split route options read and a handler assigns is one binding on the server', async () => {
+    const run = await (
+      await host()
+    ).run<unknown>(`(async () => {
+  const html = await (await fetch('/shared-writer')).text()
+  const url = /data-url="([^"]+)"/.exec(html)?.[1]?.replace(/&amp;/g, '&')
+  if (!url) {
+    throw new Error('no server fn url in ' + html.slice(0, 300))
+  }
+  await fetch(url, { method: 'POST', body: new FormData() })
+  const after = await (await fetch('/shared-writer')).text()
+  return /data-q="([^"]*)"/.exec(after)?.[1] ?? after.slice(0, 300)
+})()`)
+    expect(run.errors).toEqual([])
+    expect(run.result).toBe('set')
+  })
 
   // main: one provider copy runs both handlers: 1 2 3 4 (02f8d6b8bd:
   // 1 1 2 2, `a`'s handler module holding its own `b`)

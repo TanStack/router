@@ -45,6 +45,8 @@ const smokeTests = [
   'integration/importProtection/build.test.ts',
   'integration/start-compose-project-path.test.ts',
   'integration/start-build-unparsed-module.test.ts',
+  // server fn ids and metadata on Windows paths (main's relative filename)
+  'integration/start-build-server-fn-format.test.ts',
   // dev on macOS and Windows (phase 6 decision): a file removed and written
   // back on an Rsbuild dev server, and file events through Vite's dev
   // server (this list runs without a browser: the page test of the latter
