@@ -1,11 +1,11 @@
 /**
- * A finished one-shot build (`compiler.run()`, then `compiler.close()`, as
- * the webpack and Rspack CLIs do) leaves nothing of the router plugin's
- * compiler session alive: its route listener ends with the compiler. The
- * generator and the code splitter as separate plugins share the module's
- * default context, which outlives every build. Measured through the
- * documented stats knob (TSR_COMPILER_STATS=1), which keeps nothing alive
- * itself.
+ * Perf guards of the router plugin: resource checks through the documented
+ * stats knob (`TSR_COMPILER_STATS=1`, which keeps nothing alive itself), not
+ * behaviour. A finished one-shot build (`compiler.run()`, then
+ * `compiler.close()`, as the webpack and Rspack CLIs do) leaves nothing of
+ * the router plugin's compiler session alive: its route listener ends with
+ * the compiler. The generator and the code splitter as separate plugins
+ * share the module's default context, which outlives every build.
  */
 import { setFlagsFromString } from 'node:v8'
 import { runInNewContext } from 'node:vm'

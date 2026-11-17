@@ -5,8 +5,8 @@
  * judged by what loads and works (requests, rendered output, the instances
  * other modules of the app import), and by J2.5 checks of user code absent
  * from a module (decoded user markers), never by the spelling of import
- * statements. The attribute of an import moved into a chunk is judged by a
- * bundler that honours it: integration/code-splitter-import-attributes.test.ts.
+ * statements. Imports with attributes: a bundler that honours them,
+ * integration/code-splitter-import-attributes.test.ts.
  */
 import { parse as parseWithBabel } from '@babel/core'
 import { describe, expect, it } from 'vitest'
@@ -234,48 +234,6 @@ export const b = 'b'
     },
   )
 
-  // Import attributes change what a module is (`type: 'json'`, a bundler
-  // macro), so they move with the import. Vite gives an attribute no
-  // meaning: here the moved import keeps working; that the attribute
-  // still applies in the chunk is judged where a bundler honours it
-  // (integration/code-splitter-import-attributes.test.ts, webpack).
-  it('keeps an import with attributes working when it moves into the chunk', async () => {
-    const route = await loadRoute(
-      `${head}import { test } from './test' with { type: 'macro' }
-export const Route = createFileRoute('/')({
-  component: () => test,
-})
-`,
-      { files: { 'test.ts': `export const test = 'macro value'\n` } },
-    )
-    // Nothing that loads with the route module (whichever modules a
-    // compiler emits) requests `./test`; the component gets it.
-    expect(await route.requested()).not.toContain('/test.ts')
-    expect(await route.run(`return render('component')`)).toBe('macro value')
-    await expectValidModules(route)
-  })
-
-  // Import assertions (`assert { type: 'json' }`) are the deprecated form of
-  // import attributes (SPEC J2.17). Here: the route keeps working
-  // and the JSON module moves with the component. That the attribute keeps
-  // its meaning in the chunk: integration/code-splitter-import-attributes.test.ts.
-  it('keeps an import assertion of a route file working', async () => {
-    const route = await loadRoute(
-      `${head}import data from './data.json' assert { type: 'json' }
-export const Route = createFileRoute('/')({
-  loader: () => 'data',
-  component: () => <p>{data.title}</p>,
-})
-`,
-      { files: { 'data.json': '{ "title": "from json" }' } },
-    )
-    expect(await route.requested()).not.toContain('/data.json')
-    expect(await route.run(`return render('component')`)).toBe(
-      '<p>from json</p>',
-    )
-    await expectValidModules(route)
-  })
-
   // With React's classic JSX runtime, JSX compiles to `React.createElement`,
   // so a React import that the TypeScript code only uses in types must stay
   // in a module that keeps the JSX: the app's own classic transform runs on
@@ -298,30 +256,6 @@ export const Route = createFileRoute('/')({ component: Page })
     expect(await route.run(`return render('component')`)).toBe('<p>classic</p>')
     await expectValidModules(route)
   })
-})
-
-// A route created through a namespace import of the router package
-// (`Router.createFileRoute`) is a route like one created through a named
-// import (SPEC J2.1, G15): its options split and work.
-it('splits a route created through a namespace import of the router package', async () => {
-  const route = await loadRoute(
-    `import * as Router from '@tanstack/react-router'
-export const Route = Router.createFileRoute('/')({
-  loader: () => 'data',
-  component: () => <p>MARK_NAMESPACE_COMPONENT</p>,
-})
-`,
-  )
-  await expectValidModules(route)
-  expect(await route.isLazy('component')).toBe(true)
-  expect(
-    (await route.eagerModules()).some((code) =>
-      code.includes('MARK_NAMESPACE_COMPONENT'),
-    ),
-  ).toBe(false)
-  expect(
-    await route.run(`return [options.loader(), await render('component')]`),
-  ).toEqual(['data', '<p>MARK_NAMESPACE_COMPONENT</p>'])
 })
 
 describe('exports of the route file', () => {

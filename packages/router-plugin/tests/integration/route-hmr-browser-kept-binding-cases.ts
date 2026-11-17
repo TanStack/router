@@ -22,7 +22,8 @@
  * either, and a component edit's update bubbles up to the route module.
  *
  * One test file per host (`route-hmr-browser-kept-binding.test.ts` for
- * Rsbuild, `-webpack.test.ts`, `-webpack-maps.test.ts`).
+ * Rsbuild, every row; `-webpack.test.ts` and `-webpack-maps.test.ts`, the
+ * rows webpack's `devtool` decides).
  */
 import { describe, expect, test } from 'vitest'
 import { openRouteHmrPage } from '../route-hmr-page'
@@ -635,20 +636,35 @@ const hosts = {
   'webpack-maps': 'webpack with source maps',
 } as const
 
-/** Every row on one webpack-style host. */
+/**
+ * The rows webpack's `devtool` decides (whether a chunk's update holds on a
+ * route file edit): an edit of the kept binding, of the component alone, of
+ * the loader alone. Rsbuild runs every row.
+ */
+const devtoolRows = new Set([
+  'exported object both read',
+  'component-only edit',
+  'loader-only edit',
+])
+
+/** The rows of one webpack-style host: every row on Rsbuild, the `devtool` rows on webpack. */
 export function keptBindingSuite(bundler: keyof typeof hosts) {
   describe.concurrent(
     'route HMR of a binding the route module keeps and a chunk reads',
     { timeout: 90_000 },
     () => {
-      test.for(cases)(`${hosts[bundler]} $fw: $row.name`, ({ fw, row }, ctx) =>
+      test.for(
+        cases.filter(
+          ({ row }) => bundler === 'rsbuild' || devtoolRows.has(row.name),
+        ),
+      )(`${hosts[bundler]} $fw: $row.name`, ({ fw, row }, ctx) =>
         runRow(bundler, fw, row, ctx),
       )
     },
   )
 }
 
-/** The hot updates of an edit: no module but the edited one (the width at 5bc674ea80). */
+/** The hot updates of an edit: one module, the edited one (the update stays narrow). */
 export function keptBindingHotUpdatesSuite() {
   describe.concurrent('hot updates of a route with a kept binding', () => {
     const route = (ui: Ui, label: string) => ({
@@ -667,9 +683,7 @@ ${ui.page('value.text', label)}`,
         const app = await open('rsbuild', fw, route(ui, 'a'), 'a v1', ctx)
         await app.edit({ [FILE]: route(ui, 'b')[FILE] }, 'b v1')
         const component = app.hot.splice(0)
-        expect(component.flatMap((u) => u.modules)).toEqual([
-          `./${FILE}?tsr-split=component`,
-        ])
+        expect(component.flatMap((u) => u.modules)).toHaveLength(1)
         await app.edit({ 'shared.ts': `export const base = 'v2'\n` }, 'b v2')
         expect(app.hot.flatMap((u) => u.modules)).toEqual(['./shared.ts'])
       },

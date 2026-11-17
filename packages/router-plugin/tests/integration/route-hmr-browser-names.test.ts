@@ -7,11 +7,7 @@
  * and without mounting the component anew (React Refresh keeps its state).
  * How the compiler gets there (renaming, hoisting, registration) is free.
  *
- * Replaces the in-process registration checks of
- * react-refresh-route-components.test.ts and known-bugs-route-hmr.test.ts:
- * those read which names React Refresh's transform registered,
- * which neither shows new code nor kept state. Pins: known-bugs-route-hmr
- * -components.test.ts (integration). What modules importing the exports get:
+ * What modules importing the exports get:
  * react-refresh-route-components.test.ts.
  *
  * Concurrent: each test has its own dev server and page, and mostly waits.
@@ -222,9 +218,10 @@ export const Route = createFileRoute('/')({ component: page })
   // and "registers top-level exported function declarations" / "...
   // exported named arrow functions"; the former react-refresh-route
   // -components "declared lowercase as %s, by renaming it" and "renamed
-  // lowercase and exported (%s)". The split rows of the lowercase
-  // variables, and `export { page }` split: pinned in
-  // known-bugs-route-hmr-components.test.ts.
+  // lowercase and exported (%s)". On main a split lowercase variable kept
+  // its name in the chunk (React Refresh registers PascalCase names only),
+  // and a split `export { page }` left the export list in the route module
+  // (SyntaxError).
   test.for([
     ...[false, true].flatMap((autoCodeSplitting) => [
       {
@@ -255,26 +252,26 @@ function page(props: any) ${body}`,
           'export default page',
         ),
       },
+      {
+        name: 'a const arrow function',
+        autoCodeSplitting,
+        route: pageRoute((body) => `const page = () => ${body}`),
+      },
+      {
+        name: 'a function expression that names itself',
+        autoCodeSplitting,
+        route: pageRoute((body) => `const page = function page() ${body}`),
+      },
+      {
+        name: 'an arrow function exported by an export list',
+        autoCodeSplitting,
+        route: pageRoute(
+          (body) => `const page = () => ${body}`,
+          '',
+          'export { page }',
+        ),
+      },
     ]),
-    {
-      name: 'a const arrow function',
-      autoCodeSplitting: false,
-      route: pageRoute((body) => `const page = () => ${body}`),
-    },
-    {
-      name: 'a function expression that names itself',
-      autoCodeSplitting: false,
-      route: pageRoute((body) => `const page = function page() ${body}`),
-    },
-    {
-      name: 'an arrow function exported by an export list',
-      autoCodeSplitting: false,
-      route: pageRoute(
-        (body) => `const page = () => ${body}`,
-        '',
-        'export { page }',
-      ),
-    },
   ])(
     'declared lowercase as $name: an edit shows in place without mounting it again (autoCodeSplitting: $autoCodeSplitting)',
     async (

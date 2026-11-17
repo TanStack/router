@@ -549,14 +549,14 @@ export const Route = ${from}(routeId)({ component: () => 'new page' })
     },
   )
 
-  // Source: review round 2 F5-2 (the id was reported at its column before
+  // (the id was reported at its column before
   // the constructor's repair, which the generator wrote: a stale position,
   // and a second report once the repaired file was read again)
   test.each([
     { fileName: 'new.tsx', from: 'createLazyFileRoute' },
     { fileName: 'new.lazy.tsx', from: 'createFileRoute' },
   ] as const)(
-    'round 2 F5-2: $from in $fileName: the id is reported once, at its position in the file as written',
+    '$from in $fileName: the id is reported once, at its position in the file as written',
     async ({ fileName, from }) => {
       const { root, file, written, diagnostics, error } = await upkeep(
         fileName,
@@ -983,7 +983,7 @@ export const Route = createFileRoute(\`/\${x}\`)({})
     },
   )
 
-  // Source: review round 1 F5-3 (a parenthesised id was reported as "not a
+  // (a parenthesised id was reported as "not a
   // string literal" and left stale). A literal in parentheses or a
   // TypeScript assertion is a string literal: kept up, nothing reported.
   test.each([
@@ -1002,7 +1002,7 @@ export const Route = createFileRoute(('/old' as const))({})
       kept: `createFileRoute(('/new' as const))({})`,
     },
   ])(
-    'round 1 F5-3: a route id $name gets the id of its path, nothing reported',
+    'a route id $name gets the id of its path, nothing reported',
     async ({ source, kept }) => {
       const { written, routes, diagnostics, error } = await upkeep(
         'new.tsx',
@@ -1020,9 +1020,9 @@ export const Route = createFileRoute(('/old' as const))({})
     },
   )
 
-  // Source: review round 1 F5-3. The stale id of a call without the options
+  // The stale id of a call without the options
   // call is named in parentheses too.
-  test('round 1 F5-3: a parenthesised stale id of a call without the options call is reported by name', async () => {
+  test('a parenthesised stale id of a call without the options call is reported by name', async () => {
     const { root, file, diagnostics, error } = await upkeep(
       'new.tsx',
       `import { createFileRoute } from ${router}

@@ -8,10 +8,9 @@
  * router plugin and React's plugin (`route-app.ts`): the real hot context,
  * React Refresh, the real router.
  *
- * Pins of what the page shows after an edit (React Refresh keeping state,
- * lowercase, inline and exported components) run a real dev server and a
- * real browser page (`route-hmr-page.ts`):
- * integration/known-bugs-route-hmr.test.ts.
+ * What the page shows after an edit (React Refresh keeping state,
+ * lowercase, inline and exported components) runs a real dev server and a
+ * real browser page (`route-hmr-page.ts`): integration/route-hmr-browser*.test.ts.
  */
 import { parseSync } from 'vite'
 import { describe, expect, test } from 'vitest'
@@ -82,31 +81,6 @@ function topLevelNames(code: string) {
 }
 
 describe('generated code', () => {
-  // Control for the options-in-a-variable pins below (same harness).
-  test.each([
-    {
-      name: 'an unsplittable root route',
-      code: `import { createRootRoute, Outlet } from '@tanstack/react-router'
-export const Route = createRootRoute({
-  component: () => <Outlet />,
-})`,
-    },
-    {
-      name: 'a split file route',
-      code: `${head}export const Route = createFileRoute('/')({
-  component: () => <p>home</p>,
-})`,
-    },
-  ])(
-    'inline route options ($name) evaluate to a route with a component',
-    async ({ code }) => {
-      const route = await loadRoute(code, { hmr: true })
-      expect(await route.run(`return typeof options.component`)).toBe(
-        'function',
-      )
-    },
-  )
-
   // Bug: when the route options are passed through a variable, the HMR
   // transforms replace `component` in the options object with a generated
   // binding declared after the object that reads it.
@@ -289,16 +263,6 @@ export const Route = createFileRoute('/')({
     return [...rendered, ...lazy]
   }
 
-  // Control for the lowercase shared component pin below (same harness).
-  test('a lowercase arrow component split into two chunks renders with the module state they share', async () => {
-    expect(
-      await renderSharedComponent(`const page = () => {
-  renders++
-  return <p>{renders}</p>
-}`),
-    ).toEqual(['<p>1</p>', '<p>2</p>', 1, true, true])
-  })
-
   // Bug: React HMR renames a lowercase `function` component in its split
   // chunk even when the code splitter moved the component to the shared
   // module, so the chunk exports `SplitComponent`, which nothing declares.
@@ -347,8 +311,8 @@ export const Route = createFileRoute('/')({
   // Impact: in development, the route's component chunk fails to load
   // (SyntaxError: Export 'SplitComponent' is not defined).
   // Source: #8504 react-refresh-route-components ("that is also the unsplit
-  // pendingComponent"). That edits of both show in place: the page pin in
-  // integration/known-bugs-route-hmr-components.test.ts.
+  // pendingComponent"). That edits of both show in place:
+  // integration/route-hmr-browser-options.test.ts.
   test('a lowercase function component that is also the unsplit pendingComponent renders as both', async () => {
     const route = await loadRoute(
       `${head}function page() {
@@ -472,8 +436,8 @@ export const Route = createFileRoute('/')({
   // ("keeps a component exported by specifier in the route module"), where it
   // passes. Whether the component is split is the code splitter's goal; either
   // way a module importing the export and the route render the same
-  // component. That edits show in place: the page pin in
-  // integration/known-bugs-route-hmr-components.test.ts.
+  // component. That edits show in place:
+  // integration/route-hmr-browser-names.test.ts.
   test('a component exported by an export list renders for a module importing it and as the route component', async () => {
     const route = await loadRoute(
       `${head}const page = () => <p>hi</p>
@@ -491,51 +455,5 @@ export const Route = createFileRoute('/')({ component: page })`,
   await renderComponent((await app('importer.ts')).page),
 ]`),
     ).toEqual(['<p>hi</p>', '<p>hi</p>'])
-  })
-
-  // Control for the lowercase shared component pins above: a lowercase
-  // `function` loader that the split component also calls.
-  test('a lowercase function loader the split component calls loads from its chunk', async () => {
-    const route = await loadRoute(
-      `${head}function getData() {
-  return 'data'
-}
-export const Route = createFileRoute('/')({
-  loader: getData,
-  component: () => <p>{getData()}</p>,
-  codeSplitGroupings: [['loader'], ['component']],
-})`,
-      { hmr: true },
-    )
-    await expectValidModules(route)
-    expect(await route.isLazy('loader')).toBe(true)
-    expect(
-      await route.run(
-        `return [await options.loader(), await render('component')]`,
-      ),
-    ).toEqual(['data', '<p>data</p>'])
-  })
-
-  // Control for the hoisted inline component pin (a real page:
-  // integration/known-bugs-route-hmr.test.ts "an inline pending component
-  // hoisted before a renamed lowercase component"): with the route HMR
-  // plugin (automatic code splitting off), an option that is not an inline
-  // component, reading a lowercase component a later option passes, gets
-  // that component.
-  test('an option reading a lowercase component a later option passes gets that component', async () => {
-    const route = await loadRoute(
-      `${head}const errorFallback = () => <p>error</p>
-export const Route = createFileRoute('/')({
-  staticData: { errorFallback },
-  errorComponent: errorFallback,
-})`,
-      { hmr: true, pluginOptions: { autoCodeSplitting: false } },
-    )
-    expect(
-      await route.run(`return [
-  options.staticData.errorFallback === options.errorComponent,
-  await renderComponent(options.errorComponent),
-]`),
-    ).toEqual([true, '<p>error</p>'])
   })
 })

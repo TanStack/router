@@ -1,5 +1,3 @@
-// Slow-tier half of this suite: the tests that need a real tool. Its
-// in-process tests are in ../plugin-options.test.ts (fast tier).
 /**
  * Router plugin options and entry points, through real builds: what each
  * option changes in the output or on disk.
@@ -90,39 +88,39 @@ async function buildRoute(
 const read = (app: BuildResult, file: string) =>
   readFile(path.join(app.root, file), 'utf8').catch(() => null)
 
-// Every cell per bundler entry, `undefined` included: each entry (Vite,
-// Rspack, webpack, esbuild) takes the user's options through its own code
-// before the default applies, so an entry could resolve an absent option
-// differently; the harness itself turns splitting on, so these are the only
-// checks of the default per entry. The app has no route tree before the
-// build. (esbuild, source: review of 2026-11-09, round 2: its entry never
-// ran the generator.)
-describe.each([false, undefined])(
-  'autoCodeSplitting: %s',
-  (autoCodeSplitting) => {
-    test.each([...bundlers, 'esbuild'] as const)(
-      'splits nothing and still generates the route tree (%s)',
-      async (bundler) => {
-        const { app, html, result } = await buildRoute(
-          bundler,
-          { autoCodeSplitting },
-          {
-            files: { 'entry.ts': treeEntry },
-            script: 'return await entry.renderTree()',
-          },
-        )
-        // The route's component loads with the app (whatever other chunks
-        // a correct compiler or the bundler emits)
-        expect(app.where('MARK_COMPONENT')).toBe('eager')
-        expect(html).toContain('MARK_COMPONENT')
-        // The generated tree exists, and the real router over it renders
-        // the index route at `/` (however the tree spells its imports).
-        expect(await read(app, 'routeTree.gen.ts')).not.toBeNull()
-        expect(result).toContain('MARK_COMPONENT')
+// The default per bundler entry: each entry (Vite, Rspack, webpack,
+// esbuild) takes the user's options through its own code before the default
+// applies, so an entry could resolve an absent option differently; the
+// harness itself turns splitting on, so these are the only checks of the
+// default per entry. An explicit `false` on Vite. The app has no route tree
+// before the build.
+test.each([
+  { bundler: 'vite', autoCodeSplitting: false },
+  ...([...bundlers, 'esbuild'] as const).map((bundler) => ({
+    bundler,
+    autoCodeSplitting: undefined,
+  })),
+] as const)(
+  'autoCodeSplitting: $autoCodeSplitting splits nothing and still generates the route tree ($bundler)',
+  async ({ bundler, autoCodeSplitting }) => {
+    const { app, html, result } = await buildRoute(
+      bundler,
+      { autoCodeSplitting },
+      {
+        files: { 'entry.ts': treeEntry },
+        script: 'return await entry.renderTree()',
       },
-      timeout,
     )
+    // The route's component loads with the app (whatever other chunks
+    // a correct compiler or the bundler emits)
+    expect(app.where('MARK_COMPONENT')).toBe('eager')
+    expect(html).toContain('MARK_COMPONENT')
+    // The generated tree exists, and the real router over it renders
+    // the index route at `/` (however the tree spells its imports).
+    expect(await read(app, 'routeTree.gen.ts')).not.toBeNull()
+    expect(result).toContain('MARK_COMPONENT')
   },
+  timeout,
 )
 
 describe('plugin.vite.environmentName', () => {

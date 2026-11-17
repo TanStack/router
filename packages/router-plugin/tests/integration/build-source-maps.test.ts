@@ -204,7 +204,6 @@ async function expectModuleThrowMapsToRouteFile(
   expectFrameAtThrow(app, stack, source, { minify: false })
 }
 
-// Control for the pins below.
 describe('vite', () => {
   test.each(builds)(
     'a throw in a split component maps to its line in the route file ($name)',
@@ -243,6 +242,38 @@ describe('vite', () => {
     'a throw in $name maps to its line and column in the route file',
     ({ route: source, marker }) =>
       expectModuleThrowMapsToRouteFile('vite', source, marker),
+    timeout,
+  )
+})
+
+// A Solid and a Vue split component: the chunk's map, composed with the
+// framework's JSX transform, maps a frame of the component's own code to its
+// line and column in the route file (SPEC G6, every emitted module).
+describe.each(['solid', 'vue'] as const)('vite, %s', (framework) => {
+  const frameworkRoute = `${routeHead(framework)}function Page() {
+  ;(globalThis as any).__stack = new Error('MARK_PAGE_STACK').stack
+  return <p>page</p>
+}
+export const Route = createFileRoute('/')({ component: Page })
+`
+  test(
+    'a frame in a split component maps to its line and column in the route file (unminified)',
+    async () => {
+      const app = await build({
+        bundler: 'vite',
+        env: 'client',
+        framework,
+        minify: false,
+        sourcemap: true,
+        files: routeApp(frameworkRoute, { env: 'client', framework }),
+      })
+      expect(app.where('MARK_PAGE_STACK')).toBe('lazy')
+      const { result: stack } = await app.run(
+        'await entry.mount(entry.Route.options.component)\nreturn globalThis.__stack',
+      )
+      expect(stack).toMatch(/MARK_PAGE_STACK/)
+      expectFrameAtThrow(app, stack, frameworkRoute, { minify: false })
+    },
     timeout,
   )
 })

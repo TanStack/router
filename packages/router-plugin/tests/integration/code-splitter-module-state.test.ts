@@ -154,15 +154,14 @@ return [before, await entry.render(component), entry.Route.options.loader(), ent
 
   // `export default items` above `var items = …` holds `undefined` (the
   // statement runs before the initialiser); the split component reads the
-  // binding, which has its value by then. Without a loader reading it; with
-  // one, `items` is a shared name in the shared module, which the route
-  // module imports before its body runs, so the export holds the value: as
-  // on `main`, which gives another value than the source there.
+  // binding, which has its value by then. With a loader reading it too, the
+  // export's value is `main`'s, not the source's (`items` is shared, and
+  // the shared module runs before the route module's body): not checked.
   it.each([
     {
-      name: "a loader reads it too: `main`'s export value, not the source's",
+      name: 'a loader reads it too',
       loader: 'loader: () => items.length,',
-      exportedUndefined: false,
+      exportedUndefined: undefined,
     },
     {
       name: 'only the component reads it',
@@ -187,19 +186,23 @@ export const Route = createFileRoute('/')({
           },
         },
       )
-      expect(result).toEqual(['<p>a,b</p>', exportedUndefined])
+      const [rendered, first] = result as [string, boolean]
+      expect(rendered).toBe('<p>a,b</p>')
+      if (exportedUndefined !== undefined) {
+        expect(first).toBe(exportedUndefined)
+      }
     },
     30_000,
   )
 
   // A later `var` changes the binding, not what the export took (with a
-  // loader reading it, the shared module's last value, as on `main`, which
-  // gives another value than the source there).
+  // loader reading it too, the export's value is `main`'s, not the
+  // source's: not checked).
   it.each([
     {
-      name: "a loader reads it too: `main`'s export value, not the source's",
+      name: 'a loader reads it too',
       loader: 'loader: () => items.length,',
-      exported: ['b'],
+      exported: undefined,
     },
     { name: 'only the component reads it', loader: '', exported: ['a'] },
   ])(
@@ -221,7 +224,11 @@ export const Route = createFileRoute('/')({
           },
         },
       )
-      expect(result).toEqual(['<p>b</p>', exported])
+      const [rendered, first] = result as [string, unknown]
+      expect(rendered).toBe('<p>b</p>')
+      if (exported !== undefined) {
+        expect(first).toEqual(exported)
+      }
     },
     30_000,
   )

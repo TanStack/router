@@ -7,10 +7,12 @@
  * components React Refresh patches (SPEC J3.3), as the same edits of an
  * unshared component or value do (route-hmr-browser.test.ts).
  *
- * Each test first checks that the page loaded that module: module layout is
- * free (SPEC §5), so this is the row's precondition, not a behaviour; a
- * compiler that stops sharing the binding here fails it, and the row then
- * needs a shape that still shares one.
+ * Each test first checks that the page loaded that module, by provenance:
+ * rendering the route component loaded two modules of the route file besides
+ * the route module (the component's chunk and the module it shares). Module
+ * layout is free (SPEC §5), so this is the row's precondition, not a
+ * behaviour; a compiler that stops sharing the binding here fails it, and
+ * the row then needs a shape that still shares one.
  *
  * Vite with `@vitejs/plugin-react` and Rsbuild with `@rsbuild/plugin-react`
  * (React Refresh on both). webpack: its harness app has no refresh runtime
@@ -24,9 +26,6 @@ import type { RouteHmrPage } from '../route-hmr-page'
 const timeout = 90_000
 
 const FILE = 'routes/index.tsx'
-
-/** The query of the module the splitter shares `component` and `errorComponent` through. */
-const sharedQuery = 'tsr-split=shared---component---errorComponent'
 
 /**
  * The ids of the route file's modules the page loaded: on Vite, the URLs it
@@ -50,10 +49,13 @@ async function expectSharedModuleLoaded(
   bundler: 'vite' | 'rsbuild',
 ) {
   const loaded = await loadedRouteModules(app, bundler)
+  // (a derived module of the route file has an id of its own: the file's
+  // path with a query; the route module is the path alone)
+  const derived = new Set(loaded.filter((id) => id.includes('?')))
   expect(
-    loaded.some((id) => id.includes(sharedQuery)),
+    derived.size,
     `the shared module loaded (precondition), among: ${loaded.join(', ')}`,
-  ).toBe(true)
+  ).toBeGreaterThanOrEqual(2)
 }
 
 describe.concurrent.each(['vite', 'rsbuild'] as const)(

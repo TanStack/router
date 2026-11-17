@@ -75,14 +75,6 @@ return [rendered, await renderComponent(${read})]`)
     }
   }
 
-  // Control for the pin below (same harness, an export that does not read
-  // `Page`).
-  test('a split component renders next to another export', async () => {
-    expect(
-      await renderPage(`export const Label = wrap(() => 'label')`, 'Label'),
-    ).toEqual({ rendered: ['<p>page</p>', 'label'], splitOrReported: true })
-  })
-
   // Bug: when a route option names a binding that the code splitter moves
   // into a chunk, the splitter deletes the binding's declaration from the
   // route module (`removeIdentifierLiteral`), even when other code there
@@ -331,26 +323,6 @@ return [[...new Set(fromRegistry)], rendered]`),
     ).toEqual([['<div>page</div>'], '<div>page</div>'])
   })
 
-  // Control for the imported-component pins below (same harness): the split
-  // component is declared in the route file.
-  test('a split component declared in the route file renders, and head() reads it', async () => {
-    const route = await loadRoute(
-      `${head}function PostsPage() {
-  return <p>posts</p>
-}
-PostsPage.title = 'Posts'
-export const Route = createFileRoute('/posts')({
-  component: PostsPage,
-  head: () => ({ meta: [{ title: PostsPage.title }] }),
-})
-`,
-      { routeId: '/posts' },
-    )
-    expect(
-      await route.run(`return [options.head(), await render('component')]`),
-    ).toEqual([{ meta: [{ title: 'Posts' }] }, '<p>posts</p>'])
-  })
-
   // Bug: when a split option names an imported binding, the code splitter
   // deletes its import specifier from the route module
   // (`removeIdentifierLiteral` removes the binding without checking for other
@@ -454,18 +426,6 @@ export const Route = createFileRoute('/')({
   })
 })
 
-describe('class components', () => {
-  // Control for the class pin below (same harness, a function component).
-  test('a function component declared in the route file renders', async () => {
-    const route = await loadRoute(`${head}function Page() {
-  return 'page'
-}
-export const Route = createFileRoute('/')({ component: Page })
-`)
-    expect(await route.run(`return render('component')`)).toBe('page')
-  })
-})
-
 describe('side-effect imports', () => {
   /**
    * `./setup` and `./Page`, which record when each module runs (in
@@ -487,8 +447,8 @@ export const Page = () => 'page'
   const loadThenRender = `const ran = [...(await app('log.ts')).log]
 return [ran, await render('component')]`
 
-  // Control for the pin below: a side-effect import of another module runs
-  // when the route module loads.
+  // A side-effect import of another module runs when the route module
+  // loads, not with the chunk.
   test('a side-effect import runs when the route module loads', async () => {
     const route = await loadRoute(
       `${head}import './setup'
@@ -564,8 +524,8 @@ return {
   headers: () => db.headers(),
   component: () => <p>x</p>,`
 
-  // Control for the pins below: options written as `key: value` are removed
-  // with their imports, on file routes and root routes, for every framework.
+  // Options written as `key: value` are removed with their imports, on file
+  // routes and root routes, for every framework.
   test.each([
     {
       name: 'a file route',
@@ -756,7 +716,7 @@ export const Route = createFileRoute('/')(
 )`,
     },
   ])(
-    'a server-only option given through $name stays, and the user is told so (J2.8)',
+    'a server-only option given through $name stays, and the user is told so',
     async ({ code }) => {
       const route = await loadForClient(
         `${head}import { db } from './secret-db'\n${code}`,

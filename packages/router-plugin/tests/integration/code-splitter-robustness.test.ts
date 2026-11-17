@@ -1,9 +1,18 @@
 /**
  * Unusual but valid route files split like any other: route files with
- * non-ASCII names and JavaScript route files, in real builds.
+ * non-ASCII names or a `'` in their name and JavaScript route files, an import of a package named
+ * like a member of `Object.prototype`, a BOM and a source map comment, in
+ * real builds.
  */
 import { expect, test } from 'vitest'
-import { build, clientMountEntry, head, rootRoute } from '../build-harness'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  build,
+  clientMountEntry,
+  head,
+  rootRoute,
+  routeApp,
+} from '../build-harness'
 
 /**
  * One app per bundler holds both unusual route files: a route
@@ -45,6 +54,13 @@ export const Route = createFileRoute('/café/日本語')({
   component: Page,
 })
 `,
+      // (SPEC §2.1: a `'` in a route file's name; the chunks import the
+      // route file by a specifier holding it)
+      "routes/what's-new.tsx": `${head}function Page() {
+  return <p>MARK_QUOTE_COMPONENT</p>
+}
+export const Route = createFileRoute("/what's-new")({ component: Page })
+`,
       'routes/index.jsx': `${head}const shared = { label: 'MARK_SHARED' }
 function Page() {
   return <p>MARK_COMPONENT {shared.label}</p>
@@ -55,12 +71,16 @@ export const Route = createFileRoute('/')({
 })
 `,
       'entry.ts': `${clientMountEntry}export { Route as CafeRoute } from './routes/café.日本語'
+export { Route as QuoteRoute } from "./routes/what's-new"
 `,
     },
   })
   try {
     const cafe = await app.run(
       `await entry.mount(entry.CafeRoute.options.component)`,
+    )
+    const quote = await app.run(
+      `await entry.mount(entry.QuoteRoute.options.component)`,
     )
     const jsx = await app.run(
       `await entry.mount(entry.Route.options.component)
@@ -71,6 +91,10 @@ return entry.Route.options.loader().label`,
         route: app.where('MARK_CAFE_ROUTE'),
         component: app.where('MARK_CAFE_COMPONENT'),
         html: cafe.html,
+      },
+      quote: {
+        component: app.where('MARK_QUOTE_COMPONENT'),
+        html: quote.html,
       },
       jsx: {
         component: app.where('MARK_COMPONENT'),
@@ -90,6 +114,17 @@ test.each(['vite', 'rspack', 'webpack'] as const)(
       route: 'eager',
       component: 'lazy',
       html: '<div id="root"><p>MARK_CAFE_COMPONENT</p></div>',
+    })
+  },
+  120_000,
+)
+
+test.each(['vite', 'rspack', 'webpack'] as const)(
+  "a route file with a ' in its name is generated, split and rendered (%s)",
+  async (bundler) => {
+    expect((await appOf(bundler)).quote).toEqual({
+      component: 'lazy',
+      html: '<div id="root"><p>MARK_QUOTE_COMPONENT</p></div>',
     })
   },
   120_000,
@@ -182,6 +217,14 @@ const Home = () => <p>MARK</p> /* first
 second */ const unused = 1
 const alsoUnused = 2`,
   },
+  // (a line comment ending with `{` or `;` ends no statement)
+  ...['{', ';'].map((end) => ({
+    name: `a line comment ending with \`${end}\` is the last text before a statement that moves`,
+    route: `${head}globalThis.first = 'MARK' // first ${end}
+const Home = () => <p>{globalThis.first}</p>
+export const Route = createFileRoute('/')({ component: Home })
+`,
+  })),
   {
     name: 'a comment holds the line break before the route, which gets the importer',
     route: `${head}globalThis.first = 'MARK' /* first
@@ -234,6 +277,74 @@ test.each(unterminated.map((row, i) => [row.name, i] as const))(
   async (_name, i) => {
     unterminatedResults ??= buildUnterminated()
     expect((await unterminatedResults)[i]).toBe('<p>MARK</p>')
+  },
+  60_000,
+)
+
+// A specifier naming a member of Object.prototype must not find it in a table
+// of known packages or markers.
+test.each(['constructor', '__proto__', 'toString'])(
+  'an import from a package named %s builds',
+  async (name) => {
+    const app = await build({
+      bundler: 'vite',
+      env: 'client',
+      minify: false,
+      files: routeApp(
+        `${head}import { x } from '${name}'
+export const Route = createFileRoute('/')({ component: () => <p>{x}</p> })
+`,
+        {
+          env: 'client',
+          files: {
+            'entry.ts': clientMountEntry,
+            [`node_modules/${name}/package.json`]: JSON.stringify({
+              name,
+              type: 'module',
+              exports: './index.js',
+            }),
+            [`node_modules/${name}/index.js`]: `export const x = 'MARK_X'\n`,
+          },
+        },
+      ),
+    })
+    expect(app.where('MARK_X')).toBe('lazy')
+  },
+  60_000,
+)
+
+const stateRoute = `${head}let state = 0
+export const Route = createFileRoute('/')({
+  loader: () => 1,
+  component: () => <p>{state}</p>,
+})
+`
+
+// The text of every id of the file differs from the file's only by what no
+// plugin wrote: nothing is reported
+test.each([
+  ['a BOM', `\uFEFF${stateRoute}`],
+  [
+    'a source map comment',
+    `${stateRoute}//# sourceMappingURL=data:application/json,{}\n`,
+  ],
+])(
+  'a route file with %s builds without a report',
+  async (_name, route) => {
+    const app = await build({
+      bundler: 'vite',
+      env: 'client',
+      minify: false,
+      files: routeApp(route, {
+        env: 'client',
+        files: { 'entry.ts': clientMountEntry },
+      }),
+    })
+    expect(
+      findDiagnostics(app.warnings, { severity: 'warning' }).filter(
+        ({ text }) => text.includes('routes/index.tsx'),
+      ),
+    ).toEqual([])
   },
   60_000,
 )

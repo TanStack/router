@@ -260,36 +260,22 @@ export const Route = createFileRoute('/old')({
 })
 
 describe('empty route files', () => {
-  // Control for the pin below: an empty .tsx route file.
-  test('an empty .tsx route file is scaffolded, and the other routes still generate', async () => {
-    const { written, routes } = await scaffold('posts.tsx')
-    expect(parseErrors(written, 'posts.tsx')).toEqual([])
-    expect(await routeIdOf(written)).toBe('/posts')
-    expect(routes).toEqual({
-      __root__: 'routes/__root.tsx',
-      '/': 'routes/index.tsx',
-      '/posts': 'routes/posts.tsx',
-    })
-  })
-
-  // Bug: an empty .ts route file is scaffolded with the route template, which
-  // renders JSX; the generator then parses the scaffolded file as plain
-  // TypeScript (no JSX) and the run fails with "Error transforming route
-  // file". Issue #8480.
-  // Source: src/generator.ts:1073 (the route template for any script file),
-  // src/generator.ts:1096 (parse of the scaffolded file).
-  // Impact: an empty .ts route file breaks route generation for the whole
-  // app (no route tree update) until the file is renamed or filled in.
-  test('an empty .ts route file is scaffolded, and the other routes still generate', async () => {
-    const { written, routes } = await scaffold('posts.ts')
-    expect(parseErrors(written, 'posts.ts')).toEqual([])
-    expect(await routeIdOf(written)).toBe('/posts')
-    expect(routes).toEqual({
-      __root__: 'routes/__root.tsx',
-      '/': 'routes/index.tsx',
-      '/posts': 'routes/posts.ts',
-    })
-  })
+  // An empty route file is scaffolded and the other routes still generate.
+  // On main an empty .ts route file got the route template, which renders
+  // JSX, and the run failed parsing it as TypeScript (#8480).
+  test.each(['posts.tsx', 'posts.ts'])(
+    'an empty %s route file is scaffolded, and the other routes still generate',
+    async (file) => {
+      const { written, routes } = await scaffold(file)
+      expect(parseErrors(written, file)).toEqual([])
+      expect(await routeIdOf(written)).toBe('/posts')
+      expect(routes).toEqual({
+        __root__: 'routes/__root.tsx',
+        '/': 'routes/index.tsx',
+        '/posts': `routes/${file}`,
+      })
+    },
+  )
 
   /**
    * Runs the generator on an app with an index route and an empty
@@ -902,9 +888,9 @@ describe('logging', () => {
    * An app whose run scaffolds a route file (an empty root route) and skips
    * one (a route file without a Route export).
    */
-  const app = () => ({
+  const app = (helpers = 'export const helper = 1\n') => ({
     'src/routes/__root.tsx': '',
-    'src/routes/helpers.tsx': 'export const helper = 1\n',
+    'src/routes/helpers.tsx': helpers,
     'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({})
@@ -913,23 +899,29 @@ export const Route = createFileRoute('/')({})
 
   // A route file without a Route export is left out with a warning naming it
   // (SPEC J1.12, G5); what else the run logs is free.
-  test('with logging on, a route file without a Route export is left out with a warning naming it', async () => {
-    const root = await createApp(app())
-    const { result: config, diagnostics } = await captureDiagnostics(() =>
-      generate(root, { disableLogging: false }),
-    )
+  test.each([
+    'export const helper = 1\n',
+    'const helper = 1\nexport { helper }\n',
+  ])(
+    'with logging on, a route file without a Route export is left out with a warning naming it: %j',
+    async (helpers) => {
+      const root = await createApp(app(helpers))
+      const { result: config, diagnostics } = await captureDiagnostics(() =>
+        generate(root, { disableLogging: false }),
+      )
 
-    // (a warning: the run goes on, so no error)
-    expectDiagnostic(diagnostics, {
-      severity: 'warning',
-      file: path.join(root, 'src/routes/helpers.tsx'),
-      root,
-    })
-    expect(await routesOf(config.generatedRouteTree)).toEqual({
-      __root__: 'routes/__root.tsx',
-      '/': 'routes/index.tsx',
-    })
-  })
+      // (a warning: the run goes on, so no error)
+      expectDiagnostic(diagnostics, {
+        severity: 'warning',
+        file: path.join(root, 'src/routes/helpers.tsx'),
+        root,
+      })
+      expect(await routesOf(config.generatedRouteTree)).toEqual({
+        __root__: 'routes/__root.tsx',
+        '/': 'routes/index.tsx',
+      })
+    },
+  )
 
   // `disableLogging` silences the route generation logging (SPEC J1.12) on
   // every console channel, whatever its severity; actionable diagnostics

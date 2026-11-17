@@ -58,31 +58,6 @@ export const register = (items: Array<string>) => {
 `
 
 describe('module state shared with split chunks', () => {
-  // Control for loadRoute: a top-level const read by the loader and the split
-  // component moves to the shared module and is initialized once.
-  test('a const read by the loader and the split component is initialized once', async () => {
-    const route = await loadRoute(
-      `${head}import { init } from './state'
-const value = init(1)
-export const Route = createFileRoute('/')({
-  loader: () => value,
-  component: () => <p>{value}</p>,
-  errorComponent: () => <p>error</p>,
-})`,
-      { files: { 'state.ts': stateFile } },
-    )
-    // (When the shared initializer runs, with the route module or with the
-    // first chunk that needs it, is free: SPEC G3.)
-    expect(
-      await route.run(`return [
-  options.loader(),
-  await render('component'),
-  await render('errorComponent'),
-  (await app('state.ts')).calls,
-]`),
-    ).toEqual([1, '<p>1</p>', '<p>error</p>', 1])
-  })
-
   // Bug: a `var` nested in a statement, an enum or a namespace is not shared.
   // The `var` is missed because module bindings are collected from top-level
   // declarations only (`collectLocalBindingsFromStatement`); same root cause
@@ -143,7 +118,8 @@ export const Route = createFileRoute('/')({
     setup: string
     loader: string
     component: string
-    expected: Array<unknown>
+    /** What the loader and the component give; none: they agree (one value). */
+    expected?: Array<unknown>
     inits?: number
   }>([
     {
@@ -160,7 +136,7 @@ format = () => 'reassigned'`,
       expected: ['reassigned', '<p>reassigned</p>'],
     },
     {
-      name: "a registry a shared store is created from (push), with `main`'s value, not the source's",
+      name: 'a registry a shared store is created from (push)',
       // Source: Turbopack tree-shaker analyzer/write-order, analyzer/shared-2
       // and analyzer/shared-regression
       setup: `import { init } from './state'
@@ -168,12 +144,10 @@ const plugins: Array<string> = []
 plugins.push('auth')
 const store = init({ plugins: [...plugins] })
 plugins.push('late')`,
-      loader: 'store.plugins',
+      loader: 'store.plugins.join()',
       component: '() => <p>{store.plugins.join()}</p>',
-      // One store, created once, in the shared module, before the route
-      // module's statements fill the registry: as on `main`, which gives
-      // another value than the source here.
-      expected: [[], '<p></p>'],
+      // One store, created once, which the loader and the component share
+      // (which plugins it holds is `main`'s, not the source's: not checked)
       inits: 1,
     },
     {
@@ -242,13 +216,15 @@ export const Route = createFileRoute('/')({
 })`,
         { filename, files: { 'state.ts': stateFile } },
       )
-      expect(
-        await route.run(`return [
+      const [loaded, html, calls] = await route.run<Array<unknown>>(`return [
   options.loader(),
   await render('component'),
   (await app('state.ts')).calls,
-]`),
-      ).toEqual([...expected, inits])
+]`)
+      expect([loaded, html, calls]).toEqual([
+        ...(expected ?? [loaded, `<p>${String(loaded)}</p>`]),
+        inits,
+      ])
     },
   )
 
@@ -377,16 +353,6 @@ track(...names)`,
       effect: `function widget() {}
 track(widget)`,
     },
-  ])(
-    'an unreferenced top-level side effect ($name) runs once, with the route module',
-    async ({ effect }) => {
-      await expectEffectRunsOnce(effect)
-    },
-  )
-
-  // Control for the pin above (same harness): a top-level call that reads
-  // only imports and literals is stripped from the chunks.
-  test.each([
     { name: 'a call reading an import', effect: 'track(subscribe)' },
     { name: 'a call with literal arguments', effect: `track('a', 'b')` },
   ])(

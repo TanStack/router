@@ -217,6 +217,22 @@ export const Route = createFileRoute('/')({
 `,
       deleteNodes: ['ssr' as const],
     },
+    // a license comment ending the line of a moved declaration is written
+    // for the code after it
+    ...[
+      '// @license Example Corp. | MIT License',
+      '/*! Example Corp. | MIT License */',
+    ].map((legal) => ({
+      name: `ending the line of a component the splitter moves (${legal.slice(0, 2)})`,
+      legal,
+      route: (
+        legal: string,
+      ) => `${head}function Page() { return <p>page</p> } ${legal}
+export const version = 1
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      deleteNodes: undefined,
+    })),
   ])('$name', async ({ legal, route, deleteNodes }) => {
     const loaded = await loadRoute(route(legal), { deleteNodes })
     expect(await referenceModule(loaded)).toContain(legal)

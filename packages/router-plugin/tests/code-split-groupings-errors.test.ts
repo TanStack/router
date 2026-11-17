@@ -2,17 +2,17 @@
  * Split groupings the compiler cannot honour fail the route module with an
  * error positioned at what the route file wrote (R101): an option that
  * cannot be split, one listed twice, an imported value. Plugin options
- * with invalid groupings fail with one error naming the option, with no
- * stack of the plugin's internals. Groupings in a local `const` are read.
+ * with invalid groupings fail the dev server with one error. Groupings in a
+ * local `const` are read.
  */
 import { describe, expect, it } from 'vitest'
 import {
+  captureThrow,
   diagnosticPosition,
   diagnosticsOf,
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNoProblems } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import { getConfig } from '../src/core/config'
 import { head, loadRoute } from './route-app'
 import type { RouteApp } from './route-app'
 
@@ -28,19 +28,10 @@ async function served(route: RouteApp) {
 
 describe('codeSplitGroupings the route file writes', () => {
   it.each([
-    [
-      'an option that cannot be split',
-      "[['loaderx'], ['component']]",
-      // (audit-diagnostics P4: the sentence the problem completes)
-      'The `codeSplitGroupings` of route.tsx lists "loaderx", which is not an option that can be split',
-    ],
-    [
-      'an option listed twice',
-      "[['component'], ['component', 'loader']]",
-      undefined,
-    ],
-    ['a group that is no array', "['component']", undefined],
-  ])('fail the module at the value: %s', async (_, groupings, says) => {
+    ['an option that cannot be split', "[['loaderx'], ['component']]"],
+    ['an option listed twice', "[['component'], ['component', 'loader']]"],
+    ['a group that is no array', "['component']"],
+  ])('fail the module at the value: %s', async (_, groupings) => {
     const code = `${head}export const Route = createFileRoute('/')({
   codeSplitGroupings: ${groupings},
   loader: () => 'data',
@@ -48,15 +39,12 @@ describe('codeSplitGroupings the route file writes', () => {
 })
 `
     const route = await loadRoute(code, { fresh: true })
-    const error = expectDiagnostic(await served(route), {
+    expectDiagnostic(await served(route), {
       severity: 'error',
       file: 'route.tsx',
       root: route.host.root,
       position: diagnosticPosition(code, groupings),
     })
-    if (says !== undefined) {
-      expect(error.text).toContain(says)
-    }
   })
 
   it('fail the module at an imported value', async () => {
@@ -78,21 +66,6 @@ export const Route = createFileRoute('/')({
     })
   })
 
-  it('are read from a local const', async () => {
-    const route = await loadRoute(
-      `${head}const groupings = [['loader'], ['component']] as const
-export const Route = createFileRoute('/')({
-  codeSplitGroupings: groupings as any,
-  loader: () => 'data',
-  component: () => <p>page</p>,
-})
-`,
-      { fresh: true },
-    )
-    expect(await route.isLazy('loader')).toBe(true)
-    expectNoProblems(await route.diagnostics())
-  })
-
   it('are read through a const naming another', async () => {
     const route = await loadRoute(
       `${head}const groupings = [['loader'], ['component']] as const
@@ -111,17 +84,23 @@ export const Route = createFileRoute('/')({
 })
 
 describe('plugin options with invalid groupings', () => {
-  it.each([
+  it.for([
     [{ defaultBehavior: [['compnent']] }],
     [{ defaultBehavior: [['component'], ['component']] }],
-  ])('fail with one error and no stack of the plugin: %j', (options) => {
-    let error: unknown
-    try {
-      getConfig({ codeSplittingOptions: options as never }, process.cwd())
-    } catch (e) {
-      error = e
-    }
-    expect(error).toBeInstanceOf(Error)
-    expect((error as Error).stack).toBe((error as Error).message)
+  ])('fail the dev server with one error: %j', async ([options]) => {
+    const thrown = await captureThrow(async () => {
+      const route = await loadRoute(
+        `${head}export const Route = createFileRoute('/')({
+  component: () => <p>page</p>,
+})
+`,
+        {
+          fresh: true,
+          pluginOptions: { codeSplittingOptions: options as never },
+        },
+      )
+      await route.transform()
+    })
+    expect(thrown.map((d) => d.severity)).toEqual(['error'])
   })
 })

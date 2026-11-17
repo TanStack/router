@@ -68,7 +68,28 @@ return [value === Route.options.component, await renderComponent(value)]`),
     },
   )
 
-  // R3-G7-2: the lowercase component is one binding of an exported
+  // A lowercase component the route HMR code renames for React Refresh,
+  // declared by a shorthand destructuring (its key stays) or by a `var`
+  // declared again (every declaration renamed once)
+  it.each([
+    ['a shorthand destructuring', `const { page } = { page: () => <p>hi</p> }`],
+    [
+      'a var declared again',
+      `var page = () => <p>first</p>\nvar page = () => <p>hi</p>`,
+    ],
+  ])(
+    'a lowercase component declared by %s renders as the route component (autoCodeSplitting: false)',
+    async (_, declaration) => {
+      const route = await loadRoute(
+        `${head}${declaration}\nexport const Route = createFileRoute('/page')({ component: page })`,
+        { ...unsplit, routeId: '/page', tsconfig: appTsconfig },
+      )
+      await expectValidModules(route)
+      expect(await route.run(`return render('component')`)).toBe('<p>hi</p>')
+    },
+  )
+
+  // the lowercase component is one binding of an exported
   // declaration with others; each export keeps its own binding
   describe.each([
     ['autoCodeSplitting: false', unsplit],
@@ -173,9 +194,8 @@ export const Route = createFileRoute('/')({ component: page })`,
 // route-hmr-browser.test.ts (a real page).
 
 describe('route HMR leaves options React Refresh does not handle as they are', () => {
-  // Loosened: the method keeps working. Being refreshable is the goal pinned
-  // by the "method shorthand" rows of
-  // integration/known-bugs-route-hmr-components.test.ts.
+  // The method keeps working; that an edit shows in place:
+  // integration/route-hmr-browser-options.test.ts "written as a method".
   it('keeps a method-shorthand component option working', async () => {
     const route = await loadRoute(
       `${head}export const Route = createFileRoute('/')({

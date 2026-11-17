@@ -97,6 +97,11 @@ z.server = { handlers: { GET: () => readSecret() } }`,
       options: 'a',
     },
     {
+      name: 'in a let the module reassigns',
+      declarations: `let a: any = {\n  ${page}\n}\nif (Math.random() > 2) {\n  a = {}\n}`,
+      options: 'a',
+    },
+    {
       name: 'a const of its chain named in a function',
       declarations: `const a = {\n  ${page}\n}\nconst options = a\nexport const describe = () => Object.keys(options)`,
       options: 'options',

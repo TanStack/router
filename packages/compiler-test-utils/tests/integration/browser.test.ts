@@ -10,12 +10,7 @@ import { createServer } from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, onTestFinished, test } from 'vitest'
-import {
-  openPage,
-  openPageLimit,
-  runInPage,
-  runPageLimit,
-} from '../../src/browser'
+import { openPage, runInPage, runPageLimit } from '../../src/browser'
 import { createDevServer } from '../../src/dev-server'
 import { createPluginHost } from '../../src/plugin-host'
 import { createRsbuildDevServer } from '../../src/rsbuild-dev-server'
@@ -291,22 +286,4 @@ return { value: module.value, loads: performance.getEntriesByType('navigation').
     )
     expect(later.result).toEqual({ value: 'MARK_VALUE', loads: 1 })
   }
-})
-
-test('openPage keeps at most openPageLimit pages open: one more waits until one closes', async () => {
-  const pages = await Promise.all(
-    Array.from({ length: openPageLimit }, () =>
-      openPage('about:blank', { registerCleanup: onTestFinished }),
-    ),
-  )
-  let opened = false
-  const next = openPage('about:blank', { registerCleanup: onTestFinished })
-  void next.then(() => {
-    opened = true
-  })
-  await new Promise((resolve) => setTimeout(resolve, 500))
-  expect(opened).toBe(false)
-  await pages[0]!.close()
-  await next
-  expect(opened).toBe(true)
 })

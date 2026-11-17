@@ -1,6 +1,8 @@
 /**
- * A router compile error or warning on webpack, Rspack and Rsbuild names its
- * position as the compilation's own location (SPEC G5, §5.7): the bundlers
+ * A router compile warning of a Vite build carries its position (the
+ * plugin's warning location, SPEC G5). A router compile error or warning on
+ * webpack, Rspack and Rsbuild names its position as the compilation's own
+ * location (SPEC G5, §5.7): the bundlers
  * print the module and the location of a compilation error or warning from
  * its stats' `moduleName` and `loc` (webpack `WARNING in ./routes/index.tsx
  * 2:22`, Rsbuild `File: ./routes/index.tsx:2:22` in the terminal and the
@@ -11,7 +13,10 @@ import { fileURLToPath } from 'node:url'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
-import { diagnosticPosition } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  diagnosticPosition,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { tanstackRouter as rspackRouter } from '../../src/rspack'
 import { tanstackRouter as webpackRouter } from '../../src/webpack'
@@ -105,6 +110,34 @@ export const Route = createFileRoute('/')({
 })
 `
 const invalidGroupingsAt = at(invalidGroupings, "'all'")
+
+// A method option using its own `this` stays in the route module, with a
+// warning at the property (J2.9)
+const thisMethod = `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({
+  component() {
+    return String(typeof this) + 'MARK_PAGE'
+  },
+})
+`
+
+test(
+  'vite build: a compile warning is located at its position',
+  async () => {
+    const app = await build({
+      bundler: 'vite',
+      env: 'client',
+      files: routeApp(thisMethod, { env: 'client' }),
+    })
+    expectDiagnostic(app.warnings, {
+      severity: 'warning',
+      file: 'routes/index.tsx',
+      root: app.root,
+      position: diagnosticPosition(thisMethod, 'component()'),
+    })
+  },
+  timeout,
+)
 
 describe.each(['webpack', 'rspack'] as const)('%s build', (bundler) => {
   test(

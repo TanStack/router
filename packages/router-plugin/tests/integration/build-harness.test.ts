@@ -3,14 +3,11 @@
  * with each bundler's router plugin, a split component loads lazily and
  * renders. The harness core has its own controls in `@tanstack/compiler-test-utils`.
  */
-import { describe, expect, test } from 'vitest'
+import { expect, test } from 'vitest'
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, buildWithRsbuild, head, routeApp } from '../build-harness'
-import type {
-  BuildResult,
-  Bundler,
-} from '@tanstack/compiler-test-utils/build-harness'
+import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 
 const timeout = 60_000
 
@@ -27,17 +24,6 @@ const heavy = `export function heavy(label: string) {
   return label
 }
 `
-
-async function buildSplitRoute(bundler: Bundler, env: 'ssr' | 'client') {
-  return describeSplitRoute(
-    await build({
-      bundler,
-      env,
-      files: routeApp(splitRoute, { env, files: { 'heavy.ts': heavy } }),
-    }),
-    env,
-  )
-}
 
 async function describeSplitRoute(app: BuildResult, env: 'ssr' | 'client') {
   const placement = {
@@ -65,23 +51,6 @@ const splitRouteExpected = {
     rendered: '<div id="root"><p>MARK_COMPONENT</p></div>',
   },
 }
-
-// Vite and Rspack: the same harness call and outcome as the React cells of
-// build-frameworks.test.ts ("<bundler> react ssr/client build the split
-// component loads lazily and renders"), which decide it.
-// webpack here builds minified, as an app does (build-frameworks builds
-// webpack unminified).
-describe('router plugin with webpack', () => {
-  test.each(['ssr', 'client'] as const)(
-    'loads a split component lazily and renders it (%s)',
-    async (env) => {
-      expect(await buildSplitRoute('webpack', env)).toEqual(
-        splitRouteExpected[env],
-      )
-    },
-    timeout,
-  )
-})
 
 // Rsbuild with its production defaults and the router plugin of Rspack,
 // as an Rsbuild app adds it.

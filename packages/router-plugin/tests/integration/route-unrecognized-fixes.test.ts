@@ -3,7 +3,7 @@
  * (J2.10, design 5): it is reported naming the file when the router's own
  * route constructor is misused, and the fix the report offers makes it a
  * route the splitter reads (R101: each offered fix applied here). A route
- * made by the app's own helper is reported nothing (R130), whatever else
+ * made by the app's own helper is reported nothing, whatever else
  * the file imports from the router package. Source: REVIEW-design5-final
  * findings 3 and 4 (the report named a false cause, offered fixes that drop
  * a root's context or name the wrong constructor in a lazy file, and
@@ -164,10 +164,10 @@ export const Route = createFileRoute('/')(options)
     },
     split: true,
   },
-  // Source: review round 1 F5-1 (the route was listed, not split, and
+  // (the route was listed, not split, and
   // nothing was reported: its server options shipped silently under Start)
   {
-    name: 'round 1 F5-1: a code-based `createRoute`',
+    name: 'a code-based `createRoute`',
     file: 'routes/index.tsx',
     files: {
       'routes/index.tsx': `import { createRoute } from '${RP}'
@@ -188,7 +188,7 @@ export const Route = createFileRoute('/')(${page})
     at: 'Route = createRoute({',
   },
   {
-    name: 'round 1 F5-1: a code-based `createRoute` through a namespace in the root route file',
+    name: 'a code-based `createRoute` through a namespace in the root route file',
     file: 'routes/__root.tsx',
     files: {
       'routes/__root.tsx': `import * as R from '${RP}'
@@ -198,10 +198,10 @@ export const Route = R.createRoute({ component: () => <R.Outlet /> } as any)
     fixed: { 'routes/__root.tsx': rootFile },
     split: false,
   },
-  // Source: review round 1 F5-2 (a `Route` bound by a pattern was not seen
+  // (a `Route` bound by a pattern was not seen
   // by the report)
   {
-    name: 'round 1 F5-2: a `Route` destructured from an object',
+    name: 'a `Route` destructured from an object',
     file: 'routes/index.tsx',
     files: {
       'routes/index.tsx': `import { createFileRoute } from '${RP}'
@@ -217,7 +217,7 @@ export const Route = createFileRoute('/')(${page})
     at: '{ Route } = {',
   },
   {
-    name: 'round 1 F5-2: a `Route` destructured from an array a const holds',
+    name: 'a `Route` destructured from an array a const holds',
     file: 'routes/index.tsx',
     files: {
       'routes/index.tsx': `import { createFileRoute } from '${RP}'
@@ -300,7 +300,7 @@ export const createAppRoute = (id: any) => (options: any) => createFileRoute(id)
 `,
 }
 
-describe("a route made by the app's own helper (R130)", () => {
+describe("a route made by the app's own helper", () => {
   it.for([
     {
       name: 'in a file using the router package through a namespace import',

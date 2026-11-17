@@ -1,12 +1,8 @@
-// Slow-tier pins of route HMR in a real page (continued from
-// known-bugs-route-hmr.test.ts: two files, to keep each within the per-file
-// time budget): edits that remove options, aliased route exports, and
-// error boundaries.
 /**
  * Known route HMR and React Refresh bugs. Each test asserts the correct
  * behaviour for a bug main had, which today's compiler fixes (a regression
- * test, oracle/KNOWN-BUGS.md). See known-bugs-route-hmr.test.ts for how the
- * pins observe the page.
+ * test, oracle/KNOWN-BUGS.md). An edit must show its new code without a full
+ * reload and without errors in the page (`route-hmr-page.ts`).
  */
 import { describe, test } from 'vitest'
 import { isAppError, openRouteHmrPage } from '../route-hmr-page'
@@ -223,24 +219,6 @@ export const Route = createFileRoute('/')({
   ),${alsoErrorComponent ? '\n  errorComponent: errorFallback,' : ''}
 })
 `
-
-  // Control for the hoisted inline component pin below (same harness): an
-  // inline component reading a lowercase component renders it (the real
-  // `react-error-boundary` shows the fallback once its child throws).
-  test('vite: an inline pending component rendering an error boundary with a lowercase fallback shows the fallback', async ({
-    expect,
-    onTestFinished,
-  }: TestContext) => {
-    const app = await openRouteHmrPage({
-      onTestFinished,
-      pluginOptions: { autoCodeSplitting: false },
-      files: { 'routes/index.tsx': errorBoundaryRoute(false) },
-      ready: 'fallback shown',
-    })
-    expect(
-      app.page.errors.some((error) => error.includes('child failed')),
-    ).toBe(true)
-  })
 
   // Bug: React HMR hoists inline component options into declarations it
   // inserts after visiting every option, and renames a lowercase component

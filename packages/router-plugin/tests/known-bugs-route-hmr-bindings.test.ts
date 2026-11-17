@@ -40,7 +40,7 @@ export const Route = createRootRoute({
 })
 `
 
-it('a route file importing a binding named Map renders without route HMR (control)', async () => {
+it('a route file importing a binding named Map renders without route HMR', async () => {
   const app = await loadRoute(route, { files: mapsLibrary })
   expect(await app.run('return renderRoute()')).toContain('MARK_PAGE 0')
 })

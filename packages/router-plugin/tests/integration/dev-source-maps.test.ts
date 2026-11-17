@@ -2,7 +2,7 @@
  * Source maps in development (SPEC G6, dev as in build): a thrown error in
  * the route module, in what the loader and the split component share, and
  * in the split component, executed in a real browser page served by Vite's
- * dev server and by Rsbuild's, resolves through the maps the dev server
+ * dev server, by Rsbuild's and by webpack's, resolves through the maps the dev server
  * serves to the user's file and line, and the map holds the file as written
  * (what a debugger shows); on Vite, the module's map names the
  * route file itself as its source. The modules are those the throws run
@@ -32,6 +32,7 @@ import {
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import {
+  emittedSourcePath,
   expectMapsTo,
   inlineSourceMap,
   positionAt,
@@ -40,6 +41,7 @@ import {
 } from '@tanstack/compiler-test-utils/source-maps'
 import { tanstackRouter } from '../../src/vite'
 import { rootRoute, routeHead } from '../build-harness'
+import { openWebpackHmrPage } from '../webpack-hmr-page'
 import type { AnySourceMap } from '@tanstack/compiler-test-utils/source-maps'
 
 const timeout = 60_000
@@ -347,28 +349,85 @@ describe('rsbuild dev server', () => {
       const stacks = (await page.page.evaluate(
         () => (window as any).__throws,
       )) as Record<string, string | undefined>
-      // The map each module a frame names points to (`sourceMappingURL`)
-      const maps = new Map<string, AnySourceMap | undefined>()
-      for (const location of new Set(
-        Object.values(stacks).flatMap((stack) => frameLocations(stack ?? '')),
-      )) {
-        if (!location.startsWith(server.url!)) {
-          continue
+      expectThrowsMapToRouteFile(
+        stacks,
+        await mapsOfFrames(stacks, server.url!),
+        server.root,
+        () => undefined,
+      )
+    },
+    timeout,
+  )
+})
+
+/** The map each module a frame of `stacks` names points to (`sourceMappingURL`), by the frame's location. */
+async function mapsOfFrames(
+  stacks: Record<string, string | undefined>,
+  serverUrl: string,
+) {
+  const maps = new Map<string, AnySourceMap | undefined>()
+  for (const location of new Set(
+    Object.values(stacks).flatMap((stack) => frameLocations(stack ?? '')),
+  )) {
+    if (!location.startsWith(serverUrl)) {
+      continue
+    }
+    const code = await (await fetch(location)).text()
+    const mapping = [...code.matchAll(/[#@] sourceMappingURL=(\S+)\s*$/gm)].at(
+      -1,
+    )?.[1]
+    maps.set(
+      location,
+      mapping === undefined
+        ? undefined
+        : mapping.startsWith('data:')
+          ? inlineSourceMap(code)
+          : await (await fetch(new URL(mapping, location))).json(),
+    )
+  }
+  return maps
+}
+
+describe('webpack dev server', () => {
+  test(
+    'the route module and every module derived from it map a throw to its line in the route file',
+    async () => {
+      const app = await openWebpackHmrPage({
+        devtool: 'source-map',
+        files: {
+          'main.ts': `import { throws } from './probe'
+void throws().then((stacks) => {
+  ;(window as any).__throws = stacks
+  document.getElementById('app')!.textContent = 'probe ready'
+})
+`,
+          'probe.ts': probe,
+          'page-label.ts': pageLabel,
+          'routes/index.tsx': route,
+        },
+        ready: 'probe ready',
+      })
+      const stacks = (await app.page.page.evaluate(
+        () => (window as any).__throws,
+      )) as Record<string, string | undefined>
+      // (webpack names a source `webpack://<namespace>/<path from the
+      // root>`: where a debugger finds it)
+      const maps = await mapsOfFrames(stacks, app.url)
+      for (const [location, map] of maps) {
+        const sources = (map as { sources?: Array<string | null> } | undefined)
+          ?.sources
+        if (sources) {
+          maps.set(location, {
+            ...(map as object),
+            sources: sources.map((source) =>
+              source === null
+                ? source
+                : emittedSourcePath(source, location, app.root),
+            ),
+          } as AnySourceMap)
         }
-        const code = await (await fetch(location)).text()
-        const mapping = [
-          ...code.matchAll(/[#@] sourceMappingURL=(\S+)\s*$/gm),
-        ].at(-1)?.[1]
-        maps.set(
-          location,
-          mapping === undefined
-            ? undefined
-            : mapping.startsWith('data:')
-              ? inlineSourceMap(code)
-              : await (await fetch(new URL(mapping, location))).json(),
-        )
       }
-      expectThrowsMapToRouteFile(stacks, maps, server.root, () => undefined)
+      expectThrowsMapToRouteFile(stacks, maps, app.root, () => undefined)
     },
     timeout,
   )

@@ -6,8 +6,7 @@
  * `.txt` file holding JSON loads as JSON only through the attribute (without
  * it, the build fails parsing the file as JavaScript). The deprecated
  * `assert` form keeps working too. A client build: the import is in the
- * component's chunk, which loads on demand. Fast-tier counterpart (the moved import
- * keeps working in Vite): tests/code-splitter-imports-exports.test.ts.
+ * component's chunk, which loads on demand.
  */
 import { describe, expect, it } from 'vitest'
 import { build, routeApp } from '../build-harness'
@@ -17,6 +16,10 @@ describe('the attribute of an import moved into the chunk still applies (webpack
   it.each([
     { name: 'an import attribute', attribute: `with { type: 'json' }` },
     { name: 'an import assertion', attribute: `assert { type: 'json' }` },
+    {
+      name: 'an import assertion after a comment naming it',
+      attribute: `/* assert */ assert { type: 'json' }`,
+    },
   ])('$name', async ({ attribute }) => {
     const app = await build({
       bundler: 'webpack',

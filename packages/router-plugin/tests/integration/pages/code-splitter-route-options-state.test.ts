@@ -108,31 +108,6 @@ ${groupings}  loader: () => 'data',
     }
   })
 
-  // Honouring groupings declared in a module-level constant is pinned in
-  // known-bugs-code-splitter.test.ts; until then the route is refused
-  // with an error naming the route file (on any channel), never split with
-  // other groupings.
-  it('of the route given through a variable are honoured or refused with an error naming the route file', async () => {
-    const loaded =
-      await loadRoute(`${head}const groupings: Array<Array<'loader' | 'component'>> = [['loader'], ['component']]
-export const Route = createFileRoute('/')({
-  codeSplitGroupings: groupings,
-  loader: () => 'data',
-  component: () => <p>page</p>,
-})
-`)
-    const { thrown, diagnostics } = await compileOutcome(loaded)
-    if (thrown) {
-      expectDiagnostic([...thrown, ...diagnostics], {
-        severity: 'error',
-        file: 'route.tsx',
-        root: loaded.host.root,
-      })
-      return
-    }
-    expect(await loaded.groups()).toEqual([['component'], ['loader']])
-  })
-
   const defaultBehavior: CodeSplitGroupings = [['loader', 'errorComponent']]
   it.each([
     {

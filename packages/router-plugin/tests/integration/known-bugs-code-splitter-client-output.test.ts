@@ -61,7 +61,6 @@ export const Route = createFileRoute('/')({
   // cells of the two tests below were decided by the same transform as
   // their Vite cells).
 
-  // Control for the build-level canary below.
   test('a client build has no server code of an `ssr` property (vite)', async () => {
     expect(await secretPlacement('vite', 'ssr: () => !!readSecret()')).toBe(
       'nowhere',
@@ -149,15 +148,6 @@ export const Route = createFileRoute('/')({
     }
   }
 
-  // Control for the pin below (same app, a regular route file).
-  test.each(clientBundlers)(
-    'a client build has no server handler code (%s)',
-    async (bundler) => {
-      expect(await serverCodePlacement(bundler, false)).toBe('nowhere')
-    },
-    60_000,
-  )
-
   // Bug: the code splitter looks route files up by the path the generator
   // scanned (the symlink), but bundlers resolve modules to their real path,
   // so a symlinked route file is never compiled: nothing is split or
@@ -231,9 +221,9 @@ export const Route = createFileRoute('/')({
     }
   }
 
-  // Control for the pin below: with `NODE_ENV=production` exported, the
-  // build warns when it leaves the exported component eager (never when it
-  // splits it), and the page logs nothing.
+  // With `NODE_ENV=production` exported, the build warns when it leaves the
+  // exported component eager (never when it splits it), and the page logs
+  // nothing.
   test.each(['rspack', 'webpack'] as const)(
     'a production client bundle logs no development warning in the page; the build warns when the exported component stays eager (%s)',
     async (bundler) => {

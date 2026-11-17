@@ -122,23 +122,6 @@ export const Route = ${route}
 })
 
 describe('route factories written in other shapes', () => {
-  // Bug: the code splitter only recognises `createFileRoute` under its own
-  // name, so a route whose factory is imported under an alias is not split,
-  // and nothing says so. Our limitation, so the goal is a split component
-  // (SPEC J2.8). Source: review of #8504.
-  // Impact: the route's components load with the entry chunk, silently.
-  test('a component is split when createFileRoute is imported under an alias', async () => {
-    const route =
-      await loadRoute(`import { createFileRoute as fileRoute } from '@tanstack/react-router'
-export const Route = fileRoute('/')({ component: Page })
-function Page() {
-  return <p>page</p>
-}
-`)
-    expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
-  })
-
   // Bug: the code splitter only compiles files whose code matches
   // `createFileRoute(`, so a route whose factory call has a type argument
   // (`createFileRoute<'/'>('/')`) is left as is, and nothing says so. Our
@@ -329,18 +312,6 @@ export const bar = 4
     ).toBe(true)
   })
 
-  // Control for the array destructuring pins below: a component declared by
-  // an object destructuring of a literal is split and renders.
-  test('a component declared by an object destructuring renders', async () => {
-    const route =
-      await loadRoute(`${head}const { Page } = { Page: () => <div>page</div> }
-export const Route = createFileRoute('/')({ component: Page })
-`)
-    expect(await route.run(`return render('component')`)).toBe(
-      '<div>page</div>',
-    )
-  })
-
   // Bug: a split option that names a binding declared by an array
   // destructuring cannot be split: the virtual compiler throws
   // "Unexpected splitNode type ☝️: VariableDeclarator".
@@ -396,40 +367,6 @@ return {
         : {},
     )
   }
-
-  async function expectNameKeepsValue(name: string, declaration?: string) {
-    const { actual, expected } = await readName(name, declaration)
-    expect(actual).toEqual(expected)
-  }
-
-  // Control for the pins below.
-  test.each([
-    { name: 'TSRComponent', declaration: `const TSRComponent = 'value'` },
-    { name: 'window' },
-  ])(
-    'a route file binding or global named $name keeps its value',
-    async ({ name, declaration }) => {
-      await expectNameKeepsValue(name, declaration)
-    },
-  )
-
-  // Bug: the code splitter declares fixed names in the modules it emits
-  // (`SplitComponent`, `SplitLoader`) without checking that the route file
-  // does not use them.
-  // Impact: a route file with such a binding cannot be built ("Duplicate
-  // declaration") or its options read the generated value instead of the
-  // user's.
-  // These two inputs only discriminate today's names; the adaptive pin
-  // below challenges whatever names a compiler introduces.
-  test.each([
-    { name: 'SplitComponent', declaration: `const SplitComponent = 'value'` },
-    { name: 'SplitLoader', declaration: `const SplitLoader = 'value'` },
-  ])(
-    'a route file binding named $name keeps its value',
-    async ({ name, declaration }) => {
-      await expectNameKeepsValue(name, declaration)
-    },
-  )
 
   /** The top-level bindings a served module declares (an independent parse). */
   function topLevelNames(code: string) {

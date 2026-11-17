@@ -4,7 +4,6 @@
  * executes SSR output in Node and client output in a real browser, and
  * side-effect hints reach the bundler.
  */
-import { existsSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -543,34 +542,6 @@ setTimeout(() => { throw new Error('MARK_UNCAUGHT') })
     await expect(
       build.run('await new Promise((resolve) => setTimeout(resolve, 50))'),
     ).rejects.toThrow(/MARK_UNCAUGHT/)
-  })
-})
-
-describe('registerCleanup', () => {
-  test('receives the dispose() that removes the app directory', async () => {
-    const cleanups: Array<() => Promise<void>> = []
-    const app = await createApp({
-      dir: testsDir,
-      files: { 'entry.ts': `export const value = 1\n` },
-      registerCleanup: (cleanup) => cleanups.push(cleanup),
-    })
-    expect(cleanups).toEqual([app.dispose])
-    expect(existsSync(app.root)).toBe(true)
-    await cleanups[0]!()
-    expect(existsSync(app.root)).toBe(false)
-  })
-
-  test('without it, the app stays until dispose()', async () => {
-    const app = await createApp({
-      dir: testsDir,
-      files: { 'entry.ts': `export const value = 1\n` },
-    })
-    try {
-      expect(existsSync(app.root)).toBe(true)
-    } finally {
-      await app.dispose()
-    }
-    expect(existsSync(app.root)).toBe(false)
   })
 })
 

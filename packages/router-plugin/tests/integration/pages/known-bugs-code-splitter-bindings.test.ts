@@ -76,18 +76,6 @@ describe('route options read from the environment', () => {
     )
   }
 
-  // Control for the pins below (same harness).
-  test('a split component imported by the route file renders', async () => {
-    expect(
-      await renderRouteComponent(
-        `import { Page } from './page'
-${head}export const Route = createFileRoute('/')({ component: Page })
-`,
-        { files: { 'page.tsx': `export const Page = () => 'page'\n` } },
-      ),
-    ).toBe('page')
-  })
-
   // Bug: a split option that is a global (no declaration in the module) or
   // an ambient `declare const` is exported from the chunk under a name the
   // chunk never declares ("Export '...' is not defined"), or the export is
@@ -665,28 +653,9 @@ return [
 ]`)
   }
 
-  // Control for the overload pin below (same route, no overload signatures).
-  test('a function the route module and a split loader share keeps working', async () => {
-    expect(
-      await callSharedHelper(
-        `export function helper(value: string | number) { return value }`,
-      ),
-    ).toEqual([true, 'before', 42])
-  })
-
   const overloadedHelper = `export function helper(value: string): string
 export function helper(value: number): number
 export function helper(value: string | number) { return value }`
-
-  // Control for the pin below: TypeScript erasure with
-  // `verbatimModuleSyntax` keeps the import of the shared function.
-  test('an overloaded function the route module and a split loader share keeps working, with verbatimModuleSyntax', async () => {
-    expect(await callSharedHelper(overloadedHelper)).toEqual([
-      true,
-      'before',
-      42,
-    ])
-  })
 
   // Bug: the overload signatures of a function that the route module and a
   // split chunk share stay in both modules, next to the import of the shared

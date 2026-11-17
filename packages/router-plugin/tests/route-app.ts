@@ -202,7 +202,7 @@ export const probeFile = 'route-app-probe.ts'
 export const entryFile = 'route-app-entry.ts'
 
 const entrySource = (filename: string) =>
-  `export * as route from './${filename.replace(/^\.\//, '')}'\n`
+  `export * as route from ${JSON.stringify(`./${filename.replace(/^\.\//, '')}`)}\n`
 
 /**
  * The dev server's answer to the page: which requested modules the compilers

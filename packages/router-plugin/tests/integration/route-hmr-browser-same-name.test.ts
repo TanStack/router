@@ -170,4 +170,26 @@ export const Route = createFileRoute('/')({ component: Object.freeze(memo(Page))
       expect(edited.errors).toEqual([])
     },
   )
+
+  // A frozen component another module exports: the chunk that reads it
+  // marks nothing on it (a mark would throw as the chunk evaluates)
+  test(
+    'given as a named import renders',
+    { timeout: 60_000 },
+    async ({ expect, onTestFinished }: TestContext) => {
+      const app = await openRouteHmrPage({
+        onTestFinished,
+        files: {
+          'page.tsx': `export const Page = Object.freeze(() => <p>frozen page</p>)\n`,
+          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { Page } from '../page'
+export const Route = createFileRoute('/')({ component: Page })
+`,
+        },
+        ready: 'frozen page',
+      })
+      // (split: the chunk reads the frozen component)
+      expect(app.splitOutputs()).toBeGreaterThan(0)
+    },
+  )
 })

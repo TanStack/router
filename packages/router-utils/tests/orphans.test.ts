@@ -1,3 +1,10 @@
+/**
+ * Kept (R169 gate, 2026-11-17): the sole coverage of what an erasure inside a
+ * function leaves (Start's server-fn erasure: function-local declarations,
+ * declarators of one statement, a loop head, parameter patterns, an array
+ * rest element), which no oracle test reaches yet; to become
+ * start-plugin-core behaviour tests.
+ */
 import { describe, expect, it } from 'vitest'
 import { MemoryHost, dedent, toyEnvPlanner } from './helpers'
 
@@ -14,78 +21,6 @@ async function client(code: string) {
 }
 
 describe('destructured bindings only erased code read', () => {
-  it('drops an object rest element, then the sibling it kept', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        import { secret } from './db'
-        const { picked = secret(), kept, ...others } = source
-        export const k = kept
-        export const fn = wrapServer(() => [picked, others])
-      `),
-    ).toBe(
-      dedent(`
-        const { kept } = source
-        export const k = kept
-        export const fn = tsrStub()
-      `),
-    )
-  })
-
-  it('keeps a sibling while kept code reads the rest element', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        const { picked, ...others } = source
-        export const o = others
-        export const fn = wrapServer(() => picked)
-      `),
-    ).toBe(
-      dedent(`
-        const { picked, ...others } = source
-        export const o = others
-        export const fn = tsrStub()
-      `),
-    )
-  })
-
-  // the key stays out of the rest element; the default, evaluated only
-  // when the key is missing, goes with what only it reads
-  it('drops the default of a sibling kept while kept code reads the rest element', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        import { secret } from './db'
-        const { picked = secret(), ...others } = source
-        export const o = others
-        export const fn = wrapServer(() => picked)
-      `),
-    ).toBe(
-      dedent(`
-        const { picked, ...others } = source
-        export const o = others
-        export const fn = tsrStub()
-      `),
-    )
-  })
-
-  it('leaves a hole for an array element, also the last one', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        const [first, kept, last] = source
-        export const k = kept
-        export const fn = wrapServer(() => [first, last])
-      `),
-    ).toBe(
-      dedent(`
-        const [, kept, ,] = source
-        export const k = kept
-        export const fn = tsrStub()
-      `),
-    )
-  })
-
   it('keeps an array rest element (it exhausts the iterator)', async () => {
     expect(
       await client(`
@@ -102,71 +37,13 @@ describe('destructured bindings only erased code read', () => {
       `),
     )
   })
-
-  it('keeps an exported binding (importers of the module read it)', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        export const { picked, kept } = source
-        export const fn = wrapServer(() => picked)
-      `),
-    ).toBe(
-      dedent(`
-        export const { picked, kept } = source
-        export const fn = tsrStub()
-      `),
-    )
-  })
-
-  // The initialiser stays as written: the elements keep their order and
-  // effects, so `kept` gets the value the source gives it.
-  it('leaves the array literal an array pattern with a removed element destructures', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        const [picked, kept] = [next(), next()]
-        export const k = kept
-        export const fn = wrapServer(() => picked)
-      `),
-    ).toBe(
-      dedent(`
-        const [, kept] = [next(), next()]
-        export const k = kept
-        export const fn = tsrStub()
-      `),
-    )
-  })
-
-  it('leaves the object literal an object pattern with a removed property destructures', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        const { picked, kept } = { picked: next(), kept: next() }
-        export const k = kept
-        export const fn = wrapServer(() => picked)
-      `),
-    ).toBe(
-      dedent(`
-        const { kept } = { picked: next(), kept: next() }
-        export const k = kept
-        export const fn = tsrStub()
-      `),
-    )
-  })
 })
 
 describe('parameter patterns only erased code read', () => {
   // Source: real app tanstack.com (`({ onNavigate, tabIndex, }: Props)` with
   // `<ClientOnly>` children on the server): a pattern losing every property
   // keeps its braces and its type annotation, trailing comma and all.
-  it.each([
-    ['a trailing comma', '{ a, b, }: Props', '{ }: Props'],
-    ['no trailing comma', '{ a, b }: Props', '{ }: Props'],
-    ['defaults', "{ a = 'x', b = 'y', }: Props", '{ }: Props'],
-    ['a rest element alone', '{ ...a }: Props', '{ }: Props'],
-    ['a nested pattern', '{ p: { a, b, }, }: Props', '{ p: { }, }: Props'],
-    ['an array pattern', '[a, b,]: Props', '[, ,]: Props'],
-  ])(
+  it.each([['defaults', "{ a = 'x', b = 'y', }: Props", '{ }: Props']])(
     'empties a pattern with %s, keeping its annotation',
     async (_, pattern, after) => {
       const names = pattern.includes('...') ? 'a' : 'a, b'
@@ -180,124 +57,6 @@ describe('parameter patterns only erased code read', () => {
       ).toBe(`export function f(${after}) {\n  return tsrStub()\n}\n`)
     },
   )
-
-  it('removes a run up to the next kept property, or from the previous one', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        export function f({ a, b, c, }: Props, { d, e, f: g }: Props) {
-          return [a, wrapServer(() => [b, c, d, e]), g]
-        }
-      `),
-    ).toBe(
-      'export function f({ a, }: Props, { f: g }: Props) {\n  return [a, tsrStub(), g]\n}\n',
-    )
-  })
-})
-
-describe('function-local declarators only erased code read', () => {
-  it('removes a pattern whose every binding is orphaned, with the import it read', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        import { secret } from './db'
-        export function f() {
-          const { a, b: [c], ...d } = secret
-          return wrapServer(() => [a, c, d])
-        }
-      `),
-    ).toBe(
-      // the removed statement's indentation stays (whitespace is free)
-      'export function f() {\n    return tsrStub()\n}\n',
-    )
-  })
-
-  // As main's dead-code elimination: what the initialiser does is not
-  // asked (a same-module helper's call, a global's method, a literal
-  // holding calls), and the helper it alone read goes too.
-  it('removes an impure initialiser with its declarator', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        function connect() {
-          return open()
-        }
-        export function f() {
-          before()
-          const a = { x: g() }
-          const b = function () { return g() }()
-          const c = connect()
-          const d = process.env.KEY.trim()
-          return wrapServer(() => [a, b, c, d])
-        }
-      `),
-    ).toBe(
-      // the removed statements' indentation stays (whitespace is free)
-      'export function f() {\n  before()\n          return tsrStub()\n}\n',
-    )
-  })
-})
-
-describe('function-level call initialisers', () => {
-  // A call leaves with the declarator, and the import only it read with it
-  // (J4.12).
-  it('drops a server call whose imports only it reads, with the import', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        import { connect } from './db'
-        export function f() {
-          const conn = connect()
-          return wrapServer(() => conn)
-        }
-      `),
-    ).toBe('export function f() {\n    return tsrStub()\n}\n')
-  })
-
-  // one removal rule at every level (R153, R170): "the source used it"
-  // counts a use in a type in the erased text, as placement does for the
-  // module-level declaration beside it
-  it('drops a declaration erased code names only in a type, with the import, as at module level', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        import { connect } from './db'
-        const top = connect()
-        export function f() {
-          const conn = connect()
-          return wrapServer(() => {
-            const c: typeof conn | typeof top | null = null
-            return c
-          })
-        }
-      `),
-    ).toBe('export function f() {\n    return tsrStub()\n}\n')
-  })
-
-  // a use in a type in kept code is no use the erasure removed: the
-  // declaration was already unused and stays
-  it('keeps a declaration only kept code names in a type', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        import { connect } from './db'
-        export function f() {
-          const conn = connect()
-          const kept: typeof conn | null = null
-          return [kept, wrapServer(() => 1)]
-        }
-      `),
-    ).toBe(
-      dedent(`
-        import { connect } from './db'
-        export function f() {
-          const conn = connect()
-          const kept: typeof conn | null = null
-          return [kept, tsrStub()]
-        }
-      `),
-    )
-  })
 })
 
 describe('function-local declarations only erased code read', () => {
@@ -348,22 +107,6 @@ describe('function-local declarations only erased code read', () => {
     )
   })
 
-  it('drops a statement whose every declarator is orphaned, with its line', async () => {
-    expect(
-      await client(`
-        import { wrapServer } from 'toy-start'
-        export function Comp() {
-          const a = 1, b = 2
-          const fn = wrapServer(() => [a, b])
-          return fn
-        }
-      `),
-    ).toBe(
-      // the removed statement's indentation stays (whitespace is free)
-      'export function Comp() {\n    const fn = tsrStub()\n  return fn\n}\n',
-    )
-  })
-
   it('keeps the last declarator of a loop head so the syntax stays', async () => {
     expect(
       await client(`
@@ -385,32 +128,5 @@ describe('function-local declarations only erased code read', () => {
         }
       `),
     )
-  })
-})
-
-describe('an annotation next to a removed local declaration', () => {
-  it('stays with the call on its line', async () => {
-    const out = await client(`
-      import { wrapServer } from 'toy-start'
-      export function f() {
-        const local = 1; /* @__PURE__ */ mk()
-        return wrapServer(() => local)
-      }
-    `)
-    expect(out).not.toContain('local')
-    expect(out).toContain('/* @__PURE__ */ mk()')
-  })
-
-  it('stays with the call on the next line when it ends its line', async () => {
-    const out = await client(`
-      import { wrapServer } from 'toy-start'
-      export function f() {
-        const local = 1; /* @__PURE__ */
-        mk()
-        return wrapServer(() => local)
-      }
-    `)
-    expect(out).not.toContain('local')
-    expect(out).toMatch(/\/\* @__PURE__ \*\/\s*mk\(\)/)
   })
 })
