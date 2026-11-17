@@ -360,7 +360,8 @@ text compiles waits for it and emits its own output from the result.
   those of a dev server's start); the same version bump drops the memo, and `releaseEnvironment` releases it with the
   plans.
 - Not cached: emitted outputs (emission from a frozen recipe costs microseconds).
-- Invariants: no Yuku object is reachable from any cache (`tests/heap.test.ts`); every cache is bounded by the live
+- Invariants: no Yuku object is reachable from any cache (measured by `benchmarks/compiler-perf`'s `memory` and `leak`
+  scenarios); every cache is bounded by the live
   module set; derived outputs are pure functions of (env, source, config, summaries).
 
 ## Hosts
@@ -453,7 +454,8 @@ nothing per compile.
   answered from the route registry's `routerConstructor`), or `all`. Output must be identical with any combination; only speed
   changes. Use it on a report of stale or wrong output after an edit (HMR serving old code, a split that ignores a
   changed dependency, a dev/build mismatch): if `all` fixes it, an invalidation is missing; bisect with the single
-  names to find the cache, then reproduce in `tests/cache.test.ts` or `tests/pipeline.test.ts`.
+  names to find the cache, then reproduce it as a dev-server test of the consumer's oracle (an edit and what the page
+  or the next request shows).
 - `TSR_COMPILER_VERIFY=1`: after every compile, each emitted output is re-parsed and checked against the plan
   (`verify.ts`), independently of what placement believes: every output parses; no output assigns a binding it
   imports (a); a same-file import names a runtime export of its home (b); every surviving top-level statement is
