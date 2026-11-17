@@ -113,7 +113,7 @@ interface EmittedMapsCompilationLike {
   updateAsset: (
     name: string,
     source: never,
-    info: (info: { version?: string }) => { version?: string },
+    info?: (info: { version?: string }) => { version?: string },
   ) => void
 }
 
@@ -176,11 +176,14 @@ export function emittedMapTexts(
   }
   /**
    * The last compilation's fill of each map: its chunk's hash, the texts it
-   * got by file, the filled source (null: none) and the suffix of its asset
-   * version. Rspack writes an asset again only when its version changed,
-   * and a map has its chunk's: a new fill of a map whose chunk is
-   * unchanged (a text changed but no code of the chunk) takes a version of
-   * its own, which a reused fill keeps.
+   * got by file, the filled source (null: none) and the asset version it
+   * sets (null: its chunk's). Rspack writes an asset again only when its
+   * version changed, and a map has its chunk's: a new fill of a map whose
+   * chunk is unchanged (a text changed but no code of the chunk) takes a
+   * version of its own, which a reused fill keeps. Only those set one: an
+   * asset whose info is updated makes Rspack's emit of the compilation
+   * slower (20-50 ms on a medium app when the entry chunk's map is among
+   * them, Rspack 2.3.1), and a new chunk hash is a new version already.
    */
   let fills = new Map<
     string,
@@ -188,7 +191,7 @@ export function emittedMapTexts(
       chunkHash: string | undefined
       used: Map<string, string>
       filled: unknown
-      version: string
+      version: string | null
     }
   >()
   let fillCount = 0
@@ -238,16 +241,23 @@ export function emittedMapTexts(
                 files.length > 0
                   ? new sources.RawSource(Buffer.from(JSON.stringify(map)))
                   : null,
-              version: `~tsr${++fillCount}`,
+              version:
+                chunkHash !== undefined && fill?.chunkHash === chunkHash
+                  ? `~tsr${++fillCount}`
+                  : null,
             }
           }
           next.set(name, fill)
           if (fill.filled) {
             const { version } = fill
-            compilation.updateAsset(name, fill.filled as never, (info) => ({
-              ...info,
-              version: `${info.version ?? ''}${version}`,
-            }))
+            if (version === null) {
+              compilation.updateAsset(name, fill.filled as never)
+            } else {
+              compilation.updateAsset(name, fill.filled as never, (info) => ({
+                ...info,
+                version,
+              }))
+            }
           }
         }
         fills = next
