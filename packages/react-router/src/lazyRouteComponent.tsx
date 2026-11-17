@@ -22,6 +22,8 @@ export function lazyRouteComponent<
 ): T[TKey] extends (props: infer TProps) => any
   ? AsyncRouteComponent<TProps>
   : never {
+  // We'd prefer `React.ReactPromise<void>`, but `@types/react` 18 doesn't
+  // define it and React 18 is still in our peer range.
   let loadPromise: (Promise<void> & { status?: 'fulfilled' }) | undefined
   let comp: T[TKey] | T['default']
   let error: any
