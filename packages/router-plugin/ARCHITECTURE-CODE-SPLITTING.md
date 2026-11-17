@@ -65,8 +65,10 @@ const|let|var`, `export default function`, `export default <name>`; main's `hasE
   `compileCodeSplitVirtualRoute`: a member access, `satisfies`, `!`, a class, a namespace member, a global, an array
   pattern, a sequence, an object other than an object-form loader (below), a call holding JSX or TypeScript
   syntax). A function with overload signatures is one
-  function. An option whose chunk would assign a binding it imports stays too (`assignsWhatItImports`:
-  a core fallback, the core re-plans with it kept in place).
+  function. An option whose chunk would assign a binding it imports stays too, and so does one whose chunk
+  would assign its copy of a binding another chunk copies (two variables otherwise; `main` fails the build there,
+  or has the two variables when the option only assigns it) (`assignsWhatItImports`: a core fallback, the core re-plans with it kept in
+  place).
 - A `loader` written as an object literal (`loader: { handler, staleReloadMode }`, parentheses and TypeScript
   wrappers around it allowed; #8753, R171) splits its `handler` in its place (`objectLoaderOf`, `loaderHandlerOf`):
   the object's last `handler`, a plain property, a shorthand or a method, when no spread or computed key of unknown

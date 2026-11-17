@@ -170,9 +170,13 @@ set(cfg)`): it runs at load, as in the source; a declaration that is exactly a f
 - **a fixed home says where, not whether**: the owner of a claim whose output no longer keeps the claim (`hasClaim`:
   an erasure removed its occurrence, e.g. a boundary in a route option the router deletes on the client) is unused,
   whatever home its planner gave it: no root, no home (the removal rule).
-- **one fallback, on the outcome**: a derived output that would assign a binding homed in another module of the file
-  does not take the root bringing that code (`Placement.fallbacks`, `shared-writer`), and its planner keeps the root in
-  place (the router planner's `assignsWhatItImports`, start-env's handler, Hydrate's `hydrate-module-write`).
+- **one fallback, on the outcome**: a derived output that would assign a binding homed in another module of the file,
+  or its copy of a binding another derived output holds without the assigning code (two split chunks copying a `let`
+  one of them assigns; for a `<Hydrate>` chunk also the env module's), does not take the root bringing that code
+  (`Placement.fallbacks`, `shared-writer`), and its planner keeps the root in place (the router planner's
+  `assignsWhatItImports`, start-env's handler, Hydrate's `hydrate-module-write`). An output holding the assigning code
+  too (a helper both call) writes its own copy. A split chunk's copy of what the env module keeps is `main`'s copy
+  (it imports what `main` shares), so the env module's copy alone does not make a split chunk fall back.
 
 A chunk's copies are main's: state is one instance where main has one, and a statement runs again in a chunk only
 where main's chunk runs it again (never a declaration already unused: better than main).
