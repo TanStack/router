@@ -90,12 +90,12 @@ const at = (source: string, needle: string) => {
   return `${line}:${column}`
 }
 
-// J2.11: a second factory call in the route file is reported at that call
-const severalCalls = `import { createFileRoute } from '@tanstack/react-router'
-export const Other = createFileRoute('/')({})
-export const Route = createFileRoute('/')({ component: () => 'MARK_PAGE' })
+// Route options the compiler cannot read: a warning at the options call
+const opaqueOptions = `import { createFileRoute } from '@tanstack/react-router'
+const makeOptions = () => ({ component: () => 'MARK_PAGE' })
+export const Route = createFileRoute('/')(makeOptions())
 `
-const severalCallsAt = at(severalCalls, "createFileRoute('/')({})")
+const opaqueOptionsAt = at(opaqueOptions, "createFileRoute('/')(makeOptions())")
 
 // Groupings the router cannot honour: the compile fails at their value
 const invalidGroupings = `import { createFileRoute } from '@tanstack/react-router'
@@ -114,12 +114,12 @@ describe.each(['webpack', 'rspack'] as const)('%s build', (bundler) => {
       await build({
         bundler,
         env: 'client',
-        files: routeApp(severalCalls, { env: 'client' }),
+        files: routeApp(opaqueOptions, { env: 'client' }),
         routerPlugins: (config) => [routers[bundler](config), plugin],
       })
       const located = locationsOf(seen, 'warning')
       expect(located).not.toEqual([])
-      expect(located).toEqual(located.map(() => severalCallsAt))
+      expect(located).toEqual(located.map(() => opaqueOptionsAt))
     },
     timeout,
   )
@@ -190,10 +190,10 @@ describe('rsbuild dev server', () => {
         })
         await server.settle()
       }
-      await serve(severalCalls)
+      await serve(opaqueOptions)
       const warnings = locationsOf(seen, 'warning')
       expect(warnings).not.toEqual([])
-      expect(warnings).toEqual(warnings.map(() => severalCallsAt))
+      expect(warnings).toEqual(warnings.map(() => opaqueOptionsAt))
       seen.length = 0
       await serve(invalidGroupings)
       const errors = locationsOf(seen, 'error')

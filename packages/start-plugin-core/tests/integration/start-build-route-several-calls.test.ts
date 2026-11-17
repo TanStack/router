@@ -1,8 +1,8 @@
 /**
  * Two calls of the router's `createFileRoute` in one Start route file (SPEC
- * J2.11, R172): only the call bound to `Route` has `server`, `ssr` and
- * `headers` removed from the client, so another call holding one fails the
- * client build at that call. One without them builds and warns.
+ * J2.11, R172): not supported, so the client build fails at the call not
+ * bound to `Route`, whatever its options hold (only the route's own call has
+ * `server`, `ssr` and `headers` removed).
  */
 import { describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
@@ -40,9 +40,10 @@ describe.each(startBundlers)('%s build', (bundler) => {
       option: `ssr: () => { console.log('MARK_SERVER_SECRET'); return true }`,
     },
     { key: 'headers', option: `headers: () => ({ a: 'MARK_SERVER_SECRET' })` },
+    { key: 'staticData', option: `staticData: { a: 1 }` },
   ])(
     'a second call holding `$key` fails the client build at that call',
-    async ({ key, option }) => {
+    async ({ option }) => {
       const error: unknown = await build(
         bundler,
         `const extra = createFileRoute('/x')({ ${option} })
@@ -64,7 +65,7 @@ export const Route = createFileRoute('/x')({ component: () => <p>{String(!!extra
         root: error.root,
         position: { line: 2 },
       })
-      expect(reported.text).toContain(`\`${key}\``)
+      expect(reported.text).toContain('not supported')
       expect(reported.text).toContain('one `createFileRoute` call')
     },
     timeout,
@@ -83,26 +84,6 @@ export const Route = createFileRoute('/x')({ component: () => <p>{String(!!extra
       )
       expect(result.client.where('MARK_SERVER_SECRET')).toBe('nowhere')
       expect(result.client.where('MARK_PAGE')).not.toBe('nowhere')
-    },
-    timeout,
-  )
-
-  test(
-    'a second call without server options builds and warns at that call',
-    async () => {
-      const result = await build(
-        bundler,
-        `const extra = createFileRoute('/x')({ staticData: { a: 1 } })
-export const Route = createFileRoute('/x')({ component: () => <p>{String(!!extra)}</p> })
-`,
-      )
-      const reported = expectDiagnostic(result.diagnostics, {
-        severity: 'warning',
-        file: 'src/routes/x.tsx',
-        root: result.root,
-        position: { line: 2 },
-      })
-      expect(reported.text).toContain('more than once')
     },
     timeout,
   )

@@ -315,32 +315,18 @@ export function recognizeRoute(
   const calls = factoryRefs.filter(
     (r) => r.ctx === 'callee' && r.kind === 'value',
   )
-  // R172: another call holding an option `deleteNodes` removes fails
-  const others = calls.filter((c) => c.range.start !== call.callee.start)
+  // R172: one route call per file; another one is an error at that call
   const curried = call.callee !== unwrapExpression(outer.callee as Node)
-  let carried = false
-  for (const other of others) {
-    const held = deletedOptionsOf(ctx, other.range.start, curried)
-    if (held) {
-      carried = true
-      const keys = `\`${held.keys.join('`, `')}\``
+  for (const other of calls) {
+    if (other.range.start !== call.callee.start) {
       warnings.push({
         severity: 'error',
-        message: `[tanstack-router] ${fileName} calls ${call.constructor} more than once, which is not supported, and this call holds ${keys}: only the call bound to its \`Route\` export has ${held.keys.length === 1 ? 'it' : 'them'} removed from the client code. Write one \`${call.constructor}\` call per file, with everything on the route bound to \`Route\` (\`export const Route = ${call.constructor}(${curried ? `'/path')(` : ''}{ … })\`), and remove this call.`,
-        range: { start: held.call.start, end: held.call.end },
+        message: `[tanstack-router] ${fileName} calls ${call.constructor} more than once, which is not supported. Write one \`${call.constructor}\` call per file, bound to its \`Route\` export (\`export const Route = ${call.constructor}(${curried ? `'/path')(` : ''}{ … })\`), with everything this call holds on that route, and remove this call.`,
+        range: other.range,
         by: ROUTER_PLANNER,
-        code: 'route-several-calls-server',
+        code: 'route-several-calls',
       })
     }
-  }
-  if (others.length > 0 && !carried) {
-    warnings.push({
-      severity: 'warning',
-      message: `[tanstack-router] ${fileName} calls ${call.constructor} more than once; only the call bound to its \`Route\` export is code-split and hot-updated.`,
-      range: others[0]!.range,
-      by: ROUTER_PLANNER,
-      code: 'route-several-calls',
-    })
   }
   const argument = outer.arguments[0]
   let options: OptionsResolution
@@ -422,41 +408,6 @@ export function recognizeRoute(
     warnings,
     routeId: entry.routeId,
   }
-}
-
-/**
- * The options `deleteNodes` removes that a call of the route constructor
- * holds, written in its options object (`boundValueOf`): `calleeStart` is
- * where the constructor is called, `curried` whether it returns the call
- * taking the options (`createFileRoute(path)(options)`).
- */
-function deletedOptionsOf(
-  ctx: PlanContext<typeof ROUTER_PLANNER>,
-  calleeStart: number,
-  curried: boolean,
-): { call: Node; keys: Array<string> } | null {
-  const file = ctx.analysis.file
-  const first = file.parentOf(file.nodeAt(calleeStart)!)
-  const call = first && curried ? file.parentOf(first) : first
-  if (
-    call?.type !== 'CallExpression' ||
-    (curried && call.callee !== first) ||
-    !call.arguments[0]
-  ) {
-    return null
-  }
-  const options = boundValueOf(ctx, call.arguments[0]).node
-  if (options.type !== 'ObjectExpression') {
-    return null
-  }
-  const keys: Array<string> = []
-  for (const prop of options.properties as Array<Node>) {
-    const key = prop.type === 'Property' ? propertyKeyName(prop) : null
-    if (key !== null && ctx.config.deleteNodes.includes(key)) {
-      keys.push(key)
-    }
-  }
-  return keys.length > 0 ? { call, keys } : null
 }
 
 /**
