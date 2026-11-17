@@ -11,8 +11,8 @@
  */
 import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { compilerStats } from '@tanstack/router-utils/compiler'
-import { createStartHost } from '../start-host'
-import type { StartHost } from '../start-host'
+import { createStartHost } from '../../start-host'
+import type { StartHost } from '../../start-host'
 
 const timeout = 60_000
 

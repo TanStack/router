@@ -18,9 +18,9 @@ import {
   recordParsedModules,
   recordViteModules,
 } from '@tanstack/compiler-test-utils/build-harness'
-import { buildStart, startBundlers } from '../build-harness'
+import { buildStart, startBundlers } from '../../build-harness'
 import type { ParsedModules } from '@tanstack/compiler-test-utils/build-harness'
-import type { StartBundler } from '../build-harness'
+import type { StartBundler } from '../../build-harness'
 import type { RsbuildPlugin, Rspack } from '@rsbuild/core'
 import type { Plugin } from 'vite'
 
