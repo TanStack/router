@@ -302,9 +302,9 @@ export const Route = createFileRoute('/')({ loader: () => 'data ${version}' })
 // app's own helper and back (R130: a route the app's helper makes is not
 // split and is reported nothing): the page shows each version, with no
 // error and nothing reported.
-// Bug (Rsbuild, found 2026-11-17, main not compared): the edit to the app's
-// helper is applied without showing, silently; a reload shows it, and the
-// edit back to the router's constructor shows in place. Pinned.
+// Bug (Rsbuild, as on main): the edit to the app's helper is applied
+// without showing, silently; a reload shows it, and the edit back to the
+// router's constructor shows in place. Pinned.
 describe.concurrent.each(['vite', 'rsbuild'] as const)(
   '%s: a route file switching between the router constructor and an app helper',
   (bundler) => {
