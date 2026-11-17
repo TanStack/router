@@ -206,6 +206,13 @@ export function planHmrBlock(
   // a lazy route file's `Route` holds the options the route loads with its
   // chunk: the runtime applies them to the route of its id
   const metaParts: Array<string> = route.kind === 'lazy' ? ['lazy: true'] : []
+  if (
+    cfg.framework === 'react' &&
+    route.kind !== 'lazy' &&
+    holdsNoComponent(round)
+  ) {
+    metaParts.push('noComponents: true')
+  }
   const hot = vite ? 'import.meta.hot' : 'import.meta.webpackHot'
   // the dev-only runtime lives on its own subpath: production never loads it
   const hmrSpecifier = `${route.routerPackage}/hmr`
@@ -296,6 +303,42 @@ export function planHmrBlock(
     chunkHmr(ctx, round, groups)
     keptReaderHmr(ctx, round, route.routeId)
   }
+}
+
+/**
+ * Whether the route module's output holds none of the route's component
+ * options: each one the options object has is split (its value is a lazy
+ * wrapper the route keeps across updates), deleted, or a literal that is no
+ * component. Options the compiler cannot read (a spread, a computed key, an
+ * accessor) may hold one. React: an update of such a module is nothing
+ * React Refresh patches, so the runtime applies it without waiting for the
+ * refresh pass (`RouteHmrMeta.noComponents`).
+ */
+function holdsNoComponent(round: RouterRound): boolean {
+  const { route, plan } = round
+  if (route.options.kind !== 'object') {
+    return false
+  }
+  return route.props.every((option) => {
+    if (
+      option.kind === 'spread' ||
+      option.kind === 'computed' ||
+      option.kind === 'accessor' ||
+      option.key === null
+    ) {
+      return false
+    }
+    if (!HMR_COMPONENT_KEYS.includes(option.key)) {
+      return true
+    }
+    return (
+      plan.deleted.includes(option) ||
+      plan.decisions.some((d) => d.property.start === option.prop.start) ||
+      (option.kind !== 'method' &&
+        option.value !== null &&
+        isFallbackLiteral(unwrapExpression(option.value)))
+    )
+  })
 }
 
 /** Per split group (its key): whether it holds a component option, and a non-component one. */

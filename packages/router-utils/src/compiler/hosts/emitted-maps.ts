@@ -110,7 +110,11 @@ interface EmittedMapsCompilationLike {
       ) => void
     }
   }
-  updateAsset: (name: string, source: never) => void
+  updateAsset: (
+    name: string,
+    source: never,
+    info?: (info: { version?: string }) => { version?: string },
+  ) => void
 }
 
 /** Records the text of a compiled file (its absolute path) for the emitted maps. */
@@ -125,13 +129,16 @@ export type RecordMapText = (file: string, text: string) => void
  * of a chunk whose hash and texts did not change since the last compilation
  * (most of them, after an edit) gets its last filled form again without
  * being read (the chunk hashes its modules' maps with their code), a buffer
- * (Rspack copies a string source into its own memory). Otherwise null: the
- * module maps carry the text.
+ * (Rspack copies a string source into its own memory). `fill` false:
+ * nothing reads the map files' text (Start's server environment in Rsbuild
+ * dev, kept in memory), so they are left without it, as under
+ * `nosources-*`. Otherwise null: the module maps carry the text.
  */
 export function emittedMapTexts(
   compiler: EmittedMapsCompilerLike,
   mode: 'dev' | 'build',
   compiles: (file: string, text: string) => boolean,
+  fill = true,
 ): RecordMapText | null {
   const devtool = compiler.options.devtool
   if (
@@ -142,7 +149,7 @@ export function emittedMapTexts(
   ) {
     return null
   }
-  if (devtool.includes('nosources')) {
+  if (!fill || devtool.includes('nosources')) {
     return () => {}
   }
   /** By normalized path; null: not a file the host compiles. A deleted file's goes. */
@@ -167,15 +174,27 @@ export function emittedMapTexts(
     }
     return text ?? undefined
   }
-  /** The last compilation's fill of each map: its chunk's hash, the texts it got by file, the filled source (null: none). */
+  /**
+   * The last compilation's fill of each map: its chunk's hash, the texts it
+   * got by file, the filled source (null: none) and the asset version it
+   * sets (null: its chunk's). Rspack writes an asset again only when its
+   * version changed, and a map has its chunk's: a new fill of a map whose
+   * chunk is unchanged (a text changed but no code of the chunk) takes a
+   * version of its own, which a reused fill keeps. Only those set one: an
+   * asset whose info is updated makes Rspack's emit of the compilation
+   * slower (20-50 ms on a medium app when the entry chunk's map is among
+   * them, Rspack 2.3.1), and a new chunk hash is a new version already.
+   */
   let fills = new Map<
     string,
     {
       chunkHash: string | undefined
       used: Map<string, string>
       filled: unknown
+      version: string | null
     }
   >()
+  let fillCount = 0
   const { Compilation, sources } = compiler.webpack
   compiler.hooks.thisCompilation.tap('tanstack:emitted-maps', (compilation) => {
     compilation.hooks.processAssets.tap(
@@ -222,11 +241,23 @@ export function emittedMapTexts(
                 files.length > 0
                   ? new sources.RawSource(Buffer.from(JSON.stringify(map)))
                   : null,
+              version:
+                chunkHash !== undefined && fill?.chunkHash === chunkHash
+                  ? `~tsr${++fillCount}`
+                  : null,
             }
           }
           next.set(name, fill)
           if (fill.filled) {
-            compilation.updateAsset(name, fill.filled as never)
+            const { version } = fill
+            if (version === null) {
+              compilation.updateAsset(name, fill.filled as never)
+            } else {
+              compilation.updateAsset(name, fill.filled as never, (info) => ({
+                ...info,
+                version,
+              }))
+            }
           }
         }
         fills = next

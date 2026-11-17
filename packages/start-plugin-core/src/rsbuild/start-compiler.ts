@@ -207,6 +207,9 @@ export function registerStartCompiler(
           environment.type === 'client' ? generator.clientRouteTree : undefined,
         onServerFnsReplayed: opts.onServerFnsChange,
         onDevCompileDone: dev ? api.onDevCompileDone : undefined,
+        fillMapTexts:
+          environment.type === 'client' ||
+          utils.environment.config.dev.writeToDisk !== false,
       }),
     )
   })

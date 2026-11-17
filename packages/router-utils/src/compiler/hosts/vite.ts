@@ -393,11 +393,17 @@ export async function loadDerivedSource(
  * is transformed first, so its plan is current (Vite invalidated it before
  * the hooks ran); without a plan (the file does not parse, or is not the
  * compiler's), a derived module without importers is stale.
- * `undefined` when every module is live, or when no derived module was
- * analysed: one that nothing requested (the route's import analysis created
- * it, `isSelfAccepting` unset) stops Vite's propagation whether kept or
- * dropped, so the file is not transformed for it (a route not on the page,
- * a checkout rewriting many).
+ * `undefined` when every module is live, or when no derived module could
+ * change what Vite sends, so the file is not transformed for it: one that
+ * nothing requested (the route's import analysis created it,
+ * `isSelfAccepting` unset) stops Vite's propagation whether kept or dropped
+ * (a route not on the page, a checkout rewriting many), and one that
+ * accepts no update itself and is imported only by modules of this update
+ * propagates to boundaries and dead ends those modules reach themselves
+ * (the split chunks of a server environment, which has no refresh
+ * runtime). The ones that can: a module accepting its own updates (a
+ * refresh boundary, Start's server-function provider), and one imported by
+ * nothing (a dead end) or by a module of another file.
  */
 export async function liveModules<
   T extends {
@@ -417,12 +423,17 @@ export async function liveModules<
 ): Promise<Array<T> | undefined> {
   const identities = modules.map((m) => (m.id === null ? null : identify(m.id)))
   if (
-    !identities.some(
-      (identity, i) =>
+    !identities.some((identity, i) => {
+      const m = modules[i]!
+      return (
         identity !== null &&
         identity.derived !== null &&
-        modules[i]!.isSelfAccepting !== undefined,
-    )
+        m.isSelfAccepting !== undefined &&
+        (m.isSelfAccepting ||
+          m.importers.size === 0 ||
+          [...m.importers].some((importer) => !modules.includes(importer as T)))
+      )
+    })
   ) {
     return undefined
   }

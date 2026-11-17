@@ -73,6 +73,15 @@ interface StartHostPluginOptions {
    * Rsbuild printed (`handOverWarnings`).
    */
   onDevCompileDone?: RsbuildPluginAPI['onDevCompileDone']
+  /**
+   * Development: whether the map files this environment emits get the text
+   * of the files they name (`emittedMapTexts`): something reads them. A
+   * server environment's maps are read only from disk (Rsbuild runs its
+   * bundles from memory, and Node never registers their maps, also with
+   * `--enable-source-maps`): only when Rsbuild writes them there
+   * (`dev.writeToDisk`), for a debugger.
+   */
+  fillMapTexts: boolean
 }
 
 const PLUGIN_NAME = 'tanstack-start:compiler'
@@ -322,6 +331,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         compiler,
         session.start.opts.mode,
         session.start.compiles,
+        opts.fillMapTexts,
       )
 
       let currentCompilation: Rspack.Compilation | null = null
