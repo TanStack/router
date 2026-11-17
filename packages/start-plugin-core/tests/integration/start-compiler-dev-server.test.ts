@@ -306,21 +306,29 @@ export const greet = createServerFn().handler(() => 'after')
 
   // A server fn an edit removes leaves the registry with the edit: its id
   // is no longer one the server knows (the request fails as for any
-  // unknown id), whether its file still defines other server fns or none.
+  // unknown id), whether its file still defines other server fns or none,
+  // and whether it was called before the edit (its id's lookup was loaded).
   // Source: review of the Yuku rewrite (the Vite registry kept the ids a
-  // compile no longer reported); Rsbuild: server-functions e2e "rsbuild
-  // watch updates and removes server function metadata".
-  test.each([
-    {
-      remains: 'another server fn',
-      edited: `import { createServerFn } from '@tanstack/react-start'
+  // compile no longer reported); verify-behaviour-changes.md §2.2 (a call
+  // before the edit: the request failed with a TypeError, as on main);
+  // Rsbuild: server-functions e2e "rsbuild watch updates and removes server
+  // function metadata".
+  test.each(
+    [
+      {
+        remains: 'another server fn',
+        edited: `import { createServerFn } from '@tanstack/react-start'
 export const kept = createServerFn().handler(() => 'MARK_KEPT')
 `,
-    },
-    { remains: 'no server fn', edited: `export const kept = 'MARK_KEPT'\n` },
-  ])(
-    'SSR: a server fn an edit removes is an unknown id (the file defines $remains)',
-    async ({ edited }) => {
+      },
+      { remains: 'no server fn', edited: `export const kept = 'MARK_KEPT'\n` },
+    ].flatMap((row) => [
+      { ...row, called: 'not called' },
+      { ...row, called: 'called' },
+    ]),
+  )(
+    'SSR: a server fn an edit removes is an unknown id (the file defines $remains, the fn $called before the edit)',
+    async ({ edited, called }) => {
       const server = await startDevServer({
         start: {},
         files: {
@@ -333,6 +341,9 @@ export const removed = createServerFn().handler(() => 'MARK_REMOVED')
       })
       const { kept, removed } = await server.import('/src/fns.ts')
       expect(await callServerFn(server, kept)).toBe('MARK_KEPT')
+      if (called === 'called') {
+        expect(await callServerFn(server, removed)).toBe('MARK_REMOVED')
+      }
 
       await server.edit({ 'src/fns.ts': edited })
 
