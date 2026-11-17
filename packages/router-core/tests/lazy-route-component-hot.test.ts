@@ -102,7 +102,7 @@ describe('lazyRouteComponentHot', () => {
     expect(state.pending).toBeUndefined()
   })
 
-  test('a kept import after a failed one clears the failure and re-renders', async () => {
+  test('a kept import after a failed one keeps the component and re-renders', async () => {
     const held = v('v1')
     const { state, hot } = wrapper(held)
     hot.update(() => Promise.reject(new Error('boom')), 'component', swap)
@@ -111,7 +111,7 @@ describe('lazyRouteComponentHot', () => {
       keep: () => true,
     })
     await state.pending
-    expect(state).toMatchObject({ comp: held, error: undefined, renders: 2 })
+    expect(state).toMatchObject({ comp: held, error: undefined, renders: 1 })
   })
 
   test('a load in flight is replaced by the hot import, which settles it', async () => {
@@ -151,7 +151,7 @@ describe('lazyRouteComponentHot', () => {
     }
   })
 
-  test('a failed import holds its error, keeps the component, and re-renders; the next import clears it', async () => {
+  test('a failed import leaves a wrapper holding a component as it is; the next import swaps', async () => {
     const held = v('v1')
     const { state, hot } = wrapper(held)
     const failure = new Error('syntax error')
@@ -159,8 +159,8 @@ describe('lazyRouteComponentHot', () => {
     expect(await state.pending).toBeUndefined()
     expect(state).toMatchObject({
       comp: held,
-      error: failure,
-      renders: 1,
+      error: undefined,
+      renders: 0,
       pending: undefined,
     })
 
@@ -176,7 +176,15 @@ describe('lazyRouteComponentHot', () => {
     expect(state).toMatchObject({ comp: v('v2'), error: undefined })
   })
 
-  test('a failure of the newest import wins over a stale success, whichever settles first', async () => {
+  test('a failed wrapper whose re-import fails holds the new failure', async () => {
+    const { state, hot } = wrapper(undefined, new Error('offline'))
+    const failure = new Error('syntax error')
+    hot.update(() => Promise.reject(failure), 'component', swap)
+    await state.pending
+    expect(state).toMatchObject({ comp: undefined, error: failure, renders: 1 })
+  })
+
+  test('a failure of the newest import wins over a stale success, whichever settles first: the held component stays', async () => {
     for (const staleFirst of [true, false]) {
       const held = v('v1')
       const { state, hot } = wrapper(held)
@@ -196,7 +204,7 @@ describe('lazyRouteComponentHot', () => {
       }
       await newest
       await stale
-      expect(state).toMatchObject({ comp: held, error: failure, renders: 1 })
+      expect(state).toMatchObject({ comp: held, error: undefined, renders: 0 })
     }
   })
 

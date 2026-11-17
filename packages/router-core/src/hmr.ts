@@ -100,7 +100,8 @@ export interface LazyRouteComponentPort {
  * has loaded (or is loading), then, once the adapter's refresh settled
  * (`settled`), keeps the held component if `keep(loaded, held)` says so (the
  * framework's refresh runtime patches it in place) or swaps to the loaded
- * one, and re-renders the wrapper either way (a failure it held is over). A
+ * one, and re-renders the wrapper either way (a failure it held is over); a
+ * failed import leaves a wrapper holding a component as it is. A
  * module its chunk handed over (`applyRouteChunkHmr`) evaluated again on its
  * own: its framework's refresh patched it as it patches a route module, so
  * `keepPatched` decides instead.
@@ -161,7 +162,14 @@ export function lazyRouteComponentHot<TExtra extends object>(
           return port.pending()
         }
         port.setPending(undefined)
-        port.settle(port.held(), err)
+        // A component the wrapper holds keeps rendering, as on main: the
+        // bundler's HMR client reports the chunk's failure, and the edit
+        // that fixes it patches the component in place. A wrapper holding
+        // none (its first load failed) holds the new failure.
+        const held = port.held()
+        if (held == null) {
+          port.settle(held, err)
+        }
         return undefined
       },
     )

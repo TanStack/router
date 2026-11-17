@@ -25,6 +25,10 @@ export function devResolverModule(): string {
 export async function getServerFnById(id, access) {
   const lookup = ${JSON.stringify(`/@id/__x00__${SERVER_FN_LOOKUP_VIRTUAL_ID}`)} + '?id=' + encodeURIComponent(id) + (access && access.origin === 'client' ? '&origin=client' : '')
   const mod = await import(/* @vite-ignore */ lookup)
+  // a lookup loaded before an edit removed its server fn re-exports nothing
+  if (!mod.action) {
+    throw new Error('Invalid server function ID: ' + id)
+  }
   return mod.action
 }
 `
