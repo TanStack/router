@@ -353,3 +353,44 @@ export const Route = createAppRoute('/')({ component: () => <p>helper ${version}
     )
   },
 )
+
+// The same switch to the app's helper while a route file created broken
+// makes every generation fail (no tree is published): the route is still
+// known not to be the router's, so nothing is reported about it and the
+// page shows the edit.
+describe('vite: a route file switching to an app helper while every generation fails', () => {
+  it(
+    'shows the edit, reporting nothing about the route file',
+    { timeout },
+    async ({ expect, onTestFinished }) => {
+      const helper = `import { createFileRoute } from '@tanstack/react-router'
+export const createAppRoute = (id: any) => (options: any) => createFileRoute(id)(options)
+`
+      const app = await openRouteHmrPage({
+        onTestFinished,
+        files: {
+          'app-route.ts': helper,
+          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: () => <p>router v1</p> })
+`,
+        },
+        ready: 'router v1',
+      })
+      await app.edit(
+        { 'routes/broken.tsx': 'export const Route = (' },
+        'router v1',
+      )
+      await app.edit(
+        {
+          'routes/index.tsx': `import { createAppRoute } from '../app-route'
+export const Route = createAppRoute('/')({ component: () => <p>helper v2</p> })
+`,
+        },
+        'helper v2',
+      )
+      expect(
+        app.warnings().filter(({ text }) => text.includes('routes/index.tsx')),
+      ).toEqual([])
+    },
+  )
+})
