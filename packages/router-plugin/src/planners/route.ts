@@ -311,12 +311,29 @@ export function recognizeRoute(
   const calls = factoryRefs.filter(
     (r) => r.ctx === 'callee' && r.kind === 'value',
   )
-  if (calls.length > 1) {
-    const other = calls.find((c) => c.range.start !== call.callee.start)
+  // R172: another call holding an option `deleteNodes` removes fails
+  const others = calls.filter((c) => c.range.start !== call.callee.start)
+  const curried = call.callee !== unwrapExpression(outer.callee as Node)
+  let carried = false
+  for (const other of others) {
+    const held = deletedOptionsOf(ctx, other.range.start, curried)
+    if (held) {
+      carried = true
+      const keys = `\`${held.keys.join('`, `')}\``
+      warnings.push({
+        severity: 'error',
+        message: `[tanstack-router] ${fileName} calls ${call.constructor} more than once, which is not supported, and this call holds ${keys}: only the call bound to its \`Route\` export has ${held.keys.length === 1 ? 'it' : 'them'} removed from the client code. Write one \`${call.constructor}\` call per file, with everything on the route bound to \`Route\` (\`export const Route = ${call.constructor}(${curried ? `'/path')(` : ''}{ … })\`), and remove this call.`,
+        range: { start: held.call.start, end: held.call.end },
+        by: ROUTER_PLANNER,
+        code: 'route-several-calls-server',
+      })
+    }
+  }
+  if (others.length > 0 && !carried) {
     warnings.push({
       severity: 'warning',
       message: `[tanstack-router] ${fileName} calls ${call.constructor} more than once; only the call bound to its \`Route\` export is code-split and hot-updated.`,
-      range: other?.range,
+      range: others[0]!.range,
       by: ROUTER_PLANNER,
       code: 'route-several-calls',
     })
@@ -401,6 +418,41 @@ export function recognizeRoute(
     warnings,
     routeId: entry.routeId,
   }
+}
+
+/**
+ * The options `deleteNodes` removes that a call of the route constructor
+ * holds, written in its options object (`boundValueOf`): `calleeStart` is
+ * where the constructor is called, `curried` whether it returns the call
+ * taking the options (`createFileRoute(path)(options)`).
+ */
+function deletedOptionsOf(
+  ctx: PlanContext<typeof ROUTER_PLANNER>,
+  calleeStart: number,
+  curried: boolean,
+): { call: Node; keys: Array<string> } | null {
+  const file = ctx.analysis.file
+  const first = file.parentOf(file.nodeAt(calleeStart)!)
+  const call = first && curried ? file.parentOf(first) : first
+  if (
+    call?.type !== 'CallExpression' ||
+    (curried && call.callee !== first) ||
+    !call.arguments[0]
+  ) {
+    return null
+  }
+  const options = boundValueOf(ctx, call.arguments[0]).node
+  if (options.type !== 'ObjectExpression') {
+    return null
+  }
+  const keys: Array<string> = []
+  for (const prop of options.properties as Array<Node>) {
+    const key = prop.type === 'Property' ? propertyKeyName(prop) : null
+    if (key !== null && ctx.config.deleteNodes.includes(key)) {
+      keys.push(key)
+    }
+  }
+  return keys.length > 0 ? { call, keys } : null
 }
 
 /**
