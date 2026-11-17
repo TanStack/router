@@ -88,6 +88,18 @@ export const Route = createFileRoute('/')({ component: ${value} })
     expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
   })
 
+  // (SPEC §2.1: the chunk imports the route file by a specifier holding the `'`)
+  it("splits the component of a route file with a ' in its name and renders it", async () => {
+    const route = await loadRoute(
+      `${head}export const Route = createFileRoute("/what's-new")({ component: () => <p>new</p> })
+`,
+      { filename: "what's-new.tsx", routeId: "/what's-new" },
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(await route.run(`return render('component')`)).toBe('<p>new</p>')
+  })
+
   it('splits a loader given as an imported function, which loads its data', async () => {
     const route = await loadRoute(
       `${head}import { fetchData } from './data'

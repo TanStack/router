@@ -297,3 +297,59 @@ export const Route = createFileRoute('/')({ loader: () => 'data ${version}' })
     },
   )
 })
+
+// A route file whose `Route` changes from the router's constructor to the
+// app's own helper and back (R130: a route the app's helper makes is not
+// split and is reported nothing): the page shows each version, with no
+// error and nothing reported.
+// Bug (Rsbuild, found 2026-11-17, main not compared): the edit to the app's
+// helper is applied without showing, silently; a reload shows it, and the
+// edit back to the router's constructor shows in place. Pinned.
+describe.concurrent.each(['vite', 'rsbuild'] as const)(
+  '%s: a route file switching between the router constructor and an app helper',
+  (bundler) => {
+    const helper = `import { createFileRoute } from '@tanstack/react-router'
+export const createAppRoute = (id: any) => (options: any) => createFileRoute(id)(options)
+`
+    const route = (made: 'router' | 'helper', version: string) =>
+      made === 'router'
+        ? `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: () => <p>router ${version}</p> })
+`
+        : `import { createAppRoute } from '../app-route'
+export const Route = createAppRoute('/')({ component: () => <p>helper ${version}</p> })
+`
+    it(
+      'shows each version, reporting nothing',
+      { timeout, fails: bundler === 'rsbuild' },
+      async ({ expect, onTestFinished }) => {
+        const app = await openRouteHmrPage({
+          bundler,
+          onTestFinished,
+          files: {
+            'app-route.ts': helper,
+            'routes/index.tsx': route('router', 'v1'),
+          },
+          ready: 'router v1',
+        })
+        expect(
+          (
+            await app.edit(
+              { 'routes/index.tsx': route('helper', 'v2') },
+              'helper v2',
+            )
+          ).errors,
+        ).toEqual([])
+        expect(
+          (
+            await app.edit(
+              { 'routes/index.tsx': route('router', 'v3') },
+              'router v3',
+            )
+          ).errors,
+        ).toEqual([])
+        expect(app.warnings()).toEqual([])
+      },
+    )
+  },
+)

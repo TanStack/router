@@ -1,6 +1,6 @@
 /**
  * Unusual but valid route files split like any other: route files with
- * non-ASCII names and JavaScript route files, an import of a package named
+ * non-ASCII names or a `'` in their name and JavaScript route files, an import of a package named
  * like a member of `Object.prototype`, a BOM and a source map comment, in
  * real builds.
  */
@@ -54,6 +54,13 @@ export const Route = createFileRoute('/café/日本語')({
   component: Page,
 })
 `,
+      // (SPEC §2.1: a `'` in a route file's name; the chunks import the
+      // route file by a specifier holding it)
+      "routes/what's-new.tsx": `${head}function Page() {
+  return <p>MARK_QUOTE_COMPONENT</p>
+}
+export const Route = createFileRoute("/what's-new")({ component: Page })
+`,
       'routes/index.jsx': `${head}const shared = { label: 'MARK_SHARED' }
 function Page() {
   return <p>MARK_COMPONENT {shared.label}</p>
@@ -64,12 +71,16 @@ export const Route = createFileRoute('/')({
 })
 `,
       'entry.ts': `${clientMountEntry}export { Route as CafeRoute } from './routes/café.日本語'
+export { Route as QuoteRoute } from "./routes/what's-new"
 `,
     },
   })
   try {
     const cafe = await app.run(
       `await entry.mount(entry.CafeRoute.options.component)`,
+    )
+    const quote = await app.run(
+      `await entry.mount(entry.QuoteRoute.options.component)`,
     )
     const jsx = await app.run(
       `await entry.mount(entry.Route.options.component)
@@ -80,6 +91,10 @@ return entry.Route.options.loader().label`,
         route: app.where('MARK_CAFE_ROUTE'),
         component: app.where('MARK_CAFE_COMPONENT'),
         html: cafe.html,
+      },
+      quote: {
+        component: app.where('MARK_QUOTE_COMPONENT'),
+        html: quote.html,
       },
       jsx: {
         component: app.where('MARK_COMPONENT'),
@@ -99,6 +114,17 @@ test.each(['vite', 'rspack', 'webpack'] as const)(
       route: 'eager',
       component: 'lazy',
       html: '<div id="root"><p>MARK_CAFE_COMPONENT</p></div>',
+    })
+  },
+  120_000,
+)
+
+test.each(['vite', 'rspack', 'webpack'] as const)(
+  "a route file with a ' in its name is generated, split and rendered (%s)",
+  async (bundler) => {
+    expect((await appOf(bundler)).quote).toEqual({
+      component: 'lazy',
+      html: '<div id="root"><p>MARK_QUOTE_COMPONENT</p></div>',
     })
   },
   120_000,

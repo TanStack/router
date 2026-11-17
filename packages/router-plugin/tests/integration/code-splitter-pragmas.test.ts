@@ -184,9 +184,7 @@ export const Route = createFileRoute('/')({ component: Page })
 // leaves: the count the click set is reset). With Vite 8 and
 // vite-plugin-solid the pragma's only other effect on the unsplit app is a
 // page reload instead of a hot update, which G10 does not let a test
-// require. (React's `/* @refresh reset */` has no
-// observable effect under Vite 8's `@vitejs/plugin-react`, split or not: no
-// outcome to assert.)
+// require. (React's `/* @refresh reset */`: below.)
 describe('refresh pragma comments of a route file, in a real page', () => {
   const solidCounter = (
     header: string,
@@ -242,6 +240,11 @@ export const Route = createFileRoute('/')({ component: Page })
       header: '',
       aboveComponent: '// @refresh reload\n',
     },
+    {
+      name: 'a // @refresh skip file header',
+      header: '// @refresh skip\n',
+      aboveComponent: '',
+    },
   ])(
     'with $name, an edit of a Solid route shows what it shows unsplit',
     async ({ header, aboveComponent }) => {
@@ -250,6 +253,54 @@ export const Route = createFileRoute('/')({ component: Page })
         counterAfterEdit(true, header, aboveComponent),
       ])
       expect(unsplit).toMatch(/Counter v2 count \d/)
+      expect(split).toBe(unsplit)
+    },
+    timeout,
+  )
+})
+
+// React Refresh's `/* @refresh reset */` remounts the module's components on
+// every edit. Vite 8's `@vitejs/plugin-react` gives it no observable effect;
+// on Rsbuild (`@rsbuild/plugin-react`), the split route resets the count the
+// click set as the unsplit route does.
+describe('a React /* @refresh reset */ comment, on Rsbuild', () => {
+  const reactCounter = (version: string) => `/* @refresh reset */
+import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+function Page() {
+  const [count, setCount] = useState(0)
+  return (
+    <button onClick={() => setCount(count + 1)}>
+      Counter {'${version}'} count {count}
+    </button>
+  )
+}
+export const Route = createFileRoute('/')({ component: Page })
+`
+  async function counterAfterEdit(autoCodeSplitting: boolean) {
+    const app = await openRouteHmrPage({
+      bundler: 'rsbuild',
+      pluginOptions: { autoCodeSplitting },
+      files: { 'routes/index.tsx': reactCounter('v1') },
+      ready: 'Counter v1 count 0',
+    })
+    await app.click('button')
+    await app.page.waitForText('Counter v1 count 1')
+    await app.edit(
+      { 'routes/index.tsx': reactCounter('v2') },
+      /Counter v2 count \d/,
+    )
+    return /Counter v2 count \d/.exec(await app.page.text())?.[0]
+  }
+
+  test(
+    'an edit of the split route shows what it shows unsplit',
+    async () => {
+      const [unsplit, split] = await Promise.all([
+        counterAfterEdit(false),
+        counterAfterEdit(true),
+      ])
+      expect(unsplit).toBe('Counter v2 count 0')
       expect(split).toBe(unsplit)
     },
     timeout,

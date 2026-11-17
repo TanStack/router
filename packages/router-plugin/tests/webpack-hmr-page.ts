@@ -98,6 +98,10 @@ export interface WebpackEditResult {
 
 export interface WebpackHmrPage {
   page: BrowserPage
+  /** The app's directory. */
+  root: string
+  /** The dev server's URL. */
+  url: string
   /** Writes app files and waits until webpack compiled them; returns the compile's errors. */
   write: (files: Record<string, string>) => Promise<Array<string>>
   /**
@@ -270,6 +274,8 @@ export const Route = createRootRoute({})
 
   return {
     page,
+    root,
+    url: `http://127.0.0.1:${port}/`,
     write: async (files) => {
       await write(files, Date.now() + editTimeout)
       return compileErrors

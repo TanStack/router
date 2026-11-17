@@ -673,6 +673,10 @@ Paths under `router-plugin/tests/` unless given.
   rename. SPEC J3.3. `integration/known-bugs-route-hmr-removals.test.ts`: "rsbuild without React Refresh: an edit of the
   route component shows in place (autoCodeSplitting: %s)"; `integration/route-hmr-browser-identity-cases.ts`: "a
   rename" (Vite and Rsbuild).
+- **Rsbuild: an edit that changes a route file's `Route` from the router's constructor to the app's own helper does
+  not show** (ours; found by the test lane on 2026-11-17, main not compared): the update applies, the page keeps the
+  previous route, silently, until a reload; the edit back to the constructor shows in place. SPEC J3.3, G10.
+  `integration/route-hmr-browser-plugin.test.ts`: "shows each version, reporting nothing" (Rsbuild, `fails`).
 - **The HMR code reads the route through the identifier `Route`.** SPEC J3.1.
   `integration/known-bugs-route-hmr-removals.test.ts`: "a route exported under another local name is hot-updated in
   place".
