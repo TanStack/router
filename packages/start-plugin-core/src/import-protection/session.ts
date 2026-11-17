@@ -5,7 +5,6 @@
  * `allowImport` decision, dev and build reports, traces), and the edge modules' code. Host-agnostic: the
  * Vite and Rspack hosts call it from their hooks.
  */
-import fs from 'node:fs/promises'
 import path from 'node:path'
 import picomatch from 'picomatch'
 import {
@@ -85,8 +84,8 @@ export interface CreateImportProtectionOptions {
   mode: ImportProtectionMode
   /** How the host names edge modules (default: Vite ids). */
   ids?: EdgeModuleIds
-  /** Reads a file (a package's `package.json` for `sideEffects`); default `node:fs`. */
-  readFile?: (file: string) => Promise<string | null>
+  /** Reads a file (a package's `package.json` for `sideEffects`); null when it can't be read. */
+  readFile: (file: string) => Promise<string | null>
   /** Reads a source file's raw text, synchronously (trace positions, `EdgeIndex`); default `node:fs`. */
   readSource?: SourceReader
   /**
@@ -125,7 +124,7 @@ export function createImportProtection(
     ? new ImportProtection(
         config,
         opts.ids ?? viteEdgeModuleIds,
-        opts.readFile ?? readFileOrNull,
+        opts.readFile,
         opts.isEntry ?? (() => false),
         opts.readSource,
         opts.framework,
@@ -162,14 +161,6 @@ export function outputKey(id: string): string {
   return identity.derived
     ? deriveId(identity.canonicalId, identity.derived)
     : identity.canonicalId
-}
-
-async function readFileOrNull(file: string): Promise<string | null> {
-  try {
-    return await fs.readFile(file, 'utf8')
-  } catch {
-    return null
-  }
 }
 
 export class ImportProtection {
