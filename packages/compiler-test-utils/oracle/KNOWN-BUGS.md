@@ -799,7 +799,9 @@ Paths under `start-plugin-core/tests/` unless noted.
 - **Dev lookups go through a derived id** (`?server-fn-module-lookup`) a virtual-module plugin or a fresh server does
   not know. SPEC J4.4, G11. `createServerFn/createServerFn.test.ts`: "a server fn whose factory a virtual module serves by
   its exact id compiles in dev"; `integration/known-bugs-start-compiler-dev.test.ts`: "calls a server fn id on a fresh
-  dev server that has not compiled its module".
+  dev server that has not compiled its module". A fresh server compiles the module of an id only for an app source
+  (J4.4, R176); outside `srcDirectory` it answers only ids the session registered
+  (`integration/start-dev-server-fn-scope.test.ts`).
 - **The dev client compiler loads a top-level callee's module from inside the transform**, which deadlocks with
   Vite's dependency optimizer. SPEC G1. `integration/known-bugs-start-compiler-dev.test.ts`: "transforms a client module
   with a server fn and a top-level call of a pre-bundled dependency".

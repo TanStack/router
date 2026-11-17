@@ -1,10 +1,10 @@
 /**
- * The server-function resolver modules (J4.2): in development
- * a lookup by id through a per-id virtual module that re-exports the
- * provider's `createServerRpc` wrapper from the defining module (compiled
- * through the normal transform, also on a fresh server); in production a
- * manifest of the client-referenced functions (the HTTP-callable set),
- * importing each provider module. Rsbuild uses the manifest in both modes
+ * The server-function resolver modules (J4.2): in development a lookup by
+ * id through a per-id virtual module that re-exports the provider's
+ * `createServerRpc` wrapper from the defining module (compiled through the
+ * normal transform, also on a fresh server when it is an app source); in
+ * production a manifest of the client-referenced functions (the
+ * HTTP-callable set), importing each provider module. Rsbuild uses the manifest in both modes
  * (`manifestResolverModule`): its bundles hold every provider module.
  */
 import { manifestLiteral } from './format'

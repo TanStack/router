@@ -3,6 +3,7 @@
  * development), a caller environment's forward to the provider, and the
  * resolver (`getServerFnById`) of each resolver environment.
  */
+import { realpath } from 'node:fs/promises'
 import path from 'node:path'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { normalizePath } from '@tanstack/router-utils/compiler'
@@ -49,14 +50,52 @@ function servable(config: ResolvedConfig, file: string): boolean {
 }
 
 /**
+ * The file an id the registry does not hold names, if the dev lookup may
+ * compile it on request (SPEC J4.4): with symlinks resolved, inside the
+ * app's `srcDirectory` and in no `node_modules` directory below it, and one
+ * Vite's dev server may serve (`servable`, the named path and the real one).
+ * Null otherwise: then only the ids a compile of the session registered
+ * answer.
+ */
+async function compilableOnRequest(
+  config: ResolvedConfig,
+  named: string,
+  srcDirectory: string,
+): Promise<string | null> {
+  const [file, src] = await Promise.all([
+    realpath(named),
+    realpath(srcDirectory),
+  ]).catch(() => [null, null])
+  if (!file || !src) {
+    return null
+  }
+  const rel = path.relative(src, file)
+  const segments = rel.split(/[\\/]/)
+  if (
+    rel === '' ||
+    path.isAbsolute(rel) ||
+    segments[0] === '..' ||
+    segments.includes('node_modules')
+  ) {
+    return null
+  }
+  const real = normalizePath(file)
+  return servable(config, named) && servable(config, real) ? real : null
+}
+
+/**
  * J4.2 in development: a client-origin call of a function whose defining
  * module the client environment has not compiled (no client module in the
  * dev server's graph references it: a stale page after a restart, an
  * external caller, a serialized function) is answered, with one warning
  * per function saying a production build refuses it. The dev server
  * compiles lazily, so nothing short of crawling the client graph could
- * prove reachability; it is not attempted. An id is the caller's: its
- * file is compiled only if the dev server may serve it.
+ * prove reachability; it is not attempted. An id is the caller's and may
+ * name any file: the file of an id the registry does not hold (the ids a
+ * compile of this dev session reported) is compiled only when it is an app
+ * source (`compilableOnRequest`: in `srcDirectory`, outside `node_modules`,
+ * servable), so a page left open across a restart keeps working; any other
+ * unregistered id is refused.
  */
 export function devLookupPlugin(state: ViteCompilerState): Plugin {
   const lookupPrefix = `\0${SERVER_FN_LOOKUP_VIRTUAL_ID}?`
@@ -81,16 +120,16 @@ export function devLookupPlugin(state: ViteCompilerState): Plugin {
       const params = new URLSearchParams(id.slice(lookupPrefix.length))
       const fnId = params.get('id') ?? ''
       let entry = registry.get(fnId)
-      if (!entry) {
-        // a fresh server: compile the defining module through the normal transform
-        const key = decodeDevFunctionId(fnId)
-        const file =
-          key && normalizePath(path.resolve(startOpts.root, key.rootRel))
-        if (
-          file &&
-          this.environment.mode === 'dev' &&
-          servable(this.environment.getTopLevelConfig(), file)
-        ) {
+      const key = !entry && decodeDevFunctionId(fnId)
+      if (key && this.environment.mode === 'dev') {
+        // a fresh server: compile an app source's defining module through
+        // the normal transform
+        const file = await compilableOnRequest(
+          this.environment.getTopLevelConfig(),
+          normalizePath(path.resolve(startOpts.root, key.rootRel)),
+          startOpts.srcDirectory,
+        )
+        if (file) {
           await this.environment.transformRequest(file).catch(() => null)
           entry = registry.get(fnId)
         }

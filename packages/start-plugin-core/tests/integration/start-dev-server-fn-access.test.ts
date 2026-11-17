@@ -113,8 +113,10 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
 /**
  * The dev lookup compiles the defining file an id names when the server has
  * not compiled it yet (a fresh server). An id comes from the caller, so it
- * may name any file: only a file Vite's dev server may serve (`server.fs`,
- * the rule of a `/@fs/` request) is compiled and called. The page builds
+ * may name any file: only an app source (in `srcDirectory`, outside
+ * `node_modules`: start-dev-server-fn-scope.test.ts) that Vite's dev server
+ * may serve (`server.fs`, the rule of a `/@fs/` request) is compiled and
+ * called. The page builds
  * both ids from the public URL of a server fn only server code calls,
  * changing only the file it names: one under `server.fs.deny`, refused, and
  * one the server may serve, answered (the forged request itself works).

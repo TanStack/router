@@ -608,10 +608,14 @@ dir)` is not a conflict by itself.
   `start-build-server-fn-format.test.ts` reads them from real builds, the one test that reads printed code. A server
   function only server code references is not in the manifest (J4.2), whatever earlier versions printed. _Dev_: an
   implementation-specific lookup id is allowed; within one dev session every caller and the provider agree on it;
-  ids need not match between dev and build (G13); `generateFunctionId` may or may not apply. A by-id request for a
-  module the running dev server has not compiled yet (a page left open across a restart) compiles that module and is
-  served. A server function is identified by its public `url`; beyond the output formats, generated names and
-  Start's internal metadata fields (`serverFnMeta`) are not contracts.
+  ids need not match between dev and build (G13); `generateFunctionId` may or may not apply. An id comes from the
+  caller and may name any file, so a by-id request answers a function a compile of the running dev session
+  registered, or one whose defining file, with symlinks resolved, is inside the app's `srcDirectory`, in no
+  `node_modules` directory and servable by the dev server (Vite's `server.fs`): that file is compiled for the request
+  (a page left open across a restart keeps working). Any other id is refused like an unknown id: a file outside
+  `srcDirectory` or a package nothing compiled in the session never runs for a request. A server function is
+  identified by its public `url`; beyond the output formats, generated names and Start's internal metadata fields
+  (`serverFnMeta`) are not contracts.
 - **J4.5 Recognition.** All Start builders are recognised through renamed imports, namespace members, re-exports
   (also of a namespace, and through diamonds and cycles of `export *`, in any compile order), aliases (`export const
 createFooServerFn = createServerFn`), builders stored in variables and continued later (`const base =
