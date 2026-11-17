@@ -120,6 +120,8 @@ export interface FallbackRecord {
   range: Range
   kind: RegionKind
   reason: Fallback['reason']
+  /** `shared-writer`: the assignment the extraction would make (`Fallback.write`). */
+  write?: Fallback['write']
 }
 
 interface OutputSpec {
@@ -535,6 +537,7 @@ export class AnalysisPlan implements PlanContext {
         range: r.range,
         kind: r.kind,
         reason: f.reason,
+        write: f.write,
       })
     }
     return out

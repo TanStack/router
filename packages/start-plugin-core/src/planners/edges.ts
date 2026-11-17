@@ -553,8 +553,8 @@ export function importEdgesPlanner(
       severity: 'error' as const,
       message:
         first && second
-          ? `[import-protection] ${file} imports both "${first.specifier}"${line ? ` (line ${line})` : ''} and "${second.specifier}": a module can be restricted to one environment only. Remove one of the two imports`
-          : `[import-protection] ${file} imports both a server-only and a client-only marker: a module can be restricted to one environment only. Remove one of the two imports`,
+          ? `[import-protection] ${file} imports both "${first.specifier}"${line ? ` (line ${line})` : ''} and "${second.specifier}": a module can be restricted to one environment only. Remove one of the two imports.`
+          : `[import-protection] ${file} imports both a server-only and a client-only marker: a module can be restricted to one environment only. Remove one of the two imports.`,
       ...(second && {
         range: {
           start: second.specifierRange.start,

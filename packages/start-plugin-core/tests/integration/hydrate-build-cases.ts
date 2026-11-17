@@ -705,14 +705,43 @@ export { PostBadge as badge } from './routes/badge'
       >stop</button>`,
         at: 'clearInterval(timer)',
       },
-    ])(
+      // The chunk would assign its own copy of a module `let` the module
+      // reads (H4): the error names the binding, and the component that
+      // assigns it when the children only render it (audit-diagnostics P2)
+      {
+        name: 'a module let the children assign',
+        module: `let last = ''
+export const readLast = () => last
+`,
+        children: `<button onClick={() => { last = 'x' }}>b</button>`,
+        says: ['`last`'],
+      },
+      {
+        name: 'a module let their component assigns',
+        module: `let last = ''
+export const readLast = () => last
+function Btn() {
+  return <button onClick={() => { last = 'x' }}>b</button>
+}
+`,
+        children: '<Btn />',
+        says: ['`Btn`', '`last`'],
+      },
+    ] as Array<{
+      name: string
+      children: string
+      setup?: string
+      at?: string
+      module?: string
+      says?: Array<string>
+    }>)(
       'client: $name in a boundary fails the build, naming the file and line',
-      async ({ children, setup = '', at = '<Hydrate' }) => {
+      async ({ children, setup = '', at = '<Hydrate', module = '', says }) => {
         const page = `import { useEffect } from 'react'
 import { Hydrate } from '@tanstack/react-start'
 import { idle } from '@tanstack/react-start/hydration'
 import { useThing } from '../hooks'
-export function Page() {
+${module}export function Page() {
   ${setup}return (
     <main>
       <Hydrate when={idle()}>${children}</Hydrate>
@@ -734,11 +763,17 @@ export function Page() {
           (error: unknown) => error,
         )
         expect(failure, 'the build fails').toBeInstanceOf(StartBuildError)
-        expectDiagnostic(problems((failure as StartBuildError).diagnostics), {
-          severity: 'error',
-          file: 'src/pages/unsafe.tsx',
-          position: { line: diagnosticPosition(page, at).line },
-        })
+        const error = expectDiagnostic(
+          problems((failure as StartBuildError).diagnostics),
+          {
+            severity: 'error',
+            file: 'src/pages/unsafe.tsx',
+            position: { line: diagnosticPosition(page, at).line },
+          },
+        )
+        for (const text of says ?? []) {
+          expect(error.text).toContain(text)
+        }
       },
       timeout,
     )

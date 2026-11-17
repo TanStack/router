@@ -42,30 +42,62 @@ defineExpose({ getX })
 </script>
 `
 
-/** Refused SFCs, with the text the refusal points at. */
-const refused = [
-  {
-    name: 'a server fn built on a builder the block keeps in a const',
-    // (the template is handed `base` too, in development: refused at its
-    // declaration, two lines up)
-    sfc: sfc(`const base = createServerFn()
+/** What the refusal of a server fn in a `<script setup>` block says first (R162). */
+const SETUP =
+  'In `<script setup>`, code runs inside the component’s setup function'
+
+/**
+ * Refused SFCs, with the text the refusal points at (and, `says`, text it
+ * gives: a server fn of a `<script setup>` block is refused as one, whether
+ * or not the Vue plugin made a source map).
+ */
+const refused: Array<{ name: string; sfc: string; at: string; says?: string }> =
+  [
+    {
+      name: 'a server fn built on a builder the block keeps in a const',
+      // (the template is handed `base` too, in development: refused at its
+      // declaration, two lines up)
+      sfc: sfc(`const base = createServerFn()
 const label = 'page'
 const getX = base.handler(async () => 'MARK_SERVER_SECRET')`),
-    at: 'base.handler',
-  },
-  {
-    name: 'a server fn reading the props',
-    sfc: sfc(`const props = defineProps<{ t?: string }>()
+      at: 'base.handler',
+      says: SETUP,
+    },
+    {
+      name: 'a server fn reading the props',
+      sfc: sfc(`const props = defineProps<{ t?: string }>()
 const getX = createServerFn().handler(async () => 'MARK_SERVER_SECRET' + props.t)`),
-    at: 'props.t',
-  },
-  {
-    name: 'a factory the block returns from a getter',
-    sfc: sfc(`const own = { get make() { return createServerFn } }
+      at: 'props.t',
+      says: SETUP,
+    },
+    {
+      name: 'a factory the block returns from a getter',
+      sfc: sfc(`const own = { get make() { return createServerFn } }
 const getX = () => own`),
-    at: 'createServerFn } }',
-  },
-]
+      at: 'createServerFn } }',
+    },
+    // (audit-diagnostics P1: a production Vite build compiles a JavaScript
+    // block into the SFC's own module, with no source map by default; in
+    // development the template is handed the import too: refused there, two
+    // lines up)
+    {
+      name: 'a server fn of a JavaScript block',
+      sfc: `<template>
+  <p>page</p>
+</template>
+
+<!-- the script -->
+<script setup>
+import { createServerFn } from '@tanstack/vue-start'
+const label = 'page'
+const getX = createServerFn().handler(async () => 'MARK_SERVER_SECRET')
+defineExpose({ getX, label })
+</script>
+`,
+      at: 'createServerFn().handler',
+      says: SETUP,
+    },
+  ]
 
 /**
  * Refused in development only: a JavaScript block hands its imports to the
@@ -157,12 +189,15 @@ function expectAtRefusal(
   root?: string,
 ) {
   const { line, column } = diagnosticPosition(row.sfc, row.at)
-  expectDiagnostic(diagnostics, {
+  const refusal = expectDiagnostic(diagnostics, {
     severity: 'error',
     file,
     root,
     position: { line, column },
   })
+  if (row.says !== undefined) {
+    expect(refusal.text).toContain(row.says)
+  }
   for (const other of [line - 1, line + 1]) {
     expect(
       findDiagnostics(diagnostics, {

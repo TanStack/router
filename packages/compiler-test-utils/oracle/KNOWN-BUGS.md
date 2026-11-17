@@ -153,12 +153,15 @@ static made = … }` off the client also when the kept loader, the split compone
   corpus compiles in 303 files, putting value imports used only as types (`hono`, `elysia`, `zod`, generated API
   types) back into client route modules. Workaround: read it by value from code that stays.
 
-- **With RSC, a `<ClientOnly>` in a server component outside a server fn's handler shows its fallback for good**
-  (as `main`; review-coverage-fix-batch 1): the environment that renders server components keeps `<ClientOnly>`
-  children only in handler text, since it also evaluates modules whose components only SSR and the browser render,
-  and their children may read browser-only code (a `.client` file, `window`). A `Panel` component holding
-  `<ClientOnly fallback={…}><Widget /></ClientOnly>`, rendered by a handler, sends only the fallback in the Flight
-  payload. Workaround: write the `<ClientOnly>` in the handler's JSX or in a client component.
+- **With RSC, a `<ClientOnly>` in a server component outside a server fn's handler shows its fallback, then
+  nothing** (as `main`; review-coverage-fix-batch 1): the environment that renders server components keeps
+  `<ClientOnly>` children only in handler text, since it also evaluates modules whose components only SSR and the
+  browser render, and their children may read browser-only code (a `.client` file, `window`). A `Panel` component
+  holding `<ClientOnly fallback={…}><Widget /></ClientOnly>`, rendered by a handler, has no children in the Flight
+  payload: the server HTML and the first paint show the fallback, and once the page hydrates the fallback goes and
+  nothing replaces it (measured on Vite and Rsbuild builds, audit-diagnostics 2026-11-17: gone within 250 ms, still
+  empty at 6 s; the same `<ClientOnly>` in the handler's JSX shows its children). Workaround: write the
+  `<ClientOnly>` in the handler's JSX or in a client component.
   `start-plugin-core/tests/planners/start-env.test.ts` ("keeps <ClientOnly> children in a handler…").
 
 - **A hoisted server fn whose chain runs a function at load that reads its own statement's declaration is not

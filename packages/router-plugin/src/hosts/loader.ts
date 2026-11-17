@@ -133,12 +133,18 @@ export function createLoaderImpl(
       located.push(d)
       return diagnosticError(d)
     }
-    compiler.report(out, file, source, {
-      error: (d, at) =>
-        ctx.emitError(locate(locatedDiagnostic('error', d.message, at))),
-      warn: (d, at) =>
-        ctx.emitWarning(locate(locatedDiagnostic('warning', d.message, at))),
-    })
+    // (a split chunk's compile reads the file its route module did, and has
+    // that compile's diagnostics: the route module, whose output imports the
+    // chunk, reports them; an error emitted there does not stop the chunk's
+    // build)
+    if (identity.derived === null) {
+      compiler.report(out, file, source, {
+        error: (d, at) =>
+          ctx.emitError(locate(locatedDiagnostic('error', d.message, at))),
+        warn: (d, at) =>
+          ctx.emitWarning(locate(locatedDiagnostic('warning', d.message, at))),
+      })
+    }
     if (located.length > 0 && buildInfo) {
       buildInfo[LOCATED_DIAGNOSTICS.field] = located
     }

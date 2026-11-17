@@ -178,6 +178,7 @@ export function splitPlanOf(
     : []
 
   const deletedNames = () => [...deleteNodes].map((k) => `\`${k}\``).join(', ')
+  const are = () => (deleteNodes.size === 1 ? 'is' : 'are')
 
   if (route.options.kind === 'opaque') {
     if (!cfg.clientReportsUnread && (splitting || deleteNodes.size > 0)) {
@@ -207,7 +208,7 @@ export function splitPlanOf(
         by: ROUTER_PLANNER,
         message:
           deleteNodes.size > 0
-            ? `[tanstack-router] The route options of ${file} are ${how}, so the compiler cannot read them: they are not code-split, and ${deletedNames()} in them are not removed, so any server code in them ships to the client. ${fix}`
+            ? `[tanstack-router] The route options of ${file} are ${how}, so the compiler cannot read them: they are not code-split, and ${deletedNames()} in them ${are()} not removed, so any server code in them ships to the client. ${fix}`
             : `[tanstack-router] The route options of ${file} are ${how}, so the compiler cannot read them and the route is not code-split. ${fix}`,
         range: {
           start: route.optionsCall.start,
@@ -244,7 +245,7 @@ export function splitPlanOf(
           by: ROUTER_PLANNER,
           message:
             option.kind === 'spread'
-              ? `[tanstack-router] ${file} spreads route options: what the spread holds is not code-split, and ${deletedNames()} in it are not removed, so any server code in it ships to the client. Move what to split or remove out of the spread, as properties of this object; this warning stays while the spread does.`
+              ? `[tanstack-router] ${file} spreads route options: what the spread holds is not code-split, and ${deletedNames()} in it ${are()} not removed, so any server code in it ships to the client. Move what to split or remove out of the spread, as properties of this object; this warning stays while the spread does.`
               : `[tanstack-router] ${file} computes a route option's key: that option is not code-split, and it is not removed if it names ${deletedNames()}, so any server code in it ships to the client. Write the key literally.`,
           range: { start: option.prop.start, end: option.prop.end },
         })

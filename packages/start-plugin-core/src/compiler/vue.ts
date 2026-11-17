@@ -45,14 +45,15 @@ const SETUP =
 
 /** A refused nested server fn of a `<script setup>` block. */
 function setupHoistMessage(d: Diagnostic, hoist: VueHoist): string {
+  const cause = `${SETUP}, so this server function would be created each time a component is set up, and a server function must be created once, when its module loads.`
   const reads = hoist.reads
   if (reads?.builder) {
-    return `${SETUP}, so this server function is built on \`${reads.name}\`, a local of that function, and cannot be compiled. Define the server function in a \`.ts\` module, with \`${reads.name}\` there too, and import it.`
+    return `${cause} It is built on \`${reads.name}\`, a local of that function: define the server function in a \`.ts\` module, with \`${reads.name}\` there too, and import it.`
   }
   if (reads) {
-    return `${SETUP}, so this server function reads \`${reads.name}\`, a local of that function, and cannot be compiled. Define it in a \`.ts\` module and import it, or in a \`<script>\` block next to \`<script setup>\` as one chain (\`createServerFn().handler(…)\`), and pass \`${reads.name}\` in its input: declare it with \`.validator()\` and call the server function with \`{ data: … }\`.`
+    return `${cause} It reads \`${reads.name}\`, a local of that function: define it in a \`.ts\` module and import it, or in a \`<script>\` block next to \`<script setup>\` as one chain (\`createServerFn().handler(…)\`), and pass \`${reads.name}\` in its input: declare it with \`.validator()\` and call the server function with \`{ data: … }\`.`
   }
-  return `${SETUP}, so this server function would be created each time a component is set up, and a server function must be created once, when its module loads. Define it in a \`.ts\` module and import it, or in a \`<script>\` block next to \`<script setup>\` as one chain (\`createServerFn().handler(…)\`).`
+  return `${cause} Define it in a \`.ts\` module and import it, or in a \`<script>\` block next to \`<script setup>\` as one chain (\`createServerFn().handler(…)\`).`
 }
 
 const HOIST_HINT =

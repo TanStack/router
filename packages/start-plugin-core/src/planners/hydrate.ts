@@ -1006,13 +1006,36 @@ function isNode(v: unknown): v is Node {
   )
 }
 
-/** Core fallbacks (placement constraints found after planning) that refuse an extraction. */
-const FALLBACK_REASONS: Record<string, { code: string; message: string }> = {
-  'shared-writer': {
-    code: 'hydrate-module-write',
-    message:
-      'Hydrate cannot code-split JSX that assigns a module-level binding other code of the module also uses: the split code would assign its own copy of it, or a binding it imports, not the one the module reads. Use split={false}.',
-  },
+/**
+ * The refusal of children whose chunk would assign a module-level binding
+ * (the core's `shared-writer` fallback): the binding, and what assigns it,
+ * the children or the declaration of the code only they use.
+ */
+function moduleWriteMessage(
+  ctx: PlanContext,
+  region: Range,
+  write: { sym: SymbolId; at: number; imported: boolean } | undefined,
+): string {
+  const fix = (name: string) =>
+    `Use split={false}, or move ${name} to a module of its own, with a function that assigns it, and import them.`
+  if (write === undefined) {
+    return `Hydrate cannot code-split these children: they, or code only they use, assign a module-level binding the rest of the module also uses. The split code would assign its own copy, not the one the module reads. ${fix('the binding')}`
+  }
+  const { t1 } = ctx
+  const name = `\`${t1.symbols.name(write.sym)}\``
+  const at = { start: write.at, end: write.at }
+  let who = 'they assign'
+  if (!within(at, region)) {
+    const unit = t1.unitAt(at)
+    const declares = unit === null ? [] : t1.units[unit]!.declares
+    who =
+      declares.length === 1
+        ? `\`${t1.symbols.name(declares[0]!)}\`, which ${write.imported ? 'they use' : 'only they use'}, assigns`
+        : `code ${write.imported ? 'they use' : 'only they use'} assigns`
+  }
+  return write.imported
+    ? `Hydrate cannot code-split these children: ${who} ${name}, a module-level binding the split code would import, and a module cannot assign a binding it imports. ${fix(name)}`
+    : `Hydrate cannot code-split these children: ${who} ${name}, a module-level binding the rest of the module also uses. The split code would assign its own copy of ${name}, not the one the module reads. ${fix(name)}`
 }
 
 /** Plans the client extraction of one live boundary; returns its lazy const. */
@@ -1039,11 +1062,21 @@ function extract(
   }
   const fallback = ctx.fallbackAt(region, 'hydrate-children')
   if (fallback) {
-    const reason = FALLBACK_REASONS[fallback.reason] ?? {
-      code: `hydrate-${fallback.reason}`,
-      message: 'Hydrate cannot code-split these children. Use split={false}.',
+    if (fallback.reason === 'shared-writer') {
+      boundaryError(
+        ctx,
+        b,
+        'hydrate-module-write',
+        moduleWriteMessage(ctx, region, fallback.write),
+      )
+    } else {
+      boundaryError(
+        ctx,
+        b,
+        `hydrate-${fallback.reason}`,
+        'Hydrate cannot code-split these children. Use split={false}.',
+      )
     }
-    boundaryError(ctx, b, reason.code, reason.message)
     return null
   }
 
