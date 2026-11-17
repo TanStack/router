@@ -515,7 +515,9 @@ Router-plugin paths below are under `router-plugin/tests/`; `pages/` means `inte
   or TypeScript). SPEC J2.8, J2.9. The values main's chunk compile cannot take stay in the route module and work
   (R153, `unsplittableOnMain`). `code-splitter-main-shapes.test.ts`: "renders $name";
   `pages/known-bugs-code-splitter-shapes.test.ts`: "an option written as $name is split and works" (the shapes main
-  splits).
+  splits). An object-form loader splits its `handler` and keeps the object (#8753, R171):
+  `code-splitter-route-options.test.ts`: "a loader in object form";
+  `integration/code-splitter-object-loader.test.ts`; `integration/route-hmr-browser-object-loader.test.ts`.
 - **A split binding's declaration or import is deleted from the route module although other code still reads it.**
   SPEC J2.12. `pages/known-bugs-code-splitter-server.test.ts`: "a split component that $name reads renders from both";
   "a split component renders through a function $name"; "a component read by a split and an unsplit option renders

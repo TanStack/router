@@ -85,7 +85,11 @@ export interface RouteEntryFacts {
   routerConstructor?: boolean
 }
 
-function describeOptions(ctx: PlanContext, options: Node): Array<RouteOption> {
+/** The properties of an object literal (the route options, an object-form loader), each with its kind and source ranges. */
+export function describeOptions(
+  ctx: PlanContext,
+  options: Node,
+): Array<RouteOption> {
   const code = ctx.analysis.source.code
   const out: Array<RouteOption> = []
   if (options.type !== 'ObjectExpression') {
