@@ -75,7 +75,7 @@ export function readIndex(
   const { symbols } = t1
   const { regions } = rewrites
   const { clusters, clusterOfSym, ownedRefs } = graph
-  const { viewOf, isLive } = graph
+  const { viewOf } = graph
   const regionCount = regions.regions.length
   const gens = rewrites.generated
 
@@ -148,15 +148,11 @@ export function readIndex(
     Array<MemberReads | undefined>
   >()
   const deadMemberReads: Array<MemberReads | undefined> = []
-  /**
-   * Pushes the reads of the references of `list` (sorted) starting in
-   * `[s, e)`, those live in `live` only when given.
-   */
+  /** Pushes the reads of the references of `list` (sorted) starting in `[s, e)`. */
   const refReads = (
     list: ReadonlyArray<ClassifiedRef>,
     s: number,
     e: number,
-    live: OutputId | null,
     into: MemberReads,
   ) => {
     let lo = 0
@@ -174,9 +170,6 @@ export function readIndex(
       if (ref.range.start >= e) {
         break
       }
-      if (live !== null && !isLive(ref, live)) {
-        continue
-      }
       if (NEED_KINDS.has(ref.kind)) {
         into.push(ref.sym)
       }
@@ -186,14 +179,11 @@ export function readIndex(
   // ---- the live reads of a region: one walk of its text, one visitor ----
   // (the member being read; the walk does not re-enter a member's reads)
   let view!: OutputView
-  let output!: OutputId
   let into!: MemberReads
   /** Its own node (the walk renders its text), if any. */
   let own: RangeNode | null = null
   /** The references of the text being walked: the member's, or those of a region nested in it claimed only for other outputs. */
   let owned: ReadonlyArray<ClassifiedRef> = NO_REFS
-  /** Only part of its text renders: each read asks its position. */
-  let partial = false
   /** Pushes what generated text names. */
   const named = (body: ReadonlyArray<Frag | GenFrag>) => {
     symRefsOf(body, into)
@@ -206,13 +196,7 @@ export function readIndex(
         view.walk(n, f.range.start, f.range.end, reader)
       } else if (f.k === 'ref') {
         // (a rewritten reference keeps the one it rewrites)
-        refReads(
-          owned,
-          f.range.start,
-          f.range.end,
-          partial ? output : null,
-          into,
-        )
+        refReads(owned, f.range.start, f.range.end, into)
       }
     }
   }
@@ -229,19 +213,15 @@ export function readIndex(
     }
   }
   const reader: WalkVisitor = {
-    source: (s, e) => refReads(owned, s, e, partial ? output : null, into),
+    source: (s, e) => refReads(owned, s, e, into),
     node: (n) => {
       if (n === own) {
         readOwn()
-      } else if (!(partial && view.isErasedAt(n.start))) {
+      } else {
         read(n, (view.placeOf(n) ?? view.textOf(n))!)
       }
     },
-    insert: (e) => {
-      if (!partial || !view.isErasedAt(e.range.start)) {
-        named(e.body)
-      }
-    },
+    insert: (e) => named(e.body),
     member: (n) => {
       if (n === own) {
         return false
@@ -253,7 +233,7 @@ export function readIndex(
       if (view.isClaimed(n)) {
         // its text is its owner's: what stands at its place is read here
         const place = view.placeOf(n)
-        if (place !== null && !(partial && view.isErasedAt(n.start))) {
+        if (place !== null) {
           named(place)
         }
         return true
@@ -264,7 +244,7 @@ export function readIndex(
       const text = view.textOf(n)
       if (text === null) {
         view.walk(n, n.start, n.end, reader)
-      } else if (!(partial && view.isErasedAt(n.start))) {
+      } else {
         read(n, text)
       }
       owned = outer
@@ -277,9 +257,8 @@ export function readIndex(
    * (`OutputView.walk`). The source it renders reads the references it owns
    * (inside it, outside the regions nested in it); an active node, an insert
    * and the place of a claimed region nested in it read what their bodies
-   * name. Whether the text renders at all is decided around it
-   * (`OutputView.encloses`); when only part of it does, each read asks its
-   * position. An unclaimed region nested in it is in its cluster
+   * name. Whether the text renders is decided around it
+   * (`OutputView.encloses`), for all of it. An unclaimed region nested in it is in its cluster
    * (`clusters.ts`): its reads are the cluster's.
    */
   function regionReads(r: Region, o: OutputId, to: MemberReads): void {
@@ -294,14 +273,11 @@ export function readIndex(
       at = own!
     }
     view = viewOf(o)
-    const verdict = view.encloses(r.range, own, own !== null ? own.parent : at)
-    if (verdict === 'none') {
+    if (!view.encloses(r.range, own, own !== null ? own.parent : at)) {
       return
     }
-    output = o
     into = to
     owned = ownedRefs.get(id) ?? NO_REFS
-    partial = verdict === 'partial'
     if (own === null) {
       view.walk(at, r.range.start, r.range.end, reader)
     } else if (r.unit !== null && own.parent !== null) {
@@ -321,13 +297,7 @@ export function readIndex(
    */
   function sourceReads(r: Region, o: OutputId, into: MemberReads): void {
     const { inserts } = regionIndex()
-    refReads(
-      ownedRefs.get(r.id) ?? NO_REFS,
-      r.range.start,
-      r.range.end,
-      null,
-      into,
-    )
+    refReads(ownedRefs.get(r.id) ?? NO_REFS, r.range.start, r.range.end, into)
     textReads(r.id, o, into)
     for (const e of inserts[r.id] ?? NO_INSERTS) {
       if (rewrites.inScope(e.scope, o)) {
@@ -348,7 +318,7 @@ export function readIndex(
           const place = view.placeholderAt(n)!
           symRefsOf('owner' in place ? place.placeholder : place.body, into)
         } else {
-          refReads(ownedRefs.get(nested) ?? NO_REFS, n.start, n.end, null, into)
+          refReads(ownedRefs.get(nested) ?? NO_REFS, n.start, n.end, into)
           textReads(nested, o, into)
         }
         continue

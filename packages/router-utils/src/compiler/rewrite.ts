@@ -17,6 +17,7 @@
  * the erased parts; the point questions climb it from a position's innermost
  * range.
  */
+import { SELF_CHECKS } from './self-checks'
 import type { Range } from './header'
 import type { OutputKind } from './placement'
 import type { ClassifiedRef, RefContext } from './analysis'
@@ -1034,24 +1035,31 @@ export function erases(
   return true
 }
 
-/** How much of `range` a body keeps (its slices and references). */
-function keeps(
-  body: ReadonlyArray<Frag>,
-  range: Range,
-): 'all' | 'none' | 'partial' {
+/**
+ * Whether a body keeps `range` (one of its slices or references holds it).
+ * Bodies, regions and nodes are AST ranges, which nest or are disjoint, so
+ * a body never keeps part of one (a self-check; otherwise the whole range
+ * counts as kept: its reads are too many, never too few).
+ */
+function keeps(body: ReadonlyArray<Frag>, range: Range): boolean {
   let any = false
   for (const f of body) {
     if (f.k !== 'slice' && f.k !== 'ref') {
       continue
     }
     if (f.range.start <= range.start && range.end <= f.range.end) {
-      return 'all'
+      return true
     }
     if (f.range.start < range.end && range.start < f.range.end) {
       any = true
     }
   }
-  return any ? 'partial' : 'none'
+  if (any && SELF_CHECKS) {
+    throw new Error(
+      `a body keeps part of [${range.start}, ${range.end}) (a slice cuts a region)`,
+    )
+  }
+  return any
 }
 
 /** The index of the first item starting at or after `offset`. */
@@ -1435,37 +1443,33 @@ export class OutputView {
   }
 
   /**
-   * How much of a range what encloses it lets render: `own` is the node on
+   * Whether what encloses a range lets it render: `own` is the node on
    * exactly the range (its claim in this output relocates the range's text,
    * whose edits the caller reads), `around` the first node strictly holding
-   * it; they decide as for a position (`decide`). `partial`: ask the
-   * positions.
+   * it; they decide as for a position (`decide`).
    */
   encloses(
     range: Range,
     own: RangeNode | null,
     around: RangeNode | null,
-  ): 'all' | 'none' | 'partial' {
+  ): boolean {
     if (own !== null && own.claim !== null) {
       const d = this.decides(own)
       if (d !== null) {
-        return d === 'owner' ? 'all' : 'none'
+        return d === 'owner'
       }
     }
     for (let x = around; x !== null; x = x.parent) {
       const e = this.editOf(x)
-      if (e !== null) {
-        const k = keeps(e.body, range)
-        if (k !== 'all') {
-          return k
-        }
+      if (e !== null && !keeps(e.body, range)) {
+        return false
       }
       const d = this.decides(x)
       if (d !== null) {
-        return d === 'owner' ? 'all' : 'none'
+        return d === 'owner'
       }
     }
-    return 'all'
+    return true
   }
 
   // ---- point questions ------------------------------------------------------
