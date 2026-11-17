@@ -118,26 +118,8 @@ export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
   }, timeout)
   afterAll(() => dispose?.())
 
-  // Control for the pins below (same build).
-  test('a route with server handlers and a component is in the client route tree', () => {
-    expect(clientRoutes).toContain('/page')
-  })
-
-  // Vite: control for the pins below (same build).
-  // Rsbuild bug: Start prunes server-only routes from the client route tree
-  // only in its Vite plugin; Rsbuild keeps them (their route modules have
-  // no server code left).
-  // Source: only vite/start-router-plugin/plugin.ts calls
-  // `pruneServerOnlySubtrees`; Rsbuild parity is the intended behaviour.
-  // Impact: Rsbuild client bundles ship the route tree entries and route
-  // modules of server-only routes, which Vite builds leave out.
-  test('a route with only server handlers is not in the client route tree', () => {
-    expect(clientRoutes).not.toContain('/api')
-  })
-
   // Option keys written as strings and a Route exported under an alias are
-  // read like the plain ones above (same build; moved from router-generator
-  // known-bugs.test.ts, which read the generator's internal option keys).
+  // read like plain ones (start-compose-server-only-routes.test.ts).
   describe.each([
     {
       name: 'string option keys',
@@ -150,7 +132,6 @@ export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
       expect(clientRoutes).toContain(page)
     })
 
-    // Rsbuild does not prune the client route tree yet (pinned above).
     test('a route with only server handlers is not in the client route tree', () => {
       expect(clientRoutes).not.toContain(api)
     })

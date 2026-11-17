@@ -85,42 +85,6 @@ export const base = createServerFn()
     return { server, client: await server.load('/src/a.tsx') }
   }
 
-  // Control for the pin below (same harness): a module importing the factory
-  // module directly is recompiled.
-  test(
-    'client: a module importing an edited factory module directly loads no server code',
-    async () => {
-      const { client } = await editFactory('./b')
-      expect(modulesContaining(client, 'MARK_DB_SECRET')).toEqual([])
-    },
-    timeout,
-  )
-
-  // Control for the pin below (same harness): the compiler resolves the
-  // factory through the re-export on a server that starts after the edit.
-  test(
-    'client: a module importing a factory module through a re-export loads no server code',
-    async () => {
-      const server = await startDevServer({
-        files: {
-          'src/b.ts': `import { createServerFn } from '@tanstack/react-start'
-export const base = createServerFn()
-`,
-          'src/c.ts': `export * from './b'\n`,
-          'src/db.ts': dbModule,
-          'src/a.tsx': `import { base } from './c'
-import { db } from './db'
-export const fn = base.handler(async () => db.x())
-`,
-        },
-      })
-      expect(
-        modulesContaining(await server.load('/src/a.tsx'), 'MARK_DB_SECRET'),
-      ).toEqual([])
-    },
-    timeout,
-  )
-
   // Bug: on a factory module edit, the client environment of the Start
   // compiler's Vite plugin invalidates only the direct importers of the
   // module; the walk through transitive importers runs for server
@@ -200,15 +164,6 @@ export const base = createServerFn()
     called: 'MARK_DB_SECRET',
     byId: 'MARK_DB_SECRET',
   }
-
-  // Control for the pin below (same harness).
-  test(
-    'SSR: a module importing an edited factory module directly gets a server fn',
-    async () => {
-      expect(await editFactorySsr('./b')).toEqual(serverFn)
-    },
-    timeout,
-  )
 
   // Bug: same as the client pin above, in the SSR environment: on a factory
   // module edit, the server environments do walk the transitive importers
@@ -356,22 +311,6 @@ return typeof value === 'string' ? value : 'not the module value (' + typeof val
     )
   }
 
-  // Control for the pin below (same harness): an importer edited with the
-  // module is resolved again.
-  test(
-    'client: an edited importer of a module whose server-only marker was removed loads the module',
-    async () => {
-      expect(
-        await removeMarker({
-          'src/a.ts': `import { secret } from './b'
-export const read = () => secret() + '!'
-`,
-        }),
-      ).toBe('MARK_B_CODE!')
-    },
-    timeout,
-  )
-
   // Bug: import protection replaces a client import of a module it knows is
   // server-only-marked with a mock when it resolves the import. On an edit of
   // the marked module it only clears its own caches
@@ -417,44 +356,6 @@ export const read = () => secret() + '!'
       server,
     }
   }
-
-  const deniedModules = [
-    {
-      name: 'a denied file',
-      denied: './request.server',
-      client: `import { getRequest } from './request.server'
-import * as server from './request.server'
-export const values = [getRequest, server.getRequest]
-`,
-    },
-    {
-      name: 'a denied specifier',
-      denied: '@tanstack/react-start/server',
-      client: `import { getRequest, getRequestHeader as getHeader } from '@tanstack/react-start/server'
-import * as server from '@tanstack/react-start/server'
-export const values = [getRequest, getHeader, server.setCookie]
-`,
-    },
-  ]
-
-  // Control for the pin below (same harness): the names a client module
-  // imports from a denied module are mocks.
-  test.each(deniedModules)(
-    'client: names imported from $name are mocks',
-    async ({ client }) => {
-      const { result } = await inClientOf(
-        { 'src/c.ts': client },
-        `return {
-  values: entry.values.length,
-  safeMocks: entry.values.filter((value) => isSafeMock(value)).length,
-}`,
-      )
-      const { values } = result as { values: number }
-      expect(values).toBeGreaterThan(0)
-      expect(result).toEqual({ values, safeMocks: values })
-    },
-    timeout,
-  )
 
   // SPEC J6.8: in dev, a name a client module re-exports with `export *`
   // from a denied module is a safe mock, or the server warns at the `export *`

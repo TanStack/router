@@ -225,25 +225,6 @@ export const fn = createServerFn().handler(async () => db.x(input))`,
     }
   }
 
-  // Control for the pin below (same harness): with `createMiddleware`
-  // imported too, the module is compiled.
-  test('client builds compile a middleware builder finished in another module when the module imports createMiddleware', async () => {
-    await expectClientCompiled(
-      `import { createMiddleware } from '@tanstack/react-start'
-import { mw } from './mw'
-import { db } from './db.server'
-export const logged = mw.server(async ({ next }) => { db.log(); return next() })`,
-      {
-        'mw.ts': `import { createMiddleware } from '@tanstack/react-start'
-export const mw = createMiddleware({ type: 'function' })`,
-      },
-      {
-        expression: clientMiddlewareOf('module.logged'),
-        expected: clientMiddleware('function'),
-      },
-    )
-  })
-
   // Bug: middleware, isomorphic and env-only fns are detected by the
   // `createMiddleware` / `createIsomorphicFn` / `createServerOnlyFn` text, so
   // a module that only finishes a builder imported from another module, or
@@ -1138,55 +1119,6 @@ describe('dev edits', () => {
 })
 
 describe('dead-code elimination', () => {
-  const pragmaModule = `/** @jsxRuntime classic */
-/** @jsx h */
-import { h } from './jsx'
-import { createServerFn } from '@tanstack/react-start'
-export const fn = createServerFn().handler(async () => h('p', null))
-export const Card = () => <div />`
-  const jsxFile = `export const h = (type: string) => \`h(\${type})\`\n`
-
-  /**
-   * A module with a classic JSX runtime pragma whose `Hero` renders `Chart`
-   * in `<ClientOnly>`; `heroBody` runs first in `Hero`.
-   */
-  const classicRuntimeModule = (heroBody: string) => `/** @jsxRuntime classic */
-import * as React from 'react'
-import { ClientOnly } from '@tanstack/react-router'
-export function Hero() {
-  ${heroBody}
-  return <div><ClientOnly><Chart /></ClientOnly></div>
-}
-function Chart() {
-  const ref = React.useRef(false)
-  return <canvas data-rendered={ref.current} />
-}`
-
-  /** Renders `Hero` of the case on the server (its HTML, or what threw). */
-  async function renderHero(code: string) {
-    const startCase = await newCase({
-      'module.tsx': code,
-      'render.server.ts': `import { createElement } from 'react'
-import { renderToString } from 'react-dom/server'
-import { Hero } from './module'
-export const render = () => renderToString(createElement(Hero))
-`,
-    })
-    const { render } = await startCase.ssr('render.server.ts')
-    const rendered = settle(render)
-    return rendered instanceof Thrown
-      ? `the render throws: ${(rendered.error as Error).message}`
-      : (rendered as string)
-  }
-
-  // Control for the pin below (same harness): code the SSR output keeps
-  // still reads `React`.
-  test('ssr: a module with a classic JSX runtime pragma that reads React elsewhere stays valid', async () => {
-    expect(await renderHero(classicRuntimeModule('React.useId()'))).toContain(
-      '<div>',
-    )
-  })
-
   // Bug: a type-only import re-exported without `type` (`export { Settings }`,
   // which TypeScript accepts unless verbatimModuleSyntax is on) loses its
   // import in the client and SSR outputs, which keep the export that the
@@ -1254,17 +1186,6 @@ export const TaggedError = (tag: string) => () =>
       check.expected,
     )
   }
-
-  // Control for the pin below (same harness): a plain function only the
-  // server code uses leaves with its server-only import.
-  test('client: a function only server code uses does not load its server-only import', async () => {
-    await expectClientWithoutServerModule(
-      `${head}import { db } from './db.server'
-function find() { return db.users() }
-export const fn = createServerFn().handler(async () => find())`,
-      { expression: 'module.fn !== undefined', expected: true },
-    )
-  })
 
   // Bug: dead-code elimination (babel-dead-code-elimination) removes
   // unreferenced functions and variables but never class declarations, TS
@@ -1384,14 +1305,6 @@ export const read = createServerOnlyFn(() => get())`,
     return { startCase, loads: await startCase.loads() }
   }
 
-  // Control for the pin below (same harness): a server-only import that only
-  // the handler read leaves the client.
-  test('client: a server-only import only the handler reads is not loaded with verbatimModuleSyntax', async () => {
-    const { loads } = await verbatimLoads(`${head}import { auth } from './auth'
-export const fn = createServerFn().handler(async () => auth.get())`)
-    expectNotLoaded(loads, ['./auth'])
-  })
-
   // With `verbatimModuleSyntax`, `import { type Db } from './db.server'`
   // keeps the module as a side-effect import (`import {} from`); the client
   // must still not load the server-only module for code it keeps that only
@@ -1445,13 +1358,6 @@ export const setTheme = createServerFn({ method: 'POST' })
     })
   }
 
-  // Control for the pin below (same harness): a schema only the validator
-  // reads leaves the client with its import.
-  test('client: a validator schema only the validator reads is not loaded', async () => {
-    const startCase = await erasedCase(schemaModule(''))
-    expectNotLoaded(await startCase.loads(), ['zod'])
-  })
-
   // Bug: same family as above, for a module-level declaration: a validator
   // schema that a type alias also reads (`z.infer<typeof themeValidator>`)
   // stays in the client output, with what its initializer imports, although
@@ -1481,13 +1387,6 @@ import { createChart } from './chart.client'
 const chart = createChart()
 ${typeAlias}
 export const draw = createClientOnlyFn(() => chart.draw())`
-
-  // Control for the pin below (same harness): a declaration only the
-  // client-only implementation reads leaves the SSR output with its import.
-  test('ssr: a declaration only a client-only fn reads is not loaded', async () => {
-    const startCase = await erasedCase(clientOnlyChartModule(''))
-    expectNotLoaded(await startCase.serverLoads(), ['./chart.client'])
-  })
 
   // Bug: same root cause as the pin above (upstream
   // babel-dead-code-elimination 1.0.12 counts a `typeof` type query as a

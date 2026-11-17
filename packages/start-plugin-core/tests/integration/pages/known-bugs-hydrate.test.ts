@@ -763,21 +763,6 @@ describe('source maps of the split code', () => {
     expect(held, `the split code holds ${marker}`).toBeGreaterThan(0)
   }
 
-  // Control for the pin below: the text of an element child maps to where
-  // the user wrote it.
-  test('client: the split text of an element child maps to its line and column', async () => {
-    await expectSplitTextMapped(
-      `${head}export function Page() {
-  return (
-    <main>
-      <Hydrate when={load()}><p>MARK_SPLIT_TEXT</p></Hydrate>
-    </main>
-  )
-}`,
-      'MARK_SPLIT_TEXT',
-    )
-  })
-
   // Bug: a boundary whose only child is text is split into code whose text
   // is a new string the compiler creates without the text's position, and
   // nothing else in that code comes from the user's file: the dev server

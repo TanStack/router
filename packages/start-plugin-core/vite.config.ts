@@ -25,7 +25,6 @@ const aloneTests = [
   'integration/start-build-environment-release.test.ts',
   'integration/start-build-compile-scope.test.ts',
   'integration/start-dev-cache-dir.test.ts',
-  'integration/start-build-split-wrapped-values-unchecked.test.ts',
   'integration/start-build-server-code-check-unchecked.test.ts',
   'integration/rsbuild/dev-created-deleted-stats.test.ts',
 ]

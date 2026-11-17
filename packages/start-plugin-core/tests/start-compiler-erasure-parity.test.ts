@@ -737,10 +737,10 @@ ${handler}`,
   })
 })
 
-// R157 rule 4 (gate probe x2; integration: start-build-handler-local-writes,
-// round 1 F2-1): `snapshot`, which only the handler reads, evaluates a read
-// of `cfg`, which the module keeps (a statement names it): it stays in the
-// module and runs at load, as in the source; the handler module imports both.
+// R157 rule 4: `snapshot`, which only the handler reads, evaluates a read of
+// `cfg`, which the module keeps (a statement writes it through a parameter,
+// or a `for…of` variable): it stays in the module and runs at load, as in
+// the source; the handler module imports both.
 // Kind A: failed when the handler module imported `cfg` and evaluated
 // `snapshot` at the first call (`'b/b'`).
 test('x2: a handler reads the value its module read at load before a write through a local name', async () => {
@@ -750,12 +750,21 @@ const snapshot = cfg.url
 function set(o: { url: string }) { o.url = 'b' }
 set(cfg)
 export const getCfg = () => cfg.url
-export const viaParam = createServerFn().handler(async () => snapshot + '/' + cfg.url)`,
+export const viaParam = createServerFn().handler(async () => snapshot + '/' + cfg.url)
+const cfgs = [{ url: 'a' }]
+const first = cfgs[0]!.url
+for (const c of cfgs) { c.url = 'b' }
+export const count = () => cfgs.length
+export const viaForOf = createServerFn().handler(async () => first + '/' + cfgs[0]!.url)`,
   })
   expect(await callServerFnThroughCallers(served, 'module.viaParam')).toBe(
     'a/b',
   )
-  expect((await served.ssr()).getCfg()).toBe('b')
+  expect(await callServerFnThroughCallers(served, 'module.viaForOf')).toBe(
+    'a/b',
+  )
+  const ssr = await served.ssr()
+  expect([ssr.getCfg(), ssr.count()]).toEqual(['b', 1])
 })
 
 // R157 rules 4 and 5 (design-serverfn-instances-first-principles.md): a

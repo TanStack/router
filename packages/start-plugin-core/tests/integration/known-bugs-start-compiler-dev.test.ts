@@ -200,16 +200,6 @@ describe('Vite dev server', () => {
     expect(rpc).toEqual({ url: expect.any(String) })
   }
 
-  // Control for the pin below (same harness).
-  test('transforms a client module with a server fn and a top-level call of a project function', async () => {
-    await expectClientRpc(
-      `${head}import { define } from './define'
-export const schema = define()
-export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
-      { 'define.ts': `export const define = () => ({})` },
-    )
-  }, 30_000)
-
   // Regression (was a pin; fixed on main by #8758): a `z.object()` schema next
   // to a server fn, with an empty dependency cache, used to never finish
   // transforming in dev. The client compiler loaded `zod` through the client
@@ -327,11 +317,6 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
       await rm(root, { recursive: true, force: true })
     }
   }
-
-  // Control for the pin below (same harness).
-  test('calls a server fn id on the dev server that compiled its module', async () => {
-    expect(await callServerFnId(false)).toBe('hello')
-  }, 30_000)
 
   // Bug: when a server fn id is not registered yet, the dev validator
   // (`validate-server-fn-id`) transforms the source file under

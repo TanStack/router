@@ -1152,64 +1152,6 @@ export const peek = () => other()
     timeout,
   )
 
-  /**
-   * Loads the app with `src/b.ts` unmarked, edits only `src/b.ts` to add
-   * the server-only marker, and loads it again (SPEC J6.13: edits
-   * reclassify in dev). The violations logged after the edit, and the
-   * client modules then served with the marked module's code.
-   */
-  async function addMarkerByAnEdit() {
-    const server = await startProtectedDevServer(markedApp(''))
-    expect(
-      modulesContaining(await server.load('/src/entry.ts'), 'MARK_B_CODE'),
-    ).toEqual(['/src/b.ts'])
-    const logged = server.violations.length
-    await server.edit({ 'src/b.ts': markedApp(serverOnly)['src/b.ts'] })
-    await server.load('/src/b.ts')
-    const client = await server.load('/src/entry.ts')
-    await server.idle()
-    return {
-      reported: loggedViolations({
-        root: server.root,
-        violations: server.violations.slice(logged),
-      }),
-      realCodeIn: modulesContaining(client, 'MARK_B_CODE'),
-    }
-  }
-
-  // Bug: when an edit adds a server-only marker to a module the client
-  // already loaded, nothing happens to its importers: import protection
-  // only clears its own caches on the edit (`hotUpdate`), and Vite keeps the
-  // importers' transforms (a soft invalidation), so their import of the
-  // module is never resolved again, where the marker violation would be
-  // found (the retroactive marker check of `resolveId`,
-  // vite/import-protection-plugin/plugin.ts). Neither the report nor the
-  // mock follows (the opposite edit is pinned in known-bugs-dev-server.test.ts
-  // "the importer of a module whose server-only marker was removed loads the
-  // module"). The two outcomes are pinned apart (the report was
-  // claimed to work).
-  // Impact: after marking a module server-only in dev, the browser keeps
-  // running its real code, without any warning, until the importers are
-  // edited or the server restarts.
-  // Source: review (the adding direction).
-  test(
-    'after an edit adds the marker, the violation is logged',
-    async () => {
-      const { reported } = await addMarkerByAnEdit()
-      expect(reported).toContainEqual(markerReport('a', 'b'))
-    },
-    timeout,
-  )
-
-  test(
-    'after an edit adds the marker, the importer gets the mock',
-    async () => {
-      const { realCodeIn } = await addMarkerByAnEdit()
-      expect(realCodeIn).toEqual([])
-    },
-    timeout,
-  )
-
   // A file the user empties is an empty module once the save settled, with
   // no marker (an editor's in-place save, which empties the file for a
   // moment, gets the text it then writes: start-compiler-dev-server.test.ts

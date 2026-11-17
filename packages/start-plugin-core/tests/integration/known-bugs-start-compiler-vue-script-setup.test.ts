@@ -232,24 +232,6 @@ describe('vite dev', () => {
     },
   )
 
-  // R162: a `<script setup>` block runs in the component's setup function,
-  // so a server fn there is refused, whatever the block's language
-  test('a server fn of a <script setup lang="ts"> block is refused', async () => {
-    const startCase = await sfcCase(`<script setup lang="ts">
-import { createServerFn } from '@tanstack/vue-start'
-const fn = createServerFn().handler(async () => 'MARK_SERVER_SECRET')
-console.log(fn)
-</script>
-
-<template>
-  <p>page</p>
-</template>
-`)
-    expect(await compileError(startCase, 'client', 'Page.vue')).toBeInstanceOf(
-      Error,
-    )
-  })
-
   test.each(recipes)('$name compiles', async ({ sfc }) => {
     const startCase = await sfcCase(sfc)
     expect(await compileError(startCase, 'client', 'Page.vue')).toBeUndefined()

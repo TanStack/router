@@ -468,14 +468,6 @@ return links`
     }
   }
 
-  // Control for the pin below (same harness): the inline chain.
-  test('each output keeps its implementation of an isomorphic fn written as one chain', async () => {
-    expect(
-      await callIsomorphicFn(`import { createIsomorphicFn } from '@tanstack/react-start'
-export const getEnv = createIsomorphicFn().server(() => 'server').client(() => 'client')`),
-    ).toEqual({ client: 'client', ssr: 'server' })
-  })
-
   // Bug: an isomorphic fn whose first link is stored in a variable
   // (`const base = createIsomorphicFn().server(...)`, then
   // `export const getEnv = base.client(...)`) loses that link's

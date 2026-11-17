@@ -146,23 +146,17 @@ describe('rsbuild dev', () => {
     },
   ]
 
-  // Control for the pins below (same server).
+  // Code a project exempts on purpose, or an import it allows with
+  // `allowImport`, gets the real module, silently. The Rsbuild dev twin of
+  // the Vite dev and build tests (exemptions.test.ts; dev.test.ts and
+  // build-markers.test.ts "allowImport returning true").
   test.each(permitted)(
-    'an importer $how is not reported',
+    'an importer $how gets the real module and is not reported',
     async ({ name, file }) => {
-      expect((await client(name, file)).reported).toBe(false)
-    },
-    timeout,
-  )
-
-  // Impact: code a project exempts on purpose, or an import it allows with
-  // `allowImport`, would silently get a mock whose calls return mocks. The
-  // Rsbuild dev twin of the Vite dev and build tests (exemptions.test.ts;
-  // dev.test.ts and build-markers.test.ts "allowImport returning true").
-  test.each(permitted)(
-    'an importer $how gets the real module',
-    async ({ name, file }) => {
-      expect((await client(name, file)).value).toBe('MARK_SECRET')
+      expect(await client(name, file)).toEqual({
+        value: 'MARK_SECRET',
+        reported: false,
+      })
     },
     timeout,
   )
@@ -237,21 +231,12 @@ export const getRouter = () => undefined
     }
   }
 
-  // Control for the pin below (same server).
+  // An import allowed by an async `allowImport` is the real module in the
+  // browser, without a report.
   test(
-    'the import is not reported',
+    'the client gets the real module, and the import is not reported',
     async () => {
-      expect((await outcome()).reported).toEqual([])
-    },
-    timeout,
-  )
-
-  // Impact: an import allowed by an async `allowImport` would be a mock in
-  // the browser, without any warning.
-  test(
-    'the client gets the real module',
-    async () => {
-      expect((await outcome()).value).toBe('MARK_SECRET')
+      expect(await outcome()).toEqual({ value: 'MARK_SECRET', reported: [] })
     },
     timeout,
   )

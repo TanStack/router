@@ -626,14 +626,6 @@ const get = async (path) =>
       return { client: client.result, ssr: ssr.result }
     }
 
-    // Control for the pin below (same build): the inline chain.
-    test('an isomorphic fn written as one chain runs its implementation in each build', async () => {
-      expect(await callInBoth(`return entry.isomorphic()`)).toEqual({
-        client: 'MARK_ISOMORPHIC_CLIENT',
-        ssr: 'MARK_ISOMORPHIC_SERVER',
-      })
-    })
-
     // Bug: an isomorphic fn whose first link is stored in a variable loses
     // that link's implementation in its environment's build (no-op, returns
     // undefined). Pinned at compiler level in

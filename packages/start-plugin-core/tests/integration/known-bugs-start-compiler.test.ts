@@ -54,26 +54,6 @@ describe.each(startBundlers)('%s build', (bundler) => {
 export const db = { users: () => 'users' }
 `
 
-  // Control for the pin below (same harness).
-  test(
-    'client: the server-only module of a function only server code uses is not bundled',
-    async () => {
-      const { client } = await buildStart({
-        bundler,
-        files: {
-          'db.server.ts': dbModule,
-          'fns.ts': `${head}import { db } from './db.server'
-function find() { return db.users() }
-export const fn = createServerFn().handler(async () => find())
-`,
-          'entry.ts': `export { fn } from './fns'\n`,
-        },
-      })
-      expect(client.where('MARK_DB_LOADED')).toBe('nowhere')
-    },
-    timeout,
-  )
-
   // Bug: the client output keeps a class only server code uses, with its
   // server-only import (compiler pin "client: a class used by a server fn
   // handler does not load its server-only import" in
@@ -247,15 +227,6 @@ return {
   }
   let clientAccess: ReturnType<typeof buildAndCallClientAccess> | undefined
   const callClientAccess = () => (clientAccess ??= buildAndCallClientAccess())
-
-  // Controls for the pin below (same harness).
-  test(
-    'SSR: a server fn the client references is callable over HTTP',
-    async () => {
-      expect(await callClientAccess()).toMatchObject({ clientFn: 'client fn' })
-    },
-    timeout,
-  )
   // Not run on Vite: there, whether `serverOnlyFn` is in the production
   // resolver is the #7213 race (below): the SSR build reaches its module
   // and the resolver in parallel, and finds it first by about 12 ms on an

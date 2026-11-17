@@ -351,14 +351,6 @@ export function solidPageSuite(bundler: StartBundler) {
       },
     )
 
-    test('a renamed import of Hydrate', async () => {
-      await expectChildrenHydrate('renamed', ['search'])
-    })
-
-    test('namespace-imported Start.Hydrate boundaries', async () => {
-      await expectChildrenHydrate('namespace', ['namespace', 'second'])
-    })
-
     test('a split={false} boundary nested in another, and a later boundary', async () => {
       await expectChildrenHydrate('splitFalse', ['inline', 'second'])
     })

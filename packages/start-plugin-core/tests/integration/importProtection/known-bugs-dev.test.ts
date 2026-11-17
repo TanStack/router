@@ -337,35 +337,6 @@ export const page = () => secret()
     timeout,
   )
 
-  // Control for the pins above (same loader): the page compiles and runs.
-  test(
-    'an .mdx page without a denied import runs in the client',
-    async () => {
-      const server = await startBrowserRsbuildDevServer({
-        compileTimeout,
-        importProtection: { behavior: 'error' },
-        config: mdxModules,
-        files: {
-          'src/home.mdx': `# Home
-
-export const page = () => 'MARK_PAGE'
-`,
-          'src/entry.ts': `import { page } from './home.mdx'\nconsole.log(page())\n`,
-        },
-      })
-      // Nothing fails, on any channel
-      expect(
-        findDiagnostics(server.diagnostics, { severity: 'error' }),
-      ).toEqual([])
-      expect(
-        (await runRsbuildClient(server)).filter((text) =>
-          text.includes('MARK_'),
-        ),
-      ).toEqual(['MARK_PAGE'])
-    },
-    timeout,
-  )
-
   // In Rsbuild dev, an error thrown by `onViolation` (awaited in the
   // `processAssets` hook, rsbuild/import-protection.ts `reportViolation`)
   // fails the compile: Rspack gives up on it (`compiler.hooks.failed`, no

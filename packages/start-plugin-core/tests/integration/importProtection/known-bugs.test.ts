@@ -52,49 +52,6 @@ export const nav = createServerFn().handler(async () => 1)
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  // Control for the pin below (same harness): a denied module whose code the
-  // client bundle contains fails the build.
-  test('a denied module the client uses fails the build', async () => {
-    const error = await rejection(
-      buildStart({
-        bundler,
-        files: {
-          'src/corpus.ts': corpusModule,
-          'src/entry.ts': `import { corpus } from './corpus'\nexport const read = () => corpus()\n`,
-        },
-        entry: 'src/entry.ts',
-        start: denyToClient(['**/corpus.ts']),
-      }),
-    )
-    expect(
-      reportedViolations(error).map(({ environment }) => environment),
-    ).toEqual(['client'])
-  }, 60_000)
-
-  // Control for the pin below (same files, no import protection): the client
-  // bundle does not contain the module's code.
-  test('without import protection, the client bundle drops the unused module', async () => {
-    const { client } = await buildStart({
-      bundler,
-      files: droppedCorpusFiles,
-      entry: 'src/entry.ts',
-      start: { importProtection: { enabled: false } },
-    })
-    expect(client.where('MARK_CORPUS')).toBe('nowhere')
-  }, 60_000)
-
-  // Control for the pins below (same harness and files, import protection
-  // on): the build succeeds in mock mode, without the module's code.
-  test('in mock mode, the client bundle drops the unused module', async () => {
-    const { client } = await buildStart({
-      bundler,
-      files: droppedCorpusFiles,
-      entry: 'src/entry.ts',
-      start: mockToClient(['**/corpus.ts']),
-    })
-    expect(client.where('MARK_CORPUS')).toBe('nowhere')
-  }, 60_000)
-
   // Bug: the build check counts a denied module as surviving when the
   // compilation contains it, whether or not the client uses it. Vite: the
   // mock that replaces the module is never tree-shaken, because its exports

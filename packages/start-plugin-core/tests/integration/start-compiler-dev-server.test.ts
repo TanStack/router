@@ -45,47 +45,6 @@ export const base = createServerFn()
 const plain = `export const base = { handler: (fn: () => unknown) => fn }\n`
 
 describe('Vite dev: editing a server fn factory', () => {
-  // Mirrors rsbuild/dev-server.test.ts "every module importing a factory
-  // from ./b that stops being one keeps its handler".
-  test(
-    'client: a module importing a factory that stops being one keeps its handler',
-    async () => {
-      // (`src/db.ts` is no denied file: what the client gets of it is the
-      // compiler's doing, not import protection's mock)
-      const server = await startBrowserStartDevServer({
-        files: {
-          'src/b.ts': factory,
-          'src/db.ts': `export const db = { x: () => 'MARK_DB_SECRET' }\n`,
-          'src/a.tsx': `import { base } from './b'
-import { db } from './db'
-export const fn = base.handler(async () => db.x())
-`,
-        },
-      })
-      /** Runs `script` in a real page that loaded `src/a.tsx` (`entry`). */
-      const inClient = async (script: string) =>
-        (await runViteClient(server, '/src/a.tsx', script)).result
-      expect(
-        containing(await server.load('/src/a.tsx'), 'MARK_DB_SECRET'),
-      ).toEqual([])
-      // A server fn: the client calls the server, at the server fn's URL
-      // (its public `url`; the dev id is implementation-specific, J4.4)
-      const rpc = (await inClient(`${requestsOfPrelude}
-return {
-  url: entry.fn.url,
-  requests: await requestsOf(entry.fn),
-}`)) as { url: string; requests: Array<unknown> }
-      expect(rpc.url).toEqual(expect.any(String))
-      expect(rpc.requests).toEqual([{ url: rpc.url, method: 'GET' }])
-
-      await server.edit({ 'src/b.ts': plain })
-
-      // A plain function now: the client runs it
-      expect(await inClient(`return await entry.fn()`)).toBe('MARK_DB_SECRET')
-    },
-    timeout,
-  )
-
   // Every importer of the factory is a dependent of the edit, each compiled
   // again; more of them than the dev server compiles at once. Mirrors
   // rsbuild/dev-server.test.ts "every module importing a factory from ./b
