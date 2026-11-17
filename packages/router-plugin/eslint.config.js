@@ -1,9 +1,10 @@
 // @ts-check
 
-import rootConfig from '../../eslint.config.js'
+import rootConfig, { compilerSourceConfig } from '../../eslint.config.js'
 
 export default [
   ...rootConfig,
+  ...compilerSourceConfig,
   {
     // Route files the tests copy into their apps, outside the TypeScript
     // project (tsconfig.json)

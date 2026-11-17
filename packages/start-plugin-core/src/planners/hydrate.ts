@@ -924,14 +924,28 @@ function leadsBackToBoundary(
     }
     named.set(sym, out)
   }
-  const leadsBack = new Set<SymbolId>([...target].filter((t) => named.has(t)))
-  for (let changed = leadsBack.size > 0; changed; ) {
-    changed = false
-    for (const [sym, out] of named) {
-      if (!leadsBack.has(sym) && out.some((t) => leadsBack.has(t))) {
-        leadsBack.add(sym)
-        changed = true
+  const back = [...target].filter((t) => named.has(t))
+  if (back.length === 0) {
+    return none
+  }
+  // of those, what leads back: the walk reversed, from the declaration
+  const namedBy = new Map<SymbolId, Array<SymbolId>>()
+  for (const [sym, out] of named) {
+    for (const t of out) {
+      const by = namedBy.get(t)
+      if (by) {
+        by.push(sym)
+      } else {
+        namedBy.set(t, [sym])
       }
+    }
+  }
+  const leadsBack = new Set<SymbolId>()
+  while (back.length > 0) {
+    const sym = back.pop()!
+    if (!leadsBack.has(sym)) {
+      leadsBack.add(sym)
+      back.push(...(namedBy.get(sym) ?? []))
     }
   }
   return {

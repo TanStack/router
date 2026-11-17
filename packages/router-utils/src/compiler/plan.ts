@@ -256,8 +256,7 @@ export class AnalysisPlan implements PlanContext {
     this.t1 = analysis.t1()
     this.symbols = this.t1.symbols
     this.regions = new RegionTable(analysis.source.code.length, this.t1.units)
-    this.rewrites = new RewriteSet(this.regions)
-    this.rewrites.outputKind = (o) => this.outputs.get(o)?.kind
+    this.rewrites = new RewriteSet(this.regions, this.outputs)
     this.names = new NameAllocator(
       this.t1.names,
       this.t1.exportNames,
