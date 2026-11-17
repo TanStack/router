@@ -3,14 +3,11 @@
  * with each bundler's router plugin, a split component loads lazily and
  * renders. The harness core has its own controls in `@tanstack/compiler-test-utils`.
  */
-import { describe, expect, test } from 'vitest'
+import { expect, test } from 'vitest'
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, buildWithRsbuild, head, routeApp } from '../build-harness'
-import type {
-  BuildResult,
-  Bundler,
-} from '@tanstack/compiler-test-utils/build-harness'
+import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 
 const timeout = 60_000
 
@@ -27,17 +24,6 @@ const heavy = `export function heavy(label: string) {
   return label
 }
 `
-
-async function buildSplitRoute(bundler: Bundler, env: 'ssr' | 'client') {
-  return describeSplitRoute(
-    await build({
-      bundler,
-      env,
-      files: routeApp(splitRoute, { env, files: { 'heavy.ts': heavy } }),
-    }),
-    env,
-  )
-}
 
 async function describeSplitRoute(app: BuildResult, env: 'ssr' | 'client') {
   const placement = {

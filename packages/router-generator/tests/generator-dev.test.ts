@@ -10,7 +10,7 @@
  * `tests/integration/{dev-server,rsbuild-dev-server}-{generator,new-routes}.test.ts`.
  */
 import { existsSync } from 'node:fs'
-import { chmod, mkdir, rm } from 'node:fs/promises'
+import { chmod, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import {

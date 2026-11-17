@@ -27,17 +27,6 @@ async function reportsNotSplit(route: RouteApp) {
   )
 }
 
-/**
- * An app module `init.ts` (or another name) whose `init` counts its calls
- * (`calls`) and returns its argument.
- */
-const countingInit = `export let calls = 0
-export const init = <T,>(value: T): T => {
-  calls++
-  return value
-}
-`
-
 /** An app module whose `see` records what it is given (`seen`). */
 const recordingSee = `export const seen: Array<unknown> = []
 export const see = (value: unknown) => {

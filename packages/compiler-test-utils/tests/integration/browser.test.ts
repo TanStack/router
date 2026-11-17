@@ -10,12 +10,7 @@ import { createServer } from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, onTestFinished, test } from 'vitest'
-import {
-  openPage,
-  openPageLimit,
-  runInPage,
-  runPageLimit,
-} from '../../src/browser'
+import { openPage, runInPage, runPageLimit } from '../../src/browser'
 import { createDevServer } from '../../src/dev-server'
 import { createPluginHost } from '../../src/plugin-host'
 import { createRsbuildDevServer } from '../../src/rsbuild-dev-server'

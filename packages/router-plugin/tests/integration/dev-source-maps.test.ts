@@ -414,15 +414,17 @@ void throws().then((stacks) => {
       // root>`: where a debugger finds it)
       const maps = await mapsOfFrames(stacks, app.url)
       for (const [location, map] of maps) {
-        if (map && 'sources' in map) {
+        const sources = (map as { sources?: Array<string | null> } | undefined)
+          ?.sources
+        if (sources) {
           maps.set(location, {
-            ...map,
-            sources: map.sources.map((source) =>
+            ...(map as object),
+            sources: sources.map((source) =>
               source === null
                 ? source
                 : emittedSourcePath(source, location, app.root),
             ),
-          })
+          } as AnySourceMap)
         }
       }
       expectThrowsMapToRouteFile(stacks, maps, app.root, () => undefined)

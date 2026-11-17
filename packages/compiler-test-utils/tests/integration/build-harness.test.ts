@@ -4,7 +4,6 @@
  * executes SSR output in Node and client output in a real browser, and
  * side-effect hints reach the bundler.
  */
-import { existsSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'

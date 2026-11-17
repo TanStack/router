@@ -94,7 +94,10 @@ describe('plugin options with invalid groupings', () => {
   component: () => <p>page</p>,
 })
 `,
-        { fresh: true, pluginOptions: { codeSplittingOptions: options } },
+        {
+          fresh: true,
+          pluginOptions: { codeSplittingOptions: options as never },
+        },
       )
       await route.transform()
     })

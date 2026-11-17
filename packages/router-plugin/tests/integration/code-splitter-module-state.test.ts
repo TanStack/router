@@ -186,9 +186,10 @@ export const Route = createFileRoute('/')({
           },
         },
       )
-      expect(result[0]).toBe('<p>a,b</p>')
+      const [rendered, first] = result as [string, boolean]
+      expect(rendered).toBe('<p>a,b</p>')
       if (exportedUndefined !== undefined) {
-        expect(result[1]).toBe(exportedUndefined)
+        expect(first).toBe(exportedUndefined)
       }
     },
     30_000,
@@ -223,9 +224,10 @@ export const Route = createFileRoute('/')({
           },
         },
       )
-      expect(result[0]).toBe('<p>b</p>')
+      const [rendered, first] = result as [string, unknown]
+      expect(rendered).toBe('<p>b</p>')
       if (exported !== undefined) {
-        expect(result[1]).toEqual(exported)
+        expect(first).toEqual(exported)
       }
     },
     30_000,

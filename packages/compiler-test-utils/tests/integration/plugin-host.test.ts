@@ -5,9 +5,7 @@
  * runs the same public plugins, with each environment's chunks and the
  * build's merged diagnostics.
  */
-import diagnosticsChannel from 'node:diagnostics_channel'
 import { appendFile } from 'node:fs/promises'
-import net from 'node:net'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, onTestFinished, test } from 'vitest'
