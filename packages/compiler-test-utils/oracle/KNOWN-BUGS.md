@@ -100,6 +100,13 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   the value, and a wrapper is not followed (R92). SPEC J4.5. `start-plugin-core/tests/start-compiler-cases.test.ts`:
   "each output keeps its implementation of an isomorphic fn whose chain passes through a helper function". Fix: each
   output keeps its implementation, or the build fails at the helper.
+- **`<Hydrate>` children passing `arguments` as a shorthand property change its key** (Astra hydrate #3; a regression
+  from `main`): the chunk's capture rewrite of `arguments` is a raw text edit, so `{ arguments }` becomes
+  `{ tsrArguments }` (React #418) or `{ props.tsrArguments }` (Solid: the chunk fails to parse). R182 fixed it only as
+  a one-line change; it needs the scan to mark a shorthand property, so it stays pinned. SPEC J5.2.
+  `start-plugin-core/tests/integration/pages/hydrate-ids-and-captures.test.ts`: "client: split children passing the
+  component's arguments as a shorthand property render its props". Fix: emit `arguments: tsrArguments` (React) and
+  `arguments: props.tsrArguments` (Solid) for a shorthand property. Workaround: write `{ arguments: arguments }`.
 
 ## Known incorrect rejections (accepted, R89)
 
