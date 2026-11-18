@@ -1,6 +1,6 @@
 import { useRouter, useRouterState } from '@tanstack/solid-router'
 import { TanStackRouterDevtoolsCore } from '@tanstack/router-devtools-core'
-import { createEffect, createSignal, onCleanup } from 'solid-js'
+import { createEffect, createSignal, untrack } from 'solid-js'
 import type { AnyRouter } from '@tanstack/solid-router'
 import type { Component } from 'solid-js'
 import type { JSX } from '@solidjs/web'
@@ -46,7 +46,7 @@ export interface TanStackRouterDevtoolsOptions {
 export const TanStackRouterDevtools: Component<
   TanStackRouterDevtoolsOptions
 > = (props): JSX.Element | null => {
-  const activeRouter = props.router ?? useRouter()
+  const activeRouter = untrack(() => props.router) ?? useRouter()
   const activeRouterState = useRouterState({ router: activeRouter })
 
   const usedProps = {
@@ -63,9 +63,12 @@ export const TanStackRouterDevtools: Component<
     d.setRouter(usedProps.router)
   })
 
-  createEffect(devtools, (d) => {
-    d.setRouterState(usedProps.routerState)
-  })
+  createEffect(
+    () => ({ d: devtools(), state: activeRouterState() }),
+    ({ d, state }) => {
+      d.setRouterState(state)
+    },
+  )
 
   createEffect(devtools, (d) => {
     d.setOptions({
@@ -84,11 +87,9 @@ export const TanStackRouterDevtools: Component<
     ({ d, el }) => {
       if (el) {
         d.mount(el)
-
-        onCleanup(() => {
-          d.unmount()
-        })
+        return () => d.unmount()
       }
+      return undefined
     },
   )
 
