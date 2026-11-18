@@ -222,12 +222,13 @@ const componentKeys = [
  * Every `Route` a route id evaluated to (a route tree rebuilt after an edit
  * imports the module's current export, so any evaluation can be the
  * router's live route), each with the option keys of its route module (read
- * when it evaluates, before the route tree updates it), and the facts of
- * the module that the live route currently reflects.
+ * when it evaluates, before the route tree updates it), and the latest
+ * evaluation: the only one that refreshes the live route (an older one's
+ * refresh can wait for the framework's refresh past a newer one's).
  */
 interface HotRouteRecord {
   routes: WeakMap<AnyRoute, ReadonlyArray<string>>
-  meta: RouteHmrMeta
+  latest: AnyRoute
 }
 
 // Per route id. Bounded by the number of routes (`setRoutes` forgets the ids
@@ -310,7 +311,6 @@ export function applyRouteHmr(
       applyLazyRouteHmr(
         routeId,
         route as unknown as LazyRouteEvaluation,
-        meta,
         adapter,
       )
       return
@@ -321,10 +321,14 @@ export function applyRouteHmr(
     const own = Object.keys(route.options)
     const known = hotRoutes.get(routeId)
     if (!known) {
-      hotRoutes.set(routeId, { routes: new WeakMap([[route, own]]), meta })
+      hotRoutes.set(routeId, {
+        routes: new WeakMap([[route, own]]),
+        latest: route,
+      })
       return
     }
     known.routes.set(route, own)
+    known.latest = route
     const waiting = deferred.get(routeId)
     if (waiting) {
       // evaluated again within the same update (an invalidated reader's
@@ -360,12 +364,9 @@ interface LazyRouteEvaluation {
   options: { id: string } & Record<string, any>
 }
 
-// Per route id, the last evaluation of its lazy route file and its facts.
-// Bounded by the number of lazy route files.
-const hotLazyRoutes = new Map<
-  string,
-  { route: LazyRouteEvaluation; meta: RouteHmrMeta }
->()
+// Per route id, the last evaluation of its lazy route file. Bounded by the
+// number of lazy route files.
+const hotLazyRoutes = new Map<string, LazyRouteEvaluation>()
 
 /**
  * Applies one evaluation of a lazy route file to the live route of its id.
@@ -384,12 +385,11 @@ const hotLazyRoutes = new Map<
 function applyLazyRouteHmr(
   routeId: string,
   lazy: LazyRouteEvaluation,
-  meta: RouteHmrMeta,
   adapter: RouteHmrAdapter,
 ): void {
   if (process.env.NODE_ENV !== 'production') {
     const known = hotLazyRoutes.get(routeId)
-    hotLazyRoutes.set(routeId, { route: lazy, meta })
+    hotLazyRoutes.set(routeId, lazy)
     const router = window.__TSR_ROUTER__
     const live = router?.routesById?.[routeId] as HotRoute | undefined
     if (!known) {
@@ -402,7 +402,7 @@ function applyLazyRouteHmr(
       !live?.lazyFn ||
       router._hmrReload ||
       (state === true &&
-        Object.keys(known.route.options).some((key) => !(key in lazy.options)))
+        Object.keys(known.options).some((key) => !(key in lazy.options)))
     ) {
       window.location.reload()
       return
@@ -485,11 +485,11 @@ function scheduleRefresh(
     }
   }
   if (meta.noComponents) {
-    refreshRoute(routeId, route, meta, adapter, known)
+    refreshRoute(routeId, route, adapter, known)
     return
   }
   whenSettled(adapter, () => {
-    refreshRoute(routeId, route, meta, adapter, known)
+    refreshRoute(routeId, route, adapter, known)
   })
 }
 
@@ -552,16 +552,21 @@ function retargetWrapper(
 
 /**
  * Updates the live route of `window.__TSR_ROUTER__` from one evaluation of
- * its route module (see `applyRouteHmr`).
+ * its route module (see `applyRouteHmr`), when it is still the module's
+ * latest.
  */
 function refreshRoute(
   routeId: string,
   route: AnyRoute,
-  meta: RouteHmrMeta,
   adapter: RouteHmrAdapter,
   known: HotRouteRecord,
 ): void {
   if (process.env.NODE_ENV !== 'production') {
+    // An older evaluation whose refresh waited (for the framework's
+    // refresh) past a newer one's: the newer one holds the options.
+    if (known.latest !== route) {
+      return
+    }
     const router = window.__TSR_ROUTER__
     const current = router?.routesById?.[routeId] as HotRoute | undefined
     // Another router, or a router without this route: leave it alone.
@@ -629,7 +634,6 @@ function refreshRoute(
     }
 
     live.options = nextOptions
-    live.update(nextOptions)
     router._replaceRouteChunk?.(live, next.lazyFn)
     setRoutes(router, adapter)
 
@@ -644,7 +648,6 @@ function refreshRoute(
 
     // the live route's own options are the new evaluation's from now on
     known.routes.set(live, known.routes.get(next)!)
-    known.meta = meta
     void router._refreshRoute?.()
   }
 }

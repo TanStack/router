@@ -9,7 +9,9 @@
  * The split row pauses the page's timers during the edit (Playwright's
  * clock): React Refresh's pass runs from a timer on both bundlers (Vite's
  * plugin debounces it, Rspack's waits 30 ms), so an update that waited for
- * it would not show until they run again.
+ * it would not show until they run again. The overlapping-saves row pauses
+ * them the same way to hold an update that waits while a newer one, which
+ * holds no component, applies at once.
  */
 import { describe, it } from 'vitest'
 import { openRouteHmrPage } from '../route-hmr-page'
@@ -34,6 +36,59 @@ function Page() {
   return <button onClick={() => setCount(count + 1)}>page {data} count {count}</button>
 }
 `
+
+/**
+ * An unsplit `.ts` route module (plugin-react does not compile it, so its
+ * update waits for the refresh bound) recording each evaluation, whose
+ * component lives in its own file; `version` 3 holds no component.
+ */
+const tsRoute = (version: number) =>
+  `import { createFileRoute } from '@tanstack/react-router'
+import { Card } from '../card'
+import { evaluated } from '../evaluations'
+evaluated(${version})
+export const Route = createFileRoute('/')({
+  loader: () => 'L${version}',${version === 3 ? '' : '\n  component: Card,'}
+})
+`
+
+/** What the root renders: the index route's evaluations and its loader data. */
+const evaluationFiles = {
+  'evaluations.ts': `import { useSyncExternalStore } from 'react'
+let seen = ''
+const listeners = new Set<() => void>()
+export function evaluated(version: number) {
+  seen = seen ? \`\${seen},\${version}\` : String(version)
+  listeners.forEach((listener) => listener())
+}
+export function useEvaluations() {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    () => seen,
+  )
+}
+`,
+  'card.tsx': `export function Card() {
+  return <p>card</p>
+}
+`,
+  'routes/__root.tsx': `import { Outlet, createRootRoute, useRouterState } from '@tanstack/react-router'
+import { useEvaluations } from '../evaluations'
+export const Route = createRootRoute({ component: Root })
+function Root() {
+  const data = useRouterState({ select: (s) => s.matches.at(-1)?.loaderData })
+  return (
+    <>
+      <p>evaluated {useEvaluations()} data {String(data)}</p>
+      <Outlet />
+    </>
+  )
+}
+`,
+}
 
 async function clickOnce(app: RouteHmrPage) {
   await app.click('button')
@@ -103,6 +158,53 @@ describe.concurrent.each(['vite', 'rsbuild'] as const)(
             'page data v2 count 1',
           ),
         ).toEqual(inPlace)
+      },
+    )
+
+    it(
+      'held for React Refresh does not override a newer update applied at once',
+      { timeout },
+      async ({ expect, onTestFinished }: TestContext) => {
+        const app = await openRouteHmrPage({
+          bundler,
+          onTestFinished,
+          pluginOptions: { autoCodeSplitting: false },
+          files: { ...evaluationFiles, 'routes/index.ts': tsRoute(1) },
+          ready: 'evaluated 1 data L1card',
+        })
+        const { clock } = app.page.page
+        await clock.install()
+        await clock.pauseAt(Date.now() + 1_000)
+        try {
+          // evaluated, held until the refresh pass or its bound (timers)
+          expect(
+            await app.edit(
+              { 'routes/index.ts': tsRoute(2) },
+              'evaluated 1,2 data L1card',
+            ),
+          ).toEqual(inPlace)
+          // holds no component: applies at once
+          expect(
+            await app.edit(
+              { 'routes/index.ts': tsRoute(3) },
+              /^evaluated 1,2,3 data L3$/,
+            ),
+          ).toEqual(inPlace)
+          // the held update's timers run: it is older than the route's
+          // latest evaluation, which stays
+          await clock.runFor(1_000)
+        } finally {
+          await clock.resume()
+        }
+        expect(
+          await app.evaluate(`(() => {
+            const options = window.__APP_ROUTER__.routesById['/'].options
+            return { loader: options.loader(), component: 'component' in options }
+          })()`),
+        ).toEqual({ loader: 'L3', component: false })
+        await app.page.waitForText(/^evaluated 1,2,3 data L3$/, {
+          selector: '#app',
+        })
       },
     )
   },
