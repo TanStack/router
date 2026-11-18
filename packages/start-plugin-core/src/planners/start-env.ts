@@ -143,24 +143,58 @@ const slice = (range: Range): Frag => ({ k: 'slice', range })
 const rangeOf = (n: Node): Range => ({ start: n.start, end: n.end })
 
 /**
+ * Whether `node` is the left edge of a statement, of an `export default`
+ * expression or of an arrow's expression body: every node between starts
+ * where it does (`node.bind(x)()`, `node as T`, `node, b`). There, text that
+ * opens a block or a declaration (`function`, `class`, `{`) would be read as
+ * one.
+ */
+function atStatementStart(
+  file: PlanContext['analysis']['file'],
+  node: Node,
+): boolean {
+  let n = node
+  for (let p = file.parentOf(n); p; n = p, p = file.parentOf(p)) {
+    if (
+      p.type === 'ExpressionStatement' ||
+      p.type === 'ExportDefaultDeclaration'
+    ) {
+      return true
+    }
+    if (p.type === 'ArrowFunctionExpression') {
+      return p.body === n
+    }
+    if (p.start !== n.start) {
+      return false
+    }
+  }
+  return false
+}
+
+/**
  * Whether the text of `kept` (or a generated arrow) needs parentheses when it
- * replaces the expression `original` under `parent`. Decided on the node whose
- * text is kept, wrappers included: `impl as any` is no callee. An `opaque`
- * kept node is rewritten itself (a factory call this planner replaces), so
- * its text may have any shape.
+ * replaces the expression `original`. Decided on the node whose text is kept,
+ * wrappers included: `impl as any` is no callee, `function f() {} as any`
+ * opens a declaration. An `opaque` kept node is rewritten itself (a factory
+ * call this planner replaces), so its text may have any shape.
  */
 function needsParens(
   code: string,
   kept: Node | 'arrow',
   original: Node,
-  parent: Node | null,
+  file: PlanContext['analysis']['file'],
   opaque = false,
 ): boolean {
+  if (
+    kept !== 'arrow' &&
+    opensNonExpressionStatement(code, kept.start) &&
+    atStatementStart(file, original)
+  ) {
+    return true
+  }
+  const parent = file.parentOf(original)
   if (!parent) {
     return false
-  }
-  if (parent.type === 'ExpressionStatement') {
-    return kept !== 'arrow' && opensNonExpressionStatement(code, kept.start)
   }
   const kind = opaque
     ? 'opaque'
@@ -175,7 +209,6 @@ function needsParens(
     'ArrayExpression',
     'TemplateLiteral',
     'ParenthesizedExpression',
-    'NewExpression',
     'ThisExpression',
     'JSXElement',
     'JSXFragment',
@@ -245,7 +278,7 @@ function keptText(
   ) {
     return [text('(0, '), slice(rangeOf(kept)), text(')')]
   }
-  return needsParens(code, kept, original, file.parentOf(original), opaque)
+  return needsParens(code, kept, original, file, opaque)
     ? [text('('), slice(rangeOf(kept)), text(')')]
     : [slice(rangeOf(kept))]
 }
@@ -907,12 +940,7 @@ function planStartEnv(
       continue
     }
     if (chain.headIsFactoryCall) {
-      const parens = needsParens(
-        ctx.analysis.source.code,
-        'arrow',
-        X,
-        file.parentOf(X),
-      )
+      const parens = needsParens(ctx.analysis.source.code, 'arrow', X, file)
       envEdit(rangeOf(X), [text(parens ? '(() => {})' : '() => {}')])
       continue
     }
@@ -928,7 +956,6 @@ function planStartEnv(
   // ---- 4. env-only fns
   for (const c of analysis.envOnlyCalls) {
     const own = (c.kind === 'server') === isServer
-    const parent = file.parentOf(c.call)
     const wrapped = c.call
     if (own) {
       if (c.arg === null || c.arg.type === 'SpreadElement') {
@@ -952,7 +979,7 @@ function planStartEnv(
         ctx.analysis.source.code,
         'arrow',
         wrapped,
-        parent,
+        file,
       )
       const stub = `() => { throw new Error(${stringLiteral(message, '"')}) }`
       envEdit(rangeOf(c.call), [text(parens ? `(${stub})` : stub)])
