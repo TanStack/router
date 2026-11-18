@@ -3,30 +3,17 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { z } from 'zod'
 import { TRANSFORM_ID_REGEX } from '../constants'
-import { detectKindsInCode } from '../start-compiler/compiler'
 import { getTransformCodeFilterForEnv } from '../start-compiler/config'
-import {
-  createStartCompiler,
-  loadCompilerVirtualModule,
-  matchesCodeFilters,
-  mergeServerFnsById,
-} from '../start-compiler/host'
-import { cleanId } from '../start-compiler/utils'
 import { createHydrateCompilerPlugin } from '../hydrate-when-transform'
-import {
-  SERVER_FN_BUILD_INFO_CONTEXT_KEY,
-  SERVER_FN_BUILD_INFO_FIELD,
-} from './start-compiler-metadata'
+import { createStartCompiler, mergeServerFnsById } from '../start-compiler/host'
+import { cleanId } from '../start-compiler/utils'
+import { SERVER_FN_BUILD_INFO_FIELD } from './start-compiler-metadata'
 import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
-import type {
-  ServerFnBuildInfo,
-  ServerFnBuildInfoLoaderContext,
-} from './start-compiler-metadata'
+import type { StartCompilerLoaderOptions } from './start-compiler-loader'
 import type {
   CompileStartFrameworkOptions,
   StartCompilerImportTransform,
   StartCompilerPlugin,
-  StartCompilerTransformResult,
 } from '../types'
 import type {
   DevServerFnModuleSpecifierEncoder,
@@ -34,14 +21,7 @@ import type {
   ServerFn,
 } from '../start-compiler/types'
 
-type RsbuildTransformContext = Parameters<
-  Parameters<RsbuildPluginAPI['transform']>[1]
->[0]
-type WarnableRsbuildTransformContext = RsbuildTransformContext & {
-  emitWarning?: (warning: Error) => void
-}
 type RsbuildInputFileSystem = NonNullable<Rspack.Compiler['inputFileSystem']>
-type ServerFnMetadataById = Map<string, ServerFnBuildInfo>
 type StartCompilerEnvironment = {
   name: string
   type: 'client' | 'server'
@@ -69,14 +49,10 @@ const rsbuildDevServerFnModuleSpecifierEncoder: DevServerFnModuleSpecifierEncode
   ({ extractedFilename }) => pathToFileURL(extractedFilename).href
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
-const metadataLoaderFilename = 'start-compiler-metadata-loader.js'
-const EMPTY_SERVER_FN_BUILD_INFO: ServerFnBuildInfo = {
-  version: 1,
-  serverFnsById: {},
-}
+const compilerLoaderFilename = 'start-compiler-loader.js'
 
-function resolveMetadataLoader(): string {
-  return resolve(currentDir, metadataLoaderFilename)
+function resolveCompilerLoader(): string {
+  return resolve(currentDir, compilerLoaderFilename)
 }
 
 function readServerFnBuildInfo(
@@ -90,26 +66,6 @@ function readServerFnBuildInfo(
   }
 
   return result.data.serverFnsById
-}
-
-function setServerFnBuildInfoLoaderContext(
-  loaderContext: Rspack.LoaderContext & ServerFnBuildInfoLoaderContext,
-  module: Rspack.Module,
-) {
-  loaderContext[SERVER_FN_BUILD_INFO_CONTEXT_KEY] = (metadata) => {
-    if (metadata) {
-      module.buildInfo[SERVER_FN_BUILD_INFO_FIELD] = metadata
-    } else if (module.buildInfo[SERVER_FN_BUILD_INFO_FIELD]) {
-      module.buildInfo[SERVER_FN_BUILD_INFO_FIELD] = EMPTY_SERVER_FN_BUILD_INFO
-    }
-  }
-}
-
-function warnTransformContext(
-  ctx: WarnableRsbuildTransformContext,
-  message: string,
-): void {
-  ctx.emitWarning?.(new Error(message))
 }
 
 export interface StartCompilerHostOptions {
@@ -126,10 +82,10 @@ export interface StartCompilerHostOptions {
 }
 
 /**
- * Registers the shared StartCompiler as rsbuild transforms for client + ssr environments.
+ * Registers the shared StartCompiler as a pre loader for each Start environment.
  *
- * Uses `api.transform()` to hook into the rsbuild loader pipeline, and the
- * transform context's native `resolve()` for module resolution.
+ * The loader transforms source and writes metadata in the same invocation.
+ * Compiler instances and queues remain scoped to their environment.
  */
 export function registerStartCompilerTransforms(
   api: RsbuildPluginAPI,
@@ -137,27 +93,13 @@ export function registerStartCompilerTransforms(
 ): {
   serverFnsById: Record<string, ServerFn>
 } {
-  const compilers = new Map<string, ReturnType<typeof createStartCompiler>>()
   // Serialize access to each StartCompiler's mutable per-environment caches.
   const compilerQueues = new Map<string, Promise<void>>()
-  const inputFileSystems = new Map<string, RsbuildInputFileSystem>()
-  const transformContextStorage =
-    new AsyncLocalStorage<RsbuildTransformContext>()
-  const serverFnMetadataByEnvironment = new Map<string, ServerFnMetadataById>()
+  const transformContextStorage = new AsyncLocalStorage<Rspack.LoaderContext>()
   const serverFnsByEnvironment = new Map<string, Record<string, ServerFn>>()
   const serverFnsById = opts.serverFnsById ?? {}
   const getRoot = () =>
     typeof opts.root === 'function' ? opts.root() : opts.root
-  const getServerFnMetadata = (environmentName: string) => {
-    let metadataById = serverFnMetadataByEnvironment.get(environmentName)
-
-    if (!metadataById) {
-      metadataById = new Map()
-      serverFnMetadataByEnvironment.set(environmentName, metadataById)
-    }
-
-    return metadataById
-  }
   const runCompilerTask = async <T>(
     environmentName: string,
     task: () => Promise<T>,
@@ -197,35 +139,12 @@ export function registerStartCompilerTransforms(
 
   const isDev = api.context.action === 'dev'
   const mode = isDev ? 'dev' : 'build'
-  const metadataLoader = resolveMetadataLoader()
+  const compilerLoader = resolveCompilerLoader()
 
   const environments = opts.environments
 
-  // Rspack persistent cache restores modules without re-running api.transform.
-  // Keep server function modules cacheable by writing discovered metadata into
-  // buildInfo from a real loader, then replaying it from cached modules.
-  api.modifyRspackConfig((config, utils) => {
-    if (!environments.some((env) => env.name === utils.environment.name)) {
-      return
-    }
-
-    const rules = config.module.rules ?? []
-    rules.push({
-      test: TRANSFORM_ID_REGEX[0],
-      enforce: 'post',
-      use: [
-        {
-          loader: metadataLoader,
-          options: {
-            metadataById: getServerFnMetadata(utils.environment.name),
-          },
-        },
-      ],
-    })
-    config.module.rules = rules
-  })
-
   for (const env of environments) {
+    let startCompiler: ReturnType<typeof createStartCompiler>
     const compilerTransforms =
       env.name === opts.providerEnvName ? opts.compilerTransforms : undefined
     const envCodeFilters = getTransformCodeFilterForEnv(env.type, {
@@ -247,235 +166,163 @@ export function registerStartCompilerTransforms(
       opts.onServerFnsByIdChange?.()
     }
 
-    api.transform(
-      {
-        test: TRANSFORM_ID_REGEX[0],
-        environments: [env.name],
-        order: 'pre',
-      },
-      async (ctx: RsbuildTransformContext) => {
-        return transformContextStorage.run(ctx, async () => {
-          const code = ctx.code
-          let nextCode = code
-          let previousResult: {
-            code: string
-            map: StartCompilerTransformResult['map']
-          } | null = null
-          const id = ctx.resource
-          const root = getRoot()
+    const compile: StartCompilerLoaderOptions['compile'] = (ctx, input) =>
+      transformContextStorage.run(ctx, async () => {
+        const discoveredServerFnsById: Record<string, ServerFn> = {}
+        const result = await runCompilerTask(env.name, async () => {
+          activeServerFnMetadata = discoveredServerFnsById
+          try {
+            return await startCompiler.compile(input)
+          } finally {
+            activeServerFnMetadata = undefined
+          }
+        })
+        return { result, serverFnsById: discoveredServerFnsById }
+      })
 
-          const virtualResult = loadCompilerVirtualModule(compilerPlugins, {
-            code,
-            id,
-            root,
+    api.modifyBundlerChain((chain, utils) => {
+      if (utils.environment.name !== env.name) {
+        return
+      }
+      // Register in the same phase as api.transform to preserve pre-loader order.
+      chain.module
+        .rule('tanstack-start-compiler')
+        .test(TRANSFORM_ID_REGEX[0])
+        .enforce('pre')
+        .use('tanstack-start-compiler')
+        .loader(compilerLoader)
+        .options({
+          env: env.type,
+          envName: env.name,
+          getRoot,
+          compilerPlugins,
+          compilerTransforms,
+          codeFilters: envCodeFilters,
+          compile,
+        } satisfies StartCompilerLoaderOptions)
+    })
+
+    api.modifyRspackConfig((config, utils) => {
+      if (utils.environment.name !== env.name) {
+        return
+      }
+
+      config.plugins.push({
+        apply(compiler: Rspack.Compiler) {
+          if (!compiler.inputFileSystem) {
+            throw new Error(`missing rspack input filesystem for ${env.name}`)
+          }
+          const inputFileSystem = compiler.inputFileSystem
+          startCompiler = createStartCompiler({
             env: env.type,
             envName: env.name,
-          })
-          if (virtualResult) {
-            nextCode = virtualResult.code
-            previousResult = {
-              code: virtualResult.code,
-              map: virtualResult.map ?? null,
-            }
-          }
-
-          // Quick string-level check: does this file contain any patterns for this env?
-          if (!matchesCodeFilters(nextCode, envCodeFilters)) {
-            return previousResult ?? nextCode
-          }
-
-          let compiler = compilers.get(env.name)
-          if (!compiler) {
-            compiler = createStartCompiler({
-              env: env.type,
-              envName: env.name,
-              root,
-              mode,
-              framework: opts.framework,
-              providerEnvName: opts.providerEnvName,
-              generateFunctionId: opts.generateFunctionId,
-              compilerTransforms,
-              compilerPlugins,
-              serverFnProviderModuleDirectives,
-              onServerFnsById,
-              getKnownServerFns: () => serverFnsById,
-              encodeModuleSpecifierInDev: isDev
-                ? rsbuildDevServerFnModuleSpecifierEncoder
-                : undefined,
-              loadModule: async (moduleId: string) => {
-                const activeCtx = transformContextStorage.getStore()
-                if (!activeCtx) {
-                  throw new Error(
-                    `could not load module ${moduleId}: missing active rsbuild transform context for ${env.name}`,
-                  )
-                }
-
-                const inputFileSystem = inputFileSystems.get(env.name)
-                if (!inputFileSystem) {
-                  throw new Error(
-                    `could not load module ${moduleId}: missing rspack input filesystem for ${env.name}`,
-                  )
-                }
-
-                const cleanedId = cleanId(moduleId)
-                activeCtx.addDependency(cleanedId)
-                const loaded = await readFileFromInputFileSystem(
-                  inputFileSystem,
-                  cleanedId,
-                )
-                const moduleCode = Buffer.isBuffer(loaded)
-                  ? loaded.toString('utf8')
-                  : loaded
-
-                compiler!.ingestModule({ code: moduleCode, id: cleanedId })
-              },
-              resolveId: async (
-                source: string,
-                importer?: string,
-              ): Promise<string | null> => {
-                const activeCtx = transformContextStorage.getStore()
-                if (!activeCtx) {
-                  throw new Error(
-                    `could not resolve ${source}: missing active rsbuild transform context for ${env.name}`,
-                  )
-                }
-
-                const context = importer
-                  ? importer.replace(/[/\\][^/\\]*$/, '')
-                  : getRoot()
-
-                return await new Promise((resolve, reject) => {
-                  activeCtx.resolve(context, source, (error, resolved) => {
-                    if (error) {
-                      reject(error)
-                      return
-                    }
-
-                    if (!resolved) {
-                      resolve(null)
-                      return
-                    }
-
-                    resolve(cleanId(resolved))
-                  })
-                })
-              },
-            })
-            compilers.set(env.name, compiler)
-          }
-
-          const detectedKinds = detectKindsInCode(nextCode, env.type, {
+            root: getRoot(),
+            mode,
+            framework: opts.framework,
+            providerEnvName: opts.providerEnvName,
+            generateFunctionId: opts.generateFunctionId,
             compilerTransforms,
-          })
-          const discoveredServerFnsById: Record<string, ServerFn> = {}
-          const result = await runCompilerTask(env.name, async () => {
-            activeServerFnMetadata = discoveredServerFnsById
-
-            try {
-              return await compiler.compile({
-                id,
-                code: nextCode,
-                detectedKinds,
-                warn: (message) => warnTransformContext(ctx, message),
-              })
-            } finally {
-              activeServerFnMetadata = undefined
-            }
-          })
-
-          getServerFnMetadata(env.name).set(id, {
-            version: 1,
-            serverFnsById: discoveredServerFnsById,
-          })
-
-          if (result) {
-            return {
-              code: result.code,
-              map: result.map ?? null,
-            }
-          }
-
-          return previousResult ?? nextCode
-        })
-      },
-    )
-  }
-
-  api.modifyRspackConfig((config, utils) => {
-    if (!environments.some((env) => env.name === utils.environment.name)) {
-      return
-    }
-
-    config.plugins.push({
-      apply(compiler: Rspack.Compiler) {
-        if (compiler.inputFileSystem) {
-          inputFileSystems.set(utils.environment.name, compiler.inputFileSystem)
-        }
-
-        compiler.hooks.compilation.tap(
-          'TanStackStartCompilerMetadataLoaderContext',
-          (compilation) => {
-            utils.rspack.NormalModule.getCompilationHooks(
-              compilation,
-            ).loader.tap(
-              'TanStackStartCompilerMetadataLoaderContext',
-              (loaderContext, module) => {
-                setServerFnBuildInfoLoaderContext(loaderContext, module)
-              },
-            )
-          },
-        )
-
-        compiler.hooks.compile.tap('TanStackStartCompilerMetadataCleanup', () =>
-          getServerFnMetadata(utils.environment.name).clear(),
-        )
-
-        compiler.hooks.finishMake.tap(
-          {
-            name: 'TanStackStartCompilerCachedServerFnMetadata',
-            stage: -20,
-          },
-          (compilation) => {
-            const restoredServerFnsById: Record<string, ServerFn> = {}
-
-            for (const module of compilation.modules) {
-              const metadata = readServerFnBuildInfo(module)
-              if (!metadata) {
-                continue
+            compilerPlugins,
+            serverFnProviderModuleDirectives,
+            onServerFnsById,
+            getKnownServerFns: () => serverFnsById,
+            encodeModuleSpecifierInDev: isDev
+              ? rsbuildDevServerFnModuleSpecifierEncoder
+              : undefined,
+            loadModule: async (moduleId: string) => {
+              const activeCtx = transformContextStorage.getStore()
+              if (!activeCtx) {
+                throw new Error(
+                  `could not load module ${moduleId}: missing active rsbuild transform context for ${env.name}`,
+                )
               }
 
-              mergeServerFnsById(restoredServerFnsById, metadata)
-            }
+              const cleanedId = cleanId(moduleId)
+              activeCtx.addDependency(cleanedId)
+              const loaded = await readFileFromInputFileSystem(
+                inputFileSystem,
+                cleanedId,
+              )
+              const moduleCode = Buffer.isBuffer(loaded)
+                ? loaded.toString('utf8')
+                : loaded
 
-            serverFnsByEnvironment.set(
-              utils.environment.name,
-              restoredServerFnsById,
-            )
-            replaceServerFnsByIdFromEnvironmentSnapshots()
-          },
-        )
+              startCompiler.ingestModule({ code: moduleCode, id: cleanedId })
+            },
+            resolveId: async (
+              source: string,
+              importer?: string,
+            ): Promise<string | null> => {
+              const activeCtx = transformContextStorage.getStore()
+              if (!activeCtx) {
+                throw new Error(
+                  `could not resolve ${source}: missing active rsbuild transform context for ${env.name}`,
+                )
+              }
 
-        compiler.hooks.watchRun.tap(
-          'TanStackStartCompilerModuleInvalidation',
-          (watchCompiler) => {
-            const startCompiler = compilers.get(utils.environment.name)
+              const context = importer
+                ? importer.replace(/[/\\][^/\\]*$/, '')
+                : getRoot()
 
-            if (!startCompiler) {
-              return
-            }
+              return await new Promise((resolve, reject) => {
+                activeCtx.resolve(context, source, (error, resolved) => {
+                  if (error) {
+                    reject(error)
+                    return
+                  }
 
-            for (const file of watchCompiler.modifiedFiles ?? []) {
-              startCompiler.invalidateModule(file)
-            }
+                  if (!resolved) {
+                    resolve(null)
+                    return
+                  }
 
-            for (const file of watchCompiler.removedFiles ?? []) {
-              startCompiler.invalidateModule(file)
-            }
-          },
-        )
-      },
+                  resolve(cleanId(resolved))
+                })
+              })
+            },
+          })
+
+          compiler.hooks.finishMake.tap(
+            {
+              name: 'TanStackStartCompilerCachedServerFnMetadata',
+              stage: -20,
+            },
+            (compilation) => {
+              const restoredServerFnsById: Record<string, ServerFn> = {}
+
+              for (const module of compilation.modules) {
+                const metadata = readServerFnBuildInfo(module)
+                if (!metadata) {
+                  continue
+                }
+
+                mergeServerFnsById(restoredServerFnsById, metadata)
+              }
+
+              serverFnsByEnvironment.set(
+                utils.environment.name,
+                restoredServerFnsById,
+              )
+              replaceServerFnsByIdFromEnvironmentSnapshots()
+            },
+          )
+
+          compiler.hooks.watchRun.tap(
+            'TanStackStartCompilerModuleInvalidation',
+            (watchCompiler) => {
+              for (const file of watchCompiler.modifiedFiles ?? []) {
+                startCompiler.invalidateModule(file)
+              }
+
+              for (const file of watchCompiler.removedFiles ?? []) {
+                startCompiler.invalidateModule(file)
+              }
+            },
+          )
+        },
+      })
     })
-  })
+  }
 
   return { serverFnsById }
 }
