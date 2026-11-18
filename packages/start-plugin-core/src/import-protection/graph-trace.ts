@@ -220,25 +220,6 @@ export function traceOf(
   let queue = [importerId]
   let root: string | null = null
   let firstRootless: string | null = null
-  const importersOf = (id: string): Array<string> => {
-    const out: Array<string> = []
-    const add = (i: string) => {
-      if (!out.includes(i)) {
-        out.push(i)
-      }
-    }
-    if (graph) {
-      for (const i of graph.importers(id)) {
-        add(i)
-      }
-    }
-    if (index) {
-      for (const i of index.importers(id)) {
-        add(i)
-      }
-    }
-    return out
-  }
   search: while (queue.length > 0) {
     const level: Array<string> = []
     for (const id of queue) {
@@ -246,17 +227,21 @@ export function traceOf(
         root = id
         break search
       }
-      const importers = importersOf(id)
-      if (importers.length === 0 && firstRootless === null) {
-        firstRootless = id
-      }
-      for (const i of importers) {
-        if (seen.has(i)) {
-          continue
+      // (the host's graph first, then the edges import protection recorded)
+      let rootless = true
+      for (const importers of [graph?.importers(id), index?.importers(id)]) {
+        for (const i of importers ?? []) {
+          rootless = false
+          if (seen.has(i)) {
+            continue
+          }
+          seen.add(i)
+          next.set(i, id)
+          level.push(i)
         }
-        seen.add(i)
-        next.set(i, id)
-        level.push(i)
+      }
+      if (rootless && firstRootless === null) {
+        firstRootless = id
       }
     }
     queue = level
