@@ -48,7 +48,8 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
 
   test.for([false, true])(
     'the document of the route links its stylesheet (route file symlinked: %s)',
-    async (linked) => {
+    { timeout },
+    async (linked: boolean) => {
       const build = await buildStart({
         bundler,
         files: files(linked),
@@ -73,6 +74,5 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
         texts.some((text) => /rgb\(1,\s*2,\s*3\)|#010203/.test(text)),
       ).toBe(true)
     },
-    timeout,
   )
 })
