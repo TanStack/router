@@ -74,8 +74,12 @@ export const Route = createFileRoute('/')({})
         })
         await app.page.waitForText('Widget', { selector: '#widget' })
         expect(
-          (await app.edit({ 'routes/index.lazy.tsx': lazyPage('App_B') }, 'App_B'))
-            .errors,
+          (
+            await app.edit(
+              { 'routes/index.lazy.tsx': lazyPage('App_B') },
+              'App_B',
+            )
+          ).errors,
         ).toEqual([])
         // the widget's next load of its route
         await app.evaluate('window.__WIDGET_ROUTER__.invalidate()')

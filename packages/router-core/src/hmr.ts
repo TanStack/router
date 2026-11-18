@@ -400,9 +400,7 @@ function applyLazyRouteHmr(
       !live?.lazyFn ||
       router._hmrReload ||
       (state === true &&
-        Object.keys(known.route.options).some(
-          (key) => !(key in lazy.options),
-        ))
+        Object.keys(known.route.options).some((key) => !(key in lazy.options)))
     ) {
       window.location.reload()
       return

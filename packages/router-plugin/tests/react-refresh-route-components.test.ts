@@ -230,11 +230,9 @@ describe.each([
     it.each([
       ['a call', 'configure()'],
       ['a sequence', "(formatter = () => 'configured', {})"],
-    ])(
-      'an earlier option written as %s runs first',
-      async (_, staticData) => {
-        const route = await loadRoute(
-          `${head}let formatter = (_text: string) => 'unconfigured'
+    ])('an earlier option written as %s runs first', async (_, staticData) => {
+      const route = await loadRoute(
+        `${head}let formatter = (_text: string) => 'unconfigured'
 function configure() {
   formatter = () => 'configured'
   return {}
@@ -248,14 +246,13 @@ export const Route = createFileRoute('/')({${groupings}
   component: withFormat(() => 'page'),
 })
 `,
-          options,
-        )
-        await expectValidModules(route)
-        expect(await route.run(`return render('component')`)).toBe(
-          '<p>configured</p>',
-        )
-      },
-    )
+        options,
+      )
+      await expectValidModules(route)
+      expect(await route.run(`return render('component')`)).toBe(
+        '<p>configured</p>',
+      )
+    })
   },
 )
 

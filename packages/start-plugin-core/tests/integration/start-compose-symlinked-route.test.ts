@@ -47,7 +47,7 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
   })
 
   test.for([false, true])(
-    "the document of the route links its stylesheet (route file symlinked: %s)",
+    'the document of the route links its stylesheet (route file symlinked: %s)',
     async (linked) => {
       const build = await buildStart({
         bundler,
@@ -69,9 +69,9 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
       const texts = await Promise.all(
         stylesheets.map(async (href) => (await served.fetch(href)).text()),
       )
-      expect(texts.some((text) => /rgb\(1,\s*2,\s*3\)|#010203/.test(text))).toBe(
-        true,
-      )
+      expect(
+        texts.some((text) => /rgb\(1,\s*2,\s*3\)|#010203/.test(text)),
+      ).toBe(true)
     },
     timeout,
   )

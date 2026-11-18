@@ -292,7 +292,8 @@ function isInert(node: Node, factory: Node): boolean {
       return n.expressions.every((e) => isInert(e, factory))
     case 'ArrayExpression':
       return n.elements.every(
-        (e) => e === null || (e.type !== 'SpreadElement' && isInert(e, factory)),
+        (e) =>
+          e === null || (e.type !== 'SpreadElement' && isInert(e, factory)),
       )
     case 'ObjectExpression':
       return n.properties.every(
