@@ -340,6 +340,8 @@ async function settle(
         if (old && old.revision !== rev) {
           cache.delete(key)
         }
+        // (nothing of it waits for a removed file to return)
+        caches.stale.unhold(key.env, identity.path)
       }
       return result
     }
@@ -375,6 +377,8 @@ async function settle(
     if (snapshotOk && cache.generation(key) === generation) {
       if (cache.set(entry)) {
         ledger.publish()
+        // a hold of the file ends: what this plan read decides from now on
+        caches.stale.unhold(key.env, identity.path)
       }
       return { kind: 'plan', entry }
     }

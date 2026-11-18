@@ -1026,6 +1026,24 @@ export class StaleSets {
     }
   }
 
+  /**
+   * A compile of the file's latest text settled in the environment: a hold
+   * of its path ends. The hold was for the modules of the plan a removal
+   * evicted; the new compile recorded its own reads (a removed file it
+   * still imports as a failed resolution, which the file's return judges
+   * again). A path stale for any other reason stays: the file's other
+   * outputs follow it.
+   */
+  unhold(env: string, path: string): void {
+    const set = this.byEnv.get(env)
+    if (set?.get(path) === true) {
+      set.delete(path)
+      if (set.size === 0) {
+        this.byEnv.delete(env)
+      }
+    }
+  }
+
   /** A removed file: no environment builds its modules again. */
   remove(path: string): void {
     for (const [env, set] of this.byEnv) {
