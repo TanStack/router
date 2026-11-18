@@ -824,37 +824,6 @@ export function computePlacement(input: PlacementInput): Placement {
     }
     return set
   }
-  /**
-   * The imports already unused in the source: an import nothing in the
-   * source references, by value or in a type (an export is a use), a bare
-   * `import './polyfill'` or `import './a.css'` included. When the env
-   * module reads a shared name (its first import is then the shared
-   * module's), they move there,
-   * in source order with its own imports: they run at the same point, once,
-   * and a module a shared declaration reads still runs after a bare import
-   * written before it. Otherwise they stay in the env module. Chunks and
-   * Start's derived outputs load after the env module has run and get none.
-   * Only what the source wrote (not a planner's generated import, the route
-   * module's `lazyRouteComponent`). A declaration already unused stays in
-   * the route module only: nothing can read it, and a copy would run its
-   * effect again.
-   */
-  const unusedImports: Array<ClusterId> = []
-  const sourceUsed = readFromRemoved(input, graph, reads, [
-    { start: 0, end: input.code.length },
-  ])
-  for (const cl of clusters) {
-    if (
-      cl.units.length > 0 &&
-      (cl.kind === 'import-effect' ||
-        (cl.kind === 'import' &&
-          !sourceUsed.has(cl.id) &&
-          removable(cl.id) &&
-          !cl.units.some((u) => units[u]!.exported.length > 0)))
-    ) {
-      unusedImports.push(cl.id)
-    }
-  }
   const SHARED = 'shared' as OutputId
   /** The shared declarations derived outputs read, and the outputs reading them. */
   const sharedRead = new Set<ClusterId>()
@@ -998,6 +967,39 @@ export function computePlacement(input: PlacementInput): Placement {
       }
       for (const c of held) {
         home.set(c, shared.id)
+      }
+    }
+  }
+  /**
+   * The imports already unused in the source: an import nothing in the
+   * source references, by value or in a type (an export is a use), a bare
+   * `import './polyfill'` or `import './a.css'` included. When the env
+   * module reads a shared name (its first import is then the shared
+   * module's), they move there,
+   * in source order with its own imports: they run at the same point, once,
+   * and a module a shared declaration reads still runs after a bare import
+   * written before it. Otherwise they stay in the env module. Chunks and
+   * Start's derived outputs load after the env module has run and get none.
+   * Only what the source wrote (not a planner's generated import, the route
+   * module's `lazyRouteComponent`). A declaration already unused stays in
+   * the route module only: nothing can read it, and a copy would run its
+   * effect again.
+   */
+  const unusedImports: Array<ClusterId> = []
+  if (shared !== null) {
+    const sourceUsed = readFromRemoved(input, graph, reads, [
+      { start: 0, end: input.code.length },
+    ])
+    for (const cl of clusters) {
+      if (
+        cl.units.length > 0 &&
+        (cl.kind === 'import-effect' ||
+          (cl.kind === 'import' &&
+            !sourceUsed.has(cl.id) &&
+            removable(cl.id) &&
+            !cl.units.some((u) => units[u]!.exported.length > 0)))
+      ) {
+        unusedImports.push(cl.id)
       }
     }
   }
