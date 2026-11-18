@@ -189,3 +189,36 @@ for (const holdBootstrap of [false, true]) {
     expect(errors).toEqual([])
   })
 }
+
+test('keeps window scroll made before hydration', async ({ page }) => {
+  const errors: Array<string> = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.addInitScript(() => {
+    ;(window as any).__holdScrollBootstrap = true
+  })
+  await page.goto('/normal-page')
+  await expect
+    .poll(() =>
+      page.evaluate(() => typeof (window as any).__releaseScrollBootstrap),
+    )
+    .toBe('function')
+
+  const before = await page.evaluate(async () => {
+    scrollTo(0, 500)
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    return scrollY
+  })
+  expect(before).toBeGreaterThan(0)
+
+  const hydrated = await page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        addEventListener('test-scroll-hydrated', () => resolve(scrollY), {
+          once: true,
+        })
+        ;(window as any).__releaseScrollBootstrap()
+      }),
+  )
+  expect(hydrated).toBe(before)
+  expect(errors).toEqual([])
+})
