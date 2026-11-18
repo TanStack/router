@@ -474,7 +474,7 @@ function envCompilerPlugins(
     outputOptions(options) {
       return withOwnSourcesNamedByFile(options)
     },
-    renderChunk(code, chunk) {
+    renderChunk(code, chunk, output) {
       const s = state.sessionOf(this.environment)
       if (!s.start.allocator || !code.includes('__TSS_FN_ID_')) {
         return null
@@ -493,7 +493,10 @@ function envCompilerPlugins(
         })
       }
       const source = new SourceText(code)
-      const builder = new OutputBuilder(source, chunk.fileName, { map: true })
+      // a map only for an output that emits maps (the bundler asks for none otherwise)
+      const builder = new OutputBuilder(source, chunk.fileName, {
+        map: Boolean(output.sourcemap),
+      })
       let pos = 0
       for (const e of patched.edits) {
         if (e.start > pos) {
