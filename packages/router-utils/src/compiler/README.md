@@ -317,8 +317,9 @@ text compiles waits for it and emits its own output from the result.
     stale, and its next compile reports the error). The file's own plans are keyed by its text and stay (a bundler
     that built the new text already keeps their rows) until a compile of a newer text ends: with its plan, or, for a
     text without one (untouched, empty, not parsed), without. A removal evicts them and stales every plan that read the
-    file, unasked: held, unless every resolution of the plan that found the file finds another file now (`./b` found
-    `b.ts` and finds `b/index.ts`: a file turned into a folder), asked with the plan's own resolver. Events of
+    file, unasked: held, unless every resolution of the plan that found the file finds another file or an external now
+    (`./b` found `b.ts` and finds `b/index.ts`: a file turned into a folder; a resolver's fallback to a package), asked
+    with the plan's own resolver. Events of
     different paths run at once: a plan judged stale is evicted and enters the stale set only if it is still the key's
     plan once its checks answered (another event may have evicted it meanwhile, e.g. its own file's removal, which
     took the file out of the stale sets). A removal is told to the session (`createCompilerCaches`' `removed`: Start forgets the file's server

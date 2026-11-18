@@ -419,8 +419,8 @@ type InvalidationHosts = HostServices | ((key: PlanKey) => HostServices)
  * its bundler's, which reported the event). A removed file's plans are
  * evicted, and every plan that read it is stale, unasked: held (its modules
  * wait for a file to appear) unless every resolution of it that found the
- * file finds another one now (`resolvedElsewhere`: a file turned into a
- * folder), so its modules are built again at once.
+ * file finds another one or an external now (`resolvedElsewhere`: a file
+ * turned into a folder), so its modules are built again at once.
  * A virtual module's change (`path`: its id, reported by its host's update
  * of the module, `staleHotUpdate`: its text is a `load`, which no file event
  * names) marks its raw facts stale in every environment and re-validates
@@ -712,14 +712,15 @@ async function applyChange(
 
 /**
  * Whether a dependent of a removed file can compile now: every resolution
- * of it that found the file finds another file (`./b` found `b.ts`, which
- * was removed, and finds `b/index.ts`: a file turned into a folder), so
- * its modules are built again at once. Otherwise (no resolution found the
- * file, one finds nothing or still the file: a resolver may cache it until
- * its next compile) the dependent is held: it waits for a file to appear
- * (a removal the watcher reports before the file comes back: its modules
- * would fail to build meanwhile). The resolutions are asked with the
- * dependent's own resolver, so two importers of the file decide apart.
+ * of it that found the file finds another file or an external (`./b` found
+ * `b.ts`, which was removed, and finds `b/index.ts`: a file turned into a
+ * folder; a resolver's fallback to a package), so its modules are built
+ * again at once. Otherwise (no resolution found the file, one finds nothing
+ * or still the file: a resolver may cache it until its next compile) the
+ * dependent is held: it waits for a file to appear (a removal the watcher
+ * reports before the file comes back: its modules would fail to build
+ * meanwhile). The resolutions are asked with the dependent's own resolver,
+ * so two importers of the file decide apart.
  */
 async function resolvedElsewhere(
   fps: ReadonlyArray<DependencyFingerprint>,
@@ -734,11 +735,8 @@ async function resolvedElsewhere(
     const now = await src
       .resolution(fp.importer, fp.specifier)
       .catch(() => null)
-    if (
-      now === null ||
-      now === EXTERNAL_RESOLUTION ||
-      pathOfId(now) === removed
-    ) {
+    // (an external names no file that may come back: found elsewhere)
+    if (now === null || pathOfId(now) === removed) {
       return false
     }
     found = true
