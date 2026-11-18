@@ -17,6 +17,7 @@
  * (main's `importProtection/virtualModules.test.ts`).
  */
 import { afterAll, describe, expect, test } from 'vitest'
+import { mentionsFile } from '@tanstack/compiler-test-utils/diagnostics'
 import { startDevServer } from '../../dev-server'
 import {
   expectMockAccess,
@@ -158,6 +159,21 @@ describe.each(deniedImports)('a client import of $specifier', (denied) => {
           root: (await serverOf(mockAccess)).root,
         }),
       })
+    },
+    timeout,
+  )
+
+  // The dev report says who imported it (a production build's names only
+  // the denied import: `build-mock.test.ts`).
+  // Source: review (production-code audit, 11-18).
+  test(
+    'the report of a call in dev names the importer',
+    async () => {
+      const { logged } = await inPage('error', denied.name, `value()`)
+      const root = (await serverOf('error')).root
+      expect(
+        logged.some(({ text }) => mentionsFile(text, 'src/uses.ts', { root })),
+      ).toBe(true)
     },
     timeout,
   )

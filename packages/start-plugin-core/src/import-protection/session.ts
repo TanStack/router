@@ -339,12 +339,12 @@ export class ImportProtection {
       return null
     }
     if (ref.kind === 'runtime') {
-      return this.runtimeLoad()
+      return this.runtimeLoad(ref.env)
     }
     const env = this.envs.get(ref.env)
     return env
       ? env.edgeLoad(ref.key)
-      : unknownEdgeLoad(ref.env, ref.key, this.ids)
+      : unknownEdgeLoad(ref.env, ref.key, this.ids, this.production)
   }
 
   /**
@@ -371,14 +371,23 @@ export class ImportProtection {
     }
   }
 
-  /** @internal */
-  runtimeLoad(): EdgeModuleLoad {
+  /**
+   * Whether the mocks and their runtime are production's: a build's carry
+   * only what the runtime's one-line report reads; a dev server's carry the
+   * importer and the longer text. @internal
+   */
+  get production(): boolean {
+    return this.config.mode === 'build'
+  }
+
+  /** The mock runtime of the environment `env`. @internal */
+  runtimeLoad(env: string): EdgeModuleLoad {
     return {
       code: mockRuntimeCode(
         this.config.mockAccess,
         this.framework,
-        // (the session's own: what the bundler builds the app's modules with)
-        process.env.NODE_ENV === 'production',
+        this.production,
+        env,
       ),
       moduleSideEffects: false,
     }
@@ -463,6 +472,7 @@ function unknownEdgeLoad(
   env: string,
   key: string,
   ids: EdgeModuleIds,
+  production: boolean,
 ): EdgeModuleLoad {
   const edgeKey = key.split('.')[0] ?? key
   return {
@@ -481,6 +491,7 @@ function unknownEdgeLoad(
         rule: { type: 'marker' },
       },
       ids.specifier({ env, kind: 'runtime' }),
+      production,
     ),
     moduleSideEffects: null,
   }
@@ -1301,7 +1312,7 @@ class ImportProtectionEnv {
     if (!this.runtimeEmitted) {
       this.runtimeEmitted = true
       this.ip.emit({ env: this.name, kind: 'runtime' }, () =>
-        this.ip.runtimeLoad(),
+        this.ip.runtimeLoad(this.name),
       )
     }
   }
@@ -1365,7 +1376,7 @@ class ImportProtectionEnv {
   edgeLoad(key: string): EdgeModuleLoad | null {
     const m = this.modules.get(key)
     if (!m) {
-      return unknownEdgeLoad(this.name, key, this.ip.ids)
+      return unknownEdgeLoad(this.name, key, this.ip.ids, this.ip.production)
     }
     const runtime = this.ip.ids.specifier({ env: this.name, kind: 'runtime' })
     const c = m.content
@@ -1375,7 +1386,10 @@ class ImportProtectionEnv {
         moduleSideEffects: null,
       }
     }
-    return { code: mockModuleCode(c, runtime), moduleSideEffects: null }
+    return {
+      code: mockModuleCode(c, runtime, this.ip.production),
+      moduleSideEffects: null,
+    }
   }
 
   /**

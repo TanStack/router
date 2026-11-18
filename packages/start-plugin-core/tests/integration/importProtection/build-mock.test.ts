@@ -10,6 +10,7 @@ import {
   diagnosticsOf,
   expectDiagnostic,
   findDiagnostics,
+  mentionsFile,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { StartBuildError, buildStart, startBundlers } from '../../build-harness'
 import {
@@ -261,6 +262,44 @@ export const secret = () => 'MARK_SECRET'
         ...mocked,
         loggedWith: [severity],
       })
+    },
+    timeout,
+  )
+
+  // A production client mock reports only the denied import: nothing in the
+  // client bundle names the importer's source path (the dev report does:
+  // `mock-access.test.ts`).
+  // Source: review (production-code audit, 11-18).
+  test(
+    'a production client mock carries no source path of its importer',
+    async () => {
+      const built = await buildStart({
+        bundler,
+        files: {
+          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+          'src/importer-path-mark.ts': `import { secret } from './secret.server'
+export const read = () => secret
+`,
+          'src/entry.ts': `import { read } from './importer-path-mark'
+export const run = () => read()()
+`,
+        },
+        entry: 'src/entry.ts',
+        start: { importProtection: { behavior: 'mock' } },
+      })
+      const { result } = await built.client.run(`const logged = []
+console.error = (...args) => {
+  logged.push(args.map((arg) => (arg instanceof Error ? arg.message : String(arg))).join(' '))
+}
+entry.run()
+return logged`)
+      expect({
+        // (a use of the mock is reported: the mock and its runtime are there)
+        mocked: (result as Array<string>).some((text) =>
+          mentionsFile(text, 'src/secret.server.ts', { root: built.root }),
+        ),
+        importerPath: built.client.where('importer-path-mark'),
+      }).toEqual({ mocked: true, importerPath: 'nowhere' })
     },
     timeout,
   )
