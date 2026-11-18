@@ -167,6 +167,22 @@ static made = … }` off the client also when the kept loader, the split compone
   `let`/`const`/`class` of the same statement throws at load (a `var` reads `undefined`). `main` fails the build on
   every such shape.
 
+- **A hoisted server fn reads a module binding before an earlier operand of its statement writes it** (R181 (3),
+  Astra start review 4; accepted: `main` refuses the position, "createServerFn must be assigned to a variable!"):
+  R162 hoists a server fn not written as a top-level declaration above the statement holding it, so in
+  `export const api = { first: update(), run: createServerFn({ method }).handler(…) }`, where `update()` sets
+  `method = 'POST'`, the chain reads `method` before `update()` runs and the server fn's method is `GET`. No refusal
+  (R181). Workaround: set what the chain reads before the statement, or declare the server fn at the top level. No
+  test (the outcome is the limit).
+
+- **In a route file with a value `export *`, a star target's export named `tsr$<name>` is shadowed by the split's
+  glue** (R181 (2), Astra core review 3; accepted): the route module exports what a split chunk imports from it (a
+  binding a statement declares, `if (…) { var value }`) under a glue name, which in a module with `export * from …`
+  is `tsr$<name>`, since the star targets' names are not read; ECMAScript gives the module's own export priority over
+  a star, so an importer of `tsr$value` reads the route's binding instead of the target's export. `main` has no glue
+  exports. No corpus route file exports a `tsr$`-prefixed name. Workaround: give no `tsr$`-prefixed export to a
+  module a route file star-re-exports. No test (the outcome is the limit).
+
 - **A hook call only removed code reads goes, so a hook that takes an id shifts the ids after it** (R166; SPEC G16;
   as `main` for `<ClientOnly>` children and for a `<Hydrate>` `fallback` in a split route chunk; `main` keeps the
   call for a `fallback` in any other file, where a hook taking an id works and a browser-only hook crashes the
