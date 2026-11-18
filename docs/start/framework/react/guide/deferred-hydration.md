@@ -106,6 +106,8 @@ bubbling, and why Astro gets multi-framework.
 
 ## Comparison To React Selective Hydration
 
+[//]: # 'SelectiveHydration'
+
 React's selective hydration controls the order in which server-rendered
 boundaries hydrate. Deferred hydration controls whether and when each
 boundary hydrates at all.
@@ -117,6 +119,8 @@ and React jumps a boundary to the front of the queue if the user clicks
 inside it. The work is fixed by what the server rendered; React
 schedules it to feel responsive.
 
+[//]: # 'SelectiveHydration'
+
 Deferred hydration changes what is in the queue in the first place. A
 `Hydrate` boundary names a condition — `visible()`, `idle()`,
 `interaction()`, `media()`, `condition()`, or `never()` — and the
@@ -126,12 +130,16 @@ browser does not download until the boundary is about to hydrate. If the
 condition never fires, the boundary never hydrates and its code is never
 fetched.
 
+[//]: # 'HydrationCompose'
+
 The two compose. A `Hydrate` boundary decides whether and when React
 starts hydrating a subtree; once it opens, anything inside it (including
 `<Suspense>` boundaries) flows back into React's normal hydration
 scheduler. Use `<Suspense>` when hydration must happen and you want React
 to prioritize it well. Use `Hydrate` when hydration might not need to
 happen at all.
+
+[//]: # 'HydrationCompose'
 
 ## The Three Decisions
 
@@ -407,11 +415,15 @@ export function Page() {
 }
 ```
 
+[//]: # 'InlineCallbacks'
+
 Inline `when` and `prefetch` functions are supported. You do not need to wrap
 them in `useCallback`; TanStack Start keeps the latest callback internally and
 does not re-register hydration listeners just because a function identity
 changed. If the meaning of a boundary changes, use a normal React `key` to
 create a new boundary.
+
+[//]: # 'InlineCallbacks'
 
 ## Hydrate Props Reference
 
@@ -569,11 +581,15 @@ single-use `const` object spread so server builds can strip that UI.
 
 ## Correctness And Updates
 
+[//]: # 'EarlyHydration'
+
 Deferred hydration is a performance hint for React's initial hydration work.
 React may hydrate a deferred boundary earlier than its strategy would normally
 allow if state, props, context, or store updates outside the boundary require
 React to reconcile inside it before the gate opens. This preserves correctness
 and avoids showing stale server HTML after the surrounding app has changed.
+
+[//]: # 'EarlyHydration'
 
 `never()` is the exception for initial document hydration. Treat it as
 intentionally static SSR HTML. Do not rely on parent updates to make a `never()`
@@ -704,18 +720,20 @@ Render the imported `Hydrate` tag directly, use an import rename, or set
 Use the literal prop `split={false}` to opt out of extraction. Dynamic values
 such as `split={shouldSplit}` cannot be used to opt out at compile time.
 
+[//]: # 'SplitLimits'
+
 These patterns cannot be split:
 
-| Pattern                                                                                | Why it is rejected                                                                                                           | What to do instead                                                                                                  |
-| -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Function-as-children                                                                   | The compiler cannot move a render function and preserve the expected call pattern.                                           | Use `split={false}` or move the rendered UI into a child component.                                                 |
-| Hook calls directly inside extracted JSX, React's `use` included                       | Moving that JSX would move where the hook executes.                                                                          | Move the hook call into a component inside the boundary, then render that component.                                |
-| A function inside the boundary reading a `let` the component reassigns                 | The extracted children receive the variable's value when the boundary renders: the function would not see later assignments. | Keep the value in a ref (`const timer = useRef()`, read and assign `timer.current`), or use `split={false}`.        |
-| Assigning a local of the component inside the boundary (`count++`)                     | The extracted children receive the local's value, not the variable.                                                          | Move the variable and the code that assigns it into a component inside the boundary, or use `split={false}`.        |
-| Children, or a component only they render, assigning a module variable other code uses | The chunk would assign its own copy of the variable, while the module reads the original.                                    | Use `split={false}`, or move the variable to a module of its own, with a function that assigns it, and import them. |
-| `await` or `yield` directly inside the boundary                                        | The extracted children render in a synchronous component.                                                                    | Compute the value before the boundary, or use `split={false}`.                                                      |
-| `this` or `new.target` captures                                                        | Extracted function components cannot safely preserve class instance or constructor context.                                  | Wrap the UI in a function component or use `split={false}`.                                                         |
-| `super` captures                                                                       | Extracted function components cannot preserve superclass access.                                                             | Wrap the UI in a function component or use `split={false}`.                                                         |
+| Pattern                                                                                | Why it is rejected                                                                                                           | What to do instead                                                                                                                                      |
+| -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Function-as-children                                                                   | The compiler cannot move a render function and preserve the expected call pattern.                                           | Use `split={false}` or move the rendered UI into a child component.                                                                                     |
+| Hook calls directly inside extracted JSX, React's `use` included                       | Moving that JSX would move where the hook executes.                                                                          | Move the hook call into a component inside the boundary, then render that component.                                                                    |
+| A function inside the boundary reading a `let` the component reassigns                 | The extracted children receive the variable's value when the boundary renders: the function would not see later assignments. | Keep the value in a ref holding its initial value (`const timer = useRef<number>(undefined)`, read and assign `timer.current`), or use `split={false}`. |
+| Assigning a local of the component inside the boundary (`count++`)                     | The extracted children receive the local's value, not the variable.                                                          | Move the variable and the code that assigns it into a component inside the boundary, or use `split={false}`.                                            |
+| Children, or a component only they render, assigning a module variable other code uses | The chunk would assign its own copy of the variable, while the module reads the original.                                    | Use `split={false}`, or move the variable to a module of its own, with a function that assigns it, and import them.                                     |
+| `await` or `yield` directly inside the boundary                                        | The extracted children render in a synchronous component.                                                                    | Compute the value before the boundary, or use `split={false}`.                                                                                          |
+| `this` or `new.target` captures                                                        | Extracted function components cannot safely preserve class instance or constructor context.                                  | Wrap the UI in a function component or use `split={false}`.                                                                                             |
+| `super` captures                                                                       | Extracted function components cannot preserve superclass access.                                                             | Wrap the UI in a function component or use `split={false}`.                                                                                             |
 
 This fails because `useThing()` would be moved into the generated component:
 
@@ -741,6 +759,8 @@ export function ProductPage() {
   )
 }
 ```
+
+[//]: # 'SplitLimits'
 
 Values captured from the surrounding component can be passed into the generated
 child component, but keep the boundary simple. If extraction starts forcing
