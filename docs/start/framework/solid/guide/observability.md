@@ -487,6 +487,10 @@ While TanStack Start provides built-in observability patterns, external tools of
 - **[PostHog](https://posthog.com/)** - Product analytics with error tracking
 - **[Mixpanel](https://mixpanel.com/)** - Event tracking and user analytics
 
+**AI & LLM Observability:**
+
+- **[Rius](https://docs.glassflow.ai/rius/sdk/integrations/tanstack-ai)** - Agent observability for TanStack AI `chat()` runs, with tokens, cost and tool calls per run
+
 ### OpenTelemetry Integration (Experimental)
 
 [OpenTelemetry](https://opentelemetry.io/) is the industry standard for observability. Here's an experimental approach to integrate it with TanStack Start:

@@ -487,6 +487,10 @@ While TanStack Start provides built-in observability patterns, external tools of
 - **[PostHog](https://posthog.com/)** - Product analytics with error tracking
 - **[Mixpanel](https://mixpanel.com/)** - Event tracking and user analytics
 
+**AI & LLM Observability:**
+
+- **[Rius](https://docs.glassflow.ai/rius/sdk/integrations/tanstack-ai)** - Agent observability for TanStack AI `chat()` runs, with tokens, cost and tool calls per run
+
 ### New Relic Integration
 
 [New Relic](https://newrelic.com/) is a popular application performance monitoring tool. Here's how to integrate it with TanStack Start.
