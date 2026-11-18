@@ -179,10 +179,13 @@ function calleeName(callee: Node): string {
 /**
  * A license, JSX pragma or TypeScript file directive (`// @ts-nocheck`,
  * `/// <reference …/>`, which apply only above the first statement): it
- * leads the file, above an added import.
+ * leads the file, above an added import. A directive is a single-line
+ * comment starting with it, in any case, as TypeScript reads it: a comment
+ * that only names one (a `// @ts-expect-error` explaining itself) stays with
+ * its statement.
  */
 const leadingCommentRe =
-  /^\/\*!|@license|@preserve|@jsx|@ts-(?:no)?check|^\/\/\/\s*</
+  /^\/\*!|@license|@preserve|@jsx|^\/\/\/?\s*@ts-(?:no)?check\b|^\/\/\/\s*</i
 
 /**
  * Where an added import goes: after the directive prologue and the
