@@ -101,7 +101,7 @@ Call server functions from:
 - **Event handlers** - Handle form submissions, clicks, etc.
 
 > [!NOTE]
-> In production builds, only server functions that client code imports can be called over HTTP. A server function that only server code calls (for example another server function's handler or a server route) is not exposed as an endpoint, and neither is one that is only returned to the client as data: production answers a call to it with HTTP 500 and `Server function info not found for <id>`. The dev server still answers such calls. It may log a warning when it has seen no client code for the function yet; the warning is a hint, not the production check.
+> In production builds, only server functions that the built client code still references can be called over HTTP. A server function that only server code calls (for example another server function's handler or a server route) is not exposed as an endpoint, and neither is one that is only returned to the client as data, nor an exported one that no client code uses: production answers a call to it with HTTP 500 and `Server function info not found for <id>`. A build that keeps unused client code (Vite with `build.minify: 'esbuild'`, Rsbuild with `output.minify: false`) also keeps the endpoints of unused exports. This is not access control: protect data in the function itself. The dev server still answers such calls. It may log a warning when it has seen no client code for the function yet; the warning is a hint, not the production check.
 
 ```tsx
 // In a route loader
