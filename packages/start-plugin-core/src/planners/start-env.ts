@@ -285,6 +285,9 @@ interface ServerFnSite {
   handler: Node
   /** `.handler`'s type and argument lists (`<T>(fn)`): a split chunk's caller copy replaces them (R159). */
   handlerArgs: Range
+  /** The `.handler(…)` call and what it is called on (the chain before it): the client stub's parts. */
+  handlerCall: Node
+  receiver: Node
   /**
    * `.handler`'s arguments, the first's start to the last's end (a trailing
    * comma outside): what an RPC stub replaces. The types allow one; a
@@ -741,6 +744,8 @@ function planStartEnv(
       chain,
       handler: handlerLink.arg,
       handlerArgs: { start: handlerLink.member.end, end: handlerLink.call.end },
+      handlerCall: handlerLink.call,
+      receiver: handlerLink.member.object,
       stubbed: {
         start: handlerLink.arg.start,
         end: handlerLink.call.arguments.at(-1)!.end,
@@ -946,15 +951,33 @@ function planStartEnv(
       // handler may have changed with any edit of the file, and a webpack-family host
       // hot-updates a module only when its output changed, so the client module of an edited
       // server fn changes and its route refreshes (Vite updates every module of the file)
-      const args =
+      const revisionArg =
         config.idMode === 'dev'
-          ? `(${moduleLiteral(id)}, ${moduleLiteral((devRevision ??= revision(ctx.analysis.source.code)))})`
-          : `(${moduleLiteral(id)})`
+          ? `, ${moduleLiteral((devRevision ??= revision(ctx.analysis.source.code)))}`
+          : ''
+      // the stub is a call of ours only, `createClientRpc(id, chain)` (the
+      // runtime calls `chain.handler(rpc)`), marked pure: a bundler drops an
+      // unused server fn's stub and its id (R182: then not HTTP-callable),
+      // and keeps what the user's chain runs, an argument of the call (the
+      // user's own `.handler()` call marked pure would drop the effects of
+      // its callee: bundlers keep only an unused pure call's arguments).
+      // Parenthesised where its parent starts with it (`…handler(fn).x()`,
+      // `as`): the annotation would mark the user's call there too
+      const call = site.handlerCall
+      const parent = file.parentOf(call)
+      const wrap = parent !== null && parent.start === call.start
       erased.push(site.stubbed)
-      rewrites.placeholder({
-        range: site.stubbed,
-        body: [text({ sym: rpc, ctx: 'callee' }, args)],
-        scope: 'all-outputs',
+      rewrites.edit({
+        range: rangeOf(call),
+        body: [
+          text(
+            `${wrap ? '(' : ''}/* @__PURE__ */ `,
+            { sym: rpc, ctx: 'callee' },
+            `(${moduleLiteral(id)}, `,
+          ),
+          slice(rangeOf(site.receiver)),
+          text(`${revisionArg})${wrap ? ')' : ''}`),
+        ],
         by,
       })
       facts.serverFns.push(

@@ -59,6 +59,94 @@ return {
     timeout,
   )
 
+  // On main, an exported server fn the client never calls, in a module the
+  // client imports, stays in the client bundle: its stub
+  // (`createServerFn()….handler(createClientRpc(id))`) is a call bundlers
+  // keep, so its id stays in the bundle and HTTP-callable (R182). The stub
+  // is now a call the bundler may drop when its value is unused, while the
+  // user's chain it wraps still runs: here `track()` in a link's argument
+  // (a callee position of `.handler()`, which a pure annotation on the
+  // user's own call would drop) and in the options of a stored builder.
+  test(
+    'client: an exported server fn the client never calls leaves the client bundle and is refused over HTTP, and the user code of its chain still runs',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        files: {
+          'track.ts': `export const track = <T>(tag: string, value: T): T => {
+  ;((globalThis as any).MARK_TRACKED ??= []).push(tag)
+  return value
+}
+`,
+          'fns.ts': `import { createServerFn } from '@tanstack/react-start'
+import { track } from './track'
+const base = createServerFn(track('base', { method: 'POST' }))
+export const usedFn = createServerFn()
+  .middleware(track('used', []))
+  .handler(async () => 'used fn')
+export const unusedFn = createServerFn()
+  .middleware(track('unused', []))
+  .handler(async () => 'unused fn')
+export const unusedFromBase = base.handler(async () => 'unused from base')
+export const usedFromBase = base.handler(async () => 'used from base')
+`,
+          'client-entry.ts': `export { usedFn, usedFromBase } from './fns'
+export const tracked = () => (globalThis as any).MARK_TRACKED
+`,
+          'ssr-entry.ts': `export { usedFn, unusedFn, unusedFromBase, usedFromBase } from './fns'
+${callByIdExports}`,
+        },
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+      })
+      const { result: fromClient } = await client.run(
+        `return { tracked: entry.tracked(), used: entry.usedFn.url, usedFromBase: entry.usedFromBase.url, method: entry.usedFromBase.method }`,
+      )
+      const { result } =
+        await ssr.run(`${callByIdPrelude}const settle = async (run) => {
+  try {
+    return await run()
+  } catch {
+    return 'rejected'
+  }
+}
+const overHttp = (fn) =>
+  settle(async () => callById(serverFnId(fn.url), undefined, fn.method))
+return {
+  ids: [entry.unusedFn, entry.unusedFromBase].map((fn) => serverFnId(fn.url)),
+  used: await overHttp(entry.usedFn),
+  usedFromBase: await overHttp(entry.usedFromBase),
+  unused: await overHttp(entry.unusedFn),
+  unusedFromBase: await overHttp(entry.unusedFromBase),
+  unusedFromSsr: await settle(() => entry.unusedFn()),
+}`)
+      const { ids, ...calls } = result as { ids: Array<string> }
+      expect({
+        fromClient,
+        calls,
+        unusedIdsInClient: ids.filter(
+          (id) =>
+            client.locate(id).eager.length + client.locate(id).lazy.length > 0,
+        ),
+      }).toEqual({
+        fromClient: {
+          tracked: ['base', 'used', 'unused'],
+          used: expect.any(String),
+          usedFromBase: expect.any(String),
+          method: 'POST',
+        },
+        calls: {
+          used: 'used fn',
+          usedFromBase: 'used from base',
+          unused: 'rejected',
+          unusedFromBase: 'rejected',
+          unusedFromSsr: 'unused fn',
+        },
+        unusedIdsInClient: [],
+      })
+    },
+    timeout,
+  )
+
   // SPEC J4.2 (R182), each build deciding: a rebuild after an edit that
   // removes the last client call of a server fn refuses it over HTTP, and
   // one that calls it again answers it (Rsbuild from its persistent cache).
