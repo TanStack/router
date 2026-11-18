@@ -143,7 +143,7 @@ describe('vite dev: by-id requests', () => {
   async function clientId(url: string): Promise<string> {
     const { status, body } = await server.fetch(url)
     expect(status).toBe(200)
-    const ids = [...body.matchAll(/ClientRpc\(\s*"([^"]+)"/g)]
+    const ids = [...body.matchAll(/ClientServerFn\(\s*"([^"]+)"/g)]
     expect(ids).toHaveLength(1)
     return ids[0]![1]!
   }

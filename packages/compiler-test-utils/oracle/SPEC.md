@@ -592,7 +592,10 @@ dir)` is not a conflict by itself.
   function no emitted client code calls must not answer a direct HTTP call by id, also when the client imports its
   module (a helper only another server function's handler calls); one that reaches the browser only by serialization
   (a loader returning it) is not callable either. A stub the client code keeps counts as a call: its id is in the
-  bundle. What the compile adds to the defining module's exports is unique to that file, so
+  bundle. The client's stub of a server function is a call the bundler may drop when nothing uses its value, with its id
+  (Vite, and Rsbuild with its minifier; not where a call of the user's continues the stub, `….handler(fn).bind(x)`);
+  what the user's chain evaluates (its builder, options and links' arguments) still runs, so an exported server
+  function the client never uses, in a module the client imports, is not callable. What the compile adds to the defining module's exports is unique to that file, so
   server functions of several modules behind one `export *` barrel build and run without a conflicting name, also
   when the modules use the same names (`usersApi.get`, `postsApi.get`). In dev, an HTTP call by id may run any server function. Calling a server
   function from server code is documented: a server function only server code calls (another handler, a middleware

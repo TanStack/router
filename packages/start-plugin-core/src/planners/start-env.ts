@@ -250,6 +250,37 @@ function keptText(
     : [slice(rangeOf(kept))]
 }
 
+/**
+ * Whether a call continues the expression `node` once its wrappers and
+ * member reads are stripped (`node.bind(x)`, `(node as T)()`,
+ * `node.a.b\`…\``), also where a factory call it is the kept
+ * implementation of renders as it (`keptBy`: `createClientOnlyFn(node)()`):
+ * an annotation before `node` would mark that call.
+ */
+function continuedByCall(
+  file: PlanContext['analysis']['file'],
+  node: Node,
+  keptBy: ReadonlyMap<Node, Node>,
+): boolean {
+  let n = node
+  let p = file.parentOf(n)
+  while (
+    keptBy.has(n) ||
+    (p &&
+      ((isExpressionWrapper(p) && p.expression === n) ||
+        (p.type === 'MemberExpression' && p.object === n)))
+  ) {
+    n = keptBy.get(n) ?? p!
+    p = file.parentOf(n)
+  }
+  return (
+    p !== null &&
+    (((p.type === 'CallExpression' || p.type === 'NewExpression') &&
+      p.callee === n) ||
+      (p.type === 'TaggedTemplateExpression' && p.tag === n))
+  )
+}
+
 function enclosingFunctionNames(
   file: PlanContext['analysis']['file'],
   node: Node,
@@ -300,6 +331,9 @@ interface ServerFnSite {
   handler: Node
   /** `.handler`'s type and argument lists (`<T>(fn)`): a split chunk's caller copy replaces them (R159). */
   handlerArgs: Range
+  /** The `.handler(…)` call and what it is called on (the chain before it): the client stub's parts. */
+  handlerCall: Node
+  receiver: Node
   /**
    * `.handler`'s arguments, the first's start to the last's end (a trailing
    * comma outside): what an RPC stub replaces. The types allow one; a
@@ -756,6 +790,8 @@ function planStartEnv(
       chain,
       handler: handlerLink.arg,
       handlerArgs: { start: handlerLink.member.end, end: handlerLink.call.end },
+      handlerCall: handlerLink.call,
+      receiver: handlerLink.member.object,
       stubbed: {
         start: handlerLink.arg.start,
         end: handlerLink.call.arguments.at(-1)!.end,
@@ -817,9 +853,28 @@ function planStartEnv(
       replaced.add(chain.terminal)
     }
   }
+  // the implementations this environment keeps, each rendering in place of its factory call
+  const wantLink = isServer ? 'server' : 'client'
+  const keptBy = new Map<Node, Node>()
+  for (const c of analysis.envOnlyCalls) {
+    if (
+      (c.kind === 'server') === isServer &&
+      c.arg &&
+      c.arg.type !== 'SpreadElement'
+    ) {
+      keptBy.set(c.arg, c.call)
+    }
+  }
+  for (const chain of analysis.chains) {
+    const link = replaced.has(chain.terminal)
+      ? chain.links.find((l) => l.method === wantLink)
+      : undefined
+    if (link?.arg && !link.argIsSpread) {
+      keptBy.set(link.arg, chain.terminal)
+    }
+  }
 
   // ---- 3. isomorphic fns
-  const wantLink = isServer ? 'server' : 'client'
   for (const chain of analysis.chains) {
     const v = chain.terminalValue
     const isIso = v.t === 'isoFn' || (v.t === 'builder' && v.kind === 'isoFn')
@@ -971,20 +1026,43 @@ function planStartEnv(
     // (the manifest's `functionName` stays `site.functionName`)
     const { local: rpcLocal, exportName } = site.wrapper
     if (role === 'client') {
-      const rpc = glueImport(specs.clientRpc, 'createClientRpc', 'tsrClientRpc')
+      const rpc = glueImport(
+        specs.clientRpc,
+        'createClientServerFn',
+        'tsrClientServerFn',
+      )
       // in dev the stub also names its file's revision (an argument the runtime ignores): the
       // handler may have changed with any edit of the file, and a webpack-family host
       // hot-updates a module only when its output changed, so the client module of an edited
       // server fn changes and its route refreshes (Vite updates every module of the file)
-      const args =
+      const revisionArg =
         config.idMode === 'dev'
-          ? `(${moduleLiteral(id)}, ${moduleLiteral((devRevision ??= revision(ctx.analysis.source.code)))})`
-          : `(${moduleLiteral(id)})`
+          ? `, ${moduleLiteral((devRevision ??= revision(ctx.analysis.source.code)))}`
+          : ''
+      // the stub is a call of ours only, `createClientServerFn(id, chain)`
+      // (the runtime calls `chain.handler(createClientRpc(id))`), marked
+      // pure: a bundler drops an unused server fn's stub and its id (R182:
+      // then not HTTP-callable), and keeps what the user's chain runs, an
+      // argument of the call (the user's own `.handler()` call marked pure
+      // would drop the effects of its callee: bundlers keep only an unused
+      // pure call's arguments). Not marked where a user call continues it
+      // (`….handler(fn).bind(x)`): the annotation marks the outermost call
+      // after it, so that call's callee would go too (parentheses around
+      // ours would scope it, but a later transform may print them away:
+      // @swc/core does)
+      const call = site.handlerCall
       erased.push(site.stubbed)
-      rewrites.placeholder({
-        range: site.stubbed,
-        body: [text({ sym: rpc, ctx: 'callee' }, args)],
-        scope: 'all-outputs',
+      rewrites.edit({
+        range: rangeOf(call),
+        body: [
+          text(
+            continuedByCall(file, call, keptBy) ? '' : '/* @__PURE__ */ ',
+            { sym: rpc, ctx: 'callee' },
+            `(${moduleLiteral(id)}, `,
+          ),
+          slice(rangeOf(site.receiver)),
+          text(`${revisionArg})`),
+        ],
         by,
       })
       facts.serverFns.push(
