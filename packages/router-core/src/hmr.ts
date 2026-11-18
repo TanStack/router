@@ -19,6 +19,16 @@ export interface RouteHmrMeta {
    * it when their chunk evaluated again.
    */
   noComponents?: true
+  /**
+   * Solid: the split chunk of each split component option
+   * (`<option>:<chunk>`, sorted, comma-separated; empty: none split).
+   * solid-refresh patches per module, from the first proxy a module
+   * registered under a name, and stops patching a module that lost a
+   * component (https://github.com/solidjs/solid-refresh/issues/88): a
+   * component that moved to another module (a `codeSplitGroupings` edit)
+   * cannot be updated in place, so the page reloads (`applyRouteHmr`).
+   */
+  chunks?: string
   /** React + Vite: the module id plugin-react uses and the export names it ignores (the route, the anchor, the glue name of every module-level binding, and its own name when the user does not export it and the module has no `export *`). */
   refreshExports?: { id: string; anchor: string; exports: Array<string> }
 }
@@ -229,6 +239,8 @@ const componentKeys = [
 interface HotRouteRecord {
   routes: WeakMap<AnyRoute, ReadonlyArray<string>>
   latest: AnyRoute
+  /** The first evaluation's `RouteHmrMeta.chunks`. */
+  chunks: string | undefined
 }
 
 // Per route id. Bounded by the number of routes (`setRoutes` forgets the ids
@@ -293,7 +305,9 @@ function setRoutes(router: AnyRouter, adapter: RouteHmrAdapter): void {
  * `window.__TSR_ROUTER__`. The first evaluation only records the route.
  * Later evaluations update the live route when the router on the page holds
  * a route this module evaluated to under `routeId` (the first one, or a
- * later one a rebuilt route tree imported), and do nothing otherwise.
+ * later one a rebuilt route tree imported), and do nothing otherwise. An
+ * evaluation whose split components live in other chunks than the first
+ * one's reloads the page (`RouteHmrMeta.chunks`, Solid).
  *
  * Not a public API: called by the framework packages' `__tsrRouteHmr`.
  */
@@ -324,7 +338,13 @@ export function applyRouteHmr(
       hotRoutes.set(routeId, {
         routes: new WeakMap([[route, own]]),
         latest: route,
+        chunks: meta.chunks,
       })
+      return
+    }
+    if (known.chunks !== meta.chunks) {
+      // a component moved to another module (`RouteHmrMeta.chunks`)
+      window.location.reload()
       return
     }
     known.routes.set(route, own)

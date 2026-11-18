@@ -339,6 +339,16 @@ export function planHmrBlock(
   ) {
     metaParts.push('noComponents: true')
   }
+  if (cfg.framework === 'solid' && route.kind !== 'lazy') {
+    // the chunk each split component lives in: solid-refresh cannot follow
+    // a component to another module, so the runtime reloads when it moves
+    const chunks = round.plan.decisions
+      .filter((d) => COMPONENT_KEYS.includes(d.key))
+      .map((d) => `${d.key}:${d.groupKey}`)
+      .sort()
+      .join(',')
+    metaParts.push(`chunks: ${stringLiteral(chunks, '"')}`)
+  }
   const hot = vite ? 'import.meta.hot' : 'import.meta.webpackHot'
   // the dev-only runtime lives on its own subpath: production never loads it
   const hmrSpecifier = `${route.routerPackage}/hmr`

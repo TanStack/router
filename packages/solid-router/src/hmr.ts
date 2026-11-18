@@ -40,7 +40,10 @@ const refreshSource = (component: any): string | undefined => {
  * patching the module (it keeps the removed name,
  * https://github.com/solidjs/solid-refresh/issues/88; oracle KNOWN-BUGS,
  * "Upstream issues"), so a kept proxy may show no later edit, not even the
- * removal, until a reload.
+ * removal, until a reload. A component that moves to another split chunk
+ * (a `codeSplitGroupings` edit) is such a removal, and the new chunk's proxy
+ * has the same name and file: the page reloads instead
+ * (`RouteHmrMeta.chunks`).
  * Relies on solid-refresh's proxies' `name` and `location`, which it does
  * not document (`refreshSource`).
  */
