@@ -47,7 +47,7 @@ const tanstackRouterGenerator = (
 const tanStackRouterCodeSplitter = (
   options?: RouterPluginOptions,
   routerPluginContext?: RouterPluginContext,
-): Plugin => {
+): Array<Plugin> => {
   const pluginContext = routerPluginContext ?? defaultRouterPluginContext
   return createRouterCompilerVitePlugin(splitterOptions(options), pluginContext)
 }
@@ -74,7 +74,7 @@ const tanstackRouter = (
   return [
     inlineCssDefaults,
     tanstackRouterGenerator(options, routerPluginContext),
-    createRouterCompilerVitePlugin(options, routerPluginContext),
+    ...createRouterCompilerVitePlugin(options, routerPluginContext),
   ]
 }
 

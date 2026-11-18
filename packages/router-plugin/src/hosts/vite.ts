@@ -1,8 +1,9 @@
 /**
  * Vite host of the router compiler (see the compiler README, "Hosts"): one native plugin per
- * compiler instance with hook filters. `transform` compiles every id of a
- * route module it is handed text for (the env id and the derived
- * `?tsr-split=` ids alike, from the text the bundler hands it, so upstream
+ * compiler instance with hook filters (and a second one reporting a route
+ * file under `node_modules`, which the filters leave out). `transform`
+ * compiles every id of a route module it is handed text for (the env id and
+ * the derived `?tsr-split=` ids alike, from the text the bundler hands it, so upstream
  * transforms and maps apply to every id); `resolveId` resolves the owned-query
  * specifiers of the glue without touching the file system; `watchChange`
  * is the one invalidation operation; diagnostics go through the warning
@@ -33,13 +34,29 @@ import {
   changedRoutePaths,
   onRoutesChanged,
 } from '../core/router-plugin-context'
-import { JS_ID_RE, RouterCompiler } from './session'
+import {
+  DEPENDENCY_ID_RE,
+  JS_ID_RE,
+  RouterCompiler,
+  dependencyRouteFileWarning,
+} from './session'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
 import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite'
 
 const CODE_SPLITTER_PLUGIN_NAME =
   'tanstack-router:code-splitter:compile-reference-file'
+
+/**
+ * The text of a route file's own route (the route factories' calls, as
+ * `main`'s transform filter read them): of the dependency modules, only those
+ * holding it reach the hook that reports a route file under `node_modules`.
+ */
+const ROUTE_FACTORY_CALL_RE = [
+  /\bcreate(?:Lazy)?FileRoute\s*\(/,
+  /\bcreateRootRoute\s*\(/,
+  /\bcreateRootRouteWithContext\s*(?:<|\()/,
+]
 
 type TransformationPluginInfo = {
   pluginNames: Array<string>
@@ -95,13 +112,14 @@ interface Session {
 }
 
 /**
- * The router compiler as a Vite plugin: route splitting (`autoCodeSplitting`)
- * and route HMR (`codeSplittingOptions.addHmr`, dev client envs only).
+ * The router compiler as Vite plugins: route splitting (`autoCodeSplitting`)
+ * and route HMR (`codeSplittingOptions.addHmr`, dev client envs only), and
+ * the report of a route file under `node_modules`, which it leaves out.
  */
 export function createRouterCompilerVitePlugin(
   options: RouterPluginOptions = {},
   routerPluginContext: RouterPluginContext,
-): Plugin {
+): Array<Plugin> {
   let ROOT: string = process.cwd()
   let bundledDev = false
   let userConfig: Config
@@ -317,7 +335,13 @@ export function createRouterCompilerVitePlugin(
     },
 
     transform: {
-      filter: { id: { include: JS_ID_RE, exclude: SCRIPT_ASSET_QUERY_RE } },
+      // a dependency's modules never cross into JS (`DEPENDENCY_ID_RE`)
+      filter: {
+        id: {
+          include: JS_ID_RE,
+          exclude: [SCRIPT_ASSET_QUERY_RE, DEPENDENCY_ID_RE],
+        },
+      },
       async handler(code, id) {
         const s = sessions.of(this.environment)
         const { compiler } = s
@@ -407,5 +431,43 @@ export function createRouterCompilerVitePlugin(
       reloadStale(s, kind === 'add')
     },
   }
-  return plugin
+
+  /**
+   * A route file under `node_modules` is not compiled (the transform's
+   * filter leaves dependencies out, as the webpack/Rspack loader rule does):
+   * the build or dev server warns once per such file. Only dependency
+   * modules with a route factory's call in their text reach the handler.
+   */
+  const dependencyRouteFiles: Plugin = {
+    name: 'tanstack-router:code-splitter:dependency-route-files',
+    enforce: 'pre',
+    applyToEnvironment: plugin.applyToEnvironment,
+    transform: {
+      filter: {
+        id: { include: DEPENDENCY_ID_RE, exclude: SCRIPT_ASSET_QUERY_RE },
+        code: { include: ROUTE_FACTORY_CALL_RE },
+      },
+      handler(_code, id) {
+        const { compiler } = sessions.of(this.environment)
+        // (Vite before 6.3 calls a hook without reading its filter)
+        if (
+          !DEPENDENCY_ID_RE.test(id) ||
+          !compiler.appliesTo(this.environment.config.consumer)
+        ) {
+          return null
+        }
+        const identity = identify(id)
+        const file = normalizePath(identity.path)
+        if (identity.lang === null || !compiler.routeEntry(file)) {
+          return null
+        }
+        const message = dependencyRouteFileWarning(displayPath(file, ROOT))
+        if (compiler.warnings.once(file, { message })) {
+          this.warn(message)
+        }
+        return null
+      },
+    },
+  }
+  return [plugin, dependencyRouteFiles]
 }
