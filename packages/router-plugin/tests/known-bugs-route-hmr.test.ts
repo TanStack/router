@@ -248,7 +248,14 @@ export const Route = createFileRoute('/')({
   component: page,
   ${sharedWith === 'loader' ? 'loader: () => page.name' : 'notFoundComponent: page'},
 })`,
-      { hmr: true, files: state },
+      // Its own dev server, started with the route on disk: no save before
+      // the page loads. A save of a route file whose split modules a page
+      // loaded starts their transforms during Vite's `hotUpdate` hooks (the
+      // router plugin transforms the route module and Vite pre-transforms
+      // its imports); one still running when Vite applies the update is
+      // cached with the old `?t=`, so the shared module's self-import (React
+      // Refresh) loads a second instance: vitejs/vite#24142.
+      { hmr: true, files: state, fresh: true },
     )
     // (before the renders: an option whose chunk loaded is not observed lazy)
     const lazy = [await route.isLazy('component')]
