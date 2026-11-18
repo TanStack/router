@@ -191,10 +191,12 @@ function formatDiagnostic(file: string, diagnostic: FileDiagnostic) {
  * The route generator of one app: keeps its route files up and its route
  * tree generated. Events (`run(event)`) are queued and drained by one loop,
  * a batch at a time, so events that arrive together are handled together
- * and none is lost (SPEC J1.10). Each batch rebuilds the tree model from
- * the scan and the facts of each route file, which are kept by path and
- * replaced whenever the file's content changes; the model itself is never
- * reused (no route node outlives a generation).
+ * and none is lost (SPEC J1.10). A batch that changes the routes or their
+ * props rebuilds the tree model from the scan and the facts of each route
+ * file, which are kept by path and replaced whenever the file's content
+ * changes; no generation builds on an earlier model (no route node outlives
+ * a generation). The last published model stays for `getTreeModel`, plugins
+ * and the batches that leave the routes as they were.
  */
 export class Generator {
   public config: Config
