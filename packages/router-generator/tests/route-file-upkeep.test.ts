@@ -689,6 +689,29 @@ export const Route = createFileRoute('/old')({})
       source: `/** @jsxImportSource preact */\nexport const Route = createFileRoute('/old')({})\n`,
       head: `/** @jsxImportSource preact */\n`,
     },
+    // A TypeScript file directive applies only above the file's first
+    // statement: below the added import, TypeScript ignores it (main too;
+    // TS2322 / TS2304 afterwards).
+    {
+      name: 'a @ts-nocheck comment and an import',
+      source: `// @ts-nocheck\nimport { useState } from 'react'\nexport const state = useState\nexport const Route = createFileRoute('/old')({})\n`,
+      head: `// @ts-nocheck\n`,
+    },
+    {
+      name: 'a @ts-nocheck comment and the route',
+      source: `// @ts-nocheck\nexport const Route = createFileRoute('/old')({})\n`,
+      head: `// @ts-nocheck\n`,
+    },
+    {
+      name: 'a @ts-check comment and an import',
+      source: `// @ts-check\nimport { useState } from 'react'\nexport const state = useState\nexport const Route = createFileRoute('/old')({})\n`,
+      head: `// @ts-check\n`,
+    },
+    {
+      name: 'a triple-slash reference and an import',
+      source: `/// <reference types="vite/client" />\nimport { useState } from 'react'\nexport const state = useState\nexport const Route = createFileRoute('/old')({})\n`,
+      head: `/// <reference types="vite/client" />\n`,
+    },
     {
       name: 'a directive and the doc comment of the route',
       source: `'use client'\n/** The page of the app. */\nexport const Route = createFileRoute('/old')({})\n`,
@@ -711,6 +734,29 @@ export const Route = createFileRoute('/old')({})
       if (attached) {
         expect(written).toContain(attached)
       }
+    },
+  )
+  // The same directives with a blank line before the first statement: the
+  // import goes below the blank line (main put it above the directive). The
+  // whole file is compared: owned-edits.ts drops a blank line next to an
+  // import.
+  test.each([
+    { name: 'a @ts-nocheck comment', directive: '// @ts-nocheck' },
+    {
+      name: 'a triple-slash reference',
+      directive: '/// <reference types="vite/client" />',
+    },
+  ])(
+    'a route file starting with $name and a blank line keeps it in place when it gets the constructor import',
+    async ({ directive }) => {
+      const { written } = await upkeep(
+        'new.tsx',
+        `${directive}\n\nexport const Route = createFileRoute('/old')({})\n`,
+      )
+
+      expect(written).toBe(
+        `${directive}\n\nimport { createFileRoute } from ${router}\nexport const Route = createFileRoute('/new')({})\n`,
+      )
     },
   )
 })

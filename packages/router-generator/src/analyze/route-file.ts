@@ -176,13 +176,19 @@ function calleeName(callee: Node): string {
   return 'its constructor'
 }
 
-/** A license or JSX pragma comment: it leads the file, above an added import. */
-const leadingCommentRe = /^\/\*!|@license|@preserve|@jsx/
+/**
+ * A license, JSX pragma or TypeScript file directive (`// @ts-nocheck`,
+ * `/// <reference …/>`, which apply only above the first statement): it
+ * leads the file, above an added import.
+ */
+const leadingCommentRe =
+  /^\/\*!|@license|@preserve|@jsx|@ts-(?:no)?check|^\/\/\/\s*</
 
 /**
  * Where an added import goes: after the directive prologue and the
  * comments leading the file, before the comments the first statement starts
- * with (no blank line between them and it, license and pragmas aside).
+ * with (no blank line between them and it, license, pragmas and directives
+ * aside).
  */
 function headerInsertOffset(file: SourceFile) {
   let prologueEnd = 0
