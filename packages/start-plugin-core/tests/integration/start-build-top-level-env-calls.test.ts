@@ -158,6 +158,49 @@ export { seen } from './src/seen'
     timeout,
   )
 
+  // the server keeps the implementation as the statement: an async
+  // function expression, with a comment or a long run of spaces between
+  // `async` and `function`, written as a statement in parentheses (it is no
+  // declaration); the control without trivia. Source: Astra review 3
+  // (core B4)
+  test(
+    'a server-only fn written as a statement, its implementation an async function expression with trivia after `async`: both builds run',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        files: {
+          'src/seen.ts': seen,
+          'src/comment.ts': `${reads('MARK_ASYNC_COMMENT', 'createServerOnlyFn')}createServerOnlyFn(async /* posted */ function () { use(label) })
+export const comment = 'comment'
+`,
+          'src/spaces.ts': `${reads('MARK_ASYNC_SPACES', 'createServerOnlyFn')}createServerOnlyFn(async                function () { use(label) })
+export const spaces = 'spaces'
+`,
+          'src/plain.ts': `${reads('MARK_ASYNC_PLAIN', 'createServerOnlyFn')}createServerOnlyFn(async function () { use(label) })
+export const plain = 'plain'
+`,
+          'entry.ts': `export { comment } from './src/comment'
+export { spaces } from './src/spaces'
+export { plain } from './src/plain'
+export { seen } from './src/seen'
+`,
+        },
+      })
+      const run = `return [entry.comment, entry.spaces, entry.plain, entry.seen]`
+      const expected = ['comment', 'spaces', 'plain', []]
+      expect((await ssr.run(run)).result).toEqual(expected)
+      expect((await client.run(run)).result).toEqual(expected)
+      for (const marker of [
+        'MARK_ASYNC_COMMENT',
+        'MARK_ASYNC_SPACES',
+        'MARK_ASYNC_PLAIN',
+      ]) {
+        expect(client.where(marker), marker).toBe('nowhere')
+      }
+    },
+    timeout,
+  )
+
   test(
     'a route file with one: the page renders, and its server code stays out of the client',
     async () => {
