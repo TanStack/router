@@ -10,6 +10,7 @@
  * development builds, on every bundler the router plugin builds with. Maps
  * are read from the emitted `.map` files with a standard consumer.
  */
+import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, onTestFinished, test } from 'vitest'
@@ -24,7 +25,13 @@ import {
   tokenOffsets,
 } from '@tanstack/compiler-test-utils/source-maps'
 import { tanstackRouter } from '../../src/vite'
-import { build, buildWithRsbuild, routeApp, routeHead } from '../build-harness'
+import {
+  build,
+  buildWithRsbuild,
+  clientMountEntry,
+  routeApp,
+  routeHead,
+} from '../build-harness'
 
 const timeout = 60_000
 
@@ -87,6 +94,97 @@ test.each(builds)(
     // (split: the component's chunk is one of the maps)
     expect(app.where('MARK_PAGE ')).toBe('lazy')
     await expectRouteFileNamedOnce(app.root, app.outDir)
+  },
+  timeout,
+)
+
+// An asset of the app named like a map is the app's (a game level, here):
+// the build keeps its bytes, and the maps still hold the route's text.
+test.each(['rspack', 'webpack'] as const)(
+  'a %s development build with an asset named level.map keeps it, and names the route file once in every map',
+  async (bundler) => {
+    const level = '// Game map\n{\n"classname" "worldspawn"\n}\n'
+    const app = await build({
+      bundler,
+      env: 'client',
+      mode: 'development',
+      minify: false,
+      sourcemap: true,
+      files: {
+        ...files,
+        'level.map': level,
+        'entry.ts': `${clientMountEntry}import level from './level.map'\nexport { level }\n`,
+      },
+      configure: (options) => {
+        ;(options.module as { rules: Array<unknown> }).rules.push({
+          test: /\.map$/,
+          include: options.context,
+          type: 'asset/resource',
+          generator: { filename: 'level.map' },
+        })
+      },
+    })
+    expect(await readFile(path.join(app.outDir, 'level.map'), 'utf8')).toBe(
+      level,
+    )
+    await expectRouteFileNamedOnce(app.root, app.outDir)
+  },
+  timeout,
+)
+
+// The app names the sources of its maps (`devtoolModuleFilenameTemplate`):
+// whatever the names, the sources naming the route file hold its text, and
+// the split component's code maps to its line there.
+const templates = [
+  { name: 'the string [resource-path]', template: '[resource-path]' },
+  {
+    name: 'a function naming app://bundle/<path>',
+    template: (info: { resourcePath: string }) =>
+      `app://bundle/${info.resourcePath}`,
+  },
+]
+const templateBuilds = (['rspack', 'webpack'] as const).flatMap((bundler) =>
+  templates.map((t) => ({ bundler, ...t })),
+)
+
+test.each(templateBuilds)(
+  'a $bundler development build whose source names are $name holds the route text in every map',
+  async ({ bundler, template }) => {
+    const app = await build({
+      bundler,
+      env: 'client',
+      mode: 'development',
+      minify: false,
+      sourcemap: true,
+      files,
+      configure: (options) => {
+        ;(
+          options.output as Record<string, unknown>
+        ).devtoolModuleFilenameTemplate = template
+      },
+    })
+    expect(app.where('MARK_PAGE ')).toBe('lazy')
+    const maps = await emittedMaps(app.outDir)
+    const named = maps.flatMap(({ map }) =>
+      map.sources.flatMap((source, i) =>
+        source?.split('?')[0]!.endsWith('routes/index.tsx')
+          ? [{ source, content: map.sourcesContent?.[i] ?? null }]
+          : [],
+      ),
+    )
+    expect(named.length, 'a source names the route file').toBeGreaterThan(0)
+    for (const { source, content } of named) {
+      expect(content, source).toBe(route)
+    }
+    const page = maps.find(({ code }) => code.includes('MARK_PAGE '))
+    const original = originalPositionOf(
+      page!.map,
+      positionAt(page!.code, page!.code.indexOf('MARK_PAGE ')),
+    )
+    expect(original?.source.split('?')[0]).toMatch(/routes\/index\.tsx$/)
+    expect(original?.line).toBe(
+      positionAt(route, tokenOffsets(route, { string: 'MARK_PAGE ' })[0]!).line,
+    )
   },
   timeout,
 )

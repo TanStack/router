@@ -60,15 +60,20 @@ const throwStatement = (() => {
 })()
 
 /**
- * Whether the transform before Start saw the module as the user wrote it
- * (its server-only import still there): a precondition of the composed-map
- * row, not an assertion on Start.
+ * Whether the transform before Start saw the module of the client build as
+ * the user wrote it (its server-only import still there): a precondition of
+ * the composed-map row, not an assertion on Start.
  */
 let preTransformSawSource = false
 
-/** Lowers `src/fail.tsx` with Oxc (a map-producing transform) before Start. */
-async function lower(code: string, id: string) {
-  preTransformSawSource ||= code.includes(`from './secret'`)
+/**
+ * Lowers `src/fail.tsx` with Oxc (a map-producing transform) before Start,
+ * in the build environment `environment`.
+ */
+async function lower(code: string, id: string, environment: string) {
+  if (environment === 'client') {
+    preTransformSawSource ||= code.includes(`from './secret'`)
+  }
   const result = await transformWithOxc(code, id, {
     lang: 'tsx',
     target: 'es2019',
@@ -83,7 +88,9 @@ const vitePreTransform: Plugin = {
   name: 'test-lower-before-start',
   transform: {
     order: 'pre',
-    handler: (code, id) => (isFail(id) ? lower(code, id) : undefined),
+    handler(code, id) {
+      return isFail(id) ? lower(code, id, this.environment.name) : undefined
+    },
   },
 }
 
@@ -93,7 +100,11 @@ const rsbuildPreTransform: RsbuildPlugin = {
     api.transform(
       { test: /[\\/]src[\\/]fail\.tsx$/, order: 'pre' },
       async (ctx) => {
-        const { code, map } = await lower(ctx.code, ctx.resourcePath)
+        const { code, map } = await lower(
+          ctx.code,
+          ctx.resourcePath,
+          ctx.environment.name,
+        )
         // Rsbuild takes a map as JSON text or Rspack's own object.
         return { code, map: map ? JSON.stringify(map) : null }
       },

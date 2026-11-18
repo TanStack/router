@@ -21,7 +21,7 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   which the route tree imports eagerly (in dev the CSS is injected once the client runs; a build merges it into the
   entry's CSS). SPEC J2.22. `start-plugin-core/tests/integration/route-css.test.ts` (Vite) and
   `route-css-rsbuild.test.ts` (Rsbuild), rows of `route-css-cases.ts`: "the CSS of the /${name} route
-  applies only once the route matches" (the five `shows-*` rows; dev and build). Fix: the CSS loads when its route
+  does not apply at /" (the five `shows-*` rows; dev and build). Fix: the CSS loads when its route
   matches.
 - **Rsbuild: a route module's first server fn breaks the hot update of its loaded component chunk** when Rspack's
   `splitChunks` puts the modules the chunk gained into a new async chunk: the re-executed module requires them before

@@ -10,8 +10,9 @@
  * its route). So in development, when the devtool writes map files, the
  * module maps name the file without its text (the devtool never reads it
  * from disk) and the text goes into the map files once the hashes are
- * computed: those are what a debugger reads. Otherwise (production, or maps
- * inside the code: `eval-*`, `inline-*`) the module maps carry the text.
+ * computed: those are what a debugger reads. Otherwise (production, maps
+ * inside the code: `eval-*`, `inline-*`, or source names the fill cannot
+ * turn back into files) the module maps carry the text.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -35,6 +36,69 @@ function fileOf(source: string, context: string, mapDir: string): string {
     return fileURLToPath(name)
   }
   return path.resolve(mapDir, name)
+}
+
+/**
+ * Whether the sources the devtool names with `template` (an
+ * `output.devtool[Fallback]ModuleFilenameTemplate`; none: the bundler's
+ * default) name a file of the app by a name `fileOf` turns back into it,
+ * from a map in the output directory and from one below it. The template
+ * runs on a file of the context: a function gets the context the bundler
+ * gives it, a string its placeholders (an unknown one stays, and the name
+ * names no file; `[relative-resource-path]` is relative to the map).
+ */
+function namesRoundTrip(
+  template: unknown,
+  context: string,
+  outDir: string,
+): boolean {
+  if (template === undefined) {
+    return true
+  }
+  const file = path.join(context, 'src', 'route.tsx')
+  const posix = (p: string) => p.split(path.sep).join('/')
+  const relative = `./${posix(path.relative(context, file))}`
+  const info: Record<string, string> = {
+    identifier: file,
+    shortIdentifier: relative,
+    resource: relative,
+    resourcePath: relative,
+    absoluteResourcePath: file,
+    loaders: '',
+    allLoaders: '',
+    query: '',
+    moduleId: '0',
+    hash: '0',
+    namespace: 'app',
+  }
+  return [outDir, path.join(outDir, 'js')].every((mapDir) => {
+    const placeholders: Record<string, string> = {
+      ...Object.fromEntries(
+        Object.entries(info).map(([key, value]) => [key.toLowerCase(), value]),
+      ),
+      absresourcepath: file,
+      id: info.moduleId!,
+      relativeresourcepath: posix(path.relative(mapDir, file)),
+    }
+    try {
+      const name =
+        typeof template === 'function'
+          ? (template as (info: Record<string, string>) => unknown)(info)
+          : typeof template === 'string'
+            ? template.replace(
+                /\[([\w-]+)\]/g,
+                (whole, key: string) =>
+                  placeholders[key.toLowerCase().replaceAll('-', '')] ?? whole,
+              )
+            : null
+      return (
+        typeof name === 'string' &&
+        path.normalize(fileOf(name, context, mapDir)) === file
+      )
+    } catch {
+      return false
+    }
+  })
 }
 
 /**
@@ -76,7 +140,14 @@ export function fillSourcesContent(
 /** What `emittedMapTexts` uses of a webpack / Rspack compiler. */
 export interface EmittedMapsCompilerLike {
   context: string
-  options: { devtool?: unknown }
+  options: {
+    devtool?: unknown
+    output: {
+      path?: string
+      devtoolModuleFilenameTemplate?: unknown
+      devtoolFallbackModuleFilenameTemplate?: unknown
+    }
+  }
   webpack: {
     Compilation: { PROCESS_ASSETS_STAGE_DEV_TOOLING: number }
     sources: { RawSource: new (source: Buffer) => unknown }
@@ -100,8 +171,15 @@ interface EmittedMapsCompilationLike {
   outputOptions: { path?: string }
   chunks: Iterable<{
     hash?: string | null
+    files: Iterable<string>
     auxiliaryFiles: Iterable<string>
   }>
+  getAsset: (
+    name: string,
+  ) =>
+    | { info: { related?: { sourceMap?: string | Iterable<string> | null } } }
+    | undefined
+    | void
   hooks: {
     processAssets: {
       tap: (
@@ -132,7 +210,12 @@ export type RecordMapText = (file: string, text: string) => void
  * (Rspack copies a string source into its own memory). `fill` false:
  * nothing reads the map files' text (Start's server environment in Rsbuild
  * dev, kept in memory), so they are left without it, as under
- * `nosources-*`. Otherwise null: the module maps carry the text.
+ * `nosources-*`. Otherwise null: the module maps carry the text; so too
+ * when the devtool's source names do not lead back to their files (an app's
+ * `devtoolModuleFilenameTemplate`: `namesRoundTrip`), as the fill finds a
+ * file by its name. The maps are the ones the devtool records on the assets
+ * they map (`info.related.sourceMap`): an asset of the app may end in
+ * `.map` too.
  */
 export function emittedMapTexts(
   compiler: EmittedMapsCompilerLike,
@@ -151,6 +234,15 @@ export function emittedMapTexts(
   }
   if (!fill || devtool.includes('nosources')) {
     return () => {}
+  }
+  const { output } = compiler.options
+  const roundTrips = (template: unknown) =>
+    namesRoundTrip(template, compiler.context, output.path ?? compiler.context)
+  if (
+    !roundTrips(output.devtoolModuleFilenameTemplate) ||
+    !roundTrips(output.devtoolFallbackModuleFilenameTemplate)
+  ) {
+    return null
   }
   /** By normalized path; null: not a file the host compiles. A deleted file's goes. */
   const texts = new Map<string, string | null>()
@@ -196,7 +288,17 @@ export function emittedMapTexts(
   >()
   let fillCount = 0
   const { Compilation, sources } = compiler.webpack
+  /** The last compilation's chunks by hash: their files and their maps. */
+  let chunks = new Map<string, { files: Array<string>; maps: Array<string> }>()
   compiler.hooks.thisCompilation.tap('tanstack:emitted-maps', (compilation) => {
+    const relatedMaps = (name: string): Array<string> => {
+      const related = compilation.getAsset(name)?.info.related?.sourceMap
+      return related == null
+        ? []
+        : typeof related === 'string'
+          ? [related]
+          : [...related]
+    }
     compilation.hooks.processAssets.tap(
       {
         name: 'tanstack:emitted-maps',
@@ -204,21 +306,47 @@ export function emittedMapTexts(
       },
       (assets) => {
         const outDir = compilation.outputOptions.path ?? compiler.context
-        const chunkHashes = new Map<string, string>()
+        /** The maps to fill, with their chunk's hash (none: a hot update's, read every time). */
+        const maps = new Map<string, string | undefined>()
+        /** The files of the chunks (their maps and assets among them). */
+        const inChunks = new Set<string>()
+        const nextChunks: typeof chunks = new Map()
         for (const chunk of compilation.chunks) {
-          if (chunk.hash) {
-            for (const file of chunk.auxiliaryFiles) {
-              chunkHashes.set(file, chunk.hash)
+          const chunkHash = chunk.hash ?? undefined
+          // (a chunk keeps its files and their maps while its hash stays)
+          let known =
+            chunkHash === undefined ? undefined : chunks.get(chunkHash)
+          if (!known) {
+            const files = [...chunk.files]
+            known = {
+              files: [...files, ...chunk.auxiliaryFiles],
+              maps: files.flatMap(relatedMaps),
+            }
+          }
+          if (chunkHash !== undefined) {
+            nextChunks.set(chunkHash, known)
+          }
+          for (const file of known.files) {
+            inChunks.add(file)
+          }
+          for (const map of known.maps) {
+            maps.set(map, chunkHash)
+          }
+        }
+        chunks = nextChunks
+        const emitted = new Set(Object.keys(assets))
+        for (const name of emitted) {
+          if (!inChunks.has(name)) {
+            for (const map of relatedMaps(name)) {
+              maps.set(map, undefined)
             }
           }
         }
         const next: typeof fills = new Map()
-        for (const name of Object.keys(assets)) {
-          if (!name.endsWith('.map')) {
+        for (const [name, chunkHash] of maps) {
+          if (!emitted.has(name)) {
             continue
           }
-          // a map of no chunk (a hot update's) is read every time
-          const chunkHash = chunkHashes.get(name)
           let fill = fills.get(name)
           if (
             chunkHash === undefined ||
