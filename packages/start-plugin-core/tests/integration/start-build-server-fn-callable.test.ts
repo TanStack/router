@@ -59,6 +59,70 @@ return {
     timeout,
   )
 
+  // SPEC J4.2 (R182) with default and custom ids in one build: a custom id
+  // a public one extends (`fn`, `fnx`), one with a quote (`it's`, escaped in
+  // a literal of that quote) and default ids. Each public fn answers over
+  // HTTP, each private one is refused.
+  test(
+    'SSR: default and custom ids gate their own server fns',
+    async () => {
+      const ids: Record<string, string> = {
+        privatePrefix_createServerFn_handler: 'fn',
+        publicLonger_createServerFn_handler: 'fnx',
+        publicQuote_createServerFn_handler: "it's",
+      }
+      const { ssr } = await buildStart({
+        bundler,
+        start: {
+          serverFns: {
+            generateFunctionId: ({ functionName }: { functionName: string }) =>
+              ids[functionName],
+          },
+        },
+        files: {
+          'fns.ts': `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
+const privatePrefix = createServerFn().handler(async () => 'private prefix')
+const privateDefault = createServerFn().handler(async () => 'private default')
+export const publicLonger = createServerFn().handler(async () => 'public longer:' + (await privatePrefix()) + (await privateDefault()))
+export const publicQuote = createServerFn().handler(async () => 'public quote')
+export const publicDefault = createServerFn().handler(async () => 'public default')
+export const urls = createServerOnlyFn(() => [privatePrefix, privateDefault, publicLonger, publicQuote, publicDefault].map((fn) => fn.url))
+`,
+          'client-entry.ts': `export { publicLonger, publicQuote, publicDefault } from './fns'\n`,
+          'ssr-entry.ts': `export { urls } from './fns'
+${callByIdExports}`,
+        },
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+      })
+      const { result } =
+        await ssr.run(`${callByIdPrelude}const overHttp = async (url) => {
+  try {
+    return await callById(serverFnId(url))
+  } catch {
+    return 'rejected'
+  }
+}
+const results = []
+for (const url of entry.urls()) {
+  results.push([serverFnId(url), await overHttp(url)])
+}
+return results`)
+      const [privatePrefix, privateDefault, ...publics] = result as Array<
+        [string, string]
+      >
+      expect({ privatePrefix, privateDefault, publics }).toEqual({
+        privatePrefix: ['fn', 'rejected'],
+        privateDefault: [expect.any(String), 'rejected'],
+        publics: [
+          ['fnx', 'public longer:private prefixprivate default'],
+          ["it's", 'public quote'],
+          [expect.any(String), 'public default'],
+        ],
+      })
+    },
+    timeout,
+  )
+
   // SPEC J4.2 (R182), each build deciding: a rebuild after an edit that
   // removes the last client call of a server fn refuses it over HTTP, and
   // one that calls it again answers it (Rsbuild from its persistent cache).
