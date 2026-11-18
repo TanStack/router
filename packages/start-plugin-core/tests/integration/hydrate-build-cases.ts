@@ -10,6 +10,7 @@
  * whose button then shows that it was clicked: the child hydrated, with its
  * own code, in the boundary the server rendered it in.
  */
+import ts from 'typescript'
 import { afterAll, describe, expect, test } from 'vitest'
 import { originalFrameOf } from '@tanstack/compiler-test-utils/build-harness'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
@@ -19,6 +20,7 @@ import {
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { StartBuildError, buildStart } from '../build-harness'
+import { typeCheck } from './start-compose-app'
 import type { StartBuild, StartBundler } from '../build-harness'
 
 const timeout = 60_000
@@ -637,6 +639,43 @@ export { PostBadge as badge } from './routes/badge'
       timeout,
     )
 
+    // What the refusal of a function reading a let the component reassigns
+    // suggests (below): the value in a ref holding its initial value. The
+    // split handler reads the effect's later assignment, and the page
+    // type-checks with the app's React types (React 19's `useRef` takes its
+    // initial value). Source: Astra review of #8817, round 3, hydrate B5.
+    test(
+      'the ref the refusal of a reassigned let suggests builds, hydrates and type-checks',
+      async () => {
+        const build = await sharedApp()
+        expect(
+          findDiagnostics(problems(build.diagnostics), {
+            file: 'src/pages/timer-ref.tsx',
+            root: build.root,
+          }),
+        ).toEqual([])
+        expect(
+          await hydrateShared(
+            'timerRef',
+            ['timerRef-marker'],
+            'typeof globalThis.__stoppedTimer',
+          ),
+        ).toEqual({
+          text: 'timerRef-marker clicked',
+          recoverableErrors: [],
+          consoleErrors: [],
+          read: 'number',
+        })
+        expect(
+          typeCheck(build.root, ['src/pages/timer-ref.tsx'], {
+            jsx: ts.JsxEmit.ReactJSX,
+            jsxImportSource: 'react',
+          }),
+        ).toEqual([])
+      },
+      timeout,
+    )
+
     // Source maps point at the user's code: a throw in the children, which
     // run from their lazy chunk on the client, maps through the chunk's
     // emitted source map to its line in the page. The column is left out:
@@ -1029,7 +1068,33 @@ export function Page() {
   )
 }
 `,
+  'src/pages/timer-ref.tsx': `import { useEffect, useRef, useState } from 'react'
+import { Hydrate } from '@tanstack/react-start'
+import { idle } from '@tanstack/react-start/hydration'
+export function Page() {
+  const timer = useRef<number>(undefined)
+  const [clicked, setClicked] = useState(false)
+  useEffect(() => {
+    timer.current = window.setInterval(() => {}, 1000)
+    return () => clearInterval(timer.current)
+  }, [])
+  return (
+    <main>
+      <Hydrate when={idle()}>
+        <button
+          onClick={() => {
+            clearInterval(timer.current)
+            ;(globalThis as { __stoppedTimer?: number }).__stoppedTimer = timer.current
+            setClicked(true)
+          }}
+        >timerRef-marker{clicked ? ' clicked' : ''}</button>
+      </Hydrate>
+    </main>
+  )
+}
+`,
   'src/pages.ts': `export { Page as chartProject } from './pages/chart-project'
+export { Page as timerRef } from './pages/timer-ref'
 export { Page as chartPlainWidgets } from './pages/chart-plain-widgets'
 export { Page as chartPureWidgets } from './pages/chart-pure-widgets'
 export { Page as twoBoundaries } from './pages/two-boundaries'

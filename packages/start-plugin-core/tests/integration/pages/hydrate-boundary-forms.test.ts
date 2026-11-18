@@ -696,13 +696,26 @@ export function Page() {
   })
 
   // Children writing state the split code would hold a copy of (a local
-  // of the component; a `var` a top-level statement declares, which the
-  // chunk imports), and a Solid `ref` of a `let` outside two nested
-  // boundaries: the client rejects them at the boundary.
-  const solidHead = `import { Hydrate } from '@tanstack/solid-start'\n`
+  // of the component, in a handler or in the client implementation of an
+  // isomorphic fn; a `var` a top-level statement declares, which the chunk
+  // imports), and a Solid `ref` of a `let` outside two nested boundaries:
+  // the client rejects them at the boundary. (A write in the server
+  // implementation only is no write of the client's children: those split,
+  // hydrate-pages-react.ts and hydrate-pages-solid.ts.)
+  const solidHead = `import { Hydrate } from '@tanstack/solid-start'
+import { load } from '@tanstack/solid-start/hydration'
+`
   const capturedLocal = (hydrate: string) => `${hydrate}export function Page() {
   let count = 0
-  return <Hydrate><button onClick={() => count++}>{count}</button></Hydrate>
+  return <Hydrate when={load()}><button onClick={() => count++}>{count}</button></Hydrate>
+}`
+  const isomorphicClientWrite = (
+    framework: 'react' | 'solid',
+  ) => `import { Hydrate, createIsomorphicFn } from '@tanstack/${framework}-start'
+import { load } from '@tanstack/${framework}-start/hydration'
+export function Page() {
+  let n = 0
+  return <Hydrate when={load()}><p>{createIsomorphicFn().server(() => 1).client(() => ++n)()}</p></Hydrate>
 }`
   test.each([
     {
@@ -714,6 +727,16 @@ export function Page() {
       name: 'assigning a captured local (Solid)',
       framework: 'solid',
       code: capturedLocal(solidHead),
+    },
+    {
+      name: 'assigning a captured local in the client implementation of an isomorphic fn (React)',
+      framework: 'react',
+      code: isomorphicClientWrite('react'),
+    },
+    {
+      name: 'assigning a captured local in the client implementation of an isomorphic fn (Solid)',
+      framework: 'solid',
+      code: isomorphicClientWrite('solid'),
     },
     {
       name: 'assigning a var a top-level statement declares',
@@ -733,7 +756,7 @@ export const Page = () => <Hydrate><button onClick={() => { flag = 1 }}>{String(
       framework: 'solid',
       code: `${solidHead}export function Page() {
   let input
-  return <Hydrate><section><Hydrate><input ref={input} /></Hydrate></section></Hydrate>
+  return <Hydrate when={load()}><section><Hydrate when={load()}><input ref={input} /></Hydrate></section></Hydrate>
 }`,
     },
   ] as const)(
@@ -764,8 +787,7 @@ export const Page = () => <Hydrate><button onClick={() => { flag = 1 }}>{String(
   test.fails(
     'client: a Solid ref in the children naming a module let binds the let the module reads',
     async () => {
-      const code = `${solidHead}import { load } from '@tanstack/solid-start/hydration'
-import { createSignal, onMount } from 'solid-js'
+      const code = `${solidHead}import { createSignal, onMount } from 'solid-js'
 export let field: HTMLInputElement | undefined
 function Run(props: { fn: () => void }) {
   onMount(() => props.fn())

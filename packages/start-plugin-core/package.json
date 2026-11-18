@@ -264,6 +264,7 @@
     "@rsbuild/plugin-vue": "^1.2.7",
     "@types/node": ">=20",
     "@types/picomatch": "^4.0.2",
+    "@types/react": "catalog:",
     "vite": "*",
     "vite-plugin-solid": "catalog:",
     "@tanstack/compiler-test-utils": "workspace:*",

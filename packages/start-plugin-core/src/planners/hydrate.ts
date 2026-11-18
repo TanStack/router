@@ -933,25 +933,6 @@ function validate(
   for (const n of shape.nodes) {
     visit(n, false, false, true)
   }
-  if (!scan.ok) {
-    return scan
-  }
-  // the children receive the values of the enclosing function's locals, not the variables
-  const region = shape.range
-  for (const ref of t1.refs.refsIn(region)) {
-    if (
-      ref.kind === 'write' &&
-      !skip.some((r) => within(ref.range, r)) &&
-      !ctx.symbols.isModuleLevel(ref.sym) &&
-      !declaredWithin(ctx, ref.sym, region)
-    ) {
-      fail(
-        'hydrate-capture-write',
-        `Hydrate cannot code-split JSX that assigns \`${ctx.symbols.name(ref.sym)}\`, a local of the enclosing component: the split children receive its value, not the variable. Move the variable and the code that assigns it into a component rendered inside the boundary, or use split={false}.`,
-      )
-      break
-    }
-  }
   return scan
 }
 
@@ -1156,31 +1137,28 @@ function extract(
   // React passes a capture's value when the placeholder renders (Solid
   // reads a reassigned binding through a getter): a function of the
   // children that reads it later, itself or through a nested boundary's
-  // placeholder it renders, would read that snapshot. Reports it (at
-  // `read`) when `evaluated`, where the children read `sym`, is in one.
-  const refusesSnapshot = (
-    sym: SymbolId,
-    evaluated: Range,
-    read: Range,
-  ): boolean => {
-    if (
-      solid ||
-      !symbols.isReassignable(sym) ||
-      !scan.functions.some((f) => within(evaluated, f)) ||
-      !t1.mutation.isReassigned(sym, (r) => liveEnv.live(r))
-    ) {
-      return false
-    }
+  // placeholder it renders, would read that snapshot: when `evaluated`,
+  // where the children read `sym`, is in one.
+  const readsSnapshot = (sym: SymbolId, evaluated: Range): boolean =>
+    !solid &&
+    symbols.isReassignable(sym) &&
+    scan.functions.some((f) => within(evaluated, f)) &&
+    t1.mutation.isReassigned(sym, (r) => liveEnv.live(r))
+  /** Reports a snapshot read of `sym` (`readsSnapshot`) at `read`. */
+  const refuseSnapshot = (sym: SymbolId, read: Range): null => {
     const name = symbols.name(sym)
     boundaryError(
       ctx,
       b,
       'hydrate-capture-reassigned',
-      `Hydrate cannot code-split JSX whose function reads \`${name}\`, a variable the enclosing component reassigns: the split children receive its value when the boundary renders, so the function would not see later assignments. Keep the value in a ref (\`const ${name} = useRef()\`, read and assign \`${name}.current\`), or use split={false}.`,
+      `Hydrate cannot code-split JSX whose function reads \`${name}\`, a variable the enclosing component reassigns: the split children receive its value when the boundary renders, so the function would not see later assignments. Keep the value in a ref (\`const ${name} = useRef(<its initial value>)\`, read and assign \`${name}.current\`), or use split={false}.`,
       read,
     )
-    return true
+    return null
   }
+  // the first snapshot read: reported after the walk, so a write of the
+  // children (the cause of the snapshot) is reported first
+  let snapshot: { sym: SymbolId; at: Range } | undefined
   for (const ref of t1.refs.refsIn(region)) {
     if (
       skip.some((r) => within(ref.range, r)) ||
@@ -1192,10 +1170,26 @@ function extract(
     ) {
       continue
     }
-    if (refusesSnapshot(ref.sym, ref.range, ref.range)) {
+    // the children receive the values of the enclosing function's locals,
+    // not the variables: a write the client's children keep assigns a copy
+    // (one only the server keeps, e.g. in an isomorphic fn's server
+    // implementation, stays in the server's render of the original JSX)
+    if (ref.kind === 'write') {
+      boundaryError(
+        ctx,
+        b,
+        'hydrate-capture-write',
+        `Hydrate cannot code-split JSX that assigns \`${symbols.name(ref.sym)}\`, a local of the enclosing component: the split children receive its value, not the variable. Move the variable and the code that assigns it into a component rendered inside the boundary, or use split={false}.`,
+      )
       return null
     }
+    if (!snapshot && readsSnapshot(ref.sym, ref.range)) {
+      snapshot = { sym: ref.sym, at: ref.range }
+    }
     found.push({ sym: ref.sym, pos: ref.range.start, at: ref.range })
+  }
+  if (snapshot) {
+    return refuseSnapshot(snapshot.sym, snapshot.at)
   }
   let args = scan.argumentsRefs.length > 0
   for (const e of direct) {
@@ -1217,8 +1211,8 @@ function extract(
         return null
       }
       const at = e.readAt.get(sym) ?? e.b.element
-      if (refusesSnapshot(sym, e.b.element, at)) {
-        return null
+      if (readsSnapshot(sym, e.b.element)) {
+        return refuseSnapshot(sym, at)
       }
       found.push({ sym, pos: e.b.element.start, at })
     }
