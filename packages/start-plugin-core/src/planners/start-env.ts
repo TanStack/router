@@ -245,20 +245,21 @@ function continuedByCall(
   node: Node,
 ): boolean {
   let n = node
-  for (let p = file.parentOf(n); p; n = p, p = file.parentOf(p)) {
-    if (
-      (isExpressionWrapper(p) && p.expression === n) ||
-      (p.type === 'MemberExpression' && p.object === n)
-    ) {
-      continue
-    }
-    return (
-      ((p.type === 'CallExpression' || p.type === 'NewExpression') &&
-        p.callee === n) ||
-      (p.type === 'TaggedTemplateExpression' && p.tag === n)
-    )
+  let p = file.parentOf(n)
+  while (
+    p &&
+    ((isExpressionWrapper(p) && p.expression === n) ||
+      (p.type === 'MemberExpression' && p.object === n))
+  ) {
+    n = p
+    p = file.parentOf(p)
   }
-  return false
+  return (
+    p !== null &&
+    (((p.type === 'CallExpression' || p.type === 'NewExpression') &&
+      p.callee === n) ||
+      (p.type === 'TaggedTemplateExpression' && p.tag === n))
+  )
 }
 
 function enclosingFunctionNames(
