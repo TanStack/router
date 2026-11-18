@@ -910,16 +910,28 @@ async function devCompileRun(variant, { profileDir, replay, mem } = {}) {
       listenMs: listening.epochMs - dev.spawnedAt,
       compileAllMs: result.totalMs,
     }
+    // A crawl that stops at failed transforms compiles fewer modules and
+    // reads as faster, so a run with transform errors has no valid sample.
+    const failed = Object.entries(result.envs).filter(
+      ([, r]) => r.errors.length,
+    )
+    if (failed.length) {
+      throw new Error(
+        `dev-compile: transform errors\n${failed
+          .map(
+            ([env, r]) =>
+              `  ${env}: ${r.errors.length} of ${r.modules} modules failed, first:\n${r.errors
+                .slice(0, 3)
+                .map((e) => `    ${e.url}: ${e.message}`)
+                .join('\n')}`,
+          )
+          .join('\n')}`,
+      )
+    }
     for (const [env, r] of Object.entries(result.envs)) {
       metrics[`${env}Ms`] = r.ms
       metrics[`${env}Modules`] = r.modules
       metrics[`${env}OutputHash`] = r.outputHash
-      if (r.errors.length) {
-        log(
-          `  ${env}: ${r.errors.length} transform errors, first: ${JSON.stringify(r.errors[0])}`,
-        )
-        metrics[`${env}Errors`] = r.errors.length
-      }
     }
     metrics.totalMs = now() - dev.spawnedAt
     if (mem) {

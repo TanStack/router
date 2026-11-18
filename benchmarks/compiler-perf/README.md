@@ -164,6 +164,9 @@ Checks and limits:
   normalized). `outputMismatch` counts hashes that differ from the record
   run; `results.floor.<scenario>.realMatches` compares the record run with
   the real run.
+- A dev compile-all run with a transform error in any environment fails the
+  whole run (environment, failed count, first errors): a crawl that stops at
+  failed modules compiles fewer of them and would read as faster.
 - The other hooks of the same plugins still run (`otherTanstackHookSyncMs`):
   `resolveId`, `hotUpdate`, `generateBundle`, and the **route generator**
   (Vite `configResolved`, Rspack `beforeRun`), reported as `generatorMs`
