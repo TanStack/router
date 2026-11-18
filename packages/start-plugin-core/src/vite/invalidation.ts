@@ -130,7 +130,7 @@ export async function invalidateRegistry(
   })
   for (const environment of environments) {
     if (state.envNames.has(environment.name)) {
-      reloadStaleModules(s.start.caches, environment, false, '[tanstack-start]')
+      reloadStaleModules(s.start.caches, environment, '[tanstack-start]')
     }
   }
 }
@@ -157,7 +157,7 @@ export async function reloadMismatched(
     for (const id of ids) {
       s.start.caches.stale.add(env.name, identify(id).path)
     }
-    reloadStaleModules(s.start.caches, environment, false, '[tanstack-start]')
+    reloadStaleModules(s.start.caches, environment, '[tanstack-start]')
   }
   // importers that disagree (R147): said once, served as the ledger says
   for (const message of ipEnv.conflictReports(false)) {

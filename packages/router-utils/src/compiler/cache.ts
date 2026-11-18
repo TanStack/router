@@ -971,12 +971,10 @@ export class PlanCache {
  * must build again and will not build on its own (the dependents an
  * invalidation found stale, a registry change's file, a plan hit that
  * failed validation, a compile every attempt of which was overtaken). A
- * path stays until a host takes it. `held`: stale only because a file it
- * read was removed (a host may wait for a file to appear before it builds
- * the module again).
+ * path stays until a host takes it.
  */
 export class StaleSets {
-  private readonly byEnv = new Map<string, Map<string, boolean>>()
+  private readonly byEnv = new Map<string, Set<string>>()
   /** The environments whose bundler holds modules (`track`). */
   private readonly tracked = new Set<string>()
 
@@ -995,43 +993,33 @@ export class StaleSets {
     return this.tracked
   }
 
-  add(env: string, path: string, held = false): void {
+  add(env: string, path: string): void {
     let set = this.byEnv.get(env)
     if (!set) {
-      set = new Map()
+      set = new Set()
       this.byEnv.set(env, set)
     }
-    const was = set.get(path)
-    set.set(path, was === undefined ? held : was && held)
+    set.add(path)
   }
 
-  /** Reads and empties the environment's set; the held paths stay unless `held`. */
-  take(env: string, opts: { held?: boolean } = {}): Array<string> {
+  /** Reads and empties the environment's set. */
+  take(env: string): Array<string> {
     const set = this.byEnv.get(env)
     if (!set) {
       return []
     }
-    const out: Array<string> = []
-    for (const [path, held] of set) {
-      if (!held || opts.held === true) {
-        out.push(path)
-        set.delete(path)
-      }
-    }
-    if (set.size === 0) {
-      this.byEnv.delete(env)
-    }
-    return out
+    this.byEnv.delete(env)
+    return [...set]
   }
 
-  /** Whether the environment's set holds a path (held ones included). */
+  /** Whether the environment's set holds a path. */
   has(env: string): boolean {
     return this.byEnv.has(env)
   }
 
-  /** The paths of the environment's set (held ones included), left in it. */
+  /** The paths of the environment's set, left in it. */
   paths(env: string): Array<string> {
-    return [...(this.byEnv.get(env)?.keys() ?? [])]
+    return [...(this.byEnv.get(env) ?? [])]
   }
 
   /** Whether the environment's set holds `path`. */
@@ -1056,26 +1044,6 @@ export class StaleSets {
     }
   }
 
-  /**
-   * A hold of the file's path in the environment ends: its file changed
-   * (`invalidate()`: its plans of a former text went with the event), or a
-   * compile of its latest text settled there (the held file compiled again
-   * with no event of its own: a request, a reload). The hold was for the
-   * modules of the plan a removal evicted; what the file's latest text
-   * reads decides from then on (a removed file it still imports is a
-   * failed resolution, which the file's return judges again). A path stale
-   * for any other reason stays: the file's other outputs follow it.
-   */
-  unhold(env: string, path: string): void {
-    const set = this.byEnv.get(env)
-    if (set?.get(path) === true) {
-      set.delete(path)
-      if (set.size === 0) {
-        this.byEnv.delete(env)
-      }
-    }
-  }
-
   /** A removed file: no environment builds its modules again. */
   remove(path: string): void {
     for (const [env, set] of this.byEnv) {
@@ -1093,15 +1061,11 @@ export class StaleSets {
   }
 
   /** Sizes for `compilerStats()`. */
-  stats(): { stalePaths: number; staleHeld: number } {
+  stats(): { stalePaths: number } {
     let stalePaths = 0
-    let staleHeld = 0
     for (const set of this.byEnv.values()) {
       stalePaths += set.size
-      for (const held of set.values()) {
-        staleHeld += held ? 1 : 0
-      }
     }
-    return { stalePaths, staleHeld }
+    return { stalePaths }
   }
 }

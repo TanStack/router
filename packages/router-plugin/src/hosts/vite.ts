@@ -153,14 +153,9 @@ export function createRouterCompilerVitePlugin(
    * Outside a hot update (a registry change, a dev server without HMR):
    * every environment's stale set, sent as updates (`reloadStaleModules`).
    */
-  const reloadStale = (s: Session, held: boolean) => {
+  const reloadStale = (s: Session) => {
     for (const environment of Object.values(s.server?.environments ?? {})) {
-      reloadStaleModules(
-        s.compiler.caches,
-        environment,
-        held,
-        '[tanstack-router]',
-      )
+      reloadStaleModules(s.compiler.caches, environment, '[tanstack-router]')
     }
   }
 
@@ -188,7 +183,7 @@ export function createRouterCompilerVitePlugin(
         const files = changedRoutePaths(next, previous).map(normalizePath)
         void Promise.all(
           files.map((file) => invalidatePath(s, file, 'registry')),
-        ).then(() => reloadStale(s, false))
+        ).then(() => reloadStale(s))
       })
       return s
     },
@@ -295,7 +290,7 @@ export function createRouterCompilerVitePlugin(
       if (compiler.mode === 'build' && this.meta.watchMode) {
         // a watch rebuild compiles every module again (Rolldown runs every
         // `load` and `transform`): the environment's stale set is built
-        compiler.caches.stale.take(this.environment.name, { held: true })
+        compiler.caches.stale.take(this.environment.name)
       }
     },
 
@@ -403,9 +398,8 @@ export function createRouterCompilerVitePlugin(
     /**
      * Design 3's hook: the event's invalidation, then the environment's
      * stale set handed to Vite with the event's own modules (those the
-     * file's current plan produces). A creation takes the paths held since
-     * a removal. A path that enters the set after the take waits for the
-     * next event's hook.
+     * file's current plan produces). A path that enters the set after the
+     * take waits for the next event's hook.
      */
     hotUpdate({ file, modules, type }) {
       const s = sessions.of(this.environment)
@@ -434,7 +428,7 @@ export function createRouterCompilerVitePlugin(
       const kind =
         event === 'update' ? 'change' : event === 'create' ? 'add' : 'unlink'
       await invalidatePath(s, id, kind)
-      reloadStale(s, kind === 'add')
+      reloadStale(s)
     },
   }
 

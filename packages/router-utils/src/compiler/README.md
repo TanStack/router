@@ -326,16 +326,18 @@ text compiles waits for it and emits its own output from the result.
     stale set, for a bundler that skipped building it (webpack's content-hash snapshot of a file written unchanged
     after a loader before the compiler rewrote it; the takers let the event's own file go). A compile of a key's
     latest text without a plan (untouched, empty, not parsed) evicts the plan of an older one. A removal evicts the file's plans and stales every plan that read the
-    file, unasked: held, unless every resolution of the plan that found the file finds another file or an external now
-    (`./b` found `b.ts` and finds `b/index.ts`: a file turned into a folder; a resolver's fallback to a package), asked
-    with the plan's own resolver. Events of
+    file, unasked, on every host alike: its modules are built again at once, against what its imports find now
+    (another file: `./b` found `b.ts` and finds `b/index.ts`; an external; or nothing, a failed resolution that every
+    later file event asks again, so the file's return or a fallback created later builds them again). Vite dev keeps
+    no module of a removed import waiting: the removal's update invalidates the importer, as Rsbuild, webpack and a
+    watch build rebuild it (an import its output keeps fails there; one the compile erased does not). Events of
     different paths run at once: a plan judged stale is evicted and enters the stale set only if it is still the key's
     plan once its checks answered (another event may have evicted it meanwhile, e.g. its own file's removal, which
     took the file out of the stale sets). A removal is told to the session (`createCompilerCaches`' `removed`: Start forgets the file's server
     functions and import protection's records there).
   - **Stale sets.** The plans found stale enter their environment's **stale set** (`caches.stale`): the files whose
     modules the bundler must build again and will not build on its own, kept until a host takes them
-    (`take(env, { held })`; `held`: stale only because a file they read was removed, and nothing takes its place; the hold ends with the file's own change, and once a compile of the file's latest text settles in that environment, the file compiled again with no event of its own: its reads decide from then on, a removed file it still imports being a failed resolution). The other writers: a registry
+    (`take(env)`). The other writers: a registry
     change (the file, in every environment that has compiled or whose bundler holds modules: `stale.track(env)`, a
     Vite dev environment, a webpack-family compiler from its first drain), a plan hit that fails validation (the file,
     so its other outputs follow; when no invalidation runs, counted as `staleHits` when a fact failed, a defect:

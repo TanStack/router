@@ -246,7 +246,7 @@ function envCompilerPlugins(
         // no file event names a virtual module: what it read loads again
         expireVirtual(s.start.caches, env.name)
         s.watching.add(env.name)
-        s.start.caches.stale.take(env.name, { held: true })
+        s.start.caches.stale.take(env.name)
       }
       if (this.environment.mode === 'build' && env.type === 'client') {
         if (!this.meta.watchMode) {
@@ -402,10 +402,8 @@ function envCompilerPlugins(
      * Design 3's hook: the event's invalidation, then the environment's
      * stale set (the dependents found stale, and what entered it since its
      * last take: a failed hit's file, a compile overtaken by saves, a
-     * registry change) handed to Vite with the event's own modules. A
-     * creation takes the paths held since a removal (their modules would
-     * not compile while the file was missing). A path that enters the set
-     * after the take waits for the next event's hook.
+     * registry change) handed to Vite with the event's own modules. A path
+     * that enters the set after the take waits for the next event's hook.
      */
     hotUpdate(ctx) {
       const s = state.sessionOf(this.environment)
@@ -466,7 +464,7 @@ function envCompilerPlugins(
           )
         : [environment]
       for (const each of environments) {
-        takeStaleModules(s.start.caches, each, change.kind === 'add')
+        takeStaleModules(s.start.caches, each)
       }
     },
     // a derived output's map names its file, not `route.tsx?tsr-split=…`,

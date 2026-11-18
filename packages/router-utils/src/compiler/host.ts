@@ -416,17 +416,17 @@ type InvalidationHosts = HostServices | ((key: PlanKey) => HostServices)
  * it is (a removal of a file that reads back is a change). A change marks
  * the file's raw facts stale and re-validates dependents' fingerprints. A
  * plan answers for its file's text: the file's change evicts its plans of
- * another text, so that no compile of a former text publishes, and ends its
- * holds, in every environment (a plan of the text read stays, with the rows
+ * another text, so that no compile of a former text publishes, in every
+ * environment (a plan of the text read stays, with the rows
  * its dependencies' events find: a touch, or a request of the new text
  * ahead of its event); the dependents found stale enter their
  * environment's stale set (`CompilerCaches.stale`), and the host has its
  * bundler build them again (the file's own modules are
  * its bundler's, which reported the event). A removed file's plans are
- * evicted, and every plan that read it is stale, unasked: held (its modules
- * wait for a file to appear) unless every resolution of it that found the
- * file finds another one or an external now (`resolvedElsewhere`: a file
- * turned into a folder), so its modules are built again at once.
+ * evicted, and every plan that read it is stale, unasked, as after any other
+ * change: its modules are built again at once, against what its imports
+ * find now (another file, an external, or nothing: a failed resolution,
+ * which the next file event asks again).
  * A virtual module's change (`path`: its id, reported by its host's update
  * of the module, `staleHotUpdate`: its text is a `load`, which no file event
  * names) marks its raw facts stale in every environment and re-validates
@@ -589,7 +589,6 @@ async function applyChange(
           caches.stale.add(cache.env, path)
         }
       }
-      caches.stale.unhold(cache.env, path)
     }
   }
   if (kind === 'unlink') {
@@ -655,10 +654,6 @@ async function applyChange(
         }
       }
       if (stale) {
-        // (asked first: the eviction and the stale set's entry are one step)
-        const held =
-          change.kind === 'unlink' &&
-          !(await resolvedElsewhere(fps, change.path, src))
         if (cache.dependenciesOf(entry.key) !== judged) {
           // the plan judged is gone meanwhile (an event of another path
           // evicted it, its file's removal took it out of the stale sets) or
@@ -668,7 +663,7 @@ async function applyChange(
         }
         cache.delete(entry.key)
         cache.bump(entry.key)
-        caches.stale.add(cache.env, identify(entry.key.canonicalId).path, held)
+        caches.stale.add(cache.env, identify(entry.key.canonicalId).path)
       }
     }
   }
@@ -747,40 +742,6 @@ async function applyChange(
       }
     }
   }
-}
-
-/**
- * Whether a dependent of a removed file can compile now: every resolution
- * of it that found the file finds another file or an external (`./b` found
- * `b.ts`, which was removed, and finds `b/index.ts`: a file turned into a
- * folder; a resolver's fallback to a package), so its modules are built
- * again at once. Otherwise (no resolution found the file, one finds nothing
- * or still the file: a resolver may cache it until its next compile) the
- * dependent is held: it waits for a file to appear (a removal the watcher
- * reports before the file comes back: its modules would fail to build
- * meanwhile). The resolutions are asked with the dependent's own resolver,
- * so two importers of the file decide apart.
- */
-async function resolvedElsewhere(
-  fps: ReadonlyArray<DependencyFingerprint>,
-  removed: string,
-  src: FingerprintSource,
-): Promise<boolean> {
-  let found = false
-  for (const fp of fps) {
-    if (fp.kind !== 'resolution' || fingerprintPath(fp) !== removed) {
-      continue
-    }
-    const now = await src
-      .resolution(fp.importer, fp.specifier)
-      .catch(() => null)
-    // (an external names no file that may come back: found elsewhere)
-    if (now === null || pathOfId(now) === removed) {
-      return false
-    }
-    found = true
-  }
-  return found
 }
 
 /**

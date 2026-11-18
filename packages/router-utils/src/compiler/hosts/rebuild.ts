@@ -164,9 +164,9 @@ export class StaleSetDrain {
   }
 
   /**
-   * Builds again the modules of the environment's stale set (the held ones
-   * too: a module importing a removed file fails here as it would in the
-   * bundler's own rebuild), once the invalidations running (a registry
+   * Builds again the modules of the environment's stale set (a module
+   * importing a removed file fails here as it would in the bundler's own
+   * rebuild), once the invalidations running (a registry
    * change published during this compilation's `watchRun`) ended, and the
    * modules of what `building` took that the compilation did not build.
    * `pathOf`: a module resource as the stale sets spell its path.
@@ -186,7 +186,7 @@ export class StaleSetDrain {
     if (caches.invalidations.size > 0) {
       await caches.settled()
     }
-    const paths = new Set(caches.stale.take(env, { held: true }))
+    const paths = new Set(caches.stale.take(env))
     const taken = this.takenAtMake.get(env)
     this.takenAtMake.delete(env)
     if (paths.size === 0 && !taken) {
@@ -210,8 +210,7 @@ export class StaleSetDrain {
         )
       })
     } catch (error) {
-      // what this compilation was to build stays stale (held paths too, as
-      // plain ones: a compiler of the webpack family takes both): the next
+      // what this compilation was to build stays stale: the next
       // compilation builds it, which `compiled` asks for, within the bound
       for (const path of [...paths, ...(taken ?? [])]) {
         caches.stale.add(env, path)

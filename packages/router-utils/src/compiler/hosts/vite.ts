@@ -117,9 +117,8 @@ export interface ModuleGraphLike<TNode> {
 }
 
 /**
- * Takes a Vite dev environment's stale set (`CompilerCaches.stale`; `held`:
- * also the paths stale only because a file they read was removed, on a
- * creation) and invalidates the modules of its files, with the documented
+ * Takes a Vite dev environment's stale set (`CompilerCaches.stale`) and
+ * invalidates the modules of its files, with the documented
  * one-argument form: a non-HMR invalidation, after which Vite drops a
  * transform of the module still in flight (a request started before the
  * event) instead of keeping its result. Returns the modules, for the hook to
@@ -129,11 +128,10 @@ export interface ModuleGraphLike<TNode> {
 export function takeStaleModules<TNode>(
   caches: CompilerCaches,
   environment: { name: string; moduleGraph: ModuleGraphLike<TNode> },
-  held: boolean,
 ): Array<TNode> {
   const graph = environment.moduleGraph
   const nodes: Array<TNode> = []
-  for (const file of caches.stale.take(environment.name, { held })) {
+  for (const file of caches.stale.take(environment.name)) {
     for (const node of graph.getModulesByFile(file) ?? []) {
       graph.invalidateModule(node)
       nodes.push(node)
@@ -155,8 +153,8 @@ interface StaleEnvironment<TNode> {
  * (`updatedVirtualIds`: no file event names a virtual module, and its text,
  * a plugin's `load`, may have changed), the event's own modules that the file's current plan
  * still produces (`liveModules`), and the environment's stale set, its
- * modules invalidated and handed to Vite with them (a creation takes the
- * held paths too). The event's file leaves the set first: its modules are
+ * modules invalidated and handed to Vite with them. The event's file
+ * leaves the set first: its modules are
  * this event's, judged here (in the set, from a failed hit since the last
  * take, a compile overtaken or a registry change racing the save, it would
  * bring back the derived modules `liveModules` dropped). A path that enters
@@ -189,11 +187,9 @@ export async function staleHotUpdate<
   const live =
     (await liveModules(environment, caches, change.path, modules)) ?? modules
   caches.stale.drop(environment.name, [change.path])
-  const stale = takeStaleModules(
-    caches,
-    environment,
-    change.kind === 'add',
-  ).filter((node) => !live.includes(node))
+  const stale = takeStaleModules(caches, environment).filter(
+    (node) => !live.includes(node),
+  )
   return stale.length > 0 || live !== modules ? [...live, ...stale] : undefined
 }
 
@@ -248,10 +244,9 @@ export function reloadStaleModules<TNode extends { file: string | null }>(
     reloadModule: (node: TNode) => Promise<void>
     logger: { error: (message: string) => void }
   },
-  held: boolean,
   tag: string,
 ): void {
-  for (const node of takeStaleModules(caches, environment, held)) {
+  for (const node of takeStaleModules(caches, environment)) {
     if (node.file !== null && isAbsolute(node.file) && !existsSync(node.file)) {
       continue
     }
