@@ -114,6 +114,16 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   children naming a module let binds the let the module reads". Fix: rejected at the boundary like an explicit
   `field = el` (a function-valued module ref stays legal: Solid calls it), or the module reads the element.
   Workaround: a `let` in the component, or `split={false}`.
+- **Solid: a split handler reads a component `let` that a `ref` outside the boundary sets later as its value at the
+  boundary's render** (Astra round 3 hydrate B2; `main` too, which also misses the explicit `ref={el => { field = el
+}}` form the PR handles): a Solid capture is read through a getter when it is reassigned or a `ref={x}` inside this
+  boundary sets it; a JSX `ref={field}` outside the boundary is neither (a JSX ref is no write before Solid lowers it),
+  so the children get `undefined` when the element mounts after the boundary rendered (a `<Show>` that opens later).
+  An element in the same first render works. SPEC J5.8, J5.2.
+  `start-plugin-core/tests/integration/hydrate-pages-solid.ts`: "a split handler reads an element a later ref outside
+  the boundary binds". Fix: a Solid `ref={x}` anywhere in the file counts as an assignment of `x` for the getter
+  decision (not a getter for every reassignable capture: that includes parameters). Workaround: an explicit
+  `ref={(el) => { field = el }}`, or `split={false}`.
 
 ## Known incorrect rejections (accepted, R89)
 

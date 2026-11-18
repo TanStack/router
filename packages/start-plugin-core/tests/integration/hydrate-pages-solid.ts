@@ -125,6 +125,28 @@ export function Page() {
 }
 
 /**
+ * A page whose boundary's children read, in a click handler, a `let` of the
+ * component that a `ref` outside the boundary binds to an element mounted
+ * later (a `<Show>` opened by a click).
+ */
+function lateRefPage(split: string) {
+  return `${head}import { Show, createSignal } from 'solid-js'
+export function Page() {
+  const [editing, setEditing] = createSignal(false)
+  const [read, setRead] = createSignal('none')
+  let field: HTMLInputElement | undefined
+  return (
+    <div>
+      <Hydrate when={idle()}${split}><button data-read onClick={() => setRead(field ? field.value : 'missing')}>read</button><Counter label="child" /></Hydrate>
+      <button data-edit onClick={() => setEditing(true)}>edit</button>
+      <Show when={editing()}><input ref={field} value="draft" /></Show>
+      <output>{read()}</output>
+    </div>
+  )
+}`
+}
+
+/**
  * A page whose boundary's children use a Solid directive (`use:tip`, which
  * Solid's JSX transform turns into a call of `tip` where the JSX ends up),
  * declared at module level or in the component (`where`).
@@ -274,6 +296,8 @@ export function Page() {
   directiveComponent: directivePage('component'),
   // The Solid twin of the React row (hydrate-pages-react.ts).
   isomorphicServerWrite: isomorphicServerWritePage('solid'),
+  lateRef: lateRefPage(''),
+  lateRefReference: lateRefPage(' split={false}'),
   // A context declared in the page module itself.
 }
 
@@ -287,6 +311,18 @@ for (const label of counters().map((button) => button.dataset.label)) {
   await clickUntil(button, () => button().textContent === label + ':1')
 }
 return counters().map((button) => button.textContent)`
+
+/**
+ * Page script of `lateRefPage`: once the boundary hydrated (its counter
+ * counts), mounts the input, then clicks the reader; returns what it read.
+ */
+const readLateRef = `const counter = () => root.querySelector('button[data-label="child"]')
+await clickUntil(counter, () => counter().textContent === 'child:1')
+root.querySelector('button[data-edit]').click()
+await waitFor(() => root.querySelector('input'))
+root.querySelector('button[data-read]').click()
+await waitFor(() => root.querySelector('output').textContent !== 'none')
+return root.querySelector('output').textContent`
 
 /** The Solid page tests, on an app built with `bundler`. */
 export function solidPageSuite(bundler: StartBundler) {
@@ -597,6 +633,36 @@ return root.querySelector('output').textContent`
         { read: 'typed', consoleErrors: [] },
       ])
     })
+
+    // Control of the pin below: unsplit, the handler reads the element.
+    test('an unsplit handler reads an element a later ref outside the boundary binds', async () => {
+      const page = await app.hydrate('lateRefReference', {
+        script: readLateRef,
+      })
+      expect({
+        read: page.result,
+        consoleErrors: page.consoleErrors,
+      }).toEqual({ read: 'draft', consoleErrors: [] })
+    })
+
+    // Bug: a Solid capture is read through a getter when it is reassigned or
+    // a `ref={x}` inside this boundary sets it; `ref={field}` outside the
+    // boundary is neither (a JSX ref is no write before Solid lowers it), so
+    // the split children get `field`'s value when the boundary rendered.
+    // Impact: the handler reads `undefined` ('missing') once the element
+    // mounts after the boundary rendered; `main` too. Fix: a Solid `ref={x}`
+    // anywhere in the file counts as an assignment of `x`.
+    // Source: Astra review of #8817, round 3, hydrate B2.
+    test.fails(
+      'a split handler reads an element a later ref outside the boundary binds',
+      async () => {
+        const page = await app.hydrate('lateRef', { script: readLateRef })
+        expect({
+          read: page.result,
+          consoleErrors: page.consoleErrors,
+        }).toEqual({ read: 'draft', consoleErrors: [] })
+      },
+    )
 
     // On main, silently, the parent's `let` stays `undefined`.
     test.each(['letRefNonNull', 'letRefCast', 'letRefParens'])(
