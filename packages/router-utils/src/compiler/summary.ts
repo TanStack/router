@@ -9,8 +9,13 @@ import { ValueAnalysis, stripSites } from './values'
 import type { AbstractValue, RecognizerTable } from './values'
 import type { ModuleAnalysis } from './analysis'
 
+/**
+ * `local`: the binding an export reads (`*default*` for the value of an
+ * `export default` expression or snapshot): two names of one binding are one
+ * binding where stars join (ECMAScript ResolveExport).
+ */
 type ExportFact =
-  | { kind: 'local'; value: AbstractValue }
+  | { kind: 'local'; local: string; value: AbstractValue }
   | { kind: 'reExport'; specifier: string; fromName: string }
   | { kind: 'namespace'; specifier: string }
 
@@ -31,9 +36,14 @@ export interface ModuleSummary {
   digestMemo?: string
 }
 
+/** The binding an `export default` expression creates (no source name can spell it). */
+const DEFAULT_LOCAL = '*default*'
+
 function exportKey(f: ExportFact): string {
   return digestOf(
-    f.kind === 'local' ? { kind: 'local', value: stripSites(f.value) } : f,
+    f.kind === 'local'
+      ? { kind: 'local', local: f.local, value: stripSites(f.value) }
+      : f,
   )
 }
 
@@ -95,11 +105,38 @@ export function buildSummary(
         if (e.typeOnly) {
           break
         }
+        // an exported import binding is the binding it imports (an
+        // indirect export, as `export { x } from`)
+        const imp =
+          e.local !== null && !e.snapshot
+            ? file.bindings[e.local]?.import
+            : null
+        if (imp && !imp.typeOnly && imp.phase === null) {
+          if (imp.kind === 'named' && imp.name !== null) {
+            exportFacts[e.name] = {
+              kind: 'reExport',
+              specifier: imp.specifier,
+              fromName: imp.name,
+            }
+            break
+          }
+          if (imp.kind === 'namespace') {
+            exportFacts[e.name] = {
+              kind: 'namespace',
+              specifier: imp.specifier,
+            }
+            break
+          }
+        }
         let value: AbstractValue = { t: 'unknown' }
+        let local = e.snapshot ? DEFAULT_LOCAL : e.name
         if (e.local !== null) {
           value = values.valueOfBinding(e.local)
+          if (!e.snapshot) {
+            local = file.bindings[e.local]?.name ?? e.name
+          }
         }
-        exportFacts[e.name] = { kind: 'local', value }
+        exportFacts[e.name] = { kind: 'local', local, value }
         break
       }
       case 'expression': {
@@ -111,7 +148,7 @@ export function buildSummary(
           stmt && stmt.type === 'ExportDefaultDeclaration'
             ? values.valueOf(stmt.declaration)
             : { t: 'unknown' }
-        exportFacts.default = { kind: 'local', value }
+        exportFacts.default = { kind: 'local', local: DEFAULT_LOCAL, value }
         break
       }
       case 'reExport':

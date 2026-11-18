@@ -44,7 +44,13 @@ export class LookupPath {
 type ResolveOutcome =
   | {
       k: 'found'
-      origin: { canonicalId: string; local: string }
+      /**
+       * `canonicalId`: the module holding the value (its specifiers resolve
+       * from there); `binding`: the binding it is, which two stars must
+       * share to export one name (ECMAScript ResolveExport: module and
+       * binding name, a namespace object being its module's).
+       */
+      origin: { canonicalId: string; binding: string }
       value: AbstractValue
     }
   | { k: 'absent' }
@@ -132,25 +138,32 @@ export class ExportResolver {
       if (fact.kind === 'local') {
         return this.settle(key, inner, {
           k: 'found',
-          origin: { canonicalId, local: name },
+          origin: { canonicalId, binding: `${canonicalId}\u0000${fact.local}` },
           value: fact.value,
-        })
-      }
-      if (fact.kind === 'namespace') {
-        return this.settle(key, inner, {
-          k: 'found',
-          origin: { canonicalId, local: name },
-          value: { t: 'namespace', specifier: fact.specifier },
         })
       }
       const target = await this.deps.resolveSpecifier(
         fact.specifier,
         canonicalId,
       )
+      if (fact.kind === 'namespace') {
+        // (one module's namespace object, however many names export it)
+        return this.settle(key, inner, {
+          k: 'found',
+          origin: {
+            canonicalId,
+            binding: `${target ?? `${canonicalId}\u0000${fact.specifier}`}\u0000*namespace*`,
+          },
+          value: { t: 'namespace', specifier: fact.specifier },
+        })
+      }
       if (target === null) {
         return this.settle(key, inner, {
           k: 'found',
-          origin: { canonicalId, local: name },
+          origin: {
+            canonicalId,
+            binding: `${canonicalId}\u0000${fact.specifier}\u0000${fact.fromName}`,
+          },
           value: {
             t: 'importRef',
             specifier: fact.specifier,
@@ -177,11 +190,7 @@ export class ExportResolver {
       }
       const r = await this.walk(target, name, inner)
       if (r.k === 'found') {
-        if (
-          found &&
-          (found.origin.canonicalId !== r.origin.canonicalId ||
-            found.origin.local !== r.origin.local)
-        ) {
+        if (found && found.origin.binding !== r.origin.binding) {
           ambiguous = true
         } else {
           found = r

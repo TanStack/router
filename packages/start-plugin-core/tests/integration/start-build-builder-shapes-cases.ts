@@ -376,6 +376,36 @@ export const fn = createServerFn().middleware([m]).handler(async () => 'x')
   },
 )
 
+// A barrel diamond whose two stars reach one binding under two names, or
+// through an import a branch exports (ECMAScript ResolveExport: one
+// binding). Source: the Astra core review 1.
+compiled.push(
+  ...[
+    [
+      'one local exported under two names',
+      `export { b as define } from './leaf'`,
+    ],
+    [
+      'an imported binding exported',
+      `import { b } from './leaf'\nexport { b as define }`,
+    ],
+  ].map(([name, right]) => ({
+    name: `createServerOnlyFn through a barrel diamond: ${name}`,
+    files: {
+      'src/leaf.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+const api = createServerOnlyFn
+export { api as a, api as b }
+`,
+      'src/left.ts': `export { a as define } from './leaf'\n`,
+      'src/right.ts': `${right}\n`,
+      'src/barrel.ts': `export * from './left'\nexport * from './right'\n`,
+      'src/entry.ts': `import { define } from './barrel'
+export const read = define(() => 'MARK_SERVER_SECRET')
+`,
+    },
+  })),
+)
+
 compiled.push({
   name: 'a method called on a server fn where it is created',
   files: {
