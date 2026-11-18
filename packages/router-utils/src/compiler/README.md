@@ -400,8 +400,8 @@ the webpack-family stale-set drain (`StaleSetDrain`: rebuilds at `finishMake`, a
 diagnostics at their positions) live in
 `hosts/`, exported apart from the core model, which uses none of them.
 
-A persistent bundler cache restores modules without compiling them, so its version holds `compilerCacheKey` (the
-compiler packages' manifests, and their built scripts outside `node_modules`).
+A persistent bundler cache restores modules without compiling them, so Start's Rsbuild host adds `compilerCacheKey`
+(the compiler packages' manifests, and their built scripts outside `node_modules`) to the cache's version.
 
 Derived ids and the specifiers that import them keep the Babel splitter's format, which apps' chunk naming reads
 (webpack/Rspack `chunkGroup.origins[].request`, Vite module ids): `identity.ts` alone prints and parses it. A split
@@ -498,7 +498,7 @@ nothing per compile.
   cache. `TSR_COMPILER_STATS_BYTES=0` skips the byte estimates (structured-clone sizes, slow on large caches).
   Test contract: the owner names `start:<bundler>` / `start:<bundler>:session` and their `plans` / `ip.envs` counts
   are the only observable of the per-environment release in a production build
-  (`start-plugin-core/tests/integration/start-build-environment-release.test.ts`); rename them there too.
+  (`start-plugin-core/tests/integration/perf-guards/start-build-environment-release.test.ts`); rename them there too.
 
 ## Performance and bytes
 

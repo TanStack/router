@@ -48,8 +48,8 @@ export async function typeErrorsOfFixture(name: string) {
 }
 
 /**
- * Fixtures whose tree types a route otherwise than the router: the bug,
- * pinned in fixture-types-physical.test.ts.
+ * Fixtures whose tree typed a route otherwise than the router: their own
+ * rows in fixture-types-physical.test.ts.
  */
 export const knownTypeBugs = new Set([
   'nested-route-groups-with-layouts-before-physical',

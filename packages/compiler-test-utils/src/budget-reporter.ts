@@ -81,7 +81,9 @@ function moduleSeconds(testModule: TestModule) {
 }
 
 const tierOf = (projectName: string): Tier | undefined =>
-  projectName === 'integration' || projectName.startsWith('integration-')
+  projectName === 'integration' ||
+  projectName.startsWith('integration-') ||
+  projectName === 'perf-guards'
     ? 'integration'
     : projectName === 'noncompiler'
       ? undefined
