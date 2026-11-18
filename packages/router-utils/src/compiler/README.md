@@ -277,7 +277,8 @@ directives, never license comments.
 
 Tier 1 (units, symbols, classified references) is built only when a planner needs it. Phase C restarts the compile
 (up to 3 attempts) when a dependency changed underneath it; a compile overtaken by a newer revision of its own file is
-returned but not published. A revision is newer by its request's arrival, noted once: a request that waits (a plan hit's
+returned but not published, and an output answered at a superseded revision says so (`CompileOutput.superseded`: a
+host publishes nothing of it, such as Start's server-function registry). A revision is newer by its request's arrival, noted once: a request that waits (a plan hit's
 validation, a compile it shares) and then compiles never takes back the latest revision from one that arrived meanwhile. Requests of one text share one compile: a request (any id of the file) arriving while that
 text compiles waits for it and emits its own output from the result.
 

@@ -361,7 +361,8 @@ export class StartCompilerSession {
   /**
    * Compiles one id (env or derived) of a module of an environment; the
    * server functions the compile reports (none included) replace the
-   * module's in the registry.
+   * module's in the registry, unless a newer text of the module arrived
+   * meanwhile (`superseded`): its compile registers that text's.
    */
   async compile(
     input: StartCompileInput,
@@ -397,11 +398,13 @@ export class StartCompilerSession {
       host,
       this.caches,
     )
-    this.registry.set(
-      env,
-      identify(input.id).canonicalId,
-      out && serverFnFactsOf(out),
-    )
+    if (!out?.superseded) {
+      this.registry.set(
+        env,
+        identify(input.id).canonicalId,
+        out && serverFnFactsOf(out),
+      )
+    }
     return out
   }
 
