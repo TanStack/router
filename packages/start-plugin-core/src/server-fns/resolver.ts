@@ -18,8 +18,11 @@ export const SERVER_FN_LOOKUP_VIRTUAL_ID =
  * The dev resolver: every call imports the lookup module of the id (never
  * memoised: handlers are hot-replaced). A client-origin call (an HTTP
  * request) imports the lookup under `origin=client`: the lookup warns once
- * for a function no client module references (J4.2 in development: the dev
- * server compiles lazily, so it cannot know every client reference).
+ * for a function no client module the dev server has compiled so far
+ * references (J4.2 in development: the dev server compiles lazily, so it
+ * cannot know every client reference; the warning is a hint, not
+ * production's check: a private helper of a compiled client module gets
+ * none, though production refuses it).
  */
 export function devResolverModule(): string {
   return `
@@ -37,7 +40,7 @@ export async function getServerFnById(id, access) {
 
 /** The development warning of a client call of a function no client module references. */
 export function unreferencedWarning(entry: ServerFnEntry): string {
-  return `[tanstack-start] The server function ${entry.name} of ${entry.rootRel} was called from the client, but no client module this dev server compiled references it. A production build refuses such a call: only server functions client code references are callable over HTTP.`
+  return `[tanstack-start] The server function ${entry.name} of ${entry.rootRel} was called from the client, but no client module this dev server has compiled so far references it. If no client code calls it, a production build refuses this call: only server functions the client bundle calls are callable over HTTP.`
 }
 
 /**
@@ -72,10 +75,12 @@ interface ManifestResolverOptions {
   clientReferencedOnly: boolean
   /**
    * Development: every function is listed; a client-origin call of a
-   * function no client module the dev server compiled references is
-   * answered, with one warning per function naming it and saying a
-   * production build refuses it (a stale page after a restart, an external
-   * caller, a serialized function).
+   * function no client module the dev server has compiled so far references
+   * is answered, with one warning per function naming it and saying a
+   * production build refuses it if no client code calls it (a stale page
+   * after a restart, an external caller, a serialized function). A hint, not
+   * production's check: a private helper of a compiled client module is
+   * answered without one.
    */
   warnUnreferenced?: boolean
   /** Import every provider module statically (Rsbuild RSC development). */

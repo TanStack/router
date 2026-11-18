@@ -613,7 +613,7 @@ dir)` is not a conflict by itself.
   name that is no identifier (a string property key) holds only `[A-Za-z0-9_$]`. An id the
   generator returns is one URL path segment: one with a character that never reached the server whole (whitespace,
   control and non-ASCII characters, ``" # / < > ? \ ^ ` { }``), that is `.` or `..`, or whose percent-encoding the
-  server reads as another id or rejects (`%41`, lowercase hex, `%2E`, `%zz`) fails the build, naming the file; other characters outside RFC 3986's unreserved set and `$` build with a deprecation warning naming the file,
+  server reads as another id or rejects (`%41`, `%2E`, `%3c`, `%zz`) fails the build, naming the file; other characters outside RFC 3986's unreserved set and `$` build with a deprecation warning naming the file,
   and reach their handler. An empty id is the default id. Edits change the input, so ids need not survive edits.
   _Output formats_ (a compatibility requirement until the next major, owned by `server-fns/format.ts`: tooling reads
   them from the server bundle): the default id is the SHA256 hex of `<path>--<functionName>`, `<path>` the
@@ -624,7 +624,8 @@ dir)` is not a conflict by itself.
   double-quoted, escaped as Babel printed them (seen only where the bundler keeps module text: Rsbuild's server
   bundle); `serverFnMeta.name` is the variable's name, also when it is exported under another one. The golden test
   `start-build-server-fn-format.test.ts` reads them from real builds, the one test that reads printed code. A server
-  function only server code references is not in the manifest (J4.2), whatever earlier versions printed. _Dev_: an
+  function only server code references is not HTTP-callable (J4.2); whether the provider's manifest lists it is not
+  a contract (a separate provider's manifest lists every function). _Dev_: an
   implementation-specific lookup id is allowed; within one dev session every caller and the provider agree on it;
   ids need not match between dev and build (G13); `generateFunctionId` may or may not apply. An id comes from the
   caller and may name any file, so a by-id request answers a function a compile of the running dev session

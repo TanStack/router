@@ -2,7 +2,8 @@
  * SPEC J4.2 in development: the dev server compiles lazily, so a
  * server function no client module in its graph references is answered,
  * with one warning per function naming it and saying a production build
- * refuses it (start-build-server-fn-cases.test.ts "not callable over HTTP").
+ * refuses it if no client code calls it (start-build-server-fn-cases.test.ts
+ * "not callable over HTTP").
  * On Vite's and Rsbuild's dev servers: a page calls a server fn it imports,
  * then asks the server for the public URL of a server fn only that fn's
  * handler calls and requests it twice with the exposed fn's own request

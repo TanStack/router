@@ -101,7 +101,7 @@ Call server functions from:
 - **Event handlers** - Handle form submissions, clicks, etc.
 
 > [!NOTE]
-> In production builds, only server functions that client code imports can be called over HTTP. A server function that only server code calls (for example another server function's handler or a server route) is not exposed as an endpoint, and neither is one that is only returned to the client as data: production answers a call to it with HTTP 500 and `Server function info not found for <id>`. The dev server still answers such calls, and logs a warning once per function, so you see it before production refuses it.
+> In production builds, only server functions that client code imports can be called over HTTP. A server function that only server code calls (for example another server function's handler or a server route) is not exposed as an endpoint, and neither is one that is only returned to the client as data: production answers a call to it with HTTP 500 and `Server function info not found for <id>`. The dev server still answers such calls. It may log a warning when it has seen no client code for the function yet; the warning is a hint, not the production check.
 
 ```tsx
 // In a route loader
@@ -465,7 +465,7 @@ The generator receives:
 
 Return `undefined` (or an empty string) to use the default ID. Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
 
-The ID becomes one segment of the server function's URL (`/_serverFn/<id>`), unencoded, so use only ASCII letters, digits, `-`, `.`, `_`, `~` and `$`, and not `.` or `..`. An ID with whitespace, a control or non-ASCII character, or any of `"`, `#`, `/`, `<`, `>`, `?`, `\`, `^`, `` ` ``, `{` and `}`, an ID that is `.` or `..`, or one with a percent-encoding the server reads as another ID (`%41` for `A`, lowercase hex, `%2E`) or rejects, fails the build with an error naming the file, the function and the ID: the request would reach another function or none. Other characters (`%`, `+`, `:`, `;`, `@`, `'`, `|`, `[`, `]`, …) still work, with a deprecation warning: the next major version rejects them, since proxies and servers may encode or normalise them in the URL. `filename` contains `/`, so hash it (as in the example below) rather than embedding it as is.
+The ID becomes one segment of the server function's URL (`/_serverFn/<id>`), unencoded, so use only ASCII letters, digits, `-`, `.`, `_`, `~` and `$`, and not `.` or `..`. An ID with whitespace, a control or non-ASCII character, or any of `"`, `#`, `/`, `<`, `>`, `?`, `\`, `^`, `` ` ``, `{` and `}`, an ID that is `.` or `..`, or one with a percent-encoding the server reads as another ID (`%41`, read as `A`; `%2E`, read as `.`; `%3c`, read as `%3C`) or rejects, fails the build with an error naming the file, the function and the ID: the request would reach another function or none. Other characters (`%`, `+`, `:`, `;`, `@`, `'`, `|`, `[`, `]`, …) still work, with a deprecation warning: the next major version rejects them, since proxies and servers may encode or normalise them in the URL. `filename` contains `/`, so hash it (as in the example below) rather than embedding it as is.
 
 Please note that this customization is **experimental** and subject to change.
 

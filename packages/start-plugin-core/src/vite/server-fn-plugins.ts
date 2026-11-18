@@ -88,9 +88,11 @@ async function compilableOnRequest(
  * module the client environment has not compiled (no client module in the
  * dev server's graph references it: a stale page after a restart, an
  * external caller, a serialized function) is answered, with one warning
- * per function saying a production build refuses it. The dev server
- * compiles lazily, so nothing short of crawling the client graph could
- * prove reachability; it is not attempted. An id is the caller's and may
+ * per function saying a production build refuses it if no client code
+ * calls it. The dev server compiles lazily, so nothing short of crawling
+ * the client graph could prove reachability; it is not attempted, and the
+ * warning is only a hint: a private helper of a module the client compiled
+ * is answered without one, though production refuses it. An id is the caller's and may
  * name any file: the file of an id the registry does not hold (the ids a
  * compile of this dev session reported) is compiled only when it is an app
  * source (`compilableOnRequest`: in `srcDirectory`, outside `node_modules`,
