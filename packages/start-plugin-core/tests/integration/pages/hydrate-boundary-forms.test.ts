@@ -567,42 +567,121 @@ ${childrenPage('<p id={React.useId()}>x</p>')}`,
     )
   })
 
-  // Bug: the hook rule matches `use` followed by a capital or a digit, so a
-  // direct `use(Theme)` in the children moves into the chunk's component,
-  // below the Provider the same return renders: the server renders
-  // `outside`, the hydrated client `inside` (React #418).
-  // Impact: a hydration mismatch and another value on the client, silently.
-  // `main` moves it too. Fix: rejected at the boundary like a hook (a ruling
-  // decides `use(promise)`, which the same refusal would reject), or the
-  // client reads what the server rendered.
-  // Source: Astra review of #8817, hydrate B3.
-  test.fails(
-    'client: use(Context) in the children reads the context the server read',
-    async () => {
-      const code = `${head}import { use } from 'react'
-import { Theme } from './theme'
-export function Page() {
-  return <Theme.Provider value="inside"><Hydrate when={load()}><b>{use(Theme)}</b></Hydrate></Theme.Provider>
-}`
-      const files = {
-        './theme': `import { createContext } from 'react'
+  // React's `use` is a hook too (it reads the context of the component
+  // that calls it): a direct `use(Theme)` in the children would move into
+  // the chunk's component, below the Provider the same return renders (on
+  // main: the server renders `outside`, the hydrated client `inside`,
+  // React #418). `use(promise)` is refused the same way: the argument's kind
+  // is not known at compile time. Recognised by binding, like the other
+  // hooks. Source: Astra review of #8817, hydrate B3; ruling 11-18.
+  const theme = `import { createContext } from 'react'
 export const Theme = createContext('outside')
-`,
-      }
+`
+  const useCall = (
+    imports: string,
+    call: string,
+    props = '',
+  ) => `${head}${imports}
+import { Theme } from './theme'
+export function Page(${props}) {
+  return (
+    <Theme.Provider value="inside">
+      <Hydrate when={load()}>
+        <b>{${call}}</b>
+      </Hydrate>
+    </Theme.Provider>
+  )
+}`
+  test.each([
+    {
+      name: 'use(Context)',
+      code: useCall(`import { use } from 'react'`, 'use(Theme)'),
+      at: 'use(Theme)',
+    },
+    {
+      name: 'use(promise)',
+      code: useCall(
+        `import { use } from 'react'`,
+        'use(text)',
+        '{ text }: { text: Promise<string> }',
+      ),
+      at: 'use(text)',
+    },
+    {
+      name: 'a renamed use',
+      code: useCall(`import { use as read } from 'react'`, 'read(Theme)'),
+      at: 'read(Theme)',
+    },
+    {
+      name: 'React.use on a namespace import',
+      code: useCall(`import * as React from 'react'`, 'React.use(Theme)'),
+      at: 'React.use(Theme)',
+    },
+    {
+      name: 'React.use on the default import',
+      code: useCall(`import React from 'react'`, 'React.use(Theme)'),
+      at: 'React.use(Theme)',
+    },
+  ])(
+    'client: $name in the children is rejected at the call',
+    async ({ code, at }) => {
       const startCase = await (
         await hosts()
-      ).start.case({ 'module.tsx': code, 'theme.tsx': files['./theme'] })
-      const failure = await compileError(startCase, 'client')
-      if (failure !== undefined) {
-        expectCompileError(failure, { source: code, at: '<Hydrate' })
-        return
-      }
-      const { client } = await expectRendersLikeSource(await hosts(), code, {
-        files,
+      ).start.case({ 'module.tsx': code, 'theme.tsx': theme })
+      expectCompileError(await compileError(startCase, 'client'), {
+        source: code,
+        at,
+        column: true,
       })
-      expect(client.html).toContain('<b>outside</b>')
     },
   )
+
+  // What the message suggests works: `use` in a child component rendered
+  // inside the boundary reads the Provider on both sides, and with
+  // split={false} the call stays where it is written on both sides.
+  test.each([
+    {
+      name: 'in a child component',
+      code: `${head}import { use } from 'react'
+import { Theme } from './theme'
+function ThemeText() {
+  return <b>{use(Theme)}</b>
+}
+export function Page() {
+  return <Theme.Provider value="inside"><Hydrate when={load()}><ThemeText /></Hydrate></Theme.Provider>
+}`,
+      split: undefined,
+      reads: '<b>inside</b>',
+    },
+    {
+      name: 'with split={false}',
+      code: useCall(`import { use } from 'react'`, 'use(Theme)').replace(
+        '<Hydrate when={load()}>',
+        '<Hydrate when={load()} split={false}>',
+      ),
+      split: false,
+      reads: '<b>outside</b>',
+    },
+  ])(
+    'use(Context) $name reads the same context on both sides',
+    async ({ code, split, reads }) => {
+      const { client } = await expectRendersLikeSource(await hosts(), code, {
+        files: { './theme': theme },
+        split,
+      })
+      expect(client.html).toContain(reads)
+    },
+  )
+
+  // A function of the module named `use` is no hook: the children split.
+  test('a local function named use in the children is no hook', async () => {
+    const { client } = await expectRendersLikeSource(
+      await hosts(),
+      useCall(`const use = (value: unknown) => String(value)`, 'use(1)'),
+      { files: { './theme': theme } },
+    )
+    expect(client.html).toContain('<b>1</b>')
+  })
 
   // The client rejects children reading `this` or `super` at the boundary.
   test.each([

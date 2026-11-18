@@ -691,9 +691,9 @@ function validate(
     refAttrs: [],
     functions: [],
   }
-  const fail = (code: string, message: string) => {
+  const fail = (code: string, message: string, range?: Range) => {
     if (scan.ok) {
-      boundaryError(ctx, b, code, message)
+      boundaryError(ctx, b, code, message, range)
     }
     scan.ok = false
   }
@@ -720,6 +720,44 @@ function validate(
     t1.refs
       .refsIn({ start, end: start + 1 })
       .find((r) => r.range.start === start)
+  /** React's `use` (`use(Ctx)`, `React.use(promise)`), by binding: imports of `react`. */
+  const reactUse = new Set<SymbolId>()
+  const reactNamespaces = new Set<SymbolId>()
+  if (!solid) {
+    for (const imp of analysis.imports) {
+      if (imp.typeOnly || imp.specifier !== 'react') {
+        continue
+      }
+      for (const s of imp.specifiers) {
+        if (s.typeOnly) {
+          continue
+        }
+        if (s.imported === 'use') {
+          reactUse.add(s.local)
+        } else if (s.namespace || s.imported === 'default') {
+          reactNamespaces.add(s.local)
+        }
+      }
+    }
+  }
+  /** The name a call of React's `use` is written with, or null. */
+  const reactUseName = (callee: Node): string | null => {
+    const c = unwrapExpression(callee)
+    const member =
+      c.type === 'MemberExpression' &&
+      !c.computed &&
+      c.property.type === 'Identifier' &&
+      c.property.name === 'use'
+    const root = member ? c.object : c
+    if (root.type !== 'Identifier') {
+      return null
+    }
+    const sym = refAt(root.start)?.sym
+    if (sym === undefined || !(member ? reactNamespaces : reactUse).has(sym)) {
+      return null
+    }
+    return member ? 'use' : root.name
+  }
 
   /** Whether a class inside the children around `node` declares the private name `name`. */
   const declaresPrivateInside = (node: Node, name: string) =>
@@ -836,11 +874,12 @@ function validate(
           ) {
             invoked.add(callee.start)
           }
-          const hook = hookName(node.callee)
+          const hook = hookName(node.callee) ?? reactUseName(node.callee)
           if (hook !== null) {
             fail(
               'hydrate-hook',
               `Hydrate cannot code-split JSX that calls hooks during render (\`${hook}()\`): the children render in another component. Move the hook call into a child component, or use split={false}.`,
+              { start: node.start, end: node.end },
             )
           }
         }

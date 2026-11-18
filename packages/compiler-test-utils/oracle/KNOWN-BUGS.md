@@ -107,14 +107,6 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   `start-plugin-core/tests/integration/pages/hydrate-ids-and-captures.test.ts`: "client: split children passing the
   component's arguments as a shorthand property render its props". Fix: emit `arguments: tsrArguments` (React) and
   `arguments: props.tsrArguments` (Solid) for a shorthand property. Workaround: write `{ arguments: arguments }`.
-- **React: `use(Context)` written directly in `<Hydrate>` children reads another context on the client** (Astra
-  hydrate B3; `main` too): the hook rule matches `use` followed by a capital or a digit, so bare `use` is no hook and
-  the call moves into the chunk's component, below a Provider the same return renders around the boundary. The
-  server renders the outer value, the client the Provider's (React #418). SPEC J5.5, J5.8.
-  `start-plugin-core/tests/integration/pages/hydrate-boundary-forms.test.ts`: "client: use(Context) in the children
-  reads the context the server read". Fix: rejected at the boundary like a hook call (open: the same refusal rejects
-  `use(promise)`, which builds today), or the client reads what the server read. Workaround: call `use` in a child
-  component.
 - **Solid: `ref={field}` in `<Hydrate>` children naming a module-level `let` assigns the chunk's copy** (Astra hydrate
   B4; `main` too): the chunk copies the `let` (R161 D1), and the `hydrate-module-write` refusal (H4) misses the write
   because a JSX ref is not an assignment before Solid lowers it. Code outside the boundary reads `undefined`. SPEC J5.5,
@@ -950,6 +942,12 @@ Paths under `start-plugin-core/tests/integration/`; `pages/` means `integration/
   "client: an unexported component named Route that the children render reaches the chunk".
 - **A hook called through a namespace (`React.useId()`) is not rejected.** SPEC J5.5.
   `pages/hydrate-boundary-forms.test.ts`: "client: a hook called through a namespace is rejected at the boundary".
+- **React's `use` (`use(Context)`, `use(promise)`) directly in the children is no hook** (Astra hydrate B3): the
+  hook rule matches `use` followed by a capital or a digit, so the call moves into the chunk's component, below a
+  Provider the same return renders around the boundary: the server renders the outer value, the client the
+  Provider's (React #418). Rejected like a hook call (ruling 11-18), by binding. SPEC J5.5.
+  `pages/hydrate-boundary-forms.test.ts`: "client: $name in the children is rejected at the call"; "use(Context) $name
+  reads the same context on both sides"; "a local function named use in the children is no hook".
 - **Children are read from JSX children only, never from a `children` prop or spread.** SPEC J5.2, J5.4.
   `pages/hydrate-split-modules.test.ts`: "client: the children prop ($name) of a self-closing boundary is deferred";
   `pages/hydrate-ids-and-captures.test.ts`: "client: children passed through $name render without unused chunks"; "client: a

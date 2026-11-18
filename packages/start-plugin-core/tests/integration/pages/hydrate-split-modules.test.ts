@@ -286,7 +286,7 @@ export const Page = () => <div><Hydrate when={load()}><p>b</p></Hydrate></div>`
     expect(await compileError(startCase, 'client')).toBeUndefined()
     expectCompileError(await compileError(startCase, 'ssr'), {
       source: code,
-      at: '<Hydrate',
+      at: 'useThing()',
       column: true,
     })
   })
