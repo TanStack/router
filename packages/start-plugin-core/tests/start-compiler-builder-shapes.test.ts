@@ -72,6 +72,10 @@ export const Form = opaque
 export class QueryCache { constructor(readonly options: unknown) {} }
 `
 
+/** `const v1 = v0` through `const v<n> = v<n - 1>`, one per line. */
+const aliasChain = (n: number) =>
+  Array.from({ length: n }, (_, i) => `const v${i + 1} = v${i}\n`).join('')
+
 const caseFiles = (shape: Shape) => ({
   'db.server.ts': DB,
   'some-lib.ts': SOME_LIB,
@@ -447,6 +451,67 @@ const supported: Array<Shape> = [
   {
     name: 'an alias of createServerOnlyFn',
     code: `${P}const so = createServerOnlyFn\nexport const f = so(() => db.x())`,
+  },
+  // A barrel diamond: two stars reaching one binding under two names, or
+  // through an import the module exports, are one binding (ECMAScript
+  // ResolveExport compares module and binding; a namespace object is its
+  // module's). Source: the Astra core review 1.
+  ...[
+    {
+      name: 'one local exported under two names',
+      left: `export { a as define } from './leaf'`,
+      right: `export { b as define } from './leaf'`,
+    },
+    {
+      name: 'one name re-exported twice',
+      left: `export { a as define } from './leaf'`,
+      right: `export { a as define } from './leaf'`,
+    },
+    {
+      name: 'the package binding re-exported under two names',
+      left: `export { pa as define } from './leaf'`,
+      right: `export { pb as define } from './leaf'`,
+    },
+    {
+      name: 'an imported binding exported',
+      left: `import { a } from './leaf'\nexport { a as define }`,
+      right: `export { b as define } from './leaf'`,
+    },
+    {
+      name: 'the package namespace, re-exported and exported as an import',
+      left: `export * as S from '@tanstack/react-start'`,
+      right: `import * as S from '@tanstack/react-start'\nexport { S }`,
+      define: 'S.createServerOnlyFn',
+    },
+  ].map(({ name, left, right, define = 'define' }) => ({
+    name: `createServerOnlyFn through a barrel diamond: ${name}`,
+    files: {
+      'leaf.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+const api = createServerOnlyFn
+export { api as a, api as b }
+export { createServerOnlyFn as pa, createServerOnlyFn as pb } from '@tanstack/react-start'
+`,
+      'left.ts': `${left}\n`,
+      'right.ts': `${right}\n`,
+      'barrel.ts': `export * from './left'\nexport * from './right'\n`,
+    },
+    code: `import { ${define.split('.')[0]} } from './barrel'\nimport { db } from './db.server'\nexport const f = ${define}(() => db.x())`,
+  })),
+  // Source: the Astra core review 7 (a module of 2,500 aliases overflowed
+  // the compiler's stack).
+  {
+    name: 'createServerOnlyFn through 2,500 aliases in another module',
+    files: {
+      'aliases.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+const v0 = createServerOnlyFn
+${aliasChain(2500)}export { v2500 as define }
+`,
+    },
+    code: `import { define } from './aliases'\nimport { db } from './db.server'\nexport const f = define(() => db.x())`,
+  },
+  {
+    name: 'createServerOnlyFn through 2,500 aliases',
+    code: `${P}const v0 = createServerOnlyFn\n${aliasChain(2500)}export const f = v2500(() => db.x())`,
   },
   {
     name: 'createServerOnlyFn in an object',

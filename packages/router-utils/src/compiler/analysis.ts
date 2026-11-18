@@ -36,8 +36,10 @@ export type { Range } from './header'
 
 interface ImportSpecifierEntry {
   local: SymbolId
-  /** 'default', '*' or the imported name. */
+  /** 'default', '*' (a namespace import) or the imported name, which may be `'*'` too. */
   imported: string
+  /** `import * as ns`: the module's namespace object (a named import may be spelled `'*'`). */
+  namespace: boolean
   typeOnly: boolean
   localName: string
 }
@@ -373,6 +375,7 @@ export class ModuleAnalysis {
             specifiers: stmt.specifiers.map((spec) => {
               return {
                 local: importLocals.get(spec.start) ?? (-1 as SymbolId),
+                namespace: spec.type === 'ImportNamespaceSpecifier',
                 imported:
                   spec.type === 'ImportDefaultSpecifier'
                     ? 'default'
@@ -939,7 +942,7 @@ export class ModuleAnalysis {
       if (!uses.live) {
         continue
       }
-      if (spec.imported !== '*') {
+      if (!spec.namespace) {
         add(spec.imported)
         continue
       }

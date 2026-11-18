@@ -232,12 +232,14 @@ function renderEnv(
   const statements: Array<EnvPiece> = []
   /** The statements placement rewrites (their removals), in source order. */
   const rewritten: Array<EnvPiece> = []
-  // a statement only the line break inside the multi-line comment after it
-  // ends: that comment leads what follows and may not render, so the statement
-  // gets a line end of its own (before anything else generated there)
+  // a statement only a line break after its range ends (inside the
+  // multi-line comment after it, or after an annotation comment ending its
+  // line): that text leads what follows and may not render, so the
+  // statement gets a line end of its own (before anything else generated
+  // there)
   const endLine = (statementEnd: number, at: number) => {
     if (
-      code.startsWith('/*', at) &&
+      (code.startsWith('/*', at) || code.startsWith('//', at)) &&
       code[statementEnd - 1] !== ';' &&
       !isLineTerminator(code.charCodeAt(at - 1))
     ) {

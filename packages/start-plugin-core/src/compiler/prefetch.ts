@@ -526,7 +526,10 @@ export async function prefetchStartValues(
       for (const imp of t0.imports) {
         for (const spec of imp.specifiers) {
           if (spec.local === local) {
-            return { from: imp.specifier, imported: spec.imported }
+            return {
+              from: imp.specifier,
+              imported: spec.namespace ? null : spec.imported,
+            }
           }
         }
       }
@@ -571,9 +574,7 @@ export async function prefetchStartValues(
         ? inNamespace
         : e.kind === 'reExport'
           ? e.fromName
-          : imported && imported.imported !== '*'
-            ? imported.imported
-            : null
+          : (imported?.imported ?? null)
       lateExports.push(
         from === undefined
           ? { range: e.range }
@@ -636,7 +637,7 @@ export async function prefetchStartValues(
       if (refs.length === 0) {
         continue
       }
-      if (spec.imported === '*') {
+      if (spec.namespace) {
         if (known) {
           relevant = true
         } else {

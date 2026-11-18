@@ -219,6 +219,74 @@ export const Route = createFileRoute('/')({
     expect(await route.requested()).not.toContain('/secret.ts')
   })
 
+  // SPEC G16, J4.12: a `var` declared inside a top-level statement only the
+  // deleted option read goes with its initialiser, whatever slot of the
+  // statement holds it (the statement stays, R154); a module only the
+  // initialiser reads is not requested. Source: the Astra core review 2.
+  it.each([
+    ['an object pattern in a block', 'if (ready) { var { token } = secret() }'],
+    ['an array pattern in a block', 'if (ready) { var [token] = secret() }'],
+    ['a classic for initialiser', 'for (var token = secret(); false; ) {}'],
+    ['a labelled statement', 'label: var token = secret()'],
+    ['an unbraced if', 'if (ready) var token = secret()'],
+  ])(
+    'take with them a hoisted var only they read: %s',
+    async (_name, statement) => {
+      const route = await loadRoute(
+        `${head}import { secret } from './secret'
+const ready = true
+${statement}
+export const Route = createFileRoute('/')({
+  server: {
+    handlers: {
+      GET: () => new Response(String(token)),
+    },
+  },
+  loader: () => 'page',
+})
+`,
+        {
+          deleteNodes: ['server'],
+          files: {
+            'secret.ts': `export const secret = () => Object.assign(['secret'], { token: 'secret' })\n`,
+          },
+        },
+      )
+      await expectValidModules(route)
+      expect(await route.run('return options.loader()')).toBe('page')
+      expect(await route.requested()).not.toContain('/secret.ts')
+    },
+  )
+
+  // Removing a declaration only a deleted option read keeps the line break
+  // ending the statement before it, wherever the source wrote it: after an
+  // annotation comment ending its line, or after a no-break space. Source:
+  // the Astra core review 4.
+  it.each([
+    ['an annotation comment', ' // @__PURE__'],
+    ['a no-break space', '\u00a0'],
+  ])(
+    'keep the line break before a declaration only they read after %s',
+    async (_name, lineEnd) => {
+      const route = await loadRoute(
+        `${head}export const keep = 17${lineEnd}
+const x = 2
+export const Route = createFileRoute('/')({
+  server: {
+    handlers: {
+      GET: () => new Response(String(x)),
+    },
+  },
+  loader: () => keep,
+})
+`,
+        { deleteNodes: ['server'] },
+      )
+      await expectValidModules(route)
+      expect(await route.run('return options.loader()')).toBe(17)
+    },
+  )
+
   // A top-level statement is never deleted with a binding only a deleted
   // option read: whether writing it changes something else (here the
   // document) has no syntactic answer. Source: the erasure review's

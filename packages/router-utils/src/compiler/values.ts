@@ -507,18 +507,63 @@ export class ValueAnalysis {
   }
 
   valueOf(expr: Node): AbstractValue {
-    const hit = this.memo.get(expr)
-    if (hit) {
-      return hit
+    // an alias chain (`const b = a`, `const c = b`, …) is followed in a
+    // loop: each name's value is its initialiser's, and a chain thousands
+    // of names long would otherwise take a stack frame per name
+    const path: Array<Node> = []
+    let v: AbstractValue | undefined
+    for (let at: Node | null = expr; at !== null; ) {
+      const hit = this.memo.get(at)
+      if (hit) {
+        v = hit
+        break
+      }
+      if (this.active.has(at)) {
+        v = UNKNOWN
+        break
+      }
+      this.active.add(at)
+      path.push(at)
+      const next = this.aliasOf(at)
+      if (next === null) {
+        v = this.compute(at)
+      }
+      at = next
     }
-    if (this.active.has(expr)) {
-      return UNKNOWN
+    for (const n of path) {
+      this.active.delete(n)
+      this.memo.set(n, v!)
     }
-    this.active.add(expr)
-    const v = this.compute(expr)
-    this.active.delete(expr)
-    this.memo.set(expr, v)
-    return v
+    return v!
+  }
+
+  /**
+   * The initialiser whose value a name has (`valueOfBinding`'s answer when
+   * the binding's first declaration with a value is a declarator with an
+   * initialiser), else null: `compute` answers.
+   */
+  private aliasOf(expr: Node): Node | null {
+    const node = unwrapExpression(expr)
+    if (node.type !== 'Identifier') {
+      return null
+    }
+    const id = this.file.referenceOf(node)?.binding?.id
+    const b = id === undefined ? undefined : this.file.bindings[id]
+    if (!b || b.import) {
+      return null
+    }
+    for (const decl of b.declarations) {
+      const parent =
+        (this.opts.declarations && declaredIn(this.opts.declarations, decl)) ??
+        this.file.parentOf(decl)
+      if (parent?.type !== 'VariableDeclarator' || parent.id !== decl) {
+        return null
+      }
+      if (parent.init) {
+        return parent.init
+      }
+    }
+    return null
   }
 
   private compute(expr: Node): AbstractValue {

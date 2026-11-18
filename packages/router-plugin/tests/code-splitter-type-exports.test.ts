@@ -52,6 +52,15 @@ test.each([
     ),
     label: 'MARK_LABEL',
   },
+  // Source: the Astra core review 5.
+  {
+    name: '`export { type X, y }` with a `}` in a comment before its `;` (y stays)',
+    code: route(
+      `import { fetchThing, label, type Thing } from './thing'`,
+      'export { type Thing, label } /* } */ ;',
+    ),
+    label: 'MARK_LABEL',
+  },
   {
     name: '`export type { X } from` and `export { y, type X } from` (y stays)',
     code: route(

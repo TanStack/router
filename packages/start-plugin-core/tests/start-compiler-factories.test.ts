@@ -595,6 +595,40 @@ export class Api extends Base {
     expect(new ssr.Api().read(1)()).toEqual(['s', 'base', 1])
   })
 
+  // The function a factory returns calls its implementation with no
+  // receiver: one read from an object and called at once stays detached
+  // where the compiler keeps it in the call's place, and `eval` stays an
+  // indirect eval. Source: the Astra overall review 3 and start review 6.
+  test('an implementation read from an object and called at once gets no receiver', async () => {
+    const served = await serve(`${head}const obj = {
+  method(this: unknown) {
+    return this === undefined ? 'bare' : this === obj ? 'bound' : 'other'
+  },
+}
+const select = createClientOnlyFn
+export const onClient = () => [
+  createClientOnlyFn(obj.method)(),
+  select(obj.method)(),
+  (createClientOnlyFn(obj.method) as () => string)(),
+  createClientOnlyFn(obj.method)\`\`,
+  createIsomorphicFn().server(obj.method).client(obj.method)(),
+  createClientOnlyFn(eval)('typeof obj'),
+]
+export const onServer = () => [
+  createServerOnlyFn(obj.method)(),
+  createIsomorphicFn().server(obj.method).client(obj.method)(),
+]`)
+    expect(await inPage(served, 'return module.onClient()')).toEqual([
+      'bare',
+      'bare',
+      'bare',
+      'bare',
+      'bare',
+      'undefined',
+    ])
+    expect((await served.ssr()).onServer()).toEqual(['bare', 'bare'])
+  })
+
   // Source: snapshot fixture envOnlyFactory (createClientOnlyFn half).
   test.each([
     {
@@ -933,6 +967,32 @@ export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
     expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('x')
     expect(await settleInPage(served, 'module.serverOnly')).toEqual(throwsError)
     expect((await served.ssr()).serverOnly()).toBe('server-only-marker')
+  })
+
+  // A named import spelled `'*'` is that export, not the module's
+  // namespace: an ordinary function there builds beside a module exporting
+  // a factory, and a factory there is recognised. Source: the Astra core
+  // review 8.
+  test("a named import spelled '*' is the export of that name", async () => {
+    const served = await serve(
+      `import { '*' as twice } from './ordinary'
+import { '*' as define } from './start'
+import { db } from './db.server'
+export const doubled = () => twice(21)
+export const serverOnly = define(() => db.x())`,
+      {
+        'ordinary.ts': `const twice = (n: number) => n * 2
+export { twice as '*' }
+export { createServerOnlyFn } from '@tanstack/react-start'
+`,
+        'start.ts': `export { createServerOnlyFn as '*' } from '@tanstack/react-start'\n`,
+        ...factoryDb,
+      },
+    )
+    await expectClientFree(served)
+    expect(await inPage(served, 'return module.doubled()')).toBe(42)
+    expect(await settleInPage(served, 'module.serverOnly')).toEqual(throwsError)
+    expect((await served.ssr()).serverOnly()).toBe('x')
   })
 
   // Dev edits: the files are written through the dev server's watcher

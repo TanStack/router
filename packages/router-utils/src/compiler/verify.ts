@@ -11,8 +11,9 @@ import { ModuleAnalysis } from './analysis'
 import { emitRecipe } from './emit'
 import { SourceText } from './output-builder'
 import { resolveSameFileSpecifier } from './identity'
-import { parseModule } from './source'
+import { forEachChild, parseModule, patternIdentifiers } from './source'
 import { hasRuntimeValue } from './symbols'
+import type { Node } from 'yuku'
 import type { SourceIdentity } from './identity'
 import type { AnalysisPlan, EmitPlan, OutputRecipe } from './plan'
 import type { OutputId } from './rewrite'
@@ -122,7 +123,7 @@ export function verifyPlan(
           }),
         )
         for (const s of imp.specifiers) {
-          if (!s.typeOnly && s.imported !== '*' && !names.has(s.imported)) {
+          if (!s.typeOnly && !s.namespace && !names.has(s.imported)) {
             problems.push(
               `${id}: imports ${s.imported} from ${target}, which does not export it`,
             )
@@ -205,6 +206,29 @@ export function verifyPlan(
       )
     }
   }
+  // (h) a declarator erasure orphans goes with its initialiser (SPEC G16):
+  // no output holds more declarators binding nothing (`var {} = f()`) than
+  // the source, and the env module declares no `var` of a nested statement
+  // (its declarator is no unit placement decides) all of whose readers it
+  // erased with every other binding of its declarator
+  const emptyInSource = emptyDeclarators(plan.analysis.file.program)
+  for (const [id, { analysis }] of outputs) {
+    if (emptyDeclarators(analysis.file.program) > emptyInSource) {
+      problems.push(
+        `${id}: keeps the initialiser of a declarator binding nothing`,
+      )
+    }
+  }
+  const envOut = outputs.get('env')
+  if (envOut !== undefined) {
+    const orphaned = orphanedHoistedVars(plan)
+    const out = envOut.analysis.t1().symbols
+    for (const b of envOut.analysis.file.bindings) {
+      if (orphaned.has(b.name) && out.isModuleLevel(out.ofBinding(b))) {
+        problems.push(`env: declares ${b.name}, which only erased code read`)
+      }
+    }
+  }
   // (f) planner facts are JSON data: a cached plan retains them as they are
   // (no Yuku node, no class instance, no `undefined` member)
   const facts = emitPlan.facts.planners
@@ -216,4 +240,77 @@ export function verifyPlan(
       `compiler invariants violated for ${identity.canonicalId}:\n${problems.join('\n')}`,
     )
   }
+}
+
+/** The declarators of a module binding nothing (`var {} = f()`), but in a `for…in/of` head. */
+function emptyDeclarators(program: Node): number {
+  let n = 0
+  const visit = (node: Node, parent: Node | null) => {
+    if (
+      node.type === 'VariableDeclaration' &&
+      parent?.type !== 'ForInStatement' &&
+      parent?.type !== 'ForOfStatement'
+    ) {
+      for (const d of node.declarations) {
+        if (patternIdentifiers(d.id).length === 0) {
+          n++
+        }
+      }
+    }
+    forEachChild(node, (child) => visit(child, node))
+  }
+  visit(program, null)
+  return n
+}
+
+/**
+ * The names of the source's `var`s declared once in a nested statement
+ * (outside a `for…in/of` head) whose declarator's bindings were all read,
+ * by value, only in text the env module erases.
+ */
+function orphanedHoistedVars(plan: AnalysisPlan): Set<string> {
+  const { t1 } = plan
+  const file = plan.analysis.file
+  const live = plan.rewrites.liveness('env')
+  const erasedOnly = (id: Node) => {
+    const b = file.bindingOf(id)
+    if (b === null || b.declarations.length !== 1) {
+      return false
+    }
+    const refs = t1.refs.refsOf(t1.symbols.ofBinding(b))
+    return refs.length > 0 && refs.every((r) => !live.live(r))
+  }
+  const names = new Set<string>()
+  for (const b of file.bindings) {
+    const sym = t1.symbols.ofBinding(b)
+    const units = t1.declaringUnits.get(sym)
+    if (
+      !t1.symbols.isModuleLevel(sym) ||
+      units === undefined ||
+      units.some((u) => t1.units[u]!.kind !== 'effect')
+    ) {
+      continue
+    }
+    let declarator: Node | null = b.declarations[0] ?? null
+    while (declarator !== null && declarator.type !== 'VariableDeclarator') {
+      declarator = file.parentOf(declarator)
+    }
+    const declaration = declarator === null ? null : file.parentOf(declarator)
+    const slot = declaration === null ? null : file.parentOf(declaration)
+    if (
+      declarator?.type !== 'VariableDeclarator' ||
+      slot === null ||
+      slot.type === 'ForInStatement' ||
+      slot.type === 'ForOfStatement'
+    ) {
+      continue
+    }
+    const ids = patternIdentifiers(declarator.id)
+    if (ids.every(erasedOnly)) {
+      for (const id of ids) {
+        names.add(id.name)
+      }
+    }
+  }
+  return names
 }
