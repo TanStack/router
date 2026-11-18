@@ -450,17 +450,20 @@ export function importEdgesPlanner(
         const rendered = ownStatic
           ? renderedUse(ctx.analysis, ctx.code, offsets)
           : null
-        // a Vue template renders a component through no JSX: its binding names
-        // the fix (a capitalised one: a component's)
+        // a Vue template renders a component through no JSX: its binding and
+        // the export it imports name the fix (a capitalised one: a
+        // component's; a namespace's members are no component of their own)
         const specs =
           ownStatic && !rendered && ctx.identity.path.endsWith('.vue')
             ? ctx.analysis.imports
                 .filter((i) => offsets.includes(i.specifierRange.start))
-                .flatMap((i) => i.specifiers.filter((spec) => !spec.typeOnly))
+                .flatMap((i) =>
+                  i.specifiers.filter(
+                    (spec) => !spec.typeOnly && !spec.namespace,
+                  ),
+                )
             : []
-        const binding = (
-          specs.find((spec) => /^[A-Z]/.test(spec.localName)) ?? specs[0]
-        )?.localName
+        const spec = specs.find((s) => /^[A-Z]/.test(s.localName)) ?? specs[0]
         const base: EdgeViolation = {
           edgeKey: j.edge.edgeKey,
           env: ctx.env.name,
@@ -483,7 +486,9 @@ export function importEdgesPlanner(
               at: locator.at(rendered.start),
             },
           }),
-          ...(binding !== undefined && { binding }),
+          ...(spec && {
+            binding: { name: spec.localName, imported: spec.imported },
+          }),
           ...(j.edge.form === 'reexport' && { reexport: true }),
         }
         if (substitute) {

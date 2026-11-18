@@ -58,8 +58,12 @@ export interface EdgeViolation {
    * the server). `at`: the first such use, in the original source.
    */
   rendered?: RenderedUse
-  /** Server environment, a Vue SFC importer: the import's binding (a template's component is no JSX the compiler can see). */
-  binding?: string
+  /**
+   * Server environment, a Vue SFC importer: the import's binding (a
+   * template's component is no JSX the compiler can see), and the export it
+   * imports (`'default'` for a default import).
+   */
+  binding?: { name: string; imported: string }
   /** The edge is a re-export (`export … from`): a barrel passes the module on. */
   reexport?: true
   /** Build: one importer's import of a module that is its own violation, by the pattern import found in its text. */

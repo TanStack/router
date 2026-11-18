@@ -343,6 +343,25 @@ export function mayHavePatternImport(text: string): boolean {
   return new RegExp(PATTERN_SOURCE).test(text) || REQUIRE_VARIABLE_RE.test(text)
 }
 
+/**
+ * Whether `text` has a string literal naming `file` as `importer` imports
+ * it (a path, relative or through an alias: `'./Chart.vue'`,
+ * `'@/components/Chart.vue'`): an import of the file its source has.
+ */
+export function namesFile(
+  text: string,
+  importer: string,
+  file: string,
+): boolean {
+  for (const m of text.matchAll(new RegExp(LITERAL, 'g'))) {
+    const specifier = m[1] ?? m[2]!
+    if (specifier.includes('/') && mayRequire(specifier, importer, file)) {
+      return true
+    }
+  }
+  return false
+}
+
 /** `file` as a specifier relative to `importer` (`./x.ts`, `../lib/x.ts`). */
 export function relativeSpecifier(importer: string, file: string): string {
   const rel = path.posix.relative(path.posix.dirname(importer), file)

@@ -8,6 +8,7 @@ import { Locator } from './locate'
 import {
   findPatternImport,
   mayHavePatternImport,
+  namesFile,
   relativeSpecifier,
 } from './pattern-imports'
 import { importerInScope } from './rules'
@@ -96,10 +97,21 @@ const clientOnlySuggestion = (framework: CompileStartFrameworkOptions) =>
  * A component a Vue template renders: `<ClientOnly>` in a template keeps the
  * import on the server, so the component is loaded in the browser only too
  * (`createClientOnlyFn` around its `import()`, which the server never calls
- * inside `<ClientOnly>`).
+ * inside `<ClientOnly>`). The `import()` gives the module, and
+ * `defineAsyncComponent` takes its default export: a named one (`imported`)
+ * is picked with `.then()`; null: the export is not known.
  */
-const vueComponentSuggestion = (name: string, specifier: string) =>
-  `If it is a component of the template, load it in the browser only and render it inside <ClientOnly>: const ${name} = defineAsyncComponent(createClientOnlyFn(() => import(${quoted(specifier)}))) in the script (defineAsyncComponent from vue, createClientOnlyFn from @tanstack/vue-start), and <ClientOnly><${name} /></ClientOnly> in the template (from @tanstack/vue-router)`
+const vueComponentSuggestion = (
+  name: string,
+  specifier: string,
+  imported: string | null,
+) => {
+  const pick =
+    imported === null || imported === 'default'
+      ? ''
+      : `.then((m) => m${/^[A-Za-z_$][\w$]*$/.test(imported) ? `.${imported}` : `[${quoted(imported)}]`})`
+  return `If it is a component of the template, load it in the browser only and render it inside <ClientOnly>: const ${name} = defineAsyncComponent(createClientOnlyFn(() => import(${quoted(specifier)})${pick})) in the script (defineAsyncComponent from vue, createClientOnlyFn from @tanstack/vue-start${imported === null ? '; for a named export, add .then((m) => m.Name) to the import()' : ''}), and <ClientOnly><${name} /></ClientOnly> in the template (from @tanstack/vue-router)`
+}
 
 /** Where the mock runtime puts the denied import's specifier (`serverEnvSuggestions`). */
 export const SPECIFIER_SLOT = '__SPECIFIER__'
@@ -116,7 +128,7 @@ export function serverEnvSuggestions(
   return [
     clientOnlySuggestion(framework),
     ...(framework === 'vue'
-      ? [vueComponentSuggestion('Component', SPECIFIER_SLOT)]
+      ? [vueComponentSuggestion('Component', SPECIFIER_SLOT, null)]
       : []),
     ...SERVER_FN_SUGGESTIONS,
   ]
@@ -468,9 +480,11 @@ interface PatternSite {
   /**
    * What brought the file: a pattern import; an import another plugin's
    * transform added (a checked importer whose source has no pattern
-   * import); or an importer import protection does not check.
+   * import and does not name the file); an import its source has, of a
+   * file whose marker the compiler reads only when it compiles the file
+   * (an SFC); or an importer import protection does not check.
    */
-  cause: 'pattern' | 'added' | 'unchecked'
+  cause: 'pattern' | 'added' | 'imported' | 'unchecked'
   loc: OriginalLocation | null
   frame: CodeFrame | null
 }
@@ -479,6 +493,7 @@ interface PatternSite {
 function causeOf(
   ctx: ReportContext,
   importer: string,
+  denied: string,
   found: PatternImport | null,
   direct: boolean,
 ): PatternSite['cause'] {
@@ -492,7 +507,10 @@ function causeOf(
     return 'pattern'
   }
   const text = ctx.readSource(importer)
-  return text !== null && !mayHavePatternImport(text) ? 'added' : 'pattern'
+  if (text === null || mayHavePatternImport(text)) {
+    return 'pattern'
+  }
+  return namesFile(text, importer, denied) ? 'imported' : 'added'
 }
 
 /**
@@ -510,7 +528,13 @@ function patternSiteOf(
     return {
       importer: info.importer,
       found: v.pattern,
-      cause: causeOf(ctx, info.importer, v.pattern, true),
+      cause: causeOf(
+        ctx,
+        info.importer,
+        identify(info.resolved ?? info.importer).path,
+        v.pattern,
+        true,
+      ),
       loc: v.loc,
       frame: v.snippet,
     }
@@ -539,7 +563,7 @@ function patternSiteOf(
   return {
     importer,
     found,
-    cause: causeOf(ctx, importer, found, direct),
+    cause: causeOf(ctx, importer, denied, found, direct),
     loc: site?.loc ?? null,
     frame: site?.frame ?? null,
   }
@@ -627,6 +651,25 @@ function suggestionsOf(
   ctx: ReportContext,
   site: PatternSite | null,
 ): Array<string> {
+  // (the import of a file the compiler reads the marker of only when it
+  // compiles it: a plain import's fixes, its use unknown; a Vue SFC's
+  // template keeps its components imported inside <ClientOnly>)
+  if (site?.cause === 'imported') {
+    const specifier = relativeSpecifier(
+      site.importer,
+      identify(info.resolved ?? info.importer).path,
+    )
+    return info.envType === 'client'
+      ? [...CLIENT_ENV_SUGGESTIONS]
+      : site.importer.endsWith('.vue')
+        ? [
+            vueComponentSuggestion('Component', specifier, null),
+            ...SERVER_FN_SUGGESTIONS,
+          ]
+        : serverEnvSuggestions(ctx.framework).map((s) =>
+            s.replace(quoted(SPECIFIER_SLOT), quoted(specifier)),
+          )
+  }
   if (v.self || v.pattern !== undefined) {
     return patternSuggestions(
       identify(info.resolved ?? info.importer).path,
@@ -654,7 +697,11 @@ function suggestionsOf(
   return v.binding !== undefined
     ? [
         ...barrel,
-        vueComponentSuggestion(v.binding, info.specifier),
+        vueComponentSuggestion(
+          v.binding.name,
+          info.specifier,
+          v.binding.imported,
+        ),
         ...SERVER_FN_SUGGESTIONS,
       ]
     : [...barrel, ...SERVER_FN_SUGGESTIONS]
@@ -730,9 +777,11 @@ export function formatViolation(
             ? `  Imported by: ${rel(site.importer)}, which import protection does not check (outside srcDirectory/include, or exempt by exclude/ignoreImporters)`
             : site?.cause === 'added'
               ? `  Imported by: ${rel(site.importer)}, through an import its source does not have (another plugin's transform added it)`
-              : site
-                ? `  Matched by: a pattern import in ${rel(site.importer)} (import.meta.glob, an import() with a variable path, import.meta.webpackContext)`
-                : `  Loaded by an import the compiler does not read: a pattern import (import.meta.glob, an import() with a variable path, import.meta.webpackContext), an import another plugin added, or a request of the file itself (a server.warmup glob)`,
+              : site?.cause === 'imported'
+                ? `  Imported by: ${rel(site.importer)}`
+                : site
+                  ? `  Matched by: a pattern import in ${rel(site.importer)} (import.meta.glob, an import() with a variable path, import.meta.webpackContext)`
+                  : `  Loaded by an import the compiler does not read: a pattern import (import.meta.glob, an import() with a variable path, import.meta.webpackContext), an import another plugin added, or a request of the file itself (a server.warmup glob)`,
     )
   } else {
     const loc = info.importerLoc
