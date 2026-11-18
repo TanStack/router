@@ -119,6 +119,37 @@ export const Route = createFileRoute('/')({
   })
 })
 
+describe('codeSplitGroupings of a root route, which is never split', () => {
+  it.each([
+    [
+      'an imported value',
+      `import { createRootRoute } from '@tanstack/react-router'
+import { groupings } from './groupings'
+export const Route = createRootRoute({
+  codeSplitGroupings: groupings,
+  component: () => <p>root</p>,
+})
+`,
+    ],
+    [
+      'an option listed twice',
+      `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute({
+  codeSplitGroupings: [['component'], ['component']] as any,
+  component: () => <p>root</p>,
+})
+`,
+    ],
+  ])('leave the route working, as on main: %s', async (_, code) => {
+    const route = await loadRoute(code, {
+      fresh: true,
+      files: { 'groupings.ts': "export const groupings = [['component']]\n" },
+    })
+    expect(await route.run(`return render('component')`)).toBe('<p>root</p>')
+    expectNoProblems(await route.diagnostics())
+  })
+})
+
 describe('plugin options with invalid groupings', () => {
   it.for([
     [{ defaultBehavior: [['compnent']] }],
