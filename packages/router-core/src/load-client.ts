@@ -1023,6 +1023,41 @@ async function getNotFoundBoundary(
   return cause?.routeId ? index : fallback
 }
 
+async function loadErrorBoundary(
+  router: AnyRouter,
+  matches: Array<WorkMatch>,
+  index: number,
+  signal: AbortSignal,
+): Promise<void> {
+  for (let i = index; i >= 0; i--) {
+    const route = getRoute(router, matches[i]!)
+    try {
+      const loading = loadRouteChunk(route, false)
+      if (loading) {
+        await waitFor(loading, signal)
+      }
+    } catch (cause) {
+      if (cause === signal && signal.aborted) {
+        throw cause
+      }
+    }
+    if (route.options.errorComponent) {
+      const loading = loadRouteChunk(route, 'errorComponent')
+      if (loading) {
+        await waitFor(loading, signal)
+      }
+      return
+    }
+    if (
+      i === index &&
+      (router.options as { defaultErrorComponent?: unknown })
+        .defaultErrorComponent
+    ) {
+      return
+    }
+  }
+}
+
 function discardBackground(router: AnyRouter, lane: Lane<any>): void {
   if (lane[2 /* background */]) {
     transferMatchResources(
@@ -1233,12 +1268,11 @@ async function reduceLane(
     try {
       await waitFor<unknown>(
         outcome
-          ? Promise.resolve().then(() =>
-              loadRouteChunk(
-                route,
-                kind === ERROR ? 'errorComponent' : 'notFoundComponent',
-              ),
-            )
+          ? kind === ERROR
+            ? loadErrorBoundary(router, matches, boundary, controller.signal)
+            : Promise.resolve().then(() =>
+                loadRouteChunk(route, 'notFoundComponent'),
+              )
           : Promise.all([
               loadRouteChunk(route),
               loadRouteChunk(route, 'notFoundComponent'),
@@ -2368,22 +2402,21 @@ export async function hydrate(router: AnyRouter): Promise<void> {
 
   // Hooks observe structural membership. Execution remains limited to
   // `committed`, the accepted server prefix.
-  const chunks = committed.map(async (match) => {
+  const chunks = committed.map(async (match, index) => {
     try {
       const route = getRoute(router, match)
-      await (match._notFound
-        ? Promise.all([
-            loadRouteChunk(route),
-            loadRouteChunk(route, 'notFoundComponent'),
-          ])
-        : loadRouteChunk(
-            route,
-            match.status === 'error'
-              ? 'errorComponent'
-              : match.status === 'notFound'
-                ? 'notFoundComponent'
-                : undefined,
-          ))
+      if (match._notFound) {
+        await Promise.all([
+          loadRouteChunk(route),
+          loadRouteChunk(route, 'notFoundComponent'),
+        ])
+      } else if (match.status === 'error') {
+        await loadErrorBoundary(router, committed, index, controller.signal)
+      } else if (match.status === 'notFound') {
+        await loadRouteChunk(route, 'notFoundComponent')
+      } else {
+        await loadRouteChunk(route)
+      }
       return true
     } catch {
       return false
