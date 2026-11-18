@@ -193,6 +193,16 @@ function App() {
 - `shadowDOMTarget?: ShadowRoot`
   - The shadow root to add the devtools styles to.
   - By default, the styles are added to the shadow root the devtools render in, or to the document when they do not render in a shadow root.
+- `trustedTypesPolicy?: { createHTML: (html: string) => unknown }`
+  - The Trusted Types policy the devtools use to create their HTML templates.
+  - Pass one when your page enforces `require-trusted-types-for 'script'`. The devtools only pass it their own markup, so it can return the HTML unchanged:
+
+    ```tsx
+    const policy = window.trustedTypes?.createPolicy('devtools', {
+      createHTML: (html) => html,
+    })
+    ```
+
 - `containerElement?: string | any`
   - Use this to render the devtools inside a different type of container element for ally purposes.
   - Any string which corresponds to a valid intrinsic JSX element is allowed.
@@ -322,3 +332,12 @@ function App() {
 - `shadowDOMTarget?: ShadowRoot`
   - The shadow root to add the devtools styles to.
   - By default, the styles are added to the shadow root the devtools render in, or to the document when they do not render in a shadow root.
+- `trustedTypesPolicy?: { createHTML: (html: string) => unknown }`
+  - The Trusted Types policy the devtools use to create their HTML templates.
+  - Pass one when your page enforces `require-trusted-types-for 'script'`. The devtools only pass it their own markup, so it can return the HTML unchanged:
+
+    ```tsx
+    const policy = window.trustedTypes?.createPolicy('devtools', {
+      createHTML: (html) => html,
+    })
+    ```

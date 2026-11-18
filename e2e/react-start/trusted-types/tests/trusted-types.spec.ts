@@ -8,7 +8,7 @@ test('router devtools render when the page enforces Trusted Types', async ({
 }) => {
   const response = await page.goto('/')
   expect(response?.headers()['content-security-policy']).toBe(
-    "require-trusted-types-for 'script'",
+    "require-trusted-types-for 'script'; trusted-types devtools",
   )
 
   await page
