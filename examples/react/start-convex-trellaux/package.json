@@ -22,7 +22,7 @@
     "concurrently": "^8.2.2",
     "convex": "^1.50.0",
     "ky": "^1.14.3",
-    "msw": "^2.15.0",
+    "msw": "^3.0.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.6.1",
