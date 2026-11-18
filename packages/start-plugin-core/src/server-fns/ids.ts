@@ -154,6 +154,15 @@ export class FunctionIdAllocator {
   }
 }
 
+/**
+ * The string literals a module can print `id` as, in each quote (a
+ * minifier picks the quote): what a client build's code holds of a server
+ * fn it calls (`StartCompilerSession.clientCallableIds`).
+ */
+export function idLiterals(id: string): Array<string> {
+  return ['"', "'", '`'].map((quote) => quote + escapeFor(quote, id) + quote)
+}
+
 /** `id` as the text of a string literal quoted with `quote`. */
 function escapeFor(quote: string | undefined, id: string): string {
   if (quote !== "'" && quote !== '"' && quote !== '`') {

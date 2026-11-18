@@ -3,8 +3,9 @@
  * id through a per-id virtual module that re-exports the provider's
  * `createServerRpc` wrapper from the defining module (compiled through the
  * normal transform, also on a fresh server when it is an app source); in
- * production a manifest of the client-referenced functions (the
- * HTTP-callable set), importing each provider module. Rsbuild uses the manifest in both modes
+ * production a manifest of the functions server code may call by id,
+ * importing each provider module, whose client-origin (HTTP) calls are
+ * gated to the functions the client's emitted code calls (R182). Rsbuild uses the manifest in both modes
  * (`manifestResolverModule`): its bundles hold every provider module.
  */
 import { manifestLiteral } from './format'
@@ -62,13 +63,11 @@ interface ManifestResolverOptions {
   /** The provider module id of an entry (the original module or its derived provider id). */
   providerModuleId: (entry: ServerFnEntry) => string
   /**
-   * Only client-referenced functions are HTTP-callable in production (J4.2):
-   * the manifest lists only them, so a function only server code references
-   * is "not found" by id (no per-entry flag or runtime check: the filter is
-   * the gate). The client built before the provider (the SSR provider). The
-   * RSC provider builds before the client (plugin-rsc's `buildApp`), so its
-   * manifest lists every server fn of its environment (a known limitation of
-   * the RSC build order).
+   * The manifest lists only the functions a client compile stubbed (the
+   * client built before the provider: the SSR provider): those a split
+   * route chunk's server copy calls by id (`createSsrRpc`), from server
+   * code. The RSC provider builds before the client (plugin-rsc's
+   * `buildApp`), so its manifest lists every server fn of its environment.
    */
   clientReferencedOnly: boolean
   /**
@@ -84,19 +83,19 @@ interface ManifestResolverOptions {
   /** Keep each imported module on its manifest entry after the first call (production only: modules are never hot-replaced). */
   memoizeModules?: boolean
   /**
-   * Production with a separate provider (RSC): every function is listed
-   * (server-origin calls reach the provider through this manifest), and a
-   * client-origin call of a function not in this set is refused (J4.2). A
-   * JavaScript expression evaluating to the client-referenced ids: a JSON
-   * array literal, or a placeholder literal the host replaces once the
-   * client build is known.
+   * Production: a client-origin call (an HTTP request) of a function not in
+   * this set is refused (J4.2, R182): the functions whose client call
+   * survives in the client's emitted code. Server-origin calls reach every
+   * listed function. A JavaScript expression evaluating to those ids: a
+   * JSON array literal, or a placeholder literal the host replaces once the
+   * client build is known (Rsbuild RSC).
    */
   clientOriginGate?: string
 }
 
 /**
  * The production manifest: `id → { functionName, importer, exportName }` of
- * the HTTP-callable functions. `functionName` is what earlier Start versions
+ * the functions server code may call by id, gated to the HTTP-callable ones. `functionName` is what earlier Start versions
  * printed there (tooling reads it from the server bundle); the lookup reads
  * the provider module's export, `exportName`, which is unique per file.
  */
@@ -104,6 +103,7 @@ export function productionResolverModule(opts: {
   entries: ReadonlyArray<ServerFnEntry>
   providerModuleId: (entry: ServerFnEntry) => string
   clientReferencedOnly: boolean
+  clientOriginGate: string | undefined
 }): string {
   return manifestResolverModule({ ...opts, memoizeModules: true })
 }
@@ -205,14 +205,14 @@ export function resolveRegistrySpecifier(specifier: string): string {
  * build (J4.2, Vite RSC): the provider built before the client, so its
  * manifest lists every function (server-origin calls need them all); this
  * environment builds after the client and refuses a client-origin call of
- * a function no client module referenced, then forwards to the provider's
+ * a function the client's emitted code does not call (R182), then forwards to the provider's
  * `getServerFnById` (the module `forwardSpecifier` exports).
  */
 export function callerGateModule(
   forwardSpecifier: string,
-  clientReferencedIds: ReadonlyArray<string>,
+  callableIds: ReadonlyArray<string>,
 ): string {
-  const ids = [...clientReferencedIds].sort()
+  const ids = [...callableIds].sort()
   return `import { getServerFnById as forward } from ${JSON.stringify(forwardSpecifier)}
 const clientCallable = new Set(${JSON.stringify(ids)})
 export async function getServerFnById(id, access) {
@@ -224,5 +224,5 @@ export async function getServerFnById(id, access) {
 `
 }
 
-/** Replaced in the server bundle by the JSON array of client-referenced ids (Rsbuild RSC builds, after the client compiled). */
+/** Replaced in the server bundle by the JSON array of the HTTP-callable ids (Rsbuild RSC builds, after the client compiled). */
 export const CLIENT_REFERENCED_IDS_PLACEHOLDER = '__TSS_CLIENT_REFERENCED_IDS__'

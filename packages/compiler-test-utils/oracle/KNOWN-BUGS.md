@@ -821,9 +821,15 @@ Paths under `start-plugin-core/tests/` unless noted.
   J4.14, G3. Fixed (R157; also #8656): the lazy handler module imports what the module keeps.
   `integration/start-build-server-fn-cases.test.ts`: "SSR: a server fn module is initialised once and shares its state
   with SSR code"; `integration/start-compose-server-fn-route.test.ts`: "the server runs the route module once".
-- **Production builds: server fns no client code references answer HTTP calls by id.** SPEC J4.2.
+- **Production builds: server fns no client code calls answer HTTP calls by id**: one only server modules define, and
+  one private to a module the client imports (a helper another server fn's handler calls), which the client's compile
+  registered before tree-shaking. SPEC J4.2 (R182): the client-origin gate is the set of ids whose client call
+  survives in the emitted client code, on both hosts and under RSC.
   `integration/start-build-server-fn-cases.test.ts`: "SSR: a server fn only server code references is not callable over
-  HTTP".
+  HTTP"; "SSR: a server fn private to a module the client imports is not callable over HTTP, and its own module calls
+  it"; "SSR: a rebuild follows the edits that remove and restore the last client call of a server fn";
+  `react-start-rsc/tests/integration/rsc-start-build.test.ts` and `rsc-start-rsbuild-build.test.ts`: "a server
+  function only server code calls is not callable from the browser".
 - **Vite: the production server-fn resolver is generated before the SSR build found every server fn** (#7213). SPEC
   J4.2, G4. `integration/start-build-server-fn-cases.test.ts`: "is callable, the app files written %s"; "its caller only
   client code imports: the caller is callable over HTTP, the app files written %s".

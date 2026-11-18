@@ -180,6 +180,12 @@ export class StartRsbuildCompilerSession {
   readonly drain: StaleSetDrain
   /** The RSC layer of the server environment (RSC on). */
   private readonly rscLayer: string | undefined
+  /**
+   * The HTTP-callable server fns of the last client build (J4.2, R182):
+   * those its emitted code calls (`publishClientOutput`); null before the
+   * client's first build.
+   */
+  private callableIds: ReadonlySet<string> | null = null
 
   constructor(opts: StartRsbuildSessionOptions) {
     this.rscLayer = opts.rscLayer
@@ -752,14 +758,21 @@ export class StartRsbuildCompilerSession {
   }
 
   /**
-   * The resolver module of an environment: the registry's manifest, gated
-   * to client-referenced entries in production builds whose SSR
-   * environment is the provider (J4.2); in development every entry, with a
+   * The resolver module of an environment: the registry's manifest, of the
+   * client-referenced entries in production builds whose SSR environment is
+   * the provider, and their client-origin calls gated to the functions the
+   * client's emitted code calls (J4.2, R182; the resolver is written again
+   * once the client compiled, before the server compiles); in development every entry, with a
    * warning for a client call of a function no client module references
    * (the client compilation's replay rewrites the resolver, so the flags
    * follow the client graph). The RSC provider lists its environment's
    * functions (the RSC build order).
    */
+  /** A production client build emitted `codes` (its JS assets, minified and with final ids): the callable set. */
+  publishClientOutput(codes: ReadonlyArray<string>): void {
+    this.callableIds = this.start.clientCallableIds(codes)
+  }
+
   resolverModule(): string {
     const { opts } = this.start
     return manifestResolverModule({
@@ -775,25 +788,30 @@ export class StartRsbuildCompilerSession {
       // reach the provider through it) and gates client-origin calls on a
       // set the server asset pipeline fills in once the client build exists
       clientOriginGate:
-        opts.mode === 'build' && opts.rsc !== undefined
-          ? JSON.stringify(CLIENT_REFERENCED_IDS_PLACEHOLDER)
-          : undefined,
+        opts.mode !== 'build'
+          ? undefined
+          : opts.rsc !== undefined
+            ? JSON.stringify(CLIENT_REFERENCED_IDS_PLACEHOLDER)
+            : JSON.stringify([...(this.callableIds ?? [])].sort()),
     })
   }
 
   /**
-   * The JSON array of client-referenced function ids (the gate's set, J4.2):
-   * final ids, also with a custom generator (the gate is filled in after
-   * the ids were patched, so its placeholders resolve here).
+   * The JSON array of the HTTP-callable function ids (the RSC gate's set,
+   * J4.2, R182): final ids, also with a custom generator (the gate is
+   * filled in after the ids were patched, so its placeholders resolve here).
    */
   clientReferencedIdsLiteral(): string {
+    if (!this.callableIds) {
+      throw new Error(
+        'TanStack Start could not gate the server functions of the rsbuild RSC server because the client build was unavailable',
+      )
+    }
     const allocator =
       this.start.allocator && this.start.allocateIds('client').allocator
     return JSON.stringify(
-      this.start.registry
-        .entries()
-        .filter((e) => e.clientReferenced)
-        .map((e) => (allocator ? allocator.patch(e.id).code : e.id))
+      [...this.callableIds]
+        .map((id) => (allocator ? allocator.patch(id).code : id))
         .sort(),
     )
   }

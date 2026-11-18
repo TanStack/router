@@ -34,7 +34,7 @@ import {
 import { START_ENV, startEnvPlanner, startPlanners } from '../planners'
 import { HYDRATE_PLANNER, createHydratePlanner } from '../planners/hydrate'
 import { RSC_CSS } from '../planners/rsc-css'
-import { FunctionIdAllocator } from '../server-fns/ids'
+import { FunctionIdAllocator, idLiterals } from '../server-fns/ids'
 import { ServerFnRegistry } from '../server-fns/registry'
 import { createImportProtection } from '../import-protection/session'
 import { IMPORT_EDGES_PLANNER } from '../import-protection/violations'
@@ -552,6 +552,31 @@ export class StartCompilerSession {
         : entries,
     )
     return { allocator, errors, warnings }
+  }
+
+  /**
+   * The HTTP-callable server fns of a production build (J4.2, R182): the
+   * client-referenced entries whose id still occurs as a string literal in
+   * the client build's emitted code (`codes`, tree-shaken, custom ids
+   * patched). A client compile stubs every server fn of a module the client
+   * imports; the bundler drops each stub no client code calls, and a server
+   * fn the client never calls stays callable by server code only. By the
+   * id the registry holds (a custom id's placeholder). Another literal
+   * spelling an id only admits it, as before.
+   */
+  clientCallableIds(codes: ReadonlyArray<string>): Set<string> {
+    const allocator = this.allocator && this.allocateIds('client').allocator
+    const callable = new Set<string>()
+    for (const e of this.registry.entries()) {
+      if (!e.clientReferenced) {
+        continue
+      }
+      const literals = idLiterals(allocator ? allocator.patch(e.id).code : e.id)
+      if (codes.some((code) => literals.some((l) => code.includes(l)))) {
+        callable.add(e.id)
+      }
+    }
+    return callable
   }
 
   /**
