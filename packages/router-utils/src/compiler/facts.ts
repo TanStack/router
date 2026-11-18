@@ -16,14 +16,16 @@
  *   the host's own update of the module does (Vite: a hot update listing
  *   the module or a virtual importer of the event's file,
  *   `staleHotUpdate`), through `invalidate` with the id as its path, which
- *   reaches the entries of every environment (`byPath`).
+ *   reaches the entries of every environment (`byPath`). A Vite watch
+ *   rebuild tells nothing: it expires its environment's (`expireVirtual`).
  * A resolution's change is not a fact of this cache: `invalidate` asks the
  * resolutions concerned again (a file appearing, a file removed).
  *
  * Rule: anything that changes an answer of `RawFactsCache` goes through
- * `markStale`, `forget` or `retain`. They move `version`, and a plan whose
- * facts were validated at the current version is not asked again
- * (`CacheEntry.factsAt`), so a change made any other way serves stale plans.
+ * `markStale`, `forget`, `retain`, `expireVirtual` or `releaseVirtual`. They
+ * move `version`, and a plan whose facts were validated at the current
+ * version is not asked again (`CacheEntry.factsAt`), so a change made any
+ * other way serves stale plans.
  * That includes a file a read found missing: its facts are not kept, and the
  * host that saw the miss marks it stale when the file may have appeared.
  */
@@ -391,6 +393,37 @@ export class RawFactsCache {
           this.seen.delete(path)
           this.emptyAt.delete(path)
         }
+      }
+    }
+  }
+
+  /**
+   * Marks the virtual modules environment `env` read stale (the host's
+   * `expireVirtual`); returns their paths.
+   */
+  expireVirtual(env: string): Set<string> {
+    const paths = new Set<string>()
+    for (const [key, e] of this.entries) {
+      if (key.startsWith(`${env}\u0000`)) {
+        this.changes++
+        e.stale = true
+        e.pending = null
+        e.markerless = false
+        e.reading = null
+        paths.add(identify(e.id).path)
+      }
+    }
+    return paths
+  }
+
+  /** Drops the virtual modules environment `env` read (no other environment reads them: `keyOf`). */
+  releaseVirtual(env: string): void {
+    for (const [key, e] of this.entries) {
+      if (key.startsWith(`${env}\u0000`)) {
+        this.changes++
+        e.pending = null
+        e.reading = null
+        this.deleteEntry(key)
       }
     }
   }

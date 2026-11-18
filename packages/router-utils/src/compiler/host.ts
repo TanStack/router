@@ -885,17 +885,40 @@ export async function restorePlans(
 }
 
 /**
+ * Expires what environment `env` read of virtual modules, for a host whose
+ * bundler loads and transforms every module again without telling which
+ * virtual module changed (a Vite watch rebuild, at its start): their facts
+ * are read again, and the environment's plans that read one are evicted,
+ * unasked (the rebuild compiles their modules again; asking would load the
+ * virtual modules before the build does).
+ */
+export function expireVirtual(caches: CompilerCaches, env: string): void {
+  const paths = caches.rawFacts.expireVirtual(env)
+  const cache = caches.plans.get(env)
+  if (!cache) {
+    return
+  }
+  for (const path of paths) {
+    for (const entry of cache.dependents.get(path)) {
+      cache.delete(entry.key)
+      cache.bump(entry.key)
+    }
+  }
+}
+
+/**
  * Releases what the caches hold for one environment: its plans, their
- * generations and dependents index. A host calls it once the environment
- * can compile nothing more (a production build of the environment is
- * finished); everything else in the caches is shared by the environments
- * and stays. A later compile in the environment starts from an empty plan
- * cache, so a host that builds the environment again gets the same output,
- * only slower.
+ * generations and dependents index, and what it read of virtual modules. A
+ * host calls it once the environment can compile nothing more (a
+ * production build of the environment is finished); everything else in the
+ * caches is shared by the environments and stays. A later compile in the
+ * environment starts from an empty plan cache, so a host that builds the
+ * environment again gets the same output, only slower.
  */
 export function releaseEnvironment(caches: CompilerCaches, env: string): void {
   caches.plans.delete(env)
   caches.stale.release(env)
+  caches.rawFacts.releaseVirtual(env)
 }
 
 export function fingerprintSourceFor(

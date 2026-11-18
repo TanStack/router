@@ -11,6 +11,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readdirSync,
+  readFileSync,
   rmSync,
 } from 'node:fs'
 import path from 'node:path'
@@ -372,6 +373,56 @@ export const Route = createFileRoute('/')({ component: () => <p>${marker}</p> })
       const emitted = new Set(client.chunks.map((c) => c.fileName))
       expect(named.length).toBeGreaterThan(0)
       expect(named.filter((file) => !emitted.has(file))).toEqual([])
+    },
+    timeout,
+  )
+})
+
+describe('vite build --watch: a virtual module', () => {
+  // Source: Astra review round 2 (B1: a rebuild loaded the virtual module's
+  // new text, and compiled its importer against the facts of the first).
+  test(
+    'an importer of a factory the virtual module stops exporting keeps its handler',
+    async () => {
+      const resolvedId = '\0virtual:kit'
+      const kit: Plugin = {
+        name: 'test:kit',
+        resolveId: (source) =>
+          source === 'virtual:kit' ? resolvedId : undefined,
+        load(id) {
+          if (id !== resolvedId) {
+            return undefined
+          }
+          const file = path.join(this.environment.config.root, 'kit.txt')
+          this.addWatchFile(file)
+          return readFileSync(file, 'utf8') === 'factory'
+            ? `import { createServerFn } from '@tanstack/react-start'
+export const authed = createServerFn()
+export const version = 1
+`
+            : `export const authed = { handler: (fn) => fn }
+export const version = 2
+`
+        },
+      }
+      const { client } = await buildStart({
+        bundler: 'vite',
+        files: {
+          'kit.txt': 'factory',
+          'src/fns.ts': `import { authed } from 'virtual:kit'
+export const getSecret = authed.handler(() => 'MARK_KIT')
+`,
+          'src/entry.ts': `export { getSecret } from './fns'
+export { version } from 'virtual:kit'
+`,
+        },
+        entry: 'src/entry.ts',
+        viteConfig: { plugins: [kit] },
+        watchEdits: { 'kit.txt': 'plain' },
+      })
+      expect(
+        (await client.run(`return [entry.version, entry.getSecret()]`)).result,
+      ).toEqual([2, 'MARK_KIT'])
     },
     timeout,
   )

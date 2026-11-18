@@ -344,7 +344,8 @@ text compiles waits for it and emits its own output from the result.
     module its update lists (a plugin that regenerated one puts it there) or that imports one of them (a file the
     module's `load` watched, which Vite records as an import), with the id as the path: every environment's entry is
     stale, and its dependents are re-validated. It moves no file: no resolution is asked again. One nothing read
-    changes nothing.
+    changes nothing. A Vite watch rebuild tells no virtual module's change: each environment's `buildStart` expires
+    the virtual modules it read and evicts its plans that read one (`expireVirtual`): the rebuild loads them again.
   - **Summaries.** A summary change invalidates an importer only when what it read changed: the digest of an export
     it looked up (`exportKeyOf`; an absent name appearing counts), the `export *` list a lookup walked, or the whole
     export-facts digest for a listing. An export added to a widely imported module re-plans none of its importers. A
@@ -352,9 +353,9 @@ text compiles waits for it and emits its own output from the result.
     when the module exports none of them (a barrel's star targets are visited for every name, so one record per name
     grew with names × targets), and the module's `export *` list when a lookup walked it.
 - Raw facts validated at the current `RawFactsCache.version` are not asked again on a hit or at publication
-  (`CacheEntry.factsAt`): the version moves on every `markStale`, `forget` and `retain` drop, which is how anything that
-  changes a raw-facts answer reaches the cache (a host that saw a file missing marks it stale when it may have
-  appeared).
+  (`CacheEntry.factsAt`): the version moves on every `markStale`, `forget`, `retain` drop, `expireVirtual` and
+  `releaseVirtual`, which is how anything that changes a raw-facts answer reaches the cache (a host that saw a file
+  missing marks it stale when it may have appeared).
 - `restorePlans(caches, plans, hosts)`: a host with a persistent bundler cache persists each output's plan key and
   dependencies (`CompileOutput.persisted`) with its module; a later process checks them for the modules the cache
   restores without compiling: a current plan joins its environment's plans as a _restored_ plan (never a hit; its
@@ -362,7 +363,8 @@ text compiles waits for it and emits its own output from the result.
   one is returned for the host to build again.
 - `releaseEnvironment(caches, env)` is the end of an environment's lifetime: a production build releases an
   environment's plans as soon as that environment's build is finished (several environments build one after the
-  other in one process). Raw facts are shared by the environments and stay.
+  other in one process). Raw facts are shared by the environments and stay, but for its virtual modules' (no other
+  environment reads them).
 - Resolutions: each compile records its answers in its ledger; validation asks the module's resolver again (its
   host's: `invalidate` and `restorePlans` take the host of each plan's key) only once a file event was applied since
   the plan's resolutions were validated (`CompilerCaches.fileSetVersion`). An environment may have more than
