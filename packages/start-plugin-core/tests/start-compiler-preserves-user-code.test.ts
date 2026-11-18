@@ -732,6 +732,45 @@ export const fn = createServerFn().handler(async () => new Repository().read())`
   expect(await callFromClient(served, 'module.fn')).toBe('from repository')
 })
 
+// TypeScript's decorator metadata (`emitDecoratorMetadata`: DI containers,
+// ORMs, validation DTOs) reads the class a decorated member names in its type
+// when the class is defined: the import stays a value the class reads,
+// wherever the class runs (`main` keeps it; astra-r3 fact-check B3).
+test.each([
+  { name: 'only the handler reads the class', exported: '' },
+  { name: 'the module exports the class too', exported: 'export { Entity }' },
+])(
+  'decorator metadata records the imported class a decorated member names in its type when $name',
+  async ({ exported }) => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `import { createServerFn } from '@tanstack/react-start'
+import { Model } from './model'
+;(Reflect as any).metadata = (key: string, value: any) => (target: any) => {
+  if (key === 'design:type') target.constructor.recorded = value.name
+}
+const seen = (..._args: Array<unknown>): any => {}
+class Entity {
+  @seen model!: Model
+}
+${exported}
+export const fn = createServerFn().handler(async () => (Entity as any).recorded)`,
+      'model.ts': 'export class Model {}',
+      'tsconfig.json': JSON.stringify({
+        compilerOptions: {
+          ...hostTsconfig.compilerOptions,
+          verbatimModuleSyntax: false,
+          experimentalDecorators: true,
+          emitDecoratorMetadata: true,
+        },
+      }),
+    })
+    expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('Model')
+    expect(await inPage(served, 'return module.Entity?.recorded ?? null')).toBe(
+      exported === '' ? null : 'Model',
+    )
+  },
+)
+
 // On main, the module fails to parse, so the build fails.
 // Source: typescript-eslint type-assertion/increment/as-increment.js,
 // type-assertion/increment/non-null-increment.js, type-assertion/satisfies.js;
