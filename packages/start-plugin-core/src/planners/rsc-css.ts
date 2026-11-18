@@ -131,8 +131,14 @@ function wrapJsxLeaves(
       const b = wrapJsxLeaves(ctx, inner.alternate, loadCss, by)
       return a || b
     }
-    case 'LogicalExpression':
-      return wrapJsxLeaves(ctx, inner.right, loadCss, by)
+    case 'LogicalExpression': {
+      // the left operand is the result of `||` and `??` when it is truthy /
+      // not nullish; of `&&` only when falsy, which JSX never is
+      const a =
+        inner.operator !== '&&' && wrapJsxLeaves(ctx, inner.left, loadCss, by)
+      const b = wrapJsxLeaves(ctx, inner.right, loadCss, by)
+      return a || b
+    }
     default:
       return false
   }

@@ -119,6 +119,16 @@ const rows = {
     input: true,
     consumer: 'flight',
   },
+  // Astra review 2 (B3): the JSX of a `||` left operand is the result.
+  logicalOr: {
+    key: 'logical-or',
+    imports: streamImport,
+    body: `let evaluations = 0
+  const stream = renderToReadableStream(((++evaluations, data) && <Card />) || <Badge />)
+  return flight(stream, evaluations)`,
+    input: true,
+    consumer: 'flight',
+  },
   ternaryFalse: {
     key: 'ternary-false',
     imports: streamImport,
@@ -394,6 +404,7 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
   test.each([
     { argument: 'flag ? <Card /> : <Badge />', row: rows.ternary },
     { argument: 'flag && <Card />', row: rows.logicalAnd },
+    { argument: '(flag && <Card />) || <Badge />', row: rows.logicalOr },
   ])('renderToReadableStream($argument) styles the stream', async ({ row }) => {
     expect(await cardBackground(row)).toBe(CARD_BACKGROUND)
   })
@@ -404,6 +415,7 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
     { row: rows.ternary, text: 'MARK_CARD' },
     { row: rows.ternaryFalse, text: 'MARK_BADGE' },
     { row: rows.logicalAnd, text: 'MARK_CARD' },
+    { row: rows.logicalOr, text: 'MARK_CARD' },
     { row: rows.logicalFalse, text: '' },
   ])(
     'conditional stream $row.key selects its runtime input and evaluates it once',
