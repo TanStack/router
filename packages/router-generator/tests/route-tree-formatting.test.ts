@@ -6,11 +6,12 @@
 import { expect, test, vi } from 'vitest'
 import { Generator } from '../src'
 import { configOf, createApp, fileRoute, read, rootRoute, save } from './app'
+import type * as Prettier from 'prettier'
 
 const format = vi.hoisted(() => ({ calls: 0 }))
 
 vi.mock('prettier', async (importOriginal) => {
-  const prettier = await importOriginal<typeof import('prettier')>()
+  const prettier = await importOriginal<typeof Prettier>()
   return {
     ...prettier,
     format: (...args: Parameters<typeof prettier.format>) => {
