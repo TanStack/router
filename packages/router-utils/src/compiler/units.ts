@@ -676,15 +676,25 @@ export function statementRecipe(
     const unit = units[item.units[0]!]!
     if (unit.kind === 'export-default') {
       // `export default <expression>` evaluates its expression: a
-      // derived output (no module's default export) runs it as a statement
+      // derived output (no module's default export) runs it as a statement;
+      // an anonymous class stays named `default` while it evaluates (its
+      // static initialisers may read the name), as a property's value
       const value = (
         item.node as Extract<Node, { type: 'ExportDefaultDeclaration' }>
       ).declaration
+      let inner: Node = value
+      while (inner.type === 'ParenthesizedExpression') {
+        inner = inner.expression
+      }
+      const named =
+        (inner.type === 'ClassDeclaration' ||
+          inner.type === 'ClassExpression') &&
+        inner.id === null
       return [
         slice(item.range.start, item.exportKeyword!.start),
-        text('void ('),
+        text(named ? 'void { default: ' : 'void ('),
         slice(item.exportKeyword!.end, value.end),
-        text(')'),
+        text(named ? ' }' : ')'),
         slice(value.end, item.range.end),
       ]
     }
@@ -747,7 +757,15 @@ export function statementRecipe(
       return out
     }
     case 'export-list': {
-      const close = code.lastIndexOf('}', item.nodeRange.end)
+      // the list's own `}`: past the last specifier, a trailing comma and
+      // the comments (one may hold a `}`)
+      const specifiers = (
+        item.node as Extract<Node, { type: 'ExportNamedDeclaration' }>
+      ).specifiers
+      let close = nextToken(code, specifiers[specifiers.length - 1]!.end)
+      if (code[close] === ',') {
+        close = nextToken(code, close + 1)
+      }
       const out: Array<Frag> = [
         slice(item.range.start, item.nodeRange.start),
         text('export { '),

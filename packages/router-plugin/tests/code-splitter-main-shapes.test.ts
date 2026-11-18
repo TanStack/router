@@ -1119,6 +1119,28 @@ export const Route = createFileRoute('/')({ component: Page })
       ).toEqual(values)
     },
   )
+
+  // An anonymous default class is named `default` while it evaluates: the
+  // chunk's copy of the statement keeps the name its static initialiser
+  // reads. Source: the Astra core review 9.
+  it('splits a component reading what an anonymous default class writes while it is named', async () => {
+    const route = await loadRoute(
+      `${head}const names: Array<string> = []
+export default class {
+  static n = names.push(this.name)
+}
+function Page() { return <p>{names.join()}</p> }
+export const Route = createFileRoute('/')({ component: Page })
+`,
+    )
+    await expectValidModules(route)
+    expect(await route.isLazy('component')).toBe(true)
+    expect(
+      await route.run(
+        `return [exports.default.name, await render('component')]`,
+      ),
+    ).toEqual(['default', '<p>default</p>'])
+  })
 })
 
 // `main`'s shared module holds the names two option groups read (a staying
