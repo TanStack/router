@@ -5,8 +5,11 @@
  * a restart. Client code runs in a real browser page of the dev server
  * (`runViteClient`).
  */
+import { readFileSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
+import path from 'node:path'
 import react from '@vitejs/plugin-react'
+import { normalizePath } from 'vite'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
@@ -23,6 +26,7 @@ import {
   startBrowserStartDevServer,
 } from './importProtection/client-pages'
 import { reactApp } from './hydrate-dev-edits'
+import type { Plugin } from 'vite'
 
 /** Pre-bundled up front, as Vite does for an app that installed them (as hydrate-dev.test.ts). */
 const reactOptimizeDeps = {
@@ -220,6 +224,113 @@ describe('Vite dev: virtual modules of other plugins', () => {
       expect((await server.import('/src/uses-thing.ts')).thing).toBe(
         'MARK_USER_THING',
       )
+    },
+    timeout,
+  )
+
+  // One virtual id, a text per environment (Vite's `load` is per
+  // environment): each environment compiles against its own text, whichever
+  // requested the id first. Source: Astra review H1 (the client compiled
+  // against the SSR text read first).
+  test(
+    'each environment compiles against its own text of a virtual module',
+    async () => {
+      const id = '\0virtual:choice'
+      const texts: Record<string, string> = {
+        ssr: `export { createIsomorphicFn as choose } from '@tanstack/react-start'\n`,
+        client: `export const choose = () => ({ server: () => ({ client: () => () => 'PLAIN' }) })\n`,
+      }
+      const server = await startBrowserStartDevServer({
+        plugins: [
+          {
+            name: 'per-environment-virtual',
+            resolveId: (source) =>
+              source === 'virtual:choice' ? id : undefined,
+            load(loaded) {
+              return loaded === id ? texts[this.environment.name] : undefined
+            },
+          },
+        ],
+        files: {
+          'src/use.ts': `import { choose } from 'virtual:choice'
+export const run = choose().server(() => 'SSR_CHOICE').client(() => 'CLIENT_CHOICE')
+`,
+        },
+      })
+      expect((await server.import('/src/use.ts')).run()).toBe('SSR_CHOICE')
+      expect(
+        (await runViteClient(server, '/src/use.ts', 'return entry.run()'))
+          .result,
+      ).toBe('PLAIN')
+    },
+    timeout,
+  )
+
+  // A plugin regenerates its virtual module from a file its `load` watches
+  // (Vite invalidates the module with the file), and may put the module in
+  // the hot update itself: what compiled against the old text compiles
+  // again, though the module itself no longer imports it (the compiled
+  // `createIsomorphicFn` call drops its import). Source: Astra review H2
+  // (the old text's facts stayed until a restart).
+  test.each([
+    { update: 'its own hot update' },
+    { update: 'the watched file only' },
+  ])(
+    'a virtual module a plugin regenerates is read again by its importers ($update)',
+    async ({ update }) => {
+      const id = '\0virtual:choice'
+      const server = await startDevServer({
+        plugins: ({ root }) => {
+          const source = path.join(root, 'choice.txt')
+          const plugin: Plugin = {
+            name: 'regenerated-virtual',
+            resolveId: (spec) => (spec === 'virtual:choice' ? id : undefined),
+            load(loaded) {
+              if (loaded !== id) {
+                return undefined
+              }
+              this.addWatchFile(source)
+              return readFileSync(source, 'utf8') === '1'
+                ? `export const version = 1\nexport { createIsomorphicFn as choose } from '@tanstack/react-start'\n`
+                : `export const version = 2\nexport const choose = () => ({ server: () => ({ client: () => () => 'PLAIN' }) })\n`
+            },
+            hotUpdate: {
+              order: 'pre',
+              handler(ctx) {
+                if (
+                  update !== 'its own hot update' ||
+                  normalizePath(ctx.file) !== normalizePath(source)
+                ) {
+                  return undefined
+                }
+                const graph = this.environment.moduleGraph
+                const node = graph.getModuleById(id)
+                if (!node) {
+                  return undefined
+                }
+                graph.invalidateModule(node)
+                return [...new Set([...ctx.modules, node])]
+              },
+            },
+          }
+          return [plugin]
+        },
+        files: {
+          'choice.txt': '1',
+          'src/through.ts': `import { choose } from 'virtual:choice'
+export const run = choose().server(() => 'SSR_CHOICE').client(() => 'CLIENT_CHOICE')
+`,
+          'src/direct.ts': `export { version } from 'virtual:choice'\n`,
+        },
+      })
+      const read = async () => ({
+        version: (await server.import('/src/direct.ts')).version,
+        value: (await server.import('/src/through.ts')).run(),
+      })
+      expect(await read()).toEqual({ version: 1, value: 'SSR_CHOICE' })
+
+      await server.edit({ 'choice.txt': '2' })
+      expect(await read()).toEqual({ version: 2, value: 'PLAIN' })
     },
     timeout,
   )

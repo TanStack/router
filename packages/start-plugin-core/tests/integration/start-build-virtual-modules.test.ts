@@ -120,3 +120,53 @@ describe.each(['virtual:app', 'virtual:app.ts'])('%s', (id) => {
     timeout,
   )
 })
+
+describe('a virtual module whose text differs per environment', () => {
+  // Vite's `load` is per environment: each environment's compile reads the
+  // text its own environment loads (R36: the exact-id virtual load), whichever
+  // environment read the id first. Here one environment's text re-exports
+  // Start's `createIsomorphicFn` and the other's is an ordinary function of
+  // the same shape; the call is in a physical module. Source: Astra review
+  // H1 (the server compiled against the client's text).
+  const id = '\0virtual:choice'
+  const api = `export { createIsomorphicFn as choose } from '@tanstack/react-start'\n`
+  const plain = `export const choose = () => ({ server: () => ({ client: () => () => 'PLAIN' }) })\n`
+  const perEnvironment = (texts: Record<string, string>): Plugin => ({
+    name: 'test:per-environment-virtual',
+    resolveId: (source) => (source === 'virtual:choice' ? id : null),
+    load(loaded) {
+      return loaded === id ? (texts[this.environment.name] ?? null) : null
+    },
+  })
+  const entry = `import { choose } from 'virtual:choice'
+export const run = choose().server(() => 'SSR_CHOICE').client(() => 'CLIENT_CHOICE')
+`
+
+  test.each([
+    {
+      client: api,
+      ssr: plain,
+      expected: { client: 'CLIENT_CHOICE', ssr: 'PLAIN' },
+    },
+    {
+      client: plain,
+      ssr: api,
+      expected: { client: 'PLAIN', ssr: 'SSR_CHOICE' },
+    },
+  ])(
+    'each environment compiles against its own text (client $expected.client, ssr $expected.ssr)',
+    async ({ client, ssr, expected }) => {
+      const b = await buildStart({
+        bundler: 'vite',
+        files: { 'src/entry.ts': entry },
+        entry: 'src/entry.ts',
+        viteConfig: { plugins: [perEnvironment({ client, ssr })] },
+      })
+      expect({
+        client: (await b.client.run('return entry.run()')).result,
+        ssr: (await b.ssr.run('return entry.run()')).result,
+      }).toEqual(expected)
+    },
+    timeout,
+  )
+})

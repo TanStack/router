@@ -410,7 +410,7 @@ export function createRouterCompilerVitePlugin(
         s.compiler.caches,
         { path: normalizePath(file), kind },
         modules,
-        () => invalidatePath(s, file, kind),
+        (each) => invalidatePath(s, each.path, each.kind),
       )
     },
 

@@ -410,8 +410,14 @@ type InvalidationHosts = HostServices | ((key: PlanKey) => HostServices)
  * found stale enter their environment's stale set (`CompilerCaches.stale`),
  * and the host has its bundler build them again (the file's own modules are
  * its bundler's, which reported the event). A removed file's plans are
- * evicted, and every plan that read it is stale, unasked (held: their
- * modules wait for a file to appear).
+ * evicted, and every plan that read it is stale, unasked: held (its modules
+ * wait for a file to appear) unless every resolution of it that found the
+ * file finds another one now (`resolvedElsewhere`: a file turned into a
+ * folder), so its modules are built again at once.
+ * A virtual module's change (`path`: its id, reported by its host's update
+ * of the module, `staleHotUpdate`: its text is a `load`, which no file event
+ * names) marks its raw facts stale in every environment and re-validates
+ * its dependents; it moves no file, so no resolution is asked again.
  * Every file event, a repeat included, also re-resolves every failed
  * resolution of every env (one may hide a creation: a removal and a
  * re-creation the watcher folded into one change): a plan whose unresolved
@@ -443,7 +449,16 @@ export function invalidate(
 
 /** Whether a plan, a compile or the raw facts hold anything of `path`. */
 function knownAt(caches: CompilerCaches, path: string): boolean {
-  if (caches.rawFacts.knows(path)) {
+  return caches.rawFacts.knows(path) || dependedOn(caches, path)
+}
+
+/**
+ * Whether something depends on the text of `path`: a raw fact of it, a read
+ * in flight, a plan or a compile of it or one that read it (what an empty
+ * read waits for the text for: `readChange`).
+ */
+function dependedOn(caches: CompilerCaches, path: string): boolean {
+  if (caches.rawFacts.holds(path)) {
     return true
   }
   for (const cache of caches.plans.values()) {
@@ -460,9 +475,16 @@ async function applyChange(
   hosts: InvalidationHosts,
 ): Promise<void> {
   const path = event.path
-  if (event.kind !== 'registry') {
+  const virtual = isVirtualId(path)
+  if (virtual && !knownAt(caches, path)) {
+    // a virtual module's change (its host's update of it, `staleHotUpdate`)
+    // that nothing read changes no answer
+    return
+  }
+  if (event.kind !== 'registry' && !virtual) {
     // (before the read: an answer given from now on was asked after the
-    // file event, as the file was)
+    // file event, as the file was. A virtual module's change moves no
+    // file: its text is its host's `load`)
     caches.fileSetVersion++
   }
   // `imports` and `exports` decide what specifiers resolve to, as files
@@ -480,14 +502,16 @@ async function applyChange(
   /** A change to the text the caches read: a repeat of an applied event, or a file removed and created again unseen. */
   let repeat = false
   // (a virtual module has no file to read: its event always applies)
-  if (kind !== 'registry' && !isVirtualId(path)) {
+  if (kind !== 'registry' && !virtual) {
     // an event is judged by the file as it is: one delivered late (a
     // removal of a file that is back, a change of one that is gone) is
     // what the file says. A file the compiler has no language for is not
     // read: its event's kind stands
     const readable = resolverFile || identify(path).lang !== null
     if (readable || kind !== 'unlink') {
-      read = await caches.rawFacts.readChange(path, readable)
+      read = await caches.rawFacts.readChange(path, readable, () =>
+        dependedOn(caches, path),
+      )
       if (readable) {
         kind = read.text === null ? 'unlink' : kind === 'unlink' ? 'add' : kind
       }
@@ -574,8 +598,7 @@ async function applyChange(
       }
       let stale = fps.length === 0 && change.kind === 'registry'
       for (const fp of fps) {
-        // what read the removed file is stale, unasked (a resolver may
-        // still cache the file until its next compile)
+        // what read the removed file is stale, unasked
         if (
           (change.kind === 'unlink' && fingerprintPath(fp) === change.path) ||
           !(await checked(fp, src, host))
@@ -585,22 +608,24 @@ async function applyChange(
         }
       }
       if (stale) {
+        // (asked first: the eviction and the stale set's entry are one step)
+        const held =
+          change.kind === 'unlink' &&
+          !(await resolvedElsewhere(fps, change.path, src))
         cache.delete(entry.key)
         cache.bump(entry.key)
-        caches.stale.add(
-          cache.env,
-          identify(entry.key.canonicalId).path,
-          change.kind === 'unlink',
-        )
+        caches.stale.add(cache.env, identify(entry.key.canonicalId).path, held)
       }
     }
   }
   // any event of a file but its removal: a creation may hide in a change
   // (a removal and re-creation reported as one)
   // (a `package.json`'s repeat moved nothing: only its first event asks)
+  // (a virtual module's change moves no file: no resolution moves)
   const shadows =
-    change.kind === 'add' ||
-    (change.kind === 'change' && (!manifestAt || manifest))
+    !virtual &&
+    (change.kind === 'add' ||
+      (change.kind === 'change' && (!manifestAt || manifest)))
       ? shadowTest(change.path)
       : null
   for (const cache of caches.plans.values()) {
@@ -618,7 +643,7 @@ async function applyChange(
           !(change.kind === 'change' && fp.kind === 'resolution'),
       )
     }
-    if (kind !== 'registry') {
+    if (kind !== 'registry' && !virtual) {
       // failed resolutions have no path; re-resolve them all (the memo asks
       // the host once per distinct entry). Every file event asks them: one
       // may hide a creation (a removal and re-creation reported as one
@@ -668,6 +693,42 @@ async function applyChange(
       }
     }
   }
+}
+
+/**
+ * Whether a dependent of a removed file can compile now: every resolution
+ * of it that found the file finds another file (`./b` found `b.ts`, which
+ * was removed, and finds `b/index.ts`: a file turned into a folder), so
+ * its modules are built again at once. Otherwise (no resolution found the
+ * file, one finds nothing or still the file: a resolver may cache it until
+ * its next compile) the dependent is held: it waits for a file to appear
+ * (a removal the watcher reports before the file comes back: its modules
+ * would fail to build meanwhile). The resolutions are asked with the
+ * dependent's own resolver, so two importers of the file decide apart.
+ */
+async function resolvedElsewhere(
+  fps: ReadonlyArray<DependencyFingerprint>,
+  removed: string,
+  src: FingerprintSource,
+): Promise<boolean> {
+  let found = false
+  for (const fp of fps) {
+    if (fp.kind !== 'resolution' || fingerprintPath(fp) !== removed) {
+      continue
+    }
+    const now = await src
+      .resolution(fp.importer, fp.specifier)
+      .catch(() => null)
+    if (
+      now === null ||
+      now === EXTERNAL_RESOLUTION ||
+      pathOfId(now) === removed
+    ) {
+      return false
+    }
+    found = true
+  }
+  return found
 }
 
 /**

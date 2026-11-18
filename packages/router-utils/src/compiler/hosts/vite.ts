@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { isAbsolute } from 'node:path'
 import { deriveId, identify } from '../identity'
+import { isVirtualId } from '../facts'
 import { positionSuffix } from '../diagnostics'
 import type { DiagnosticPosition } from '../diagnostics'
 import type { CompilerCaches } from '../host'
@@ -149,7 +150,9 @@ interface StaleEnvironment<TNode> {
 /**
  * Design 3's `hotUpdate` of a Vite host (router and Start): the event
  * forwarded (`forward`, the host's invalidation: every hook forwards, the
- * core compares), the event's own modules that the file's current plan
+ * core compares), then a change of each virtual module the update names
+ * (`updatedVirtualIds`: no file event names a virtual module, and its text,
+ * a plugin's `load`, may have changed), the event's own modules that the file's current plan
  * still produces (`liveModules`), and the environment's stale set, its
  * modules invalidated and handed to Vite with them (a creation takes the
  * held paths too). The event's file leaves the set first: its modules are
@@ -173,9 +176,15 @@ export async function staleHotUpdate<
   caches: CompilerCaches,
   change: { path: string; kind: 'change' | 'add' | 'unlink' },
   modules: Array<T>,
-  forward: () => Promise<void>,
+  forward: (change: {
+    path: string
+    kind: 'change' | 'add' | 'unlink'
+  }) => Promise<void>,
 ): Promise<Array<T> | undefined> {
-  await forward()
+  await forward(change)
+  for (const path of updatedVirtualIds(modules, change.path)) {
+    await forward({ path, kind: 'change' })
+  }
   const live =
     (await liveModules(environment, caches, change.path, modules)) ?? modules
   caches.stale.drop(environment.name, [change.path])
@@ -185,6 +194,41 @@ export async function staleHotUpdate<
     change.kind === 'add',
   ).filter((node) => !live.includes(node))
   return stale.length > 0 || live !== modules ? [...live, ...stale] : undefined
+}
+
+/**
+ * The virtual modules a hot update tells changed, by the path the caches
+ * index them by: a module of the update (a plugin that regenerated one puts
+ * it there), and a direct importer of one (Vite records a file a virtual
+ * module's `load` watched, `addWatchFile`, as an import of the module, and
+ * invalidates the module with the file). Vite's own update of a file lists
+ * the file's modules only, none of them virtual; a virtual module that
+ * merely imports the file reads its text again for nothing (its facts stay
+ * the same, so no dependent is stale).
+ */
+function updatedVirtualIds(
+  modules: ReadonlyArray<{
+    id: string | null
+    importers: ReadonlySet<unknown>
+  }>,
+  file: string,
+): Set<string> {
+  const out = new Set<string>()
+  const add = (id: string | null) => {
+    if (id !== null) {
+      const path = identify(id).path
+      if (path !== file && isVirtualId(path)) {
+        out.add(path)
+      }
+    }
+  }
+  for (const m of modules) {
+    add(m.id)
+    for (const importer of m.importers) {
+      add((importer as { id?: string | null }).id ?? null)
+    }
+  }
+  return out
 }
 
 /**
