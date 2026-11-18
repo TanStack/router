@@ -2,8 +2,6 @@ import type { TanStackStartOutputConfig } from './schema'
 
 export type CompileStartFrameworkOptions = 'react' | 'solid' | 'vue'
 
-export type ServerFnLookupAccess = { origin: 'client' } | { origin: 'server' }
-
 export type SerializationRuntime = 'client' | 'server'
 
 export interface SerializationAdapterModuleRef {
