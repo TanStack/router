@@ -1,5 +1,6 @@
 // Keep this filename free of a secondary extension so declaration generation
 // can rewrite relative imports for both ESM and CJS.
+import { parseHref } from '@tanstack/history'
 import { isNotFound } from './not-found'
 import { isRedirect } from './redirect'
 import {
@@ -2198,6 +2199,29 @@ declare global {
   }
 }
 
+/**
+ * Returns the URL the document was loaded from when the browser history has
+ * moved to another entry before hydration, e.g. Back to an entry that shares
+ * the reloaded document, which fires `popstate` before any script runs.
+ */
+function getDocumentHrefIfLeft(historyHref: string): string | undefined {
+  const current = window.location
+  const entry = current && performance.getEntriesByType('navigation')[0]
+  if (entry) {
+    const documentUrl = new URL(entry.name)
+    const documentHref = documentUrl.pathname + documentUrl.search
+    const currentHref = current.pathname + current.search
+    // Only a history that reflects `window.location` has left the document.
+    if (
+      documentHref !== currentHref &&
+      historyHref === currentHref + current.hash
+    ) {
+      return documentHref
+    }
+  }
+  return undefined
+}
+
 export async function hydrate(router: AnyRouter): Promise<void> {
   if (process.env.NODE_ENV !== 'production' && !window.$_TSR) {
     throw new Error(
@@ -2254,10 +2278,16 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     // Hydration trusts transported context and beforeLoad. The raw history
     // entry owns the handoff; route structure is verified after rematching.
     const historyLocation = router.history.location
-    handoffHistoryHref = historyLocation.href
+    const documentHref = getDocumentHrefIfLeft(historyLocation.href)
+    handoffHistoryHref = documentHref ?? historyLocation.href
     handoffHistoryState = historyLocation.state
     router.updateLatestLocation()
-    location = router.latestLocation
+    // The server markup belongs to the document's URL. If the window has
+    // left it, hydrate that URL; the load after mount moves to the current one.
+    location =
+      documentHref === undefined
+        ? router.latestLocation
+        : router.parseLocation(parseHref(documentHref, undefined))
     router.stores.location.set(location)
     candidates = router.matchRoutes(location, {
       _controller: controller,
