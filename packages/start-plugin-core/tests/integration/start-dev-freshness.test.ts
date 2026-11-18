@@ -252,3 +252,110 @@ export const newFn = createServerFn().handler(() => 'MARK_NEW')
     timeout,
   )
 })
+
+describe('Vite dev: a server fn file deleted while its compile waits', () => {
+  // `display.ts` defines a server fn on `./label`. The compile of its new
+  // text (its hot update compiles it in SSR at once: the fn's handler
+  // module is in SSR's graph) waits on the resolution of `./label` while
+  // the file is deleted, and ends after the deletion (or, the control,
+  // before it). Nothing of the deleted file stays: a file `./label` may now
+  // find (`label.js`) asks no resolution on its behalf, and its server fn
+  // is not registered again (a call of its id is refused like an unknown
+  // id's). The file created again with the same text compiles and answers.
+  // Source: Astra round 3 (hosts B3, architecture B3).
+  const display = `import { createServerFn } from '@tanstack/react-start'
+import { label } from './label'
+export const fn = createServerFn().handler(() => label)
+`
+  test.each([
+    ['ends after the deletion', true],
+    ['ends before the deletion', false],
+  ])(
+    'the compile %s: no resolution asked for it, its server fn not registered',
+    async (_, deleteFirst) => {
+      let armed: { reached: () => void; release: Promise<void> } | null = null
+      let release!: () => void
+      let removed!: () => void
+      const removal = new Promise<void>((resolve) => {
+        removed = resolve
+      })
+      let asked: Array<string> | null = null
+      const server = await startDevServer({
+        plugins: [
+          {
+            name: 'test:slow-label',
+            enforce: 'pre',
+            async resolveId(source, importer) {
+              if (
+                source !== './label' ||
+                !importer?.split('?')[0]!.endsWith('/src/display.ts')
+              ) {
+                return null
+              }
+              asked?.push(this.environment.name)
+              if (this.environment.name === 'ssr' && armed) {
+                const held = armed
+                armed = null
+                held.reached()
+                await held.release
+              }
+              return null
+            },
+            // (the client's hooks run first: Start applied the removal)
+            hotUpdate: {
+              order: 'post',
+              handler({ file, type }) {
+                if (
+                  this.environment.name === 'client' &&
+                  type === 'delete' &&
+                  file.endsWith('/src/display.ts')
+                ) {
+                  removed()
+                }
+              },
+            },
+          },
+        ],
+        files: {
+          ...startRequestFiles,
+          'src/label.ts': `export const label = 'MARK_LABEL'\n`,
+          'src/display.ts': display,
+        },
+      })
+      const { fn } = await server.import('/src/display.ts')
+      const reached = new Promise<void>((resolve) => {
+        armed = {
+          reached: resolve,
+          release: new Promise<void>((r) => {
+            release = r
+          }),
+        }
+      })
+      await server.write({ 'src/display.ts': `// edited\n${display}` })
+      await reached
+      if (deleteFirst) {
+        await server.write({ 'src/display.ts': null })
+        await removal
+        release()
+      } else {
+        release()
+        await server.settle()
+        await server.write({ 'src/display.ts': null })
+      }
+      await server.settle()
+
+      asked = []
+      await server.edit({ 'src/label.js': `export const label = 'MARK_JS'\n` })
+      expect(asked).toEqual([])
+      await expect(callServerFn(server, fn)).rejects.toThrow(
+        'Invalid server function ID',
+      )
+
+      // (`./label` now finds `label.js`)
+      await server.edit({ 'src/display.ts': display })
+      const back = await server.import('/src/display.ts')
+      expect(await callServerFn(server, back.fn)).toBe('MARK_JS')
+    },
+    timeout,
+  )
+})

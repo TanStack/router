@@ -169,10 +169,12 @@ export interface CompileOutput {
   /** The output the request mapped to. */
   output: OutputId
   /**
-   * A request of another text of the module arrived while this one was
-   * answered: this output is of a superseded text, whose plan was not
-   * published. A host publishes nothing of it that a newer compile may
-   * have published (the newer text's facts stand).
+   * The text this output was compiled from was superseded while it was
+   * answered (a request of another text of the module, or a file event
+   * that read another text, removed the file or cannot compare its text),
+   * and its plan was not published. A host publishes nothing of it that a
+   * newer compile may have published (the newer text's facts stand) or
+   * that the file's removal took away.
    */
   superseded?: true
 }
@@ -549,13 +551,45 @@ async function applyChange(
   }
   const change: InvalidateChange = { path, kind }
   const hostOf = typeof hosts === 'function' ? hosts : () => hosts
-  if (kind === 'unlink' || kind === 'registry') {
-    // (a changed file's plans of another text go below, with its holds)
+  if (kind === 'registry') {
     for (const cache of caches.plans.values()) {
       for (const key of cache.keysAt(path)) {
         cache.delete(key)
         cache.bump(key)
       }
+    }
+  }
+  /**
+   * The text the file's plans answer for from now on: the event's.
+   * `undefined`: the event has none to compare with theirs: the file is
+   * gone, or the compiler does not read it (a module another plugin
+   * compiles from it, compiled in place, reads the same at every event: a
+   * repeat of one is applied too). `null`: the plans stay (an event that
+   * read the text the caches read, a virtual module's change, a registry
+   * change).
+   */
+  const text =
+    kind === 'registry' || virtual
+      ? null
+      : kind === 'unlink' || !compiled
+        ? undefined
+        : unchanged || repeat
+          ? null
+          : (read?.revision ?? null)
+  if (text !== null) {
+    // a plan answers for its file's text: what a former text left behind
+    // ends with the file's own event, in every environment
+    for (const cache of caches.plans.values()) {
+      for (const key of cache.keysAt(path)) {
+        if (cache.supersede(key, text)) {
+          // evicted outside its own compile: the bundler builds the
+          // file's modules again from its event; one that skipped them
+          // (webpack, a content-hash snapshot of a file written unchanged)
+          // finds the file here
+          caches.stale.add(cache.env, path)
+        }
+      }
+      caches.stale.unhold(cache.env, path)
     }
   }
   if (kind === 'unlink') {
@@ -564,22 +598,6 @@ async function applyChange(
     caches.removed?.(path)
   } else if (!unchanged && !repeat) {
     caches.rawFacts.markStale(path, read)
-    if (compiled && read !== undefined && read.text !== null) {
-      // a plan answers for its file's text: what a former text left behind
-      // ends with the file's own event, in every environment
-      for (const cache of caches.plans.values()) {
-        for (const key of cache.keysAt(path)) {
-          if (cache.supersede(key, read.revision)) {
-            // evicted outside its own compile: the bundler builds the
-            // file's modules again from its event; one that skipped them
-            // (webpack, a content-hash snapshot of a file written unchanged)
-            // finds the file here
-            caches.stale.add(cache.env, path)
-          }
-        }
-        caches.stale.unhold(cache.env, path)
-      }
-    }
   }
   if (kind === 'registry') {
     // a module the host's route gate skipped has no plan to evict, and its

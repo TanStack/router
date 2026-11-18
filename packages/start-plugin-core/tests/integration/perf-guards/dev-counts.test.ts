@@ -9,6 +9,7 @@
  */
 import { existsSync } from 'node:fs'
 import path from 'node:path'
+import mdx from '@mdx-js/rollup'
 import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { compilerStats } from '@tanstack/router-utils/compiler'
 import { startDevServer } from '../../dev-server'
@@ -295,7 +296,7 @@ const leftBack = async (server: Server) => {
   expect(sent).not.toContain('ssr full-reload *')
   expect(sent.join('\n')).not.toContain('/src/entry.ts')
 }
-const createOther = (server: Server) =>
+const createOther = (server: Pick<Server, 'edit'>) =>
   server.edit({ 'src/other.ts': `export const other = 0\n` })
 
 describe('Vite dev: a module whose import moves to another file, the old one removed', () => {
@@ -437,6 +438,101 @@ describe('Vite dev: a module whose import is removed and comes back', () => {
       expect(client['/src/left.ts']).toContain('MARK_back')
       await server.idle()
       expect(server.stale('stalePaths')).toBe(0)
+    },
+    timeout,
+  )
+})
+
+describe('Vite dev: a module whose removed import its client output does not import, requested again with no event of its own', () => {
+  // `page.ts`'s server fn handler reads `left.ts`; the client output drops
+  // the handler and the import. Removing `left.ts` holds `page.ts` in the
+  // client (its plan read the file). Vite then requests `page.ts` again
+  // with no event of its own (its optimizer finding a new dependency
+  // invalidates every module, as a plugin's `invalidateModule` does one):
+  // the compile reads the file missing, and the hold ends there, so a file
+  // created later updates nothing. Source: Astra round 3 (changes since
+  // c99ee06725, A2/M1: no row covered the release at a compile).
+  test(
+    'a file created later updates nothing',
+    async () => {
+      const stale = staleSince('start:vite')
+      const server = await startDevServer({
+        files: {
+          'src/left.ts': `export const left = 'MARK_left'\n`,
+          'src/page.ts': `import { createServerFn } from '@tanstack/react-start'
+import { left } from './left'
+export const fn = createServerFn().handler(async () => left)
+`,
+        },
+      })
+      await server.load('/src/page.ts')
+      await server.idle()
+      await server.edit({ 'src/left.ts': null })
+      expect(stale('staleHeld')).toBe(1)
+
+      server.vite.environments.client.moduleGraph.invalidateAll()
+      await server.load('/src/page.ts')
+      await server.idle()
+      expect(stale('staleHeld')).toBe(0)
+      expect(await createOther(server)).toEqual([])
+    },
+    timeout,
+  )
+})
+
+/**
+ * `startLeft` with the importer a module another plugin compiles in place
+ * (`src/entry.mdx`, `@mdx-js/rollup`): the compiler reads no MDX, so a file
+ * event cannot compare the file's text with its plan's.
+ */
+const startLeftMdx = async () => {
+  const stale = staleSince('start:vite')
+  const server = await startDevServer({
+    plugins: [{ enforce: 'pre', ...mdx() }],
+    files: {
+      'src/left.ts': serverFnFile('left'),
+      'src/entry.mdx': reExport('left'),
+      'src/server.ts': `export const load = () => import('./entry.mdx')\n`,
+    },
+  })
+  const ssrTag = async () =>
+    (await (await server.import('/src/server.ts')).load()).tag as string
+  expect(await ssrTag()).toBe('MARK_left')
+  await server.load('/src/entry.mdx')
+  await server.idle()
+  return Object.assign(server, { stale, ssrTag })
+}
+
+describe('Vite dev: an MDX module whose import moves to another file, the old one removed', () => {
+  // The rename by hand of the matrix above, with the importer in MDX. Its
+  // own event ends its plan of the former text in every environment, as a
+  // TypeScript importer's does: the removal finds nothing that waits for
+  // the old file, and a file created later updates nothing (it reloaded
+  // the SSR entry and sent the MDX module again). Source: Astra round 3
+  // (hosts B2).
+  test.each([
+    ['the import moved, then the old file removed', true],
+    ['the old file removed, then the import moved', false],
+  ])(
+    '%s, nothing requested: a file created later updates nothing',
+    async (_, moveFirst) => {
+      const server = await startLeftMdx()
+      const move = () =>
+        server.edit({
+          'src/right.ts': serverFnFile('right'),
+          'src/entry.mdx': reExport('right'),
+        })
+      const remove = () => server.edit({ 'src/left.ts': null })
+      if (moveFirst) {
+        await move()
+        await remove()
+      } else {
+        await remove()
+        await move()
+      }
+      expect.soft(server.stale('stalePaths')).toBe(0)
+      expect(await createOther(server)).toEqual([])
+      expect(await server.ssrTag()).toBe('MARK_right')
     },
     timeout,
   )

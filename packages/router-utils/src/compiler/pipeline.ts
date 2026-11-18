@@ -383,7 +383,7 @@ async function settle(
       return { kind: 'plan', entry }
     }
     if (cache.latestRevision(key) !== rev) {
-      // superseded by a newer save: this text is stale; never publish, but answer its requests
+      // superseded (a newer save, the file removed): this text is stale; never publish, but answer its requests
       return { kind: 'plan', entry }
     }
     overtaken = entry

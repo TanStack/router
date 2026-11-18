@@ -276,8 +276,8 @@ directives, never license comments.
 | D     | emission of the requested output, on demand                                                                                                                                                                                                                         |
 
 Tier 1 (units, symbols, classified references) is built only when a planner needs it. Phase C restarts the compile
-(up to 3 attempts) when a dependency changed underneath it; a compile overtaken by a newer revision of its own file is
-returned but not published, and an output answered at a superseded revision says so (`CompileOutput.superseded`: a
+(up to 3 attempts) when a dependency changed underneath it; a compile overtaken by a newer revision of its own file, or
+by its file's event, is returned but not published, and an output answered at a superseded revision says so (`CompileOutput.superseded`: a
 host publishes nothing of it, such as Start's server-function registry). A revision is newer by its request's arrival, noted once: a request that waits (a plan hit's
 validation, a compile it shares) and then compiles never takes back the latest revision from one that arrived meanwhile. Requests of one text share one compile: a request (any id of the file) arriving while that
 text compiles waits for it and emits its own output from the result.
@@ -316,8 +316,11 @@ text compiles waits for it and emits its own output from the result.
     re-validates dependents' fingerprints with each environment's own resolver (a resolver that throws makes the plan
     stale, and its next compile reports the error). A plan answers for its file's text: the file's change evicts its
     plans of another text in every environment and makes the event's text the key's latest, so a compile of a former
-    text still running answers its requests without publishing (`PlanCache.supersede`). A plan of the text the event
-    read stays, with its rows (a touch, a request of the new text ahead of its event); an evicted one's file enters the
+    text still running answers its requests without publishing (`PlanCache.supersede`). An own-file event whose text
+    cannot be compared with the plans' (the file removed, or a file the compiler does not read: a module another plugin
+    compiles from it, compiled in place, such as `.mdx` or a Vue SFC's blocks, whose every event reads the same)
+    supersedes the key outright: its plans go, and no compile running publishes until a request notes its text. A plan
+    of the text the event read stays, with its rows (a touch, a request of the new text ahead of its event); an evicted one's file enters the
     stale set, for a bundler that skipped building it (webpack's content-hash snapshot of a file written unchanged
     after a loader before the compiler rewrote it; the takers let the event's own file go). A compile of a key's
     latest text without a plan (untouched, empty, not parsed) evicts the plan of an older one. A removal evicts the file's plans and stales every plan that read the
