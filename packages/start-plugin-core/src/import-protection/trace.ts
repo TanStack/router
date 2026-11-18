@@ -1,5 +1,9 @@
 import path from 'node:path'
-import { identify } from '@tanstack/router-utils/compiler'
+import {
+  identify,
+  langFromId,
+  parseModule,
+} from '@tanstack/router-utils/compiler'
 import { Locator } from './locate'
 import {
   findPatternImport,
@@ -144,29 +148,52 @@ function locateIn<T>(
   return { loc, frame: loc && locator.frame(loc), value: found.value }
 }
 
-/** The marker import that restricts `file` (the kind a violation in `envType` is denied by), with its line. */
+/**
+ * The marker import that restricts `file` (the kind a violation in
+ * `envType` is denied by), located at its specifier: the first import or
+ * re-export of the file's parsed module records naming it (a report's
+ * rare path; a file that is no JavaScript or does not parse: no position).
+ */
 function markerOf(
   ctx: ReportContext,
   file: string,
   envType: 'client' | 'server',
-): { specifier: string; line: number | null } | null {
+): { specifier: string; loc: OriginalLocation | null } | null {
   const kind = envType === 'client' ? 'server-only' : 'client-only'
   const specifiers = Object.entries(ctx.config.markerSpecifiers)
     .filter(([, k]) => k === kind)
     .map(([s]) => s)
   const site = locateIn(ctx.readSource, file, (text) => {
+    const lang = langFromId(file)
+    const parsed =
+      lang && parseModule(text, { lang, sourceType: 'module', path: file })
+    if (!parsed || !parsed.ok) {
+      return null
+    }
     let best: { offset: number; value: string } | null = null
-    for (const s of specifiers) {
-      for (const quote of ["'", '"']) {
-        const i = text.indexOf(`${quote}${s}${quote}`)
-        if (i >= 0 && (best === null || i < best.offset)) {
-          best = { offset: i, value: s }
-        }
+    for (const record of [...parsed.file.imports, ...parsed.file.exports]) {
+      const s = record.specifier
+      if (s === null || record.typeOnly || !specifiers.includes(s)) {
+        continue
+      }
+      // (a named import's record is its specifier: the declaration holds the literal)
+      const node = /^Import.*Specifier$/.test(record.node.type)
+        ? parsed.file.parentOf(record.node)!
+        : record.node
+      const literal =
+        'source' in node && node.source
+          ? node.source
+          : node.type === 'CallExpression'
+            ? node.arguments[0]
+            : undefined
+      const offset = literal?.start ?? node.start
+      if (best === null || offset < best.offset) {
+        best = { offset, value: s }
       }
     }
     return best
   })
-  return site && { specifier: site.value, line: site.loc?.line ?? null }
+  return site && { specifier: site.value, loc: site.loc }
 }
 
 function deniedBy(info: ViolationInfo, ctx: ReportContext): string {
@@ -178,7 +205,7 @@ function deniedBy(info: ViolationInfo, ctx: ReportContext): string {
   const marker = markerOf(ctx, identify(marked).path, info.envType)
   const restricted = info.envType === 'client' ? 'the server' : 'the client'
   return marker
-    ? `  Denied by marker: ${relativizePath(marked, ctx.config.root)} imports "${marker.specifier}"${marker.line !== null ? ` (line ${marker.line})` : ''}, which restricts it to ${restricted}`
+    ? `  Denied by marker: ${relativizePath(marked, ctx.config.root)}${marker.loc ? `:${marker.loc.line}:${marker.loc.column}` : ''} imports "${marker.specifier}", which restricts it to ${restricted}`
     : `  Denied by marker: ${relativizePath(marked, ctx.config.root)} is restricted to ${restricted}`
 }
 
