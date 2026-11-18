@@ -1,6 +1,5 @@
 import * as Vue from 'vue'
 import { isServer } from '@tanstack/router-core/isServer'
-import { lazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import { Outlet } from './Match'
 import { ClientOnly } from './ClientOnly'
 import type { LazyRouteComponentHot } from '@tanstack/router-core/hmr'
@@ -190,37 +189,34 @@ export function lazyRouteComponent<
   ) {
     // One ref per wrapper, shared by all of its instances.
     const version = Vue.shallowRef(0)
-    ;(lazyComp as any).__tsrHot = lazyRouteComponentHot(
+    const hot: VueLazyRouteComponentHot = {
       importer,
-      exportName as string | undefined,
-      {
-        retarget: (nextImporter, nextExportName) => {
-          importer = nextImporter as () => Promise<T>
-          exportName = nextExportName as TKey | undefined
-          return comp !== null || loadPromise !== undefined || !!error
-        },
-        pending: () => loadPromise,
-        setPending: (promise) => {
-          loadPromise = promise
-        },
-        held: () => comp,
-        settle: (next, nextError) => {
-          comp = next
-          error = nextError
-          version.value++
-        },
+      exportName: exportName as string | undefined,
+      retarget: (nextImporter, nextExportName) => {
+        importer = nextImporter as () => Promise<T>
+        exportName = nextExportName as TKey | undefined
+        return comp !== null || loadPromise !== undefined || !!error
       },
-      {
-        version,
-        // A failed hot import renders as a component that throws it.
-        read: () =>
-          error
-            ? Vue.markRaw(() => {
-                throw error
-              })
-            : comp && Vue.markRaw(comp),
+      pending: () => loadPromise,
+      setPending: (promise) => {
+        loadPromise = promise
       },
-    )
+      held: () => comp,
+      settle: (next, nextError) => {
+        comp = next
+        error = nextError
+        version.value++
+      },
+      version,
+      // A failed hot import renders as a component that throws it.
+      read: () =>
+        error
+          ? Vue.markRaw(() => {
+              throw error
+            })
+          : comp && Vue.markRaw(comp),
+    }
+    ;(lazyComp as any).__tsrHot = hot
   }
 
   return lazyComp as any

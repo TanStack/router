@@ -2,7 +2,6 @@ import { Dynamic } from 'solid-js/web'
 import { createSignal, lazy } from 'solid-js'
 import { isModuleNotFoundError } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { lazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import type { LazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import type { AsyncRouteComponent } from './route'
 
@@ -133,36 +132,33 @@ export function lazyRouteComponent<
     !(isServer ?? typeof window === 'undefined')
   ) {
     const [version, setVersion] = createSignal(0)
-    ;(Lazy as any).__tsrHot = lazyRouteComponentHot(
+    const hot: SolidLazyRouteComponentHot = {
       importer,
-      exportName as string | undefined,
-      {
-        retarget: (nextImporter, nextExportName) => {
-          importer = nextImporter as () => Promise<T>
-          exportName = nextExportName as TKey | undefined
-          return comp !== undefined || loadPromise !== undefined || !!error
-        },
-        pending: () => loadPromise,
-        setPending: (promise) => {
-          loadPromise = promise
-        },
-        held: () => comp,
-        settle: (next, nextError) => {
-          comp = next
-          error = nextError
-          setVersion((v) => v + 1)
-        },
+      exportName: exportName as string | undefined,
+      retarget: (nextImporter, nextExportName) => {
+        importer = nextImporter as () => Promise<T>
+        exportName = nextExportName as TKey | undefined
+        return comp !== undefined || loadPromise !== undefined || !!error
       },
-      {
-        read: () => {
-          version()
-          if (error) {
-            throw error
-          }
-          return comp
-        },
+      pending: () => loadPromise,
+      setPending: (promise) => {
+        loadPromise = promise
       },
-    )
+      held: () => comp,
+      settle: (next, nextError) => {
+        comp = next
+        error = nextError
+        setVersion((v) => v + 1)
+      },
+      read: () => {
+        version()
+        if (error) {
+          throw error
+        }
+        return comp
+      },
+    }
+    ;(Lazy as any).__tsrHot = hot
   }
 
   return Lazy as any

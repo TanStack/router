@@ -62,32 +62,16 @@ function whenSettled(adapter: RouteHmrAdapter, apply: () => void): void {
 }
 
 /**
- * Dev-only hot slot of a lazy route component (`lazyRouteComponent(...).__tsrHot`),
- * present on the client only (`lazyRouteComponentHot`). Not a public API.
+ * Dev-only hot slot of a lazy route component (`lazyRouteComponent(...).__tsrHot`):
+ * what the route HMR runtime reads and changes in its framework's wrapper,
+ * with the framework's own fields. The wrapper builds it in its dev-only
+ * block, on the client only, without importing this module: production and
+ * server code never load the runtime. Not a public API.
  */
 export interface LazyRouteComponentHot {
   /** The importer and export name the wrapper was created with. */
   readonly importer: () => Promise<any>
   readonly exportName: string | undefined
-  /** Points the wrapper at a new importer (see `lazyRouteComponentHot`). */
-  update: (
-    importer: () => Promise<any>,
-    exportName: string | undefined,
-    adapter: RouteHmrAdapter,
-  ) => void
-  /**
-   * Settles with the module the wrapper's chunk evaluated to again on its
-   * own, which its framework's refresh just patched (see
-   * `lazyRouteComponentHot`).
-   */
-  take: (module: Record<string, any>, adapter: RouteHmrAdapter) => void
-}
-
-/**
- * What the hot slot of a lazy route component reads and changes in its
- * framework's wrapper (built in the wrapper's dev-only block).
- */
-export interface LazyRouteComponentPort {
   /** Points the wrapper's later loads at `importer`; whether the wrapper has loaded, is loading or failed. */
   retarget: (
     importer: () => Promise<any>,
@@ -102,105 +86,119 @@ export interface LazyRouteComponentPort {
   settle: (component: any, error: unknown) => void
 }
 
+// Per hot slot, the export its wrapper reads since a route update pointed
+// it at another one (`updateLazyRouteComponent`); else the one it was
+// created with.
+const currentExports = new WeakMap<LazyRouteComponentHot, string>()
+
+function currentExportOf(hot: LazyRouteComponentHot): string {
+  return currentExports.get(hot) ?? hot.exportName ?? 'default'
+}
+
 /**
- * The hot slot of a lazy route component, with the framework's own fields
- * (`extra`). `update` re-imports through the new importer when the wrapper
- * has loaded (or is loading), then, once the adapter's refresh settled
- * (`settled`), keeps the held component if `keep(loaded, held)` says so (the
- * framework's refresh runtime patches it in place) or swaps to the loaded
- * one, and re-renders the wrapper either way (a failure it held is over); a
- * failed import leaves a wrapper holding a component as it is. A
- * module its chunk handed over (`applyRouteChunkHmr`) evaluated again on its
- * own: its framework's refresh patched it as it patches a route module, so
- * `keepPatched` decides instead.
- * The newest import is the only one whose completion counts: an older one
- * that completes while a newer one is pending settles with the newer one. A
- * wrapper that never loaded only takes the new importer for its first load.
- * `take` settles the same way with a module its chunk handed over, keeping
- * the importer; a wrapper that holds nothing, or a module without its
- * export, is left alone.
- *
- * Dev-only, called by the framework packages' `lazyRouteComponent` on the
- * client; not a public API.
+ * Settles the wrapper of `hot` with the export `name` of what `loading`
+ * resolves to (see `updateLazyRouteComponent`).
  */
-export function lazyRouteComponentHot<TExtra extends object>(
+function settleWith(
+  hot: LazyRouteComponentHot,
+  loading: Promise<any>,
+  name: string,
+  adapter: RouteHmrAdapter,
+): void {
+  const promise: Promise<any> = loading.then(
+    (res) => {
+      if (hot.pending() !== promise) {
+        return hot.pending()
+      }
+      const next = res[name]
+      const keep = handedOver.has(res) ? adapter.keepPatched : adapter.keep
+      const take = () => {
+        if (hot.pending() !== promise) {
+          return hot.pending()
+        }
+        hot.setPending(undefined)
+        const held = hot.held()
+        // a kept component stays (its refresh runtime patches it); either
+        // way a failure the wrapper held is over
+        hot.settle(held != null && keep?.(next, held) ? held : next, undefined)
+        return hot.held()
+      }
+      const held = hot.held()
+      if (held == null || next === held) {
+        // nothing the refresh could patch
+        return take()
+      }
+      return new Promise((resolve) => {
+        whenSettled(adapter, () => resolve(take()))
+      })
+    },
+    (err) => {
+      if (hot.pending() !== promise) {
+        return hot.pending()
+      }
+      hot.setPending(undefined)
+      // A component the wrapper holds keeps rendering, as on main: the
+      // bundler's HMR client reports the chunk's failure, and the edit
+      // that fixes it patches the component in place. A wrapper holding
+      // none (its first load failed) holds the new failure.
+      const held = hot.held()
+      if (held == null) {
+        hot.settle(held, err)
+      }
+      return undefined
+    },
+  )
+  hot.setPending(promise)
+}
+
+/**
+ * Points the lazy wrapper of `hot` at a new importer. It re-imports
+ * through it when the wrapper has loaded (or is loading), then, once the
+ * adapter's refresh settled (`settled`), keeps the held component if
+ * `keep(loaded, held)` says so (the framework's refresh runtime patches it
+ * in place) or swaps to the loaded one, and re-renders the wrapper either
+ * way (a failure it held is over); a failed import leaves a wrapper holding
+ * a component as it is. A module its chunk handed over
+ * (`applyRouteChunkHmr`) evaluated again on its own: its framework's
+ * refresh patched it as it patches a route module, so `keepPatched` decides
+ * instead. The newest import is the only one whose completion counts: an
+ * older one that completes while a newer one is pending settles with the
+ * newer one. A wrapper that never loaded only takes the new importer for
+ * its first load.
+ *
+ * Dev-only, client-only; not a public API.
+ */
+export function updateLazyRouteComponent(
+  hot: LazyRouteComponentHot,
   importer: () => Promise<any>,
   exportName: string | undefined,
-  port: LazyRouteComponentPort,
-  extra: TExtra,
-): LazyRouteComponentHot & TExtra {
-  let currentExport = exportName ?? 'default'
-  const settleWith = (
-    loading: Promise<any>,
-    name: string,
-    adapter: RouteHmrAdapter,
-  ) => {
-    const promise: Promise<any> = loading.then(
-      (res) => {
-        if (port.pending() !== promise) {
-          return port.pending()
-        }
-        const next = res[name]
-        const keep = handedOver.has(res) ? adapter.keepPatched : adapter.keep
-        const take = () => {
-          if (port.pending() !== promise) {
-            return port.pending()
-          }
-          port.setPending(undefined)
-          const held = port.held()
-          // a kept component stays (its refresh runtime patches it); either
-          // way a failure the wrapper held is over
-          port.settle(
-            held != null && keep?.(next, held) ? held : next,
-            undefined,
-          )
-          return port.held()
-        }
-        const held = port.held()
-        if (held == null || next === held) {
-          // nothing the refresh could patch
-          return take()
-        }
-        return new Promise((resolve) => {
-          whenSettled(adapter, () => resolve(take()))
-        })
-      },
-      (err) => {
-        if (port.pending() !== promise) {
-          return port.pending()
-        }
-        port.setPending(undefined)
-        // A component the wrapper holds keeps rendering, as on main: the
-        // bundler's HMR client reports the chunk's failure, and the edit
-        // that fixes it patches the component in place. A wrapper holding
-        // none (its first load failed) holds the new failure.
-        const held = port.held()
-        if (held == null) {
-          port.settle(held, err)
-        }
-        return undefined
-      },
-    )
-    port.setPending(promise)
+  adapter: RouteHmrAdapter,
+): void {
+  const name = exportName ?? 'default'
+  currentExports.set(hot, name)
+  if (!hot.retarget(importer, exportName)) {
+    return
   }
-  return {
-    ...extra,
-    importer,
-    exportName,
-    update: (nextImporter, nextExportName, adapter) => {
-      currentExport = nextExportName ?? 'default'
-      if (!port.retarget(nextImporter, nextExportName)) {
-        return
-      }
-      settleWith(nextImporter(), currentExport, adapter)
-    },
-    take: (module, adapter) => {
-      if (port.held() == null || !(currentExport in module)) {
-        return
-      }
-      settleWith(Promise.resolve(module), currentExport, adapter)
-    },
+  settleWith(hot, importer(), name, adapter)
+}
+
+/**
+ * Settles the lazy wrapper of `hot` as `updateLazyRouteComponent` does,
+ * with a module its chunk handed over, keeping the importer; a wrapper that
+ * holds nothing, or a module without its export, is left alone.
+ *
+ * Dev-only, client-only; not a public API.
+ */
+export function takeLazyRouteComponent(
+  hot: LazyRouteComponentHot,
+  module: Record<string, any>,
+  adapter: RouteHmrAdapter,
+): void {
+  const name = currentExportOf(hot)
+  if (hot.held() == null || !(name in module)) {
+    return
   }
+  settleWith(hot, Promise.resolve(module), name, adapter)
 }
 
 type HotRoute = AnyRoute & {
@@ -537,7 +535,8 @@ function retargetWrapper(
     }
     throw err
   }
-  heldHot.update(
+  updateLazyRouteComponent(
+    heldHot,
     () => {
       try {
         return importer().catch(onError)
@@ -736,7 +735,9 @@ export function applyRouteChunkHmr(
       for (const key of componentKeys) {
         const hot: LazyRouteComponentHot | undefined =
           live.options[key]?.__tsrHot
-        hot?.take(handOver.exports, handOver.adapter)
+        if (hot) {
+          takeLazyRouteComponent(hot, handOver.exports, handOver.adapter)
+        }
       }
       if (!handOver.refresh) {
         return

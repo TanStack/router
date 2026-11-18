@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { applyRouteChunkHmr } from '../src/hmr'
+import type { LazyRouteComponentHot } from '../src/hmr'
 
 describe('applyRouteChunkHmr (dev-only, webpack-style split chunks)', () => {
   afterEach(() => {
@@ -33,24 +34,41 @@ describe('applyRouteChunkHmr (dev-only, webpack-style split chunks)', () => {
     expect(_refreshRoute).not.toHaveBeenCalled()
   })
 
-  it('takes the components a chunk hands over; only a chunk holding a non-component option refreshes the route', () => {
+  it('takes the components a chunk hands over; only a chunk holding a non-component option refreshes the route', async () => {
     const _refreshRoute = vi.fn(() => Promise.resolve())
-    const take = vi.fn()
     const exportsOf = { component: () => null }
     const adapter = {}
+    // a lazy wrapper holding a component, behind its hot slot
+    let pending: Promise<unknown> | undefined
+    const settle = vi.fn()
+    const hot: LazyRouteComponentHot = {
+      importer: () => Promise.resolve({}),
+      exportName: 'component',
+      retarget: () => true,
+      pending: () => pending,
+      setPending: (promise) => {
+        pending = promise
+      },
+      held: () => 'held',
+      settle,
+    }
     ;(window as any).__TSR_ROUTER__ = {
       routesById: {
         '/hand': {
-          options: { component: { __tsrHot: { take } }, loader: () => null },
+          options: { component: { __tsrHot: hot }, loader: () => null },
         },
       },
       _refreshRoute,
     }
     const handOver = { exports: exportsOf, refresh: false, adapter }
     applyRouteChunkHmr('/hand', 'component', handOver)
-    expect(take).not.toHaveBeenCalled()
+    expect(pending).toBeUndefined()
     applyRouteChunkHmr('/hand', 'component', handOver)
-    expect(take).toHaveBeenCalledExactlyOnceWith(exportsOf, adapter)
+    await pending
+    expect(settle).toHaveBeenCalledExactlyOnceWith(
+      exportsOf.component,
+      undefined,
+    )
     expect(_refreshRoute).not.toHaveBeenCalled()
 
     applyRouteChunkHmr('/hand', 'component~loader', {
@@ -61,7 +79,8 @@ describe('applyRouteChunkHmr (dev-only, webpack-style split chunks)', () => {
       ...handOver,
       refresh: true,
     })
-    expect(take).toHaveBeenCalledTimes(2)
+    await pending
+    expect(settle).toHaveBeenCalledTimes(2)
     expect(_refreshRoute).toHaveBeenCalledOnce()
   })
 })

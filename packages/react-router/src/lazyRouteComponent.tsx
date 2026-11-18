@@ -1,7 +1,6 @@
 import * as React from 'react'
 import { isModuleNotFoundError } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { lazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import { reactUse } from './utils'
 import type { LazyRouteComponentHot } from '@tanstack/router-core/hmr'
 import type { AsyncRouteComponent } from './route'
@@ -129,35 +128,32 @@ export function lazyRouteComponent<
   ) {
     let version = 0
     const listeners = new Set<() => void>()
-    ;(lazyComp as any).__tsrHot = lazyRouteComponentHot(
+    const hot: ReactLazyRouteComponentHot = {
       importer,
-      exportName as string | undefined,
-      {
-        retarget: (nextImporter, nextExportName) => {
-          importer = nextImporter as () => Promise<T>
-          exportName = nextExportName as TKey | undefined
-          return comp !== undefined || loadPromise !== undefined || !!error
-        },
-        pending: () => loadPromise,
-        setPending: (promise) => {
-          loadPromise = promise
-        },
-        held: () => comp,
-        settle: (next, nextError) => {
-          comp = next
-          error = nextError
-          version++
-          listeners.forEach((listener) => listener())
-        },
+      exportName: exportName as string | undefined,
+      retarget: (nextImporter, nextExportName) => {
+        importer = nextImporter as () => Promise<T>
+        exportName = nextExportName as TKey | undefined
+        return comp !== undefined || loadPromise !== undefined || !!error
       },
-      {
-        subscribe: (listener: () => void) => {
-          listeners.add(listener)
-          return () => listeners.delete(listener)
-        },
-        getVersion: () => version,
+      pending: () => loadPromise,
+      setPending: (promise) => {
+        loadPromise = promise
       },
-    )
+      held: () => comp,
+      settle: (next, nextError) => {
+        comp = next
+        error = nextError
+        version++
+        listeners.forEach((listener) => listener())
+      },
+      subscribe: (listener: () => void) => {
+        listeners.add(listener)
+        return () => listeners.delete(listener)
+      },
+      getVersion: () => version,
+    }
+    ;(lazyComp as any).__tsrHot = hot
   }
 
   return lazyComp as any

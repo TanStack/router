@@ -1,14 +1,19 @@
 /**
- * The hot slot every framework's `lazyRouteComponent` builds in development
- * on the client (`lazyRouteComponentHot`), over a wrapper's state as the
- * framework's dev block exposes it (its port). That a hot update reaches a
- * real page through a framework's wrapper: router-plugin's
+ * The route HMR runtime's updates of a lazy route component
+ * (`updateLazyRouteComponent`, `takeLazyRouteComponent`), over a wrapper's
+ * state as the hot slot every framework's `lazyRouteComponent` builds in
+ * development on the client exposes it. That a hot update reaches a real
+ * page through a framework's wrapper: router-plugin's
  * `route-hmr-browser*.test.ts`.
  */
 import { describe, expect, test, vi } from 'vitest'
 import { createControlledPromise } from '../src/utils'
-import { applyRouteChunkHmr, lazyRouteComponentHot } from '../src/hmr'
-import type { RouteHmrAdapter } from '../src/hmr'
+import {
+  applyRouteChunkHmr,
+  takeLazyRouteComponent,
+  updateLazyRouteComponent,
+} from '../src/hmr'
+import type { LazyRouteComponentHot, RouteHmrAdapter } from '../src/hmr'
 
 type Module = Record<string, unknown>
 
@@ -22,32 +27,38 @@ function wrapper(held?: unknown, error?: unknown) {
     pending: undefined as Promise<unknown> | undefined,
     renders: 0,
   }
-  const hot = lazyRouteComponentHot(
-    state.importer,
-    state.exportName,
-    {
-      retarget: (importer, exportName) => {
-        state.importer = importer
-        state.exportName = exportName
-        return (
-          state.comp !== undefined ||
-          state.pending !== undefined ||
-          !!state.error
-        )
-      },
-      pending: () => state.pending,
-      setPending: (promise) => {
-        state.pending = promise
-      },
-      held: () => state.comp,
-      settle: (comp, err) => {
-        state.comp = comp
-        state.error = err
-        state.renders++
-      },
+  const slot: LazyRouteComponentHot = {
+    importer: state.importer,
+    exportName: state.exportName,
+    retarget: (importer, exportName) => {
+      state.importer = importer
+      state.exportName = exportName
+      return (
+        state.comp !== undefined || state.pending !== undefined || !!state.error
+      )
     },
-    {},
-  )
+    pending: () => state.pending,
+    setPending: (promise) => {
+      state.pending = promise
+    },
+    held: () => state.comp,
+    settle: (comp, err) => {
+      state.comp = comp
+      state.error = err
+      state.renders++
+    },
+  }
+  const hot = {
+    importer: slot.importer,
+    exportName: slot.exportName,
+    update: (
+      importer: () => Promise<Module>,
+      exportName: string | undefined,
+      adapter: RouteHmrAdapter,
+    ) => updateLazyRouteComponent(slot, importer, exportName, adapter),
+    take: (module: Module, adapter: RouteHmrAdapter) =>
+      takeLazyRouteComponent(slot, module, adapter),
+  }
   return { state, hot }
 }
 
@@ -65,7 +76,7 @@ function handOver<T extends Module>(module: T): T {
   return module
 }
 
-describe('lazyRouteComponentHot', () => {
+describe('lazy route component hot updates', () => {
   test('a wrapper that never loaded only takes the new importer for its first load', () => {
     const { state, hot } = wrapper()
     const next = vi.fn(() => Promise.resolve({ component: v('v2') }))
