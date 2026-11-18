@@ -297,6 +297,8 @@ async function rsbuildApi(): Promise<RsbuildApi> {
 export async function startRscRsbuildPreviewServer(options: {
   files: Record<string, string>
   start?: Record<string, unknown>
+  /** Rsbuild's `tools` (the harness's `htmlPlugin: false` stays). */
+  tools?: Record<string, unknown>
   registerCleanup?: (cleanup: () => Promise<void>) => void
   /**
    * Files written after a first build, which a second `build()` of the
@@ -370,7 +372,7 @@ export async function startRscRsbuildPreviewServer(options: {
             compileErrorsPlugin as never,
           ],
           // Start serves the pages, not an HTML template
-          tools: { htmlPlugin: false },
+          tools: { ...options.tools, htmlPlugin: false },
           server: { host: '127.0.0.1' },
           // Absolute: Start's preview middleware imports the server build
           // from the output directory, which it resolves against the

@@ -125,6 +125,15 @@ test("a server fn only its route's component calls renders on the server and ans
 // With a separate provider the provider builds before the client, so the
 // refusal is decided where the HTTP handler runs, after the client built.
 test('a server function only server code calls is not callable from the browser', async () => {
+  await expectOnlyClientCalledFnsCallable(server)
+})
+
+/**
+ * `/private` of `privateFnFiles`: `greet` (the client calls it) answers a
+ * request from the browser by its URL, `internal` and `sameFile` (called by
+ * `greet`'s handler only, a server-origin call, which works) are refused.
+ */
+async function expectOnlyClientCalledFnsCallable(server: RscPreviewServer) {
   const page = await openRscPage(server, '/private')
   await page.waitForText('label MARK_GREET:MARK_INTERNAL', {
     selector: '[data-testid=label]',
@@ -156,4 +165,55 @@ test('a server function only server code calls is not callable from the browser'
   const refusedSameFile = await call(urls.sameFile)
   expect(refusedSameFile.ok).toBe(false)
   expect(refusedSameFile.value ?? '').not.toContain('MARK_SAME_FILE')
+}
+
+/** A production build of `privateFnFiles` with `options`, for one test. */
+function privateFnServer(options: {
+  start?: Record<string, unknown>
+  tools?: Record<string, unknown>
+}) {
+  return startRscRsbuildPreviewServer({ ...options, files: privateFnFiles })
+}
+
+// Astra review 2 (B1): the gate's ids are filled into the server's JS
+// assets after the client built; a server output whose chunks are `.mjs`
+// (the resolver sits in one) kept the placeholder, so every client call
+// was refused. The entry stays `index.js`, which preview loads.
+test('the browser calls a server fn of a server build whose chunks are .mjs', async () => {
+  const built = await privateFnServer({
+    tools: {
+      rspack: (
+        config: { output: Record<string, unknown> },
+        { environment }: { environment: { name: string } },
+      ) => {
+        if (environment.name === 'ssr') {
+          config.output.filename = (data: { chunk?: { name?: string } }) =>
+            data.chunk?.name === 'index' ? '[name].js' : '[name].mjs'
+          config.output.chunkFilename = '[name].mjs'
+        }
+      },
+    },
+  })
+  await expectOnlyClientCalledFnsCallable(built)
+})
+
+// Astra review 2 (B2): custom ids are text, not replacement patterns. With
+// `$$` read as `$` the gate held `rv$greet` instead of `rv$$greet`: `greet`
+// was refused and `internal`, a function only server code calls, answered;
+// with `$&` the server bundle did not parse.
+test('custom ids with $ patterns gate the same functions', async () => {
+  const ids: Record<string, string> = {
+    greet_createServerFn_handler: 'rv$$greet',
+    internal_createServerFn_handler: 'rv$greet',
+    urls_createServerFn_handler: 'rv$&urls',
+  }
+  const built = await privateFnServer({
+    start: {
+      serverFns: {
+        generateFunctionId: ({ functionName }: { functionName: string }) =>
+          ids[functionName],
+      },
+    },
+  })
+  await expectOnlyClientCalledFnsCallable(built)
 })

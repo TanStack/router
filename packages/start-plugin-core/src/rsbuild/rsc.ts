@@ -7,7 +7,8 @@ import {
   rebuildModules,
   reportingFailure,
 } from '@tanstack/router-utils/compiler'
-import { CLIENT_REFERENCED_IDS_PLACEHOLDER } from '../server-fns/resolver'
+import { CALLABLE_IDS_PLACEHOLDER } from '../server-fns/resolver'
+import { isJsAsset } from './compiler-session'
 import {
   RSBUILD_ENVIRONMENT_NAMES,
   RSBUILD_RSC_LAYERS,
@@ -237,7 +238,7 @@ export function registerRsc(
   }
 }
 
-/** Step 8b (RSC build): the server assets' manifest and client-referenced ids placeholders, once the client build is known. */
+/** Step 8b (RSC build): the server assets' manifest and callable ids placeholders, once the client build is known. */
 export function registerRscManifestReplacement(
   api: RsbuildPluginAPI,
   opts: {
@@ -258,11 +259,9 @@ export function registerRscManifestReplacement(
   //     chance to run.
   // ---------------------------------------------------------------
   const manifestPlaceholderLiteral = JSON.stringify(START_MANIFEST_PLACEHOLDER)
-  const clientIdsPlaceholderLiteral = JSON.stringify(
-    CLIENT_REFERENCED_IDS_PLACEHOLDER,
-  )
-  const clientReferencedIdsLiteral = () =>
-    compiler.session()?.clientReferencedIdsLiteral() ?? '[]'
+  const callableIdsPlaceholderLiteral = JSON.stringify(CALLABLE_IDS_PLACEHOLDER)
+  const callableIdsLiteral = () =>
+    compiler.session()?.callableIdsLiteral() ?? '[]'
   api.modifyRspackConfig((config, utils) => {
     if (utils.environment.name !== RSBUILD_ENVIRONMENT_NAMES.server) return
 
@@ -283,14 +282,14 @@ export function registerRscManifestReplacement(
                   | undefined
 
                 for (const asset of compilation.getAssets()) {
-                  if (!asset.name.endsWith('.js')) {
+                  if (!isJsAsset(asset.name)) {
                     continue
                   }
 
                   const sourceStr = String(asset.source.source())
                   if (
                     !sourceStr.includes(manifestPlaceholderLiteral) &&
-                    !sourceStr.includes(clientIdsPlaceholderLiteral)
+                    !sourceStr.includes(callableIdsPlaceholderLiteral)
                   ) {
                     continue
                   }
@@ -319,20 +318,22 @@ export function registerRscManifestReplacement(
                   virtualModuleState.generateManifestValueLiteral(clientBuild)
                 // the server fn resolver's client-origin gate (J4.2): the
                 // client compiled, so its references are known
-                const clientIdsLiteral = clientReferencedIdsLiteral()
+                const callableIds = callableIdsLiteral()
 
                 for (const { asset, sourceStr } of assetsWithPlaceholder) {
                   compilation.updateAsset(
                     asset.name,
                     new utils.rspack.sources.RawSource(
+                      // replacement functions: ids and paths are text, not
+                      // `$` patterns
                       sourceStr
                         .replace(
                           manifestPlaceholderLiteral,
-                          manifestValueLiteral,
+                          () => manifestValueLiteral,
                         )
                         .replaceAll(
-                          clientIdsPlaceholderLiteral,
-                          clientIdsLiteral,
+                          callableIdsPlaceholderLiteral,
+                          () => callableIds,
                         ),
                     ),
                   )

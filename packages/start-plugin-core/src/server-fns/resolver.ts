@@ -225,4 +225,4 @@ export async function getServerFnById(id, access) {
 }
 
 /** Replaced in the server bundle by the JSON array of the HTTP-callable ids (Rsbuild RSC builds, after the client compiled). */
-export const CLIENT_REFERENCED_IDS_PLACEHOLDER = '__TSS_CLIENT_REFERENCED_IDS__'
+export const CALLABLE_IDS_PLACEHOLDER = '__TSS_CALLABLE_IDS__'

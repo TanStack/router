@@ -34,6 +34,7 @@ import {
   PLAN_BUILD_INFO_FIELD,
   SERVER_FN_BUILD_INFO_FIELD,
   canonicalResource,
+  isJsAsset,
 } from './compiler-session'
 import { LOADER_REGISTRY } from './loader-registry'
 import type { LoaderImpl } from './compiler-loader'
@@ -640,7 +641,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               session.publishClientOutput(
                 compilation
                   .getAssets()
-                  .filter((asset) => /\.[cm]?js$/.test(asset.name))
+                  .filter((asset) => isJsAsset(asset.name))
                   .map((asset) => asset.source.source().toString()),
               ),
           )
@@ -769,7 +770,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           }
         }
         for (const asset of compilation.getAssets()) {
-          if (!/\.[cm]?js$/.test(asset.name)) {
+          if (!isJsAsset(asset.name)) {
             continue
           }
           const code = asset.source.source().toString()

@@ -33,7 +33,7 @@ import { StartCompilerSession, serverFnFactsOf } from '../compiler/session'
 import { isVueSfc } from '../compiler/vue'
 import { providerModuleId } from '../server-fns/registry'
 import {
-  CLIENT_REFERENCED_IDS_PLACEHOLDER,
+  CALLABLE_IDS_PLACEHOLDER,
   manifestResolverModule,
 } from '../server-fns/resolver'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
@@ -63,6 +63,15 @@ import type {
   PlanKey,
   RecordMapText,
 } from '@tanstack/router-utils/compiler'
+
+/**
+ * Whether an emitted asset is JavaScript: the assets whose server-fn ids
+ * the host patches, whose code decides the callable set, and whose
+ * callable-ids placeholder the RSC build fills in.
+ */
+export function isJsAsset(name: string): boolean {
+  return /\.[cm]?js$/.test(name)
+}
 
 /** The `buildInfo` field holding a module's server-fn facts (persisted by Rspack's cache; replayed at `finishMake`). */
 export const SERVER_FN_BUILD_INFO_FIELD = 'tanstack.start.serverFns'
@@ -791,7 +800,7 @@ export class StartRsbuildCompilerSession {
         opts.mode !== 'build'
           ? undefined
           : opts.rsc !== undefined
-            ? JSON.stringify(CLIENT_REFERENCED_IDS_PLACEHOLDER)
+            ? JSON.stringify(CALLABLE_IDS_PLACEHOLDER)
             : JSON.stringify([...(this.callableIds ?? [])].sort()),
     })
   }
@@ -801,7 +810,7 @@ export class StartRsbuildCompilerSession {
    * J4.2, R182): final ids, also with a custom generator (the gate is
    * filled in after the ids were patched, so its placeholders resolve here).
    */
-  clientReferencedIdsLiteral(): string {
+  callableIdsLiteral(): string {
     if (!this.callableIds) {
       throw new Error(
         'TanStack Start could not gate the server functions of the rsbuild RSC server because the client build was unavailable',
