@@ -212,7 +212,8 @@ return {
   )
 
   // The pure stub where a user call continues it (`.bind(…)` through `as`,
-  // `!` or parentheses: a pure annotation before the stub would mark that
+  // `!` or parentheses, or through a factory that keeps it as its
+  // implementation: a pure annotation before the stub would mark that
   // call, and drop the chain's effects with it) and as a statement after a
   // line without a semicolon (a stub opening with `(` would call the line
   // before). A stub built on a factory's builder leaves the bundle.
@@ -227,7 +228,7 @@ return {
   return value
 }
 `,
-          'fns.ts': `import { createServerFn } from '@tanstack/react-start'
+          'fns.ts': `import { createServerFn, createClientOnlyFn, createIsomorphicFn } from '@tanstack/react-start'
 import { track } from './track'
 const label = 'after bare'
 createServerFn().middleware(track('bare', [])).handler(async () => 'bare')
@@ -236,6 +237,8 @@ const fn = async () => 'bound'
 export const bound = createServerFn().middleware(track('bound', [])).handler(fn).bind(track('bind', null))
 export const asAny = (createServerFn().middleware(track('as', [])).handler(fn) as any).bind(track('asBind', null))
 export const nonNull = createServerFn().middleware(track('nonNull', [])).handler(fn)!.bind(track('nonNullBind', null))
+createClientOnlyFn(createServerFn().middleware(track('clientOnly', [])).handler(fn)).bind(track('clientOnlyBind', null))
+createIsomorphicFn().server(() => undefined).client(createClientOnlyFn(createServerFn().middleware(track('iso', [])).handler(fn) as any)).bind(track('isoBind', null))
 const make = () => createServerFn().middleware(track('make', []))
 export const fromFactory = make().handler(async () => 'from factory')
 `,
@@ -265,6 +268,10 @@ ${callByIdExports}`,
             'asBind',
             'nonNull',
             'nonNullBind',
+            'clientOnly',
+            'clientOnlyBind',
+            'iso',
+            'isoBind',
             'make',
           ],
           afterBare: 'after bare',
