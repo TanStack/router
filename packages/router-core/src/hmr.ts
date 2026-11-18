@@ -19,7 +19,7 @@ export interface RouteHmrMeta {
    * it when their chunk evaluated again.
    */
   noComponents?: true
-  /** React + Vite: the module id plugin-react uses and the export names it ignores (the route, the anchor, every module-level binding name the user does not export). */
+  /** React + Vite: the module id plugin-react uses and the export names it ignores (the route, the anchor, the glue name of every module-level binding, and its own name when the user does not export it and the module has no `export *`). */
   refreshExports?: { id: string; anchor: string; exports: Array<string> }
 }
 
