@@ -590,7 +590,7 @@ function renderedSuggestion(
         `<${r.name}> renders it on the server${where}: render it inside <ClientOnly fallback={...}><${r.name} /></ClientOnly> (${from}), so the server renders the fallback and the browser the component after hydration`,
       ]
     : [
-        `The route option ${r.key}: ${r.name} renders it on the server${where}: write ${r.key}: () => <ClientOnly fallback={...}><${r.name} /></ClientOnly> (${from}), so the server renders the fallback and the browser the component after hydration`,
+        `The route option ${r.key}: ${r.name} renders it on the server${where}: write ${r.key}: (props) => <ClientOnly fallback={...}><${r.name} {...props} /></ClientOnly> (${from}), so the server renders the fallback and the browser the component after hydration`,
       ]
 }
 
