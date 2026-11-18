@@ -127,24 +127,10 @@ export function attachStyles(el: Element, shadowDOMTarget?: ShadowRoot) {
     (root.nodeType === 11 && 'host' in root
       ? (root as ShadowRoot)
       : el.ownerDocument)
-  const view =
-    ('defaultView' in container
-      ? container.defaultView
-      : container.ownerDocument.defaultView) ?? window
+  // Not supported before Safari 16.4 and Firefox 101, nor in jsdom.
+  if (!('adoptedStyleSheets' in (container as object))) return
 
-  // Without constructable stylesheets (e.g. Safari < 16.4, Firefox < 101,
-  // jsdom), fall back to a <style> element.
-  if (!('replaceSync' in view.CSSStyleSheet.prototype)) {
-    const parent = 'head' in container ? container.head : container
-    if (!parent.querySelector('style[data-tsrd-styles]')) {
-      const style = view.document.createElement('style')
-      style.setAttribute('data-tsrd-styles', '')
-      style.textContent = cssText
-      parent.appendChild(style)
-    }
-    return
-  }
-
+  const view = el.ownerDocument.defaultView ?? window
   let sheet = sheets.get(view)
   if (!sheet) {
     sheet = new view.CSSStyleSheet()

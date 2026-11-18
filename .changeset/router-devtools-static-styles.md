@@ -7,3 +7,4 @@ The devtools no longer use goober. Their styles are now a static stylesheet adop
 - The devtools are styled on pages with a Content Security Policy that blocks inline `<style>` elements, without a nonce.
 - Devtools rendered inside a shadow root are styled without passing `shadowDOMTarget`.
 - The devtools no longer write to the shared `#_goober` style element.
+- Browsers without adoptable stylesheets (before Safari 16.4 and Firefox 101) show the devtools unstyled.
