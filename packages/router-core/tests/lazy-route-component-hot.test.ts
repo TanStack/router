@@ -18,10 +18,15 @@ import type { LazyRouteComponentHot, RouteHmrAdapter } from '../src/hmr'
 type Module = Record<string, unknown>
 
 /** A lazy wrapper's state behind the port its framework builds. */
-function wrapper(held?: unknown, error?: unknown) {
+function wrapper(
+  held?: unknown,
+  error?: unknown,
+  /** `null`: none (the default export) */
+  exportName: string | null = 'component',
+) {
   const state = {
     importer: (() => Promise.resolve({})) as () => Promise<Module>,
-    exportName: 'component' as string | undefined,
+    exportName: (exportName ?? undefined) as string | undefined,
     comp: held,
     error,
     pending: undefined as Promise<unknown> | undefined,
@@ -49,8 +54,6 @@ function wrapper(held?: unknown, error?: unknown) {
     },
   }
   const hot = {
-    importer: slot.importer,
-    exportName: slot.exportName,
     update: (
       importer: () => Promise<Module>,
       exportName: string | undefined,
@@ -231,16 +234,6 @@ describe('lazy route component hot updates', () => {
     expect(state.comp).toEqual(v('d'))
   })
 
-  test('the slot keeps the importer and export name it was created with', async () => {
-    // (the route HMR runtime falls back to the first importer in Vite's bundled dev)
-    const { state, hot } = wrapper(v('v1'))
-    const first = state.importer
-    hot.update(() => Promise.resolve({ page: v('v2') }), 'page', swap)
-    await state.pending
-    expect(hot.importer).toBe(first)
-    expect(hot.exportName).toBe('component')
-  })
-
   test('nothing held: the loaded export is taken without asking keep', async () => {
     const { state, hot } = wrapper(undefined, new Error('offline'))
     const keep = vi.fn(() => true)
@@ -363,6 +356,22 @@ describe('lazy route component hot updates', () => {
     expect(await state.pending).toBe(imported)
     expect(keep).toHaveBeenCalledWith(imported, held)
     expect(keepPatched).toHaveBeenCalledOnce()
+  })
+
+  test('take: the default export of a wrapper created without an export name, or updated to none', async () => {
+    const unnamed = wrapper(v('v1'), undefined, null)
+    unnamed.hot.take({ default: v('d'), component: v('c') }, swap)
+    expect(await unnamed.state.pending).toEqual(v('d'))
+
+    const named = wrapper(v('v1'))
+    named.hot.update(
+      () => Promise.resolve({ default: v('d2') }),
+      undefined,
+      swap,
+    )
+    await named.state.pending
+    named.hot.take({ default: v('d3'), component: v('c3') }, swap)
+    expect(await named.state.pending).toEqual(v('d3'))
   })
 
   test('take: a wrapper that holds nothing, or a module without its export, is left alone', async () => {

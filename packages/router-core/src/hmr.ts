@@ -694,7 +694,7 @@ export interface RouteChunkHandOver {
  * accepting its own updates, as solid-refresh makes one holding
  * components), the chunk evaluates again before its route module does: then
  * the live route's lazy wrappers take the components it hands over
- * (`handOver`, `LazyRouteComponentHot.take`), and a chunk holding a
+ * (`handOver`, `takeLazyRouteComponent`), and a chunk holding a
  * non-component option (or handing nothing over) refreshes the live route,
  * whose non-component options reload through their lazy wrappers.
  *
