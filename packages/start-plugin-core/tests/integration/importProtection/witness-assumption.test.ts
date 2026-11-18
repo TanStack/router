@@ -8,8 +8,9 @@
  * witness.ts`, design 4 §5, F5-4), which reports an import a production
  * build mocked when the mock survived. Here that structural answer is
  * compared with the emitted text: each importer imports a denied file of
- * its own, and a production mock carries its denied file's path, so it is
- * in a chunk exactly when the import was reported.
+ * its own, and a production mock carries its denied file's path (unless
+ * `mockAccess` is `off`), so it is in a chunk exactly when the import was
+ * reported.
  * Fails when the bundler's graph changes shape under the witness (a
  * scope-hoisted module, an async chunk). No upstream issue.
  */
@@ -89,7 +90,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
         bundler,
         files,
         entry: 'src/entry.ts',
-        start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
+        start: { importProtection: { behavior: 'mock', mockAccess: 'warn' } },
       })
       const reported = importersIn(build, 'client')
       const inText = importers.filter(

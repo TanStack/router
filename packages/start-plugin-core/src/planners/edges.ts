@@ -129,6 +129,9 @@ const COMPONENT_OPTIONS = new Set([
   'shellComponent',
 ])
 
+/** A part of an output's recipe (a kept slice of the input, or text). */
+type Segment = EmitPlan['outputs'][string]['segments'][number]
+
 interface RenderedAt {
   name: string
   via: RenderedUse['via']
@@ -144,16 +147,20 @@ type NodeLike = { type: string; start: number; end: number } & Record<
 /**
  * How the module renders a binding of the imports whose specifiers start at
  * `offsets` (one logical edge, possibly several statements), outside the
- * `<ClientOnly>` elements (the server erases their children): its first use
+ * `<ClientOnly>` elements (the server erases their children) and in the
+ * source the output keeps (`segments`: its recipe; the server output drops
+ * the body of `createClientOnlyFn`, a `.client()` branch, …): its first use
  * as a JSX element (`<Widget />`, `<UI.Chart />`), else as a route's
- * component option (`component: Widget`, `component: UI.Chart`). A query of
- * the bindings' references, read only for a violation (a reference's node
- * is built when read).
+ * component option (`component: Widget`, `component: UI.Chart`). Null when
+ * no use is kept as written (a generated or rewritten one): the report then
+ * gives the plain suggestions. A query of the bindings' references, read
+ * only for a violation (a reference's node is built when read).
  */
 function renderedUse(
   analysis: ModuleAnalysis,
   code: string,
   offsets: ReadonlyArray<number>,
+  segments: ReadonlyArray<Segment> | undefined,
 ): RenderedAt | null {
   const { file } = analysis
   const parentOf = (n: NodeLike) =>
@@ -177,6 +184,11 @@ function renderedUse(
     }
     return false
   }
+  const kept = (n: NodeLike) =>
+    !segments ||
+    segments.some(
+      (seg) => seg.k === 'slice' && seg.start <= n.start && n.end <= seg.end,
+    )
   let jsx: RenderedAt | null = null
   let option: RenderedAt | null = null
   for (const imp of analysis.imports) {
@@ -193,7 +205,11 @@ function renderedUse(
           continue
         }
         const node = ref.node as unknown as NodeLike
-        if ((jsx && jsx.start < node.start) || insideClientOnly(node)) {
+        if (
+          (jsx && jsx.start < node.start) ||
+          !kept(node) ||
+          insideClientOnly(node)
+        ) {
           continue
         }
         // the whole tag or value: `UI.Chart` of `<UI.Chart />` (and of
@@ -448,7 +464,7 @@ export function importEdgesPlanner(
         const ownStatic = envType === 'server' && j.offset !== undefined
         const offsets = j.edge.locations.map((l) => l.range.start)
         const rendered = ownStatic
-          ? renderedUse(ctx.analysis, ctx.code, offsets)
+          ? renderedUse(ctx.analysis, ctx.code, offsets, recipe?.segments)
           : null
         // a Vue template renders a component through no JSX: its binding and
         // the export it imports name the fix (a capitalised one: a

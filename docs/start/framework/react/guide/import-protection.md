@@ -23,6 +23,7 @@ Import protection is enabled out of the box with these defaults:
 | `behavior` (dev)   | `'mock'` -- warn and replace with a mock module |
 | `behavior` (build) | `'error'` -- fail the build                     |
 | `log`              | `'once'` -- deduplicate repeated violations     |
+| `mockAccess`       | `'error'` -- a used mock is logged as an error  |
 | Scope              | Files inside Start's `srcDirectory`             |
 
 **Client environment denials:**
@@ -174,6 +175,23 @@ importProtection: {
     dev: 'mock',
     build: 'error',
   },
+}
+```
+
+### Reports from a mock at runtime (`mockAccess`)
+
+A mock never throws, but using one usually means code that should not run there does. `mockAccess` decides what a mock reports when it is used: the first call, `new`, conversion to a string or primitive, or property write of each mocked import (reading a property reports nothing). It applies wherever a mock is served, in dev and in production builds:
+
+- **`'error'`** (default) -- the use is reported with `console.error`.
+- **`'warn'`** -- the use is reported with `console.warn`.
+- **`'off'`** -- nothing is reported.
+
+In dev, the report names the denied import, the denied file, the importer, how the mock was used and the suggested fixes. A production build's report is one line naming the environment and the denied import: the denied file relative to the project root (`../packages/shared/db.server.ts` for a file outside it), or the specifier for a denied package. It never names the importer, and the mocks of one denied file report once. With `'off'`, a production mock carries no name at all.
+
+```ts
+importProtection: {
+  behavior: 'mock',
+  mockAccess: 'warn',
 }
 ```
 
@@ -643,7 +661,7 @@ importProtection: {
 }
 ```
 
-In builds, `onViolation` is called after the build, once per denied import that survives tree-shaking and that `allowImport` did not allow. In dev, it is called when the importing module is compiled, or, for an import the TypeScript transform may erase (see [Type-Only Imports](#type-only-imports)), when the bundler loads the import. With `log: 'once'` (the default) it is called once per denied import for the dev session; with `'always'`, each time the import is compiled or loaded again.
+In builds, `onViolation` is called during the build, after tree-shaking of the importing environment (before its bundle is written), once per denied import that survives tree-shaking and that `allowImport` did not allow. In dev, it is called when the importing module is compiled, or, for an import the TypeScript transform may erase (see [Type-Only Imports](#type-only-imports)), when the bundler loads the import. With `log: 'once'` (the default) it is called once per denied import for the dev session; with `'always'`, each time the import is compiled or loaded again.
 
 Returning `false` from `onViolation` used to allow the import. It no longer does anything: Start prints a message pointing here, and the import gets the normal outcome. If you returned `false`, move that decision to `allowImport` and return `true` there. Your `allowImport` runs for more imports than your `onViolation` did, and has no `trace` or `snippet` to read.
 
@@ -695,6 +713,7 @@ interface ImportProtectionOptions {
     | 'mock'
     | { dev?: 'error' | 'mock'; build?: 'error' | 'mock' }
   log?: 'once' | 'always'
+  mockAccess?: 'error' | 'warn' | 'off'
   include?: Array<string | RegExp>
   exclude?: Array<string | RegExp>
   ignoreImporters?: Array<string | RegExp>
@@ -716,22 +735,23 @@ interface ImportProtectionOptions {
 }
 ```
 
-| Option                | Type                 | Default                           | Description                                                                                                                                                           |
-| --------------------- | -------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `enabled`             | `boolean`            | `true`                            | Set to `false` to disable the plugin                                                                                                                                  |
-| `behavior`            | `string \| object`   | `{ dev: 'mock', build: 'error' }` | What to do on violation                                                                                                                                               |
-| `log`                 | `'once' \| 'always'` | `'once'`                          | Whether to deduplicate repeated violations                                                                                                                            |
-| `include`             | `Pattern[]`          | Start's `srcDirectory`            | Only check importers matching these patterns                                                                                                                          |
-| `exclude`             | `Pattern[]`          | `[]`                              | Skip importers matching these patterns                                                                                                                                |
-| `ignoreImporters`     | `Pattern[]`          | `[]`                              | Ignore violations from these importers                                                                                                                                |
-| `maxTraceDepth`       | `number`             | `20`                              | Maximum depth for import traces                                                                                                                                       |
-| `client`              | `object`             | See defaults above                | Additional deny rules for the client environment                                                                                                                      |
-| `client.specifiers`   | `Pattern[]`          | Framework server specifiers       | Specifier patterns denied in the client environment (additive with defaults)                                                                                          |
-| `client.files`        | `Pattern[]`          | `['**/*.server.*']`               | File patterns denied in the client environment (replaces defaults)                                                                                                    |
-| `client.excludeFiles` | `Pattern[]`          | `['**/node_modules/**']`          | Resolved files matching these patterns skip resolved-target checks (file-pattern + marker) (replaces defaults)                                                        |
-| `server`              | `object`             | See defaults above                | Additional deny rules for the server environment                                                                                                                      |
-| `server.specifiers`   | `Pattern[]`          | `[]`                              | Specifier patterns denied in the server environment (replaces defaults; defaults for `server.specifiers` are `[]`, so unlike `client.specifiers` this isn't additive) |
-| `server.files`        | `Pattern[]`          | `['**/*.client.*']`               | File patterns denied in the server environment (replaces defaults)                                                                                                    |
-| `server.excludeFiles` | `Pattern[]`          | `['**/node_modules/**']`          | Resolved files matching these patterns skip resolved-target checks (file-pattern + marker) (replaces defaults)                                                        |
-| `onViolation`         | `function`           | `undefined`                       | Told about each violation that stays (after tree-shaking in a build); reports only                                                                                    |
-| `allowImport`         | `function`           | `undefined`                       | Decides, before the mock, that a denied import gets the real module (`true`)                                                                                          |
+| Option                | Type                         | Default                           | Description                                                                                                                                                           |
+| --------------------- | ---------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`             | `boolean`                    | `true`                            | Set to `false` to disable the plugin                                                                                                                                  |
+| `behavior`            | `string \| object`           | `{ dev: 'mock', build: 'error' }` | What to do on violation                                                                                                                                               |
+| `log`                 | `'once' \| 'always'`         | `'once'`                          | Whether to deduplicate repeated violations                                                                                                                            |
+| `mockAccess`          | `'error' \| 'warn' \| 'off'` | `'error'`                         | How a mock reports its use at runtime (see [`mockAccess`](#reports-from-a-mock-at-runtime-mockaccess))                                                                |
+| `include`             | `Pattern[]`                  | Start's `srcDirectory`            | Only check importers matching these patterns                                                                                                                          |
+| `exclude`             | `Pattern[]`                  | `[]`                              | Skip importers matching these patterns                                                                                                                                |
+| `ignoreImporters`     | `Pattern[]`                  | `[]`                              | Ignore violations from these importers                                                                                                                                |
+| `maxTraceDepth`       | `number`                     | `20`                              | Maximum depth for import traces                                                                                                                                       |
+| `client`              | `object`                     | See defaults above                | Additional deny rules for the client environment                                                                                                                      |
+| `client.specifiers`   | `Pattern[]`                  | Framework server specifiers       | Specifier patterns denied in the client environment (additive with defaults)                                                                                          |
+| `client.files`        | `Pattern[]`                  | `['**/*.server.*']`               | File patterns denied in the client environment (replaces defaults)                                                                                                    |
+| `client.excludeFiles` | `Pattern[]`                  | `['**/node_modules/**']`          | Resolved files matching these patterns skip resolved-target checks (file-pattern + marker) (replaces defaults)                                                        |
+| `server`              | `object`                     | See defaults above                | Additional deny rules for the server environment                                                                                                                      |
+| `server.specifiers`   | `Pattern[]`                  | `[]`                              | Specifier patterns denied in the server environment (replaces defaults; defaults for `server.specifiers` are `[]`, so unlike `client.specifiers` this isn't additive) |
+| `server.files`        | `Pattern[]`                  | `['**/*.client.*']`               | File patterns denied in the server environment (replaces defaults)                                                                                                    |
+| `server.excludeFiles` | `Pattern[]`                  | `['**/node_modules/**']`          | Resolved files matching these patterns skip resolved-target checks (file-pattern + marker) (replaces defaults)                                                        |
+| `onViolation`         | `function`                   | `undefined`                       | Told about each violation that stays (after tree-shaking in a build); reports only                                                                                    |
+| `allowImport`         | `function`                   | `undefined`                       | Decides, before the mock, that a denied import gets the real module (`true`)                                                                                          |

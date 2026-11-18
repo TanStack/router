@@ -26,6 +26,7 @@ import { describe, expect, test } from 'vitest'
 import {
   diagnosticPosition,
   expectDiagnostic,
+  findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
@@ -137,6 +138,66 @@ export const read = () => Object.keys(modules)
       expect(build.client.where('MARK_DB')).toBe('nowhere')
       const { result } = await build.client.run('return entry.read()')
       expect(result).toEqual(['./lib/util.ts'])
+    },
+    timeout,
+  )
+
+  // A denied file whose name holds glob metacharacters (file-routed
+  // content: `[draft]`, `{draft}`, `(1)`): the negative pattern the report
+  // prints, applied as printed, leaves that file out and keeps its
+  // siblings, among them one the unescaped name would match as a pattern
+  // (`d.server.ts`, exempt here). Rspack reads no `\(` (the parenthesised
+  // name: a parenthesis the report writes for both bundlers). Source:
+  // fact-check of the Astra review round 3 of #8817, import protection B3
+  // (`'!./cards/[draft].server.ts'` was printed, a character class, and the
+  // build still failed).
+  test.each([
+    '[draft].server.ts',
+    '{draft}.server.ts',
+    '@draft(1)+v.server.ts',
+  ])(
+    'the negative pattern printed for a pattern import of %s, applied as printed, leaves the file out',
+    async (denied) => {
+      const files = (patterns: string) => ({
+        [`src/cards/${denied}`]: `export const draft = () => 'MARK_DRAFT'\n`,
+        'src/cards/d.server.ts': `export const d = 'd'\n`,
+        'src/cards/index.ts': `export const list = 'list'\n`,
+        'src/entry.ts': `const modules = import.meta.glob(${patterns}, { eager: true })
+export const read = () => Object.keys(modules).sort()
+`,
+      })
+      const start = {
+        importProtection: { client: { excludeFiles: ['**/d.server.ts'] } },
+      }
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files: files(`'./cards/*.ts'`),
+          entry: 'src/entry.ts',
+          start,
+        }),
+      )
+      expectViolationsAt(error, [
+        { environment: 'client', use: 'src/entry.ts:1:17' },
+      ])
+      // the suggested call's patterns, as the report prints them (a
+      // JavaScript list of string literals)
+      const printed = error.diagnostics
+        .map(({ text }) =>
+          /import\.meta\.glob\((\[[^\n]*\]), \.\.\.\)/.exec(text),
+        )
+        .find(Boolean)
+      expect(printed).toBeTruthy()
+      const build = await buildStart({
+        bundler,
+        files: files(printed![1]!),
+        entry: 'src/entry.ts',
+        start,
+      })
+      expect(build.violations).toEqual([])
+      expect(build.client.where('MARK_DRAFT')).toBe('nowhere')
+      const { result } = await build.client.run('return entry.read()')
+      expect(result).toEqual(['./cards/d.server.ts', './cards/index.ts'])
     },
     timeout,
   )
@@ -495,6 +556,63 @@ export const options = {
   ),
 }
 `,
+        },
+        entry: 'src/entry.tsx',
+      })
+      expect(build.violations).toEqual([])
+      expect(build.ssr.where('MARK_WIDGET')).toBe('nowhere')
+      expect(build.client.where('MARK_WIDGET')).not.toBe('nowhere')
+    },
+    timeout,
+  )
+
+  // A component rendered in code the server output erases (the body of
+  // `createClientOnlyFn`) and as a route option: the report names the
+  // option, the use the server renders, and wrapping it builds. Source:
+  // fact-check of the Astra review round 3 of #8817, import protection B2
+  // (the report named the erased element, and wrapping it still failed).
+  test(
+    'a component rendered in erased client-only code and as a route option: the report names the option, and wrapping it builds',
+    async () => {
+      const entry = (
+        errorComponent: string,
+      ) => `import { ClientOnly } from '@tanstack/react-router'
+import { createClientOnlyFn } from '@tanstack/react-start'
+import { Widget } from './widget.client'
+export const preview = createClientOnlyFn(() => <Widget />)
+export const options = { errorComponent: ${errorComponent} }
+`
+      const initial = entry('Widget')
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files: { 'src/widget.client.tsx': widget, 'src/entry.tsx': initial },
+          entry: 'src/entry.tsx',
+        }),
+      )
+      expectViolationsAt(error, [
+        { environment: 'server', use: 'src/entry.tsx:3:24' },
+      ])
+      const at = (needle: number) => ({
+        severity: 'error' as const,
+        file: 'src/entry.tsx',
+        root: error.root,
+        position: diagnosticPosition(initial, needle),
+      })
+      expectDiagnostic(error.diagnostics, at(initial.lastIndexOf('Widget')))
+      expect(
+        findDiagnostics(
+          error.diagnostics,
+          at(initial.indexOf('Widget', initial.indexOf('<'))),
+        ),
+      ).toEqual([])
+      const build = await buildStart({
+        bundler,
+        files: {
+          'src/widget.client.tsx': widget,
+          'src/entry.tsx': entry(
+            '() => <ClientOnly fallback={<span>loading</span>}><Widget /></ClientOnly>',
+          ),
         },
         entry: 'src/entry.tsx',
       })

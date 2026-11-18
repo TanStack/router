@@ -185,23 +185,34 @@ export type ReportedInfo = ViolationInfo & {
 }
 
 /**
- * The `ViolationInfo` of a violation. `trace` is read from the bundler's
- * graph when it is first read (dev: the graph may not know the importer's
- * importers yet when `onViolation` runs; a report reads it when printed),
- * cut at `maxTraceDepth`, and stays what it was then: an event kept after a
- * later edit still names the chain that brought the import.
+ * The `ViolationInfo` of a violation. `trace`: the trace itself (a build
+ * walks its finished graph once, for `onViolation` and the report alike), or
+ * a reader called when the trace is first read (dev: the graph may not know
+ * the importer's importers yet when `onViolation` runs; a report reads it
+ * when printed), dropped after that read. The trace is cut at
+ * `maxTraceDepth` and stays what it was then: an event kept after a later
+ * edit still names the chain that brought the import, and an event kept
+ * after a build holds no part of that build.
  */
 export function violationInfo(
   v: EdgeViolation,
   config: ImportProtectionConfig,
-  trace: () => Trace,
+  trace: Trace | (() => Trace),
 ): ReportedInfo {
   let frozen: Trace | null = null
+  let source: Trace | (() => Trace) | null = trace
   const freeze = (): Trace => {
     if (frozen) {
       return frozen
     }
-    const t = (frozen = trace())
+    // (a trace given as a value may be given to other infos too: each
+    // freezes its own steps, `info.trace` is the user's to change)
+    const read = typeof source === 'function' ? source() : source!
+    source = null
+    const t = (frozen = {
+      fromEntry: read.fromEntry,
+      steps: read.steps.map((step) => ({ ...step })),
+    })
     const last = t.steps[t.steps.length - 1]
     if (last && identify(last.file).path === v.importer) {
       last.specifier = v.specifier
