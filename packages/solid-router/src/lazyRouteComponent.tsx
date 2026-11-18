@@ -21,6 +21,7 @@ export function lazyRouteComponent<
   let comp: T[TKey] | T['default']
   let error: any
   let cancelledByUnload = false
+  let staying: Promise<void> | undefined
 
   const load = () => {
     if (!loadPromise) {
@@ -41,6 +42,9 @@ export function lazyRouteComponent<
         .catch((err) => {
           loadPromise = undefined
           cancelledByUnload = stopWatchingUnload() && isModuleNotFoundError(err)
+          // Start listening now: a pageshow before the retry is rendered
+          // would otherwise go unseen and leave the route suspended.
+          staying = cancelledByUnload ? waitForPageToStay() : undefined
           error = err
         })
     }
@@ -60,9 +64,10 @@ export function lazyRouteComponent<
     // The browser cancelled the import because the page is unloading, so a
     // reload would replace the navigation the user started. If the page stays
     // after all, retry the import instead.
-    if (error && cancelledByUnload) {
+    if (error && cancelledByUnload && staying) {
+      const stay = staying
       const Retry = lazy(async () => {
-        await waitForPageToStay()
+        await stay
         await load()
         return { default: render }
       })

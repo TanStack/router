@@ -47,3 +47,27 @@ test('still reloads once for a missing module when the page is not unloading', a
 
   expect(sessionStorage.getItem(reloadKey)).toBe('1')
 })
+
+test('retries when the page stays before the route renders', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  const first = createControlledPromise<never>()
+  const importer = vi
+    .fn()
+    .mockReturnValueOnce(first)
+    .mockResolvedValueOnce({ default: () => <div>Loaded</div> })
+  const Page = lazyRouteComponent(importer)
+
+  const preload = Page.preload!()
+  window.dispatchEvent(new Event('beforeunload'))
+  first.reject(new TypeError(message))
+  await preload
+
+  // Restored from the back/forward cache before the route is rendered.
+  window.dispatchEvent(new Event('pageshow'))
+  await Promise.resolve()
+
+  render(() => <Page />)
+  expect(await screen.findByText('Loaded')).toBeInTheDocument()
+  expect(importer).toHaveBeenCalledTimes(2)
+  expect(sessionStorage.getItem(reloadKey)).toBeNull()
+})

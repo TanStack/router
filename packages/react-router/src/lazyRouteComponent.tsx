@@ -50,6 +50,15 @@ export function lazyRouteComponent<
         .catch((err) => {
           loadPromise = undefined
           cancelledByUnload = stopWatchingUnload() && isModuleNotFoundError(err)
+          // Start listening now: a pageshow before the next render would
+          // otherwise go unseen and leave the route suspended.
+          if (cancelledByUnload) {
+            staying = waitForPageToStay().then(() => {
+              staying = undefined
+              error = undefined
+              cancelledByUnload = false
+            })
+          }
           // We don't want an error thrown from preload in this case, because
           // there's nothing we want to do about module not found during preload.
           // Record the error, the rest is handled during the render path.
@@ -64,12 +73,7 @@ export function lazyRouteComponent<
       // The browser cancelled the import because the page is unloading, so a
       // reload would replace the navigation the user started. If the page
       // stays after all, retry the import instead.
-      if (cancelledByUnload) {
-        staying ??= waitForPageToStay().then(() => {
-          staying = undefined
-          error = undefined
-          cancelledByUnload = false
-        })
+      if (cancelledByUnload && staying) {
         throw staying
       }
       // A missing module can mean that a newer deployment replaced the URL.
