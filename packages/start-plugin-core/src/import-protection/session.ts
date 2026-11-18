@@ -62,6 +62,7 @@ import type {
   EdgeModuleContent,
   EdgeModuleIds,
   EdgeModuleRef,
+  ProductionMock,
 } from './edge-modules'
 import type { ImportGraphView, SourceReader, Trace } from './graph-trace'
 import type { DevReport, DevReporterOptions, ReportSink } from './report'
@@ -344,7 +345,7 @@ export class ImportProtection {
     const env = this.envs.get(ref.env)
     return env
       ? env.edgeLoad(ref.key)
-      : unknownEdgeLoad(ref.env, ref.key, this.ids, this.production)
+      : unknownEdgeLoad(ref.env, ref.key, this.ids, this.productionMock)
   }
 
   /**
@@ -378,6 +379,11 @@ export class ImportProtection {
    */
   get production(): boolean {
     return this.config.mode === 'build'
+  }
+
+  /** What a production mock's metadata is made of; null in dev. @internal */
+  get productionMock(): ProductionMock | null {
+    return this.production ? this.config : null
   }
 
   /** The mock runtime of the environment `env`. @internal */
@@ -472,7 +478,7 @@ function unknownEdgeLoad(
   env: string,
   key: string,
   ids: EdgeModuleIds,
-  production: boolean,
+  production: ProductionMock | null,
 ): EdgeModuleLoad {
   const edgeKey = key.split('.')[0] ?? key
   return {
@@ -1387,7 +1393,12 @@ class ImportProtectionEnv {
   edgeLoad(key: string): EdgeModuleLoad | null {
     const m = this.modules.get(key)
     if (!m) {
-      return unknownEdgeLoad(this.name, key, this.ip.ids, this.ip.production)
+      return unknownEdgeLoad(
+        this.name,
+        key,
+        this.ip.ids,
+        this.ip.productionMock,
+      )
     }
     const runtime = this.ip.ids.specifier({ env: this.name, kind: 'runtime' })
     const c = m.content
@@ -1398,7 +1409,7 @@ class ImportProtectionEnv {
       }
     }
     return {
-      code: mockModuleCode(c, runtime, this.ip.production),
+      code: mockModuleCode(c, runtime, this.ip.productionMock),
       moduleSideEffects: null,
     }
   }

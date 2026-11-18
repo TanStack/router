@@ -16,6 +16,7 @@
  *   mock Proxy with the `mockAccess` diagnostics, in every environment and
  *   mode (J6.3).
  */
+import path from 'node:path'
 import {
   canonicalJson,
   digestOf,
@@ -29,7 +30,7 @@ import {
   SPECIFIER_SLOT,
   serverEnvSuggestions,
 } from './trace'
-import type { MockAccess } from './config'
+import type { ImportProtectionConfig, MockAccess } from './config'
 import type { RuleRef } from './rules'
 import type { CompileStartFrameworkOptions } from '../types'
 
@@ -217,19 +218,48 @@ function exportable(name: string): boolean {
   )
 }
 
+/** What a production mock's metadata is made of (`mockModuleCode`); null: a dev server's mock. */
+export type ProductionMock = Pick<ImportProtectionConfig, 'root' | 'mockAccess'>
+
+/**
+ * The name a production mock's report gives: the denied file relative to
+ * the root (`../pkg/x.server.ts` for a file outside it: never the build
+ * machine's absolute path; its base name on another drive), else the
+ * specifier; nothing with `mockAccess: 'off'` (the runtime reports
+ * nothing). Never the importer.
+ */
+function productionLabel(
+  content: EdgeModuleContent,
+  { root, mockAccess }: ProductionMock,
+): string {
+  if (mockAccess === 'off') {
+    return ''
+  }
+  const file = content.file
+  if (file === null) {
+    return content.specifier
+  }
+  // (`file` is root-relative, or absolute outside the root)
+  if (!path.isAbsolute(file)) {
+    return file
+  }
+  const relative = path.relative(root, file).replace(/\\/g, '/')
+  return path.isAbsolute(relative) ? path.basename(file) : relative
+}
+
 /**
  * The mock state of an edge module (pure; owns its exports; the effect
  * witness when the target is effectful). Its metadata is what the runtime
  * of `production` (`mockRuntimeCode`) reads: in production, only the name
- * its report gives (the denied file, else the specifier; no importer).
+ * its report gives (`productionLabel`).
  */
 export function mockModuleCode(
   content: EdgeModuleContent,
   runtimeSpecifier: string,
-  production: boolean,
+  production: ProductionMock | null,
 ): string {
   const meta = production
-    ? (content.file ?? content.specifier)
+    ? productionLabel(content, production)
     : JSON.stringify({
         e: content.env,
         s: content.specifier,

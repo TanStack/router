@@ -5,6 +5,7 @@
  * `describeValue`: `a safe mock`), and a violation by what `onViolation`
  * receives.
  */
+import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import {
   diagnosticsOf,
@@ -300,6 +301,58 @@ return logged`)
         ),
         importerPath: built.client.where('importer-path-mark'),
       }).toEqual({ mocked: true, importerPath: 'nowhere' })
+    },
+    timeout,
+  )
+
+  // A denied file of a sibling workspace package, outside the app's root: a
+  // production client mock names it relative to the root, never by the
+  // build machine's absolute path (user name, CI workspace), and names
+  // nothing with `mockAccess: 'off'` (its runtime reports nothing).
+  // Source: fact-check of the Astra review round 3 of #8817, import
+  // protection U3.
+  test.each(['warn', 'off'] as const)(
+    'a production client mock of a file outside the root, mockAccess %s: no absolute path in the client',
+    async (mockAccess) => {
+      const label = '../../packages/shared/label.server.ts'
+      const built = await buildStart({
+        bundler,
+        workspace: {
+          app: 'repo/apps/web',
+          files: {
+            'repo/package.json': JSON.stringify({
+              name: 'monorepo',
+              private: true,
+            }),
+            'repo/packages/shared/label.server.ts': `export const label = () => 'MARK_LABEL'\n`,
+          },
+        },
+        files: {
+          'src/entry.ts': `import { label } from '../${label}'
+export const run = () => label()
+`,
+        },
+        entry: 'src/entry.ts',
+        start: { importProtection: { behavior: 'mock', mockAccess } },
+      })
+      const file = path.resolve(built.root, label)
+      const { result } = await built.client.run(`const logged = []
+console.warn = (...args) => {
+  logged.push(args.map((arg) => (arg instanceof Error ? arg.message : String(arg))).join(' '))
+}
+entry.run()
+return logged`)
+      expect({
+        mocked: built.client.where('MARK_LABEL'),
+        absolute: built.client.where(path.dirname(file)),
+        label: built.client.where(label) !== 'nowhere',
+        logged: (result as Array<string>).map((text) => text.includes(label)),
+      }).toEqual({
+        mocked: 'nowhere',
+        absolute: 'nowhere',
+        label: mockAccess === 'warn',
+        logged: mockAccess === 'warn' ? [true] : [],
+      })
     },
     timeout,
   )
