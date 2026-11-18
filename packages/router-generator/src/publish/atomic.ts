@@ -60,7 +60,8 @@ async function realPathOf(file: string) {
  * temporary file, which is renamed over the destination, so a reader sees
  * the old or the new file, never a part. The destination is the file's real
  * path: a symlinked route file or route tree keeps its link, and the file it
- * names gets the content, keeping its mode and owner. Temporary files go to
+ * names gets the content, keeping its mode and owner (unless the caller asks
+ * for a file of its own: `write`'s `ownFile`). Temporary files go to
  * `tmpDir`; when a rename from there crosses devices (EXDEV), the temporary
  * file is written beside the real destination instead (a dot file, which the
  * route scan skips), for that directory from then on.
@@ -78,15 +79,17 @@ export class AtomicPublisher {
   /**
    * Replaces `destination` with `content`. With `expected`, the file must still
    * hold exactly that (null: must not exist) right before the rename, or a
-   * `ConcurrentEditError` is thrown and nothing changes.
+   * `ConcurrentEditError` is thrown and nothing changes. With `ownFile`, a
+   * link at `destination` is replaced by a file of its own instead.
    */
   async write(
     destination: string,
     content: string,
     expected?: string | null,
+    ownFile = false,
   ): Promise<void> {
     await fsp.mkdir(path.dirname(destination), { recursive: true })
-    const file = await realPathOf(destination)
+    const file = ownFile ? destination : await realPathOf(destination)
     const dir = path.dirname(file)
     if (this.besideDestination.has(dir)) {
       await this.writeVia(this.besideName(file), file, content, expected)
