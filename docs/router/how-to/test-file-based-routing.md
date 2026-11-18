@@ -8,6 +8,8 @@ This guide covers testing TanStack Router applications that use file-based routi
 
 Test file-based routing by setting up route mocking utilities, testing generated route trees, and implementing patterns specific to file-based route structures and conventions.
 
+> **Typed test routers:** `@tanstack/react-router/testing` creates test routers from your generated route tree and types every override from it, so tests do not declare routes of their own. It is experimental; see [Testing Routes](../guide/testing-routes.md).
+
 ---
 
 ## Understanding File-Based Routing Testing

@@ -8,6 +8,8 @@ Set up testing by configuring your test framework (Vitest/Jest), creating router
 
 > **Using File-Based Routing?** See [How to Test File-Based Routing](./test-file-based-routing.md) for patterns specific to file-based routing applications.
 
+> **Typed test routers:** `@tanstack/react-router/testing` creates test routers from your app's route tree and types every override from it, so tests do not declare routes of their own. It is experimental; see [Testing Routes](../guide/testing-routes.md).
+
 ---
 
 ## Configure Test Framework
