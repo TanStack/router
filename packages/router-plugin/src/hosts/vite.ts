@@ -50,13 +50,16 @@ const CODE_SPLITTER_PLUGIN_NAME =
 
 /**
  * The text of a route file's own route (the route factories' calls, as
- * `main`'s transform filter read them): of the dependency modules, only those
- * holding it reach the hook that reports a route file under `node_modules`.
+ * `main`'s transform filter read them, or the router package a route imports
+ * its constructor from, whatever local name it gives it): of the dependency
+ * modules, only those holding it reach the hook that reports a route file
+ * under `node_modules`.
  */
 const ROUTE_FACTORY_CALL_RE = [
   /\bcreate(?:Lazy)?FileRoute\s*\(/,
   /\bcreateRootRoute\s*\(/,
   /\bcreateRootRouteWithContext\s*(?:<|\()/,
+  /@tanstack\/(?:react|solid|vue)-router["']/,
 ]
 
 type TransformationPluginInfo = {
@@ -439,7 +442,8 @@ export function createRouterCompilerVitePlugin(
    * A route file under `node_modules` is not compiled (the transform's
    * filter leaves dependencies out, as the webpack/Rspack loader rule does):
    * the build or dev server warns once per such file. Only dependency
-   * modules with a route factory's call in their text reach the handler.
+   * modules with a route factory's call or the router package in their text
+   * reach the handler.
    */
   const dependencyRouteFiles: Plugin = {
     name: 'tanstack-router:code-splitter:dependency-route-files',
