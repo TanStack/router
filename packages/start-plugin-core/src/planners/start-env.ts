@@ -201,6 +201,40 @@ function needsParens(
   }
 }
 
+/**
+ * The text of `kept` in place of the expression `original`: `(0, kept)`
+ * where the value of `original` is called or tagged at once (through the
+ * wrappers of `isExpressionWrapper`) and `kept` is a member or `eval`, which
+ * called there would get a receiver or evaluate in place (the function a
+ * factory returns calls its implementation with none); else `kept`, in
+ * parentheses when `needsParens` says.
+ */
+function keptText(
+  code: string,
+  kept: Node,
+  original: Node,
+  file: PlanContext['analysis']['file'],
+): Array<Frag> {
+  let n = original
+  let p = file.parentOf(n)
+  while (p && isExpressionWrapper(p) && p.expression === n) {
+    n = p
+    p = file.parentOf(p)
+  }
+  const value = unwrapExpression(kept)
+  if (
+    ((p?.type === 'CallExpression' && p.callee === n) ||
+      (p?.type === 'TaggedTemplateExpression' && p.tag === n)) &&
+    (value.type === 'MemberExpression' ||
+      (value.type === 'Identifier' && value.name === 'eval'))
+  ) {
+    return [text('(0, '), slice(rangeOf(kept)), text(')')]
+  }
+  return needsParens(code, kept, original, file.parentOf(original))
+    ? [text('('), slice(rangeOf(kept)), text(')')]
+    : [slice(rangeOf(kept))]
+}
+
 function enclosingFunctionNames(
   file: PlanContext['analysis']['file'],
   node: Node,
@@ -784,18 +818,7 @@ function planStartEnv(
         continue
       }
       // (the edit replaces the terminal inside its wrappers: `x as T` keeps its `as`)
-      const parens = needsParens(
-        ctx.analysis.source.code,
-        link.arg,
-        X,
-        file.parentOf(X),
-      )
-      envEdit(
-        rangeOf(X),
-        parens
-          ? [text('('), slice(rangeOf(link.arg)), text(')')]
-          : [slice(rangeOf(link.arg))],
-      )
+      envEdit(rangeOf(X), keptText(ctx.analysis.source.code, link.arg, X, file))
       continue
     }
     if (chain.headIsFactoryCall) {
@@ -810,7 +833,10 @@ function planStartEnv(
     }
     if (chain.links.length > 0) {
       // the implementation lives on the stored receiver (this module or another): strip this segment's links
-      envEdit(rangeOf(X), [slice(rangeOf(chain.head))])
+      envEdit(
+        rangeOf(X),
+        keptText(ctx.analysis.source.code, chain.head, X, file),
+      )
     }
   }
 
@@ -827,17 +853,9 @@ function planStartEnv(
         )
         continue
       }
-      const parens = needsParens(
-        ctx.analysis.source.code,
-        c.arg,
-        wrapped,
-        parent,
-      )
       envEdit(
         rangeOf(c.call),
-        parens
-          ? [text('('), slice(rangeOf(c.arg)), text(')')]
-          : [slice(rangeOf(c.arg))],
+        keptText(ctx.analysis.source.code, c.arg, wrapped, file),
       )
     } else {
       if (c.arg !== null && c.kind === 'server') {
