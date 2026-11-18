@@ -160,6 +160,11 @@ interface FactsEntry {
   reading: Promise<string | null> | null
 }
 
+/** A file event's read of a file (`readChange`): its text and the text's `revision` (null: the file is gone). */
+export type EventRead =
+  | { text: string; revision: string }
+  | { text: null; revision: null }
+
 export class RawFactsCache {
   /** Entry key (`keyOf`) → entry. */
   private readonly entries = new Map<string, FactsEntry>()
@@ -219,18 +224,18 @@ export class RawFactsCache {
   }
 
   /**
-   * Marks the facts at `path` stale. `text`: what a file event read
+   * Marks the facts at `path` stale. `read`: what a file event read
    * (`readChange`): the path's text from now on, which the entries' next
    * builds take instead of reading the file again.
    */
-  markStale(path: string, text?: string | null): void {
+  markStale(path: string, read?: EventRead): void {
     this.changes++
-    if (text !== undefined && !this.noFacts) {
-      if (text === null) {
+    if (read !== undefined && !this.noFacts) {
+      if (read.text === null) {
         this.seen.delete(path)
         this.emptyAt.delete(path)
       } else {
-        this.seen.set(path, revision(text))
+        this.seen.set(path, read.revision)
       }
     }
     for (const key of this.byPath.get(path) ?? []) {
@@ -239,7 +244,7 @@ export class RawFactsCache {
       // a read in flight may hold the text from before the event: it is not published
       e.pending = null
       e.markerless = false
-      e.reading = text === undefined ? null : Promise.resolve(text)
+      e.reading = read === undefined ? null : Promise.resolve(read.text)
     }
   }
 
@@ -276,7 +281,7 @@ export class RawFactsCache {
     path: string,
     readable: boolean,
     dependedOn: () => boolean,
-  ): Promise<{ text: string | null; same: boolean }> {
+  ): Promise<EventRead & { same: boolean }> {
     const seen = () => this.seen.get(path)
     let text: string | null = ''
     if (readable) {
@@ -307,12 +312,12 @@ export class RawFactsCache {
         this.emptyAt.delete(path)
       }
     }
-    const same =
-      !this.noFacts &&
-      text !== null &&
-      seen() === revision(text) &&
-      !this.reads.has(path)
-    return { text, same }
+    if (text === null) {
+      return { text, revision: null, same: false }
+    }
+    const rev = readable ? revision(text) : EMPTY_REVISION
+    const same = !this.noFacts && seen() === rev && !this.reads.has(path)
+    return { text, revision: rev, same }
   }
 
   private readEvent(path: string): Promise<string | null> {

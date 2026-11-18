@@ -314,9 +314,13 @@ text compiles waits for it and emits its own output from the result.
     dependents index by directory and name, not scanned).
   - **Dependents.** A change marks the file's raw facts stale (its next build takes the text the event read) and
     re-validates dependents' fingerprints with each environment's own resolver (a resolver that throws makes the plan
-    stale, and its next compile reports the error). The file's own plans are keyed by its text and stay (a bundler
-    that built the new text already keeps their rows) until a compile of a newer text ends: with its plan, or, for a
-    text without one (untouched, empty, not parsed), without. A removal evicts them and stales every plan that read the
+    stale, and its next compile reports the error). A plan answers for its file's text: the file's change evicts its
+    plans of another text in every environment and makes the event's text the key's latest, so a compile of a former
+    text still running answers its requests without publishing (`PlanCache.supersede`). A plan of the text the event
+    read stays, with its rows (a touch, a request of the new text ahead of its event); an evicted one's file enters the
+    stale set, for a bundler that skipped building it (webpack's content-hash snapshot of a file written unchanged
+    after a loader before the compiler rewrote it; the takers let the event's own file go). A compile of a key's
+    latest text without a plan (untouched, empty, not parsed) evicts the plan of an older one. A removal evicts the file's plans and stales every plan that read the
     file, unasked: held, unless every resolution of the plan that found the file finds another file or an external now
     (`./b` found `b.ts` and finds `b/index.ts`: a file turned into a folder; a resolver's fallback to a package), asked
     with the plan's own resolver. Events of
@@ -326,7 +330,7 @@ text compiles waits for it and emits its own output from the result.
     functions and import protection's records there).
   - **Stale sets.** The plans found stale enter their environment's **stale set** (`caches.stale`): the files whose
     modules the bundler must build again and will not build on its own, kept until a host takes them
-    (`take(env, { held })`; `held`: stale only because a file they read was removed, and nothing takes its place; the hold ends once a compile of the file's latest text settles in that environment, whose reads decide from then on, a removed file it still imports being a failed resolution: the file's own change may come before the removal that judged its older plan). The other writers: a registry
+    (`take(env, { held })`; `held`: stale only because a file they read was removed, and nothing takes its place; the hold ends with the file's own change, and once a compile of the file's latest text settles in that environment, the file compiled again with no event of its own: its reads decide from then on, a removed file it still imports being a failed resolution). The other writers: a registry
     change (the file, in every environment that has compiled or whose bundler holds modules: `stale.track(env)`, a
     Vite dev environment, a webpack-family compiler from its first drain), a plan hit that fails validation (the file,
     so its other outputs follow; when no invalidation runs, counted as `staleHits` when a fact failed, a defect:

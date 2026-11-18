@@ -644,7 +644,11 @@ interface PlanRecord {
   path: string
   /** Moved by a newer revision or an invalidation: attempts begun before it are stale. */
   generation: number
-  /** The revision the key's last request arrived with: only a compile of it publishes. */
+  /**
+   * The key's latest known text: its last request's, or its file's as its
+   * last event read it (`PlanCache.supersede`). Only a compile of it
+   * publishes.
+   */
   latest: string | undefined
   /** Requests in progress (two quick saves overlap; a plan hit may wait on its validation). */
   active: number
@@ -774,6 +778,25 @@ export class PlanCache {
       r.latest = revision
       r.generation++
     }
+  }
+
+  /**
+   * The key's file changed; `revision`: its text as the event read it. A
+   * plan of another text is of a former one: evicted. A compile of another
+   * text no longer publishes (its requests are still answered). True when
+   * a plan was evicted.
+   */
+  supersede(key: PlanKey, revision: string): boolean {
+    const r = this.records.get(planKeyString(key))
+    if (!r) {
+      return false
+    }
+    if (r.latest !== revision) {
+      r.latest = revision
+      r.generation++
+    }
+    // (the bundler compiled this text before its event arrived: kept)
+    return r.entry?.revision === revision ? false : this.delete(key)
   }
 
   /** A request of `key` ended (its compile published or not); the last one takes the key's asks along. */
@@ -1027,12 +1050,14 @@ export class StaleSets {
   }
 
   /**
-   * A compile of the file's latest text settled in the environment: a hold
-   * of its path ends. The hold was for the modules of the plan a removal
-   * evicted; the new compile recorded its own reads (a removed file it
-   * still imports as a failed resolution, which the file's return judges
-   * again). A path stale for any other reason stays: the file's other
-   * outputs follow it.
+   * A hold of the file's path in the environment ends: its file changed
+   * (`invalidate()`: its plans of a former text went with the event), or a
+   * compile of its latest text settled there (the held file compiled again
+   * with no event of its own: a request, a reload). The hold was for the
+   * modules of the plan a removal evicted; what the file's latest text
+   * reads decides from then on (a removed file it still imports is a
+   * failed resolution, which the file's return judges again). A path stale
+   * for any other reason stays: the file's other outputs follow it.
    */
   unhold(env: string, path: string): void {
     const set = this.byEnv.get(env)
