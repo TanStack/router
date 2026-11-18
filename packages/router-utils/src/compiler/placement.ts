@@ -565,8 +565,9 @@ export function computePlacement(input: PlacementInput): Placement {
 
   /**
    * A declaration that is exactly a function: evaluating it reads nothing
-   * (a function declaration, a declarator whose initialiser is a function
-   * or arrow expression; overload signatures and merged types decide
+   * (a function declaration, a declarator of an identifier whose
+   * initialiser is a function or arrow expression: a pattern reads its
+   * computed keys and defaults; overload signatures and merged types decide
    * nothing).
    */
   const isFunction = (c: ClusterId) =>
@@ -578,6 +579,7 @@ export function computePlacement(input: PlacementInput): Placement {
         node.type === 'TSDeclareFunction' ||
         node.type === 'FunctionDeclaration' ||
         (node.type === 'VariableDeclarator' &&
+          node.id.type === 'Identifier' &&
           (node.init?.type === 'ArrowFunctionExpression' ||
             node.init?.type === 'FunctionExpression'))
       )
