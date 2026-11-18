@@ -1,47 +1,36 @@
 import { Await, createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { Suspense } from 'react'
+import {
+  makeDeferredMessage,
+  makeServerData,
+  slowRenderComponents,
+  slowRenderDeferredDelay,
+  slowRenderDeferredMessage,
+  slowRenderQuickName,
+  sourceMarker,
+} from '../../../../streaming-ssr-fixtures'
 
-// Server function that completes quickly
-const getQuickData = createServerFn({ method: 'GET' }).handler(() => {
-  return {
-    name: 'Quick data',
-    timestamp: Date.now(),
-    // Track where this data came from - should always be 'server' if SSR works
-    source: 'server' as const,
-  }
-})
+const getQuickData = createServerFn({ method: 'GET' }).handler(() =>
+  makeServerData(slowRenderQuickName),
+)
 
-// Simulate a slow component render by doing work during render
 function SlowComponent({ data, index }: { data: string; index: number }) {
-  // This simulates a component that takes time to render
   const startTime = Date.now()
-  while (Date.now() - startTime < 100) {
-    // Blocking loop to simulate slow render
-  }
+  while (Date.now() - startTime < 100) {}
   return <div data-testid={`slow-component-${index}`}>{data}</div>
 }
 
 export const Route = createFileRoute('/slow-render')({
   loader: async () => {
-    // All data loads quickly
     const quickData = await getQuickData()
     return {
       quickData,
-      // Deferred data that resolves before render might complete
-      deferredData: new Promise<{ message: string; source: string }>((r) =>
-        setTimeout(
-          () =>
-            r({
-              message: 'Deferred resolved!',
-              // Track where this data came from - should always be 'server' if SSR works
-              source: typeof window === 'undefined' ? 'server' : 'client',
-            }),
-          50,
-        ),
+      deferredData: makeDeferredMessage(
+        slowRenderDeferredMessage,
+        slowRenderDeferredDelay,
       ),
-      // Track where loader ran - should always be 'server' if SSR works
-      loaderSource: typeof window === 'undefined' ? 'server' : 'client',
+      loaderSource: sourceMarker(),
     }
   },
   component: SlowRender,
@@ -76,10 +65,9 @@ function SlowRender() {
         />
       </Suspense>
 
-      {/* Multiple slow components to extend render time */}
-      <SlowComponent data="Slow component 1" index={1} />
-      <SlowComponent data="Slow component 2" index={2} />
-      <SlowComponent data="Slow component 3" index={3} />
+      {slowRenderComponents.map((data, index) => (
+        <SlowComponent key={data} data={data} index={index + 1} />
+      ))}
     </div>
   )
 }

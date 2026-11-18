@@ -15,7 +15,7 @@ const ssrBuildConfig = {
   ssrEmitAssets: true,
   copyPublicDir: false,
   emptyOutDir: true,
-  rollupOptions: {
+  rolldownOptions: {
     input: path.resolve(__dirname, 'src/entry-server.tsx'),
     output: {
       entryFileNames: 'static/[name].js',
@@ -31,7 +31,7 @@ const clientBuildConfig = {
   emitAssets: true,
   copyPublicDir: true,
   emptyOutDir: true,
-  rollupOptions: {
+  rolldownOptions: {
     input: path.resolve(__dirname, 'src/entry-client.tsx'),
     output: {
       entryFileNames: 'static/[name].js',

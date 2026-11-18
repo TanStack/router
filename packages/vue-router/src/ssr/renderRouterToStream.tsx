@@ -1,39 +1,25 @@
-import { ReadableStream as NodeReadableStream } from 'node:stream/web'
 import * as Vue from 'vue'
-import { pipeToWebWritable, renderToString } from 'vue/server-renderer'
+import { renderToString, renderToWebStream } from 'vue/server-renderer'
 import { isbot } from 'isbot'
-import { transformReadableStreamWithRouter } from '@tanstack/router-core/ssr/server'
+import {
+  createSsrStreamResponse,
+  getSsrStatus,
+  transformHtmlStringWithRouter,
+  transformReadableStreamWithRouter,
+  waitForRequest,
+} from '@tanstack/router-core/ssr/server'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { Component } from 'vue'
 
-function prependDoctype(
-  readable: globalThis.ReadableStream,
-): NodeReadableStream<Uint8Array> {
-  const encoder = new TextEncoder()
-  let sentDoctype = false
+const DOCTYPE = new TextEncoder().encode('<!DOCTYPE html>')
 
-  return new NodeReadableStream<Uint8Array>({
-    start(controller) {
-      const reader = readable.getReader()
-
-      async function pump(): Promise<void> {
-        const { done, value } = await reader.read()
-        if (done) {
-          controller.close()
-          return
-        }
-
-        if (!sentDoctype) {
-          sentDoctype = true
-          controller.enqueue(encoder.encode('<!DOCTYPE html>'))
-        }
-        controller.enqueue(value)
-        return pump()
-      }
-
-      pump().catch((err) => controller.error(err))
-    },
-  })
+/** The router transport needs `<html>` as the outer root, not a fragment. */
+export function warnUnlessHtmlRoot(html: string) {
+  if (process.env.NODE_ENV !== 'production' && !html.startsWith('<html')) {
+    console.warn(
+      'TanStack Router: the Vue root component must render <html> as its outer element. A fragment or array root breaks streamed hydration scripts.',
+    )
+  }
 }
 
 export const renderRouterToStream = async ({
@@ -47,38 +33,47 @@ export const renderRouterToStream = async ({
   responseHeaders: Headers
   App: Component
 }) => {
-  const app = Vue.createSSRApp(App, { router })
-
-  if (isbot(request.headers.get('User-Agent'))) {
-    let fullHtml = await renderToString(app)
-
-    const htmlOpenIndex = fullHtml.indexOf('<html')
-    const htmlCloseIndex = fullHtml.indexOf('</html>')
-
-    if (htmlOpenIndex !== -1 && htmlCloseIndex !== -1) {
-      fullHtml = fullHtml.slice(htmlOpenIndex, htmlCloseIndex + 7)
-    } else if (htmlOpenIndex !== -1) {
-      fullHtml = fullHtml.slice(htmlOpenIndex)
-    }
-
-    return new Response(`<!DOCTYPE html>${fullHtml}`, {
-      status: router.state.statusCode,
-      headers: responseHeaders,
-    })
+  const signal = request.signal
+  if (signal.aborted) {
+    router.serverSsr?.cleanup()
+    throw signal.reason
   }
 
-  const { writable, readable } = new TransformStream()
+  try {
+    const app = Vue.createSSRApp(App, { router })
 
-  pipeToWebWritable(app, {}, writable)
+    if (isbot(request.headers.get('User-Agent'))) {
+      let fullHtml = await waitForRequest(renderToString(app), signal)
+      warnUnlessHtmlRoot(fullHtml)
+      fullHtml = await transformHtmlStringWithRouter(router, fullHtml, {
+        signal,
+      })
+      return new Response(fullHtml, {
+        status: getSsrStatus(router),
+        headers: responseHeaders,
+      })
+    }
 
-  const doctypedStream = prependDoctype(readable)
-  const responseStream = transformReadableStreamWithRouter(
-    router,
-    doctypedStream,
-  )
+    const readable = renderToWebStream(app).pipeThrough(
+      new TransformStream<Uint8Array, Uint8Array>({
+        start(controller) {
+          controller.enqueue(DOCTYPE)
+        },
+      }),
+    )
+    const responseStream = transformReadableStreamWithRouter(router, readable, {
+      signal,
+    })
 
-  return new Response(responseStream as any, {
-    status: router.state.statusCode,
-    headers: responseHeaders,
-  })
+    return createSsrStreamResponse(
+      router,
+      new Response(responseStream, {
+        status: getSsrStatus(router),
+        headers: responseHeaders,
+      }),
+    )
+  } catch (error) {
+    router.serverSsr?.cleanup()
+    throw error
+  }
 }

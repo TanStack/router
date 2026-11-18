@@ -33,15 +33,18 @@ export type UseSearchOptions<
 export type UseSearchRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
+  TThrow extends boolean = true,
 >(
   opts?: UseSearchBaseOptions<
     TRouter,
     TFrom,
     /* TStrict */ true,
-    /* TThrow */ true,
+    TThrow,
     TSelected
   >,
-) => Vue.Ref<UseSearchResult<TRouter, TFrom, true, TSelected>>
+) => Vue.Ref<
+  ThrowOrOptional<UseSearchResult<TRouter, TFrom, true, TSelected>, TThrow>
+>
 
 export function useSearch<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -64,7 +67,7 @@ export function useSearch<
     from: opts.from!,
     strict: opts.strict,
     shouldThrow: opts.shouldThrow,
-    select: (match: any) => {
+    select: (match) => {
       return opts.select ? opts.select(match.search) : match.search
     },
   }) as any

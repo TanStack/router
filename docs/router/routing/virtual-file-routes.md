@@ -187,6 +187,8 @@ export const routes = rootRoute('root.tsx', [
 ])
 ```
 
+Because `route` receives an explicit URL path, leading and trailing underscores are treated literally. Use `layout` to create pathless layout routes.
+
 You can also define a virtual route without a file name. This allows to set a common path prefix for its children:
 
 ```tsx

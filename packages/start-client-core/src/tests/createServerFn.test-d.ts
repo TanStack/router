@@ -6,6 +6,7 @@ import type { ServerFnMeta } from '../constants'
 import type {
   Constrain,
   Register,
+  SerializationError,
   TsrSerializable,
   ValidateSerializableInput,
   Validator,
@@ -19,7 +20,7 @@ import type {
 test('createServerFn without middleware', () => {
   expectTypeOf(createServerFn()).toHaveProperty('handler')
   expectTypeOf(createServerFn()).toHaveProperty('middleware')
-  expectTypeOf(createServerFn()).toHaveProperty('inputValidator')
+  expectTypeOf(createServerFn()).toHaveProperty('validator')
 
   createServerFn({ method: 'GET' }).handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
@@ -34,13 +35,13 @@ test('createServerFn without middleware', () => {
 test('createServerFn with validator function', () => {
   const fnAfterValidator = createServerFn({
     method: 'GET',
-  }).inputValidator((input: { input: string }) => ({
+  }).validator((input: { input: string }) => ({
     a: input.input,
   }))
 
   expectTypeOf(fnAfterValidator).toHaveProperty('handler')
   expectTypeOf(fnAfterValidator).toHaveProperty('middleware')
-  expectTypeOf(fnAfterValidator).not.toHaveProperty('inputValidator')
+  expectTypeOf(fnAfterValidator).not.toHaveProperty('validator')
 
   const fn = fnAfterValidator.handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
@@ -66,11 +67,11 @@ test('createServerFn with validator function', () => {
 test('createServerFn with async validator function', () => {
   const fnAfterValidator = createServerFn({
     method: 'GET',
-  }).inputValidator((input: string) => Promise.resolve(input))
+  }).validator((input: string) => Promise.resolve(input))
 
   expectTypeOf(fnAfterValidator).toHaveProperty('handler')
   expectTypeOf(fnAfterValidator).toHaveProperty('middleware')
-  expectTypeOf(fnAfterValidator).not.toHaveProperty('inputValidator')
+  expectTypeOf(fnAfterValidator).not.toHaveProperty('validator')
 
   const fn = fnAfterValidator.handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
@@ -94,13 +95,13 @@ test('createServerFn with async validator function', () => {
 test('createServerFn with validator with parse method', () => {
   const fnAfterValidator = createServerFn({
     method: 'GET',
-  }).inputValidator({
+  }).validator({
     parse: (input: string) => input,
   })
 
   expectTypeOf(fnAfterValidator).toHaveProperty('handler')
   expectTypeOf(fnAfterValidator).toHaveProperty('middleware')
-  expectTypeOf(fnAfterValidator).not.toHaveProperty('inputValidator')
+  expectTypeOf(fnAfterValidator).not.toHaveProperty('validator')
 
   const fn = fnAfterValidator.handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
@@ -124,13 +125,13 @@ test('createServerFn with validator with parse method', () => {
 test('createServerFn with async validator with parse method', () => {
   const fnAfterValidator = createServerFn({
     method: 'GET',
-  }).inputValidator({
+  }).validator({
     parse: (input: string) => Promise.resolve(input),
   })
 
   expectTypeOf(fnAfterValidator).toHaveProperty('handler')
   expectTypeOf(fnAfterValidator).toHaveProperty('middleware')
-  expectTypeOf(fnAfterValidator).not.toHaveProperty('inputValidator')
+  expectTypeOf(fnAfterValidator).not.toHaveProperty('validator')
 
   const fn = fnAfterValidator.handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
@@ -173,11 +174,11 @@ test('createServerFn with standard validator', () => {
 
   const fnAfterValidator = createServerFn({
     method: 'GET',
-  }).inputValidator(validator)
+  }).validator(validator)
 
   expectTypeOf(fnAfterValidator).toHaveProperty('handler')
   expectTypeOf(fnAfterValidator).toHaveProperty('middleware')
-  expectTypeOf(fnAfterValidator).not.toHaveProperty('inputValidator')
+  expectTypeOf(fnAfterValidator).not.toHaveProperty('validator')
 
   const fn = fnAfterValidator.handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
@@ -221,11 +222,11 @@ test('createServerFn with async standard validator', () => {
 
   const fnAfterValidator = createServerFn({
     method: 'GET',
-  }).inputValidator(validator)
+  }).validator(validator)
 
   expectTypeOf(fnAfterValidator).toHaveProperty('handler')
   expectTypeOf(fnAfterValidator).toHaveProperty('middleware')
-  expectTypeOf(fnAfterValidator).not.toHaveProperty('inputValidator')
+  expectTypeOf(fnAfterValidator).not.toHaveProperty('validator')
 
   const fn = fnAfterValidator.handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
@@ -284,7 +285,7 @@ test('createServerFn with middleware and context', () => {
   ])
 
   expectTypeOf(fnWithMiddleware).toHaveProperty('handler')
-  expectTypeOf(fnWithMiddleware).toHaveProperty('inputValidator')
+  expectTypeOf(fnWithMiddleware).toHaveProperty('validator')
 
   fnWithMiddleware.handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
@@ -302,14 +303,14 @@ test('createServerFn with middleware and context', () => {
 })
 
 describe('createServerFn with middleware and validator', () => {
-  const middleware1 = createMiddleware({ type: 'function' }).inputValidator(
+  const middleware1 = createMiddleware({ type: 'function' }).validator(
     (input: { readonly inputA: 'inputA' }) =>
       ({
         outputA: 'outputA',
       }) as const,
   )
 
-  const middleware2 = createMiddleware({ type: 'function' }).inputValidator(
+  const middleware2 = createMiddleware({ type: 'function' }).validator(
     (input: { readonly inputB: 'inputB' }) =>
       ({
         outputB: 'outputB',
@@ -324,7 +325,7 @@ describe('createServerFn with middleware and validator', () => {
   test(`response`, () => {
     const fn = createServerFn({ method: 'GET' })
       .middleware([middleware3])
-      .inputValidator(
+      .validator(
         (input: { readonly inputC: 'inputC' }) =>
           ({
             outputC: 'outputC',
@@ -367,7 +368,7 @@ describe('createServerFn with middleware and validator', () => {
 
 test('createServerFn overrides properties', () => {
   const middleware1 = createMiddleware({ type: 'function' })
-    .inputValidator(
+    .validator(
       () =>
         ({
           input: 'a' as 'a' | 'b' | 'c',
@@ -392,7 +393,7 @@ test('createServerFn overrides properties', () => {
 
   const middleware2 = createMiddleware({ type: 'function' })
     .middleware([middleware1])
-    .inputValidator(
+    .validator(
       () =>
         ({
           input: 'b' as 'b' | 'c',
@@ -415,7 +416,7 @@ test('createServerFn overrides properties', () => {
 
   createServerFn()
     .middleware([middleware2])
-    .inputValidator(
+    .validator(
       () =>
         ({
           input: 'c',
@@ -431,7 +432,7 @@ test('createServerFn overrides properties', () => {
 
 test('createServerFn where validator is a primitive', () => {
   createServerFn({ method: 'GET' })
-    .inputValidator(() => 'c' as const)
+    .validator(() => 'c' as const)
     .handler((options) => {
       expectTypeOf(options).toEqualTypeOf<{
         context: undefined
@@ -444,7 +445,7 @@ test('createServerFn where validator is a primitive', () => {
 
 test('createServerFn where validator is optional if object is optional', () => {
   const fn = createServerFn({ method: 'GET' })
-    .inputValidator((input: 'c' | undefined) => input)
+    .validator((input: 'c' | undefined) => input)
     .handler((options) => {
       expectTypeOf(options).toEqualTypeOf<{
         context: undefined
@@ -512,11 +513,138 @@ test('createServerFn returns undefined', () => {
 test('createServerFn cannot return function', () => {
   expectTypeOf(createServerFn().handler<{ func: () => 'func' }>)
     .parameter(0)
-    .returns.toEqualTypeOf<{ func: 'Function is not serializable' }>()
+    .returns.toEqualTypeOf<{
+      func: SerializationError<'Function may not be serializable'>
+    }>()
+})
+
+test('createServerFn strict false can validate and return function', () => {
+  const fn = createServerFn({ method: 'GET', strict: false })
+    .validator((input: { func: () => 'input' }) => ({
+      output: input.func(),
+    }))
+    .handler(({ data }) => {
+      expectTypeOf(data).toEqualTypeOf<{ output: 'input' }>()
+
+      return {
+        func: () => 'func' as const,
+      }
+    })
+
+  expectTypeOf(fn).parameter(0).toEqualTypeOf<{
+    data: { func: () => 'input' }
+    headers?: HeadersInit
+    signal?: AbortSignal
+    fetch?: CustomFetch
+  }>()
+
+  expectTypeOf(fn({ data: { func: () => 'input' } })).toEqualTypeOf<
+    Promise<{
+      func: () => 'func'
+    }>
+  >()
+})
+
+test('createServerFn strict false factory preserves strictness', () => {
+  const createServerFnWithoutSerializationCheck = createServerFn({
+    strict: false,
+  })
+
+  const myServerFn = createServerFnWithoutSerializationCheck()
+    .validator((input: { func: () => 'input' }) => ({
+      output: input.func(),
+    }))
+    .handler(({ data }) => {
+      expectTypeOf(data).toEqualTypeOf<{ output: 'input' }>()
+
+      return {
+        func: () => 'func' as const,
+      }
+    })
+
+  expectTypeOf(myServerFn).parameter(0).toEqualTypeOf<{
+    data: { func: () => 'input' }
+    headers?: HeadersInit
+    signal?: AbortSignal
+    fetch?: CustomFetch
+  }>()
+
+  expectTypeOf(myServerFn({ data: { func: () => 'input' } })).toEqualTypeOf<
+    Promise<{
+      func: () => 'func'
+    }>
+  >()
+})
+
+test('createServerFn strict input false can validate function', () => {
+  const fn = createServerFn({ strict: { input: false } })
+    .validator((input: { func: () => 'input' }) => ({
+      output: input.func(),
+    }))
+    .handler(({ data }) => {
+      expectTypeOf(data).toEqualTypeOf<{ output: 'input' }>()
+
+      return {
+        value: 'serializable' as const,
+      }
+    })
+
+  expectTypeOf(fn).parameter(0).toEqualTypeOf<{
+    data: { func: () => 'input' }
+    headers?: HeadersInit
+    signal?: AbortSignal
+    fetch?: CustomFetch
+  }>()
+
+  expectTypeOf(fn({ data: { func: () => 'input' } })).toEqualTypeOf<
+    Promise<{
+      value: 'serializable'
+    }>
+  >()
+})
+
+test('createServerFn strict output false can return function', () => {
+  const fn = createServerFn({ strict: { output: false } }).handler(() => ({
+    func: () => 'func' as const,
+  }))
+
+  expectTypeOf(fn()).toEqualTypeOf<
+    Promise<{
+      func: () => 'func'
+    }>
+  >()
+
+  const promiseFn = createServerFn({ strict: { output: false } }).handler(() =>
+    Promise.resolve({
+      func: () => 'func' as const,
+    }),
+  )
+
+  expectTypeOf(promiseFn()).toEqualTypeOf<
+    Promise<{
+      func: () => 'func'
+    }>
+  >()
+})
+
+test('ServerFnReturnType skips serialization when strict is false', () => {
+  expectTypeOf<
+    ServerFnReturnType<Register, { func: () => 'func' }, false>
+  >().toEqualTypeOf<{
+    func: () => 'func'
+  }>()
+})
+
+test('ServerFnReturnType skips serialization when strict output is false', () => {
+  expectTypeOf<
+    ServerFnReturnType<Register, { func: () => 'func' }, { output: false }>
+  >().toEqualTypeOf<{
+    func: () => 'func'
+  }>()
 })
 
 test('createServerFn cannot validate function', () => {
-  const validator = createServerFn().inputValidator<
+  const validator = createServerFn().validator<
     (input: { func: () => 'string' }) => { output: 'string' }
   >
 
@@ -525,13 +653,35 @@ test('createServerFn cannot validate function', () => {
     .toEqualTypeOf<
       Constrain<
         (input: { func: () => 'string' }) => { output: 'string' },
-        Validator<{ func: 'Function is not serializable' }, any>
+        Validator<
+          { func: SerializationError<'Function may not be serializable'> },
+          any
+        >
+      >
+    >()
+})
+
+test('createServerFn strict output false still checks input', () => {
+  const validator = createServerFn({
+    method: 'GET',
+    strict: { output: false },
+  }).validator<(input: { func: () => 'string' }) => { output: 'string' }>
+
+  expectTypeOf(validator)
+    .parameter(0)
+    .toEqualTypeOf<
+      Constrain<
+        (input: { func: () => 'string' }) => { output: 'string' },
+        Validator<
+          { func: SerializationError<'Function may not be serializable'> },
+          any
+        >
       >
     >()
 })
 
 test('createServerFn can validate Date', () => {
-  const validator = createServerFn().inputValidator<
+  const validator = createServerFn().validator<
     (input: Date) => { output: 'string' }
   >
 
@@ -543,7 +693,7 @@ test('createServerFn can validate Date', () => {
 })
 
 test('createServerFn can validate FormData', () => {
-  const validator = createServerFn({ method: 'POST' }).inputValidator<
+  const validator = createServerFn({ method: 'POST' }).validator<
     (input: FormData) => { output: 'string' }
   >
 
@@ -551,7 +701,7 @@ test('createServerFn can validate FormData', () => {
 })
 
 test('createServerFn cannot validate FormData for GET', () => {
-  const validator = createServerFn({ method: 'GET' }).inputValidator<
+  const validator = createServerFn({ method: 'GET' }).validator<
     (input: FormData) => { output: 'string' }
   >
 
@@ -590,7 +740,7 @@ test('ServerFnReturnType distributes Response union', () => {
 
 test('createServerFn can be used as a mutation function', () => {
   const serverFn = createServerFn()
-    .inputValidator((data: number) => data)
+    .validator((data: number) => data)
     .handler(() => 'foo')
 
   type MutationFunction<TData = unknown, TVariables = unknown> = (
@@ -607,7 +757,7 @@ test('createServerFn can be used as a mutation function', () => {
 
 test('createServerFn validator infers unknown for default input type', () => {
   const fn = createServerFn()
-    .inputValidator((input) => {
+    .validator((input) => {
       expectTypeOf(input).toEqualTypeOf<unknown>()
 
       if (typeof input === 'number') return 'success' as const
@@ -657,7 +807,7 @@ test('incrementally building createServerFn with multiple middleware calls', () 
   ])
 
   expectTypeOf(builderWithMw1).toHaveProperty('handler')
-  expectTypeOf(builderWithMw1).toHaveProperty('inputValidator')
+  expectTypeOf(builderWithMw1).toHaveProperty('validator')
   expectTypeOf(builderWithMw1).toHaveProperty('middleware')
 
   builderWithMw1.handler((options) => {
@@ -677,7 +827,7 @@ test('incrementally building createServerFn with multiple middleware calls', () 
   ])
 
   expectTypeOf(builderWithMw2).toHaveProperty('handler')
-  expectTypeOf(builderWithMw2).toHaveProperty('inputValidator')
+  expectTypeOf(builderWithMw2).toHaveProperty('validator')
   expectTypeOf(builderWithMw2).toHaveProperty('middleware')
 
   builderWithMw2.handler((options) => {
@@ -698,7 +848,7 @@ test('incrementally building createServerFn with multiple middleware calls', () 
   ])
 
   expectTypeOf(builderWithMw3).toHaveProperty('handler')
-  expectTypeOf(builderWithMw3).toHaveProperty('inputValidator')
+  expectTypeOf(builderWithMw3).toHaveProperty('validator')
   expectTypeOf(builderWithMw3).toHaveProperty('middleware')
 
   builderWithMw3.handler((options) => {
@@ -766,7 +916,7 @@ test('createServerFn with request middleware and function middleware', () => {
   })
 
   const funMw = createMiddleware({ type: 'function' })
-    .inputValidator((x: string) => x)
+    .validator((x: string) => x)
     .server(({ next }) => {
       return next({ context: { a: 'a' } as const })
     })
@@ -777,7 +927,7 @@ test('createServerFn with request middleware and function middleware', () => {
   expectTypeOf(fn({ data: 'a' })).toEqualTypeOf<Promise<{}>>()
 })
 
-test('createServerFn with inputValidator and request middleware', () => {
+test('createServerFn with validator and request middleware', () => {
   const loggingMiddleware = createMiddleware().server(async ({ next }) => {
     console.log('Logging middleware executed on the server')
     const result = await next()
@@ -786,7 +936,7 @@ test('createServerFn with inputValidator and request middleware', () => {
 
   const fn = createServerFn()
     .middleware([loggingMiddleware])
-    .inputValidator(({ userName }: { userName: string }) => {
+    .validator(({ userName }: { userName: string }) => {
       return { userName }
     })
     .handler(async ({ data }) => {

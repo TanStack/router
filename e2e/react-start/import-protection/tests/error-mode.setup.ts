@@ -1,9 +1,9 @@
+import { execSync, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { execSync, spawn } from 'node:child_process'
-import { chromium } from '@playwright/test'
-import { getTestServerPort } from '@tanstack/router-e2e-utils'
-import packageJson from '../package.json' with { type: 'json' }
+import { stripVTControlCharacters } from 'node:util'
+import { appServerReadyPattern } from '@tanstack/router-e2e-utils'
+import { chromium, expect } from '@playwright/test'
 import type { FullConfig } from '@playwright/test'
 
 /**
@@ -19,9 +19,11 @@ import type { FullConfig } from '@playwright/test'
  *    `error-dev-result.json`.
  */
 
+const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
+
 async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
   const start = Date.now()
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
   while (true) {
     if (Date.now() - start > timeoutMs) {
       throw new Error(`Timed out waiting for ${url}`)
@@ -65,6 +67,8 @@ async function killChild(child: ReturnType<typeof spawn>): Promise<void> {
 }
 
 function captureBuild(cwd: string): void {
+  const buildCommand =
+    toolchain === 'rsbuild' ? 'pnpm build:rsbuild' : 'pnpm build:vite'
   const outFile = path.resolve(cwd, 'error-build-result.json')
   for (const f of ['error-build-result.json', 'error-build.log']) {
     const p = path.resolve(cwd, f)
@@ -76,7 +80,7 @@ function captureBuild(cwd: string): void {
   let exitCode = 0
 
   try {
-    const output = execSync('pnpm build', {
+    const output = execSync(buildCommand, {
       cwd,
       env: { ...process.env, BEHAVIOR: 'error' },
       encoding: 'utf-8',
@@ -114,12 +118,17 @@ async function captureDev(cwd: string): Promise<void> {
     if (fs.existsSync(p)) fs.unlinkSync(p)
   }
 
-  const port = await getTestServerPort(`${packageJson.name}_error_dev`)
-  const baseURL = `http://localhost:${port}`
+  const port = 0
   const logFile = path.resolve(cwd, 'error-dev.log')
 
   const out = fs.createWriteStream(logFile)
-  const child = spawn('pnpm', ['exec', 'vite', 'dev', '--port', String(port)], {
+  const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
+  const command =
+    toolchain === 'rsbuild'
+      ? ['exec', 'rsbuild', 'dev', '--port', String(port)]
+      : ['exec', 'vite', 'dev', '--port', String(port)]
+
+  const child = spawn('pnpm', command, {
     cwd,
     env: {
       ...process.env,
@@ -131,10 +140,28 @@ async function captureDev(cwd: string): Promise<void> {
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
-  child.stdout?.on('data', (d: Buffer) => out.write(d))
-  child.stderr?.on('data', (d: Buffer) => out.write(d))
+  const logChunks: Array<string> = []
+  const record = (data: Buffer) => {
+    logChunks.push(data.toString())
+    out.write(data)
+  }
+  child.stdout.on('data', record)
+  child.stderr.on('data', record)
 
   try {
+    await expect
+      .poll(
+        () =>
+          appServerReadyPattern.exec(
+            stripVTControlCharacters(logChunks.join('')),
+          )?.groups?.E2E_APP_PORT,
+        { timeout: 30_000 },
+      )
+      .toBeTruthy()
+    const port = appServerReadyPattern.exec(
+      stripVTControlCharacters(logChunks.join('')),
+    )!.groups!.E2E_APP_PORT
+    const baseURL = `http://localhost:${port}`
     await waitForHttpOk(baseURL, 30_000)
 
     const browser = await chromium.launch()

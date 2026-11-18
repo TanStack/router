@@ -13,12 +13,12 @@ import type {
   RegisteredRouter,
 } from '@tanstack/router-core'
 
-interface ShouldBlockFnLocation<
+type ShouldBlockFnLocation<
   out TRouteId,
   out TFullPath,
   out TAllParams,
   out TFullSearchSchema,
-> {
+> = {
   routeId: TRouteId
   fullPath: TFullPath
   pathname: string
@@ -186,21 +186,23 @@ export function useBlocker(
         location: HistoryLocation,
       ): AnyShouldBlockFnLocation {
         const parsedLocation = router.parseLocation(location)
-        const matchedRoutes = router.getMatchedRoutes(parsedLocation.pathname)
-        if (matchedRoutes.foundRoute === undefined) {
+        const [, rawParams, foundRoute] = router.getMatchedRoutes(
+          parsedLocation.pathname,
+        )
+        if (foundRoute === undefined) {
           return {
             routeId: '__notFound__',
             fullPath: parsedLocation.pathname,
             pathname: parsedLocation.pathname,
-            params: matchedRoutes.routeParams,
+            params: rawParams,
             search: parsedLocation.search,
           }
         }
         return {
-          routeId: matchedRoutes.foundRoute.id,
-          fullPath: matchedRoutes.foundRoute.fullPath,
+          routeId: foundRoute.id,
+          fullPath: foundRoute.fullPath,
           pathname: parsedLocation.pathname,
-          params: matchedRoutes.routeParams,
+          params: rawParams,
           search: parsedLocation.search,
         }
       }
@@ -292,17 +294,22 @@ const _resolvePromptBlockerArgs = (
   }
 }
 
-export function Block<
-  TRouter extends AnyRouter = RegisteredRouter,
-  TWithResolver extends boolean = boolean,
->(opts: PromptProps<TRouter, TWithResolver>): SolidNode
+interface BlockComponent {
+  <
+    TRouter extends AnyRouter = RegisteredRouter,
+    TWithResolver extends boolean = boolean,
+  >(
+    opts: PromptProps<TRouter, TWithResolver>,
+  ): SolidNode
+  /**
+   *  @deprecated Use the UseBlockerOpts property instead
+   */
+  (opts: LegacyPromptProps): SolidNode
+}
 
-/**
- *  @deprecated Use the UseBlockerOpts property instead
- */
-export function Block(opts: LegacyPromptProps): SolidNode
-
-export function Block(opts: PromptProps | LegacyPromptProps): SolidNode {
+export const Block: BlockComponent = function Block(
+  opts: PromptProps | LegacyPromptProps,
+): SolidNode {
   const [propsWithChildren, rest] = Solid.splitProps(opts, ['children'])
   const args = _resolvePromptBlockerArgs(rest)
 

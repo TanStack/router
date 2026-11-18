@@ -1,1 +1,0 @@
-import{S as o}from"./scroll-block-BAas_Ct-.js";import{a as l,b as n}from"./index-BwsVWHwV.js";function a(){return l("div",{class:"p-2"},[l("h3",null,[n("normal-page")]),l("hr",null,null),l(o,null,null)])}export{a as component};

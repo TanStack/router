@@ -73,7 +73,11 @@ export type CodeSplittingOptions = {
 }
 
 const codeSplittingOptionsSchema = z.object({
-  splitBehavior: z.function().optional(),
+  splitBehavior: z
+    .custom<
+      CodeSplittingOptions['splitBehavior']
+    >((value) => typeof value === 'function')
+    .optional(),
   defaultBehavior: splitGroupingsSchema.optional(),
   deleteNodes: z.array(z.string()).optional(),
   addHmr: z.boolean().optional().default(true),
@@ -85,7 +89,6 @@ type FileRouteKeys = keyof (Parameters<
 export type DeletableNodes = FileRouteKeys | (string & {})
 
 export const configSchema = generatorConfigSchema.extend({
-  enableRouteGeneration: z.boolean().optional(),
   codeSplittingOptions: z
     .custom<CodeSplittingOptions>((v) => {
       return codeSplittingOptionsSchema.parse(v)

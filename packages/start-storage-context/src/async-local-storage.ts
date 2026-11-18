@@ -1,5 +1,11 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
-import type { Awaitable, RegisteredRouter } from '@tanstack/router-core'
+import type {
+  Awaitable,
+  ManifestRouteAssets,
+  RegisteredRouter,
+} from '@tanstack/router-core'
+
+export type StartHandlerType = 'router' | 'serverFn'
 
 export interface StartStorageContext {
   getRouter: () => Awaitable<RegisteredRouter>
@@ -10,7 +16,16 @@ export interface StartStorageContext {
   contextAfterGlobalMiddlewares: any
   // Track middlewares that have already executed in the request phase
   // to prevent duplicate execution
-  executedRequestMiddlewares: Set<any>
+  executedRequestMiddlewares?: Set<any>
+  // Type of handler processing this request
+  handlerType: StartHandlerType
+
+  /**
+   * Additional assets to inject for this request.
+   * Plugins can add manifest route assets here during request processing.
+   * Merged into manifest at dehydration time without mutating cached manifest.
+   */
+  requestAssets?: ManifestRouteAssets
 }
 
 // Use a global symbol to ensure the same AsyncLocalStorage instance is shared
@@ -27,10 +42,10 @@ if (!globalObj[GLOBAL_STORAGE_KEY]) {
 
 const startStorage = globalObj[GLOBAL_STORAGE_KEY]
 
-export async function runWithStartContext<T>(
+export function runWithStartContext<T>(
   context: StartStorageContext,
-  fn: () => T | Promise<T>,
-): Promise<T> {
+  fn: () => T,
+): T {
   return startStorage.run(context, fn)
 }
 

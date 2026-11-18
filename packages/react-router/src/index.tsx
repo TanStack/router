@@ -1,3 +1,5 @@
+'use client'
+
 export {
   defer,
   isMatch,
@@ -15,8 +17,6 @@ export {
   stringifySearchWith,
   functionalUpdate,
   replaceEqualDeep,
-  isPlainObject,
-  isPlainArray,
   deepEqual,
   createControlledPromise,
   retainSearchParams,
@@ -71,6 +71,7 @@ export type {
   ResolveRouteContext,
   SearchSerializer,
   SearchParser,
+  SearchMiddleware,
   TrailingSlashOption,
   Manifest,
   RouterManagedTag,
@@ -126,6 +127,7 @@ export type { AwaitOptions } from './awaited'
 
 export { CatchBoundary, ErrorComponent } from './CatchBoundary'
 export { ClientOnly, useHydrated } from './ClientOnly'
+export { reactUse, useLayoutEffect } from './utils'
 
 export {
   FileRoute,
@@ -200,7 +202,6 @@ export type {
   RegisteredRouter,
   RouterContextOptions,
   ControllablePromise,
-  InjectedHtmlEntry,
   RouterOptions,
   RouterState,
   ListenerFn,
@@ -326,6 +327,9 @@ export type {
   InferSelected,
   ValidateUseSearchResult,
   ValidateUseParamsResult,
+  SerializerExtensions,
+  RegisteredSerializableInput,
+  Serializable,
 } from '@tanstack/router-core'
 
 export { ScriptOnce } from './ScriptOnce'

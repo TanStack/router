@@ -17,7 +17,7 @@ title: TanStack Query Integration
 
 The TanStack query integration is a separate package that you need to install:
 
-<!-- ::start:tabs variant="package-manager" mode="dev-install" -->
+<!-- ::start:tabs variant="package-manager" -->
 
 react: @tanstack/react-router-ssr-query
 solid: @tanstack/solid-router-ssr-query
@@ -64,6 +64,61 @@ export function getRouter() {
 
 By default, the integration wraps your router with a `QueryClientProvider`. If you already provide your own provider, pass `wrapQueryClient: false` and keep your custom wrapper.
 
+You can also pass `dehydrateOptions` and `hydrateOptions` to customize how TanStack Query serializes SSR payloads and restores them on the client.
+
+```tsx
+setupRouterSsrQueryIntegration({
+  router,
+  queryClient,
+  dehydrateOptions: {
+    shouldDehydrateQuery: (query) => query.meta?.ssr !== false,
+  },
+  hydrateOptions: {
+    defaultOptions: {
+      queries: {
+        gcTime: 60_000,
+      },
+    },
+  },
+})
+```
+
+Common uses for these options:
+
+- Set `hydrateOptions.defaultOptions.queries.gcTime` to control how long hydrated SSR queries stay in the client cache before garbage collection.
+- Set `dehydrateOptions.shouldDehydrateQuery` to exclude queries you do not want serialized into the HTML payload.
+- Set `dehydrateOptions.serializeData` and `hydrateOptions.defaultOptions.deserializeData` when your SSR payload needs custom serialization.
+
+```tsx title="src/router.tsx"
+import { QueryClient } from '@tanstack/react-query'
+import { createRouter } from '@tanstack/react-router'
+import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
+import { routeTree } from './routeTree.gen'
+
+export function getRouter() {
+  const queryClient = new QueryClient()
+
+  const router = createRouter({
+    routeTree,
+    context: { queryClient },
+  })
+
+  setupRouterSsrQueryIntegration({
+    router,
+    queryClient,
+    hydrateOptions: {
+      defaultOptions: {
+        queries: {
+          gcTime: 5 * 60 * 1000,
+        },
+      },
+    },
+  })
+
+  return router
+}
+```
+
 ## SSR behavior and streaming
 
 - During server render, the integration dehydrates initial queries and streams any subsequent queries that resolve while rendering.
@@ -76,14 +131,6 @@ By default, the integration wraps your router with a `QueryClientProvider`. If y
 
 - `useSuspenseQuery`: runs on the server during SSR when its data is required and will be streamed to the client as it resolves.
 - `useQuery`: does not execute on the server; it will fetch on the client after hydration. Use this for data that is not required for SSR.
-
-```tsx
-// Suspense: executes on server and streams
-const { data } = useSuspenseQuery(postsQuery)
-
-// Non-suspense: executes only on client
-const { data, isLoading } = useQuery(postsQuery)
-```
 
 <!-- ::start:framework -->
 
@@ -105,7 +152,7 @@ Preload critical data in the route `loader` to avoid waterfalls and loading flas
 
 <!-- ::start:framework -->
 
-# React
+# Blocking `query` in loader
 
 ```tsx title="src/routes/posts.tsx"
 import { queryOptions, useSuspenseQuery, useQuery } from '@tanstack/react-query'
@@ -118,7 +165,12 @@ const postsQuery = queryOptions({
 
 export const Route = createFileRoute('/posts')({
   // Ensure the data is in the cache before render
-  loader: ({ context }) => context.queryClient.ensureQueryData(postsQuery),
+  loader: ({ context }) =>
+    context.queryClient.query({
+      ...postsQuery,
+      // returns data from cache immediately, otherwise executes a fetch
+      staleTime: 'static',
+    }),
   component: PostsPage,
 })
 
@@ -133,15 +185,15 @@ function PostsPage() {
 
 ### Prefetching and streaming
 
-You can also prefetch with `fetchQuery` or `ensureQueryData` in a loader without consuming the data in a component. If you return the promise directly from the loader, it will be awaited and thus block the SSR request until the query finishes. If you don't await the promise nor return it, the query will be started on the server and will be streamed to the client without blocking the SSR request.
+You can also prefetch with `query` in a loader without consuming the data in a component. If you return the promise directly from the loader, it will be awaited and thus block the SSR request until the query finishes. If you don't await the promise nor return it, the query will be started on the server and will be streamed to the client without blocking the SSR request.
 
 <!-- ::start:framework -->
 
-# React
+# Non-blocking `query` in loader
 
 ```tsx title="src/routes/users.$id.tsx"
 import { createFileRoute } from '@tanstack/react-router'
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import { noop, queryOptions, useQuery } from '@tanstack/react-query'
 
 const userQuery = (id: string) =>
   queryOptions({
@@ -150,14 +202,17 @@ const userQuery = (id: string) =>
   })
 
 export const Route = createFileRoute('/user/$id')({
-  loader: ({ params }) => {
-    // do not await this nor return the promise, just kick off the query to stream it to the client
-    context.queryClient.fetchQuery(userQuery(params.id))
+  loader: ({ context, params }) => {
+    // Do not await this nor return the promise, just kick off the query to stream it to the client
+    void context.queryClient.query(userQuery(params.id)).catch(noop)
   },
 })
 ```
 
 <!-- ::end:framework -->
+
+> [!NOTE]
+> Previous versions of this guide used `queryClient.ensureQueryData` and `queryClient.prefetchQuery`. These methods are now deprecated in TanStack Query in favor of `queryClient.query`. See the TanStack Query [v5 migration guide](https://tanstack.com/query/latest/docs/framework/react/guides/migrating-to-v5#imperative-queryclient-methods) for more details.
 
 ## Redirect handling
 

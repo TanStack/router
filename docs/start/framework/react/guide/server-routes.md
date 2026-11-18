@@ -24,6 +24,9 @@ export const Route = createFileRoute('/hello')({
 })
 ```
 
+> [!NOTE]
+> Server routes are meant for HTTP endpoints that need to be called from outside your TanStack Start application. If you only need to call server-side logic from within your Start app and want Start to handle serialization for you, use [server functions](./server-functions) instead.
+
 ## Server Routes and App Routes
 
 Because server routes can be defined in the same directory as your app routes, you can even use the same file for both!
@@ -314,7 +317,7 @@ export const Route = createFileRoute('/file/$')({
 
 ## Handling requests with a body
 
-To handle POST requests,you can add a `POST` handler to the route object. The handler will receive the request object as the first argument, and you can access the request body using the `request.json()` method.
+To handle POST requests, you can add a `POST` handler to the route object. The handler will receive the request object as the first argument, and you can access the request body using the `request.json()` method.
 
 ```ts
 // routes/hello.ts

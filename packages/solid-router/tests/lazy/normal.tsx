@@ -2,7 +2,7 @@ import { createLazyFileRoute, createLazyRoute } from '../../src'
 
 export function Route(id: string) {
   return createLazyRoute(id)({
-    component: () => <h1>I'm a normal route</h1>,
+    component: () => <h1 data-testid="lazy-route-page">I'm a normal route</h1>,
   })
 }
 

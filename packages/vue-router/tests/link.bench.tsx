@@ -1,7 +1,8 @@
 /** @jsxImportSource vue */
 
 import { render } from '@testing-library/vue'
-import { bench, describe } from 'vitest'
+import { describe, test } from 'vitest'
+import { getRouteSegments } from '@tanstack/router-core'
 import * as Vue from 'vue'
 import {
   Link,
@@ -37,10 +38,12 @@ const createRouterRenderer = (routesCount: number) => (children: Vue.VNode) => {
 const InterpolatePathLink = Vue.defineComponent({
   props: ['to', 'params'],
   setup(props, { slots }) {
-    const href = interpolatePath({
-      path: props.to,
-      params: props.params,
-    }).interpolatedPath
+    const router = useRouter()
+    const href = interpolatePath(
+      props.to,
+      getRouteSegments(router.routesByPath[props.to])!,
+      props.params,
+    )
 
     return () => Vue.h('a', { href }, slots.default?.())
   },
@@ -80,9 +83,8 @@ describe.each([
 ])('$name', ({ numberOfRoutes, numberOfLinks, matchedParamId }) => {
   const renderRouter = createRouterRenderer(numberOfRoutes)
 
-  bench(
-    'hardcoded href',
-    () => {
+  test('hardcoded href', async ({ bench }) => {
+    await bench('hardcoded href', () => {
       const links = Vue.h(
         'div',
         null,
@@ -93,13 +95,13 @@ describe.each([
 
       const router = renderRouter(links)
       render(Vue.h(RouterProvider, { router }))
-    },
-    { warmupIterations: 1 },
-  )
+    }).run({
+      warmupIterations: 1,
+    })
+  })
 
-  bench(
-    'interpolate path',
-    () => {
+  test('interpolate path', async ({ bench }) => {
+    await bench('interpolate path', () => {
       const links = Vue.h(
         'div',
         null,
@@ -118,13 +120,13 @@ describe.each([
 
       const router = renderRouter(links)
       render(Vue.h(RouterProvider, { router }))
-    },
-    { warmupIterations: 1 },
-  )
+    }).run({
+      warmupIterations: 1,
+    })
+  })
 
-  bench(
-    'build location',
-    () => {
+  test('build location', async ({ bench }) => {
+    await bench('build location', () => {
       const links = Vue.h(
         'div',
         null,
@@ -143,13 +145,13 @@ describe.each([
 
       const router = renderRouter(links)
       render(Vue.h(RouterProvider, { router }))
-    },
-    { warmupIterations: 1 },
-  )
+    }).run({
+      warmupIterations: 1,
+    })
+  })
 
-  bench(
-    'link to absolute path',
-    () => {
+  test('link to absolute path', async ({ bench }) => {
+    await bench('link to absolute path', () => {
       const links = Vue.h(
         'div',
         null,
@@ -170,13 +172,13 @@ describe.each([
 
       const router = renderRouter(links)
       render(Vue.h(RouterProvider, { router }))
-    },
-    { warmupIterations: 1 },
-  )
+    }).run({
+      warmupIterations: 1,
+    })
+  })
 
-  bench(
-    'link to relative path',
-    () => {
+  test('link to relative path', async ({ bench }) => {
+    await bench('link to relative path', () => {
       const links = Vue.h(
         'div',
         null,
@@ -199,13 +201,13 @@ describe.each([
 
       const router = renderRouter(links)
       render(Vue.h(RouterProvider, { router }))
-    },
-    { warmupIterations: 1 },
-  )
+    }).run({
+      warmupIterations: 1,
+    })
+  })
 
-  bench(
-    'link to current path',
-    () => {
+  test('link to current path', async ({ bench }) => {
+    await bench('link to current path', () => {
       const links = Vue.h(
         'div',
         null,
@@ -226,7 +228,8 @@ describe.each([
 
       const router = renderRouter(links)
       render(Vue.h(RouterProvider, { router }))
-    },
-    { warmupIterations: 1 },
-  )
+    }).run({
+      warmupIterations: 1,
+    })
+  })
 })

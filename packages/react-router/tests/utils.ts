@@ -20,20 +20,25 @@ export function createTimer() {
 export const getIntersectionObserverMock = ({
   observe,
   disconnect,
+  onCreate,
 }: {
   observe: Mock
   disconnect: Mock
+  onCreate?: (callback: IntersectionObserverCallback) => void
 }) => {
   return class IO implements IntersectionObserver {
     root: Document | Element | null
     rootMargin: string
+    scrollMargin: string
     thresholds: Array<number>
     constructor(
       _cb: IntersectionObserverCallback,
       options?: IntersectionObserverInit,
     ) {
+      onCreate?.(_cb)
       this.root = options?.root ?? null
       this.rootMargin = options?.rootMargin ?? '0px'
+      this.scrollMargin = options?.scrollMargin ?? '0px'
       this.thresholds = options?.threshold ?? ([0] as any)
     }
 

@@ -1,14 +1,16 @@
+'use client'
+
 import * as React from 'react'
-import warning from 'tiny-warning'
+import { useSelector } from '@tanstack/react-store'
 import { rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { CatchBoundary, ErrorComponent } from './CatchBoundary'
-import { useRouterState } from './useRouterState'
+import { CatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'
-import { Transitioner } from './Transitioner'
+import { useStructuralSharing } from './useMatch'
+import { useLayoutEffect } from './utils'
+import { Transitioner, settleOwner } from './Transitioner'
 import { matchContext } from './matchContext'
-import { Match } from './Match'
-import { SafeFragment } from './SafeFragment'
+import { Match, renderPending } from './Match'
 import type {
   StructuralSharingOption,
   ValidateSelected,
@@ -23,12 +25,8 @@ import type {
   MakeRouteMatchUnion,
   MaskOptions,
   MatchRouteOptions,
-  NoInfer,
   RegisteredRouter,
-  ResolveRelativePath,
   ResolveRoute,
-  RouteByPath,
-  RouterState,
   ToSubOptionsProps,
 } from '@tanstack/router-core'
 
@@ -50,23 +48,28 @@ export function Matches() {
   const router = useRouter()
   const rootRoute: AnyRoute = router.routesById[rootRouteId]
 
-  const PendingComponent =
-    rootRoute.options.pendingComponent ?? router.options.defaultPendingComponent
-
-  const pendingElement = PendingComponent ? <PendingComponent /> : null
-
-  // Do not render a root Suspense during SSR or hydrating from SSR
-  const ResolvedSuspense =
-    (isServer ?? router.isServer) ||
-    (typeof document !== 'undefined' && router.ssr)
-      ? SafeFragment
-      : React.Suspense
+  const pendingElement = renderPending(router, rootRoute)
 
   const inner = (
-    <ResolvedSuspense fallback={pendingElement}>
-      {!(isServer ?? router.isServer) && <Transitioner />}
-      <MatchesInner />
-    </ResolvedSuspense>
+    <>
+      {!(isServer ?? router.isServer) && (
+        <Transitioner
+          // The initial load publishes matches before MatchesInner's store
+          // subscription is active. Storing the router here forces Matches to render
+          // that first publication before paint. Later publications store the same
+          // router object, so React skips the update.
+          // eslint-disable-next-line react-hooks/rules-of-hooks -- server only, condition is static
+          t={React.useState<AnyRouter>()[1]}
+        />
+      )}
+      {(isServer ?? router.isServer) || router.ssr ? (
+        <MatchesInner />
+      ) : (
+        <React.Suspense fallback={pendingElement}>
+          <MatchesInner />
+        </React.Suspense>
+      )}
+    </>
   )
 
   return router.options.InnerWrap ? (
@@ -78,42 +81,44 @@ export function Matches() {
 
 function MatchesInner() {
   const router = useRouter()
-  const matchId = useRouterState({
-    select: (s) => {
-      return s.matches[0]?.id
-    },
-  })
+  const acknowledgement = router._rendered!
+  const matches =
+    (isServer ?? router.isServer)
+      ? router.stores.matches.get()
+      : // eslint-disable-next-line react-hooks/rules-of-hooks
+        useSelector(
+          router.stores.matches,
+          (value) => acknowledgement[0 /* offered */] ?? value,
+        )
+  const match = matches[0]
+  const routeId = match?.routeId
 
-  const resetKey = useRouterState({
-    select: (s) => s.loadedAt,
-  })
+  useLayoutEffect(() => {
+    if (acknowledgement[0 /* offered */] === matches) {
+      settleOwner(acknowledgement, true)
+    }
+  }, [acknowledgement, matches])
 
-  const matchComponent = matchId ? <Match matchId={matchId} /> : null
+  const matchComponent = routeId ? <Match routeId={routeId} /> : null
 
-  return (
-    <matchContext.Provider value={matchId}>
-      {router.options.disableGlobalCatchBoundary ? (
-        matchComponent
-      ) : (
-        <CatchBoundary
-          getResetKey={() => resetKey}
-          errorComponent={ErrorComponent}
-          onCatch={
-            process.env.NODE_ENV !== 'production'
-              ? (error) => {
-                  warning(
-                    false,
-                    `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
-                  )
-                  warning(false, error.message || error.toString())
-                }
-              : undefined
-          }
-        >
-          {matchComponent}
-        </CatchBoundary>
-      )}
-    </matchContext.Provider>
+  return router.options.disableGlobalCatchBoundary ? (
+    matchComponent
+  ) : (
+    <CatchBoundary
+      getResetKey={() => match}
+      onCatch={
+        process.env.NODE_ENV !== 'production'
+          ? (error) => {
+              console.warn(
+                `Warning: The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
+              )
+              console.warn('Warning:', error)
+            }
+          : undefined
+      }
+    >
+      {matchComponent}
+    </CatchBoundary>
   )
 }
 
@@ -136,30 +141,40 @@ export type UseMatchRouteOptions<
  * `search`, etc.) and returns either `false` (no match) or the matched params
  * object when the route matches the current or pending location.
  *
- * Useful for conditional rendering and active UI states.
+ * Useful for conditional rendering and active UI states because it subscribes
+ * the component to the router state used for matching. The returned function's
+ * identity changes when that state changes. For imperative checks in event
+ * handlers, get the router with `useRouter` and call `router.matchRoute(...)`
+ * to avoid that subscription.
  *
  * @returns A `matchRoute(options)` function that returns `false` or params.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useMatchRouteHook
  */
-export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
+export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>(): <
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
+>(
+  opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+) => false | Expand<ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']> {
   const router = useRouter()
+  if (isServer ?? router.isServer) {
+    return (opts) => {
+      const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
-  useRouterState({
-    select: (s) => [s.location.href, s.resolvedLocation?.href, s.status],
-    structuralSharing: true as any,
-  })
+      return router.matchRoute(rest as any, {
+        pending,
+        caseSensitive,
+        fuzzy,
+        includeSearch,
+      })
+    }
+  }
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   return React.useCallback(
-    <
-      const TFrom extends string = string,
-      const TTo extends string | undefined = undefined,
-      const TMaskFrom extends string = TFrom,
-      const TMaskTo extends string = '',
-    >(
-      opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-    ):
-      | false
-      | Expand<ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']> => {
+    (opts) => {
       const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
       return router.matchRoute(rest as any, {
@@ -169,7 +184,15 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
         includeSearch,
       })
     },
-    [router],
+    [
+      router,
+      // eslint-disable-next-line react-hooks/rules-of-hooks, react-hooks/exhaustive-deps
+      useSelector(router.stores.location, (location) => location.href),
+      // eslint-disable-next-line react-hooks/rules-of-hooks, react-hooks/exhaustive-deps
+      useSelector(router.stores.resolvedLocation, (location) => location?.href),
+      // eslint-disable-next-line react-hooks/rules-of-hooks, react-hooks/exhaustive-deps
+      useSelector(router.stores.status),
+    ],
   )
 }
 
@@ -183,10 +206,9 @@ export type MakeMatchRouteOptions<
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
     | ((
-        params?: RouteByPath<
-          TRouter['routeTree'],
-          ResolveRelativePath<TFrom, NoInfer<TTo>>
-        >['types']['allParams'],
+        params?: Expand<
+          ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']
+        >,
       ) => React.ReactNode)
     | React.ReactNode
 }
@@ -238,32 +260,29 @@ export function useMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseMatchesResult<TRouter, TSelected> {
-  return useRouterState({
-    select: (state: RouterState<TRouter['routeTree']>) => {
-      const matches = state.matches
-      return opts?.select
-        ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
-        : matches
-    },
-    structuralSharing: opts?.structuralSharing,
-  } as any) as UseMatchesResult<TRouter, TSelected>
+  const router = useRouter<TRouter>()
+
+  if (isServer ?? router.isServer) {
+    const matches = router.stores.matches.get() as Array<
+      MakeRouteMatchUnion<TRouter>
+    >
+    return (opts?.select ? opts.select(matches) : matches) as UseMatchesResult<
+      TRouter,
+      TSelected
+    >
+  }
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+  return useSelector(
+    router.stores.matches,
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+    useStructuralSharing(opts, router),
+  ) as UseMatchesResult<TRouter, TSelected>
 }
 
 /**
- * Read the full array of active route matches or select a derived subset.
- *
- * Useful for debugging, breadcrumbs, or aggregating metadata across matches.
- *
- * @returns The array of matches (or the selected value).
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useMatchesHook
- */
-
-/**
- * Read the full array of active route matches or select a derived subset.
- *
- * Useful for debugging, breadcrumbs, or aggregating metadata across matches.
- *
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useMatchesHook
+ * Read the presented route matches above the current match, or select a
+ * derived value from them.
  */
 export function useParentMatches<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -273,13 +292,13 @@ export function useParentMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseMatchesResult<TRouter, TSelected> {
-  const contextMatchId = React.useContext(matchContext)
+  const contextRouteId = React.useContext(matchContext)
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
       matches = matches.slice(
         0,
-        matches.findIndex((d) => d.id === contextMatchId),
+        matches.findIndex((d) => d.routeId === contextRouteId),
       )
       return opts?.select ? opts.select(matches) : matches
     },
@@ -288,8 +307,8 @@ export function useParentMatches<
 }
 
 /**
- * Read the array of active route matches that are children of the current
- * match (or selected parent) in the match tree.
+ * Read the presented route matches below the current match, or select a
+ * derived value from them.
  */
 export function useChildMatches<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -299,12 +318,12 @@ export function useChildMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseMatchesResult<TRouter, TSelected> {
-  const contextMatchId = React.useContext(matchContext)
+  const contextRouteId = React.useContext(matchContext)
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
       matches = matches.slice(
-        matches.findIndex((d) => d.id === contextMatchId) + 1,
+        matches.findIndex((d) => d.routeId === contextRouteId) + 1,
       )
       return opts?.select ? opts.select(matches) : matches
     },

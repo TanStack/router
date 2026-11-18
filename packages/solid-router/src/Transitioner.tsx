@@ -1,51 +1,68 @@
 import * as Solid from 'solid-js'
-import {
-  getLocationChangeInfo,
-  handleHashScroll,
-  trimPathRight,
-} from '@tanstack/router-core'
+import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
-import { useRouterState } from './useRouterState'
-import { usePrevious } from './utils'
+
+function getResolvedLocation(router: ReturnType<typeof useRouter>) {
+  const resolvedLocation = router.stores.resolvedLocation.get()
+  if (
+    resolvedLocation?.href === router.latestLocation.href &&
+    resolvedLocation.state.__TSR_key === router.latestLocation.state.__TSR_key
+  ) {
+    return resolvedLocation
+  }
+  return
+}
 
 export function Transitioner() {
   const router = useRouter()
-  let mountLoadForRouter = { router, mounted: false }
-  const isLoading = useRouterState({
-    select: ({ isLoading }) => isLoading,
-  })
 
   if (isServer ?? router.isServer) {
     return null
   }
 
-  const [isSolidTransitioning, startSolidTransition] = Solid.useTransition()
+  let settleCurrent: ((rendered: boolean) => void) | undefined
+  router.startTransition = (fn) => {
+    settleCurrent?.(false)
 
-  // Track pending state changes
-  const hasPendingMatches = useRouterState({
-    select: (s) => s.matches.some((d) => d.status === 'pending'),
-  })
+    return new Promise((resolve, reject) => {
+      const settle = (rendered: boolean) => {
+        if (settleCurrent !== settle) {
+          return
+        }
+        settleCurrent = undefined
+        resolve(rendered)
+      }
+      const fail = (cause: unknown) => {
+        if (settleCurrent !== settle) {
+          return
+        }
+        settleCurrent = undefined
+        reject(cause)
+      }
+      settleCurrent = settle
 
-  const previousIsLoading = usePrevious(isLoading)
-
-  const isAnyPending = () =>
-    isLoading() || isSolidTransitioning() || hasPendingMatches()
-  const previousIsAnyPending = usePrevious(isAnyPending)
-
-  const isPagePending = () => isLoading() || hasPendingMatches()
-  const previousIsPagePending = usePrevious(isPagePending)
-
-  router.startTransition = (fn: () => void | Promise<void>) => {
-    Solid.startTransition(() => {
-      startSolidTransition(fn)
+      void Solid.startTransition(() => {
+        // A newer publication may supersede this deferred callback.
+        if (settleCurrent === settle) {
+          try {
+            fn()
+          } catch (cause) {
+            fail(cause)
+          }
+        }
+      }).then(() => settle(true), fail)
     })
   }
+
+  Solid.onCleanup(() => {
+    settleCurrent?.(false)
+  })
 
   // Subscribe to location changes
   // and try to load the new location
   Solid.onMount(() => {
-    const unsub = router.history.subscribe(router.load)
+    Solid.onCleanup(router.history.subscribe(router.load))
 
     const nextLocation = router.buildLocation({
       to: router.latestLocation.pathname,
@@ -57,95 +74,38 @@ export function Transitioner() {
     })
 
     // Check if the current URL matches the canonical form.
-    // Compare publicHref (browser-facing URL) for consistency with
-    // the server-side redirect check in router.beforeLoad.
+    // Compare publicHref (browser-facing URL) consistently with server
+    // canonicalization.
     if (
       trimPathRight(router.latestLocation.publicHref) !==
       trimPathRight(nextLocation.publicHref)
     ) {
-      router.commitLocation({ ...nextLocation, replace: true })
+      router.commitLocation({
+        ...nextLocation,
+        replace: true,
+        ignoreBlocker: true,
+      })
+      return
     }
 
-    Solid.onCleanup(() => {
-      unsub()
-    })
+    if (!getResolvedLocation(router) && !router._tx) {
+      router.load().catch(console.error)
+    }
   })
 
-  // Try to load the initial location
-  Solid.createRenderEffect(() => {
-    Solid.untrack(() => {
-      if (
-        // if we are hydrating from SSR, loading is triggered in ssr-client
-        (typeof window !== 'undefined' && router.ssr) ||
-        (mountLoadForRouter.router === router && mountLoadForRouter.mounted)
-      ) {
-        return
-      }
-      mountLoadForRouter = { router, mounted: true }
-      const tryLoad = async () => {
-        try {
-          await router.load()
-        } catch (err) {
-          console.error(err)
-        }
-      }
-      tryLoad()
-    })
+  return null
+}
+
+export function Rendered() {
+  const router = useRouter()
+  Solid.onMount(() => {
+    const resolvedLocation = getResolvedLocation(router)
+    if (resolvedLocation) {
+      router.emit({
+        type: 'onRendered',
+        ...getLocationChangeInfo(resolvedLocation, resolvedLocation),
+      })
+    }
   })
-
-  Solid.createRenderEffect(
-    Solid.on(
-      [previousIsLoading, isLoading],
-      ([previousIsLoading, isLoading]) => {
-        if (previousIsLoading.previous && !isLoading) {
-          router.emit({
-            type: 'onLoad',
-            ...getLocationChangeInfo(router.state),
-          })
-        }
-      },
-    ),
-  )
-
-  Solid.createComputed(
-    Solid.on(
-      [isPagePending, previousIsPagePending],
-      ([isPagePending, previousIsPagePending]) => {
-        // emit onBeforeRouteMount
-        if (previousIsPagePending.previous && !isPagePending) {
-          router.emit({
-            type: 'onBeforeRouteMount',
-            ...getLocationChangeInfo(router.state),
-          })
-        }
-      },
-    ),
-  )
-
-  Solid.createRenderEffect(
-    Solid.on(
-      [isAnyPending, previousIsAnyPending],
-      ([isAnyPending, previousIsAnyPending]) => {
-        if (previousIsAnyPending.previous && !isAnyPending) {
-          const changeInfo = getLocationChangeInfo(router.state)
-          router.emit({
-            type: 'onResolved',
-            ...changeInfo,
-          })
-
-          router.__store.setState((s) => ({
-            ...s,
-            status: 'idle',
-            resolvedLocation: s.location,
-          }))
-
-          if (changeInfo.hrefChanged) {
-            handleHashScroll(router)
-          }
-        }
-      },
-    ),
-  )
-
   return null
 }

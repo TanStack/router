@@ -9,58 +9,58 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as groupCLayoutCRouteImport } from './routes/(group-c)/_layout-c'
-import { Route as groupBLayoutBRouteImport } from './routes/(group-b)/_layout-b'
 import { Route as groupALayoutARouteImport } from './routes/(group-a)/_layout-a'
-import { Route as groupCLayoutCIndexRouteImport } from './routes/(group-c)/_layout-c/index'
-import { Route as groupBLayoutBDashboardRouteImport } from './routes/(group-b)/_layout-b/dashboard'
-import { Route as groupALayoutASignupRouteImport } from './routes/(group-a)/_layout-a/signup'
+import { Route as groupBLayoutBRouteImport } from './routes/(group-b)/_layout-b'
+import { Route as groupCLayoutCRouteImport } from './routes/(group-c)/_layout-c'
 import { Route as groupALayoutALoginRouteImport } from './routes/(group-a)/_layout-a/login'
+import { Route as groupALayoutASignupRouteImport } from './routes/(group-a)/_layout-a/signup'
+import { Route as groupBLayoutBDashboardRouteImport } from './routes/(group-b)/_layout-b/dashboard'
+import { Route as groupCLayoutCIndexRouteImport } from './routes/(group-c)/_layout-c/index'
 
-const groupCLayoutCRoute = groupCLayoutCRouteImport.update({
-  id: '/(group-c)/_layout-c',
+const groupALayoutARoute = groupALayoutARouteImport.update({
+  id: '/(group-a)/_layout-a',
   getParentRoute: () => rootRouteImport,
 } as any)
 const groupBLayoutBRoute = groupBLayoutBRouteImport.update({
   id: '/(group-b)/_layout-b',
   getParentRoute: () => rootRouteImport,
 } as any)
-const groupALayoutARoute = groupALayoutARouteImport.update({
-  id: '/(group-a)/_layout-a',
+const groupCLayoutCRoute = groupCLayoutCRouteImport.update({
+  id: '/(group-c)/_layout-c',
   getParentRoute: () => rootRouteImport,
-} as any)
-const groupCLayoutCIndexRoute = groupCLayoutCIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => groupCLayoutCRoute,
-} as any)
-const groupBLayoutBDashboardRoute = groupBLayoutBDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => groupBLayoutBRoute,
-} as any)
-const groupALayoutASignupRoute = groupALayoutASignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
-  getParentRoute: () => groupALayoutARoute,
 } as any)
 const groupALayoutALoginRoute = groupALayoutALoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => groupALayoutARoute,
 } as any)
+const groupALayoutASignupRoute = groupALayoutASignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => groupALayoutARoute,
+} as any)
+const groupBLayoutBDashboardRoute = groupBLayoutBDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => groupBLayoutBRoute,
+} as any)
+const groupCLayoutCIndexRoute = groupCLayoutCIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => groupCLayoutCRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
+  '/': typeof groupCLayoutCIndexRoute
   '/login': typeof groupALayoutALoginRoute
   '/signup': typeof groupALayoutASignupRoute
   '/dashboard': typeof groupBLayoutBDashboardRoute
-  '/': typeof groupCLayoutCIndexRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof groupCLayoutCIndexRoute
   '/login': typeof groupALayoutALoginRoute
   '/signup': typeof groupALayoutASignupRoute
   '/dashboard': typeof groupBLayoutBDashboardRoute
-  '/': typeof groupCLayoutCIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -74,9 +74,9 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/login' | '/signup' | '/dashboard' | '/'
+  fullPaths: '/' | '/login' | '/signup' | '/dashboard'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/signup' | '/dashboard' | '/'
+  to: '/' | '/login' | '/signup' | '/dashboard'
   id:
     | '__root__'
     | '/(group-a)/_layout-a'
@@ -96,40 +96,33 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/(group-c)/_layout-c': {
-      id: '/(group-c)/_layout-c'
+    '/(group-a)/_layout-a': {
+      id: '/(group-a)/_layout-a'
       path: ''
-      fullPath: ''
-      preLoaderRoute: typeof groupCLayoutCRouteImport
+      fullPath: '/'
+      preLoaderRoute: typeof groupALayoutARouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(group-b)/_layout-b': {
       id: '/(group-b)/_layout-b'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof groupBLayoutBRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(group-a)/_layout-a': {
-      id: '/(group-a)/_layout-a'
+    '/(group-c)/_layout-c': {
+      id: '/(group-c)/_layout-c'
       path: ''
-      fullPath: ''
-      preLoaderRoute: typeof groupALayoutARouteImport
+      fullPath: '/'
+      preLoaderRoute: typeof groupCLayoutCRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(group-c)/_layout-c/': {
-      id: '/(group-c)/_layout-c/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof groupCLayoutCIndexRouteImport
-      parentRoute: typeof groupCLayoutCRoute
-    }
-    '/(group-b)/_layout-b/dashboard': {
-      id: '/(group-b)/_layout-b/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof groupBLayoutBDashboardRouteImport
-      parentRoute: typeof groupBLayoutBRoute
+    '/(group-a)/_layout-a/login': {
+      id: '/(group-a)/_layout-a/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof groupALayoutALoginRouteImport
+      parentRoute: typeof groupALayoutARoute
     }
     '/(group-a)/_layout-a/signup': {
       id: '/(group-a)/_layout-a/signup'
@@ -138,12 +131,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof groupALayoutASignupRouteImport
       parentRoute: typeof groupALayoutARoute
     }
-    '/(group-a)/_layout-a/login': {
-      id: '/(group-a)/_layout-a/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof groupALayoutALoginRouteImport
-      parentRoute: typeof groupALayoutARoute
+    '/(group-b)/_layout-b/dashboard': {
+      id: '/(group-b)/_layout-b/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof groupBLayoutBDashboardRouteImport
+      parentRoute: typeof groupBLayoutBRoute
+    }
+    '/(group-c)/_layout-c/': {
+      id: '/(group-c)/_layout-c/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof groupCLayoutCIndexRouteImport
+      parentRoute: typeof groupCLayoutCRoute
     }
   }
 }

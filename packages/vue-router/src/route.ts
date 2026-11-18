@@ -12,6 +12,7 @@ import { useParams } from './useParams'
 import { useSearch } from './useSearch'
 import { useNavigate } from './useNavigate'
 import { useMatch } from './useMatch'
+import { useRouteContext } from './useRouteContext'
 import { useRouter } from './useRouter'
 import type {
   AnyContext,
@@ -50,7 +51,7 @@ import type { LinkComponentRoute } from './link'
 // Structural type for Vue SFC components (.vue files)
 // Uses structural matching to accept Vue components without breaking
 // TypeScript inference for inline function components
-type VueSFC = {
+export type VueSFC = {
   readonly __name?: string
   setup?: (...args: Array<any>) => any
   render?: Function
@@ -98,31 +99,19 @@ export class RouteApi<
   }
 
   useMatch: UseMatchRoute<TId> = (opts) => {
-    return useMatch({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
+    return useMatch({ ...opts, from: this.id } as any) as any
   }
 
   useRouteContext: UseRouteContextRoute<TId> = (opts) => {
-    return useMatch({
-      from: this.id as any,
-      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.id })
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
-    return useSearch({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
+    return useSearch({ ...opts, from: this.id } as any)
   }
 
   useParams: UseParamsRoute<TId> = (opts) => {
-    return useParams({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
+    return useParams({ ...opts, from: this.id } as any)
   }
 
   useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
@@ -254,32 +243,19 @@ export class Route<
   }
 
   useMatch: UseMatchRoute<TId> = (opts) => {
-    return useMatch({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
+    return useMatch({ ...opts, from: this.id } as any) as any
   }
 
   useRouteContext: UseRouteContextRoute<TId> = (opts?) => {
-    return useMatch({
-      ...opts,
-      from: this.id,
-      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.id })
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
-    return useSearch({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
+    return useSearch({ ...opts, from: this.id } as any)
   }
 
   useParams: UseParamsRoute<TId> = (opts) => {
-    return useParams({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
+    return useParams({ ...opts, from: this.id } as any)
   }
 
   useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
@@ -500,32 +476,19 @@ export class RootRoute<
   }
 
   useMatch: UseMatchRoute<RootRouteId> = (opts) => {
-    return useMatch({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
+    return useMatch({ ...opts, from: this.id } as any) as any
   }
 
   useRouteContext: UseRouteContextRoute<RootRouteId> = (opts) => {
-    return useMatch({
-      ...opts,
-      from: this.id,
-      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.id })
   }
 
   useSearch: UseSearchRoute<RootRouteId> = (opts) => {
-    return useSearch({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
+    return useSearch({ ...opts, from: this.id } as any)
   }
 
   useParams: UseParamsRoute<RootRouteId> = (opts) => {
-    return useParams({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
+    return useParams({ ...opts, from: this.id } as any)
   }
 
   useLoaderDeps: UseLoaderDepsRoute<RootRouteId> = (opts) => {
@@ -541,11 +504,7 @@ export class RootRoute<
   }
 
   Link: LinkComponentRoute<'/'> = ((props, ctx?: Vue.SetupContext) => {
-    return Vue.h(
-      Link as any,
-      { from: this.fullPath as never, ...(props as any) },
-      ctx?.slots,
-    )
+    return Vue.h(Link, { from: this.fullPath as never, ...props }, ctx?.slots)
   }) as LinkComponentRoute<'/'>
 }
 
@@ -566,7 +525,7 @@ export type VueNode = Vue.VNode
 export type SyncRouteComponent<TProps> = (props: TProps) => Vue.VNode
 
 export type AsyncRouteComponent<TProps> = SyncRouteComponent<TProps> & {
-  preload?: () => Promise<void>
+  preload?: () => Promise<void> | undefined
 }
 
 export type RouteComponent<TProps = any> = AsyncRouteComponent<TProps>

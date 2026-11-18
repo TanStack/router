@@ -49,17 +49,18 @@ export type UseParamsRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
+  TThrow extends boolean = true,
 >(
   opts?: UseParamsBaseOptions<
     TRouter,
     TFrom,
     /* TStrict */ true,
-    /* TThrow */ true,
+    TThrow,
     TSelected,
     TStructuralSharing
   > &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
-) => UseParamsResult<TRouter, TFrom, true, TSelected>
+) => ThrowOrOptional<UseParamsResult<TRouter, TFrom, true, TSelected>, TThrow>
 
 /**
  * Access the current route's path parameters with type-safety.

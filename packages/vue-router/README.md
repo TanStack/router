@@ -2,7 +2,21 @@
 
 # TanStack Vue Router
 
-![TanStack Router Header](https://raw.githubusercontent.com/TanStack/router/main/media/header_router.png)
+<picture>
+  <source
+    media="(prefers-color-scheme: dark)"
+    srcset="https://tanstack.com/api/readme/router.png?title=TanStack%20Vue%20Router&theme=dark"
+  />
+  <source
+    media="(prefers-color-scheme: light)"
+    srcset="https://tanstack.com/api/readme/router.png?title=TanStack%20Vue%20Router"
+  />
+  <img
+    src="https://tanstack.com/api/readme/router.png?title=TanStack%20Vue%20Router"
+    alt="TanStack Vue Router"
+    width="900"
+  />
+</picture>
 
 🤖 Type-safe router w/ built-in caching & URL state management for Vue!
 

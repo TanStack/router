@@ -62,6 +62,12 @@ describe('getRouteApi', () => {
         invoiceId: string
       }>
     >()
+
+    expectTypeOf(
+      invoiceRouteApi.useParams<DefaultRouter, unknown, false>({
+        shouldThrow: false,
+      }),
+    ).toEqualTypeOf<Vue.Ref<{ invoiceId: string } | undefined>>()
   })
   test('useContext', () => {
     expectTypeOf(
@@ -78,6 +84,12 @@ describe('getRouteApi', () => {
         page: number
       }>
     >()
+
+    expectTypeOf(
+      invoiceRouteApi.useSearch<DefaultRouter, unknown, false>({
+        shouldThrow: false,
+      }),
+    ).toEqualTypeOf<Vue.Ref<{ page: number } | undefined>>()
   })
   test('useLoaderData', () => {
     expectTypeOf(invoiceRouteApi.useLoaderData<DefaultRouter>()).toEqualTypeOf<
@@ -87,13 +99,25 @@ describe('getRouteApi', () => {
     >()
   })
   test('useLoaderDeps', () => {
-    expectTypeOf(invoiceRouteApi.useLoaderDeps<DefaultRouter>()).toEqualTypeOf<{
-      dep: number
-    }>()
+    expectTypeOf(invoiceRouteApi.useLoaderDeps<DefaultRouter>()).toEqualTypeOf<
+      Vue.Ref<{
+        dep: number
+      }>
+    >()
   })
   test('useMatch', () => {
     expectTypeOf(invoiceRouteApi.useMatch<DefaultRouter>()).toEqualTypeOf<
       Vue.Ref<MakeRouteMatch<typeof routeTree, '/invoices/$invoiceId'>>
+    >()
+
+    expectTypeOf(
+      invoiceRouteApi.useMatch<DefaultRouter, unknown, false>({
+        shouldThrow: false,
+      }),
+    ).toEqualTypeOf<
+      Vue.Ref<
+        MakeRouteMatch<typeof routeTree, '/invoices/$invoiceId'> | undefined
+      >
     >()
   })
 })

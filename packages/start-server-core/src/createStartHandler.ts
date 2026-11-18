@@ -1,29 +1,55 @@
-import { createMemoryHistory } from '@tanstack/history'
+import { createServerHistory } from '@tanstack/history'
 import {
+  X_TSS_RAW_RESPONSE,
+  X_TSS_SERIALIZED,
+  createCsrfMiddleware,
   createNullProtoObject,
+  csrfSymbol,
   flattenMiddlewares,
   mergeHeaders,
   safeObjectMerge,
 } from '@tanstack/start-client-core'
 import {
-  executeRewriteInput,
+  _getRenderedMatches,
+  isDangerousProtocol,
+  isPromise,
   isRedirect,
-  isResolvedRedirect,
 } from '@tanstack/router-core'
 import {
   attachRouterServerSsrUtils,
+  bindSsrResponseToRequest,
+  disposeSsrResponse,
   getNormalizedURL,
-  getOrigin,
+  isSsrResponse,
+  normalizeSsrResponse,
+  stripSsrResponseBody,
+  waitForRequest,
 } from '@tanstack/router-core/ssr/server'
-import { runWithStartContext } from '@tanstack/start-storage-context'
-import { requestHandler } from './request-response'
-import { getStartManifest } from './router-manifest'
-import { handleServerAction } from './server-functions-handler'
 import {
-  buildManifestWithClientEntry,
-  resolveTransformConfig,
-  transformManifestUrls,
-} from './transformAssetUrls'
+  getStartContext,
+  runWithStartContext,
+} from '@tanstack/start-storage-context'
+import {
+  createFinalizedResponse,
+  finalizeResponse,
+  reconcileResponse,
+  restoreResponseProtocol,
+  transferResponseMetadata,
+  transferResponseProtocol,
+  withStartRequest,
+} from './internal-request-response'
+import { getStartManifest } from './router-manifest'
+import {
+  DeferredResponse,
+  createServerFnErrorResponse,
+  handleServerAction,
+  toThrownServerFnResponse,
+} from './server-functions-handler'
+import { createEarlyHintsCollector } from './early-hints'
+import {
+  createCachedBaseManifestLoader,
+  createFinalManifestResolver,
+} from './finalManifest'
 
 import { HEADERS } from './constants'
 import { ServerFunctionSerializationAdapter } from './serializer/ServerFunctionSerializationAdapter'
@@ -36,19 +62,20 @@ import type {
   RouterEntry,
   StartEntry,
 } from '@tanstack/start-client-core'
-import type { RequestHandler } from './request-handler'
+import type { RequestHandler, RequestOptions } from './request-handler'
+import type { StartEvent } from './internal-request-response'
 import type {
   AnyRoute,
   AnyRouter,
-  Manifest,
+  AnySerializationAdapter,
   Register,
 } from '@tanstack/router-core'
-import type { HandlerCallback } from '@tanstack/router-core/ssr/server'
 import type {
-  StartManifestWithClientEntry,
-  TransformAssetUrls,
-  TransformAssetUrlsFn,
-} from './transformAssetUrls'
+  HandlerCallback,
+  HandlerCallbackResult,
+  SsrResponse,
+} from '@tanstack/router-core/ssr/server'
+import type { FinalManifestOptions } from './finalManifest'
 
 type TODO = any
 
@@ -56,157 +83,105 @@ type AnyMiddlewareServerFn =
   | AnyRequestMiddleware['options']['server']
   | AnyFunctionMiddleware['options']['server']
 
-export interface CreateStartHandlerOptions {
+export interface CreateStartHandlerOptions extends FinalManifestOptions {
   handler: HandlerCallback<AnyRouter>
-  /**
-   * Transform asset URLs at runtime, e.g. to prepend a CDN prefix.
-   *
-   * **String** — a URL prefix prepended to every asset URL (cached by default):
-   * ```ts
-   * createStartHandler({
-   *   handler: defaultStreamHandler,
-   *   transformAssetUrls: 'https://cdn.example.com',
-   * })
-   * ```
-   *
-   * **Callback** — receives `{ url, type }` and returns a new URL
-   * (cached by default — runs once on first request):
-   * ```ts
-   * createStartHandler({
-   *   handler: defaultStreamHandler,
-   *   transformAssetUrls: ({ url, type }) => {
-   *     return `https://cdn.example.com${url}`
-   *   },
-   * })
-   * ```
-   *
-   * **Object** — for explicit cache control:
-   * ```ts
-   * createStartHandler({
-   *   handler: defaultStreamHandler,
-   *   transformAssetUrls: {
-   *     transform: ({ url }) => {
-   *       const region = getRequest().headers.get('x-region') || 'us'
-   *       return `https://cdn-${region}.example.com${url}`
-   *     },
-   *     cache: false, // transform per-request
-   *   },
-   * })
-   * ```
-   *
-   * `type` is one of `'modulepreload' | 'stylesheet' | 'clientEntry'`.
-   *
-   * By default, the transformed manifest is cached after the first request
-   * (`cache: true`). Set `cache: false` for per-request transforms.
-   *
-   * If you're using a cached transform, you can optionally set `warmup: true`
-   * (object form only) to compute the transformed manifest in the background at
-   * server startup.
-   *
-   * Note: This only transforms URLs managed by TanStack Start's manifest
-   * (JS preloads, CSS links, and the client entry script). For asset imports
-   * used directly in components (e.g. `import logo from './logo.svg'`),
-   * configure Vite's `experimental.renderBuiltUrl` in your vite.config.ts.
-   */
-  transformAssetUrls?: TransformAssetUrls
 }
 
-function getStartResponseHeaders(opts: { router: AnyRouter }) {
-  const headers = mergeHeaders(
-    {
-      'Content-Type': 'text/html; charset=utf-8',
-    },
-    ...opts.router.state.matches.map((match) => {
-      return match.headers
-    }),
-  )
-  return headers
+function getStartResponseHeaders(router: AnyRouter) {
+  const headers = new Headers({ 'content-type': 'text/html; charset=utf-8' })
+  const matches = _getRenderedMatches(router.stores.matches.get())
+  // Most matches set no headers; merge only when one does.
+  return matches.some((match) => match.headers)
+    ? mergeHeaders(headers, ...matches.map((match) => match.headers))
+    : headers
 }
 
-// Cached entries - promises stored immediately to prevent concurrent imports
-// that can cause race conditions during module initialization
-let entriesPromise:
-  | Promise<{
-      startEntry: StartEntry
-      routerEntry: RouterEntry
-    }>
-  | undefined
-let baseManifestPromise: Promise<StartManifestWithClientEntry> | undefined
+interface PluginAdaptersEntry {
+  hasPluginAdapters: boolean
+  pluginSerializationAdapters: Array<AnySerializationAdapter>
+}
 
-/**
- * Cached final manifest (with client entry script tag). In production,
- * this is computed once and reused for every request when caching is enabled.
- */
-let cachedFinalManifestPromise: Promise<Manifest> | undefined
+interface Entries {
+  startEntry: StartEntry
+  routerEntry: RouterEntry
+  pluginAdapters: PluginAdaptersEntry
+}
 
-async function loadEntries() {
-  // @ts-ignore when building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
-  const routerEntry = (await import('#tanstack-router-entry')) as RouterEntry
-  // @ts-ignore when building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
-  const startEntry = (await import('#tanstack-start-entry')) as StartEntry
-  return { startEntry, routerEntry }
+// Share initialization, then reuse the loaded entries without a promise wait.
+let cachedEntries: Entries | Promise<Entries> | undefined
+let hasWarnedMissingCsrfMiddleware = false
+const defaultCsrfMiddleware = createCsrfMiddleware({
+  filter: (ctx) => ctx.handlerType === 'serverFn',
+})
+const getCachedBaseManifest = createCachedBaseManifestLoader(() =>
+  getStartManifest(),
+)
+const getProdBaseManifest: typeof getStartManifest = () =>
+  getCachedBaseManifest()
+const getBaseManifest =
+  process.env.TSS_DEV_SERVER === 'true' ? getStartManifest : getProdBaseManifest
+const createEarlyHintsForRequest: typeof createEarlyHintsCollector =
+  process.env.TSS_DEV_SERVER === 'true'
+    ? () => undefined
+    : createEarlyHintsCollector
+
+async function loadEntries(): Promise<Entries> {
+  const [routerEntry, startEntry, pluginAdapters] = await Promise.all([
+    // @ts-ignore When building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
+    import('#tanstack-router-entry'),
+    // @ts-ignore When building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
+    import('#tanstack-start-entry'),
+    // @ts-ignore When building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
+    import('#tanstack-start-plugin-adapters'),
+  ])
+  return {
+    routerEntry: routerEntry as unknown as RouterEntry,
+    startEntry: startEntry as unknown as StartEntry,
+    pluginAdapters: pluginAdapters as unknown as PluginAdaptersEntry,
+  }
 }
 
 function getEntries() {
-  if (!entriesPromise) {
-    entriesPromise = loadEntries()
+  if (!cachedEntries) {
+    cachedEntries = loadEntries().then((entries) => {
+      cachedEntries = entries
+      return entries
+    })
   }
-  return entriesPromise
+  return cachedEntries
 }
 
-/**
- * Returns the raw manifest data (without client entry script tag baked in).
- * In dev mode, always returns fresh data. In prod, cached.
- */
-function getBaseManifest(
-  matchedRoutes?: ReadonlyArray<AnyRoute>,
-): Promise<StartManifestWithClientEntry> {
-  // In dev mode, always get fresh manifest (no caching) to include route-specific dev styles
-  if (process.env.TSS_DEV_SERVER === 'true') {
-    return getStartManifest(matchedRoutes)
-  }
-  // In prod, cache the base manifest
-  if (!baseManifestPromise) {
-    baseManifestPromise = getStartManifest()
-  }
-  return baseManifestPromise
+function hasCsrfMiddleware(
+  middlewares: Array<AnyRequestMiddleware | AnyFunctionMiddleware>,
+): boolean {
+  return middlewares.some((middleware) => csrfSymbol in middleware)
 }
 
-/**
- * Resolves a final Manifest for a given request.
- *
- * - No transform: builds client entry script tag and returns (cached in prod).
- * - Cached transform: transforms all URLs + builds script tag, caches result.
- * - Per-request transform: deep-clones base manifest, transforms per-request.
- */
-async function resolveManifest(
-  matchedRoutes: ReadonlyArray<AnyRoute> | undefined,
-  transformFn: TransformAssetUrlsFn | undefined,
-  cache: boolean,
-): Promise<Manifest> {
-  const base = await getBaseManifest(matchedRoutes)
+function warnMissingCsrfMiddlewareOnce() {
+  if (hasWarnedMissingCsrfMiddleware) return
+  hasWarnedMissingCsrfMiddleware = true
 
-  const computeFinalManifest = async () => {
-    return transformFn
-      ? await transformManifestUrls(base, transformFn, { clone: !cache })
-      : buildManifestWithClientEntry(base)
-  }
+  console.warn(`TanStack Start server functions are not protected by the CSRF middleware.
 
-  // In dev, always compute fresh to include route-specific dev styles.
-  if (process.env.TSS_DEV_SERVER === 'true') {
-    return computeFinalManifest()
-  }
+Server functions are same-origin RPC endpoints and should be protected from cross-site requests.
 
-  // In prod, cache unless we're explicitly doing per-request transforms.
-  if (!transformFn || cache) {
-    if (!cachedFinalManifestPromise) {
-      cachedFinalManifestPromise = computeFinalManifest()
-    }
-    return cachedFinalManifestPromise
-  }
+Add the CSRF middleware in src/start.ts:
 
-  // Per-request transform — deep-clone and transform every time.
-  return computeFinalManifest()
+  const csrfMiddleware = createCsrfMiddleware({
+    filter: (ctx) => ctx.handlerType === 'serverFn',
+  })
+
+  export const startInstance = createStart(() => ({
+    requestMiddleware: [csrfMiddleware],
+  }))
+
+If you intentionally handle CSRF another way, disable this warning:
+
+  tanstackStart({
+    serverFns: {
+      disableCsrfMiddlewareWarning: true,
+    },
+  })`)
 }
 
 // Pre-computed constants
@@ -233,90 +208,382 @@ function throwIfMayNotDefer(): never {
   throw new Error(ERR_NO_DEFER)
 }
 
-/**
- * Check if a value is a special response (Response or Redirect)
- */
-function isSpecialResponse(value: unknown): value is Response {
-  return value instanceof Response || isRedirect(value)
+function getResponseFromResult(result: TODO): TODO {
+  return isSsrResponse(result) || result instanceof Response
+    ? result
+    : result?.response
 }
 
-/**
- * Normalize middleware result to context shape
- */
-function handleCtxResult(result: TODO) {
-  if (isSpecialResponse(result)) {
-    return { response: result }
+type StreamSsrResponse = Extract<SsrResponse, { serverSsrCleanup: 'stream' }>
+
+type ResponseBody = NonNullable<Response['body']>
+type ResponseWithBody = Response & { readonly body: ResponseBody }
+
+/** The context object threaded through one middleware pipeline. */
+interface PipelineContext {
+  request: Request
+  pathname: string
+  handlerType: 'serverFn' | 'router'
+  context: Record<string, unknown>
+  params?: Record<string, unknown>
+  response?: Response
+  // Middleware may add arbitrary own properties through `next(ctx)`.
+  [key: string]: unknown
+}
+
+interface MiddlewareResponseOwnership {
+  response: ResponseWithBody
+  sourceBody: ResponseBody
+  streamResponse?: StreamSsrResponse
+}
+
+function disposeResponseResult(result: TODO, reason: unknown): void {
+  const response = getResponseFromResult(result)
+  if (isSsrResponse(response) || response instanceof Response) {
+    disposeSsrResponse(response, reason)
   }
-  return result
 }
 
 /**
- * Execute a middleware chain
+ * A new body continues the owned one when it is the same stream, or when the
+ * owned body is already being read, as by a pipe, a tee, or a `Response` that
+ * copies a body by reading it (Bun, or a wrapped global `Response`). Start
+ * cannot tell such a reader from one that stops early, so it disposes only an
+ * unread body. A stream whose reader stops early ends with the request's abort
+ * or the SSR stream's lifetime limit.
  */
-function executeMiddleware(middlewares: Array<TODO>, ctx: TODO): Promise<TODO> {
-  let index = -1
+function inheritsResponseOwnership(
+  ownership: MiddlewareResponseOwnership,
+  body: ResponseBody,
+): boolean {
+  const ownedBody = ownership.response.body
+  return body === ownedBody || ownedBody.locked
+}
 
-  const next = async (nextCtx?: TODO): Promise<TODO> => {
+function disposeResponseOwnership(
+  ownership: MiddlewareResponseOwnership,
+  reason: unknown,
+): void {
+  const { response, sourceBody, streamResponse } = ownership
+  streamResponse?.dispose(reason)
+  if (!streamResponse || response.body !== sourceBody) {
+    void response.body.cancel(reason).catch(() => {})
+  }
+}
+
+function getOwnedResponse(
+  ownership: MiddlewareResponseOwnership,
+): HandlerCallbackResult {
+  const { response, sourceBody, streamResponse } = ownership
+  if (!streamResponse) {
+    return response
+  }
+  if (streamResponse.response === response && response.body === sourceBody) {
+    return streamResponse
+  }
+  if (response.body === sourceBody) {
+    return { ...streamResponse, response }
+  }
+  return {
+    ...streamResponse,
+    response,
+    dispose(reason): undefined {
+      disposeResponseOwnership(ownership, reason)
+    },
+  }
+}
+
+function createLateResponseDisposer(signal: AbortSignal) {
+  return (result: TODO) => disposeResponseResult(result, signal.reason)
+}
+
+/**
+ * Compose middleware around a terminal response handler. With no middleware
+ * the terminal runs directly.
+ */
+async function executeMiddleware(
+  middlewares: Array<TODO>,
+  terminal: TODO,
+  ctx: PipelineContext,
+  signal: AbortSignal,
+  event: StartEvent,
+  terminalNext?: TODO,
+): Promise<HandlerCallbackResult> {
+  let index = -1
+  let responseOwnership: MiddlewareResponseOwnership | undefined
+  // Invocations form one chain: invocation `d` runs middleware `d` and calls
+  // next() at most once; the pipeline itself is depth -1. Once an invocation
+  // returns, a result of next() still pending below it is abandoned: it must
+  // not replace or cancel the response that invocation chose (for example the
+  // winner of a `Promise.race`). A caller at depth `d` is therefore abandoned
+  // when `returnedDepth <= d`, where this is the shallowest returned depth.
+  let returnedDepth = Infinity
+  const disposeAbandonedResult = createLateResponseDisposer(signal)
+
+  const adoptResponse = (
+    exposed: Response | undefined,
+    streamResponse?: StreamSsrResponse,
+  ) => {
+    const current = responseOwnership
+    // Read the body once: the getter can allocate a stream for a response
+    // that has not exposed one yet.
+    const body = exposed instanceof Response ? exposed.body : null
+    // `exposed` is a Response with this body whenever `body` is set.
+    const response = exposed as ResponseWithBody
+    if (streamResponse && !body && streamResponse !== current?.streamResponse) {
+      streamResponse.dispose('Response body dropped by Start reconciliation')
+    }
+    if (current && current.response === exposed) {
+      current.streamResponse ??= streamResponse
+    } else if (current && body && inheritsResponseOwnership(current, body)) {
+      // A wrapper around the same body stream carries the same encoded bytes,
+      // so it keeps the transport requirements that decode them.
+      if (body === current.response.body) {
+        transferResponseProtocol(current.response, response)
+      }
+      current.response = response
+      current.streamResponse ??= streamResponse
+    } else {
+      if (current) {
+        responseOwnership = undefined
+        disposeResponseOwnership(current, 'middleware response replaced')
+      }
+      responseOwnership = body
+        ? { response, sourceBody: body, streamResponse }
+        : undefined
+    }
+    ctx.response = exposed
+  }
+
+  const disposeCurrentBody = (reason: string) => {
+    const current = responseOwnership
+    responseOwnership = undefined
+    if (current) {
+      disposeResponseOwnership(current, reason)
+    }
+  }
+
+  const setResponse = (response: TODO, caller: number) => {
+    // The owned response is already adopted; only helper state can still
+    // change it.
+    const owned =
+      response !== undefined && response === responseOwnership?.response
+    const ssrResponse = !owned && isSsrResponse(response) ? response : undefined
+    const exposed: Response | undefined = ssrResponse
+      ? ssrResponse.response
+      : response
+
+    if (returnedDepth <= caller) {
+      if (exposed !== ctx.response) {
+        disposeResponseResult(response, 'late middleware response')
+      }
+      return
+    }
+    if (!owned) {
+      // Dispose a replaced body before reading helper state: cancellation and
+      // SSR cleanup callbacks may set headers on the response that replaces it.
+      adoptResponse(
+        exposed,
+        ssrResponse?.serverSsrCleanup === 'stream' ? ssrResponse : undefined,
+      )
+    }
+    if (exposed instanceof Response) {
+      const reconciled = reconcileResponse(exposed, event, disposeCurrentBody)
+      if (reconciled !== exposed) {
+        adoptRebuilt(exposed, reconciled)
+      }
+    }
+  }
+
+  // Start rebuilds the owned response around its body, or without a body when
+  // the response cannot have one. A rebuilt body takes over ownership without
+  // comparing streams: a wrapped global `Response` copies it into a new one.
+  const adoptRebuilt = (exposed: Response, rebuilt: Response) => {
+    const current = responseOwnership
+    if (current?.response === exposed && rebuilt.body) {
+      current.response = rebuilt as ResponseWithBody
+      ctx.response = rebuilt
+    } else {
+      adoptResponse(rebuilt)
+    }
+  }
+
+  let nextPromise: Promise<TODO> | undefined
+
+  function next(nextCtx?: TODO): Promise<TODO> {
+    // Only the deepest started invocation can call next().
+    const result = runNext(index, nextCtx)
+    nextPromise = result
+    return result
+  }
+
+  async function runNext(caller: number, nextCtx?: TODO): Promise<TODO> {
+    signal.throwIfAborted()
+
     // Merge context if provided using safeObjectMerge for prototype pollution prevention
     if (nextCtx) {
       if (nextCtx.context) {
         ctx.context = safeObjectMerge(ctx.context, nextCtx.context)
       }
-      // Copy own properties except context (Object.keys returns only own enumerable properties)
-      for (const key of Object.keys(nextCtx)) {
-        if (key !== 'context') {
+      // Copy own properties except context (Object.keys returns only own
+      // enumerable properties). An indexed loop avoids the iterator protocol.
+      const keys = Object.keys(nextCtx)
+      // eslint-disable-next-line @typescript-eslint/prefer-for-of
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i]!
+        if (key === 'response') {
+          setResponse(nextCtx.response, caller)
+        } else if (key !== 'context') {
           ctx[key] = nextCtx[key]
         }
       }
     }
 
-    index++
-    const middleware = middlewares[index]
-    if (!middleware) return ctx
+    const depth = ++index
+    const isTerminal = depth === middlewares.length
+    const middleware =
+      depth < middlewares.length
+        ? middlewares[depth]
+        : isTerminal
+          ? terminal
+          : undefined
+    const middlewareNext = isTerminal && terminalNext ? terminalNext : next
+    if (!middleware) {
+      return ctx
+    }
 
     let result: TODO
     try {
-      result = await middleware({ ...ctx, next })
+      const pending = middleware({ ...ctx, next: middlewareNext })
+      // A directly returned next() promise already propagates request aborts.
+      if (nextPromise && pending === nextPromise) {
+        nextPromise = undefined
+        result = await pending
+        signal.throwIfAborted()
+      } else if (!isPromise(pending)) {
+        result = pending
+        signal.throwIfAborted()
+      } else {
+        result = await waitForRequest(
+          pending,
+          signal,
+          disposeAbandonedResult,
+          disposeAbandonedResult,
+        )
+      }
     } catch (err) {
-      if (isSpecialResponse(err)) {
-        ctx.response = err
+      if (depth < returnedDepth) {
+        returnedDepth = depth
+      }
+      if (returnedDepth > caller) {
+        // Middleware can replace next()'s shared response before throwing.
+        // Track that body for cleanup without rebuilding a body it may have
+        // already locked, consumed, or transferred.
+        adoptResponse(ctx.response)
+      }
+      if (signal.aborted) {
+        if (result !== undefined) {
+          disposeAbandonedResult(result)
+        }
+        if (err !== signal.reason) {
+          disposeAbandonedResult(err)
+        }
+        throw signal.reason
+      }
+      if (err instanceof Response) {
+        // A thrown Response replies to the request. For a server function
+        // call, the client rejects the call with it.
+        setResponse(
+          ctx.handlerType === 'serverFn' ? toThrownServerFnResponse(err) : err,
+          caller,
+        )
         return ctx
       }
       throw err
     }
+    if (depth < returnedDepth) {
+      returnedDepth = depth
+    }
 
-    const normalized = handleCtxResult(result)
-    if (normalized) {
-      if (normalized.response !== undefined) {
-        ctx.response = normalized.response
+    if (isTerminal && terminalNext && !result) {
+      throwRouteHandlerError()
+    }
+
+    if (isTerminal && !terminalNext && result instanceof DeferredResponse) {
+      if (returnedDepth > caller) {
+        // Cleanup may write response helpers. Construct only after it has run,
+        // then publish without rechecking headers that no user has received.
+        adoptResponse(undefined)
+        adoptResponse(result.createResponse(event))
       }
-      if (normalized.context) {
-        ctx.context = safeObjectMerge(ctx.context, normalized.context)
+      return ctx
+    }
+
+    if (result && result !== ctx) {
+      const response = getResponseFromResult(result)
+      // Select the replacement before reconciling: middleware may already
+      // have transferred or piped the previous response's body.
+      if (response !== undefined) {
+        // Middleware can assign next()'s shared response and then return
+        // another one, such as a 304 after transforming the body. Track the
+        // assigned body first, so the replacement disposes it, without
+        // rebuilding a body it may have already locked or consumed.
+        if (
+          ctx.response !== responseOwnership?.response &&
+          ctx.response !== response &&
+          returnedDepth > caller
+        ) {
+          adoptResponse(ctx.response)
+        }
+        setResponse(response, caller)
+      } else {
+        setResponse(ctx.response, caller)
       }
+      if (
+        returnedDepth > caller &&
+        response !== result &&
+        result.context &&
+        result.context !== ctx.context
+      ) {
+        ctx.context = safeObjectMerge(ctx.context, result.context)
+      }
+    } else {
+      setResponse(ctx.response, caller)
     }
 
     return ctx
   }
 
-  return next()
-}
-
-/**
- * Wrap a route handler as middleware
- */
-function handlerToMiddleware(
-  handler: RouteMethodHandlerFn<any, AnyRoute, any, any, any, any, any>,
-  mayDefer: boolean = false,
-): TODO {
-  if (mayDefer) {
-    return handler
-  }
-  return async (ctx: TODO) => {
-    const response = await handler({ ...ctx, next: throwIfMayNotDefer })
+  try {
+    await runNext(-1)
+    let response = ctx.response
     if (!response) {
       throwRouteHandlerError()
     }
-    return response
+    if (signal.aborted) {
+      throw signal.reason
+    }
+    returnedDepth = -1
+    // Middleware can change protocol headers directly on a server-function
+    // reply, the only response that has them. Restore them once, as the reply
+    // leaves the pipeline; without middleware only Start has handled it.
+    if (middlewares.length && ctx.handlerType === 'serverFn') {
+      const restored = restoreResponseProtocol(response, event)
+      if (restored !== response) {
+        adoptRebuilt(response, restored)
+        response = restored
+      }
+    }
+    return responseOwnership ? getOwnedResponse(responseOwnership) : response
+  } catch (err) {
+    returnedDepth = -1
+    if (responseOwnership) {
+      disposeResponseOwnership(
+        responseOwnership,
+        signal.aborted ? signal.reason : err,
+      )
+    }
+    throw err
   }
 }
 
@@ -332,7 +599,7 @@ function handlerToMiddleware(
  * ```ts
  * export default createStartHandler({
  *   handler: defaultStreamHandler,
- *   transformAssetUrls: 'https://cdn.example.com',
+ *   transformAssets: 'https://cdn.example.com',
  * })
  * ```
  *
@@ -340,10 +607,10 @@ function handlerToMiddleware(
  * ```ts
  * export default createStartHandler({
  *   handler: defaultStreamHandler,
- *   transformAssetUrls: {
+ *   transformAssets: {
  *     transform: ({ url }) => {
  *       const cdnBase = getRequest().headers.get('x-cdn-base') || ''
- *       return `${cdnBase}${url}`
+ *       return { href: `${cdnBase}${url}` }
  *     },
  *     cache: false,
  *   },
@@ -353,153 +620,177 @@ function handlerToMiddleware(
 export function createStartHandler<TRegister = Register>(
   cbOrOptions: HandlerCallback<AnyRouter> | CreateStartHandlerOptions,
 ): RequestHandler<TRegister> {
-  // Normalize the overloaded argument
+  const handlerOptions: FinalManifestOptions =
+    typeof cbOrOptions === 'function' ? {} : cbOrOptions
   const cb: HandlerCallback<AnyRouter> =
     typeof cbOrOptions === 'function' ? cbOrOptions : cbOrOptions.handler
-  const transformAssetUrlsOption: TransformAssetUrls | undefined =
-    typeof cbOrOptions === 'function'
-      ? undefined
-      : cbOrOptions.transformAssetUrls
+  const finalManifestResolver = createFinalManifestResolver({
+    ...handlerOptions,
+    cacheCreateTransform: process.env.TSS_DEV_SERVER !== 'true',
+  })
+  const resolveManifestForRequest =
+    process.env.TSS_DEV_SERVER === 'true'
+      ? finalManifestResolver.resolveUncached
+      : finalManifestResolver.resolveCached
 
-  const warmupTransformManifest =
-    !!transformAssetUrlsOption &&
-    typeof transformAssetUrlsOption === 'object' &&
-    transformAssetUrlsOption.warmup === true
-
-  // Pre-resolve the transform function and cache flag
-  const resolvedTransformConfig = transformAssetUrlsOption
-    ? resolveTransformConfig(transformAssetUrlsOption)
-    : undefined
-  const cache = resolvedTransformConfig ? resolvedTransformConfig.cache : true
-
-  // Memoize a single createTransform() result when caching is enabled.
-  let cachedCreateTransformPromise: Promise<TransformAssetUrlsFn> | undefined
-
-  const getTransformFn = async (
-    opts: { warmup: true } | { warmup: false; request: Request },
-  ): Promise<TransformAssetUrlsFn | undefined> => {
-    if (!resolvedTransformConfig) return undefined
-    if (resolvedTransformConfig.type === 'createTransform') {
-      if (cache) {
-        if (!cachedCreateTransformPromise) {
-          cachedCreateTransformPromise = Promise.resolve(
-            resolvedTransformConfig.createTransform(opts),
-          )
-        }
-        return cachedCreateTransformPromise
-      }
-      return resolvedTransformConfig.createTransform(opts)
-    }
-    return resolvedTransformConfig.transformFn
-  }
-
-  // Background warmup for cached transforms (production only)
-  if (
-    warmupTransformManifest &&
-    cache &&
-    process.env.TSS_DEV_SERVER !== 'true' &&
-    !cachedFinalManifestPromise
-  ) {
-    // NOTE: Do not call resolveManifest() here.
-    // resolveManifest() reads from cachedFinalManifestPromise, and since we set
-    // cachedFinalManifestPromise to this warmup promise, that would create a
-    // self-referential promise and hang forever.
-    const warmupPromise = (async () => {
-      const base = await getBaseManifest(undefined)
-      const transformFn = await getTransformFn({ warmup: true })
-      return transformFn
-        ? await transformManifestUrls(base, transformFn, { clone: false })
-        : buildManifestWithClientEntry(base)
-    })()
-    cachedFinalManifestPromise = warmupPromise
-    warmupPromise.catch(() => {
-      // If warmup fails, allow the next request to retry.
-      if (cachedFinalManifestPromise === warmupPromise) {
-        cachedFinalManifestPromise = undefined
-      }
-      cachedCreateTransformPromise = undefined
+  if (process.env.TSS_DEV_SERVER !== 'true') {
+    finalManifestResolver.warmup({
+      getBaseManifest: () => getBaseManifest(undefined),
     })
   }
 
-  const startRequestResolver: RequestHandler<Register> = async (
-    request,
-    requestOpts,
-  ) => {
-    let router: AnyRouter | null = null as AnyRouter | null
-    let cbWillCleanup = false as boolean
+  const startRequestResolver = async (
+    request: Request,
+    requestOpts: RequestOptions<Register> | undefined,
+    event: StartEvent,
+  ): Promise<Response> => {
+    const signal = request.signal
+    let router: AnyRouter | undefined
+    let routerPromise: Promise<AnyRouter> | undefined
+    let responseOwnsCleanup = false
+    let response: Response | undefined
 
     try {
-      // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
-      // during normalization paths like '//posts' are flattened to '/posts'.
-      // in these cases we would prefer to redirect to the new path
-      const { url, handledProtocolRelativeURL } = getNormalizedURL(request.url)
-      const href = url.pathname + url.search + url.hash
-      const origin = getOrigin(request)
-
-      if (handledProtocolRelativeURL) {
-        return Response.redirect(url, 308)
+      signal.throwIfAborted()
+      // The Start event already parsed and validated the request URL; reuse
+      // it instead of re-parsing. The memoized URL must not be mutated.
+      const requestUrl = event.requestUrl
+      let url = requestUrl
+      const pathname = url.pathname
+      // Plain RPC paths need no routing normalization. Their payload is read
+      // from the original query; normalize only if they later request a router.
+      if (
+        !SERVER_FN_BASE ||
+        !pathname.startsWith(SERVER_FN_BASE) ||
+        pathname.includes('%') ||
+        pathname.startsWith('//')
+      ) {
+        const normalized = getNormalizedURL(requestUrl)
+        url = normalized.url
+        if (normalized.handledProtocolRelativeURL) {
+          return finalizeResponse(Response.redirect(url, 308), event)
+        }
       }
 
-      const entries = await getEntries()
-      const startOptions: AnyStartInstanceOptions =
-        (await entries.startEntry.startInstance?.getOptions()) ||
-        ({} as AnyStartInstanceOptions)
+      const pendingEntries = getEntries()
+      const entries = isPromise(pendingEntries)
+        ? await waitForRequest(pendingEntries, signal)
+        : pendingEntries
+      const isServerFnRequest =
+        !!SERVER_FN_BASE && url.pathname.startsWith(SERVER_FN_BASE)
+      const startInstance = entries.startEntry.startInstance
+      let startOptions: AnyStartInstanceOptions
+      if (startInstance) {
+        const pendingStartOptions = startInstance.getOptions()
+        startOptions = isPromise(pendingStartOptions)
+          ? await waitForRequest(pendingStartOptions, signal)
+          : pendingStartOptions
+        signal.throwIfAborted()
+      } else {
+        startOptions = {} as AnyStartInstanceOptions
+      }
+
+      const { hasPluginAdapters, pluginSerializationAdapters } =
+        entries.pluginAdapters
 
       const serializationAdapters = [
         ...(startOptions.serializationAdapters || []),
+        ...(hasPluginAdapters ? pluginSerializationAdapters : []),
         ServerFunctionSerializationAdapter,
       ]
 
       const requestStartOptions = {
         ...startOptions,
+        requestMiddleware: startInstance
+          ? startOptions.requestMiddleware
+          : isServerFnRequest
+            ? [defaultCsrfMiddleware]
+            : undefined,
         serializationAdapters,
       }
 
-      // Flatten request middlewares once
-      const flattenedRequestMiddlewares = startOptions.requestMiddleware
-        ? flattenMiddlewares(startOptions.requestMiddleware)
-        : []
-
-      // Create set for deduplication
-      const executedRequestMiddlewares = new Set<TODO>(
-        flattenedRequestMiddlewares,
-      )
-
-      // Memoized router getter
-      const getRouter = async (): Promise<AnyRouter> => {
-        if (router) return router
-
-        router = await entries.routerEntry.getRouter()
-
-        let isShell = IS_SHELL_ENV
-        if (IS_PRERENDERING && !isShell) {
-          isShell = request.headers.get(HEADERS.TSS_SHELL) === 'true'
-        }
-
-        const history = createMemoryHistory({
-          initialEntries: [href],
-        })
-
-        router.update({
-          history,
-          isShell,
-          isPrerendering: IS_PRERENDERING,
-          origin: router.options.origin ?? origin,
-          ...{
-            defaultSsr: requestStartOptions.defaultSsr,
-            serializationAdapters: [
-              ...requestStartOptions.serializationAdapters,
-              ...(router.options.serializationAdapters || []),
-            ],
-          },
-          basepath: ROUTER_BASEPATH,
-        })
-
-        return router
+      const requestMiddleware = requestStartOptions.requestMiddleware
+      let executedRequestMiddlewares: Set<TODO> | undefined
+      let flattenedRequestMiddlewares: ReturnType<typeof flattenMiddlewares> =
+        []
+      if (requestMiddleware?.length) {
+        // Reuse the flattening set for request middleware deduplication.
+        executedRequestMiddlewares = new Set()
+        flattenedRequestMiddlewares = flattenMiddlewares(
+          requestMiddleware,
+          undefined,
+          executedRequestMiddlewares,
+        )
       }
 
-      // Check for server function requests first (early exit)
-      if (SERVER_FN_BASE && url.pathname.startsWith(SERVER_FN_BASE)) {
+      // Memoized router getter
+      const getRouter = (): Promise<AnyRouter> => {
+        routerPromise ??= (async () => {
+          signal.throwIfAborted()
+          const routerUrl = url === requestUrl ? getNormalizedURL(url).url : url
+          const pendingRouter = entries.routerEntry.getRouter()
+          const requestRouter = isPromise(pendingRouter)
+            ? await waitForRequest(pendingRouter, signal)
+            : pendingRouter
+
+          let isShell = IS_SHELL_ENV
+          if (IS_PRERENDERING && !isShell) {
+            isShell = request.headers.get(HEADERS.TSS_SHELL) === 'true'
+          }
+
+          const history = createServerHistory(
+            routerUrl.pathname + routerUrl.search + routerUrl.hash,
+          )
+
+          requestRouter.update({
+            history,
+            isShell,
+            isPrerendering: IS_PRERENDERING,
+            origin: requestRouter.options.origin ?? routerUrl.origin,
+            // Start-owned options that RouterConstructorOptions omits.
+            ...{
+              defaultSsr: requestStartOptions.defaultSsr,
+              serializationAdapters: requestRouter.options.serializationAdapters
+                ?.length
+                ? [
+                    ...requestStartOptions.serializationAdapters,
+                    ...requestRouter.options.serializationAdapters,
+                  ]
+                : requestStartOptions.serializationAdapters,
+            },
+            basepath: ROUTER_BASEPATH,
+          })
+
+          router = requestRouter
+          return requestRouter
+        })()
+
+        return routerPromise
+      }
+
+      const handlerType = isServerFnRequest
+        ? ('serverFn' as const)
+        : ('router' as const)
+      const startContext = {
+        getRouter,
+        startOptions: requestStartOptions,
+        request,
+        executedRequestMiddlewares,
+        handlerType,
+      }
+      let terminal: (
+        ctx: PipelineContext,
+      ) => Promise<HandlerCallbackResult | DeferredResponse>
+
+      if (isServerFnRequest) {
+        if (
+          process.env.NODE_ENV !== 'production' &&
+          process.env.TSS_DISABLE_CSRF_MIDDLEWARE_WARNING !== 'true' &&
+          !hasCsrfMiddleware(flattenedRequestMiddlewares)
+        ) {
+          warnMissingCsrfMiddlewareOnce()
+        }
+
         const serverFnId = url.pathname
           .slice(SERVER_FN_BASE.length)
           .split('/')[0]
@@ -508,174 +799,249 @@ export function createStartHandler<TRegister = Register>(
           throw new Error('Invalid server action param for serverFnId')
         }
 
-        const serverFnHandler = async ({ context }: TODO) => {
-          return runWithStartContext(
-            {
-              getRouter,
-              startOptions: requestStartOptions,
-              contextAfterGlobalMiddlewares: context,
-              request,
-              executedRequestMiddlewares,
-            },
+        terminal = ({ context }) =>
+          runWithStartContext(
+            { ...startContext, contextAfterGlobalMiddlewares: context },
             () =>
               handleServerAction({
                 request,
-                context: requestOpts?.context,
                 serverFnId,
               }),
           )
-        }
+      } else {
+        // Runs as the route pipeline's terminal, which waits on the request
+        // signal and disposes a result that settles after an abort.
+        const executeRouter = async (
+          serverContext: TODO,
+          matchedRoutes: ReadonlyArray<AnyRoute>,
+          routerInstance: AnyRouter,
+        ): Promise<SsrResponse> => {
+          if (
+            !/(^|,)\s*(\*\/\*|text\/html)/.test(
+              request.headers.get('Accept') || '*/*',
+            )
+          ) {
+            return normalizeSsrResponse(
+              Response.json(
+                { error: 'Only HTML requests are supported here' },
+                { status: 406 },
+              ),
+            )
+          }
 
-        const middlewares = flattenedRequestMiddlewares.map(
-          (d) => d.options.server,
-        )
-        const ctx = await executeMiddleware([...middlewares, serverFnHandler], {
-          request,
-          pathname: url.pathname,
-          context: createNullProtoObject(requestOpts?.context),
-        })
+          const pendingManifest = resolveManifestForRequest({
+            request,
+            requestInlineCss: requestOpts?.inlineCss,
+            getBaseManifest: () => getBaseManifest(matchedRoutes),
+          })
+          const manifest = isPromise(pendingManifest)
+            ? await waitForRequest(pendingManifest, signal)
+            : pendingManifest
 
-        return handleRedirectResponse(ctx.response, request, getRouter)
-      }
+          const earlyHints = createEarlyHintsForRequest(requestOpts)
 
-      // Router execution function
-      const executeRouter = async (
-        serverContext: TODO,
-        matchedRoutes?: ReadonlyArray<AnyRoute>,
-      ): Promise<Response> => {
-        const acceptHeader = request.headers.get('Accept') || '*/*'
-        const acceptParts = acceptHeader.split(',')
-        const supportedMimeTypes = ['*/*', 'text/html']
+          earlyHints?.collectStatic({ manifest, matchedRoutes })
 
-        const isSupported = supportedMimeTypes.some((mimeType) =>
-          acceptParts.some((part) => part.trim().startsWith(mimeType)),
-        )
+          // The request's stored context, not the resolver's template: RSC
+          // adds request assets to it, so read them at call time.
+          const storedStartContext = getStartContext({ throwIfNotFound: false })
+          attachRouterServerSsrUtils({
+            router: routerInstance,
+            manifest,
+            getRequestAssets: () => storedStartContext?.requestAssets,
+          })
 
-        if (!isSupported) {
-          return Response.json(
-            { error: 'Only HTML requests are supported here' },
-            { status: 500 },
+          // `additionalContext` is request-scoped and only read from router.options
+          // during load; avoid a full router.update() and redundant location parse.
+          routerInstance.options.additionalContext = { serverContext }
+          await routerInstance.load({
+            _signal: signal,
+            _skipLocationUpdate: true,
+          })
+          signal.throwIfAborted()
+
+          if (routerInstance._serverResult?.type === 'redirect') {
+            return normalizeSsrResponse(routerInstance._serverResult.redirect)
+          }
+
+          earlyHints?.collectDynamic(
+            _getRenderedMatches(routerInstance.stores.matches.get()),
+          )
+
+          // Pass request-scoped assets to dehydrate for manifest injection
+          await routerInstance.serverSsr!.dehydrate({
+            requestAssets: storedStartContext?.requestAssets,
+            signal,
+          })
+          signal.throwIfAborted()
+
+          const responseHeaders = getStartResponseHeaders(routerInstance)
+          earlyHints?.appendResponseHeaders(responseHeaders)
+          signal.throwIfAborted()
+          return normalizeSsrResponse(
+            await cb({
+              request,
+              router: routerInstance,
+              responseHeaders,
+            }),
           )
         }
 
-        const manifest = await resolveManifest(
-          matchedRoutes,
-          await getTransformFn({ warmup: false, request }),
-          cache,
-        )
-        const routerInstance = await getRouter()
-
-        attachRouterServerSsrUtils({
-          router: routerInstance,
-          manifest,
-        })
-
-        routerInstance.update({ additionalContext: { serverContext } })
-        await routerInstance.load()
-
-        if (routerInstance.state.redirect) {
-          return routerInstance.state.redirect
-        }
-
-        await routerInstance.serverSsr!.dehydrate()
-
-        const responseHeaders = getStartResponseHeaders({
-          router: routerInstance,
-        })
-        cbWillCleanup = true
-
-        return cb({
-          request,
-          router: routerInstance,
-          responseHeaders,
-        })
-      }
-
-      // Main request handler
-      const requestHandlerMiddleware = async ({ context }: TODO) => {
-        return runWithStartContext(
-          {
-            getRouter,
-            startOptions: requestStartOptions,
-            contextAfterGlobalMiddlewares: context,
-            request,
-            executedRequestMiddlewares,
-          },
-          async () => {
-            try {
-              return await handleServerRoutes({
+        terminal = ({ context }) =>
+          runWithStartContext(
+            { ...startContext, contextAfterGlobalMiddlewares: context },
+            () =>
+              handleServerRoutes({
                 getRouter,
                 request,
-                url,
                 executeRouter,
                 context,
                 executedRequestMiddlewares,
-              })
-            } catch (err) {
-              if (err instanceof Response) {
-                return err
-              }
-              throw err
-            }
-          },
+                signal,
+                event,
+              }),
+          )
+      }
+
+      const middlewareCtx: PipelineContext = {
+        request,
+        pathname: url.pathname,
+        handlerType,
+        context: createNullProtoObject(requestOpts?.context),
+      }
+      let middlewareResponse: HandlerCallbackResult
+      try {
+        if (!isServerFnRequest && flattenedRequestMiddlewares.length === 0) {
+          // An empty global pipeline has no additional middleware to run. The
+          // route pipeline already reconciles responses, owns cleanup, and
+          // waits on the request signal for every pending result. Only
+          // server-function terminals can defer JSON construction.
+          middlewareResponse = await (terminal(
+            middlewareCtx,
+          ) as Promise<HandlerCallbackResult>)
+        } else {
+          middlewareResponse = await executeMiddleware(
+            flattenedRequestMiddlewares.map((d) => d.options.server),
+            terminal,
+            middlewareCtx,
+            signal,
+            event,
+          )
+        }
+      } catch (error) {
+        if (signal.aborted) {
+          throw error
+        }
+        if (error instanceof Response) {
+          middlewareResponse = reconcileResponse(error, event)
+        } else if (!isServerFnRequest) {
+          throw error
+        } else {
+          // Request middleware can throw before the server function runs.
+          const disposeLate = createLateResponseDisposer(signal)
+          middlewareResponse = await waitForRequest(
+            runWithStartContext(
+              {
+                ...startContext,
+                contextAfterGlobalMiddlewares: middlewareCtx.context,
+              },
+              () => createServerFnErrorResponse(error),
+            ),
+            signal,
+            disposeLate,
+            disposeLate,
+          )
+          middlewareResponse = reconcileResponse(middlewareResponse, event)
+        }
+      }
+
+      let result: SsrResponse
+      try {
+        result = normalizeSsrResponse(middlewareResponse)
+        if (isRedirect(result.response)) {
+          result = await handleRedirectResponse(
+            result,
+            getRouter,
+            signal,
+            isServerFnRequest &&
+              request.headers.get('x-tsr-serverFn') === 'true',
+            event,
+          )
+        }
+        // Request middleware can read a HEAD body, for example to compute an
+        // ETag, so it is stripped only when the response leaves the pipeline.
+        if (request.method === 'HEAD' && result.response.body !== null) {
+          const source = result.response
+          result = stripSsrResponseBody(result, 'HEAD body stripped')
+          transferResponseMetadata(source, result.response)
+        }
+      } catch (error) {
+        disposeResponseResult(
+          middlewareResponse,
+          signal.aborted ? signal.reason : error,
         )
+        throw error
       }
-
-      const middlewares = flattenedRequestMiddlewares.map(
-        (d) => d.options.server,
-      )
-      const ctx = await executeMiddleware(
-        [...middlewares, requestHandlerMiddleware],
-        {
-          request,
-          pathname: url.pathname,
-          context: createNullProtoObject(requestOpts?.context),
-        },
-      )
-
-      return handleRedirectResponse(ctx.response, request, getRouter)
+      bindSsrResponseToRequest(router, result, signal)
+      signal.throwIfAborted()
+      responseOwnsCleanup = result.serverSsrCleanup === 'stream'
+      response = result.response
     } finally {
-      if (router && !cbWillCleanup) {
-        // Clean up router SSR state if it was set up but won't be cleaned up by the callback
-        // (e.g., in redirect cases or early returns before the callback is invoked).
-        // When the callback runs, it handles cleanup (either via transformStreamWithRouter
-        // for streaming, or directly in renderRouterToString for non-streaming).
-        router.serverSsr?.cleanup()
+      if (router?.serverSsr && !responseOwnsCleanup) {
+        // Stream disposal already publishes its cleanup writes at the pipeline
+        // boundary. Only live eager SSR state can still add response helpers.
+        router.serverSsr.cleanup()
+        if (response) {
+          response = finalizeResponse(response, event)
+        }
       }
-      router = null
+      // `routerPromise` stays memoized: a streamed Suspense boundary or a late
+      // server function may still ask for this request's router.
     }
+    return response
   }
 
-  return requestHandler(startRequestResolver)
+  return withStartRequest(startRequestResolver)
 }
 
+const relativeRedirectProtocols = new Set<string>()
+const SERIALIZED_REDIRECT_HEADERS: ReadonlyMap<string, string | null> = new Map(
+  [
+    ['content-type', 'application/json'],
+    ['location', null],
+    [X_TSS_RAW_RESPONSE, null],
+    [X_TSS_SERIALIZED, null],
+  ],
+)
+
 async function handleRedirectResponse(
-  response: Response,
-  request: Request,
+  ssrResponse: SsrResponse,
   getRouter: () => Promise<AnyRouter>,
-): Promise<Response> {
-  if (!isRedirect(response)) {
-    return response
+  signal: AbortSignal,
+  serializeRedirect: boolean,
+  event: StartEvent,
+): Promise<SsrResponse> {
+  signal.throwIfAborted()
+  const redirect = ssrResponse.response
+  if (!isRedirect(redirect)) {
+    return ssrResponse
   }
 
-  if (isResolvedRedirect(response)) {
-    if (request.headers.get('x-tsr-serverFn') === 'true') {
-      return Response.json(
-        { ...response.options, isSerializedRedirect: true },
-        { headers: response.headers },
-      )
-    }
-    return response
-  }
-
-  const opts = response.options
-  if (opts.to && typeof opts.to === 'string' && !opts.to.startsWith('/')) {
+  const opts = redirect.options
+  const href = redirect.headers.get('Location') || opts.href
+  if (
+    !href &&
+    opts.to &&
+    typeof opts.to === 'string' &&
+    !opts.to.startsWith('/')
+  ) {
     throw new Error(
       `Server side redirects must use absolute paths via the 'href' or 'to' options. The redirect() method's "to" property accepts an internal path only. Use the "href" property to provide an external URL. Received: ${JSON.stringify(opts)}`,
     )
   }
 
   if (
+    !href &&
     ['params', 'search', 'hash'].some(
       (d) => typeof (opts as TODO)[d] === 'function',
     )
@@ -690,50 +1056,115 @@ async function handleRedirectResponse(
     )
   }
 
-  const router = await getRouter()
-  const redirect = router.resolveRedirect(response)
-
-  if (request.headers.get('x-tsr-serverFn') === 'true') {
-    return Response.json(
-      { ...response.options, isSerializedRedirect: true },
-      { headers: response.headers },
-    )
+  signal.throwIfAborted()
+  // Unambiguous relative hrefs need no route resolution or protocol policy.
+  // Every scheme falls back to the router to honor its custom allowlist.
+  if (href && !isDangerousProtocol(href, relativeRedirectProtocols)) {
+    opts.href = href
+    redirect.headers.set('Location', href)
+  } else {
+    const router = await getRouter()
+    signal.throwIfAborted()
+    // Resolves `redirect` in place.
+    router.resolveRedirect(redirect)
   }
 
-  return redirect
+  if (serializeRedirect) {
+    const redirectOptions = { ...(opts as TODO) }
+    delete redirectOptions.headers
+    redirectOptions.isSerializedRedirect = true
+    const responseHeaders = new Headers(redirect.headers)
+    responseHeaders.set('content-type', 'application/json')
+    // The client follows the href in this JSON envelope. An HTTP Location
+    // would let fetch follow it first if a response helper selected 3xx.
+    responseHeaders.delete('location')
+    responseHeaders.delete(X_TSS_RAW_RESPONSE)
+    responseHeaders.delete(X_TSS_SERIALIZED)
+    // A caller-supplied toJSON can return undefined despite the library type.
+    const body = JSON.stringify(redirectOptions) as string | undefined
+    if (body === undefined) {
+      throw new TypeError('Value is not JSON serializable')
+    }
+    // Both serialization and disposal can write helpers. Construct the envelope
+    // afterward with its final state instead of reconciling a temporary response.
+    disposeSsrResponse(ssrResponse, 'redirect response replaced')
+    return {
+      response: createFinalizedResponse(
+        body,
+        responseHeaders,
+        SERIALIZED_REDIRECT_HEADERS,
+        event,
+      ),
+      serverSsrCleanup: 'none',
+    }
+  }
+
+  ssrResponse.response = finalizeResponse(redirect, event)
+  return ssrResponse
+}
+
+function withParsedParams(
+  handler: RouteMethodHandlerFn<any, AnyRoute, any, any, any, any, any>,
+  matchedRoutes: ReadonlyArray<AnyRoute>,
+): TODO {
+  if (
+    !matchedRoutes.some(
+      (route) => route.options.params?.parse ?? route.options.parseParams,
+    )
+  ) {
+    return handler
+  }
+
+  return (ctx: TODO) => {
+    // Parse inside the pipeline so middleware can catch errors. Keep the raw
+    // params for app-router validation when the handler defers to rendering.
+    const params = Object.assign(Object.create(null), ctx.params)
+    for (const route of matchedRoutes) {
+      const parse = route.options.params?.parse ?? route.options.parseParams
+      if (parse) {
+        Object.assign(params, parse(params))
+      }
+    }
+    return handler({ ...ctx, params })
+  }
 }
 
 async function handleServerRoutes({
   getRouter,
   request,
-  url,
   executeRouter,
   context,
   executedRequestMiddlewares,
+  signal,
+  event,
 }: {
   getRouter: () => Promise<AnyRouter>
   request: Request
-  url: URL
   executeRouter: (
     serverContext: any,
-    matchedRoutes?: ReadonlyArray<AnyRoute>,
-  ) => Promise<Response>
+    matchedRoutes: ReadonlyArray<AnyRoute>,
+    router: AnyRouter,
+  ) => Promise<SsrResponse>
   context: any
-  executedRequestMiddlewares: Set<AnyRequestMiddleware>
-}): Promise<Response> {
+  executedRequestMiddlewares: Set<AnyRequestMiddleware> | undefined
+  signal: AbortSignal
+  event: StartEvent
+}): Promise<SsrResponse> {
   const router = await getRouter()
-  const rewrittenUrl = executeRewriteInput(router.rewrite, url)
-  const pathname = rewrittenUrl.pathname
+  const { pathname } = router.latestLocation
   // this will perform a fuzzy match, however for server routes we need an exact match
   // if the route is not an exact match, executeRouter will handle rendering the app router
-  // the match will be cached internally, so no extra work is done during the app router render
-  const { matchedRoutes, foundRoute, routeParams } =
+  // The cached match avoids another route-tree traversal during the app router render.
+  const [matchedRoutes, rawParams, foundRoute] =
     router.getMatchedRoutes(pathname)
 
-  const isExactMatch = foundRoute && routeParams['**'] === undefined
+  const isExactMatch = foundRoute && rawParams['**'] === undefined
 
   // Collect and dedupe route middlewares
   const routeMiddlewares: Array<AnyMiddlewareServerFn> = []
+  let terminalHandler: TODO = (ctx: TODO) =>
+    executeRouter(ctx.context, matchedRoutes, router)
+  let terminalNext: TODO
 
   // Collect middleware from matched routes, filtering out those already executed
   // in the request phase
@@ -744,7 +1175,7 @@ async function handleServerRoutes({
     if (serverMiddleware) {
       const flattened = flattenMiddlewares(serverMiddleware)
       for (const m of flattened) {
-        if (!executedRequestMiddlewares.has(m)) {
+        if (!executedRequestMiddlewares?.has(m)) {
           routeMiddlewares.push(m.options.server)
         }
       }
@@ -760,38 +1191,51 @@ async function handleServerRoutes({
         : server.handlers
 
     const requestMethod = request.method.toUpperCase() as RouteMethod
-    const handler = handlers[requestMethod] ?? handlers['ANY']
-
+    // Per RFC 9110 §9.3.2, HEAD must return the same header fields as GET.
+    // Priority for HEAD: explicit HEAD handler → GET → ANY (last resort).
+    const handler =
+      requestMethod === 'HEAD'
+        ? (handlers['HEAD'] ?? handlers['GET'] ?? handlers['ANY'])
+        : (handlers[requestMethod] ?? handlers['ANY'])
     if (handler) {
       const mayDefer = !!foundRoute.options.component
 
-      if (typeof handler === 'function') {
-        routeMiddlewares.push(handlerToMiddleware(handler, mayDefer))
-      } else {
+      if (typeof handler !== 'function') {
         if (handler.middleware?.length) {
           const handlerMiddlewares = flattenMiddlewares(handler.middleware)
           for (const m of handlerMiddlewares) {
             routeMiddlewares.push(m.options.server)
           }
         }
-        if (handler.handler) {
-          routeMiddlewares.push(handlerToMiddleware(handler.handler, mayDefer))
+      }
+      const routeHandler =
+        typeof handler === 'function' ? handler : handler.handler
+      if (routeHandler) {
+        const parsedHandler = withParsedParams(routeHandler, matchedRoutes)
+        if (!mayDefer) {
+          terminalHandler = parsedHandler
+          terminalNext = throwIfMayNotDefer
+        } else {
+          routeMiddlewares.push(parsedHandler)
         }
       }
     }
   }
 
-  // Final middleware: execute router with matched routes for dev styles
-  routeMiddlewares.push((ctx: TODO) =>
-    executeRouter(ctx.context, matchedRoutes),
+  const response = await executeMiddleware(
+    routeMiddlewares,
+    terminalHandler,
+    {
+      request,
+      context,
+      params: rawParams,
+      pathname,
+      handlerType: 'router',
+    },
+    signal,
+    event,
+    terminalNext,
   )
 
-  const ctx = await executeMiddleware(routeMiddlewares, {
-    request,
-    context,
-    params: routeParams,
-    pathname,
-  })
-
-  return ctx.response
+  return normalizeSsrResponse(response)
 }

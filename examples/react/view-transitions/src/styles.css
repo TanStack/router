@@ -87,6 +87,16 @@ html:active-view-transition-type(warp) {
   }
 }
 
+html:active-view-transition-type(warp-backwards) {
+  &::view-transition-old(post) {
+    animation: 400ms ease-out both warp-out-backwards;
+  }
+
+  &::view-transition-new(post) {
+    animation: 400ms ease-out both warp-in-backwards;
+  }
+}
+
 @keyframes warp-out {
   from {
     opacity: 1;
@@ -110,5 +120,31 @@ html:active-view-transition-type(warp) {
     opacity: 1;
     filter: blur(0) brightness(1);
     transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes warp-in-backwards {
+  from {
+    opacity: 0;
+    filter: blur(15px) brightness(1.8);
+    transform: scale(0.9) rotate(45deg);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0) brightness(1);
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes warp-out-backwards {
+  from {
+    opacity: 1;
+    filter: blur(0) brightness(1);
+    transform: scale(1) rotate(0deg);
+  }
+  to {
+    opacity: 0;
+    filter: blur(15px) brightness(1.8);
+    transform: scale(1.1) rotate(-90deg);
   }
 }

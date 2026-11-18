@@ -1,12 +1,12 @@
 import * as Vue from 'vue'
-import warning from 'tiny-warning'
 import { isServer } from '@tanstack/router-core/isServer'
+import { useSelector } from '@tanstack/vue-store'
 import { CatchBoundary } from './CatchBoundary'
-import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { useTransitionerSetup } from './Transitioner'
-import { matchContext } from './matchContext'
+import { routeIdContext } from './matchContext'
 import { Match } from './Match'
+import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
 import type {
   AnyRouter,
   DeepPartial,
@@ -16,12 +16,8 @@ import type {
   MakeRouteMatchUnion,
   MaskOptions,
   MatchRouteOptions,
-  NoInfer,
   RegisteredRouter,
-  ResolveRelativePath,
   ResolveRoute,
-  RouteByPath,
-  RouterState,
   ToSubOptionsProps,
 } from '@tanstack/router-core'
 
@@ -37,51 +33,37 @@ declare module '@tanstack/router-core' {
   }
 }
 
-// Create a component that renders MatchesInner with Transitioner's setup logic inlined.
-// This is critical for proper hydration - we call useTransitionerSetup() as a composable
-// rather than rendering it as a component, which avoids Fragment/element mismatches.
-const MatchesContent = Vue.defineComponent({
-  name: 'MatchesContent',
-  setup() {
-    // IMPORTANT: We need to ensure Transitioner's setup() runs.
-    // Transitioner sets up critical functionality:
-    // - router.startTransition
-    // - History subscription via router.history.subscribe(router.load)
-    // - Watchers for router events
-    //
-    // We inline Transitioner's setup logic here. Since Transitioner returns null,
-    // we can call its setup function directly without affecting the render tree.
-    // This is done by importing and calling useTransitionerSetup.
-    useTransitionerSetup()
-
-    return () => Vue.h(MatchesInner)
-  },
-})
-
 export const Matches = Vue.defineComponent({
   name: 'Matches',
   setup() {
     const router = useRouter()
+    useTransitionerSetup()
 
     return () => {
-      const pendingElement = router?.options?.defaultPendingComponent
-        ? Vue.h(router.options.defaultPendingComponent)
+      const pendingElement = router.options.defaultPendingComponent
+        ? process.env.NODE_ENV !== 'production'
+          ? renderInNonRouteComponentContext(
+              router.options.defaultPendingComponent,
+              undefined,
+              'pendingComponent',
+            )
+          : Vue.h(router.options.defaultPendingComponent)
         : null
 
       // Do not render a root Suspense during SSR or hydrating from SSR
       const inner =
-        (isServer ?? router?.isServer ?? false) ||
-        (typeof document !== 'undefined' && router?.ssr)
-          ? Vue.h(MatchesContent)
+        (isServer ?? router.isServer) ||
+        (typeof document !== 'undefined' && router.ssr)
+          ? Vue.h(MatchesInner)
           : Vue.h(
               Vue.Suspense,
               { fallback: pendingElement },
               {
-                default: () => Vue.h(MatchesContent),
+                default: () => Vue.h(MatchesInner),
               },
             )
 
-      return router?.options?.InnerWrap
+      return router.options.InnerWrap
         ? Vue.h(router.options.InnerWrap, null, { default: () => inner })
         : inner
     }
@@ -94,7 +76,12 @@ const errorComponentFn: ErrorRouteComponentType = (
 ) => {
   return Vue.h('div', { class: 'error' }, [
     Vue.h('h1', null, 'Error'),
-    Vue.h('p', null, props.error.message || String(props.error)),
+    Vue.h(
+      'p',
+      null,
+      (props.error as { message?: string } | null)?.message ||
+        String(props.error),
+    ),
     Vue.h('button', { onClick: props.reset }, 'Try Again'),
   ])
 }
@@ -104,26 +91,13 @@ const MatchesInner = Vue.defineComponent({
   setup() {
     const router = useRouter()
 
-    const matchId = useRouterState({
-      select: (s) => {
-        return s.matches[0]?.id
-      },
-    })
-
-    const resetKey = useRouterState({
-      select: (s) => s.loadedAt,
-    })
-
-    // Create a ref for the match id to provide
-    const matchIdRef = Vue.computed(() => matchId.value)
-
-    // Provide the matchId for child components using the InjectionKey
-    Vue.provide(matchContext, matchIdRef)
+    const matches = useSelector(router.stores.matches)
+    const routeId = Vue.computed(() => matches.value[0]?.routeId)
 
     return () => {
-      // Generate a placeholder element if matchId.value is not present
-      const childElement = matchId.value
-        ? Vue.h(Match, { matchId: matchId.value })
+      // Generate a placeholder element if routeId.value is not present
+      const childElement = routeId.value
+        ? Vue.h(Match, { routeId: routeId.value })
         : Vue.h('div')
 
       // If disableGlobalCatchBoundary is true, don't wrap in CatchBoundary
@@ -132,16 +106,15 @@ const MatchesInner = Vue.defineComponent({
       }
 
       return Vue.h(CatchBoundary, {
-        getResetKey: () => resetKey.value,
+        getResetKey: () => matches.value,
         errorComponent: errorComponentFn,
         onCatch:
           process.env.NODE_ENV !== 'production'
-            ? (error: Error) => {
-                warning(
-                  false,
-                  `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
+            ? (error: unknown) => {
+                console.warn(
+                  `Warning: The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
                 )
-                warning(false, error.message || error.toString())
+                console.warn('Warning:', error)
               }
             : undefined,
         children: childElement,
@@ -165,15 +138,12 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  // Track state changes to trigger re-computation
-  // Use multiple state values like React does for complete reactivity
-  const routerState = useRouterState({
-    select: (s) => ({
-      locationHref: s.location.href,
-      resolvedLocationHref: s.resolvedLocation?.href,
-      status: s.status,
-    }),
-  })
+  const location = useSelector(router.stores.location, (value) => value.href)
+  const resolvedLocation = useSelector(
+    router.stores.resolvedLocation,
+    (value) => value?.href,
+  )
+  const status = useSelector(router.stores.status)
 
   return <
     const TFrom extends string = string,
@@ -185,12 +155,11 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   ): Vue.Ref<
     false | ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']
   > => {
-    const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
-
     const matchRoute = Vue.computed(() => {
-      // Access routerState to establish dependency
-
-      routerState.value
+      location.value
+      resolvedLocation.value
+      status.value
+      const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
       return router.matchRoute(rest as any, {
         pending,
         caseSensitive,
@@ -213,10 +182,7 @@ export type MakeMatchRouteOptions<
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
     | ((
-        params?: RouteByPath<
-          TRouter['routeTree'],
-          ResolveRelativePath<TFrom, NoInfer<TTo>>
-        >['types']['allParams'],
+        params?: ResolveRoute<TRouter, TFrom, TTo>['types']['allParams'],
       ) => Vue.VNode)
     | Vue.VNode
 }
@@ -272,25 +238,20 @@ export const MatchRoute = Vue.defineComponent({
     },
   },
   setup(props, { slots }) {
-    const status = useRouterState({
-      select: (s) => s.status,
-    })
+    const params = useMatchRoute()(props)
 
     return () => {
-      if (!status.value) return null
-
-      const matchRoute = useMatchRoute()
-      const params = matchRoute(props as any).value as boolean
+      const match = params.value as boolean
 
       // Create a component that renders the slot in a reactive manner
-      if (!params || !slots.default) {
+      if (!match || !slots.default) {
         return null
       }
 
       // For function slots, pass the params
       if (typeof slots.default === 'function') {
         // Use h to create a wrapper component that will call the slot function
-        return Vue.h(Vue.Fragment, null, slots.default(params))
+        return Vue.h(Vue.Fragment, null, slots.default(match))
       }
 
       // For normal slots, just render them
@@ -314,14 +275,12 @@ export function useMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Vue.Ref<UseMatchesResult<TRouter, TSelected>> {
-  return useRouterState({
-    select: (state: RouterState<TRouter['routeTree']>) => {
-      const matches = state?.matches || []
-      return opts?.select
-        ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
-        : matches
-    },
-  } as any) as Vue.Ref<UseMatchesResult<TRouter, TSelected>>
+  const router = useRouter<TRouter>()
+  return useSelector(router.stores.matches, (matches) => {
+    return opts?.select
+      ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
+      : (matches as any)
+  })
 }
 
 export function useParentMatches<
@@ -330,15 +289,13 @@ export function useParentMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Vue.Ref<UseMatchesResult<TRouter, TSelected>> {
-  // Use matchContext with proper type
-  const contextMatchId = Vue.inject<Vue.Ref<string | undefined>>(matchContext)
-  const safeMatchId = Vue.computed(() => contextMatchId?.value || '')
+  const contextRouteId = Vue.inject(routeIdContext)
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
       matches = matches.slice(
         0,
-        matches.findIndex((d) => d.id === safeMatchId.value),
+        matches.findIndex((d) => d.routeId === contextRouteId),
       )
       return opts?.select ? opts.select(matches) : matches
     },
@@ -351,14 +308,12 @@ export function useChildMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Vue.Ref<UseMatchesResult<TRouter, TSelected>> {
-  // Use matchContext with proper type
-  const contextMatchId = Vue.inject<Vue.Ref<string | undefined>>(matchContext)
-  const safeMatchId = Vue.computed(() => contextMatchId?.value || '')
+  const contextRouteId = Vue.inject(routeIdContext)
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
       matches = matches.slice(
-        matches.findIndex((d) => d.id === safeMatchId.value) + 1,
+        matches.findIndex((d) => d.routeId === contextRouteId) + 1,
       )
       return opts?.select ? opts.select(matches) : matches
     },

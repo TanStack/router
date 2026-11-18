@@ -4,7 +4,6 @@ import {
   importedComponent as ImportedComponent,
   importedLoader,
 } from '../../shared/imported'
-
 export function Layout() {
   return (
     <main>
@@ -22,12 +21,10 @@ export function Layout() {
     </main>
   )
 }
-
 export const Route = createFileRoute('/_layout')({
   component: Layout,
   loader: importedLoader,
 })
-
 const HEADER_HEIGHT = '63px'
 export const SIDEBAR_WIDTH = '150px'
 const SIDEBAR_MINI_WIDTH = '80px'

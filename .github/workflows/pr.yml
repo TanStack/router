@@ -10,10 +10,16 @@ concurrency:
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
   SERVER_PRESET: 'node-server'
+  # Enable dynamic task packing for distributed CI.
+  NX_CLOUD_AGENT_TASK_QUEUE: true
+  NX_CLOUD_AUTO_TASK_PACKING: true
+  NX_CLOUD_AGENT_UNCAPPED_GROUP_WORK: true
+  NX_CLOUD_PACKING_MEM_MULTIPLIER: 1.5
+  NX_CLOUD_BUFFER_TASK_COMPLETIONS: true
+  NX_CLOUD_CONTINUOUS_ASSIGNMENT: true
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   test:
@@ -23,33 +29,53 @@ jobs:
       TSR_TMP_DIR: ./tmp
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-      - name: Start Nx Agents
-        run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
+          persist-credentials: false
+      - name: Start Nx Workers
+        run: npx nx-cloud start-workers
       - name: Setup Tools
-        uses: tanstack/config/.github/setup@main
+        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
       - name: Get base and head commits for `nx affected`
-        uses: nrwl/nx-set-shas@v4.4.0
+        uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1 # v5.0.1
         with:
           main-branch-name: main
       - name: Run Checks
         run: pnpm run test:pr --parallel=3
-      - name: Stop Nx Agents
+      - name: Stop Nx Workers
         if: ${{ always() }}
-        run: npx nx-cloud stop-all-agents
+        run: npx nx-cloud stop-all-workers
   preview:
     name: Preview
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Setup Tools
-        uses: tanstack/config/.github/setup@main
+        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
       - name: Build Packages
         run: pnpm run build:all
       - name: Publish Previews
         run: pnpx pkg-pr-new publish --pnpm './packages/*' --template './examples/*/*'
+  version-preview:
+    name: Version Preview
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Setup Tools
+        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+      - name: Changeset Preview
+        uses: TanStack/config/.github/changeset-preview@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main

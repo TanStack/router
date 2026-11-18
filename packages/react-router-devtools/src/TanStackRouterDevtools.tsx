@@ -1,3 +1,5 @@
+'use client'
+
 import { TanStackRouterDevtoolsCore } from '@tanstack/router-devtools-core'
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useRouter, useRouterState } from '@tanstack/react-router'

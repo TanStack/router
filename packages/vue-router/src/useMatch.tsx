@@ -1,6 +1,9 @@
 import * as Vue from 'vue'
-import { useRouterState } from './useRouterState'
-import { injectDummyMatch, injectMatch } from './matchContext'
+import { invariant } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
+import { useSelector } from '@tanstack/vue-store'
+import { routeIdContext } from './matchContext'
+import { useRouter } from './useRouter'
 import type {
   AnyRouter,
   MakeRouteMatch,
@@ -27,9 +30,12 @@ export interface UseMatchBaseOptions<
 export type UseMatchRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
+  TThrow extends boolean = true,
 >(
-  opts?: UseMatchBaseOptions<TRouter, TFrom, true, true, TSelected>,
-) => Vue.Ref<UseMatchResult<TRouter, TFrom, true, TSelected>>
+  opts?: UseMatchBaseOptions<TRouter, TFrom, true, TThrow, TSelected>,
+) => Vue.Ref<
+  ThrowOrOptional<UseMatchResult<TRouter, TFrom, true, TSelected>, TThrow>
+>
 
 export type UseMatchOptions<
   TRouter extends AnyRouter,
@@ -68,60 +74,93 @@ export function useMatch<
 ): Vue.Ref<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
-  const nearestMatchId = opts.from ? injectDummyMatch() : injectMatch()
+  const router = useRouter<TRouter>()
 
-  // Store to track pending error for deferred throwing
-  const pendingError = Vue.ref<Error | null>(null)
+  // During SSR we render exactly once and do not need reactivity.
+  // Avoid store subscriptions and pending/transition bookkeeping on the server.
+  if (isServer ?? router.isServer) {
+    const nearestRouteId = opts.from ? undefined : Vue.inject(routeIdContext)
+    const matchStore =
+      (opts.from ?? nearestRouteId)
+        ? router.stores.getMatchStore(opts.from ?? nearestRouteId!)
+        : undefined
+    const match = matchStore?.get()
 
-  // Select the match from router state
-  const matchSelection = useRouterState({
-    select: (state: any) => {
-      const match = state.matches.find((d: any) =>
-        opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value,
-      )
-
-      if (match === undefined) {
-        // During navigation transitions, check if the match exists in pendingMatches
-        const pendingMatch = state.pendingMatches?.find((d: any) =>
-          opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value,
+    if ((opts.shouldThrow ?? true) && !match) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+          `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
         )
+      }
 
-        // If there's a pending match or we're transitioning, return undefined without throwing
-        if (pendingMatch || state.isTransitioning) {
-          pendingError.value = null
-          return undefined
-        }
+      invariant()
+    }
 
-        // Store the error to throw later if shouldThrow is enabled
-        if (opts.shouldThrow ?? true) {
-          pendingError.value = new Error(
+    if (match === undefined) {
+      return Vue.ref(undefined) as Vue.Ref<
+        ThrowOrOptional<
+          UseMatchResult<TRouter, TFrom, TStrict, TSelected>,
+          TThrow
+        >
+      >
+    }
+
+    return Vue.ref(opts.select ? opts.select(match) : match) as Vue.Ref<
+      ThrowOrOptional<
+        UseMatchResult<TRouter, TFrom, TStrict, TSelected>,
+        TThrow
+      >
+    >
+  }
+
+  // Set up reactive match value based on lookup strategy.
+  let match: Readonly<Vue.Ref<any>>
+  const nearestRouteId = Vue.inject(routeIdContext)
+
+  if (opts.from) {
+    // routeId case: subscribe to the stable per-route presentation atom.
+    const matchStore = router.stores.getMatchStore(opts.from)
+    match = useSelector(matchStore)
+  } else {
+    // Nearest-match case: use the routeId from context for stable lookup.
+    // The routeId is provided by the nearest Match component and doesn't
+    // change for the component's lifetime, so the store is stable.
+    if (nearestRouteId) {
+      match = useSelector(router.stores.getMatchStore(nearestRouteId))
+    } else {
+      // No route context — will fall through to error handling below
+      match = Vue.ref(undefined) as Readonly<Vue.Ref<undefined>>
+    }
+  }
+
+  const ownsMatch =
+    nearestRouteId !== undefined &&
+    (opts.from ?? nearestRouteId) === nearestRouteId
+  let lastOwnedMatch: any
+  const result = Vue.computed<any>(() => {
+    if (match.value !== undefined && ownsMatch) {
+      lastOwnedMatch = match.value
+    }
+    const selectedMatch = match.value ?? lastOwnedMatch
+    if (selectedMatch === undefined) {
+      if (opts.shouldThrow ?? true) {
+        if (process.env.NODE_ENV !== 'production') {
+          throw new Error(
             `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
           )
         }
 
-        return undefined
+        invariant()
       }
 
-      pendingError.value = null
-      return opts.select ? opts.select(match) : match
-    },
-  } as any)
-
-  // Throw the error if we have one - this happens after the selector runs
-  // Using a computed so the error is thrown when the return value is accessed
-  const result = Vue.computed(() => {
-    // Check for pending error first
-    if (pendingError.value) {
-      throw pendingError.value
+      return undefined
     }
-    return matchSelection.value
+
+    return opts.select ? opts.select(selectedMatch) : selectedMatch
   })
 
-  // Also immediately throw if there's already an error from initial render
-  // This ensures errors are thrown even if the returned ref is never accessed
-  if (pendingError.value) {
-    throw pendingError.value
-  }
+  // Keep eager throw behavior for setups that call useMatch for side effects only.
+  result.value
 
-  return result as any
+  return result
 }

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, createFileRoute } from '@tanstack/react-router'
 import { type } from 'arktype'
 import { Header } from '../../components/Header'
 import { Users, usersQueryOptions } from '../../components/Users'
@@ -32,7 +32,7 @@ const search = type({
   search: 'string = ""',
 })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/users/arktype/')({
   validateSearch: search,
   loaderDeps: (opt) => ({ search: opt.search }),
   loader: (opt) => {

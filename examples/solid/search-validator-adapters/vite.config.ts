@@ -11,6 +11,7 @@ export default defineConfig({
     watch: false,
     environment: 'jsdom',
     typecheck: { enabled: true },
+    setupFiles: ['./tests/jest-dom.setup.ts'],
     server: {
       deps: {
         inline: [/@solidjs/, /@tanstack\/solid-store/],
@@ -22,7 +23,6 @@ export default defineConfig({
     tanstackRouter({
       target: 'solid',
       autoCodeSplitting: true,
-      verboseFileRoutes: false,
     }),
     solid(),
   ],

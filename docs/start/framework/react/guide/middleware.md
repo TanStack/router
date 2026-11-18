@@ -34,7 +34,7 @@ There are two types of middleware: **request middleware** and **server function 
 | ----------------- | -------------------------------- | -------------------------- |
 | Scope             | All server requests              | Server functions only      |
 | Methods           | `.server()`                      | `.client()`, `.server()`   |
-| Input Validation  | No                               | Yes (`.inputValidator()`)  |
+| Input Validation  | No                               | Yes (`.validator()`)       |
 | Client-side Logic | No                               | Yes                        |
 | Dependencies      | Can depend on request middleware | Can depend on both types   |
 
@@ -210,7 +210,7 @@ const loggingMiddleware = createMiddleware({ type: 'function' })
 Server function middleware has the following methods:
 
 - `middleware`: Add a middleware to the chain.
-- `inputValidator`: Modify the data object before it is passed to this middleware and any nested middleware and eventually the server function.
+- `validator`: Modify the data object before it is passed to this middleware and any nested middleware and eventually the server function.
 - `client`: Define client-side logic that the middleware will execute on the client before (and after) the server function calls into the server to execute the function.
 - `server`: Define server-side logic that the middleware will execute on the server before (and after) the server function is executed.
 
@@ -225,16 +225,16 @@ The `.client` method is used to define client-side logic that the middleware wil
 import { createMiddleware } from '@tanstack/react-start'
 
 const loggingMiddleware = createMiddleware({ type: 'function' }).client(
-  async ({ next, context, request }) => {
+  async ({ next, context }) => {
     const result = await next() // <-- This will execute the next middleware in the chain and eventually, the RPC to the server
     return result
   },
 )
 ```
 
-### The `.inputValidator` method
+### The `.validator` method
 
-The `inputValidator` method is used to modify the data object before it is passed to this middleware, nested middleware, and ultimately the server function. This method should receive a function that takes the data object and returns a validated (and optionally modified) data object. It's common to use a validation library like `zod` to do this.
+The `validator` method is used to modify the data object before it is passed to this middleware, nested middleware, and ultimately the server function. This method should receive a function that takes the data object and returns a validated (and optionally modified) data object. It's common to use a validation library like `zod` to do this.
 
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
@@ -246,7 +246,7 @@ const mySchema = z.object({
 })
 
 const workspaceMiddleware = createMiddleware({ type: 'function' })
-  .inputValidator(zodValidator(mySchema))
+  .validator(zodValidator(mySchema))
   .server(({ next, data }) => {
     console.log('Workspace ID:', data.workspaceId)
     return next()
@@ -348,9 +348,10 @@ const requestLogger = createMiddleware({ type: 'function' })
 
 You may have noticed that in the example above while client-sent context is type-safe, it is not required to be validated at runtime. If you pass dynamic user-generated data via context, that could pose a security concern, so **if you are sending dynamic data from the client to the server via context, you should validate it in the server-side middleware before using it.**
 
+> **Shape validation is not authorization.** A parsed UUID/number is a _well-formed_ identifier, not an _authorized_ one. If the value is going to be used as a query key, filter, or path parameter — anything that selects which row(s) get read or written — you must also verify the session principal has access to it. Otherwise a logged-in user can rewrite the value in their own request and walk other tenants' data.
+
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
-import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 const requestLogger = createMiddleware({ type: 'function' })
@@ -361,13 +362,22 @@ const requestLogger = createMiddleware({ type: 'function' })
       },
     })
   })
-  .server(async ({ next, data, context }) => {
-    // Validate the workspace ID before using it
-    const workspaceId = zodValidator(z.number()).parse(context.workspaceId)
-    console.log('Workspace ID:', workspaceId)
-    return next()
+  .middleware([authMiddleware]) // session loaded server-side, NOT from sendContext
+  .server(async ({ next, context }) => {
+    // 1. Validate shape
+    const workspaceId = z.string().uuid().parse(context.workspaceId)
+    // 2. Validate access — does this session principal have membership?
+    const member = await db.memberships.find({
+      userId: context.session.userId,
+      workspaceId,
+    })
+    if (!member) throw new Error('Not a member of this workspace')
+    // 3. Now safe to use as a query key.
+    return next({ context: { workspaceId } })
   })
 ```
+
+Always derive the session itself from a server-trusted source (a cookie + DB lookup in `authMiddleware`), never from `sendContext`. Anything the client can send, the client can lie about.
 
 ### Sending Server Context to the Client
 
@@ -429,6 +439,51 @@ export const startInstance = createStart(() => {
 
 > [!NOTE]
 > Global **request** middleware runs before **every request, including server routes, SSR and server functions**.
+
+### CSRF Middleware
+
+Server functions are same-origin RPC endpoints and should be protected from cross-site requests. If your app does not define `src/start.ts`, TanStack Start installs its CSRF middleware automatically for server functions.
+
+If you define a custom `src/start.ts`, add `createCsrfMiddleware()` explicitly:
+
+```tsx
+// src/start.ts
+import { createStart, createCsrfMiddleware } from '@tanstack/react-start'
+
+const csrfMiddleware = createCsrfMiddleware({
+  filter: (ctx) => ctx.handlerType === 'serverFn',
+})
+
+export const startInstance = createStart(() => ({
+  requestMiddleware: [csrfMiddleware],
+}))
+```
+
+By default, `Origin` and `Referer` checks compare against the incoming request URL origin. If your deployment needs to allow a different public origin, configure it on the CSRF middleware with `createCsrfMiddleware({ origin: 'https://app.example.com' })`.
+
+By default, `createCsrfMiddleware()` validates every request handled by the middleware. Use `filter: (ctx) => ctx.handlerType === 'serverFn'` when installing it globally for server function protection. It verifies same-origin browser request metadata with `Sec-Fetch-Site`, `Origin`, or `Referer` headers and rejects requests that cannot be proven same-origin.
+
+You can also use the same middleware to protect any other route.
+
+```tsx
+export const Route = createFileRoute('/api/foo')({
+  server: {
+    middleware: [createCsrfMiddleware()],
+    handlers: { GET: () => {...} }
+  }
+})
+```
+
+If you define `src/start.ts` without the CSRF middleware, Start shows a development warning for server function requests. If you intentionally handle CSRF another way, disable the warning:
+
+```tsx
+// vite.config.ts or rsbuild.config.ts
+tanstackStart({
+  serverFns: {
+    disableCsrfMiddlewareWarning: true,
+  },
+})
+```
 
 ### Global Server Function Middleware
 
@@ -766,6 +821,8 @@ Static middlewares are created once and reused across routes. A middleware facto
 **Authentication (Static Base Middleware) Example:**
 
 This middleware validates the session and injects it into `context` for downstream middlewares.
+
+> **Attach `authMiddleware` to every `createServerFn` that needs auth.** Server functions are API endpoints, so protect the endpoint that reads or mutates private data. A route `beforeLoad` guard improves route UX, but it is not the data boundary. See [Authentication Server Primitives](./authentication-server-primitives.md).
 
 ```tsx
 // middleware.ts

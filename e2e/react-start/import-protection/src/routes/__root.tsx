@@ -30,6 +30,7 @@ const navLinks = linkOptions([
   { to: '/noexternal-client-pkg', label: 'noExternal Client Pkg' },
   { to: '/alias-path-leak', label: 'Alias Path Leak' },
   { to: '/non-alias-namespace-leak', label: 'Non-Alias Namespace Leak' },
+  { to: '/type-only-protected-import', label: 'Type-Only Protected Import' },
 ])
 
 function RootComponent() {

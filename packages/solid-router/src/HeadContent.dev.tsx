@@ -1,10 +1,10 @@
 import { MetaProvider } from '@solidjs/meta'
 import { For, createEffect, createMemo } from 'solid-js'
+import { DEV_STYLES_ATTR } from '@tanstack/router-core'
 import { Asset } from './Asset'
 import { useHydrated } from './ClientOnly'
 import { useTags } from './headContentUtils'
-
-const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
+import type { HeadContentProps } from './HeadContent'
 
 /**
  * @description The `HeadContent` component is used to render meta tags, links, and scripts for the current route.
@@ -15,8 +15,8 @@ const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
  * Development version: filters out dev styles link after hydration and
  * includes a fallback cleanup effect for hydration mismatch cases.
  */
-export function HeadContent() {
-  const tags = useTags()
+export function HeadContent(props: HeadContentProps) {
+  const tags = useTags(props.assetCrossOrigin)
   const hydrated = useHydrated()
 
   // Fallback cleanup for hydration mismatch cases
@@ -32,7 +32,9 @@ export function HeadContent() {
   // Filter out dev styles after hydration
   const filteredTags = createMemo(() => {
     if (hydrated()) {
-      return tags().filter((tag) => !tag.attrs?.[DEV_STYLES_ATTR])
+      return tags().filter(
+        (tag) => tag.tag !== 'link' || tag.attrs?.[DEV_STYLES_ATTR] !== true,
+      )
     }
     return tags()
   })

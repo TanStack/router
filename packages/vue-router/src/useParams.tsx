@@ -33,15 +33,18 @@ export type UseParamsOptions<
 export type UseParamsRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
+  TThrow extends boolean = true,
 >(
   opts?: UseParamsBaseOptions<
     TRouter,
     TFrom,
     /* TStrict */ true,
-    /* TThrow */ true,
+    TThrow,
     TSelected
   >,
-) => Vue.Ref<UseParamsResult<TRouter, TFrom, true, TSelected>>
+) => Vue.Ref<
+  ThrowOrOptional<UseParamsResult<TRouter, TFrom, true, TSelected>, TThrow>
+>
 
 export function useParams<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -64,8 +67,8 @@ export function useParams<
     from: opts.from!,
     strict: opts.strict,
     shouldThrow: opts.shouldThrow,
-    select: (match: any) => {
+    select: (match) => {
       return opts.select ? opts.select(match.params) : match.params
     },
-  } as any) as any
+  }) as any
 }

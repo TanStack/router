@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect } from '@playwright/test'
@@ -28,4 +30,20 @@ test('prerender with Cloudflare Workers runtime', async ({ page }) => {
   await expect(page.getByTestId('static-content')).toHaveText(
     'The value is Hello from Cloudflare',
   )
+})
+
+test('the built Cloudflare app passes a deployment dry run', () => {
+  const wrangler = fileURLToPath(
+    new URL('../node_modules/wrangler/bin/wrangler.js', import.meta.url),
+  )
+  const output = execFileSync(
+    process.execPath,
+    [wrangler, 'deploy', '--dry-run'],
+    {
+      encoding: 'utf8',
+      env: { ...process.env, WRANGLER_SEND_METRICS: 'false' },
+    },
+  )
+  expect(output).toContain('dist/server/wrangler.json')
+  expect(output).toContain('--dry-run: exiting now.')
 })

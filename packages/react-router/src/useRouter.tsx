@@ -1,5 +1,6 @@
+'use client'
+
 import * as React from 'react'
-import warning from 'tiny-warning'
 import { routerContext } from './routerContext'
 import type { AnyRouter, RegisteredRouter } from '@tanstack/router-core'
 
@@ -17,9 +18,18 @@ export function useRouter<TRouter extends AnyRouter = RegisteredRouter>(opts?: {
   warn?: boolean
 }): TRouter {
   const value = React.useContext(routerContext)
-  warning(
-    !((opts?.warn ?? true) && !value),
-    'useRouter must be used inside a <RouterProvider> component!',
-  )
+  if (!value) {
+    warnMissingRouter(opts)
+  }
   return value as any
+}
+
+// Kept out of the hook body: this dev-only branch runs for every Link and
+// route hook, and on the server each `process.env` read is a native call.
+function warnMissingRouter(opts?: { warn?: boolean }) {
+  if (process.env.NODE_ENV !== 'production' && (opts?.warn ?? true)) {
+    console.warn(
+      'Warning: useRouter must be used inside a <RouterProvider> component!',
+    )
+  }
 }

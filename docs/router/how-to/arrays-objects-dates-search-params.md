@@ -165,7 +165,7 @@ const dashboardSchema = z.object({
       columns: z.number().min(1).max(6).default(3),
       showDetails: z.boolean().default(false),
     })
-    .default({}),
+    .prefault({}),
 
   filters: z
     .object({
@@ -176,9 +176,9 @@ const dashboardSchema = z.object({
           before: z.string().optional(),
         })
         .optional(),
-      metadata: z.record(z.string()).optional(), // Dynamic object keys
+      metadata: z.record(z.string(), z.string()).optional(), // Dynamic object keys
     })
-    .default({}),
+    .prefault({}),
 })
 
 export const Route = createFileRoute('/dashboard')({
@@ -459,7 +459,7 @@ const analyticsSchema = z.object({
           gap: z.number().default(16),
           responsive: z.boolean().default(true),
         })
-        .default({}),
+        .prefault({}),
 
       timeRange: z
         .object({
@@ -471,9 +471,9 @@ const analyticsSchema = z.object({
             })
             .optional(),
         })
-        .default({}),
+        .prefault({}),
     })
-    .default({}),
+    .prefault({}),
 })
 
 export const Route = createFileRoute('/analytics')({

@@ -1,21 +1,36 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
-import { tanstackViteConfig } from '@tanstack/config/vite'
-import solid from 'vite-plugin-solid'
+import { tanstackViteConfig } from '@tanstack/vite-config'
+import solid from '@solidjs/vite-plugin'
+import packageJson from './package.json'
 
 const config = defineConfig({
   plugins: [solid()],
+  test: {
+    name: packageJson.name,
+    dir: './tests',
+    watch: false,
+    environment: 'jsdom',
+    typecheck: { enabled: true },
+    setupFiles: [],
+    server: {
+      deps: {
+        inline: [/solid-js/, /@solidjs\//],
+      },
+    },
+  },
 })
 
 const merged = mergeConfig(
   config,
   tanstackViteConfig({
+    tsconfigPath: './tsconfig.build.json',
     entry: './src/index.tsx',
     srcDir: './src',
     bundledDeps: ['solid-js', '@solidjs/web', '@solidjs/signals'],
   }),
 )
 
-merged.build.rollupOptions.output.manualChunks = undefined
-merged.build.rollupOptions.output.preserveModules = false
+merged.build.rolldownOptions.output.manualChunks = undefined
+merged.build.rolldownOptions.output.preserveModules = false
 
 export default merged

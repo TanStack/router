@@ -1,23 +1,24 @@
 import { isAbsolute, join, normalize } from 'node:path'
 import { Generator, resolveConfigPath } from '@tanstack/router-generator'
 import { getConfig } from './config'
+import { createRouterPluginContext } from './router-plugin-context'
 
 import type { GeneratorEvent } from '@tanstack/router-generator'
 import type { FSWatcher } from 'chokidar'
 import type { UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
+import type { RouterPluginContext } from './router-plugin-context'
 
 const PLUGIN_NAME = 'unplugin:router-generator'
 
-export const unpluginRouterGeneratorFactory: UnpluginFactory<
-  Partial<Config | (() => Config)> | undefined
-> = (options = {}) => {
+export function createRouterGeneratorPlugin(
+  options: Partial<Config | (() => Config)> | undefined = {},
+  routerPluginContext: RouterPluginContext,
+): ReturnType<UnpluginFactory<Partial<Config | (() => Config)> | undefined>> {
   let ROOT: string = process.cwd()
   let userConfig: Config
   let generator: Generator
 
-  const routeGenerationDisabled = () =>
-    userConfig.enableRouteGeneration === false
   const getRoutesDirectoryPath = () => {
     return isAbsolute(userConfig.routesDirectory)
       ? userConfig.routesDirectory
@@ -43,9 +44,6 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
     file: string
     event: 'create' | 'update' | 'delete'
   }) => {
-    if (routeGenerationDisabled()) {
-      return
-    }
     let generatorEvent: GeneratorEvent | undefined = undefined
     if (opts) {
       const filePath = normalize(opts.file)
@@ -58,7 +56,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
 
     try {
       await generator.run(generatorEvent)
-      globalThis.TSR_ROUTES_BY_ID_MAP = generator.getRoutesByFileMap()
+      routerPluginContext.routesByFile = generator.getRoutesByFileMap()
     } catch (e) {
       console.error(e)
     }
@@ -145,4 +143,10 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       },
     },
   }
+}
+
+export const unpluginRouterGeneratorFactory: UnpluginFactory<
+  Partial<Config | (() => Config)> | undefined
+> = (options = {}) => {
+  return createRouterGeneratorPlugin(options, createRouterPluginContext())
 }

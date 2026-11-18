@@ -1,7 +1,6 @@
-import { joinPaths, trimPath } from './path'
+import { cleanPath, trimPath } from './path'
 import type { LocationRewrite } from './router'
 
-/** Compose multiple rewrite pairs into a single in/out rewrite. */
 /** Compose multiple rewrite pairs into a single in/out rewrite. */
 export function composeRewrites(rewrites: Array<LocationRewrite>) {
   return {
@@ -21,26 +20,21 @@ export function composeRewrites(rewrites: Array<LocationRewrite>) {
 }
 
 /** Create a rewrite pair that strips/adds a basepath on input/output. */
-/** Create a rewrite pair that strips/adds a basepath on input/output. */
-export function rewriteBasepath(opts: {
-  basepath: string
-  caseSensitive?: boolean
-}) {
-  const trimmedBasepath = trimPath(opts.basepath)
+export function rewriteBasepath(
+  basepath: string,
+  caseSensitive?: boolean,
+  rewrite?: LocationRewrite,
+) {
+  const trimmedBasepath = trimPath(basepath)
   const normalizedBasepath = `/${trimmedBasepath}`
-  const normalizedBasepathWithSlash = `${normalizedBasepath}/`
-  const checkBasepath = opts.caseSensitive
+  const checkBasepath = caseSensitive
     ? normalizedBasepath
     : normalizedBasepath.toLowerCase()
-  const checkBasepathWithSlash = opts.caseSensitive
-    ? normalizedBasepathWithSlash
-    : normalizedBasepathWithSlash.toLowerCase()
+  const checkBasepathWithSlash = `${checkBasepath}/`
 
-  return {
+  const basepathRewrite = {
     input: ({ url }) => {
-      const pathname = opts.caseSensitive
-        ? url.pathname
-        : url.pathname.toLowerCase()
+      const pathname = caseSensitive ? url.pathname : url.pathname.toLowerCase()
 
       // Handle exact basepath match (e.g., /my-app -> /)
       if (pathname === checkBasepath) {
@@ -52,13 +46,24 @@ export function rewriteBasepath(opts: {
       return url
     },
     output: ({ url }) => {
-      url.pathname = joinPaths(['/', trimmedBasepath, url.pathname])
+      // `url.pathname` always starts with "/", so only slashes already inside
+      // it can repeat; cleanPath keeps the joinPaths normalization.
+      url.pathname = cleanPath(`/${trimmedBasepath}${url.pathname}`)
       return url
     },
   } satisfies LocationRewrite
+
+  // Strip the basepath before custom input and restore it after custom output.
+  return rewrite
+    ? ({
+        input: ({ url }) =>
+          executeRewriteInput(rewrite, basepathRewrite.input({ url })),
+        output: ({ url }) =>
+          basepathRewrite.output({ url: executeRewriteOutput(rewrite, url) }),
+      } satisfies LocationRewrite)
+    : basepathRewrite
 }
 
-/** Execute a location input rewrite if provided. */
 /** Execute a location input rewrite if provided. */
 export function executeRewriteInput(
   rewrite: LocationRewrite | undefined,
@@ -75,7 +80,6 @@ export function executeRewriteInput(
   return url
 }
 
-/** Execute a location output rewrite if provided. */
 /** Execute a location output rewrite if provided. */
 export function executeRewriteOutput(
   rewrite: LocationRewrite | undefined,

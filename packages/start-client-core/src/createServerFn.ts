@@ -1,6 +1,7 @@
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
 import { isRedirect, parseRedirect } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
 import { getStartOptions } from './getStartOptions'
 import { getStartContextServerOnly } from './getStartContextServerOnly'
@@ -25,33 +26,55 @@ import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
   AssignAllServerFnContext,
-  FunctionMiddlewareServerFnResult,
   IntersectAllValidatorInputs,
   IntersectAllValidatorOutputs,
 } from './createMiddleware'
 
-type TODO = any
+export type ServerFnStrict = boolean | { input?: boolean; output?: boolean }
+
+export interface ServerFnOptions<
+  TMethod extends Method = Method,
+  TStrict extends ServerFnStrict = true,
+> {
+  method?: TMethod
+  strict?: TStrict
+}
+
+export type ServerFnStrictInput<TStrict extends ServerFnStrict> =
+  TStrict extends false
+    ? false
+    : TStrict extends { input: infer TInput extends boolean }
+      ? TInput
+      : true
+
+export type ServerFnStrictOutput<TStrict extends ServerFnStrict> =
+  TStrict extends false
+    ? false
+    : TStrict extends { output: infer TOutput extends boolean }
+      ? TOutput
+      : true
 
 export type CreateServerFn<TRegister> = <
   TMethod extends Method,
+  TStrict extends ServerFnStrict = true,
   TResponse = unknown,
   TMiddlewares = undefined,
   TInputValidator = undefined,
 >(
-  options?: {
-    method?: TMethod
-  },
+  options?: ServerFnOptions<TMethod, TStrict>,
   __opts?: ServerFnBaseOptions<
     TRegister,
     TMethod,
     TResponse,
     TMiddlewares,
-    TInputValidator
+    TInputValidator,
+    TStrict
   >,
-) => ServerFnBuilder<TRegister, TMethod>
+) => ServerFnBuilder<TRegister, TMethod, TStrict>
 
 export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
   const resolvedOptions = (__opts || options || {}) as ServerFnBaseOptions<
+    any,
     any,
     any,
     any,
@@ -63,20 +86,21 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
     resolvedOptions.method = 'GET' as Method
   }
 
-  const res: ServerFnBuilder<Register, Method> = {
+  const res: ServerFnBuilder<Register, Method, ServerFnStrict> = {
     options: resolvedOptions,
     middleware: (middleware) => {
       // multiple calls to `middleware()` merge the middlewares with the previously supplied ones
       // this is primarily useful for letting users create their own abstractions on top of `createServerFn`
 
       const newMiddleware = [...(resolvedOptions.middleware || [])]
-      middleware.map((m) => {
-        if (TSS_SERVER_FUNCTION_FACTORY in m) {
-          if (m.options.middleware) {
-            newMiddleware.push(...m.options.middleware)
+      // forEach skips holes and ignores items appended during iteration
+      middleware.forEach((item) => {
+        if (TSS_SERVER_FUNCTION_FACTORY in item) {
+          if (item.options.middleware) {
+            newMiddleware.push(...item.options.middleware)
           }
         } else {
-          newMiddleware.push(m)
+          newMiddleware.push(item)
         }
       })
 
@@ -84,12 +108,15 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
         ...resolvedOptions,
         middleware: newMiddleware,
       }
-      const res = createServerFn(undefined, newOptions) as any
+      const res = createServerFn(undefined, newOptions)
       res[TSS_SERVER_FUNCTION_FACTORY] = true
       return res
     },
-    inputValidator: (inputValidator) => {
-      const newOptions = { ...resolvedOptions, inputValidator }
+    validator: (validator) => {
+      const newOptions = {
+        ...resolvedOptions,
+        validator,
+      }
       return createServerFn(undefined, newOptions) as any
     },
     handler: (...args) => {
@@ -125,19 +152,18 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
           const result = await executeMiddleware(resolvedMiddleware, 'client', {
             ...extractedFn,
             ...newOptions,
-            data: opts?.data as any,
+            data: opts?.data,
             headers: opts?.headers,
             signal: opts?.signal,
             fetch: opts?.fetch,
             context: createNullProtoObject(),
           })
 
-          const redirect = parseRedirect(result.error)
-          if (redirect) {
-            throw redirect
+          // Only a failed call has an `error` key. Its value is whatever was
+          // thrown, so a thrown undefined or 0 still rejects the call.
+          if ('error' in result) {
+            throw parseRedirect(result.error) ?? result.error
           }
-
-          if (result.error) throw result.error
           return result.result
         },
         {
@@ -147,52 +173,74 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
           // can reject mismatched methods before parsing payloads
           method: resolvedOptions.method,
           // The extracted function on the server-side calls
-          // this function
-          __executeServer: async (opts: any) => {
-            const startContext = getStartContextServerOnly()
-            const serverContextAfterGlobalMiddlewares =
-              startContext.contextAfterGlobalMiddlewares
-            // Use safeObjectMerge for opts.context which comes from client
-            const ctx = {
-              ...extractedFn,
-              ...opts,
-              // Ensure we use the full serverFnMeta from the provider file's extractedFn
-              // (which has id, name, filename) rather than the partial one from SSR/client
-              // callers (which only has id)
-              serverFnMeta: extractedFn.serverFnMeta,
-              // Use safeObjectMerge for opts.context which comes from client
-              context: safeObjectMerge(
-                serverContextAfterGlobalMiddlewares,
-                opts.context,
-              ),
-              request: startContext.request,
-            }
+          // this function. Browsers never execute a server function.
+          __executeServer:
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- isServer is only known outside development
+            (isServer ?? typeof window === 'undefined')
+              ? async (opts: any) => {
+                  const startContext = getStartContextServerOnly()
+                  const serverContextAfterGlobalMiddlewares =
+                    startContext.contextAfterGlobalMiddlewares
+                  const ctx = {
+                    ...extractedFn,
+                    data: opts.data,
+                    method: opts.method ?? resolvedOptions.method,
+                    // Ensure we use the full serverFnMeta from the provider file's extractedFn
+                    // (which has id, name, filename) rather than the partial one from SSR/client
+                    // callers (which only has id)
+                    serverFnMeta: extractedFn.serverFnMeta,
+                    // Merge client context first so trusted server middleware context wins.
+                    context: safeObjectMerge(
+                      opts.context,
+                      serverContextAfterGlobalMiddlewares,
+                    ),
+                    request: startContext.request,
+                  }
 
-            const result = await executeMiddleware(
-              resolvedMiddleware,
-              'server',
-              ctx,
-            ).then((d) => ({
-              // Only send the result and sendContext back to the client
-              result: d.result,
-              error: d.error,
-              context: d.sendContext,
-            }))
+                  const result = await executeMiddleware(
+                    resolvedMiddleware,
+                    'server',
+                    ctx,
+                  )
 
-            return result
-          },
+                  // Only send the result and sendContext back to the client. A
+                  // failed call sends only its thrown value, under an `error` key.
+                  if ('error' in result) {
+                    return { error: result.error }
+                  }
+                  return result.sendContext === undefined
+                    ? { result: result.result }
+                    : { result: result.result, context: result.sendContext }
+                }
+              : undefined,
         },
       ) as any
     },
-  } as ServerFnBuilder<Register, Method>
-  const fun = (options?: { method?: Method }) => {
+  } as ServerFnBuilder<Register, Method, ServerFnStrict>
+  const fun = (options?: ServerFnOptions<Method, ServerFnStrict>) => {
     const newOptions = {
       ...resolvedOptions,
       ...options,
     }
-    return createServerFn(undefined, newOptions) as any
+    return createServerFn(undefined, newOptions)
   }
   return Object.assign(fun, res) as any
+}
+
+function mergeOptionalSendContext(
+  target: Record<string, unknown> | undefined,
+  source: Record<string, unknown> | null | undefined,
+) {
+  return target === undefined && source === undefined
+    ? undefined
+    : safeObjectMerge(target, source)
+}
+
+function mergeOptionalHeaders(
+  target: HeadersInit | undefined,
+  source: HeadersInit | undefined,
+) {
+  return target || source ? mergeHeaders(target, source) : undefined
 }
 
 export async function executeMiddleware(
@@ -200,139 +248,114 @@ export async function executeMiddleware(
   env: 'client' | 'server',
   opts: ServerFnMiddlewareOptions,
 ): Promise<ServerFnMiddlewareResult> {
-  const globalMiddlewares = getStartOptions()?.functionMiddleware || []
-  let flattenedMiddlewares = flattenMiddlewares([
-    ...globalMiddlewares,
-    ...middlewares,
-  ])
-
-  // On server, filter out middlewares that already executed in the request phase
-  // to prevent duplicate execution (issue #5239)
-  if (env === 'server') {
-    const startContext = getStartContextServerOnly({ throwIfNotFound: false })
-    if (startContext?.executedRequestMiddlewares) {
-      flattenedMiddlewares = flattenedMiddlewares.filter(
-        (m) => !startContext.executedRequestMiddlewares.has(m),
-      )
-    }
-  }
-
-  const callNextMiddleware: NextFn = async (ctx) => {
-    // Get the next middleware
-    const nextMiddleware = flattenedMiddlewares.shift()
-
-    // If there are no more middlewares, return the context
-    if (!nextMiddleware) {
-      return ctx
-    }
-
-    // Execute the middleware
-    try {
-      if (
-        'inputValidator' in nextMiddleware.options &&
-        nextMiddleware.options.inputValidator &&
-        env === 'server'
-      ) {
-        // Execute the middleware's input function
-        ctx.data = await execValidator(
-          nextMiddleware.options.inputValidator,
-          ctx.data,
+  const globalMiddlewares: Array<AnyFunctionMiddleware | AnyRequestMiddleware> =
+    getStartOptions()?.functionMiddleware || []
+  // On the server, flattening skips middlewares that already executed in the
+  // request phase to prevent duplicate execution (issue #5239)
+  const flattenedMiddlewares = flattenMiddlewares(
+    globalMiddlewares.concat(middlewares),
+    undefined,
+    env === 'server'
+      ? new Set(
+          getStartContextServerOnly({ throwIfNotFound: false })
+            ?.executedRequestMiddlewares,
         )
+      : undefined,
+  )
+
+  let index = 0
+
+  // Runs the remaining middlewares. A middleware's next() continues with its
+  // context merged with what it passed. Failures reject every pending next()
+  // up to the top, where they become `{ error }`.
+  const callNextMiddleware = async (
+    callerCtx: ServerFnMiddlewareResult,
+    userCtx?: ServerFnMiddlewareResult,
+  ): Promise<ServerFnMiddlewareResult> => {
+    let ctx = callerCtx
+    if (userCtx !== undefined) {
+      // Assign after the spreads: an object literal with properties after a
+      // second spread defines each of them through a slow runtime call.
+      ctx = { ...callerCtx, ...userCtx }
+      // Use safeObjectMerge for context objects to prevent prototype pollution
+      ctx.context = safeObjectMerge(callerCtx.context, userCtx.context)
+      ctx.sendContext = mergeOptionalSendContext(
+        callerCtx.sendContext,
+        userCtx.sendContext,
+      )
+      ctx.headers = mergeOptionalHeaders(callerCtx.headers, userCtx.headers)
+      ctx._callSiteFetch = callerCtx._callSiteFetch
+      ctx.fetch = callerCtx._callSiteFetch ?? userCtx.fetch ?? callerCtx.fetch
+      ctx.result =
+        userCtx.result !== undefined
+          ? userCtx.result
+          : userCtx instanceof Response
+            ? userCtx
+            : callerCtx.result
+    }
+
+    let result = ctx
+    // Middleware without a function for this environment only validates.
+    while (index < flattenedMiddlewares.length) {
+      const options = flattenedMiddlewares[index++]!.options as {
+        validator?: AnyValidator
+        client?: MiddlewareFn
+        server?: MiddlewareFn
+      }
+      const validator = options.validator
+      if (validator && env === 'server') {
+        // Execute the middleware's input function
+        ctx.data = await execValidator(validator, ctx.data)
       }
 
-      let middlewareFn: MiddlewareFn | undefined = undefined
-      if (env === 'client') {
-        if ('client' in nextMiddleware.options) {
-          middlewareFn = nextMiddleware.options.client as
-            | MiddlewareFn
-            | undefined
-        }
-      }
-      // env === 'server'
-      else if ('server' in nextMiddleware.options) {
-        middlewareFn = nextMiddleware.options.server as MiddlewareFn | undefined
-      }
-
+      const middlewareFn = env === 'client' ? options.client : options.server
       if (middlewareFn) {
-        const userNext = async (
-          userCtx: ServerFnMiddlewareResult | undefined = {} as any,
-        ) => {
-          // Return the next middleware
-          // Use safeObjectMerge for context objects to prevent prototype pollution
-          const nextCtx = {
-            ...ctx,
-            ...userCtx,
-            context: safeObjectMerge(ctx.context, userCtx.context),
-            sendContext: safeObjectMerge(ctx.sendContext, userCtx.sendContext),
-            headers: mergeHeaders(ctx.headers, userCtx.headers),
-            _callSiteFetch: ctx._callSiteFetch,
-            fetch: ctx._callSiteFetch ?? userCtx.fetch ?? ctx.fetch,
-            result:
-              userCtx.result !== undefined
-                ? userCtx.result
-                : userCtx instanceof Response
-                  ? userCtx
-                  : (ctx as any).result,
-            error: userCtx.error ?? (ctx as any).error,
-          }
-
-          const result = await callNextMiddleware(nextCtx)
-
-          if (result.error) {
-            throw result.error
-          }
-
-          return result
-        }
-
-        // Execute the middleware
-        const result = await middlewareFn({
+        result = await middlewareFn({
           ...ctx,
-          next: userNext,
+          next: (nextCtx = {} as ServerFnMiddlewareResult) =>
+            callNextMiddleware(ctx, nextCtx),
         })
 
-        // If result is NOT a ctx object, we need to return it as
-        // the { result }
-        if (isRedirect(result)) {
-          return {
-            ...ctx,
-            error: result,
-          }
-        }
-
         if (result instanceof Response) {
-          return {
-            ...ctx,
-            result,
+          // A returned redirect fails the call; any other Response is its
+          // result.
+          if (isRedirect(result)) {
+            throw result
           }
-        }
-
-        if (!(result as any)) {
+          result = { ...ctx, result }
+        } else if (!(result as any)) {
           throw new Error(
             'User middleware returned undefined. You must call next() or return a result in your middlewares.',
           )
         }
-
-        return result
-      }
-
-      return callNextMiddleware(ctx)
-    } catch (error: any) {
-      return {
-        ...ctx,
-        error,
+        break
       }
     }
+
+    if ('error' in result) {
+      throw result.error
+    }
+    return result
   }
 
   // Start the middleware chain
-  return callNextMiddleware({
+  const initialCtx = {
     ...opts,
-    headers: opts.headers || {},
-    sendContext: opts.sendContext || {},
+    // Client next() results always expose HeadersInit. Server middleware does
+    // not require a headers value unless one was explicitly supplied.
+    headers: opts.headers || (env === 'client' ? {} : undefined),
+    sendContext: opts.sendContext,
     context: opts.context || createNullProtoObject(),
     _callSiteFetch: opts.fetch,
-  })
+  }
+  if (initialCtx.sendContext !== undefined) {
+    initialCtx.sendContext ||= {}
+  }
+  try {
+    return await callNextMiddleware(initialCtx)
+  } catch (error) {
+    return { ...initialCtx, error }
+  }
 }
 
 export type CompiledFetcherFnOptions = {
@@ -381,7 +404,13 @@ export interface RequiredFetcher<
   ): Promise<Awaited<TResponse>>
 }
 
-export type CustomFetch = typeof globalThis.fetch
+// Ideally, this type should just be `export type CustomFetch = typeof globalThis.fetch`, but that conflicts with the type overrides the `bun-types` package - a dependency of unplugin.
+// Relevant bun issues:
+// - https://github.com/oven-sh/bun/issues/23500
+// - https://github.com/oven-sh/bun/issues/23741
+export type CustomFetch = typeof fetch extends (...args: infer A) => infer R
+  ? (...args: A) => R
+  : never
 
 export type FetcherBaseOptions = {
   headers?: HeadersInit
@@ -409,12 +438,18 @@ export type RscStream<T> = {
 
 export type Method = 'GET' | 'POST'
 
-export type ServerFnReturnType<TRegister, TResponse> =
-  TResponse extends PromiseLike<infer U>
-    ? Promise<ServerFnReturnType<TRegister, U>>
-    : TResponse extends Response
-      ? TResponse
-      : ValidateSerializableInput<TRegister, TResponse>
+export type ServerFnReturnType<
+  TRegister,
+  TResponse,
+  TStrict extends ServerFnStrict = true,
+> =
+  ServerFnStrictOutput<TStrict> extends false
+    ? TResponse
+    : TResponse extends PromiseLike<infer U>
+      ? Promise<ServerFnReturnType<TRegister, U, TStrict>>
+      : TResponse extends Response
+        ? TResponse
+        : ValidateSerializableInput<TRegister, TResponse>
 
 export type ServerFn<
   TRegister,
@@ -422,9 +457,10 @@ export type ServerFn<
   TMiddlewares,
   TInputValidator,
   TResponse,
+  TStrict extends ServerFnStrict = true,
 > = (
   ctx: ServerFnCtx<TRegister, TMethod, TMiddlewares, TInputValidator>,
-) => ServerFnReturnType<TRegister, TResponse>
+) => ServerFnReturnType<TRegister, TResponse, TStrict>
 
 export interface ServerFnCtx<
   TRegister,
@@ -452,20 +488,23 @@ export type ServerFnBaseOptions<
   TResponse = unknown,
   TMiddlewares = unknown,
   TInputValidator = unknown,
+  TStrict extends ServerFnStrict = true,
 > = {
   method: TMethod
+  strict?: TStrict
   middleware?: Constrain<
     TMiddlewares,
     ReadonlyArray<AnyFunctionMiddleware | AnyRequestMiddleware>
   >
-  inputValidator?: ConstrainValidator<TRegister, TMethod, TInputValidator>
+  validator?: ConstrainValidator<TRegister, TMethod, TInputValidator, TStrict>
   extractedFn?: CompiledFetcherFn<TRegister, TResponse>
   serverFn?: ServerFn<
     TRegister,
     TMethod,
     TMiddlewares,
     TInputValidator,
-    TResponse
+    TResponse,
+    TStrict
   >
 }
 
@@ -473,27 +512,33 @@ export type ValidateValidatorInput<
   TRegister,
   TMethod extends Method,
   TInputValidator,
-> = TMethod extends 'POST'
-  ? ResolveValidatorInput<TInputValidator> extends FormData
+  TStrict extends ServerFnStrict = true,
+> =
+  ServerFnStrictInput<TStrict> extends false
     ? ResolveValidatorInput<TInputValidator>
-    : ValidateSerializable<
-        ResolveValidatorInput<TInputValidator>,
-        RegisteredSerializableInput<TRegister>
-      >
-  : ValidateSerializable<
-      ResolveValidatorInput<TInputValidator>,
-      RegisteredSerializableInput<TRegister>
-    >
+    : TMethod extends 'POST'
+      ? ResolveValidatorInput<TInputValidator> extends FormData
+        ? ResolveValidatorInput<TInputValidator>
+        : ValidateSerializable<
+            ResolveValidatorInput<TInputValidator>,
+            RegisteredSerializableInput<TRegister>
+          >
+      : ValidateSerializable<
+          ResolveValidatorInput<TInputValidator>,
+          RegisteredSerializableInput<TRegister>
+        >
 
 export type ValidateValidator<
   TRegister,
   TMethod extends Method,
   TInputValidator,
+  TStrict extends ServerFnStrict = true,
 > =
   ValidateValidatorInput<
     TRegister,
     TMethod,
-    TInputValidator
+    TInputValidator,
+    TStrict
   > extends infer TInput
     ? Validator<TInput, any>
     : never
@@ -502,17 +547,19 @@ export type ConstrainValidator<
   TRegister,
   TMethod extends Method,
   TInputValidator,
+  TStrict extends ServerFnStrict = true,
 > =
   | (unknown extends TInputValidator
       ? TInputValidator
       : ResolveValidatorInput<TInputValidator> extends ValidateValidator<
             TRegister,
             TMethod,
-            TInputValidator
+            TInputValidator,
+            TStrict
           >
         ? TInputValidator
         : never)
-  | ValidateValidator<TRegister, TMethod, TInputValidator>
+  | ValidateValidator<TRegister, TMethod, TInputValidator, TStrict>
 
 export type AppendMiddlewares<TMiddlewares, TNewMiddlewares> =
   TMiddlewares extends ReadonlyArray<any>
@@ -526,6 +573,7 @@ export interface ServerFnMiddleware<
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
+  TStrict extends ServerFnStrict,
 > {
   middleware: <const TNewMiddlewares>(
     middlewares: Constrain<
@@ -536,7 +584,8 @@ export interface ServerFnMiddleware<
     TRegister,
     TMethod,
     AppendMiddlewares<TMiddlewares, TNewMiddlewares>,
-    TInputValidator
+    TInputValidator,
+    TStrict
   >
 }
 
@@ -545,6 +594,7 @@ export interface ServerFnAfterMiddleware<
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
+  TStrict extends ServerFnStrict,
 >
   extends
     ServerFnWithTypes<
@@ -552,33 +602,54 @@ export interface ServerFnAfterMiddleware<
       TMethod,
       TMiddlewares,
       TInputValidator,
-      undefined
+      undefined,
+      TStrict
     >,
-    ServerFnMiddleware<TRegister, TMethod, TMiddlewares, undefined>,
-    ServerFnValidator<TRegister, TMethod, TMiddlewares>,
-    ServerFnHandler<TRegister, TMethod, TMiddlewares, TInputValidator> {
-  <TNewMethod extends Method = TMethod>(options?: {
-    method?: TNewMethod
-  }): ServerFnAfterMiddleware<
+    ServerFnMiddleware<TRegister, TMethod, TMiddlewares, undefined, TStrict>,
+    ServerFnValidator<TRegister, TMethod, TMiddlewares, TStrict>,
+    ServerFnHandler<
+      TRegister,
+      TMethod,
+      TMiddlewares,
+      TInputValidator,
+      TStrict
+    > {
+  <
+    TNewMethod extends Method = TMethod,
+    TNewStrict extends ServerFnStrict = TStrict,
+  >(
+    options?: ServerFnOptions<TNewMethod, TNewStrict>,
+  ): ServerFnAfterMiddleware<
     TRegister,
     TNewMethod,
     TMiddlewares,
-    TInputValidator
+    TInputValidator,
+    TNewStrict
   >
 }
 
-export type ValidatorFn<TRegister, TMethod extends Method, TMiddlewares> = <
+export type ValidatorFn<
+  TRegister,
+  TMethod extends Method,
+  TMiddlewares,
+  TStrict extends ServerFnStrict,
+> = <TInputValidator>(
+  validator: ConstrainValidator<TRegister, TMethod, TInputValidator, TStrict>,
+) => ServerFnAfterValidator<
+  TRegister,
+  TMethod,
+  TMiddlewares,
   TInputValidator,
->(
-  inputValidator: ConstrainValidator<TRegister, TMethod, TInputValidator>,
-) => ServerFnAfterValidator<TRegister, TMethod, TMiddlewares, TInputValidator>
+  TStrict
+>
 
 export interface ServerFnValidator<
   TRegister,
   TMethod extends Method,
   TMiddlewares,
+  TStrict extends ServerFnStrict,
 > {
-  inputValidator: ValidatorFn<TRegister, TMethod, TMiddlewares>
+  validator: ValidatorFn<TRegister, TMethod, TMiddlewares, TStrict>
 }
 
 export interface ServerFnAfterValidator<
@@ -586,6 +657,7 @@ export interface ServerFnAfterValidator<
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
+  TStrict extends ServerFnStrict,
 >
   extends
     ServerFnWithTypes<
@@ -593,16 +665,30 @@ export interface ServerFnAfterValidator<
       TMethod,
       TMiddlewares,
       TInputValidator,
-      undefined
+      undefined,
+      TStrict
     >,
-    ServerFnMiddleware<TRegister, TMethod, TMiddlewares, TInputValidator>,
-    ServerFnHandler<TRegister, TMethod, TMiddlewares, TInputValidator> {}
+    ServerFnMiddleware<
+      TRegister,
+      TMethod,
+      TMiddlewares,
+      TInputValidator,
+      TStrict
+    >,
+    ServerFnHandler<
+      TRegister,
+      TMethod,
+      TMiddlewares,
+      TInputValidator,
+      TStrict
+    > {}
 
 export interface ServerFnAfterTyper<
   TRegister,
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
+  TStrict extends ServerFnStrict,
 >
   extends
     ServerFnWithTypes<
@@ -610,9 +696,16 @@ export interface ServerFnAfterTyper<
       TMethod,
       TMiddlewares,
       TInputValidator,
-      undefined
+      undefined,
+      TStrict
     >,
-    ServerFnHandler<TRegister, TMethod, TMiddlewares, TInputValidator> {}
+    ServerFnHandler<
+      TRegister,
+      TMethod,
+      TMiddlewares,
+      TInputValidator,
+      TStrict
+    > {}
 
 // Handler
 export interface ServerFnHandler<
@@ -620,6 +713,7 @@ export interface ServerFnHandler<
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
+  TStrict extends ServerFnStrict,
 > {
   handler: <TNewResponse>(
     fn?: ServerFn<
@@ -627,23 +721,42 @@ export interface ServerFnHandler<
       TMethod,
       TMiddlewares,
       TInputValidator,
-      TNewResponse
+      TNewResponse,
+      TStrict
     >,
   ) => Fetcher<TMiddlewares, TInputValidator, TNewResponse>
 }
 
-export interface ServerFnBuilder<TRegister, TMethod extends Method = 'GET'>
+export interface ServerFnBuilder<
+  TRegister,
+  TMethod extends Method = 'GET',
+  TStrict extends ServerFnStrict = true,
+>
   extends
-    ServerFnWithTypes<TRegister, TMethod, undefined, undefined, undefined>,
-    ServerFnMiddleware<TRegister, TMethod, undefined, undefined>,
-    ServerFnValidator<TRegister, TMethod, undefined>,
-    ServerFnHandler<TRegister, TMethod, undefined, undefined> {
+    ServerFnWithTypes<
+      TRegister,
+      TMethod,
+      undefined,
+      undefined,
+      undefined,
+      TStrict
+    >,
+    ServerFnMiddleware<TRegister, TMethod, undefined, undefined, TStrict>,
+    ServerFnValidator<TRegister, TMethod, undefined, TStrict>,
+    ServerFnHandler<TRegister, TMethod, undefined, undefined, TStrict> {
+  <
+    TNewMethod extends Method = TMethod,
+    TNewStrict extends ServerFnStrict = TStrict,
+  >(
+    options?: ServerFnOptions<TNewMethod, TNewStrict>,
+  ): ServerFnBuilder<TRegister, TNewMethod, TNewStrict>
   options: ServerFnBaseOptions<
     TRegister,
     TMethod,
     unknown,
     undefined,
-    undefined
+    undefined,
+    TStrict
   >
 }
 
@@ -653,25 +766,28 @@ export interface ServerFnWithTypes<
   in out TMiddlewares,
   in out TInputValidator,
   in out TResponse,
+  in out TStrict extends ServerFnStrict,
 > {
   '~types': ServerFnTypes<
     TRegister,
     TMethod,
     TMiddlewares,
     TInputValidator,
-    TResponse
+    TResponse,
+    TStrict
   >
   options: ServerFnBaseOptions<
     TRegister,
     TMethod,
     unknown,
     undefined,
-    undefined
+    undefined,
+    TStrict
   >
   [TSS_SERVER_FUNCTION_FACTORY]: true
 }
 
-export type AnyServerFn = ServerFnWithTypes<any, any, any, any, any>
+export type AnyServerFn = ServerFnWithTypes<any, any, any, any, any, any>
 
 export interface ServerFnTypes<
   in out TRegister,
@@ -679,10 +795,12 @@ export interface ServerFnTypes<
   in out TMiddlewares,
   in out TInputValidator,
   in out TResponse,
+  in out TStrict extends ServerFnStrict,
 > {
   method: TMethod
+  strict: TStrict
   middlewares: TMiddlewares
-  inputValidator: TInputValidator
+  validator: TInputValidator
   response: TResponse
   allServerContext: AssignAllServerFnContext<TRegister, TMiddlewares>
   allInput: IntersectAllValidatorInputs<TMiddlewares, TInputValidator>
@@ -691,10 +809,15 @@ export interface ServerFnTypes<
 
 export function flattenMiddlewares<
   T extends AnyFunctionMiddleware | AnyRequestMiddleware,
->(middlewares: Array<T>, maxDepth: number = 100): Array<T> {
-  const seen = new Set<T>()
+>(
+  middlewares: Array<T>,
+  maxDepth: number = 100,
+  seen: Set<T> = new Set<T>(),
+): Array<T> {
   const flattened: Array<T> = []
 
+  // forEach skips holes, and a list that is not an array throws instead of
+  // silently dropping its middleware.
   const recurse = (middleware: Array<T>, depth: number) => {
     if (depth > maxDepth) {
       throw new Error(
@@ -733,6 +856,7 @@ export type ServerFnMiddlewareOptions = {
 
 export type ServerFnMiddlewareResult = ServerFnMiddlewareOptions & {
   result?: unknown
+  /** Present only when the call failed. Holds the thrown value, even `undefined`. */
   error?: unknown
 }
 
@@ -778,14 +902,14 @@ function serverFnBaseToMiddleware(
   return {
     '~types': undefined!,
     options: {
-      inputValidator: options.inputValidator,
+      validator: options.validator,
       client: async ({ next, sendContext, fetch, ...ctx }) => {
         const payload = {
           ...ctx,
           // switch the sendContext over to context
           context: sendContext,
           fetch,
-        } as any
+        }
 
         // Execute the extracted function
         // but not before serializing the context
@@ -793,21 +917,18 @@ function serverFnBaseToMiddleware(
 
         return next(res)
       },
-      server: async ({ next, ...ctx }) => {
-        // Execute the server function
-        const result = await options.serverFn?.(ctx as TODO)
+      // Always the last middleware, so it returns the result instead of
+      // passing it through next(). Browsers never execute a server function.
+      server:
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- isServer is only known outside development
+        (isServer ?? typeof window === 'undefined')
+          ? async ({ next: _next, ...ctx }) => {
+              // Execute the server function
+              const result = await options.serverFn?.(ctx)
 
-        return next({
-          ...ctx,
-          result,
-        } as any) as unknown as FunctionMiddlewareServerFnResult<
-          any,
-          any,
-          any,
-          any,
-          any
-        >
-      },
+              return { ...ctx, result } as any
+            }
+          : undefined,
     },
   }
 }

@@ -2,7 +2,8 @@ import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 
-import { StartCompiler } from '../../src/start-compiler-plugin/compiler'
+import { StartCompiler } from '../../src/start-compiler/compiler'
+import { formatSnapshot } from '../format-snapshot'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {
@@ -39,6 +40,7 @@ async function compile(opts: {
         kind: 'ClientOnlyFn',
       },
     ],
+    getKnownServerFns: () => ({}),
     resolveId: async (id) => {
       return id
     },
@@ -72,9 +74,9 @@ describe('envOnly functions compile correctly', async () => {
           id: filename,
         })
 
-        await expect(compiledResult!.code).toMatchFileSnapshot(
-          `./snapshots/${env}/${filename}`,
-        )
+        await expect(
+          await formatSnapshot(compiledResult!.code, filename),
+        ).toMatchFileSnapshot(`./snapshots/${env}/${filename}`)
       },
     )
   })

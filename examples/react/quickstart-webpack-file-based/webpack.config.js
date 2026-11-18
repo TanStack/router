@@ -23,7 +23,11 @@ export default ({ WEBPACK_SERVE }) => ({
       template: path.resolve(__dirname, './public/index.html'),
       filename: 'index.html',
     }),
-    tanstackRouter({ target: 'react', autoCodeSplitting: true }),
+    tanstackRouter({
+      target: 'react',
+      autoCodeSplitting: true,
+      codeSplittingOptions: { addHmr: Boolean(WEBPACK_SERVE) },
+    }),
   ],
   module: {
     rules: [

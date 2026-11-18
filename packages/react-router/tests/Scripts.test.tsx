@@ -1,17 +1,67 @@
-import { describe, expect, test } from 'vitest'
-import { act, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, test, vi } from 'vitest'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
+import { createPortal } from 'react-dom'
 import ReactDOMServer from 'react-dom/server'
+import { hydrate } from '@tanstack/router-core/ssr/client'
+import { dehydrateSsrMatchId } from '../../router-core/src/ssr/ssr-match-id'
 
 import {
   HeadContent,
+  Link,
   Outlet,
+  RouterContextProvider,
   RouterProvider,
+  createBrowserHistory,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
 } from '../src'
 import { Scripts } from '../src/Scripts'
+import type { Manifest } from '@tanstack/router-core'
+
+// React 19 keeps stylesheet resources keyed by href alive for the lifetime of
+// the test module, so these tests use explicit asset URLs to avoid collisions
+// between cases even though Testing Library cleanup runs after each test.
+const createTestManifest = (
+  routeId: string,
+  options?: {
+    stylesheetHref?: string
+    preloadHref?: string
+    scriptFormat?: Manifest['scriptFormat']
+  },
+) =>
+  ({
+    ...(options?.scriptFormat ? { scriptFormat: options.scriptFormat } : {}),
+    routes: {
+      [routeId]: {
+        preloads: [options?.preloadHref ?? '/main.js'],
+        css: [options?.stylesheetHref ?? '/main.css'],
+      },
+    },
+  }) satisfies Manifest
+
+const browserHistories: Array<ReturnType<typeof createBrowserHistory>> = []
+
+const createTestBrowserHistory = () => {
+  const history = createBrowserHistory()
+  browserHistories.push(history)
+  return history
+}
+
+afterEach(() => {
+  cleanup()
+  browserHistories.splice(0).forEach((history) => history.destroy())
+  window.history.replaceState(null, 'root', '/')
+  delete window.$_TSR
+})
 
 describe('ssr scripts', () => {
   test('it works', async () => {
@@ -112,15 +162,12 @@ describe('ssr scripts', () => {
       { src: 'script3.js' },
     ])
 
-    const { container } = await act(() =>
-      render(<RouterProvider router={router} />),
+    const html = ReactDOMServer.renderToString(
+      <RouterProvider router={router} />,
     )
-    expect(await screen.findByTestId('root')).toBeInTheDocument()
-    expect(await screen.findByTestId('index')).toBeInTheDocument()
-
-    expect(container.innerHTML).toEqual(
-      `<div><div data-testid="root">root</div><div data-testid="index">index</div><script src="script.js"></script><script src="script3.js"></script></div>`,
-    )
+    expect(html).toContain('<script src="script.js"></script>')
+    expect(html).toContain('<script src="script3.js"></script>')
+    expect(html).not.toContain('script2.js')
   })
 })
 
@@ -173,6 +220,65 @@ describe('scripts with async/defer attributes', () => {
 
     expect(html).toMatch(/<script[^>]*src="script\.js"[^>]*async=""/)
     expect(html).toMatch(/<script[^>]*src="script2\.js"[^>]*defer=""/)
+  })
+
+  test('server keeps manifest src scripts in document order', async () => {
+    const clientEntryAsset = {
+      attrs: {
+        src: '/entry.js',
+        type: 'module',
+        async: true,
+      },
+    } satisfies NonNullable<Manifest['routes'][string]['scripts']>[number]
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <html>
+            <head />
+            <body>
+              <main data-testid="content">content</main>
+              <Outlet />
+              <Scripts />
+            </body>
+          </html>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+    })
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: true,
+    })
+    router.ssr = {
+      manifest: {
+        routes: {
+          [rootRoute.id]: {
+            scripts: [clientEntryAsset],
+          },
+        },
+      },
+    }
+
+    await router.load()
+
+    const html = ReactDOMServer.renderToString(
+      <RouterProvider router={router} />,
+    )
+    const contentIndex = html.indexOf('<main data-testid="content">')
+    const scriptIndex = html.indexOf('src="/entry.js"')
+
+    expect(contentIndex).toBeGreaterThan(-1)
+    expect(scriptIndex).toBeGreaterThan(contentIndex)
+    expect(html).not.toContain('client-entry')
   })
 
   test('client renders scripts with attributes (including async/defer)', async () => {
@@ -232,6 +338,119 @@ describe('scripts with async/defer attributes', () => {
 })
 
 describe('ssr HeadContent', () => {
+  test('renders descendant assets during a data-only hydration handoff', async () => {
+    const rootRoute = createRootRoute({})
+    const dataOnlyRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/report',
+      ssr: 'data-only',
+      loader: () => 'report',
+    })
+    const childRoute = createRoute({
+      getParentRoute: () => dataOnlyRoute,
+      path: '/details',
+      loader: () => 'details',
+      head: () => ({
+        meta: [{ name: 'data-only-child', content: 'visible' }],
+        links: [{ rel: 'preload', href: '/data-only-head-link.js' }],
+        styles: [
+          {
+            id: 'data-only-route-style',
+            children: '.data-only-child { color: green }',
+          },
+        ],
+        scripts: [
+          {
+            id: 'data-only-head-script',
+            type: 'application/json',
+            children: '{"source":"head"}',
+          },
+        ],
+      }),
+      scripts: () => [
+        {
+          id: 'data-only-body-script',
+          type: 'application/json',
+          children: '{"source":"body"}',
+        },
+      ],
+    })
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/report/details'],
+      }),
+      routeTree: rootRoute.addChildren([
+        dataOnlyRoute.addChildren([childRoute]),
+      ]),
+    })
+    const matches = router.matchRoutes(router.latestLocation)
+    window.$_TSR = {
+      router: {
+        dehydratedData: {},
+        manifest: {
+          routes: {
+            [childRoute.id]: {
+              css: ['/data-only-manifest.css'],
+              preloads: ['/data-only-manifest.js'],
+              scripts: [
+                {
+                  attrs: {
+                    id: 'data-only-manifest-script',
+                    type: 'application/json',
+                  },
+                  children: '{"source":"manifest"}',
+                },
+              ],
+            },
+          },
+        },
+        matches: matches.map((match, index) => ({
+          i: dehydrateSsrMatchId(match.id),
+          s: 'success',
+          ssr: index === 1 ? 'data-only' : true,
+          l: index ? (index === 1 ? 'report' : 'details') : undefined,
+          u: Date.now(),
+        })),
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+    }
+
+    await hydrate(router)
+
+    expect(router.state.matches.map((match) => match.status)).toEqual([
+      'success',
+      'pending',
+      'success',
+    ])
+    render(
+      <RouterContextProvider router={router}>
+        <HeadContent />
+        <Scripts />
+      </RouterContextProvider>,
+    )
+
+    expect(
+      document.querySelector('meta[name="data-only-child"]'),
+    ).not.toBeNull()
+    expect(
+      document.querySelector('link[href="/data-only-head-link.js"]'),
+    ).not.toBeNull()
+    expect(document.querySelector('#data-only-route-style')).not.toBeNull()
+    expect(document.querySelector('#data-only-head-script')).not.toBeNull()
+    expect(document.querySelector('#data-only-body-script')).not.toBeNull()
+    expect(
+      document.querySelector('link[href="/data-only-manifest.css"]'),
+    ).not.toBeNull()
+    expect(
+      document.querySelector('link[href="/data-only-manifest.js"]'),
+    ).not.toBeNull()
+    expect(document.querySelector('#data-only-manifest-script')).not.toBeNull()
+  })
+
   test('derives title, dedupes meta, and allows non-loader HeadContent', async () => {
     const rootRoute = createRootRoute({
       loader: () =>
@@ -326,6 +545,573 @@ describe('ssr HeadContent', () => {
     expect(html).toEqual(
       `<title>Index</title><meta name="image" content="image.jpg"/><meta property="og:description" content="Root description"/><meta name="description" content="Index"/><meta name="last-modified" content="2021-10-10"/><meta property="og:image" content="index-image.jpg"/>`,
     )
+  })
+
+  test('renders manifest module preloads with low fetch priority', async () => {
+    const preloadHref = '/low-priority-module.js'
+    const rootRoute = createRootRoute({
+      component: () => <HeadContent />,
+    })
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+    })
+    const router = createRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: true,
+    })
+
+    router.ssr = {
+      manifest: createTestManifest(rootRoute.id, { preloadHref }),
+    }
+
+    await router.load()
+
+    const html = ReactDOMServer.renderToString(
+      <RouterProvider router={router} />,
+    )
+    expect(html).toContain(
+      `<link rel="modulepreload" href="${preloadHref}" fetchPriority="low"/>`,
+    )
+  })
+
+  test('keeps manifest stylesheet links mounted when history state changes', async () => {
+    const history = createTestBrowserHistory()
+    const stylesheetHref = '/history-state.css'
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            {createPortal(<HeadContent />, document.head)}
+            <button
+              onClick={() => {
+                window.history.replaceState(
+                  { slideId: 'slide-2' },
+                  '',
+                  window.location.href,
+                )
+              }}
+            >
+              Replace state
+            </button>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Index</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    router.ssr = {
+      manifest: createTestManifest(rootRoute.id, {
+        stylesheetHref,
+      }),
+    }
+
+    await router.load()
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    const getStylesheetLink = () =>
+      Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find(
+        (link) => link.getAttribute('href') === stylesheetHref,
+      )
+
+    await waitFor(() => {
+      expect(getStylesheetLink()).toBeInstanceOf(HTMLLinkElement)
+    })
+
+    const initialLink = getStylesheetLink()
+    expect(initialLink).toBeInstanceOf(HTMLLinkElement)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Replace state' }))
+
+    await waitFor(() => {
+      expect(router.state.location.state).toMatchObject({
+        slideId: 'slide-2',
+      })
+    })
+
+    expect(getStylesheetLink()).toBe(initialLink)
+    expect(
+      Array.from(document.querySelectorAll('link[rel="stylesheet"]')).filter(
+        (link) => link.getAttribute('href') === stylesheetHref,
+      ),
+    ).toHaveLength(1)
+  })
+
+  test('applies assetCrossOrigin to manifest stylesheets and preloads', async () => {
+    const history = createTestBrowserHistory()
+    const stylesheetHref = '/asset-cross-origin.css'
+    const preloadHref = '/asset-cross-origin.js'
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            {createPortal(
+              <HeadContent
+                assetCrossOrigin={{
+                  script: 'anonymous',
+                  stylesheet: 'use-credentials',
+                }}
+              />,
+              document.head,
+            )}
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Index</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    router.ssr = {
+      manifest: createTestManifest(rootRoute.id, {
+        stylesheetHref,
+        preloadHref,
+      }),
+    }
+
+    await router.load()
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelector(
+          `link[rel="stylesheet"][href="${stylesheetHref}"]`,
+        ),
+      ).toBeTruthy()
+      expect(
+        document.head.querySelector(
+          `link[rel="modulepreload"][href="${preloadHref}"]`,
+        ),
+      ).toBeTruthy()
+    })
+
+    expect(
+      document.head
+        .querySelector(`link[rel="stylesheet"][href="${stylesheetHref}"]`)
+        ?.getAttribute('crossorigin'),
+    ).toBe('use-credentials')
+    expect(
+      document.head
+        .querySelector(`link[rel="modulepreload"][href="${preloadHref}"]`)
+        ?.getAttribute('crossorigin'),
+    ).toBe('anonymous')
+  })
+
+  test('renders runtime manifest inlineStyle', async () => {
+    const history = createTestBrowserHistory()
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            {createPortal(<HeadContent />, document.head)}
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Index</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    router.ssr = {
+      manifest: {
+        inlineStyle: {
+          attrs: { id: 'runtime-inline-style' },
+          children: '.runtime{color:red}',
+        },
+        routes: {
+          [rootRoute.id]: {},
+        },
+      },
+    }
+
+    await router.load()
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelector('style#runtime-inline-style'),
+      ).toBeTruthy()
+    })
+
+    expect(
+      document.head.querySelector('style#runtime-inline-style')?.textContent,
+    ).toBe('.runtime{color:red}')
+  })
+
+  test('renders iife manifest preloads as low priority script links', async () => {
+    const history = createTestBrowserHistory()
+    const preloadHref = '/iife-preload.js'
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            {createPortal(<HeadContent />, document.head)}
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Index</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    router.ssr = {
+      manifest: createTestManifest(rootRoute.id, {
+        preloadHref,
+        scriptFormat: 'iife',
+      }),
+    }
+
+    await router.load()
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelector(
+          `link[rel="preload"][as="script"][href="${preloadHref}"]`,
+        ),
+      ).toBeTruthy()
+    })
+
+    expect(
+      document.head.querySelector(
+        `link[rel="modulepreload"][href="${preloadHref}"]`,
+      ),
+    ).toBeFalsy()
+    expect(
+      document.head
+        .querySelector(
+          `link[rel="preload"][as="script"][href="${preloadHref}"]`,
+        )
+        ?.getAttribute('fetchpriority'),
+    ).toBe('low')
+  })
+
+  test('assetCrossOrigin overrides manifest crossOrigin values', async () => {
+    const history = createTestBrowserHistory()
+    const stylesheetHref = '/override-cross-origin.css'
+    const preloadHref = '/override-cross-origin.js'
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            {createPortal(
+              <HeadContent assetCrossOrigin="anonymous" />,
+              document.head,
+            )}
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Index</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    router.ssr = {
+      manifest: {
+        routes: {
+          [rootRoute.id]: {
+            preloads: [
+              { href: preloadHref, crossOrigin: 'use-credentials' as const },
+            ],
+            css: [
+              {
+                href: stylesheetHref,
+                crossOrigin: 'use-credentials',
+              },
+            ],
+          },
+        },
+      } as any,
+    }
+
+    await router.load()
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelector(
+          `link[rel="stylesheet"][href="${stylesheetHref}"]`,
+        ),
+      ).toBeTruthy()
+      expect(
+        document.head.querySelector(
+          `link[rel="modulepreload"][href="${preloadHref}"]`,
+        ),
+      ).toBeTruthy()
+    })
+
+    expect(
+      document.head
+        .querySelector(`link[rel="stylesheet"][href="${stylesheetHref}"]`)
+        ?.getAttribute('crossorigin'),
+    ).toBe('anonymous')
+    expect(
+      document.head
+        .querySelector(`link[rel="modulepreload"][href="${preloadHref}"]`)
+        ?.getAttribute('crossorigin'),
+    ).toBe('anonymous')
+  })
+
+  test('keeps manifest stylesheet links mounted across repeated Link navigations', async () => {
+    const history = createTestBrowserHistory()
+    const stylesheetHref = '/repeated-nav.css'
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            {createPortal(<HeadContent />, document.head)}
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <Link to="/about">Go to about page</Link>,
+    })
+
+    const aboutRoute = createRoute({
+      path: '/about',
+      getParentRoute: () => rootRoute,
+      component: () => <Link to="/">Back to home</Link>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+    })
+
+    router.ssr = {
+      manifest: createTestManifest(rootRoute.id, {
+        stylesheetHref,
+      }),
+    }
+
+    await router.load()
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    const getStylesheetLink = () =>
+      Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find(
+        (link) => link.getAttribute('href') === stylesheetHref,
+      )
+
+    await waitFor(() => {
+      expect(getStylesheetLink()).toBeInstanceOf(HTMLLinkElement)
+    })
+
+    const initialLink = getStylesheetLink()
+    expect(initialLink).toBeInstanceOf(HTMLLinkElement)
+
+    for (let i = 0; i < 5; i++) {
+      fireEvent.click(screen.getByRole('link', { name: 'Go to about page' }))
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/about')
+      })
+
+      await screen.findByRole('link', { name: 'Back to home' })
+
+      fireEvent.click(screen.getByRole('link', { name: 'Back to home' }))
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/')
+      })
+
+      await screen.findByRole('link', { name: 'Go to about page' })
+    }
+
+    expect(getStylesheetLink()).toBe(initialLink)
+    expect(
+      Array.from(document.querySelectorAll('link[rel="stylesheet"]')).filter(
+        (link) => link.getAttribute('href') === stylesheetHref,
+      ),
+    ).toHaveLength(1)
+  })
+
+  test('does not render retained descendant assets past a terminal parent boundary', async () => {
+    let failParent = false
+    const childHeadScript = '{"source":"child-head"}'
+    const childBodyScript = '{"source":"child-body"}'
+    const childManifestScript = '{"source":"child-manifest"}'
+    const childPreload = '/terminal-child-preload.js'
+    const childHeadLink = '/terminal-child-head-link.js'
+    const rootRoute = createRootRoute({
+      component: () => (
+        <>
+          {createPortal(<HeadContent />, document.head)}
+          <Outlet />
+          <Scripts />
+        </>
+      ),
+    })
+    const parentRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      shouldReload: true,
+      loader: () => {
+        if (failParent) {
+          throw new Error('parent failed')
+        }
+      },
+      component: Outlet,
+      errorComponent: () => <div>Parent error</div>,
+    })
+    const childRoute = createRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      head: () => ({
+        meta: [{ name: 'terminal-child', content: 'visible' }],
+        links: [{ rel: 'preload', href: childHeadLink }],
+        styles: [{ children: '.terminal-child { color: red }' }],
+        scripts: [{ type: 'application/ld+json', children: childHeadScript }],
+      }),
+      scripts: () => [
+        { type: 'application/ld+json', children: childBodyScript },
+      ],
+      component: () => <div>Child content</div>,
+    })
+    const router = createRouter({
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+    })
+    router.ssr = {
+      manifest: {
+        routes: {
+          [childRoute.id]: {
+            preloads: [childPreload],
+            scripts: [
+              {
+                attrs: { type: 'application/ld+json' },
+                children: childManifestScript,
+              },
+            ],
+          },
+        },
+      },
+    }
+
+    await router.load()
+    await act(() => render(<RouterProvider router={router} />))
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelector('meta[name="terminal-child"]'),
+      ).not.toBeNull()
+      expect(
+        document.head.querySelector(`link[href="${childPreload}"]`),
+      ).not.toBeNull()
+      expect(
+        document.head.querySelector(`link[href="${childHeadLink}"]`),
+      ).not.toBeNull()
+      expect(document.head.textContent).toContain(
+        '.terminal-child { color: red }',
+      )
+      expect(document.documentElement.textContent).toContain(childHeadScript)
+      expect(document.documentElement.textContent).toContain(childBodyScript)
+      expect(document.documentElement.textContent).toContain(
+        childManifestScript,
+      )
+    })
+
+    failParent = true
+    await act(() => router.invalidate())
+    await screen.findByText('Parent error')
+
+    expect(router.state.matches).toHaveLength(3)
+    expect(router.state.matches[1]).toMatchObject({
+      routeId: parentRoute.id,
+      status: 'error',
+    })
+    expect(router.state.matches[2]).toMatchObject({
+      routeId: childRoute.id,
+      meta: [{ name: 'terminal-child', content: 'visible' }],
+      scripts: [{ type: 'application/ld+json', children: childBodyScript }],
+    })
+    await waitFor(() => {
+      expect(
+        document.head.querySelector('meta[name="terminal-child"]'),
+      ).toBeNull()
+      expect(
+        document.head.querySelector(`link[href="${childPreload}"]`),
+      ).toBeNull()
+      expect(
+        document.head.querySelector(`link[href="${childHeadLink}"]`),
+      ).toBeNull()
+      expect(document.head.textContent).not.toContain(
+        '.terminal-child { color: red }',
+      )
+      expect(document.documentElement.textContent).not.toContain(
+        childHeadScript,
+      )
+      expect(document.documentElement.textContent).not.toContain(
+        childBodyScript,
+      )
+      expect(document.documentElement.textContent).not.toContain(
+        childManifestScript,
+      )
+    })
   })
 })
 

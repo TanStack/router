@@ -3,6 +3,7 @@
   "configMigration": true,
   "extends": [
     "config:recommended",
+    "helpers:pinGitHubActionDigests",
     "group:allNonMajor",
     "schedule:weekly",
     ":approveMajorUpdates",
@@ -20,7 +21,6 @@
     "@types/node",
     "@types/react",
     "@types/react-dom",
-    "h3",
     "node",
     "react",
     "react-dom",

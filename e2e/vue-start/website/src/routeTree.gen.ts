@@ -10,11 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LibraryRouteImport } from './routes/_library'
-import { Route as LibraryIndexRouteImport } from './routes/_library.index'
 import { Route as ProjectIndexRouteImport } from './routes/$project.index'
+import { Route as LibraryIndexRouteImport } from './routes/_library.index'
 import { Route as LibraryProjectRouteImport } from './routes/_library.$project'
-import { Route as LibraryProjectVersionIndexRouteImport } from './routes/_library.$project.$version.index'
 import { Route as ProjectVersionDocsIndexRouteImport } from './routes/$project.$version.docs.index'
+import { Route as LibraryProjectVersionIndexRouteImport } from './routes/_library.$project.$version.index'
 import { Route as ProjectVersionDocsFrameworkFrameworkRouteImport } from './routes/$project.$version.docs.framework.$framework'
 import { Route as ProjectVersionDocsFrameworkFrameworkIndexRouteImport } from './routes/$project.$version.docs.framework.$framework.index'
 import { Route as ProjectVersionDocsFrameworkFrameworkSplatRouteImport } from './routes/$project.$version.docs.framework.$framework.$'
@@ -24,20 +24,25 @@ const LibraryRoute = LibraryRouteImport.update({
   id: '/_library',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LibraryIndexRoute = LibraryIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => LibraryRoute,
-} as any)
 const ProjectIndexRoute = ProjectIndexRouteImport.update({
   id: '/$project/',
   path: '/$project/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LibraryIndexRoute = LibraryIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LibraryRoute,
+} as any)
 const LibraryProjectRoute = LibraryProjectRouteImport.update({
   id: '/$project',
   path: '/$project',
   getParentRoute: () => LibraryRoute,
+} as any)
+const ProjectVersionDocsIndexRoute = ProjectVersionDocsIndexRouteImport.update({
+  id: '/$project/$version/docs/',
+  path: '/$project/$version/docs/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const LibraryProjectVersionIndexRoute =
   LibraryProjectVersionIndexRouteImport.update({
@@ -45,11 +50,6 @@ const LibraryProjectVersionIndexRoute =
     path: '/$version/',
     getParentRoute: () => LibraryProjectRoute,
   } as any)
-const ProjectVersionDocsIndexRoute = ProjectVersionDocsIndexRouteImport.update({
-  id: '/$project/$version/docs/',
-  path: '/$project/$version/docs/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ProjectVersionDocsFrameworkFrameworkRoute =
   ProjectVersionDocsFrameworkFrameworkRouteImport.update({
     id: '/$project/$version/docs/framework/$framework',
@@ -159,19 +159,19 @@ declare module '@tanstack/vue-router' {
       preLoaderRoute: typeof LibraryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_library/': {
-      id: '/_library/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof LibraryIndexRouteImport
-      parentRoute: typeof LibraryRoute
-    }
     '/$project/': {
       id: '/$project/'
       path: '/$project'
       fullPath: '/$project/'
       preLoaderRoute: typeof ProjectIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_library/': {
+      id: '/_library/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof LibraryIndexRouteImport
+      parentRoute: typeof LibraryRoute
     }
     '/_library/$project': {
       id: '/_library/$project'
@@ -180,19 +180,19 @@ declare module '@tanstack/vue-router' {
       preLoaderRoute: typeof LibraryProjectRouteImport
       parentRoute: typeof LibraryRoute
     }
-    '/_library/$project/$version/': {
-      id: '/_library/$project/$version/'
-      path: '/$version'
-      fullPath: '/$project/$version/'
-      preLoaderRoute: typeof LibraryProjectVersionIndexRouteImport
-      parentRoute: typeof LibraryProjectRoute
-    }
     '/$project/$version/docs/': {
       id: '/$project/$version/docs/'
       path: '/$project/$version/docs'
       fullPath: '/$project/$version/docs/'
       preLoaderRoute: typeof ProjectVersionDocsIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_library/$project/$version/': {
+      id: '/_library/$project/$version/'
+      path: '/$version'
+      fullPath: '/$project/$version/'
+      preLoaderRoute: typeof LibraryProjectVersionIndexRouteImport
+      parentRoute: typeof LibraryProjectRoute
     }
     '/$project/$version/docs/framework/$framework': {
       id: '/$project/$version/docs/framework/$framework'

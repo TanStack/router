@@ -13,7 +13,7 @@ export const getProjects = createServerFn({ method: 'GET' }).handler(
 )
 
 export const getProject = createServerFn({ method: 'GET' })
-  .inputValidator((project: string) => project)
+  .validator((project: string) => project)
   .handler(async (ctx) => {
     await new Promise((resolve) => setTimeout(resolve, 200))
 

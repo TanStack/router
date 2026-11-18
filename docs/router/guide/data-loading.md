@@ -57,7 +57,7 @@ The router cache is built-in and is as easy as returning data from any route's `
 
 ## Route `loader`s
 
-Route `loader` functions are called when a route match is loaded. They are called with a single parameter which is an object containing many helpful properties. We'll go over those in a bit, but first, let's look at an example of a route `loader` function:
+Route `loader` functions are called when a route match is loaded. They are called with a single parameter which is an object containing many helpful properties. We'll go over those in a bit, but first, let's look at the two supported `loader` forms:
 
 ```tsx
 // src/routes/posts.tsx
@@ -66,11 +66,22 @@ export const Route = createFileRoute('/posts')({
 })
 ```
 
+```tsx
+// src/routes/posts.tsx
+export const Route = createFileRoute('/posts')({
+  loader: {
+    handler: () => fetchPosts(),
+  },
+})
+```
+
+Use the object form when you want to configure loader-specific behavior such as `staleReloadMode`.
+
 ## `loader` Parameters
 
 The `loader` function receives a single object with the following properties:
 
-- `abortController` - The route's abortController. Its signal is cancelled when the route is unloaded or when the Route is no longer relevant and the current invocation of the `loader` function becomes outdated.
+- `abortController` - The controller for this shareable loader invocation. A preload and navigation can share the same in-flight loader work. Its signal is cancelled after the invocation becomes outdated and no consumer still needs it.
 - `cause` - The cause of the current route match. Can be either one of the following:
   - `enter` - When the route is matched and loaded after not being matched in the previous location.
   - `preload` - When the route is being preloaded.
@@ -139,7 +150,7 @@ Using these dependencies as keys, TanStack Router will cache the data returned f
 To control router dependencies and "freshness", TanStack Router provides a plethora of options to control the keying and caching behavior of your route loaders. Let's take a look at them in the order that you are most likely to use them:
 
 - `routeOptions.loaderDeps`
-  - A function that supplies you the search params for a router and returns an object of dependencies for use in your `loader` function. When these deps changed from navigation to navigation, it will cause the route to reload regardless of `staleTime`s. The deps are compared using a deep equality check.
+  - A deterministic, side-effect-free function that supplies you the validated search params for a router and returns a serializable object of dependencies for use in your `loader` function. When these deps change from navigation to navigation, it will cause the route to reload regardless of `staleTime`s. The deps are compared using a deep equality check.
 - `routeOptions.staleTime`
 - `routerOptions.defaultStaleTime`
   - The number of milliseconds that a route's data should be considered fresh when attempting to load.
@@ -151,19 +162,28 @@ To control router dependencies and "freshness", TanStack Router provides a pleth
   - The number of milliseconds that a route's data should be kept in the cache before being garbage collected.
 - `routeOptions.shouldReload`
   - A function that receives the same `beforeLoad` and `loaderContext` parameters and returns a boolean indicating if the route should reload. This offers one more level of control over when a route should reload beyond `staleTime` and `loaderDeps` and can be used to implement patterns similar to Remix's `shouldLoad` option.
+- `routeOptions.loader.staleReloadMode`
+- `routerOptions.defaultStaleReloadMode`
+  - Controls what happens when a matched route already has stale successful data. Use `'background'` for stale-while-revalidate, or `'blocking'` to wait for the stale loader reload to finish before continuing.
 
 ### ⚠️ Some Important Defaults
 
-- By default, the `staleTime` is set to `0`, meaning that the route's data will always be considered stale and will always be reloaded in the background when the route is rematched.
-- By default, a previously preloaded route is considered fresh for **30 seconds**. This means if a route is preloaded, then preloaded again within 30 seconds, the second preload will be ignored. This prevents unnecessary preloads from happening too frequently. **When a route is loaded normally, the standard `staleTime` is used.**
-- By default, the `gcTime` is set to **30 minutes**, meaning that any route data that has not been accessed in 30 minutes will be garbage collected and removed from the cache.
-- `router.invalidate()` will force all active routes to reload their loaders immediately and mark every cached route's data as stale.
+- By default, `staleTime` is set to `0`, so reusable successful data is immediately considered stale. When the same loader key is entered again or `router.load()` is called explicitly, stale data revalidates in the background by default. A different loader key identifies a separate cache entry and must load if it has no reusable data.
+- By default, loader data produced by a preload is considered fresh for **30 seconds**. Every preload and navigation still runs its own `beforeLoad` chain, but a later preload and the first navigation can reuse the preload's loader data or in-flight loader work during that interval. After navigation accepts that loader generation, subsequent freshness checks use the standard `staleTime`.
+- By default, `gcTime` and `preloadGcTime` define **5-minute** retention windows. Once unused data is older than its applicable window, it is eligible for pruning during a later cache reconciliation. The two windows can be configured independently.
+- By default, `staleReloadMode` is `'background'`, so stale successful matches keep rendering with their existing `loaderData` while the loader revalidates in the background.
+- `router.invalidate()` selects matching committed, cached, and in-flight loader generations for invalidation and retires matching active preload lanes. Current active routes reload through the normal loading protocol; cached inactive data remains marked stale and reloads when it is reused. By default, stale successful loader data revalidates in the background unless `sync: true` is requested.
 
 ### Using `loaderDeps` to access search params
 
 Imagine a `/posts` route supports some pagination via search params `offset` and `limit`. For the cache to uniquely store this data, we need to access these search params via the `loaderDeps` function. By explicitly identifying them, each route match for `/posts` with different `offset` and `limit` won't get mixed up!
 
 Once we have these deps in place, the route will always reload when the deps change.
+
+`loaderDeps` defines a cache key during route planning. For the same validated
+search input it must return the same value without navigating or mutating state.
+The returned value and custom serialization methods such as `toJSON` must also
+be side-effect-free.
 
 ```tsx
 // /routes/posts.tsx
@@ -201,7 +221,13 @@ export const Route = createFileRoute('/posts')({
 
 ### Using `staleTime` to control how long data is considered fresh
 
-By default, `staleTime` for navigations is set to `0`ms (and 30 seconds for preloads) which means that the route's data will always be considered stale and will always be reloaded in the background when the route is matched and navigated to.
+By default, `staleTime` for accepted navigation data is `0`ms, while
+`preloadStaleTime` is 30 seconds. A successful preload can therefore provide
+loader data to the first navigation during that interval. Once navigation
+accepts that loader generation, normal navigation freshness applies. With the
+default `staleTime`, the data is immediately stale for a later use of the same
+loader key and revalidates in the background while cached data remains visible.
+A different loader key identifies a separate cache entry.
 
 **This is a good default for most use cases, but you may find that some route data is more static or potentially expensive to load.** In these cases, you can use the `staleTime` option to control how long the route's data is considered fresh for navigations. Let's take a look at an example:
 
@@ -216,9 +242,36 @@ export const Route = createFileRoute('/posts')({
 
 By passing `10_000` to the `staleTime` option, we are telling the router to consider the route's data fresh for 10 seconds. This means that if the user navigates to `/posts` from `/about` within 10 seconds of the last loader result, the route's data will not be reloaded. If the user then navigates to `/posts` from `/about` after 10 seconds, the route's data will be reloaded **in the background**.
 
-## Turning off stale-while-revalidate caching
+## Choosing background vs blocking stale reloads
 
-To disable stale-while-revalidate caching for a route, set the `staleTime` option to `Infinity`:
+By default, stale successful matches use stale-while-revalidate behavior. That means the router can render with the existing `loaderData` immediately and then refresh it in the background.
+
+If you want a specific loader to wait for a stale reload to finish before continuing, use the object form and set `staleReloadMode: 'blocking'`:
+
+```tsx
+// /routes/posts.tsx
+export const Route = createFileRoute('/posts')({
+  loader: {
+    handler: () => fetchPosts(),
+    staleReloadMode: 'blocking',
+  },
+})
+```
+
+You can also change the default for the entire router:
+
+```tsx
+const router = createRouter({
+  routeTree,
+  defaultStaleReloadMode: 'blocking',
+})
+```
+
+Use `'background'` when showing stale data during revalidation is acceptable. Use `'blocking'` when you want stale matches to behave more like a fresh load and wait for the new loader result.
+
+## Turning off automatic stale reloads
+
+To disable automatic stale reloads for a route, set the `staleTime` option to `Infinity`:
 
 ```tsx
 // /routes/posts.tsx
@@ -236,6 +289,11 @@ const router = createRouter({
   defaultStaleTime: Infinity,
 })
 ```
+
+This differs from `staleReloadMode: 'blocking'`:
+
+- `staleTime: Infinity` prevents the route from becoming stale in the first place
+- `staleReloadMode: 'blocking'` still allows stale reloads, but waits for them instead of doing them in the background
 
 ## Using `shouldReload` and `gcTime` to opt-out of caching
 
@@ -255,9 +313,16 @@ export const Route = createFileRoute('/posts')({
 
 ### Opting out of caching while still preloading
 
-Even though you may opt-out of short-term caching for your route data, you can still get the benefits of preloading! With the above configuration, preloading will still "just work" with the default `preloadGcTime`. This means that if a route is preloaded, then navigated to, the route's data will be considered fresh and will not be reloaded.
+Even though you may opt out of retaining ordinary route data, you can still get
+the benefits of preloading. Preloaded results use `preloadGcTime` for retention
+and `preloadStaleTime` for freshness, so the default settings keep a recent
+preload in memory and let the first navigation reuse it without another loader
+call.
 
-To opt out of preloading, don't turn it on via the `routerOptions.defaultPreload` or `routeOptions.preload` options.
+Use `routerOptions.defaultPreload` to control automatic link preloading. Setting
+`routeOptions.preload` to `false` has a narrower effect: a speculative lane
+still runs that route's `beforeLoad`, but skips its `loader`. Navigation runs
+both normally.
 
 ## Passing all loader events to an external cache
 
@@ -270,7 +335,11 @@ const router = createRouter({
 })
 ```
 
-This will ensure that every preload, load, and reload event will trigger your `loader` functions, which can then be handled and deduped by your external cache.
+This makes settled preload data immediately stale in the Router, allowing your
+external cache to decide whether to fetch. Retention still follows
+`preloadGcTime`, and overlapping preload or navigation consumers can still
+share in-flight loader work. A route's `shouldReload` option can also suppress
+a loader call.
 
 ## Using Router Context
 
@@ -425,7 +494,7 @@ export const Route = createFileRoute('/posts')({
 
 ## Using the Abort Signal
 
-The `abortController` property of the `loader` function is an [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController). Its signal is cancelled when the route is unloaded or when the `loader` call becomes outdated. This is useful for cancelling network requests when the route is unloaded or when the route's params change. Here is an example using it with a fetch call:
+The `abortController` property of the `loader` function is an [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController) for that loader invocation. A preload and navigation can share an in-flight invocation, so its signal remains active while any consumer still needs the work. The signal is cancelled after the invocation becomes outdated and has no remaining consumers. Here is an example using it with a fetch call:
 
 ```tsx
 // src/routes/posts.tsx
@@ -501,7 +570,7 @@ The `routeOptions.onCatch` option is a function that is called whenever an error
 ```tsx
 // src/routes/posts.tsx
 export const Route = createFileRoute('/posts')({
-  onCatch: ({ error, errorInfo }) => {
+  onCatch: (error) => {
     // Log the error
     console.error(error)
   },
@@ -512,8 +581,12 @@ export const Route = createFileRoute('/posts')({
 
 The `routeOptions.errorComponent` option is a component that is rendered when an error occurs during the route loading or rendering lifecycle. It is rendered with the following props:
 
-- `error` - The error that occurred
+- `error` - The caught value (`unknown` in React and Vue; `Error` in Solid)
 - `reset` - A function to reset the internal `CatchBoundary`
+
+`ErrorComponentProps` defaults its `error` property to `unknown` in React and Vue, where you must narrow the value before accessing properties such as `message`. In Solid, it defaults to `Error`. `ErrorComponentProps<MyError>` can describe an error after you have narrowed it; it does not restrict what a route can throw. This applies to boundary components and `onCatch` callbacks, including `defaultOnCatch`; it does not change the `onError` callback.
+
+React and Vue boundaries pass through the caught value, including falsy values. Solid wraps non-`Error` throws in an `Error` whose `cause` contains the original value. This also applies to Solid error components rendered during SSR: existing `Error` instances are preserved, strings become the error message, and other values use the message `Unknown error`. Router state and loader `onError` callbacks retain the original value.
 
 ```tsx
 // src/routes/posts.tsx
@@ -521,7 +594,7 @@ export const Route = createFileRoute('/posts')({
   loader: () => fetchPosts(),
   errorComponent: ({ error }) => {
     // Render an error message
-    return <div>{error.message}</div>
+    return <div>{error instanceof Error ? error.message : String(error)}</div>
   },
 })
 ```
@@ -535,7 +608,7 @@ export const Route = createFileRoute('/posts')({
   errorComponent: ({ error, reset }) => {
     return (
       <div>
-        {error.message}
+        {error instanceof Error ? error.message : String(error)}
         <button
           onClick={() => {
             // Reset the router error boundary
@@ -561,7 +634,7 @@ export const Route = createFileRoute('/posts')({
 
     return (
       <div>
-        {error.message}
+        {error instanceof Error ? error.message : String(error)}
         <button
           onClick={() => {
             // Invalidate the route to reload the loader, which will also reset the error boundary

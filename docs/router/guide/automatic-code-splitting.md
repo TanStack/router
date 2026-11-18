@@ -4,7 +4,7 @@ title: Automatic Code Splitting
 
 The automatic code splitting feature in TanStack Router allows you to optimize your application's bundle size by lazily loading route components and their associated data. This is particularly useful for large applications where you want to minimize the initial load time by only loading the necessary code for the current route.
 
-To turn this feature on, simply set the `autoCodeSplitting` option to `true` in your bundler plugin configuration. This enables the router to automatically handle code splitting for your routes without requiring any additional setup.
+To turn this feature on, simply set the `autoCodeSplitting` option to `true` in your bundler plugin configuration. This enables the router to automatically handle code splitting for your routes without requiring any additional setup. It is available with Vite, Rspack/Rsbuild and Webpack, not with Esbuild.
 
 ```ts
 // vite.config.ts
@@ -35,7 +35,7 @@ This happens seamlessly, without requiring you to manually split your code or ma
 
 ### The transformation process
 
-When you enable automatic code splitting, the bundler plugin does this by using static code analysis look at your the code in your route files to transform them into optimized outputs.
+When you enable automatic code splitting, the bundler plugin does this by using static code analysis to look at the code in your route files and to transform them into optimized outputs.
 
 This transformation process produces two key outputs when each of your route files are processed:
 
@@ -48,7 +48,7 @@ This process ensures that your original code remains clean and readable, while t
 
 The decision of what to split into separate chunks is crucial for optimizing your application's performance. TanStack Router uses a concept called "**Split Groupings**" to determine how different parts of your route should be bundled together.
 
-Split groupings are arrays of properties that tell TanStack Router how to bundle different parts of your route together. Each grouping is an list of property names that you want to bundle together into a single lazy-loaded chunk.
+Split groupings are arrays of properties that tell TanStack Router how to bundle different parts of your route together. Each grouping is a list of property names that you want to bundle together into a single lazy-loaded chunk.
 
 The available properties to split are:
 
@@ -76,7 +76,7 @@ This means that it creates three separate lazy-loaded chunks for each route. Res
 
 ### Rules of Splitting
 
-For automatic code splitting to work, there are some rules in-place to make sure that this process can reliably and predictably happen.
+For automatic code splitting to work, there are some rules in place to make sure that this process can happen reliably and predictably.
 
 #### Do not export route properties
 

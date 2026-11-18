@@ -1,24 +1,24 @@
+'use client'
+
 import * as React from 'react'
-import { flushSync } from 'react-dom'
 import {
   deepEqual,
-  exactPathTest,
   functionalUpdate,
+  getUrlScheme,
   isDangerousProtocol,
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
+import { createLinkScope, matchContext } from './matchContext'
 
-import { useForwardedRef, useIntersectionObserver } from './utils'
-
-import { useHydrated } from './ClientOnly'
 import type {
+  ActiveOptions,
   AnyRouter,
   Constrain,
   LinkOptions,
+  ParsedLocation,
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
@@ -27,6 +27,97 @@ import type {
   ValidateLinkOptions,
   ValidateLinkOptionsArray,
 } from './typePrimitives'
+
+// Undefined active state marks an external or blocked link.
+// Keep that classification with the href instead of parsing it again on render.
+type LinkState = [href: string | undefined, isActive?: boolean]
+
+// Keep referentially stable values while their contents are equal. Links
+// routinely pass inline `params` / `search` object literals, which would
+// otherwise change `dest` identity on every parent render, rebuild the
+// link state snapshot, and discard its memoized state. One ref holds all of
+// them; each entry is replaced only when its own contents change.
+//
+// The router reuses a built location for as long as it sees the same options
+// object, so the references returned here are its invalidation signal: pass a
+// new object to change a destination. Like every other React prop, an object
+// mutated in place is not re-read. `deepEqual` short-circuits on reference
+// equality, so an unchanged reference costs nothing.
+//
+// `explicitUndefined` is required: an explicit `undefined` clears an
+// inherited param or search key, so `{}` and `{ category: undefined }` build
+// different locations and must not be treated as equal here.
+function useStableValues<T extends ReadonlyArray<unknown>>(...values: T): T {
+  const ref = React.useRef<ReadonlyArray<unknown>>(values)
+  const stable = ref.current as Array<unknown>
+  values.forEach((value, index) => {
+    if (!deepEqual(stable[index], value, false, true)) {
+      stable[index] = value
+    }
+  })
+  return ref.current as T
+}
+
+function preloadLink(router: AnyRouter, options: unknown) {
+  router.preloadRoute(options as any).catch((err) => {
+    console.warn(err)
+    console.warn(preloadWarning)
+  })
+}
+
+function resolveExternalLink(
+  to: string | undefined,
+  protocolAllowlist: AnyRouter['protocolAllowlist'],
+): string | null | undefined {
+  const scheme = typeof to === 'string' && getUrlScheme(to)
+  if (!scheme) {
+    return undefined
+  }
+  if (!protocolAllowlist.has(scheme)) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(`Blocked Link with dangerous protocol: ${to}`)
+    }
+    return null
+  }
+  return to
+}
+
+function resolveIsActive(
+  location: ParsedLocation,
+  next: ParsedLocation,
+  activeOptions: ActiveOptions | undefined,
+  basepath: string,
+): boolean {
+  const currentPath = removeTrailingSlash(location.pathname, basepath)
+  const nextPath = removeTrailingSlash(next.pathname, basepath)
+
+  // Both modes compare normalized paths; fuzzy matches need a segment boundary.
+  if (
+    activeOptions?.exact
+      ? currentPath !== nextPath
+      : !(
+          currentPath.startsWith(nextPath) &&
+          (currentPath.length === nextPath.length ||
+            currentPath[nextPath.length] === '/')
+        )
+  ) {
+    return false
+  }
+
+  if (activeOptions?.includeSearch ?? true) {
+    const searchTest = deepEqual(
+      location.search,
+      next.search,
+      !activeOptions?.exact,
+      activeOptions?.explicitUndefined,
+    )
+    if (!searchTest) {
+      return false
+    }
+  }
+
+  return !activeOptions?.includeHash || location.hash === next.hash
+}
 
 /**
  * Build anchor-like props for declarative navigation and preloading.
@@ -49,51 +140,38 @@ export function useLinkProps<
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
   forwardedRef?: React.ForwardedRef<Element>,
+): React.ComponentPropsWithRef<'a'>
+/**
+ * `host` is what the props are rendered on: `'a'` for `Link` or the component
+ * given to `createLink`. `Link` never renders `type` and an anchor never
+ * receives `disabled`, so those are left out here rather than copied away
+ * from the result in the component. Stripped from the public declarations.
+ *
+ * @internal
+ */
+export function useLinkProps<
+  TRouter extends AnyRouter = RegisteredRouter,
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
+>(
+  options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+  forwardedRef: React.ForwardedRef<Element> | undefined,
+  host: 'a' | React.ElementType,
+): React.ComponentPropsWithRef<'a'>
+export function useLinkProps<
+  TRouter extends AnyRouter = RegisteredRouter,
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
+>(
+  options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+  forwardedRef?: React.ForwardedRef<Element>,
+  host?: 'a' | React.ElementType,
 ): React.ComponentPropsWithRef<'a'> {
   const router = useRouter()
-  const innerRef = useForwardedRef(forwardedRef)
-
-  // Determine if we're on the server - used for tree-shaking client-only code
-  const _isServer = isServer ?? router.isServer
-
-  const {
-    // custom props
-    activeProps,
-    inactiveProps,
-    activeOptions,
-    to,
-    preload: userPreload,
-    preloadDelay: userPreloadDelay,
-    hashScrollIntoView,
-    replace,
-    startTransition,
-    resetScroll,
-    viewTransition,
-    // element props
-    children,
-    target,
-    disabled,
-    style,
-    className,
-    onClick,
-    onBlur,
-    onFocus,
-    onMouseEnter,
-    onMouseLeave,
-    onTouchStart,
-    ignoreBlocker,
-    // prevent these from being returned
-    params: _params,
-    search: _search,
-    hash: _hash,
-    state: _state,
-    mask: _mask,
-    reloadDocument: _reloadDocument,
-    unsafeRelative: _unsafeRelative,
-    from: _from,
-    _fromLocation,
-    ...propsSafeToSpread
-  } = options
 
   // ==========================================================================
   // SERVER EARLY RETURN
@@ -102,263 +180,15 @@ export function useLinkProps<
   //
   // For SSR parity (to avoid hydration errors), we still compute the link's
   // active status on the server, but we avoid creating any router-state
-  // subscriptions by reading from `router.state` directly.
+  // subscriptions by reading from the location store directly.
   //
   // Note: `location.hash` is not available on the server.
   // ==========================================================================
-  if (_isServer) {
-    const safeInternal = isSafeInternal(to)
-
-    // If `to` is obviously an absolute URL, treat as external and avoid
-    // computing the internal location via `buildLocation`.
-    if (
-      typeof to === 'string' &&
-      !safeInternal &&
-      // Quick checks to avoid `new URL` in common internal-like cases
-      to.indexOf(':') > -1
-    ) {
-      try {
-        new URL(to)
-        if (isDangerousProtocol(to, router.protocolAllowlist)) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn(`Blocked Link with dangerous protocol: ${to}`)
-          }
-          return {
-            ...propsSafeToSpread,
-            ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-            href: undefined,
-            ...(children && { children }),
-            ...(target && { target }),
-            ...(disabled && { disabled }),
-            ...(style && { style }),
-            ...(className && { className }),
-          }
-        }
-
-        return {
-          ...propsSafeToSpread,
-          ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-          href: to,
-          ...(children && { children }),
-          ...(target && { target }),
-          ...(disabled && { disabled }),
-          ...(style && { style }),
-          ...(className && { className }),
-        }
-      } catch {
-        // Not an absolute URL
-      }
-    }
-
-    const next = router.buildLocation({ ...options, from: options.from } as any)
-
-    // Use publicHref - it contains the correct href for display
-    // When a rewrite changes the origin, publicHref is the full URL
-    // Otherwise it's the origin-stripped path
-    // This avoids constructing URL objects in the hot path
-    const hrefOptionPublicHref = next.maskedLocation
-      ? next.maskedLocation.publicHref
-      : next.publicHref
-    const hrefOptionExternal = next.maskedLocation
-      ? next.maskedLocation.external
-      : next.external
-    const hrefOption = getHrefOption(
-      hrefOptionPublicHref,
-      hrefOptionExternal,
-      router.history,
-      disabled,
-    )
-
-    const externalLink = (() => {
-      if (hrefOption?.external) {
-        if (isDangerousProtocol(hrefOption.href, router.protocolAllowlist)) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn(
-              `Blocked Link with dangerous protocol: ${hrefOption.href}`,
-            )
-          }
-          return undefined
-        }
-        return hrefOption.href
-      }
-
-      if (safeInternal) return undefined
-
-      // Only attempt URL parsing when it looks like an absolute URL.
-      if (typeof to === 'string' && to.indexOf(':') > -1) {
-        try {
-          new URL(to)
-          if (isDangerousProtocol(to, router.protocolAllowlist)) {
-            if (process.env.NODE_ENV !== 'production') {
-              console.warn(`Blocked Link with dangerous protocol: ${to}`)
-            }
-            return undefined
-          }
-          return to
-        } catch {}
-      }
-
-      return undefined
-    })()
-
-    const isActive = (() => {
-      if (externalLink) return false
-
-      const currentLocation = router.state.location
-
-      const exact = activeOptions?.exact ?? false
-
-      if (exact) {
-        const testExact = exactPathTest(
-          currentLocation.pathname,
-          next.pathname,
-          router.basepath,
-        )
-        if (!testExact) {
-          return false
-        }
-      } else {
-        const currentPathSplit = removeTrailingSlash(
-          currentLocation.pathname,
-          router.basepath,
-        )
-        const nextPathSplit = removeTrailingSlash(
-          next.pathname,
-          router.basepath,
-        )
-
-        const pathIsFuzzyEqual =
-          currentPathSplit.startsWith(nextPathSplit) &&
-          (currentPathSplit.length === nextPathSplit.length ||
-            currentPathSplit[nextPathSplit.length] === '/')
-
-        if (!pathIsFuzzyEqual) {
-          return false
-        }
-      }
-
-      const includeSearch = activeOptions?.includeSearch ?? true
-      if (includeSearch) {
-        if (currentLocation.search !== next.search) {
-          const currentSearchEmpty =
-            !currentLocation.search ||
-            (typeof currentLocation.search === 'object' &&
-              Object.keys(currentLocation.search).length === 0)
-          const nextSearchEmpty =
-            !next.search ||
-            (typeof next.search === 'object' &&
-              Object.keys(next.search).length === 0)
-
-          if (!(currentSearchEmpty && nextSearchEmpty)) {
-            const searchTest = deepEqual(currentLocation.search, next.search, {
-              partial: !exact,
-              ignoreUndefined: !activeOptions?.explicitUndefined,
-            })
-            if (!searchTest) {
-              return false
-            }
-          }
-        }
-      }
-
-      // Hash is not available on the server
-      if (activeOptions?.includeHash) {
-        return false
-      }
-
-      return true
-    })()
-
-    if (externalLink) {
-      return {
-        ...propsSafeToSpread,
-        ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-        href: externalLink,
-        ...(children && { children }),
-        ...(target && { target }),
-        ...(disabled && { disabled }),
-        ...(style && { style }),
-        ...(className && { className }),
-      }
-    }
-
-    const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-      isActive
-        ? (functionalUpdate(activeProps as any, {}) ?? STATIC_ACTIVE_OBJECT)
-        : STATIC_EMPTY_OBJECT
-
-    const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-      isActive
-        ? STATIC_EMPTY_OBJECT
-        : (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
-
-    const resolvedStyle = (() => {
-      const baseStyle = style
-      const activeStyle = resolvedActiveProps.style
-      const inactiveStyle = resolvedInactiveProps.style
-
-      if (!baseStyle && !activeStyle && !inactiveStyle) {
-        return undefined
-      }
-
-      if (baseStyle && !activeStyle && !inactiveStyle) {
-        return baseStyle
-      }
-
-      if (!baseStyle && activeStyle && !inactiveStyle) {
-        return activeStyle
-      }
-
-      if (!baseStyle && !activeStyle && inactiveStyle) {
-        return inactiveStyle
-      }
-
-      return {
-        ...baseStyle,
-        ...activeStyle,
-        ...inactiveStyle,
-      }
-    })()
-
-    const resolvedClassName = (() => {
-      const baseClassName = className
-      const activeClassName = resolvedActiveProps.className
-      const inactiveClassName = resolvedInactiveProps.className
-
-      if (!baseClassName && !activeClassName && !inactiveClassName) {
-        return ''
-      }
-
-      let out = ''
-
-      if (baseClassName) {
-        out = baseClassName
-      }
-
-      if (activeClassName) {
-        out = out ? `${out} ${activeClassName}` : activeClassName
-      }
-
-      if (inactiveClassName) {
-        out = out ? `${out} ${inactiveClassName}` : inactiveClassName
-      }
-
-      return out
-    })()
-
-    return {
-      ...propsSafeToSpread,
-      ...resolvedActiveProps,
-      ...resolvedInactiveProps,
-      href: hrefOption?.href,
-      ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-      disabled: !!disabled,
-      target,
-      ...(resolvedStyle && { style: resolvedStyle }),
-      ...(resolvedClassName && { className: resolvedClassName }),
-      ...(disabled && STATIC_DISABLED_PROPS),
-      ...(isActive && STATIC_ACTIVE_PROPS),
-    }
+  // The expression must stay inlined in the `if` so bundlers fold the
+  // browser-build constant `isServer = false` and drop this server block,
+  // together with `getServerLinkProps` and the key sets only it references.
+  if (isServer ?? router.isServer) {
+    return getServerLinkProps(router, options, forwardedRef, host)
   }
 
   // ==========================================================================
@@ -374,394 +204,489 @@ export function useLinkProps<
   // 3. In client bundles, `isServer` is `false`, so the early return never executes
   // ==========================================================================
 
+  // The link's own ref: the element for the viewport observer and the holder
+  // of a pending intent timer. A forwarded ref is filled alongside it by one
+  // callback, memoized on the forwarded ref so React re-attaches it (and
+  // notifies the consumer) only when their ref changes, not on every render.
+  // A cleanup returned by a consumer callback is passed through to React.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const isHydrated = useHydrated()
-
-  // subscribe to path/search/hash/params to re-build location when they change
+  const innerRef: LinkRef = React.useRef<Element>(null)
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLocationState = useRouterState({
-    select: (s) => {
-      const leaf = s.matches[s.matches.length - 1]
-      return {
-        search: leaf?.search,
-        hash: s.location.hash,
-        path: leaf?.pathname, // path + params
+  const mergedRef = React.useCallback(
+    (element: Element | null) => {
+      innerRef.current = element
+      if (typeof forwardedRef === 'function') {
+        return forwardedRef(element)
       }
-    },
-    structuralSharing: true as any,
-  })
-
-  const from = options.from
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const _options = React.useMemo(
-    () => {
-      return { ...options, from }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      router,
-      currentLocationState,
-      from,
-      options._fromLocation,
-      options.hash,
-      options.to,
-      options.search,
-      options.params,
-      options.state,
-      options.mask,
-      options.unsafeRelative,
-    ],
-  )
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const next = React.useMemo(
-    () => router.buildLocation({ ..._options } as any),
-    [router, _options],
-  )
-
-  // Use publicHref - it contains the correct href for display
-  // When a rewrite changes the origin, publicHref is the full URL
-  // Otherwise it's the origin-stripped path
-  // This avoids constructing URL objects in the hot path
-  const hrefOptionPublicHref = next.maskedLocation
-    ? next.maskedLocation.publicHref
-    : next.publicHref
-  const hrefOptionExternal = next.maskedLocation
-    ? next.maskedLocation.external
-    : next.external
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const hrefOption = React.useMemo(
-    () =>
-      getHrefOption(
-        hrefOptionPublicHref,
-        hrefOptionExternal,
-        router.history,
-        disabled,
-      ),
-    [disabled, hrefOptionExternal, hrefOptionPublicHref, router.history],
-  )
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const externalLink = React.useMemo(() => {
-    if (hrefOption?.external) {
-      // Block dangerous protocols for external links
-      if (isDangerousProtocol(hrefOption.href, router.protocolAllowlist)) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn(
-            `Blocked Link with dangerous protocol: ${hrefOption.href}`,
-          )
-        }
-        return undefined
+      if (forwardedRef) {
+        forwardedRef.current = element
       }
-      return hrefOption.href
+      return undefined
+    },
+    [forwardedRef],
+  )
+
+  const {
+    activeOptions,
+    to,
+    preload: userPreload,
+    preloadDelay: userPreloadDelay,
+    disabled,
+    target,
+    onClick,
+    onBlur,
+    onFocus,
+    onMouseEnter,
+    onMouseLeave,
+    onTouchStart,
+  } = options as typeof options & { to?: string }
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [stableSearch, stableParams, stableActiveOptions] = useStableValues(
+    options.search,
+    options.params,
+    activeOptions,
+  )
+  // The links of a route share its location source. Links outside every
+  // match share one that never departs.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const routeId = React.useContext(matchContext)
+  const scope = ((router.stores._linkScopes ??= {})[routeId!] ??=
+    createLinkScope(router, routeId))
+
+  // `dest` is the link's own copy of the options from the render that last
+  // changed the link: one stable object per link lets the router reuse
+  // location-independent results. It also carries the location the link
+  // displays, so clicks and preloads go where its href points.
+  // The snapshot depends only on the scope's location: it derives once per
+  // location so React can bail out on an unchanged state, and derives eagerly
+  // inside the scope's notification.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [dest, getLinkState, getHydrationState] = React.useMemo(() => {
+    // Direct destinations and the router's allowlist are stable for this snapshot.
+    const directExternalLink = resolveExternalLink(to, router.protocolAllowlist)
+    if (directExternalLink !== undefined) {
+      const state: LinkState = [directExternalLink ?? undefined]
+      return [options, () => state] as const
     }
-    const safeInternal = isSafeInternal(to)
-    if (safeInternal) return undefined
-    if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
-    try {
-      new URL(to as any)
-      // Block dangerous protocols like javascript:, blob:, data:
-      if (isDangerousProtocol(to, router.protocolAllowlist)) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn(`Blocked Link with dangerous protocol: ${to}`)
+
+    const dest = { ...options } as any
+    let source: ParsedLocation | undefined
+    let state: LinkState
+    let hydrationState: LinkState | undefined
+
+    const getLinkState = (): LinkState => {
+      // Read the location once and record it only after deriving: a
+      // derivation that throws is retried instead of caching its state.
+      const location = scope[0 /* getSource */]()
+      if (location !== source) {
+        dest._fromLocation = location
+        const next = router.buildLocation(dest)
+
+        // History formatters can depend on the current browser URL (hash history).
+        const href = getHrefOption(next, router, disabled)
+        // Internal and disabled links can be active; external and blocked
+        // links have no active state.
+        const isActive =
+          disabled || (href && !getUrlScheme(href))
+            ? resolveIsActive(
+                location,
+                next,
+                stableActiveOptions,
+                router.basepath,
+              )
+            : undefined
+        // Keep the state while it is equal so React can bail out.
+        if (
+          !state ||
+          state[0 /* href */] !== href ||
+          state[1 /* isActive */] !== isActive
+        ) {
+          state = [href, isActive]
         }
-        return undefined
+        source = location
       }
-      return to
-    } catch {}
-    return undefined
-  }, [to, hrefOption, router.protocolAllowlist])
+      return state
+    }
+
+    return [
+      dest,
+      getLinkState,
+      // Hydration renders the server's markup, which has no hash, so an active
+      // hash-sensitive link hydrates inactive and React rerenders it after.
+      stableActiveOptions?.includeHash &&
+        ((): LinkState => {
+          const state = getLinkState()
+          return state[1 /* isActive */]
+            ? (hydrationState ??= [state[0 /* href */], false])
+            : state
+        }),
+    ] as const
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    router,
+    scope,
+    options.from,
+    options.hash,
+    options.href,
+    to,
+    stableSearch,
+    stableParams,
+    options.state,
+    options.mask,
+    options.unsafeRelative,
+    stableActiveOptions,
+    disabled,
+  ])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const isActive = useRouterState({
-    select: (s) => {
-      if (externalLink) return false
-      if (activeOptions?.exact) {
-        const testExact = exactPathTest(
-          s.location.pathname,
-          next.pathname,
-          router.basepath,
-        )
-        if (!testExact) {
-          return false
-        }
-      } else {
-        const currentPathSplit = removeTrailingSlash(
-          s.location.pathname,
-          router.basepath,
-        )
-        const nextPathSplit = removeTrailingSlash(
-          next.pathname,
-          router.basepath,
-        )
+  const [href, isActive] = React.useSyncExternalStore(
+    scope[1 /* subscribe */],
+    getLinkState,
+    getHydrationState || getLinkState,
+  )
+  const externalLink = isActive === undefined && href
+  const linkDisabled = disabled || href === undefined
 
-        const pathIsFuzzyEqual =
-          currentPathSplit.startsWith(nextPathSplit) &&
-          (currentPathSplit.length === nextPathSplit.length ||
-            currentPathSplit[nextPathSplit.length] === '/')
-
-        if (!pathIsFuzzyEqual) {
-          return false
-        }
-      }
-
-      if (activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(s.location.search, next.search, {
-          partial: !activeOptions?.exact,
-          ignoreUndefined: !activeOptions?.explicitUndefined,
-        })
-        if (!searchTest) {
-          return false
-        }
-      }
-
-      if (activeOptions?.includeHash) {
-        return isHydrated && s.location.hash === next.hash
-      }
-      return true
-    },
-  })
-
-  // Get the active props
-  const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
-    ? (functionalUpdate(activeProps as any, {}) ?? STATIC_ACTIVE_OBJECT)
-    : STATIC_EMPTY_OBJECT
-
-  // Get the inactive props
-  const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-    isActive
-      ? STATIC_EMPTY_OBJECT
-      : (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
-
-  const resolvedClassName = [
-    className,
-    resolvedActiveProps.className,
-    resolvedInactiveProps.className,
-  ]
-    .filter(Boolean)
-    .join(' ')
-
-  const resolvedStyle = (style ||
-    resolvedActiveProps.style ||
-    resolvedInactiveProps.style) && {
-    ...style,
-    ...resolvedActiveProps.style,
-    ...resolvedInactiveProps.style,
-  }
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [isTransitioning, setIsTransitioning] = React.useState(false)
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const hasRenderFetched = React.useRef(false)
 
   const preload =
-    options.reloadDocument || externalLink
+    options.reloadDocument || externalLink || linkDisabled
       ? false
       : (userPreload ?? router.options.defaultPreload)
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
+  // `preloadRoute` builds the location itself and only reads the options, so
+  // `dest` goes through as-is.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const doPreload = React.useCallback(() => {
-    router
-      .preloadRoute({ ..._options, _builtLocation: next } as any)
-      .catch((err) => {
-        console.warn(err)
-        console.warn(preloadWarning)
-      })
-  }, [router, _options, next])
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const preloadViewportIoCallback = React.useCallback(
-    (entry: IntersectionObserverEntry | undefined) => {
-      if (entry?.isIntersecting) {
-        doPreload()
+  const enqueuePreload = React.useCallback(
+    (e?: React.MouseEvent | React.FocusEvent | IntersectionObserverEntry) => {
+      const isIntersecting = (e as IntersectionObserverEntry | undefined)
+        ?.isIntersecting
+      if (!(isIntersecting ?? preload === 'intent')) {
+        if (isIntersecting === false) {
+          cancelPreload(innerRef)
+        }
+        return
       }
+
+      if (!preloadDelay) {
+        preloadLink(router, dest)
+        return
+      }
+
+      innerRef.t ??= setTimeout(() => {
+        innerRef.t = undefined
+        preloadLink(router, dest)
+      }, preloadDelay)
     },
-    [doPreload],
+    [router, dest, innerRef, preload, preloadDelay],
   )
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  useIntersectionObserver(
-    innerRef,
-    preloadViewportIoCallback,
-    intersectionObserverOptions,
-    { disabled: !!disabled || !(preload === 'viewport') },
-  )
-
+  // Preload side effects: `render` preloads once per link, `viewport` watches
+  // the element. The cleanup also cancels a pending intent timer.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   React.useEffect(() => {
-    if (hasRenderFetched.current) {
+    // Disabled preloading creates neither an observer nor an intent timer.
+    if (!preload) {
       return
     }
-    if (!disabled && preload === 'render') {
-      doPreload()
+    if (preload === 'render' && !hasRenderFetched.current) {
       hasRenderFetched.current = true
+      preloadLink(router, dest)
     }
-  }, [disabled, doPreload, preload])
+    let active = true
+    let observer: IntersectionObserver | undefined
+    if (
+      preload === 'viewport' &&
+      innerRef.current &&
+      typeof IntersectionObserver === 'function'
+    ) {
+      observer = new IntersectionObserver(
+        (entries) => {
+          // A queued observer notification can arrive after disconnect().
+          if (active) {
+            enqueuePreload(entries.pop())
+          }
+        },
+        { rootMargin: '100px' },
+      )
+      observer.observe(innerRef.current)
+    }
+    return () => {
+      active = false
+      observer?.disconnect()
+      cancelPreload(innerRef)
+    }
+  }, [router, dest, preload, enqueuePreload, innerRef])
+
+  const props = collectElementProps(options, host)
+  props.ref = forwardedRef ? mergedRef : innerRef
+  // External links get no router behavior: element props pass through as given.
+  if (externalLink) {
+    props.href = externalLink
+    return props
+  }
 
   // The click handler
   const handleClick = (e: React.MouseEvent) => {
-    // Check actual element's target attribute as fallback
-    const elementTarget = (
-      e.currentTarget as HTMLAnchorElement | SVGAElement
-    ).getAttribute('target')
-    const effectiveTarget = target !== undefined ? target : elementTarget
+    // The element's own target attribute is the fallback.
+    const effectiveTarget =
+      target ??
+      (e.currentTarget as HTMLAnchorElement | SVGAElement).getAttribute(
+        'target',
+      )
 
     if (
-      !disabled &&
-      !isCtrlEvent(e) &&
+      !linkDisabled &&
+      !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) &&
       !e.defaultPrevented &&
       (!effectiveTarget || effectiveTarget === '_self') &&
       e.button === 0
     ) {
       e.preventDefault()
+      cancelPreload(innerRef)
 
-      flushSync(() => {
-        setIsTransitioning(true)
-      })
-
-      const unsub = router.subscribe('onResolved', () => {
-        unsub()
-        setIsTransitioning(false)
-      })
-
-      // All is well? Navigate!
-      // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
-      router.navigate({
-        ..._options,
-        replace,
-        resetScroll,
-        hashScrollIntoView,
-        startTransition,
-        viewTransition,
-        ignoreBlocker,
-      })
+      // The current options carry the navigation controls; `dest` only
+      // contributes the location the link displays. Navigation builds again
+      // to run `validateSearch` before committing.
+      router.navigate({ ...options, _fromLocation: dest._fromLocation })
     }
   }
 
-  if (externalLink) {
-    return {
-      ...propsSafeToSpread,
-      ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-      href: externalLink,
-      ...(children && { children }),
-      ...(target && { target }),
-      ...(disabled && { disabled }),
-      ...(style && { style }),
-      ...(className && { className }),
-      ...(onClick && { onClick }),
-      ...(onBlur && { onBlur }),
-      ...(onFocus && { onFocus }),
-      ...(onMouseEnter && { onMouseEnter }),
-      ...(onMouseLeave && { onMouseLeave }),
-      ...(onTouchStart && { onTouchStart }),
+  const handleTouchStart = () => {
+    if (preload === 'intent') {
+      preloadLink(router, dest)
     }
   }
 
-  const enqueueIntentPreload = (e: React.MouseEvent | React.FocusEvent) => {
-    if (disabled || preload !== 'intent') return
-
-    if (!preloadDelay) {
-      doPreload()
-      return
-    }
-
-    const eventTarget = e.currentTarget
-
-    if (timeoutMap.has(eventTarget)) {
-      return
-    }
-
-    const id = setTimeout(() => {
-      timeoutMap.delete(eventTarget)
-      doPreload()
-    }, preloadDelay)
-    timeoutMap.set(eventTarget, id)
-  }
-
-  const handleTouchStart = (_: React.TouchEvent) => {
-    if (disabled || preload !== 'intent') return
-    doPreload()
-  }
-
-  const handleLeave = (e: React.MouseEvent | React.FocusEvent) => {
-    if (disabled || !preload || !preloadDelay) return
-    const eventTarget = e.currentTarget
-    const id = timeoutMap.get(eventTarget)
-    if (id) {
-      clearTimeout(id)
-      timeoutMap.delete(eventTarget)
+  const handleLeave = () => {
+    if (preload === 'intent') {
+      cancelPreload(innerRef)
     }
   }
 
-  return {
-    ...propsSafeToSpread,
-    ...resolvedActiveProps,
-    ...resolvedInactiveProps,
-    href: hrefOption?.href,
-    ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-    onClick: composeHandlers([onClick, handleClick]),
-    onBlur: composeHandlers([onBlur, handleLeave]),
-    onFocus: composeHandlers([onFocus, enqueueIntentPreload]),
-    onMouseEnter: composeHandlers([onMouseEnter, enqueueIntentPreload]),
-    onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
-    onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
-    disabled: !!disabled,
-    target,
-    ...(resolvedStyle && { style: resolvedStyle }),
-    ...(resolvedClassName && { className: resolvedClassName }),
-    ...(disabled && STATIC_DISABLED_PROPS),
-    ...(isActive && STATIC_ACTIVE_PROPS),
-    ...(isHydrated && isTransitioning && STATIC_TRANSITIONING_PROPS),
-  }
+  props.onClick = composeHandlers(onClick, handleClick)
+  props.onBlur = composeHandlers(onBlur, handleLeave)
+  props.onFocus = composeHandlers(onFocus, enqueuePreload)
+  props.onMouseEnter = composeHandlers(onMouseEnter, enqueuePreload)
+  props.onMouseLeave = composeHandlers(onMouseLeave, handleLeave)
+  props.onTouchStart = composeHandlers(onTouchStart, handleTouchStart)
+  return applyLinkState(props, options, isActive, href, linkDisabled, host)
 }
 
 const STATIC_EMPTY_OBJECT = {}
 const STATIC_ACTIVE_OBJECT = { className: 'active' }
-const STATIC_DISABLED_PROPS = { role: 'link', 'aria-disabled': true }
-const STATIC_ACTIVE_PROPS = { 'data-status': 'active', 'aria-current': 'page' }
-const STATIC_TRANSITIONING_PROPS = { 'data-transitioning': 'transitioning' }
+// Options the router consumes; they never reach the element. Every other
+// option is an element prop and passes through.
+const ROUTER_OPTION_KEYS = /* @__PURE__ */ new Set([
+  'to',
+  'params',
+  'search',
+  'hash',
+  'state',
+  'mask',
+  'from',
+  'unsafeRelative',
+  'reloadDocument',
+  'preload',
+  'preloadDelay',
+  'preloadIntentProximity',
+  'hashScrollIntoView',
+  'replace',
+  'startTransition',
+  'resetScroll',
+  'viewTransition',
+  'ignoreBlocker',
+  'activeProps',
+  'inactiveProps',
+  'activeOptions',
+  '_asChild',
+])
 
-const timeoutMap = new WeakMap<EventTarget, ReturnType<typeof setTimeout>>()
-
-const intersectionObserverOptions: IntersectionObserverInit = {
-  rootMargin: '100px',
+// Copies the element props. An object rest would test every key against the
+// whole exclusion list; the key set is much cheaper. `Link` hosts never render
+// `type`, and an anchor has no `disabled` attribute.
+function collectElementProps(
+  options: object,
+  host: 'a' | React.ElementType | undefined,
+): Record<string, unknown> {
+  const props: Record<string, unknown> = {}
+  for (const key in options) {
+    if (
+      ROUTER_OPTION_KEYS.has(key) ||
+      (key === 'type' && host !== undefined) ||
+      (key === 'disabled' && host === 'a')
+    ) {
+      continue
+    }
+    props[key] = (options as Record<string, unknown>)[key]
+  }
+  return props
 }
 
-const composeHandlers =
-  (handlers: Array<undefined | React.EventHandler<any>>) =>
-  (e: React.SyntheticEvent) => {
-    for (const handler of handlers) {
-      if (!handler) continue
-      if (e.defaultPrevented) return
-      handler(e)
-    }
+// Finishes a router-controlled link: the selected state props, then the
+// routing attributes. This is the one place that defines precedence: state
+// props override element props, `ref` and handlers; `href`, `disabled`,
+// `target` and the merged class and style always win.
+function applyLinkState(
+  props: Record<string, unknown>,
+  options: {
+    activeProps?: unknown
+    inactiveProps?: unknown
+    className?: string
+    style?: React.CSSProperties
+    target?: string
+  },
+  isActive: boolean | undefined,
+  href: string | undefined,
+  linkDisabled: boolean,
+  host: 'a' | React.ElementType | undefined,
+): React.ComponentPropsWithRef<'a'> {
+  const { activeProps, inactiveProps, className, style, target } = options
+  const stateProps: React.HTMLAttributes<HTMLAnchorElement> =
+    functionalUpdate((isActive ? activeProps : inactiveProps) as any, {}) ??
+    (isActive ? STATIC_ACTIVE_OBJECT : STATIC_EMPTY_OBJECT)
+  Object.assign(props, stateProps)
+  props.href = href
+  if (host !== 'a') {
+    props.disabled = linkDisabled
   }
+  props.target = target
+  // Merge class and style with the state's. Links without either keep their
+  // props as given and carry no `undefined` keys.
+  const stateStyle = stateProps.style
+  if (style || stateStyle) {
+    props.style =
+      style && stateStyle ? { ...style, ...stateStyle } : style || stateStyle
+  }
+  const stateClassName = stateProps.className
+  if (className || stateClassName) {
+    props.className = className
+      ? stateClassName
+        ? `${className} ${stateClassName}`
+        : className
+      : stateClassName
+  }
+  if (linkDisabled) {
+    props.role = 'link'
+    props['aria-disabled'] = true
+  }
+  if (isActive) {
+    props['data-status'] = 'active'
+    props['aria-current'] = 'page'
+  }
+  return props
+}
+
+// Server render of a Link: static props only, no hooks. Only server bundles
+// keep this function; the `isServer` check that calls it folds away on the client.
+function getServerLinkProps(
+  router: AnyRouter,
+  options: any,
+  forwardedRef: React.ForwardedRef<Element> | undefined,
+  host: 'a' | React.ElementType | undefined,
+): React.ComponentPropsWithRef<'a'> {
+  const { to, disabled, activeOptions } = options as {
+    to: string | undefined
+    disabled: boolean | undefined
+    activeOptions: ActiveOptions | undefined
+  }
+
+  const directExternalLink = resolveExternalLink(to, router.protocolAllowlist)
+
+  // Direct-scheme links need no route resolution. Blocked links still use
+  // the shared inactive-prop merge so their server and client markup agree.
+  const next =
+    directExternalLink === undefined ? router.buildLocation(options) : undefined
+
+  const hrefOption = next
+    ? getHrefOption(next, router, disabled)
+    : (directExternalLink ?? undefined)
+  const linkDisabled = disabled || !hrefOption
+
+  const externalLink =
+    directExternalLink ??
+    (hrefOption && getUrlScheme(hrefOption) ? hrefOption : undefined)
+
+  const props = collectElementProps(options, host)
+  props.ref = forwardedRef
+  if (externalLink) {
+    props.href = externalLink
+    return props
+  }
+
+  const blockedLink = !disabled && !hrefOption
+  // Hash is not available on the server: hash-sensitive links are inactive.
+  const isActive =
+    !!next &&
+    !blockedLink &&
+    !activeOptions?.includeHash &&
+    resolveIsActive(
+      router.stores.location.get(),
+      next,
+      activeOptions,
+      router.basepath,
+    )
+  return applyLinkState(
+    props,
+    options,
+    isActive,
+    hrefOption,
+    linkDisabled,
+    host,
+  )
+}
+
+// A Link's own ref also holds its pending intent preload timer.
+type LinkRef = React.RefObject<Element | null> & {
+  t?: ReturnType<typeof setTimeout>
+}
+const cancelPreload = (ref: LinkRef) => {
+  clearTimeout(ref.t)
+  ref.t = undefined
+}
+
+export const composeHandlers = (
+  first: React.EventHandler<any> | undefined,
+  second: React.EventHandler<any>,
+) => {
+  if (!first) {
+    return second
+  }
+
+  // The first guard skips user handlers for already-prevented events; the second
+  // lets user handlers prevent the internal handler from running.
+  return (event: React.SyntheticEvent) =>
+    event.defaultPrevented ||
+    (first(event), event.defaultPrevented || second(event))
+}
 
 function getHrefOption(
-  publicHref: string,
-  external: boolean,
-  history: AnyRouter['history'],
+  next: ParsedLocation,
+  router: AnyRouter,
   disabled: boolean | undefined,
 ) {
-  if (disabled) return undefined
-  // Full URL means rewrite changed the origin - treat as external-like
-  if (external) {
-    return { href: publicHref, external: true }
+  if (disabled) {
+    return undefined
   }
-  return {
-    href: history.createHref(publicHref) || '/',
-    external: false,
+  const location = next.maskedLocation ?? next
+  // A rewritten external URL must bypass history's relative-path formatting.
+  const href = location.external
+    ? location.publicHref
+    : router.history.createHref(location.publicHref) || '/'
+  if (
+    (location.external || href !== location.publicHref) &&
+    isDangerousProtocol(href, router.protocolAllowlist)
+  ) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(`Blocked Link with dangerous protocol: ${href}`)
+    }
+    return undefined
   }
-}
-
-function isSafeInternal(to: unknown) {
-  if (typeof to !== 'string') return false
-  const zero = to.charCodeAt(0)
-  if (zero === 47) return to.charCodeAt(1) !== 47 // '/' but not '//'
-  return zero === 46 // '.', '..', './', '../'
+  return href
 }
 
 type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
@@ -823,10 +748,7 @@ export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
     | React.ReactNode
-    | ((state: {
-        isActive: boolean
-        isTransitioning: boolean
-      }) => React.ReactNode)
+    | ((state: { isActive: boolean }) => React.ReactNode)
 }
 
 type LinkComponentReactProps<TComp> = Omit<
@@ -913,7 +835,7 @@ export function createLink<const TComp>(
  *
  * Props:
  * - `preload`: Controls route preloading (eg. 'intent', 'render', 'viewport', true/false)
- * - `preloadDelay`: Delay in ms before preloading on hover
+ * - `preloadDelay`: Delay in ms before preloading on focus, hover, or viewport entry
  * - `activeProps`/`inactiveProps`: Additional props merged when link is active/inactive
  * - `resetScroll`/`hashScrollIntoView`: Control scroll behavior on navigation
  * - `viewTransition`/`startTransition`: Use View Transitions/React transitions for navigation
@@ -922,30 +844,50 @@ export function createLink<const TComp>(
  * @returns An anchor-like element that navigates without full page reloads.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/linkComponent
  */
-export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
-  (props, ref) => {
-    const { _asChild, ...rest } = props
-    const { type: _type, ...linkProps } = useLinkProps(rest as any, ref)
+export const Link: LinkComponent<'a'> = React.memo(
+  React.forwardRef<Element, any>((props, ref) => {
+    const host = props._asChild || 'a'
+    const linkProps = useLinkProps(props as any, ref, host)
 
     const children =
-      typeof rest.children === 'function'
-        ? rest.children({
+      typeof props.children === 'function'
+        ? props.children({
             isActive: (linkProps as any)['data-status'] === 'active',
           })
-        : rest.children
+        : props.children
 
-    if (!_asChild) {
-      // the ReturnType of useLinkProps returns the correct type for a <a> element, not a general component that has a disabled prop
-      // @ts-expect-error
-      const { disabled: _, ...rest } = linkProps
-      return React.createElement('a', rest, children)
-    }
-    return React.createElement(_asChild, linkProps, children)
-  },
+    return React.createElement(host, linkProps, children)
+  }),
+  areLinkPropsEqual,
 ) as any
 
-function isCtrlEvent(e: React.MouseEvent) {
-  return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
+// A Link's output depends only on its props, the router context and its
+// route's location source, which React tracks for memoized components, so a parent
+// re-render with equal props can skip it. Router options are compared by
+// value: destinations are usually inline object literals. Element props
+// (`children`, handlers, `style`, ...) are compared by reference only, since
+// they may hold arbitrary (even cyclic) data.
+function areLinkPropsEqual(
+  prev: Record<string, unknown>,
+  next: Record<string, unknown>,
+): boolean {
+  let extraKeys = 0
+  for (const key in next) {
+    extraKeys++
+    if (prev[key] === next[key]) {
+      continue
+    }
+    if (
+      !ROUTER_OPTION_KEYS.has(key) ||
+      !deepEqual(prev[key], next[key], false, true)
+    ) {
+      return false
+    }
+  }
+  for (const _key in prev) {
+    extraKeys--
+  }
+  return extraKeys === 0
 }
 
 export type LinkOptionsFnOptions<

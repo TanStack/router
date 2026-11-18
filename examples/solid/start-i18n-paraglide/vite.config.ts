@@ -2,10 +2,12 @@ import { paraglideVitePlugin } from '@inlang/paraglide-js'
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import viteSolid from 'vite-plugin-solid'
-import viteTsConfigPaths from 'vite-tsconfig-paths'
 import tailwindcss from '@tailwindcss/vite'
 
 const config = defineConfig({
+  resolve: {
+    tsconfigPaths: true,
+  },
   plugins: [
     paraglideVitePlugin({
       project: './project.inlang',
@@ -37,7 +39,6 @@ const config = defineConfig({
         },
       ],
     }),
-    viteTsConfigPaths(),
     tanstackStart(),
     viteSolid({ ssr: true }),
     tailwindcss(),

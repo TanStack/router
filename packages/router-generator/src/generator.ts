@@ -17,6 +17,8 @@ import {
   buildRouteTreeConfig,
   checkFileExists,
   checkRouteFullPathUniqueness,
+  countRoutePathSegments,
+  countSlashSeparatedParts,
   createRouteNodesByFullPath,
   createRouteNodesById,
   createRouteNodesByTo,
@@ -25,20 +27,18 @@ import {
   findParent,
   format,
   getImportForRouteNode,
-  getImportPath,
   getResolvedRouteNodeVariableName,
   hasParentRoute,
-  isRouteNodeValidForAugmentation,
   isSegmentPathless,
   mergeImportDeclarations,
   multiSortBy,
   removeExt,
   removeGroups,
   removeLastSegmentFromPath,
-  removeLayoutSegmentsWithEscape,
+  removeLayoutSegmentsAndUnderscoresWithEscape,
   removeTrailingSlash,
-  removeUnderscoresWithEscape,
   replaceBackslash,
+  sortRouteNodes,
   trimPathLeft,
 } from './utils'
 import { fillTemplate, getTargetTemplate } from './template'
@@ -53,6 +53,7 @@ import type {
   HandleNodeAccumulator,
   ImportDeclaration,
   RouteNode,
+  RoutePathSegmentMetadata,
 } from './types'
 import type { Config } from './config'
 import type { Logger } from './logger'
@@ -70,6 +71,32 @@ interface fs {
   >
   chmod: (filePath: string, mode: number) => Promise<void>
   chown: (filePath: string, uid: number, gid: number) => Promise<void>
+}
+
+function getRoutePathSegmentMetadataForPath(
+  node: RouteNode,
+  routePath: string,
+  parentRoutePath?: string,
+): Array<RoutePathSegmentMetadata | undefined> | undefined {
+  if (!node._routePathSegmentMetadata) return undefined
+
+  const segments = routePath.split('/')
+  const result = new Array<RoutePathSegmentMetadata | undefined>(
+    segments.length,
+  )
+  const parentSegmentCount = countRoutePathSegments(parentRoutePath)
+  let hasMetadata = false
+  let segmentCount = 0
+
+  for (let i = 0; i < segments.length; i++) {
+    if (!segments[i]) continue
+    const sourceIndex = parentSegmentCount + segmentCount + 1
+    result[i] = node._routePathSegmentMetadata[sourceIndex]
+    hasMetadata ||= !!result[i]
+    segmentCount++
+  }
+
+  return hasMetadata ? result : undefined
 }
 
 const DefaultFileSystem: fs = {
@@ -272,7 +299,7 @@ export class Generator {
     return new Map(
       [...this.routeNodeCache.entries()].map(([filePath, cacheEntry]) => [
         filePath,
-        { routePath: cacheEntry.routeId },
+        { routeId: cacheEntry.routeId },
       ]),
     )
   }
@@ -394,7 +421,10 @@ export class Generator {
 
     const preRouteNodes = multiSortBy(beforeRouteNodes, [
       (d) => (d.routePath === '/' ? -1 : 1),
-      (d) => d.routePath?.split('/').length,
+      (d) =>
+        d.routePath === undefined
+          ? undefined
+          : countSlashSeparatedParts(d.routePath),
       (d) => (d.filePath.match(this.indexTokenFilenameRegex) ? 1 : -1),
       (d) => (d.filePath.match(Generator.componentPieceRegex) ? 1 : -1),
       (d) => (d.filePath.match(this.routeTokenFilenameRegex) ? -1 : 1),
@@ -521,12 +551,11 @@ export class Generator {
 
     let newMtimeMs: bigint | undefined
     if (this.routeTreeFileCache) {
-      if (
-        writeRouteTreeFile !== 'force' &&
-        this.routeTreeFileCache.fileContent === routeTreeContent
-      ) {
-        // existing route tree file is already up-to-date, don't write it
-        // we should only get here in the initial run when the route cache is not filled yet
+      if (this.routeTreeFileCache.fileContent === routeTreeContent) {
+        // existing route tree file is already up-to-date, don't write it.
+        // When 'force' was set because an external change was detected,
+        // we still re-read and re-check here, but if the generated content
+        // matches we skip the write to avoid triggering another watcher cycle.
       } else {
         const newRouteTreeFileStat = await this.safeFileWrite({
           filePath: this.generatedRouteTreePath,
@@ -588,16 +617,10 @@ export class Generator {
         ? this.indexTokenSegmentRegex
         : createTokenRegex(config.indexToken, { type: 'segment' })
 
-    const sortedRouteNodes = multiSortBy(acc.routeNodes, [
-      (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
-      (d) => d.routePath?.split('/').length,
-      (d) => {
-        const segments = d.routePath?.split('/').filter(Boolean) ?? []
-        const last = segments[segments.length - 1] ?? ''
-        return indexTokenSegmentRegex.test(last) ? -1 : 1
-      },
-      (d) => d,
-    ])
+    const sortedRouteNodes = sortRouteNodes(
+      acc.routeNodes,
+      indexTokenSegmentRegex,
+    )
 
     const routeImports: Array<ImportDeclaration> = []
     const virtualRouteNodes: Array<string> = []
@@ -659,38 +682,6 @@ export class Generator {
       }
       imports.push(runtimeImport)
     }
-    if (config.verboseFileRoutes === false) {
-      const typeImport: ImportDeclaration = {
-        specifiers: [],
-        source: this.targetTemplate.fullPkg,
-        importKind: 'type',
-      }
-      let needsCreateFileRoute = false
-      let needsCreateLazyFileRoute = false
-      for (const node of sortedRouteNodes) {
-        if (isRouteNodeValidForAugmentation(node)) {
-          if (node._fsRouteType !== 'lazy') {
-            needsCreateFileRoute = true
-          }
-          if (acc.routePiecesByPath[node.routePath!]?.lazy) {
-            needsCreateLazyFileRoute = true
-          }
-        }
-        if (needsCreateFileRoute && needsCreateLazyFileRoute) break
-      }
-      if (needsCreateFileRoute) {
-        typeImport.specifiers.push({ imported: 'CreateFileRoute' })
-      }
-      if (needsCreateLazyFileRoute) {
-        typeImport.specifiers.push({ imported: 'CreateLazyFileRoute' })
-      }
-
-      if (typeImport.specifiers.length > 0) {
-        typeImport.specifiers.push({ imported: 'FileRoutesByPath' })
-        imports.push(typeImport)
-      }
-    }
-
     const routeTreeConfig = buildRouteTreeConfig(
       acc.routeTree,
       config.disableTypes,
@@ -964,36 +955,6 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
 
     const importStatements = mergedImports.map(buildImportString)
 
-    let moduleAugmentation = ''
-    if (config.verboseFileRoutes === false && !config.disableTypes) {
-      moduleAugmentation = opts.routeFileResult
-        .map((node) => {
-          const getModuleDeclaration = (routeNode?: RouteNode) => {
-            if (!isRouteNodeValidForAugmentation(routeNode)) {
-              return ''
-            }
-            let moduleAugmentation = ''
-            if (routeNode._fsRouteType === 'lazy') {
-              moduleAugmentation = `const createLazyFileRoute: CreateLazyFileRoute<FileRoutesByPath['${routeNode.routePath}']['preLoaderRoute']>`
-            } else {
-              moduleAugmentation = `const createFileRoute: CreateFileRoute<'${routeNode.routePath}',
-                  FileRoutesByPath['${routeNode.routePath}']['parentRoute'],
-                  FileRoutesByPath['${routeNode.routePath}']['id'],
-                  FileRoutesByPath['${routeNode.routePath}']['path'],
-                  FileRoutesByPath['${routeNode.routePath}']['fullPath']
-                >
-              `
-            }
-
-            return `declare module './${getImportPath(routeNode, config, this.generatedRouteTreePath)}' {
-                      ${moduleAugmentation}
-                    }`
-          }
-          return getModuleDeclaration(node)
-        })
-        .join('\n')
-    }
-
     const rootRouteImport = getImportForRouteNode(
       rootRouteNode,
       config,
@@ -1021,7 +982,6 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       createUpdateRoutes.join('\n'),
       fileRoutesByFullPath,
       fileRoutesByPathInterface,
-      moduleAugmentation,
       routeTreeConfig.join('\n'),
       routeTree,
       ...footer,
@@ -1135,11 +1095,11 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       // transform the file
       const transformResult = await transform({
         source: updatedCacheEntry.fileContent,
+        filename: node.fullPath,
         ctx: {
           target: this.config.target,
           routeId: escapedRoutePath,
           lazy: node._fsRouteType === 'lazy',
-          verboseFileRoutes: !(this.config.verboseFileRoutes === false),
         },
         node,
       })
@@ -1186,6 +1146,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
         strategy: {
           type: 'mtime',
           expectedMtimeMs: updatedCacheEntry.mtimeMs,
+          expectedContent: existingRouteFile.fileContent,
         },
       })
       updatedCacheEntry.mtimeMs = stats.mtimeMs
@@ -1246,6 +1207,9 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       | {
           type: 'mtime'
           expectedMtimeMs: bigint
+          // An in-place save can truncate and rewrite a file within one mtime
+          // tick, so user-authored files also compare the content.
+          expectedContent?: string
         }
       | {
           type: 'new-file'
@@ -1255,13 +1219,8 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     await this.fs.writeFile(tmpPath, opts.newContent)
 
     if (opts.strategy.type === 'mtime') {
+      const { expectedMtimeMs, expectedContent } = opts.strategy
       const beforeStat = await this.fs.stat(opts.filePath)
-      if (beforeStat.mtimeMs !== opts.strategy.expectedMtimeMs) {
-        throw rerun({
-          msg: `File ${opts.filePath} was modified by another process during processing.`,
-          event: { type: 'update', path: opts.filePath },
-        })
-      }
       const newFileState = await this.fs.stat(tmpPath)
       if (newFileState.mode !== beforeStat.mode) {
         await this.fs.chmod(tmpPath, beforeStat.mode)
@@ -1287,6 +1246,25 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
           }
         }
       }
+      // Check right before the rename so that changes made while the
+      // temporary file was prepared are not overwritten.
+      let changed: boolean
+      if (expectedContent === undefined) {
+        const current = await this.fs.stat(opts.filePath)
+        changed = current.mtimeMs !== expectedMtimeMs
+      } else {
+        const current = await this.fs.readFile(opts.filePath)
+        changed =
+          current === 'file-not-existing' ||
+          current.stat.mtimeMs !== expectedMtimeMs ||
+          current.fileContent !== expectedContent
+      }
+      if (changed) {
+        throw rerun({
+          msg: `File ${opts.filePath} was modified by another process during processing.`,
+          event: { type: 'update', path: opts.filePath },
+        })
+      }
     } else {
       if (await checkFileExists(opts.filePath)) {
         throw rerun({
@@ -1296,9 +1274,14 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       }
     }
 
-    const stat = await this.fs.stat(tmpPath)
-
     await this.fs.rename(tmpPath, opts.filePath)
+
+    // stat the target file AFTER rename so the cached mtime matches
+    // what the filesystem reports for the actual file path.
+    // Previously we stat'd the temp file before rename, but rename()
+    // can assign a different mtime to the target on some filesystems,
+    // causing the cache to be permanently stale.
+    const stat = await this.fs.stat(opts.filePath)
 
     return stat
   }
@@ -1405,6 +1388,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
         strategy: {
           type: 'mtime',
           expectedMtimeMs: rootNodeFile.stat.mtimeMs,
+          expectedContent: rootNodeFile.fileContent,
         },
       })
       updatedCacheEntry.fileContent = rootRouteContent
@@ -1491,29 +1475,39 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     node.path = determineNodePath(node)
 
     const trimmedPath = trimPathLeft(node.path ?? '')
-    const trimmedOriginalPath = trimPathLeft(
-      node.originalRoutePath?.replace(
-        node.parent?.originalRoutePath ?? '',
-        '',
-      ) ?? '',
+    const originalPath =
+      node.originalRoutePath && node.parent?.originalRoutePath
+        ? node.originalRoutePath.replace(node.parent.originalRoutePath, '') ||
+          '/'
+        : node.originalRoutePath
+    const routePathSegmentMetadata = getRoutePathSegmentMetadataForPath(
+      node,
+      node.path ?? '/',
+      node.parent?.routePath,
     )
+    const trimmedOriginalPath = trimPathLeft(originalPath ?? '')
 
     const split = trimmedPath.split('/')
+    const pathSplit = (node.path ?? '').split('/')
     const originalSplit = trimmedOriginalPath.split('/')
     const lastRouteSegment = split[split.length - 1] ?? trimmedPath
     const lastOriginalSegment =
       originalSplit[originalSplit.length - 1] ?? trimmedOriginalPath
+    const lastRouteSegmentMetadata =
+      routePathSegmentMetadata?.[pathSplit.length - 1]
 
     // A segment is non-path if it starts with underscore AND the underscore is not escaped
     node.isNonPath =
-      isSegmentPathless(lastRouteSegment, lastOriginalSegment) ||
+      (!lastRouteSegmentMetadata?.literalLeadingUnderscore &&
+        isSegmentPathless(lastRouteSegment, lastOriginalSegment)) ||
       split.every((part) => this.routeGroupPatternRegex.test(part))
 
-    // Use escape-aware functions to compute cleanedPath
+    // Use a single pass so layout removal does not desync escaped underscore checks.
     node.cleanedPath = removeGroups(
-      removeUnderscoresWithEscape(
-        removeLayoutSegmentsWithEscape(node.path, node.originalRoutePath),
-        node.originalRoutePath,
+      removeLayoutSegmentsAndUnderscoresWithEscape(
+        node.path,
+        originalPath,
+        routePathSegmentMetadata,
       ),
     )
 
@@ -1591,13 +1585,17 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
               candidate.originalRoutePath ?? '',
               '',
             ) || '/'
+          const routePathSegmentMetadataRelativeToParent =
+            getRoutePathSegmentMetadataForPath(
+              node,
+              pathRelativeToParent,
+              candidate.routePath,
+            )
           node.cleanedPath = removeGroups(
-            removeUnderscoresWithEscape(
-              removeLayoutSegmentsWithEscape(
-                pathRelativeToParent,
-                originalPathRelativeToParent,
-              ),
+            removeLayoutSegmentsAndUnderscoresWithEscape(
+              pathRelativeToParent,
               originalPathRelativeToParent,
+              routePathSegmentMetadataRelativeToParent,
             ),
           )
           break

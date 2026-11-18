@@ -7,5 +7,5 @@ export default {
   bundle: true,
   format: 'esm',
   target: ['esnext'],
-  plugins: [tanstackRouter({ target: 'react', autoCodeSplitting: true })],
+  plugins: [tanstackRouter({ target: 'react' })],
 }

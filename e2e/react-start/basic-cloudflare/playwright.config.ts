@@ -1,8 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
-import { getTestServerPort } from '@tanstack/router-e2e-utils'
-import packageJson from './package.json' with { type: 'json' }
+import { appServerReady } from '@tanstack/router-e2e-utils'
 
-const PORT = await getTestServerPort(packageJson.name)
+const PORT = Number(process.env.E2E_APP_PORT ?? 0)
 const baseURL = `http://localhost:${PORT}`
 
 /**
@@ -14,9 +13,6 @@ export default defineConfig({
 
   reporter: [['line']],
 
-  globalSetup: './tests/setup/global.setup.ts',
-  globalTeardown: './tests/setup/global.teardown.ts',
-
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL,
@@ -24,8 +20,8 @@ export default defineConfig({
 
   webServer: {
     command: `pnpm build && pnpm preview --port ${PORT}`,
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    wait: appServerReady,
+    reuseExistingServer: false,
     stdout: 'pipe',
   },
 

@@ -34,6 +34,7 @@ import {
   useRouteContext,
   useSearch,
 } from '../src'
+import { useIntersectionObserver } from '../src/utils'
 import {
   getIntersectionObserverMock,
   getSearchParamsFromURI,
@@ -43,12 +44,16 @@ import type { RouterHistory } from '../src'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
+let ioCallback: IntersectionObserverCallback
 let history: RouterHistory
 
 beforeEach(() => {
   const io = getIntersectionObserverMock({
     observe: ioObserveMock,
     disconnect: ioDisconnectMock,
+    onCreate: (callback) => {
+      ioCallback = callback
+    },
   })
   vi.stubGlobal('IntersectionObserver', io)
   history = createBrowserHistory()
@@ -56,6 +61,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   history.destroy?.()
   window.history.replaceState(null, 'root', '/')
   vi.resetAllMocks()
@@ -65,6 +71,295 @@ afterEach(() => {
 const WAIT_TIME = 300
 
 describe('Link', () => {
+  test('custom state props follow external, internal and blocked destination changes', async () => {
+    const [to, setTo] = Solid.createSignal('https://example.com/')
+    const root = createRootRoute()
+    const activeProps = () => ({
+      class: 'active-state',
+      style: { color: 'red' },
+    })
+    const inactiveProps = () => ({
+      class: 'inactive-state',
+      style: { color: 'blue' },
+      href: 'javascript:inactive()',
+    })
+    const index = createRoute({
+      getParentRoute: () => root,
+      path: '/',
+      component: () => (
+        <Link
+          data-testid="transition-link"
+          to={to()}
+          class="base"
+          style={{ 'font-weight': 700 }}
+          activeProps={activeProps}
+          inactiveProps={inactiveProps}
+        />
+      ),
+    })
+    const router = createRouter({
+      routeTree: root.addChildren([index]),
+      history,
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    render(() => <RouterProvider router={router} />)
+    const link = await screen.findByTestId('transition-link')
+    for (const destination of [
+      'https://example.com/',
+      '/',
+      'javascript:blocked()',
+      '/',
+    ]) {
+      setTo(destination)
+      const active = destination === '/'
+      await waitFor(() => {
+        expect(link.getAttribute('href')).toBe(
+          destination.startsWith('javascript:') ? null : destination,
+        )
+        expect(link.getAttribute('class')?.trim()).toBe(
+          `base ${active ? 'active-state' : 'inactive-state'}`,
+        )
+        expect(link).toHaveStyle({
+          color: active ? 'rgb(255, 0, 0)' : 'rgb(0, 0, 255)',
+          'font-weight': '700',
+        })
+      })
+    }
+  })
+
+  test('keeps protocol-relative Link paths on the router origin', async () => {
+    const inputs = [
+      '//evil.example',
+      '/\\evil.example',
+      '\\/evil.example',
+      ' \t/\\evil.example',
+    ]
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          {inputs.map((to, index) => (
+            <Link data-testid={`unsafe-link-${index}`} to={to} />
+          ))}
+        </>
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    for (let index = 0; index < inputs.length; index++) {
+      const link = await screen.findByTestId(`unsafe-link-${index}`)
+      const href = link.getAttribute('href')
+      expect(href).not.toBeNull()
+      expect(new URL(href!, window.location.href).origin).toBe(
+        window.location.origin,
+      )
+    }
+  })
+
+  test('blocks a dangerous final href produced by an output rewrite', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <Link data-testid="rewritten-link" to="/safe" />,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+      rewrite: {
+        output: ({ url }) =>
+          url.pathname === '/safe' ? new URL('javascript:alert(1)') : url,
+      },
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(() => <RouterProvider router={router} />)
+    const link = await screen.findByTestId('rewritten-link')
+
+    expect(link).not.toHaveAttribute('href')
+    expect(link).toHaveAttribute('role', 'link')
+    expect(link).toHaveAttribute('aria-disabled', 'true')
+    expect(fireEvent.click(link)).toBe(true)
+  })
+
+  test('blocks a dangerous final href produced by custom history', async () => {
+    const customHistory = createBrowserHistory({
+      createHref: () => 'javascript:alert(1)',
+    })
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <Link data-testid="custom-history-link" to="/safe" />,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: customHistory,
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(() => <RouterProvider router={router} />)
+    const link = await screen.findByTestId('custom-history-link')
+
+    expect(link).not.toHaveAttribute('href')
+    expect(link).toHaveAttribute('role', 'link')
+    expect(link).toHaveAttribute('aria-disabled', 'true')
+    expect(fireEvent.click(link)).toBe(true)
+    customHistory.destroy()
+  })
+
+  test('does not transform a direct HTTPS link through custom history', async () => {
+    const customHistory = createBrowserHistory({
+      createHref: () => 'https://other.example/',
+    })
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <Link data-testid="direct-https-link" to="https://intended.example/" />
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: customHistory,
+    })
+    try {
+      render(() => <RouterProvider router={router} />)
+      const link = await screen.findByTestId('direct-https-link')
+
+      expect(link).toHaveAttribute('href', 'https://intended.example/')
+      expect(fireEvent.click(link)).toBe(true)
+    } finally {
+      customHistory.destroy()
+    }
+  })
+
+  test('keeps a scheme-bearing custom-history href native', async () => {
+    const customHistory = createBrowserHistory({
+      createHref: () => 'https://other.example/path',
+    })
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <Link data-testid="custom-history-link" to="/safe" />,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: customHistory,
+    })
+
+    try {
+      render(() => <RouterProvider router={router} />)
+      const link = await screen.findByTestId('custom-history-link')
+
+      expect(link).toHaveAttribute('href', 'https://other.example/path')
+      expect(fireEvent.click(link)).toBe(true)
+    } finally {
+      customHistory.destroy()
+    }
+  })
+
+  test('reactively stops intercepting when a destination becomes external', async () => {
+    let setTo!: (to: string) => void
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        const [to, _setTo] = Solid.createSignal('/safe')
+        setTo = _setTo
+        return <Link data-testid="reactive-external-link" to={to()} />
+      },
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+    })
+    render(() => <RouterProvider router={router} />)
+    const link = await screen.findByTestId('reactive-external-link')
+    setTo('https://other.example/path')
+    await waitFor(() =>
+      expect(link).toHaveAttribute('href', 'https://other.example/path'),
+    )
+
+    expect(fireEvent.click(link)).toBe(true)
+  })
+
+  test('blocks a custom protocol that is not in the allowlist', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <Link
+          data-testid="custom-protocol-link"
+          to="custom://example.com/path"
+        />
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+      protocolAllowlist: [],
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(() => <RouterProvider router={router} />)
+    const link = await screen.findByTestId('custom-protocol-link')
+
+    expect(link).not.toHaveAttribute('href')
+  })
+
+  test('a blocked link stays inactive and cannot regain an href', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <Link
+          data-testid="blocked-caller-href"
+          to="/safe"
+          href="https://caller.example/blocked"
+          inactiveProps={{ 'data-inactive': 'true' }}
+        >
+          {({ isActive }) => String(isActive)}
+        </Link>
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+      rewrite: {
+        output: ({ url }) =>
+          url.pathname === '/blocked' ? new URL('javascript:alert(1)') : url,
+      },
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(() => <RouterProvider router={router} />)
+
+    expect(
+      await screen.findByTestId('blocked-caller-href'),
+    ).not.toHaveAttribute('href')
+    expect(screen.getByTestId('blocked-caller-href')).toHaveAttribute(
+      'data-inactive',
+      'true',
+    )
+    expect(screen.getByTestId('blocked-caller-href')).toHaveTextContent('false')
+    expect(fireEvent.click(screen.getByTestId('blocked-caller-href'))).toBe(
+      true,
+    )
+  })
+
   // rerender doesn't exist in solid
 
   // test('when using renderHook it returns a hook with same content to prove rerender works', async () => {
@@ -172,6 +467,90 @@ describe('Link', () => {
     await expect(
       screen.findByRole('header', { name: 'Posts' }),
     ).rejects.toThrow()
+  })
+
+  test('does not forward internal Link props to the DOM', async () => {
+    const internalPropNames = [
+      'activeProps',
+      'inactiveProps',
+      'activeOptions',
+      'to',
+      'from',
+      'preload',
+      'preloadDelay',
+      'preloadIntentProximity',
+      'hashScrollIntoView',
+      'replace',
+      'startTransition',
+      'resetScroll',
+      'viewTransition',
+      'ignoreBlocker',
+      'params',
+      'search',
+      'hash',
+      'state',
+      'mask',
+      'reloadDocument',
+      'unsafeRelative',
+    ].map((propName) => propName.toLowerCase())
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <Link
+          to="/posts"
+          from="/"
+          activeProps={{ class: 'active' }}
+          inactiveProps={{ class: 'inactive' }}
+          activeOptions={{
+            exact: true,
+            includeHash: true,
+            includeSearch: true,
+          }}
+          preload="intent"
+          preloadDelay={50}
+          preloadIntentProximity={123}
+          hashScrollIntoView={true}
+          replace={true}
+          startTransition={true}
+          resetScroll={true}
+          viewTransition={true}
+          ignoreBlocker={true}
+          params={{}}
+          search={{ foo: 'bar' }}
+          hash="details"
+          state={{}}
+          mask={{ to: '/posts', hash: 'masked' }}
+          reloadDocument={true}
+          unsafeRelative="path"
+        >
+          Posts
+        </Link>
+      ),
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => <h1>Posts</h1>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const renderedAttributeNames = postsLink
+      .getAttributeNames()
+      .map((attributeName) => attributeName.toLowerCase())
+
+    for (const propName of internalPropNames) {
+      expect(renderedAttributeNames).not.toContain(propName)
+    }
   })
 
   test('when a Link has children', async () => {
@@ -454,6 +833,479 @@ describe('Link', () => {
     })
   })
 
+  describe('active and href updates', () => {
+    const createControlledPromise = () => {
+      let resolve!: () => void
+      const promise = new Promise<void>((r) => {
+        resolve = r
+      })
+
+      return { promise, resolve }
+    }
+
+    test('always reports external links as inactive', async () => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => (
+          <Link to="https://example.com">
+            {({ isActive }) => (
+              <span data-testid="external-link-active">{String(isActive)}</span>
+            )}
+          </Link>
+        ),
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute]),
+        history,
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      expect(
+        await screen.findByTestId('external-link-active'),
+      ).toHaveTextContent('false')
+    })
+
+    test('updates href when link options change reactively', async () => {
+      const [to, setTo] = Solid.createSignal<'/a' | '/b'>('/a')
+      const rootRoute = createRootRoute({
+        component: () => (
+          <>
+            <button onClick={() => setTo('/b')}>Change destination</button>
+            <Link data-testid="dynamic-link" to={to()}>
+              Destination
+            </Link>
+          </>
+        ),
+      })
+      const aRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/a',
+      })
+      const bRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/b',
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([aRoute, bRoute]),
+        history,
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const link = await screen.findByTestId('dynamic-link')
+      expect(link).toHaveAttribute('href', '/a')
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Change destination' }),
+      )
+
+      await waitFor(() => {
+        expect(link).toHaveAttribute('href', '/b')
+      })
+    })
+
+    test('updates exact and fuzzy active state before the next route renders', async () => {
+      const postLoader = createControlledPromise()
+
+      const rootRoute = createRootRoute({
+        component: () => (
+          <>
+            <Link
+              data-testid="posts-exact"
+              to="/posts"
+              activeOptions={{ exact: true }}
+              activeProps={{ class: 'active' }}
+              inactiveProps={{ class: 'inactive' }}
+            >
+              Posts exact
+            </Link>
+            <Link
+              data-testid="posts-fuzzy"
+              to="/posts"
+              activeProps={{ class: 'active' }}
+              inactiveProps={{ class: 'inactive' }}
+            >
+              Posts fuzzy
+            </Link>
+            <Link
+              data-testid="post-exact"
+              to="/posts/$postId"
+              params={{ postId: '1' }}
+              activeOptions={{ exact: true }}
+              activeProps={{ class: 'active' }}
+              inactiveProps={{ class: 'inactive' }}
+            >
+              Post exact
+            </Link>
+            <Outlet />
+          </>
+        ),
+      })
+
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: 'posts',
+        component: () => (
+          <>
+            <h1>Posts</h1>
+            <Link
+              data-testid="open-post"
+              to="/posts/$postId"
+              params={{ postId: '1' }}
+            >
+              Open post
+            </Link>
+            <Outlet />
+          </>
+        ),
+      })
+
+      const postRoute = createRoute({
+        getParentRoute: () => postsRoute,
+        path: '$postId',
+        loader: () => postLoader.promise,
+        component: () => <h1>Post detail</h1>,
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([postsRoute.addChildren([postRoute])]),
+        history: createMemoryHistory({ initialEntries: ['/posts'] }),
+        defaultPendingMs: 0,
+        defaultPendingComponent: () => <p>Loading...</p>,
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const postsExact = await screen.findByTestId('posts-exact')
+      const postsFuzzy = await screen.findByTestId('posts-fuzzy')
+      const postExact = await screen.findByTestId('post-exact')
+
+      expect(postsExact).toHaveClass('active')
+      expect(postsFuzzy).toHaveClass('active')
+      expect(postExact).toHaveClass('inactive')
+
+      fireEvent.click(screen.getByTestId('open-post'))
+
+      expect(await screen.findByText('Loading...')).toBeInTheDocument()
+      expect(screen.queryByText('Post detail')).not.toBeInTheDocument()
+      expect(router.state.location.pathname).toBe('/posts/1')
+      expect(postsExact).toHaveClass('inactive')
+      expect(postsFuzzy).toHaveClass('active')
+      expect(postExact).toHaveClass('active')
+
+      postLoader.resolve()
+
+      expect(await screen.findByText('Post detail')).toBeInTheDocument()
+    })
+
+    test('updates exact active state and href when only params change with params=true', async () => {
+      const postLoader = createControlledPromise()
+      let postLoadCount = 0
+
+      const rootRoute = createRootRoute({
+        component: () => {
+          const params = useParams({ strict: false })
+          const nextPostId = params().postId === '1' ? '2' : '1'
+
+          return (
+            <>
+              <Link
+                data-testid="current-post"
+                from="/posts/$postId"
+                to="."
+                params={true}
+                activeOptions={{ exact: true }}
+                activeProps={{ class: 'active' }}
+                inactiveProps={{ class: 'inactive' }}
+              >
+                Current post
+              </Link>
+              <Link
+                data-testid="switch-post"
+                from="/posts/$postId"
+                to="."
+                params={{ postId: nextPostId }}
+              >
+                Switch post
+              </Link>
+              <Outlet />
+            </>
+          )
+        },
+      })
+
+      const postRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts/$postId',
+        loader: () => {
+          postLoadCount += 1
+          return postLoadCount === 1 ? Promise.resolve() : postLoader.promise
+        },
+        component: () => {
+          const params = useParams({ strict: false })
+          return <h1>{`Post ${params().postId}`}</h1>
+        },
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([postRoute]),
+        history: createMemoryHistory({ initialEntries: ['/posts/1'] }),
+        defaultPendingMs: 0,
+        defaultPendingComponent: () => <p>Loading...</p>,
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const currentPost = await screen.findByTestId('current-post')
+      expect(await screen.findByText('Post 1')).toBeInTheDocument()
+      expect(currentPost).toHaveClass('active')
+      expect(currentPost).toHaveAttribute('href', '/posts/1')
+
+      fireEvent.click(screen.getByTestId('switch-post'))
+
+      expect(await screen.findByText('Loading...')).toBeInTheDocument()
+      expect(screen.queryByText('Post 2')).not.toBeInTheDocument()
+      expect(router.state.location.pathname).toBe('/posts/2')
+      expect(currentPost).toHaveClass('active')
+
+      await waitFor(() => {
+        expect(currentPost).toHaveAttribute('href', '/posts/2')
+      })
+
+      postLoader.resolve()
+
+      expect(await screen.findByText('Post 2')).toBeInTheDocument()
+    })
+
+    test('updates search-sensitive active state immediately with and without search=true', async () => {
+      const postsLoader = createControlledPromise()
+      let postsLoadCount = 0
+
+      const rootRoute = createRootRoute({
+        component: () => {
+          const search = useSearch({ strict: false })
+          const nextPage = Number(search().page ?? 1) === 1 ? 2 : 1
+
+          return (
+            <>
+              <Link
+                data-testid="static-search"
+                to="/posts"
+                search={{ page: 1 }}
+                activeOptions={{ exact: true, includeSearch: true }}
+                activeProps={{ class: 'active' }}
+                inactiveProps={{ class: 'inactive' }}
+              >
+                Static search
+              </Link>
+              <Link
+                data-testid="current-search"
+                to="/posts"
+                search={true}
+                activeOptions={{ exact: true, includeSearch: true }}
+                activeProps={{ class: 'active' }}
+                inactiveProps={{ class: 'inactive' }}
+              >
+                Current search
+              </Link>
+              <Link
+                data-testid="switch-search"
+                from="/posts"
+                to="."
+                search={{ page: nextPage }}
+              >
+                Switch search
+              </Link>
+              <Outlet />
+            </>
+          )
+        },
+      })
+
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts',
+        validateSearch: (input: Record<string, unknown>) => ({
+          page: Number(input.page ?? 1),
+        }),
+        loaderDeps: ({ search }) => ({ page: search.page }),
+        loader: () => {
+          postsLoadCount += 1
+          return postsLoadCount === 1 ? Promise.resolve() : postsLoader.promise
+        },
+        component: () => {
+          const search = useSearch({ strict: false })
+          return <h1>{`Posts ${search().page}`}</h1>
+        },
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([postsRoute]),
+        history: createMemoryHistory({ initialEntries: ['/posts?page=1'] }),
+        defaultPendingMs: 0,
+        defaultPendingComponent: () => <p>Loading...</p>,
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const staticSearch = await screen.findByTestId('static-search')
+      const currentSearch = await screen.findByTestId('current-search')
+
+      expect(await screen.findByText('Posts 1')).toBeInTheDocument()
+      expect(staticSearch).toHaveClass('active')
+      expect(currentSearch).toHaveClass('active')
+      expect(currentSearch).toHaveAttribute('href', '/posts?page=1')
+
+      fireEvent.click(screen.getByTestId('switch-search'))
+
+      expect(await screen.findByText('Loading...')).toBeInTheDocument()
+      expect(screen.queryByText('Posts 2')).not.toBeInTheDocument()
+      expect(router.state.location.search).toEqual({ page: 2 })
+      expect(staticSearch).toHaveClass('inactive')
+      expect(currentSearch).toHaveClass('active')
+
+      await waitFor(() => {
+        expect(currentSearch).toHaveAttribute('href', '/posts?page=2')
+      })
+
+      postsLoader.resolve()
+
+      expect(await screen.findByText('Posts 2')).toBeInTheDocument()
+    })
+
+    test('updates hash-sensitive active state immediately with and without hash=true', async () => {
+      const rootRoute = createRootRoute({
+        component: () => (
+          <>
+            <Link
+              data-testid="static-hash"
+              to="/posts"
+              hash="first"
+              activeOptions={{ exact: true, includeHash: true }}
+              activeProps={{ class: 'active' }}
+              inactiveProps={{ class: 'inactive' }}
+            >
+              Static hash
+            </Link>
+            <Link
+              data-testid="current-hash"
+              to="/posts"
+              hash={true}
+              activeOptions={{ exact: true, includeHash: true }}
+              activeProps={{ class: 'active' }}
+              inactiveProps={{ class: 'inactive' }}
+            >
+              Current hash
+            </Link>
+            <Link data-testid="switch-hash" from="/posts" to="." hash="second">
+              Switch hash
+            </Link>
+            <Outlet />
+          </>
+        ),
+      })
+
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts',
+        component: () => <h1>Posts</h1>,
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([postsRoute]),
+        history: createMemoryHistory({ initialEntries: ['/posts#first'] }),
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const staticHash = await screen.findByTestId('static-hash')
+      const currentHash = await screen.findByTestId('current-hash')
+
+      expect(staticHash).toHaveClass('active')
+      expect(currentHash).toHaveClass('active')
+      expect(currentHash).toHaveAttribute('href', '/posts#first')
+
+      await fireEvent.click(screen.getByTestId('switch-hash'))
+
+      expect(router.state.location.hash).toBe('second')
+      expect(staticHash).toHaveClass('inactive')
+      expect(currentHash).toHaveClass('active')
+
+      await waitFor(() => {
+        expect(currentHash).toHaveAttribute('href', '/posts#second')
+      })
+    })
+
+    test('eventually updates relative hrefs when the current route changes', async () => {
+      const rootRoute = createRootRoute({
+        component: () => (
+          <>
+            <Link data-testid="relative-foo" to="./foo">
+              Relative foo
+            </Link>
+            <Link data-testid="to-posts" to="/posts">
+              To posts
+            </Link>
+            <Link data-testid="to-invoices" to="/invoices">
+              To invoices
+            </Link>
+            <Outlet />
+          </>
+        ),
+      })
+
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts',
+        component: () => <h1>Posts</h1>,
+      })
+
+      const postsFooRoute = createRoute({
+        getParentRoute: () => postsRoute,
+        path: 'foo',
+        component: () => <h1>Posts foo</h1>,
+      })
+
+      const invoicesRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/invoices',
+        component: () => <h1>Invoices</h1>,
+      })
+
+      const invoicesFooRoute = createRoute({
+        getParentRoute: () => invoicesRoute,
+        path: 'foo',
+        component: () => <h1>Invoices foo</h1>,
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([
+          postsRoute.addChildren([postsFooRoute]),
+          invoicesRoute.addChildren([invoicesFooRoute]),
+        ]),
+        history: createMemoryHistory({ initialEntries: ['/posts'] }),
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const relativeFoo = await screen.findByTestId('relative-foo')
+      expect(await screen.findByText('Posts')).toBeInTheDocument()
+      expect(relativeFoo).toHaveAttribute('href', '/posts/foo')
+
+      fireEvent.click(screen.getByTestId('to-invoices'))
+
+      expect(await screen.findByText('Invoices')).toBeInTheDocument()
+
+      await waitFor(() => {
+        expect(relativeFoo).toHaveAttribute('href', '/invoices/foo')
+      })
+    })
+  })
+
   test('when the current route is the root with beforeLoad that throws', async () => {
     const onError = vi.fn()
     const rootRoute = createRootRoute({
@@ -554,10 +1406,13 @@ describe('Link', () => {
     expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/')
 
-    expect(postsLink).toHaveAttribute('data-status', 'active')
-    expect(postsLink).toHaveAttribute('aria-current', 'page')
-    expect(postsLink).toHaveClass('active')
-    expect(postsLink).toHaveAttribute('href', '/posts')
+    // The clicked link left with the index page; check the posts page's own.
+    const activePostsLink = await screen.findByRole('link', { name: 'Posts' })
+    expect(activePostsLink).not.toBe(postsLink)
+    expect(activePostsLink).toHaveAttribute('data-status', 'active')
+    expect(activePostsLink).toHaveAttribute('aria-current', 'page')
+    expect(activePostsLink).toHaveClass('active')
+    expect(activePostsLink).toHaveAttribute('href', '/posts')
   })
 
   test('when navigating to /posts with a base url', async () => {
@@ -613,10 +1468,13 @@ describe('Link', () => {
     expect(indexLink).not.toHaveAttribute('data-status', 'active')
     expect(indexLink).toHaveAttribute('href', '/app/')
 
-    expect(postsLink).toHaveAttribute('data-status', 'active')
-    expect(postsLink).toHaveAttribute('aria-current', 'page')
-    expect(postsLink).toHaveClass('active')
-    expect(postsLink).toHaveAttribute('href', '/app/posts')
+    // The clicked link left with the index page; check the posts page's own.
+    const activePostsLink = await screen.findByRole('link', { name: 'Posts' })
+    expect(activePostsLink).not.toBe(postsLink)
+    expect(activePostsLink).toHaveAttribute('data-status', 'active')
+    expect(activePostsLink).toHaveAttribute('aria-current', 'page')
+    expect(activePostsLink).toHaveClass('active')
+    expect(activePostsLink).toHaveAttribute('href', '/app/posts')
   })
 
   test('when navigating to /posts with search', async () => {
@@ -896,22 +1754,17 @@ describe('Link', () => {
       '/Dashboard/posts?page=2&filter=inactive',
     )
 
-    await fireEvent.click(updateSearchLink)
+    fireEvent.click(updateSearchLink)
 
-    // Wait for navigation to complete and search params to update
     await waitFor(() => {
+      expect(window.location.pathname).toBe('/Dashboard/posts')
       expect(window.location.search).toBe('?page=2&filter=inactive')
+      expect(screen.getByTestId('current-page')).toHaveTextContent('Page: 2')
+      expect(screen.getByTestId('current-filter')).toHaveTextContent(
+        'Filter: inactive',
+      )
     })
-
-    await screen.findByTestId('current-page')
-    // Verify search was updated
-    expect(window.location.pathname).toBe('/Dashboard/posts')
-    expect(window.location.search).toBe('?page=2&filter=inactive')
-
-    const updatedPage = await screen.findByTestId('current-page')
-    const updatedFilter = await screen.findByTestId('current-filter')
-    expect(updatedPage).toHaveTextContent('Page: 2')
-    expect(updatedFilter).toHaveTextContent('Filter: inactive')
+    await vi.waitFor(() => expect(router.state.status).toBe('idle'))
   })
 
   test('when navigating to /posts with invalid search', async () => {
@@ -4445,6 +5298,234 @@ describe('Link', () => {
     expect(ioDisconnectMock).not.toHaveBeenCalled() // it should not disconnect again
   })
 
+  test.each([
+    ['intent', true],
+    [false, false],
+  ] as const)(
+    'observers without viewport preloading clean up only while preloading (%s)',
+    (mode, cleansUp) => {
+      const callback = vi.fn()
+      const view = render(() => {
+        const [element, setElement] = Solid.createSignal<Element | null>(null)
+        useIntersectionObserver(element, callback, () => mode)
+        return <div ref={setElement} />
+      })
+      callback.mockClear()
+      view.unmount()
+      if (cleansUp) {
+        expect(callback).toHaveBeenCalledWith()
+      } else {
+        expect(callback).not.toHaveBeenCalled()
+      }
+    },
+  )
+
+  test.each(['intent', 'viewport'] as const)(
+    'preserves %s timer cleanup across mode changes and unmount',
+    async (mode) => {
+      const [preload, setPreload] = Solid.createSignal<
+        false | 'intent' | 'viewport'
+      >()
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => (
+          <Link to="/about" preload={preload()} preloadDelay={50}>
+            Preload Link
+          </Link>
+        ),
+      })
+      const aboutRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/about',
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+        history,
+      })
+      const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+      const view = render(() => <RouterProvider router={router} />)
+      const link = await screen.findByRole('link', { name: 'Preload Link' })
+      const notify = (callback: IntersectionObserverCallback) => {
+        callback(
+          [
+            {
+              isIntersecting: true,
+              target: link,
+            } as unknown as IntersectionObserverEntry,
+          ],
+          {} as IntersectionObserver,
+        )
+      }
+      const trigger = () => {
+        if (mode === 'intent') {
+          fireEvent.mouseEnter(link)
+        } else {
+          notify(ioCallback)
+        }
+      }
+      vi.useFakeTimers()
+
+      setPreload(mode)
+      await Promise.resolve()
+      const oldObserver = mode === 'viewport' ? ioCallback : undefined
+      trigger()
+      await vi.advanceTimersByTimeAsync(49)
+      setPreload(false)
+      await Promise.resolve()
+      if (oldObserver) {
+        notify(oldObserver)
+      }
+      await vi.advanceTimersByTimeAsync(50)
+      expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+      setPreload(mode)
+      await Promise.resolve()
+      if (oldObserver) {
+        // The mode matches again, but the previous observer is still obsolete.
+        notify(oldObserver)
+      }
+      await vi.advanceTimersByTimeAsync(50)
+      expect(preloadRouteSpy).not.toHaveBeenCalled()
+      trigger()
+      await vi.advanceTimersByTimeAsync(50)
+      expect(preloadRouteSpy).toHaveBeenCalledOnce()
+
+      preloadRouteSpy.mockClear()
+      trigger()
+      const lastObserver = mode === 'viewport' ? ioCallback : undefined
+      view.unmount()
+      if (lastObserver) {
+        notify(lastObserver)
+      }
+      await vi.advanceTimersByTimeAsync(50)
+      expect(preloadRouteSpy).not.toHaveBeenCalled()
+    },
+  )
+
+  test('Link.preload="viewport" should respect preloadDelay', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <Link to="/about" preload="viewport" preloadDelay={50}>
+            Viewport Link
+          </Link>
+          <Link to="/about" preload="intent" preloadDelay={50}>
+            Intent Link
+          </Link>
+        </>
+      ),
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+      history,
+    })
+    const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+
+    render(() => <RouterProvider router={router} />)
+
+    const viewportLink = await screen.findByRole('link', {
+      name: 'Viewport Link',
+    })
+    const intentLink = await screen.findByRole('link', { name: 'Intent Link' })
+    vi.useFakeTimers()
+
+    ioCallback([], {} as IntersectionObserver)
+    ioCallback(
+      [
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    fireEvent.mouseLeave(viewportLink)
+
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(49)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(49)
+
+    ioCallback(
+      [
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(1)
+    expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
+
+    fireEvent.mouseEnter(intentLink)
+    fireEvent.mouseLeave(intentLink)
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
+  })
+
   test("Router.preload='render', should trigger the route loader on render", async () => {
     const mock = vi.fn()
 
@@ -4542,6 +5623,7 @@ describe('Link', () => {
   )
 
   test('Link.preload="intent" should preload on focus, hover, and touchstart', async () => {
+    const updateSearch = vi.fn((search) => search)
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -4549,7 +5631,7 @@ describe('Link', () => {
       component: () => (
         <>
           <h1>Index Heading</h1>
-          <Link to="/about" preload="intent">
+          <Link to="/about" search={updateSearch} preload="intent">
             About Link
           </Link>
         </>
@@ -4576,6 +5658,8 @@ describe('Link', () => {
     expect(aboutLink).toBeInTheDocument()
 
     const baselineCalls = preloadRouteSpy.mock.calls.length
+    const baselineSearchCalls = updateSearch.mock.calls.length
+    expect(baselineSearchCalls).toBeGreaterThan(0)
 
     fireEvent.focus(aboutLink)
     await waitFor(() =>
@@ -4591,6 +5675,10 @@ describe('Link', () => {
     await waitFor(() =>
       expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls + 3),
     )
+    expect(updateSearch).toHaveBeenCalledTimes(baselineSearchCalls + 3)
+    for (const call of preloadRouteSpy.mock.calls.slice(baselineCalls)) {
+      expect(call).toHaveLength(1)
+    }
   })
 
   test('Router.preload="intent", pendingComponent renders during unresolved route loader', async () => {
@@ -5766,14 +6854,12 @@ describe('splat routes with empty splat', () => {
     async (trailingSlash) => {
       const tail = trailingSlash === 'always' ? '/' : ''
 
-      const rootRoute = createRootRoute()
-      const indexRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/',
+      // The links stay mounted across the navigation so they can turn active.
+      const rootRoute = createRootRoute({
         component: () => {
           return (
             <>
-              <h1>Index Route</h1>
+              <Outlet />
               <Link
                 data-testid="splat-link-with-empty-splat"
                 to="/splat/$"
@@ -5800,6 +6886,13 @@ describe('splat routes with empty splat', () => {
               </Link>
             </>
           )
+        },
+      })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          return <h1>Index Route</h1>
         },
       })
 

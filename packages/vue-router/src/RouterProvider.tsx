@@ -1,6 +1,8 @@
 import * as Vue from 'vue'
+import { isServer } from '@tanstack/router-core/isServer'
 import { Matches } from './Matches'
 import { provideRouter } from './routerContext'
+import { provideLinkLocation } from './matchContext'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -21,20 +23,24 @@ export const RouterContextProvider = Vue.defineComponent({
     const router = props.router as AnyRouter
     const restAttrs = attrs
 
-    // Allow the router to update options on the router instance
-    router.update({
-      ...router.options,
-      ...restAttrs,
-      context: {
-        ...router.options.context,
-        ...((restAttrs.context as Record<string, any>) || {}),
-      },
-    } as any)
-
     // Provide router to all child components
     provideRouter(router)
+    // Links outside every match follow the live location.
+    if (!(isServer ?? router.isServer)) {
+      provideLinkLocation(router)
+    }
 
     return () => {
+      // Allow the router to update options on the router instance
+      router.update({
+        ...router.options,
+        ...restAttrs,
+        context: {
+          ...router.options.context,
+          ...(restAttrs.context || {}),
+        },
+      })
+
       // Get child content
       const childContent = slots.default?.()
 
@@ -90,10 +96,7 @@ export const RouterProvider = Vue.defineComponent({
     } & Record<string, any>,
   ): Vue.VNode
   new (): {
-    $props: {
-      router: AnyRouter
-      routeTree?: AnyRouter['routeTree']
-    }
+    $props: RouterProps<AnyRouter>
   }
 }
 
@@ -108,7 +111,7 @@ export type RouterProps<
     TRouter['history'],
     TDehydrated
   >,
-  'context'
+  'context' | 'pathParamsAllowedCharacters'
 > & {
   router: TRouter
   context?: Partial<

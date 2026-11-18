@@ -232,7 +232,7 @@ render(() => <RouterProvider router={router} />, rootElement)
 
 Regardless of whether you are using the `@tanstack/router-plugin` package and running the `npm run dev`/`npm run build` scripts, or manually running the `tsr watch`/`tsr generate` commands from your package scripts, the route tree file will be generated at `src/routeTree.gen.ts`.
 
-If you are working with this pattern you should change the `id` of the root `<div>` on your `index.html` file to `<div id='root'></div>`
+If you are working with this pattern, you should change the `id` of the root `<div>` on your `index.html` file to `<div id='root'></div>`
 
 ## Using Code-Based Route Configuration
 

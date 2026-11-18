@@ -10,15 +10,15 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as Char91indexChar93RouteImport } from './routes/[index]'
-import { Route as Char91routeChar93RouteImport } from './routes/[route]'
-import { Route as Char91lazyChar93RouteImport } from './routes/[lazy]'
-import { Route as Foo_barRouteImport } from './routes/foo[_]bar'
-import { Route as BlogRouteImport } from './routes/blog[_]'
-import { Route as Api_v2_usersRouteImport } from './routes/api[_]v2[_]users'
-import { Route as Prefix_middle_suffixRouteImport } from './routes/[_]prefix[_]middle[_]suffix'
-import { Route as LayoutRouteImport } from './routes/[_]layout'
-import { Route as AuthRouteRouteImport } from './routes/[_]auth.route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthRouteRouteImport } from './routes/[_]auth.route'
+import { Route as LayoutRouteImport } from './routes/[_]layout'
+import { Route as Prefix_middle_suffixRouteImport } from './routes/[_]prefix[_]middle[_]suffix'
+import { Route as Api_v2_usersRouteImport } from './routes/api[_]v2[_]users'
+import { Route as BlogRouteImport } from './routes/blog[_]'
+import { Route as Foo_barRouteImport } from './routes/foo[_]bar'
+import { Route as Char91lazyChar93RouteImport } from './routes/[lazy]'
+import { Route as Char91routeChar93RouteImport } from './routes/[route]'
 import { Route as NestedChar91indexChar93RouteImport } from './routes/nested.[index]'
 
 const Char91indexChar93Route = Char91indexChar93RouteImport.update({
@@ -26,39 +26,9 @@ const Char91indexChar93Route = Char91indexChar93RouteImport.update({
   path: '/index',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char91routeChar93Route = Char91routeChar93RouteImport.update({
-  id: '/route',
-  path: '/route',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Char91lazyChar93Route = Char91lazyChar93RouteImport.update({
-  id: '/lazy',
-  path: '/lazy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Foo_barRoute = Foo_barRouteImport.update({
-  id: '/foo_bar',
-  path: '/foo_bar',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BlogRoute = BlogRouteImport.update({
-  id: '/blog_',
-  path: '/blog_',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Api_v2_usersRoute = Api_v2_usersRouteImport.update({
-  id: '/api_v2_users',
-  path: '/api_v2_users',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Prefix_middle_suffixRoute = Prefix_middle_suffixRouteImport.update({
-  id: '/_prefix_middle_suffix',
-  path: '/_prefix_middle_suffix',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LayoutRoute = LayoutRouteImport.update({
-  id: '/_layout',
-  path: '/_layout',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRouteRoute = AuthRouteRouteImport.update({
@@ -66,9 +36,39 @@ const AuthRouteRoute = AuthRouteRouteImport.update({
   path: '/_auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const LayoutRoute = LayoutRouteImport.update({
+  id: '/_layout',
+  path: '/_layout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Prefix_middle_suffixRoute = Prefix_middle_suffixRouteImport.update({
+  id: '/_prefix_middle_suffix',
+  path: '/_prefix_middle_suffix',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Api_v2_usersRoute = Api_v2_usersRouteImport.update({
+  id: '/api_v2_users',
+  path: '/api_v2_users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogRoute = BlogRouteImport.update({
+  id: '/blog_',
+  path: '/blog_',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Foo_barRoute = Foo_barRouteImport.update({
+  id: '/foo_bar',
+  path: '/foo_bar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char91lazyChar93Route = Char91lazyChar93RouteImport.update({
+  id: '/lazy',
+  path: '/lazy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char91routeChar93Route = Char91routeChar93RouteImport.update({
+  id: '/route',
+  path: '/route',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NestedChar91indexChar93Route = NestedChar91indexChar93RouteImport.update({
@@ -182,53 +182,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91indexChar93RouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/route': {
-      id: '/route'
-      path: '/route'
-      fullPath: '/route'
-      preLoaderRoute: typeof Char91routeChar93RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lazy': {
-      id: '/lazy'
-      path: '/lazy'
-      fullPath: '/lazy'
-      preLoaderRoute: typeof Char91lazyChar93RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/foo_bar': {
-      id: '/foo_bar'
-      path: '/foo_bar'
-      fullPath: '/foo_bar'
-      preLoaderRoute: typeof Foo_barRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog_': {
-      id: '/blog_'
-      path: '/blog_'
-      fullPath: '/blog_'
-      preLoaderRoute: typeof BlogRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api_v2_users': {
-      id: '/api_v2_users'
-      path: '/api_v2_users'
-      fullPath: '/api_v2_users'
-      preLoaderRoute: typeof Api_v2_usersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_prefix_middle_suffix': {
-      id: '/_prefix_middle_suffix'
-      path: '/_prefix_middle_suffix'
-      fullPath: '/_prefix_middle_suffix'
-      preLoaderRoute: typeof Prefix_middle_suffixRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_layout': {
-      id: '/_layout'
-      path: '/_layout'
-      fullPath: '/_layout'
-      preLoaderRoute: typeof LayoutRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth': {
@@ -238,11 +196,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/_layout': {
+      id: '/_layout'
+      path: '/_layout'
+      fullPath: '/_layout'
+      preLoaderRoute: typeof LayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_prefix_middle_suffix': {
+      id: '/_prefix_middle_suffix'
+      path: '/_prefix_middle_suffix'
+      fullPath: '/_prefix_middle_suffix'
+      preLoaderRoute: typeof Prefix_middle_suffixRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api_v2_users': {
+      id: '/api_v2_users'
+      path: '/api_v2_users'
+      fullPath: '/api_v2_users'
+      preLoaderRoute: typeof Api_v2_usersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog_': {
+      id: '/blog_'
+      path: '/blog_'
+      fullPath: '/blog_'
+      preLoaderRoute: typeof BlogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/foo_bar': {
+      id: '/foo_bar'
+      path: '/foo_bar'
+      fullPath: '/foo_bar'
+      preLoaderRoute: typeof Foo_barRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lazy': {
+      id: '/lazy'
+      path: '/lazy'
+      fullPath: '/lazy'
+      preLoaderRoute: typeof Char91lazyChar93RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/route': {
+      id: '/route'
+      path: '/route'
+      fullPath: '/route'
+      preLoaderRoute: typeof Char91routeChar93RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/nested/index': {

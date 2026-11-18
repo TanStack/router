@@ -25,10 +25,16 @@ setGlobal('Element', window.Element)
 setGlobal('SVGElement', window.SVGElement)
 setGlobal('DocumentFragment', window.DocumentFragment)
 setGlobal('Node', window.Node)
+setGlobal('MouseEvent', window.MouseEvent)
 setGlobal('MutationObserver', window.MutationObserver)
 setGlobal('sessionStorage', window.sessionStorage)
 setGlobal('localStorage', window.localStorage)
 setGlobal('getComputedStyle', window.getComputedStyle.bind(window))
+setGlobal('addEventListener', window.addEventListener.bind(window))
+setGlobal('removeEventListener', window.removeEventListener.bind(window))
+setGlobal('dispatchEvent', window.dispatchEvent.bind(window))
+setGlobal('CustomEvent', window.CustomEvent)
+setGlobal('Event', window.Event)
 
 setGlobal(
   'requestAnimationFrame',
@@ -44,5 +50,6 @@ setGlobal(
 )
 
 window.scrollTo = () => {}
+setGlobal('scrollTo', () => {})
 
 export { window }

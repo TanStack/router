@@ -8,6 +8,46 @@ test('Smoke - Renders home', async ({ page }) => {
   ).toBeVisible()
 })
 
+test('restores window scroll after force reload of a navigated route', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: '/reset-scroll-false-a' }).click()
+  await expect(
+    page.getByRole('heading', { name: 'reset-scroll-false-a' }),
+  ).toBeVisible()
+  await expect
+    .poll(async () =>
+      page.evaluate(() => document.documentElement.scrollHeight > innerHeight),
+    )
+    .toBe(true)
+
+  const scrollY = await page.evaluate(async () => {
+    window.scrollTo(0, 500)
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    return window.scrollY
+  })
+
+  expect(scrollY).toBeGreaterThan(0)
+
+  await page.reload()
+  await expect(
+    page.getByRole('heading', { name: 'reset-scroll-false-a' }),
+  ).toBeVisible()
+  await expect
+    .poll(async () => page.evaluate(() => window.scrollY))
+    .toBe(scrollY)
+})
+
+test('initial hard navigation to a hash scrolls to the hash target', async ({
+  page,
+}) => {
+  await page.goto('/hash-scroll-repro#four')
+  await page.waitForLoadState('networkidle')
+  await expect(page.getByTestId('hash-scroll-section-four')).toBeInViewport()
+  await expect(page.getByTestId('hash-scroll-section-one')).not.toBeInViewport()
+})
+
 // Test for scroll related stuff
 ;[
   linkOptions({ to: '/normal-page' }),

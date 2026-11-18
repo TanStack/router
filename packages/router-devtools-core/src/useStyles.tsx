@@ -428,7 +428,7 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot | null) => {
       line-height: ${tokens.font.lineHeight.sm};
     `,
     matchStatus: (
-      status: 'pending' | 'success' | 'error' | 'notFound' | 'redirected',
+      status: 'pending' | 'success' | 'error' | 'notFound',
       isFetching: false | 'beforeLoad' | 'loader',
     ) => {
       const colorMap = {
@@ -436,7 +436,6 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot | null) => {
         success: 'green',
         error: 'red',
         notFound: 'purple',
-        redirected: 'gray',
       } as const
 
       const color =

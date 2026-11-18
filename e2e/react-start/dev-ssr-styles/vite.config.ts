@@ -1,8 +1,7 @@
 import { defineConfig } from 'vite'
-import tsConfigPaths from 'vite-tsconfig-paths'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
-import { ssrStylesMode, useNitro } from './env'
+import { ssrStylesMode, useNitro, viteBundledDev } from './env'
 
 function getSsrStylesConfig() {
   switch (ssrStylesMode) {
@@ -20,13 +19,12 @@ export default defineConfig(async () => {
   const nitroPlugin = useNitro ? [(await import('nitro/vite')).nitro()] : []
 
   return {
+    resolve: { tsconfigPaths: true },
+    experimental: { bundledDev: viteBundledDev },
     server: {
       port: 3000,
     },
     plugins: [
-      tsConfigPaths({
-        projects: ['./tsconfig.json'],
-      }),
       // Nitro is placed BEFORE tanstackStart to test that our CSS middleware
       // works regardless of plugin order (nitro has a catch-all middleware)
       ...nitroPlugin,

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from 'vitest'
+import { createSignal } from 'solid-js'
 import {
   cleanup,
   fireEvent,
@@ -7,8 +8,10 @@ import {
   waitFor,
 } from '@solidjs/testing-library'
 import { createMemoryHistory } from '@tanstack/history'
+import { createControlledPromise } from '@tanstack/router-core'
 import {
   Link,
+  MatchRoute,
   Outlet,
   RouterProvider,
   createRootRoute,
@@ -112,6 +115,8 @@ const defaultRouter = createRouter({
 
 type DefaultRouter = typeof defaultRouter
 
+afterEach(() => cleanup())
+
 test('when filtering useMatches by loaderData', async () => {
   render(() => <RouterProvider router={defaultRouter} />)
 
@@ -148,6 +153,153 @@ test('should show pendingComponent of root route', async () => {
 
   expect(await rendered.findByTestId('root-pending')).toBeInTheDocument()
   expect(await rendered.findByTestId('root-content')).toBeInTheDocument()
+})
+
+test('useMatchRoute follows superseding pending locations', async () => {
+  const aGate = createControlledPromise<void>()
+  const bGate = createControlledPromise<void>()
+
+  function Layout() {
+    const matchRoute = useMatchRoute()
+    const pendingA = matchRoute({ to: '/a', pending: true })
+    const pendingB = matchRoute({ to: '/b', pending: true })
+    const resolvedB = matchRoute({ to: '/b', pending: false })
+    return (
+      <div>
+        <span data-testid="pending-a">{String(Boolean(pendingA()))}</span>
+        <span data-testid="pending-b">{String(Boolean(pendingB()))}</span>
+        <span data-testid="resolved-b">{String(Boolean(resolvedB()))}</span>
+        <Outlet />
+      </div>
+    )
+  }
+
+  const root = createRootRoute({ component: Layout })
+  const index = createRoute({
+    getParentRoute: () => root,
+    path: '/',
+  })
+  const a = createRoute({
+    getParentRoute: () => root,
+    path: '/a',
+    loader: () => aGate,
+  })
+  const b = createRoute({
+    getParentRoute: () => root,
+    path: '/b',
+    loader: () => bGate,
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([index, a, b]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  render(() => <RouterProvider router={router} />)
+
+  await waitFor(() => {
+    expect(screen.getByTestId('pending-a')).toHaveTextContent('false')
+    expect(router.stores.status.get()).toBe('idle')
+    expect(router.stores.resolvedLocation.get()?.pathname).toBe('/')
+  })
+
+  const navigationA = router.navigate({ to: '/a' })
+  await waitFor(() => {
+    expect(screen.getByTestId('pending-a')).toHaveTextContent('true')
+    expect(screen.getByTestId('resolved-b')).toHaveTextContent('false')
+  })
+
+  const navigationB = router.navigate({ to: '/b' })
+  await waitFor(() => {
+    expect(screen.getByTestId('pending-a')).toHaveTextContent('false')
+    expect(screen.getByTestId('pending-b')).toHaveTextContent('true')
+    expect(screen.getByTestId('resolved-b')).toHaveTextContent('false')
+  })
+
+  aGate.resolve()
+  bGate.resolve()
+  await Promise.allSettled([navigationA, navigationB])
+  await waitFor(() => {
+    expect(screen.getByTestId('pending-b')).toHaveTextContent('false')
+    expect(screen.getByTestId('resolved-b')).toHaveTextContent('true')
+  })
+})
+
+test('MatchRoute updates for navigation and reactive params changes', async () => {
+  function Layout() {
+    const [postId, setPostId] = createSignal('123')
+
+    return (
+      <div>
+        <button onClick={() => setPostId('456')}>Change Match Params</button>
+        <MatchRoute to="/posts/$postId" params={{ postId: postId() }}>
+          {(match) => (
+            <span data-testid="function-match">
+              {match ? match.postId : 'no-match'}
+            </span>
+          )}
+        </MatchRoute>
+        <MatchRoute to="/posts/$postId" params={{ postId: postId() }}>
+          <span data-testid="plain-match">plain-match</span>
+        </MatchRoute>
+        <Outlet />
+      </div>
+    )
+  }
+
+  const rootRoute = createRootRoute({
+    component: Layout,
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => null,
+  })
+
+  const postsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'posts/$postId',
+    component: () => null,
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  render(() => <RouterProvider router={router} />)
+
+  await waitFor(() => {
+    expect(screen.getByTestId('function-match')).toHaveTextContent('no-match')
+    expect(screen.queryByTestId('plain-match')).not.toBeInTheDocument()
+  })
+
+  router.history.push('/posts/123')
+
+  await waitFor(() => {
+    expect(screen.getByTestId('function-match')).toHaveTextContent('123')
+    expect(screen.getByTestId('plain-match')).toBeInTheDocument()
+  })
+
+  fireEvent.click(screen.getByRole('button', { name: 'Change Match Params' }))
+
+  await waitFor(() => {
+    expect(screen.getByTestId('function-match')).toHaveTextContent('no-match')
+    expect(screen.queryByTestId('plain-match')).not.toBeInTheDocument()
+  })
+
+  router.history.push('/posts/456')
+
+  await waitFor(() => {
+    expect(screen.getByTestId('function-match')).toHaveTextContent('456')
+    expect(screen.getByTestId('plain-match')).toBeInTheDocument()
+  })
+
+  router.history.push('/')
+
+  await waitFor(() => {
+    expect(screen.getByTestId('function-match')).toHaveTextContent('no-match')
+    expect(screen.queryByTestId('plain-match')).not.toBeInTheDocument()
+  })
 })
 
 describe('matching on different param types', () => {
@@ -308,7 +460,6 @@ describe('matching on different param types', () => {
     },
   ]
 
-  afterEach(() => cleanup())
   test.each(testCases)(
     '$name',
     async ({ name, path, params, matchParams, nav }) => {

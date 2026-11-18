@@ -4,7 +4,7 @@ title: Build a Project from Scratch
 ---
 
 > [!NOTE]
-> If you chose to quick start with an example or cloned project, you can skip this guide and move on to the [Routing](./guide/routing) guide.
+> If you already created a project with the CLI or by cloning an example from the [Getting Started](./getting-started) guide, you can skip this guide and move on to the [Routing](./guide/routing) guide.
 
 _So you want to build a TanStack Start project from scratch?_
 
@@ -48,29 +48,51 @@ We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.jso
 
 ## Install Dependencies
 
-TanStack Start is powered by [Vite](https://vite.dev/) and [TanStack Router](https://tanstack.com/router) and requires them as dependencies.
+TanStack Start is powered by [TanStack Router](https://tanstack.com/router) and supports [Vite](https://vite.dev/) or [Rsbuild](https://rsbuild.dev/) as the build tool.
 
-To install them, run:
+To install Start and Router, run:
 
 ```shell
-npm i @tanstack/solid-start @tanstack/solid-router vite
+npm i @tanstack/solid-start @tanstack/solid-router
 ```
 
 You'll also need SolidJS:
 
 ```shell
-npm i solid-js vite-plugin-solid
+npm i solid-js
 ```
+
+Install the build tool and Solid integration you want to use:
+
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+```shell
+npm i -D vite vite-plugin-solid
+```
+
+# Rsbuild
+
+```shell
+npm i -D @rsbuild/core @rsbuild/plugin-babel @rsbuild/plugin-solid
+```
+
+<!-- ::end:tabs -->
 
 and some TypeScript:
 
 ```shell
-npm i -D typescript @types/node vite-tsconfig-paths
+npm i -D typescript @types/node
 ```
 
 ## Update Configuration Files
 
-We'll then update our `package.json` to use Vite's CLI and set `"type": "module"`:
+We'll then update our `package.json` to use your build tool's CLI and set `"type": "module"`:
+
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
 
 ```json
 {
@@ -83,12 +105,29 @@ We'll then update our `package.json` to use Vite's CLI and set `"type": "module"
 }
 ```
 
-Then configure TanStack Start's Vite plugin in `vite.config.ts`:
+# Rsbuild
 
-```ts
-// vite.config.ts
+```json
+{
+  // ...
+  "type": "module",
+  "scripts": {
+    "dev": "rsbuild dev",
+    "build": "rsbuild build"
+  }
+}
+```
+
+<!-- ::end:tabs -->
+
+Then configure TanStack Start's build tool plugin:
+
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+```ts title="vite.config.ts"
 import { defineConfig } from 'vite'
-import tsConfigPaths from 'vite-tsconfig-paths'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import viteSolid from 'vite-plugin-solid'
 
@@ -96,14 +135,40 @@ export default defineConfig({
   server: {
     port: 3000,
   },
+  resolve: {
+    tsconfigPaths: true,
+  },
   plugins: [
-    tsConfigPaths(),
     tanstackStart(),
     // solid's vite plugin must come after start's vite plugin
     viteSolid({ ssr: true }),
   ],
 })
 ```
+
+# Rsbuild
+
+```ts title="rsbuild.config.ts"
+import { defineConfig } from '@rsbuild/core'
+import { pluginBabel } from '@rsbuild/plugin-babel'
+import { pluginSolid } from '@rsbuild/plugin-solid'
+import { tanstackStart } from '@tanstack/solid-start/plugin/rsbuild'
+
+export default defineConfig({
+  server: {
+    port: 3000,
+  },
+  plugins: [
+    pluginBabel({
+      include: /\.(?:jsx|tsx)$/,
+    }),
+    pluginSolid(),
+    tanstackStart(),
+  ],
+})
+```
+
+<!-- ::end:tabs -->
 
 ## Add the Basic Templating
 
@@ -121,7 +186,7 @@ Once configuration is done, we'll have a file tree that looks like the following
 │   │   └── `__root.tsx`
 │   ├── `router.tsx`
 │   ├── `routeTree.gen.ts`
-├── `vite.config.ts`
+├── `vite.config.ts` or `rsbuild.config.ts`
 ├── `package.json`
 └── `tsconfig.json`
 ```
@@ -155,7 +220,6 @@ Finally, we need to create the root of our application. This is the entry point 
 
 ```tsx
 // src/routes/__root.tsx
-/// <reference types="vite/client" />
 import * as Solid from 'solid-js'
 import {
   Outlet,
@@ -231,7 +295,7 @@ const getCount = createServerFn({
 })
 
 const updateCount = createServerFn({ method: 'POST' })
-  .inputValidator((d: number) => d)
+  .validator((d: number) => d)
   .handler(async ({ data }) => {
     const count = await readCount()
     await fs.promises.writeFile(filePath, `${count + data}`)

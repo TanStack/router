@@ -1,1 +1,4 @@
-export async function getServerFnById(): Promise<any> {}
+export async function getServerFnById(
+  _id: string,
+  _access: { origin: 'client' | 'server' },
+): Promise<any> {}

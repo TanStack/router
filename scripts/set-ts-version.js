@@ -12,7 +12,10 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 const ROOT_PACKAGE_JSON = join(__dirname, '..', 'package.json')
 const PACKAGES_DIR = join(__dirname, '..', 'packages')
-const SUPPORTED_TS_VERSIONS = ['5.4', '5.5', '5.6', '5.7', '5.8', '5.9']
+const SUPPORTED_TS_VERSIONS = ['5.6', '5.7', '5.8', '5.9', '6.0', '7.0']
+const API_COMPAT_TS_VERSION = '6.0'
+const API_COMPAT_TS_RANGE = '^6.0.2'
+const LATEST_TS_RANGE = '^7.0.2'
 const LATEST_TS_VERSION =
   SUPPORTED_TS_VERSIONS[SUPPORTED_TS_VERSIONS.length - 1]
 
@@ -42,7 +45,7 @@ function updatePackageJson(packagePath) {
   scriptKeys.forEach((key) => {
     if (key.startsWith('test:types:')) {
       const script = packageJson.scripts[key]
-      const match = script.match(/(?:node \S+\/tsc\.js|tsc)(.*)/)
+      const match = script.match(/(?:node \S+\/tsc\.js|tsc6|tsc)(.*)/)
       cliArgs[key] = match ? match[1].trim() : ''
       delete updatedScripts[key]
     }
@@ -65,6 +68,8 @@ function updatePackageJson(packagePath) {
         if (i === SUPPORTED_TS_VERSIONS.length - 1) {
           // Use "tsc" directly for the latest version
           newScripts[scriptKey] = `tsc ${previousLatestArgs}`.trim()
+        } else if (version === API_COMPAT_TS_VERSION) {
+          newScripts[scriptKey] = `tsc6 ${cliArgs[scriptKey] || ''}`.trim()
         } else {
           const args = cliArgs[scriptKey] || ''
           newScripts[scriptKey] =
@@ -90,8 +95,11 @@ function updateRootPackageJson() {
   const rootPackageJson = JSON.parse(readFileSync(ROOT_PACKAGE_JSON, 'utf8'))
   rootPackageJson.devDependencies = rootPackageJson.devDependencies || {}
 
-  // Update main TypeScript version
-  rootPackageJson.devDependencies['typescript'] = `^${LATEST_TS_VERSION}.0`
+  // TypeScript 7 provides tsc, while TypeScript 6 provides the legacy API.
+  rootPackageJson.devDependencies['@typescript/native'] =
+    `npm:typescript@${LATEST_TS_RANGE}`
+  rootPackageJson.devDependencies['typescript'] =
+    `npm:@typescript/typescript6@${API_COMPAT_TS_RANGE}`
 
   // Remove old TypeScript aliases
   Object.keys(rootPackageJson.devDependencies).forEach((dep) => {
@@ -101,10 +109,12 @@ function updateRootPackageJson() {
   })
 
   // Add supported TypeScript aliases
-  SUPPORTED_TS_VERSIONS.slice(0, -1).forEach((version) => {
-    rootPackageJson.devDependencies[`typescript${version.replace('.', '')}`] =
-      `npm:typescript@${version}`
-  })
+  SUPPORTED_TS_VERSIONS.slice(0, -1)
+    .filter((version) => version !== API_COMPAT_TS_VERSION)
+    .forEach((version) => {
+      rootPackageJson.devDependencies[`typescript${version.replace('.', '')}`] =
+        `npm:typescript@${version}`
+    })
 
   writeFileSync(
     ROOT_PACKAGE_JSON,

@@ -33,15 +33,18 @@ export type UseParamsOptions<
 export type UseParamsRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
+  TThrow extends boolean = true,
 >(
   opts?: UseParamsBaseOptions<
     TRouter,
     TFrom,
     /* TStrict */ true,
-    /* TThrow */ true,
+    TThrow,
     TSelected
   >,
-) => Accessor<UseParamsResult<TRouter, TFrom, true, TSelected>>
+) => Accessor<
+  ThrowOrOptional<UseParamsResult<TRouter, TFrom, true, TSelected>, TThrow>
+>
 
 export function useParams<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -62,11 +65,10 @@ export function useParams<
 > {
   return useMatch({
     from: opts.from!,
-    shouldThrow: opts.shouldThrow,
     strict: opts.strict,
+    shouldThrow: opts.shouldThrow,
     select: (match) => {
       const params = opts.strict === false ? match.params : match._strictParams
-
       return opts.select ? opts.select(params) : params
     },
   }) as Accessor<any>

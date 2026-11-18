@@ -130,6 +130,7 @@ export const Route = createRootRoute({
 If you don't want to miss any translated path, you can create a `createTranslatedPathnames` function and pass it to the vite plugin.
 
 ```ts
+// i18n/lib.ts
 import { Locale } from '@/paraglide/runtime'
 import { FileRoutesByTo } from '../routeTree.gen'
 
@@ -189,6 +190,20 @@ export const translatedPathnames = createTranslatedPathnames({
 ```
 
 And import into the Paraglide Vite plugin.
+
+```ts
+// vite.config.ts
+import { translatedPathnames } from './i18n/lib'
+
+export default defineConfig({
+  plugins: [
+    paraglideVitePlugin({
+      // ... other options
+      urlPatterns: translatedPathnames,
+    }),
+  ],
+})
+```
 
 ## Prerender routes
 

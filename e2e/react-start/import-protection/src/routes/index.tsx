@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useHydrated } from '@tanstack/react-router'
 // This import chain triggers a file-based violation in the CLIENT env:
 //   index.tsx -> violations/edge-a.ts -> violations/secret.server.ts
 import { getWrappedSecret } from '../violations/edge-a'
@@ -25,10 +25,12 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
+  const hydrated = useHydrated()
   return (
     <div>
       <h1 data-testid="heading">Import Protection E2E</h1>
       <p data-testid="status">App loaded successfully with mock mode</p>
+      <p data-testid="hydration-status">{hydrated ? 'hydrated' : 'ssr'}</p>
       <p data-testid="secret">{getWrappedSecret()}</p>
       <p data-testid="secret-deep">{getWrappedSecret1()}</p>
       <p data-testid="server-only-data">{getServerOnlyDataViaEdge()}</p>

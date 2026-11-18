@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'solid-js'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 export const defaultTheme = {
   background: '#222222',

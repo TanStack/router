@@ -7,6 +7,8 @@ export type PostType = {
   body: string
 }
 
+const queryURL = 'https://jsonplaceholder.typicode.com'
+
 export const postsQueryOptions = () =>
   queryOptions({
     queryKey: ['posts'],
@@ -14,7 +16,7 @@ export const postsQueryOptions = () =>
       console.info('Fetching posts...')
       await new Promise((r) => setTimeout(r, 500))
       return axios
-        .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
+        .get<Array<PostType>>(`${queryURL}/posts`)
         .then((r) => r.data.slice(0, 10))
     },
   })
@@ -27,7 +29,7 @@ export const postQueryOptions = (postId: string) =>
       await new Promise((r) => setTimeout(r, 500))
 
       return axios
-        .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
+        .get<PostType>(`${queryURL}/posts/${postId}`)
         .then((r) => r.data)
     },
   })

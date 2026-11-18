@@ -1,5 +1,5 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
-import { tanstackViteConfig } from '@tanstack/config/vite'
+import { tanstackViteConfig } from '@tanstack/vite-config'
 import react from '@vitejs/plugin-react'
 import packageJson from './package.json'
 
@@ -18,15 +18,17 @@ const config = defineConfig({
     watch: false,
     environment: 'jsdom',
     typecheck: { enabled: true },
-    setupFiles: ['./tests/setupTests.tsx'],
+    setupFiles: ['./tests/jest-dom.setup.ts', './tests/setupTests.tsx'],
   },
 })
 
 export default mergeConfig(
   config,
   tanstackViteConfig({
+    tsconfigPath: './tsconfig.build.json',
     entry: [
       './src/index.tsx',
+      './src/index.rsc.ts',
       './src/index.dev.tsx',
       './src/ssr/client.ts',
       './src/ssr/server.ts',

@@ -1,10 +1,16 @@
 import { createRspackPlugin } from 'unplugin'
 
 import { configSchema } from './core/config'
-import { unpluginRouterCodeSplitterFactory } from './core/router-code-splitter-plugin'
-import { unpluginRouterGeneratorFactory } from './core/router-generator-plugin'
+import { createRouterCodeSplitterPlugin } from './core/router-code-splitter-plugin'
+import { createRouterGeneratorPlugin } from './core/router-generator-plugin'
 import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
+import { createRouterPluginContext } from './core/router-plugin-context'
 import type { CodeSplittingOptions, Config } from './core/config'
+import type { RouterPluginContext } from './core/router-plugin-context'
+
+type RspackRouterPluginOptions = Partial<Config> | (() => Partial<Config>)
+
+const defaultRouterPluginContext = createRouterPluginContext()
 
 /**
  * @example
@@ -19,11 +25,23 @@ import type { CodeSplittingOptions, Config } from './core/config'
  * })
  * ```
  */
-const TanStackRouterGeneratorRspack = /* #__PURE__ */ createRspackPlugin(
-  unpluginRouterGeneratorFactory,
-)
+const TanStackRouterGeneratorRspack = (
+  options?: RspackRouterPluginOptions,
+  routerPluginContext?: RouterPluginContext,
+) => {
+  const pluginContext = routerPluginContext ?? defaultRouterPluginContext
+  return createRspackPlugin((pluginOptions) =>
+    createRouterGeneratorPlugin(
+      pluginOptions as Partial<Config | (() => Config)> | undefined,
+      pluginContext,
+    ),
+  )(options)
+}
 
 /**
+ * Rspack uses webpack-compatible `import.meta.webpackHot` HMR, which the
+ * code splitter emits for it.
+ *
  * @example
  * ```ts
  * export default defineConfig({
@@ -36,9 +54,19 @@ const TanStackRouterGeneratorRspack = /* #__PURE__ */ createRspackPlugin(
  * })
  * ```
  */
-const TanStackRouterCodeSplitterRspack = /* #__PURE__ */ createRspackPlugin(
-  unpluginRouterCodeSplitterFactory,
-)
+const TanStackRouterCodeSplitterRspack = (
+  options?: RspackRouterPluginOptions,
+  routerPluginContext?: RouterPluginContext,
+) => {
+  const pluginContext = routerPluginContext ?? defaultRouterPluginContext
+  return createRspackPlugin((pluginOptions) =>
+    createRouterCodeSplitterPlugin(
+      pluginOptions as Partial<Config | (() => Config)> | undefined,
+      pluginContext,
+      'webpack',
+    ),
+  )(options)
+}
 
 /**
  * @example
@@ -65,4 +93,4 @@ export {
   TanStackRouterCodeSplitterRspack,
   tanstackRouter,
 }
-export type { Config, CodeSplittingOptions }
+export type { Config, CodeSplittingOptions, RouterPluginContext }

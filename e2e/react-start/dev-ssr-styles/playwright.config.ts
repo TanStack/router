@@ -1,7 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
-import { getTestServerPort } from '@tanstack/router-e2e-utils'
-import packageJson from './package.json' with { type: 'json' }
-import { ssrStylesMode, useNitro } from './env'
+import { appServerReady } from '@tanstack/router-e2e-utils'
+import { ssrStylesMode, useNitro, viteBundledDev } from './env'
 
 const mode = process.env.MODE ?? 'prod'
 const isDev = mode === 'dev'
@@ -9,21 +8,13 @@ const isDev = mode === 'dev'
 // Build a unique port key per dimension combination (ssrStyles mode + nitro)
 // e.g. "...dev-ssr-styles", "...dev-ssr-styles-disabled", "...dev-ssr-styles-nitro",
 //      "...dev-ssr-styles-disabled-nitro"
-function getPortKey() {
-  let key = packageJson.name
-  if (ssrStylesMode !== 'default') {
-    key += `-${ssrStylesMode}`
-  }
-  if (useNitro) {
-    key += '-nitro'
-  }
-  return key
-}
 
-const PORT = await getTestServerPort(getPortKey())
+const PORT = Number(process.env.E2E_APP_PORT ?? 0)
 const baseURL = `http://localhost:${PORT}`
 
 // Select the appropriate dev command based on SSR_STYLES + VITE_USE_NITRO
+// package.json omits bundled Nitro runs because its asset plugin produces
+// invalid Vite client code. Re-enable those tests once the upstream fix lands.
 function getDevCommand() {
   const scriptParts = ['dev:e2e']
   if (ssrStylesMode !== 'default') {
@@ -41,7 +32,6 @@ export default defineConfig({
   reporter: [['line']],
 
   globalSetup: './tests/setup/global.setup.ts',
-  globalTeardown: './tests/setup/global.teardown.ts',
 
   use: {
     baseURL,
@@ -49,12 +39,13 @@ export default defineConfig({
 
   webServer: {
     command: isDev ? getDevCommand() : `pnpm build && PORT=${PORT} pnpm start`,
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    wait: appServerReady,
+    reuseExistingServer: false,
     stdout: 'pipe',
     env: {
       VITE_NODE_ENV: 'test',
       PORT: String(PORT),
+      E2E_VITE_BUNDLED_DEV: String(viteBundledDev),
     },
   },
 

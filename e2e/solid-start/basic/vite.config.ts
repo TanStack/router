@@ -1,5 +1,4 @@
 import { defineConfig } from 'vite'
-import tsConfigPaths from 'vite-tsconfig-paths'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import viteSolid from 'vite-plugin-solid'
 import { isSpaMode } from './tests/utils/isSpaMode'
@@ -18,6 +17,7 @@ const prerenderConfiguration = {
   filter: (page: { path: string }) =>
     ![
       '/this-route-does-not-exist',
+      '/error-normalization',
       '/redirect',
       '/i-do-not-exist',
       '/not-found',
@@ -31,15 +31,18 @@ const prerenderConfiguration = {
   maxRedirects: 100,
 }
 
+const outDir = process.env.E2E_DIST_DIR ?? 'dist'
+
 export default defineConfig({
+  resolve: { tsconfigPaths: true },
+  build: {
+    outDir,
+  },
   server: {
     port: 3000,
   },
   plugins: [
     tailwindcss(),
-    tsConfigPaths({
-      projects: ['./tsconfig.json'],
-    }),
     tanstackStart({
       spa: isSpaMode ? spaModeConfiguration : undefined,
       prerender: isPrerender ? prerenderConfiguration : undefined,

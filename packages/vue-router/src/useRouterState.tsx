@@ -1,6 +1,6 @@
-import { useStore } from '@tanstack/vue-store'
 import * as Vue from 'vue'
 import { isServer } from '@tanstack/router-core/isServer'
+import { useSelector } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -30,7 +30,7 @@ export function useRouterState<
   const router = opts?.router || contextRouter
 
   // Return a safe default if router is undefined
-  if (!router || !router.__store) {
+  if (!router || !router.stores.__store) {
     return Vue.ref(undefined) as Vue.Ref<
       UseRouterStateResult<TRouter, TSelected>
     >
@@ -39,17 +39,21 @@ export function useRouterState<
   // During SSR we render exactly once and do not need reactivity.
   // Avoid subscribing to the store on the server since the server store
   // implementation does not provide subscribe() semantics.
-  const _isServer = isServer ?? router.isServer
-
-  if (_isServer) {
-    const state = router.state as RouterState<TRouter['routeTree']>
+  // The expression must stay inlined in the `if` so bundlers fold the
+  // browser-build constant `isServer = false` and drop this server block.
+  if (isServer ?? router.isServer) {
+    const state = router.stores.__store.get() as RouterState<
+      TRouter['routeTree']
+    >
     return Vue.ref(opts?.select ? opts.select(state) : state) as Vue.Ref<
       UseRouterStateResult<TRouter, TSelected>
     >
   }
 
-  return useStore(router.__store, (state) => {
-    if (opts?.select) return opts.select(state)
+  return useSelector(router.stores.__store, (state) => {
+    if (opts?.select) {
+      return opts.select(state)
+    }
 
     return state
   }) as Vue.Ref<UseRouterStateResult<TRouter, TSelected>>

@@ -3,7 +3,7 @@ import { createServerFn } from '@tanstack/vue-start'
 import { defineComponent, ref } from 'vue'
 
 const multipartFormDataServerFn = createServerFn({ method: 'POST' })
-  .inputValidator((x: unknown) => {
+  .validator((x: unknown) => {
     if (!(x instanceof FormData)) {
       throw new Error('Invalid form data')
     }

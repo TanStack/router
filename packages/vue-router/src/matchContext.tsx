@@ -1,41 +1,39 @@
 import * as Vue from 'vue'
+import { _isRouteDeparting } from '@tanstack/router-core'
+import type { InjectionKey, Ref } from 'vue'
+import type { AnyRouter, ParsedLocation } from '@tanstack/router-core'
 
-// Create a typed injection key with support for undefined values
-// This is the primary match context used throughout the router
-export const matchContext = Symbol('TanStackRouterMatch') as Vue.InjectionKey<
-  Vue.Ref<string | undefined>
->
+// Stable routeId context — a plain string (not reactive) that identifies
+// which route this component belongs to. Provided by Match, consumed by
+// MatchInner, Outlet, and useMatch for routeId-based store lookups.
+export const routeIdContext = Symbol(
+  'TanStackRouterRouteId',
+) as InjectionKey<string>
 
-// Dummy match context for when we want to look up by explicit 'from' route
-export const dummyMatchContext = Symbol(
-  'TanStackRouterDummyMatch',
-) as Vue.InjectionKey<Vue.Ref<string | undefined>>
-
-/**
- * Provides a match ID to child components
- */
-export function provideMatch(matchId: string | undefined) {
-  Vue.provide(matchContext, Vue.ref(matchId))
-}
+// The location the links of the nearest match, or of the router outside every
+// match, build from. Provided on the client only.
+export const linkLocationContext = Symbol(
+  'TanStackRouterLinkLocation',
+) as InjectionKey<Readonly<Ref<ParsedLocation>>>
 
 /**
- * Retrieves the match ID from the component tree
+ * Provides the location the links below build from. A location publication
+ * whose navigation leaves `routeId` keeps the location the route still
+ * presents, so its links do no work: the route unmounts when that navigation
+ * commits, and any other outcome publishes a newer location. The store calls
+ * this subscription synchronously inside the publication, the only time the
+ * predicate is valid. Without a route the location is the live one. Links
+ * hand it to the router, so it stays raw rather than a readonly proxy.
  */
-export function injectMatch(): Vue.Ref<string | undefined> {
-  return Vue.inject(matchContext, Vue.ref(undefined))
-}
-
-/**
- * Provides a dummy match ID to child components
- */
-export function provideDummyMatch(matchId: string | undefined) {
-  Vue.provide(dummyMatchContext, Vue.ref(matchId))
-}
-
-/**
- * Retrieves the dummy match ID from the component tree
- * This only exists so we can conditionally inject a value when we are not interested in the nearest match
- */
-export function injectDummyMatch(): Vue.Ref<string | undefined> {
-  return Vue.inject(dummyMatchContext, Vue.ref(undefined))
+export function provideLinkLocation(router: AnyRouter, routeId?: string) {
+  const store = router.stores.location
+  const linkLocation = Vue.shallowRef(store.get())
+  Vue.onScopeDispose(
+    store.subscribe((location) => {
+      if (!_isRouteDeparting(router, routeId, location)) {
+        linkLocation.value = location
+      }
+    }).unsubscribe,
+  )
+  Vue.provide(linkLocationContext, linkLocation)
 }

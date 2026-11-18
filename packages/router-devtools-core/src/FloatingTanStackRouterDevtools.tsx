@@ -9,7 +9,8 @@ import { BaseTanStackRouterDevtoolsPanel } from './BaseTanStackRouterDevtoolsPan
 import useLocalStorage from './useLocalStorage'
 import { TanStackLogo } from './logo'
 import { useStyles } from './useStyles'
-import type { Accessor, JSX } from 'solid-js'
+import type { Accessor } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type { AnyRouter } from '@tanstack/router-core'
 
 export interface FloatingDevtoolsOptions {

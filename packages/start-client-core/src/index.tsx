@@ -1,6 +1,11 @@
 export type { JsonResponse } from '@tanstack/router-core/ssr/client'
 
-export { hydrate, json, mergeHeaders } from '@tanstack/router-core/ssr/client'
+export {
+  defaultSerovalDeserializerPlugins,
+  hydrate,
+  json,
+  mergeHeaders,
+} from '@tanstack/router-core/ssr/client'
 
 export { RawStream } from '@tanstack/router-core'
 export type { OnRawStreamCallback } from '@tanstack/router-core'
@@ -65,6 +70,10 @@ export type {
   FetcherBaseOptions,
   ServerFn,
   ServerFnCtx,
+  ServerFnOptions,
+  ServerFnStrict,
+  ServerFnStrictInput,
+  ServerFnStrictOutput,
   MiddlewareFn,
   ServerFnMiddlewareOptions,
   ServerFnMiddlewareResult,
@@ -80,6 +89,17 @@ export {
   flattenMiddlewares,
   executeMiddleware,
 } from './createServerFn'
+export {
+  createCsrfMiddleware,
+  csrfSymbol,
+  getCsrfRequestValidationResult,
+  isCsrfRequestAllowed,
+} from './createCsrfMiddleware'
+export type {
+  CsrfMatcher,
+  CsrfMiddlewareOptions,
+  CsrfSecFetchSite,
+} from './createCsrfMiddleware'
 
 export {
   TSS_FORMDATA_CONTEXT,
@@ -87,18 +107,12 @@ export {
   TSS_CONTENT_TYPE_FRAMED,
   TSS_CONTENT_TYPE_FRAMED_VERSIONED,
   TSS_FRAMED_PROTOCOL_VERSION,
-  FrameType,
   FRAME_HEADER_SIZE,
   X_TSS_SERIALIZED,
   X_TSS_RAW_RESPONSE,
   X_TSS_CONTEXT,
-  validateFramedProtocolVersion,
 } from './constants'
-export type {
-  FrameType as FrameTypeValue,
-  ClientFnMeta,
-  ServerFnMeta,
-} from './constants'
+export type { ClientFnMeta, ServerFnMeta } from './constants'
 
 export type * from './serverRoute'
 
@@ -114,6 +128,10 @@ export type {
 export type { Register } from '@tanstack/router-core'
 
 export { getRouterInstance } from './getRouterInstance'
-export { getDefaultSerovalPlugins } from './getDefaultSerovalPlugins'
+export {
+  getDefaultSerovalPlugins,
+  getSerovalPlugins,
+} from './getDefaultSerovalPlugins'
 export { getGlobalStartContext } from './getGlobalStartContext'
 export { safeObjectMerge, createNullProtoObject } from './safeObjectMerge'
+export { trackPostProcessPromise } from './client-rpc/serverFnFetcher'

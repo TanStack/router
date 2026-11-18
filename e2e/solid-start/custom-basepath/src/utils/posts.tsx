@@ -8,14 +8,10 @@ export type PostType = {
   body: string
 }
 
-let queryURL = 'https://jsonplaceholder.typicode.com'
-
-if (import.meta.env.VITE_NODE_ENV === 'test') {
-  queryURL = `http://localhost:${import.meta.env.VITE_EXTERNAL_PORT}`
-}
+const queryURL = 'https://jsonplaceholder.typicode.com'
 
 export const fetchPost = createServerFn({ method: 'GET' })
-  .inputValidator((postId: string) => postId)
+  .validator((postId: string) => postId)
   .handler(async ({ data: postId }) => {
     console.info(`Fetching post with id ${postId}...`)
     const post = await axios

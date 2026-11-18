@@ -1,46 +1,79 @@
-const $$splitComponentImporter = () => import('arrow-function.tsx?tsr-split=component');
-import { lazyRouteComponent } from '@tanstack/solid-router';
-import { createFileRoute } from '@tanstack/solid-router';
-import { fetchPosts } from '../posts';
+const $$splitComponentImporter = () =>
+  import('arrow-function.tsx?tsr-split=component')
+import { lazyRouteComponent } from '@tanstack/solid-router'
+import { createFileRoute } from '@tanstack/solid-router'
+import { fetchPosts } from '../posts'
 export const Route = createFileRoute('/posts')({
   loader: fetchPosts,
-  component: lazyRouteComponent($$splitComponentImporter, 'component')
-});
+  component: lazyRouteComponent($$splitComponentImporter, 'component'),
+})
 if (import.meta.hot) {
-  import.meta.hot.accept(newModule => {
-    if (Route && newModule && newModule.Route) {
-      (function handleRouteUpdate(oldRoute, newRoute) {
-        newRoute._path = oldRoute._path;
-        newRoute._id = oldRoute._id;
-        newRoute._fullPath = oldRoute._fullPath;
-        newRoute._to = oldRoute._to;
-        newRoute.children = oldRoute.children;
-        newRoute.parentRoute = oldRoute.parentRoute;
-        const router = window.__TSR_ROUTER__;
-        router.routesById[newRoute.id] = newRoute;
-        router.routesByPath[newRoute.fullPath] = newRoute;
-        router.processedTree.matchCache.clear();
-        router.processedTree.flatCache?.clear();
-        router.processedTree.singleCache.clear();
-        router.resolvePathCache.clear();
-        walkReplaceSegmentTree(newRoute, router.processedTree.segmentTree);
-        const filter = m => m.routeId === oldRoute.id;
-        if (router.state.matches.find(filter) || router.state.pendingMatches?.find(filter)) {
-          router.invalidate({
-            filter
-          });
-        }
-        ;
-        function walkReplaceSegmentTree(route, node) {
-          if (node.route?.id === route.id) node.route = route;
-          if (node.index) walkReplaceSegmentTree(route, node.index);
-          node.static?.forEach(child => walkReplaceSegmentTree(route, child));
-          node.staticInsensitive?.forEach(child => walkReplaceSegmentTree(route, child));
-          node.dynamic?.forEach(child => walkReplaceSegmentTree(route, child));
-          node.optional?.forEach(child => walkReplaceSegmentTree(route, child));
-          node.wildcard?.forEach(child => walkReplaceSegmentTree(route, child));
-        }
-      })(Route, newModule.Route);
+  const hotData = (import.meta.hot.data ??= {})
+  const handleRouteUpdate = function handleRouteUpdate(routeId, newRoute) {
+    const router = window.__TSR_ROUTER__
+    const oldRoute = router.routesById[routeId]
+    if (!oldRoute) {
+      return
     }
-  });
+    const generatedRouteOptionKeys = new Set(['id', 'path', 'getParentRoute'])
+    const generatedRouteOptions = {}
+    generatedRouteOptionKeys.forEach((key) => {
+      if (key in oldRoute.options) {
+        generatedRouteOptions[key] = oldRoute.options[key]
+      }
+    })
+    const oldHasShellComponent = 'shellComponent' in oldRoute.options
+    const newHasShellComponent = 'shellComponent' in newRoute.options
+    const preserveComponentIdentity =
+      oldHasShellComponent === newHasShellComponent
+    const componentKeys = []
+    if (preserveComponentIdentity) {
+      componentKeys.forEach((key) => {
+        if (key in oldRoute.options && key in newRoute.options) {
+          newRoute.options[key] = oldRoute.options[key]
+        }
+      })
+    }
+    const nextOptions = { ...newRoute.options, ...generatedRouteOptions }
+    oldRoute.options = nextOptions
+    oldRoute.update(nextOptions)
+    router._replaceRouteChunk(oldRoute, newRoute.lazyFn)
+    router.setRoutes(router.buildRouteTree())
+    syncHotRouteExport(oldRoute)
+    router.resolvePathCache.clear()
+    void router._refreshRoute?.()
+    function syncHotRouteExport(liveRoute) {
+      newRoute.options = liveRoute.options
+      newRoute.parentRoute = liveRoute.parentRoute
+      newRoute._path = liveRoute._path
+      newRoute._id = liveRoute._id
+      newRoute._fullPath = liveRoute._fullPath
+      newRoute._to = liveRoute._to
+    }
+  }
+  const initialRouteId = Route.id ?? hotData['tsr-route-id']
+  if (initialRouteId) {
+    hotData['tsr-route-id'] = initialRouteId
+  }
+  const existingRoute =
+    typeof window !== 'undefined' && initialRouteId
+      ? window.__TSR_ROUTER__?.routesById?.[initialRouteId]
+      : undefined
+  if (initialRouteId && existingRoute && existingRoute !== Route) {
+    handleRouteUpdate(initialRouteId, Route)
+    hotData['tsr-route-update-handled'] = Route
+  }
+  import.meta.hot.accept((newModule) => {
+    if (Route && newModule && newModule.Route) {
+      const routeId = hotData['tsr-route-id'] ?? Route.id
+      if (routeId) {
+        hotData['tsr-route-id'] = routeId
+      }
+      if (hotData['tsr-route-update-handled'] === newModule.Route) {
+        delete hotData['tsr-route-update-handled']
+        return
+      }
+      handleRouteUpdate(routeId, newModule.Route)
+    }
+  })
 }

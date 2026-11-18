@@ -1,9 +1,13 @@
 import * as Solid from 'solid-js/web'
 import { isbot } from 'isbot'
-import { transformReadableStreamWithRouter } from '@tanstack/router-core/ssr/server'
-import { makeSsrSerovalPlugin } from '@tanstack/router-core'
+import {
+  createSsrStreamResponse,
+  getSsrStatus,
+  transformReadableStreamWithRouter,
+  waitForRequest,
+} from '@tanstack/router-core/ssr/server'
+import { getSolidRenderOptions } from './renderOptions'
 import type { JSXElement } from 'solid-js'
-import type { ReadableStream } from 'node:stream/web'
 import type { AnyRouter } from '@tanstack/router-core'
 
 export const renderRouterToStream = async ({
@@ -17,42 +21,59 @@ export const renderRouterToStream = async ({
   responseHeaders: Headers
   children: () => JSXElement
 }) => {
-  const { writable, readable } = new TransformStream()
-
-  const docType = Solid.ssr('<!DOCTYPE html>')
-
-  const serializationAdapters =
-    (router.options as any)?.serializationAdapters ||
-    (router.options.ssr as any)?.serializationAdapters
-  const serovalPlugins = serializationAdapters?.map((adapter: any) => {
-    const plugin = makeSsrSerovalPlugin(adapter, { didRun: false })
-    return plugin
-  })
-
-  const stream = Solid.renderToStream(
-    () => (
-      <>
-        {docType}
-        {children()}
-      </>
-    ),
-    {
-      nonce: router.options.ssr?.nonce,
-      plugins: serovalPlugins,
-    } as any,
-  )
-
-  if (isbot(request.headers.get('User-Agent'))) {
-    await stream
+  const signal = request.signal
+  if (signal.aborted) {
+    router.serverSsr?.cleanup()
+    throw signal.reason
   }
-  stream.pipeTo(writable)
 
-  const responseStream = transformReadableStreamWithRouter(
-    router,
-    readable as unknown as ReadableStream,
-  )
-  return new Response(responseStream as any, {
-    status: router.state.statusCode,
-    headers: responseHeaders,
-  })
+  try {
+    const docType = Solid.ssr('<!DOCTYPE html>')
+    const stream = Solid.renderToStream(
+      () => (
+        <>
+          {docType}
+          {children()}
+        </>
+      ),
+      getSolidRenderOptions(router),
+    )
+
+    // Cancelling the transform's reader errors this writable, which makes
+    // Solid's later writes reject and be ignored. Solid exposes no disposal
+    // handle for unresolved renderer work; see router-core's STREAMING.md.
+    const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>()
+    const rendererAbort = isbot(request.headers.get('User-Agent'))
+      ? new AbortController()
+      : undefined
+    const responseStream = transformReadableStreamWithRouter(router, readable, {
+      rendererSafePoint: 'record-end',
+      signal,
+      onAbort: rendererAbort
+        ? (reason) => rendererAbort.abort(reason)
+        : undefined,
+    })
+
+    if (rendererAbort) {
+      await waitForRequest(stream as unknown, rendererAbort.signal)
+    }
+
+    // The server export returns Promise<void>. Solid's client declaration
+    // returns void, and this file is also checked under that export condition.
+    void Promise.resolve(stream.pipeTo(writable)).catch((error: unknown) => {
+      console.error('Error in Solid render stream:', error)
+      void writable.abort(error).catch(() => {})
+    })
+
+    return createSsrStreamResponse(
+      router,
+      new Response(responseStream, {
+        status: getSsrStatus(router),
+        headers: responseHeaders,
+      }),
+    )
+  } catch (error) {
+    router.serverSsr?.cleanup()
+    throw error
+  }
 }

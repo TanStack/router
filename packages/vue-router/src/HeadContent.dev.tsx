@@ -1,10 +1,10 @@
 import * as Vue from 'vue'
+import { DEV_STYLES_ATTR } from '@tanstack/router-core'
 
 import { Asset } from './Asset'
 import { useHydrated } from './ClientOnly'
 import { useTags } from './headContentUtils'
-
-const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
+import type { AssetCrossOriginConfig } from '@tanstack/router-core'
 
 /**
  * @description The `HeadContent` component is used to render meta tags, links, and scripts for the current route.
@@ -14,8 +14,14 @@ const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
  */
 export const HeadContent = Vue.defineComponent({
   name: 'HeadContent',
-  setup() {
-    const tags = useTags()
+  props: {
+    assetCrossOrigin: {
+      type: [String, Object] as Vue.PropType<AssetCrossOriginConfig>,
+      default: undefined,
+    },
+  },
+  setup(props) {
+    const tags = useTags(props.assetCrossOrigin)
     const hydrated = useHydrated()
 
     // Fallback cleanup for hydration mismatch cases
@@ -28,7 +34,10 @@ export const HeadContent = Vue.defineComponent({
     return () => {
       // Filter out dev styles after hydration
       const filteredTags = hydrated.value
-        ? tags().filter((tag) => !tag.attrs?.[DEV_STYLES_ATTR])
+        ? tags().filter(
+            (tag) =>
+              tag.tag !== 'link' || tag.attrs?.[DEV_STYLES_ATTR] !== true,
+          )
         : tags()
 
       return filteredTags.map((tag) =>

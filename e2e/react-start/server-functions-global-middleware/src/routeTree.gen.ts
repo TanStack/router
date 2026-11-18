@@ -9,19 +9,21 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SimpleRouteImport } from './routes/simple'
-import { Route as PathnameMiddlewareRouteImport } from './routes/pathname-middleware'
-import { Route as MultipleServerFunctionsRouteImport } from './routes/multiple-server-functions'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ContextCollisionRouteImport } from './routes/context-collision'
+import { Route as MultipleServerFunctionsRouteImport } from './routes/multiple-server-functions'
+import { Route as PathnameMiddlewareRouteImport } from './routes/pathname-middleware'
+import { Route as SendContextContractRouteImport } from './routes/send-context-contract'
+import { Route as SimpleRouteImport } from './routes/simple'
 
-const SimpleRoute = SimpleRouteImport.update({
-  id: '/simple',
-  path: '/simple',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PathnameMiddlewareRoute = PathnameMiddlewareRouteImport.update({
-  id: '/pathname-middleware',
-  path: '/pathname-middleware',
+const ContextCollisionRoute = ContextCollisionRouteImport.update({
+  id: '/context-collision',
+  path: '/context-collision',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MultipleServerFunctionsRoute = MultipleServerFunctionsRouteImport.update({
@@ -29,60 +31,97 @@ const MultipleServerFunctionsRoute = MultipleServerFunctionsRouteImport.update({
   path: '/multiple-server-functions',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const PathnameMiddlewareRoute = PathnameMiddlewareRouteImport.update({
+  id: '/pathname-middleware',
+  path: '/pathname-middleware',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SendContextContractRoute = SendContextContractRouteImport.update({
+  id: '/send-context-contract',
+  path: '/send-context-contract',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SimpleRoute = SimpleRouteImport.update({
+  id: '/simple',
+  path: '/simple',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/context-collision': typeof ContextCollisionRoute
   '/multiple-server-functions': typeof MultipleServerFunctionsRoute
   '/pathname-middleware': typeof PathnameMiddlewareRoute
+  '/send-context-contract': typeof SendContextContractRoute
   '/simple': typeof SimpleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/context-collision': typeof ContextCollisionRoute
   '/multiple-server-functions': typeof MultipleServerFunctionsRoute
   '/pathname-middleware': typeof PathnameMiddlewareRoute
+  '/send-context-contract': typeof SendContextContractRoute
   '/simple': typeof SimpleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/context-collision': typeof ContextCollisionRoute
   '/multiple-server-functions': typeof MultipleServerFunctionsRoute
   '/pathname-middleware': typeof PathnameMiddlewareRoute
+  '/send-context-contract': typeof SendContextContractRoute
   '/simple': typeof SimpleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/multiple-server-functions' | '/pathname-middleware' | '/simple'
+  fullPaths:
+    | '/'
+    | '/context-collision'
+    | '/multiple-server-functions'
+    | '/pathname-middleware'
+    | '/send-context-contract'
+    | '/simple'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/multiple-server-functions' | '/pathname-middleware' | '/simple'
-  id: '__root__' | '/' | '/multiple-server-functions' | '/pathname-middleware' | '/simple'
+  to:
+    | '/'
+    | '/context-collision'
+    | '/multiple-server-functions'
+    | '/pathname-middleware'
+    | '/send-context-contract'
+    | '/simple'
+  id:
+    | '__root__'
+    | '/'
+    | '/context-collision'
+    | '/multiple-server-functions'
+    | '/pathname-middleware'
+    | '/send-context-contract'
+    | '/simple'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ContextCollisionRoute: typeof ContextCollisionRoute
   MultipleServerFunctionsRoute: typeof MultipleServerFunctionsRoute
   PathnameMiddlewareRoute: typeof PathnameMiddlewareRoute
+  SendContextContractRoute: typeof SendContextContractRoute
   SimpleRoute: typeof SimpleRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/simple': {
-      id: '/simple'
-      path: '/simple'
-      fullPath: '/simple'
-      preLoaderRoute: typeof SimpleRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/pathname-middleware': {
-      id: '/pathname-middleware'
-      path: '/pathname-middleware'
-      fullPath: '/pathname-middleware'
-      preLoaderRoute: typeof PathnameMiddlewareRouteImport
+    '/context-collision': {
+      id: '/context-collision'
+      path: '/context-collision'
+      fullPath: '/context-collision'
+      preLoaderRoute: typeof ContextCollisionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/multiple-server-functions': {
@@ -92,11 +131,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MultipleServerFunctionsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/pathname-middleware': {
+      id: '/pathname-middleware'
+      path: '/pathname-middleware'
+      fullPath: '/pathname-middleware'
+      preLoaderRoute: typeof PathnameMiddlewareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/send-context-contract': {
+      id: '/send-context-contract'
+      path: '/send-context-contract'
+      fullPath: '/send-context-contract'
+      preLoaderRoute: typeof SendContextContractRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/simple': {
+      id: '/simple'
+      path: '/simple'
+      fullPath: '/simple'
+      preLoaderRoute: typeof SimpleRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -104,8 +157,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ContextCollisionRoute: ContextCollisionRoute,
   MultipleServerFunctionsRoute: MultipleServerFunctionsRoute,
   PathnameMiddlewareRoute: PathnameMiddlewareRoute,
+  SendContextContractRoute: SendContextContractRoute,
   SimpleRoute: SimpleRoute,
 }
 export const routeTree = rootRouteImport

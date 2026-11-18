@@ -1,24 +1,94 @@
 import {
-  createRawStreamDeserializePlugin,
   encode,
+  invariant,
   isNotFound,
   parseRedirect,
 } from '@tanstack/router-core'
+import { createRawStreamDeserializePlugin } from '@tanstack/router-core/ssr/client'
 import { fromCrossJSON, toJSONAsync } from 'seroval'
-import invariant from 'tiny-invariant'
 import { getDefaultSerovalPlugins } from '../getDefaultSerovalPlugins'
 import {
   TSS_CONTENT_TYPE_FRAMED,
   TSS_FORMDATA_CONTEXT,
+  TSS_FRAMED_PROTOCOL_VERSION,
   X_TSS_RAW_RESPONSE,
   X_TSS_SERIALIZED,
-  validateFramedProtocolVersion,
 } from '../constants'
 import { createFrameDecoder } from './frame-decoder'
 import type { FunctionMiddlewareClientFnOptions } from '../createMiddleware'
 import type { Plugin as SerovalPlugin } from 'seroval'
 
-let serovalPlugins: Array<SerovalPlugin<any, any>> | null = null
+let serovalPlugins: Array<SerovalPlugin<any, any>> | undefined
+
+/**
+ * Current async post-processing context for deserialization.
+ *
+ * Some deserializers need to perform async work after synchronous deserialization
+ * (e.g., decoding RSC payloads, fetching remote data). This context allows them
+ * to register promises that must complete before the deserialized value is used.
+ *
+ * This uses a synchronous execution context pattern:
+ * - Each call to `fromCrossJSON` is synchronous
+ * - Within that synchronous execution, all `fromSerializable` calls happen
+ * - We set the context before `fromCrossJSON`, then clear it afterward
+ *
+ * Even with concurrent server function calls, each individual deserialization
+ * is atomic (synchronous), so promises are correctly scoped to their call.
+ */
+let currentPostProcessContext: Array<Promise<unknown>> | null = null
+
+/**
+ * Track an async post-processing promise in the current deserialization context.
+ * Called by deserializers that need to perform async work after sync deserialization.
+ *
+ * If no context is active (e.g., on server), this is a no-op.
+ *
+ * @param promise - The async work promise to track
+ */
+export function trackPostProcessPromise(promise: Promise<unknown>): void {
+  if (currentPostProcessContext) {
+    currentPostProcessContext.push(promise)
+  }
+}
+
+function deserialize(
+  value: any,
+  options: {
+    refs?: Map<any, any>
+    plugins: Array<SerovalPlugin<any, any>>
+  },
+  promises: Array<Promise<unknown>>,
+) {
+  currentPostProcessContext = promises
+  try {
+    return fromCrossJSON(value, options)
+  } catch (error) {
+    observePostProcessPromises(promises)
+    throw error
+  } finally {
+    currentPostProcessContext = null
+  }
+}
+
+/**
+ * Helper to await all post-processing promises.
+ * Uses Promise.allSettled to ensure all promises complete even if some reject.
+ */
+async function awaitPostProcessPromises(
+  promises: Array<Promise<unknown>>,
+): Promise<void> {
+  if (promises.length > 0) {
+    await Promise.allSettled(promises)
+    promises.length = 0
+  }
+}
+
+function observePostProcessPromises(promises: Array<Promise<unknown>>): void {
+  for (const promise of promises) {
+    void promise.catch(() => {})
+  }
+  promises.length = 0
+}
 
 /**
  * Checks if an object has at least one own enumerable property.
@@ -51,22 +121,20 @@ export async function serverFnFetcher(
   if (!serovalPlugins) {
     serovalPlugins = getDefaultSerovalPlugins()
   }
-  const _first = args[0]
-
-  const first = _first as FunctionMiddlewareClientFnOptions<any, any, any> & {
+  const first = args[0] as FunctionMiddlewareClientFnOptions<any, any, any> & {
     headers?: HeadersInit
   }
 
   // Use custom fetch if provided, otherwise fall back to the passed handler (global fetch)
   const fetchImpl = first.fetch ?? handler
 
-  const type = first.data instanceof FormData ? 'formData' : 'payload'
+  const isFormData = first.data instanceof FormData
 
   // Arrange the headers
-  const headers = first.headers ? new Headers(first.headers) : new Headers()
+  const headers = new Headers(first.headers)
   headers.set('x-tsr-serverFn', 'true')
 
-  if (type === 'payload') {
+  if (!isFormData) {
     headers.set(
       'accept',
       `${TSS_CONTENT_TYPE_FRAMED}, application/x-ndjson, application/json`,
@@ -75,7 +143,7 @@ export async function serverFnFetcher(
 
   // If the method is GET, we need to move the payload to the query string
   if (first.method === 'GET') {
-    if (type === 'formData') {
+    if (isFormData) {
       throw new Error('FormData is not supported with GET requests')
     }
     const serializedPayload = await serializePayload(first)
@@ -93,14 +161,13 @@ export async function serverFnFetcher(
 
   let body = undefined
   if (first.method === 'POST') {
-    const fetchBody = await getFetchBody(first)
-    if (fetchBody?.contentType) {
-      headers.set('content-type', fetchBody.contentType)
+    body = await getFetchBody(first)
+    if (typeof body === 'string') {
+      headers.set('content-type', 'application/json')
     }
-    body = fetchBody?.body
   }
 
-  return await getResponse(async () =>
+  return getResponse(() =>
     fetchImpl(url, {
       method: first.method,
       headers,
@@ -113,50 +180,47 @@ export async function serverFnFetcher(
 async function serializePayload(
   opts: FunctionMiddlewareClientFnOptions<any, any, any>,
 ): Promise<string | undefined> {
-  let payloadAvailable = false
-  const payloadToSerialize: any = {}
+  let payload: any
   if (opts.data !== undefined) {
-    payloadAvailable = true
-    payloadToSerialize['data'] = opts.data
+    payload = { data: opts.data }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (opts.context && hasOwnProperties(opts.context)) {
-    payloadAvailable = true
-    payloadToSerialize['context'] = opts.context
+    ;(payload ??= {}).context = opts.context
   }
 
-  if (payloadAvailable) {
-    return serialize(payloadToSerialize)
-  }
-  return undefined
+  return payload ? serialize(payload, opts.signal) : undefined
 }
 
-async function serialize(data: any) {
-  return JSON.stringify(
-    await Promise.resolve(toJSONAsync(data, { plugins: serovalPlugins! })),
-  )
+async function serialize(data: any, signal?: AbortSignal) {
+  signal?.throwIfAborted()
+  let value
+  try {
+    value = await toJSONAsync(data, {
+      plugins: signal ? getDefaultSerovalPlugins(signal) : serovalPlugins!,
+    })
+  } finally {
+    signal?.throwIfAborted()
+  }
+  return JSON.stringify(value)
 }
 
 async function getFetchBody(
   opts: FunctionMiddlewareClientFnOptions<any, any, any>,
-): Promise<{ body: FormData | string; contentType?: string } | undefined> {
+): Promise<FormData | string | undefined> {
   if (opts.data instanceof FormData) {
     let serializedContext = undefined
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (opts.context && hasOwnProperties(opts.context)) {
-      serializedContext = await serialize(opts.context)
+      serializedContext = await serialize(opts.context, opts.signal)
     }
     if (serializedContext !== undefined) {
       opts.data.set(TSS_FORMDATA_CONTEXT, serializedContext)
     }
-    return { body: opts.data }
+    return opts.data
   }
-  const serializedBody = await serializePayload(opts)
-  if (serializedBody) {
-    return { body: serializedBody, contentType: 'application/json' }
-  }
-  return undefined
+  return serializePayload(opts)
 }
 
 /**
@@ -175,17 +239,29 @@ async function getResponse(fn: () => Promise<Response>) {
     if (error instanceof Response) {
       response = error
     } else {
-      console.log(error)
       throw error
     }
   }
 
-  if (response.headers.get(X_TSS_RAW_RESPONSE) === 'true') {
+  const raw = response.headers.get(X_TSS_RAW_RESPONSE)
+  if (raw === 'true') {
     return response
+  }
+  // The server function threw this Response, so the call rejects with it.
+  if (raw === 'thrown') {
+    throw response
   }
 
   const contentType = response.headers.get('content-type')
-  invariant(contentType, 'expected content-type header to be set')
+  if (!contentType) {
+    if (process.env.NODE_ENV !== 'production') {
+      throw new Error(
+        'Invariant failed: expected content-type header to be set',
+      )
+    }
+
+    invariant()
+  }
   const serializedByStart = !!response.headers.get(X_TSS_SERIALIZED)
 
   // If the response is serialized by the start server, we need to process it
@@ -195,53 +271,43 @@ async function getResponse(fn: () => Promise<Response>) {
 
     // If it's a framed response (contains RawStream), use frame decoder
     if (contentType.includes(TSS_CONTENT_TYPE_FRAMED)) {
-      // Validate protocol version compatibility
-      validateFramedProtocolVersion(contentType)
-
+      // A server without a version parameter predates versioning.
+      const version = /;\s*v=(\d+)/.exec(contentType)?.[1]
+      if (version && +version !== TSS_FRAMED_PROTOCOL_VERSION) {
+        throw new Error(`Unsupported framed protocol version ${version}`)
+      }
       if (!response.body) {
         throw new Error('No response body for framed response')
       }
 
-      const { getOrCreateStream, jsonChunks } = createFrameDecoder(
-        response.body,
-      )
+      const [chunks, getStream] = createFrameDecoder(response.body)
 
       // Create deserialize plugin that wires up the raw streams
-      const rawStreamPlugin =
-        createRawStreamDeserializePlugin(getOrCreateStream)
-      const plugins = [rawStreamPlugin, ...(serovalPlugins || [])]
+      const rawStreamPlugin = createRawStreamDeserializePlugin(getStream)
+      const plugins = [rawStreamPlugin, ...serovalPlugins!]
 
-      const refs = new Map()
-      result = await processFramedResponse({
-        jsonStream: jsonChunks,
-        onMessage: (msg: any) => fromCrossJSON(msg, { refs, plugins }),
-        onError(msg, error) {
-          console.error(msg, error)
-        },
-      })
-    }
-    // If it's a stream from the start serializer, process it as such
-    else if (contentType.includes('application/x-ndjson')) {
-      const refs = new Map()
-      result = await processServerFnResponse({
-        response,
-        onMessage: (msg) =>
-          fromCrossJSON(msg, { refs, plugins: serovalPlugins! }),
-        onError(msg, error) {
-          // TODO how could we notify consumer that an error occurred?
-          console.error(msg, error)
-        },
-      })
+      result = await processFramedResponse(chunks, plugins)
     }
     // If it's a JSON response, it can be simpler
     else if (contentType.includes('application/json')) {
       const jsonPayload = await response.json()
-      result = fromCrossJSON(jsonPayload, { plugins: serovalPlugins! })
+      // Track async post-processing work for this deserialization
+      const postProcessPromises: Array<Promise<unknown>> = []
+      result = deserialize(
+        jsonPayload,
+        { plugins: serovalPlugins! },
+        postProcessPromises,
+      )
+      // Await any async post-processing before returning
+      await awaitPostProcessPromises(postProcessPromises)
     }
 
-    invariant(result, 'expected result to be resolved')
-    if (result instanceof Error) {
-      throw result
+    if (!result) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error('Invariant failed: expected result to be resolved')
+      }
+
+      invariant()
     }
 
     return result
@@ -270,133 +336,66 @@ async function getResponse(fn: () => Promise<Response>) {
   return response
 }
 
-async function processServerFnResponse({
-  response,
-  onMessage,
-  onError,
-}: {
-  response: Response
-  onMessage: (msg: any) => any
-  onError?: (msg: string, error?: any) => void
-}) {
-  if (!response.body) {
-    throw new Error('No response body')
+/** Processes the complete JSON values emitted by the frame decoder. */
+async function processFramedResponse(
+  jsonStream: ReadableStream<string>,
+  plugins: Array<SerovalPlugin<any, any>>,
+) {
+  const reader = jsonStream.getReader()
+  const options = { refs: new Map(), plugins }
+
+  // TODO: promises and streams that Seroval created from earlier records stay
+  // pending after a transport failure. Rejecting them needs a Seroval API for
+  // aborting a cross-JSON deserialization session; do not reach into
+  // Seroval's refs to do it here.
+  const fail = (error: unknown) => {
+    void reader.cancel(error).catch(() => {})
   }
 
-  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
-
-  let buffer = ''
-  let firstRead = false
-  let firstObject
-
-  while (!firstRead) {
-    const { value, done } = await reader.read()
-    if (value) buffer += value
-
-    if (buffer.length === 0 && done) {
+  let result: any
+  const initialPostProcessPromises: Array<Promise<unknown>> = []
+  try {
+    const first = await reader.read()
+    if (first.done) {
       throw new Error('Stream ended before first object')
     }
 
-    // common case: buffer ends with newline
-    if (buffer.endsWith('\n')) {
-      const lines = buffer.split('\n').filter(Boolean)
-      const firstLine = lines[0]
-      if (!firstLine) throw new Error('No JSON line in the first chunk')
-      firstObject = JSON.parse(firstLine)
-      firstRead = true
-      buffer = lines.slice(1).join('\n')
-    } else {
-      // fallback: wait for a newline to parse first object safely
-      const newlineIndex = buffer.indexOf('\n')
-      if (newlineIndex >= 0) {
-        const line = buffer.slice(0, newlineIndex).trim()
-        buffer = buffer.slice(newlineIndex + 1)
-        if (line.length > 0) {
-          firstObject = JSON.parse(line)
-          firstRead = true
-        }
-      }
-    }
+    result = deserialize(
+      JSON.parse(first.value),
+      options,
+      initialPostProcessPromises,
+    )
+  } catch (error) {
+    fail(error)
+    reader.releaseLock()
+    throw error
   }
 
-  // process rest of the stream asynchronously
-  ;(async () => {
+  // Keep consuming patches before awaiting root post-processing: that work may
+  // itself depend on raw frames which follow later JSON frames on the wire.
+  void (async () => {
+    const postProcessPromises: Array<Promise<unknown>> = []
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      while (true) {
-        const { value, done } = await reader.read()
-        if (value) buffer += value
-
-        const lastNewline = buffer.lastIndexOf('\n')
-        if (lastNewline >= 0) {
-          const chunk = buffer.slice(0, lastNewline)
-          buffer = buffer.slice(lastNewline + 1)
-          const lines = chunk.split('\n').filter(Boolean)
-
-          for (const line of lines) {
-            try {
-              onMessage(JSON.parse(line))
-            } catch (e) {
-              onError?.(`Invalid JSON line: ${line}`, e)
-            }
-          }
+      for (;;) {
+        const next = await reader.read()
+        if (next.done) {
+          return
         }
 
-        if (done) {
-          break
-        }
+        deserialize(JSON.parse(next.value), options, postProcessPromises)
+        // Later patches publish their promise/stream values synchronously.
+        // Observe auxiliary work without blocking frames those values need.
+        observePostProcessPromises(postProcessPromises)
       }
-    } catch (err) {
-      onError?.('Stream processing error:', err)
+    } catch (error) {
+      fail(error)
+      console.error('Stream processing error:', error)
+    } finally {
+      reader.releaseLock()
     }
   })()
 
-  return onMessage(firstObject)
-}
+  await awaitPostProcessPromises(initialPostProcessPromises)
 
-/**
- * Processes a framed response where each JSON chunk is a complete JSON string
- * (already decoded by frame decoder).
- */
-async function processFramedResponse({
-  jsonStream,
-  onMessage,
-  onError,
-}: {
-  jsonStream: ReadableStream<string>
-  onMessage: (msg: any) => any
-  onError?: (msg: string, error?: any) => void
-}) {
-  const reader = jsonStream.getReader()
-
-  // Read first JSON frame - this is the main result
-  const { value: firstValue, done: firstDone } = await reader.read()
-  if (firstDone || !firstValue) {
-    throw new Error('Stream ended before first object')
-  }
-
-  // Each frame is a complete JSON string
-  const firstObject = JSON.parse(firstValue)
-
-  // Process remaining frames asynchronously (for streaming refs like RawStream)
-  ;(async () => {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      while (true) {
-        const { value, done } = await reader.read()
-        if (done) break
-        if (value) {
-          try {
-            onMessage(JSON.parse(value))
-          } catch (e) {
-            onError?.(`Invalid JSON: ${value}`, e)
-          }
-        }
-      }
-    } catch (err) {
-      onError?.('Stream processing error:', err)
-    }
-  })()
-
-  return onMessage(firstObject)
+  return result
 }

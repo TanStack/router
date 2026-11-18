@@ -1,39 +1,34 @@
-import { crossSerializeStream, getCrossReferenceHeader } from 'seroval'
-import invariant from 'tiny-invariant'
+import { crossSerializeStream } from 'seroval'
+import { invariant } from '../invariant'
+import {
+  createInlineCssPlaceholderAsset,
+  createInlineCssStyleAsset,
+  getStylesheetHref,
+} from '../manifest'
 import { decodePath } from '../utils'
-import { createLRUCache } from '../lru-cache'
-import minifiedTsrBootStrapScript from './tsrScript?script-string'
-import { GLOBAL_TSR, TSR_SCRIPT_BARRIER_ID } from './constants'
+import { createSieveCache } from '../sieve-cache'
+import { rootRouteId } from '../root'
+import { _getRenderedMatches } from '../load-client'
+import { waitForReason } from '../await-signal'
+import {
+  SSR_SERIALIZATION_SCOPE_ID,
+  createHydrationScripts,
+} from './hydrationScripts'
 import { dehydrateSsrMatchId } from './ssr-match-id'
-import { defaultSerovalPlugins } from './serializer/seroval-plugins'
-import { makeSsrSerovalPlugin } from './serializer/transformer'
-import type { LRUCache } from '../lru-cache'
+import { ssrSerovalPlugins } from './serializer/seroval-plugins.ssr'
+import { makeSsrSerovalPlugin } from './serializer/makeSsrSerovalPlugin'
+import type { SieveCache } from '../sieve-cache'
 import type { DehydratedMatch, DehydratedRouter } from './types'
-import type { AnySerializationAdapter } from './serializer/transformer'
-import type { AnyRouter } from '../router'
+import type { AnyRouter, ServerSsr } from '../router'
 import type { AnyRouteMatch } from '../Matches'
-import type { Manifest, RouterManagedTag } from '../manifest'
+import type {
+  Manifest,
+  ManifestRoute,
+  ManifestRouteAssets,
+  ServerManifest,
+} from '../manifest'
 
-declare module '../router' {
-  interface ServerSsr {
-    setRenderFinished: () => void
-    cleanup: () => void
-  }
-  interface RouterEvents {
-    onInjectedHtml: {
-      type: 'onInjectedHtml'
-    }
-    onSerializationFinished: {
-      type: 'onSerializationFinished'
-    }
-  }
-}
-
-const SCOPE_ID = 'tsr'
-
-const TSR_PREFIX = GLOBAL_TSR + '.router='
-const P_PREFIX = GLOBAL_TSR + '.p(()=>'
-const P_SUFFIX = ')'
+type DehydrationPhase = 'idle' | 'started' | 'disabled'
 
 export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
   const dehydratedMatch: DehydratedMatch = {
@@ -54,100 +49,33 @@ export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
       dehydratedMatch[shorthand] = match[key]
     }
   }
-  if (match.globalNotFound) {
+  if (match._notFound) {
     dehydratedMatch.g = true
   }
   return dehydratedMatch
 }
 
-const INITIAL_SCRIPTS = [
-  getCrossReferenceHeader(SCOPE_ID),
-  minifiedTsrBootStrapScript,
-]
-
-class ScriptBuffer {
-  private router: AnyRouter | undefined
-  private _queue: Array<string>
-  private _scriptBarrierLifted = false
-  private _cleanedUp = false
-  private _pendingMicrotask = false
-
-  constructor(router: AnyRouter) {
-    this.router = router
-    // Copy INITIAL_SCRIPTS to avoid mutating the shared array
-    this._queue = INITIAL_SCRIPTS.slice()
+function disposeSerializationSafely(dispose?: () => void) {
+  try {
+    dispose?.()
+  } catch (err) {
+    console.error('Error disposing SSR serialization:', err)
   }
+}
 
-  enqueue(script: string) {
-    if (this._cleanedUp) return
-    this._queue.push(script)
-    // If barrier is lifted, schedule injection (if not already scheduled)
-    if (this._scriptBarrierLifted && !this._pendingMicrotask) {
-      this._pendingMicrotask = true
-      queueMicrotask(() => {
-        this._pendingMicrotask = false
-        this.injectBufferedScripts()
-      })
+function notifyAndClearListeners<T>(
+  listeners: Array<(arg: T) => void>,
+  errorMessage: string,
+  arg: T,
+) {
+  const pending = listeners.slice()
+  listeners.length = 0
+  for (const listener of pending) {
+    try {
+      listener(arg)
+    } catch (error) {
+      console.error(errorMessage, error)
     }
-  }
-
-  liftBarrier() {
-    if (this._scriptBarrierLifted || this._cleanedUp) return
-    this._scriptBarrierLifted = true
-    if (this._queue.length > 0 && !this._pendingMicrotask) {
-      this._pendingMicrotask = true
-      queueMicrotask(() => {
-        this._pendingMicrotask = false
-        this.injectBufferedScripts()
-      })
-    }
-  }
-
-  /**
-   * Flushes any pending scripts synchronously.
-   * Call this before emitting onSerializationFinished to ensure all scripts are injected.
-   *
-   * IMPORTANT: Only injects if the barrier has been lifted. Before the barrier is lifted,
-   * scripts should remain in the queue so takeBufferedScripts() can retrieve them
-   */
-  flush() {
-    if (!this._scriptBarrierLifted) return
-    if (this._cleanedUp) return
-    this._pendingMicrotask = false
-    const scriptsToInject = this.takeAll()
-    if (scriptsToInject && this.router?.serverSsr) {
-      this.router.serverSsr.injectScript(scriptsToInject)
-    }
-  }
-
-  takeAll() {
-    const bufferedScripts = this._queue
-    this._queue = []
-    if (bufferedScripts.length === 0) {
-      return undefined
-    }
-    // Optimization: if only one script, avoid join
-    if (bufferedScripts.length === 1) {
-      return bufferedScripts[0] + ';document.currentScript.remove()'
-    }
-    // Append cleanup script and join - avoid push() to not mutate then iterate
-    return bufferedScripts.join(';') + ';document.currentScript.remove()'
-  }
-
-  injectBufferedScripts() {
-    if (this._cleanedUp) return
-    // Early return if queue is empty (avoids unnecessary takeAll() call)
-    if (this._queue.length === 0) return
-    const scriptsToInject = this.takeAll()
-    if (scriptsToInject && this.router?.serverSsr) {
-      this.router.serverSsr.injectScript(scriptsToInject)
-    }
-  }
-
-  cleanup() {
-    this._cleanedUp = true
-    this._queue = []
-    this.router = undefined
   }
 }
 
@@ -155,218 +83,565 @@ const isProd = process.env.NODE_ENV === 'production'
 
 type FilteredRoutes = Manifest['routes']
 
-type ManifestLRU = LRUCache<string, FilteredRoutes>
+type PreparedMatchedManifestRoutes = {
+  routes: FilteredRoutes
+  hasStrippedRoutes: boolean
+  inlineCssHrefs?: Array<string>
+}
+
+type ManifestCache = SieveCache<string, PreparedMatchedManifestRoutes>
 
 const MANIFEST_CACHE_SIZE = 100
-const manifestCaches = new WeakMap<Manifest, ManifestLRU>()
+const manifestCaches = new WeakMap<ServerManifest, ManifestCache>()
 
-function getManifestCache(manifest: Manifest): ManifestLRU {
+function getManifestCache(manifest: ServerManifest): ManifestCache {
   const cache = manifestCaches.get(manifest)
-  if (cache) return cache
-  const newCache = createLRUCache<string, FilteredRoutes>(MANIFEST_CACHE_SIZE)
+  if (cache) {
+    return cache
+  }
+  const newCache = createSieveCache<string, PreparedMatchedManifestRoutes>(
+    MANIFEST_CACHE_SIZE,
+  )
   manifestCaches.set(manifest, newCache)
   return newCache
+}
+
+function getInlineCssForPreparedRoutes(
+  manifest: ServerManifest,
+  preparedRoutes: PreparedMatchedManifestRoutes,
+) {
+  const styles = manifest.inlineCss?.styles
+  const hrefs = preparedRoutes.inlineCssHrefs
+  if (!styles || !hrefs?.length) {
+    return undefined
+  }
+
+  // Joined once per matched route set and request. Retaining the joined copy
+  // on the module cache entry would permanently duplicate shared CSS across
+  // up to MANIFEST_CACHE_SIZE route combinations.
+  let css = ''
+  for (const href of hrefs) {
+    css += styles[href]!
+  }
+
+  return css
+}
+
+function getInlineCssAssetForPreparedRoutes(
+  manifest: ServerManifest,
+  preparedRoutes: PreparedMatchedManifestRoutes,
+) {
+  const css = getInlineCssForPreparedRoutes(manifest, preparedRoutes)
+
+  return css === undefined ? undefined : createInlineCssStyleAsset(css)
+}
+
+function getMatchedRoutesCacheKey(matches: Array<AnyRouteMatch>) {
+  let cacheKey = ''
+  for (let i = 0; i < matches.length; i++) {
+    cacheKey += (i === 0 ? '' : '\0') + matches[i]!.routeId
+  }
+  return cacheKey
+}
+
+function getPreparedMatchedManifestRoutes(
+  manifest: ServerManifest,
+  matches: Array<AnyRouteMatch>,
+  cacheKey: string,
+) {
+  if (isProd) {
+    const cached = getManifestCache(manifest).get(cacheKey)
+    if (cached) {
+      return cached
+    }
+  }
+
+  const preparedRoutes = prepareMatchedManifestRoutes(manifest, matches)
+
+  if (isProd) {
+    getManifestCache(manifest).set(cacheKey, preparedRoutes)
+  }
+
+  return preparedRoutes
+}
+
+function prepareMatchedManifestRoutes(
+  manifest: ServerManifest,
+  matches: Array<AnyRouteMatch>,
+): PreparedMatchedManifestRoutes {
+  const inlineStyles = manifest.inlineCss?.styles
+  const routes: FilteredRoutes = {}
+
+  if (!inlineStyles) {
+    for (const match of matches) {
+      const route = manifest.routes[match.routeId]
+      if (route) {
+        routes[match.routeId] = route
+      }
+    }
+    return { routes, hasStrippedRoutes: false }
+  }
+
+  const inlineCssHrefs: Array<string> = []
+  const seenInlineCssHrefs = new Set<string>()
+  let hasStrippedRoutes = false
+
+  for (const match of matches) {
+    const routeId = match.routeId
+    const route = manifest.routes[routeId]
+    if (!route) {
+      continue
+    }
+
+    const nextRoute = stripInlinedStylesheetAssetsFromRoute(
+      inlineStyles,
+      route,
+      inlineCssHrefs,
+      seenInlineCssHrefs,
+    )
+
+    if (nextRoute !== route) {
+      hasStrippedRoutes = true
+    }
+    routes[routeId] = nextRoute
+  }
+
+  return {
+    routes,
+    hasStrippedRoutes,
+    ...(inlineCssHrefs.length ? { inlineCssHrefs } : {}),
+  }
+}
+
+function stripInlinedStylesheetAssetsFromRoute(
+  inlineStyles: Record<string, string>,
+  route: ManifestRoute,
+  inlineCssHrefs: Array<string>,
+  seenInlineCssHrefs: Set<string>,
+): ManifestRoute {
+  const css = route.css
+  if (!css) {
+    return route
+  }
+
+  if (css.length === 0) {
+    const nextRoute = { ...route }
+    delete nextRoute.css
+    return nextRoute
+  }
+
+  let cssLinks: typeof css | undefined
+  for (let i = 0; i < css.length; i++) {
+    const link = css[i]!
+    const href = getStylesheetHref(link)
+    if (inlineStyles[href] === undefined) {
+      if (cssLinks) {
+        cssLinks.push(link)
+      }
+      continue
+    }
+
+    if (!seenInlineCssHrefs.has(href)) {
+      seenInlineCssHrefs.add(href)
+      inlineCssHrefs.push(href)
+    }
+
+    if (!cssLinks) {
+      cssLinks = css.slice(0, i)
+    }
+  }
+
+  if (!cssLinks) {
+    return route
+  }
+
+  if (cssLinks.length > 0) {
+    return { ...route, css: cssLinks }
+  }
+
+  const nextRoute = { ...route }
+  delete nextRoute.css
+  return nextRoute
+}
+
+function hasRouteAssets(route: ManifestRoute) {
+  return !!route.scripts?.length || !!route.css?.length
+}
+
+function hasRequestAssets(assets: ManifestRouteAssets | undefined) {
+  return !!assets && (!!assets.preloads?.length || hasRouteAssets(assets))
+}
+
+function mergeRequestAssetsIntoRootRoute(
+  rootRoute: ManifestRoute | undefined,
+  requestAssets: ManifestRouteAssets | undefined,
+): ManifestRoute {
+  const preloads = requestAssets?.preloads?.length
+    ? [...requestAssets.preloads, ...(rootRoute?.preloads ?? [])]
+    : rootRoute?.preloads
+  const scripts = requestAssets?.scripts?.length
+    ? [...requestAssets.scripts, ...(rootRoute?.scripts ?? [])]
+    : rootRoute?.scripts
+  const cssLinks = requestAssets?.css?.length
+    ? [...requestAssets.css, ...(rootRoute?.css ?? [])]
+    : rootRoute?.css
+
+  return {
+    ...(rootRoute ?? {}),
+    ...(preloads?.length ? { preloads } : {}),
+    ...(scripts?.length ? { scripts } : {}),
+    ...(cssLinks?.length ? { css: cssLinks } : {}),
+  }
+}
+
+/**
+ * Compose a client-facing manifest from prepared routes, an optional inline
+ * style, and optional request-scoped assets merged into the root route.
+ * Shared by the `router.ssr.manifest` getter and `dehydrate()` so the two
+ * compositions cannot drift.
+ */
+function composeManifest(
+  scriptFormat: ServerManifest['scriptFormat'],
+  inlineStyle: Manifest['inlineStyle'],
+  routes: FilteredRoutes,
+  requestAssets: ManifestRouteAssets | undefined,
+): Manifest {
+  const base: Manifest = {
+    ...(scriptFormat ? { scriptFormat } : {}),
+    ...(inlineStyle ? { inlineStyle } : {}),
+    routes,
+  }
+  if (!hasRequestAssets(requestAssets)) {
+    return base
+  }
+  // Merge request-scoped assets into the root route without mutating any
+  // cached route map.
+  return {
+    ...base,
+    routes: {
+      ...routes,
+      [rootRouteId]: mergeRequestAssetsIntoRootRoute(
+        routes[rootRouteId],
+        requestAssets,
+      ),
+    },
+  }
 }
 
 export function attachRouterServerSsrUtils({
   router,
   manifest,
+  getRequestAssets,
 }: {
   router: AnyRouter
-  manifest: Manifest | undefined
+  manifest: ServerManifest | undefined
+  getRequestAssets?: () => ManifestRouteAssets | undefined
 }) {
+  // Inline CSS joining and route filtering depend only on matched route ids,
+  // so keep that immutable preparation request-local. Request assets can be
+  // discovered between head and Scripts reads and may mutate in place; always
+  // compose their current contents instead of caching by object identity.
+  let memoizedPreparedManifest:
+    | {
+        cacheKey: string
+        inlineCssAsset: Manifest['inlineStyle'] | undefined
+        routes: FilteredRoutes
+      }
+    | undefined
   router.ssr = {
-    manifest,
-  }
-  let _dehydrated = false
-  let _serializationFinished = false
-  const renderFinishedListeners: Array<() => void> = []
-  const serializationFinishedListeners: Array<() => void> = []
-  const scriptBuffer = new ScriptBuffer(router)
-  let injectedHtmlBuffer = ''
+    get manifest() {
+      if (!manifest) {
+        return manifest
+      }
 
-  router.serverSsr = {
-    injectHtml: (html: string) => {
-      if (!html) return
-      // Buffer the HTML so it can be retrieved via takeBufferedHtml()
-      injectedHtmlBuffer += html
-      // Emit event to notify subscribers that new HTML is available
-      router.emit({
-        type: 'onInjectedHtml',
-      })
+      const requestAssets = getRequestAssets?.()
+      const hasAssets = hasRequestAssets(requestAssets)
+
+      if (!hasAssets && !manifest.inlineCss) {
+        return manifest
+      }
+
+      let inlineCssAsset: Manifest['inlineStyle'] | undefined
+      let routes = manifest.routes
+      if (manifest.inlineCss) {
+        const matches = _getRenderedMatches(router.stores.matches.get())
+        const cacheKey = getMatchedRoutesCacheKey(matches)
+        if (memoizedPreparedManifest?.cacheKey === cacheKey) {
+          inlineCssAsset = memoizedPreparedManifest.inlineCssAsset
+          routes = memoizedPreparedManifest.routes
+        } else {
+          const preparedManifest = getPreparedMatchedManifestRoutes(
+            manifest,
+            matches,
+            cacheKey,
+          )
+          inlineCssAsset = getInlineCssAssetForPreparedRoutes(
+            manifest,
+            preparedManifest,
+          )
+          if (preparedManifest.hasStrippedRoutes) {
+            routes = { ...manifest.routes, ...preparedManifest.routes }
+          }
+          memoizedPreparedManifest = { cacheKey, inlineCssAsset, routes }
+        }
+      }
+
+      return composeManifest(
+        manifest.scriptFormat,
+        inlineCssAsset,
+        routes,
+        hasAssets ? requestAssets : undefined,
+      )
     },
-    injectScript: (script: string) => {
-      if (!script) return
-      const html = `<script${router.options.ssr?.nonce ? ` nonce='${router.options.ssr.nonce}'` : ''}>${script}</script>`
-      router.serverSsr!.injectHtml(html)
-    },
-    dehydrate: async () => {
-      invariant(!_dehydrated, 'router is already dehydrated!')
-      let matchesToDehydrate = router.state.matches
-      if (router.isShell()) {
+  }
+  let dehydrationPhase: DehydrationPhase = 'idle'
+  let renderFinished = false
+  const renderFinishedListeners: Array<() => void> = []
+  const cleanupListeners: Array<(settled: boolean) => void> = []
+  let cleanupStarted = false
+  // Every value the router dehydrated has settled: nothing it started can
+  // still be pending when the response ends.
+  let settled = false
+  let disposeSerialization: (() => void) | undefined
+  const hydrationScripts = createHydrationScripts(router.options.ssr?.nonce)
+
+  const serverSsr: ServerSsr = {
+    hydrationScripts,
+    dehydrate: async (opts?: {
+      requestAssets?: ManifestRouteAssets
+      signal?: AbortSignal
+    }) => {
+      // Guard synchronously before the first await: a concurrent second call
+      // would double-serialize and corrupt the hydration payload.
+      if (dehydrationPhase !== 'idle') {
+        if (process.env.NODE_ENV !== 'production') {
+          throw new Error(
+            dehydrationPhase === 'disabled'
+              ? 'Invariant failed: hydration is disabled for this request!'
+              : 'Invariant failed: router is already dehydrated!',
+          )
+        }
+
+        invariant()
+      }
+      opts?.signal?.throwIfAborted()
+      dehydrationPhase = 'started'
+      let matchesToDehydrate = _getRenderedMatches(router.stores.matches.get())
+      const isShell = router.isShell()
+      if (isShell) {
         // In SPA mode we only want to dehydrate the root match
         matchesToDehydrate = matchesToDehydrate.slice(0, 1)
       }
       const matches = matchesToDehydrate.map(dehydrateMatch)
 
       let manifestToDehydrate: Manifest | undefined = undefined
-      // For currently matched routes, send full manifest (preloads + assets)
-      // For all other routes, only send assets (no preloads as they are handled via dynamic imports)
+      // Only currently matched routes are dehydrated. Other route assets are
+      // loaded through dynamic imports when those routes become active.
       if (manifest) {
-        // Prod-only caching; in dev manifests may be replaced/updated (HMR)
-        const currentRouteIdsList = matchesToDehydrate.map((m) => m.routeId)
-        const manifestCacheKey = currentRouteIdsList.join('\0')
+        const cacheKey = getMatchedRoutesCacheKey(matchesToDehydrate)
+        const preparedManifest = getPreparedMatchedManifestRoutes(
+          manifest,
+          matchesToDehydrate,
+          cacheKey,
+        )
 
-        let filteredRoutes: FilteredRoutes | undefined
-
-        if (isProd) {
-          filteredRoutes = getManifestCache(manifest).get(manifestCacheKey)
-        }
-
-        if (!filteredRoutes) {
-          const currentRouteIds = new Set(currentRouteIdsList)
-          const nextFilteredRoutes: FilteredRoutes = {}
-
-          for (const routeId in manifest.routes) {
-            const routeManifest = manifest.routes[routeId]!
-            if (currentRouteIds.has(routeId)) {
-              nextFilteredRoutes[routeId] = routeManifest
-            } else if (
-              routeManifest.assets &&
-              routeManifest.assets.length > 0
-            ) {
-              nextFilteredRoutes[routeId] = {
-                assets: routeManifest.assets,
-              }
-            }
-          }
-
-          if (isProd) {
-            getManifestCache(manifest).set(manifestCacheKey, nextFilteredRoutes)
-          }
-
-          filteredRoutes = nextFilteredRoutes
-        }
-
-        manifestToDehydrate = {
-          routes: filteredRoutes,
-        }
+        manifestToDehydrate = composeManifest(
+          manifest.scriptFormat,
+          preparedManifest.inlineCssHrefs
+            ? createInlineCssPlaceholderAsset()
+            : undefined,
+          preparedManifest.routes,
+          opts?.requestAssets,
+        )
       }
       const dehydratedRouter: DehydratedRouter = {
         manifest: manifestToDehydrate,
         matches,
       }
-      const lastMatchId = matchesToDehydrate[matchesToDehydrate.length - 1]?.id
-      if (lastMatchId) {
-        dehydratedRouter.lastMatchId = dehydrateSsrMatchId(lastMatchId)
+      const dehydrate = router.options.dehydrate
+      const dehydratedData = dehydrate
+        ? opts?.signal
+          ? await waitForReason(dehydrate.call(router.options), opts.signal)
+          : await dehydrate.call(router.options)
+        : undefined
+      opts?.signal?.throwIfAborted()
+      if (cleanupStarted) {
+        return
       }
-      const dehydratedData = await router.options.dehydrate?.()
-      if (dehydratedData) {
+      if (dehydratedData !== undefined) {
         dehydratedRouter.dehydratedData = dehydratedData
       }
-      _dehydrated = true
-
       const trackPlugins = { didRun: false }
-      const serializationAdapters = router.options.serializationAdapters as
-        | Array<AnySerializationAdapter>
-        | undefined
+      const serializationAdapters = router.options.serializationAdapters
       const plugins = serializationAdapters
-        ? serializationAdapters
-            .map((t) => makeSsrSerovalPlugin(t, trackPlugins))
-            .concat(defaultSerovalPlugins)
-        : defaultSerovalPlugins
+        ? [
+            ...serializationAdapters.map((adapter) =>
+              makeSsrSerovalPlugin(adapter, trackPlugins),
+            ),
+            ...ssrSerovalPlugins,
+          ]
+        : ssrSerovalPlugins
 
-      const signalSerializationComplete = () => {
-        _serializationFinished = true
-        try {
-          serializationFinishedListeners.forEach((l) => l())
-          router.emit({ type: 'onSerializationFinished' })
-        } catch (err) {
-          console.error('Serialization listener error:', err)
-        } finally {
-          serializationFinishedListeners.length = 0
-          renderFinishedListeners.length = 0
+      let serializationCompleteSignaled = false
+      let initialSerialized = false
+      const completeScriptSerialization = (
+        result: boolean | { error: unknown },
+      ) => {
+        if (serializationCompleteSignaled || cleanupStarted) {
+          return
+        }
+        serializationCompleteSignaled = true
+        const dispose = disposeSerialization
+        disposeSerialization = undefined
+        if (result === true) {
+          settled = true
+          hydrationScripts.finish()
+        } else if (result) {
+          hydrationScripts.fail(result.error)
+        }
+        if (dispose) {
+          // Seroval invokes completion callbacks before it marks its stream as
+          // inactive. Clear ownership before notifying the hydration consumer,
+          // which can synchronously clean up this request, then dispose later.
+          queueMicrotask(() => disposeSerializationSafely(dispose))
         }
       }
 
-      crossSerializeStream(dehydratedRouter, {
+      let synchronousFailure: { error: unknown } | undefined
+      const dispose = crossSerializeStream(dehydratedRouter, {
         refs: new Map(),
         plugins,
         onSerialize: (data, initial) => {
-          let serialized = initial ? TSR_PREFIX + data : data
-          if (trackPlugins.didRun) {
-            serialized = P_PREFIX + serialized + P_SUFFIX
+          if (serializationCompleteSignaled || cleanupStarted) {
+            return
           }
-          scriptBuffer.enqueue(serialized)
+          initialSerialized ||= initial
+          if (
+            !hydrationScripts.pushSerializedSource(
+              data,
+              initial,
+              trackPlugins.didRun,
+            )
+          ) {
+            // Rejected output stops the producer while deferred work may remain.
+            completeScriptSerialization(false)
+          }
         },
-        scopeId: SCOPE_ID,
-        onDone: () => {
-          scriptBuffer.enqueue(GLOBAL_TSR + '.e()')
-          // Flush all pending scripts synchronously before signaling completion
-          // This ensures all scripts are injected before onSerializationFinished is emitted
-          scriptBuffer.flush()
-          signalSerializationComplete()
-        },
-        onError: (err) => {
+        onError: (err: unknown) => {
+          if (serializationCompleteSignaled || cleanupStarted) {
+            return
+          }
           console.error('Serialization error:', err)
-          signalSerializationComplete()
+          synchronousFailure = { error: err }
+          completeScriptSerialization({ error: err })
+        },
+        scopeId: SSR_SERIALIZATION_SCOPE_ID,
+        onDone: () => {
+          if (initialSerialized) {
+            completeScriptSerialization(true)
+          }
         },
       })
+      // Seroval can call onDone synchronously before it returns dispose().
+      if (cleanupStarted || serializationCompleteSignaled) {
+        disposeSerializationSafely(dispose)
+      } else {
+        disposeSerialization = dispose
+      }
+      if (synchronousFailure) {
+        throw synchronousFailure.error
+      }
     },
-    isDehydrated() {
-      return _dehydrated
+    onRenderFinished: (listener) => {
+      if (cleanupStarted) {
+        return
+      }
+      if (renderFinished) {
+        try {
+          listener()
+        } catch (error) {
+          console.error('Error in render finished listener:', error)
+        }
+        return
+      }
+      renderFinishedListeners.push(listener)
     },
-    isSerializationFinished() {
-      return _serializationFinished
+    onCleanup: (listener) => {
+      if (cleanupStarted) {
+        // Cleanup already happened (or is running). Invoke immediately so
+        // late registrants can still release their resources instead of
+        // silently retaining them (standard disposer convention).
+        try {
+          listener(settled)
+        } catch (error) {
+          console.error('Error in SSR cleanup listener:', error)
+        }
+        return
+      }
+      cleanupListeners.push(listener)
     },
-    onRenderFinished: (listener) => renderFinishedListeners.push(listener),
-    onSerializationFinished: (listener) =>
-      serializationFinishedListeners.push(listener),
     setRenderFinished: () => {
-      // Wrap in try-catch to ensure scriptBuffer.liftBarrier() is always called
-      try {
-        renderFinishedListeners.forEach((l) => l())
-      } catch (err) {
-        console.error('Error in render finished listener:', err)
-      } finally {
-        // Clear listeners after calling them to prevent memory leaks
-        renderFinishedListeners.length = 0
+      if (cleanupStarted || renderFinished) {
+        return
       }
-      scriptBuffer.liftBarrier()
+      renderFinished = true
+      hydrationScripts.liftBarrier()
+      notifyAndClearListeners(
+        renderFinishedListeners,
+        'Error in render finished listener:',
+        undefined,
+      )
     },
-    takeBufferedScripts() {
-      const scripts = scriptBuffer.takeAll()
-      const serverBufferedScript: RouterManagedTag = {
-        tag: 'script',
-        attrs: {
-          nonce: router.options.ssr?.nonce,
-          className: '$tsr',
-          id: TSR_SCRIPT_BARRIER_ID,
-        },
-        children: scripts,
+    disableHydration: () => {
+      if (cleanupStarted || dehydrationPhase === 'disabled') {
+        return
       }
-      return serverBufferedScript
-    },
-    liftScriptBarrier() {
-      scriptBuffer.liftBarrier()
-    },
-    takeBufferedHtml() {
-      if (!injectedHtmlBuffer) {
-        return undefined
+      if (dehydrationPhase !== 'idle') {
+        if (process.env.NODE_ENV !== 'production') {
+          throw new Error(
+            'Invariant failed: cannot disable hydration after dehydrate()!',
+          )
+        }
+
+        invariant()
       }
-      const buffered = injectedHtmlBuffer
-      injectedHtmlBuffer = ''
-      return buffered
+      // The owner rejects later takes/claims; guard order matters so a
+      // throwing owner does not leave the phase half-set.
+      hydrationScripts.disableHydration()
+      dehydrationPhase = 'disabled'
     },
+    takeInitialHydrationScriptTags:
+      hydrationScripts.takeInitialHydrationScriptTags,
     cleanup() {
-      // Guard against multiple cleanup calls
-      if (!router.serverSsr) return
+      // Guard against multiple/reentrant cleanup calls. A listener could call
+      // cleanup() again indirectly; snapshot + clear before invoking so each
+      // listener runs exactly once and reentry is a no-op.
+      if (cleanupStarted) {
+        return
+      }
+      cleanupStarted = true
+      hydrationScripts.cleanup()
+      const dispose = disposeSerialization
+      disposeSerialization = undefined
+      disposeSerializationSafely(dispose)
+      notifyAndClearListeners(
+        cleanupListeners,
+        'Error in SSR cleanup listener:',
+        settled,
+      )
       renderFinishedListeners.length = 0
-      serializationFinishedListeners.length = 0
-      injectedHtmlBuffer = ''
-      scriptBuffer.cleanup()
+      router.ssr = undefined
       router.serverSsr = undefined
     },
+  }
+
+  router.serverSsr = serverSsr
+  for (const listener of router.serverSsrLifecycle?.onServerSsrAttach ?? []) {
+    try {
+      listener(serverSsr)
+    } catch (err) {
+      console.error('SSR attach listener error:', err)
+    }
   }
 }
 
@@ -398,12 +673,17 @@ export function getOrigin(request: Request) {
 // new URLSearchParams() encodes "|" while new URL() does not, and in this instance
 // chromium treats search params differently than paths, i.e. "|" is not encoded in search params.
 export function getNormalizedURL(url: string | URL, base?: string | URL) {
-  // ensure backslashes are encoded correctly in the URL
-  if (typeof url === 'string') url = url.replace('\\', '%5C')
-
-  const rawUrl = new URL(url, base)
-  const { path: decodedPathname, handledProtocolRelativeURL } = decodePath(
-    rawUrl.pathname,
+  // Encode backslashes in a string URL. A URL object is already parsed and is
+  // only read here.
+  const rawUrl =
+    typeof url === 'string' ? new URL(url.replace('\\', '%5C'), base) : url
+  // URL parsing has already handled backslashes and ignored controls. A pathname
+  // like "//evil.example" would become a protocol-relative URL when rebuilt below.
+  const handledProtocolRelativeURL = rawUrl.pathname.startsWith('//')
+  const decodedPathname = decodePath(
+    handledProtocolRelativeURL
+      ? rawUrl.pathname.replace(/^\/+/, '/')
+      : rawUrl.pathname,
   )
   const searchParams = new URLSearchParams(rawUrl.search)
   const normalizedHref =

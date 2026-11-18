@@ -5,7 +5,8 @@ import { describe, expect, test } from 'vitest'
 import {
   detectKindsInCode,
   StartCompiler,
-} from '../../src/start-compiler-plugin/compiler'
+} from '../../src/start-compiler/compiler'
+import { formatSnapshot } from '../format-snapshot'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {
@@ -38,6 +39,7 @@ async function compile(opts: {
         kind: 'ClientOnlyJSX',
       },
     ],
+    getKnownServerFns: () => ({}),
     resolveId: async (id) => {
       return id
     },
@@ -71,9 +73,9 @@ describe('ClientOnlyJSX compiles correctly', async () => {
       })
 
       if (compiledResult) {
-        await expect(compiledResult.code).toMatchFileSnapshot(
-          `./snapshots/server/${filename}`,
-        )
+        await expect(
+          await formatSnapshot(compiledResult.code, filename),
+        ).toMatchFileSnapshot(`./snapshots/server/${filename}`)
       } else {
         // No transformation - for files where ClientOnly is not from TanStack
         await expect('no-transform').toMatchFileSnapshot(

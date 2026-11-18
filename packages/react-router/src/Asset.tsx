@@ -1,8 +1,12 @@
+'use client'
+
 import * as React from 'react'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import { useHydrated } from './ClientOnly'
 import type { RouterManagedTag } from '@tanstack/router-core'
+
+const INLINE_CSS_HYDRATION_ATTR = 'data-tsr-inline-css'
 
 interface ScriptAttrs {
   [key: string]: string | boolean | undefined
@@ -10,13 +14,41 @@ interface ScriptAttrs {
   suppressHydrationWarning?: boolean
 }
 
-export function Asset({
-  tag,
-  attrs,
-  children,
-  nonce,
-}: RouterManagedTag & { nonce?: string }): React.ReactElement | null {
-  switch (tag) {
+const noopScriptHandler = () => {}
+
+function setScriptAttrs(
+  script: HTMLScriptElement,
+  attrs: ScriptAttrs | undefined,
+) {
+  if (!attrs) {
+    return
+  }
+
+  for (const [key, value] of Object.entries(attrs)) {
+    if (
+      key !== 'suppressHydrationWarning' &&
+      value !== undefined &&
+      value !== false
+    ) {
+      script.setAttribute(key, typeof value === 'boolean' ? '' : String(value))
+    }
+  }
+}
+
+export function Asset(
+  asset: RouterManagedTag & {
+    nonce?: string
+    preventScriptHoist?: boolean
+  },
+): React.ReactElement | null {
+  const { attrs, children, nonce, preventScriptHoist } = asset
+  // React 19 compares this object by reference before assigning innerHTML.
+  const innerHTML = React.useMemo(
+    () => (children === undefined ? undefined : { __html: children }),
+    [children],
+  )
+
+  switch (asset.tag) {
     case 'title':
       return (
         <title {...attrs} suppressHydrationWarning>
@@ -26,31 +58,96 @@ export function Asset({
     case 'meta':
       return <meta {...attrs} suppressHydrationWarning />
     case 'link':
-      return <link {...attrs} nonce={nonce} suppressHydrationWarning />
-    case 'style':
       return (
-        <style
+        <link
           {...attrs}
-          dangerouslySetInnerHTML={{ __html: children as string }}
+          precedence={
+            attrs?.precedence ??
+            (attrs?.rel === 'stylesheet' ? 'default' : undefined)
+          }
           nonce={nonce}
+          suppressHydrationWarning
         />
       )
+    case 'style':
+      if (
+        asset.inlineCss &&
+        (process.env.TSS_INLINE_CSS_ENABLED === 'true' ||
+          (process.env.TSS_INLINE_CSS_ENABLED === undefined && isServer))
+      ) {
+        return (
+          <InlineCssStyle attrs={attrs} nonce={nonce}>
+            {children}
+          </InlineCssStyle>
+        )
+      }
+
+      return (
+        <style {...attrs} dangerouslySetInnerHTML={innerHTML} nonce={nonce} />
+      )
     case 'script':
-      return <Script attrs={attrs}>{children}</Script>
+      return (
+        <Script attrs={attrs} preventScriptHoist={preventScriptHoist}>
+          {children}
+        </Script>
+      )
     default:
       return null
   }
 }
 
+function InlineCssStyle({
+  attrs,
+  children,
+  nonce,
+}: {
+  attrs?: Record<string, any>
+  children?: RouterManagedTag['children']
+  nonce?: string
+}) {
+  const isInlineCssPlaceholder = children === undefined
+  const [hydratedInlineCss] = React.useState(() => {
+    if (!isInlineCssPlaceholder || typeof document === 'undefined') {
+      return undefined
+    }
+
+    return (
+      document.querySelector<HTMLStyleElement>(
+        `style[${INLINE_CSS_HYDRATION_ATTR}]`,
+      )?.textContent ?? undefined
+    )
+  })
+  const html = isInlineCssPlaceholder
+    ? (hydratedInlineCss ?? '')
+    : (children ?? '')
+  const innerHTML = React.useMemo(() => ({ __html: html }), [html])
+
+  return (
+    <style
+      {...attrs}
+      {...{ [INLINE_CSS_HYDRATION_ATTR]: '' }}
+      dangerouslySetInnerHTML={innerHTML}
+      nonce={nonce}
+      suppressHydrationWarning
+    />
+  )
+}
+
 function Script({
   attrs,
   children,
+  preventScriptHoist,
 }: {
   attrs?: ScriptAttrs
   children?: string
+  preventScriptHoist?: boolean
 }) {
   const router = useRouter()
   const hydrated = useHydrated()
+  const innerHTML = React.useMemo(
+    () => (children === undefined ? undefined : { __html: children }),
+    [children],
+  )
   const dataScript =
     typeof attrs?.type === 'string' &&
     attrs.type !== '' &&
@@ -69,47 +166,28 @@ function Script({
   }
 
   React.useEffect(() => {
-    if (dataScript) return
+    if (dataScript) {
+      return
+    }
 
     if (attrs?.src) {
-      const normSrc = (() => {
-        try {
-          const base = document.baseURI || window.location.href
-          return new URL(attrs.src, base).href
-        } catch {
-          return attrs.src
+      // Anchors resolve relative URLs and preserve invalid URLs without throwing.
+      const link = document.createElement('a')
+      link.href = attrs.src
+      const normSrc = link.href
+      for (const el of document.scripts) {
+        if (el.src === normSrc) {
+          return
         }
-      })()
-      const existingScript = Array.from(
-        document.querySelectorAll('script[src]'),
-      ).find((el) => (el as HTMLScriptElement).src === normSrc)
-
-      if (existingScript) {
-        return
       }
 
       const script = document.createElement('script')
 
-      for (const [key, value] of Object.entries(attrs)) {
-        if (
-          key !== 'suppressHydrationWarning' &&
-          value !== undefined &&
-          value !== false
-        ) {
-          script.setAttribute(
-            key,
-            typeof value === 'boolean' ? '' : String(value),
-          )
-        }
-      }
+      setScriptAttrs(script, attrs)
 
       document.head.appendChild(script)
 
-      return () => {
-        if (script.parentNode) {
-          script.parentNode.removeChild(script)
-        }
-      }
+      return () => script.remove()
     }
 
     if (typeof children === 'string') {
@@ -117,48 +195,29 @@ function Script({
         typeof attrs?.type === 'string' ? attrs.type : 'text/javascript'
       const nonceAttr =
         typeof attrs?.nonce === 'string' ? attrs.nonce : undefined
-      const existingScript = Array.from(
-        document.querySelectorAll('script:not([src])'),
-      ).find((el) => {
-        if (!(el instanceof HTMLScriptElement)) return false
+      for (const el of document.scripts) {
+        if (el.hasAttribute('src')) {
+          continue
+        }
+
         const sType = el.getAttribute('type') ?? 'text/javascript'
         const sNonce = el.getAttribute('nonce') ?? undefined
-        return (
+        if (
           el.textContent === children &&
           sType === typeAttr &&
           sNonce === nonceAttr
-        )
-      })
-
-      if (existingScript) {
-        return
+        ) {
+          return
+        }
       }
 
       const script = document.createElement('script')
       script.textContent = children
-
-      if (attrs) {
-        for (const [key, value] of Object.entries(attrs)) {
-          if (
-            key !== 'suppressHydrationWarning' &&
-            value !== undefined &&
-            value !== false
-          ) {
-            script.setAttribute(
-              key,
-              typeof value === 'boolean' ? '' : String(value),
-            )
-          }
-        }
-      }
+      setScriptAttrs(script, attrs)
 
       document.head.appendChild(script)
 
-      return () => {
-        if (script.parentNode) {
-          script.parentNode.removeChild(script)
-        }
-      }
+      return () => script.remove()
     }
 
     return undefined
@@ -167,14 +226,27 @@ function Script({
   // --- Server rendering ---
   if (isServer ?? router.isServer) {
     if (attrs?.src) {
-      return <script {...attrs} suppressHydrationWarning />
+      if (!preventScriptHoist) {
+        return <script {...attrs} suppressHydrationWarning />
+      }
+
+      return (
+        <script
+          {...attrs}
+          // React hoists async src scripts into <head> during SSR unless they
+          // have an event handler. Start's client entry must stay after router
+          // dehydration.
+          onLoad={noopScriptHandler}
+          suppressHydrationWarning
+        />
+      )
     }
 
     if (typeof children === 'string') {
       return (
         <script
           {...attrs}
-          dangerouslySetInnerHTML={{ __html: children }}
+          dangerouslySetInnerHTML={innerHTML}
           suppressHydrationWarning
         />
       )
@@ -192,7 +264,7 @@ function Script({
       <script
         {...attrs}
         suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: children }}
+        dangerouslySetInnerHTML={innerHTML}
       />
     )
   }
@@ -204,11 +276,12 @@ function Script({
     if (attrs?.src) {
       return <script {...attrs} suppressHydrationWarning />
     }
+
     if (typeof children === 'string') {
       return (
         <script
           {...attrs}
-          dangerouslySetInnerHTML={{ __html: children }}
+          dangerouslySetInnerHTML={innerHTML}
           suppressHydrationWarning
         />
       )

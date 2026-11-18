@@ -9,19 +9,32 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SassMixinRouteImport } from './routes/sass-mixin'
-import { Route as QuotesRouteImport } from './routes/quotes'
-import { Route as ModulesRouteImport } from './routes/modules'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AlphaRouteImport } from './routes/alpha'
+import { Route as BetaRouteImport } from './routes/beta'
+import { Route as GammaRouteImport } from './routes/gamma'
+import { Route as ModulesRouteImport } from './routes/modules'
+import { Route as QuotesRouteImport } from './routes/quotes'
+import { Route as SassMixinRouteImport } from './routes/sass-mixin'
 
-const SassMixinRoute = SassMixinRouteImport.update({
-  id: '/sass-mixin',
-  path: '/sass-mixin',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const QuotesRoute = QuotesRouteImport.update({
-  id: '/quotes',
-  path: '/quotes',
+const AlphaRoute = AlphaRouteImport.update({
+  id: '/alpha',
+  path: '/alpha',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BetaRoute = BetaRouteImport.update({
+  id: '/beta',
+  path: '/beta',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GammaRoute = GammaRouteImport.update({
+  id: '/gamma',
+  path: '/gamma',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModulesRoute = ModulesRouteImport.update({
@@ -29,20 +42,31 @@ const ModulesRoute = ModulesRouteImport.update({
   path: '/modules',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const QuotesRoute = QuotesRouteImport.update({
+  id: '/quotes',
+  path: '/quotes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SassMixinRoute = SassMixinRouteImport.update({
+  id: '/sass-mixin',
+  path: '/sass-mixin',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/alpha': typeof AlphaRoute
+  '/beta': typeof BetaRoute
+  '/gamma': typeof GammaRoute
   '/modules': typeof ModulesRoute
   '/quotes': typeof QuotesRoute
   '/sass-mixin': typeof SassMixinRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/alpha': typeof AlphaRoute
+  '/beta': typeof BetaRoute
+  '/gamma': typeof GammaRoute
   '/modules': typeof ModulesRoute
   '/quotes': typeof QuotesRoute
   '/sass-mixin': typeof SassMixinRoute
@@ -50,20 +74,36 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/alpha': typeof AlphaRoute
+  '/beta': typeof BetaRoute
+  '/gamma': typeof GammaRoute
   '/modules': typeof ModulesRoute
   '/quotes': typeof QuotesRoute
   '/sass-mixin': typeof SassMixinRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/modules' | '/quotes' | '/sass-mixin'
+  fullPaths:
+    '/' | '/alpha' | '/beta' | '/gamma' | '/modules' | '/quotes' | '/sass-mixin'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/modules' | '/quotes' | '/sass-mixin'
-  id: '__root__' | '/' | '/modules' | '/quotes' | '/sass-mixin'
+  to:
+    '/' | '/alpha' | '/beta' | '/gamma' | '/modules' | '/quotes' | '/sass-mixin'
+  id:
+    | '__root__'
+    | '/'
+    | '/alpha'
+    | '/beta'
+    | '/gamma'
+    | '/modules'
+    | '/quotes'
+    | '/sass-mixin'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AlphaRoute: typeof AlphaRoute
+  BetaRoute: typeof BetaRoute
+  GammaRoute: typeof GammaRoute
   ModulesRoute: typeof ModulesRoute
   QuotesRoute: typeof QuotesRoute
   SassMixinRoute: typeof SassMixinRoute
@@ -71,18 +111,32 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/sass-mixin': {
-      id: '/sass-mixin'
-      path: '/sass-mixin'
-      fullPath: '/sass-mixin'
-      preLoaderRoute: typeof SassMixinRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/quotes': {
-      id: '/quotes'
-      path: '/quotes'
-      fullPath: '/quotes'
-      preLoaderRoute: typeof QuotesRouteImport
+    '/alpha': {
+      id: '/alpha'
+      path: '/alpha'
+      fullPath: '/alpha'
+      preLoaderRoute: typeof AlphaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/beta': {
+      id: '/beta'
+      path: '/beta'
+      fullPath: '/beta'
+      preLoaderRoute: typeof BetaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gamma': {
+      id: '/gamma'
+      path: '/gamma'
+      fullPath: '/gamma'
+      preLoaderRoute: typeof GammaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/modules': {
@@ -92,11 +146,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/quotes': {
+      id: '/quotes'
+      path: '/quotes'
+      fullPath: '/quotes'
+      preLoaderRoute: typeof QuotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sass-mixin': {
+      id: '/sass-mixin'
+      path: '/sass-mixin'
+      fullPath: '/sass-mixin'
+      preLoaderRoute: typeof SassMixinRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -104,6 +165,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AlphaRoute: AlphaRoute,
+  BetaRoute: BetaRoute,
+  GammaRoute: GammaRoute,
   ModulesRoute: ModulesRoute,
   QuotesRoute: QuotesRoute,
   SassMixinRoute: SassMixinRoute,

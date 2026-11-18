@@ -1,1 +1,0 @@
-import{a as t,b as r,F as l}from"./index-BwsVWHwV.js";const o="at-the-top",a="at-the-bottom";function m({number:e=100}){return t(l,null,[t("div",{id:o,"data-testid":o},null),Array.from({length:e}).map((n,d)=>t("div",null,[d])),t("div",{id:a,"data-testid":a},[r("At the bottom")])])}export{m as S};

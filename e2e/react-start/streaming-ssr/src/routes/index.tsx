@@ -23,6 +23,12 @@ function Index() {
           - Tests deferred promises resolving after initial render
         </li>
         <li>
+          <Link to="/deferred-rejection" data-testid="link-deferred-rejection">
+            Deferred Rejection
+          </Link>{' '}
+          - Tests deferred promise rejections render through the error boundary
+        </li>
+        <li>
           <Link to="/stream" data-testid="link-stream">
             ReadableStream
           </Link>{' '}

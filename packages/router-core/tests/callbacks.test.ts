@@ -1,6 +1,7 @@
 import { describe, expect, it, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute, RouterCore } from '../src'
+import { BaseRootRoute, BaseRoute } from '../src'
+import { createTestRouter } from './routerTestUtils'
 
 describe('callbacks', () => {
   const setup = ({
@@ -32,7 +33,7 @@ describe('callbacks', () => {
 
     const routeTree = rootRoute.addChildren([fooRoute, barRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
     })
@@ -63,7 +64,7 @@ describe('callbacks', () => {
       staleTime: opts.staleTime,
       gcTime: opts.staleTime,
     })
-    return new RouterCore({
+    return createTestRouter({
       routeTree: rootRoute.addChildren([fooRoute]),
       history: createMemoryHistory(),
     })
@@ -177,7 +178,7 @@ describe('callbacks', () => {
         gcTime: staleTime,
       })
       const routeTree = rootRoute.addChildren([postRoute])
-      return new RouterCore({
+      return createTestRouter({
         routeTree,
         history: createMemoryHistory(),
       })
@@ -199,10 +200,6 @@ describe('callbacks', () => {
       )?.id
       expect(page2MatchId).toBeDefined()
       expect(page2MatchId).not.toBe(page1MatchId)
-      expect(
-        router.state.cachedMatches.some((d) => d.id === page1MatchId),
-      ).toBe(true)
-
       await router.navigate({ to: '/foo', search: { page: '1' } })
       expect(loader).toHaveBeenCalledTimes(2)
       expect(router.state.matches.some((d) => d.id === page1MatchId)).toBe(true)
@@ -224,10 +221,6 @@ describe('callbacks', () => {
       )?.id
       expect(post2MatchId).toBeDefined()
       expect(post2MatchId).not.toBe(post1MatchId)
-      expect(
-        router.state.cachedMatches.some((d) => d.id === post1MatchId),
-      ).toBe(true)
-
       await router.navigate({ to: '/posts/$postId', params: { postId: '1' } })
       expect(loader).toHaveBeenCalledTimes(2)
       expect(router.state.matches.some((d) => d.id === post1MatchId)).toBe(true)

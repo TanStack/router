@@ -1,3 +1,4 @@
+import { defineComponent } from 'vue'
 import * as fs from 'node:fs'
 import { createFileRoute, useRouter } from '@tanstack/vue-router'
 import { createServerFn } from '@tanstack/vue-start'
@@ -12,30 +13,31 @@ const getCount = createServerFn({
 })
 
 const updateCount = createServerFn({ method: 'POST' })
-  .inputValidator((d: number) => d)
+  .validator((d: number) => d)
   .handler(async ({ data }) => {
     const count = await getCount()
     await fs.promises.writeFile(filePath, `${count + data}`)
   })
+const Home = defineComponent({
+  setup() {
+    const router = useRouter()
+    const state = Route.useLoaderData()
+    return () => (
+      <button
+        data-testid="add-button"
+        onClick={() => {
+          updateCount({ data: 1 }).then(() => {
+            router.invalidate()
+          })
+        }}
+      >
+        Add 1 to {state.value}?
+      </button>
+    )
+  },
+})
+
 export const Route = createFileRoute('/')({
   component: Home,
   loader: async () => await getCount(),
 })
-
-function Home() {
-  const router = useRouter()
-  const state = Route.useLoaderData()
-
-  return (
-    <button
-      data-testid="add-button"
-      onClick={() => {
-        updateCount({ data: 1 }).then(() => {
-          router.invalidate()
-        })
-      }}
-    >
-      Add 1 to {state.value}?
-    </button>
-  )
-}

@@ -1,3 +1,4 @@
+import { defineComponent } from 'vue'
 import { afterEach, beforeEach, expect, test } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/vue'
 
@@ -247,6 +248,82 @@ test('defaultNotFoundComponent and notFoundComponent receives data props via spr
   expect(errorMessageComponent).toHaveTextContent(customData.message)
 })
 
+test('component-thrown bare notFound renders current route notFoundComponent', async () => {
+  const rootRoute = createRootRoute({
+    component: () => <Outlet />,
+    notFoundComponent: () => <span data-testid="root-not-found">Root</span>,
+  })
+
+  const parentRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    component: () => <Outlet />,
+    notFoundComponent: () => (
+      <span data-testid="parent-not-found">Parent not found</span>
+    ),
+  })
+
+  const childRoute = createRoute({
+    getParentRoute: () => parentRoute,
+    path: '/child',
+    notFoundComponent: () => (
+      <span data-testid="child-not-found">Child not found</span>
+    ),
+    component: () => {
+      throw notFound()
+    },
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+    history,
+    notFoundMode: 'fuzzy',
+  })
+
+  render(<RouterProvider router={router} />)
+  await router.navigate({ to: '/parent/child' })
+
+  expect(await screen.findByTestId('child-not-found')).toBeInTheDocument()
+  expect(screen.queryByTestId('parent-not-found')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('root-not-found')).not.toBeInTheDocument()
+})
+
+test('component-thrown bare notFound falls back to nearest ancestor notFoundComponent', async () => {
+  const rootRoute = createRootRoute({
+    component: () => <Outlet />,
+    notFoundComponent: () => <span data-testid="root-not-found">Root</span>,
+  })
+
+  const parentRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    component: () => <Outlet />,
+    notFoundComponent: () => (
+      <span data-testid="parent-not-found">Parent not found</span>
+    ),
+  })
+
+  const childRoute = createRoute({
+    getParentRoute: () => parentRoute,
+    path: '/child',
+    component: () => {
+      throw notFound()
+    },
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+    history,
+    notFoundMode: 'fuzzy',
+  })
+
+  render(<RouterProvider router={router} />)
+  await router.navigate({ to: '/parent/child' })
+
+  expect(await screen.findByTestId('parent-not-found')).toBeInTheDocument()
+  expect(screen.queryByTestId('root-not-found')).not.toBeInTheDocument()
+})
+
 test('beforeLoad notFound with routeId targets root notFoundComponent', async () => {
   const rootRoute = createRootRoute({
     component: () => <Outlet />,
@@ -294,19 +371,23 @@ test('beforeLoad notFound with routeId targets parent boundary and preserves par
     ),
   })
 
-  const parentRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/parent',
-    loader: () => ({ message: 'ready' }),
-    component: () => <Outlet />,
-    notFoundComponent: () => {
+  const ParentNotFoundComponent = defineComponent({
+    setup() {
       const loaderData = parentRoute.useLoaderData()
-      return (
+      return () => (
         <span data-testid="parent-not-found-with-loader-data">
           {loaderData.value.message}
         </span>
       )
     },
+  })
+
+  const parentRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    loader: () => ({ message: 'ready' }),
+    component: () => <Outlet />,
+    notFoundComponent: ParentNotFoundComponent,
   })
 
   const childRoute = createRoute({

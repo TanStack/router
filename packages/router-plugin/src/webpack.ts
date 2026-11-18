@@ -1,10 +1,14 @@
 import { createWebpackPlugin } from 'unplugin'
 
 import { configSchema } from './core/config'
-import { unpluginRouterCodeSplitterFactory } from './core/router-code-splitter-plugin'
-import { unpluginRouterGeneratorFactory } from './core/router-generator-plugin'
+import { createRouterCodeSplitterPlugin } from './core/router-code-splitter-plugin'
+import { createRouterGeneratorPlugin } from './core/router-generator-plugin'
 import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
+import { createRouterPluginContext } from './core/router-plugin-context'
 import type { CodeSplittingOptions, Config } from './core/config'
+import type { RouterPluginContext } from './core/router-plugin-context'
+
+const defaultRouterPluginContext = createRouterPluginContext()
 
 /**
  * @example
@@ -15,11 +19,19 @@ import type { CodeSplittingOptions, Config } from './core/config'
  * }
  * ```
  */
-const TanStackRouterGeneratorWebpack = /* #__PURE__ */ createWebpackPlugin(
-  unpluginRouterGeneratorFactory,
-)
+const TanStackRouterGeneratorWebpack = (
+  options?: Partial<Config>,
+  routerPluginContext?: RouterPluginContext,
+) => {
+  const pluginContext = routerPluginContext ?? defaultRouterPluginContext
+  return createWebpackPlugin((pluginOptions: Partial<Config> | undefined) =>
+    createRouterGeneratorPlugin(pluginOptions, pluginContext),
+  )(options)
+}
 
 /**
+ * Route HMR in development goes through `import.meta.webpackHot`.
+ *
  * @example
  * ```ts
  * export default {
@@ -28,9 +40,15 @@ const TanStackRouterGeneratorWebpack = /* #__PURE__ */ createWebpackPlugin(
  * }
  * ```
  */
-const TanStackRouterCodeSplitterWebpack = /* #__PURE__ */ createWebpackPlugin(
-  unpluginRouterCodeSplitterFactory,
-)
+const TanStackRouterCodeSplitterWebpack = (
+  options?: Partial<Config>,
+  routerPluginContext?: RouterPluginContext,
+) => {
+  const pluginContext = routerPluginContext ?? defaultRouterPluginContext
+  return createWebpackPlugin((pluginOptions: Partial<Config> | undefined) =>
+    createRouterCodeSplitterPlugin(pluginOptions, pluginContext, 'webpack'),
+  )(options)
+}
 
 /**
  * @example
@@ -54,4 +72,4 @@ export {
   TanStackRouterCodeSplitterWebpack,
   tanstackRouter,
 }
-export type { Config, CodeSplittingOptions }
+export type { Config, CodeSplittingOptions, RouterPluginContext }

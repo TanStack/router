@@ -1,4 +1,3 @@
-import '@testing-library/jest-dom/vitest'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 
@@ -24,19 +23,20 @@ describe('useBlocker', () => {
   test('does not block navigation when not enabled', async () => {
     const rootRoute = createRootRoute()
 
-    const IndexComponent = () => {
-      const navigate = useNavigate()
+    const IndexComponent = Vue.defineComponent({
+      setup() {
+        const navigate = useNavigate()
 
-      useBlocker({ shouldBlockFn: () => false })
-
-      return (
-        <>
-          <h1>Index</h1>
-          <button onClick={() => navigate({ to: '/' })}>Index</button>
-          <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-        </>
-      )
-    }
+        useBlocker({ shouldBlockFn: () => false })
+        return () => (
+          <>
+            <h1>Index</h1>
+            <button onClick={() => navigate({ to: '/' })}>Index</button>
+            <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
+          </>
+        )
+      },
+    })
 
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -76,19 +76,20 @@ describe('useBlocker', () => {
   test('does not block navigation when disabled', async () => {
     const rootRoute = createRootRoute()
 
-    const IndexComponent = () => {
-      const navigate = useNavigate()
+    const IndexComponent = Vue.defineComponent({
+      setup() {
+        const navigate = useNavigate()
 
-      useBlocker({ shouldBlockFn: () => true, disabled: true })
-
-      return (
-        <>
-          <h1>Index</h1>
-          <button onClick={() => navigate({ to: '/' })}>Index</button>
-          <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-        </>
-      )
-    }
+        useBlocker({ shouldBlockFn: () => true, disabled: true })
+        return () => (
+          <>
+            <h1>Index</h1>
+            <button onClick={() => navigate({ to: '/' })}>Index</button>
+            <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
+          </>
+        )
+      },
+    })
 
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -128,19 +129,20 @@ describe('useBlocker', () => {
   test('blocks navigation when enabled', async () => {
     const rootRoute = createRootRoute()
 
-    const IndexComponent = () => {
-      const navigate = useNavigate()
+    const IndexComponent = Vue.defineComponent({
+      setup() {
+        const navigate = useNavigate()
 
-      useBlocker({ shouldBlockFn: () => true })
-
-      return (
-        <>
-          <h1>Index</h1>
-          <button onClick={() => navigate({ to: '/' })}>Index</button>
-          <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-        </>
-      )
-    }
+        useBlocker({ shouldBlockFn: () => true })
+        return () => (
+          <>
+            <h1>Index</h1>
+            <button onClick={() => navigate({ to: '/' })}>Index</button>
+            <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
+          </>
+        )
+      },
+    })
 
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -182,21 +184,22 @@ describe('useBlocker', () => {
 
     const shouldBlockFn = vi.fn().mockReturnValue(true)
 
-    const IndexComponent = () => {
-      const navigate = useNavigate()
+    const IndexComponent = Vue.defineComponent({
+      setup() {
+        const navigate = useNavigate()
 
-      useBlocker({ shouldBlockFn })
-
-      return (
-        <>
-          <h1>Index</h1>
-          <button onClick={() => navigate({ to: '/' })}>Index</button>
-          <button onClick={() => navigate({ to: '/posts', replace: true })}>
-            Posts
-          </button>
-        </>
-      )
-    }
+        useBlocker({ shouldBlockFn })
+        return () => (
+          <>
+            <h1>Index</h1>
+            <button onClick={() => navigate({ to: '/' })}>Index</button>
+            <button onClick={() => navigate({ to: '/posts', replace: true })}>
+              Posts
+            </button>
+          </>
+        )
+      },
+    })
 
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -256,29 +259,30 @@ describe('useBlocker', () => {
 
     const shouldBlockFn = vi.fn().mockReturnValue(true)
 
-    const IndexComponent = () => {
-      const navigate = useNavigate()
+    const IndexComponent = Vue.defineComponent({
+      setup() {
+        const navigate = useNavigate()
 
-      useBlocker({ shouldBlockFn })
-
-      return (
-        <>
-          <h1>Index</h1>
-          <button onClick={() => navigate({ to: '/' })}>Index</button>
-          <button
-            onClick={() =>
-              navigate({
-                to: '/posts/$postId',
-                params: { postId: '10' },
-                search: { param1: 'foo', param2: 'bar' },
-              })
-            }
-          >
-            Posts
-          </button>
-        </>
-      )
-    }
+        useBlocker({ shouldBlockFn })
+        return () => (
+          <>
+            <h1>Index</h1>
+            <button onClick={() => navigate({ to: '/' })}>Index</button>
+            <button
+              onClick={() =>
+                navigate({
+                  to: '/posts/$postId',
+                  params: { postId: '10' },
+                  search: { param1: 'foo', param2: 'bar' },
+                })
+              }
+            >
+              Posts
+            </button>
+          </>
+        )
+      },
+    })
 
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -340,29 +344,30 @@ describe('useBlocker', () => {
   test('conditionally blocking navigation works', async () => {
     const rootRoute = createRootRoute()
 
-    const IndexComponent = () => {
-      const navigate = useNavigate()
+    const IndexComponent = Vue.defineComponent({
+      setup() {
+        const navigate = useNavigate()
 
-      useBlocker<Router>({
-        shouldBlockFn: ({ next }) => {
-          if (next.fullPath === '/posts') {
-            return true
-          }
-          return false
-        },
-      })
-
-      return (
-        <>
-          <h1>Index</h1>
-          <button onClick={() => navigate({ to: '/' })}>Index</button>
-          <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-          <button onClick={() => navigate({ to: '/invoices' })}>
-            Invoices
-          </button>
-        </>
-      )
-    }
+        useBlocker<Router>({
+          shouldBlockFn: ({ next }) => {
+            if (next.fullPath === '/posts') {
+              return true
+            }
+            return false
+          },
+        })
+        return () => (
+          <>
+            <h1>Index</h1>
+            <button onClick={() => navigate({ to: '/' })}>Index</button>
+            <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
+            <button onClick={() => navigate({ to: '/invoices' })}>
+              Invoices
+            </button>
+          </>
+        )
+      },
+    })
 
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -495,13 +500,12 @@ describe('useBlocker', () => {
   })
 
   test('should allow navigation from 404 page when blocker is active', async () => {
-    const rootRoute = createRootRoute({
-      notFoundComponent: function NotFoundComponent() {
+    const NotFoundComponent = Vue.defineComponent({
+      setup() {
         const navigate = useNavigate()
 
         useBlocker({ shouldBlockFn: () => true })
-
-        return (
+        return () => (
           <>
             <h1>Not Found</h1>
             <button onClick={() => navigate({ to: '/' })}>Go Home</button>
@@ -511,6 +515,10 @@ describe('useBlocker', () => {
           </>
         )
       },
+    })
+
+    const rootRoute = createRootRoute({
+      notFoundComponent: NotFoundComponent,
     })
 
     const indexRoute = createRoute({
@@ -562,13 +570,12 @@ describe('useBlocker', () => {
   })
 
   test('should handle blocker navigation from 404 to another 404', async () => {
-    const rootRoute = createRootRoute({
-      notFoundComponent: function NotFoundComponent() {
+    const NotFoundComponent = Vue.defineComponent({
+      setup() {
         const navigate = useNavigate()
 
         useBlocker({ shouldBlockFn: () => true })
-
-        return (
+        return () => (
           <>
             <h1>Not Found</h1>
             <button onClick={() => navigate({ to: '/another-404' as any })}>
@@ -577,6 +584,10 @@ describe('useBlocker', () => {
           </>
         )
       },
+    })
+
+    const rootRoute = createRootRoute({
+      notFoundComponent: NotFoundComponent,
     })
 
     const indexRoute = createRoute({

@@ -37,7 +37,7 @@ export type UseLoaderDepsRoute<out TId> = <
   TStructuralSharing extends boolean = boolean,
 >(
   opts?: UseLoaderDepsBaseOptions<TRouter, TId, TSelected, TStructuralSharing> &
-    StructuralSharingOption<TRouter, TSelected, false>,
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ) => UseLoaderDepsResult<TRouter, TId, TSelected>
 
 /**
@@ -62,8 +62,8 @@ export function useLoaderDeps<
   const { select, ...rest } = opts
   return useMatch({
     ...rest,
-    select: (s) => {
-      return select ? select(s.loaderDeps) : s.loaderDeps
+    select: (match) => {
+      return select ? select(match.loaderDeps) : match.loaderDeps
     },
   }) as UseLoaderDepsResult<TRouter, TFrom, TSelected>
 }

@@ -1,17 +1,15 @@
 import { defineConfig, devices } from '@playwright/test'
-import { getTestServerPort } from '@tanstack/router-e2e-utils'
-import packageJson from './package.json' with { type: 'json' }
+import { appServerReady } from '@tanstack/router-e2e-utils'
 
-const APP_PORT = await getTestServerPort(packageJson.name)
-const CDN_PORT = await getTestServerPort(`${packageJson.name}_cdn`)
+const APP_PORT = Number(process.env.E2E_APP_PORT ?? 0)
+const CDN_PORT = Number(process.env.E2E_CDN_PORT ?? 0)
 
 const baseURL = `http://localhost:${APP_PORT}`
-const cdnOrigin = `http://localhost:${CDN_PORT}`
-const transformMode = process.env.TRANSFORM_ASSET_URLS_MODE || 'string'
+const transformMode = process.env.TRANSFORM_ASSETS_MODE || 'string'
 const optionsKind =
-  process.env.TRANSFORM_ASSET_URLS_OPTIONS_KIND || 'createTransform'
-const optionsCache = process.env.TRANSFORM_ASSET_URLS_OPTIONS_CACHE || 'true'
-const optionsWarmup = process.env.TRANSFORM_ASSET_URLS_OPTIONS_WARMUP || 'true'
+  process.env.TRANSFORM_ASSETS_OPTIONS_KIND || 'createTransform'
+const optionsCache = process.env.TRANSFORM_ASSETS_OPTIONS_CACHE || 'true'
+const optionsWarmup = process.env.TRANSFORM_ASSETS_OPTIONS_WARMUP || 'true'
 
 export default defineConfig({
   testDir: './tests',
@@ -26,8 +24,11 @@ export default defineConfig({
     {
       // CDN server — serves built client assets on a separate port with CORS
       command: `node tests/cdn-server.mjs`,
-      url: `http://localhost:${CDN_PORT}/health`,
-      reuseExistingServer: !process.env.CI,
+      wait: {
+        stdout:
+          /CDN Server: (?<CDN_ORIGIN>http:\/\/localhost:(?<E2E_CDN_PORT>\d+))/,
+      },
+      reuseExistingServer: false,
       stdout: 'pipe',
       env: {
         CDN_PORT: String(CDN_PORT),
@@ -35,18 +36,17 @@ export default defineConfig({
     },
     {
       // App server — builds the project then starts the srvx server
-      // with CDN_ORIGIN so that transformAssetUrls rewrites manifest URLs
+      // with CDN_ORIGIN so that transformAssets rewrites manifest URLs
       command: `pnpm build && pnpm start`,
-      url: baseURL,
-      reuseExistingServer: !process.env.CI,
+      wait: appServerReady,
+      reuseExistingServer: false,
       stdout: 'pipe',
       env: {
         PORT: String(APP_PORT),
-        CDN_ORIGIN: cdnOrigin,
-        TRANSFORM_ASSET_URLS_MODE: transformMode,
-        TRANSFORM_ASSET_URLS_OPTIONS_KIND: optionsKind,
-        TRANSFORM_ASSET_URLS_OPTIONS_CACHE: optionsCache,
-        TRANSFORM_ASSET_URLS_OPTIONS_WARMUP: optionsWarmup,
+        TRANSFORM_ASSETS_MODE: transformMode,
+        TRANSFORM_ASSETS_OPTIONS_KIND: optionsKind,
+        TRANSFORM_ASSETS_OPTIONS_CACHE: optionsCache,
+        TRANSFORM_ASSETS_OPTIONS_WARMUP: optionsWarmup,
       },
       timeout: 120_000,
     },

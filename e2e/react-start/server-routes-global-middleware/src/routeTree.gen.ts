@@ -9,20 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ServerRouteWithMiddlewareRouteImport } from './routes/server-route-with-middleware'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ServerRouteWithMiddlewareRouteImport } from './routes/server-route-with-middleware'
 
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ServerRouteWithMiddlewareRoute =
   ServerRouteWithMiddlewareRouteImport.update({
     id: '/server-route-with-middleware',
     path: '/server-route-with-middleware',
     getParentRoute: () => rootRouteImport,
   } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -52,18 +52,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/server-route-with-middleware': {
-      id: '/server-route-with-middleware'
-      path: '/server-route-with-middleware'
-      fullPath: '/server-route-with-middleware'
-      preLoaderRoute: typeof ServerRouteWithMiddlewareRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/server-route-with-middleware': {
+      id: '/server-route-with-middleware'
+      path: '/server-route-with-middleware'
+      fullPath: '/server-route-with-middleware'
+      preLoaderRoute: typeof ServerRouteWithMiddlewareRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

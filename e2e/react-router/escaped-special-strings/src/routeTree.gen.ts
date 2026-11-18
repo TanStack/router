@@ -10,30 +10,20 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as Char91indexChar93RouteImport } from './routes/[index]'
-import { Route as Char91routeChar93RouteImport } from './routes/[route]'
-import { Route as Char91lazyChar93RouteImport } from './routes/[lazy]'
-import { Route as BlogRouteImport } from './routes/blog[_]'
-import { Route as LayoutRouteImport } from './routes/[_]layout'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LayoutRouteImport } from './routes/[_]layout'
+import { Route as BlogRouteImport } from './routes/blog[_]'
+import { Route as Char91lazyChar93RouteImport } from './routes/[lazy]'
+import { Route as Char91routeChar93RouteImport } from './routes/[route]'
 
 const Char91indexChar93Route = Char91indexChar93RouteImport.update({
   id: '/index',
   path: '/index',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char91routeChar93Route = Char91routeChar93RouteImport.update({
-  id: '/route',
-  path: '/route',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Char91lazyChar93Route = Char91lazyChar93RouteImport.update({
-  id: '/lazy',
-  path: '/lazy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BlogRoute = BlogRouteImport.update({
-  id: '/blog_',
-  path: '/blog_',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutRoute = LayoutRouteImport.update({
@@ -41,9 +31,19 @@ const LayoutRoute = LayoutRouteImport.update({
   path: '/_layout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const BlogRoute = BlogRouteImport.update({
+  id: '/blog_',
+  path: '/blog_',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char91lazyChar93Route = Char91lazyChar93RouteImport.update({
+  id: '/lazy',
+  path: '/lazy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char91routeChar93Route = Char91routeChar93RouteImport.update({
+  id: '/route',
+  path: '/route',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -98,25 +98,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91indexChar93RouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/route': {
-      id: '/route'
-      path: '/route'
-      fullPath: '/route'
-      preLoaderRoute: typeof Char91routeChar93RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lazy': {
-      id: '/lazy'
-      path: '/lazy'
-      fullPath: '/lazy'
-      preLoaderRoute: typeof Char91lazyChar93RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog_': {
-      id: '/blog_'
-      path: '/blog_'
-      fullPath: '/blog_'
-      preLoaderRoute: typeof BlogRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout': {
@@ -126,11 +112,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/blog_': {
+      id: '/blog_'
+      path: '/blog_'
+      fullPath: '/blog_'
+      preLoaderRoute: typeof BlogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lazy': {
+      id: '/lazy'
+      path: '/lazy'
+      fullPath: '/lazy'
+      preLoaderRoute: typeof Char91lazyChar93RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/route': {
+      id: '/route'
+      path: '/route'
+      fullPath: '/route'
+      preLoaderRoute: typeof Char91routeChar93RouteImport
       parentRoute: typeof rootRouteImport
     }
   }

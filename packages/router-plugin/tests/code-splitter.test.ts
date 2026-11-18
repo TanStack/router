@@ -18,9 +18,11 @@ import {
   expandTransitively,
   removeBindingsDependingOnRoute,
 } from '../src/core/code-splitter/compilers'
-import { createIdentifier } from '../src/core/code-splitter/path-ids'
+import { createIdentifier } from '@tanstack/router-utils'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
+import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
 import { frameworks } from './constants'
+import { formatSnapshot } from './format-snapshot'
 import type { CodeSplitGroupings } from '../src/core/constants'
 
 function getFrameworkDir(framework: string) {
@@ -86,7 +88,9 @@ describe('code-splitter works', () => {
                 sharedBindings.size > 0 ? sharedBindings : undefined,
             })
 
-            await expect(compileResult?.code || code).toMatchFileSnapshot(
+            await expect(
+              await formatSnapshot(compileResult?.code || code, filename),
+            ).toMatchFileSnapshot(
               path.join(dirs.snapshots, groupName, filename),
             )
           },
@@ -119,9 +123,9 @@ describe('code-splitter works', () => {
                 groupName,
                 `${filename.replace('.tsx', '')}@${ident}.tsx`,
               )
-              await expect(splitResult.code).toMatchFileSnapshot(
-                snapshotFilename,
-              )
+              await expect(
+                await formatSnapshot(splitResult.code, filename),
+              ).toMatchFileSnapshot(snapshotFilename)
             }
           },
         )
@@ -155,14 +159,70 @@ describe('code-splitter works', () => {
               filename: `${filename}?tsr-shared=1`,
             })
 
-            await expect(sharedResult.code).toMatchFileSnapshot(
-              snapshotFilename,
-            )
+            await expect(
+              await formatSnapshot(sharedResult.code, filename),
+            ).toMatchFileSnapshot(snapshotFilename)
           },
         )
       },
     )
   })
+})
+
+describe('React Refresh virtual route compiler plugin', () => {
+  const splitComponentCases = [
+    { splitType: 'component', splitIdentifier: 'SplitComponent' },
+    {
+      splitType: 'pendingComponent',
+      splitIdentifier: 'SplitPendingComponent',
+    },
+    { splitType: 'errorComponent', splitIdentifier: 'SplitErrorComponent' },
+  ] as const
+
+  function createRouteCode(splitType: string) {
+    return `
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/')({ ${splitType} })
+
+function ${splitType}() {
+  return <div>lowercase function declaration</div>
+}
+`
+  }
+
+  it.each(splitComponentCases)(
+    'renames a lowercase $splitType binding when HMR is enabled',
+    ({ splitType, splitIdentifier }) => {
+      const result = compileCodeSplitVirtualRoute({
+        code: createRouteCode(splitType),
+        filename: `lowercase-function-declaration.tsx?tsr-split=${splitType}`,
+        splitTargets: [splitType],
+        compilerPlugins: getFrameworkHmrCompilerPlugins({
+          targetFramework: 'react',
+        }),
+      })
+
+      expect(result.code).toContain(`function ${splitIdentifier}()`)
+      expect(result.code).toContain(
+        `export { ${splitIdentifier} as ${splitType} }`,
+      )
+    },
+  )
+
+  it.each(splitComponentCases)(
+    'keeps a lowercase $splitType binding when HMR is disabled',
+    ({ splitType }) => {
+      const result = compileCodeSplitVirtualRoute({
+        code: createRouteCode(splitType),
+        filename: `lowercase-function-declaration.tsx?tsr-split=${splitType}`,
+        splitTargets: [splitType],
+      })
+
+      expect(result.code).toContain(`function ${splitType}()`)
+      expect(result.code).toContain(`export { ${splitType} }`)
+    },
+  )
 })
 
 describe('computeSharedBindings fast paths', () => {

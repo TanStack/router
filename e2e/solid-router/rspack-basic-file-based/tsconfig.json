@@ -13,6 +13,6 @@
     "useDefineForClassFields": true,
     "allowJs": true
   },
-  "include": ["src", "playwright.config.ts", "tests"],
+  "include": ["src", "tests"],
   "exclude": ["node_modules", "dist"]
 }

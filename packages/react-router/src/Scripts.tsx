@@ -1,78 +1,71 @@
+import { useSelector } from '@tanstack/react-store'
+import {
+  composeSsrBodyScripts,
+  deepEqual,
+  getSsrBodyScriptParts,
+} from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
-import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+type ScriptRenderAsset = RouterManagedTag & {
+  preventScriptHoist?: boolean
+}
+
+const routeScriptAttrs = { suppressHydrationWarning: true }
+
 /**
  * Render body script tags collected from route matches and SSR manifests.
- * Should be placed near the end of the document body.
+ * During streaming SSR, `<Scripts>` marks where late hydration scripts may
+ * begin to be inserted.
  */
 export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const assetScripts = useRouterState({
-    select: (state) => {
-      const assetScripts: Array<RouterManagedTag> = []
-      const manifest = router.ssr?.manifest
 
-      if (!manifest) {
-        return []
+  const getParts = (matches: Array<any>) => {
+    const parts = getSsrBodyScriptParts(
+      matches,
+      router.ssr?.manifest,
+      nonce,
+      routeScriptAttrs,
+    )
+    for (const script of parts[1]) {
+      if (typeof script.attrs?.src === 'string') {
+        const scriptWithHoist = script as ScriptRenderAsset
+        scriptWithHoist.preventScriptHoist = true
       }
-
-      state.matches
-        .map((match) => router.looseRoutesById[match.routeId]!)
-        .forEach((route) =>
-          manifest.routes[route.id]?.assets
-            ?.filter((d) => d.tag === 'script')
-            .forEach((asset) => {
-              assetScripts.push({
-                tag: 'script',
-                attrs: { ...asset.attrs, nonce },
-                children: asset.children,
-              } as any)
-            }),
-        )
-
-      return assetScripts
-    },
-    structuralSharing: true as any,
-  })
-
-  const { scripts } = useRouterState({
-    select: (state) => ({
-      scripts: (
-        state.matches
-          .map((match) => match.scripts!)
-          .flat(1)
-          .filter(Boolean) as Array<RouterManagedTag>
-      ).map(({ children, ...script }) => ({
-        tag: 'script',
-        attrs: {
-          ...script,
-          suppressHydrationWarning: true,
-          nonce,
-        },
-        children,
-      })),
-    }),
-    structuralSharing: true as any,
-  })
-
-  let serverBufferedScript: RouterManagedTag | undefined = undefined
-
-  if (router.serverSsr) {
-    serverBufferedScript = router.serverSsr.takeBufferedScripts()
+    }
+    return parts
   }
 
-  const allScripts = [...scripts, ...assetScripts] as Array<RouterManagedTag>
-
-  if (serverBufferedScript) {
-    allScripts.unshift(serverBufferedScript)
+  const getScripts = (matches: Array<any>) => {
+    return composeSsrBodyScripts(getParts(matches))
   }
 
+  if (isServer ?? router.isServer) {
+    const activeMatches = router.stores.matches.get()
+    return renderScripts(
+      composeSsrBodyScripts(
+        getParts(activeMatches),
+        router.serverSsr?.takeInitialHydrationScriptTags(),
+      ),
+    )
+  }
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+  const scripts = useSelector(router.stores.matches, getScripts, {
+    compare: deepEqual,
+  })
+
+  return renderScripts(scripts)
+}
+
+function renderScripts(scripts: Array<ScriptRenderAsset>) {
   return (
     <>
-      {allScripts.map((asset, i) => (
+      {scripts.map((asset, i) => (
         <Asset {...asset} key={`tsr-scripts-${asset.tag}-${i}`} />
       ))}
     </>

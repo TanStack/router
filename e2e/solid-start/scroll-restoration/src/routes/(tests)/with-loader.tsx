@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import { sleep } from 'src/utils/posts'
+import { sleep } from '../../utils/posts'
 import { ScrollBlock } from '../-components/scroll-block'
 
 export const Route = createFileRoute('/(tests)/with-loader')({

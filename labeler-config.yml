@@ -4,12 +4,12 @@
 'package: eslint-plugin-router':
   - changed-files:
       - any-glob-to-any-file: 'packages/eslint-plugin-router/**/*'
+'package: eslint-plugin-start':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/eslint-plugin-start/**/*'
 'package: history':
   - changed-files:
       - any-glob-to-any-file: 'packages/history/**/*'
-'package: nitro-v2-vite-plugin':
-  - changed-files:
-      - any-glob-to-any-file: 'packages/nitro-v2-vite-plugin/**/*'
 'package: react-router':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-router/**/*'
@@ -25,6 +25,9 @@
 'package: react-start-client':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-start-client/**/*'
+'package: react-start-rsc':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/react-start-rsc/**/*'
 'package: react-start-server':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-start-server/**/*'

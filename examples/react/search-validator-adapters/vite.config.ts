@@ -11,13 +11,13 @@ export default defineConfig({
     watch: false,
     environment: 'jsdom',
     typecheck: { enabled: true },
+    setupFiles: ['./tests/jest-dom.setup.ts'],
   },
   plugins: [
     tailwindcss(),
     tanstackRouter({
       target: 'react',
       autoCodeSplitting: true,
-      verboseFileRoutes: false,
     }),
     react(),
   ],

@@ -2,7 +2,8 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "jsx": "preserve",
-    "jsxImportSource": "vue"
+    "jsxImportSource": "vue",
+    "types": ["node"]
   },
   "include": ["src", "tests", "vite.config.ts", "eslint.config.ts"]
 }

@@ -23,7 +23,7 @@ const serverBuildConfig: BuildEnvironmentOptions = {
   outDir: 'dist/server',
   copyPublicDir: false,
   emptyOutDir: true,
-  rollupOptions: {
+  rolldownOptions: {
     input: path.resolve(__dirname, 'src/server/server.ts'),
     output: {
       entryFileNames: '[name].js',

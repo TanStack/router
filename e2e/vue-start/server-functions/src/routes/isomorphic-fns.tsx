@@ -13,7 +13,7 @@ const getEcho = createIsomorphicFn()
   .client((input) => 'client received ' + input)
 
 const getServerEcho = createServerFn()
-  .inputValidator((input: string) => input)
+  .validator((input: string) => input)
   .handler(({ data }) => getEcho(data))
 
 const RouteComponent = defineComponent({

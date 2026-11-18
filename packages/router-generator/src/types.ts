@@ -1,3 +1,8 @@
+export type RoutePathSegmentMetadata = {
+  literalLeadingUnderscore?: boolean
+  literalTrailingUnderscore?: boolean
+}
+
 export type RouteNode = {
   filePath: string
   fullPath: string
@@ -20,6 +25,8 @@ export type RouteNode = {
    * (e.g., when the parent is a virtual file-less route that gets filtered out).
    */
   _virtualParentRoutePath?: string
+  /** Internal routePath segment metadata for escaped or explicit literal syntax. */
+  _routePathSegmentMetadata?: Array<RoutePathSegmentMetadata | undefined>
 }
 
 export interface GetRouteNodesResult {
@@ -67,7 +74,7 @@ export type HandleNodeAccumulator = {
   routeNodesByPath: Map<string, RouteNode>
 }
 
-export type GetRoutesByFileMapResultValue = { routePath: string }
+export type GetRoutesByFileMapResultValue = { routeId: string }
 export type GetRoutesByFileMapResult = Map<
   string,
   GetRoutesByFileMapResultValue

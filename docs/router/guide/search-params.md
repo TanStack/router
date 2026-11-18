@@ -196,7 +196,9 @@ For validation libraries we recommend using adapters which infer the correct `in
 
 ### Zod
 
-An adapter is provided for [Zod](https://zod.dev/) which will pipe through the correct `input` type and `output` type
+An adapter is provided for [Zod](https://zod.dev/) which will pipe through the correct `input` type and `output` type.
+
+For Zod v3:
 
 ```tsx
 import { zodValidator } from '@tanstack/zod-adapter'
@@ -213,13 +215,30 @@ export const Route = createFileRoute('/shop/products/')({
 })
 ```
 
-The important part here is the following use of `Link` no longer requires `search` params
+With Zod v4, you should directly use the schema in `validateSearch`:
+
+```tsx
+import { z } from 'zod'
+
+const productSearchSchema = z.object({
+  page: z.number().default(1),
+  filter: z.string().default(''),
+  sort: z.enum(['newest', 'oldest', 'price']).default('newest'),
+})
+
+export const Route = createFileRoute('/shop/products/')({
+  // With Zod v4, we can use the schema without the adapter
+  validateSearch: productSearchSchema,
+})
+```
+
+The important part here is the following use of `Link` no longer requires `search` params:
 
 ```tsx
 <Link to="/shop/products" />
 ```
 
-However the use of `catch` here overrides the types and makes `page`, `filter` and `sort` `unknown` causing type loss. We have handled this case by providing a `fallback` generic function which retains the types but provides a `fallback` value when validation fails
+In Zod v3, the use of `catch` here overrides the types and makes `page`, `filter` and `sort` `unknown` causing type loss. We have handled this case by providing a `fallback` generic function which retains the types but provides a `fallback` value when validation fails:
 
 ```tsx
 import { fallback, zodValidator } from '@tanstack/zod-adapter'
@@ -240,7 +259,9 @@ export const Route = createFileRoute('/shop/products/')({
 
 Therefore when navigating to this route, `search` is optional and retains the correct types.
 
-While not recommended, it is also possible to configure `input` and `output` type in case the `output` type is more accurate than the `input` type
+In Zod v4, schemas may use `catch` instead of the fallback and will retain type inference throughout.
+
+While not recommended, it is also possible to configure `input` and `output` type in case the `output` type is more accurate than the `input` type:
 
 ```tsx
 const productSearchSchema = z.object({
@@ -457,7 +478,7 @@ Now that you've learned how to read your route's search params, you'll be happy 
 
 The best way to update search params is to use the `search` prop on the `<Link />` component.
 
-If the search for the current page shall be updated and the `from` prop is specified, the `to` prop can be omitted.  
+If the search for the current page shall be updated and the `from` prop is specified, the `to` prop can be omitted.
 Here's an example:
 
 ```tsx title="src/routes/shop/products.tsx"
@@ -478,7 +499,7 @@ const ProductList = () => {
 
 If you want to update the search params in a generic component that is rendered on multiple routes, specifying `from` can be challenging.
 
-In this scenario you can set `to="."` which will give you access to loosely typed search params.  
+In this scenario you can set `to="."` which will give you access to loosely typed search params.
 Here is an example that illustrates this:
 
 ```tsx

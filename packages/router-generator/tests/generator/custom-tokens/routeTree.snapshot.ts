@@ -9,18 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as PostsR0ut3RouteImport } from './routes/posts/_r0ut3_'
-import { Route as BlogR0ut3RouteImport } from './routes/blog/_r0ut3_'
 import { Route as R1nd3xRouteImport } from './routes/_1nd3x'
-import { Route as Posts1nd3xRouteImport } from './routes/posts/_1nd3x'
+import { Route as BlogR0ut3RouteImport } from './routes/blog/_r0ut3_'
+import { Route as PostsR0ut3RouteImport } from './routes/posts/_r0ut3_'
 import { Route as Blog1nd3xRouteImport } from './routes/blog/_1nd3x'
 import { Route as BlogSlugRouteImport } from './routes/blog/$slug'
+import { Route as Posts1nd3xRouteImport } from './routes/posts/_1nd3x'
 import { Route as PostsPostId1nd3xRouteImport } from './routes/posts/$postId/_1nd3x'
 import { Route as PostsPostIdDeepRouteImport } from './routes/posts/$postId/deep'
 
-const PostsR0ut3Route = PostsR0ut3RouteImport.update({
-  id: '/posts',
-  path: '/posts',
+const R1nd3xRoute = R1nd3xRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlogR0ut3Route = BlogR0ut3RouteImport.update({
@@ -28,15 +28,10 @@ const BlogR0ut3Route = BlogR0ut3RouteImport.update({
   path: '/blog',
   getParentRoute: () => rootRouteImport,
 } as any)
-const R1nd3xRoute = R1nd3xRouteImport.update({
-  id: '/',
-  path: '/',
+const PostsR0ut3Route = PostsR0ut3RouteImport.update({
+  id: '/posts',
+  path: '/posts',
   getParentRoute: () => rootRouteImport,
-} as any)
-const Posts1nd3xRoute = Posts1nd3xRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => PostsR0ut3Route,
 } as any)
 const Blog1nd3xRoute = Blog1nd3xRouteImport.update({
   id: '/',
@@ -47,6 +42,11 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
   getParentRoute: () => BlogR0ut3Route,
+} as any)
+const Posts1nd3xRoute = Posts1nd3xRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PostsR0ut3Route,
 } as any)
 const PostsPostId1nd3xRoute = PostsPostId1nd3xRouteImport.update({
   id: '/$postId/',
@@ -127,11 +127,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof PostsR0ut3RouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof R1nd3xRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog': {
@@ -141,19 +141,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogR0ut3RouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof R1nd3xRouteImport
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof PostsR0ut3RouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/posts/': {
-      id: '/posts/'
-      path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: typeof Posts1nd3xRouteImport
-      parentRoute: typeof PostsR0ut3Route
     }
     '/blog/': {
       id: '/blog/'
@@ -168,6 +161,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/blog/$slug'
       preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof BlogR0ut3Route
+    }
+    '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: typeof Posts1nd3xRouteImport
+      parentRoute: typeof PostsR0ut3Route
     }
     '/posts/$postId/': {
       id: '/posts/$postId/'

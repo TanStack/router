@@ -13,6 +13,7 @@ type RouterEvents = {
     toLocation: ParsedLocation
     pathChanged: boolean
     hrefChanged: boolean
+    hashChanged: boolean
   }
   onBeforeLoad: {
     type: 'onBeforeLoad'
@@ -20,6 +21,7 @@ type RouterEvents = {
     toLocation: ParsedLocation
     pathChanged: boolean
     hrefChanged: boolean
+    hashChanged: boolean
   }
   onLoad: {
     type: 'onLoad'
@@ -27,6 +29,7 @@ type RouterEvents = {
     toLocation: ParsedLocation
     pathChanged: boolean
     hrefChanged: boolean
+    hashChanged: boolean
   }
   onResolved: {
     type: 'onResolved'
@@ -34,6 +37,7 @@ type RouterEvents = {
     toLocation: ParsedLocation
     pathChanged: boolean
     hrefChanged: boolean
+    hashChanged: boolean
   }
   onBeforeRouteMount: {
     type: 'onBeforeRouteMount'
@@ -41,14 +45,15 @@ type RouterEvents = {
     toLocation: ParsedLocation
     pathChanged: boolean
     hrefChanged: boolean
-  }
-  onInjectedHtml: {
-    type: 'onInjectedHtml'
+    hashChanged: boolean
   }
   onRendered: {
     type: 'onRendered'
     fromLocation?: ParsedLocation
     toLocation: ParsedLocation
+    pathChanged: boolean
+    hrefChanged: boolean
+    hashChanged: boolean
   }
 }
 ```
@@ -59,7 +64,7 @@ Once an event is emitted, the following properties will be present on the event 
 
 ### `type` property
 
-- Type: `onBeforeNavigate | onBeforeLoad | onLoad | onBeforeRouteMount | onResolved`
+- Type: `onBeforeNavigate | onBeforeLoad | onLoad | onBeforeRouteMount | onResolved | onRendered`
 - The type of the event
 - This is useful for discriminating between events in a listener function.
 
@@ -82,6 +87,11 @@ Once an event is emitted, the following properties will be present on the event 
 
 - Type: `boolean`
 - `true` if the href has changed between the `fromLocation` and `toLocation`.
+
+### `hashChanged` property
+
+- Type: `boolean`
+- `true` if the hash has changed between the `fromLocation` and `toLocation`.
 
 ## Example
 

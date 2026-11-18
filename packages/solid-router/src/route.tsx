@@ -11,6 +11,7 @@ import { useParams } from './useParams'
 import { useSearch } from './useSearch'
 import { useNavigate } from './useNavigate'
 import { useMatch } from './useMatch'
+import { useRouteContext } from './useRouteContext'
 import { useRouter } from './useRouter'
 import type {
   AnyContext,
@@ -48,6 +49,10 @@ import type { UseRouteContextRoute } from './useRouteContext'
 import type { LinkComponentRoute } from './link'
 
 declare module '@tanstack/router-core' {
+  export interface ErrorBoundaryTypes {
+    error: Error
+  }
+
   export interface UpdatableRouteOptionsExtensions {
     component?: RouteComponent
     errorComponent?: false | null | undefined | ErrorRouteComponent
@@ -97,31 +102,19 @@ export class RouteApi<
   }
 
   useMatch: UseMatchRoute<TId> = (opts) => {
-    return useMatch({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
+    return useMatch({ ...opts, from: this.id } as any) as any
   }
 
   useRouteContext: UseRouteContextRoute<TId> = (opts) => {
-    return useMatch({
-      from: this.id as any,
-      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.id })
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
-    return useSearch({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
+    return useSearch({ ...opts, from: this.id } as any)
   }
 
   useParams: UseParamsRoute<TId> = (opts) => {
-    return useParams({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
+    return useParams({ ...opts, from: this.id } as any)
   }
 
   useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
@@ -248,32 +241,19 @@ export class Route<
   }
 
   useMatch: UseMatchRoute<TId> = (opts) => {
-    return useMatch({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
+    return useMatch({ ...opts, from: this.id } as any) as any
   }
 
   useRouteContext: UseRouteContextRoute<TId> = (opts?) => {
-    return useMatch({
-      ...opts,
-      from: this.id,
-      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.id }) as any
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
-    return useSearch({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
+    return useSearch({ ...opts, from: this.id } as any)
   }
 
   useParams: UseParamsRoute<TId> = (opts) => {
-    return useParams({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
+    return useParams({ ...opts, from: this.id } as any)
   }
 
   useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
@@ -490,32 +470,19 @@ export class RootRoute<
   }
 
   useMatch: UseMatchRoute<RootRouteId> = (opts) => {
-    return useMatch({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
+    return useMatch({ ...opts, from: this.id } as any) as any
   }
 
   useRouteContext: UseRouteContextRoute<RootRouteId> = (opts) => {
-    return useMatch({
-      ...opts,
-      from: this.id,
-      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.id })
   }
 
   useSearch: UseSearchRoute<RootRouteId> = (opts) => {
-    return useSearch({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
+    return useSearch({ ...opts, from: this.id } as any)
   }
 
   useParams: UseParamsRoute<RootRouteId> = (opts) => {
-    return useParams({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
+    return useParams({ ...opts, from: this.id } as any)
   }
 
   useLoaderDeps: UseLoaderDepsRoute<RootRouteId> = (opts) => {
@@ -555,7 +522,7 @@ export interface DefaultRouteTypes<TProps> {
 export interface RouteTypes<TProps> extends DefaultRouteTypes<TProps> {}
 
 export type AsyncRouteComponent<TProps> = RouteTypes<TProps>['component'] & {
-  preload?: () => Promise<void>
+  preload?: () => Promise<void> | undefined
 }
 
 export type RouteComponent = AsyncRouteComponent<{}>

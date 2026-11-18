@@ -1,1 +1,0 @@
-import{c as t,a as e,b as l}from"./index-BwsVWHwV.js";import{S as o}from"./scroll-block-BAas_Ct-.js";const u=t("/(tests)/virtual-page")({component:a});function a(){return e("div",{class:"p-2"},[e("h3",null,[l("virtual-page")]),e("hr",null,null),e(o,null,null)])}export{u as Route};

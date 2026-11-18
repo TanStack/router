@@ -1,12 +1,13 @@
-import { PassThrough } from 'node:stream'
+import { PassThrough, Readable } from 'node:stream'
 import ReactDOMServer from 'react-dom/server'
 import { isbot } from 'isbot'
 import {
-  transformPipeableStreamWithRouter,
+  createSsrStreamResponse,
+  getSsrStatus,
   transformReadableStreamWithRouter,
+  waitForRequest,
 } from '@tanstack/router-core/ssr/server'
 import type { AnyRouter } from '@tanstack/router-core'
-import type { ReadableStream } from 'node:stream/web'
 import type { ReactNode } from 'react'
 
 export const renderRouterToStream = async ({
@@ -20,71 +21,116 @@ export const renderRouterToStream = async ({
   responseHeaders: Headers
   children: ReactNode
 }) => {
-  if (typeof ReactDOMServer.renderToReadableStream === 'function') {
-    const stream = await ReactDOMServer.renderToReadableStream(children, {
-      signal: request.signal,
-      nonce: router.options.ssr?.nonce,
-      progressiveChunkSize: Number.POSITIVE_INFINITY,
-    })
-
-    if (isbot(request.headers.get('User-Agent'))) {
-      await stream.allReady
+  const signal = request.signal
+  if (signal.aborted) {
+    router.serverSsr?.cleanup()
+    throw signal.reason
+  }
+  let rendererTeardown = false
+  const bot = isbot(request.headers.get('User-Agent'))
+  const onError =
+    (
+      renderer: string,
+    ): ReactDOMServer.RenderToPipeableStreamOptions['onError'] =>
+    (error, info) => {
+      if (!rendererTeardown && !signal.aborted) {
+        console.error(`Error in ${renderer}:`, error, info)
+      }
     }
 
-    const responseStream = transformReadableStreamWithRouter(
-      router,
-      stream as unknown as ReadableStream,
-    )
-    return new Response(responseStream as any, {
-      status: router.state.statusCode,
-      headers: responseHeaders,
-    })
-  }
-
-  if (typeof ReactDOMServer.renderToPipeableStream === 'function') {
-    const reactAppPassthrough = new PassThrough()
-
-    try {
-      const pipeable = ReactDOMServer.renderToPipeableStream(children, {
+  try {
+    if (typeof ReactDOMServer.renderToReadableStream === 'function') {
+      const stream = await ReactDOMServer.renderToReadableStream(children, {
+        signal,
         nonce: router.options.ssr?.nonce,
         progressiveChunkSize: Number.POSITIVE_INFINITY,
-        ...(isbot(request.headers.get('User-Agent'))
-          ? {
-              onAllReady() {
-                pipeable.pipe(reactAppPassthrough)
-              },
-            }
-          : {
-              onShellReady() {
-                pipeable.pipe(reactAppPassthrough)
-              },
-            }),
-        onError: (error, info) => {
-          console.error('Error in renderToPipeableStream:', error, info)
-          // Destroy the passthrough stream on error
-          if (!reactAppPassthrough.destroyed) {
-            reactAppPassthrough.destroy(
-              error instanceof Error ? error : new Error(String(error)),
-            )
-          }
+        onError: onError('renderToReadableStream'),
+      })
+      // The transform owns the reader and bounds bot readiness by its lifetime.
+      const rendererAbort = bot ? new AbortController() : undefined
+      const responseStream = transformReadableStreamWithRouter(router, stream, {
+        rendererSafePoint: 'script-close',
+        signal,
+        onAbort: (reason) => {
+          rendererTeardown = true
+          rendererAbort?.abort(reason)
         },
       })
-    } catch (e) {
-      console.error('Error in renderToPipeableStream:', e)
-      reactAppPassthrough.destroy(e instanceof Error ? e : new Error(String(e)))
+      if (rendererAbort) {
+        await waitForRequest(stream.allReady, rendererAbort.signal)
+      }
+      return createSsrStreamResponse(
+        router,
+        new Response(responseStream, {
+          status: getSsrStatus(router),
+          headers: responseHeaders,
+        }),
+      )
     }
 
-    const responseStream = transformPipeableStreamWithRouter(
-      router,
-      reactAppPassthrough,
-    )
-    return new Response(responseStream as any, {
-      status: router.state.statusCode,
-      headers: responseHeaders,
-    })
-  }
+    if (typeof ReactDOMServer.renderToPipeableStream === 'function') {
+      const reactAppPassthrough = new PassThrough()
+      let pipeable:
+        | ReturnType<typeof ReactDOMServer.renderToPipeableStream>
+        | undefined
+      let resolveReady!: () => void
+      const ready = new Promise<void>((resolve) => {
+        resolveReady = resolve
+      })
+      const rendererAbort = new AbortController()
+      const abortPipeable = (reason?: unknown) => {
+        if (rendererTeardown) {
+          return
+        }
+        rendererTeardown = true
+        rendererAbort.abort(reason)
+        try {
+          pipeable?.abort(reason)
+        } catch {
+          // ignore — React may throw if already aborted/finished
+        }
+      }
+      try {
+        pipeable = ReactDOMServer.renderToPipeableStream(children, {
+          nonce: router.options.ssr?.nonce,
+          progressiveChunkSize: Number.POSITIVE_INFINITY,
+          ...(bot
+            ? { onAllReady: resolveReady }
+            : { onShellReady: resolveReady }),
+          onError: onError('renderToPipeableStream'),
+          onShellError: (error) => rendererAbort.abort(error),
+        })
+        const responseStream = transformReadableStreamWithRouter(
+          router,
+          Readable.toWeb(reactAppPassthrough),
+          {
+            rendererSafePoint: 'script-close',
+            signal,
+            onAbort: abortPipeable,
+          },
+        )
 
-  throw new Error(
-    'No renderToReadableStream or renderToPipeableStream found in react-dom/server. Ensure you are using a version of react-dom that supports streaming.',
-  )
+        await waitForRequest(ready, rendererAbort.signal)
+        pipeable.pipe(reactAppPassthrough)
+
+        return createSsrStreamResponse(
+          router,
+          new Response(responseStream, {
+            status: getSsrStatus(router),
+            headers: responseHeaders,
+          }),
+        )
+      } catch (error) {
+        abortPipeable(error)
+        throw error
+      }
+    }
+
+    throw new Error(
+      'No renderToReadableStream or renderToPipeableStream found in react-dom/server. Ensure you are using a version of react-dom that supports streaming.',
+    )
+  } catch (error) {
+    router.serverSsr?.cleanup()
+    throw error
+  }
 }

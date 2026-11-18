@@ -1,23 +1,28 @@
 import queryString from 'node:querystring'
 import { expect } from '@playwright/test'
+import { test } from '@tanstack/router-e2e-utils'
 import combinateImport from 'combinate'
-import {
-  getDummyServerPort,
-  getTestServerPort,
-  test,
-} from '@tanstack/router-e2e-utils'
-import { isSpaMode } from '../tests/utils/isSpaMode'
-import { isPreview } from '../tests/utils/isPreview'
-import packageJson from '../package.json' with { type: 'json' }
+import type { Page } from '@playwright/test'
 
 // somehow playwright does not correctly import default exports
 const combinate = (combinateImport as any).default as typeof combinateImport
 
-const PORT = await getTestServerPort(
-  `${packageJson.name}${isSpaMode ? '_spa' : ''}${isPreview ? '_preview' : ''}`,
-)
+const PORT = Number(process.env.E2E_APP_PORT ?? 0)
 
-const EXTERNAL_HOST_PORT = await getDummyServerPort(packageJson.name)
+const EXTERNAL_ORIGIN = `http://127.0.0.1:${PORT}`
+const POSTS_URL = `http://localhost:${PORT}/posts`
+
+async function waitForRouterIdle(page: Page) {
+  await expect(page.getByTestId('router-isLoading')).toHaveText('false')
+  await expect(page.getByTestId('router-status')).toHaveText('idle')
+}
+
+async function waitForPostsIndex(page: Page) {
+  await page.waitForURL(POSTS_URL)
+  expect(page.url()).toBe(POSTS_URL)
+  await waitForRouterIdle(page)
+  await expect(page.getByTestId('PostsIndexComponent')).toBeInViewport()
+}
 
 test.describe('redirects', () => {
   test.describe('internal', () => {
@@ -40,7 +45,7 @@ test.describe('redirects', () => {
             `via-${thrower}${reloadDocument ? '-reloadDocument' : ''}`,
           )
 
-          await page.waitForLoadState('networkidle')
+          await waitForRouterIdle(page)
           let requestHappened = false
 
           const requestPromise = new Promise<void>((resolve) => {
@@ -68,10 +73,7 @@ test.describe('redirects', () => {
 
           await link.click()
 
-          const url = `http://localhost:${PORT}/posts`
-          await page.waitForURL(url)
-          expect(page.url()).toBe(url)
-          await expect(page.getByTestId('PostsIndexComponent')).toBeInViewport()
+          await waitForPostsIndex(page)
           expect(fullPageLoad).toBe(reloadDocument)
         })
       },
@@ -87,12 +89,8 @@ test.describe('redirects', () => {
         page,
       }) => {
         await page.goto(`/redirect/internal/via-${thrower}`)
-        await page.waitForLoadState('networkidle')
 
-        const url = `http://localhost:${PORT}/posts`
-
-        expect(page.url()).toBe(url)
-        await expect(page.getByTestId('PostsIndexComponent')).toBeInViewport()
+        await waitForPostsIndex(page)
       })
     })
   })
@@ -108,12 +106,12 @@ test.describe('redirects', () => {
         page,
       }) => {
         const q = queryString.stringify({
-          externalHost: `http://localhost:${EXTERNAL_HOST_PORT}/`,
+          externalHost: `${EXTERNAL_ORIGIN}/`,
         })
 
         if (scenario === 'navigate') {
           await page.goto(`/redirect/external?${q}`)
-          await page.waitForLoadState('networkidle')
+          await waitForRouterIdle(page)
           const link = page.getByTestId(`via-${thrower}`)
           await link.focus()
           await link.click()
@@ -121,7 +119,7 @@ test.describe('redirects', () => {
           await page.goto(`/redirect/external/via-${thrower}?${q}`)
         }
 
-        const url = `http://localhost:${EXTERNAL_HOST_PORT}/`
+        const url = `${EXTERNAL_ORIGIN}/`
 
         await page.waitForURL(url)
         expect(page.url()).toBe(url)
@@ -144,13 +142,13 @@ test.describe('redirects', () => {
         }) => {
           let fullPageLoad = false
           const q = queryString.stringify({
-            externalHost: `http://localhost:${EXTERNAL_HOST_PORT}/`,
+            externalHost: `${EXTERNAL_ORIGIN}/`,
             reloadDocument,
           })
 
           if (scenario === 'navigate') {
             await page.goto(`/redirect/${target}/serverFn?${q}`)
-            await page.waitForLoadState('networkidle')
+            await waitForRouterIdle(page)
 
             const link = page.getByTestId(
               `via-${thrower}${reloadDocument ? '-reloadDocument' : ''}`,
@@ -161,22 +159,20 @@ test.describe('redirects', () => {
             })
 
             await link.focus()
-            await page.waitForLoadState('networkidle')
+            await waitForRouterIdle(page)
             await link.click()
           } else {
             await page.goto(`/redirect/${target}/serverFn/via-${thrower}?${q}`)
           }
 
-          const url =
-            target === 'internal'
-              ? `http://localhost:${PORT}/posts`
-              : `http://localhost:${EXTERNAL_HOST_PORT}/`
+          const url = target === 'internal' ? POSTS_URL : `${EXTERNAL_ORIGIN}/`
 
           await page.waitForURL(url)
 
           expect(page.url()).toBe(url)
 
           if (target === 'internal' && scenario === 'navigate') {
+            await waitForRouterIdle(page)
             await expect(
               page.getByTestId('PostsIndexComponent'),
             ).toBeInViewport()
@@ -198,13 +194,13 @@ test.describe('redirects', () => {
         page,
       }) => {
         const q = queryString.stringify({
-          externalHost: `http://localhost:${EXTERNAL_HOST_PORT}/`,
+          externalHost: `${EXTERNAL_ORIGIN}/`,
           reloadDocument,
         })
 
         await page.goto(`/redirect/${target}/serverFn/via-useServerFn?${q}`)
 
-        await page.waitForLoadState('networkidle')
+        await waitForRouterIdle(page)
 
         const button = page.getByTestId('redirect-on-click')
 
@@ -215,13 +211,11 @@ test.describe('redirects', () => {
 
         await button.click()
 
-        const url =
-          target === 'internal'
-            ? `http://localhost:${PORT}/posts`
-            : `http://localhost:${EXTERNAL_HOST_PORT}/`
+        const url = target === 'internal' ? POSTS_URL : `${EXTERNAL_ORIGIN}/`
         await page.waitForURL(url)
         expect(page.url()).toBe(url)
         if (target === 'internal') {
+          await waitForRouterIdle(page)
           await expect(page.getByTestId('PostsIndexComponent')).toBeInViewport()
           expect(fullPageLoad).toBe(reloadDocument)
         }

@@ -1,4 +1,7 @@
+'use client'
+
 import * as React from 'react'
+import { hasKeys } from '@tanstack/router-core'
 import { Matches } from './Matches'
 import { routerContext } from './routerContext'
 import type {
@@ -21,7 +24,7 @@ export function RouterContextProvider<
 }: RouterProps<TRouter, TDehydrated> & {
   children: React.ReactNode
 }) {
-  if (Object.keys(rest).length > 0) {
+  if (hasKeys(rest)) {
     // Allow the router to update options on the router instance
     router.update({
       ...router.options,
@@ -47,11 +50,11 @@ export function RouterContextProvider<
 }
 
 /**
- * Top-level component that renders the active route matches and provides the
- * router to the React tree via context.
+ * Renders the current match presentation and provides the router to the React
+ * tree via context.
  *
- * Accepts the same options as `createRouter` via props to update the router
- * instance after creation.
+ * Accepts mutable router options via props. Configure initialization-only
+ * options with `createRouter`.
  *
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createRouterFunction
  */
@@ -77,7 +80,7 @@ export type RouterProps<
     TRouter['history'],
     TDehydrated
   >,
-  'context'
+  'context' | 'pathParamsAllowedCharacters'
 > & {
   router: TRouter
   context?: Partial<

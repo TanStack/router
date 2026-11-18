@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
-import { test } from '@tanstack/router-e2e-utils'
+import { DEV_STYLES_ATTR } from '@tanstack/router-core'
+import { createHmrFileEditor, test } from '@tanstack/router-e2e-utils'
 import { ssrStylesMode } from '../env'
 
 // Whitelist errors that can occur in CI:
@@ -13,14 +14,60 @@ const whitelistErrors = [
 test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
   test.use({ whitelistErrors })
 
+  test('unchanged SSR requests reuse evaluated modules', async ({
+    request,
+  }) => {
+    const first = await request.get('/module-state')
+    const second = await request.get('/module-state')
+    expect(first.ok()).toBeTruthy()
+    expect(second.ok()).toBeTruthy()
+    expect(await second.text()).toBe(await first.text())
+  })
+
   test('page renders correctly', async ({ page }) => {
+    const runtimeErrors: Array<string> = []
+    page.on('pageerror', (error) => {
+      runtimeErrors.push(error.message)
+    })
     await page.goto('/')
     await expect(page.getByTestId('home-heading')).toHaveText(
       'Dev SSR Styles Test',
     )
+    expect(runtimeErrors).toEqual([])
   })
 
   if (ssrStylesMode === 'default') {
+    test('dev CSS order is stable after client modules load', async ({
+      page,
+    }) => {
+      const cssBodies: Array<Promise<string>> = []
+      page.on('response', (response) => {
+        if (
+          new URL(response.url()).pathname.endsWith(
+            '/@tanstack-start/styles.css',
+          )
+        ) {
+          cssBodies.push(response.text())
+        }
+      })
+
+      await page.goto('/css-import-order')
+      await expect(page.getByTestId('css-import-order')).toBeVisible()
+      await expect.poll(() => cssBodies.length).toBeGreaterThanOrEqual(1)
+
+      await page.reload()
+      await expect(page.getByTestId('css-import-order')).toBeVisible()
+      await expect.poll(() => cssBodies.length).toBeGreaterThanOrEqual(2)
+
+      const [initialCss, reloadedCss] = await Promise.all(cssBodies.slice(0, 2))
+      expect(reloadedCss).toBe(initialCss)
+      expect(initialCss).toContain('/* /src/styles/app.css */')
+      expect(initialCss).toContain('/* /src/styles/css-import-order.css */')
+      expect(initialCss.indexOf('/* /src/styles/app.css */')).toBeLessThan(
+        initialCss.indexOf('/* /src/styles/css-import-order.css */'),
+      )
+    })
+
     test.describe('default (enabled, basepath = vite base)', () => {
       test.use({ javaScriptEnabled: false, whitelistErrors })
 
@@ -29,9 +76,9 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
         expect(response.ok()).toBeTruthy()
         const html = await response.text()
 
-        // Should have a link tag with data-tanstack-router-dev-styles
-        expect(html).toContain('data-tanstack-router-dev-styles')
+        // Should have a dev styles link tag.
         expect(html).toContain('/@tanstack-start/styles.css')
+        expect(html).toContain(DEV_STYLES_ATTR)
       })
 
       test('dev styles link uses vite base (/) as basepath prefix', async ({
@@ -51,7 +98,9 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
         expect(href).toMatch(/^\/@tanstack-start\/styles\.css/)
       })
 
-      test('CSS is applied on initial page load (SSR)', async ({ page }) => {
+      test('CSS from a code-split route component is applied during SSR', async ({
+        page,
+      }) => {
         await page.goto('/')
 
         const element = page.getByTestId('styled-box')
@@ -62,6 +111,81 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
           (el) => getComputedStyle(el).backgroundColor,
         )
         expect(backgroundColor).toBe('rgb(59, 130, 246)')
+      })
+
+      test('SSR CSS updates after a stylesheet edit', async ({ page }) => {
+        const editor = createHmrFileEditor({
+          rootDir: import.meta.dirname,
+          files: { css: '../src/styles/code-split-route.module.css' },
+        })
+        await editor.capturePromise
+        const expectSsrColor = async (color: string) => {
+          await expect(async () => {
+            await page.reload()
+            await expect(page.getByTestId('styled-box')).toHaveCSS(
+              'background-color',
+              color,
+            )
+          }).toPass({ timeout: 20_000 })
+        }
+        try {
+          await page.goto('/')
+          await expect(page.getByTestId('styled-box')).toHaveCSS(
+            'background-color',
+            'rgb(59, 130, 246)',
+          )
+          await editor.replaceText('css', '#3b82f6', '#ef4444')
+          await expectSsrColor('rgb(239, 68, 68)')
+        } finally {
+          await editor.restoreFiles()
+          // Finish the restore before another test reads the SSR stylesheet.
+          await expectSsrColor('rgb(59, 130, 246)')
+        }
+      })
+
+      test('assets referenced by SSR CSS are available before hydration', async ({
+        page,
+      }) => {
+        await page.goto('/')
+        const backgroundImage = await page
+          .getByTestId('styled-box')
+          .evaluate((element) => getComputedStyle(element).backgroundImage)
+        const assetUrl = backgroundImage.match(/^url\("(.+)"\)$/)?.[1]
+        expect(assetUrl).toBeDefined()
+        const response = await page.request.get(assetUrl!)
+        expect(response.ok()).toBeTruthy()
+        expect(response.headers()['content-type']).toContain('image/svg+xml')
+        expect(await response.text()).toContain('<svg')
+      })
+
+      test('CSS @import dependencies are not appended after their importer', async ({
+        page,
+      }) => {
+        await page.goto('/css-import-order')
+
+        const element = page.getByTestId('css-import-order')
+        await expect(element).toBeVisible()
+
+        // css-import-order.css imports a white base rule, then overrides it
+        // with this dark background. Collecting the imported file separately
+        // appends the white rule and reverses the intended cascade.
+        const backgroundColor = await element.evaluate(
+          (el) => getComputedStyle(el).backgroundColor,
+        )
+        expect(backgroundColor).toBe('rgb(17, 24, 39)')
+
+        const devStylesHref = await page
+          .locator(`link[${DEV_STYLES_ATTR}]`)
+          .getAttribute('href')
+        expect(devStylesHref).toBeTruthy()
+
+        const cssResponse = await page.request.get(
+          new URL(devStylesHref!, page.url()).href,
+        )
+        expect(cssResponse.ok()).toBeTruthy()
+
+        const css = await cssResponse.text()
+        expect(css.match(/--css-import-base-marker/g)).toHaveLength(1)
       })
     })
   }
@@ -75,9 +199,9 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
         expect(response.ok()).toBeTruthy()
         const html = await response.text()
 
-        // Should NOT have a link tag with data-tanstack-router-dev-styles
-        expect(html).not.toContain('data-tanstack-router-dev-styles')
+        // Should NOT have a dev styles link tag.
         expect(html).not.toContain('/@tanstack-start/styles.css')
+        expect(html).not.toContain(DEV_STYLES_ATTR)
       })
 
       test('page still renders without dev styles', async ({ page }) => {
@@ -100,9 +224,6 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
         expect(response.ok()).toBeTruthy()
         const html = await response.text()
 
-        // Should have a link tag with data-tanstack-router-dev-styles
-        expect(html).toContain('data-tanstack-router-dev-styles')
-
         // The dev styles URL should use /custom-styles/ as the basepath prefix
         const match = html.match(
           /href="([^"]*@tanstack-start\/styles\.css[^"]*)"/,
@@ -110,6 +231,7 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
         expect(match).toBeTruthy()
         const href = match![1]
         expect(href).toMatch(/^\/custom-styles\/@tanstack-start\/styles\.css/)
+        expect(html).toContain(DEV_STYLES_ATTR)
       })
 
       test.describe('with JavaScript disabled', () => {

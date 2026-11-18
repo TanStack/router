@@ -1,5 +1,20 @@
-import { expect } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+
+async function getRawHtml(page: Page) {
+  let rawHtml = ''
+
+  await page.route('/', async (route) => {
+    const response = await route.fetch()
+    rawHtml = await response.text()
+    await route.fulfill({ response, body: rawHtml })
+  })
+
+  const response = await page.goto('/')
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
+
+  return { rawHtml, response }
+}
 
 test('CSP header is set with nonce', async ({ page }) => {
   const response = await page.goto('/')
@@ -21,9 +36,10 @@ test('Inline styles have nonce attribute', async ({ page }) => {
 })
 
 test('External script has nonce attribute', async ({ page }) => {
-  await page.goto('/')
-  const externalScript = page.locator('script[src="/external.js"]')
-  await expect(externalScript).toHaveAttribute('nonce')
+  const { rawHtml } = await getRawHtml(page)
+  expect(rawHtml).toMatch(
+    /<script(?=[^>]*\bsrc="\/external\.js")(?=[^>]*\bnonce="[^"]+")[^>]*>/,
+  )
 })
 
 test('External stylesheet has nonce attribute', async ({ page }) => {
@@ -34,15 +50,7 @@ test('External stylesheet has nonce attribute', async ({ page }) => {
 
 test('Nonces match between header and elements', async ({ page }) => {
   // Intercept the HTML response to get raw content before browser strips nonces
-  let rawHtml = ''
-  await page.route('/', async (route) => {
-    const response = await route.fetch()
-    rawHtml = await response.text()
-    await route.fulfill({ response })
-  })
-
-  const response = await page.goto('/')
-  await page.unrouteAll({ behavior: 'ignoreErrors' })
+  const { rawHtml, response } = await getRawHtml(page)
 
   const csp = response?.headers()['content-security-policy'] || ''
 

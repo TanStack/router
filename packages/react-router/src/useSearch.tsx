@@ -49,17 +49,18 @@ export type UseSearchRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
+  TThrow extends boolean = true,
 >(
   opts?: UseSearchBaseOptions<
     TRouter,
     TFrom,
     /* TStrict */ true,
-    /* TThrow */ true,
+    TThrow,
     TSelected,
     TStructuralSharing
   > &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
-) => UseSearchResult<TRouter, TFrom, true, TSelected>
+) => ThrowOrOptional<UseSearchResult<TRouter, TFrom, true, TSelected>, TThrow>
 
 /**
  * Read and select the current route's search parameters with type-safety.
@@ -98,7 +99,7 @@ export function useSearch<
     strict: opts.strict,
     shouldThrow: opts.shouldThrow,
     structuralSharing: opts.structuralSharing,
-    select: (match: any) => {
+    select: (match) => {
       return opts.select ? opts.select(match.search) : match.search
     },
   }) as any

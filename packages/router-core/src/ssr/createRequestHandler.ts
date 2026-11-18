@@ -1,18 +1,35 @@
-import { createMemoryHistory } from '@tanstack/history'
+import { createServerHistory } from '@tanstack/history'
+import { _getRenderedMatches } from '../load-client'
+import { waitForReason as waitForRequest } from '../await-signal'
 import { mergeHeaders } from './headers'
 import {
   attachRouterServerSsrUtils,
   getNormalizedURL,
   getOrigin,
 } from './ssr-server'
+import {
+  bindSsrResponseToRequest,
+  disposeSsrResponse,
+  isSsrResponse,
+} from './handlerCallback'
 import type { HandlerCallback } from './handlerCallback'
 import type { AnyHeaders } from './headers'
 import type { AnyRouter } from '../router'
-import type { Manifest } from '../manifest'
+import type { ServerManifest } from '../manifest'
 
 export type RequestHandler<TRouter extends AnyRouter> = (
   cb: HandlerCallback<TRouter>,
 ) => Promise<Response>
+
+export { waitForRequest }
+
+function createLateResponseDisposer(signal: AbortSignal) {
+  return (result: unknown) => {
+    if (result instanceof Response || isSsrResponse(result)) {
+      disposeSsrResponse(result, signal.reason)
+    }
+  }
+}
 
 export function createRequestHandler<TRouter extends AnyRouter>({
   createRouter,
@@ -21,17 +38,22 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 }: {
   createRouter: () => TRouter
   request: Request
-  getRouterManifest?: () => Manifest | Promise<Manifest>
+  getRouterManifest?: () => ServerManifest | Promise<ServerManifest>
 }): RequestHandler<TRouter> {
   return async (cb) => {
+    const signal = request.signal
+    signal.throwIfAborted()
+    const manifest = getRouterManifest
+      ? await waitForRequest(getRouterManifest(), signal)
+      : undefined
+    signal.throwIfAborted()
     const router = createRouter()
-    // Track whether the callback will handle cleanup
-    let cbWillCleanup = false
+    let responseOwnsCleanup = false
 
     try {
       attachRouterServerSsrUtils({
         router,
-        manifest: await getRouterManifest?.(),
+        manifest,
       })
 
       // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
@@ -40,9 +62,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
       const href = url.href.replace(url.origin, '')
 
       // Create a history for the router
-      const history = createMemoryHistory({
-        initialEntries: [href],
-      })
+      const history = createServerHistory(href)
 
       // Update the router with the history and context
       router.update({
@@ -50,27 +70,45 @@ export function createRequestHandler<TRouter extends AnyRouter>({
         origin: router.options.origin ?? origin,
       })
 
-      await router.load()
+      await router.load({
+        _signal: signal,
+        _skipLocationUpdate: true,
+      })
+      signal.throwIfAborted()
 
-      await router.serverSsr?.dehydrate()
+      const result = router._serverResult
+      if (result?.type === 'redirect') {
+        return result.redirect
+      }
+
+      await router.serverSsr?.dehydrate({ signal })
+      signal.throwIfAborted()
 
       const responseHeaders = getRequestHeaders({
         router,
       })
 
-      // Mark that the callback will handle cleanup
-      cbWillCleanup = true
-      return cb({
-        request,
-        router,
-        responseHeaders,
-      })
+      signal.throwIfAborted()
+      const disposeLate = createLateResponseDisposer(signal)
+      const response = await waitForRequest(
+        cb({
+          request,
+          router,
+          responseHeaders,
+        }),
+        signal,
+        disposeLate,
+        disposeLate,
+      )
+      const ssrResponse = bindSsrResponseToRequest(router, response, signal)
+      signal.throwIfAborted()
+      responseOwnsCleanup = ssrResponse.serverSsrCleanup === 'stream'
+      return ssrResponse.response
     } finally {
-      if (!cbWillCleanup) {
+      if (!responseOwnsCleanup) {
         // Clean up router SSR state if the callback won't handle it
         // (e.g., if an error occurred before the callback was invoked).
-        // When the callback runs, it handles cleanup (either via transformStreamWithRouter
-        // for streaming, or directly in renderRouterToString for non-streaming).
+        // Transformed streaming response bodies clean up when consumed/cancelled.
         router.serverSsr?.cleanup()
       }
     }
@@ -78,14 +116,9 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 }
 
 function getRequestHeaders(opts: { router: AnyRouter }): Headers {
-  const matchHeaders = opts.router.state.matches.map<AnyHeaders>(
-    (match) => match.headers,
-  )
-
-  // Handle Redirects
-  const { redirect } = opts.router.state
-  if (redirect) {
-    matchHeaders.push(redirect.headers)
+  const matchHeaders: Array<AnyHeaders> = []
+  for (const match of _getRenderedMatches(opts.router.stores.matches.get())) {
+    matchHeaders.push(match.headers)
   }
 
   return mergeHeaders(
