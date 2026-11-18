@@ -163,6 +163,73 @@ return typeof entry.Route.options.component`)
   )
 })
 
+describe('a binding exported by name and by default, read by the split component and an option that stays', () => {
+  // The binding is shared by the route module and the chunk; the route
+  // module keeps both exports, one default export (Rolldown refused a
+  // second one). Source: Astra review 3 (core B1).
+  it.each(
+    [
+      {
+        shape: 'a const, `export default value`',
+        declaration: `export const value = { v: 'MARK_VALUE' }
+export default value`,
+        read: 'value.v',
+        name: 'value',
+      },
+      {
+        shape: 'a function, `export default get`',
+        declaration: `export function get() {
+  return 'MARK_VALUE'
+}
+export default get`,
+        read: 'get()',
+        name: 'get',
+      },
+      {
+        shape: 'a class, `export default Data`',
+        declaration: `export class Data {
+  static v = 'MARK_VALUE'
+}
+export default Data`,
+        read: 'Data.v',
+        name: 'Data',
+      },
+      {
+        shape: 'a const, in an export list as `default`',
+        declaration: `export const value = { v: 'MARK_VALUE' }
+export { value as default }`,
+        read: 'value.v',
+        name: 'value',
+      },
+    ].flatMap((row) =>
+      (['vite', 'rspack'] as const).map((bundler) => ({ ...row, bundler })),
+    ),
+  )(
+    '$shape ($bundler): builds, renders, and gives importers both exports',
+    async ({ declaration, read, name, bundler }) => {
+      const app = await buildRoute(
+        `${head}${declaration}
+export const Route = createFileRoute('/')({
+  beforeLoad: () => ${read},
+  component: () => <p>{${read}}</p>,
+})
+`,
+        `${clientMountEntry}export { default as Default, ${name} as Named } from './routes/index'
+`,
+        { bundler },
+      )
+      const run =
+        await app.run(`await entry.mount(entry.Route.options.component)
+return [entry.Route.options.beforeLoad(), entry.Default === entry.Named]`)
+      expect({ html: run.html, result: run.result }).toEqual({
+        html: '<div id="root"><p>MARK_VALUE</p></div>',
+        result: ['MARK_VALUE', true],
+      })
+    },
+    timeout,
+  )
+})
+
 describe('an exported component the split component renders, with an effectful augmentation', () => {
   // `Page.x = track('page')` runs once, before the route module's later
   // top-level code, as in the source.

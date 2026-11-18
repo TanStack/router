@@ -221,6 +221,22 @@ export const readInitialised = createServerFn().handler(async () => initialised)
 export const readAssigned = createServerFn().handler(async () => assigned)
 export const readPure = createServerFn().handler(async () => pure)
 `,
+  // declarations only a handler reads whose evaluation reads `field`, which
+  // a later statement assigns: a pattern on the left of a function literal
+  // reads its computed key at load (R157 rule 4: not exactly a function),
+  // and the control, a member read of a function's own declaration.
+  // Source: Astra review 3 (core B2)
+  'picked.ts': `${head}let field: 'length' | 'name' = 'length'
+const { [field]: picked } = function works(x: number) {
+  return x
+}
+const fn = function works(x: number) {
+  return x
+}
+const control = fn[field]
+field = 'name'
+export const readPicked = createServerFn().handler(async () => [picked, control])
+`,
   // a server fn with a middleware, whose handler alone imports a module: the
   // order the three first run in
   'order-dep.server.ts': `;((globalThis as any).ORDER ??= []).push('dep')
@@ -431,6 +447,7 @@ export const check = createIsomorphicFn()
 export * from './fns'
 export * from './writers'
 export * from './seeded'
+export * from './picked'
 export * from './ordered'
 export { callBroken } from './broken'
 export const loadTla = () => import('./tla')
@@ -573,6 +590,21 @@ return { atLoad, values, after: globalThis.seeded }`)
       expect(values).toEqual([1, 1, 1, 5])
       expect(atLoad).toEqual(['assignment'])
       expect(after).toEqual(['assignment', 'initialiser'])
+    },
+    timeout,
+  )
+
+  test(
+    'SSR: a destructuring of a function literal only a handler reads is evaluated at load, before a later statement changes its computed key',
+    async () => {
+      const { result } = await build.ssr.run(`${callByIdPrelude}return [
+  await entry.readPicked(),
+  await callById(serverFnId(entry.readPicked)),
+]`)
+      expect(result).toEqual([
+        [1, 1],
+        [1, 1],
+      ])
     },
     timeout,
   )

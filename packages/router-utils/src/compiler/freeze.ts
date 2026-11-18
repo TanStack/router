@@ -3,9 +3,8 @@
  * recipe, put together from pieces (the env module: its source text between
  * the statements placement rewrites, the generated units at their anchors
  * and the glue; the derived modules: header, glue imports, items and
- * generated units in order, the export glue), its edges and its side-effect
- * flag. `Renderer`
- * is the segment visitor of the output's walk (`OutputView.walk`), with
+ * generated units in order, the export glue) and its edges. `Renderer` is
+ * the segment visitor of the output's walk (`OutputView.walk`), with
  * substitution environments and context-aware reference rewrites; no Yuku
  * object is reachable from the result.
  */
@@ -529,8 +528,9 @@ function reexportGlue(
   placement: Placement,
   exportNameOf: Map<OutputId, Map<SymbolId, string>>,
 ): Array<Frag> {
-  // (an export statement the env module keeps, `export { x as y }`, exports
-  // the binding it imports itself)
+  // (an export statement the env module keeps, `export { x as y }` or
+  // `export default x`, exports the binding it imports itself; the unit of
+  // `export default x` declares only its synthetic `default`)
   const envIncluded = placement.included.get('env')
   const keptByEnv = (range: { start: number; end: number }) => {
     const u = plan.t1.unitAt(range)
@@ -540,7 +540,8 @@ function reexportGlue(
         : placement.clusterOfRegion.get(plan.t1.units[u]!.region)
     return (
       c !== undefined &&
-      plan.t1.units[u!]!.declares.length === 0 &&
+      (plan.t1.units[u!]!.declares.length === 0 ||
+        plan.t1.units[u!]!.kind === 'export-default') &&
       envIncluded?.has(c) === true
     )
   }
