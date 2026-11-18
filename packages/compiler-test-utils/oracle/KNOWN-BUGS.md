@@ -874,7 +874,10 @@ Paths under `start-plugin-core/tests/` unless noted.
   `integration/start-build-server-fn-cases.test.ts`: "SSR: a server fn only server code references is not callable over
   HTTP"; `integration/start-build-server-fn-callable.test.ts`: "SSR: a server fn private to a module the client imports
   is not callable over HTTP, and its own module calls it"; "client: an exported server fn the client never calls leaves
-  the client bundle and is refused over HTTP, and the user code of its chain still runs"; "SSR: a rebuild follows the
+  the client bundle and is refused over HTTP, and the user code of its chain still runs"; "client: a server fn stub
+  continued by a user call, or a statement after a line without a semicolon, keeps the effects and values of the
+  module"; "SSR: a rebuild follows the importer edits that stop and resume using an exported server fn"; "SSR: a
+  rebuild follows the
   edits that remove and restore the last client call of a server fn";
   `react-start-rsc/tests/integration/rsc-start-build.test.ts` and `rsc-start-rsbuild-build.test.ts`: "a server
   function only server code calls is not callable from the browser".

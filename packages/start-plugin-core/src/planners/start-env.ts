@@ -235,6 +235,32 @@ function keptText(
     : [slice(rangeOf(kept))]
 }
 
+/**
+ * Whether a call continues the expression `node` once its wrappers and
+ * member reads are stripped (`node.bind(x)`, `(node as T)()`,
+ * `node.a.b\`…\``): an annotation before `node` would mark that call.
+ */
+function continuedByCall(
+  file: PlanContext['analysis']['file'],
+  node: Node,
+): boolean {
+  let n = node
+  for (let p = file.parentOf(n); p; n = p, p = file.parentOf(p)) {
+    if (
+      (isExpressionWrapper(p) && p.expression === n) ||
+      (p.type === 'MemberExpression' && p.object === n)
+    ) {
+      continue
+    }
+    return (
+      ((p.type === 'CallExpression' || p.type === 'NewExpression') &&
+        p.callee === n) ||
+      (p.type === 'TaggedTemplateExpression' && p.tag === n)
+    )
+  }
+  return false
+}
+
 function enclosingFunctionNames(
   file: PlanContext['analysis']['file'],
   node: Node,
@@ -961,22 +987,22 @@ function planStartEnv(
       // and keeps what the user's chain runs, an argument of the call (the
       // user's own `.handler()` call marked pure would drop the effects of
       // its callee: bundlers keep only an unused pure call's arguments).
-      // Parenthesised where its parent starts with it (`…handler(fn).x()`,
-      // `as`): the annotation would mark the user's call there too
+      // Not marked where a user call continues it (`….handler(fn).bind(x)`):
+      // the annotation marks the outermost call after it, so that call's
+      // callee would go too (parentheses around ours would scope it, but a
+      // later transform may print them away: @swc/core does)
       const call = site.handlerCall
-      const parent = file.parentOf(call)
-      const wrap = parent !== null && parent.start === call.start
       erased.push(site.stubbed)
       rewrites.edit({
         range: rangeOf(call),
         body: [
           text(
-            `${wrap ? '(' : ''}/* @__PURE__ */ `,
+            continuedByCall(file, call) ? '' : '/* @__PURE__ */ ',
             { sym: rpc, ctx: 'callee' },
             `(${moduleLiteral(id)}, `,
           ),
           slice(rangeOf(site.receiver)),
-          text(`${revisionArg})${wrap ? ')' : ''}`),
+          text(`${revisionArg})`),
         ],
         by,
       })
