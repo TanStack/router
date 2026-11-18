@@ -117,6 +117,33 @@ export const Route = createFileRoute('/')({
     },
   )
 
+  // S2: a higher-order call after options that evaluate nothing (literals,
+  // functions, identifiers) is hoisted and registered as a family
+  test('written inline as memo(...) after literal, function and identifier options: an edit shows in place without mounting it again', async (context: TestContext) => {
+    await expectEditInPlace(
+      {
+        file: 'routes/index.tsx',
+        route: (version) =>
+          `import { createFileRoute } from '@tanstack/react-router'
+import { memo, useState } from 'react'
+const title = 'page'
+export const Route = createFileRoute('/')({
+  staticData: { title, tags: ['a', 1] },
+  beforeLoad: () => ({}),
+  component: memo(function () {
+    ${countMounts('page')}
+    return <p>memo ${version}</p>
+  }),
+})
+`,
+        shows: (version) => `memo ${version}`,
+        autoCodeSplitting: false,
+        splits: false,
+      },
+      context,
+    )
+  })
+
   // #8623: a component written as a method is split like a function
   // expression (and hoisted like one when nothing is split)
   test.for([false, true])(
@@ -169,7 +196,17 @@ export const Route = createFileRoute('/')({
     return <p ref={ref}>inline VERSION</p>
   })`,
       ],
-    ].map(([name, imports, component]) => ({
+      // (S2: kept in place after an option that runs code; it updates
+      // as any route option does)
+      [
+        'memo(() => ...) after a call',
+        `import { memo } from 'react'
+const configure = () => ({ title: 'page' })`,
+        `memo(() => <p>inline VERSION</p>)`,
+        `staticData: configure(),
+  `,
+      ],
+    ].map(([name, imports, component, before = '']) => ({
       name: name!,
       file: 'routes/index.tsx',
       autoCodeSplitting: false,
@@ -177,7 +214,7 @@ export const Route = createFileRoute('/')({
         `import { createFileRoute } from '@tanstack/react-router'
 ${imports}
 export const Route = createFileRoute('/')({
-  component: ${component!.replace('VERSION', version)},
+  ${before}component: ${component!.replace('VERSION', version)},
 })
 `,
       shows: (version: string) => `inline ${version}`,

@@ -533,7 +533,12 @@ dir)` is not a conflict by itself.
   survive. Renames must display the new component (J3.3). A subtree replacement is not a full reload (G10). Test
   split and unsplit routes with real framework tooling (§8). So: a compatible body-only edit that loses state because
   the router recreated its wrapper fails; an edit the framework must remount does not fail for that remount. Keeping
-  Solid and Vue split-component identity is a requirement, not best effort.
+  Solid and Vue split-component identity is a requirement, not best effort. Route HMR never changes when code runs
+  (S2): React's registration of an unsplit higher-order component call (`component: withX(Page)`) runs it before the
+  route statement only when everything that statement evaluates before the call is a literal (an object, array or
+  template literal of such operands included), a function, an identifier or the router's own factory (`createFileRoute`
+  with literal arguments, `createRootRoute`); otherwise the call stays in place and React Refresh gets no family for
+  it (an edit may remount it, as on `main`).
 - **J3.3 Every edit takes effect.** After an edit the page shows the new code: a new component body, a renamed
   component (a new Refresh family), a new split loader (even when only the chunk changed), an added or removed option
   (including a removed split option the page had loaded), with or without the framework's refresh plugin. A full
