@@ -107,6 +107,21 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   `start-plugin-core/tests/integration/pages/hydrate-ids-and-captures.test.ts`: "client: split children passing the
   component's arguments as a shorthand property render its props". Fix: emit `arguments: tsrArguments` (React) and
   `arguments: props.tsrArguments` (Solid) for a shorthand property. Workaround: write `{ arguments: arguments }`.
+- **React: `use(Context)` written directly in `<Hydrate>` children reads another context on the client** (Astra
+  hydrate B3; `main` too): the hook rule matches `use` followed by a capital or a digit, so bare `use` is no hook and
+  the call moves into the chunk's component, below a Provider the same return renders around the boundary. The
+  server renders the outer value, the client the Provider's (React #418). SPEC J5.5, J5.8.
+  `start-plugin-core/tests/integration/pages/hydrate-boundary-forms.test.ts`: "client: use(Context) in the children
+  reads the context the server read". Fix: rejected at the boundary like a hook call (open: the same refusal rejects
+  `use(promise)`, which builds today), or the client reads what the server read. Workaround: call `use` in a child
+  component.
+- **Solid: `ref={field}` in `<Hydrate>` children naming a module-level `let` assigns the chunk's copy** (Astra hydrate
+  B4; `main` too): the chunk copies the `let` (R161 D1), and the `hydrate-module-write` refusal (H4) misses the write
+  because a JSX ref is not an assignment before Solid lowers it. Code outside the boundary reads `undefined`. SPEC J5.5,
+  J5.2. `start-plugin-core/tests/integration/pages/hydrate-boundary-forms.test.ts`: "client: a Solid ref in the
+  children naming a module let binds the let the module reads". Fix: rejected at the boundary like an explicit
+  `field = el` (a function-valued module ref stays legal: Solid calls it), or the module reads the element.
+  Workaround: a `let` in the component, or `split={false}`.
 
 ## Known incorrect rejections (accepted, R89)
 

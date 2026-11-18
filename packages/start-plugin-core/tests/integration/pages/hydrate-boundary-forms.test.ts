@@ -567,6 +567,43 @@ ${childrenPage('<p id={React.useId()}>x</p>')}`,
     )
   })
 
+  // Bug: the hook rule matches `use` followed by a capital or a digit, so a
+  // direct `use(Theme)` in the children moves into the chunk's component,
+  // below the Provider the same return renders: the server renders
+  // `outside`, the hydrated client `inside` (React #418).
+  // Impact: a hydration mismatch and another value on the client, silently.
+  // `main` moves it too. Fix: rejected at the boundary like a hook (a ruling
+  // decides `use(promise)`, which the same refusal would reject), or the
+  // client reads what the server rendered.
+  // Source: Astra review of #8817, hydrate B3.
+  test.fails(
+    'client: use(Context) in the children reads the context the server read',
+    async () => {
+      const code = `${head}import { use } from 'react'
+import { Theme } from './theme'
+export function Page() {
+  return <Theme.Provider value="inside"><Hydrate when={load()}><b>{use(Theme)}</b></Hydrate></Theme.Provider>
+}`
+      const files = {
+        './theme': `import { createContext } from 'react'
+export const Theme = createContext('outside')
+`,
+      }
+      const startCase = await (
+        await hosts()
+      ).start.case({ 'module.tsx': code, 'theme.tsx': files['./theme'] })
+      const failure = await compileError(startCase, 'client')
+      if (failure !== undefined) {
+        expectCompileError(failure, { source: code, at: '<Hydrate' })
+        return
+      }
+      const { client } = await expectRendersLikeSource(await hosts(), code, {
+        files,
+      })
+      expect(client.html).toContain('<b>outside</b>')
+    },
+  )
+
   // The client rejects children reading `this` or `super` at the boundary.
   test.each([
     { name: 'this', code: classPage('this') },
@@ -631,6 +668,84 @@ export const Page = () => <Hydrate><button onClick={() => { flag = 1 }}>{String(
       expectCompileError(await compileError(startCase, 'client'), {
         source: code,
         at: '<Hydrate',
+        column: true,
+      })
+    },
+  )
+
+  // Bug: Solid's `ref={field}` assigns `field`, but before Solid lowers it
+  // the JSX ref is not a write, so the `hydrate-module-write` refusal (H4)
+  // does not see it: the chunk copies the module `let` (R161 D1) and the ref
+  // assigns the copy. The module's own code reads `undefined`.
+  // Impact: code outside the boundary never sees the element, silently.
+  // `main` copies it too. Fix: rejected at the boundary like an explicit
+  // `field = el` (a function-valued module ref stays legal: Solid calls
+  // it), or the module reads the element.
+  // Source: Astra review of #8817, hydrate B4.
+  test.fails(
+    'client: a Solid ref in the children naming a module let binds the let the module reads',
+    async () => {
+      const code = `${solidHead}import { load } from '@tanstack/solid-start/hydration'
+import { createSignal, onMount } from 'solid-js'
+export let field: HTMLInputElement | undefined
+function Run(props: { fn: () => void }) {
+  onMount(() => props.fn())
+  return null
+}
+export function Page() {
+  const [read, setRead] = createSignal('none')
+  const check = () => setRead(field ? field.value : 'unset')
+  return (
+    <div>
+      <output>{read()}</output>
+      <Hydrate when={load()}><input ref={field} value="typed" /><Run fn={check} /></Hydrate>
+    </div>
+  )
+}`
+      const solid = await solidHost()
+      const startCase = await solid.start.case({ 'module.tsx': code })
+      const failure = await compileError(startCase, 'client')
+      if (failure !== undefined) {
+        expectCompileError(failure, { source: code, at: '<Hydrate' })
+        return
+      }
+      const mounted = await solid.mount(code)
+      expect(mounted.errors).toEqual([])
+      expect(mounted.html).toContain('<output>typed</output>')
+    },
+  )
+
+  // A render callback in the children reading a `let` the component
+  // reassigns: the split children receive its value when the boundary
+  // renders, so the callback would read that snapshot (R161 D2). Through a
+  // nested boundary the callback renders that boundary's placeholder, which
+  // passes the snapshot on: the same refusal, at the same read.
+  // Source: Astra review of #8817, hydrate B5 (`main` renders the snapshot
+  // in both forms).
+  test.each([
+    { form: 'directly', read: '<b>{label}</b>' },
+    {
+      form: 'through a nested boundary',
+      read: '<Hydrate when={load()}><b>{label}</b></Hydrate>',
+    },
+  ])(
+    'client: a render callback reading a let the component reassigns, $form, is rejected at the read',
+    async ({ read }) => {
+      const code = `${head}import { useEffect, type ReactNode } from 'react'
+function Reveal(props: { children: () => ReactNode }) {
+  return <section>{props.children()}</section>
+}
+export function Page() {
+  let label = 'before'
+  useEffect(() => {
+    label = 'after'
+  }, [])
+  return <Hydrate when={load()}><Reveal>{() => ${read}}</Reveal></Hydrate>
+}`
+      const startCase = await (await hosts()).start.case({ 'module.tsx': code })
+      expectCompileError(await compileError(startCase, 'client'), {
+        source: code,
+        at: 'label}</b>',
         column: true,
       })
     },
