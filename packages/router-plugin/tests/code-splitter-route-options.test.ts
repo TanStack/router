@@ -258,6 +258,35 @@ export const Route = createFileRoute('/')({
     },
   )
 
+  // Removing a declaration only a deleted option read keeps the line break
+  // ending the statement before it, wherever the source wrote it: after an
+  // annotation comment ending its line, or after a no-break space. Source:
+  // the Astra core review 4.
+  it.each([
+    ['an annotation comment', ' // @__PURE__'],
+    ['a no-break space', '\u00a0'],
+  ])(
+    'keep the line break before a declaration only they read after %s',
+    async (_name, lineEnd) => {
+      const route = await loadRoute(
+        `${head}export const keep = 17${lineEnd}
+const x = 2
+export const Route = createFileRoute('/')({
+  server: {
+    handlers: {
+      GET: () => new Response(String(x)),
+    },
+  },
+  loader: () => keep,
+})
+`,
+        { deleteNodes: ['server'] },
+      )
+      await expectValidModules(route)
+      expect(await route.run('return options.loader()')).toBe(17)
+    },
+  )
+
   // A top-level statement is never deleted with a binding only a deleted
   // option read: whether writing it changes something else (here the
   // document) has no syntactic answer. Source: the erasure review's

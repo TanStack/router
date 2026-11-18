@@ -46,6 +46,24 @@ export function isLineTerminator(c: number): boolean {
   return c === 10 || c === 13 || c === 0x2028 || c === 0x2029
 }
 
+/** Whether `c` is ECMAScript WhiteSpace (tab, VT, FF, space, U+00A0, U+FEFF, any other Zs). */
+export function isWhiteSpace(c: number): boolean {
+  return (
+    c === 32 ||
+    c === 9 ||
+    c === 11 ||
+    c === 12 ||
+    (c >= 0xa0 &&
+      (c === 0xa0 ||
+        c === 0xfeff ||
+        c === 0x1680 ||
+        (c >= 0x2000 && c <= 0x200a) ||
+        c === 0x202f ||
+        c === 0x205f ||
+        c === 0x3000))
+  )
+}
+
 /** Counts the line terminators (CRLF = 1) in `code[start, end)`. */
 function countLineBreaks(code: string, start: number, end: number): number {
   let n = 0
@@ -83,7 +101,7 @@ export function extendOverTrailingLine(code: string, end: number): number {
   let applying = -1
   while (i < len) {
     const c = code.charCodeAt(i)
-    if (c === 32 || c === 9 || c === 11 || c === 12) {
+    if (isWhiteSpace(c)) {
       i++
       continue
     }
