@@ -7,6 +7,7 @@ import {
 } from '@tanstack/router-generator'
 import { getConfig } from './config'
 import {
+  contextInternals,
   createRouterPluginContext,
   publishRoutes,
 } from './router-plugin-context'
@@ -21,6 +22,8 @@ export function createRouterGeneratorPlugin(
   options: Partial<Config | (() => Config)> | undefined = {},
   routerPluginContext: RouterPluginContext,
 ): ReturnType<UnpluginFactory<Partial<Config | (() => Config)> | undefined>> {
+  // a context the factory didn't make fails here, not at the first publication
+  contextInternals(routerPluginContext)
   let ROOT: string = process.cwd()
   let userConfig: Config
   let generator: Generator

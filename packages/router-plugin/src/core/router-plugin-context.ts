@@ -61,6 +61,8 @@ export function createRouterPluginContext(): RouterPluginContext {
  * Hands a generator session's publication to the context (`publish` of
  * `createGeneratorSession`): the failure first, so a listener of the
  * registry change reads both.
+ *
+ * @private TanStack Start's wiring, not public API.
  */
 export function publishRoutes(
   context: RouterPluginContext,
@@ -71,14 +73,31 @@ export function publishRoutes(
   context.routesByFile = routesByFile
 }
 
-/** The internals of a context `createRouterPluginContext` made. */
+/**
+ * The internals of a context `createRouterPluginContext` made. The plugins
+ * read them when they are created, so a context it didn't make (an object
+ * literal, or one from the package's other module format: each has its own
+ * factory and internals) fails there.
+ */
 export function contextInternals(
   context: RouterPluginContext,
 ): ContextInternals {
-  return internals.get(context)!
+  const state = internals.get(context)
+  if (!state) {
+    throw new Error(
+      '[tanstack-router] The router plugin context was not made by this copy of @tanstack/router-plugin. ' +
+        "Create it with `createRouterPluginContext()` from '@tanstack/router-plugin/context', " +
+        'imported in the same module format (ESM or CJS) as the plugins.',
+    )
+  }
+  return state
 }
 
-/** Subscribes to registry changes; returns the unsubscribe function. */
+/**
+ * Subscribes to registry changes; returns the unsubscribe function.
+ *
+ * @private TanStack Start's wiring, not public API.
+ */
 export function onRoutesChanged(
   context: RouterPluginContext,
   listener: RoutesChangedListener,
@@ -95,6 +114,8 @@ export function onRoutesChanged(
  * symlinked route file's real path is one of its keys: bundlers resolve
  * modules to it, so that is where the compiler's plans live; the hosts
  * invalidate every path listed).
+ *
+ * @private TanStack Start's wiring, not public API.
  */
 export function changedRoutePaths(
   next: GetRoutesByFileMapResult,

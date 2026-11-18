@@ -5,6 +5,10 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
+import {
+  tanStackRouterCodeSplitter,
+  tanstackRouterGenerator,
+} from '../../src/vite'
 import { build, clientMountEntry, routeApp, routeHead } from '../build-harness'
 import type {
   BuildResult,
@@ -139,3 +143,27 @@ describe('plugin.vite.environmentName', () => {
     timeout,
   )
 })
+
+// The halves take a context made by `createRouterPluginContext()`; one it
+// didn't make (written by hand, or the factory of the package's other module
+// format) fails the build with what to call, not inside a transform.
+test(
+  'a context not made by createRouterPluginContext() fails the build, naming the factory (vite)',
+  async () => {
+    const context = { routesByFile: new Map() }
+    await expect(
+      build({
+        bundler: 'vite',
+        env: 'client',
+        files: routeApp(route(), { env: 'client' }),
+        routerPlugins: (config) => [
+          tanstackRouterGenerator(config, context),
+          ...tanStackRouterCodeSplitter(config, context),
+        ],
+      }),
+    ).rejects.toThrow(
+      /`createRouterPluginContext\(\)` from '@tanstack\/router-plugin\/context'/,
+    )
+  },
+  timeout,
+)

@@ -32,6 +32,7 @@ import {
 import { getConfig } from '../core/config'
 import {
   changedRoutePaths,
+  contextInternals,
   onRoutesChanged,
 } from '../core/router-plugin-context'
 import {
@@ -120,6 +121,8 @@ export function createRouterCompilerVitePlugin(
   options: RouterPluginOptions = {},
   routerPluginContext: RouterPluginContext,
 ): Array<Plugin> {
+  // a context the factory didn't make fails here, not in the build
+  contextInternals(routerPluginContext)
   let ROOT: string = process.cwd()
   let bundledDev = false
   let userConfig: Config
