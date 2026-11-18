@@ -1,10 +1,15 @@
 import path from 'node:path'
 import fs from 'node:fs'
+import os from 'node:os'
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
-import { getViolationArtifactName } from './violations.utils'
+import {
+  extractViolationsFromLog,
+  getViolationArtifactName,
+} from './violations.utils'
 import type { Violation } from './violations.utils'
 import type { Page } from '@playwright/test'
+import type { RsbuildPlugin } from '@rsbuild/core'
 
 const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
 const fixtureRoot = path.resolve(import.meta.dirname, '..')
@@ -1024,3 +1029,110 @@ for (const mode of ['build', 'dev', 'dev.warm'] as const) {
     expect(hit).toBeDefined()
   })
 }
+
+test('persistent cache restores import-protection mocks and violations', async () => {
+  test.skip(toolchain !== 'rsbuild', 'Rspack persistent cache')
+  test.setTimeout(120_000)
+  const { createRsbuild, loadConfig, mergeRsbuildConfig } =
+    await import('@rsbuild/core')
+  const directory = await fs.promises.mkdtemp(
+    path.join(os.tmpdir(), 'tss-import-protection-cache-'),
+  )
+
+  const build = async () => {
+    const results: Record<
+      string,
+      {
+        errors: Array<string>
+        warnings: Array<string>
+        importerBuilt?: boolean
+      }
+    > = {}
+    const { content } = await loadConfig({ cwd: fixtureRoot })
+    const rsbuild = await createRsbuild({
+      cwd: fixtureRoot,
+      rsbuildConfig: mergeRsbuildConfig(content, {
+        root: fixtureRoot,
+        output: { distPath: { root: path.join(directory, 'dist') } },
+        performance: {
+          buildCache: { cacheDirectory: path.join(directory, 'cache') },
+        },
+        plugins: [
+          {
+            name: 'collect-import-protection-diagnostics',
+            setup(api) {
+              api.onAfterEnvironmentCompile(({ environment, stats }) => {
+                if (stats) {
+                  const modules = stats.toJson({
+                    all: false,
+                    modules: true,
+                    nestedModules: true,
+                    cachedModules: true,
+                    orphanModules: true,
+                  }).modules
+                  const importer = modules
+                    ?.flatMap((module) => [module, ...(module.modules ?? [])])
+                    .find((module) =>
+                      module.nameForCondition
+                        ?.replaceAll('\\', '/')
+                        .endsWith('/src/violations/leaky-server-import.ts'),
+                    )
+                  results[environment.name] = {
+                    importerBuilt: importer?.built,
+                    errors: stats.compilation.errors.map((e) => e.message),
+                    warnings: stats.compilation.warnings
+                      .map((w) => w.message)
+                      .sort(),
+                  }
+                }
+              })
+            },
+          } satisfies RsbuildPlugin,
+        ],
+      }),
+    })
+    await rsbuild.build().catch(() => undefined)
+    return results
+  }
+
+  try {
+    const cold = await build()
+    const warm = await build()
+
+    for (const environment of ['client', 'ssr']) {
+      expect(cold[environment]?.errors).toEqual([])
+      expect(warm[environment]?.errors).toEqual([])
+      expect(warm[environment]?.warnings).toEqual(cold[environment]?.warnings)
+    }
+    expect(
+      warm.client?.warnings.some((warning) =>
+        warning.includes('secret.server'),
+      ),
+    ).toBe(true)
+    // A warm build must actually reuse the importer containing mock requests.
+    expect(cold.client?.importerBuilt).toBe(true)
+    expect(warm.client?.importerBuilt).toBe(false)
+
+    // These imports share a specifier but have different importer/usage metadata.
+    // Checking their presence prevents cold/warm equality hiding lost diagnostics.
+    const violations = extractViolationsFromLog(
+      warm.client!.warnings.join('\n'),
+    )
+    for (const importer of ['leaky-server-import', 'beforeload-server-leak']) {
+      const violation = violations.find(
+        (info) =>
+          info.type === 'specifier' &&
+          info.specifier === '@tanstack/react-start/server' &&
+          info.importer.includes(importer),
+      )
+      expect(violation).toBeDefined()
+      expect(violation!.importer).toMatch(/:\d+:\d+$/)
+      expect(
+        violation!.trace.some((step) => step.file.includes(importer)),
+      ).toBe(true)
+      expect(violation!.snippet?.lines.join('\n')).toContain('getRequest()')
+    }
+  } finally {
+    await fs.promises.rm(directory, { recursive: true, force: true })
+  }
+})

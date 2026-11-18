@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import { compileMatchers } from '../../src/import-protection/matchers'
+import { MOCK_MODULE_PATH } from '../../src/rsbuild/mock-module'
 import {
   getRsbuildResolvedImportProtectionCheck,
   registerImportProtection,
@@ -113,9 +114,8 @@ describe('getRsbuildResolvedImportProtectionCheck', () => {
 })
 
 describe('registerImportProtection loader registration', () => {
-  test('registers a post loader instead of an Rsbuild transform', () => {
+  test('registers the post loader and mock module loader', () => {
     let modifyRspackConfig: ModifyRspackConfigHandler | undefined
-    const transform = vi.fn()
 
     const api = {
       context: { action: 'build' },
@@ -124,9 +124,8 @@ describe('registerImportProtection loader registration', () => {
       modifyRspackConfig(handler) {
         modifyRspackConfig = handler
       },
-      transform,
       processAssets() {},
-    } satisfies ImportProtectionApi & { transform: typeof transform }
+    } satisfies ImportProtectionApi
 
     registerImportProtection(api, {
       framework: 'react',
@@ -144,28 +143,17 @@ describe('registerImportProtection loader registration', () => {
       throw new Error('Expected modifyRspackConfig to be registered')
     }
 
-    class VirtualModulesPlugin {
-      constructor(_modules: Record<string, string>) {}
-
-      writeModule(_filePath: string, _contents: string) {}
-    }
-
     const config: Parameters<ModifyRspackConfigHandler>[0] = {
       module: { rules: [] },
-      plugins: [],
     }
     const utils: Parameters<ModifyRspackConfigHandler>[1] = {
       environment: { name: 'client' },
-      rspack: {
-        experiments: { VirtualModulesPlugin },
-      },
     }
     modifyRspackConfig(config, utils)
 
-    expect(transform).not.toHaveBeenCalled()
     const rules = config.module.rules
-    expect(rules).toHaveLength(1)
-    const rule = rules?.[0]
+    expect(rules).toHaveLength(2)
+    const rule = rules?.[1]
     if (!rule || typeof rule !== 'object' || !('test' in rule)) {
       throw new Error('Expected an import-protection Rspack rule')
     }
@@ -181,6 +169,16 @@ describe('registerImportProtection loader registration', () => {
       ],
     })
     expect(rule.test).toEqual(/\.[cm]?[tj]sx?$/)
+    expect(rules?.[0]).toMatchObject({
+      type: 'javascript/esm',
+      use: [{ loader: expect.stringMatching(/mock-loader\.js$/) }],
+    })
+    const mockRule = rules[0] as { test: RegExp }
+    expect(mockRule.test.test(MOCK_MODULE_PATH)).toBe(true)
+    expect(mockRule.test.test(MOCK_MODULE_PATH.replaceAll('/', '\\'))).toBe(
+      true,
+    )
+    expect(rule.exclude).toBe(mockRule.test)
   })
 })
 
