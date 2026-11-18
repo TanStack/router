@@ -19,8 +19,8 @@
  *   plugin added, without a position); its fix, the call inside
  *   `createServerOnlyFn` or a server function's handler, keeps the file out of
  *   the client; a webpack context written through a cast of `import.meta`
- *   (Rsbuild) is reported at the context, and narrowing its `regExp` leaves
- *   the file out.
+ *   (Rsbuild) is reported at the context (of two, the one reading the
+ *   file's directory), and narrowing its `regExp` leaves the file out.
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -220,6 +220,51 @@ export const read = () => ctx.keys()
       expect(build.client.where('MARK_DB')).toBe('nowhere')
       const { result } = await build.client.run('return entry.read()')
       expect(result).toEqual(['./util.ts'])
+    },
+    timeout,
+  )
+
+  // Two contexts of one module: the report is at the one whose directory
+  // holds the denied file, so narrowing the context it names is the fix.
+  // Source: Astra review of #8817, import protection B5 (the first context
+  // was reported, and narrowing it still failed).
+  test.runIf(bundler === 'rsbuild')(
+    'of two webpack contexts, the one reading the directory of the denied file fails the build, and narrowing its regExp leaves the file out',
+    async () => {
+      const entry = (
+        regExp: string,
+      ) => `const locales = (import.meta as any).webpackContext('./locales', { recursive: false, regExp: /\\.ts$/ })
+const lib = (import.meta as any).webpackContext('./lib', { recursive: false, regExp: ${regExp} })
+export const read = () => [...locales.keys(), ...lib.keys()]
+`
+      const files = (regExp: string) => ({
+        'src/locales/en.ts': `export const en = 'en'\n`,
+        'src/lib/db.server.ts': db,
+        'src/lib/util.ts': `export const util = () => 'util'\n`,
+        'src/entry.ts': entry(regExp),
+      })
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files: files('/\\.ts$/'),
+          entry: 'src/entry.ts',
+        }),
+      )
+      const text = entry('/\\.ts$/')
+      const { line, column } = diagnosticPosition(
+        text,
+        text.lastIndexOf('import.meta'),
+      )
+      expectViolationsAt(error, [
+        { environment: 'client', use: `src/entry.ts:${line}:${column}` },
+      ])
+      const build = await buildStart({
+        bundler,
+        files: files('/util\\.ts$/'),
+        entry: 'src/entry.ts',
+      })
+      expect(build.violations).toEqual([])
+      expect(build.client.where('MARK_DB')).toBe('nowhere')
     },
     timeout,
   )
