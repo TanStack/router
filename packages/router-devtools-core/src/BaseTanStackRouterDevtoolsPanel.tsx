@@ -296,7 +296,7 @@ export const BaseTanStackRouterDevtoolsPanel =
         ? matches
         : []
     }
-    let cache = router()._cache
+    let cache = untrack(router)._cache
     let cacheMatches = [...cache.values()]
     const [cachedMatches, setCachedMatches] = createSignal(cacheMatches)
 
@@ -532,15 +532,19 @@ export const BaseTanStackRouterDevtoolsPanel =
             <div class="tsrd-routes-container">
               <Switch>
                 <Match when={currentTab() === 'routes'}>
-                  <RouteComp
-                    routerState={routerState}
-                    pendingMatches={pendingMatches}
-                    router={router}
-                    route={router().routeTree}
-                    isRoot
-                    activeId={activeId}
-                    setActiveId={setActiveId}
-                  />
+                  <Show when={router().routeTree} keyed>
+                    {(routeTree) => (
+                      <RouteComp
+                        routerState={routerState}
+                        pendingMatches={pendingMatches}
+                        router={router}
+                        route={routeTree}
+                        isRoot
+                        activeId={activeId}
+                        setActiveId={setActiveId}
+                      />
+                    )}
+                  </Show>
                 </Match>
                 <Match when={currentTab() === 'matches'}>
                   <div>
@@ -762,12 +766,15 @@ export const BaseTanStackRouterDevtoolsPanel =
             <div class="tsrd-details-content">
               <Explorer
                 value={locationSearchValue}
-                defaultExpanded={Object.keys(
-                  routerState().location.search,
-                ).reduce((obj: any, next) => {
-                  obj[next] = {}
-                  return obj
-                }, {})}
+                defaultExpanded={untrack(() =>
+                  Object.keys(routerState().location.search).reduce(
+                    (obj: any, next) => {
+                      obj[next] = {}
+                      return obj
+                    },
+                    {},
+                  ),
+                )}
               />
             </div>
           </div>

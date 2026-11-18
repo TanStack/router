@@ -14,7 +14,7 @@ type ExpanderProps = {
   style?: JSX.CSSProperties
 }
 
-export const Expander = ({ expanded, style: _style = {} }: ExpanderProps) => {
+export const Expander = (props: ExpanderProps) => {
   return (
     <span class="tsrd-explorer-expander">
       <svg
@@ -24,7 +24,7 @@ export const Expander = ({ expanded, style: _style = {} }: ExpanderProps) => {
         fill="none"
         viewBox="0 0 24 24"
         class={
-          expanded
+          props.expanded
             ? 'tsrd-explorer-expander-icon tsrd-explorer-expander-icon-expanded'
             : 'tsrd-explorer-expander-icon'
         }

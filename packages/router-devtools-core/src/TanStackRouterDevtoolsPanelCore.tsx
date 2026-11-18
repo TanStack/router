@@ -1,5 +1,5 @@
 import { render } from '@solidjs/web'
-import { createSignal, lazy } from 'solid-js'
+import { Loading, createSignal, lazy } from 'solid-js'
 import { DevtoolsOnCloseContext } from './context'
 import type { JSX } from '@solidjs/web'
 import type { AnyRouter } from '@tanstack/router-core'
@@ -96,15 +96,17 @@ export class TanStackRouterDevtoolsPanelCore {
             onCloseClick: () => {},
           }}
         >
-          <BaseTanStackRouterDevtoolsPanel
-            router={router}
-            routerState={routerState}
-            mountElement={el}
-            shadowDOMTarget={shadowDOMTarget}
-            setIsOpen={setIsOpen}
-            style={style}
-            className={className}
-          />
+          <Loading>
+            <BaseTanStackRouterDevtoolsPanel
+              router={router}
+              routerState={routerState}
+              mountElement={el}
+              shadowDOMTarget={shadowDOMTarget}
+              setIsOpen={setIsOpen}
+              style={style}
+              className={className}
+            />
+          </Loading>
         </DevtoolsOnCloseContext>
       )
     }, el)

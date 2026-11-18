@@ -221,7 +221,6 @@ export function FloatingTanStackRouterDevtools({
           routerState={routerState}
           className={basePanelClass}
           style={basePanelStyle}
-          isOpen={isResolvedOpen()}
           setIsOpen={setIsOpen}
           handleDragStart={(e) => handleDragStart(panelRef, e)}
         />

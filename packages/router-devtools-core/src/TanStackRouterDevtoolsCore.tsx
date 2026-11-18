@@ -1,4 +1,4 @@
-import { createSignal, lazy } from 'solid-js'
+import { Loading, createSignal, lazy } from 'solid-js'
 import { render } from '@solidjs/web'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { Signal } from 'solid-js'
@@ -104,18 +104,20 @@ export class TanStackRouterDevtoolsCore {
       }
 
       return (
-        <Devtools
-          position={position}
-          initialIsOpen={initialIsOpen}
-          router={router}
-          routerState={routerState}
-          mountElement={el}
-          shadowDOMTarget={shadowDOMTarget}
-          panelProps={panelProps}
-          closeButtonProps={closeButtonProps}
-          toggleButtonProps={toggleButtonProps}
-          containerElement={containerElement}
-        />
+        <Loading>
+          <Devtools
+            position={position}
+            initialIsOpen={initialIsOpen}
+            router={router}
+            routerState={routerState}
+            mountElement={el}
+            shadowDOMTarget={shadowDOMTarget}
+            panelProps={panelProps}
+            closeButtonProps={closeButtonProps}
+            toggleButtonProps={toggleButtonProps}
+            containerElement={containerElement}
+          />
+        </Loading>
       )
     }, el)
 
