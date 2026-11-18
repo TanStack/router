@@ -340,9 +340,7 @@ export { default } from './src/default'
 
   // a kept `new Factory`, written without an argument list, called or read
   // in place: the call and the read apply to the constructed value, not to
-  // the constructor. Rsbuild reads only: its SWC transform (@swc/core
-  // 1.15.33, Rsbuild 2.3.1) prints the compiler's `(new Factory)()` as
-  // `new Factory()`, dropping the call. Source: Astra review 4 (core B5)
+  // the constructor. Source: Astra review 4 (core B5)
   test(
     'a server-only fn whose implementation is a `new` without arguments, called or read in place: the server calls or reads the constructed value',
     async () => {
@@ -361,9 +359,7 @@ export const read = () => createServerOnlyFn(new Factory).label
         },
       })
       expect((await ssr.run(`return entry.read()`)).result).toBe('constructed')
-      if (bundler === 'vite') {
-        expect((await ssr.run(`return entry.called()`)).result).toBe(7)
-      }
+      expect((await ssr.run(`return entry.called()`)).result).toBe(7)
     },
     timeout,
   )

@@ -250,9 +250,11 @@ function needsParens(
  * wrappers of `isExpressionWrapper`) and `kept` is a member or `eval`, which
  * called there would get a receiver or evaluate in place (the function a
  * factory returns calls its implementation with none); else `kept`, in
- * parentheses when `needsParens` says. A `kept` call in `replaced` (a factory
- * call passed to another) renders as its own rewrite, of any shape: it is
- * treated as one of unknown shape.
+ * parentheses when `needsParens` says. A `new` without an argument list
+ * takes an empty one there instead (`new Factory()`, same value): SWC 1.15.33
+ * prints `(new Factory)()` as `new Factory()`, dropping the call. A `kept`
+ * call in `replaced` (a factory call passed to another) renders as its own
+ * rewrite, of any shape: it is treated as one of unknown shape.
  */
 function keptText(
   code: string,
@@ -278,9 +280,12 @@ function keptText(
   ) {
     return [text('(0, '), slice(rangeOf(kept)), text(')')]
   }
-  return needsParens(code, kept, original, file, opaque)
-    ? [text('('), slice(rangeOf(kept)), text(')')]
-    : [slice(rangeOf(kept))]
+  if (!needsParens(code, kept, original, file, opaque)) {
+    return [slice(rangeOf(kept))]
+  }
+  return kept.type === 'NewExpression' && kept.callee.end === kept.end
+    ? [slice(rangeOf(kept)), text('()')]
+    : [text('('), slice(rangeOf(kept)), text(')')]
 }
 
 /**
