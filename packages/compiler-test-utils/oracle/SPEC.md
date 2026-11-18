@@ -405,7 +405,8 @@ dir)` is not a conflict by itself.
 - **J2.2 Which options and groupings.** Only `component`, `errorComponent`, `pendingComponent`, `notFoundComponent`
   and `loader` are split. Precedence: `codeSplitGroupings` in the file > `splitBehavior({ routeId })` >
   `defaultBehavior` > the default `[['component'],['errorComponent'],['notFoundComponent']]`; a property appears in at
-  most one group. Options in one group load as one unit; different groups stay independently lazy (§5.3). Two options
+  most one group. A `codeSplitGroupings` accessor isn't read (the next source applies, as on main), and nothing reads
+  the file's groupings where nothing is split (`autoCodeSplitting: false`). Options in one group load as one unit; different groups stay independently lazy (§5.3). Two options
   load as one unit when, once one loaded, loading the other fetches no new module holding user code (no file of the
   app, no compiled module other than one that only imports and re-exports). A small forwarding module per option
   over the group's module is acceptable (not ideal: bytes).
