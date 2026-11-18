@@ -19,3 +19,5 @@ The build-time compilers run on one compiler core built on [Yuku](https://github
 - Start's experimental, Babel-typed `compilerTransforms` and `serverFnProviderModuleDirectives` options and the `StartCompilerPlugin`, `StartCompilerImportTransform`, `StartCompilerTransformContext` and `StartCompilerTransformCandidate` types. RSC integrations pass `rsc: { loadCssExpression, providerDirective }` instead.
 - `@tanstack/react-start-rsc/plugin/rscCssTransform`: RSC CSS injection runs in Start's compiler.
 - `ssrIsProvider` of `TanStackStartCoreOptions`: the Vite plugin derives it from `providerEnvironmentName`, the Rsbuild plugin from `rsc`.
+
+**Router plugin context:** a context passed to the router plugins must come from `createRouterPluginContext()` (`@tanstack/router-plugin/context`), imported in the same module format (ESM or CJS) as the plugins. A hand-built `{ routesByFile: new Map() }`, or a context from the other module format, throws when the plugin is created, with an error naming the factory.
