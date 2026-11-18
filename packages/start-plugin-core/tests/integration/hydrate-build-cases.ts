@@ -724,16 +724,47 @@ function Btn() {
 `,
         children: '<Btn />',
       },
+      // A private name of the class the boundary is in: the chunk is
+      // outside it (on main, the build fails to parse the chunk; Rsbuild
+      // here built a chunk the browser refuses). Source: Astra review of
+      // #8817, hydrate #2.
+      {
+        name: 'a private field of the enclosing class',
+        children: '',
+        page: `import { Hydrate } from '@tanstack/react-start'
+import { idle } from '@tanstack/react-start/hydration'
+class Formatter {
+  #label = 'OK'
+  render() {
+    const model = this
+    return <Hydrate when={idle()}><b>{model.#label}</b></Hydrate>
+  }
+}
+export function Page() {
+  return new Formatter().render()
+}
+`,
+      },
     ] as Array<{
       name: string
       children: string
       setup?: string
       at?: string
       module?: string
+      /** The whole page, instead of `Page` rendering `children`. */
+      page?: string
     }>)(
       'client: $name in a boundary fails the build, naming the file and line',
-      async ({ children, setup = '', at = '<Hydrate', module = '' }) => {
-        const page = `import { useEffect } from 'react'
+      async ({
+        children,
+        setup = '',
+        at = '<Hydrate',
+        module = '',
+        ...row
+      }) => {
+        const page =
+          row.page ??
+          `import { useEffect } from 'react'
 import { Hydrate } from '@tanstack/react-start'
 import { idle } from '@tanstack/react-start/hydration'
 import { useThing } from '../hooks'

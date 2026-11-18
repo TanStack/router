@@ -656,6 +656,12 @@ export function Icons({ ids }) {
       rendered: '<p>inner</p>',
     },
     {
+      // (its own private name: Astra review of #8817, hydrate #2, control)
+      name: 'a class with a private field',
+      children: `<p>{new (class { #label = 'inner'; read() { return this.#label } })().read()}</p>`,
+      rendered: '<p>inner</p>',
+    },
+    {
       name: 'an object method',
       children: `<p>{({ label: 'inner', read() { return this.label } }).read()}</p>`,
       rendered: '<p>inner</p>',

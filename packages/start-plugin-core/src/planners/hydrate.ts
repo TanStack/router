@@ -719,6 +719,19 @@ function validate(
       .refsIn({ start, end: start + 1 })
       .find((r) => r.range.start === start)
 
+  /** Whether a class inside the children around `node` declares the private name `name`. */
+  const declaresPrivateInside = (node: Node, name: string) =>
+    [...analysis.file.ancestors(node)].some(
+      (a) =>
+        a.type === 'ClassBody' &&
+        a.start >= shape.range.start &&
+        a.body.some(
+          (m) =>
+            'key' in m &&
+            m.key.type === 'PrivateIdentifier' &&
+            m.key.name === name,
+        ),
+    )
   /** The functions the children call where they are written (an IIFE's callee), by start. */
   const invoked = new Set<number>()
   /**
@@ -772,6 +785,26 @@ function validate(
           )
         }
         break
+      case 'MemberExpression':
+      case 'BinaryExpression': {
+        // a private name of a class around the boundary: the chunk is
+        // outside it (`#x` there is a syntax error)
+        const name =
+          node.type === 'MemberExpression'
+            ? node.property.type === 'PrivateIdentifier'
+              ? node.property.name
+              : null
+            : node.left.type === 'PrivateIdentifier'
+              ? node.left.name
+              : null
+        if (name !== null && !declaresPrivateInside(node, name)) {
+          fail(
+            'hydrate-private-name',
+            `Hydrate cannot code-split JSX that reads \`#${name}\` of the enclosing class: the split children render in another module, outside the class. Read it into a local before the boundary, or use split={false}.`,
+          )
+        }
+        break
+      }
       case 'MetaProperty':
         if (!self && node.meta.name === 'new') {
           fail(
