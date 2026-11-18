@@ -881,14 +881,19 @@ Paths under `start-plugin-core/tests/` unless noted.
   J4.14, G3. Fixed (R157; also #8656): the lazy handler module imports what the module keeps.
   `integration/start-build-server-fn-cases.test.ts`: "SSR: a server fn module is initialised once and shares its state
   with SSR code"; `integration/start-compose-server-fn-route.test.ts`: "the server runs the route module once".
-- **Production builds: server fns no client code calls answer HTTP calls by id**: one only server modules define, and
+- **Production builds: server fns no client code calls answer HTTP calls by id**: one only server modules define,
   one private to a module the client imports (a helper another server fn's handler calls), which the client's compile
-  registered before tree-shaking. SPEC J4.2 (R182): the client-origin gate is the set of ids whose client call
+  registered before tree-shaking, and one the module exports but the client never uses (its stub, the user's chain
+  ending in `.handler(createClientRpc(id))`, was a call bundlers keep). SPEC J4.2 (R182): the client-origin gate is the set of ids whose client call
   survives in the emitted client code, on both hosts and under RSC.
   `integration/start-build-server-fn-cases.test.ts`: "SSR: a server fn only server code references is not callable over
   HTTP"; `integration/start-build-server-fn-callable.test.ts`: "SSR: a server fn private to a module the client imports
-  is not callable over HTTP, and its own module calls it"; "SSR: a rebuild follows the edits that remove and restore
-  the last client call of a server fn";
+  is not callable over HTTP, and its own module calls it"; "client: an exported server fn the client never calls leaves
+  the client bundle and is refused over HTTP, and the user code of its chain still runs"; "client: a server fn stub
+  continued by a user call, or a statement after a line without a semicolon, keeps the effects and values of the
+  module"; "SSR: a rebuild follows the importer edits that stop and resume using an exported server fn"; "SSR: a
+  rebuild follows the
+  edits that remove and restore the last client call of a server fn";
   `react-start-rsc/tests/integration/rsc-start-build.test.ts` and `rsc-start-rsbuild-build.test.ts`: "a server
   function only server code calls is not callable from the browser".
 - **Vite: the production server-fn resolver is generated before the SSR build found every server fn** (#7213). SPEC
