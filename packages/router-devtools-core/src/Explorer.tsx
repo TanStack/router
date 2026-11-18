@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { createMemo, createSignal } from 'solid-js'
-import { styles } from './styles'
 import {
   displayValue,
   getServerComponentSlotUsageSummary,
@@ -16,14 +15,18 @@ type ExpanderProps = {
 
 export const Expander = ({ expanded, style: _style = {} }: ExpanderProps) => {
   return (
-    <span class={styles.expander}>
+    <span class="tsrd-explorer-expander">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="12"
         height="12"
         fill="none"
         viewBox="0 0 24 24"
-        class={styles.expanderIcon(expanded)}
+        class={
+          expanded
+            ? 'tsrd-explorer-expander-icon tsrd-explorer-expander-icon-expanded'
+            : 'tsrd-explorer-expander-icon'
+        }
       >
         <path
           stroke="currentColor"
@@ -205,24 +208,24 @@ export function Explorer({
   )
 
   return (
-    <div class={styles.entry}>
+    <div class="tsrd-explorer-entry">
       {serverComponentType() !== null ? (
         isCompositeWithSlots() ? (
           <>
             <button
-              class={styles.expandButton}
+              class="tsrd-explorer-expand-button"
               onClick={() => toggleExpanded()}
             >
               <Expander expanded={expanded() ?? false} />
               <span>{rest.label}:</span>
-              <span class={styles.compositeComponent}>
+              <span class="tsrd-explorer-composite-component">
                 {displayValue(value())}
               </span>
             </button>
             {(expanded() ?? false) ? (
-              <div class={styles.rscMetaRow}>
-                <span class={styles.rscMetaLabel}>slots</span>
-                <div class={styles.subEntries}>
+              <div class="tsrd-explorer-rsc-meta-row">
+                <span class="tsrd-explorer-rsc-meta-label">slots</span>
+                <div class="tsrd-explorer-sub-entries">
                   {serverComponentSlots().map((name) => {
                     const usage = serverComponentSlotUsageSummary()[name]
                     if (!usage) return null
@@ -247,8 +250,8 @@ export function Explorer({
             <span
               class={
                 serverComponentType() === 'compositeSource'
-                  ? styles.compositeComponent
-                  : styles.renderableComponent
+                  ? 'tsrd-explorer-composite-component'
+                  : 'tsrd-explorer-renderable-component'
               }
             >
               {displayValue(value())}
@@ -257,27 +260,30 @@ export function Explorer({
         )
       ) : subEntryPages().length ? (
         <>
-          <button class={styles.expandButton} onClick={() => toggleExpanded()}>
+          <button
+            class="tsrd-explorer-expand-button"
+            onClick={() => toggleExpanded()}
+          >
             <Expander expanded={expanded() ?? false} />
             {rest.label}
-            <span class={styles.info}>
+            <span class="tsrd-explorer-info">
               {String(type).toLowerCase() === 'iterable' ? '(Iterable) ' : ''}
               {subEntries().length} {subEntries().length > 1 ? `items` : `item`}
             </span>
           </button>
           {(expanded() ?? false) ? (
             subEntryPages().length === 1 ? (
-              <div class={styles.subEntries}>
+              <div class="tsrd-explorer-sub-entries">
                 {subEntries().map((entry, index) => handleEntry(entry))}
               </div>
             ) : (
-              <div class={styles.subEntries}>
+              <div class="tsrd-explorer-sub-entries">
                 {subEntryPages().map((entries, index) => {
                   return (
                     <div>
-                      <div class={styles.entry}>
+                      <div class="tsrd-explorer-entry">
                         <button
-                          class={`${styles.labelButton} labelButton`}
+                          class={`${'tsrd-explorer-label-button'} labelButton`}
                           onClick={() =>
                             setExpandedPages((old) =>
                               old.includes(index)
@@ -293,7 +299,7 @@ export function Explorer({
                           {index * pageSize + pageSize - 1}]
                         </button>
                         {expandedPages().includes(index) ? (
-                          <div class={styles.subEntries}>
+                          <div class="tsrd-explorer-sub-entries">
                             {entries.map((entry) => handleEntry(entry))}
                           </div>
                         ) : null}
@@ -311,7 +317,7 @@ export function Explorer({
             label={
               <button
                 onClick={refreshValueSnapshot}
-                class={styles.refreshValueBtn}
+                class="tsrd-explorer-refresh-value-btn"
               >
                 <span>{rest.label}</span> 🔄{' '}
               </button>
@@ -323,7 +329,7 @@ export function Explorer({
       ) : (
         <>
           <span>{rest.label}:</span>{' '}
-          <span class={styles.value}>{displayValue(value())}</span>
+          <span class="tsrd-explorer-value">{displayValue(value())}</span>
         </>
       )}
     </div>

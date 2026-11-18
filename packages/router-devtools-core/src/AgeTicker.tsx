@@ -1,4 +1,3 @@
-import { styles } from './styles'
 import type { AnyRoute, AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
 import type { Accessor } from 'solid-js'
 
@@ -47,7 +46,13 @@ export function AgeTicker({
     route.options.gcTime ?? router().options.defaultGcTime ?? 300_000
 
   return (
-    <div class={styles.ageTicker(age > staleTime)}>
+    <div
+      class={
+        age > staleTime
+          ? 'tsrd-age-ticker tsrd-age-ticker-warning'
+          : 'tsrd-age-ticker'
+      }
+    >
       <div>{formatTime(age)}</div>
       <div>/</div>
       <div>{formatTime(staleTime)}</div>

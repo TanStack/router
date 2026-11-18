@@ -6,7 +6,7 @@ import { useIsMounted } from './utils'
 import { BaseTanStackRouterDevtoolsPanel } from './BaseTanStackRouterDevtoolsPanel'
 import useLocalStorage from './useLocalStorage'
 import { TanStackLogo } from './logo'
-import { attachStyles, styles } from './styles'
+import { attachStyles } from './styles'
 import type { Accessor, JSX } from 'solid-js'
 import type { AnyRouter } from '@tanstack/router-core'
 
@@ -212,10 +212,11 @@ export function FloatingTanStackRouterDevtools({
 
   const basePanelClass = createMemo(() => {
     return [
-      styles.devtoolsPanelContainer,
-      styles.devtoolsPanelContainerVisibility(!!isOpen()),
-      styles.devtoolsPanelContainerResizing(isResizing),
-      styles.devtoolsPanelContainerAnimation(isResolvedOpen()),
+      'tsrd-devtools-panel-container',
+      isOpen() ? '' : 'tsrd-devtools-panel-container-hidden',
+      isResizing() ? 'tsrd-devtools-panel-container-resizing' : '',
+      // The closed offset comes from `--tsrd-panel-offset`.
+      isResolvedOpen() ? '' : 'tsrd-devtools-panel-container-closed',
     ].join(' ')
   })
 
@@ -230,9 +231,9 @@ export function FloatingTanStackRouterDevtools({
 
   const buttonStyle = createMemo(() => {
     return [
-      styles.mainCloseBtn,
-      styles.mainCloseBtnPosition(position),
-      styles.mainCloseBtnAnimation(!!isOpen()),
+      'tsrd-main-close-btn',
+      `tsrd-main-close-btn-${position}`,
+      isOpen() ? 'tsrd-main-close-btn-hidden' : '',
       toggleButtonClassName ?? '',
     ].join(' ')
   })
@@ -275,16 +276,16 @@ export function FloatingTanStackRouterDevtools({
         }}
         class={buttonStyle()}
       >
-        <div class={styles.mainCloseBtnIconContainer}>
-          <div class={styles.mainCloseBtnIconOuter}>
+        <div class="tsrd-main-close-btn-icon-container">
+          <div class="tsrd-main-close-btn-icon-outer">
             <TanStackLogo />
           </div>
-          <div class={styles.mainCloseBtnIconInner}>
+          <div class="tsrd-main-close-btn-icon-inner">
             <TanStackLogo />
           </div>
         </div>
-        <div class={styles.mainCloseBtnDivider}>-</div>
-        <div class={styles.routerLogoCloseButton}>TanStack Router</div>
+        <div class="tsrd-main-close-btn-divider">-</div>
+        <div class="tsrd-router-logo-close-button">TanStack Router</div>
       </button>
     </Dynamic>
   )
