@@ -29,11 +29,11 @@ import type { Node } from 'yuku'
 
 export const ROUTER_SPEC = 'toy-router'
 
-/** The paths in the stale sets of every environment that compiled (held ones too), taken: sorted, once each. */
+/** The paths in the stale sets of every environment that compiled, taken: sorted, once each. */
 export function takeStale(caches: CompilerCaches): Array<string> {
   const out = new Set<string>()
   for (const env of caches.plans.keys()) {
-    for (const path of caches.stale.take(env, { held: true })) {
+    for (const path of caches.stale.take(env)) {
       out.add(path)
     }
   }

@@ -12,6 +12,7 @@ import { describe, expect, onTestFinished, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { startDevServer } from '../dev-server'
 import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
+import type { RsbuildPlugin } from '@rsbuild/core'
 
 const timeout = 60_000
 
@@ -311,6 +312,250 @@ export const fn = base.handler(async () => 'MARK_HANDLER')
         Object.values(await server.outputs('client')).join('\n')
       expect(await output()).not.toContain('MARK_HANDLER')
       await server.edit({ 'src/b.ts': null })
+      expect(await output()).toContain('MARK_HANDLER')
+    },
+    timeout,
+  )
+})
+
+describe('Vite dev: a removed import nothing replaces yet', () => {
+  // A module whose compile read a file that is removed, while no other file
+  // satisfies its import, is built again at the removal, as after any change
+  // of what it read (Rsbuild, webpack and a watch build do the same): its
+  // compile records the failed import, and the file's return or a fallback
+  // created later (in another directory, through an alias) builds it again
+  // once a request compiled it (the page fetches it after the removal's
+  // update). A file created meanwhile that satisfies nothing sends nothing
+  // (it sent a client full reload while modules waited for the file; main
+  // sends nothing there either). Once a module whose output keeps the
+  // import was served while the import is missing, Vite itself retries it
+  // at every file creation, as on main. Source: Astra's second stale-set
+  // review.
+  const marked = `import '@tanstack/react-start/server-only'
+export const secret = () => 'MARK_PRIVATE'
+`
+  const allowed = (mark: string) => `export const secret = () => '${mark}'\n`
+  /** What the server sent the client for an edit, but for custom events. */
+  const clientSent = async (
+    server: Awaited<ReturnType<typeof startDevServer>>,
+    files: Record<string, string | null>,
+  ) =>
+    (await server.edit(files))
+      .filter((m) => m.environment === 'client' && m.type !== 'custom')
+      .map((m) => `${m.type} ${m.paths.join(' ')}`)
+  const unrelated = { 'src/other.ts': `export const other = 1\n` }
+  /** The page fetching the module again after its update (its load may fail while the import is missing). */
+  const refetch = async (
+    server: Awaited<ReturnType<typeof startDevServer>>,
+  ) => {
+    await server.load('/src/page.ts').catch(() => {})
+    await server.idle()
+  }
+
+  test(
+    'an import only a server fn handler reads: the removal updates the module, a file created meanwhile sends nothing, its return updates the module',
+    async () => {
+      const server = await startDevServer({
+        files: {
+          'src/left.ts': `export const tag = 'MARK_left'\n`,
+          'src/page.ts': `import { createServerFn } from '@tanstack/react-start'
+import { tag } from './left'
+export const fn = createServerFn().handler(async () => tag)
+`,
+        },
+      })
+      await server.load('/src/page.ts')
+      await server.idle()
+      expect(await clientSent(server, { 'src/left.ts': null })).not.toEqual([])
+      await refetch(server)
+      expect(await clientSent(server, unrelated)).toEqual([])
+      expect(
+        await clientSent(server, {
+          'src/left.ts': `export const tag = 'MARK_back'\n`,
+        }),
+      ).not.toEqual([])
+    },
+    timeout,
+  )
+
+  /**
+   * `src/page.ts` reads `secret` through `spec`; `src/lib.ts` is
+   * server-only, so the client is served a mock of it. `resolveId`: an
+   * app resolver for `spec`; `files`: more files of the app.
+   */
+  const startMocked = (
+    spec: string,
+    resolveId?: (root: string, specifier: string) => string | null | undefined,
+    files: Record<string, string> = {},
+  ) =>
+    startDevServer({
+      start: { importProtection: { behavior: 'mock' } },
+      plugins: resolveId
+        ? [
+            {
+              name: 'test:app-resolver',
+              enforce: 'pre',
+              resolveId(specifier: string) {
+                return resolveId(this.environment.config.root, specifier)
+              },
+            },
+          ]
+        : [],
+      files: {
+        'src/lib.ts': marked,
+        'src/page.ts': `import { secret } from '${spec}'
+export function read() { return secret() }
+`,
+        ...files,
+      },
+    })
+  const clientCode = async (
+    server: Awaited<ReturnType<typeof startDevServer>>,
+  ) => Object.values(await server.load('/src/page.ts')).join('\n')
+
+  test.each([
+    ['the file back', './lib', undefined, 'src/lib.ts'],
+    [
+      'a fallback in another directory created',
+      'app-choice',
+      (root: string, specifier: string) => {
+        if (specifier !== 'app-choice') {
+          return undefined
+        }
+        const lib = path.join(root, 'src/lib.ts')
+        const alt = path.join(root, 'elsewhere/public.ts')
+        return existsSync(lib) ? lib : existsSync(alt) ? alt : null
+      },
+      'elsewhere/public.ts',
+    ],
+    [
+      // (a resolver that caches its answer until the file is back)
+      'the file back, with a resolver that still names the removed file',
+      'app-choice',
+      (root: string, specifier: string) =>
+        specifier === 'app-choice' ? path.join(root, 'src/lib.ts') : undefined,
+      'src/lib.ts',
+    ],
+  ] as const)(
+    'a mocked import: a file created meanwhile sends nothing; %s updates the module, which serves it',
+    async (_, spec, resolveId, recovery) => {
+      const server = await startMocked(spec, resolveId)
+      expect(await clientCode(server)).not.toContain('MARK_PRIVATE')
+      await server.idle()
+      await server.edit({ 'src/lib.ts': null })
+      expect(await clientSent(server, unrelated)).toEqual([])
+      await refetch(server)
+      expect(
+        await clientSent(server, { [recovery]: allowed('MARK_PUBLIC') }),
+      ).not.toEqual([])
+      expect(await clientCode(server)).toContain('MARK_PUBLIC')
+    },
+    timeout,
+  )
+
+  // Two specifiers found the removed file; only one finds another file at
+  // once. The module is built against both answers at the removal, and
+  // again once the other one finds a file.
+  test(
+    'two specifiers of the removed file: a file created meanwhile sends nothing; the last one finding a file updates the module, which serves both',
+    async () => {
+      const server = await startMocked(
+        'shared-one',
+        (root, specifier) => {
+          if (specifier !== 'shared-one' && specifier !== 'shared-two') {
+            return undefined
+          }
+          const lib = path.join(root, 'src/lib.ts')
+          if (existsSync(lib)) {
+            return lib
+          }
+          const next = path.join(
+            root,
+            specifier === 'shared-one' ? 'src/one.ts' : 'src/two.ts',
+          )
+          return existsSync(next) ? next : null
+        },
+        {
+          'src/one.ts': allowed('MARK_ONE'),
+          'src/page.ts': `import { secret as a } from 'shared-one'
+import { secret as b } from 'shared-two'
+export function read() { return a() + b() }
+`,
+        },
+      )
+      expect(await clientCode(server)).not.toContain('MARK_PRIVATE')
+      await server.idle()
+      await server.edit({ 'src/lib.ts': null })
+      expect(await clientSent(server, unrelated)).toEqual([])
+      await refetch(server)
+      expect(
+        await clientSent(server, { 'src/two.ts': allowed('MARK_TWO') }),
+      ).not.toEqual([])
+      const code = await clientCode(server)
+      expect(code).toContain('MARK_ONE')
+      expect(code).toContain('MARK_TWO')
+    },
+    timeout,
+  )
+})
+
+describe('Rsbuild dev: a removed import nothing replaces yet', () => {
+  // Rsbuild builds the importer at the removal (its import fails there, as
+  // Rspack's own rebuild reports it), and again once its import finds a
+  // module: the importer is compiled against what it finds.
+  const importerFiles = (specifier: string) => ({
+    'src/a.ts': `import { base } from '${specifier}'
+export const fn = base.handler(async () => 'MARK_HANDLER')
+`,
+    'src/entry.ts': `import { fn } from './a'\n;(globalThis as any).fn = fn\n`,
+  })
+
+  test(
+    'the file back as a plain object: the handler comes back',
+    async () => {
+      const server = await startRsbuildStartDevServer({
+        compileTimeout: 20_000,
+        files: { 'src/lib.ts': builder, ...importerFiles('./lib') },
+      })
+      const output = async () =>
+        Object.values(await server.outputs('client')).join('\n')
+      expect(await output()).not.toContain('MARK_HANDLER')
+      await server.edit({ 'src/lib.ts': null })
+      await server.edit({ 'src/lib.ts': plain })
+      expect(await output()).toContain('MARK_HANDLER')
+    },
+    timeout,
+  )
+
+  test(
+    'a fallback in another directory created: the handler comes back',
+    async () => {
+      const aliasFallback: RsbuildPlugin = {
+        name: 'test:alias-fallback',
+        setup(api) {
+          // (an alias with targets tried in order)
+          api.modifyRspackConfig((config) => {
+            const root = api.context.rootPath
+            config.resolve.alias = {
+              ...(config.resolve.alias as Record<string, string>),
+              'app-choice': [
+                path.join(root, 'src/lib.ts'),
+                path.join(root, 'elsewhere/lib.ts'),
+              ],
+            }
+          })
+        },
+      }
+      const server = await startRsbuildStartDevServer({
+        compileTimeout: 20_000,
+        config: { plugins: [aliasFallback] },
+        files: { 'src/lib.ts': builder, ...importerFiles('app-choice') },
+      })
+      const output = async () =>
+        Object.values(await server.outputs('client')).join('\n')
+      expect(await output()).not.toContain('MARK_HANDLER')
+      await server.edit({ 'src/lib.ts': null })
+      await server.edit({ 'elsewhere/lib.ts': plain })
       expect(await output()).toContain('MARK_HANDLER')
     },
     timeout,

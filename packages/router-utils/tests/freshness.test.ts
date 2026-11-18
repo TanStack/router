@@ -211,7 +211,7 @@ describe('events that move the file set', () => {
         await new Promise((r) => setTimeout(r, 1))
       }
       await compiling
-      host.caches.stale.take(CLIENT.name, { held: true })
+      host.caches.stale.take(CLIENT.name)
       expect(factsOf(await host.compile('/app/x.ts', planners()))).toEqual(
         factsOf(await memoryHost(host.files).compile('/app/x.ts', planners())),
       )

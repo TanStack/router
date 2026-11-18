@@ -245,13 +245,9 @@ const reExport = (from: string) => `export { fn, tag } from './${from}'\n`
  * what its stale sets held.
  */
 const staleSince = (label: 'start:vite' | 'start:rsbuild') => {
-  const count = (name: 'stalePaths' | 'staleHeld') =>
-    compilerStats()[label]?.[name] ?? 0
-  const before = {
-    stalePaths: count('stalePaths'),
-    staleHeld: count('staleHeld'),
-  }
-  return (name: 'stalePaths' | 'staleHeld') => count(name) - before[name]
+  const count = () => compilerStats()[label]?.stalePaths ?? 0
+  const before = count()
+  return () => count() - before
 }
 
 /**
@@ -323,7 +319,7 @@ describe('Vite dev: a module whose import moves to another file, the old one rem
       expect((await server.import('/src/entry.ts')).tag).toBe('MARK_right')
       await server.load('/src/entry.ts')
       await server.idle()
-      expect(server.stale('stalePaths')).toBe(0)
+      expect(server.stale()).toBe(0)
 
       expect(await createOther(server)).toEqual([])
       // the old file back: nothing reads it
@@ -355,7 +351,7 @@ describe('Vite dev: a module whose import moves to another file, the old one rem
       await removeLeft(server)
       await request(server)
       await server.idle()
-      expect.soft(server.stale('stalePaths')).toBe(0)
+      expect.soft(server.stale()).toBe(0)
 
       expect(await createOther(server)).toEqual([])
       await leftBack(server)
@@ -376,7 +372,7 @@ describe('Vite dev: a module whose import moves to another file, the old one rem
       for (const step of steps) {
         await step(server)
       }
-      expect.soft(server.stale('stalePaths')).toBe(0)
+      expect.soft(server.stale()).toBe(0)
       expect(await createOther(server)).toEqual([])
     },
     timeout,
@@ -392,7 +388,7 @@ describe('Vite dev: a module whose import moves to another file, the old one rem
       await removeLeft(server)
       await leftBack(server)
       expect(await server.ssrTag()).toBe('MARK_right')
-      expect(server.stale('stalePaths')).toBe(0)
+      expect(server.stale()).toBe(0)
     },
     timeout,
   )
@@ -408,7 +404,7 @@ describe('Vite dev: a module whose import moves to another file, the old one rem
         'src/entry.ts': reExport('right'),
         'src/left.ts': null,
       })
-      expect.soft(server.stale('stalePaths')).toBe(0)
+      expect.soft(server.stale()).toBe(0)
       expect(await createOther(server)).toEqual([])
     },
     timeout,
@@ -416,8 +412,10 @@ describe('Vite dev: a module whose import moves to another file, the old one rem
 })
 
 describe('Vite dev: a module whose import is removed and comes back', () => {
-  // The importer still imports the removed file: its modules wait for it
-  // (held in both environments), and its return builds them again.
+  // The importer still imports the removed file: its modules are built again
+  // at the removal (their import fails), a file created meanwhile that is
+  // not the file updates nothing (it sent a full reload and an SSR update
+  // while modules waited for the file), and its return builds them again.
   test.each([
     ['', false],
     [', the importer edited meanwhile', true],
@@ -426,8 +424,8 @@ describe('Vite dev: a module whose import is removed and comes back', () => {
     async (_, editImporter) => {
       const server = await startLeft()
       await removeLeft(server)
-      // (client and SSR)
-      expect(server.stale('staleHeld')).toBe(2)
+      expect(server.stale()).toBe(0)
+      expect(await createOther(server)).toEqual([])
       if (editImporter) {
         // still importing it: its next compile records the failed import
         await server.edit({ 'src/entry.ts': `// edited\n${reExport('left')}` })
@@ -437,23 +435,23 @@ describe('Vite dev: a module whose import is removed and comes back', () => {
       const client = await server.load('/src/entry.ts')
       expect(client['/src/left.ts']).toContain('MARK_back')
       await server.idle()
-      expect(server.stale('stalePaths')).toBe(0)
+      expect(server.stale()).toBe(0)
     },
     timeout,
   )
 })
 
-describe('Vite dev: a module whose removed import its client output does not import, requested again with no event of its own', () => {
+describe('Vite dev: a module whose removed import its client output does not import', () => {
   // `page.ts`'s server fn handler reads `left.ts`; the client output drops
-  // the handler and the import. Removing `left.ts` holds `page.ts` in the
-  // client (its plan read the file). Vite then requests `page.ts` again
-  // with no event of its own (its optimizer finding a new dependency
-  // invalidates every module, as a plugin's `invalidateModule` does one):
-  // the compile reads the file missing, and the hold ends there, so a file
-  // created later updates nothing. Source: Astra round 3 (changes since
-  // c99ee06725, A2/M1: no row covered the release at a compile).
+  // the handler and the import. The removal builds `page.ts` again at once,
+  // as any change of what its plan read does (the client output compiles
+  // without the file; the plan records the failed import). A file created
+  // later that is not the file updates nothing (it sent a full reload while
+  // `page.ts` waited for the file); the file's return builds `page.ts` again
+  // (its failed import resolves). Source: Astra's second stale-set review
+  // (an unrelated creation reloaded the page).
   test(
-    'a file created later updates nothing',
+    'the removal updates it, a file created later updates nothing, the file back updates it',
     async () => {
       const stale = staleSince('start:vite')
       const server = await startDevServer({
@@ -465,16 +463,21 @@ export const fn = createServerFn().handler(async () => left)
 `,
         },
       })
+      const client = (sent: Array<{ environment: string; type: string }>) =>
+        sent.filter((m) => m.environment === 'client' && m.type !== 'custom')
       await server.load('/src/page.ts')
       await server.idle()
-      await server.edit({ 'src/left.ts': null })
-      expect(stale('staleHeld')).toBe(1)
-
-      server.vite.environments.client.moduleGraph.invalidateAll()
+      expect(client(await server.edit({ 'src/left.ts': null }))).not.toEqual([])
+      // (the page fetches it again)
       await server.load('/src/page.ts')
       await server.idle()
-      expect(stale('staleHeld')).toBe(0)
+      expect(stale()).toBe(0)
       expect(await createOther(server)).toEqual([])
+      expect(
+        client(
+          await server.edit({ 'src/left.ts': `export const left = 'back'\n` }),
+        ),
+      ).not.toEqual([])
     },
     timeout,
   )
@@ -530,7 +533,7 @@ describe('Vite dev: an MDX module whose import moves to another file, the old on
         await remove()
         await move()
       }
-      expect.soft(server.stale('stalePaths')).toBe(0)
+      expect.soft(server.stale()).toBe(0)
       expect(await createOther(server)).toEqual([])
       expect(await server.ssrTag()).toBe('MARK_right')
     },
@@ -551,7 +554,7 @@ describe('A module saved with the same text, then its import edited', () => {
       const client = await server.load('/src/entry.ts')
       expect(client['/src/left.ts']).toContain('MARK_edited')
       await server.idle()
-      expect(server.stale('stalePaths')).toBe(0)
+      expect(server.stale()).toBe(0)
     },
     timeout,
   )
@@ -575,7 +578,7 @@ describe('A module saved with the same text, then its import edited', () => {
       expect(server.errors).toEqual([])
       expect(await output()).toContain('MARK_edited')
       expect(await output()).not.toContain('MARK_left')
-      expect(stale('stalePaths')).toBe(0)
+      expect(stale()).toBe(0)
     },
     timeout,
   )
@@ -611,7 +614,7 @@ describe('Rsbuild dev: a module whose import moves to another file, the old one 
       await server.edit({ 'src/other.ts': `export const other = 1\n` })
       expect(server.rebuilt).toContain('src/other.ts')
       expect(server.rebuilt).not.toContain('src/fns.ts')
-      expect(stale('stalePaths')).toBe(0)
+      expect(stale()).toBe(0)
     },
     timeout,
   )

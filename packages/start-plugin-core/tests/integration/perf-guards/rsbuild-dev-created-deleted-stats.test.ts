@@ -78,10 +78,7 @@ describe('Rsbuild dev: created and deleted files', () => {
         }
       }
       const after = stats()
-      expect({
-        stalePaths: after.stalePaths ?? 0,
-        staleHeld: after.staleHeld ?? 0,
-      }).toEqual({ stalePaths: 0, staleHeld: 0 })
+      expect(after.stalePaths ?? 0).toBe(0)
       for (const key of bounded) {
         expect(after[key] ?? 0, key).toBeLessThanOrEqual(before[key] ?? 0)
       }
