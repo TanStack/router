@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794576679553,
+  "lastUpdate": 1795045795465,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,132 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "me@florianpellet.com",
-            "name": "Flo",
-            "username": "Sheraff"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "697ebb6ddbd433d052b6b4707938a5c595865d58",
-          "message": "fix(react-router): prevent blank frame before initial pending UI (#7961)\n\n* fix(react-router): prevent blank initial pending frame\n\n* test(react-router): remove obsolete issue 4759 unit test\n\n* alternative fix\n\n* ci: apply automated fixes\n\n* simplify code comment\n\n---------\n\nCo-authored-by: autofix-ci[bot] <114827586+autofix-ci[bot]@users.noreply.github.com>",
-          "timestamp": "2026-08-06T00:09:29+02:00",
-          "tree_id": "aa002affc12152fe397eb5888e4280b089c41a9a",
-          "url": "https://github.com/TanStack/router/commit/697ebb6ddbd433d052b6b4707938a5c595865d58"
-        },
-        "date": 1785967968448,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89200,
-            "unit": "bytes",
-            "extra": "raw=275591; brotli=77742; initial_gzip=89058"
-          },
-          {
-            "name": "react-router.full",
-            "value": 93079,
-            "unit": "bytes",
-            "extra": "raw=287833; brotli=81131; initial_gzip=92940"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 35632,
-            "unit": "bytes",
-            "extra": "raw=102367; brotli=32147; initial_gzip=35505"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 40857,
-            "unit": "bytes",
-            "extra": "raw=117907; brotli=36780; initial_gzip=40729"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 53346,
-            "unit": "bytes",
-            "extra": "raw=146556; brotli=48000; initial_gzip=53212"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 59444,
-            "unit": "bytes",
-            "extra": "raw=165676; brotli=53331; initial_gzip=59312"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 103012,
-            "unit": "bytes",
-            "extra": "raw=319779; brotli=89400; initial_gzip=102871"
-          },
-          {
-            "name": "react-start.deferred-hydration",
-            "value": 103769,
-            "unit": "bytes",
-            "extra": "raw=321187; brotli=90141; initial_gzip=102896"
-          },
-          {
-            "name": "react-start.full",
-            "value": 106415,
-            "unit": "bytes",
-            "extra": "raw=329966; brotli=92336; initial_gzip=106272"
-          },
-          {
-            "name": "react-start.rsbuild.minimal",
-            "value": 102641,
-            "unit": "bytes",
-            "extra": "raw=324387; brotli=88494; initial_gzip=102466"
-          },
-          {
-            "name": "react-start.rsbuild.minimal-iife",
-            "value": 103059,
-            "unit": "bytes",
-            "extra": "raw=325346; brotli=88815; initial_gzip=102890"
-          },
-          {
-            "name": "react-start.rsbuild.full",
-            "value": 106054,
-            "unit": "bytes",
-            "extra": "raw=334723; brotli=91382; initial_gzip=105879"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 49338,
-            "unit": "bytes",
-            "extra": "raw=145518; brotli=43774; initial_gzip=49204"
-          },
-          {
-            "name": "solid-start.deferred-hydration",
-            "value": 52678,
-            "unit": "bytes",
-            "extra": "raw=153750; brotli=46967; initial_gzip=49265"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 54715,
-            "unit": "bytes",
-            "extra": "raw=161627; brotli=48524; initial_gzip=54581"
-          },
-          {
-            "name": "vue-start.minimal",
-            "value": 70627,
-            "unit": "bytes",
-            "extra": "raw=199800; brotli=62745; initial_gzip=70495"
-          },
-          {
-            "name": "vue-start.full",
-            "value": 74681,
-            "unit": "bytes",
-            "extra": "raw=212603; brotli=66289; initial_gzip=74549"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -26210,6 +26084,138 @@ window.BENCHMARK_DATA = {
             "value": 70768,
             "unit": "bytes",
             "extra": "raw=202293; brotli=63102; initial_gzip=70643"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "ciaran.curley.11.11@gmail.com",
+            "name": "Ciarán Curley",
+            "username": "DogPawHat"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "11b3bcb36dbadbb46a8943f15abb0a0b80dd78d9",
+          "message": "chore(deps): update vite to 8.3.8 for GHSA-p4f5-76q4-ffq7 (#8955)\n\n- bump the workspace catalog 'vite' from '^8.3.4' to '^8.3.8'; the 'vite: catalog:'\n  override routes every workspace and transitive 'vite' through it, so the lockfile\n  now resolves only 'vite@8.3.8'\n- 'vite@8.3.8' pulls in 'rolldown@1.2.19', which carries the fix for the\n  '__vite-browser-external' / '__vite-optional-peer-dep' injection\n- the lockfile refresh also moves 'router-plugin's dev 'vite-plugin-solid' from\n  2.11.11 to 2.11.16 within its existing range\n\nNo changeset: published packages only declare 'vite' as a peer dependency.",
+          "timestamp": "2026-11-18T23:47:54Z",
+          "tree_id": "29f5880f3134e4ed9483e0fbb3c33fa69b932b31",
+          "url": "https://github.com/TanStack/router/commit/11b3bcb36dbadbb46a8943f15abb0a0b80dd78d9"
+        },
+        "date": 1795045794591,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 86065,
+            "unit": "bytes",
+            "extra": "raw=267805; brotli=75054; initial_gzip=85925"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89702,
+            "unit": "bytes",
+            "extra": "raw=279988; brotli=78281; initial_gzip=89563"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 34181,
+            "unit": "bytes",
+            "extra": "raw=97578; brotli=30918; initial_gzip=34054"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 39191,
+            "unit": "bytes",
+            "extra": "raw=112740; brotli=35392; initial_gzip=39064"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50656,
+            "unit": "bytes",
+            "extra": "raw=139776; brotli=45864; initial_gzip=50529"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56379,
+            "unit": "bytes",
+            "extra": "raw=158387; brotli=50871; initial_gzip=56254"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 99119,
+            "unit": "bytes",
+            "extra": "raw=309703; brotli=86171; initial_gzip=98979"
+          },
+          {
+            "name": "react-start.query-integration",
+            "value": 106720,
+            "unit": "bytes",
+            "extra": "raw=336925; brotli=92648; initial_gzip=106580"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99862,
+            "unit": "bytes",
+            "extra": "raw=311090; brotli=86853; initial_gzip=99000"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102260,
+            "unit": "bytes",
+            "extra": "raw=319192; brotli=88777; initial_gzip=102121"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 99001,
+            "unit": "bytes",
+            "extra": "raw=305450; brotli=85440; initial_gzip=98839"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 99402,
+            "unit": "bytes",
+            "extra": "raw=306428; brotli=85823; initial_gzip=99241"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 102369,
+            "unit": "bytes",
+            "extra": "raw=315323; brotli=88118; initial_gzip=102207"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47340,
+            "unit": "bytes",
+            "extra": "raw=138363; brotli=42181; initial_gzip=47211"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50439,
+            "unit": "bytes",
+            "extra": "raw=145859; brotli=44999; initial_gzip=47267"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52470,
+            "unit": "bytes",
+            "extra": "raw=153685; brotli=46504; initial_gzip=52340"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 67001,
+            "unit": "bytes",
+            "extra": "raw=190191; brotli=59776; initial_gzip=66872"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 70830,
+            "unit": "bytes",
+            "extra": "raw=202341; brotli=63141; initial_gzip=70703"
           }
         ]
       }
