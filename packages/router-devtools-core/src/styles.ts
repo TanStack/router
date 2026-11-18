@@ -1,4 +1,3 @@
-import { clsx as cx } from 'clsx'
 import cssText from './styles.css?inline'
 import type { Accessor } from 'solid-js'
 
@@ -34,20 +33,12 @@ export const styles = {
   maskedLocation: 'tsrd-masked-location',
   routeMatchesToggle: 'tsrd-route-matches-toggle',
   routeMatchesToggleBtn: (active: boolean, showBorder: boolean) =>
-    cx(
-      'tsrd-route-matches-toggle-btn',
-      active && 'tsrd-route-matches-toggle-btn-active',
-      showBorder && 'tsrd-route-matches-toggle-btn-border',
-    ),
+    `tsrd-route-matches-toggle-btn${active ? ' tsrd-route-matches-toggle-btn-active' : ''}${showBorder ? ' tsrd-route-matches-toggle-btn-border' : ''}`,
   routesContainer: 'tsrd-routes-container',
   routesRowContainer: (active: boolean, isMatch: boolean) =>
-    cx(
-      'tsrd-routes-row-container',
-      isMatch && 'tsrd-routes-row-container-match',
-      active && 'tsrd-routes-row-container-active',
-    ),
+    `tsrd-routes-row-container${isMatch ? ' tsrd-routes-row-container-match' : ''}${active ? ' tsrd-routes-row-container-active' : ''}`,
   routesRow: (isMatch: boolean) =>
-    cx('tsrd-routes-row', !isMatch && 'tsrd-routes-row-unmatched'),
+    isMatch ? 'tsrd-routes-row' : 'tsrd-routes-row tsrd-routes-row-unmatched',
   nestedRouteRow: (isRoot: boolean) => (isRoot ? '' : 'tsrd-nested-route-row'),
   routeParamInfo: 'tsrd-route-param-info',
   code: 'tsrd-code',
@@ -55,12 +46,12 @@ export const styles = {
   cachedMatchesContainer: 'tsrd-cached-matches-container',
   historyOverflowContainer: 'tsrd-history-overflow-container',
   matchRow: (active: boolean) =>
-    cx('tsrd-match-row', active && 'tsrd-match-row-active'),
+    active ? 'tsrd-match-row tsrd-match-row-active' : 'tsrd-match-row',
   matchID: 'tsrd-match-id',
   matchIndicator: (color: Color) =>
     `tsrd-match-indicator tsrd-match-indicator-${color}`,
   ageTicker: (showWarning: boolean) =>
-    cx('tsrd-age-ticker', showWarning && 'tsrd-age-ticker-warning'),
+    showWarning ? 'tsrd-age-ticker tsrd-age-ticker-warning' : 'tsrd-age-ticker',
   matchDetails: 'tsrd-match-details',
   matchStatus: (
     status: 'pending' | 'success' | 'error' | 'notFound',
@@ -103,10 +94,9 @@ export const styles = {
   labelButton: 'tsrd-explorer-label-button',
   expander: 'tsrd-explorer-expander',
   expanderIcon: (expanded: boolean) =>
-    cx(
-      'tsrd-explorer-expander-icon',
-      expanded && 'tsrd-explorer-expander-icon-expanded',
-    ),
+    expanded
+      ? 'tsrd-explorer-expander-icon tsrd-explorer-expander-icon-expanded'
+      : 'tsrd-explorer-expander-icon',
   expandButton: 'tsrd-explorer-expand-button',
   value: 'tsrd-explorer-value',
   compositeComponent: 'tsrd-explorer-composite-component',

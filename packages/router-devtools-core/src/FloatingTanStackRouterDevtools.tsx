@@ -1,5 +1,3 @@
-import { clsx as cx } from 'clsx'
-
 import { createEffect, createMemo, createSignal } from 'solid-js'
 import { Dynamic } from 'solid-js/web'
 
@@ -213,12 +211,12 @@ export function FloatingTanStackRouterDevtools({
   const resolvedHeight = createMemo(() => devtoolsHeight() ?? 500)
 
   const basePanelClass = createMemo(() => {
-    return cx(
+    return [
       styles.devtoolsPanelContainer,
       styles.devtoolsPanelContainerVisibility(!!isOpen()),
       styles.devtoolsPanelContainerResizing(isResizing),
       styles.devtoolsPanelContainerAnimation(isResolvedOpen()),
-    )
+    ].join(' ')
   })
 
   const basePanelStyle = createMemo(() => {
@@ -231,12 +229,12 @@ export function FloatingTanStackRouterDevtools({
   })
 
   const buttonStyle = createMemo(() => {
-    return cx(
+    return [
       styles.mainCloseBtn,
       styles.mainCloseBtnPosition(position),
       styles.mainCloseBtnAnimation(!!isOpen()),
-      toggleButtonClassName,
-    )
+      toggleButtonClassName ?? '',
+    ].join(' ')
   })
 
   return (

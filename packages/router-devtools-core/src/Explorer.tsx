@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
-import { clsx as cx } from 'clsx'
 import { createMemo, createSignal } from 'solid-js'
 import { styles } from './styles'
 import {
@@ -24,7 +23,7 @@ export const Expander = ({ expanded, style: _style = {} }: ExpanderProps) => {
         height="12"
         fill="none"
         viewBox="0 0 24 24"
-        class={cx(styles.expanderIcon(expanded))}
+        class={styles.expanderIcon(expanded)}
       >
         <path
           stroke="currentColor"
@@ -278,7 +277,7 @@ export function Explorer({
                     <div>
                       <div class={styles.entry}>
                         <button
-                          class={cx(styles.labelButton, 'labelButton')}
+                          class={`${styles.labelButton} labelButton`}
                           onClick={() =>
                             setExpandedPages((old) =>
                               old.includes(index)

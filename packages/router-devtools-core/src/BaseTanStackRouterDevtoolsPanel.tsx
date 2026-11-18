@@ -1,4 +1,3 @@
-import { clsx as cx } from 'clsx'
 import {
   getRouteSegments,
   hasKeys,
@@ -79,9 +78,8 @@ export interface BaseDevtoolsPanelOptions {
 const HISTORY_LIMIT = 15
 
 function Logo(props: any) {
-  const { className, ...rest } = props
   return (
-    <button {...rest} class={cx(styles.logo, className ? className() : '')}>
+    <button {...props} class={styles.logo}>
       <div class={styles.tanstackLogo}>TANSTACK</div>
       <div class={styles.routerLogo}>TanStack Router v1</div>
     </button>
@@ -209,17 +207,13 @@ function RouteComp({
             setActiveId(activeId() === route.id ? '' : route.id)
           }
         }}
-        class={cx(
-          styles.routesRowContainer(route.id === activeId(), !!match()),
-        )}
+        class={styles.routesRowContainer(route.id === activeId(), !!match())}
       >
         <div
-          class={cx(
-            styles.matchIndicator(getRouteStatusColor(matches(), route)),
-          )}
+          class={styles.matchIndicator(getRouteStatusColor(matches(), route))}
         />
         <NavigateLink
-          class={cx(styles.routesRow(!!match()))}
+          class={styles.routesRow(!!match())}
           left={
             <Show when={navigationTarget()}>
               {(navigate) => <NavigateButton to={navigate()} router={router} />}
@@ -410,11 +404,7 @@ export const BaseTanStackRouterDevtoolsPanel =
 
     return (
       <div
-        class={cx(
-          styles.devtoolsPanel,
-          'TanStackRouterDevtoolsPanel',
-          className ? className() : '',
-        )}
+        class={`${styles.devtoolsPanel} TanStackRouterDevtoolsPanel ${className?.() ?? ''}`}
         style={style ? style() : ''}
         {...otherPanelProps}
       >
@@ -504,11 +494,9 @@ export const BaseTanStackRouterDevtoolsPanel =
                     setCurrentTab('routes')
                   }}
                   disabled={currentTab() === 'routes'}
-                  class={cx(
-                    styles.routeMatchesToggleBtn(
-                      currentTab() === 'routes',
-                      true,
-                    ),
+                  class={styles.routeMatchesToggleBtn(
+                    currentTab() === 'routes',
+                    true,
                   )}
                 >
                   Routes
@@ -519,11 +507,9 @@ export const BaseTanStackRouterDevtoolsPanel =
                     setCurrentTab('matches')
                   }}
                   disabled={currentTab() === 'matches'}
-                  class={cx(
-                    styles.routeMatchesToggleBtn(
-                      currentTab() === 'matches',
-                      true,
-                    ),
+                  class={styles.routeMatchesToggleBtn(
+                    currentTab() === 'matches',
+                    true,
                   )}
                 >
                   Matches
@@ -534,11 +520,9 @@ export const BaseTanStackRouterDevtoolsPanel =
                     setCurrentTab('history')
                   }}
                   disabled={currentTab() === 'history'}
-                  class={cx(
-                    styles.routeMatchesToggleBtn(
-                      currentTab() === 'history',
-                      false,
-                    ),
+                  class={styles.routeMatchesToggleBtn(
+                    currentTab() === 'history',
+                    false,
                   )}
                 >
                   History
@@ -548,7 +532,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <div>age / staleTime / gcTime</div>
               </div>
             </div>
-            <div class={cx(styles.routesContainer)}>
+            <div class={styles.routesContainer}>
               <Switch>
                 <Match when={currentTab() === 'routes'}>
                   <RouteComp
@@ -574,12 +558,10 @@ export const BaseTanStackRouterDevtoolsPanel =
                           onClick={() =>
                             setActiveId(activeId() === match.id ? '' : match.id)
                           }
-                          class={cx(styles.matchRow(match === activeMatch()))}
+                          class={styles.matchRow(match === activeMatch())}
                         >
                           <div
-                            class={cx(
-                              styles.matchIndicator(getStatusColor(match)),
-                            )}
+                            class={styles.matchIndicator(getStatusColor(match))}
                           />
                           <NavigateLink
                             left={
@@ -606,14 +588,10 @@ export const BaseTanStackRouterDevtoolsPanel =
                     <ul>
                       <For each={history()}>
                         {(match, index) => (
-                          <li
-                            class={cx(styles.matchRow(match === activeMatch()))}
-                          >
+                          <li class={styles.matchRow(match === activeMatch())}>
                             <div
-                              class={cx(
-                                styles.matchIndicator(
-                                  index() === 0 ? 'green' : 'gray',
-                                ),
+                              class={styles.matchIndicator(
+                                index() === 0 ? 'green' : 'gray',
                               )}
                             />
                             <NavigateLink
@@ -665,10 +643,10 @@ export const BaseTanStackRouterDevtoolsPanel =
                       onClick={() =>
                         setActiveId(activeId() === match.id ? '' : match.id)
                       }
-                      class={cx(styles.matchRow(match === activeMatch()))}
+                      class={styles.matchRow(match === activeMatch())}
                     >
                       <div
-                        class={cx(styles.matchIndicator(getStatusColor(match)))}
+                        class={styles.matchIndicator(getStatusColor(match))}
                       />
                       <NavigateLink
                         left={
