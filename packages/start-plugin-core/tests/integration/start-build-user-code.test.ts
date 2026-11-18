@@ -211,10 +211,12 @@ ${callByIdExports}`,
   )
 
   // A route with `ssr: false` whose component reads browser globals, in a
-  // module that also defines a server fn: SSR renders the route without
-  // running the component, the server fn answers its HTTP call, and the
-  // client renders the component. (That the route module's top-level code
-  // runs once per environment is the goal pinned in
+  // module that also defines a server fn the component calls: SSR renders
+  // the route without running the component, the server fn answers the
+  // client's HTTP call, and the client renders the component. (Production
+  // answers the HTTP call only of a server fn the emitted client code calls,
+  // SPEC J4.2: here the component's click handler. That the route module's
+  // top-level code runs once per environment is the goal pinned in
   // start-build-server-fn-cases.test.ts "SSR: a server fn module is
   // initialised once ...". An unconditional top-level `window` read is no
   // requirement, SPEC J4.14.)
@@ -234,6 +236,7 @@ export const Route = createFileRoute('/canvas')({
 })
 function CanvasPage() {
   const canvas = window.document.createElement('canvas')
+  canvas.onclick = () => getMessage()
   return 'MARK_CANVAS_' + canvas.tagName
 }
 `,
