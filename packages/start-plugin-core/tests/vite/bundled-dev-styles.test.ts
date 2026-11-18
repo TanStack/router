@@ -25,7 +25,11 @@ test('collects ordered static and dynamic CSS from a completed bundled graph', a
     }).map(([file, code]) => writeFile(path.join(root, file), code)),
   )
   let snapshot: ReturnType<typeof captureBundledDevStyles> | undefined
-  const completed = Promise.withResolvers<void>()
+  let resolveCompleted!: () => void
+  const completed = {
+    promise: new Promise<void>((resolve) => (resolveCompleted = resolve)),
+    resolve: () => resolveCompleted(),
+  }
   const server = await createServer({
     root,
     configFile: false,
