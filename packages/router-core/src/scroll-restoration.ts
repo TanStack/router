@@ -1,4 +1,5 @@
 import { isServer } from '@tanstack/router-core/isServer'
+import { createNull } from './utils'
 import type { AnyRouter } from './router'
 import type { ParsedLocation } from './location'
 
@@ -29,12 +30,13 @@ const safeSessionStorage = getSafeSessionStorage()
 
 function createScrollRestorationCache() {
   try {
-    return JSON.parse(
-      safeSessionStorage?.getItem(storageKey) || '{}',
+    return Object.setPrototypeOf(
+      JSON.parse(safeSessionStorage?.getItem(storageKey) || '{}'),
+      null,
     ) as ScrollRestorationByKey
   } catch {
     // ignore invalid session storage payloads
-    return {}
+    return createNull() as ScrollRestorationByKey
   }
 }
 
