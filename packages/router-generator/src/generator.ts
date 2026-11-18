@@ -740,7 +740,9 @@ export class Generator {
       ? this.published!.content
       : await readIfExists(this.treeFile)
     if (onDisk !== content) {
-      await this.publisher.write(this.treeFile, content)
+      // A file of its own, as on main: its imports are relative to where it
+      // is configured, and a link elsewhere would resolve them from there
+      await this.publisher.write(this.treeFile, content, undefined, true)
     }
     const stat = await fsp.stat(this.treeFile)
     this.published = { content, mtimeMs: stat.mtimeMs, size: stat.size }

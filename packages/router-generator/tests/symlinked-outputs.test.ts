@@ -1,10 +1,12 @@
 /**
  * Symlinked route files and route trees the generator rewrites, read back
- * from disk after a run: the link is what the user made, and the file it
- * names (shared with other consumers) is what gets the new content. A file
- * two route files of the tree link to can't hold both routes: a link whose
- * route its target doesn't hold becomes a file of its own, as on `main`, and
- * the router loads both routes (Astra overall #5).
+ * from disk after a run. A route file's link is what the user made, and the
+ * file it names (shared with other consumers) is what gets the new content
+ * (SPEC J1.6). A file two route files of the tree link to can't hold both
+ * routes: a link whose route its target doesn't hold becomes a file of its
+ * own, as on `main`, and the router loads both routes (Astra overall #5).
+ * The route tree gets a file of its own, as on `main`: its imports are
+ * relative to where it is configured (Astra round 3, B1).
  */
 import {
   chmod,
@@ -109,10 +111,13 @@ describe('symlinked files the generator rewrites', () => {
     ).toContain(`'/about'`)
   })
 
-  test('route tree linked to a file: the link stays and the target holds the tree', async () => {
+  test('route tree linked to a file in another directory: the tree becomes a file of its own and the router loads it', async () => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
-      'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'\nexport const Route = createFileRoute('/')({})\n`,
+      'src/routes/index.tsx': fileRoute(
+        '/',
+        `{ component: () => 'home page' }`,
+      ),
     })
     await linked(
       root,
@@ -121,14 +126,21 @@ describe('symlinked files the generator rewrites', () => {
       '// old\n',
     )
     await generate(root)
-    await expectLink(
-      root,
-      'src/routeTree.gen.ts',
-      path.join(root, 'shared/routeTree.gen.ts'),
-    )
+    // Its imports are printed from where it is configured: a bundler
+    // resolving them from the link's target would not find the routes
+    expect(
+      (await lstat(path.join(root, 'src/routeTree.gen.ts'))).isSymbolicLink(),
+    ).toBe(false)
     expect(
       await readFile(path.join(root, 'shared/routeTree.gen.ts'), 'utf8'),
-    ).toContain('routeTree')
+    ).toBe('// old\n')
+    await withRouteTree(
+      path.join(root, 'src/routeTree.gen.ts'),
+      async ({ router, renderAt }) => {
+        expect(Object.keys(router.routesById).sort()).toEqual(['/', '__root__'])
+        expect(await renderAt('/')).toContain('home page')
+      },
+    )
   })
 
   test('route tree in a linked directory: the directory link stays and the tree lands behind it', async () => {
@@ -138,21 +150,13 @@ describe('symlinked files the generator rewrites', () => {
     })
     await mkdir(path.join(root, 'shared'), { recursive: true })
     await symlink(path.join(root, 'shared'), path.join(root, 'src/generated'))
-    await linked(
-      root,
-      'src/generated/routeTree.gen.ts',
-      'shared/tree.ts',
-      '// old\n',
-      './tree.ts',
-    )
     await generate(root, {
       generatedRouteTree: path.join(root, 'src/generated/routeTree.gen.ts'),
     })
     await expectLink(root, 'src/generated', path.join(root, 'shared'))
-    await expectLink(root, 'shared/routeTree.gen.ts', './tree.ts')
-    expect(await readFile(path.join(root, 'shared/tree.ts'), 'utf8')).toContain(
-      'routeTree',
-    )
+    expect(
+      await readFile(path.join(root, 'shared/routeTree.gen.ts'), 'utf8'),
+    ).toContain('routeTree')
   })
 
   test.skipIf(process.platform === 'win32')(

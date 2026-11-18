@@ -59,9 +59,9 @@ async function realPathOf(file: string) {
  * Atomic file replacement (SPEC J1.6, J1.16): the content is written to a
  * temporary file, which is renamed over the destination, so a reader sees
  * the old or the new file, never a part. The destination is the file's real
- * path: a symlinked route file or route tree keeps its link, and the file it
- * names gets the content, keeping its mode and owner (unless the caller asks
- * for a file of its own: `write`'s `ownFile`). Temporary files go to
+ * path: a symlinked route file keeps its link, and the file it names gets
+ * the content, keeping its mode and owner (unless the caller asks for a file
+ * of its own: `write`'s `ownFile`, as the route tree always does). Temporary files go to
  * `tmpDir`; when a rename from there crosses devices (EXDEV), the temporary
  * file is written beside the real destination instead (a dot file, which the
  * route scan skips), for that directory from then on.

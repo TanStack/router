@@ -330,7 +330,8 @@ lazyRouteTemplate}`; `.lazy.tsx`/`.lazy.ts` files get the lazy template. A `.laz
   as needed. A clear error naming the file is acceptable only for a name the conventions do not support. A symlinked
   route file keeps its link and the file it names gets the upkeep, unless that file is another route file of the tree
   or another one links to it too: one file holds one route, so the link becomes a file of its own (as on `main`), and
-  the router loads both routes. Start's server manifest gives a symlinked route the assets of its chunks, which
+  the router loads both routes. The route tree is a file of its own (as on `main`): its imports are relative to the
+  configured path, so a link there is replaced. Start's server manifest gives a symlinked route the assets of its chunks, which
   bundlers name by the real path (the document links the route's stylesheet).
 - **J1.7** Conflicting route paths give an error naming the conflicting files (absolute or project-relative,
   unambiguous, §5.7). Only genuinely conflicting routes: one route mounted through an empty-prefix `physical('',
