@@ -114,8 +114,7 @@ function addEarlyHintFetchAttrs(
   attrs: Record<string, any> | undefined,
 ) {
   const crossOrigin = getStringAttr(attrs, 'crossOrigin', 'crossorigin') as
-    | EarlyHint['crossOrigin']
-    | undefined
+    EarlyHint['crossOrigin'] | undefined
   const type = getStringAttr(attrs, 'type')
   const integrity = getStringAttr(attrs, 'integrity')
   const referrerPolicy = getStringAttr(

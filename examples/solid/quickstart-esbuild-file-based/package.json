@@ -13,12 +13,12 @@
     "@tanstack/solid-router": "^1.170.43",
     "@tanstack/solid-router-devtools": "^1.167.3",
     "redaxios": "^0.5.1",
-    "solid-js": "^1.9.10",
-    "tailwindcss": "^4.2.2",
-    "zod": "^4.4.3"
+    "solid-js": "^1.9.19",
+    "tailwindcss": "^4.3.5",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "esbuild": "^0.27.4",
+    "esbuild": "^0.28.2",
     "esbuild-plugin-solid": "^0.6.0"
   }
 }

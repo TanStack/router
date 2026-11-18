@@ -13,17 +13,17 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@swc/core": "^1.15.33",
+    "@swc/core": "^1.16.22",
     "@tanstack/router-plugin": "^1.169.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "html-webpack-plugin": "^5.6.3",
-    "react-refresh": "^0.18.0",
-    "swc-loader": "^0.2.6",
+    "html-webpack-plugin": "^5.6.8",
+    "react-refresh": "^0.19.0",
+    "swc-loader": "^0.2.7",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "webpack": "^5.97.1",
+    "webpack": "^5.112.2",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^5.2.4"
+    "webpack-dev-server": "^5.2.7"
   }
 }

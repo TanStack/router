@@ -63,10 +63,10 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "dependencies": {
-    "@babel/generator": "^7.29.8",
-    "@babel/parser": "^7.29.8",
+    "@babel/generator": "^7.29.14",
+    "@babel/parser": "^7.29.14",
     "@babel/types": "catalog:",
-    "ansis": "^4.3.1",
+    "ansis": "^4.5.0",
     "babel-dead-code-elimination": "^1.0.12",
     "diff": "^9.0.0",
     "pathe": "catalog:",

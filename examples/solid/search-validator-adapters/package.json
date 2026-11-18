@@ -10,28 +10,28 @@
     "test:unit": "vitest"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.2.2",
+    "@tailwindcss/vite": "^4.3.5",
     "@tanstack/arktype-adapter": "^1.167.0",
-    "@tanstack/solid-query": "^5.90.9",
+    "@tanstack/solid-query": "^5.108.0",
     "@tanstack/solid-router": "^1.170.43",
     "@tanstack/solid-router-devtools": "^1.167.3",
     "@tanstack/router-plugin": "^1.169.0",
     "@tanstack/valibot-adapter": "^1.167.0",
     "@tanstack/zod-adapter": "^1.167.0",
-    "arktype": "^2.1.7",
-    "solid-js": "^1.9.10",
-    "tailwindcss": "^4.2.2",
-    "valibot": "1.0.0-beta.15",
-    "zod": "^3.24.2"
+    "arktype": "^2.2.9",
+    "solid-js": "^1.9.19",
+    "tailwindcss": "^4.3.5",
+    "valibot": "1.5.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^7.0.1",
     "@solidjs/testing-library": "^0.8.10",
-    "vite-plugin-solid": "^2.11.11",
+    "vite-plugin-solid": "^2.11.16",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "jsdom": "^27.0.0",
+    "jsdom": "^27.4.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.0.14",
-    "vitest": "^5.0.4"
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
   }
 }

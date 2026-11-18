@@ -14,12 +14,12 @@
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
-    "solid-js": "^1.9.10"
+    "solid-js": "^1.9.19"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.0",
+    "@playwright/test": "^1.65.1",
     "@tanstack/router-e2e-utils": "workspace:^",
-    "vite-plugin-solid": "^2.11.11",
-    "vite": "^8.0.14"
+    "vite-plugin-solid": "^2.11.16",
+    "vite": "^8.3.8"
   }
 }

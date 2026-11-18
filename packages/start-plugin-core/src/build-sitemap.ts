@@ -12,13 +12,7 @@ export type SitemapUrl = {
   lastmod: string
   priority?: number
   changefreq?:
-    | 'always'
-    | 'hourly'
-    | 'daily'
-    | 'weekly'
-    | 'monthly'
-    | 'yearly'
-    | 'never'
+    'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never'
   alternateRefs?: Array<{
     href: string
     hreflang: string

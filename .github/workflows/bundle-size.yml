@@ -41,14 +41,14 @@ jobs:
       current_json_b64: ${{ steps.capture.outputs.current_json_b64 }}
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Tools
-        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+        uses: TanStack/config/.github/setup@a041f4eeb8e4d595aee89f8992b20c669288a741 # main
 
       - name: Measure Bundle Size
         run: pnpm benchmark:bundle-size --outputStyle=stream --skipRemoteCache
@@ -70,7 +70,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -126,18 +126,18 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Tools
-        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+        uses: TanStack/config/.github/setup@a041f4eeb8e4d595aee89f8992b20c669288a741 # main
 
       - name: Measure Bundle Size
         run: pnpm benchmark:bundle-size --outputStyle=stream --skipRemoteCache
       - name: Publish Benchmark Dashboard
-        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1.22.1
+        uses: benchmark-action/github-action-benchmark@4322e5726e6334590d251fc4f92bec0efafc45dc # v1.22.2
         with:
           tool: customSmallerIsBetter
           name: Bundle Size (gzip)

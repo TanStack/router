@@ -114,12 +114,12 @@
     "@tanstack/router-core": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
     "@tanstack/start-storage-context": "workspace:*",
-    "cookie-es": "^3.0.0",
+    "cookie-es": "^3.1.1",
     "fetchdts": "^0.2.0",
-    "seroval": "^1.6.7"
+    "seroval": "^1.8.1"
   },
   "devDependencies": {
-    "@standard-schema/spec": "^1.0.0",
+    "@standard-schema/spec": "^1.1.0",
     "vite": "*",
     "@types/node": ">=20",
     "@tanstack/vite-config": "catalog:",
@@ -128,6 +128,6 @@
     "@arethetypeswrong/cli": "catalog:",
     "publint": "catalog:",
     "rimraf": "catalog:",
-    "iron-session": "9.0.1"
+    "iron-session": "9.1.0"
   }
 }

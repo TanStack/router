@@ -16,21 +16,21 @@
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-router-devtools": "workspace:^",
     "@tanstack/vue-start": "workspace:^",
-    "vue": "^3.5.25"
+    "vue": "^3.5.45"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.29.0",
-    "@playwright/test": "^1.61.0",
-    "@tailwindcss/vite": "^4.2.2",
+    "@cloudflare/vite-plugin": "^1.70.0",
+    "@playwright/test": "^1.65.1",
+    "@tailwindcss/vite": "^4.3.5",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
-    "tailwindcss": "^4.2.2",
+    "tailwindcss": "^4.3.5",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.0.14",
-    "@vitejs/plugin-vue": "^6.0.5",
-    "@vitejs/plugin-vue-jsx": "^5.1.5",
-    "wrangler": "^4.74.0"
+    "vite": "^8.3.8",
+    "@vitejs/plugin-vue": "^6.0.11",
+    "@vitejs/plugin-vue-jsx": "^5.1.6",
+    "wrangler": "^4.164.0"
   },
   "nx": {
     "targets": {

@@ -29,16 +29,16 @@ jobs:
       TSR_TMP_DIR: ./tmp
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
           persist-credentials: false
       - name: Start Nx Workers
         run: npx nx-cloud start-workers
       - name: Setup Tools
-        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+        uses: TanStack/config/.github/setup@a041f4eeb8e4d595aee89f8992b20c669288a741 # main
       - name: Get base and head commits for `nx affected`
-        uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1 # v5.0.1
+        uses: nrwl/nx-set-shas@e602fada7ad5987b0f7b1905e7a99ea1c661514c # v5.1.0
         with:
           main-branch-name: main
       - name: Run Checks
@@ -54,12 +54,12 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
           persist-credentials: false
       - name: Setup Tools
-        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+        uses: TanStack/config/.github/setup@a041f4eeb8e4d595aee89f8992b20c669288a741 # main
       - name: Build Packages
         run: pnpm run build:all
       - name: Publish Previews
@@ -72,10 +72,10 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
       - name: Setup Tools
-        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+        uses: TanStack/config/.github/setup@a041f4eeb8e4d595aee89f8992b20c669288a741 # main
       - name: Changeset Preview
-        uses: TanStack/config/.github/changeset-preview@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+        uses: TanStack/config/.github/changeset-preview@a041f4eeb8e4d595aee89f8992b20c669288a741 # main

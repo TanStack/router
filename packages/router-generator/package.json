@@ -71,7 +71,7 @@
     "@tanstack/virtual-file-routes": "workspace:*",
     "jiti": "^2.7.0",
     "magic-string": "^0.30.21",
-    "prettier": "^3.9.6",
+    "prettier": "^3.10.1",
     "zod": "catalog:"
   },
   "devDependencies": {

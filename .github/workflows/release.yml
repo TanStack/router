@@ -23,12 +23,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
           persist-credentials: true # changesets/action pushes Release PR commits
       - name: Setup Tools
-        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+        uses: TanStack/config/.github/setup@a041f4eeb8e4d595aee89f8992b20c669288a741 # main
       - name: Run Build
         run: pnpm run build:all
       - name: Enter Pre-Release Mode

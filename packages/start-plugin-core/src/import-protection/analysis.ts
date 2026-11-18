@@ -139,26 +139,22 @@ function collectIdentifiersFromPattern(
 export function isValidExportName(name: string): boolean {
   if (name === 'default' || name.length === 0) return false
   const first = name.charCodeAt(0)
-  if (
-    !(
-      (first >= 65 && first <= 90) ||
-      (first >= 97 && first <= 122) ||
-      first === 95 ||
-      first === 36
-    )
-  )
+  if (!(
+    (first >= 65 && first <= 90) ||
+    (first >= 97 && first <= 122) ||
+    first === 95 ||
+    first === 36
+  ))
     return false
   for (let i = 1; i < name.length; i++) {
     const ch = name.charCodeAt(i)
-    if (
-      !(
-        (ch >= 65 && ch <= 90) ||
-        (ch >= 97 && ch <= 122) ||
-        (ch >= 48 && ch <= 57) ||
-        ch === 95 ||
-        ch === 36
-      )
-    )
+    if (!(
+      (ch >= 65 && ch <= 90) ||
+      (ch >= 97 && ch <= 122) ||
+      (ch >= 48 && ch <= 57) ||
+      ch === 95 ||
+      ch === 36
+    ))
       return false
   }
   return true

@@ -12,7 +12,6 @@ export const tanstackStartViteOptionsSchema = tanstackStartOptionsObjectSchema
       .object({ installDevServerMiddleware: z.boolean().optional() })
       .optional(),
   })
-  .optional()
   .prefault({})
 
 export function parseStartConfig(
