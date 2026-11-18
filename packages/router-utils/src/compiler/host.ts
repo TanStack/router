@@ -592,7 +592,8 @@ async function applyChange(
       }
       const host = hostOf(entry.key)
       const src = fingerprintSourceFor(caches, host, cache.env)
-      const fps = cache.dependenciesOf(entry.key)?.filter(relevant)
+      const judged = cache.dependenciesOf(entry.key)
+      const fps = judged?.filter(relevant)
       if (!fps) {
         continue
       }
@@ -612,6 +613,13 @@ async function applyChange(
         const held =
           change.kind === 'unlink' &&
           !(await resolvedElsewhere(fps, change.path, src))
+        if (cache.dependenciesOf(entry.key) !== judged) {
+          // the plan judged is gone meanwhile (an event of another path
+          // evicted it, its file's removal took it out of the stale sets) or
+          // replaced (a compile published one of the current files): what
+          // replaced it decided its modules
+          continue
+        }
         cache.delete(entry.key)
         cache.bump(entry.key)
         caches.stale.add(cache.env, identify(entry.key.canonicalId).path, held)

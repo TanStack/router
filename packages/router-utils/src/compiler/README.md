@@ -317,7 +317,10 @@ text compiles waits for it and emits its own output from the result.
     that built the new text already keeps their rows) until a compile of a newer text ends: with its plan, or, for a
     text without one (untouched, empty, not parsed), without. A removal evicts them and stales every plan that read the
     file, unasked: held, unless every resolution of the plan that found the file finds another file now (`./b` found
-    `b.ts` and finds `b/index.ts`: a file turned into a folder), asked with the plan's own resolver; it is told to the session (`createCompilerCaches`' `removed`: Start forgets the file's server
+    `b.ts` and finds `b/index.ts`: a file turned into a folder), asked with the plan's own resolver. Events of
+    different paths run at once: a plan judged stale is evicted and enters the stale set only if it is still the key's
+    plan once its checks answered (another event may have evicted it meanwhile, e.g. its own file's removal, which
+    took the file out of the stale sets). A removal is told to the session (`createCompilerCaches`' `removed`: Start forgets the file's server
     functions and import protection's records there).
   - **Stale sets.** The plans found stale enter their environment's **stale set** (`caches.stale`): the files whose
     modules the bundler must build again and will not build on its own, kept until a host takes them

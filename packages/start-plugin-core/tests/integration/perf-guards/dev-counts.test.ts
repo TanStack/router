@@ -7,6 +7,8 @@
  * idle, so the change is this server's), and a Vite dev server compiles each
  * dependent of an edit once per environment.
  */
+import { existsSync } from 'node:fs'
+import path from 'node:path'
 import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { compilerStats } from '@tanstack/router-utils/compiler'
 import { startDevServer } from '../../dev-server'
@@ -157,6 +159,72 @@ describe('Vite dev: an empty save of a file nothing reads', () => {
       const ordinary = await readsOf(`export const notes = 1\n`)
       expect(ordinary).toBeGreaterThan(0)
       expect(await readsOf('')).toBe(ordinary)
+    },
+    timeout,
+  )
+})
+
+describe('Vite dev: a module removed with the module it imports', () => {
+  // Two files removed at once (a feature deleted), the importer reported
+  // while the removal of its import is still being judged: the importer is
+  // gone, so no environment is left with it to build again (its removal
+  // took it out of the stale sets, and the judgement of the other removal,
+  // which read the importer's plan before it was evicted, does not bring it
+  // back). Forced with a resolver that answers the import's resolution, once
+  // the import is gone, only after the importer's removal went through
+  // Start's hot update. Found on CI's loaded agents (Linux x64 and arm64,
+  // Windows x64: `createServerFn.test.ts`, a shared package removed after
+  // its test).
+  test(
+    'leaves no stale path',
+    async () => {
+      let importerRemoved!: () => void
+      const removed = new Promise<void>((resolve) => {
+        importerRemoved = resolve
+      })
+      const server = await startDevServer({
+        plugins: [
+          {
+            name: 'slow-resolution-of-a-removed-import',
+            enforce: 'pre',
+            async resolveId(source, importer) {
+              if (
+                source === './db.server' &&
+                importer !== undefined &&
+                !existsSync(path.join(path.dirname(importer), 'db.server.ts'))
+              ) {
+                await removed
+              }
+              return null
+            },
+            hotUpdate({ file, type }) {
+              if (type === 'delete' && file.endsWith('/src/fn.ts')) {
+                importerRemoved()
+              }
+            },
+          },
+        ],
+        files: {
+          'src/fn.ts': `import { createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export const fn = createServerFn().handler(async () => db.x())
+`,
+          'src/db.server.ts': `export const db = { x: () => 'MARK_db' }\n`,
+          'src/entry.ts': `export { fn } from './fn'\n`,
+        },
+      })
+      await server.import('/src/entry.ts')
+      await server.load('/src/entry.ts')
+      await server.idle()
+      await server.edit({ 'src/entry.ts': `export const none = 0\n` })
+      await server.import('/src/entry.ts')
+      await server.load('/src/entry.ts')
+      await server.idle()
+
+      await server.write({ 'src/db.server.ts': null })
+      await server.write({ 'src/fn.ts': null })
+      await server.settle()
+      expect(compilerStats()['start:vite']?.stalePaths ?? 0).toBe(0)
     },
     timeout,
   )
