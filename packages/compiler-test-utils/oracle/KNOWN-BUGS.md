@@ -162,6 +162,16 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   loader reading `registry` before the first call sees it empty. The same as a `const` on `main`. R157 rule 4 keeps
   it at load when its body reads a declaration the file keeps. Workaround: read it from code that runs at load.
 
+- **A handler-only snapshot of an imported object the module writes around it reads the object at the first call**
+  (Astra R3 core B2; user, 11-18: known limit): R157 rule 4 keeps a handler-only declaration at load when its
+  initializer reads the file's own state, and an import is not file state, so in
+  `import { cfg } from './state'; cfg.value = 'opening'; const onOpen = cfg.value; cfg.value = 'ready'` a handler
+  returning `onOpen` gets `'ready'` (the lazy handler module evaluates `onOpen` at the first call, after both writes),
+  where `main`, whose provider copy runs the whole file again at the first call, gets `'opening'`. Counting imports as
+  file state would keep every handler-only declaration naming `z`, `db` or `env` at load. A local alias
+  (`const cfg = external`) or one write gives the same value on both. No test (the outcome is the limit). Workaround:
+  read the snapshot from code that runs at load, or write through a local alias.
+
 - **A class, enum or namespace that erased text and staying text both name only in types leaves with the erased text**
   (R163 round-3 rulings, review-a1-classes-stay-round3 3, `v1`, `v2`, `v7`, `v12`; accepted: leaks first, as `d8`
   and `u9`): with `deleteNodes: ['server']`, a deleted handler holding `const d: M | null = null` takes `class M {

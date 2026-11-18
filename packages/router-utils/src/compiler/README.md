@@ -195,8 +195,10 @@ where main's chunk runs it again (never a declaration already unused: better tha
   binding) follow their statement's value specifiers (`droppedTypeUnits`). Type-only export syntax (`export type { X }`,
   `export type * from`, `export { type X }`, …) is in no output (`isTypeOnlyExport`), as main's `stripTypeExports`
   removed it. A read the core synthesises from a name (a Solid `use:` directive) binds only to a declaration with a
-  runtime value (`valueBinding`). JSX is no read of the classic runtime's factory: the classic runtime is not supported
-  with splitting.
+  runtime value (`valueBinding`). A type name TypeScript's decorator metadata serializes (the type of a decorated
+  member, a decorated method's parameter and return types, a decorated class's constructor parameter types) is a read
+  by value where the class is defined (`metadataNames` in `analysis.ts`), whatever the tsconfig says. JSX is no read of
+  the classic runtime's factory: the classic runtime is not supported with splitting.
 - **below the units** (`orphans.ts` `cleanOrphanedDeclarations`): function-local declarators, destructuring leaves,
   function and class declarations only erased code used go by the same rule (a use in a type in the erased text
   counts, R170), with their initialisers whatever they do (a hook call too, R166), as main's dead-code elimination

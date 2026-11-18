@@ -762,7 +762,72 @@ return [loaded, await render('component')]`),
   })
 })
 
-// Only erasure removes one: a class, enum or namespace that an erased option
+// TypeScript's decorator metadata (`emitDecoratorMetadata` with
+// `experimentalDecorators`: DI containers, ORMs, validation DTOs) reads the
+// classes a decorated member names in its types when the class is defined:
+// the import a type names is a value the class reads, in the route module as
+// in a chunk (`main` keeps it; astra-r3 fact-check B3).
+describe('decorator metadata records the classes a decorated class names in its types', () => {
+  const declaration = `import { Dep, Model } from './model'
+import * as shapes from './model'
+const seen = (..._args: Array<unknown>): any => {}
+@seen
+class Entity {
+  constructor(readonly dep: Dep) {}
+  @seen model!: Model
+  @seen with(other: shapes.Other): Model { return other as any }
+}
+const recorded = () => (Entity as any).recorded.join(' ')`
+  it.each([
+    { name: 'a loader that stays', loader: 'recorded()', component: '<p />' },
+    {
+      name: 'the split component',
+      loader: "'none'",
+      component: '<p>{recorded()}</p>',
+    },
+  ])('read by $name', async ({ name, loader, component }) => {
+    const route = await loadRoute(
+      `${head}${declaration}
+export const Route = createFileRoute('/')({
+  loader: () => ${loader},
+  component: () => ${component},
+})
+`,
+      {
+        tsconfig: {
+          experimentalDecorators: true,
+          emitDecoratorMetadata: true,
+          verbatimModuleSyntax: false,
+        },
+        files: {
+          'model.ts': `export class Dep {}
+export class Model {}
+export class Other {}
+`,
+        },
+        // (what `reflect-metadata` does, recorded on the class)
+        pageScript: `Reflect.metadata = (key, value) => (target, member) => {
+  const owner = typeof target === 'function' ? target : target.constructor
+  const show = (v) => Array.isArray(v) ? '[' + v.map(show) + ']' : v.name
+  ;(owner.recorded ??= []).push(key + (member ? '(' + member + ')' : '') + '=' + show(value))
+}`,
+      },
+    )
+    expect(await route.isLazy('component')).toBe(true)
+    const expected =
+      'design:type(model)=Model design:returntype(with)=Model design:paramtypes(with)=[Other] design:type(with)=Function design:paramtypes=[Dep]'
+    expect(
+      await route.run(`const loaded = await options.loader()
+return [loaded, await render('component')]`),
+    ).toEqual(
+      name === 'the split component'
+        ? ['none', `<p>${expected}</p>`]
+        : [expected, '<p></p>'],
+    )
+  })
+})
+
+// Only erasure removes one:a class, enum or namespace that an erased option
 // (`deleteNodes`, Start's client `server`) names, by value or in a type, and
 // that nothing staying reads by value leaves the client with its imports,
 // against `main`, which ships it (leaks block whatever `main` does;

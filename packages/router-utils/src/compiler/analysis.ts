@@ -28,7 +28,7 @@ import type { PurityContext } from './purity'
 import type { Header, Range } from './header'
 import type { SymbolId } from './symbols'
 import type { TopLevelItem, Unit, UnitId } from './units'
-import type { Binding, Node, SourceFile } from 'yuku'
+import type { Binding, Node, Scope, SourceFile } from 'yuku'
 import type { SourceText } from './output-builder'
 import type { RecognizerTable } from './values'
 
@@ -971,8 +971,13 @@ export class ModuleAnalysis {
     // declaration inside is local to it), reduced to its outermost ranges
     // and searched by offset.
     const fnRanges: Array<Range> = []
+    // the type names decorator metadata reads, by offset (see `metadataNames`)
+    const metadataReads = new Map<number, Scope>()
     for (const scope of file.scopes) {
       const n = scope.node
+      if (scope.kind === 'class' && scope.parent !== null) {
+        metadataNames(n, scope.parent, metadataReads)
+      }
       if (scope.kind !== 'function') {
         continue
       }
@@ -992,11 +997,26 @@ export class ModuleAnalysis {
     const freeRefs: Array<FreeRef> = []
     const names = new Set<string>(symbols.names())
     for (const ref of file.references) {
+      let b: Binding | null
       if (ref.inTypePosition || ref.space === 'type') {
-        continue
+        // (a file without decorators never reads `ref.node` of a type)
+        const outer =
+          metadataReads.size === 0
+            ? undefined
+            : metadataReads.get(ref.node.start)
+        if (outer === undefined) {
+          continue
+        }
+        // the metadata reads the name where the class is defined, by value
+        b = valueBinding(outer, ref.name)
+        if (b === null) {
+          names.add(ref.name)
+          continue
+        }
+      } else {
+        b = ref.binding
       }
       const node = ref.node
-      const b = ref.binding
       if (b === null) {
         names.add(ref.name)
         freeRefs.push({
@@ -1343,6 +1363,86 @@ function valueUse(
       return p.tag === child ? 'callee' : null
     default:
       return null
+  }
+}
+
+/** What metadata reads of a parameter: its decorators and type annotation. */
+interface MetadataParam {
+  decorators?: Array<unknown>
+  typeAnnotation?: unknown
+  /** `TSParameterProperty` */
+  parameter?: MetadataParam
+  /** `AssignmentPattern` */
+  left?: MetadataParam
+}
+
+/**
+ * The type names TypeScript's decorator metadata (`emitDecoratorMetadata`)
+ * turns into runtime reads where the class is defined
+ * (`__metadata("design:type", Model)`), by offset of the name, with the scope
+ * the read resolves in: the type of a decorated property or accessor, the
+ * parameter and return types of a method with a decorator on it or on a
+ * parameter, the constructor's parameter types of a class with a decorator
+ * on it or on a constructor parameter. Only a type reference serializes to
+ * its name (`Model`, `(Model)`, `ns.Model` reads `ns`; `Array<Model>` reads
+ * `Array`); a union, an intersection or `typeof` is `Object`. Whether the
+ * project emits metadata is not asked: where it does not, the downstream
+ * TypeScript transform erases what the name kept.
+ */
+function metadataNames(
+  node: Node,
+  outer: Scope,
+  out: Map<number, Scope>,
+): void {
+  if (node.type !== 'ClassDeclaration' && node.type !== 'ClassExpression') {
+    return
+  }
+  const params = (m: { value: { params: unknown } }) =>
+    m.value.params as ReadonlyArray<MetadataParam>
+  const decorated = (p: MetadataParam) => (p.decorators?.length ?? 0) > 0
+  const addType = (annotation: unknown) => {
+    let type = (annotation as { typeAnnotation?: Node } | null)?.typeAnnotation
+    while (type?.type === 'TSParenthesizedType') {
+      type = type.typeAnnotation
+    }
+    if (type?.type !== 'TSTypeReference') {
+      return
+    }
+    let name: Node = type.typeName
+    while (name.type === 'TSQualifiedName') {
+      name = name.left
+    }
+    if (name.type === 'Identifier') {
+      out.set(name.start, outer)
+    }
+  }
+  const addParams = (list: ReadonlyArray<MetadataParam>) => {
+    for (const p of list) {
+      const param = p.parameter ?? p
+      addType((param.left ?? param).typeAnnotation)
+    }
+  }
+  for (const el of node.body.body) {
+    switch (el.type) {
+      case 'PropertyDefinition':
+      case 'AccessorProperty':
+        if (el.decorators.length > 0) {
+          addType(el.typeAnnotation)
+        }
+        break
+      case 'MethodDefinition':
+        if (el.kind === 'constructor') {
+          if (node.decorators.length > 0 || params(el).some(decorated)) {
+            addParams(params(el))
+          }
+        } else if (el.decorators.length > 0 || params(el).some(decorated)) {
+          addParams(params(el))
+          addType(el.value.returnType)
+        }
+        break
+      default:
+        break
+    }
   }
 }
 
