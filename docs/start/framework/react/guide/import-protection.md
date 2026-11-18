@@ -444,6 +444,8 @@ const BrowserWidget = defineAsyncComponent(
 </template>
 ```
 
+`defineAsyncComponent` takes the module's default export. For a named export, pick it from the module: `import('./widgets.client').then((m) => m.Chart)`.
+
 ### How to read the output
 
 Each violation message has these sections:
@@ -567,7 +569,7 @@ If you see an import-protection violation for a file you expected to be "compile
 
 ## False Positives: Dev vs Build
 
-In **build mode**, import protection defers violation checks until after tree-shaking. If an import is eliminated from the final bundle, no violation is reported. Build-time violations are definitive: if the build flags it, the import truly survived.
+In **build mode**, import protection defers violation checks until after tree-shaking. If an import is eliminated from the final bundle, no violation is reported. Build-time violations are definitive, with one exception: an import of a denied file whose module runs top-level code (a side effect) is reported even when nothing uses what it imports, because loading the module would run that code. A statement behind a development-only guard (`if (import.meta.env.DEV)`, `process.env.NODE_ENV !== 'production'`) counts too, though the production bundle would not run it.
 
 In **dev mode**, tree-shaking may be incomplete or unavailable, so import protection can report false positives for imports that would later be compiled away.
 
@@ -617,6 +619,8 @@ import { getDb } from '../lib/server'
 ```
 
 The same applies to marker-protected files (`import '@tanstack/react-start/server-only'`). If a marked file is re-exported through a mixed barrel but never consumed by client code, production may suppress the warning after tree-shaking, but the better fix is still to avoid exposing that server-only edge to client-reachable code at all.
+
+A re-export that nothing uses still fails the build when the denied file has a top-level side effect, even one only development runs, such as a warning behind `if (import.meta.env.DEV)`: split the barrel as above.
 
 ## The `onViolation` Callback
 
