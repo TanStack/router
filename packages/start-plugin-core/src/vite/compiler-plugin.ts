@@ -162,7 +162,7 @@ function envCompilerPlugins(
     if (!out) {
       return null
     }
-    watchDependencies(this, out.dependencies, normalizePath(identity.path))
+    watchDependencies(this, out, normalizePath(identity.path))
     state.reportDiagnostics(
       s,
       this,

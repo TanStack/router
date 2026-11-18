@@ -15,6 +15,7 @@ import {
   rmSync,
 } from 'node:fs'
 import path from 'node:path'
+import mdx from '@mdx-js/rollup'
 import { describe, expect, test } from 'vitest'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { mentionsFile } from '@tanstack/compiler-test-utils/diagnostics'
@@ -423,6 +424,45 @@ export { version } from 'virtual:kit'
       expect(
         (await client.run(`return [entry.version, entry.getSecret()]`)).result,
       ).toEqual([2, 'MARK_KIT'])
+    },
+    timeout,
+  )
+})
+
+describe('vite build --watch: a module another plugin compiles', () => {
+  // `page.mdx` (`@mdx-js/rollup`, compiled by Start in place) imports a
+  // server-only file: the client gets its mock, and its build imports no
+  // `lib.ts`. An edit that stops marking `lib.ts` server-only rebuilds the
+  // client with the file itself, as for a TypeScript importer (the row
+  // above). Source: Astra round 3 (hosts B1: the late transform declared
+  // no plan dependency to the watcher).
+  test(
+    'an MDX module gets the file an edit stops marking server-only',
+    async () => {
+      const { client } = await buildStart({
+        bundler: 'vite',
+        files: {
+          'src/lib.ts': `import '@tanstack/react-start/server-only'
+export const secret = () => 'MARK_LIB'
+`,
+          'src/page.mdx': `import { secret } from './lib'
+
+export const read = () => secret()
+
+# Page
+`,
+          'src/entry.ts': `export { read } from './page.mdx'
+`,
+        },
+        entry: 'src/entry.ts',
+        start: { importProtection: { behavior: 'mock' } },
+        viteConfig: { plugins: [{ enforce: 'pre', ...mdx() }] },
+        watchEdits: {
+          'src/lib.ts': `export const secret = () => 'MARK_LIB'
+`,
+        },
+      })
+      expect((await client.run(`return entry.read()`)).result).toBe('MARK_LIB')
     },
     timeout,
   )

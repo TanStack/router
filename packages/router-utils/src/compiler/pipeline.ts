@@ -446,7 +446,8 @@ function emitFrom(
     map: emitted.map,
     facts: plan.facts,
     diagnostics: plan.diagnostics,
-    // only the webpack-family hosts read them, once per compile: computed on demand
+    // read by the webpack-family hosts and by a Vite watch build only, once
+    // per compile: computed on demand
     get dependencies() {
       return [...dependencyPaths(plan.dependencies, caches)]
     },

@@ -380,7 +380,7 @@ export function createRouterCompilerVitePlugin(
         if (!out) {
           return null
         }
-        watchDependencies(this, out.dependencies, file)
+        watchDependencies(this, out, file)
         const name = displayPath(identity.path, ROOT)
         // Vite's dev transform context maps `loc`; bundled dev's (Rolldown's) does not
         const dev = compiler.mode === 'dev' && !bundledDev
