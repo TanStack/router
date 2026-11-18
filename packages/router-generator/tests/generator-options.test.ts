@@ -1018,6 +1018,31 @@ async function directoryOnAnotherDevice() {
 const otherDevice = await directoryOnAnotherDevice()
 
 describe('tmpDir', () => {
+  // A run that cannot create tmpDir fails; once the obstacle is gone (a file
+  // in its place here; a read-only `.tanstack` alike), the next run of the
+  // same generator (a dev server's) generates the route tree.
+  test('after a run that could not create tmpDir, the next run generates the route tree', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/')({})
+`,
+    })
+    const config = configOf(root)
+    await mkdir(path.dirname(config.tmpDir), { recursive: true })
+    await writeFile(config.tmpDir, '')
+    const generator = new Generator({ config, root })
+    await expect(generator.run()).rejects.toThrow()
+
+    await rm(config.tmpDir)
+    await generator.run()
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/': 'routes/index.tsx',
+    })
+  })
+
   // Bug (SPEC J1.16): with `tmpDir` on another filesystem than the app (e.g. the
   // app on a disk and TSR_TMP_DIR on a tmpfs), every publication fails:
   // renaming the temporary file onto the route file or the route tree fails

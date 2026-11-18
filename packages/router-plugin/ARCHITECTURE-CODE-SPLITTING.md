@@ -27,11 +27,11 @@ core; read the
 
 For `posts.tsx` in a client environment:
 
-| id                                    | contents                                                                                                                                                          |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `posts.tsx`                           | the route module: `Route` with each split option replaced by `lazyRouteComponent`/`lazyFn` of an importer const, and whatever the route module itself still reads |
-| `posts.tsx?tsr-split=component`       | one chunk per split group (group key: sorted option names joined by `---`, e.g. `component---loader`) exporting the option's value                                |
-| `posts.tsx?tsr-split=shared---<keys>` | the names main shares (main's `?tsr-shared=1`; keys: the file's split groups, sorted), which the route module and the chunks import, one per file                 |
+| id                                    | contents                                                                                                                                                                                                        |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `posts.tsx`                           | the route module: `Route` with each split option replaced by `lazyRouteComponent`/`lazyFn` of `() => import(…)` (a const when several options read the group), and whatever the route module itself still reads |
+| `posts.tsx?tsr-split=component`       | one chunk per split group (group key: sorted option names joined by `---`, e.g. `component---loader`) exporting the option's value                                                                              |
+| `posts.tsx?tsr-split=shared---<keys>` | the names main shares (main's `?tsr-shared=1`; keys: the file's split groups, sorted), which the route module and the chunks import, one per file                                                               |
 
 The ids and the specifiers importing them (the route file's absolute path) keep the format of the Babel splitter,
 which apps' chunk naming reads; `router-utils/src/compiler/identity.ts` owns it (core README, "Hosts").
@@ -40,9 +40,10 @@ All of them come from one plan: whichever id the bundler asks first computes the
 file is placed as route splitting on main places it (R153; `router-utils/src/compiler/placement.ts`, core README
 "The one placement"): the route module keeps its statements and exports and what they reach (R154); a chunk imports
 from it what main imports (`Route`, `export const|let|var`, `decisions.ts` `chunkImportsOnMain`) and copies the rest,
-with the statements that read or write it (an `export default <expression>` among them), the classes, enums and
-namespaces naming it and the declarations the source never reads (R163), as main does, comments and annotations
-included; a binding only one chunk needs moves into it with its initialiser, and
+with the statements that read or write it (an `export default <expression>` among them) and the classes, enums and
+namespaces naming it, as main does, comments and annotations included; a declaration the source never reads stays in
+the route module only (a decided improvement over main, which copies it into the chunks too); a binding only one chunk
+needs moves into it with its initialiser, and
 the names main shares (`sharedNamesOnMain`: two options read them, a staying one included) go to the shared module,
 which the route module and the chunks import, as main's `?tsr-shared=1`.
 

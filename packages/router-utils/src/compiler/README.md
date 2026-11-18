@@ -453,7 +453,8 @@ builder (`routerPlannerConfigFrom`) are exported from `@tanstack/router-plugin/p
   `test:unit` and `test:integration` of router-generator, router-plugin, start-plugin-core and react-start-rsc. Real
   bundlers, dev servers and browsers, public entry points only, no output snapshots. Known bugs are `.fails` pins;
   `COMPILER_TESTS_PINS=run` runs them as ordinary tests. Harness rules: [AGENTS.md](../../../compiler-test-utils/AGENTS.md).
-- Planner-level tests: `start-plugin-core/tests/planners/` (with a memory host) and the router-plugin unit tier.
+- Planners have no tests of their own: they are tested through their plugins, in the oracle above (the fast tiers of
+  router-plugin and start-plugin-core included).
 
 ## Debugging knobs
 

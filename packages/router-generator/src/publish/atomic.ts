@@ -95,7 +95,14 @@ export class AtomicPublisher {
       await this.writeVia(this.besideName(file), file, content, expected)
       return
     }
-    this.tmpDirReady ??= fsp.mkdir(this.tmpDir, { recursive: true })
+    // a failed creation is tried again by the next write (the obstacle, a
+    // file in its place or a read-only parent, may be gone by then)
+    this.tmpDirReady ??= fsp
+      .mkdir(this.tmpDir, { recursive: true })
+      .catch((error: unknown) => {
+        this.tmpDirReady = undefined
+        throw error
+      })
     await this.tmpDirReady
     try {
       await this.writeViaTmpDir(file, content, expected)

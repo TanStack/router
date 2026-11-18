@@ -1196,7 +1196,8 @@ export async function describeBuild(
       .filter((chunk) =>
         typeof marker === 'string'
           ? chunk.code.includes(marker)
-          : marker.test(chunk.code),
+          : // (`search`, unlike `test`, ignores a global RegExp's `lastIndex`)
+            chunk.code.search(marker) !== -1,
       )
       .map((chunk) => chunk.fileName)
     return {

@@ -6,7 +6,10 @@
  * is the router's webpack-family host.
  */
 import { test } from 'vitest'
-import { expectRegistryChangeRecompilesRoute } from '../generator-dev-scenarios'
+import {
+  expectRegistryChangeRecompilesRoute,
+  expectRetargetedSymlinkServedAsRoute,
+} from '../generator-dev-scenarios'
 
 // A route registry change without a file change (a route added to the
 // virtual route config) re-plans the route file (SPEC J1.10, J2.13), a
@@ -19,3 +22,10 @@ test.each([false, true])(
   },
   45_000,
 )
+
+// A route symlink pointed at another file changes the registry (the real
+// path is one of its keys) without a route tree change: the new target is
+// compiled as the route.
+test('a route symlink pointed at another file serves that file as the route', async () => {
+  await expectRetargetedSymlinkServedAsRoute('webpack')
+}, 45_000)

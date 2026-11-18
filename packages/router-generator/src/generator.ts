@@ -524,7 +524,12 @@ export class Generator {
         if (!sameProps(after.facts.props, before.facts.props)) {
           changes.props = true
         }
-        if (after.facts.routerConstructor !== before.facts.routerConstructor) {
+        if (
+          after.facts.routerConstructor !== before.facts.routerConstructor ||
+          // a symlinked route file pointed at another file: its real path is
+          // a registry key
+          after.realPath !== before.realPath
+        ) {
           changes.registry = true
         }
       }

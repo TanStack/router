@@ -23,7 +23,16 @@ interface ContextInternals {
   listeners: Set<RoutesChangedListener>
 }
 
-const internals = new WeakMap<RouterPluginContext, ContextInternals>()
+/**
+ * Where a context keeps its internals: on the context itself, under a global
+ * symbol, so that each copy of this module (the CJS and the ESM build) finds
+ * the same state.
+ */
+const INTERNALS = Symbol.for('@tanstack/router-plugin/context-internals')
+
+type ContextWithInternals = RouterPluginContext & {
+  [INTERNALS]?: ContextInternals
+}
 
 /**
  * The shared state of the plugins created for one context: the generator
@@ -31,29 +40,8 @@ const internals = new WeakMap<RouterPluginContext, ContextInternals>()
  * change and share one warning ledger.
  */
 export function createRouterPluginContext(): RouterPluginContext {
-  let routesByFile: GetRoutesByFileMapResult = new Map()
-  const state: ContextInternals = {
-    warnings: new WarningLedger(),
-    listeners: new Set(),
-  }
-  const context: RouterPluginContext = {
-    get routesByFile() {
-      return routesByFile
-    },
-    set routesByFile(next: GetRoutesByFileMapResult) {
-      const previous = routesByFile
-      // the generator replaces its registry when a route changed: the same
-      // one again (after an event that changed no route) is no change
-      if (next === previous) {
-        return
-      }
-      routesByFile = next
-      for (const listener of state.listeners) {
-        listener(next, previous)
-      }
-    },
-  }
-  internals.set(context, state)
+  const context: RouterPluginContext = { routesByFile: new Map() }
+  contextInternals(context)
   return context
 }
 
@@ -71,11 +59,43 @@ export function publishRoutes(
   context.routesByFile = routesByFile
 }
 
-/** The internals of a context `createRouterPluginContext` made. */
+/**
+ * The internals of a context, created on first use: a context may be one the
+ * app built itself (`{ routesByFile: new Map() }`). Assigning `routesByFile`
+ * notifies the listeners from then on, whoever assigns it (the router's
+ * generator, or the app's own generator plugin).
+ */
 export function contextInternals(
   context: RouterPluginContext,
 ): ContextInternals {
-  return internals.get(context)!
+  const known = (context as ContextWithInternals)[INTERNALS]
+  if (known) {
+    return known
+  }
+  const state: ContextInternals = {
+    warnings: new WarningLedger(),
+    listeners: new Set(),
+  }
+  let routesByFile = context.routesByFile
+  Object.defineProperty(context, INTERNALS, { value: state })
+  Object.defineProperty(context, 'routesByFile', {
+    configurable: true,
+    enumerable: true,
+    get: () => routesByFile,
+    set: (next: GetRoutesByFileMapResult) => {
+      const previous = routesByFile
+      // the generator replaces its registry when a route changed: the same
+      // one again (after an event that changed no route) is no change
+      if (next === previous) {
+        return
+      }
+      routesByFile = next
+      for (const listener of state.listeners) {
+        listener(next, previous)
+      }
+    },
+  })
+  return state
 }
 
 /** Subscribes to registry changes; returns the unsubscribe function. */

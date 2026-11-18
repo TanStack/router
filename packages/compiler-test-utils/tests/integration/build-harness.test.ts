@@ -74,6 +74,8 @@ describe.each(bundlers)('%s', (bundler) => {
         lazy: app.where('MARK_LAZY'),
         unused: app.where('MARK_UNUSED'),
       }).toEqual({ eager: 'eager', lazy: 'lazy', unused: 'nowhere' })
+      // a global RegExp finds the marker in every chunk too
+      expect(app.where(/MARK_(?:EAGER|LAZY)/g)).toBe('eager+lazy')
       const lazyChunk = app.locate('MARK_LAZY').lazy[0]
       expect(
         app.chunks.some((chunk) => chunk.dynamicImports.includes(lazyChunk!)),

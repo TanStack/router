@@ -41,7 +41,7 @@ const separatePlugins = {
 
 describe.each(['webpack', 'rspack'] as const)('%s', (bundler) => {
   test(
-    'a finished build leaves no router compiler session alive',
+    'finished builds leave fewer router compiler sessions alive than they created',
     async () => {
       vi.stubEnv('TSR_COMPILER_STATS', '1')
       onTestFinished(() => {
