@@ -517,7 +517,9 @@ dir)` is not a conflict by itself.
   least once and the page shows its new data; an obsolete loader the edit replaced or removed does not run again.
   Vite and Rsbuild/Rspack (webpack lower priority); React, Solid, Vue. A lazy route file (`createLazyFileRoute`,
   `.lazy.tsx`) is a file route module too: an edit of it reaches the live route's lazy options, also of a route that
-  has not loaded them yet.
+  has not loaded them yet. An edit that removes a lazy option of a loaded route, or whose route on the router the
+  route HMR code finds doesn't load a lazy file (another router's route of the same id, J3.11), reloads the page, as
+  `main` does on every lazy file edit.
 - **J3.2 Component identity is kept for compatible edits.** For compatible hot updates, the router keeps its
   lazy-wrapper identity and lets the framework's refresh decide the component's (React; Solid and Vue keep a
   component their refresh patches in place), and shows the new code. Where

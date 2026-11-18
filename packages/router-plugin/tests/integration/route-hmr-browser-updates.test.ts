@@ -528,6 +528,44 @@ describe.concurrent.each(['vite', 'rsbuild'] as const)(
       },
     )
 
+    // A component option set to `null` (no error boundary of the route's
+    // own: the router's types allow it) given a component by an edit, and
+    // set back to `null` (Astra R7: the edit threw and reloaded the page).
+    test(
+      'edits setting a component option from null to a component and back update in place',
+      { timeout },
+      async ({ expect, onTestFinished }: TestContext) => {
+        const page = (version: string, errorComponent: string) =>
+          fileRoute(
+            '/',
+            `errorComponent: ${errorComponent},
+  loader: () => '${version}',
+  component: () => <p>home {Route.useLoaderData()}</p>,`,
+          )
+        const errorComponent = () =>
+          app.evaluate(
+            `typeof window.__app.router.routesById['/'].options.errorComponent`,
+          )
+        const app = await openRouteHmrPage({
+          bundler,
+          onTestFinished,
+          files: { 'main.tsx': main, 'routes/index.tsx': page('v1', 'null') },
+          ready: 'home v1',
+        })
+        expect(
+          await app.edit(
+            { 'routes/index.tsx': page('v2', '() => <p>error</p>') },
+            'home v2',
+          ),
+        ).toEqual(inPlace)
+        expect(await errorComponent()).toBe('function')
+        expect(
+          await app.edit({ 'routes/index.tsx': page('v3', 'null') }, 'home v3'),
+        ).toEqual(inPlace)
+        expect(await errorComponent()).toBe('object')
+      },
+    )
+
     // The route HMR code updates the router it finds on the page: with a
     // second router created after the app's, the hot update is for a route
     // that router does not have. The app keeps working.

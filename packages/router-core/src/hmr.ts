@@ -372,9 +372,12 @@ const hotLazyRoutes = new Map<
  * loaded); a route that loaded the earlier evaluation's options takes the
  * new ones in place once the adapter's refresh settled: a component keeps
  * its held value when the framework patches it (`keepPatched`, as for a
- * route module), and the options the edit removed leave the route (an
- * option the route file sets too goes with them). The first evaluation only
- * records itself.
+ * route module). The first evaluation only records itself. The page
+ * reloads, as on every lazy file edit without route HMR, when the live
+ * route of `window.__TSR_ROUTER__` (the last router created) doesn't load a
+ * lazy file (another router's route of the same id), or when a loaded
+ * route's edit removes an option (the route's options are the merge: the
+ * route file's value of that option is gone).
  */
 function applyLazyRouteHmr(
   routeId: string,
@@ -387,14 +390,23 @@ function applyLazyRouteHmr(
     hotLazyRoutes.set(routeId, { route: lazy, meta })
     const router = window.__TSR_ROUTER__
     const live = router?.routesById?.[routeId] as HotRoute | undefined
-    if (!known || !router || !live) {
+    if (!known) {
       return
     }
-    if (router._hmrReload) {
+    const { id: _id, ...next } = lazy.options
+    const state = live?._lazy
+    if (
+      !router ||
+      !live?.lazyFn ||
+      router._hmrReload ||
+      (state === true &&
+        Object.keys(known.route.options).some(
+          (key) => !(key in lazy.options),
+        ))
+    ) {
       window.location.reload()
       return
     }
-    const state = live._lazy
     router._replaceRouteChunk?.(live, () => Promise.resolve(lazy as any))
     if (state === undefined) {
       // not loaded: its first load takes this evaluation
@@ -407,13 +419,6 @@ function applyLazyRouteHmr(
       return
     }
     whenSettled(adapter, () => {
-      const { id: _id, ...next } = lazy.options
-      const { id: _previousId, ...previous } = known.route.options
-      for (const key in previous) {
-        if (!(key in next)) {
-          delete live.options[key]
-        }
-      }
       for (const key of componentKeys) {
         const held = live.options[key]
         const value = next[key]
@@ -596,7 +601,7 @@ function refreshRoute(
       for (const key of componentKeys) {
         const held = liveOptions[key]
         const value = nextOptions[key]
-        if (held === undefined || value === undefined || held === value) {
+        if (held == null || value == null || held === value) {
           continue
         }
         if (retargetWrapper(held, value, adapter)) {
