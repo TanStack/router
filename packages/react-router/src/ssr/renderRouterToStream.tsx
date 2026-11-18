@@ -10,6 +10,12 @@ import {
 import type { AnyRouter } from '@tanstack/router-core'
 import type { ReactNode } from 'react'
 
+/**
+ * Renders a React router application to a streaming SSR response.
+ *
+ * @param options - The request, router, response headers, and React content to render.
+ * @returns The router-managed streaming response.
+ */
 export const renderRouterToStream = async ({
   request,
   router,
@@ -42,6 +48,7 @@ export const renderRouterToStream = async ({
     if (typeof ReactDOMServer.renderToReadableStream === 'function') {
       const stream = await ReactDOMServer.renderToReadableStream(children, {
         signal,
+        importMap: router.options.ssr?.importMap,
         nonce: router.options.ssr?.nonce,
         progressiveChunkSize: Number.POSITIVE_INFINITY,
         onError: onError('renderToReadableStream'),
@@ -92,6 +99,7 @@ export const renderRouterToStream = async ({
       }
       try {
         pipeable = ReactDOMServer.renderToPipeableStream(children, {
+          importMap: router.options.ssr?.importMap,
           nonce: router.options.ssr?.nonce,
           progressiveChunkSize: Number.POSITIVE_INFINITY,
           ...(bot
