@@ -1,7 +1,7 @@
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import { createSignal, lazy } from 'solid-js'
 import { DevtoolsOnCloseContext } from './context'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type { AnyRouter } from '@tanstack/router-core'
 
 export interface TanStackRouterDevtoolsPanelCoreOptions {
@@ -91,7 +91,7 @@ export class TanStackRouterDevtoolsPanelCore {
       }
 
       return (
-        <DevtoolsOnCloseContext.Provider
+        <DevtoolsOnCloseContext
           value={{
             onCloseClick: () => {},
           }}
@@ -105,7 +105,7 @@ export class TanStackRouterDevtoolsPanelCore {
             style={style}
             className={className}
           />
-        </DevtoolsOnCloseContext.Provider>
+        </DevtoolsOnCloseContext>
       )
     }, el)
 

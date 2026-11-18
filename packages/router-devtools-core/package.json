@@ -65,9 +65,10 @@
   "devDependencies": {
     "@testing-library/jest-dom": "catalog:",
     "esbuild": "^0.27.4",
-    "solid-js": "catalog:",
+    "@solidjs/web": "^2.0.0",
+    "solid-js": "^2.0.0",
     "vite": "*",
-    "vite-plugin-solid": "catalog:",
+    "@solidjs/vite-plugin": "^3.0.1",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "jsdom": "catalog:",

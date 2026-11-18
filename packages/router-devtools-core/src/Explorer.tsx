@@ -6,7 +6,8 @@ import {
   getServerComponentSlots,
   getServerComponentType,
 } from './utils'
-import type { Accessor, JSX } from 'solid-js'
+import type { Accessor } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 type ExpanderProps = {
   expanded: boolean
