@@ -982,6 +982,23 @@ function planStartEnv(
       commitHoist = hoisted!.commit
     }
     if (lazySites.has(site)) {
+      // the handler module evaluates the argument at the first call, `main`
+      // when the chain is created: they differ for a binding the module
+      // assigns elsewhere (R182: a warning, no other placement)
+      const ref =
+        h.type === 'Identifier'
+          ? t1.refs.refsIn(rangeOf(h)).find((r) => r.range.start === h.start)
+          : undefined
+      if (ref && t1.mutation.isReassigned(ref.sym)) {
+        const binding = ctx.symbols.name(ref.sym)
+        ctx.diagnostic({
+          severity: 'warning',
+          message: `\`${binding}\` is read when the server function is first called, not when it is created: this module assigns \`${binding}\` elsewhere, so a call runs the function it holds at that moment. Pass a function written in place (\`.handler(async () => …)\`) or a \`const\`.`,
+          range: rangeOf(h),
+          by,
+          code: 'start-handler-reassigned',
+        })
+      }
       const { out, load } = lazyHandlerOutput()
       const local = names.alloc(`tsrHandler$${identifierBase(site.stableKey)}`)
       const region = ctx.region(rangeOf(h), 'custom')

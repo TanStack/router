@@ -123,6 +123,14 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   not on the client, and rendering it fails hydration (React #418). `Object.values(ns)` gets each server fn twice.
   Member reads (`ns.alpha()`) are unaffected. Workaround: enumerate an explicit list.
 
+- **A handler passed as a binding the module assigns elsewhere is read at the first call** (R182, Astra start #3;
+  accepted, no placement change): the lazy handler module evaluates `.handler(selected)`'s argument when the server fn
+  is first called, `main` when the chain is created, so `let selected = a; … .handler(selected); selected = b` runs
+  `b` here and `a` on `main`. The build warns at the argument when the module writes the binding anywhere (a closed,
+  syntactic rule: an assignment, update or destructuring target, or a `var` declared again).
+  `integration/start-build-server-fn-cases.test.ts`: "a handler passed as a binding the module assigns elsewhere warns
+  at the argument, and only there". Workaround: pass a function written in place, or a `const`.
+
 - **A class, enum or namespace only a server fn handler reads runs at the first call on the server** (R163 round-2
   rulings (c), review-a1-classes-stay-round2 3, `s13`; accepted: R157/R158 cover classes like any declaration): the
   lazy handler module holds what only the handler reads, so `class Repo { static made = registry.add('repo') }`
@@ -826,8 +834,9 @@ Paths under `start-plugin-core/tests/` unless noted.
   registered before tree-shaking. SPEC J4.2 (R182): the client-origin gate is the set of ids whose client call
   survives in the emitted client code, on both hosts and under RSC.
   `integration/start-build-server-fn-cases.test.ts`: "SSR: a server fn only server code references is not callable over
-  HTTP"; "SSR: a server fn private to a module the client imports is not callable over HTTP, and its own module calls
-  it"; "SSR: a rebuild follows the edits that remove and restore the last client call of a server fn";
+  HTTP"; `integration/start-build-server-fn-callable.test.ts`: "SSR: a server fn private to a module the client imports
+  is not callable over HTTP, and its own module calls it"; "SSR: a rebuild follows the edits that remove and restore
+  the last client call of a server fn";
   `react-start-rsc/tests/integration/rsc-start-build.test.ts` and `rsc-start-rsbuild-build.test.ts`: "a server
   function only server code calls is not callable from the browser".
 - **Vite: the production server-fn resolver is generated before the SSR build found every server fn** (#7213). SPEC
