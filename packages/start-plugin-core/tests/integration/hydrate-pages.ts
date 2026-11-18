@@ -228,6 +228,32 @@ await clickUntil(button, () => button().textContent === 'child:1')
 return beforeFocus`
 
 /**
+ * A page whose split children assign `n`, a local of the component, in the
+ * server implementation of an inline isomorphic fn only (the server renders
+ * `++n`, `1`; the client implementation returns `1`), next to a counter
+ * `<button data-label="child">`. With `isomorphicServerWriteScript`.
+ * (`idle()`: Solid's `load()` with split children mismatches, FOLLOW-UPS.)
+ */
+export function isomorphicServerWritePage(framework: PageFramework): string {
+  return `import { Hydrate, createIsomorphicFn } from '@tanstack/${framework}-start'
+import { idle } from '@tanstack/${framework}-start/hydration'
+import { Counter } from '../counter'
+export function Page() {
+  let n = 0
+  return <Hydrate when={idle()}><p data-value>{createIsomorphicFn().server(() => ++n).client(() => 1)()}</p><Counter label="child" /></Hydrate>
+}`
+}
+
+/**
+ * Page script of `isomorphicServerWritePage`: clicks the counter until it
+ * counts (the children hydrated), then returns the counter's and the
+ * value's text.
+ */
+export const isomorphicServerWriteScript = `const button = () => root.querySelector('button[data-label="child"]')
+await clickUntil(button, () => button().textContent === 'child:1')
+return [button().textContent, root.querySelector('[data-value]').textContent]`
+
+/**
  * Modules re-exporting the `Hydrate` of `@tanstack/<framework>-start`: the
  * app's own (a named re-export, an imported binding exported again, `export
  * *`, a chain of them, one barrel per environment through the `#ui` import

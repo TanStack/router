@@ -21,6 +21,8 @@ import {
   deferredUntilFocus,
   hydrateBarrelFiles,
   hydrateBarrelFixtures,
+  isomorphicServerWritePage,
+  isomorphicServerWriteScript,
   loadedOnInteraction,
   updatesExpected,
   updatesScript,
@@ -436,6 +438,12 @@ export function Page() {
 }`,
   updates: updatesPage(''),
   updatesReference: updatesPage(' split={false}'),
+  // The children assign a local of the component in the server
+  // implementation of an isomorphic fn only: the client's children never
+  // assign it, so the boundary splits (the client implementation's local
+  // writes are refused, hydrate-boundary-forms.test.ts). Source: Astra
+  // review of #8817, round 3, hydrate B1 (main builds it).
+  isomorphicServerWrite: isomorphicServerWritePage('react'),
 })
 
 /**
@@ -552,6 +560,22 @@ return [button('outer').textContent, button('inner').textContent]`,
 
         test('a nested boundary and a later sibling', async () => {
           await expectChildrenHydrate('nested', ['outer', 'nested', 'sibling'])
+        })
+
+        test('a write in the server implementation of an isomorphic fn in the children', async () => {
+          const page = await app.hydrate('isomorphicServerWrite', {
+            script: isomorphicServerWriteScript,
+          })
+          expect(page.serverHtml).toMatch(/<p[^>]*data-value[^>]*>1<\/p>/)
+          expect({
+            hydrated: page.result,
+            recoverableErrors: page.recoverableErrors,
+            consoleErrors: page.consoleErrors,
+          }).toEqual({
+            hydrated: ['child:1', '1'],
+            recoverableErrors: [],
+            consoleErrors: [],
+          })
         })
 
         test('repeated instances of one boundary each hydrate their own children', async () => {

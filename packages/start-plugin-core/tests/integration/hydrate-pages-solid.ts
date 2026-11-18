@@ -21,6 +21,8 @@ import {
   deferredUntilFocus,
   hydrateBarrelFiles,
   hydrateBarrelFixtures,
+  isomorphicServerWritePage,
+  isomorphicServerWriteScript,
   loadedOnInteraction,
   updatesExpected,
   updatesScript,
@@ -270,6 +272,8 @@ export function Page() {
 }`,
   directiveModule: directivePage('module'),
   directiveComponent: directivePage('component'),
+  // The Solid twin of the React row (hydrate-pages-react.ts).
+  isomorphicServerWrite: isomorphicServerWritePage('solid'),
   // A context declared in the page module itself.
 }
 
@@ -368,6 +372,18 @@ export function solidPageSuite(bundler: StartBundler) {
     // never ran.
     test('a handler of statements without semicolons runs each of them', async () => {
       await expectChildrenHydrate('statements', ['statements'])
+    })
+
+    // Source: Astra review of #8817, round 3, hydrate B1 (main builds it).
+    test('a write in the server implementation of an isomorphic fn in the children', async () => {
+      const page = await app.hydrate('isomorphicServerWrite', {
+        script: isomorphicServerWriteScript,
+      })
+      expect(page.serverHtml).toMatch(/<p[^>]*data-value[^>]*>1<\/p>/)
+      expect({
+        hydrated: page.result,
+        consoleErrors: page.consoleErrors,
+      }).toEqual({ hydrated: ['child:1', '1'], consoleErrors: [] })
     })
 
     test('children reading a let reassigned before the boundary show its latest value', async () => {

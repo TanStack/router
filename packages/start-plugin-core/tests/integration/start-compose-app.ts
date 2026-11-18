@@ -214,9 +214,15 @@ export async function openAppPage(
 
 /**
  * Type-checks `files` of the app at `root` with the real declarations the
- * app resolves; returns the diagnostics (empty when it compiles).
+ * app resolves; returns the diagnostics (empty when it compiles). `options`
+ * add to the compiler options (e.g. React's JSX runtime, whose types declare
+ * the JSX namespace).
  */
-export function typeCheck(root: string, files: Array<string>) {
+export function typeCheck(
+  root: string,
+  files: Array<string>,
+  options: ts.CompilerOptions = {},
+) {
   const program = ts.createProgram(
     files.map((file) => path.join(root, file)),
     {
@@ -229,6 +235,7 @@ export function typeCheck(root: string, files: Array<string>) {
       jsx: ts.JsxEmit.Preserve,
       skipLibCheck: true,
       types: [],
+      ...options,
     },
   )
   return ts.getPreEmitDiagnostics(program).map((diagnostic) => {
