@@ -394,18 +394,20 @@ export function recognizeRoute(
   const props =
     options.kind === 'object' ? describeOptions(ctx, options.node) : []
   let fileGroupings: CodeSplitGroupings | null = null
-  // read only where this environment splits (with splitting off nothing
-  // honours them, J2.8); an accessor isn't read: the default groupings
-  // apply, as on main
-  const groupingsProp = ctx.config.split
-    ? props.find(
-        (p) =>
-          p.key === 'codeSplitGroupings' &&
-          p.value !== null &&
-          p.kind !== 'spread' &&
-          p.kind !== 'accessor',
-      )
-    : undefined
+  // read only where this environment splits the route (with splitting off
+  // nothing honours them, J2.8; a root route or a `.lazy` file is never
+  // split, so its groupings are not read, as on main); an accessor isn't
+  // read: the default groupings apply, as on main
+  const groupingsProp =
+    ctx.config.split && entry.kind === 'file'
+      ? props.find(
+          (p) =>
+            p.key === 'codeSplitGroupings' &&
+            p.value !== null &&
+            p.kind !== 'spread' &&
+            p.kind !== 'accessor',
+        )
+      : undefined
   if (groupingsProp && groupingsProp.value) {
     const read = readGroupings(ctx, groupingsProp.value)
     if ('problem' in read) {
