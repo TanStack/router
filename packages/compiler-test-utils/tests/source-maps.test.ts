@@ -5,12 +5,16 @@
  * stack, tokens are found by parsing whatever the printing, and CRLF
  * sources count lines like editors.
  */
+import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import vm from 'node:vm'
 import * as esbuild from 'esbuild'
 import { transformWithOxc } from 'vite'
 import { describe, expect, test } from 'vitest'
 import {
+  emittedSourcePath,
   expectMapsTo,
+  expectNamesFileOnce,
   findNodes,
   inlineSourceMap,
   originalPositionOf,
@@ -151,6 +155,30 @@ test('a source relative to its module names the file once resolved against the m
       ...expected,
       mapUrl: '/app/lib/fail.js',
     }),
+  ).toThrow()
+})
+
+test('a source naming the file by a file URL keeps its query, which names another file', () => {
+  const root = path.resolve('/app')
+  const file = path.join(root, 'routes/index.tsx')
+  const url = `${pathToFileURL(file).href}?tsr-split=component`
+  expect(emittedSourcePath(url, path.join(root, 'dist/a.js'), root)).toBe(
+    `${file}?tsr-split=component`,
+  )
+  const map = {
+    version: 3,
+    sources: [url],
+    sourcesContent: ['text'],
+    names: [],
+    mappings: '',
+  }
+  expect(() =>
+    expectNamesFileOnce(
+      [{ file: path.join(root, 'dist/a.js'), code: '', map }],
+      root,
+      file,
+      'text',
+    ),
   ).toThrow()
 })
 

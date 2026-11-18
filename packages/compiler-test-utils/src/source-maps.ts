@@ -399,7 +399,8 @@ export function emittedSourcePath(
     return path.resolve(root, webpack[1]!)
   }
   if (source.startsWith('file://')) {
-    return fileURLToPath(source)
+    // (`fileURLToPath` drops the query)
+    return fileURLToPath(source) + new URL(source).search
   }
   return path.resolve(path.dirname(file), source)
 }
