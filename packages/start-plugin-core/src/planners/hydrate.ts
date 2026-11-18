@@ -112,7 +112,7 @@ type ImportSpecifierEntry = ImportEntry['specifiers'][number]
 
 /** An import a boundary's tag may be: imported as `Hydrate`, or a namespace (`<NS.Hydrate>`), of any module. */
 function isCandidate(s: ImportSpecifierEntry): boolean {
-  return !s.typeOnly && (s.imported === HYDRATE_COMPONENT || s.imported === '*')
+  return !s.typeOnly && (s.imported === HYDRATE_COMPONENT || s.namespace)
 }
 
 function gate(t0: ModuleAnalysis): boolean {
@@ -131,7 +131,7 @@ function gate(t0: ModuleAnalysis): boolean {
  */
 function mayTagBoundary(t0: ModuleAnalysis, s: ImportSpecifierEntry): boolean {
   if (
-    s.imported === '*' &&
+    s.namespace &&
     !t0.source.code.includes(`${s.localName}.${HYDRATE_COMPONENT}`)
   ) {
     return false
@@ -196,7 +196,7 @@ async function prefetch(
         (async () => {
           const start = LookupPath.start()
           let v: AbstractValue = UNKNOWN
-          if (s.imported === '*') {
+          if (s.namespace) {
             const target = await read.resolveFrom(imp.specifier, self)
             if (target !== null) {
               v = await read.exportValue(target, HYDRATE_COMPONENT, start)
@@ -319,7 +319,7 @@ function findBoundaries(
             found.set(hit.element.start, { ...hit, fw })
           }
         }
-      } else if (s.imported === '*') {
+      } else if (s.namespace) {
         // `<NS.Hydrate>`: the namespace binding is the root of a one-level member tag
         for (const ref of t1.refs.refsOf(s.local)) {
           if (ref.kind !== 'jsxTag') {
