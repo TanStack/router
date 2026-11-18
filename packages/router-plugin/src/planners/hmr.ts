@@ -354,8 +354,9 @@ export function planHmrBlock(
     // the exports plugin-react ignores: the route, the anchor and
     // (over-approximated) every module-level binding the core may export as
     // glue for the chunks, by its name and by its glue name (`x$1` when `x`
-    // is an export's name, `tsr$x` next to `export *`), but no other export
-    // of the user's: plugin-react validates those, so a component updates in
+    // is an export's name, `tsr$x` next to `export *`, never `x` there), but
+    // no other export of the user's, a name `export *` may re-export
+    // included: plugin-react validates those, so a component updates in
     // place and an edited value invalidates the module for its importers (a
     // reload, as on main)
     const exportNames = new Set<string>()
@@ -379,7 +380,7 @@ export function planHmrBlock(
         continue
       }
       const name = symbols.name(sym)
-      if (!userExports.has(name)) {
+      if (!star && !userExports.has(name)) {
         exportNames.add(name)
       }
       // a glue name is another name (free of the module's exports) only

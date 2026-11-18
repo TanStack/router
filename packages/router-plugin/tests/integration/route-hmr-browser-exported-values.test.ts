@@ -110,3 +110,55 @@ export function Nav() {
   },
   timeout,
 )
+
+// The route file is also a barrel (`export *`), and a private binding has the
+// name of a value the star re-exports: plugin-react still validates the
+// star's export, so `nav.tsx` gets the value of the newly re-exported module.
+const barrelRoute = (from: string, page: string) =>
+  `import { createFileRoute } from '@tanstack/react-router'
+export * from '../${from}'
+const label = 'private'
+export const Route = createFileRoute('/')({
+  component: Page,
+})
+function Page() {
+  return <p data-probe="page">${page} {label}</p>
+}
+`
+
+test(
+  'an edit of what a route file re-exports with `export *` shows in the module that imports it, with a private binding of the same name',
+  async ({ onTestFinished }) => {
+    const app = await openRouteHmrPage({
+      onTestFinished,
+      files: {
+        'routes/__root.tsx': `import { createRootRoute, Outlet } from '@tanstack/react-router'
+import { Nav } from '../nav'
+export const Route = createRootRoute({
+  component: () => (
+    <>
+      <Nav />
+      <Outlet />
+    </>
+  ),
+})
+`,
+        'nav.tsx': `import { label } from './routes/index'
+export function Nav() {
+  return <nav data-probe="nav">{label}</nav>
+}
+`,
+        'one.ts': `export const label = 'menu one'\n`,
+        'two.ts': `export const label = 'menu two'\n`,
+        'routes/index.tsx': barrelRoute('one', 'page1'),
+      },
+      ready: 'menu onepage1 private',
+    })
+    const { errors } = await app.edit(
+      { 'routes/index.tsx': barrelRoute('two', 'page2') },
+      'menu twopage2 private',
+    )
+    expect(errors).toEqual([])
+  },
+  timeout,
+)
