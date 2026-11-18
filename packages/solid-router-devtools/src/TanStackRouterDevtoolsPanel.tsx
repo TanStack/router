@@ -42,20 +42,26 @@ export const TanStackRouterDevtoolsPanel: Component<
   const activeRouter = untrack(() => props.router) ?? useRouter()
   const activeRouterState = useRouterState({ router: activeRouter })
 
-  const usedProps = {
-    ...props,
-    router: activeRouter,
-    routerState: activeRouterState,
-  }
+  const options = () => ({
+    className: props.className,
+    style: props.style,
+    shadowDOMTarget: props.shadowDOMTarget,
+  })
 
   const [devToolRef, setDevToolRef] = createSignal<HTMLDivElement>()
   const [devtools] = createSignal(
-    new TanStackRouterDevtoolsPanelCore(usedProps),
+    new TanStackRouterDevtoolsPanelCore({
+      ...untrack(options),
+      isOpen: untrack(() => props.isOpen),
+      setIsOpen: untrack(() => props.setIsOpen),
+      handleDragStart: untrack(() => props.handleDragStart),
+      router: activeRouter,
+      routerState: untrack(activeRouterState),
+    }),
   )
 
-  // Update devtools when props change
   createEffect(devtools, (d) => {
-    d.setRouter(usedProps.router)
+    d.setRouter(activeRouter)
   })
 
   createEffect(
@@ -65,13 +71,12 @@ export const TanStackRouterDevtoolsPanel: Component<
     },
   )
 
-  createEffect(devtools, (d) => {
-    d.setOptions({
-      className: usedProps.className,
-      style: usedProps.style,
-      shadowDOMTarget: usedProps.shadowDOMTarget,
-    })
-  })
+  createEffect(
+    () => ({ d: devtools(), options: options() }),
+    ({ d, options }) => {
+      d.setOptions(options)
+    },
+  )
 
   createEffect(
     () => ({ d: devtools(), el: devToolRef() }),

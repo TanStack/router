@@ -12,6 +12,7 @@ import {
   createRoute,
   createRouter,
 } from '@tanstack/solid-router'
+import { createSignal, flush } from 'solid-js'
 import { TanStackRouterDevtools } from '../src/TanStackRouterDevtools'
 import { TanStackRouterDevtoolsPanel } from '../src/TanStackRouterDevtoolsPanel'
 import type { Component } from 'solid-js'
@@ -95,3 +96,23 @@ for (const { name, Devtools, Core } of wrappers) {
     expect(unmount).toHaveBeenCalledTimes(1)
   }, 20_000)
 }
+
+test('TanStackRouterDevtoolsPanel forwards prop changes without strict-read warnings', async () => {
+  const warn = vi.spyOn(console, 'warn')
+  const [className, setClassName] = createSignal('first-class')
+  const { shownPathname } = setup(() => (
+    <TanStackRouterDevtoolsPanel className={className()} />
+  ))
+  await vi.waitFor(() => expect(shownPathname()).toBe('/'), {
+    timeout: 15_000,
+  })
+  expect(document.querySelector('.first-class')).not.toBeNull()
+
+  setClassName('second-class')
+  flush()
+
+  await vi.waitFor(() =>
+    expect(document.querySelector('.second-class')).not.toBeNull(),
+  )
+  expect(warn).not.toHaveBeenCalled()
+}, 20_000)
