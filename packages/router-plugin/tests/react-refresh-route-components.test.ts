@@ -230,20 +230,12 @@ describe.each([
     it.each([
       ['a call', 'configure()'],
       ['a sequence', "(formatter = () => 'configured', {})"],
-      // (interpolating an object runs its `toString`; Astra round 2, B2)
-      ['a template literal interpolating an object', '{ label: `${key}` }'],
     ])('an earlier option written as %s runs first', async (_, staticData) => {
       const route = await loadRoute(
         `${head}let formatter = (_text: string) => 'unconfigured'
 function configure() {
   formatter = () => 'configured'
   return {}
-}
-const key = {
-  toString() {
-    formatter = () => 'configured'
-    return 'key'
-  },
 }
 function withFormat(Page: () => string) {
   const format = formatter

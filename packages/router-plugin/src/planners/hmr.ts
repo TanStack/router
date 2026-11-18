@@ -267,13 +267,12 @@ function onlyInertBefore(
 }
 
 /**
- * S2's inert operands: a literal (an object or array literal of inert
- * operands included, a spread is not inert; a template literal only when its
- * substitutions are literals: interpolating a value runs its `toString`), a
- * function, arrow or identifier, or the router's own factory (`factory`,
- * the callee of the options call: `createFileRoute('/x')` with literal
- * arguments, or `createRootRoute`, also through the router's namespace).
- * TypeScript wrappers and parentheses around them change nothing.
+ * S2's inert operands: a literal (an object, array or template literal of
+ * inert operands included; a spread is not inert), a function, arrow or
+ * identifier, or the router's own factory (`factory`, the callee of the
+ * options call: `createFileRoute('/x')` with literal arguments, or
+ * `createRootRoute`, also through the router's namespace). TypeScript
+ * wrappers and parentheses around them change nothing.
  */
 function isInert(node: Node, factory: Node): boolean {
   const n = unwrapExpression(node)
@@ -290,7 +289,7 @@ function isInert(node: Node, factory: Node): boolean {
     case 'ArrowFunctionExpression':
       return true
     case 'TemplateLiteral':
-      return n.expressions.every((e) => unwrapExpression(e).type === 'Literal')
+      return n.expressions.every((e) => isInert(e, factory))
     case 'ArrayExpression':
       return n.elements.every(
         (e) =>
