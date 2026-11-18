@@ -36,8 +36,8 @@ export const Route = createFileRoute('/')({
 const hmrMarkers =
   /keepPatched|__tsrRouteHmr|MissingFactoryError|addStatusHandler/
 
-/** A module file of the route HMR runtime (`@tanstack/*-router/hmr`, `@tanstack/router-core/hmr`). */
-const hmrModule = /\/dist\/(?:esm|cjs|source)\/hmr\.[cm]?jsx?$/
+/** A module file of the route HMR runtime (`@tanstack/*-router/hmr`, `@tanstack/router-core/hmr`, Solid's `hmr-chunk-importer`). */
+const hmrModule = /\/dist\/(?:esm|cjs|source)\/hmr[.-][\w.-]*$/
 
 /** Records the URL of every module Node loads from now on, then loads the app and renders its route's component. */
 const script = `const { registerHooks } = await import('node:module')

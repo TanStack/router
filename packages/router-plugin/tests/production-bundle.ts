@@ -14,7 +14,8 @@
  * the control serves development. Development code of the framework
  * packages themselves would be in the control too: the bundle carries none
  * of their dev runtime's markers (the lazy route component's hot slot
- * `__tsrHot`, the route HMR entry `__tsrRouteHmr`).
+ * `__tsrHot`, the route HMR entry `__tsrRouteHmr`, and the property names
+ * and strings of the runtime, which minifiers keep).
  */
 import { expect } from 'vitest'
 import {
@@ -156,7 +157,9 @@ export async function expectProductionClientBundle(
   }
   expect(output(app)).toEqual(output(control))
   for (const [file, code] of Object.entries(output(app))) {
-    expect(code, file).not.toMatch(/__tsrHot|__tsrRouteHmr/)
+    expect(code, file).not.toMatch(
+      /__tsrHot|__tsrRouteHmr|keepPatched|MissingFactoryError|addStatusHandler/,
+    )
   }
 }
 
