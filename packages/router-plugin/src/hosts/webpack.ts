@@ -29,7 +29,11 @@ import {
   changedRoutePaths,
   onRoutesChanged,
 } from '../core/router-plugin-context'
-import { RouterCompiler } from './session'
+import {
+  DEPENDENCY_ID_RE,
+  RouterCompiler,
+  dependencyRouteFileWarning,
+} from './session'
 import {
   LOADER_REGISTRY,
   LOCATED_DIAGNOSTICS,
@@ -121,8 +125,6 @@ interface CompilationLike {
 const PLUGIN_NAME = 'tanstack-router:compiler'
 
 const JS_FILE_RE = /\.[cm]?[jt]sx?$/
-/** The files the loader rule leaves out: the loader never runs on a dependency's modules. */
-const DEPENDENCY_RE = /[\\/]node_modules[\\/]/
 
 let loaderPath: string | null = null
 
@@ -244,7 +246,7 @@ export function createRouterCompilerWebpackPlugin(
       // otherwise)
       compiler.options.module.rules.unshift({
         test: JS_FILE_RE,
-        exclude: DEPENDENCY_RE,
+        exclude: DEPENDENCY_ID_RE,
         enforce: 'pre',
         use: [{ loader: routerLoaderPath(), options: { instance } }],
       })
@@ -300,7 +302,7 @@ export function createRouterCompilerWebpackPlugin(
         compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) => {
           for (const m of modules) {
             const resource = m.resource
-            if (!resource || !DEPENDENCY_RE.test(resource)) {
+            if (!resource || !DEPENDENCY_ID_RE.test(resource)) {
               continue
             }
             const file = normalizePath(
@@ -310,7 +312,7 @@ export function createRouterCompilerWebpackPlugin(
               continue
             }
             const shown = displayPath(file, compiler.context)
-            const message = `[tanstack-router] ${shown} is not code-split: it is a route file under node_modules, and the router plugin does not compile files there on webpack and Rspack. Keep route files outside node_modules to have them split.`
+            const message = dependencyRouteFileWarning(shown)
             if (session.warnings.once(file, { message })) {
               compilation.warnings.push(new WebpackError(message))
             }

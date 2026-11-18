@@ -69,6 +69,22 @@ interface CompileRequest {
 /** JS module ids the compiler may transform (query allowed). */
 export const JS_ID_RE = /\.[cm]?[jt]sx?(\?|$)/
 
+/**
+ * A dependency module: `node_modules` in its path (not its query). The hosts
+ * never compile one (each bundler filters them out natively); a route file
+ * there is reported with `dependencyRouteFileWarning`.
+ */
+export const DEPENDENCY_ID_RE = /^[^?]*[\\/]node_modules[\\/]/
+
+/**
+ * The warning, once per file per run, for a route file the hosts leave out
+ * as a dependency module (a routes package resolved without following
+ * symlinks, a `physical()` mount of an installed package): it is not split.
+ */
+export function dependencyRouteFileWarning(shown: string): string {
+  return `[tanstack-router] ${shown} is not code-split: it is a route file under node_modules, and the router plugin does not compile files there. Keep route files outside node_modules to have them split.`
+}
+
 /** The derived outputs the router planner declares (`?tsr-split=`). */
 const ROUTER_DERIVED_KINDS = new Set(['split', 'shared'])
 
@@ -155,7 +171,7 @@ export class RouterCompiler {
 
   /** Whether the host should transform an id at all. */
   wants(id: string): boolean {
-    if (!JS_ID_RE.test(id)) {
+    if (!JS_ID_RE.test(id) || DEPENDENCY_ID_RE.test(id)) {
       return false
     }
     // a derived id another compiler owns (Start's `?tss-hydrate=`, server fn
