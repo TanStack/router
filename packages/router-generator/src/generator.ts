@@ -215,9 +215,12 @@ export class Generator {
   private scanned = new Set<string>()
   private readonly files = new Map<string, FileState>()
   private model: TreeModel | undefined
-  /** The route tree as last published, to tell an external change of it. */
+  /**
+   * The route tree as last published, to tell an external change of it
+   * (`printed`: the text Prettier formatted into `content`, when it did).
+   */
   private published:
-    | { content: string; mtimeMs: number; size: number }
+    | { content: string; mtimeMs: number; size: number; printed?: string }
     | undefined
   /** A batch failed: the next one scans again and rebuilds the tree. */
   private stale = false
@@ -734,10 +737,14 @@ export class Generator {
   }
 
   private async publishTree(model: TreeModel) {
-    let content = this.printRouteTree(model)
-    if (this.config.enableRouteTreeFormatting === true) {
-      content = await formatWithPrettier(content, this.style)
-    }
+    const printed = this.printRouteTree(model)
+    const formatting = this.config.enableRouteTreeFormatting === true
+    // (an unchanged print is not formatted again)
+    const content = !formatting
+      ? printed
+      : this.published?.printed === printed
+        ? this.published.content
+        : await formatWithPrettier(printed, this.style)
     // Compared with the disk, not with what was written last: a deleted or
     // edited tree is written again (unchanged since published: no read).
     const onDisk = (await this.treeOnDiskIsPublished())
@@ -749,7 +756,12 @@ export class Generator {
       await this.publisher.write(this.treeFile, content, undefined, true)
     }
     const stat = await fsp.stat(this.treeFile)
-    this.published = { content, mtimeMs: stat.mtimeMs, size: stat.size }
+    this.published = {
+      content,
+      mtimeMs: stat.mtimeMs,
+      size: stat.size,
+      printed: formatting ? printed : undefined,
+    }
   }
 
   private async treeOnDiskIsPublished() {
