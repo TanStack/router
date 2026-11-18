@@ -229,3 +229,59 @@ export const fn = createServerFn().handler(async () => db.x())
     timeout,
   )
 })
+
+describe('Vite dev: a module whose import moves to another file, the old one removed', () => {
+  // A rename done by hand (a new file written, the importer pointed at it,
+  // the old file deleted): the importer's change is applied first, its plan
+  // of the old text stays until the new text compiles, and the removal
+  // judges that plan. Its modules would wait for the removed file to come
+  // back, but the importer's own event had them built again, from a text
+  // that no longer reads the removed file: nothing waits for it. Waiting
+  // left a stale path that the next file created anywhere took, reloading
+  // the page (Vite sends no update for a file nothing imports). Found by the
+  // import-protection dev test of a kept `onViolation` trace
+  // (`importProtection/dev.test.ts`) with the old file deleted in the same
+  // edit: the file's stale-path self-check failed. Two steps, so that the
+  // importer's event comes first, as the watcher reported it there.
+  test(
+    'leaves no stale path, and a file created later reloads nothing',
+    async () => {
+      const fn = (
+        name: string,
+      ) => `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 'MARK_${name}')
+export const tag = 'MARK_${name}'
+`
+      const server = await startDevServer({
+        files: {
+          'src/left.ts': fn('left'),
+          'src/entry.ts': `export { fn, tag } from './left'\n`,
+        },
+      })
+      expect((await server.import('/src/entry.ts')).tag).toBe('MARK_left')
+      await server.load('/src/entry.ts')
+      await server.idle()
+
+      await server.edit({
+        'src/right.ts': fn('right'),
+        'src/entry.ts': `export { fn, tag } from './right'\n`,
+      })
+      await server.edit({ 'src/left.ts': null })
+      // (what the removal logs is not this row's subject)
+      const since = server.logs.length
+      expect((await server.import('/src/entry.ts')).tag).toBe('MARK_right')
+      await server.load('/src/entry.ts')
+      await server.idle()
+      expect(compilerStats()['start:vite']?.stalePaths ?? 0).toBe(0)
+
+      expect(
+        await server.edit({ 'src/other.ts': `export const other = 0\n` }),
+      ).toEqual([])
+      // the old file back: nothing reads it
+      await server.edit({ 'src/left.ts': fn('left') })
+      expect((await server.import('/src/entry.ts')).tag).toBe('MARK_right')
+      expect(server.logs.slice(since)).toEqual([])
+    },
+    timeout,
+  )
+})

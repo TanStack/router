@@ -326,7 +326,7 @@ text compiles waits for it and emits its own output from the result.
     functions and import protection's records there).
   - **Stale sets.** The plans found stale enter their environment's **stale set** (`caches.stale`): the files whose
     modules the bundler must build again and will not build on its own, kept until a host takes them
-    (`take(env, { held })`; `held`: stale only because a file they read was removed, and nothing takes its place). The other writers: a registry
+    (`take(env, { held })`; `held`: stale only because a file they read was removed, and nothing takes its place; the hold ends once a compile of the file's latest text settles in that environment, whose reads decide from then on, a removed file it still imports being a failed resolution: the file's own change may come before the removal that judged its older plan). The other writers: a registry
     change (the file, in every environment that has compiled or whose bundler holds modules: `stale.track(env)`, a
     Vite dev environment, a webpack-family compiler from its first drain), a plan hit that fails validation (the file,
     so its other outputs follow; when no invalidation runs, counted as `staleHits` when a fact failed, a defect:

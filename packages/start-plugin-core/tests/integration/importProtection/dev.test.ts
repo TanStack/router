@@ -316,6 +316,9 @@ describe('the trace of a client import of a denied file', () => {
       await server.edit({
         'src/right.ts': `export * from './a'\n`,
         'src/entry.ts': `export * from './right'\n`,
+        // (deleted in the same edit: the importer's plan of its old text,
+        // judged by the removal, held a stale path no rebuild took)
+        'src/left.ts': null,
       })
       await server.load('/src/entry.ts')
       expect(keptTrace()).toEqual([['src/entry.ts', 'src/left.ts', 'src/a.ts']])
