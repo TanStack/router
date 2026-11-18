@@ -347,7 +347,8 @@ dir)` is not a conflict by itself.
   is free. Generation settles: one edit leads to a bounded number of regenerations, never a regeneration or reload
   loop, and closing the dev server or watch session stops its watching. Edits of the `virtualRouteConfig` file (path
   form), of `__virtual.ts` files and of route files under `physical()` mounts are delivered edits like route files
-  (modules the virtual config imports: OQ17c). A `tsr.config.json` edit may take effect only at the next route file
+  (modules the virtual config imports: OQ17c; a native JavaScript config, `.js`/`.mjs`/`.cjs`, keeps its first
+  evaluation for the process: Node's module cache, through jiti 2.7.0). A `tsr.config.json` edit may take effect only at the next route file
   event. How unchanged writes are suppressed is free.
 - **J1.11** Withdrawn (the option was removed from the product, #8737). The id stays unused.
 - **J1.12** Honour `disableLogging` for the route-generation logs it controls. This does not forbid warnings or
