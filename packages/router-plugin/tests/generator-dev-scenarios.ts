@@ -10,7 +10,7 @@
  * navigates to it; edits of the routes a page shows, created ones included,
  * are hot updates.
  */
-import { writeFile } from 'node:fs/promises'
+import { rename, symlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import {
@@ -677,6 +677,35 @@ export const Route = createFileRoute('/')({
   ).toEqual([])
   await app.navigate('/contact', 'MARK_CONTACT')
   expect(await app.routes()).toEqual([rootLive, live('/'), live('/contact')])
+  expect(app.errors()).toEqual([])
+}
+
+/**
+ * An app whose route file `routes/contact.tsx` is a symlink to
+ * `linked/one.tsx`; the link is then pointed at `linked/two.tsx` (replaced
+ * atomically by a new link, as tools that manage links do), a change of the
+ * file the route file is, not of its text: the dev server compiles the new
+ * target as the route (its component in its own chunk, loaded on
+ * navigation; the compiler's plans live at the real path the bundler
+ * resolves to), and the app serves its page.
+ */
+export async function expectRetargetedSymlinkServedAsRoute(bundler: Bundler) {
+  const app = await generatorDevApp({
+    bundler,
+    files: {
+      ...index,
+      'linked/one.tsx': route('/contact', 'MARK_ONE'),
+      'linked/two.tsx': route('/contact', 'MARK_TWO'),
+    },
+    symlinks: { 'routes/contact.tsx': 'linked/one.tsx' },
+  })
+  await expectLoadedOnNavigation(app, atIndex, '/contact', 'MARK_ONE')
+
+  const pending = path.join(app.root, 'pending-link')
+  await symlink(path.join(app.root, 'linked/two.tsx'), pending)
+  await rename(pending, path.join(app.root, 'routes/contact.tsx'))
+  await app.settle()
+  await expectLoadedOnNavigation(app, atIndex, '/contact', 'MARK_TWO')
   expect(app.errors()).toEqual([])
 }
 
