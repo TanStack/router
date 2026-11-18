@@ -1,0 +1,16 @@
+{
+  "$comment": "Local iteration budgets of the compiler test tiers, in seconds of Vitest duration at `workers` (--maxWorkers): per package, `unit` (fast tier) and `integration` (slow tier) as [target, hard]; `slowFileHard`: any slow-tier file; `editToResultHard`: edit to result of one fast-tier file, Nx included. Set from quiet-machine runs with headroom. Runs at other worker counts (CI, one worker) are reported, never enforced. Read by src/budget-reporter.ts: report-only, except with COMPILER_TEST_BUDGETS=strict on a quiet machine.",
+  "workers": 4,
+  "slowFileHard": 15,
+  "editToResultHard": 10,
+  "packages": {
+    "@tanstack/router-plugin": {
+      "unit": [7.5, 10],
+      "integration": [60, 80]
+    },
+    "@tanstack/compiler-test-utils": {
+      "unit": [2.5, 4],
+      "integration": [9, 15]
+    }
+  }
+}

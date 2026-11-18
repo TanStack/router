@@ -8,7 +8,7 @@ import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
 import type { Config } from '../src/core/config'
-import type { UnpluginOptions, TransformResult } from 'unplugin'
+import type { TransformResult, UnpluginOptions } from 'unplugin'
 
 const referencePluginName =
   'tanstack-router:code-splitter:compile-reference-file'

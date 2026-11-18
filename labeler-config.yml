@@ -1,6 +1,12 @@
 'package: arktype-adapter':
   - changed-files:
       - any-glob-to-any-file: 'packages/arktype-adapter/**/*'
+'package: compiler-test-utils':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/compiler-test-utils/**/*'
+'package: compiler-vite-versions':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/compiler-vite-versions/**/*'
 'package: eslint-plugin-router':
   - changed-files:
       - any-glob-to-any-file: 'packages/eslint-plugin-router/**/*'

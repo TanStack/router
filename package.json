@@ -18,6 +18,7 @@
     "test:ci": "nx run-many --targets=test:eslint,test:unit,test:integration,test:e2e,test:types,test:build,build",
     "test:eslint": "nx affected --target=test:eslint --exclude=examples/**,e2e/**",
     "test:unit": "nx affected --target=test:unit --exclude=examples/**,e2e/**",
+    "test:integration": "nx affected --target=test:integration --exclude=examples/**,e2e/**",
     "test:unit:dev": "pnpm run test:unit && nx watch --all -- pnpm run test:unit",
     "test:build": "nx affected --target=test:build --exclude=examples/**",
     "test:types": "nx affected --target=test:types --exclude=examples/**",
