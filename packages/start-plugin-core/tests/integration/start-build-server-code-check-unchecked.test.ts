@@ -22,10 +22,21 @@ const timeout = 60_000
 
 const SECRET = 'MARK_SECRET'
 
+/** Client code of the loader, wherever the client build puts it. */
+const LOADER = 'MARK_LOADER'
+
+/**
+ * A server fn's middleware that runs on the client: the server fn's client
+ * text holds `LOADER`.
+ */
+const clientMiddleware = `createMiddleware({ type: 'function' }).client(({ next }) =>
+      next({ sendContext: { at: '${LOADER}' } }),
+    )`
+
 /**
  * The route's loader, split into its own chunk: `loader` is its value (a
  * server fn, which is created once, when the module loads: R162), or
- * `body` its function's body.
+ * `body` its function's body. Either holds `LOADER` in the client build.
  */
 const routeModule = ({ body, loader }: { body?: string; loader?: string }) =>
   `import { createFileRoute } from '@tanstack/react-router'
@@ -36,7 +47,7 @@ import {
   createServerOnlyFn,
 } from '@tanstack/react-start'
 export const Route = createFileRoute('/')({
-  loader: ${loader ?? `async () => {\n${body}\n  }`},
+  loader: ${loader ?? `async () => {\n    ;(globalThis as any).loaderRan = '${LOADER}'\n${body}\n  }`},
   component: () => 'MARK_COMPONENT',
 })
 `
@@ -44,12 +55,17 @@ export const Route = createFileRoute('/')({
 const KINDS: Array<{ kind: string; body?: string; loader?: string }> = [
   {
     kind: "a server function's handler",
-    loader: `createServerFn().handler(async () => '${SECRET}')`,
+    loader: `createServerFn()
+    .middleware([${clientMiddleware}])
+    .handler(async () => '${SECRET}')`,
   },
   {
+    // (untyped: a call with TypeScript syntax stays in the route module, as
+    // on main, which reprints the value without the TypeScript plugin)
     kind: "a server function's validator",
     loader: `createServerFn()
-    .validator((data: string) => data + '${SECRET}')
+    .middleware([${clientMiddleware}])
+    .validator((data) => data + '${SECRET}')
     .handler(async ({ data }) => data)`,
   },
   {
@@ -140,7 +156,9 @@ export const getRouter = () => createRouter({ routeTree })
   test.each(KINDS)(
     'the client build of $kind in a split loader holds none of it, without an error',
     async (kind) => {
-      expectServerOnly(await build(routeModule(kind)))
+      const built = await build(routeModule(kind))
+      expect(built.client.where(LOADER), 'the loader').toBe('lazy')
+      expectServerOnly(built)
     },
     timeout,
   )

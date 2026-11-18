@@ -198,7 +198,7 @@ const bundlerName = { vite: 'Vite', rsbuild: 'Rsbuild' } as const
 /** The rows of `bundler`, in its dev server and in its production build. */
 export function routeCssSuite(
   bundler: StartBundler,
-  /** The rows each mode fails today, by name. */
+  /** The routes whose CSS each mode applies at `/` today, by name. */
   failsOn: Record<'dev' | 'build', Array<string>>,
 ) {
   describe.each(['dev', 'build'] as const)(
@@ -251,20 +251,34 @@ export function routeCssSuite(
         }
       })
 
+      /** A page of the app at `/`, hydrated, everything it loads loaded. */
+      const openHome = async () => {
+        const page = await openPage(new URL('/', url).href, {
+          registerCleanup: onTestFinished,
+        })
+        await page.waitForText('hydrated', {
+          selector: '[data-testid=hydrated]',
+        })
+        await page.page.waitForLoadState('networkidle')
+        return page
+      }
+
       // SPEC J2.22: a route's CSS loads only when the route matches, whatever
       // it mounts.
       for (const name of Object.keys(routes)) {
         ;(failsOn[mode].includes(name) ? test.fails : test)(
-          `the CSS of the /${name} route applies only once the route matches`,
+          `the CSS of the /${name} route does not apply at /`,
           async () => {
-            const page = await openPage(new URL('/', url).href, {
-              registerCleanup: onTestFinished,
-            })
-            await page.waitForText('hydrated', {
-              selector: '[data-testid=hydrated]',
-            })
-            await page.page.waitForLoadState('networkidle')
-            expect(await probeColor(page, name), 'at /').not.toBe(color)
+            const page = await openHome()
+            expect(await probeColor(page, name)).not.toBe(color)
+          },
+          timeout,
+        )
+
+        test(
+          `the CSS of the /${name} route applies once the route matches`,
+          async () => {
+            const page = await openHome()
             await page.page.locator(`nav a[href="/${name}"]`).click()
             await page.page.waitForURL(new URL(`/${name}`, url).href)
             const { shows, sharesWith } = routes[name]!
