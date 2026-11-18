@@ -211,6 +211,52 @@ describe('route HMR leaves options React Refresh does not handle as they are', (
 })
 
 /**
+ * A higher-order component call that stays in the route module runs where
+ * the route file runs it: after what the route statement evaluates before it
+ * (Astra R5, rule S2). Unsplit, and with splitting on but the component
+ * kept (`codeSplitGroupings: []`).
+ */
+describe.each([
+  ['autoCodeSplitting: false', unsplit, ''],
+  [
+    'codeSplitGroupings: []',
+    { hmr: true },
+    `
+  codeSplitGroupings: [],`,
+  ],
+] as const)(
+  'route HMR keeps a component call after the options before it (%s)',
+  (_, options, groupings) => {
+    it.each([
+      ['a call', 'configure()'],
+      ['a sequence', "(formatter = () => 'configured', {})"],
+    ])('an earlier option written as %s runs first', async (_, staticData) => {
+      const route = await loadRoute(
+        `${head}let formatter = (_text: string) => 'unconfigured'
+function configure() {
+  formatter = () => 'configured'
+  return {}
+}
+function withFormat(Page: () => string) {
+  const format = formatter
+  return () => <p>{format(Page())}</p>
+}
+export const Route = createFileRoute('/')({${groupings}
+  staticData: ${staticData},
+  component: withFormat(() => 'page'),
+})
+`,
+        options,
+      )
+      await expectValidModules(route)
+      expect(await route.run(`return render('component')`)).toBe(
+        '<p>configured</p>',
+      )
+    })
+  },
+)
+
+/**
  * React HMR renames and hoists route components, and may split them out of
  * the route module. Modules that import the route module's exports still need
  * them, as the same values the route options use. These tests load the

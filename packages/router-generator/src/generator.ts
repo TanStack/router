@@ -311,6 +311,15 @@ export class Generator {
     return this.routesByFile
   }
 
+  /**
+   * The real path of a scanned file of the last generation that is a
+   * symlink (or sits under a linked directory): the path bundlers resolve its
+   * modules to; undefined for any other file.
+   */
+  public realPathOf(file: string): string | undefined {
+    return this.files.get(file)?.realPath
+  }
+
   /** Whether a run has generated the route tree (and its registry) yet. */
   public hasGenerated(): boolean {
     return this.model !== undefined
@@ -658,7 +667,10 @@ export class Generator {
    * Writes the upkeep of the route files the tree imports (SPEC J1.1, J1.3):
    * the tree decides which files are routes, so a scanned file it leaves out
    * (a `__root/route.tsx` beside `__root.tsx`, a lazy file of the root route,
-   * an unused duplicate) is never edited.
+   * an unused duplicate) is never edited. A symlinked route file keeps its
+   * link, unless the file it names is another route file of the tree too, or
+   * another one links to it: that file holds one route, so the link becomes
+   * a file of its own (as on main, which never kept a link).
    */
   private async writePending(model: TreeModel) {
     const upkeep = [...this.files].filter(
@@ -668,6 +680,11 @@ export class Generator {
       return
     }
     const treeFiles = importedFiles(model)
+    const routesByRealPath = new Map<string, number>()
+    for (const file of treeFiles) {
+      const real = this.files.get(file)?.realPath ?? file
+      routesByRealPath.set(real, (routesByRealPath.get(real) ?? 0) + 1)
+    }
     await Promise.all(
       upkeep.map(async ([file, state]) => {
         const pending = state.pending!
@@ -677,8 +694,16 @@ export class Generator {
         if (pending.over === '' && file === model.root.file) {
           this.logger.log(`🟡 Creating ${file}`)
         }
+        const ownFile =
+          state.realPath !== undefined &&
+          routesByRealPath.get(state.realPath)! > 1
         try {
-          await this.publisher.write(file, pending.content, pending.over)
+          await this.publisher.write(
+            file,
+            pending.content,
+            pending.over,
+            ownFile,
+          )
         } catch (error) {
           if (error instanceof ConcurrentEditError) {
             // Edited while we kept it up: handled again with its new content
@@ -693,6 +718,7 @@ export class Generator {
           pending: undefined,
           // (the stamp of what it wrote)
           stamp: (await stampOf(file)) ?? undefined,
+          realPath: ownFile ? undefined : state.realPath,
         })
       }),
     )

@@ -9,12 +9,15 @@ import type {
 /**
  * Whether the route file of `route` records only server options (SPEC
  * J1.9, J2.15): a route whose options may hold a key the generator could
- * not read (a spread, a computed key) is never server-only.
+ * not read (a spread, a computed key) is never server-only, and neither is
+ * one with a lazy file or piece (`posts.lazy.tsx`): their options are the
+ * route's client-visible props.
  */
 function isServerOnly(route: ModelRoute) {
   const props = route.props
   return (
     !!props &&
+    Object.keys(route.pieces).length === 0 &&
     !props.unknown &&
     props.known.size === 1 &&
     props.known.has(SERVER_PROP)

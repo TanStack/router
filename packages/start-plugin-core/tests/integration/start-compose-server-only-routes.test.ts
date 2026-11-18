@@ -2,12 +2,14 @@
  * Server-only routes among pages (SPEC J2.15, J1.9, J1.13):
  * a route with only server handlers (`/admin`) that is the parent of a page
  * (`/admin/users`), a server-only subtree (`/api`, `/api/users`), and a
- * page whose component comes in through a spread (`/spread`). Built with
+ * page whose component comes in through a spread (`/spread`), and a route
+ * with server handlers whose component is in its `.lazy` file (`/pair`). Built with
  * Start's Vite and Rsbuild plugins and served like a deployed app
  * (start-compose-app.ts): the client route tree keeps the page under its
  * server-only ancestor and the spread route, and leaves out the server-only
  * subtree, so client-side navigation reaches the pages and finds nothing at
- * the server-only routes; the server keeps every route: each handler
+ * the server-only routes (the `.lazy` component is client-visible: `/pair`
+ * stays); the server keeps every route: each handler
  * answers and each page renders; and the generated route tree's types know
  * every route (tsc). The page under the server-only ancestor has a server
  * handler of its own, reading a Node builtin through a helper: Start's
@@ -52,6 +54,7 @@ const files = {
     '/admin/users',
     '/spread',
     '/api/users',
+    '/pair',
   ]),
   'src/routes/index.tsx': `${head}export const Route = createFileRoute('/')({ component: () => <p>MARK_HOME</p> })\n`,
   // A server-only route with a page under it (its handler answers POST, so
@@ -71,6 +74,12 @@ export const Route = createFileRoute('/admin/users')({
   // answers POST, so GET renders the page).
   'src/routes/spread.tsx': `${head}const page = { component: () => <p>MARK_SPREAD_PAGE</p> }
 export const Route = createFileRoute('/spread')({ ${handler('POST', 'MARK_SPREAD_HANDLER')}, ...page })
+`,
+  // A route with server handlers whose page is in its lazy file (its
+  // handler answers POST, so GET renders the page).
+  'src/routes/pair.tsx': `${head}export const Route = createFileRoute('/pair')({ ${handler('POST', 'MARK_PAIR_HANDLER')} })\n`,
+  'src/routes/pair.lazy.tsx': `import { createLazyFileRoute } from '@tanstack/react-router'
+export const Route = createLazyFileRoute('/pair')({ component: () => <p>MARK_PAIR_PAGE</p> })
 `,
   'src/router.ts': routerFile,
   // The types of the builtin the handler above reads, as @types/node gives
@@ -111,6 +120,7 @@ const allRoutes = [
   '/admin/users',
   '/api',
   '/api/users',
+  '/pair',
   '/spread',
 ]
 
@@ -123,6 +133,7 @@ type Expect<T extends true> = T
 export type Checks = [
   Expect<'/admin/users' extends FileRouteTypes['to'] ? true : false>,
   Expect<'/spread' extends FileRouteTypes['to'] ? true : false>,
+  Expect<'/pair' extends FileRouteTypes['to'] ? true : false>,
   Expect<'/admin' extends FileRouteTypes['id'] ? true : false>,
   Expect<'/api' extends FileRouteTypes['id'] ? true : false>,
   Expect<'/api/users' extends FileRouteTypes['id'] ? true : false>,
@@ -176,18 +187,22 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
       admin: await text('/admin', 'POST'),
       adminUsers: await text('/admin/users', 'POST'),
       spread: await text('/spread', 'POST'),
+      pair: await text('/pair', 'POST'),
       api: await text('/api'),
       users: await text('/api/users'),
       adminPage: await text('/admin/users'),
       spreadPage: await text('/spread'),
+      pairPage: await text('/pair'),
     }).toEqual({
       admin: 'MARK_ADMIN_HANDLER',
       adminUsers: Buffer.from('admin users').toString('base64'),
       spread: 'MARK_SPREAD_HANDLER',
+      pair: 'MARK_PAIR_HANDLER',
       api: 'MARK_API_HANDLER',
       users: 'MARK_USERS_HANDLER',
       adminPage: expect.stringContaining('MARK_ADMIN_PAGE'),
       spreadPage: expect.stringContaining('MARK_SPREAD_PAGE'),
+      pairPage: expect.stringContaining('MARK_PAIR_PAGE'),
     })
   })
 
@@ -232,6 +247,26 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
   test('the client route tree keeps the page whose component is spread in', () => {
     expect(clientRoutes).toContain('/spread')
   })
+
+  // A `.lazy` file's options are client-visible props of the route
+  // (overall #1: the lazy component was not counted).
+  test('the client route tree keeps the route whose component is in its lazy file', () => {
+    expect(clientRoutes).toContain('/pair')
+  })
+
+  test(
+    'client-side navigation reaches the page in a lazy file of a route with server handlers',
+    async () => {
+      const page = await openAppPage(served, '/', {
+        registerCleanup: onTestFinished,
+      })
+      await page.waitForText('MARK_HOME', { selector: '#app' })
+      await page.follow('pair')
+      expect(await settledOutlet(page, /\/pair$/)).toContain('MARK_PAIR_PAGE')
+      expect(page.loads()).toBe(1)
+    },
+    timeout,
+  )
 
   test(
     'client-side navigation reaches the page under the server-only ancestor',

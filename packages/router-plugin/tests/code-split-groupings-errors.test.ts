@@ -3,7 +3,9 @@
  * error positioned at what the route file wrote (R101): an option that
  * cannot be split, one listed twice, an imported value. Plugin options
  * with invalid groupings fail the dev server with one error. Groupings in a
- * local `const` are read.
+ * local `const` are read. Groupings the compiler doesn't read leave the
+ * route working, as on `main`: an accessor (the default groupings apply),
+ * and any value when nothing is split (`autoCodeSplitting: false`).
  */
 import { describe, expect, it } from 'vitest'
 import {
@@ -79,6 +81,40 @@ export const Route = createFileRoute('/')({
       { fresh: true },
     )
     expect(await route.isLazy('loader')).toBe(true)
+    expectNoProblems(await route.diagnostics())
+  })
+})
+
+describe('codeSplitGroupings the compiler does not read', () => {
+  it('an accessor: the route works with the default groupings (Astra R12)', async () => {
+    const route = await loadRoute(
+      `${head}export const Route = createFileRoute('/')({
+  get codeSplitGroupings() {
+    return [['loader', 'component']]
+  },
+  loader: () => 42,
+  component: () => <p>page</p>,
+})
+`,
+      { fresh: true },
+    )
+    expect(await route.run(`return options.loader()`)).toBe(42)
+    expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
+    expectNoProblems(await route.diagnostics())
+  })
+
+  it('a computed value with splitting off, compiled for route HMR (Astra R8)', async () => {
+    const route = await loadRoute(
+      `${head}const define = () => [['loader'], ['component']]
+export const Route = createFileRoute('/')({
+  codeSplitGroupings: define(),
+  loader: () => 42,
+  component: () => <p>page</p>,
+})
+`,
+      { fresh: true, hmr: true, pluginOptions: { autoCodeSplitting: false } },
+    )
+    expect(await route.run(`return options.loader()`)).toBe(42)
     expectNoProblems(await route.diagnostics())
   })
 })

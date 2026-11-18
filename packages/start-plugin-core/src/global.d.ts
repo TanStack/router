@@ -4,6 +4,8 @@ declare global {
     string,
     {
       filePath: string
+      /** The real path of a symlinked route file. */
+      realFilePath?: string
       children?: Array<string>
     }
   >

@@ -327,7 +327,11 @@ lazyRouteTemplate}`; `.lazy.tsx`/`.lazy.ts` files get the lazy template. A `.laz
 - **J1.6** Writes are atomic (temp file in `tmpDir`, then rename; beside the destination when `tmpDir` is on another
   device, J1.16); the generator never leaves a route file or the tree half-written. Every supported file name
   (§2.1, including apostrophes and other quote characters) gives a valid tree: specifiers, ids and paths are escaped
-  as needed. A clear error naming the file is acceptable only for a name the conventions do not support.
+  as needed. A clear error naming the file is acceptable only for a name the conventions do not support. A symlinked
+  route file keeps its link and the file it names gets the upkeep, unless that file is another route file of the tree
+  or another one links to it too: one file holds one route, so the link becomes a file of its own (as on `main`), and
+  the router loads both routes. Start's server manifest gives a symlinked route the assets of its chunks, which
+  bundlers name by the real path (the document links the route's stylesheet).
 - **J1.7** Conflicting route paths give an error naming the conflicting files (absolute or project-relative,
   unambiguous, §5.7). Only genuinely conflicting routes: one route mounted through an empty-prefix `physical('',
 dir)` is not a conflict by itself.
@@ -405,7 +409,8 @@ dir)` is not a conflict by itself.
 - **J2.2 Which options and groupings.** Only `component`, `errorComponent`, `pendingComponent`, `notFoundComponent`
   and `loader` are split. Precedence: `codeSplitGroupings` in the file > `splitBehavior({ routeId })` >
   `defaultBehavior` > the default `[['component'],['errorComponent'],['notFoundComponent']]`; a property appears in at
-  most one group. Options in one group load as one unit; different groups stay independently lazy (§5.3). Two options
+  most one group. A `codeSplitGroupings` accessor isn't read (the next source applies, as on main), and nothing reads
+  the file's groupings where nothing is split (`autoCodeSplitting: false`). Options in one group load as one unit; different groups stay independently lazy (§5.3). Two options
   load as one unit when, once one loaded, loading the other fetches no new module holding user code (no file of the
   app, no compiled module other than one that only imports and re-exports). A small forwarding module per option
   over the group's module is acceptable (not ideal: bytes).
@@ -466,8 +471,9 @@ dir)` is not a conflict by itself.
 - **J2.10 Same-file route factory** (§2.2). A correct split (renders, hot-updates), or unsplit plus a warning naming
   the file, in every mode; crashes or rendering the wrong component are bugs.
 - **J2.11 Two `createFileRoute` calls in one module.** Never silently swap components: each renders its own, or the
-  compiler warns or errors naming the file. A second call of the route's constructor (its binding, called directly)
-  fails the build at that call, whatever its options hold (R172).
+  compiler warns or errors naming the file. A second call of the route's constructor (its binding, or the same member
+  of the router's namespace, `Router.createFileRoute`, called directly) fails the build at that call, whatever its
+  options hold (R172).
 - **J2.12 Bindings the route module still reads stay declared.** Moving an option's declaration never removes an
   import or declaration another surviving statement (an exported wrapper, `head()`, an unsplit option, a top-level
   call) reads; the route module stays valid (G1, G8).
@@ -480,8 +486,8 @@ dir)` is not a conflict by itself.
   can't read isn't removed (J2.8).
 - **J2.15 Client route tree pruning (Start).** Routes whose only `createFileRoute` prop is `server`, with only such
   descendants, are removed from the client route tree, on Vite and Rsbuild alike. Every route with a client-visible
-  prop survives, and so does every ancestor a surviving route needs (including a server-only ancestor of a
-  surviving child). Server and provider trees keep all routes and handlers. Unknown or spread-derived props never
+  prop survives (an option of its `.lazy` file or piece included), and so does every ancestor a surviving route
+  needs (including a server-only ancestor of a surviving child). Server and provider trees keep all routes and handlers. Unknown or spread-derived props never
   cause pruning (J1.9).
 - **J2.16 JSX runtime.** A chunk compiles its JSX under the same runtime and pragma semantics as its source module:
   the project's real JSX transform selects the same runtime for the chunk as for the untouched file. For a
@@ -517,7 +523,9 @@ dir)` is not a conflict by itself.
   least once and the page shows its new data; an obsolete loader the edit replaced or removed does not run again.
   Vite and Rsbuild/Rspack (webpack lower priority); React, Solid, Vue. A lazy route file (`createLazyFileRoute`,
   `.lazy.tsx`) is a file route module too: an edit of it reaches the live route's lazy options, also of a route that
-  has not loaded them yet.
+  has not loaded them yet. An edit that removes a lazy option of a loaded route, or whose route on the router the
+  route HMR code finds doesn't load a lazy file (another router's route of the same id, J3.11), reloads the page, as
+  `main` does on every lazy file edit.
 - **J3.2 Component identity is kept for compatible edits.** For compatible hot updates, the router keeps its
   lazy-wrapper identity and lets the framework's refresh decide the component's (React; Solid and Vue keep a
   component their refresh patches in place), and shows the new code. Where
@@ -529,7 +537,12 @@ dir)` is not a conflict by itself.
   survive. Renames must display the new component (J3.3). A subtree replacement is not a full reload (G10). Test
   split and unsplit routes with real framework tooling (§8). So: a compatible body-only edit that loses state because
   the router recreated its wrapper fails; an edit the framework must remount does not fail for that remount. Keeping
-  Solid and Vue split-component identity is a requirement, not best effort.
+  Solid and Vue split-component identity is a requirement, not best effort. Route HMR never changes when code runs
+  (S2): React's registration of an unsplit higher-order component call (`component: withX(Page)`) runs it before the
+  route statement only when everything that statement evaluates before the call is a literal (an object, array or
+  template literal of such operands included), a function, an identifier or the router's own factory (`createFileRoute`
+  with literal arguments, `createRootRoute`); otherwise the call stays in place and React Refresh gets no family for
+  it (an edit may remount it, as on `main`).
 - **J3.3 Every edit takes effect.** After an edit the page shows the new code: a new component body, a renamed
   component (a new Refresh family), a new split loader (even when only the chunk changed), an added or removed option
   (including a removed split option the page had loaded), with or without the framework's refresh plugin. A full
