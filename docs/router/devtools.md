@@ -191,8 +191,8 @@ function App() {
   - Defaults to `bottom-left`.
   - The position of the TanStack Router logo to open and close the devtools panel.
 - `shadowDOMTarget?: ShadowRoot`
-  - Specifies a Shadow DOM target for the devtools.
-  - By default, devtool styles are applied to the `<head>` tag of the main document (light DOM). When a `shadowDOMTarget` is provided, styles will be applied within this Shadow DOM instead.
+  - The shadow root to add the devtools styles to.
+  - By default, the styles are added to the shadow root the devtools render in, or to the document when they do not render in a shadow root.
 - `containerElement?: string | any`
   - Use this to render the devtools inside a different type of container element for ally purposes.
   - Any string which corresponds to a valid intrinsic JSX element is allowed.
@@ -320,5 +320,5 @@ function App() {
 - `handleDragStart?: (e: any) => void`
   - Handles the opening and closing the devtools panel.
 - `shadowDOMTarget?: ShadowRoot`
-  - Specifies a Shadow DOM target for the devtools.
-  - By default, devtool styles are applied to the `<head>` tag of the main document (light DOM). When a `shadowDOMTarget` is provided, styles will be applied within this Shadow DOM instead.
+  - The shadow root to add the devtools styles to.
+  - By default, the styles are added to the shadow root the devtools render in, or to the document when they do not render in a shadow root.

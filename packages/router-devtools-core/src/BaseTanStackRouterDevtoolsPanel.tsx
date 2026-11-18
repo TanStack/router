@@ -19,7 +19,7 @@ import {
   untrack,
 } from 'solid-js'
 import { useDevtoolsOnClose } from './context'
-import { useStyles } from './useStyles'
+import { attachStyles, styles } from './styles'
 import useLocalStorage from './useLocalStorage'
 import { Explorer } from './Explorer'
 import { getRouteStatusColor, getStatusColor, multiSortBy } from './utils'
@@ -66,7 +66,12 @@ export interface BaseDevtoolsPanelOptions {
   router: Accessor<AnyRouter>
   routerState: Accessor<any>
   /**
-   * Use this to attach the devtool's styles to specific element in the DOM.
+   * The element the devtools are mounted in. Its document or shadow root gets
+   * the devtools styles.
+   */
+  mountElement?: Element
+  /**
+   * Adds the devtools styles to this shadow root instead.
    */
   shadowDOMTarget?: ShadowRoot
 }
@@ -75,11 +80,10 @@ const HISTORY_LIMIT = 15
 
 function Logo(props: any) {
   const { className, ...rest } = props
-  const styles = useStyles()
   return (
-    <button {...rest} class={cx(styles().logo, className ? className() : '')}>
-      <div class={styles().tanstackLogo}>TANSTACK</div>
-      <div class={styles().routerLogo}>TanStack Router v1</div>
+    <button {...rest} class={cx(styles.logo, className ? className() : '')}>
+      <div class={styles.tanstackLogo}>TANSTACK</div>
+      <div class={styles.routerLogo}>TanStack Router v1</div>
     </button>
   )
 }
@@ -147,7 +151,6 @@ function RouteComp({
   activeId: Accessor<string | undefined>
   setActiveId: (id: string) => void
 }) {
-  const styles = useStyles()
   const matches = createMemo(() =>
     pendingMatches().length ? pendingMatches() : routerState().matches,
   )
@@ -207,16 +210,16 @@ function RouteComp({
           }
         }}
         class={cx(
-          styles().routesRowContainer(route.id === activeId(), !!match()),
+          styles.routesRowContainer(route.id === activeId(), !!match()),
         )}
       >
         <div
           class={cx(
-            styles().matchIndicator(getRouteStatusColor(matches(), route)),
+            styles.matchIndicator(getRouteStatusColor(matches(), route)),
           )}
         />
         <NavigateLink
-          class={cx(styles().routesRow(!!match()))}
+          class={cx(styles.routesRow(!!match()))}
           left={
             <Show when={navigationTarget()}>
               {(navigate) => <NavigateButton to={navigate()} router={router} />}
@@ -224,14 +227,14 @@ function RouteComp({
           }
           right={<AgeTicker match={match()} router={router} />}
         >
-          <code class={styles().code}>
+          <code class={styles.code}>
             {isRoot ? rootRouteId : route.path || trimPath(route.id)}{' '}
           </code>
-          <code class={styles().routeParamInfo}>{param()}</code>
+          <code class={styles.routeParamInfo}>{param()}</code>
         </NavigateLink>
       </div>
       {route.children?.length ? (
-        <div class={styles().nestedRouteRow(!!isRoot)}>
+        <div class={styles.nestedRouteRow(!!isRoot)}>
           {[...(route.children as Array<AnyRoute>)]
             .sort((a, b) => {
               return a.rank - b.rank
@@ -262,12 +265,16 @@ export const BaseTanStackRouterDevtoolsPanel =
       handleDragStart,
       router,
       routerState,
+      mountElement,
       shadowDOMTarget,
       ...panelProps
     } = props
 
+    if (mountElement) {
+      attachStyles(mountElement, shadowDOMTarget)
+    }
+
     const { onCloseClick } = useDevtoolsOnClose()
-    const styles = useStyles()
     const { className, style, ...otherPanelProps } = panelProps
 
     // useStore(router.stores.__store)
@@ -404,7 +411,7 @@ export const BaseTanStackRouterDevtoolsPanel =
     return (
       <div
         class={cx(
-          styles().devtoolsPanel,
+          styles.devtoolsPanel,
           'TanStackRouterDevtoolsPanel',
           className ? className() : '',
         )}
@@ -412,10 +419,10 @@ export const BaseTanStackRouterDevtoolsPanel =
         {...otherPanelProps}
       >
         {handleDragStart ? (
-          <div class={styles().dragHandle} onMouseDown={handleDragStart}></div>
+          <div class={styles.dragHandle} onMouseDown={handleDragStart}></div>
         ) : null}
         <button
-          class={styles().panelCloseBtn}
+          class={styles.panelCloseBtn}
           onClick={(e: any) => {
             if (setIsOpen) {
               setIsOpen(false)
@@ -429,7 +436,7 @@ export const BaseTanStackRouterDevtoolsPanel =
             height="6"
             fill="none"
             viewBox="0 0 10 6"
-            class={styles().panelCloseBtnIcon}
+            class={styles.panelCloseBtnIcon}
           >
             <path
               stroke="currentColor"
@@ -440,8 +447,8 @@ export const BaseTanStackRouterDevtoolsPanel =
             ></path>
           </svg>
         </button>
-        <div class={styles().firstContainer}>
-          <div class={styles().row}>
+        <div class={styles.firstContainer}>
+          <div class={styles.row}>
             <Logo
               aria-hidden
               onClick={(e: any) => {
@@ -452,8 +459,8 @@ export const BaseTanStackRouterDevtoolsPanel =
               }}
             />
           </div>
-          <div class={styles().routerExplorerContainer}>
-            <div class={styles().routerExplorer}>
+          <div class={styles.routerExplorerContainer}>
+            <div class={styles.routerExplorer}>
               <Explorer
                 label="Router"
                 value={routerExplorerValue}
@@ -471,26 +478,26 @@ export const BaseTanStackRouterDevtoolsPanel =
             </div>
           </div>
         </div>
-        <div class={styles().secondContainer}>
-          <div class={styles().matchesContainer}>
-            <div class={styles().detailsHeader}>
+        <div class={styles.secondContainer}>
+          <div class={styles.matchesContainer}>
+            <div class={styles.detailsHeader}>
               <span>Pathname</span>
               {routerState().location.maskedLocation ? (
-                <div class={styles().maskedBadgeContainer}>
-                  <span class={styles().maskedBadge}>masked</span>
+                <div class={styles.maskedBadgeContainer}>
+                  <span class={styles.maskedBadge}>masked</span>
                 </div>
               ) : null}
             </div>
-            <div class={styles().detailsContent}>
+            <div class={styles.detailsContent}>
               <code>{routerState().location.pathname}</code>
               {routerState().location.maskedLocation ? (
-                <code class={styles().maskedLocation}>
+                <code class={styles.maskedLocation}>
                   {routerState().location.maskedLocation?.pathname}
                 </code>
               ) : null}
             </div>
-            <div class={styles().detailsHeader}>
-              <div class={styles().routeMatchesToggle}>
+            <div class={styles.detailsHeader}>
+              <div class={styles.routeMatchesToggle}>
                 <button
                   type="button"
                   onClick={() => {
@@ -498,7 +505,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                   }}
                   disabled={currentTab() === 'routes'}
                   class={cx(
-                    styles().routeMatchesToggleBtn(
+                    styles.routeMatchesToggleBtn(
                       currentTab() === 'routes',
                       true,
                     ),
@@ -513,7 +520,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                   }}
                   disabled={currentTab() === 'matches'}
                   class={cx(
-                    styles().routeMatchesToggleBtn(
+                    styles.routeMatchesToggleBtn(
                       currentTab() === 'matches',
                       true,
                     ),
@@ -528,7 +535,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                   }}
                   disabled={currentTab() === 'history'}
                   class={cx(
-                    styles().routeMatchesToggleBtn(
+                    styles.routeMatchesToggleBtn(
                       currentTab() === 'history',
                       false,
                     ),
@@ -537,11 +544,11 @@ export const BaseTanStackRouterDevtoolsPanel =
                   History
                 </button>
               </div>
-              <div class={styles().detailsHeaderInfo}>
+              <div class={styles.detailsHeaderInfo}>
                 <div>age / staleTime / gcTime</div>
               </div>
             </div>
-            <div class={cx(styles().routesContainer)}>
+            <div class={cx(styles.routesContainer)}>
               <Switch>
                 <Match when={currentTab() === 'routes'}>
                   <RouteComp
@@ -567,11 +574,11 @@ export const BaseTanStackRouterDevtoolsPanel =
                           onClick={() =>
                             setActiveId(activeId() === match.id ? '' : match.id)
                           }
-                          class={cx(styles().matchRow(match === activeMatch()))}
+                          class={cx(styles.matchRow(match === activeMatch()))}
                         >
                           <div
                             class={cx(
-                              styles().matchIndicator(getStatusColor(match)),
+                              styles.matchIndicator(getStatusColor(match)),
                             )}
                           />
                           <NavigateLink
@@ -585,7 +592,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                             }
                             right={<AgeTicker match={match} router={router} />}
                           >
-                            <code class={styles().matchID}>
+                            <code class={styles.matchID}>
                               {`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}
                             </code>
                           </NavigateLink>
@@ -600,13 +607,11 @@ export const BaseTanStackRouterDevtoolsPanel =
                       <For each={history()}>
                         {(match, index) => (
                           <li
-                            class={cx(
-                              styles().matchRow(match === activeMatch()),
-                            )}
+                            class={cx(styles.matchRow(match === activeMatch()))}
                           >
                             <div
                               class={cx(
-                                styles().matchIndicator(
+                                styles.matchIndicator(
                                   index() === 0 ? 'green' : 'gray',
                                 ),
                               )}
@@ -624,7 +629,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                                 <AgeTicker match={match} router={router} />
                               }
                             >
-                              <code class={styles().matchID}>
+                              <code class={styles.matchID}>
                                 {`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}
                               </code>
                             </NavigateLink>
@@ -632,7 +637,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                         )}
                       </For>
                       {hasHistoryOverflowed() ? (
-                        <li class={styles().historyOverflowContainer}>
+                        <li class={styles.historyOverflowContainer}>
                           This panel displays the most recent {HISTORY_LIMIT}{' '}
                           navigations.
                         </li>
@@ -644,10 +649,10 @@ export const BaseTanStackRouterDevtoolsPanel =
             </div>
           </div>
           {cachedMatches().length ? (
-            <div class={styles().cachedMatchesContainer}>
-              <div class={styles().detailsHeader}>
+            <div class={styles.cachedMatchesContainer}>
+              <div class={styles.detailsHeader}>
                 <div>Cached Matches</div>
-                <div class={styles().detailsHeaderInfo}>
+                <div class={styles.detailsHeaderInfo}>
                   age / staleTime / gcTime
                 </div>
               </div>
@@ -660,12 +665,10 @@ export const BaseTanStackRouterDevtoolsPanel =
                       onClick={() =>
                         setActiveId(activeId() === match.id ? '' : match.id)
                       }
-                      class={cx(styles().matchRow(match === activeMatch()))}
+                      class={cx(styles.matchRow(match === activeMatch()))}
                     >
                       <div
-                        class={cx(
-                          styles().matchIndicator(getStatusColor(match)),
-                        )}
+                        class={cx(styles.matchIndicator(getStatusColor(match)))}
                       />
                       <NavigateLink
                         left={
@@ -678,7 +681,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                         }
                         right={<AgeTicker match={match} router={router} />}
                       >
-                        <code class={styles().matchID}>{`${match.id}`}</code>
+                        <code class={styles.matchID}>{`${match.id}`}</code>
                       </NavigateLink>
                     </div>
                   )
@@ -688,12 +691,12 @@ export const BaseTanStackRouterDevtoolsPanel =
           ) : null}
         </div>
         {activeMatch() && activeMatch()?.status ? (
-          <div class={styles().thirdContainer}>
-            <div class={styles().detailsHeader}>Match Details</div>
+          <div class={styles.thirdContainer}>
+            <div class={styles.detailsHeader}>Match Details</div>
             <div>
-              <div class={styles().matchDetails}>
+              <div class={styles.matchDetails}>
                 <div
-                  class={styles().matchStatus(
+                  class={styles.matchStatus(
                     activeMatch()?.status,
                     activeMatch()?.isFetching,
                   )}
@@ -705,15 +708,15 @@ export const BaseTanStackRouterDevtoolsPanel =
                       : activeMatch()?.status}
                   </div>
                 </div>
-                <div class={styles().matchDetailsInfoLabel}>
+                <div class={styles.matchDetailsInfoLabel}>
                   <div>ID:</div>
-                  <div class={styles().matchDetailsInfo}>
+                  <div class={styles.matchDetailsInfo}>
                     <code>{activeMatch()?.id}</code>
                   </div>
                 </div>
-                <div class={styles().matchDetailsInfoLabel}>
+                <div class={styles.matchDetailsInfoLabel}>
                   <div>State:</div>
-                  <div class={styles().matchDetailsInfo}>
+                  <div class={styles.matchDetailsInfo}>
                     {pendingMatches().find(
                       (d: AnyRouteMatch) => d.id === activeMatch()?.id,
                     )
@@ -725,9 +728,9 @@ export const BaseTanStackRouterDevtoolsPanel =
                         : 'Cached'}
                   </div>
                 </div>
-                <div class={styles().matchDetailsInfoLabel}>
+                <div class={styles.matchDetailsInfoLabel}>
                   <div>Last Updated:</div>
-                  <div class={styles().matchDetailsInfo}>
+                  <div class={styles.matchDetailsInfo}>
                     {activeMatch()?.updatedAt
                       ? new Date(activeMatch()?.updatedAt).toLocaleTimeString()
                       : 'N/A'}
@@ -737,8 +740,8 @@ export const BaseTanStackRouterDevtoolsPanel =
             </div>
             {activeMatchLoaderData() ? (
               <>
-                <div class={styles().detailsHeader}>Loader Data</div>
-                <div class={styles().detailsContent}>
+                <div class={styles.detailsHeader}>Loader Data</div>
+                <div class={styles.detailsContent}>
                   <Explorer
                     label="loaderData"
                     value={activeMatchLoaderData}
@@ -747,8 +750,8 @@ export const BaseTanStackRouterDevtoolsPanel =
                 </div>
               </>
             ) : null}
-            <div class={styles().detailsHeader}>Explorer</div>
-            <div class={styles().detailsContent}>
+            <div class={styles.detailsHeader}>Explorer</div>
+            <div class={styles.detailsContent}>
               <Explorer
                 label="Match"
                 value={activeMatchValue}
@@ -758,8 +761,8 @@ export const BaseTanStackRouterDevtoolsPanel =
           </div>
         ) : null}
         {hasSearch() ? (
-          <div class={styles().fourthContainer}>
-            <div class={styles().detailsHeader}>
+          <div class={styles.fourthContainer}>
+            <div class={styles.detailsHeader}>
               <span>Search Params</span>
               {typeof navigator !== 'undefined' ? (
                 <span style="margin-left: 0.5rem;">
@@ -772,7 +775,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                 </span>
               ) : null}
             </div>
-            <div class={styles().detailsContent}>
+            <div class={styles.detailsContent}>
               <Explorer
                 value={locationSearchValue}
                 defaultExpanded={Object.keys(

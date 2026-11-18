@@ -63,11 +63,11 @@
     "node": ">=20.19"
   },
   "dependencies": {
-    "clsx": "^2.1.1",
-    "goober": "^2.1.16"
+    "clsx": "^2.1.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "catalog:",
+    "esbuild": "^0.27.4",
     "solid-js": "catalog:",
     "vite": "*",
     "vite-plugin-solid": "catalog:",
