@@ -30,6 +30,7 @@ import { pluginSolid } from '@rsbuild/plugin-solid'
 import { pluginVue } from '@rsbuild/plugin-vue'
 import { pluginVueJsx } from '@rsbuild/plugin-vue-jsx'
 import react from '@vitejs/plugin-react'
+import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import solid from 'vite-plugin-solid'
 import { expect } from 'vitest'
@@ -86,11 +87,14 @@ createApp({ setup: () => () => <RouterProvider router={router} /> }).mount('#app
 `,
 }
 
-/** The framework's own Vite plugin, as an app adds it. */
+/**
+ * The framework's own Vite plugins, as an app adds them (a Vue app compiles
+ * its single-file components and its JSX).
+ */
 const frameworkVitePlugins: Record<TargetFramework, () => PluginOption> = {
   react: () => react(),
   solid: () => solid(),
-  vue: () => vueJsx(),
+  vue: () => [vue(), vueJsx()],
 }
 
 /**
@@ -148,8 +152,8 @@ export interface RouteHmrPageOptions {
   pluginOptionsAsFunction?: boolean
   /**
    * Whether the app adds its framework's plugin (default `true`):
-   * `@vitejs/plugin-react`, `vite-plugin-solid` or `@vitejs/plugin-vue-jsx`
-   * with Vite, `@rsbuild/plugin-react`, `@rsbuild/plugin-solid` or
+   * `@vitejs/plugin-react`, `vite-plugin-solid` or `@vitejs/plugin-vue` +
+   * `@vitejs/plugin-vue-jsx` with Vite, `@rsbuild/plugin-react`, `@rsbuild/plugin-solid` or
    * `@rsbuild/plugin-vue` + `@rsbuild/plugin-vue-jsx` with Rsbuild. Without
    * it, a React app runs without React Refresh (Vite compiles its JSX
    * itself; Rsbuild's SWC does too).
