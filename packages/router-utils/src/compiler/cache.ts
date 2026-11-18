@@ -646,8 +646,8 @@ interface PlanRecord {
   generation: number
   /**
    * The key's latest known text: its last request's, or its file's as its
-   * last event read it (`PlanCache.supersede`). Only a compile of it
-   * publishes.
+   * last event read it (`PlanCache.supersede`; none when that event had no
+   * text to compare). Only a compile of it publishes.
    */
   latest: string | undefined
   /** Requests in progress (two quick saves overlap; a plan hit may wait on its validation). */
@@ -781,15 +781,22 @@ export class PlanCache {
   }
 
   /**
-   * The key's file changed; `revision`: its text as the event read it. A
-   * plan of another text is of a former one: evicted. A compile of another
-   * text no longer publishes (its requests are still answered). True when
-   * a plan was evicted.
+   * The key's file changed; `revision`: its text as the event read it, or
+   * `undefined` when the event has no text to compare (the file is gone,
+   * or the compiler does not read it). A plan of another text is of a
+   * former one: evicted. A compile of another text no longer publishes
+   * (its requests are still answered); without a text, none does until a
+   * request notes its own (`begin`). True when a plan was evicted.
    */
-  supersede(key: PlanKey, revision: string): boolean {
+  supersede(key: PlanKey, revision: string | undefined): boolean {
     const r = this.records.get(planKeyString(key))
     if (!r) {
       return false
+    }
+    if (revision === undefined) {
+      r.latest = undefined
+      r.generation++
+      return this.delete(key)
     }
     if (r.latest !== revision) {
       r.latest = revision

@@ -383,7 +383,7 @@ async function settle(
       return { kind: 'plan', entry }
     }
     if (cache.latestRevision(key) !== rev) {
-      // superseded by a newer save: this text is stale; never publish, but answer its requests
+      // superseded (a newer save, the file removed): this text is stale; never publish, but answer its requests
       return { kind: 'plan', entry }
     }
     overtaken = entry
@@ -446,7 +446,8 @@ function emitFrom(
     map: emitted.map,
     facts: plan.facts,
     diagnostics: plan.diagnostics,
-    // only the webpack-family hosts read them, once per compile: computed on demand
+    // read by the webpack-family hosts and by a Vite watch build only, once
+    // per compile: computed on demand
     get dependencies() {
       return [...dependencyPaths(plan.dependencies, caches)]
     },

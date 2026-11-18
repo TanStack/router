@@ -1,4 +1,8 @@
-import { ASSET_QUERY_RE, identify } from '@tanstack/router-utils/compiler'
+import {
+  ASSET_QUERY_RE,
+  identify,
+  watchDependencies,
+} from '@tanstack/router-utils/compiler'
 import { TRANSFORM_ID_REGEX } from '../constants'
 import { NODE_MODULES_RE } from '../compiler/scope'
 import { inputMapOf } from './compiler-state'
@@ -75,6 +79,9 @@ export function latePassPlugin(state: ViteCompilerState): Plugin {
           // input (Markdown a later plugin compiles), nothing to judge
           return null
         }
+        // (a watch build rebuilds the module when a file its plan read
+        // changes: the module graph misses an import the compile erased)
+        watchDependencies(this, out, identify(id).path)
         // (JavaScript the bundler parses and the compiler cannot fails the
         // client build when it names a Start package:
         // `StartCompilerSession.report`)
