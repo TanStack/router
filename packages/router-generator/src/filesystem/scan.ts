@@ -100,8 +100,9 @@ function checkRouteFilesUsedOnce(
   }
   const reused = [...usesByModule.values()].filter(
     (uses) =>
-      new Set(uses.map(({ file }) => file)).size < uses.length ||
-      new Set(uses.map(({ route }) => route)).size > 1,
+      uses.length > 1 &&
+      (new Set(uses.map(({ file }) => file)).size < uses.length ||
+        new Set(uses.map(({ route }) => route)).size > 1),
   )
   if (reused.length) {
     const lines = reused.flatMap((uses) => {
