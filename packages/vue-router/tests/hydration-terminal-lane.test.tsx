@@ -10,7 +10,6 @@ import {
   createRouter,
 } from '../src'
 import type { AnyRouteMatch } from '@tanstack/router-core'
-import type { TsrSsrGlobal } from '@tanstack/router-core/ssr/client'
 
 function bootstrap(
   matches: Array<{
@@ -40,7 +39,7 @@ function bootstrap(
     c: vi.fn(),
     p: vi.fn(),
     buffer: [],
-  } as TsrSsrGlobal
+  }
 }
 
 afterEach(() => {

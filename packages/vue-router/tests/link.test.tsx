@@ -685,11 +685,7 @@ describe('Link', () => {
     const to = Vue.ref('https://example.com')
     const RootComponent = Vue.defineComponent({
       setup() {
-        return () => (
-          <Link to={to.value as '/posts' | 'https://example.com'}>
-            Initially external
-          </Link>
-        )
+        return () => <Link to={to.value}>Initially external</Link>
       },
     })
 
@@ -5898,7 +5894,7 @@ describe('Link', () => {
     const RootComponent = Vue.defineComponent({
       setup() {
         return () => (
-          <Link to={to.value as '/posts' | '/about'} preload="render">
+          <Link to={to.value} preload="render">
             Dynamic render preload
           </Link>
         )
@@ -5942,7 +5938,7 @@ describe('Link', () => {
       setup() {
         return () => (
           <Link
-            to={to.value as '/posts' | '/about' | 'https://example.com'}
+            to={to.value}
             preload="intent"
             preloadDelay={50}
             disabled={disabled.value}

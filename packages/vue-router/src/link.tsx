@@ -591,7 +591,7 @@ function getExternalLinkProps(
     }
   }
 
-  return result as LinkHTMLAttributes
+  return result
 }
 
 function getLinkEventHandlers(

@@ -129,11 +129,7 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
           const tsNode = services.esTreeNodeToTSNodeMap.get(callback)
 
           if (ts.isFunctionLike(tsNode)) {
-            analyzeServerComponentCallback(
-              tsNode as ts.FunctionLikeDeclaration,
-              node,
-              rootKind,
-            )
+            analyzeServerComponentCallback(tsNode, node, rootKind)
           } else if (ts.isIdentifier(tsNode)) {
             analyzeDirectComponentReference(tsNode, node, rootKind)
           }
@@ -384,6 +380,7 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
             return true
           }
         }
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- the source file node has no parent at runtime
         current = current.parent as ts.Node | undefined
       }
       return false

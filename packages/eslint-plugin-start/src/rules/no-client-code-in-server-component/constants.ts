@@ -29,16 +29,21 @@ export const REACT_HOOKS = new Set([
 ])
 
 /**
+ * Web Storage is per-user browser state. Node.js only exposes it behind
+ * `--localstorage-file`, so it stays client-only although `globals` lists it
+ * for Node.js.
+ */
+const WEB_STORAGE_GLOBALS = ['localStorage', 'sessionStorage', 'Storage']
+
+/**
  * Browser-only globals not available in server context
  * Dynamically computed from globals package: browser globals that are NOT in node
  */
 export const BROWSER_ONLY_GLOBALS: Set<string> = (() => {
-  const browserGlobals = Object.keys(globals.browser as Record<string, boolean>)
-  const nodeGlobals = new Set(
-    Object.keys(globals.node as Record<string, boolean>),
-  )
+  const browserGlobals = Object.keys(globals.browser)
+  const nodeGlobals = new Set(Object.keys(globals.node))
 
-  const browserOnly = new Set<string>()
+  const browserOnly = new Set<string>(WEB_STORAGE_GLOBALS)
   for (const name of browserGlobals) {
     if (!nodeGlobals.has(name)) {
       browserOnly.add(name)

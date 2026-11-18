@@ -82,9 +82,9 @@ test('rebuilds on a destination prop change, not a presentation prop change', as
   const [cls, setCls] = createSignal('a')
   const { go, builds } = setup(() => (
     <Link
-      to={to() as any}
-      params={{ id: id() } as any}
-      search={search() as any}
+      to={to()}
+      params={{ id: id() }}
+      search={search()}
       hash={hash()}
       class={cls()}
       data-testid="link"
@@ -181,12 +181,7 @@ test('state store values are not reused either', async () => {
 
 test('inherited params and search rebuild on every navigation', async () => {
   const { go } = setup(() => (
-    <Link
-      to="/target/$id"
-      params={true as any}
-      search={true as any}
-      data-testid="link"
-    />
+    <Link to="/target/$id" params={true} search={true} data-testid="link" />
   ))
   const link = await screen.findByTestId('link')
   expect(link).toHaveAttribute('href', '/target/one')
@@ -347,7 +342,7 @@ test('calls a user ref once per element across state changes', async () => {
   const { go } = setup(() => (
     <Link
       to="/target/$id"
-      params={{ id: id() } as any}
+      params={{ id: id() }}
       ref={(el: HTMLAnchorElement) => refs.push(el)}
       data-testid="link"
     />

@@ -120,7 +120,7 @@ function collectIdentifiersFromPattern(
   } else if (t.isObjectPattern(pattern)) {
     for (const prop of pattern.properties) {
       if (t.isRestElement(prop)) {
-        collectIdentifiersFromPattern(prop.argument as t.LVal, add)
+        collectIdentifiersFromPattern(prop.argument, add)
       } else {
         collectIdentifiersFromPattern(prop.value as t.LVal, add)
       }
@@ -132,7 +132,7 @@ function collectIdentifiersFromPattern(
   } else if (t.isAssignmentPattern(pattern)) {
     collectIdentifiersFromPattern(pattern.left, add)
   } else if (t.isRestElement(pattern)) {
-    collectIdentifiersFromPattern(pattern.argument as t.LVal, add)
+    collectIdentifiersFromPattern(pattern.argument, add)
   }
 }
 
@@ -488,7 +488,7 @@ function getBoundNamesFromPattern(pattern: t.LVal, out: Set<string>): void {
   } else if (t.isObjectPattern(pattern)) {
     for (const prop of pattern.properties) {
       if (t.isRestElement(prop)) {
-        getBoundNamesFromPattern(prop.argument as t.LVal, out)
+        getBoundNamesFromPattern(prop.argument, out)
       } else {
         getBoundNamesFromPattern(prop.value as t.LVal, out)
       }
@@ -500,7 +500,7 @@ function getBoundNamesFromPattern(pattern: t.LVal, out: Set<string>): void {
   } else if (t.isAssignmentPattern(pattern)) {
     getBoundNamesFromPattern(pattern.left, out)
   } else if (t.isRestElement(pattern)) {
-    getBoundNamesFromPattern(pattern.argument as t.LVal, out)
+    getBoundNamesFromPattern(pattern.argument, out)
   }
 }
 
@@ -653,12 +653,10 @@ function isBindingIdentifierInParent(
     return parent.local === node
   }
   if (t.isFunctionDeclaration(parent) || t.isFunctionExpression(parent)) {
-    return (
-      parent.id === node || parent.params.includes(node as unknown as t.Pattern)
-    )
+    return parent.id === node || parent.params.includes(node)
   }
   if (t.isArrowFunctionExpression(parent)) {
-    return parent.params.includes(node as unknown as t.Pattern)
+    return parent.params.includes(node)
   }
   if (t.isClassDeclaration(parent) || t.isClassExpression(parent)) {
     return parent.id === node
@@ -760,7 +758,7 @@ function findUsagePosInAnalysis(
     if (t.isCatchClause(node)) {
       const bindings = new Set<string>()
       if (node.param) {
-        addPatternBindingsIfTracked(node.param as t.LVal, imported, bindings)
+        addPatternBindingsIfTracked(node.param, imported, bindings)
       }
       const nextCtx = {
         parents: [...ctx.parents, node],

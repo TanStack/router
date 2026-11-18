@@ -72,12 +72,10 @@ export function enableSwcReactServerComponents(
     }
 
     if (Array.isArray(use)) {
-      return use.map((loader) =>
-        loader ? cloneLoader(loader) : loader,
-      ) as RspackRule['use']
+      return use.map((loader) => (loader ? cloneLoader(loader) : loader))
     }
 
-    return cloneLoader(use) as RspackRule['use']
+    return cloneLoader(use)
   }
   const cloneRspackRule = (rule: RspackRule): RspackRule => {
     return {

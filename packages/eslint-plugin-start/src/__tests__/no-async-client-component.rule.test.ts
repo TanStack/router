@@ -8,8 +8,7 @@ import {
 } from '../rules/no-async-client-component/no-async-client-component.rule'
 
 RuleTester.afterAll = vitest.afterAll
-RuleTester.it = ((name, fn) =>
-  vitest.it(name, { timeout: 15000 }, fn)) as typeof RuleTester.it
+RuleTester.it = (name, fn) => vitest.it(name, { timeout: 15000 }, fn)
 RuleTester.itOnly = vitest.it.only
 RuleTester.describe = vitest.describe
 
@@ -28,6 +27,7 @@ const ruleTester = new RuleTester({
   },
 })
 
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- the type-aware lint program sees `rule` as any; tsc infers its message ids
 ruleTester.run(name, rule as any, {
   valid: [
     // Sync component in route is fine

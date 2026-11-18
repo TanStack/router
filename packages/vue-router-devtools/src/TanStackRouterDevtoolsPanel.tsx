@@ -44,7 +44,7 @@ export const TanStackRouterDevtoolsPanel = /* #__PURE__ */ defineComponent({
     'handleDragStart',
     'router',
     'shadowDOMTarget',
-  ] as unknown as undefined,
+  ],
   setup(props: TanStackRouterDevtoolsPanelOptions) {
     const devToolRef = ref<HTMLDivElement | null>(null)
     let isMounted = false

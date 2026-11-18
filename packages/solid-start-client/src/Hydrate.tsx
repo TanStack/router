@@ -67,7 +67,7 @@ export function Hydrate(props: HydrateProps) {
     typeof props.when === 'function' ||
     typeof props.prefetch === 'function'
   ) {
-    return <GenericHydrate {...(props as InternalHydrateProps)} />
+    return <GenericHydrate {...props} />
   }
 
   return props.when._h(props)

@@ -272,7 +272,7 @@ function createLinkProps(
         delete props[key]
       }
     }
-    return Solid.mergeProps(propsSafeToSpread, props) as any
+    return Solid.mergeProps(propsSafeToSpread, props)
   }
 
   let hasRenderFetched = false
@@ -428,7 +428,7 @@ function createLinkProps(
   // element's ref effect then runs once.
   return Solid.mergeProps(propsSafeToSpread, resolvedProps, {
     ref: linkRef,
-  }) as any
+  })
 }
 
 // [element href, external href (null when blocked), active]

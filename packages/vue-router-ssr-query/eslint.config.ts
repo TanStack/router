@@ -1,6 +1,7 @@
 import rootConfig from '../../eslint.config.js'
+import type { Linter } from 'eslint'
 
-export default [
+const config: Array<Linter.Config> = [
   ...rootConfig,
   {
     files: ['src/**/*.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
@@ -10,3 +11,5 @@ export default [
     },
   },
 ]
+
+export default config

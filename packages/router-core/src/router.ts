@@ -3003,7 +3003,7 @@ function applySearchMiddleware(
 
     const next = (newSearch: any, collectMeta?: true): any => {
       if (collectMeta) {
-        const nextMeta = meta || ({} as SearchMiddlewareMeta)
+        const nextMeta = meta || {}
         return {
           search: applyNext(index + 1, newSearch, nextMeta),
           meta: nextMeta,

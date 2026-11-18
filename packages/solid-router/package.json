@@ -113,6 +113,7 @@
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.10",
     "@testing-library/jest-dom": "catalog:",
+    "@types/jsdom": "^28.0.3",
     "@types/node": ">=20",
     "combinate": "catalog:",
     "solid-js": "catalog:",

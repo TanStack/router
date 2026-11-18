@@ -223,6 +223,6 @@ function rewriteDeniedImportsFromAst(
 
   return {
     code: result.code,
-    ...(result.map ? { map: result.map as SourceMapLike } : {}),
+    ...(result.map ? { map: result.map } : {}),
   }
 }

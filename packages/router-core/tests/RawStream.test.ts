@@ -23,7 +23,12 @@ import {
   defaultSerovalPlugins,
 } from '../src/ssr/serializer/seroval-plugins'
 
-type EncodedStream = ReturnType<typeof createStream<any>>
+// Deserialized streams are plain objects with the Stream methods (seroval checks
+// genuine streams with `instanceof`).
+type EncodedStream = Pick<
+  ReturnType<typeof createStream<any>>,
+  'on' | 'next' | 'throw' | 'return'
+>
 type EncodedStreamListener = Parameters<EncodedStream['on']>[0]
 type RawStreamFactory = (stream: EncodedStream) => ReadableStream<Uint8Array>
 
@@ -55,7 +60,6 @@ function createTrackedEncodedStream() {
   const listeners = new Set<EncodedStreamListener>()
   let unsubscribeCalls = 0
   const stream: EncodedStream = {
-    __SEROVAL_STREAM__: true,
     on(listener) {
       listeners.add(listener)
       let subscribed = true
@@ -550,7 +554,6 @@ describe('RawStream', () => {
       async (_, emitted) => {
         const unsubscribe = vi.fn()
         const stream = {
-          __SEROVAL_STREAM__: true,
           on(listener: EncodedStreamListener) {
             listener.next(encoded)
             listener.return(undefined)

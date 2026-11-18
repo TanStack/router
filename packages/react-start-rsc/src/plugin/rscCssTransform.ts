@@ -92,11 +92,7 @@ function createRscCssCompilerTransform(opts: {
           if (!firstArg || !t.isExpression(firstArg)) continue
           if (!isTopLevelJsx(t, firstArg)) continue
 
-          args[0] = createCssFragment(
-            t,
-            firstArg,
-            cloneLoadCssExpression(),
-          ) as typeof firstArg
+          args[0] = createCssFragment(t, firstArg, cloneLoadCssExpression())
           continue
         }
 

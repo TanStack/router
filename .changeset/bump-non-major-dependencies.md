@@ -16,3 +16,5 @@
 ---
 
 Raise the minimum versions of runtime dependencies to their latest non-major releases, including the security fixes in `seroval` and `@babel/core`. The Start config types no longer mark `pages`, `srcDirectory`, `router`, `serverFns` and the other defaulted options as possibly `undefined` under zod 4.6.2 and later.
+
+`no-client-code-in-server-component` keeps reporting `localStorage`, `sessionStorage` and `Storage` in server components. `globals` 16.5 lists Web Storage as a Node.js global (Node.js only provides it behind `--localstorage-file`).
