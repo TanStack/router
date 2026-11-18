@@ -1,11 +1,11 @@
-import { Dynamic } from 'solid-js/web'
+import { Dynamic } from '@solidjs/web'
 import { createEffect, createRenderEffect, createSignal } from 'solid-js'
 import { useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'
 import type { AnyRoute, AnyRouteMatch } from '@tanstack/router-core'
 
 import type { Theme } from './theme'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 export const isServer = typeof window === 'undefined'
 
@@ -94,11 +94,21 @@ export function styled<T extends keyof HTMLElementTagNameMap>(
 export function useIsMounted() {
   const [isMounted, setIsMounted] = createSignal(false)
 
-  const effect = isServer ? createEffect : createRenderEffect
-
-  effect(() => {
-    setIsMounted(true)
-  })
+  if (isServer) {
+    createEffect(
+      () => undefined,
+      () => {
+        setIsMounted(true)
+      },
+    )
+  } else {
+    createRenderEffect(
+      () => undefined,
+      () => {
+        setIsMounted(true)
+      },
+    )
+  }
 
   return isMounted
 }
@@ -252,7 +262,7 @@ export const displayValue = (value: unknown) => {
  */
 export function useSafeState<T>(initialState: T): [T, (value: T) => void] {
   const isMounted = useIsMounted()
-  const [state, setState] = createSignal(initialState)
+  const [state, setState] = createSignal(initialState as any)
 
   const safeSetState = (value: T) => {
     scheduleMicrotask(() => {

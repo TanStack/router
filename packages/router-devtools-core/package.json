@@ -67,10 +67,11 @@
     "goober": "^2.1.16"
   },
   "devDependencies": {
+    "@solidjs/web": "^2.0.0",
     "@testing-library/jest-dom": "catalog:",
-    "solid-js": "catalog:",
+    "solid-js": "^2.0.0",
     "vite": "*",
-    "vite-plugin-solid": "catalog:",
+    "@solidjs/vite-plugin": "^3.0.1",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "jsdom": "catalog:",

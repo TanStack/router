@@ -1,3 +1,4 @@
+import { flush } from 'solid-js'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { TanStackRouterDevtoolsPanelCore } from '../src/TanStackRouterDevtoolsPanelCore'
 import type { AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
@@ -94,6 +95,7 @@ describe('cached matches', () => {
       '[aria-label="Open match details for cached-match"]',
     ) as HTMLElement
     cachedMatch.click()
+    flush()
     expect(container.textContent).toContain('old data')
 
     cache.set('cached-match', createCachedMatch('new data'))

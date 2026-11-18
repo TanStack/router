@@ -75,6 +75,7 @@ overrides:
   '@types/babel__traverse': '^7.28.0'
   vite-plugin-dts: 4.2.3
   solid-js: 'catalog:'
+  '@tanstack/router-devtools-core>solid-js': ^2.0.0
   react: 'catalog:'
   react-dom: 'catalog:'
   '@types/react': 'catalog:'

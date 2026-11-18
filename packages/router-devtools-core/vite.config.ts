@@ -1,6 +1,6 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 import packageJson from './package.json'
 
 const config = defineConfig({
@@ -14,7 +14,7 @@ const config = defineConfig({
     setupFiles: [],
     server: {
       deps: {
-        inline: [/solid-js/],
+        inline: [/solid-js/, /@solidjs\//],
       },
     },
   },
@@ -26,7 +26,7 @@ const merged = mergeConfig(
     tsconfigPath: './tsconfig.build.json',
     entry: './src/index.tsx',
     srcDir: './src',
-    bundledDeps: ['solid-js', 'solid-js/web'],
+    bundledDeps: ['solid-js', '@solidjs/web', '@solidjs/signals'],
   }),
 )
 

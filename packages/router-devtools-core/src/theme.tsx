@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'solid-js'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 export const defaultTheme = {
   background: '#222222',
@@ -25,9 +25,9 @@ const ThemeContext = createContext(defaultTheme)
 
 export function ThemeProvider({ children, theme, ...rest }: ProviderProps) {
   return (
-    <ThemeContext.Provider value={theme} {...rest}>
+    <ThemeContext value={theme} {...rest}>
       {children}
-    </ThemeContext.Provider>
+    </ThemeContext>
   )
 }
 

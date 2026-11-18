@@ -37,7 +37,8 @@ import type {
   Route,
   RouterState,
 } from '@tanstack/router-core'
-import type { Accessor, JSX } from 'solid-js'
+import type { Accessor } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 export interface BaseDevtoolsPanelOptions {
   /**
@@ -290,61 +291,64 @@ export const BaseTanStackRouterDevtoolsPanel =
         ? matches
         : []
     }
-    let cache = router()._cache
+    let cache = untrack(() => router()._cache)
     let cacheMatches = [...cache.values()]
     const [cachedMatches, setCachedMatches] = createSignal(cacheMatches)
 
-    createEffect(() => {
-      const refreshCache = () => {
-        const next = router()._cache
-        let valuesChanged = next.size !== cacheMatches.length
-        if (!valuesChanged) {
-          let index = 0
-          for (const match of next.values()) {
-            if (match !== cacheMatches[index++]) {
-              valuesChanged = true
-              break
+    createEffect(
+      () => router(),
+      (currentRouter) => {
+        const refreshCache = () => {
+          const next = currentRouter._cache
+          let valuesChanged = next.size !== cacheMatches.length
+          if (!valuesChanged) {
+            let index = 0
+            for (const match of next.values()) {
+              if (match !== cacheMatches[index++]) {
+                valuesChanged = true
+                break
+              }
             }
           }
-        }
 
-        if (next !== cache || valuesChanged) {
-          cache = next
-          cacheMatches = [...next.values()]
-          setCachedMatches(cacheMatches)
+          if (next !== cache || valuesChanged) {
+            cache = next
+            cacheMatches = [...next.values()]
+            setCachedMatches(cacheMatches)
+          }
         }
-      }
-      refreshCache()
-      const interval = setInterval(refreshCache, 500)
-      onCleanup(() => clearInterval(interval))
-    })
+        refreshCache()
+        const interval = setInterval(refreshCache, 500)
+        return () => clearInterval(interval)
+      },
+    )
 
-    createEffect(() => {
-      const matches = routerState().matches
-      const currentMatch = matches[matches.length - 1]
-      if (!currentMatch) {
-        return
-      }
-      // Read history WITHOUT tracking it to avoid infinite loops
-      const historyUntracked = untrack(() => history())
-      const lastMatch = historyUntracked[0]
-      const sameLocation =
-        lastMatch &&
-        lastMatch.pathname === currentMatch.pathname &&
-        JSON.stringify(lastMatch.search ?? {}) ===
-          JSON.stringify(currentMatch.search ?? {})
-      if (!lastMatch || !sameLocation) {
-        if (historyUntracked.length >= HISTORY_LIMIT) {
-          setHasHistoryOverflowed(true)
+    createEffect(
+      () => routerState().matches,
+      (matches) => {
+        const currentMatch = matches[matches.length - 1]
+        if (!currentMatch) {
+          return
         }
-        setHistory((prev) => {
-          const newHistory = [currentMatch, ...prev]
-          // truncate to ensure we don't overflow too much the ui
-          newHistory.splice(HISTORY_LIMIT)
-          return newHistory
-        })
-      }
-    })
+        const lastMatch = history()[0]
+        const sameLocation =
+          lastMatch &&
+          lastMatch.pathname === currentMatch.pathname &&
+          JSON.stringify(lastMatch.search ?? {}) ===
+            JSON.stringify(currentMatch.search ?? {})
+        if (!lastMatch || !sameLocation) {
+          if (history().length >= HISTORY_LIMIT) {
+            setHasHistoryOverflowed(true)
+          }
+          setHistory((prev) => {
+            const newHistory = [currentMatch, ...prev]
+            // truncate to ensure we don't overflow too much the ui
+            newHistory.splice(HISTORY_LIMIT)
+            return newHistory
+          })
+        }
+      },
+    )
 
     const activeMatch = createMemo(() => {
       const matches = [
@@ -412,7 +416,10 @@ export const BaseTanStackRouterDevtoolsPanel =
         {...otherPanelProps}
       >
         {handleDragStart ? (
-          <div class={styles().dragHandle} onMouseDown={handleDragStart}></div>
+          <div
+            class={styles().dragHandle}
+            ref={(el) => el.addEventListener('mousedown', handleDragStart)}
+          ></div>
         ) : null}
         <button
           class={styles().panelCloseBtn}

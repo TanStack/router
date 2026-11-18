@@ -5,17 +5,20 @@ export default function useMediaQuery(
   query: string,
 ): Accessor<boolean | undefined> {
   // Keep track of the preference in state, start with the current match
-  const [isMatch, setIsMatch] = createSignal(() => {
-    if (typeof window !== 'undefined') {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      return window.matchMedia && window.matchMedia(query).matches
-    }
-    return
-  })
+  const [isMatch, setIsMatch] = createSignal<boolean | undefined>(
+    typeof window !== 'undefined'
+      ? // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        !!(window.matchMedia && window.matchMedia(query).matches)
+      : undefined,
+  )
 
   // Watch for changes
-  createEffect(() => {
-    if (typeof window !== 'undefined') {
+  createEffect(
+    () => undefined,
+    () => {
+      if (typeof window === 'undefined') {
+        return
+      }
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!window.matchMedia) {
         return
@@ -26,7 +29,7 @@ export default function useMediaQuery(
 
       // Create our handler
       const onChange = ({ matches }: { matches: boolean }) =>
-        setIsMatch(() => () => matches)
+        setIsMatch(matches)
 
       // Listen for changes
       matcher.addListener(onChange)
@@ -35,10 +38,8 @@ export default function useMediaQuery(
         // Stop listening for changes
         matcher.removeListener(onChange)
       }
-    }
+    },
+  )
 
-    return
-  })
-
-  return isMatch()
+  return isMatch
 }
