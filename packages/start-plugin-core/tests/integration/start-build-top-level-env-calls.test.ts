@@ -201,6 +201,173 @@ export { seen } from './src/seen'
     timeout,
   )
 
+  // a kept implementation at the left edge of an `export default`: a named
+  // function expression stays an expression, so its name binds nothing in
+  // the module, which reads the global `fetch`. Source: Astra review 4
+  // (architecture B1)
+  test(
+    'a default-exported env fn whose implementation is a named function expression: the module reads the global of that name',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        files: {
+          'src/only.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+export default createServerOnlyFn(function fetch() { return 'only' })
+export const value = fetch === globalThis.fetch ? 'native' : 'shadowed'
+`,
+          'src/iso.ts': `import { createIsomorphicFn } from '@tanstack/react-start'
+export default createIsomorphicFn()
+  .server(function fetch() { return 'iso-server' })
+  .client(function fetch() { return 'iso-client' })
+export const value = fetch === globalThis.fetch ? 'native' : 'shadowed'
+`,
+          'entry.ts': `export * as only from './src/only'
+export * as iso from './src/iso'
+`,
+        },
+      })
+      expect(
+        (
+          await ssr.run(`return [
+  entry.only.default(), entry.only.value,
+  entry.iso.default(), entry.iso.value,
+]`)
+        ).result,
+      ).toEqual(['only', 'native', 'iso-server', 'native'])
+      expect(
+        (
+          await client.run(
+            `return [entry.only.value, entry.iso.default(), entry.iso.value]`,
+          )
+        ).result,
+      ).toEqual(['native', 'iso-client', 'native'])
+    },
+    timeout,
+  )
+
+  // the same, its name also a binding of the module, or its text in a type
+  // wrapper (`function f() {} as any`, a class expression): no declaration,
+  // so no redeclaration and no statement ending before `as`. Source: Astra
+  // review 4 (architecture B1)
+  test(
+    'a default-exported server-only fn whose implementation is named like a binding of the module, or wrapped: the build runs it and the module reads its own binding',
+    async () => {
+      const { ssr } = await buildStart({
+        bundler,
+        files: {
+          'src/local.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+const run = 'MARK_LOCAL_RUN'
+export default createServerOnlyFn(function run() { return 'local' })
+export const value = run
+`,
+          'src/as.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+export default createServerOnlyFn(function fetch() { return 'as' } as any)
+export const value = fetch === globalThis.fetch ? 'native' : 'shadowed'
+`,
+          'src/class.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+export default createServerOnlyFn(class fetch { static kind = 'class' } as any)
+export const value = fetch === globalThis.fetch ? 'native' : 'shadowed'
+`,
+          'entry.ts': `export * as local from './src/local'
+export * as wrapped from './src/as'
+export * as cls from './src/class'
+`,
+        },
+      })
+      expect(
+        (
+          await ssr.run(`return [
+  entry.local.default(), entry.local.value,
+  entry.wrapped.default(), entry.wrapped.value,
+  entry.cls.default.kind, entry.cls.value,
+]`)
+        ).result,
+      ).toEqual(['local', 'MARK_LOCAL_RUN', 'as', 'native', 'class', 'native'])
+    },
+    timeout,
+  )
+
+  // a kept implementation at the left edge of a statement, an arrow's
+  // expression body or an `export default` with a call or member after it:
+  // the statement starts with the implementation's text (`function () {}`,
+  // `{ f }`), which stays an expression. Source: Astra review 4 (core B4)
+  test(
+    'a server-only fn whose implementation starts its statement and is called or read in place: the server runs it',
+    async () => {
+      const { ssr } = await buildStart({
+        bundler,
+        files: {
+          'src/shapes.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+export function bound() {
+  let a = 0
+  createServerOnlyFn(function () { a++ }.bind(null))()
+  return a
+}
+export function object() {
+  let a = 0
+  createServerOnlyFn({ f: () => ++a }.f.bind(null))()
+  return a
+}
+export function member() {
+  let a = 0
+  createServerOnlyFn(function () { a++ }.bind(null)).call(null)
+  return a
+}
+export const arrow = () => createServerOnlyFn({ f: () => 'arrow' }.f.bind(null))()
+`,
+          'src/default.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+export default createServerOnlyFn(function () { return 'default' }.bind(null))()
+`,
+          'entry.ts': `export * as shapes from './src/shapes'
+export { default } from './src/default'
+`,
+        },
+      })
+      expect(
+        (
+          await ssr.run(`return [
+  entry.shapes.bound(),
+  entry.shapes.object(),
+  entry.shapes.member(),
+  entry.shapes.arrow(),
+  entry.default,
+]`)
+        ).result,
+      ).toEqual([1, 1, 1, 'arrow', 'default'])
+    },
+    timeout,
+  )
+
+  // a kept `new Factory`, written without an argument list, called or read
+  // in place: the call and the read apply to the constructed value, not to
+  // the constructor. Rsbuild reads only: its SWC transform (@swc/core
+  // 1.15.33, Rsbuild 2.3.1) prints the compiler's `(new Factory)()` as
+  // `new Factory()`, dropping the call. Source: Astra review 4 (core B5)
+  test(
+    'a server-only fn whose implementation is a `new` without arguments, called or read in place: the server calls or reads the constructed value',
+    async () => {
+      const { ssr } = await buildStart({
+        bundler,
+        files: {
+          'entry.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+const Factory = class {
+  constructor() {
+    return Object.assign(() => 7, { label: 'constructed' })
+  }
+} as unknown as new () => (() => number) & { label: string }
+export const called = () => createServerOnlyFn(new Factory)()
+export const read = () => createServerOnlyFn(new Factory).label
+`,
+        },
+      })
+      expect((await ssr.run(`return entry.read()`)).result).toBe('constructed')
+      if (bundler === 'vite') {
+        expect((await ssr.run(`return entry.called()`)).result).toBe(7)
+      }
+    },
+    timeout,
+  )
+
   test(
     'a route file with one: the page renders, and its server code stays out of the client',
     async () => {
