@@ -586,6 +586,9 @@ export class StartCompilerSession {
         k = Math.min(k, literal.length)
       }
     }
+    if (literals.length === 0) {
+      return new Set()
+    }
     const byPrefix = new Map<string, Array<{ literal: string; id: string }>>()
     for (const l of literals) {
       const prefix = l.literal.slice(0, k)

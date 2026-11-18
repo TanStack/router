@@ -348,12 +348,6 @@ export function importEdgesPlanner(
       const rules = rulesFor(config, envType)
       const recipe = plan.outputs[output]
       const importerId = recipe?.derivedId ?? ctx.identity.canonicalId
-      // (positions in the original file: an SFC's, never the compiled code's)
-      const locator = originalPositions(
-        ctx.identity.path,
-        ctx.code,
-        ctx.inputMap,
-      )
       const typescript =
         ctx.identity.lang === 'ts' || ctx.identity.lang === 'tsx'
 
@@ -440,6 +434,12 @@ export function importEdgesPlanner(
         return
       }
 
+      // (positions in the original file: an SFC's, never the compiled code's)
+      const locator = originalPositions(
+        ctx.identity.path,
+        ctx.code,
+        ctx.inputMap,
+      )
       const violations: Array<EdgeViolation> = []
       for (const j of judged) {
         if (j.rule === null) {

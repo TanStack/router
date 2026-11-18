@@ -90,7 +90,8 @@ export function withOwnSourcesNamedByFile<
   return {
     ...options,
     sourcemapPathTransform: (source: string, sourcemapPath: string) => {
-      const file = identify(source).canonicalId
+      // (an id without a query is its own canonical id)
+      const file = source.includes('?') ? identify(source).canonicalId : source
       return next ? next(file, sourcemapPath) : file
     },
   }
