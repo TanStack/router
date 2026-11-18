@@ -31,7 +31,8 @@
  * has its own (`src/client.*`, `src/server.*`), given to Start through its
  * documented options (`client.entry`, `server.entry`): the client entry
  * imports the app's documented router entry (`src/router.ts`, the harness's
- * real router unless the app has one; the client entry only the app's own),
+ * real router unless the app has one), as Start's own client entry does, so
+ * the client build sees the app's routes and the server fns they reach,
  * its start entry (`src/start.ts` when the app has one; otherwise Start uses
  * the framework package's default) and the test's entry module, whose
  * exports `run()` gives the script as `entry`; the server entry is Start's
@@ -472,16 +473,19 @@ const routerPackages = {
 
 /**
  * The client entry of the app: imports the app's documented entries that
- * Start's default client entry imports, when the app has them (the router
- * entry `src/router.ts` and the start entry `src/start.ts`; Start's
- * defaults, as no test moves them), and the test's entry module. Like
+ * Start's default client entry imports (the router entry `src/router.ts`,
+ * the app's or the harness's, and the start entry `src/start.ts` when the
+ * app has one; Start's defaults, as no test moves them), and the test's
+ * entry module. As in an app, the client build reaches the routes through
+ * the router: a server fn only a route calls is client-referenced. Like
  * Start's client runtime, it reads the start instance's options (handing
  * the start module's namespace to page code would hand it a builder
  * factory, which fails a client build).
  */
-const clientEntry = (testEntry: string, start: boolean, router: boolean) =>
-  `${start ? `import { startInstance } from '../src/start'\n` : ''}${router ? `import * as router from '../src/router'\n` : ''}import * as entry from ${JSON.stringify(`../${testEntry}`)}
-globalThis.__tssBuildHarnessApp = { ${[start && 'startOptions: startInstance?.getOptions', router && 'router'].filter(Boolean).join(', ')} }
+const clientEntry = (testEntry: string, start: boolean) =>
+  `${start ? `import { startInstance } from '../src/start'\n` : ''}import * as router from '../src/router'
+import * as entry from ${JSON.stringify(`../${testEntry}`)}
+globalThis.__tssBuildHarnessApp = { ${start ? 'startOptions: startInstance?.getOptions, ' : ''}router }
 globalThis.${entryGlobal} = entry
 `
 
@@ -551,7 +555,7 @@ const harnessFiles = (
     routerPackages[framework],
   )
   return {
-    'harness/client-entry.ts': clientEntry(entries.client, ownStart, ownRouter),
+    'harness/client-entry.ts': clientEntry(entries.client, ownStart),
     'harness/server-entry.ts': serverEntry(entries.ssr, framework),
     'harness/render.ts': renderFile,
     ...(!ownRouter && { 'src/router.ts': router }),
