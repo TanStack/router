@@ -91,7 +91,7 @@ export function FloatingTanStackRouterDevtools({
     null,
   )
 
-  const [isResolvedOpen, setIsResolvedOpen] = createSignal(false)
+  const isResolvedOpen = () => isOpen() ?? false
   const [isResizing, setIsResizing] = createSignal(false)
 
   const handleDragStart = (
@@ -129,13 +129,6 @@ export function FloatingTanStackRouterDevtools({
     document.addEventListener('mousemove', run)
     document.addEventListener('mouseup', unsub)
   }
-
-  createEffect(
-    () => isOpen() ?? false,
-    (open) => {
-      setIsResolvedOpen(open)
-    },
-  )
 
   // Pad the page so the open panel does not cover its bottom.
   createEffect(

@@ -15,6 +15,7 @@ import {
   createMemo,
   createSignal,
   onCleanup,
+  untrack,
 } from 'solid-js'
 import { useDevtoolsOnClose } from './context'
 import { attachStyles } from './styles'
@@ -331,8 +332,7 @@ export const BaseTanStackRouterDevtoolsPanel =
         if (!currentMatch) {
           return
         }
-        // The effect phase does not track, so reading history does not loop.
-        const historyUntracked = history()
+        const historyUntracked = untrack(history)
         const lastMatch = historyUntracked[0]
         const sameLocation =
           lastMatch &&
