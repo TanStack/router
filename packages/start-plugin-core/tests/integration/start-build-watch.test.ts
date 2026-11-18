@@ -10,8 +10,8 @@ import {
   lstatSync,
   mkdirSync,
   mkdtempSync,
-  readdirSync,
   readFileSync,
+  readdirSync,
   rmSync,
 } from 'node:fs'
 import path from 'node:path'
