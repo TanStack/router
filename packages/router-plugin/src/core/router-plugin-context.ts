@@ -23,16 +23,7 @@ interface ContextInternals {
   listeners: Set<RoutesChangedListener>
 }
 
-/**
- * Where a context keeps its internals: on the context itself, under a global
- * symbol, so that each copy of this module (the CJS and the ESM build) finds
- * the same state.
- */
-const INTERNALS = Symbol.for('@tanstack/router-plugin/context-internals')
-
-type ContextWithInternals = RouterPluginContext & {
-  [INTERNALS]?: ContextInternals
-}
+const internals = new WeakMap<RouterPluginContext, ContextInternals>()
 
 /**
  * The shared state of the plugins created for one context: the generator
@@ -40,8 +31,29 @@ type ContextWithInternals = RouterPluginContext & {
  * change and share one warning ledger.
  */
 export function createRouterPluginContext(): RouterPluginContext {
-  const context: RouterPluginContext = { routesByFile: new Map() }
-  contextInternals(context)
+  let routesByFile: GetRoutesByFileMapResult = new Map()
+  const state: ContextInternals = {
+    warnings: new WarningLedger(),
+    listeners: new Set(),
+  }
+  const context: RouterPluginContext = {
+    get routesByFile() {
+      return routesByFile
+    },
+    set routesByFile(next: GetRoutesByFileMapResult) {
+      const previous = routesByFile
+      // the generator replaces its registry when a route changed: the same
+      // one again (after an event that changed no route) is no change
+      if (next === previous) {
+        return
+      }
+      routesByFile = next
+      for (const listener of state.listeners) {
+        listener(next, previous)
+      }
+    },
+  }
+  internals.set(context, state)
   return context
 }
 
@@ -59,43 +71,11 @@ export function publishRoutes(
   context.routesByFile = routesByFile
 }
 
-/**
- * The internals of a context, created on first use: a context may be one the
- * app built itself (`{ routesByFile: new Map() }`). Assigning `routesByFile`
- * notifies the listeners from then on, whoever assigns it (the router's
- * generator, or the app's own generator plugin).
- */
+/** The internals of a context `createRouterPluginContext` made. */
 export function contextInternals(
   context: RouterPluginContext,
 ): ContextInternals {
-  const known = (context as ContextWithInternals)[INTERNALS]
-  if (known) {
-    return known
-  }
-  const state: ContextInternals = {
-    warnings: new WarningLedger(),
-    listeners: new Set(),
-  }
-  let routesByFile = context.routesByFile
-  Object.defineProperty(context, INTERNALS, { value: state })
-  Object.defineProperty(context, 'routesByFile', {
-    configurable: true,
-    enumerable: true,
-    get: () => routesByFile,
-    set: (next: GetRoutesByFileMapResult) => {
-      const previous = routesByFile
-      // the generator replaces its registry when a route changed: the same
-      // one again (after an event that changed no route) is no change
-      if (next === previous) {
-        return
-      }
-      routesByFile = next
-      for (const listener of state.listeners) {
-        listener(next, previous)
-      }
-    },
-  })
-  return state
+  return internals.get(context)!
 }
 
 /** Subscribes to registry changes; returns the unsubscribe function. */

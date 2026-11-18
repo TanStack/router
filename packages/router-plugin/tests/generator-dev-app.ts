@@ -57,7 +57,6 @@ import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { AddressInfo } from 'node:net'
 import type { RsbuildPlugin } from '@rsbuild/core'
 import type { WebpackPluginInstance } from 'webpack'
-import type { PluginOption } from 'vite'
 import type { Config } from '../src/vite'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
@@ -209,12 +208,6 @@ export interface GeneratorDevAppOptions {
    * relative paths from the working directory).
    */
   pluginOptions?: Partial<Config> | ((root: string) => Partial<Config>)
-  /**
-   * Vite: creates the router plugins from the resolved plugin options
-   * instead of `tanstackRouter` (e.g. the generator and the code splitter
-   * as separate plugins).
-   */
-  routerPlugins?: (config: Partial<Config>) => Array<PluginOption>
   /** Workspace packages linked into the app's `node_modules`. */
   links?: Array<string>
   /** Symbolic links in the app (link → target, both relative to its root). */
@@ -258,12 +251,7 @@ export async function generatorDevApp(
   }
   let app =
     bundler === 'vite'
-      ? await viteApp(
-          files,
-          symlinks,
-          options.pluginOptions,
-          options.routerPlugins,
-        )
+      ? await viteApp(files, symlinks, options.pluginOptions)
       : bundler === 'webpack'
         ? await webpackApp(
             files,
@@ -513,9 +501,6 @@ async function viteApp(
   files: Record<string, string>,
   symlinks: Record<string, string>,
   pluginOptions: GeneratorDevAppOptions['pluginOptions'] = {},
-  routerPlugins: GeneratorDevAppOptions['routerPlugins'] = (config) => [
-    tanstackRouter(config),
-  ],
 ): Promise<AppServer> {
   const server = await createDevServer({
     dir: harnessDir,
@@ -536,7 +521,7 @@ async function viteApp(
     },
     config: { optimizeDeps: { include: prebundled } },
     plugins: ({ root }) => [
-      ...routerPlugins({
+      tanstackRouter({
         target: 'react',
         routesDirectory: './routes',
         generatedRouteTree: './routeTree.gen.ts',
