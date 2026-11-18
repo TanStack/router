@@ -39,8 +39,13 @@ export interface RsbuildRouteGenerator {
   clientRouteTree: {
     path: () => string
     code: () => Promise<string>
-    /** Bumped when the pruned route set changes (the tree file may not). */
-    version: () => number
+    /**
+     * Whether the tree module of the compilation may hold another pruned route
+     * set than the current one: its routes changed since `code()` last served
+     * it (the tree file may not), or nothing served it in this process (a
+     * module restored from the persistent cache).
+     */
+    stale: () => boolean
   }
 }
 
@@ -53,7 +58,10 @@ export function createRsbuildRouteGenerator(opts: {
   // the published registry (the context dedupes an unchanged publication)
   const context = createRouterPluginContext()
   const registry = new RouteRegistryView(context)
+  /** Bumped when the pruned route set changes. */
   let version = 0
+  /** The version of the last tree `code()` served (none yet: -1). */
+  let served = -1
 
   const treePath = () =>
     path.resolve(opts.getConfig().startConfig.router.generatedRouteTree)
@@ -102,8 +110,13 @@ export function createRsbuildRouteGenerator(opts: {
     },
     clientRouteTree: {
       path: treePath,
-      code: () => clientRouteTree.code(),
-      version: () => version,
+      code: async () => {
+        const serving = version
+        const code = await clientRouteTree.code()
+        served = serving
+        return code
+      },
+      stale: () => served !== version,
     },
   }
 }
