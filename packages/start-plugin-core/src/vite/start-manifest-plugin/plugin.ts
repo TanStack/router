@@ -50,16 +50,22 @@ export function startManifestPlugin(opts: {
             `Unexpected environment for client build capture: ${this.environment.name}`,
           )
         }
-        opts.clientBuilds.publishClientBuild(this.environment, {
-          clientBuild: normalizeViteClientBuild(
-            bundle,
-            opts.getConfig().startConfig.server.build.inlineCss.enabled,
+        opts.clientBuilds.publishClientBuild(
+          this.environment,
+          {
+            clientBuild: normalizeViteClientBuild(
+              bundle,
+              opts.getConfig().startConfig.server.build.inlineCss.enabled,
+            ),
+            cssCodeSplitDisabledFileName: getAssetFileNameByName(
+              bundle,
+              'style.css',
+            ),
+          },
+          Object.values(bundle).flatMap((output) =>
+            output.type === 'chunk' ? [output.code] : [],
           ),
-          cssCodeSplitDisabledFileName: getAssetFileNameByName(
-            bundle,
-            'style.css',
-          ),
-        })
+        )
       },
     },
     createVirtualModule({

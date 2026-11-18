@@ -175,8 +175,8 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
     applyToEnvironment: (e) => state.resolverEnvironments.has(e.name),
     async load() {
       const s = state.sessionOf(this.environment)
-      // the functions the client build references (J4.2), as the client's
-      // last build of the run left them
+      // the functions the client build references and those it calls (J4.2,
+      // R182), as the client's last build of the run left them
       const clientBuild =
         this.environment.mode === 'build'
           ? await state.embedClientBuild(this)
@@ -201,6 +201,7 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
           ...e,
           clientReferenced: clientBuild?.functionIds.has(e.id) ?? false,
         }))
+      const callableIds = [...(clientBuild?.callableIds ?? [])]
       if (this.environment.name !== state.opts.providerEnvName) {
         const mod = state.envOf(this.environment.name)?.getServerFnById
         if (mod) {
@@ -208,13 +209,8 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
             // J4.2 with a separate provider (RSC): the provider built before
             // the client, so its manifest lists every function; this
             // environment builds last (plugin-rsc: rsc, client, ssr) and
-            // gates client-origin calls on the client build's references
-            return callerGateModule(
-              SERVER_FN_FORWARD_VIRTUAL_ID,
-              referenced(s.start.registry.entries())
-                .filter((e) => e.clientReferenced)
-                .map((e) => e.id),
-            )
+            // gates client-origin calls on the functions the client calls
+            return callerGateModule(SERVER_FN_FORWARD_VIRTUAL_ID, callableIds)
           }
           return mod
         }
@@ -229,6 +225,11 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
         entries: referenced(s.start.registry.entries()),
         providerModuleId,
         clientReferencedOnly: state.ssrIsProvider,
+        // the HTTP-callable functions (R182); the RSC provider builds
+        // before the client, and its caller environment gates instead
+        clientOriginGate: state.ssrIsProvider
+          ? JSON.stringify(callableIds)
+          : undefined,
       })
     },
   })

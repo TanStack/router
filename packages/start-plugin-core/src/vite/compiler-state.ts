@@ -261,6 +261,7 @@ export function watchesSentinel(
 function clientBuildDigest(
   manifest: ClientManifest,
   functionIds: ReadonlyArray<string>,
+  callableIds: ReadonlyArray<string>,
 ): string {
   const { clientBuild, cssCodeSplitDisabledFileName } = manifest
   return createHash('sha1')
@@ -271,6 +272,7 @@ function clientBuildDigest(
         [...(clientBuild.cssContentByFileName ?? [])],
         cssCodeSplitDisabledFileName ?? null,
         functionIds,
+        callableIds,
       ]),
     )
     .digest('base64url')
@@ -286,13 +288,16 @@ export interface ClientManifest {
 /**
  * A client build of a build run, as the server environment embeds it: the
  * start manifest (the client's files) and the server functions the client
- * references (the server's resolver answers only those, J4.2).
+ * references (J4.2).
  */
 export interface ClientBuildRecord {
   /** A digest of what the server embeds of the build. */
   digest: string
   manifest: ClientManifest
+  /** The server fns the client's compiles stubbed (the resolver's manifest: server code calls them by id too). */
   functionIds: ReadonlySet<string>
+  /** Those whose client call survives in the client's emitted code: the HTTP-callable ones (R182). */
+  callableIds: ReadonlySet<string>
 }
 
 /** The client build as the server's modules embed it (`ViteCompilerState.embedClientBuild`). */
@@ -301,6 +306,8 @@ export interface ClientBuilds {
   publishClientBuild: (
     environment: Environment,
     manifest: ClientManifest,
+    /** The code of the client's emitted chunks (`ClientBuildRecord.callableIds`). */
+    codes: ReadonlyArray<string>,
   ) => void
   /** A module of a server environment's build embeds the run's client build (null: none built in this run). */
   embedClientBuild: (ctx: EmbeddingContext) => Promise<ClientBuildRecord | null>
@@ -639,19 +646,33 @@ export class ViteCompilerState implements ClientBuilds {
    * The client's build of the environment's run ended with its bundle (the
    * start manifest's capture, `generateBundle`): the record the server
    * embeds, with the server functions the build references (its compiles
-   * are done). `build --watch`: a server build that embedded another client
+   * are done) and those its emitted `codes` still call. `build --watch`: a server build that embedded another client
    * build is built again by its own watcher, whichever of the two watchers
    * runs first (the sentinel it watches is written).
    */
-  publishClientBuild(environment: Environment, manifest: ClientManifest): void {
+  publishClientBuild(
+    environment: Environment,
+    manifest: ClientManifest,
+    codes: ReadonlyArray<string>,
+  ): void {
     const s = this.sessionOf(environment)
     const functionIds = s.start.registry
       .entries()
       .filter((e) => e.clientReferenced)
       .map((e) => e.id)
       .sort()
-    const digest = clientBuildDigest(manifest, functionIds)
-    s.clientBuild = { digest, manifest, functionIds: new Set(functionIds) }
+    // (a production build's: a bundled dev client builds too)
+    const callableIds =
+      environment.mode === 'build'
+        ? [...s.start.clientCallableIds(codes)].sort()
+        : []
+    const digest = clientBuildDigest(manifest, functionIds, callableIds)
+    s.clientBuild = {
+      digest,
+      manifest,
+      functionIds: new Set(functionIds),
+      callableIds: new Set(callableIds),
+    }
     this.followClientBuild(s, environment)
   }
 

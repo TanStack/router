@@ -719,27 +719,55 @@ function validate(
       .refsIn({ start, end: start + 1 })
       .find((r) => r.range.start === start)
 
-  /** `fn`: inside a function of the children; `self`: `this`/`arguments` are owned inside. */
-  const visit = (node: Node, fn: boolean, self: boolean): void => {
+  /** Whether a class inside the children around `node` declares the private name `name`. */
+  const declaresPrivateInside = (node: Node, name: string) =>
+    [...analysis.file.ancestors(node)].some(
+      (a) =>
+        a.type === 'ClassBody' &&
+        a.start >= shape.range.start &&
+        a.body.some(
+          (m) =>
+            'key' in m &&
+            m.key.type === 'PrivateIdentifier' &&
+            m.key.name === name,
+        ),
+    )
+  /** The functions the children call where they are written (an IIFE's callee), by start. */
+  const invoked = new Set<number>()
+  /**
+   * `fn`: inside a function of the children; `self`: `this`/`arguments` are
+   * owned inside; `render`: runs while the boundary renders (outside any
+   * function but an IIFE's, which the hook check reads).
+   */
+  const visit = (
+    node: Node,
+    fn: boolean,
+    self: boolean,
+    render: boolean,
+  ): void => {
     if (skip.some((r) => within(node, r))) {
       return
     }
     let nextFn = fn
     let nextSelf = self
+    let nextRender = render
     switch (node.type) {
       case 'ArrowFunctionExpression':
         nextFn = true
+        nextRender = render && invoked.has(node.start)
         scan.functions.push({ start: node.start, end: node.end })
         break
       case 'FunctionExpression':
       case 'FunctionDeclaration':
         nextFn = true
         nextSelf = true
+        nextRender = render && invoked.has(node.start)
         scan.functions.push({ start: node.start, end: node.end })
         break
       case 'ClassBody':
         nextFn = true
         nextSelf = true
+        nextRender = false
         break
       case 'ThisExpression':
         if (!self) {
@@ -757,6 +785,26 @@ function validate(
           )
         }
         break
+      case 'MemberExpression':
+      case 'BinaryExpression': {
+        // a private name of a class around the boundary: the chunk is
+        // outside it (`#x` there is a syntax error)
+        const name =
+          node.type === 'MemberExpression'
+            ? node.property.type === 'PrivateIdentifier'
+              ? node.property.name
+              : null
+            : node.left.type === 'PrivateIdentifier'
+              ? node.left.name
+              : null
+        if (name !== null && !declaresPrivateInside(node, name)) {
+          fail(
+            'hydrate-private-name',
+            `Hydrate cannot code-split JSX that reads \`#${name}\` of the enclosing class: the split children render in another module, outside the class. Read it into a local before the boundary, or use split={false}.`,
+          )
+        }
+        break
+      }
       case 'MetaProperty':
         if (!self && node.meta.name === 'new') {
           fail(
@@ -778,7 +826,14 @@ function validate(
         // React's rules of hooks: the call would move into another
         // component. Solid has none: a `use*` call in the chunk runs under
         // the boundary's owner, with its context
-        if (!fn && !solid) {
+        if (render && !solid) {
+          const callee = unwrapExpression(node.callee)
+          if (
+            callee.type === 'ArrowFunctionExpression' ||
+            callee.type === 'FunctionExpression'
+          ) {
+            invoked.add(callee.start)
+          }
           const hook = hookName(node.callee)
           if (hook !== null) {
             fail(
@@ -832,10 +887,10 @@ function validate(
       default:
         break
     }
-    forEachChild(node, (c) => visit(c, nextFn, nextSelf))
+    forEachChild(node, (c) => visit(c, nextFn, nextSelf, nextRender))
   }
   for (const n of shape.nodes) {
-    visit(n, false, false)
+    visit(n, false, false, true)
   }
   if (!scan.ok) {
     return scan

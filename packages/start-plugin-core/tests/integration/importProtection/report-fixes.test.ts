@@ -287,6 +287,40 @@ export const both = 1
     timeout,
   )
 
+  // The report names where the marked module imports its marker, not a
+  // quoted mention of it in a comment before (Astra review of #8817,
+  // hydrate #14: it reported the comment's line).
+  test(
+    'a marker violation reports the marker import of the marked module, not a mention in a comment',
+    async () => {
+      const marked = `// a file that imports '@tanstack/react-start/client-only' is client-only
+import { useState } from 'react'
+import '@tanstack/react-start/client-only'
+export const useCount = () => useState(0)
+`
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files: {
+            'src/count.ts': marked,
+            'src/entry.ts': `import { useCount } from './count'\nexport const read = () => useCount\n`,
+          },
+          entry: 'src/entry.ts',
+        }),
+      )
+      expectDiagnostic(error.diagnostics, {
+        severity: 'error',
+        file: 'src/count.ts',
+        root: error.root,
+        position: diagnosticPosition(
+          marked,
+          marked.lastIndexOf(`'@tanstack/react-start/client-only'`),
+        ),
+      })
+    },
+    timeout,
+  )
+
   describe.each([
     { framework: 'react' as const, config: {} },
     { framework: 'solid' as const, config: solidAppConfig },

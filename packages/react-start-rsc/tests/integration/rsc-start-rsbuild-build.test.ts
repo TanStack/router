@@ -14,9 +14,10 @@ import {
 import type { RscPreviewServer } from './rsc-app'
 
 /**
- * A server fn only server code calls (`internal`, called by `greet`'s
- * handler) next to one the client references, and a page exposing both
- * URLs and a caller that sends the real request envelope to a URL.
+ * Server fns only server code calls (`internal` in another module and
+ * `sameFile` in `greet`'s, both called by `greet`'s handler) next to one
+ * the client references, and a page exposing their URLs and a caller that
+ * sends the real request envelope to a URL.
  */
 const privateFnFiles = {
   'src/private/internal.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -24,13 +25,14 @@ export const internal = createServerFn().handler(() => 'MARK_INTERNAL')
 `,
   'src/private/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 import { internal } from './internal'
-export const greet = createServerFn().handler(async () => 'MARK_GREET:' + (await internal()))
-export const urls = createServerFn().handler(() => ({ internal: internal.url }))
+const sameFile = createServerFn().handler(() => 'MARK_SAME_FILE')
+export const greet = createServerFn().handler(async () => 'MARK_GREET:' + (await internal()) + ':' + (await sameFile()))
+export const urls = createServerFn().handler(() => ({ internal: internal.url, sameFile: sameFile.url }))
 `,
   'src/routes/private.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { greet, urls } from '../private/fns'
 export const Route = createFileRoute('/private')({
-  loader: async () => ({ label: await greet(), internalUrl: (await urls()).internal }),
+  loader: async () => ({ label: await greet(), urls: await urls() }),
   component: Page,
 })
 if (typeof window !== 'undefined') {
@@ -58,7 +60,7 @@ function Page() {
   return (
     <main>
       <p data-testid="label">label {data.label}</p>
-      <p data-testid="urls">{JSON.stringify({ greet: greet.url, internal: data.internalUrl })}</p>
+      <p data-testid="urls">{JSON.stringify({ greet: greet.url, ...data.urls })}</p>
     </main>
   )
 }
@@ -117,7 +119,7 @@ test("a server fn only its route's component calls renders on the server and ans
 })
 
 // SPEC J4.2: in a production build only server functions client code
-// references are callable over HTTP. `internal` is called by `greet`'s
+// calls are callable over HTTP (R182). `internal` and `sameFile` are called by `greet`'s
 // handler only (a server-origin call, which works); a request by its URL
 // from the browser is refused, while the same request to `greet` answers.
 // With a separate provider the provider builds before the client, so the
@@ -131,8 +133,10 @@ test('a server function only server code calls is not callable from the browser'
   const urls = JSON.parse(await page.text('[data-testid=urls]')) as {
     greet: string
     internal: string
+    sameFile: string
   }
   expect(typeof urls.internal).toBe('string')
+  expect(typeof urls.sameFile).toBe('string')
   const call = (url: string) =>
     page.page.evaluate(
       (functionUrl) => (window as any).callUrl(functionUrl),
@@ -147,4 +151,9 @@ test('a server function only server code calls is not callable from the browser'
   const refused = await call(urls.internal)
   expect(refused.ok).toBe(false)
   expect(refused.value ?? '').not.toContain('MARK_INTERNAL')
+  // R182: also a server fn of a module the client imports, which no client
+  // code calls
+  const refusedSameFile = await call(urls.sameFile)
+  expect(refusedSameFile.ok).toBe(false)
+  expect(refusedSameFile.value ?? '').not.toContain('MARK_SAME_FILE')
 })

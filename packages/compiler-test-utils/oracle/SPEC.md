@@ -588,8 +588,11 @@ dir)` is not a conflict by itself.
   kept (a middleware's `.client()` half runs where the call is made), its `.validator(…)` links gone, and
   `createSsrRpc(id)` as its handler, so its calls reach the one executing instance through the registry, whatever
   builder, factory or options the chain starts from. In a production
-  build, only server functions the client references are HTTP-callable: a function no client code references must
-  not answer a direct HTTP call by id. What the compile adds to the defining module's exports is unique to that file, so
+  build, only server functions whose client call survives in the emitted client code are HTTP-callable (R182): a
+  function no emitted client code calls must not answer a direct HTTP call by id, also when the client imports its
+  module (a helper only another server function's handler calls); one that reaches the browser only by serialization
+  (a loader returning it) is not callable either. A stub the client code keeps counts as a call: its id is in the
+  bundle. What the compile adds to the defining module's exports is unique to that file, so
   server functions of several modules behind one `export *` barrel build and run without a conflicting name, also
   when the modules use the same names (`usersApi.get`, `postsApi.get`). In dev, an HTTP call by id may run any server function. Calling a server
   function from server code is documented: a server function only server code calls (another handler, a middleware

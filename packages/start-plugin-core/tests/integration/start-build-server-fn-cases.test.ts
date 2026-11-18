@@ -6,6 +6,11 @@
  * bug main had, which today's compiler fixes (a regression test,
  * oracle/KNOWN-BUGS.md).
  */
+import {
+  diagnosticPosition,
+  expectDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
 import {
   buildStart,
@@ -268,6 +273,45 @@ export { default } from '@tanstack/react-start/server-entry'
         serverOnlyFnOverHttp: 'rejected',
         serverOnlyFnFromSsr: 'server-only fn',
       })
+    },
+    timeout,
+  )
+
+  // On main, `.handler(selected)` registers the function `selected` holds
+  // when the module loads; here the lazy handler module reads `selected` at
+  // the first call, so a later assignment changes the handler (accepted,
+  // R182). The build warns at such an argument: a binding the module
+  // assigns anywhere else (a syntactic write); a function written in place
+  // or a `const` says nothing.
+  test(
+    'a handler passed as a binding the module assigns elsewhere warns at the argument, and only there',
+    async () => {
+      const source = `${head}let selected = () => 'first'
+export const fn = createServerFn().handler(selected)
+export const closure = createServerFn().handler(() => selected())
+const kept = () => 'kept'
+export const constant = createServerFn().handler(kept)
+let unchanged = () => 'unchanged'
+export const neverAssigned = createServerFn().handler(unchanged)
+selected = () => 'second'
+`
+      const { diagnostics, root } = await buildStart({
+        bundler,
+        files: {
+          'fns.ts': source,
+          'entry.ts': `export * from './fns'\n`,
+        },
+      })
+      const warning = { severity: 'warning', file: 'fns.ts', root } as const
+      const position = diagnosticPosition(
+        source,
+        'selected)\nexport const closure',
+      )
+      expectDiagnostic(diagnostics, { ...warning, position })
+      // (none at the other handlers; Rsbuild reports a warning on two channels)
+      expect(findDiagnostics(diagnostics, warning)).toEqual(
+        findDiagnostics(diagnostics, { ...warning, position }),
+      )
     },
     timeout,
   )

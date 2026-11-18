@@ -621,6 +621,26 @@ export function Icons({ ids }) {
     expect(client.html).toContain('<p>Hello</p>')
   })
 
+  // Bug: the compiler rewrites `arguments` in the children to the chunk's
+  // capture name as raw text, so a shorthand property changes its key
+  // (`{ arguments }` becomes `{ tsrArguments }`): the client renders other
+  // text than the server (React #418; Solid fails to parse the chunk).
+  // Impact: a regression from main, which renders it. Not fixed (R182:
+  // fixed only as a one-line change, which it is not).
+  // Source: Astra review of #8817, hydrate #3.
+  test.fails(
+    "client: split children passing the component's arguments as a shorthand property render its props",
+    async () => {
+      const code = `${head}export function Page() {
+  return <Hydrate when={load()}><p>{Object.keys({ arguments }).join()}:{arguments[0].title}</p></Hydrate>
+}`
+      const { client } = await expectRendersLikeSource(await hosts(), code, {
+        props: { title: 'Hello' },
+      })
+      expect(client.html).toContain('<p>arguments:Hello</p>')
+    },
+  )
+
   // On main, valid code fails to build.
   // Source: SolidStart compile.spec.ts "allows `this` and `arguments` in a
   // function expression"
@@ -633,6 +653,12 @@ export function Icons({ ids }) {
     {
       name: 'a class',
       children: `<p>{new (class { label = 'inner'; read() { return this.label } })().read()}</p>`,
+      rendered: '<p>inner</p>',
+    },
+    {
+      // (its own private name: Astra review of #8817, hydrate #2, control)
+      name: 'a class with a private field',
+      children: `<p>{new (class { #label = 'inner'; read() { return this.#label } })().read()}</p>`,
       rendered: '<p>inner</p>',
     },
     {

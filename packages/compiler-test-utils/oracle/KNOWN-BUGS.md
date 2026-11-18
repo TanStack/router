@@ -100,6 +100,13 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   the value, and a wrapper is not followed (R92). SPEC J4.5. `start-plugin-core/tests/start-compiler-cases.test.ts`:
   "each output keeps its implementation of an isomorphic fn whose chain passes through a helper function". Fix: each
   output keeps its implementation, or the build fails at the helper.
+- **`<Hydrate>` children passing `arguments` as a shorthand property change its key** (Astra hydrate #3; a regression
+  from `main`): the chunk's capture rewrite of `arguments` is a raw text edit, so `{ arguments }` becomes
+  `{ tsrArguments }` (React #418) or `{ props.tsrArguments }` (Solid: the chunk fails to parse). R182 fixed it only as
+  a one-line change; it needs the scan to mark a shorthand property, so it stays pinned. SPEC J5.2.
+  `start-plugin-core/tests/integration/pages/hydrate-ids-and-captures.test.ts`: "client: split children passing the
+  component's arguments as a shorthand property render its props". Fix: emit `arguments: tsrArguments` (React) and
+  `arguments: props.tsrArguments` (Solid) for a shorthand property. Workaround: write `{ arguments: arguments }`.
 
 ## Known incorrect rejections (accepted, R89)
 
@@ -122,6 +129,14 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   handler reads, the loader): `Object.keys(ns)` of an `import * as ns` of such a module lists them on the server and
   not on the client, and rendering it fails hydration (React #418). `Object.values(ns)` gets each server fn twice.
   Member reads (`ns.alpha()`) are unaffected. Workaround: enumerate an explicit list.
+
+- **A handler passed as a binding the module assigns elsewhere is read at the first call** (R182, Astra start #3;
+  accepted, no placement change): the lazy handler module evaluates `.handler(selected)`'s argument when the server fn
+  is first called, `main` when the chain is created, so `let selected = a; … .handler(selected); selected = b` runs
+  `b` here and `a` on `main`. The build warns at the argument when the module writes the binding anywhere (a closed,
+  syntactic rule: an assignment, update or destructuring target, or a `var` declared again).
+  `integration/start-build-server-fn-cases.test.ts`: "a handler passed as a binding the module assigns elsewhere warns
+  at the argument, and only there". Workaround: pass a function written in place, or a `const`.
 
 - **A class, enum or namespace only a server fn handler reads runs at the first call on the server** (R163 round-2
   rulings (c), review-a1-classes-stay-round2 3, `s13`; accepted: R157/R158 cover classes like any declaration): the
@@ -851,9 +866,16 @@ Paths under `start-plugin-core/tests/` unless noted.
   J4.14, G3. Fixed (R157; also #8656): the lazy handler module imports what the module keeps.
   `integration/start-build-server-fn-cases.test.ts`: "SSR: a server fn module is initialised once and shares its state
   with SSR code"; `integration/start-compose-server-fn-route.test.ts`: "the server runs the route module once".
-- **Production builds: server fns no client code references answer HTTP calls by id.** SPEC J4.2.
+- **Production builds: server fns no client code calls answer HTTP calls by id**: one only server modules define, and
+  one private to a module the client imports (a helper another server fn's handler calls), which the client's compile
+  registered before tree-shaking. SPEC J4.2 (R182): the client-origin gate is the set of ids whose client call
+  survives in the emitted client code, on both hosts and under RSC.
   `integration/start-build-server-fn-cases.test.ts`: "SSR: a server fn only server code references is not callable over
-  HTTP".
+  HTTP"; `integration/start-build-server-fn-callable.test.ts`: "SSR: a server fn private to a module the client imports
+  is not callable over HTTP, and its own module calls it"; "SSR: a rebuild follows the edits that remove and restore
+  the last client call of a server fn";
+  `react-start-rsc/tests/integration/rsc-start-build.test.ts` and `rsc-start-rsbuild-build.test.ts`: "a server
+  function only server code calls is not callable from the browser".
 - **Vite: the production server-fn resolver is generated before the SSR build found every server fn** (#7213). SPEC
   J4.2, G4. `integration/start-build-server-fn-cases.test.ts`: "is callable, the app files written %s"; "its caller only
   client code imports: the caller is callable over HTTP, the app files written %s".

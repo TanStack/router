@@ -625,6 +625,26 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             () => patchFunctionIds(compilation),
           )
         }
+        if (
+          environment.type === 'client' &&
+          session.start.opts.mode === 'build'
+        ) {
+          // the HTTP-callable server fns (R182): those the client's emitted
+          // code calls, once tree-shaken, minified and its ids patched
+          compilation.hooks.processAssets.tap(
+            {
+              name: PLUGIN_NAME,
+              stage: Compilation.PROCESS_ASSETS_STAGE_REPORT,
+            },
+            () =>
+              session.publishClientOutput(
+                compilation
+                  .getAssets()
+                  .filter((asset) => /\.[cm]?js$/.test(asset.name))
+                  .map((asset) => asset.source.source().toString()),
+              ),
+          )
+        }
       })
 
       /**
