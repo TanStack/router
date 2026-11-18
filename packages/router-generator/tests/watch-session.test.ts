@@ -10,6 +10,10 @@ import { readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { expect, onTestFinished, test } from 'vitest'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
+import {
+  rootRoute as virtualRootRoute,
+  route as virtualRoute,
+} from '@tanstack/virtual-file-routes'
 import { Generator, createGeneratorSession, replaceBackslash } from '../src'
 import { configOf, createApp, fileRoute, rootRoute, save } from './app'
 import { routesOf } from './route-tree'
@@ -150,5 +154,32 @@ test('after the temporary directory is deleted, an added route reaches the route
     ...appRoutes,
     '/b': 'routes/b.tsx',
     '/c': 'routes/c.tsx',
+  })
+})
+
+// Bug: an edit of a route file a virtual route config names outside the
+// routes directory and every `physical()` mount
+// (`route('/item', '../external/item.tsx')`) never reached the generator
+// under its own watcher (`tsr watch`, Rspack, webpack).
+// Source: src/generator.ts `watchTargets()` listed directories only.
+// Impact: the route keeps the file's content of the last scan until another
+// event rescans or the session restarts.
+test('an edit of a route file the virtual route config names outside the routes directory is handled', async () => {
+  const root = await createApp({
+    'src/routes/__root.tsx': rootRoute(),
+    'src/external/item.tsx': fileRoute('/item'),
+  })
+  const config = configOf(root, {
+    virtualRouteConfig: virtualRootRoute('__root.tsx', [
+      virtualRoute('/item', '../external/item.tsx'),
+    ]),
+  })
+  const session = await watchApp(root, config)
+  const item = await save(root, 'src/external/item.tsx', fileRoute('/wrong'))
+  await waitForOutcome({
+    applied: async () => (await readFile(item, 'utf8')).includes(`'/item'`),
+    problems: () => session.reported,
+    timeout: 10_000,
+    describe: () => readFileSync(item, 'utf8'),
   })
 })

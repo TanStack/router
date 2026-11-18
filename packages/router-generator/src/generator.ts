@@ -358,20 +358,24 @@ export class Generator {
 
   /**
    * What a watcher must watch for this generator: the routes directory and
-   * every `physical()` mount (for created, changed and deleted files), and
-   * the route tree and virtual route config files.
+   * every `physical()` mount (for created, changed and deleted files), the
+   * route tree and virtual route config files, and the route files of the
+   * last scan outside those directories (a virtual route config can name
+   * any file).
    */
   public watchTargets(): { directories: Array<string>; files: Array<string> } {
+    const mounts = (this.scan?.physicalDirectories ?? []).filter(
+      (dir) => !isUnder(dir, this.routesDirectory),
+    )
+    const directories = [this.routesDirectory, ...mounts]
     return {
-      directories: [
-        this.routesDirectory,
-        ...(this.scan?.physicalDirectories ?? []).filter(
-          (dir) => !isUnder(dir, this.routesDirectory),
-        ),
-      ],
+      directories,
       files: [
         this.treeKey,
         ...(this.virtualConfigFile ? [this.virtualConfigFile] : []),
+        ...[...this.scanned].filter(
+          (file) => !directories.some((dir) => isUnder(file, dir)),
+        ),
       ],
     }
   }
