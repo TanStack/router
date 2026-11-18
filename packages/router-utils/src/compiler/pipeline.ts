@@ -632,7 +632,14 @@ async function runAttempt(
   const tier1Needed = planners.some((p) => p.tier === 1)
   let emitPlan: EmitPlan
   if (!tier1Needed) {
-    emitPlan = tier0Plan(t0, identity, env, rev)
+    // the edge records' only readers are the planners' policies (phase C)
+    emitPlan = tier0Plan(
+      t0,
+      identity,
+      env,
+      rev,
+      planners.some((p) => p.policy !== undefined),
+    )
   } else {
     // Planning rounds: the core reports the regions a split would break (a
     // chunk writing a binding the route module reads) and the planners
@@ -751,12 +758,13 @@ async function runAttempt(
   return { kind: 'plan', plan: emitPlan }
 }
 
-/** J6-only tier: the env output is the source verbatim with its edges. */
+/** J6-only tier: the env output is the source verbatim, with its edges when a policy reads them. */
 function tier0Plan(
   t0: ModuleAnalysis,
   identity: SourceIdentity,
   env: EnvInfo,
   rev: string,
+  withEdges: boolean,
 ): EmitPlan {
   const code = t0.source.code
   const segments: EmitPlan['outputs'][string]['segments'] = [
@@ -764,11 +772,13 @@ function tier0Plan(
   ]
   const edgeKey = (raw: string, form: string) =>
     edgeKeyOf(env.name, env.layer, identity.canonicalId, raw, form)
-  const edges: EmitPlan['edges'] = {
-    env: dedupeEdges(
-      sourceEdges(t0, edgeKey, identity.canonicalId, wholeModule()),
-    ),
-  }
+  const edges: EmitPlan['edges'] = withEdges
+    ? {
+        env: dedupeEdges(
+          sourceEdges(t0, edgeKey, identity.canonicalId, wholeModule()),
+        ),
+      }
+    : {}
   return {
     revision: rev,
     outputs: {

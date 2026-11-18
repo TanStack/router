@@ -110,6 +110,7 @@ export interface PlanFacts {
 export interface EmitPlan {
   revision: string
   outputs: Record<string, OutputRecipe>
+  /** Per output, for the planners' policies: a tier-0 plan with no policy to read them has none. */
   edges: Record<string, Array<EdgeRecord>>
   facts: PlanFacts
   dependencies: Array<DependencyFingerprint>
