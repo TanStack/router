@@ -58,8 +58,12 @@ export interface EdgeViolation {
    * the server). `at`: the first such use, in the original source.
    */
   rendered?: RenderedUse
-  /** Server environment, a Vue SFC importer: the import's binding (a template's component is no JSX the compiler can see). */
-  binding?: string
+  /**
+   * Server environment, a Vue SFC importer: the import's binding (a
+   * template's component is no JSX the compiler can see), and the export it
+   * imports (`'default'` for a default import).
+   */
+  binding?: { name: string; imported: string }
   /** The edge is a re-export (`export … from`): a barrel passes the module on. */
   reexport?: true
   /** Build: one importer's import of a module that is its own violation, by the pattern import found in its text. */
@@ -183,8 +187,9 @@ export type ReportedInfo = ViolationInfo & {
 /**
  * The `ViolationInfo` of a violation. `trace` is read from the bundler's
  * graph when it is first read (dev: the graph may not know the importer's
- * importers yet when `onViolation` runs; a report freezes it when printed),
- * cut at `maxTraceDepth`.
+ * importers yet when `onViolation` runs; a report reads it when printed),
+ * cut at `maxTraceDepth`, and stays what it was then: an event kept after a
+ * later edit still names the chain that brought the import.
  */
 export function violationInfo(
   v: EdgeViolation,
@@ -192,7 +197,11 @@ export function violationInfo(
   trace: () => Trace,
 ): ReportedInfo {
   let frozen: Trace | null = null
-  const withImporterStep = (t: Trace): Trace => {
+  const freeze = (): Trace => {
+    if (frozen) {
+      return frozen
+    }
+    const t = (frozen = trace())
     const last = t.steps[t.steps.length - 1]
     if (last && identify(last.file).path === v.importer) {
       last.specifier = v.specifier
@@ -212,15 +221,11 @@ export function violationInfo(
   Object.defineProperty(info, 'trace', {
     enumerable: true,
     configurable: true,
-    get: (): Array<TraceStep> =>
-      cutTrace(
-        (frozen ?? withImporterStep(trace())).steps,
-        config.maxTraceDepth,
-      ),
+    get: (): Array<TraceStep> => cutTrace(freeze().steps, config.maxTraceDepth),
   })
   Object.defineProperty(info, 'freezeTrace', {
     enumerable: false,
-    value: () => (frozen ??= withImporterStep(trace())),
+    value: freeze,
   })
   return info
 }

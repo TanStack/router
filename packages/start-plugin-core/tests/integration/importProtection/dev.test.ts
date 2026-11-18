@@ -292,6 +292,37 @@ describe('the trace of a client import of a denied file', () => {
     timeout,
   )
 
+  // `onViolation`'s event is the app's to keep (a collector, an overlay): its
+  // trace stays the chain that brought the import once read, as main's
+  // array did, though an edit later reaches the importer another way.
+  // Source: Astra review of #8817, import protection B1 (the kept event's
+  // trace named the new chain after an edit).
+  test(
+    "a kept onViolation event's trace stays the chain it was read with after an edit changes the chain",
+    async () => {
+      const server = await startProtectedDevServer({
+        ...deniedFileApp,
+        'src/left.ts': `export * from './a'\n`,
+        'src/entry.ts': `export * from './left'\n`,
+      })
+      await server.load('/src/entry.ts')
+      const [kept] = server.violations
+      expect(kept).toBeDefined()
+      const keptTrace = () =>
+        violationsOf({ root: server.root, violations: [kept!] }).map(
+          traceModules,
+        )
+      expect(keptTrace()).toEqual([['src/entry.ts', 'src/left.ts', 'src/a.ts']])
+      await server.edit({
+        'src/right.ts': `export * from './a'\n`,
+        'src/entry.ts': `export * from './right'\n`,
+      })
+      await server.load('/src/entry.ts')
+      expect(keptTrace()).toEqual([['src/entry.ts', 'src/left.ts', 'src/a.ts']])
+    },
+    timeout,
+  )
+
   // In every Start app, a module imports the router entry: Start's client
   // runtime. The trace still starts at the router entry.
   // Source: mutation testing (the module graph trace does not stop at an

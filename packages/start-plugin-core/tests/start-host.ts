@@ -275,8 +275,9 @@ function appFiles(
         }),
   }
   if (!serve && framework === 'vue') {
-    // A build-only Vue host (`build()`; `preview()` serves React and Solid apps):
-    // the client build takes every case module through a page route
+    // A Vue host for production builds (`build()`, and `preview()` to open
+    // the app's own pages: its production page runs no cases): the client
+    // build takes every case module through a page route
     files['src/routes/harness-page.ts'] =
       `import { createFileRoute } from '${router}'
 const cases = import.meta.glob(${clientCaseGlob})
@@ -497,7 +498,7 @@ export interface StartHost {
   /** `vite build` of the app (`PluginHost.build`). */
   build: PluginHost['build']
   /**
-   * Production mode of a host created with `serve: false` (React or Solid): builds
+   * Production mode of a host created with `serve: false`: builds
    * the app as `vite build` does, with every case written so far, and serves
    * the build as `vite preview` does (Start's own preview server: the built
    * server entry handles requests). From then on the cases run against the
@@ -505,7 +506,8 @@ export interface StartHost {
    * lazy chunk of the client build, loaded on demand), `ssr` and
    * `inRequest` in the server build, inside its real requests. `served`,
    * `loads` and `serverLoads` are dev-server checks and throw. Write every
-   * case first: the build includes the cases that exist when it runs.
+   * case first: the build includes the cases that exist when it runs. A Vue
+   * host's page runs no cases: open the app's own pages at `url`.
    */
   preview: (options?: {
     /**
@@ -691,6 +693,11 @@ export async function createStartHost(
           failed.push(`${request.url()}: ${error}`)
         }
       })
+    }
+    if (previewState && framework === 'vue') {
+      throw new Error(
+        "a Vue host's production page runs no cases: open preview().url",
+      )
     }
     if (previewState) {
       const opened = await openPage('about:blank', {
@@ -1116,11 +1123,6 @@ try {
       changed = true
       if (serve) {
         throw new Error('preview() needs a host created with `serve: false`')
-      }
-      if (framework === 'vue') {
-        throw new Error(
-          'preview() serves React and Solid apps (not vue): use build()',
-        )
       }
       if (previewState && previewOptions.rebuild) {
         const previous = previewState

@@ -1628,7 +1628,11 @@ class ImportProtectionEnv {
         ) {
           continue
         }
-        const importers = [...graph.importers(v.importerId)]
+        // (Rsbuild: an SFC's own module imports its compiled script block,
+        // the module denied here; the SFC's importers import it)
+        const importers = [...graph.importers(v.importerId)].flatMap((i) =>
+          traceFile(i) === v.importer ? [...graph.importers(i)] : [i],
+        )
         const checked = this.importsOf(v, importers)
         checked.forEach(add)
         const others = importers.filter((id) => this.ip.ids.parse(id) === null)

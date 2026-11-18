@@ -248,12 +248,35 @@ function globMatches(
 }
 
 /**
+ * Whether the webpack context whose call's `(` ends at `at` reads a literal
+ * relative directory (`'./locales'`, `'.'`, `'./?raw'`) that does not hold
+ * `file`: it cannot have reached the file. A directory given otherwise (an
+ * alias, a variable) may hold it.
+ */
+function contextMisses(
+  text: string,
+  at: number,
+  importer: string,
+  file: string,
+): boolean {
+  const dir = stringAt(text, skipSpace(text, at))
+  if (!dir || !/^\.\.?(?:\/|\?|$)/.test(dir.value)) {
+    return false
+  }
+  const resolved = path.posix.resolve(
+    path.posix.dirname(importer),
+    dir.value.replace(/\?.*$/, ''),
+  )
+  return !file.startsWith(`${resolved}/`)
+}
+
+/**
  * The pattern import of `importer` (its raw text) that reached `file`: the
  * literal glob whose patterns match it, or the `require()` of its path, else
  * the first call that may have (a glob whose patterns are not plain, a webpack
  * context, an `import()` with a variable path). A literal glob that does not
- * match it, or a `require()` of another path, is never named. Null when there
- * is none.
+ * match it, a webpack context of a literal directory that does not hold it,
+ * or a `require()` of another path, is never named. Null when there is none.
  */
 export function findPatternImport(
   text: string,
@@ -294,6 +317,11 @@ export function findPatternImport(
         }
         continue
       }
+    } else if (
+      (kind === 'import.meta.webpackContext' || kind === 'require.context') &&
+      contextMisses(text, m.index + m[0].length, importer, file)
+    ) {
+      continue
     }
     candidate ??= { kind, offset, patterns: null }
   }
@@ -313,6 +341,25 @@ const REQUIRE_VARIABLE_RE = new RegExp(
  */
 export function mayHavePatternImport(text: string): boolean {
   return new RegExp(PATTERN_SOURCE).test(text) || REQUIRE_VARIABLE_RE.test(text)
+}
+
+/**
+ * Whether `text` has a string literal naming `file` as `importer` imports
+ * it (a path, relative or through an alias: `'./Chart.vue'`,
+ * `'@/components/Chart.vue'`): an import of the file its source has.
+ */
+export function namesFile(
+  text: string,
+  importer: string,
+  file: string,
+): boolean {
+  for (const m of text.matchAll(new RegExp(LITERAL, 'g'))) {
+    const specifier = m[1] ?? m[2]!
+    if (specifier.includes('/') && mayRequire(specifier, importer, file)) {
+      return true
+    }
+  }
+  return false
 }
 
 /** `file` as a specifier relative to `importer` (`./x.ts`, `../lib/x.ts`). */
