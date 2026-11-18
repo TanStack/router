@@ -145,13 +145,16 @@ const rangeOf = (n: Node): Range => ({ start: n.start, end: n.end })
 /**
  * Whether the text of `kept` (or a generated arrow) needs parentheses when it
  * replaces the expression `original` under `parent`. Decided on the node whose
- * text is kept, wrappers included: `impl as any` is no callee.
+ * text is kept, wrappers included: `impl as any` is no callee. An `opaque`
+ * kept node is rewritten itself (a factory call this planner replaces), so
+ * its text may have any shape.
  */
 function needsParens(
   code: string,
   kept: Node | 'arrow',
   original: Node,
   parent: Node | null,
+  opaque = false,
 ): boolean {
   if (!parent) {
     return false
@@ -159,7 +162,11 @@ function needsParens(
   if (parent.type === 'ExpressionStatement') {
     return kept !== 'arrow' && opensNonExpressionStatement(code, kept.start)
   }
-  const kind = kept === 'arrow' ? 'ArrowFunctionExpression' : kept.type
+  const kind = opaque
+    ? 'opaque'
+    : kept === 'arrow'
+      ? 'ArrowFunctionExpression'
+      : kept.type
   const loose = new Set([
     'Identifier',
     'Literal',
@@ -186,6 +193,9 @@ function needsParens(
       return parent.object === original
     case 'TaggedTemplateExpression':
       return parent.tag === original
+    case 'ClassDeclaration':
+    case 'ClassExpression':
+      return parent.superClass === original
     case 'UnaryExpression':
     case 'BinaryExpression':
     case 'LogicalExpression':
@@ -207,13 +217,16 @@ function needsParens(
  * wrappers of `isExpressionWrapper`) and `kept` is a member or `eval`, which
  * called there would get a receiver or evaluate in place (the function a
  * factory returns calls its implementation with none); else `kept`, in
- * parentheses when `needsParens` says.
+ * parentheses when `needsParens` says. A `kept` call in `replaced` (a factory
+ * call passed to another) renders as its own rewrite, of any shape: it is
+ * treated as one of unknown shape.
  */
 function keptText(
   code: string,
   kept: Node,
   original: Node,
   file: PlanContext['analysis']['file'],
+  replaced: ReadonlySet<Node>,
 ): Array<Frag> {
   let n = original
   let p = file.parentOf(n)
@@ -222,15 +235,17 @@ function keptText(
     p = file.parentOf(p)
   }
   const value = unwrapExpression(kept)
+  const opaque = replaced.has(value)
   if (
     ((p?.type === 'CallExpression' && p.callee === n) ||
       (p?.type === 'TaggedTemplateExpression' && p.tag === n)) &&
-    (value.type === 'MemberExpression' ||
+    (opaque ||
+      value.type === 'MemberExpression' ||
       (value.type === 'Identifier' && value.name === 'eval'))
   ) {
     return [text('(0, '), slice(rangeOf(kept)), text(')')]
   }
-  return needsParens(code, kept, original, file.parentOf(original))
+  return needsParens(code, kept, original, file.parentOf(original), opaque)
     ? [text('('), slice(rangeOf(kept)), text(')')]
     : [slice(rangeOf(kept))]
 }
@@ -791,6 +806,18 @@ function planStartEnv(
     rewrites.edit({ range, body, by })
   }
 
+  // the calls steps 3-4 replace: one kept as another's implementation renders as its rewrite
+  const replaced = new Set<Node>(analysis.envOnlyCalls.map((c) => c.call))
+  for (const chain of analysis.chains) {
+    const v = chain.terminalValue
+    if (
+      !chain.unsupported &&
+      (v.t === 'isoFn' || (v.t === 'builder' && v.kind === 'isoFn'))
+    ) {
+      replaced.add(chain.terminal)
+    }
+  }
+
   // ---- 3. isomorphic fns
   const wantLink = isServer ? 'server' : 'client'
   for (const chain of analysis.chains) {
@@ -818,7 +845,10 @@ function planStartEnv(
         continue
       }
       // (the edit replaces the terminal inside its wrappers: `x as T` keeps its `as`)
-      envEdit(rangeOf(X), keptText(ctx.analysis.source.code, link.arg, X, file))
+      envEdit(
+        rangeOf(X),
+        keptText(ctx.analysis.source.code, link.arg, X, file, replaced),
+      )
       continue
     }
     if (chain.headIsFactoryCall) {
@@ -835,7 +865,7 @@ function planStartEnv(
       // the implementation lives on the stored receiver (this module or another): strip this segment's links
       envEdit(
         rangeOf(X),
-        keptText(ctx.analysis.source.code, chain.head, X, file),
+        keptText(ctx.analysis.source.code, chain.head, X, file, replaced),
       )
     }
   }
@@ -855,7 +885,7 @@ function planStartEnv(
       }
       envEdit(
         rangeOf(c.call),
-        keptText(ctx.analysis.source.code, c.arg, wrapped, file),
+        keptText(ctx.analysis.source.code, c.arg, wrapped, file, replaced),
       )
     } else {
       if (c.arg !== null && c.kind === 'server') {

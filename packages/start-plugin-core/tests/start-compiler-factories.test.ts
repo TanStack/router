@@ -629,6 +629,60 @@ export const onServer = () => [
     expect((await served.ssr()).onServer()).toEqual(['bare', 'bare'])
   })
 
+  // A factory call passed straight to another factory is itself rewritten
+  // (to its implementation or a stub), so the outer call's kept text is
+  // whatever that rewrite leaves: the result is called, tagged, read and
+  // extended as written, as on main. A class may extend what a factory
+  // selects. Source: the Astra round 2 architecture review (B1, B3).
+  test('a factory call passed to another factory and used at once gives its implementation', async () => {
+    const served = await serve(`${head}const obj = {
+  method(this: unknown) {
+    return this === undefined ? 'bare' : this === obj ? 'bound' : 'other'
+  },
+}
+const pick = () => Date.now() > 0
+export const onClient = () => {
+  class Picked extends createClientOnlyFn(pick() ? TypeError : Error) {}
+  class Nested extends createClientOnlyFn(createClientOnlyFn(RangeError)) {}
+  return [
+    createClientOnlyFn(createClientOnlyFn(() => Math.max(1, 42)))(),
+    typeof createClientOnlyFn(createClientOnlyFn(() => 42))(),
+    createIsomorphicFn().client(createClientOnlyFn(() => 42))(),
+    createClientOnlyFn(createClientOnlyFn(obj.method))(),
+    createClientOnlyFn(createClientOnlyFn(() => 'tag'))\`\`,
+    createClientOnlyFn(createClientOnlyFn((a: number, b: number) => a + b)).length,
+    new Picked('bad').name,
+    new Nested('bad').name,
+  ]
+}
+export const onServer = () => {
+  class Picked extends createServerOnlyFn(pick() ? TypeError : Error) {}
+  class Nested extends createServerOnlyFn(createServerOnlyFn(RangeError)) {}
+  return [
+    createServerOnlyFn(createServerOnlyFn(() => Math.max(1, 42)))(),
+    typeof createServerOnlyFn(createServerOnlyFn(() => 42))(),
+    createIsomorphicFn().server(createServerOnlyFn(() => 42))(),
+    createServerOnlyFn(createServerOnlyFn(obj.method))(),
+    createServerOnlyFn(createServerOnlyFn(() => 'tag'))\`\`,
+    createServerOnlyFn(createServerOnlyFn((a: number, b: number) => a + b)).length,
+    new Picked('bad').name,
+    new Nested('bad').name,
+  ]
+}`)
+    const expected = [
+      42,
+      'number',
+      42,
+      'bare',
+      'tag',
+      2,
+      'TypeError',
+      'RangeError',
+    ]
+    expect(await inPage(served, 'return module.onClient()')).toEqual(expected)
+    expect((await served.ssr()).onServer()).toEqual(expected)
+  })
+
   // Source: snapshot fixture envOnlyFactory (createClientOnlyFn half).
   test.each([
     {
