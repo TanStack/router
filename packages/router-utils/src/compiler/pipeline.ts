@@ -143,7 +143,7 @@ export async function compileModule(
   // (the key stays live until it ends, so its latest revision stays known)
   cache.begin(key, rev)
   try {
-    return await answer(
+    const out = await answer(
       input,
       identity,
       tier0Only,
@@ -153,6 +153,11 @@ export async function compileModule(
       rev,
       requested,
     )
+    if (out && cache.latestRevision(key) !== rev) {
+      // (decided while the key is live: its latest revision is known until `end`)
+      out.superseded = true
+    }
+    return out
   } finally {
     cache.end(key)
   }

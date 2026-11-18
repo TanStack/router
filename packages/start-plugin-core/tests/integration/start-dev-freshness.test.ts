@@ -7,7 +7,7 @@
  */
 import { open } from 'node:fs/promises'
 import { describe, expect, test } from 'vitest'
-import { startDevServer } from '../dev-server'
+import { callServerFn, startDevServer, startRequestFiles } from '../dev-server'
 import type { Plugin } from 'vite'
 
 const timeout = 60_000
@@ -182,6 +182,72 @@ export const read = () => secret()
       expect(
         containing(await server.load('/src/d.ts'), 'MARK_LIB'),
       ).not.toEqual([])
+    },
+    timeout,
+  )
+})
+
+describe('Vite dev: a server fn file saved while its previous compile waits', () => {
+  // `fns.ts` defines `oldFn`; its SSR compile waits on the resolution of
+  // `./old-helper` while the file is saved with `newFn` in its place, and
+  // the new text is compiled and served. The old compile ends last. A call
+  // of `newFn` by its id (as a page's) still reaches it: what the
+  // superseded compile found does not replace the registered functions of
+  // the file. Source: the Astra round 2 architecture review (A2).
+  test(
+    'its new server fn is callable',
+    async () => {
+      let armed: { reached: () => void; release: Promise<void> } | null = null
+      let release!: () => void
+      const server = await startDevServer({
+        plugins: [
+          {
+            name: 'test:slow-old-helper',
+            enforce: 'pre',
+            async resolveId(source) {
+              if (
+                this.environment.name === 'ssr' &&
+                source === './old-helper' &&
+                armed
+              ) {
+                const held = armed
+                armed = null
+                held.reached()
+                await held.release
+              }
+              return null
+            },
+          },
+        ],
+        files: {
+          ...startRequestFiles,
+          'src/old-helper.ts': `export const helper = () => 'MARK_OLD'\n`,
+          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+import { helper } from './old-helper'
+export const oldFn = createServerFn().handler(() => helper())
+`,
+        },
+      })
+      const reached = new Promise<void>((resolve) => {
+        armed = {
+          reached: resolve,
+          release: new Promise<void>((r) => {
+            release = r
+          }),
+        }
+      })
+      const held = server.transform('/src/fns.ts', 'ssr').catch(() => null)
+      await reached
+      await server.edit({
+        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const newFn = createServerFn().handler(() => 'MARK_NEW')
+`,
+      })
+      await server.transform('/src/fns.ts', 'ssr')
+      release()
+      await held
+      const { newFn } = await server.import('/src/fns.ts')
+      expect(await callServerFn(server, newFn)).toBe('MARK_NEW')
     },
     timeout,
   )
