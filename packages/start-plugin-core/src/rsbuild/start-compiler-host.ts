@@ -82,9 +82,13 @@ function resolveMetadataLoader(): string {
 function readServerFnBuildInfo(
   module: Rspack.Module,
 ): Record<string, ServerFn> | null {
-  const result = serverFnBuildInfoSchema.safeParse(
-    module.buildInfo[SERVER_FN_BUILD_INFO_FIELD],
-  )
+  const metadata = module.buildInfo[SERVER_FN_BUILD_INFO_FIELD]
+  // Most modules have no metadata, and zod's failure path dominates replay.
+  if (metadata === undefined) {
+    return null
+  }
+
+  const result = serverFnBuildInfoSchema.safeParse(metadata)
   if (!result.success) {
     return null
   }
