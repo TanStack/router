@@ -417,7 +417,7 @@ function envCompilerPlugins(
         s.start.caches,
         change,
         ctx.modules,
-        () => invalidateFor(state, s, environment, change),
+        (each) => invalidateFor(state, s, environment, each),
       )
     },
     // The one invalidation of a file event. Bundled dev, and a dev server

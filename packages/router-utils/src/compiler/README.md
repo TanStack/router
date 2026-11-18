@@ -301,7 +301,7 @@ text compiles waits for it and emits its own output from the result.
   - **An event is judged by the file as it is.** A removal of a file that reads back is an add, and a change of one that
     reads nothing a removal. An event
     that reads the file empty reads it again for a moment (an in-place save reported between truncation and write),
-    unless an event read it empty and waited in vain and the file's modification time is the same (a repeat of that
+    when a raw fact or a plan depends on the file's text, unless an event read it empty and waited in vain and the file's modification time is the same (a repeat of that
     event through another hook; a time of whole seconds counts as unknown: a filesystem of coarse times stamps a save
     like the write before it).
   - **Every file event moves the file set** (`fileSetVersion`), a repeat included: any may hide a creation (chokidar
@@ -316,11 +316,12 @@ text compiles waits for it and emits its own output from the result.
     stale, and its next compile reports the error). The file's own plans are keyed by its text and stay (a bundler
     that built the new text already keeps their rows) until a compile of a newer text ends: with its plan, or, for a
     text without one (untouched, empty, not parsed), without. A removal evicts them and stales every plan that read the
-    file, unasked; it is told to the session (`createCompilerCaches`' `removed`: Start forgets the file's server
+    file, unasked: held, unless every resolution of the plan that found the file finds another file now (`./b` found
+    `b.ts` and finds `b/index.ts`: a file turned into a folder), asked with the plan's own resolver; it is told to the session (`createCompilerCaches`' `removed`: Start forgets the file's server
     functions and import protection's records there).
   - **Stale sets.** The plans found stale enter their environment's **stale set** (`caches.stale`): the files whose
     modules the bundler must build again and will not build on its own, kept until a host takes them
-    (`take(env, { held })`; `held`: stale only because a file they read was removed). The other writers: a registry
+    (`take(env, { held })`; `held`: stale only because a file they read was removed, and nothing takes its place). The other writers: a registry
     change (the file, in every environment that has compiled or whose bundler holds modules: `stale.track(env)`, a
     Vite dev environment, a webpack-family compiler from its first drain), a plan hit that fails validation (the file,
     so its other outputs follow; when no invalidation runs, counted as `staleHits` when a fact failed, a defect:
@@ -332,6 +333,14 @@ text compiles waits for it and emits its own output from the result.
     modules are the event's), and a Vite watch build at each environment's `buildStart`: a Rolldown watch rebuild runs
     every `load` and `transform` again, so it builds every stale module (an assumption test in
     `start-build-watch.test.ts` fails if a rebuild stops doing so).
+  - **Virtual modules.** Raw facts are of a text: a file's, one entry for every environment, or a virtual module's
+    (`isVirtualId`), one entry per environment, since each environment's bundler loads the id itself and a plugin's
+    `load` may answer each differently (R36: the summary domain is the exact-id load). No file event names a virtual
+    module: its host's update does. A Vite host's `hotUpdate` (`staleHotUpdate`) forwards a `change` of each virtual
+    module its update lists (a plugin that regenerated one puts it there) or that imports one of them (a file the
+    module's `load` watched, which Vite records as an import), with the id as the path: every environment's entry is
+    stale, and its dependents are re-validated. It moves no file: no resolution is asked again. One nothing read
+    changes nothing.
   - **Summaries.** A summary change invalidates an importer only when what it read changed: the digest of an export
     it looked up (`exportKeyOf`; an absent name appearing counts), the `export *` list a lookup walked, or the whole
     export-facts digest for a listing. An export added to a widely imported module re-plans none of its importers. A

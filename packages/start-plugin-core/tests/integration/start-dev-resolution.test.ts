@@ -188,9 +188,7 @@ export const fn = base.handler(async () => 'MARK_HANDLER')
       })
       expect(await server.transform('/src/a.ts')).not.toContain('MARK_HANDLER')
       await server.edit({ ...others(null), 'src/b.ts': null })
-      // (dependents of a removed file wait for a file to appear: the file may be
-      // coming back, and a module failing to transform meanwhile loses its HMR)
-      await server.edit({ 'src/other/back.ts': `export const o = 1\n` })
+      // (`./b` finds `b/index.ts` again: the importer compiles at once)
       expect(await server.transform('/src/a.ts')).toContain('MARK_HANDLER')
     },
     timeout,
@@ -212,6 +210,57 @@ export const fn = base.handler(async () => 'MARK_HANDLER')
       })
       expect(await output()).not.toContain('MARK_HANDLER')
       await server.edit({ ...others(null), 'src/b.ts': null })
+      expect(await output()).toContain('MARK_HANDLER')
+    },
+    timeout,
+  )
+})
+
+describe('a file turned into a folder', () => {
+  // `./b` finds `b.ts`, a builder, while `b/index.ts`, a plain object, is
+  // there too; deleting `b.ts` (a file turned into a folder) has `./b` find
+  // `b/index.ts`: the importer compiles against it at once, without waiting
+  // for `b.ts` to come back. Source: Astra review H3 (the Vite client kept
+  // the old compile and its import of the deleted file).
+  const files = {
+    'src/b.ts': builder,
+    'src/b/index.ts': plain,
+    'src/a.ts': `import { base } from './b'
+export const fn = base.handler(async () => 'MARK_HANDLER')
+`,
+    'src/entry.ts': `import { fn } from './a'\n;(globalThis as any).fn = fn\n`,
+  }
+
+  test(
+    'Vite: the importer compiles against the folder once the file is deleted',
+    async () => {
+      const server = await startDevServer({ files })
+      for (const environment of ['client', 'ssr']) {
+        expect(await server.transform('/src/a.ts', environment)).not.toContain(
+          'MARK_HANDLER',
+        )
+      }
+      await server.edit({ 'src/b.ts': null })
+      for (const environment of ['client', 'ssr']) {
+        const code = await server.transform('/src/a.ts', environment)
+        expect(code).toContain('MARK_HANDLER')
+        expect(code).not.toMatch(/\/src\/b\.ts/)
+      }
+    },
+    timeout,
+  )
+
+  test(
+    'Rsbuild: the importer compiles against the folder once the file is deleted',
+    async () => {
+      const server = await startRsbuildStartDevServer({
+        compileTimeout: 20_000,
+        files,
+      })
+      const output = async () =>
+        Object.values(await server.outputs('client')).join('\n')
+      expect(await output()).not.toContain('MARK_HANDLER')
+      await server.edit({ 'src/b.ts': null })
       expect(await output()).toContain('MARK_HANDLER')
     },
     timeout,

@@ -127,3 +127,37 @@ ${i > 0 ? `import { fn as first } from './d0'\nexport const p = first\n` : ''}ex
     timeout,
   )
 })
+
+describe('Vite dev: an empty save of a file nothing reads', () => {
+  // An event that reads a file empty reads it again for a moment (an
+  // in-place save reported between truncation and write), for a file whose
+  // text a plan or a raw fact depends on. A file nothing imports is read once
+  // per hook either way: the wait cost every such save about 100 ms in the
+  // hot update. Source: Astra review H9.
+  test(
+    'is read as often as an ordinary save',
+    async () => {
+      vi.stubEnv('TSR_COMPILER_STATS', '1')
+      onTestFinished(() => {
+        vi.unstubAllEnvs()
+      })
+      const server = await startDevServer({
+        files: {
+          'src/a.ts': `export const a = 'MARK_a'\n`,
+          'src/notes.ts': `export const notes = 0\n`,
+        },
+      })
+      await server.transform('/src/a.ts')
+      const reads = () => compilerStats()['start:vite']?.eventReads ?? 0
+      const readsOf = async (text: string) => {
+        const before = reads()
+        await server.edit({ 'src/notes.ts': text })
+        return reads() - before
+      }
+      const ordinary = await readsOf(`export const notes = 1\n`)
+      expect(ordinary).toBeGreaterThan(0)
+      expect(await readsOf('')).toBe(ordinary)
+    },
+    timeout,
+  )
+})

@@ -5,6 +5,21 @@
  * read. Content-addressed, lazily built, invalidated by the watcher through
  * `markStale`.
  *
+ * Identity and invalidation contract. An entry holds the facts of one text,
+ * and is invalidated by what can change that text:
+ * - a file's text, one entry per canonical id for every environment (a file
+ *   reads the same for all of them): its file events (`invalidate`);
+ * - a virtual module's text (`isVirtualId`), one entry per environment and
+ *   id: each environment's bundler loads the id itself (`loadVirtual`; a
+ *   plugin's `load` may answer each environment differently, and a compile
+ *   must read its own environment's answer, R36). No file event names it:
+ *   the host's own update of the module does (Vite: a hot update listing
+ *   the module or a virtual importer of the event's file,
+ *   `staleHotUpdate`), through `invalidate` with the id as its path, which
+ *   reaches the entries of every environment (`byPath`).
+ * A resolution's change is not a fact of this cache: `invalidate` asks the
+ * resolutions concerned again (a file appearing, a file removed).
+ *
  * Rule: anything that changes an answer of `RawFactsCache` goes through
  * `markStale`, `forget` or `retain`. They move `version`, and a plan whose
  * facts were validated at the current version is not asked again
@@ -128,6 +143,8 @@ const EMPTY_REVISION = revision('')
 const UNKNOWN = '\u0000unknown'
 
 interface FactsEntry {
+  /** The module's canonical id (the entry's key is the id and, for a virtual module, the environment: `keyOf`). */
+  readonly id: string
   stale: boolean
   facts: RawFacts | null
   pending: Promise<RawFacts> | null
@@ -142,8 +159,9 @@ interface FactsEntry {
 }
 
 export class RawFactsCache {
+  /** Entry key (`keyOf`) → entry. */
   private readonly entries = new Map<string, FactsEntry>()
-  /** Path → canonical ids of `entries` at it (`markStale`/`forget` without a scan). */
+  /** Path → keys of `entries` at it (`markStale`/`forget` without a scan; every environment's entry of a virtual id). */
   private readonly byPath = new Map<string, Set<string>>()
   /** `TSR_COMPILER_NO_CACHE=facts|targets`: every read rebuilds (measurement knobs). */
   private readonly noFacts = cacheDisabled('facts')
@@ -213,8 +231,8 @@ export class RawFactsCache {
         this.seen.set(path, revision(text))
       }
     }
-    for (const id of this.byPath.get(path) ?? []) {
-      const e = this.entries.get(id)!
+    for (const key of this.byPath.get(path) ?? []) {
+      const e = this.entries.get(key)!
       e.stale = true
       // a read in flight may hold the text from before the event: it is not published
       e.pending = null
@@ -231,6 +249,11 @@ export class RawFactsCache {
     return this.byPath.has(path) || this.seen.has(path) || this.reads.has(path)
   }
 
+  /** Whether the cache holds facts of `path`, or reads it now (what `seen` alone records is no fact). */
+  holds(path: string): boolean {
+    return this.byPath.has(path) || this.reads.has(path)
+  }
+
   /**
    * A file event's read of `path`: its text, and whether it is the same as
    * what the cache read of the path since the last event that changed it
@@ -241,19 +264,22 @@ export class RawFactsCache {
    * again for a moment (`readSaved`: an in-place save reported between
    * truncation and write), unless an event's read found it empty and waited
    * in vain, and the file was not modified since (`modifiedAt`: a repeat of
-   * that event, through another hook). The same text proves that no fact of
+   * that event, through another hook), or `dependedOn` says nothing depends
+   * on the file's text (an empty read of it changes no answer: a later
+   * write is read when something reads the file). The same text proves that no fact of
    * the file moved, not that the file was there all along: the caller still
    * moves the file set for an `add` or a removal.
    */
   async readChange(
     path: string,
     readable: boolean,
+    dependedOn: () => boolean,
   ): Promise<{ text: string | null; same: boolean }> {
     const seen = () => this.seen.get(path)
     let text: string | null = ''
     if (readable) {
       text = await this.readEvent(path)
-      if (text === '') {
+      if (text === '' && dependedOn()) {
         // a whole number of seconds is unknown: on a filesystem of coarse
         // times (HFS+, ext3, FAT, some network shares) a save stamps the
         // file as the write before it did within that second
@@ -301,37 +327,48 @@ export class RawFactsCache {
     this.changes++
     this.seen.delete(path)
     this.emptyAt.delete(path)
-    for (const id of [...(this.byPath.get(path) ?? [])]) {
+    for (const key of [...(this.byPath.get(path) ?? [])]) {
       // a read in flight is not published
-      const e = this.entries.get(id)!
+      const e = this.entries.get(key)!
       e.pending = null
       e.reading = null
-      this.deleteEntry(id)
+      this.deleteEntry(key)
     }
   }
 
-  private setEntry(canonicalId: string, e: FactsEntry): void {
-    if (!this.entries.has(canonicalId)) {
-      const path = identify(canonicalId).path
-      let ids = this.byPath.get(path)
-      if (!ids) {
-        ids = new Set()
-        this.byPath.set(path, ids)
+  /**
+   * The key of a module's entry: its canonical id, and the environment for
+   * a virtual module (each environment loads its own text: see the
+   * contract above).
+   */
+  private keyOf(canonicalId: string, env: string): string {
+    return isVirtualId(canonicalId) ? `${env}\u0000${canonicalId}` : canonicalId
+  }
+
+  private setEntry(key: string, e: FactsEntry): void {
+    if (!this.entries.has(key)) {
+      const path = identify(e.id).path
+      let keys = this.byPath.get(path)
+      if (!keys) {
+        keys = new Set()
+        this.byPath.set(path, keys)
       }
-      ids.add(canonicalId)
+      keys.add(key)
     }
-    this.entries.set(canonicalId, e)
+    this.entries.set(key, e)
   }
 
-  private deleteEntry(canonicalId: string): void {
-    if (!this.entries.delete(canonicalId)) {
+  private deleteEntry(key: string): void {
+    const e = this.entries.get(key)
+    if (!e) {
       return
     }
-    const path = identify(canonicalId).path
-    const ids = this.byPath.get(path)
-    if (ids) {
-      ids.delete(canonicalId)
-      if (ids.size === 0) {
+    this.entries.delete(key)
+    const path = identify(e.id).path
+    const keys = this.byPath.get(path)
+    if (keys) {
+      keys.delete(key)
+      if (keys.size === 0) {
         this.byPath.delete(path)
       }
     }
@@ -343,13 +380,13 @@ export class RawFactsCache {
    * of files no compilation depends on any more are dropped.
    */
   retain(keep: (canonicalId: string) => boolean): void {
-    for (const [id, e] of this.entries) {
-      if (!keep(id)) {
+    for (const [key, e] of this.entries) {
+      if (!keep(e.id)) {
         this.changes++
         e.pending = null
         e.reading = null
-        this.deleteEntry(id)
-        const path = identify(id).path
+        this.deleteEntry(key)
+        const path = identify(e.id).path
         if (!this.byPath.has(path)) {
           this.seen.delete(path)
           this.emptyAt.delete(path)
@@ -365,22 +402,23 @@ export class RawFactsCache {
         ? this.knownFacts(canonicalId)
         : this.build(canonicalId, await this.read(canonicalId, env))
     }
-    let e = this.entries.get(canonicalId)
+    const key = this.keyOf(canonicalId, env)
+    let e = this.entries.get(key)
     if (e && e.facts && !e.stale) {
       this.counters.factsHits++
       return e.facts
     }
     if (this.isKnownSpecifier(canonicalId)) {
       const facts = this.knownFacts(canonicalId)
-      this.setEntry(canonicalId, this.entryOf(facts))
+      this.setEntry(key, this.entryOf(canonicalId, facts))
       return facts
     }
     if (e?.pending) {
       return e.pending
     }
     if (!e) {
-      e = this.entryOf(null)
-      this.setEntry(canonicalId, e)
+      e = this.entryOf(canonicalId, null)
+      this.setEntry(key, e)
     }
     const entry = e
     const holder: { p: Promise<RawFacts> | null } = { p: null }
@@ -410,9 +448,9 @@ export class RawFactsCache {
         if (entry.reading === reading) {
           entry.reading = null
         }
-        if (text === null && this.entries.get(canonicalId) === entry) {
+        if (text === null && this.entries.get(key) === entry) {
           // a missing file's facts are not kept (`forget`)
-          this.deleteEntry(canonicalId)
+          this.deleteEntry(key)
         }
       }
       return facts
@@ -421,8 +459,9 @@ export class RawFactsCache {
     return holder.p
   }
 
-  private entryOf(facts: RawFacts | null): FactsEntry {
+  private entryOf(canonicalId: string, facts: RawFacts | null): FactsEntry {
     return {
+      id: canonicalId,
       stale: false,
       facts,
       pending: null,
@@ -450,7 +489,8 @@ export class RawFactsCache {
     canonicalId: string,
     env: string,
   ): Promise<TargetFacts['marker']> {
-    const e = this.entries.get(canonicalId)
+    const key = this.keyOf(canonicalId, env)
+    const e = this.entries.get(key)
     if (e && !this.noTargets) {
       if (e.facts && !e.stale) {
         return e.facts.targetFacts.marker
@@ -466,9 +506,9 @@ export class RawFactsCache {
     if (this.isKnownSpecifier(canonicalId)) {
       return null
     }
-    const entry = e ?? this.entryOf(null)
+    const entry = e ?? this.entryOf(canonicalId, null)
     if (!e && !this.noTargets) {
-      this.setEntry(canonicalId, entry)
+      this.setEntry(key, entry)
     }
     const reading = this.textOf(entry, canonicalId, env)
     const text = await reading
@@ -489,9 +529,9 @@ export class RawFactsCache {
       entry.reading = null
       if (text !== null && !this.noTargets) {
         entry.markerless = true
-      } else if (!entry.facts && this.entries.get(canonicalId) === entry) {
+      } else if (!entry.facts && this.entries.get(key) === entry) {
         // a missing file is not kept (`forget`)
-        this.deleteEntry(canonicalId)
+        this.deleteEntry(key)
       }
     }
     return null
@@ -522,13 +562,14 @@ export class RawFactsCache {
     // now, once. Its summary stays null: the module is opaque to the
     // summaries whether or not a mock asked about it, so the digest plans
     // recorded (`null`) stays current and nothing is evicted by the question
-    const e = this.entries.get(canonicalId)
+    const key = this.keyOf(canonicalId, env)
+    const e = this.entries.get(key)
     const text = await this.read(canonicalId, env)
     const full: RawFacts = {
       ...this.build(canonicalId, text, true),
       summary: null,
     }
-    if (e && this.entries.get(canonicalId) === e && e.facts === facts) {
+    if (e && this.entries.get(key) === e && e.facts === facts) {
       e.facts = full
     }
     return full
