@@ -185,6 +185,7 @@ export const value = 'unreachable'
 `,
   'tla-dep.server.ts': counted('MARK_TLA_DEP'),
   'tla-for-dep.server.ts': counted('MARK_TLA_FOR_DEP'),
+  'tla-using-dep.server.ts': counted('MARK_TLA_USING_DEP'),
   // a module whose own code and handlers share state
   'fns.ts': `${head}import { value as heavy } from './heavy.server'
 import { value as slow } from './slow.server'
@@ -280,6 +281,38 @@ export const tlaForFn = createServerFn().handler(async () => prefix + value)
 export const results: Array<string> = []
 for await (const result of [tlaForFn()]) {
   results.push(result)
+}
+`,
+  // the same, awaiting it in the disposer of an `await using` declaration in
+  // a top-level block and in a top-level `for` head: the module awaits each
+  // disposal before it finishes evaluating. (Not directly at the top level:
+  // with the harness's targets Rolldown 1.2.13 drops that declaration, and
+  // Rsbuild 2.3.1's SWC lowering moves the module's later declarations after
+  // the disposal.) Source: Astra review 4 (architecture B2, core B1)
+  'tla-using-block.ts': `${head}import { value } from './tla-using-dep.server'
+export const prefix = ['tla-using-block', ''].join(':')
+export const tlaUsingFn = createServerFn().handler(async () => prefix + value)
+export const results: Array<string> = []
+{
+  await using resource = {
+    async [Symbol.asyncDispose]() {
+      results.push(await tlaUsingFn())
+    },
+  }
+}
+`,
+  'tla-using-for.ts': `${head}import { value } from './tla-using-dep.server'
+export const prefix = ['tla-using-for', ''].join(':')
+export const tlaUsingFn = createServerFn().handler(async () => prefix + value)
+export const results: Array<string> = []
+for (await using resource of [
+  {
+    async [Symbol.asyncDispose]() {
+      results.push(await tlaUsingFn())
+    },
+  },
+]) {
+  void resource
 }
 `,
   // a top-level statement names a server fn the split component calls: the
@@ -460,6 +493,10 @@ export * from './ordered'
 export { callBroken } from './broken'
 export const loadTla = () => import('./tla')
 export const loadTlaFor = () => import('./tla-for')
+export const loadTlaUsing = {
+  block: () => import('./tla-using-block'),
+  for: () => import('./tla-using-for'),
+}
 export { getRouter } from './src/router'
 export { listLogged } from './src/routes/shared-log'
 export { remember, Session } from './src/routes/shared-state'
@@ -1010,6 +1047,28 @@ return { results: tla.results, again: await tla.tlaForFn(), dep: globalThis.MARK
       expect(result).toEqual({
         results: ['tla-for:MARK_TLA_FOR_DEP'],
         again: 'tla-for:MARK_TLA_FOR_DEP',
+        dep: 1,
+      })
+    },
+    timeout,
+  )
+
+  test(
+    'SSR: a module that awaits one of its own server fns in the disposer of an `await using` in a top-level block or for head evaluates',
+    async () => {
+      const { result } = await build.ssr.run(`const loaded = {}
+for (const [form, load] of Object.entries(entry.loadTlaUsing)) {
+  const tla = await load()
+  loaded[form] = { results: tla.results, again: await tla.tlaUsingFn() }
+}
+return { loaded, dep: globalThis.MARK_TLA_USING_DEP }`)
+      expect(result).toEqual({
+        loaded: Object.fromEntries(
+          ['block', 'for'].map((form) => {
+            const answer = `tla-using-${form}:MARK_TLA_USING_DEP`
+            return [form, { results: [answer], again: answer }]
+          }),
+        ),
         dep: 1,
       })
     },

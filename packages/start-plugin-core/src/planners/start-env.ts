@@ -1737,8 +1737,10 @@ function inputValidatorRead({ reason, node, value }: Escape): Node | null {
 }
 
 /**
- * Whether the module awaits at its top level (`await`, `for await`) outside
- * any function. Only top-level statements whose text has `await` are walked.
+ * Whether the module awaits at its top level (`await`, `for await`, an
+ * `await using` declaration, whose disposal awaits at its scope's end)
+ * outside any function. Only top-level statements whose text has `await` are
+ * walked.
  */
 function hasTopLevelAwait(ctx: PlanContext): boolean {
   const code = ctx.analysis.source.code
@@ -1765,6 +1767,12 @@ function hasTopLevelAwait(ctx: PlanContext): boolean {
       },
       ForOfStatement: (n, w) => {
         if (n.await) {
+          hit.found = true
+          w.stop()
+        }
+      },
+      VariableDeclaration: (n, w) => {
+        if (n.kind === 'await using') {
           hit.found = true
           w.stop()
         }
