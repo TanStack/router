@@ -79,32 +79,39 @@ export function virtualPath(root: string, moduleId: string): string {
 /**
  * Chunk splitting of a non-RSC server environment. Rsbuild's server default
  * is no splitting at all, which makes Rspack copy every module two async
- * chunks share into both: the server-fn resolver `import()`s the modules
- * that define server functions, which the router's chunk holds too. The
- * router's chunk and the resolver's provider chunks become one chunk (the
- * router is always loaded before a server function runs, so a separate
- * shared chunk only costs a file and chunk boundaries); a module two other
- * async chunks share goes to one shared chunk instead (Rspack's default
- * groups are off: nothing else moves). The dev server keeps the shared
- * chunk only: one instance of each module is all it needs, and the router
- * group's test would run on every rebuild for bytes nobody ships.
+ * chunks share into both. Two `import()`s reach each lazy handler module:
+ * the server-fn resolver's, from the entry, and its defining module's, from
+ * the router's chunk. Rspack does not know that the router's chunk loads
+ * before any server function runs, so the resolver's chunk of a handler
+ * also holds what the handler module imports back from the app (its
+ * defining module and that module's imports), which the router's chunk
+ * holds already. The `router` group moves those modules, and only those,
+ * into the router's chunk; without it the `shared` group would cut the
+ * router's chunk into one piece per combination of handler chunks. The
+ * handler module and what only it imports then sit in two chunks of the
+ * same modules, which the `shared` group makes one, loaded on the first
+ * call. Any other module two async chunks share goes to one shared chunk
+ * (Rspack's default groups are off: nothing else moves). The dev server
+ * keeps the shared chunk only: one instance of each module is all it needs,
+ * and the router group's tests would run on every rebuild for bytes nobody
+ * ships.
  */
 function serverSplitChunks(root: string, dev: boolean) {
   const resolver = virtualPath(root, VIRTUAL_MODULES.serverFnResolver)
   const importedBy = (group: Rspack.ChunkGroup, path: string) =>
     group.origins.some((origin) => origin.module?.nameForCondition() === path)
-  // The router's chunk and the provider chunks, when the resolver imports
-  // providers (without them the router's chunk keeps its numeric id: a
-  // name costs the runtime an id → file-name entry).
-  const routerOrProvider = (chunk: Rspack.Chunk) => {
+  const ofRouter = (group: Rspack.ChunkGroup) =>
+    group.origins.some((origin) => origin.request === ENTRY_POINTS.router)
+  // The router's chunk and the chunks the resolver imports, when it imports
+  // any (without them the router's chunk keeps its numeric id: a name costs
+  // the runtime an id → file-name entry).
+  const routerOrResolved = (chunk: Rspack.Chunk) => {
     for (const group of chunk.groupsIterable) {
       if (importedBy(group, resolver)) {
         return true
       }
       if (
-        group.origins.some(
-          (origin) => origin.request === ENTRY_POINTS.router,
-        ) &&
+        ofRouter(group) &&
         group
           .getParents()
           .some((parent) =>
@@ -114,6 +121,22 @@ function serverSplitChunks(root: string, dev: boolean) {
           )
       ) {
         return true
+      }
+    }
+    return false
+  }
+  // A module of the router's chunk: of a chunk the resolver imports, only
+  // these join the router's chunk (a handler module and what only it
+  // imports load on the first call)
+  const inRouterChunk: Rspack.OptimizationSplitChunksCacheGroupTestFn = (
+    module,
+    { chunkGraph },
+  ) => {
+    for (const chunk of chunkGraph.getModuleChunksIterable(module)) {
+      for (const group of chunk.groupsIterable) {
+        if (ofRouter(group)) {
+          return true
+        }
       }
     }
     return false
@@ -129,7 +152,8 @@ function serverSplitChunks(root: string, dev: boolean) {
         // triggers rspack#16289)
         router: {
           name: 'tanstack-start-router',
-          chunks: routerOrProvider,
+          chunks: routerOrResolved,
+          test: inRouterChunk,
           minSize: 0,
           priority: 1,
         },

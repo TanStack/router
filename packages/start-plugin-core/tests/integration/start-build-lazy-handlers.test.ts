@@ -1,16 +1,23 @@
 /**
- * What a production server build evaluates, and when, for the modules that
- * define server fns (Vite and Rsbuild builds, Start's whole plugin, the
- * server bundle run by Start's own server entry inside a real request):
- * the modules only handlers import load on the first call, like main, and
- * nothing a server fn module evaluates runs twice, whether server code calls
- * the fn directly or a page calls it over HTTP.
+ * What a production server build loads and evaluates, and when, for the
+ * modules that define server fns (Vite and Rsbuild builds, Start's whole
+ * plugin, the server bundle run by Start's own server entry inside a real
+ * request): the modules only handlers import load on the first call, like
+ * main, and nothing a server fn module evaluates runs twice, whether server
+ * code calls the fn directly or a page calls it over HTTP.
  * Source: the real-app differential corpus (lbogerd/tictaak-start: a route
  * file whose handlers import the database module, which throws at load
  * without DATABASE_URL); issue #6451 (concurrent first calls of a server fn
  * whose handler's imports load slowly).
  */
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import {
+  runNodeProgram,
+  runNodeStep,
+} from '@tanstack/compiler-test-utils/run-node'
 import {
   buildStart,
   callByIdExports,
@@ -18,6 +25,7 @@ import {
   startBundlers,
 } from '../build-harness'
 import { createStartHost } from '../regression-helpers'
+import { routerFile } from '../request-probe'
 import type { StartBuild } from '../build-harness'
 import type { StartHost } from '../regression-helpers'
 
@@ -1008,6 +1016,206 @@ return { results: tla.results, again: await tla.tlaForFn(), dep: globalThis.MARK
     timeout,
   )
 })
+
+/**
+ * A production server reads and parses the handlers of the server fns a
+ * request calls, and of no other (as main does): the evaluation counts above
+ * cannot see a handler that is loaded and never run. Each server fn is in a
+ * file of its own (a handler module holds the handlers of its file), the
+ * routes' loaders call them (so the client calls them too, and the server-fn
+ * manifest lists them), and the route files import them: the defining
+ * modules load with the router. `getSplit`'s handler imports a module that
+ * otherwise only the split component of its route imports.
+ * Source: audit of the Rsbuild server output (every handler module and its
+ * imports in the router's chunk, and a second copy in a chunk of its own).
+ */
+const firstRequestFiles = {
+  'entry.ts': `export {}\n`,
+  // (the app's own router entry: the client imports it, and its routes)
+  'src/router.ts': routerFile('@tanstack/react-router'),
+  'src/called.ts': `${head}export const getCalled = createServerFn().handler(async () => 'MARK_CALLED_HANDLER')
+`,
+  'src/heavy.server.ts': `export const heavy = 'MARK_HEAVY_DEP'\n`,
+  'src/uncalled.ts': `${head}import { heavy } from './heavy.server'
+export const getUncalled = createServerFn().handler(async () => 'MARK_UNCALLED_HANDLER:' + heavy)
+`,
+  'src/split-only.ts': `;(globalThis as any).__splitOnlyEvaluations = ((globalThis as any).__splitOnlyEvaluations ?? 0) + 1
+export const splitOnly = 'MARK_SPLIT_ONLY'
+`,
+  'src/split-fn.ts': `${head}import { splitOnly } from './split-only'
+export const getSplit = createServerFn().handler(async () => 'MARK_SPLIT_HANDLER:' + splitOnly)
+`,
+  'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { getCalled } from '../called'
+export const Route = createFileRoute('/')({
+  loader: () => getCalled(),
+  component: () => <p>{'page:' + Route.useLoaderData()}</p>,
+})
+`,
+  'src/routes/uncalled.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { getUncalled } from '../uncalled'
+export const Route = createFileRoute('/uncalled')({
+  loader: () => getUncalled(),
+  component: () => <p>{'page:' + Route.useLoaderData()}</p>,
+})
+`,
+  'src/routes/split.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { getSplit } from '../split-fn'
+import { splitOnly } from '../split-only'
+function Page() {
+  const evaluations = (globalThis as any).__splitOnlyEvaluations
+  return <p>{'page:' + Route.useLoaderData() + ':' + splitOnly + ':' + evaluations}</p>
+}
+export const Route = createFileRoute('/split')({
+  loader: () => getSplit(),
+  component: Page,
+})
+`,
+}
+
+/** The markers of `firstRequestFiles`' handlers and of their imports. */
+const handlerMarkers = [
+  'MARK_CALLED_HANDLER',
+  'MARK_UNCALLED_HANDLER',
+  'MARK_HEAVY_DEP',
+  'MARK_SPLIT_HANDLER',
+  'MARK_SPLIT_ONLY',
+] as const
+
+/**
+ * A fresh Node process imports the server bundle's entry (Start's server
+ * entry) after registering a load hook, then requests `paths` in order:
+ * for each, the response's status and text, and every file of `outDir` the
+ * process had loaded by then.
+ */
+const requestsProgram = (
+  serverEntryFile: string,
+  outDir: string,
+  paths: Array<string>,
+) => `import { registerHooks } from 'node:module'
+import { fileURLToPath } from 'node:url'
+const loaded = new Set()
+registerHooks({
+  load(url, context, nextLoad) {
+    if (url.startsWith('file:')) {
+      const file = fileURLToPath(url)
+      if (file.startsWith(${JSON.stringify(outDir + path.sep)})) {
+        loaded.add(file)
+      }
+    }
+    return nextLoad(url, context)
+  },
+})
+${runNodeStep('importing the server entry')}const serverModule = await import(${JSON.stringify(pathToFileURL(serverEntryFile).href)})
+const serverEntry = typeof serverModule.default?.fetch === 'function' ? serverModule.default : serverModule.default?.default
+const steps = []
+for (const path of ${JSON.stringify(paths)}) {
+${runNodeStep('requesting a page')}  const response = await serverEntry.fetch(new Request(new URL(path, 'http://localhost')))
+  steps.push({ path, status: response.status, text: await response.text(), loaded: [...loaded] })
+}
+process.stdout.write(JSON.stringify(steps))
+process.exit(0)
+`
+
+describe.each(startBundlers)(
+  '%s build: the files a production server loads',
+  (bundler) => {
+    let build: StartBuild
+    const cleanups: Array<() => Promise<void>> = []
+
+    beforeAll(async () => {
+      build = await buildStart({
+        bundler,
+        files: firstRequestFiles,
+        registerCleanup: (cleanup) => cleanups.push(cleanup),
+      })
+    }, timeout)
+
+    afterAll(async () => {
+      await Promise.all(cleanups.map((cleanup) => cleanup()))
+    })
+
+    test(
+      'each handler, and each module only handlers or split chunks import, is emitted once',
+      () => {
+        expect(
+          Object.fromEntries(
+            handlerMarkers.map((marker) => [
+              marker,
+              build.ssr.chunks
+                .filter((chunk) => chunk.code.includes(marker))
+                .map((chunk) => chunk.fileName),
+            ]),
+          ),
+        ).toEqual(
+          Object.fromEntries(
+            handlerMarkers.map((marker) => [marker, [expect.any(String)]]),
+          ),
+        )
+      },
+      timeout,
+    )
+
+    test(
+      'the first request loads the handler it calls and no other; a handler sharing a module with a split component loads it once',
+      async () => {
+        const { outDir } = build.ssr
+        const { stdout } = await runNodeProgram(
+          requestsProgram(path.join(outDir, build.ssr.entry.fileName), outDir, [
+            '/',
+            '/uncalled',
+            '/split',
+          ]),
+          { cwd: outDir, env: { ...process.env, NODE_ENV: 'production' } },
+        )
+        const steps = JSON.parse(stdout) as Array<{
+          path: string
+          status: number
+          text: string
+          loaded: Array<string>
+        }>
+        const markersIn = (files: Array<string>) => {
+          const code = files.map((file) => readFileSync(file, 'utf8'))
+          return handlerMarkers.filter((marker) =>
+            code.some((text) => text.includes(marker)),
+          )
+        }
+        expect(
+          steps.map((step) => ({
+            path: step.path,
+            status: step.status,
+            page: /page:[^<]*/.exec(step.text)?.[0],
+            markers: markersIn(step.loaded),
+          })),
+        ).toEqual([
+          {
+            path: '/',
+            status: 200,
+            page: 'page:MARK_CALLED_HANDLER',
+            markers: ['MARK_CALLED_HANDLER'],
+          },
+          {
+            path: '/uncalled',
+            status: 200,
+            page: 'page:MARK_UNCALLED_HANDLER:MARK_HEAVY_DEP',
+            markers: [
+              'MARK_CALLED_HANDLER',
+              'MARK_UNCALLED_HANDLER',
+              'MARK_HEAVY_DEP',
+            ],
+          },
+          {
+            path: '/split',
+            status: 200,
+            page: 'page:MARK_SPLIT_HANDLER:MARK_SPLIT_ONLY:MARK_SPLIT_ONLY:1',
+            markers: [...handlerMarkers],
+          },
+        ])
+      },
+      timeout,
+    )
+  },
+)
 
 // `@vitejs/plugin-vue` serves an SFC's `<script lang="ts">` block in builds
 // as a module of its own (`Page.vue?vue&type=script&lang.ts`); its
