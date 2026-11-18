@@ -11,5 +11,5 @@
   - React: a function in the children that reads a `let` the component reassigns. Keep the value in a ref (`useRef`).
   - Children that assign a local of the component, or a module-level variable other code of the module also uses. The message names the variable; move it to a module of its own, with a function that assigns it.
   - `new.target` in the children, and (Solid) a nested boundary assigning an outer local through `ref`.
-- `await` or `yield` directly in the children fails the build with a message instead of a parse error. The deferred hydration guide lists every pattern that fails the build.
+- `await` or `yield` directly in the children, and a read of a private name of the class around the boundary (`this.#label`), fail the build with a message instead of a parse error. The deferred hydration guide lists every pattern that fails the build.
 - **On the server, a hook call whose value only a `fallback` reads** is removed with the imports only it uses, in every file; outside a route's split component it was kept. A hook that needs the browser (`useState(() => window.innerWidth)`) no longer fails the server render there. A hook that takes an id (`useId`, Solid's `createUniqueId`, or a custom hook that calls one) shifts the ids after it on the server, as with `<ClientOnly>` children: call such a hook in a component inside the boundary.

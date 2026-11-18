@@ -16,6 +16,7 @@ Route code splitting keeps its rules: the same options split, as your groupings 
 **Not split, with a warning:**
 
 - A function or method that uses its own `this` or `super` (#8688): splitting changes what `this` refers to. Use an arrow function, or avoid `this`.
+- A route file under `node_modules` (a `physical()` mount of an installed package, a routes package resolved with `resolve.preserveSymlinks`), on Vite, webpack and Rspack: the build or dev server warns once per file. A routes package of a pnpm or Yarn workspace resolves to its real path outside `node_modules` and is split.
 - Route options the compiler can't read statically: options built by a call (`createFileRoute('/x')(makeOptions())`), imported, written to after their declaration, or used by other code of the file (`const z = options; z.server = …`, `export const defaults = options`), and what a spread or a computed key holds. The options written next to a spread or computed key still split, and a `deleteNodes` option written there is still removed. Under `deleteNodes` (every Start client build), the warning says the listed options it can't see aren't removed, so the code they read ships to the client: write them as literal properties of the route options.
 
 **Other changes:**
