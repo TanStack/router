@@ -123,7 +123,7 @@ export function verifyPlan(
           }),
         )
         for (const s of imp.specifiers) {
-          if (!s.typeOnly && s.imported !== '*' && !names.has(s.imported)) {
+          if (!s.typeOnly && !s.namespace && !names.has(s.imported)) {
             problems.push(
               `${id}: imports ${s.imported} from ${target}, which does not export it`,
             )

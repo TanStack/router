@@ -969,6 +969,32 @@ export const serverOnly = createServerOnlyFn(() => 'server-only-marker')`,
     expect((await served.ssr()).serverOnly()).toBe('server-only-marker')
   })
 
+  // A named import spelled `'*'` is that export, not the module's
+  // namespace: an ordinary function there builds beside a module exporting
+  // a factory, and a factory there is recognised. Source: the Astra core
+  // review 8.
+  test("a named import spelled '*' is the export of that name", async () => {
+    const served = await serve(
+      `import { '*' as twice } from './ordinary'
+import { '*' as define } from './start'
+import { db } from './db.server'
+export const doubled = () => twice(21)
+export const serverOnly = define(() => db.x())`,
+      {
+        'ordinary.ts': `const twice = (n: number) => n * 2
+export { twice as '*' }
+export { createServerOnlyFn } from '@tanstack/react-start'
+`,
+        'start.ts': `export { createServerOnlyFn as '*' } from '@tanstack/react-start'\n`,
+        ...factoryDb,
+      },
+    )
+    await expectClientFree(served)
+    expect(await inPage(served, 'return module.doubled()')).toBe(42)
+    expect(await settleInPage(served, 'module.serverOnly')).toEqual(throwsError)
+    expect((await served.ssr()).serverOnly()).toBe('x')
+  })
+
   // Dev edits: the files are written through the dev server's watcher
   // (`StartHost.edit`, a watched directory of the app) and requested again;
   // the dev server invalidates what the edit changed, as in an app. Their
