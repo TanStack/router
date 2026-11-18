@@ -230,6 +230,74 @@ export const fn = createServerFn().handler(async () => db.x())
   )
 })
 
+/** A server fn of a file named `name`, and its client-visible tag. */
+const serverFnFile = (
+  name: string,
+) => `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 'MARK_${name}')
+export const tag = 'MARK_${name}'
+`
+const reExport = (from: string) => `export { fn, tag } from './${from}'\n`
+/**
+ * A stale-set count of the label's sessions since the call: a closed dev
+ * server's session stays in `compilerStats()` until it is collected, with
+ * what its stale sets held.
+ */
+const staleSince = (label: 'start:vite' | 'start:rsbuild') => {
+  const count = (name: 'stalePaths' | 'staleHeld') =>
+    compilerStats()[label]?.[name] ?? 0
+  const before = {
+    stalePaths: count('stalePaths'),
+    staleHeld: count('staleHeld'),
+  }
+  return (name: 'stalePaths' | 'staleHeld') => count(name) - before[name]
+}
+
+/**
+ * `src/entry.ts` re-exports `src/left.ts`'s server fn, requested in both
+ * environments. SSR imports it lazily (as a route's or a server fn's module
+ * is): SSR's module runner imports its entry again after a full reload, and
+ * the module only when the app asks for it (`ssrTag`).
+ */
+const startLeft = async () => {
+  const stale = staleSince('start:vite')
+  const server = await startDevServer({
+    files: {
+      'src/left.ts': serverFnFile('left'),
+      'src/entry.ts': reExport('left'),
+      'src/server.ts': `export const load = () => import('./entry')\n`,
+    },
+  })
+  const ssrTag = async () =>
+    (await (await server.import('/src/server.ts')).load()).tag as string
+  expect(await ssrTag()).toBe('MARK_left')
+  await server.load('/src/entry.ts')
+  await server.idle()
+  return Object.assign(server, { stale, ssrTag })
+}
+type Server = Awaited<ReturnType<typeof startLeft>>
+/** `src/entry.ts` pointed at a new `src/right.ts`. */
+const moveImport = (server: Server) =>
+  server.edit({
+    'src/right.ts': serverFnFile('right'),
+    'src/entry.ts': reExport('right'),
+  })
+const removeLeft = (server: Server) => server.edit({ 'src/left.ts': null })
+/**
+ * The old file back. Vite's graph still has its modules (their client
+ * module reloads the page, as at its removal); what reads it no longer is
+ * not woken: SSR does not reload every module for it.
+ */
+const leftBack = async (server: Server) => {
+  const sent = (await server.edit({ 'src/left.ts': serverFnFile('left') }))
+    .filter((m) => m.type !== 'custom')
+    .map((m) => `${m.environment} ${m.type} ${m.paths.join(' ')}`)
+  expect(sent).not.toContain('ssr full-reload *')
+  expect(sent.join('\n')).not.toContain('/src/entry.ts')
+}
+const createOther = (server: Server) =>
+  server.edit({ 'src/other.ts': `export const other = 0\n` })
+
 describe('Vite dev: a module whose import moves to another file, the old one removed', () => {
   // A rename done by hand (a new file written, the importer pointed at it,
   // the old file deleted): the importer's change is applied first, its plan
@@ -246,41 +314,208 @@ describe('Vite dev: a module whose import moves to another file, the old one rem
   test(
     'leaves no stale path, and a file created later reloads nothing',
     async () => {
-      const fn = (
-        name: string,
-      ) => `import { createServerFn } from '@tanstack/react-start'
-export const fn = createServerFn().handler(async () => 'MARK_${name}')
-export const tag = 'MARK_${name}'
-`
-      const server = await startDevServer({
-        files: {
-          'src/left.ts': fn('left'),
-          'src/entry.ts': `export { fn, tag } from './left'\n`,
-        },
-      })
-      expect((await server.import('/src/entry.ts')).tag).toBe('MARK_left')
-      await server.load('/src/entry.ts')
-      await server.idle()
-
-      await server.edit({
-        'src/right.ts': fn('right'),
-        'src/entry.ts': `export { fn, tag } from './right'\n`,
-      })
-      await server.edit({ 'src/left.ts': null })
+      const server = await startLeft()
+      await moveImport(server)
+      await removeLeft(server)
       // (what the removal logs is not this row's subject)
       const since = server.logs.length
       expect((await server.import('/src/entry.ts')).tag).toBe('MARK_right')
       await server.load('/src/entry.ts')
       await server.idle()
-      expect(compilerStats()['start:vite']?.stalePaths ?? 0).toBe(0)
+      expect(server.stale('stalePaths')).toBe(0)
 
-      expect(
-        await server.edit({ 'src/other.ts': `export const other = 0\n` }),
-      ).toEqual([])
+      expect(await createOther(server)).toEqual([])
       // the old file back: nothing reads it
-      await server.edit({ 'src/left.ts': fn('left') })
+      await server.edit({ 'src/left.ts': serverFnFile('left') })
       expect((await server.import('/src/entry.ts')).tag).toBe('MARK_right')
       expect(server.logs.slice(since)).toEqual([])
+    },
+    timeout,
+  )
+
+  // The same with the importer requested again in one environment only (a
+  // page open and no SSR request, or a server route called and no page
+  // open): the other environment compiled nothing of the new text, so its
+  // plan of the old text was what the removal judged. The importer's own
+  // event ends that plan in every environment.
+  test.each([
+    ['the client', (server: Server) => server.load('/src/entry.ts')],
+    [
+      'SSR',
+      async (server: Server) => {
+        expect(await server.ssrTag()).toBe('MARK_right')
+      },
+    ],
+  ])(
+    'requested again in %s only: no stale path, a file created later updates nothing',
+    async (_, request) => {
+      const server = await startLeft()
+      await moveImport(server)
+      await removeLeft(server)
+      await request(server)
+      await server.idle()
+      expect.soft(server.stale('stalePaths')).toBe(0)
+
+      expect(await createOther(server)).toEqual([])
+      await leftBack(server)
+    },
+    timeout,
+  )
+
+  // Nothing requested between the edits (no page open, no SSR request):
+  // the two events in either order leave the same state, as Vite's graph
+  // does (it invalidated the importer at its own event either way).
+  test.each([
+    ['the import moved, then the old file removed', [moveImport, removeLeft]],
+    ['the old file removed, then the import moved', [removeLeft, moveImport]],
+  ])(
+    '%s, nothing requested: no stale path, a file created later updates nothing',
+    async (_, steps) => {
+      const server = await startLeft()
+      for (const step of steps) {
+        await step(server)
+      }
+      expect.soft(server.stale('stalePaths')).toBe(0)
+      expect(await createOther(server)).toEqual([])
+    },
+    timeout,
+  )
+
+  // The old file back (an undo, a branch switch) wakes nothing: no
+  // environment's importer reads it any more.
+  test(
+    'the old file back, nothing requested: SSR does not reload, the importer serves the new file',
+    async () => {
+      const server = await startLeft()
+      await moveImport(server)
+      await removeLeft(server)
+      await leftBack(server)
+      expect(await server.ssrTag()).toBe('MARK_right')
+      expect(server.stale('stalePaths')).toBe(0)
+    },
+    timeout,
+  )
+
+  // The three files written at once (a checkout): the watcher reports them
+  // in its own order, and every order leaves no stale path.
+  test(
+    'all in one edit, nothing requested: no stale path, a file created later updates nothing',
+    async () => {
+      const server = await startLeft()
+      await server.edit({
+        'src/right.ts': serverFnFile('right'),
+        'src/entry.ts': reExport('right'),
+        'src/left.ts': null,
+      })
+      expect.soft(server.stale('stalePaths')).toBe(0)
+      expect(await createOther(server)).toEqual([])
+    },
+    timeout,
+  )
+})
+
+describe('Vite dev: a module whose import is removed and comes back', () => {
+  // The importer still imports the removed file: its modules wait for it
+  // (held in both environments), and its return builds them again.
+  test.each([
+    ['', false],
+    [', the importer edited meanwhile', true],
+  ])(
+    'serves the file back%s',
+    async (_, editImporter) => {
+      const server = await startLeft()
+      await removeLeft(server)
+      // (client and SSR)
+      expect(server.stale('staleHeld')).toBe(2)
+      if (editImporter) {
+        // still importing it: its next compile records the failed import
+        await server.edit({ 'src/entry.ts': `// edited\n${reExport('left')}` })
+      }
+      await server.edit({ 'src/left.ts': serverFnFile('back') })
+      expect(await server.ssrTag()).toBe('MARK_back')
+      const client = await server.load('/src/entry.ts')
+      expect(client['/src/left.ts']).toContain('MARK_back')
+      await server.idle()
+      expect(server.stale('stalePaths')).toBe(0)
+    },
+    timeout,
+  )
+})
+
+describe('A module saved with the same text, then its import edited', () => {
+  // The first event of the importer in the session reads a text its plans
+  // were compiled from: they stay, with the rows its import's events find.
+  test(
+    'Vite: serves the edited import',
+    async () => {
+      const server = await startLeft()
+      await server.edit({ 'src/entry.ts': reExport('left') })
+      await server.edit({ 'src/left.ts': serverFnFile('edited') })
+      expect(await server.ssrTag()).toBe('MARK_edited')
+      const client = await server.load('/src/entry.ts')
+      expect(client['/src/left.ts']).toContain('MARK_edited')
+      await server.idle()
+      expect(server.stale('stalePaths')).toBe(0)
+    },
+    timeout,
+  )
+
+  test(
+    'Rsbuild: serves the edited import',
+    async () => {
+      const stale = staleSince('start:rsbuild')
+      const server = await startRsbuildStartDevServer({
+        compileTimeout: 10_000,
+        files: {
+          'src/left.ts': serverFnFile('left'),
+          'src/entry.ts': reExport('left'),
+        },
+      })
+      const output = async () =>
+        Object.values(await server.outputs('client')).join('\n')
+      expect(await output()).toContain('MARK_left')
+      await server.edit({ 'src/entry.ts': reExport('left') })
+      await server.edit({ 'src/left.ts': serverFnFile('edited') })
+      expect(server.errors).toEqual([])
+      expect(await output()).toContain('MARK_edited')
+      expect(await output()).not.toContain('MARK_left')
+      expect(stale('stalePaths')).toBe(0)
+    },
+    timeout,
+  )
+})
+
+describe('Rsbuild dev: a module whose import moves to another file, the old one removed, in one edit', () => {
+  // The importer's own event ends its plan of the old text; the compile of
+  // the edit builds it once, and a later compile does not build it again.
+  test(
+    'builds the importer once, and no later compile builds it',
+    async () => {
+      const stale = staleSince('start:rsbuild')
+      const server = await startRsbuildStartDevServer({
+        compileTimeout: 10_000,
+        files: {
+          'src/left.ts': serverFnFile('left'),
+          'src/fns.ts': reExport('left'),
+          'src/other.ts': `export const other = 0\n`,
+          'src/entry.ts': `export * from './fns'\nexport { other } from './other'\n`,
+        },
+      })
+      await server.edit({
+        'src/right.ts': serverFnFile('right'),
+        'src/fns.ts': reExport('right'),
+        'src/left.ts': null,
+      })
+      expect(server.errors).toEqual([])
+      expect(server.rebuilt).toContain('src/fns.ts')
+      const output = Object.values(await server.outputs('client')).join('\n')
+      expect(output).toContain('MARK_right')
+      expect(output).not.toContain('MARK_left')
+
+      await server.edit({ 'src/other.ts': `export const other = 1\n` })
+      expect(server.rebuilt).toContain('src/other.ts')
+      expect(server.rebuilt).not.toContain('src/fns.ts')
+      expect(stale('stalePaths')).toBe(0)
     },
     timeout,
   )

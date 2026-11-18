@@ -32,7 +32,7 @@ import type {
   PlanFacts,
 } from './plan'
 import type { OutputId } from './rewrite'
-import type { RawFacts, RawFactsCache } from './facts'
+import type { EventRead, RawFacts, RawFactsCache } from './facts'
 import type { ExportResolver } from './resolve'
 import type { RawSourceMap } from './output-builder'
 import type { ServerOnlyText } from './server-code'
@@ -412,10 +412,14 @@ type InvalidationHosts = HostServices | ((key: PlanKey) => HostServices)
  * and calls for one path run one after the other (a repeat waits for the
  * first, then finds the text unchanged); an event is judged by the file as
  * it is (a removal of a file that reads back is a change). A change marks
- * the file's raw facts stale and re-validates dependents' fingerprints (the
- * file's own plans are keyed by its text and stay); the dependents
- * found stale enter their environment's stale set (`CompilerCaches.stale`),
- * and the host has its bundler build them again (the file's own modules are
+ * the file's raw facts stale and re-validates dependents' fingerprints. A
+ * plan answers for its file's text: the file's change evicts its plans of
+ * another text, so that no compile of a former text publishes, and ends its
+ * holds, in every environment (a plan of the text read stays, with the rows
+ * its dependencies' events find: a touch, or a request of the new text
+ * ahead of its event); the dependents found stale enter their
+ * environment's stale set (`CompilerCaches.stale`), and the host has its
+ * bundler build them again (the file's own modules are
  * its bundler's, which reported the event). A removed file's plans are
  * evicted, and every plan that read it is stale, unasked: held (its modules
  * wait for a file to appear) unless every resolution of it that found the
@@ -503,7 +507,10 @@ async function applyChange(
   const manifestAt = path.endsWith('/package.json')
   const resolverFile = manifestAt || RESOLVER_CONFIG.test(path)
   let kind = event.kind
-  let read: { text: string | null; same: boolean } | undefined
+  /** A file the compiler compiles: its plans answer for its text. */
+  const compiled =
+    kind !== 'registry' && !virtual && identify(path).lang !== null
+  let read: (EventRead & { same: boolean }) | undefined
   /** The file reads as the caches read it: only the file set may have moved. */
   let unchanged = false
   /** A change to the text the caches read: a repeat of an applied event, or a file removed and created again unseen. */
@@ -514,7 +521,7 @@ async function applyChange(
     // removal of a file that is back, a change of one that is gone) is
     // what the file says. A file the compiler has no language for is not
     // read: its event's kind stands
-    const readable = resolverFile || identify(path).lang !== null
+    const readable = resolverFile || compiled
     if (readable || kind !== 'unlink') {
       read = await caches.rawFacts.readChange(path, readable, () =>
         dependedOn(caches, path),
@@ -543,9 +550,7 @@ async function applyChange(
   const change: InvalidateChange = { path, kind }
   const hostOf = typeof hosts === 'function' ? hosts : () => hosts
   if (kind === 'unlink' || kind === 'registry') {
-    // a changed file's plans are keyed by its text: a request of the new
-    // text compiles it again, and a bundler that built it already keeps
-    // the plan and its rows (its dependencies' events must find it)
+    // (a changed file's plans of another text go below, with its holds)
     for (const cache of caches.plans.values()) {
       for (const key of cache.keysAt(path)) {
         cache.delete(key)
@@ -558,7 +563,23 @@ async function applyChange(
     caches.stale.remove(path)
     caches.removed?.(path)
   } else if (!unchanged && !repeat) {
-    caches.rawFacts.markStale(path, read?.text)
+    caches.rawFacts.markStale(path, read)
+    if (compiled && read !== undefined && read.text !== null) {
+      // a plan answers for its file's text: what a former text left behind
+      // ends with the file's own event, in every environment
+      for (const cache of caches.plans.values()) {
+        for (const key of cache.keysAt(path)) {
+          if (cache.supersede(key, read.revision)) {
+            // evicted outside its own compile: the bundler builds the
+            // file's modules again from its event; one that skipped them
+            // (webpack, a content-hash snapshot of a file written unchanged)
+            // finds the file here
+            caches.stale.add(cache.env, path)
+          }
+        }
+        caches.stale.unhold(cache.env, path)
+      }
+    }
   }
   if (kind === 'registry') {
     // a module the host's route gate skipped has no plan to evict, and its
