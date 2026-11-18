@@ -330,7 +330,8 @@ lazyRouteTemplate}`; `.lazy.tsx`/`.lazy.ts` files get the lazy template. A `.laz
   as needed. A clear error naming the file is acceptable only for a name the conventions do not support. A symlinked
   route file keeps its link and the file it names gets the upkeep, unless that file is another route file of the tree
   or another one links to it too: one file holds one route, so the link becomes a file of its own (as on `main`), and
-  the router loads both routes. Start's server manifest gives a symlinked route the assets of its chunks, which
+  the router loads both routes. The route tree is a file of its own (as on `main`): its imports are relative to the
+  configured path, so a link there is replaced. Start's server manifest gives a symlinked route the assets of its chunks, which
   bundlers name by the real path (the document links the route's stylesheet).
 - **J1.7** Conflicting route paths give an error naming the conflicting files (absolute or project-relative,
   unambiguous, §5.7). Only genuinely conflicting routes: one route mounted through an empty-prefix `physical('',
@@ -346,7 +347,8 @@ dir)` is not a conflict by itself.
   is free. Generation settles: one edit leads to a bounded number of regenerations, never a regeneration or reload
   loop, and closing the dev server or watch session stops its watching. Edits of the `virtualRouteConfig` file (path
   form), of `__virtual.ts` files and of route files under `physical()` mounts are delivered edits like route files
-  (modules the virtual config imports: OQ17c). A `tsr.config.json` edit may take effect only at the next route file
+  (modules the virtual config imports: OQ17c; a native JavaScript config, `.js`/`.mjs`/`.cjs`, keeps its first
+  evaluation for the process: Node's module cache, through jiti 2.7.0). A `tsr.config.json` edit may take effect only at the next route file
   event. How unchanged writes are suppressed is free.
 - **J1.11** Withdrawn (the option was removed from the product, #8737). The id stays unused.
 - **J1.12** Honour `disableLogging` for the route-generation logs it controls. This does not forbid warnings or

@@ -707,6 +707,21 @@ export const Route = createFileRoute('/old')({})
       source: `// @ts-check\nimport { useState } from 'react'\nexport const state = useState\nexport const Route = createFileRoute('/old')({})\n`,
       head: `// @ts-check\n`,
     },
+    // (TypeScript reads a single-line directive in any case)
+    {
+      name: 'an upper-case @TS-NOCHECK comment and an import',
+      source: `// @TS-NOCHECK\nimport { useState } from 'react'\nexport const state = useState\nexport const Route = createFileRoute('/old')({})\n`,
+      head: `// @TS-NOCHECK\n`,
+    },
+    // A comment naming a directive is no directive: a suppression comment
+    // stays on the statement it applies to (TS2578 and the error it
+    // suppressed otherwise)
+    {
+      name: 'a suppression comment naming @ts-check on the first statement',
+      source: `// @ts-expect-error: unlike @ts-check, this one line\nexport const count: number = 'one'\nexport const Route = createFileRoute('/old')({})\n`,
+      head: '',
+      attached: `// @ts-expect-error: unlike @ts-check, this one line\nexport const count`,
+    },
     {
       name: 'a triple-slash reference and an import',
       source: `/// <reference types="vite/client" />\nimport { useState } from 'react'\nexport const state = useState\nexport const Route = createFileRoute('/old')({})\n`,

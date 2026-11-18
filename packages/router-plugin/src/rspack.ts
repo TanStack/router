@@ -2,7 +2,10 @@ import { createRspackPlugin } from 'unplugin'
 
 import { configSchema, splitterOptions } from './core/config'
 import { createRouterGeneratorPlugin } from './core/router-generator-plugin'
-import { createRouterPluginContext } from './core/router-plugin-context'
+import {
+  contextInternals,
+  createRouterPluginContext,
+} from './core/router-plugin-context'
 import { createRouterCompilerWebpackPlugin } from './hosts/webpack'
 import { INLINE_CSS_DEFAULT_DEFINES } from './core/inline-css-defaults'
 import type { CompilerLike } from './hosts/webpack'
@@ -34,6 +37,9 @@ const TanStackRouterGeneratorRspack = (
   routerPluginContext?: RouterPluginContext,
 ) => {
   const pluginContext = routerPluginContext ?? defaultRouterPluginContext
+  // A context this copy didn't make fails now: unplugin calls the factory
+  // when the bundler applies the plugin
+  contextInternals(pluginContext)
   return createRspackPlugin((pluginOptions) =>
     createRouterGeneratorPlugin(
       pluginOptions as Partial<Config | (() => Config)> | undefined,

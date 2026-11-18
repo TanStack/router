@@ -191,10 +191,12 @@ function formatDiagnostic(file: string, diagnostic: FileDiagnostic) {
  * The route generator of one app: keeps its route files up and its route
  * tree generated. Events (`run(event)`) are queued and drained by one loop,
  * a batch at a time, so events that arrive together are handled together
- * and none is lost (SPEC J1.10). Each batch rebuilds the tree model from
- * the scan and the facts of each route file, which are kept by path and
- * replaced whenever the file's content changes; the model itself is never
- * reused (no route node outlives a generation).
+ * and none is lost (SPEC J1.10). A batch that changes the routes or their
+ * props rebuilds the tree model from the scan and the facts of each route
+ * file, which are kept by path and replaced whenever the file's content
+ * changes; no generation builds on an earlier model (no route node outlives
+ * a generation). The last published model stays for `getTreeModel`, plugins
+ * and the batches that leave the routes as they were.
  */
 export class Generator {
   public config: Config
@@ -215,9 +217,12 @@ export class Generator {
   private scanned = new Set<string>()
   private readonly files = new Map<string, FileState>()
   private model: TreeModel | undefined
-  /** The route tree as last published, to tell an external change of it. */
+  /**
+   * The route tree as last published, to tell an external change of it
+   * (`printed`: the text Prettier formatted into `content`, when it did).
+   */
   private published:
-    | { content: string; mtimeMs: number; size: number }
+    | { content: string; mtimeMs: number; size: number; printed?: string }
     | undefined
   /** A batch failed: the next one scans again and rebuilds the tree. */
   private stale = false
@@ -358,20 +363,24 @@ export class Generator {
 
   /**
    * What a watcher must watch for this generator: the routes directory and
-   * every `physical()` mount (for created, changed and deleted files), and
-   * the route tree and virtual route config files.
+   * every `physical()` mount (for created, changed and deleted files), the
+   * route tree and virtual route config files, and the route files of the
+   * last scan outside those directories (a virtual route config can name
+   * any file).
    */
   public watchTargets(): { directories: Array<string>; files: Array<string> } {
+    const mounts = (this.scan?.physicalDirectories ?? []).filter(
+      (dir) => !isUnder(dir, this.routesDirectory),
+    )
+    const directories = [this.routesDirectory, ...mounts]
     return {
-      directories: [
-        this.routesDirectory,
-        ...(this.scan?.physicalDirectories ?? []).filter(
-          (dir) => !isUnder(dir, this.routesDirectory),
-        ),
-      ],
+      directories,
       files: [
         this.treeKey,
         ...(this.virtualConfigFile ? [this.virtualConfigFile] : []),
+        ...[...this.scanned].filter(
+          (file) => !directories.some((dir) => isUnder(file, dir)),
+        ),
       ],
     }
   }
@@ -730,20 +739,31 @@ export class Generator {
   }
 
   private async publishTree(model: TreeModel) {
-    let content = this.printRouteTree(model)
-    if (this.config.enableRouteTreeFormatting === true) {
-      content = await formatWithPrettier(content, this.style)
-    }
+    const printed = this.printRouteTree(model)
+    const formatting = this.config.enableRouteTreeFormatting === true
+    // (an unchanged print is not formatted again)
+    const content = !formatting
+      ? printed
+      : this.published?.printed === printed
+        ? this.published.content
+        : await formatWithPrettier(printed, this.style)
     // Compared with the disk, not with what was written last: a deleted or
     // edited tree is written again (unchanged since published: no read).
     const onDisk = (await this.treeOnDiskIsPublished())
       ? this.published!.content
       : await readIfExists(this.treeFile)
     if (onDisk !== content) {
-      await this.publisher.write(this.treeFile, content)
+      // A file of its own, as on main: its imports are relative to where it
+      // is configured, and a link elsewhere would resolve them from there
+      await this.publisher.write(this.treeFile, content, undefined, true)
     }
     const stat = await fsp.stat(this.treeFile)
-    this.published = { content, mtimeMs: stat.mtimeMs, size: stat.size }
+    this.published = {
+      content,
+      mtimeMs: stat.mtimeMs,
+      size: stat.size,
+      printed: formatting ? printed : undefined,
+    }
   }
 
   private async treeOnDiskIsPublished() {
