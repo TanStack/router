@@ -85,6 +85,18 @@ export const PATTERN_IMPORT_SUGGESTION =
 const quoted = (s: string) =>
   `'${s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
 
+/**
+ * A path as a glob that matches that path only, in Vite's (picomatch) and
+ * Rspack's `import.meta.glob` alike: `\ [ ] { } * ?` escaped
+ * (`[draft].server.ts` is a character class), a parenthesis as a class of
+ * its own (`(auth)` is a group to picomatch, and Rspack reads no `\(`);
+ * `! + @` are an extglob only before a `(`, so as they are.
+ */
+const globLiteral = (p: string) =>
+  p.replace(/[\\[\]{}*?]|[()]/g, (c) =>
+    c === '(' || c === ')' ? `[${c}]` : `\\${c}`,
+  )
+
 /** The router package a framework's `<ClientOnly>` comes from. */
 const routerPackage = (framework: CompileStartFrameworkOptions) =>
   `@tanstack/${framework}-router`
@@ -590,7 +602,7 @@ function patternSuggestions(
   }
   if (!site?.found) {
     return [
-      `Exclude it from the pattern import that matches it (for import.meta.glob, add a negative pattern such as '!./${path.posix.basename(denied)}', relative to the importer), or move the file out of the directory the pattern reads`,
+      `Exclude it from the pattern import that matches it (for import.meta.glob, add a negative pattern such as ${quoted(`!./${globLiteral(path.posix.basename(denied))}`)}, relative to the importer), or move the file out of the directory the pattern reads`,
       ...(mode === 'dev'
         ? [
             'If nothing imports it (a server.warmup glob requested it), the environment gets its mock and nothing of the file ships',
@@ -605,7 +617,7 @@ function patternSuggestions(
       ? [...CLIENT_ENV_SUGGESTIONS]
       : [...SERVER_FN_SUGGESTIONS]
   }
-  const exclusion = `!${relativeSpecifier(site.importer, denied)}`
+  const exclusion = `!${globLiteral(relativeSpecifier(site.importer, denied))}`
   switch (site.found.kind) {
     case 'import.meta.glob':
       return [
