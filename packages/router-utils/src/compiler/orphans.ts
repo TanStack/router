@@ -125,13 +125,17 @@ export function cleanOrphanedDeclarations(
       }
       const decl = b.declarations[0]
       const declParent = decl ? file.parentOf(decl) : null
-      // a `var` hoisted out of a nested block is declared by the effect unit
-      // (statement) holding it: its declarator is cleaned here, like before
+      // placement decides the declarator of a top-level declaration unit; a
+      // `var` hoisted out of a nested block is declared by the effect unit
+      // (statement) holding it: its declarator is cleaned here, as a
+      // function-level one
       const declaring = t1.declaringUnits.get(sym)
-      if (
+      const placements =
         symbols.isModuleLevel(sym) &&
         declaring !== undefined &&
-        declaring.some((u) => t1.units[u]!.kind !== 'effect') &&
+        declaring.some((u) => t1.units[u]!.kind !== 'effect')
+      if (
+        placements &&
         declParent?.type !== 'AssignmentPattern' &&
         declParent?.type !== 'Property' &&
         declParent?.type !== 'ArrayPattern' &&
@@ -143,8 +147,7 @@ export function cleanOrphanedDeclarations(
       // read it: an importer, or another output (placement keeps the
       // declaration here and that output imports it, or moves it there)
       if (
-        symbols.isModuleLevel(sym) &&
-        declaring?.some((u) => t1.units[u]!.kind !== 'effect') &&
+        placements &&
         (declaring.some((u) => t1.units[u]!.exported.length > 0) ||
           takenElsewhere(ctx, outputs, sym, refs, everyOutput))
       ) {
@@ -168,12 +171,12 @@ export function cleanOrphanedDeclarations(
         parent.type === 'ArrayPattern' ||
         parent.type === 'RestElement'
       // a declarator goes whole when every binding it declares is orphaned
-      // (a function-level pattern too: `const {} = serverConfig` would keep
-      // reading its import); module-level declarators are placement's
+      // (a pattern too: `var {} = serverConfig` would keep reading its
+      // import); the declarators of declaration units are placement's
       const declarator =
         parent.type === 'VariableDeclarator' && parent.id === decl
           ? parent
-          : inPattern && !symbols.isModuleLevel(sym)
+          : inPattern && !placements
             ? orphanedPatternDeclarator(ctx, decl, live)
             : null
       if (declarator) {
@@ -318,40 +321,64 @@ function removeDeclarator(
     const b = ctx.analysis.file.bindingOf(id)
     return b ? ctx.t1.refs.refsOf(ctx.symbols.ofBinding(b)) : []
   })
-  const file = ctx.analysis.file
-  const code = ctx.analysis.source.code
-  const statement = file.parentOf(declarator)
+  const statement = ctx.analysis.file.parentOf(declarator)
   if (!statement || statement.type !== 'VariableDeclaration') {
     return false
   }
   if (statement.declarations.length === 1) {
-    if (!isStatementPosition(file.parentOf(statement))) {
-      return false
-    }
-    ctx.rewrites.scopedEdit({
-      range: {
-        start: statement.start,
-        end: extendOverTrailingLine(code, statement.end),
-      },
-      body: [],
-      scope: scopeOf(refs),
-      by: BY,
-    })
-    return true
+    return removeDeclaration(ctx, statement, scopeOf(refs))
   }
   prune(prunedDecls, statement, declarator, refs)
   return true
 }
 
-/** Whether a statement in `parent` stands in a statement list (so it can go). */
-function isStatementPosition(parent: Node | null): boolean {
-  return (
-    parent !== null &&
-    (parent.type === 'BlockStatement' ||
-      parent.type === 'Program' ||
-      parent.type === 'SwitchCase' ||
-      parent.type === 'StaticBlock')
-  )
+/**
+ * Removes a declaration all of whose declarators go, by the grammar slot
+ * holding it: in a statement list it goes with its line; a classic `for`
+ * initialiser is optional (`for (; c; )`); a body a statement requires
+ * (`if (c) var x = …`, `label: var x = …`) keeps the empty statement.
+ * False for a slot that needs it (`for (var x of …)`).
+ */
+function removeDeclaration(
+  ctx: CoreContext,
+  statement: Node,
+  scope: EditScope,
+): boolean {
+  const code = ctx.analysis.source.code
+  const parent = ctx.analysis.file.parentOf(statement)
+  const remove = (end: number, body: Array<Frag>) =>
+    ctx.rewrites.scopedEdit({
+      range: { start: statement.start, end },
+      body,
+      scope,
+      by: BY,
+    })
+  switch (parent?.type) {
+    case 'BlockStatement':
+    case 'Program':
+    case 'SwitchCase':
+    case 'StaticBlock':
+      remove(extendOverTrailingLine(code, statement.end), [])
+      return true
+    case 'ForStatement':
+      remove(statement.end, parent.init === statement ? [] : [text(';')])
+      return true
+    case 'IfStatement':
+    case 'LabeledStatement':
+    case 'WhileStatement':
+    case 'DoWhileStatement':
+      remove(statement.end, [text(';')])
+      return true
+    case 'ForInStatement':
+    case 'ForOfStatement':
+      if (parent.body === statement) {
+        remove(statement.end, [text(';')])
+        return true
+      }
+      return false
+    default:
+      return false
+  }
 }
 
 /**
@@ -393,7 +420,7 @@ function orphanedPatternDeclarator(
 /**
  * Removes the declarators `pruned` of a multi-declarator statement: when
  * every declarator is gone (pruned now, or erased by an earlier round) the
- * statement goes with its line; otherwise the gone runs go
+ * declaration goes (`removeDeclaration`); otherwise the gone runs go
  * (`removeListItems`).
  */
 function removeDeclarators(
@@ -406,31 +433,14 @@ function removeDeclarators(
   if (statement.type !== 'VariableDeclaration') {
     return
   }
-  const code = ctx.analysis.source.code
   const decls = statement.declarations as ReadonlyArray<Node>
   const gone = (d: Node) => pruned.has(d) || live.isErased(rangeOf(d))
   const scope = scopeOf(refs, goneBefore(decls, pruned, live))
   if (decls.every(gone)) {
-    const stmtParent = ctx.analysis.file.parentOf(statement)
-    if (isStatementPosition(stmtParent)) {
-      ctx.rewrites.scopedEdit({
-        range: {
-          start: statement.start,
-          end: extendOverTrailingLine(code, statement.end),
-        },
-        body: [],
-        scope,
-        by: BY,
-      })
-      return
-    }
+    removeDeclaration(ctx, statement, scope)
+    return
   }
-  // a declaration that is no statement (`for (const a = 1, b = 2;;)`) keeps
-  // its last declarator so the syntax stays
-  const last = decls[decls.length - 1]!
-  const keepLast = decls.every(gone)
-  const isGone = (d: Node) => gone(d) && !(keepLast && d === last)
-  removeItems(decls, isGone, pruned, null, (range) =>
+  removeItems(decls, gone, pruned, null, (range) =>
     ctx.rewrites.scopedEdit({ range, body: [], scope, by: BY }),
   )
 }

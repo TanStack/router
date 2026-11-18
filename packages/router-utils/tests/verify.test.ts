@@ -106,6 +106,11 @@ const CASES: Array<{
       ctx.setFacts('toy-broken-glue', { value: undefined } as never),
   },
   {
+    check: '(h) a declarator binding nothing the source does not have',
+    error: 'keeps the initialiser of a declarator binding nothing',
+    edit: (ctx) => brokenText(ctx, chunkOf(ctx), 'const {} = globalThis\n'),
+  },
+  {
     check: '(b) an import of a name its home output does not export',
     error: 'which does not export it',
     edit: (ctx) =>
@@ -158,6 +163,55 @@ describe.each(['/app/src', '/app/s!rc'])('the verifier under %s', (dir) => {
 
   it.each(CASES)('fails $check', async ({ edit, error }) => {
     await expect(compile(edit)).rejects.toThrow(error)
+  })
+})
+
+// (h) with a planner erasing the only reader of a `var` a nested statement
+// declares: the core removes its declarator (SPEC G16); generated text
+// declaring it in the env module again, the way a removal that missed the
+// declarator would leave it, fails
+describe('the verifier on a var only erased code read', () => {
+  const path = '/app/src/route.tsx'
+  const code = dedent(`
+    import { secret } from './secret'
+    if (true) { var hidden = secret() }
+    console.log(hidden)
+  `)
+  const eraser = (broken: boolean): Planner => ({
+    name: 'toy-eraser',
+    tier: 1,
+    gate: () => true,
+    plan(ctx) {
+      const at = code.indexOf('console.log')
+      ctx.rewrites.edit({
+        range: { start: at, end: code.indexOf(')', at) + 1 },
+        body: [],
+        by: 'toy-eraser',
+      })
+      if (broken) {
+        brokenText(ctx, 'env', 'var hidden = 1\n')
+      }
+    },
+  })
+  const compile = (broken: boolean) =>
+    new MemoryHost({ files: { [path]: code } }).compile(
+      path,
+      [eraser(broken)],
+      {
+        env: envInfo({ mode: 'build' }),
+      },
+    )
+
+  it('passes the sound plan', async () => {
+    const out = await compile(false)
+    expect(out!.diagnostics).toEqual([])
+    expect(out!.code).not.toContain('secret()')
+  })
+
+  it('fails a declaration of it in the env module', async () => {
+    await expect(compile(true)).rejects.toThrow(
+      'declares hidden, which only erased code read',
+    )
   })
 })
 

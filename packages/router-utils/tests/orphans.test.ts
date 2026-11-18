@@ -107,7 +107,7 @@ describe('function-local declarations only erased code read', () => {
     )
   })
 
-  it('keeps the last declarator of a loop head so the syntax stays', async () => {
+  it('removes a loop head declaration all of whose declarators go (the initialiser is optional)', async () => {
     expect(
       await client(`
         import { wrapServer } from 'toy-start'
@@ -121,7 +121,7 @@ describe('function-local declarations only erased code read', () => {
     ).toBe(
       dedent(`
         export function Comp() {
-          for (let j = 0; ; ) {
+          for (; ; ) {
             tsrStub()
             break
           }

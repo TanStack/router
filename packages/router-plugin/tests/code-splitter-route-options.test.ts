@@ -219,6 +219,45 @@ export const Route = createFileRoute('/')({
     expect(await route.requested()).not.toContain('/secret.ts')
   })
 
+  // SPEC G16, J4.12: a `var` declared inside a top-level statement only the
+  // deleted option read goes with its initialiser, whatever slot of the
+  // statement holds it (the statement stays, R154); a module only the
+  // initialiser reads is not requested. Source: the Astra core review 2.
+  it.each([
+    ['an object pattern in a block', 'if (ready) { var { token } = secret() }'],
+    ['an array pattern in a block', 'if (ready) { var [token] = secret() }'],
+    ['a classic for initialiser', 'for (var token = secret(); false; ) {}'],
+    ['a labelled statement', 'label: var token = secret()'],
+    ['an unbraced if', 'if (ready) var token = secret()'],
+  ])(
+    'take with them a hoisted var only they read: %s',
+    async (_name, statement) => {
+      const route = await loadRoute(
+        `${head}import { secret } from './secret'
+const ready = true
+${statement}
+export const Route = createFileRoute('/')({
+  server: {
+    handlers: {
+      GET: () => new Response(String(token)),
+    },
+  },
+  loader: () => 'page',
+})
+`,
+        {
+          deleteNodes: ['server'],
+          files: {
+            'secret.ts': `export const secret = () => Object.assign(['secret'], { token: 'secret' })\n`,
+          },
+        },
+      )
+      await expectValidModules(route)
+      expect(await route.run('return options.loader()')).toBe('page')
+      expect(await route.requested()).not.toContain('/secret.ts')
+    },
+  )
+
   // A top-level statement is never deleted with a binding only a deleted
   // option read: whether writing it changes something else (here the
   // document) has no syntactic answer. Source: the erasure review's
