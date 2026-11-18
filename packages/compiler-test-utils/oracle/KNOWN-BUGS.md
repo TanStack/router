@@ -184,6 +184,20 @@ static made = … }` off the client also when the kept loader, the split compone
 - **Root routes are not split** (R60, SPEC J2.7): their components render on every page, or on error and not-found
   responses, where a lazy chunk only adds a round trip. `router-plugin/tests/integration/known-bugs-code-splitter-page-
 code.test.ts`: "a root route's components load with the route module" (Vite and Rspack).
+- **A value both staying code and a split option read can throw before `Route` exists, through an import cycle** (as
+  on `main`; R183, astra-factcheck-router-hosts.md R1). Such a value is declared in the route file's shared module,
+  which loads before the route module. `const config = readConfig()` read by an eager option and by the loader, with
+  `read.ts` importing `Route` from the route file: `readConfig()` runs while the route module hasn't evaluated, and
+  the page fails to load (webpack: `Cannot access 'Route' before initialization`; Vite: `Cannot read properties of
+  undefined (reading 'options')`). Every split option behaves alike: an arrow, a method or an object-form `handler`.
+  Workaround: compute the value inside the functions that use it, or don't read `Route` from a module the route file
+  imports. No test (the outcome is the limit).
+- **A split option reads its own copy of a module `let` or `var` that code staying in the route module assigns** (as
+  on `main`; R183, astra-factcheck-router-hosts.md R2). The option's chunk copies the declaration. `let mode =
+  'initial'` with `beforeLoad: configure` (assigning `mode = 'configured'`) and a loader returning `mode`: the loader
+  returns `'initial'`. Every split option behaves alike: an arrow, a method or an object-form `handler`. Workaround:
+  declare the binding in a module of its own and import it (a chunk imports what the route file imports), or keep the
+  option in the route module (`codeSplitGroupings`). No test (the outcome is the limit).
 - **Pattern imports are not covered by import protection** (R142, SPEC J6.7): `import.meta.glob`, a template-literal
   `import()`, Rsbuild's `import.meta.webpackContext` / `require.context`. A pattern importer, exempt or outside the
   scope, gets the denied file as its plain importers make it served; with none, the mock, and a build warns once about
