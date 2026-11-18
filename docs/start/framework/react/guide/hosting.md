@@ -220,7 +220,7 @@ tool](https://docs.netlify.com/start/quickstarts/deploy-from-ai-code-generation-
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-white.svg" width="280">
     <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-black.svg" width="280">
-    <img alt="Railway logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-light.svg" width="280">
+    <img alt="Railway logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-black.svg" width="280">
   </picture>
 </a>
 
