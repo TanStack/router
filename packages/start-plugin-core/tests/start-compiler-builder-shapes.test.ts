@@ -72,6 +72,10 @@ export const Form = opaque
 export class QueryCache { constructor(readonly options: unknown) {} }
 `
 
+/** `const v1 = v0` through `const v<n> = v<n - 1>`, one per line. */
+const aliasChain = (n: number) =>
+  Array.from({ length: n }, (_, i) => `const v${i + 1} = v${i}\n`).join('')
+
 const caseFiles = (shape: Shape) => ({
   'db.server.ts': DB,
   'some-lib.ts': SOME_LIB,
@@ -493,6 +497,22 @@ export { createServerOnlyFn as pa, createServerOnlyFn as pb } from '@tanstack/re
     },
     code: `import { ${define.split('.')[0]} } from './barrel'\nimport { db } from './db.server'\nexport const f = ${define}(() => db.x())`,
   })),
+  // Source: the Astra core review 7 (a module of 2,500 aliases overflowed
+  // the compiler's stack).
+  {
+    name: 'createServerOnlyFn through 2,500 aliases in another module',
+    files: {
+      'aliases.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+const v0 = createServerOnlyFn
+${aliasChain(2500)}export { v2500 as define }
+`,
+    },
+    code: `import { define } from './aliases'\nimport { db } from './db.server'\nexport const f = define(() => db.x())`,
+  },
+  {
+    name: 'createServerOnlyFn through 2,500 aliases',
+    code: `${P}const v0 = createServerOnlyFn\n${aliasChain(2500)}export const f = v2500(() => db.x())`,
+  },
   {
     name: 'createServerOnlyFn in an object',
     code: `${P}export const helpers = { read: createServerOnlyFn(() => db.x()) }`,
