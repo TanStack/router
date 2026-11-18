@@ -311,6 +311,15 @@ export class Generator {
     return this.routesByFile
   }
 
+  /**
+   * The real path of a scanned file of the last generation that is a
+   * symlink (or sits under a linked directory): the path bundlers resolve its
+   * modules to; undefined for any other file.
+   */
+  public realPathOf(file: string): string | undefined {
+    return this.files.get(file)?.realPath
+  }
+
   /** Whether a run has generated the route tree (and its registry) yet. */
   public hasGenerated(): boolean {
     return this.model !== undefined

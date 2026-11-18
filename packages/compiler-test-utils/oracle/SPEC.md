@@ -327,7 +327,11 @@ lazyRouteTemplate}`; `.lazy.tsx`/`.lazy.ts` files get the lazy template. A `.laz
 - **J1.6** Writes are atomic (temp file in `tmpDir`, then rename; beside the destination when `tmpDir` is on another
   device, J1.16); the generator never leaves a route file or the tree half-written. Every supported file name
   (§2.1, including apostrophes and other quote characters) gives a valid tree: specifiers, ids and paths are escaped
-  as needed. A clear error naming the file is acceptable only for a name the conventions do not support.
+  as needed. A clear error naming the file is acceptable only for a name the conventions do not support. A symlinked
+  route file keeps its link and the file it names gets the upkeep, unless that file is another route file of the tree
+  or another one links to it too: one file holds one route, so the link becomes a file of its own (as on `main`), and
+  the router loads both routes. Start's server manifest gives a symlinked route the assets of its chunks, which
+  bundlers name by the real path (the document links the route's stylesheet).
 - **J1.7** Conflicting route paths give an error naming the conflicting files (absolute or project-relative,
   unambiguous, §5.7). Only genuinely conflicting routes: one route mounted through an empty-prefix `physical('',
 dir)` is not a conflict by itself.

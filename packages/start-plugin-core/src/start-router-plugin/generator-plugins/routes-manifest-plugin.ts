@@ -14,17 +14,25 @@ function fileOf(route: ModelRoute) {
 export function routesManifestPlugin(): GeneratorPlugin {
   return {
     name: 'routes-manifest-plugin',
-    onRouteTreeChanged: ({ model }) => {
+    onRouteTreeChanged: ({ model, generator }) => {
+      // a symlinked route file's modules have its real path as their id (the
+      // bundler's default): the manifest joins its chunks by either path
+      const filePaths = (file: string) => {
+        const realFilePath = generator.realPathOf(file)
+        return realFilePath
+          ? { filePath: file, realFilePath }
+          : { filePath: file }
+      }
       const routes: typeof globalThis.TSS_ROUTES_MANIFEST = {
         [rootRouteId]: {
-          filePath: model.root.file,
+          ...filePaths(model.root.file),
           children: model.children.map((child) => child.routePath),
         },
         ...Object.fromEntries(
           model.routes.map((route) => [
             route.routePath,
             {
-              filePath: fileOf(route),
+              ...filePaths(fileOf(route)),
               children: route.children.length
                 ? route.children.map((child) => child.routePath)
                 : undefined,
