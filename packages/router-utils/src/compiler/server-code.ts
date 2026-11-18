@@ -36,8 +36,7 @@
  * `index.ts` and its paragraph in `README.md`; then the recorders and their
  * one-line hooks: `start-plugin-core/src/planners/server-code.ts`
  * (`startEnvPlanner`) and `router-plugin/src/planners/server-code.ts`
- * (`routerPlanner`), and the check's error rows
- * (`start-plugin-core/tests/planners/route-server-options.test.ts`).
+ * (`routerPlanner`).
  * `start-plugin-core/tests/integration/start-build-server-code-check-unchecked.test.ts`
  * stays (the client holds none of the text, check or no check): only its
  * header comment names the check. No planner reads anything of it.
