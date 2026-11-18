@@ -972,7 +972,11 @@ function planStartEnv(
     // (the manifest's `functionName` stays `site.functionName`)
     const { local: rpcLocal, exportName } = site.wrapper
     if (role === 'client') {
-      const rpc = glueImport(specs.clientRpc, 'createClientRpc', 'tsrClientRpc')
+      const rpc = glueImport(
+        specs.clientRpc,
+        'createClientServerFn',
+        'tsrClientServerFn',
+      )
       // in dev the stub also names its file's revision (an argument the runtime ignores): the
       // handler may have changed with any edit of the file, and a webpack-family host
       // hot-updates a module only when its output changed, so the client module of an edited
@@ -981,16 +985,17 @@ function planStartEnv(
         config.idMode === 'dev'
           ? `, ${moduleLiteral((devRevision ??= revision(ctx.analysis.source.code)))}`
           : ''
-      // the stub is a call of ours only, `createClientRpc(id, chain)` (the
-      // runtime calls `chain.handler(rpc)`), marked pure: a bundler drops an
-      // unused server fn's stub and its id (R182: then not HTTP-callable),
-      // and keeps what the user's chain runs, an argument of the call (the
-      // user's own `.handler()` call marked pure would drop the effects of
-      // its callee: bundlers keep only an unused pure call's arguments).
-      // Not marked where a user call continues it (`….handler(fn).bind(x)`):
-      // the annotation marks the outermost call after it, so that call's
-      // callee would go too (parentheses around ours would scope it, but a
-      // later transform may print them away: @swc/core does)
+      // the stub is a call of ours only, `createClientServerFn(id, chain)`
+      // (the runtime calls `chain.handler(createClientRpc(id))`), marked
+      // pure: a bundler drops an unused server fn's stub and its id (R182:
+      // then not HTTP-callable), and keeps what the user's chain runs, an
+      // argument of the call (the user's own `.handler()` call marked pure
+      // would drop the effects of its callee: bundlers keep only an unused
+      // pure call's arguments). Not marked where a user call continues it
+      // (`….handler(fn).bind(x)`): the annotation marks the outermost call
+      // after it, so that call's callee would go too (parentheses around
+      // ours would scope it, but a later transform may print them away:
+      // @swc/core does)
       const call = site.handlerCall
       erased.push(site.stubbed)
       rewrites.edit({
