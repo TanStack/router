@@ -23,6 +23,7 @@ import {
   OutputBuilder,
   SAME_FILE_SPECIFIER_RE,
   SourceText,
+  expireVirtual,
   identify,
   invalidate,
   isAssetId,
@@ -242,6 +243,8 @@ function envCompilerPlugins(
           this.resolve(source, importer, options),
         )
         s.embedded.delete(env.name)
+        // no file event names a virtual module: what it read loads again
+        expireVirtual(s.start.caches, env.name)
         s.watching.add(env.name)
         s.start.caches.stale.take(env.name, { held: true })
       }

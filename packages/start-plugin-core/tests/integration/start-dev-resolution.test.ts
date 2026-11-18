@@ -5,6 +5,7 @@
  * environments; a registry change with a resolver that throws. On running
  * Vite and Rsbuild dev servers (source: external review 2, claims 5 to 7).
  */
+import { existsSync } from 'node:fs'
 import { utimes, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, onTestFinished, test } from 'vitest'
@@ -245,6 +246,55 @@ export const fn = base.handler(async () => 'MARK_HANDLER')
         const code = await server.transform('/src/a.ts', environment)
         expect(code).toContain('MARK_HANDLER')
         expect(code).not.toMatch(/\/src\/b\.ts/)
+      }
+    },
+    timeout,
+  )
+
+  // A resolver that prefers a local file and falls back to an external has
+  // the importer compile against the external once the file is deleted.
+  // Source: Astra review round 2 (B4: the importer was held for the file to
+  // come back).
+  test(
+    'Vite: the importer compiles against an external fallback once the file is deleted',
+    async () => {
+      const server = await startDevServer({
+        plugins: [
+          {
+            name: 'test:prefer-local',
+            enforce: 'pre',
+            resolveId(source) {
+              if (source !== './kit') {
+                return undefined
+              }
+              const local = path.join(
+                this.environment.config.root,
+                'src/kit.ts',
+              )
+              return existsSync(local)
+                ? local
+                : { id: 'acme-kit', external: true }
+            },
+          },
+        ],
+        files: {
+          'src/kit.ts': builder,
+          'src/a.ts': `import { base } from './kit'
+export const fn = base.handler(async () => 'MARK_HANDLER')
+`,
+          'src/entry.ts': files['src/entry.ts'],
+        },
+      })
+      for (const environment of ['client', 'ssr']) {
+        expect(await server.transform('/src/a.ts', environment)).not.toContain(
+          'MARK_HANDLER',
+        )
+      }
+      await server.edit({ 'src/kit.ts': null })
+      for (const environment of ['client', 'ssr']) {
+        expect(await server.transform('/src/a.ts', environment)).toContain(
+          'MARK_HANDLER',
+        )
       }
     },
     timeout,

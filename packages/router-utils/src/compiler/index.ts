@@ -99,6 +99,7 @@ export { buildSummary } from './summary'
 export { isVirtualId, RawFactsCache } from './facts'
 export type { PersistedPlan, StaleSets } from './cache'
 export {
+  expireVirtual,
   fileModifiedAt,
   invalidate,
   isAnalyzableSpecifier,

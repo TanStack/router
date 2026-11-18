@@ -8,9 +8,8 @@
  * the workaround of https://github.com/web-infra-dev/rspack/issues/16567
  * (a `rebuildModule` callback is never called when the module's rule match
  * changes or another rebuild removes it). Fails when Rspack changes the
- * pass (the workaround is then wrong) or fixes #16567 (set
- * `RSPACK_REBUILD_CALLBACKS_FIXED_IN` to the fixed version, then delete the
- * batch).
+ * pass (the workaround is then wrong) or fixes #16567 (2.3.3 does: see
+ * `RSPACK_REBUILD_CALLBACKS_FIXED_IN` for what the plain path still needs).
  */
 import fs from 'node:fs'
 import path from 'node:path'

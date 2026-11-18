@@ -419,8 +419,8 @@ type InvalidationHosts = HostServices | ((key: PlanKey) => HostServices)
  * its bundler's, which reported the event). A removed file's plans are
  * evicted, and every plan that read it is stale, unasked: held (its modules
  * wait for a file to appear) unless every resolution of it that found the
- * file finds another one now (`resolvedElsewhere`: a file turned into a
- * folder), so its modules are built again at once.
+ * file finds another one or an external now (`resolvedElsewhere`: a file
+ * turned into a folder), so its modules are built again at once.
  * A virtual module's change (`path`: its id, reported by its host's update
  * of the module, `staleHotUpdate`: its text is a `load`, which no file event
  * names) marks its raw facts stale in every environment and re-validates
@@ -712,14 +712,15 @@ async function applyChange(
 
 /**
  * Whether a dependent of a removed file can compile now: every resolution
- * of it that found the file finds another file (`./b` found `b.ts`, which
- * was removed, and finds `b/index.ts`: a file turned into a folder), so
- * its modules are built again at once. Otherwise (no resolution found the
- * file, one finds nothing or still the file: a resolver may cache it until
- * its next compile) the dependent is held: it waits for a file to appear
- * (a removal the watcher reports before the file comes back: its modules
- * would fail to build meanwhile). The resolutions are asked with the
- * dependent's own resolver, so two importers of the file decide apart.
+ * of it that found the file finds another file or an external (`./b` found
+ * `b.ts`, which was removed, and finds `b/index.ts`: a file turned into a
+ * folder; a resolver's fallback to a package), so its modules are built
+ * again at once. Otherwise (no resolution found the file, one finds nothing
+ * or still the file: a resolver may cache it until its next compile) the
+ * dependent is held: it waits for a file to appear (a removal the watcher
+ * reports before the file comes back: its modules would fail to build
+ * meanwhile). The resolutions are asked with the dependent's own resolver,
+ * so two importers of the file decide apart.
  */
 async function resolvedElsewhere(
   fps: ReadonlyArray<DependencyFingerprint>,
@@ -734,11 +735,8 @@ async function resolvedElsewhere(
     const now = await src
       .resolution(fp.importer, fp.specifier)
       .catch(() => null)
-    if (
-      now === null ||
-      now === EXTERNAL_RESOLUTION ||
-      pathOfId(now) === removed
-    ) {
+    // (an external names no file that may come back: found elsewhere)
+    if (now === null || pathOfId(now) === removed) {
       return false
     }
     found = true
@@ -885,17 +883,40 @@ export async function restorePlans(
 }
 
 /**
+ * Expires what environment `env` read of virtual modules, for a host whose
+ * bundler loads and transforms every module again without telling which
+ * virtual module changed (a Vite watch rebuild, at its start): their facts
+ * are read again, and the environment's plans that read one are evicted,
+ * unasked (the rebuild compiles their modules again; asking would load the
+ * virtual modules before the build does).
+ */
+export function expireVirtual(caches: CompilerCaches, env: string): void {
+  const paths = caches.rawFacts.expireVirtual(env)
+  const cache = caches.plans.get(env)
+  if (!cache) {
+    return
+  }
+  for (const path of paths) {
+    for (const entry of cache.dependents.get(path)) {
+      cache.delete(entry.key)
+      cache.bump(entry.key)
+    }
+  }
+}
+
+/**
  * Releases what the caches hold for one environment: its plans, their
- * generations and dependents index. A host calls it once the environment
- * can compile nothing more (a production build of the environment is
- * finished); everything else in the caches is shared by the environments
- * and stays. A later compile in the environment starts from an empty plan
- * cache, so a host that builds the environment again gets the same output,
- * only slower.
+ * generations and dependents index, and what it read of virtual modules. A
+ * host calls it once the environment can compile nothing more (a
+ * production build of the environment is finished); everything else in the
+ * caches is shared by the environments and stays. A later compile in the
+ * environment starts from an empty plan cache, so a host that builds the
+ * environment again gets the same output, only slower.
  */
 export function releaseEnvironment(caches: CompilerCaches, env: string): void {
   caches.plans.delete(env)
   caches.stale.release(env)
+  caches.rawFacts.releaseVirtual(env)
 }
 
 export function fingerprintSourceFor(

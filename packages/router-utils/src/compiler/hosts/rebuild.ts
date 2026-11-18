@@ -278,10 +278,12 @@ export class StaleSetDrain {
 
 /**
  * First `@rspack/core` whose `rebuildModule` calls every callback
- * (web-infra-dev/rspack#16567). Unknown: still open at 2.3.2. Set it when
- * the fix ships; the assumption test (start-plugin-core,
- * `rspack-rebuild-batch.test.ts`) fails on the first Rspack without the
- * defect.
+ * (web-infra-dev/rspack#16567). Rspack 2.3.3 calls them all (#16580), but
+ * answers the call of a module another rebuild of the pass removed with an
+ * error ("no longer in the module graph"), which the plain `Promise.all` of
+ * `rebuildModulesWhere` rejects on: unset until that path accepts it. The
+ * batch works on 2.3.3 as well. The assumption test (start-plugin-core,
+ * `rspack-rebuild-batch.test.ts`) fails once the lockfile reaches 2.3.3.
  */
 export const RSPACK_REBUILD_CALLBACKS_FIXED_IN: string | undefined = undefined
 
