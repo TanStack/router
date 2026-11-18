@@ -771,7 +771,7 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
 - **J5.5 Loud rejections when extraction is attempted.** For a boundary being extracted, function-as-children, hook
   calls directly inside the extracted JSX (React; Solid children may call them, R101) and `this`/`super` captures give
   a compile error naming the fix (`split={false}` or a child component); so does, on React, a read of a reassigned
-  `let` inside a function of the children (R123; the fix is `useRef`), and children assigning a module binding the
+  `let` inside a function of the children, directly or through a nested boundary (R123, R161 D2; the fix is `useRef`), and children assigning a module binding the
   chunk imports, or its copy of one the module also keeps (J5.2; the fix is `split={false}`). Dynamic `split` counts as split. A boundary with literal `split={false}` is
   neither extracted nor rejected, and its runtime behaviour is the framework's (C8). These rejections are the
   specified outcome, not a limitation to remove (G5's "our limitation is a bug" does not apply). Each compilation

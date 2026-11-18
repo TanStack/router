@@ -264,6 +264,8 @@ interface Extracted {
   /** Symbols the placeholder reads (captures, setters, `arguments`), for enclosing boundaries. */
   placeholderSyms: Array<SymbolId>
   setterSyms: Set<SymbolId>
+  /** Where the children first read each capture (diagnostics of enclosing boundaries). */
+  readAt: ReadonlyMap<SymbolId, Range>
 }
 
 function findBoundaries(
@@ -1110,7 +1112,36 @@ function extract(
       )
     : []
   const setterAt = new Set(setters.map((s) => s.range.start))
-  const found: Array<{ sym: SymbolId; pos: number }> = []
+  /** A capture: `pos` orders the props, `at` is the read diagnostics point at. */
+  const found: Array<{ sym: SymbolId; pos: number; at: Range }> = []
+  // React passes a capture's value when the placeholder renders (Solid
+  // reads a reassigned binding through a getter): a function of the
+  // children that reads it later, itself or through a nested boundary's
+  // placeholder it renders, would read that snapshot. Reports it (at
+  // `read`) when `evaluated`, where the children read `sym`, is in one.
+  const refusesSnapshot = (
+    sym: SymbolId,
+    evaluated: Range,
+    read: Range,
+  ): boolean => {
+    if (
+      solid ||
+      !symbols.isReassignable(sym) ||
+      !scan.functions.some((f) => within(evaluated, f)) ||
+      !t1.mutation.isReassigned(sym, (r) => liveEnv.live(r))
+    ) {
+      return false
+    }
+    const name = symbols.name(sym)
+    boundaryError(
+      ctx,
+      b,
+      'hydrate-capture-reassigned',
+      `Hydrate cannot code-split JSX whose function reads \`${name}\`, a variable the enclosing component reassigns: the split children receive its value when the boundary renders, so the function would not see later assignments. Keep the value in a ref (\`const ${name} = useRef()\`, read and assign \`${name}.current\`), or use split={false}.`,
+      read,
+    )
+    return true
+  }
   for (const ref of t1.refs.refsIn(region)) {
     if (
       skip.some((r) => within(ref.range, r)) ||
@@ -1122,26 +1153,10 @@ function extract(
     ) {
       continue
     }
-    // React passes a capture's value when the placeholder renders (Solid
-    // reads a reassigned binding through a getter): a function of the
-    // children that reads it later would read that snapshot
-    if (
-      !solid &&
-      symbols.isReassignable(ref.sym) &&
-      scan.functions.some((f) => within(ref.range, f)) &&
-      t1.mutation.isReassigned(ref.sym, (r) => liveEnv.live(r))
-    ) {
-      const name = symbols.name(ref.sym)
-      boundaryError(
-        ctx,
-        b,
-        'hydrate-capture-reassigned',
-        `Hydrate cannot code-split JSX whose function reads \`${name}\`, a variable the enclosing component reassigns: the split children receive its value when the boundary renders, so the function would not see later assignments. Keep the value in a ref (\`const ${name} = useRef()\`, read and assign \`${name}.current\`), or use split={false}.`,
-        ref.range,
-      )
+    if (refusesSnapshot(ref.sym, ref.range, ref.range)) {
       return null
     }
-    found.push({ sym: ref.sym, pos: ref.range.start })
+    found.push({ sym: ref.sym, pos: ref.range.start, at: ref.range })
   }
   let args = scan.argumentsRefs.length > 0
   for (const e of direct) {
@@ -1162,7 +1177,11 @@ function extract(
         )
         return null
       }
-      found.push({ sym: sym, pos: e.b.element.start })
+      const at = e.readAt.get(sym) ?? e.b.element
+      if (refusesSnapshot(sym, e.b.element, at)) {
+        return null
+      }
+      found.push({ sym, pos: e.b.element.start, at })
     }
   }
   // Solid: `use:x` reads `x` (a core value ref, captured above); a directive
@@ -1177,20 +1196,18 @@ function extract(
       ) {
         continue
       }
-      found.push({ sym: d.sym, pos: d.nameRange.start })
+      found.push({ sym: d.sym, pos: d.nameRange.start, at: d.nameRange })
       if (!directiveLocals.some((l) => l.sym === d.sym)) {
         directiveLocals.push({ name: symbols.name(d.sym), sym: d.sym })
       }
     }
   }
   const captures: Array<SymbolId> = []
-  {
-    const seen = new Set<SymbolId>()
-    for (const f of [...found].sort((x, y) => x.pos - y.pos)) {
-      if (!seen.has(f.sym)) {
-        seen.add(f.sym)
-        captures.push(f.sym)
-      }
+  const readAt = new Map<SymbolId, Range>()
+  for (const f of [...found].sort((x, y) => x.pos - y.pos)) {
+    if (!readAt.has(f.sym)) {
+      readAt.set(f.sym, f.at)
+      captures.push(f.sym)
     }
   }
 
@@ -1362,6 +1379,7 @@ function extract(
     region,
     placeholderSyms,
     setterSyms: new Set(setters.map((s) => s.sym)),
+    readAt,
   })
   return { sym: lazy, chunk: chunkId }
 }
