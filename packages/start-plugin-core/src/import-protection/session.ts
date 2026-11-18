@@ -556,6 +556,9 @@ export interface CompileOutcome {
 
 const NO_ERROR: CompileOutcome = { error: null }
 
+/** The trace of a report that prints none (each `violationInfo` copies it). */
+const NO_TRACE: Trace = { steps: [], fromEntry: false }
+
 /** One Start environment's import protection. */
 class ImportProtectionEnv {
   /** Resolved edges of every judged importer (trace steps). */
@@ -931,8 +934,13 @@ class ImportProtectionEnv {
     }
   }
 
-  /** Tells `onViolation` about an import that stayed a violation: once with `log: 'once'` and in a build. */
-  private async notify(v: EdgeViolation): Promise<void> {
+  /**
+   * Tells `onViolation` about an import that stayed a violation: once with
+   * `log: 'once'` and in a build. `trace`: the trace when the caller has it
+   * (a build's, read once from its finished graph); otherwise read from the
+   * graph when the event's trace is first read.
+   */
+  private async notify(v: EdgeViolation, trace?: Trace): Promise<void> {
     const { onViolation, log, mode } = this.ip.config
     if (!onViolation) {
       return
@@ -945,7 +953,11 @@ class ImportProtectionEnv {
       this.notified.add(key)
     }
     const returned: unknown = await onViolation(
-      violationInfo(v, this.ip.config, () => this.trace(v.importerId)),
+      violationInfo(
+        v,
+        this.ip.config,
+        trace ?? (() => this.trace(v.importerId)),
+      ),
     )
     if (returned === false) {
       this.ip.warnOnViolationFalse()
@@ -1257,10 +1269,9 @@ class ImportProtectionEnv {
     const reports: Array<string> = []
     for (const v of violations) {
       const denied = { ...v, behavior: 'error' as const }
-      await this.notify(denied)
-      const info = violationInfo(denied, this.ip.config, () =>
-        this.trace(v.importerId),
-      )
+      const trace = this.trace(v.importerId)
+      await this.notify(denied, trace)
+      const info = violationInfo(denied, this.ip.config, trace)
       reports.push(
         formatViolation(denied, info, this.ip.report, {
           childCompiler: true,
@@ -1495,10 +1506,7 @@ class ImportProtectionEnv {
     message: string
     info: ViolationInfo
   } {
-    const info = violationInfo(c.self, this.ip.config, () => ({
-      steps: [],
-      fromEntry: false,
-    }))
+    const info = violationInfo(c.self, this.ip.config, NO_TRACE)
     return {
       severity: 'error',
       message: formatServedConflict(
@@ -1664,10 +1672,10 @@ class ImportProtectionEnv {
     }
     for (const key of [...live.keys()].sort()) {
       const v = live.get(key)!
-      await this.notify(v)
-      const info = violationInfo(v, this.ip.config, () =>
-        this.trace(v.importerId, graph),
-      )
+      // (read once: an event kept after the build holds no reader of it)
+      const trace = this.trace(v.importerId, graph)
+      await this.notify(v, trace)
+      const info = violationInfo(v, this.ip.config, trace)
       reports.push({
         severity:
           v.behavior === 'error' ? ('error' as const) : ('warning' as const),
@@ -1677,10 +1685,7 @@ class ImportProtectionEnv {
     }
     // not violations (no `onViolation`, no failure): a warning per module
     for (const [v, importers] of unchecked.values()) {
-      const info = violationInfo(v, this.ip.config, () => ({
-        steps: [],
-        fromEntry: false,
-      }))
+      const info = violationInfo(v, this.ip.config, NO_TRACE)
       const message = formatUncheckedImporters(info, importers, this.ip.report)
       reports.push({
         severity: 'warning' as const,
@@ -1700,18 +1705,12 @@ class ImportProtectionEnv {
           relativizePath(v.importer, this.ip.config.root),
           iv,
         ).message,
-        info: violationInfo(v, this.ip.config, () => ({
-          steps: [],
-          fromEntry: false,
-        })) as ViolationInfo,
+        info: violationInfo(v, this.ip.config, NO_TRACE) as ViolationInfo,
       })
     }
     // not violations either, but the build shipped what no importer asked for
     for (const { verdict, self: v, order } of unsettled.values()) {
-      const info = violationInfo(v, this.ip.config, () => ({
-        steps: [],
-        fromEntry: false,
-      }))
+      const info = violationInfo(v, this.ip.config, NO_TRACE)
       const others = order
         ? order.unread
         : [
