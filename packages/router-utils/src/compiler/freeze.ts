@@ -3,9 +3,8 @@
  * recipe, put together from pieces (the env module: its source text between
  * the statements placement rewrites, the generated units at their anchors
  * and the glue; the derived modules: header, glue imports, items and
- * generated units in order, the export glue), its edges and its side-effect
- * flag. `Renderer`
- * is the segment visitor of the output's walk (`OutputView.walk`), with
+ * generated units in order, the export glue) and its edges. `Renderer` is
+ * the segment visitor of the output's walk (`OutputView.walk`), with
  * substitution environments and context-aware reference rewrites; no Yuku
  * object is reachable from the result.
  */
