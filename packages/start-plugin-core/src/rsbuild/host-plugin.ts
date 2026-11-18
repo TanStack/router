@@ -65,8 +65,8 @@ interface StartHostPluginOptions {
   /** Writes a virtual module file of this environment (import-protection edge modules). */
   writeVirtualModule: (file: string, content: string) => void
   generator: RsbuildRouteGenerator
-  /** The client route tree module (client environment only): rebuilt when its pruned routes change. */
-  clientRouteTree?: { path: () => string; version: () => number }
+  /** The client route tree module (client environment only): rebuilt when it is stale. */
+  clientRouteTree?: { path: () => string; stale: () => boolean }
   /** After the `finishMake` replay rebuilt the registry (the resolver virtual module is rewritten). */
   onServerFnsReplayed: () => void
   /**
@@ -365,7 +365,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           unprinted = null
         }
       })
-      let clientTreeBuiltAt = -1
 
       compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, async () => {
         // one warning per file per run (J2.19): the session's ledger is
@@ -794,7 +793,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       }
 
       // the client route tree without its server-only routes: served by the host's transform
-      // of the tree module; when its routes change without the file, the module is rebuilt
+      // of the tree module; when its routes changed since it served the module (the file
+      // did not), or it served none (a module restored from the persistent cache), the
+      // module is rebuilt
       if (opts.clientRouteTree && environment.type === 'client') {
         const tree = opts.clientRouteTree
         compiler.hooks.finishMake.tapPromise(
@@ -807,8 +808,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 if (compilation.compiler !== compiler) {
                   return
                 }
-                const version = tree.version()
-                if (version === clientTreeBuiltAt) {
+                if (!tree.stale()) {
                   return
                 }
                 await rebuildModules(
@@ -816,7 +816,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                   new Set([normalizePath(tree.path())]),
                   canonicalResource,
                 )
-                clientTreeBuiltAt = version
               },
             ),
         )
