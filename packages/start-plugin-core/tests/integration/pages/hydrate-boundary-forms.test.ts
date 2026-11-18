@@ -444,6 +444,17 @@ const unsafeChildren = [
     name: 'a parenthesized hook call',
     code: (split = '') => childrenPage('<p>{(useThing)()}</p>', split),
   },
+  // On main, rejected (Babel's walk); an immediately invoked function runs
+  // during render. Source: Astra review of #8817, hydrate #6.
+  {
+    name: 'a hook call in an immediately invoked arrow',
+    code: (split = '') => childrenPage('<p>{(() => useThing())()}</p>', split),
+  },
+  {
+    name: 'a hook call in an immediately invoked function expression',
+    code: (split = '') =>
+      childrenPage('<p>{(function () { return useThing() })()}</p>', split),
+  },
 ]
 
 describe('children that cannot be split', () => {

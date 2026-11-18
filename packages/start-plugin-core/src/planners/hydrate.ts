@@ -719,27 +719,42 @@ function validate(
       .refsIn({ start, end: start + 1 })
       .find((r) => r.range.start === start)
 
-  /** `fn`: inside a function of the children; `self`: `this`/`arguments` are owned inside. */
-  const visit = (node: Node, fn: boolean, self: boolean): void => {
+  /** The functions the children call where they are written (an IIFE's callee), by start. */
+  const invoked = new Set<number>()
+  /**
+   * `fn`: inside a function of the children; `self`: `this`/`arguments` are
+   * owned inside; `render`: runs while the boundary renders (outside any
+   * function but an IIFE's, which the hook check reads).
+   */
+  const visit = (
+    node: Node,
+    fn: boolean,
+    self: boolean,
+    render: boolean,
+  ): void => {
     if (skip.some((r) => within(node, r))) {
       return
     }
     let nextFn = fn
     let nextSelf = self
+    let nextRender = render
     switch (node.type) {
       case 'ArrowFunctionExpression':
         nextFn = true
+        nextRender = render && invoked.has(node.start)
         scan.functions.push({ start: node.start, end: node.end })
         break
       case 'FunctionExpression':
       case 'FunctionDeclaration':
         nextFn = true
         nextSelf = true
+        nextRender = render && invoked.has(node.start)
         scan.functions.push({ start: node.start, end: node.end })
         break
       case 'ClassBody':
         nextFn = true
         nextSelf = true
+        nextRender = false
         break
       case 'ThisExpression':
         if (!self) {
@@ -778,7 +793,14 @@ function validate(
         // React's rules of hooks: the call would move into another
         // component. Solid has none: a `use*` call in the chunk runs under
         // the boundary's owner, with its context
-        if (!fn && !solid) {
+        if (render && !solid) {
+          const callee = unwrapExpression(node.callee)
+          if (
+            callee.type === 'ArrowFunctionExpression' ||
+            callee.type === 'FunctionExpression'
+          ) {
+            invoked.add(callee.start)
+          }
           const hook = hookName(node.callee)
           if (hook !== null) {
             fail(
@@ -832,10 +854,10 @@ function validate(
       default:
         break
     }
-    forEachChild(node, (c) => visit(c, nextFn, nextSelf))
+    forEachChild(node, (c) => visit(c, nextFn, nextSelf, nextRender))
   }
   for (const n of shape.nodes) {
-    visit(n, false, false)
+    visit(n, false, false, true)
   }
   if (!scan.ok) {
     return scan
