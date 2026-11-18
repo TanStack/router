@@ -26,6 +26,7 @@ import { describe, expect, test } from 'vitest'
 import {
   diagnosticPosition,
   expectDiagnostic,
+  findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
@@ -495,6 +496,63 @@ export const options = {
   ),
 }
 `,
+        },
+        entry: 'src/entry.tsx',
+      })
+      expect(build.violations).toEqual([])
+      expect(build.ssr.where('MARK_WIDGET')).toBe('nowhere')
+      expect(build.client.where('MARK_WIDGET')).not.toBe('nowhere')
+    },
+    timeout,
+  )
+
+  // A component rendered in code the server output erases (the body of
+  // `createClientOnlyFn`) and as a route option: the report names the
+  // option, the use the server renders, and wrapping it builds. Source:
+  // fact-check of the Astra review round 3 of #8817, import protection B2
+  // (the report named the erased element, and wrapping it still failed).
+  test(
+    'a component rendered in erased client-only code and as a route option: the report names the option, and wrapping it builds',
+    async () => {
+      const entry = (
+        errorComponent: string,
+      ) => `import { ClientOnly } from '@tanstack/react-router'
+import { createClientOnlyFn } from '@tanstack/react-start'
+import { Widget } from './widget.client'
+export const preview = createClientOnlyFn(() => <Widget />)
+export const options = { errorComponent: ${errorComponent} }
+`
+      const initial = entry('Widget')
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files: { 'src/widget.client.tsx': widget, 'src/entry.tsx': initial },
+          entry: 'src/entry.tsx',
+        }),
+      )
+      expectViolationsAt(error, [
+        { environment: 'server', use: 'src/entry.tsx:3:24' },
+      ])
+      const at = (needle: number) => ({
+        severity: 'error' as const,
+        file: 'src/entry.tsx',
+        root: error.root,
+        position: diagnosticPosition(initial, needle),
+      })
+      expectDiagnostic(error.diagnostics, at(initial.lastIndexOf('Widget')))
+      expect(
+        findDiagnostics(
+          error.diagnostics,
+          at(initial.indexOf('Widget', initial.indexOf('<'))),
+        ),
+      ).toEqual([])
+      const build = await buildStart({
+        bundler,
+        files: {
+          'src/widget.client.tsx': widget,
+          'src/entry.tsx': entry(
+            '() => <ClientOnly fallback={<span>loading</span>}><Widget /></ClientOnly>',
+          ),
         },
         entry: 'src/entry.tsx',
       })
