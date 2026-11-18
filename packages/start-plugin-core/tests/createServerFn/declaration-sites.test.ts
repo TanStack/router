@@ -432,3 +432,27 @@ export const quoted = { 'get-it': createServerFn().handler(async () => 'SITE_quo
   }
   expect(results).toEqual(reads)
 })
+
+// The second `x` of a module and a property named `'x#1'` are distinct
+// server fns: each call runs its own handler, also where their dev ids are
+// built from the module and a per-module key.
+test("a property named 'x#1' beside two server fns named x: each runs its own handler", async () => {
+  const served = await serveCase(await host(), {
+    'module.tsx': `${head}export const one = { x: createServerFn().handler(async () => 'one.x') }
+export const two = {
+  x: createServerFn().handler(async () => 'two.x'),
+  'x#1': createServerFn().handler(async () => "two['x#1']"),
+}
+`,
+  })
+  const reads = ['module.one.x', 'module.two.x', "module.two['x#1']"]
+  const results: Record<string, unknown> = {}
+  for (const read of reads) {
+    results[read] = await callServerFnThroughCallers(served, read)
+  }
+  expect(results).toEqual({
+    'module.one.x': 'one.x',
+    'module.two.x': 'two.x',
+    "module.two['x#1']": "two['x#1']",
+  })
+})

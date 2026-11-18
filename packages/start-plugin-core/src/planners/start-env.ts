@@ -734,7 +734,8 @@ function planStartEnv(
 
   // ---- 2. server fns
   const sites: Array<ServerFnSite> = []
-  const keyCount = new Map<string, number>()
+  /** The stable keys of this module's server fns (a dev id or placeholder is the module and the key). */
+  const stableKeys = new Set<string>()
   const functionNames = new Set<string>()
   // in source order (the analysis lists chains per import binding): an
   // enclosing handler's site before a nested one, so the nested site is
@@ -771,9 +772,13 @@ function planStartEnv(
       continue
     }
     const baseKey = `${described.base || 'fn'}${described.path.length > 0 ? `@${described.path.join('/')}` : ''}`
-    const n = keyCount.get(baseKey) ?? 0
-    keyCount.set(baseKey, n + 1)
-    const stableKey = n === 0 ? baseKey : `${baseKey}#${n}`
+    // the n-th repeat of a base key takes `#n`, or the next free number
+    // when a quoted property key (`'x#1'`) already spells it
+    let stableKey = baseKey
+    for (let n = 1; stableKeys.has(stableKey); n++) {
+      stableKey = `${baseKey}#${n}`
+    }
+    stableKeys.add(stableKey)
     const wrapperBase = providerExportBase(
       identifierBase(stableKey),
       tagOfFile(),

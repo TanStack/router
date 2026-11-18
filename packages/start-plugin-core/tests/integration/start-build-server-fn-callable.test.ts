@@ -123,6 +123,55 @@ return results`)
     timeout,
   )
 
+  // A custom id policy that names ids after `functionName`: the second `x`
+  // of a module and a property named `'x#1'` are distinct server fns, each
+  // with its own id and handler over HTTP.
+  test(
+    "SSR: with custom ids, a property named 'x#1' beside two server fns named x answers with its own handler",
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        start: {
+          serverFns: {
+            generateFunctionId: ({ functionName }: { functionName: string }) =>
+              `catalog.${functionName.split('_createServerFn_handler')[0]}`,
+          },
+        },
+        files: {
+          'fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const one = { x: createServerFn().handler(async () => 'one.x') }
+export const two = {
+  x: createServerFn().handler(async () => 'two.x'),
+  'x#1': createServerFn().handler(async () => "two['x#1']"),
+}
+`,
+          'client-entry.ts': `export { one, two } from './fns'\n`,
+          'ssr-entry.ts': callByIdExports,
+        },
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+      })
+      const urls = (
+        await client.run(
+          `return [entry.one.x.url, entry.two.x.url, entry.two['x#1'].url]`,
+        )
+      ).result as Array<string>
+      const { result } = await ssr.run(`${callByIdPrelude}const results = []
+for (const url of ${JSON.stringify(urls)}) {
+  try {
+    results.push(await callById(serverFnId(url)))
+  } catch {
+    results.push('rejected')
+  }
+}
+return results`)
+      expect({ distinctUrls: new Set(urls).size, result }).toEqual({
+        distinctUrls: 3,
+        result: ['one.x', 'two.x', "two['x#1']"],
+      })
+    },
+    timeout,
+  )
+
   // On main, an exported server fn the client never calls, in a module the
   // client imports, stays in the client bundle: its stub
   // (`createServerFn()….handler(createClientRpc(id))`) is a call bundlers
