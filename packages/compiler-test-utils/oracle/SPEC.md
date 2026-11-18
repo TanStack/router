@@ -467,8 +467,9 @@ dir)` is not a conflict by itself.
 - **J2.10 Same-file route factory** (§2.2). A correct split (renders, hot-updates), or unsplit plus a warning naming
   the file, in every mode; crashes or rendering the wrong component are bugs.
 - **J2.11 Two `createFileRoute` calls in one module.** Never silently swap components: each renders its own, or the
-  compiler warns or errors naming the file. A second call of the route's constructor (its binding, called directly)
-  fails the build at that call, whatever its options hold (R172).
+  compiler warns or errors naming the file. A second call of the route's constructor (its binding, or the same member
+  of the router's namespace, `Router.createFileRoute`, called directly) fails the build at that call, whatever its
+  options hold (R172).
 - **J2.12 Bindings the route module still reads stay declared.** Moving an option's declaration never removes an
   import or declaration another surviving statement (an exported wrapper, `head()`, an unsplit option, a top-level
   call) reads; the route module stays valid (G1, G8).

@@ -14,6 +14,7 @@ import type {
   ClassifiedRef,
   Diagnostic,
   PlanContext,
+  Range,
   SymbolId,
   Unit,
 } from '@tanstack/router-utils/compiler'
@@ -307,17 +308,43 @@ export function recognizeRoute(
   const factoryRefs = calleeBinding
     ? t1.refs.refsOf(symbols.ofBinding(calleeBinding))
     : []
-  const calls = factoryRefs.filter(
-    (r) => r.ctx === 'callee' && r.kind === 'value',
-  )
+  // the direct calls of the factory: of its binding, or of the same member
+  // of the router's namespace (`Router.createFileRoute(…)`)
+  const member = call.property?.type === 'Identifier' ? call.property : null
+  const calls: Array<Range> = []
+  for (const r of factoryRefs) {
+    if (r.kind !== 'value') {
+      continue
+    }
+    if (!member) {
+      if (r.ctx === 'callee') {
+        calls.push(r.range)
+      }
+      continue
+    }
+    const access = file.parentOf(file.nodeAt(r.range.start)!)
+    const parent = access ? file.parentOf(access) : null
+    if (
+      access?.type === 'MemberExpression' &&
+      !access.computed &&
+      access.object.start === r.range.start &&
+      access.property.type === 'Identifier' &&
+      access.property.name === member.name &&
+      parent?.type === 'CallExpression' &&
+      parent.callee.start === access.start &&
+      parent.callee.end === access.end
+    ) {
+      calls.push({ start: access.start, end: access.end })
+    }
+  }
   // R172: one route call per file; another one is an error at that call
   const curried = call.callee !== unwrapExpression(outer.callee as Node)
-  for (const other of calls) {
-    if (other.range.start !== call.callee.start) {
+  for (const range of calls) {
+    if (range.start !== call.callee.start) {
       warnings.push({
         severity: 'error',
         message: `[tanstack-router] ${fileName} calls ${call.constructor} more than once, which is not supported. Write one \`${call.constructor}\` call per file, bound to its \`Route\` export (\`export const Route = ${call.constructor}(${curried ? `'/path')(` : ''}{ … })\`), with everything this call holds on that route, and remove this call.`,
-        range: other.range,
+        range,
         by: ROUTER_PLANNER,
         code: 'route-several-calls',
       })
