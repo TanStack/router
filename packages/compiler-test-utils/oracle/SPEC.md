@@ -480,8 +480,8 @@ dir)` is not a conflict by itself.
   can't read isn't removed (J2.8).
 - **J2.15 Client route tree pruning (Start).** Routes whose only `createFileRoute` prop is `server`, with only such
   descendants, are removed from the client route tree, on Vite and Rsbuild alike. Every route with a client-visible
-  prop survives, and so does every ancestor a surviving route needs (including a server-only ancestor of a
-  surviving child). Server and provider trees keep all routes and handlers. Unknown or spread-derived props never
+  prop survives (an option of its `.lazy` file or piece included), and so does every ancestor a surviving route
+  needs (including a server-only ancestor of a surviving child). Server and provider trees keep all routes and handlers. Unknown or spread-derived props never
   cause pruning (J1.9).
 - **J2.16 JSX runtime.** A chunk compiles its JSX under the same runtime and pragma semantics as its source module:
   the project's real JSX transform selects the same runtime for the chunk as for the untouched file. For a
