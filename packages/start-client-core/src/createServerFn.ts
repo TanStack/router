@@ -304,9 +304,17 @@ export async function executeMiddleware(
         server?: MiddlewareFn
       }
       const validator = options.validator
-      // Request middleware validators are slot-shaped ({ body, query, ... })
-      // and only apply to server routes.
-      if (validator && env === 'server' && options.type !== 'request') {
+      if (validator && env === 'server') {
+        // Request middleware validators are slot-shaped ({ body, query, ... })
+        // and describe HTTP request parts a server function call does not
+        // have. Fail closed rather than silently skip the check.
+        if (options.type === 'request') {
+          throw new Error(
+            process.env.NODE_ENV !== 'production'
+              ? 'Request middleware with a validator cannot be used in a server function: its slot validators (body, query, path, headers) would not be enforced. Use function middleware with .validator() instead.'
+              : 'Request middleware validator in server function',
+          )
+        }
         // Execute the middleware's input function
         ctx.data = await execValidator(validator, ctx.data)
       }

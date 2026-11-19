@@ -904,6 +904,13 @@ export function createStartHandler<TRegister = Register>(
           )
       }
 
+      // Global request middleware validators gate every request, server
+      // function calls included, after all global middleware has run.
+      terminal = withValidatedData(
+        terminal,
+        flattenedRequestMiddlewares.flatMap((m) => m.options.validator ?? []),
+      )
+
       const middlewareCtx: PipelineContext = {
         request,
         pathname: url.pathname,
@@ -1135,7 +1142,8 @@ const requestSlots = ['path', 'query', 'headers', 'body'] as const
 /**
  * Validate request slots before the handler runs and pass the result as
  * `ctx.data`. Runs after middleware, so auth rejects before validation does.
- * Each schema in a slot must pass; object outputs are shallow-merged.
+ * Each schema in a slot must pass; object outputs are shallow-merged with
+ * earlier validators taking precedence.
  */
 function withValidatedData(
   handler: TODO,
@@ -1157,11 +1165,16 @@ function withValidatedData(
           issues.push({ slot, issues: result.issues })
           continue
         }
+        // Earlier (outer) validators win: a later schema that passes raw input
+        // through must not overwrite values an earlier one transformed or
+        // stripped. Later schemas only add keys.
         const prev = data[slot]
         data[slot] =
-          isPlainObject(prev) && isPlainObject(result.value)
-            ? { ...prev, ...result.value }
-            : result.value
+          prev === undefined
+            ? result.value
+            : isPlainObject(prev) && isPlainObject(result.value)
+              ? { ...result.value, ...prev }
+              : prev
       }
     }
 
@@ -1246,6 +1259,7 @@ async function handleServerRoutes({
   let terminalHandler: TODO = (ctx: TODO) =>
     executeRouter(ctx.context, matchedRoutes, router)
   let terminalNext: TODO
+  let validatorsEnforced = false
   // Slot validators from every request middleware in the route chain, then
   // the method's own. All of them must pass (intersection).
   const validators: Array<RequestValidatorSlots> = []
@@ -1302,6 +1316,7 @@ async function handleServerRoutes({
           withValidatedData(routeHandler, validators),
           matchedRoutes,
         )
+        validatorsEnforced = true
         if (!mayDefer) {
           terminalHandler = parsedHandler
           terminalNext = throwIfMayNotDefer
@@ -1310,6 +1325,12 @@ async function handleServerRoutes({
         }
       }
     }
+  }
+
+  // Without a method handler (page render, unmatched method) the route's
+  // middleware validators still gate the request before rendering.
+  if (!validatorsEnforced) {
+    terminalHandler = withValidatedData(terminalHandler, validators)
   }
 
   const response = await executeMiddleware(
