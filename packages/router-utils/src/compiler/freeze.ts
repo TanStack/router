@@ -852,13 +852,9 @@ function outputView(
     },
     erasedAt,
     reexports: (range) => {
-      const unit = units.find(
-        (u) =>
-          u.kind === 'reexport' &&
-          u.range.start <= range.start &&
-          u.range.end >= range.end,
-      )
-      return unit !== undefined && includedUnit(unit)
+      const id = plan.t1.unitAt(range)
+      const unit = id === null ? undefined : units[id]!
+      return unit?.kind === 'reexport' && includedUnit(unit)
     },
     dynamic: ({ start, end }) =>
       segments.some((s) => s.k === 'slice' && s.start <= start && s.end >= end),
