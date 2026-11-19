@@ -4,8 +4,15 @@
  * page: a server function only its route's component calls (SPEC J4.1, J2:
  * the component is split, the server fn's module renders on the server
  * with its SSR stub). The dev counterpart is rsc-start-rsbuild.test.ts.
+ * Pinned in the same build: server fns only client-only code imports
+ * (`client-only-reach-app.ts`).
  */
 import { afterAll, beforeAll, expect, test } from 'vitest'
+import {
+  clientOnlyPositions,
+  clientOnlyReachFiles,
+  expectClientOnlyCallAnswers,
+} from './client-only-reach-app'
 import {
   openRscPage,
   settledValue,
@@ -78,6 +85,7 @@ beforeAll(async () => {
     },
     files: {
       ...privateFnFiles,
+      ...clientOnlyReachFiles,
       // A server fn whose only importer is a `'use client'` component that
       // a server component renders.
       'src/client-ref/update.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -173,6 +181,23 @@ test.fails(
         (text) => text.includes('MARK_UPDATED') || text.includes('error'),
       ),
     ).toBe('counter MARK_UPDATED')
+  },
+)
+
+// Known bug (KNOWN-BUGS, "RSC builds: a server fn only client-only code
+// imports is not registered"; as `main`). SPEC J4.2: a server fn the client
+// calls is callable by id. Bug: the SSR scan erases client-only code
+// (`<ClientOnly>` children, `createClientOnlyFn` bodies, `<Hydrate>`
+// fallbacks) and the imports only it reads, and on Rsbuild nothing compiles
+// the provider's reach before its manifest is written, so the provider's
+// manifest is written without these server fns. Impact: the click answers
+// "Server function info not found". Fix: every server fn the client
+// references is callable by id, with no production dependency on modules
+// only development code reaches.
+test.fails.for(clientOnlyPositions)(
+  'a server fn only $position of a $where imports runs when clicked',
+  async ({ name }) => {
+    await expectClientOnlyCallAnswers(server, name)
   },
 )
 

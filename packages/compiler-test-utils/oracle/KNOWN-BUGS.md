@@ -79,6 +79,18 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   `Server function info not found`. SPEC J4.2. `react-start-rsc/tests/integration/rsc-start-build-client-reach.test.ts`:
   "a server fn a 'use client' component imports lazily runs when clicked". Fix: every server fn the client references
   is callable by id, with no production dependency on modules only development code reaches.
+- **RSC builds: a server fn only client-only code imports is not registered** (Vite and Rsbuild, as `main`; ruled a
+  known limit for #8817, 11-19): a server fn whose module only a `<ClientOnly>` child, a `createClientOnlyFn` body or a
+  `<Hydrate>` `fallback` imports, in a route file or a component file. The SSR scan erases client-only code and the
+  imports only it reads, so no server environment meets the module before the provider's manifest is written: on Vite
+  the early compile of the provider's reach starts only from server fn modules, which none of these files is; Rsbuild
+  has no such compile. The client build emits the call, and the click answers `Server function info not found`.
+  Without RSC all these positions answer. SPEC J4.2.
+  `react-start-rsc/tests/integration/rsc-start-build-client-reach.test.ts` (Vite) and `rsc-start-rsbuild-build.test.ts`
+  (Rsbuild), rows of `client-only-reach-app.ts`: "a server fn only $position of a $where imports runs when clicked"
+  (`<ClientOnly>` child, `createClientOnlyFn` body, `<Hydrate>` fallback; route file and component file). Fix: every
+  server fn the client references is callable by id, with no production dependency on modules only development code
+  reaches.
 - **Rsbuild checks importers by file extension** (JS/TS only): a custom module type's denied specifier is never
   checked (a denied file it imports is: it is its own violation in the client). SPEC J6.1, §2.1.
   `start-plugin-core/tests/integration/importProtection/dev-outcomes.test.ts`: "a module of a custom type importing

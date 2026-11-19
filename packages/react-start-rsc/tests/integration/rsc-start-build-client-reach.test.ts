@@ -11,8 +11,15 @@
  * still answers, and a server fn only development code imports adds no
  * production dependency. The first case of each kind is in
  * rsc-start-build.test.ts ("a server fn only a 'use client' component …").
+ * Pinned in the same build: server fns only client-only code imports
+ * (`client-only-reach-app.ts`).
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import {
+  clientOnlyPositions,
+  clientOnlyReachFiles,
+  expectClientOnlyCallAnswers,
+} from './client-only-reach-app'
 import {
   openRscPage,
   settledValue,
@@ -44,6 +51,7 @@ export const nonNull = createServerFn({ method: 'GET' }).handler!(() => 'MARK_NO
 }
 
 const files = {
+  ...clientOnlyReachFiles,
   // Type-only uses of a value import keep the import (the `boot` case)
   'tsconfig.json': JSON.stringify({
     compilerOptions: {
@@ -315,6 +323,26 @@ describe("Vite production build with RSC: server fns only 'use client' component
           (text) => text.includes('MARK_') || text.includes('error'),
         ),
       ).toBe('lazy MARK_LAZY')
+    },
+  )
+
+  // Known bug (KNOWN-BUGS, "RSC builds: a server fn only client-only code
+  // imports is not registered"; as `main`). SPEC J4.2: a server fn the
+  // client calls is callable by id. Bug: the SSR scan erases client-only
+  // code (`<ClientOnly>` children, `createClientOnlyFn` bodies, `<Hydrate>`
+  // fallbacks) and the imports only it reads, and the early compile of the
+  // provider's reach starts only from server fn modules, which none of these
+  // route or component files is, so the provider's manifest is written
+  // without these server fns. Impact: the click answers "Server function
+  // info not found". Fix: every server fn the client references is callable
+  // by id, with no production dependency on modules only development code
+  // reaches.
+  test.fails.for(clientOnlyPositions)(
+    'a server fn only $position of a $where imports runs when clicked',
+    async ({ name }) => {
+      await expectClientOnlyCallAnswers(server, name, (cleanup) => {
+        cleanups.push(cleanup)
+      })
     },
   )
 })
