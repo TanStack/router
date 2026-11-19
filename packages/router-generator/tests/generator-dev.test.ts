@@ -19,6 +19,7 @@ import {
   route as virtualRoute,
 } from '@tanstack/virtual-file-routes'
 import {
+  captureThrow,
   diagnosticsOf,
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
@@ -341,6 +342,232 @@ describe('route tree file events', () => {
       __root__: 'routes/__root.tsx',
       '/': 'routes/index.tsx',
       '/about': 'routes/about.tsx',
+    })
+  })
+})
+
+describe('files no scan lists', () => {
+  /**
+   * An app whose `src/routes/blog/__virtual.ts` subtree appends a line to
+   * `scans.log` on each evaluation: every scan evaluates it.
+   */
+  async function countingApp() {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/index.tsx': fileRoute('/'),
+      'src/routes/-components/Card.tsx': 'export const Card = () => null\n',
+      'src/routes/blog/posts.tsx': fileRoute('/blog/posts'),
+      'src/lib/__virtual.ts': 'export const value = 0\n',
+    })
+    const subtree = (
+      routePath: string,
+    ) => `import { appendFileSync } from 'node:fs'
+import { defineVirtualSubtreeConfig, route } from '@tanstack/virtual-file-routes'
+
+export default defineVirtualSubtreeConfig(() => {
+  appendFileSync(${JSON.stringify(path.join(root, 'scans.log'))}, 'scan\\n')
+  return [route('${routePath}', 'posts.tsx')]
+})
+`
+    await save(root, 'src/routes/blog/__virtual.ts', subtree('/posts'))
+    const { config, generator } = await startGenerator(root)
+    const scans = async () =>
+      (await read(root, 'scans.log')).split('\n').length - 1
+    return { root, config, generator, scans, subtree }
+  }
+
+  test('saving or creating a file under an ignored directory, or a __virtual.ts outside the routes, scans nothing', async () => {
+    const { root, config, generator, scans } = await countingApp()
+    const tree = await read(root, 'src/routeTree.gen.ts')
+    expect(await scans()).toBe(1)
+
+    const events = [
+      {
+        type: 'update',
+        path: await save(
+          root,
+          'src/routes/-components/Card.tsx',
+          'export const Card = () => 1\n',
+        ),
+      },
+      {
+        type: 'create',
+        path: await save(
+          root,
+          'src/routes/-components/List.tsx',
+          'export const List = () => null\n',
+        ),
+      },
+      {
+        type: 'create',
+        path: await save(
+          root,
+          'src/routes/-drafts/__virtual.ts',
+          'export default []\n',
+        ),
+      },
+      {
+        type: 'update',
+        path: await save(
+          root,
+          'src/lib/__virtual.ts',
+          'export const value = 1\n',
+        ),
+      },
+    ] as const
+    for (const event of events) {
+      await generator.run(event)
+    }
+
+    expect(await scans()).toBe(1)
+    expect(await read(root, 'src/routeTree.gen.ts')).toBe(tree)
+    expect(await observeRouteTree(config.generatedRouteTree)).toEqual(
+      await freshTree(root, config),
+    )
+  })
+
+  test('a created route, a created __virtual.ts subtree and an edited one are scanned', async () => {
+    const { root, config, generator, scans, subtree } = await countingApp()
+
+    const about = await save(root, 'src/routes/about.tsx', fileRoute('/about'))
+    await generator.run({ type: 'create', path: about })
+    expect(await scans()).toBe(2)
+
+    await save(root, 'src/routes/docs/intro.tsx', fileRoute('/docs/intro'))
+    const docs = await save(
+      root,
+      'src/routes/docs/__virtual.ts',
+      `import { defineVirtualSubtreeConfig, route } from '@tanstack/virtual-file-routes'
+
+export default defineVirtualSubtreeConfig([route('/start', 'intro.tsx')])
+`,
+    )
+    await generator.run({ type: 'create', path: docs })
+    expect(await scans()).toBe(3)
+
+    const blog = await save(
+      root,
+      'src/routes/blog/__virtual.ts',
+      subtree('/articles'),
+    )
+    await generator.run({ type: 'update', path: blog })
+    expect(await scans()).toBe(4)
+
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/': 'routes/index.tsx',
+      '/about': 'routes/about.tsx',
+      '/blog/articles': 'routes/blog/posts.tsx',
+      '/docs/start': 'routes/docs/intro.tsx',
+    })
+  })
+
+  test('a __virtual.ts newly naming a missing file under an ignored name gets it once created', async () => {
+    const subtree = (file: string) =>
+      `import { defineVirtualSubtreeConfig, route } from '@tanstack/virtual-file-routes'
+
+export default defineVirtualSubtreeConfig([route('/users', '${file}')])
+`
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/admin/users.tsx': fileRoute('/admin/users'),
+      'src/routes/admin/__virtual.ts': subtree('users.tsx'),
+    })
+    const { config, generator } = await startGenerator(root)
+    const configFile = await save(
+      root,
+      'src/routes/admin/__virtual.ts',
+      subtree('-users.tsx'),
+    )
+    expectDiagnostic(
+      await captureThrow(() =>
+        generator.run({ type: 'update', path: configFile }),
+      ),
+      { severity: 'error', file: 'src/routes/admin/-users.tsx', root },
+    )
+
+    const users = await save(
+      root,
+      'src/routes/admin/-users.tsx',
+      fileRoute('/admin/users'),
+    )
+    await generator.run({ type: 'create', path: users })
+
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/admin/users': 'routes/admin/-users.tsx',
+    })
+  })
+
+  test.each(['cold run', 'running session'])(
+    'a physical() mount of a directory under an ignored name, created after the mount, joins the routes (%s)',
+    async (when) => {
+      const subtree = (mount: boolean) =>
+        `import { defineVirtualSubtreeConfig, physical, route } from '@tanstack/virtual-file-routes'
+
+export default defineVirtualSubtreeConfig([route('/users', 'users.tsx')${mount ? ", physical('/shared', '-shared')" : ''}])
+`
+      const root = await createApp({
+        'src/routes/__root.tsx': rootRoute(),
+        'src/routes/admin/users.tsx': fileRoute('/admin/users'),
+        'src/routes/admin/__virtual.ts': subtree(when === 'cold run'),
+      })
+      const config = configOf(root)
+      const generator = new Generator({ config, root })
+      await expect(
+        when === 'cold run'
+          ? generator.run()
+          : (async () => {
+              await generator.run()
+              const file = await save(
+                root,
+                'src/routes/admin/__virtual.ts',
+                subtree(true),
+              )
+              await generator.run({ type: 'update', path: file })
+            })(),
+      ).rejects.toThrow(/ENOENT/)
+
+      const shared = await save(
+        root,
+        'src/routes/admin/-shared/index.tsx',
+        fileRoute('/admin/shared/'),
+      )
+      await generator.run({ type: 'create', path: shared })
+
+      expect(await routesOf(config.generatedRouteTree)).toEqual({
+        __root__: 'routes/__root.tsx',
+        '/admin/shared/': 'routes/admin/-shared/index.tsx',
+        '/admin/users': 'routes/admin/users.tsx',
+      })
+    },
+  )
+
+  test('a virtualRouteConfig module listing an ignored directory gets a route for a file created there', async () => {
+    const root = await createApp({
+      'routes.ts': `import { readdirSync } from 'node:fs'
+import { rootRoute, route } from '@tanstack/virtual-file-routes'
+
+const pages = readdirSync(new URL('./src/routes/-pages', import.meta.url))
+export const routes = rootRoute(
+  '__root.tsx',
+  pages.map((file) => route('/' + file.replace(/\\.tsx$/, ''), '-pages/' + file)),
+)
+`,
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/-pages/a.tsx': fileRoute('/a'),
+    })
+    const { config, generator } = await startGenerator(root, {
+      virtualRouteConfig: './routes.ts',
+    })
+
+    const page = await save(root, 'src/routes/-pages/b.tsx', fileRoute('/b'))
+    await generator.run({ type: 'create', path: page })
+
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/a': 'routes/-pages/a.tsx',
+      '/b': 'routes/-pages/b.tsx',
     })
   })
 })

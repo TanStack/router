@@ -42,6 +42,34 @@ export function isVirtualConfigFile(fileName: string): boolean {
   return virtualConfigFileRegExp.test(fileName)
 }
 
+/**
+ * Whether the physical scan lists a directory entry (file or directory) of
+ * this name: not hidden, not starting with `routeFileIgnorePrefix`, starting
+ * with `routeFilePrefix` when set, not matching `routeFileIgnorePattern`.
+ */
+export function listsEntryNamed(
+  config: Pick<
+    Config,
+    'routeFilePrefix' | 'routeFileIgnorePrefix' | 'routeFileIgnorePattern'
+  >,
+): (name: string) => boolean {
+  const { routeFilePrefix, routeFileIgnorePrefix, routeFileIgnorePattern } =
+    config
+  const routeFileIgnoreRegExp = new RegExp(routeFileIgnorePattern ?? '', 'g')
+  return (name) => {
+    if (
+      name.startsWith('.') ||
+      (routeFileIgnorePrefix && name.startsWith(routeFileIgnorePrefix))
+    ) {
+      return false
+    }
+    if (routeFilePrefix && !name.startsWith(routeFilePrefix)) {
+      return false
+    }
+    return !routeFileIgnorePattern || !name.match(routeFileIgnoreRegExp)
+  }
+}
+
 export async function getRouteNodes(
   config: Pick<
     Config,
@@ -57,10 +85,8 @@ export async function getRouteNodes(
   tokenRegexes: TokenRegexBundle,
   logger: Logger = logging({ disabled: config.disableLogging }),
 ): Promise<GetRouteNodesResult> {
-  const { routeFilePrefix, routeFileIgnorePrefix, routeFileIgnorePattern } =
-    config
-
-  const routeFileIgnoreRegExp = new RegExp(routeFileIgnorePattern ?? '', 'g')
+  const { routeFilePrefix } = config
+  const listed = listsEntryNamed(config)
 
   const routeNodes: Array<RouteNode> = []
   const allPhysicalDirectories: Array<string> = []
@@ -73,31 +99,7 @@ export async function getRouteNodes(
       (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
     )
 
-    dirList = dirList.filter((d) => {
-      if (
-        d.name.startsWith('.') ||
-        (routeFileIgnorePrefix && d.name.startsWith(routeFileIgnorePrefix))
-      ) {
-        return false
-      }
-
-      if (routeFilePrefix) {
-        if (routeFileIgnorePattern) {
-          return (
-            d.name.startsWith(routeFilePrefix) &&
-            !d.name.match(routeFileIgnoreRegExp)
-          )
-        }
-
-        return d.name.startsWith(routeFilePrefix)
-      }
-
-      if (routeFileIgnorePattern) {
-        return !d.name.match(routeFileIgnoreRegExp)
-      }
-
-      return true
-    })
+    dirList = dirList.filter((d) => listed(d.name))
 
     const virtualConfigFile = dirList.find((dirent) => {
       return dirent.isFile() && isVirtualConfigFile(dirent.name)

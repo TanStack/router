@@ -2,7 +2,10 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import * as fsp from 'node:fs/promises'
 import { logging } from './logger'
-import { isVirtualConfigFile } from './filesystem/physical/getRouteNodes'
+import {
+  isVirtualConfigFile,
+  listsEntryNamed,
+} from './filesystem/physical/getRouteNodes'
 import { rootPathId } from './filesystem/physical/rootPathId'
 import { scanRoutes } from './filesystem/scan'
 import { replaceBackslash } from './utils'
@@ -210,6 +213,8 @@ export class Generator {
   private readonly treeKey: string
   private readonly routesDirectory: string
   private readonly virtualConfigFile: string | undefined
+  /** Whether a physical scan lists an entry of this name (the ignore rules). */
+  private readonly listed: (name: string) => boolean
   private readonly publisher: AtomicPublisher
 
   private scan: ScanResult | undefined
@@ -262,6 +267,7 @@ export class Generator {
       typeof this.config.virtualRouteConfig === 'string'
         ? normalize(path.resolve(this.root, this.config.virtualRouteConfig))
         : undefined
+    this.listed = listsEntryNamed(this.config)
     this.publisher = new AtomicPublisher(this.config.tmpDir)
     this.plugins = [...(this.config.plugins ?? [])]
     for (const plugin of this.plugins) {
@@ -395,29 +401,55 @@ export class Generator {
 
   /**
    * What a (normalized) file is to the generator: the route tree, a virtual
-   * route config, a route file of the last scan (`known`), a route file the
-   * scan may find (`new`), or nothing of its (null).
+   * route config, a route file of the last scan (`known`), a route file or
+   * `__virtual.ts` the scan may find (`new`, `config`), or nothing of its
+   * (null).
    */
   private classify(file: string): 'tree' | 'config' | 'known' | 'new' | null {
     if (file === this.treeKey) {
       return 'tree'
     }
-    if (
-      file === this.virtualConfigFile ||
-      isVirtualConfigFile(path.basename(file))
-    ) {
+    if (file === this.virtualConfigFile) {
       return 'config'
     }
     if (this.files.has(file) || this.scanned.has(file)) {
       return 'known'
     }
-    if (!routeFileExtension.test(file)) {
+    const config = isVirtualConfigFile(path.basename(file))
+    if (!config && !routeFileExtension.test(file)) {
       return null
     }
-    return isUnder(file, this.routesDirectory) ||
-      (this.scan?.physicalDirectories ?? []).some((dir) => isUnder(file, dir))
-      ? 'new'
-      : null
+    if (!this.mayFind(file)) {
+      return null
+    }
+    return config ? 'config' : 'new'
+  }
+
+  /**
+   * Whether a scan may find a file the last one did not: one under a
+   * directory a physical scan lists whose path below it the scan's ignore
+   * rules keep (none under a `-components/` directory), or under the routes
+   * directory of a `virtualRouteConfig` (its module may name any file). With
+   * no successful scan to go by (none yet, or the last batch failed: a
+   * `physical()` mount of a directory not created yet, even one named like
+   * `-shared`, fails the scan until it is), any file under the routes
+   * directory or a mount of the last scan.
+   */
+  private mayFind(file: string) {
+    const lenient = !this.scan || this.stale
+    const listedUnder = (dir: string) =>
+      isUnder(file, dir) &&
+      (lenient ||
+        file
+          .slice(dir.length + 1)
+          .split('/')
+          .every(this.listed))
+    return (
+      (this.config.virtualRouteConfig !== undefined
+        ? isUnder(file, this.routesDirectory)
+        : listedUnder(this.routesDirectory)) ||
+      (this.scan?.physicalDirectories ?? []).some(listedUnder)
+    )
   }
 
   private drain() {
