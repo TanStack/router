@@ -28,11 +28,16 @@ const posts = new Map<string, Record<Locale, string>>([
   ['3', { en: 'The third post', de: 'Der dritte Beitrag' }],
 ])
 const users = new Map<string, User>([['ada', { id: 'u1', name: 'Ada' }]])
+const drafts = new Set<string>()
 const likes = new Map<string, Set<string>>()
 const calls: Array<string> = []
 
 export function countPosts(): number {
   return posts.size
+}
+
+export function countDrafts(): number {
+  return drafts.size
 }
 
 export function findPost(id: string, locale: Locale): Post | undefined {
