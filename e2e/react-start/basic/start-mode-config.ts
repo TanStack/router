@@ -39,6 +39,8 @@ export function getStartModeConfig() {
               '/users',
             ].some((p) => page.path.includes(p)),
           maxRedirects: 100,
+          retryCount: 2,
+          retryDelay: 1000,
         }
       : undefined,
     rsbuild: rsbuildClientOutput

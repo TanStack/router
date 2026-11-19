@@ -37,9 +37,12 @@ export const Route = createFileRoute('/products')({
 const subscriberIndexes = Array.from({ length: 2 }, (_, index) => index)
 
 function PerfValue(props: { value: () => number }) {
-  createRenderEffect(() => {
-    void props.value()
-  })
+  createRenderEffect(
+    () => {
+      void props.value()
+    },
+    () => {},
+  )
 
   return null
 }

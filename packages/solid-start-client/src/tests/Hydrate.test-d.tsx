@@ -9,7 +9,7 @@ import type {
   HydrationStrategy,
 } from '../Hydrate'
 import type { HydrationStrategy as CoreHydrationStrategy } from '@tanstack/start-client-core/hydration'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 type CommonHydrateProps = {
   fallback?: JSX.Element

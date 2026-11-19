@@ -1,7 +1,8 @@
-import { ErrorBoundary, Suspense, createContext, useContext } from 'solid-js'
-import { renderToString, renderToStringAsync } from 'solid-js/web'
+import { Errored, Loading, createContext, useContext } from 'solid-js'
+import { renderToString } from '@solidjs/web'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { lazyRouteComponent } from '../../src/lazyRouteComponent'
+import { renderToStringAsync } from './renderToStringAsync'
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -35,18 +36,18 @@ describe('lazyRouteComponent (server)', () => {
 
         const html = await renderToStringAsync(
           () => (
-            <ErrorBoundary
+            <Errored
               fallback={(error) => {
                 onError(error)
                 return <span>Render failed</span>
               }}
             >
-              <Suspense fallback={<span>Pending</span>}>
+              <Loading fallback={<span>Pending</span>}>
                 <Page />
-              </Suspense>
-            </ErrorBoundary>
+              </Loading>
+            </Errored>
           ),
-          { timeoutMs: 1_000 },
+          { timeoutMs: 1_000, manifest: {} } as any,
         )
         // Promise rejection events are dispatched after the current microtasks.
         await new Promise<void>((resolve) => setImmediate(resolve))
@@ -76,11 +77,14 @@ describe('lazyRouteComponent (server)', () => {
     const preload = Page.preload?.()
     await preload
 
-    const html = renderToString(() => (
-      <Suspense fallback={<span>Pending</span>}>
-        <Page label="Preloaded page" />
-      </Suspense>
-    ))
+    const html = renderToString(
+      () => (
+        <Loading fallback={<span>Pending</span>}>
+          <Page label="Preloaded page" />
+        </Loading>
+      ),
+      { manifest: {} } as any,
+    )
 
     expect(html).toContain('Preloaded page')
     expect(html).not.toContain('Pending')
@@ -97,14 +101,15 @@ describe('lazyRouteComponent (server)', () => {
       .mockResolvedValueOnce({ default: Content })
     const Page = lazyRouteComponent(importer)
 
+    // Solid 2's lazy() does not cache a rejected import: the next preload retries it.
     await Page.preload?.()
-    expect(() => renderToString(() => <Page label="First attempt" />)).toThrow(
-      failure,
-    )
+    expect(importer).toHaveBeenCalledOnce()
 
     const retry = Page.preload?.()
     await retry
-    const html = renderToString(() => <Page label="Recovered page" />)
+    const html = renderToString(() => <Page label="Recovered page" />, {
+      manifest: {},
+    } as any)
 
     expect(html).toContain('Recovered page')
     expect(Page.preload?.()).toBe(retry)
@@ -129,13 +134,16 @@ describe('lazyRouteComponent (server)', () => {
         await Page.preload?.()
       }
 
-      const html = await renderToStringAsync(() => (
-        <Context.Provider value="provided context">
-          <Suspense fallback={<span>Pending</span>}>
-            <Page label="page prop">child prop</Page>
-          </Suspense>
-        </Context.Provider>
-      ))
+      const html = await renderToStringAsync(
+        () => (
+          <Context value="provided context">
+            <Loading fallback={<span>Pending</span>}>
+              <Page label="page prop">child prop</Page>
+            </Loading>
+          </Context>
+        ),
+        { manifest: {} } as any,
+      )
 
       expect(html).toContain('provided context')
       expect(html).toContain('page prop')

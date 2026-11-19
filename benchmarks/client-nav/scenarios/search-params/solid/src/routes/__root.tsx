@@ -18,9 +18,12 @@ export const Route = createRootRoute({
 const rootSubscribers = Array.from({ length: 4 }, (_, index) => index)
 
 function PerfValue(props: { value: () => number }) {
-  createRenderEffect(() => {
-    void props.value()
-  })
+  createRenderEffect(
+    () => {
+      void props.value()
+    },
+    () => {},
+  )
 
   return null
 }

@@ -1,5 +1,5 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
-import { Suspense } from 'solid-js'
+import { Loading } from 'solid-js'
 import { createConcurrentLoaderData } from '../../../../streaming-ssr-fixtures'
 
 export const Route = createFileRoute('/concurrent')({
@@ -9,14 +9,14 @@ export const Route = createFileRoute('/concurrent')({
 
 function PromiseItem(props: { promise: Promise<string>; testId: string }) {
   return (
-    <Suspense
+    <Loading
       fallback={<div data-testid={`${props.testId}-loading`}>Loading...</div>}
     >
       <Await
         promise={props.promise}
         children={(value) => <div data-testid={props.testId}>{value}</div>}
       />
-    </Suspense>
+    </Loading>
   )
 }
 

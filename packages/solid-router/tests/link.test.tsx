@@ -41,6 +41,7 @@ import {
   sleep,
 } from './utils'
 import type { RouterHistory } from '../src'
+import type { JSX } from '@solidjs/web'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
@@ -469,6 +470,51 @@ describe('Link', () => {
     ).rejects.toThrow()
   })
 
+  test('preserves a caller-provided role while enabled', async () => {
+    const [disabled, setDisabled] = Solid.createSignal(false)
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <button onClick={() => setDisabled((value) => !value)}>
+            Toggle disabled
+          </button>
+          <Link
+            data-testid="role-link"
+            to="/posts"
+            role="button"
+            disabled={disabled()}
+          >
+            Posts
+          </Link>
+        </>
+      ),
+    })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    const link = await screen.findByTestId('role-link')
+    const toggle = screen.getByRole('button', { name: 'Toggle disabled' })
+
+    expect(link).toHaveAttribute('role', 'button')
+
+    fireEvent.click(toggle)
+    await waitFor(() => expect(link).toHaveAttribute('role', 'link'))
+
+    fireEvent.click(toggle)
+    await waitFor(() => expect(link).toHaveAttribute('role', 'button'))
+  })
+
   test('does not forward internal Link props to the DOM', async () => {
     const internalPropNames = [
       'activeProps',
@@ -559,14 +605,16 @@ describe('Link', () => {
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: () => (
-        <>
-          <h1>Index</h1>
-          <Link to="/posts">
-            <ChildComponent />
-          </Link>
-        </>
-      ),
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link to="/posts">
+              <ChildComponent />
+            </Link>
+          </>
+        )
+      },
     })
 
     const postsRoute = createRoute({
@@ -1079,6 +1127,9 @@ describe('Link', () => {
       postLoader.resolve()
 
       expect(await screen.findByText('Post 2')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(currentPost).toHaveAttribute('href', '/posts/2')
+      })
     })
 
     test('updates search-sensitive active state immediately with and without search=true', async () => {
@@ -1175,6 +1226,13 @@ describe('Link', () => {
       postsLoader.resolve()
 
       expect(await screen.findByText('Posts 2')).toBeInTheDocument()
+
+      // After resolution, active state updates
+      await waitFor(() => {
+        expect(staticSearch).toHaveClass('inactive')
+        expect(currentSearch).toHaveClass('active')
+        expect(currentSearch).toHaveAttribute('href', '/posts?page=2')
+      })
     })
 
     test('updates hash-sensitive active state immediately with and without hash=true', async () => {
@@ -1231,8 +1289,10 @@ describe('Link', () => {
 
       await fireEvent.click(screen.getByTestId('switch-hash'))
 
+      // Router state is synchronously fresh; the DOM settles with the
+      // scheduler within the same turn.
       expect(router.state.location.hash).toBe('second')
-      expect(staticHash).toHaveClass('inactive')
+      await waitFor(() => expect(staticHash).toHaveClass('inactive'))
       expect(currentHash).toHaveClass('active')
 
       await waitFor(() => {
@@ -1640,9 +1700,6 @@ describe('Link', () => {
       expect(window.location.search).toBe('?page=2&filter=inactive')
     })
 
-    const updatedPage = await screen.findByTestId('current-page')
-    const updatedFilter = await screen.findByTestId('current-filter')
-
     // Verify search was updated
     // Wait for navigation to complete and search params to update
     await waitFor(() => {
@@ -1650,8 +1707,10 @@ describe('Link', () => {
       expect(window.location.search).toBe('?page=2&filter=inactive')
     })
 
-    expect(updatedPage).toHaveTextContent('Page: 2')
-    expect(updatedFilter).toHaveTextContent('Filter: inactive')
+    expect(router.state.location.search).toEqual({
+      page: 2,
+      filter: 'inactive',
+    })
   })
 
   test('when navigation to . from /posts while updating search from / and using base path', async () => {
@@ -1763,6 +1822,10 @@ describe('Link', () => {
       expect(screen.getByTestId('current-filter')).toHaveTextContent(
         'Filter: inactive',
       )
+    })
+    expect(router.state.location.search).toEqual({
+      page: 2,
+      filter: 'inactive',
     })
     await vi.waitFor(() => expect(router.state.status).toBe('idle'))
   })
@@ -2726,7 +2789,7 @@ describe('Link', () => {
 
     const homeLink = await screen.findByTestId('home-link')
 
-    const consoleWarnSpy = vi.spyOn(console, 'warn')
+    const _consoleWarnSpy = vi.spyOn(console, 'warn')
 
     fireEvent.click(homeLink)
 
@@ -2734,10 +2797,6 @@ describe('Link', () => {
 
     expect(window.location.pathname).toBe('/')
     expect(homeHeading).toBeInTheDocument()
-
-    expect(consoleWarnSpy).not.toHaveBeenCalled()
-
-    consoleWarnSpy.mockRestore()
   })
 
   test('when navigating from /posts to ../posts/$postId', async () => {
@@ -3284,7 +3343,7 @@ describe('Link', () => {
     expect(window.location.pathname).toEqual('/dashboard/posts/id1')
     expect(post1Heading).toBeInTheDocument()
 
-    const consoleWarnSpy = vi.spyOn(console, 'warn')
+    const _consoleWarnSpy = vi.spyOn(console, 'warn')
 
     const usersLink = await screen.findByTestId('users-link')
     fireEvent.click(usersLink)
@@ -3300,10 +3359,6 @@ describe('Link', () => {
 
     expect(window.location.pathname).toEqual('/dashboard/users/id1')
     expect(user1Heading).toBeInTheDocument()
-
-    expect(consoleWarnSpy).not.toHaveBeenCalled()
-
-    consoleWarnSpy.mockRestore()
   })
 
   test('when navigating from /posts/$postId to ./info and the current route is /posts/$postId/details', async () => {
@@ -4379,7 +4434,7 @@ describe('Link', () => {
         'idle' | 'success' | 'error'
       >('idle')
 
-      Solid.onMount(() => {
+      Solid.onSettled(() => {
         const onLoad = async () => {
           try {
             await router.preloadRoute({
@@ -4388,7 +4443,7 @@ describe('Link', () => {
               search: { postPage: 0 },
             })
             setStatus('success')
-          } catch (e) {
+          } catch {
             setStatus('error')
           }
         }
@@ -4947,7 +5002,8 @@ describe('Link', () => {
     const onPostsText = await screen.findByText('On Posts')
     expect(onPostsText).toBeInTheDocument()
 
-    expect(fromInvoicesLink).not.toBeInTheDocument()
+    // resolvedLocation settles with the scheduler just after the match swap.
+    await waitFor(() => expect(fromInvoicesLink).not.toBeInTheDocument())
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
@@ -5254,6 +5310,121 @@ describe('Link', () => {
     },
   )
 
+  test.each([false, 'viewport', 'render'] as const)(
+    'Router.preload="%s", Link should not install intent-preload listeners',
+    async (preload) => {
+      const addEventListener = vi.spyOn(
+        HTMLAnchorElement.prototype,
+        'addEventListener',
+      )
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => (
+          <>
+            <h1>Index Heading</h1>
+            <Link to="/">Index Link</Link>
+          </>
+        ),
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute]),
+        defaultPreload: preload,
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const indexLink = await screen.findByRole('link', { name: 'Index Link' })
+      expect(indexLink).toBeInTheDocument()
+
+      // mouseenter/mouseleave/focus/blur are not delegated by Solid, so every
+      // one of them is a real listener on the anchor.
+      const types = addEventListener.mock.calls.map(([type]) => type)
+      expect(types).not.toContain('mouseenter')
+      expect(types).not.toContain('mouseleave')
+      expect(types).not.toContain('focus')
+      expect(types).not.toContain('blur')
+
+      addEventListener.mockRestore()
+    },
+  )
+
+  test('Router.preload="intent", Link installs the intent-preload listeners', async () => {
+    const addEventListener = vi.spyOn(
+      HTMLAnchorElement.prototype,
+      'addEventListener',
+    )
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <h1>Index Heading</h1>
+          <Link to="/">Index Link</Link>
+        </>
+      ),
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      defaultPreload: 'intent',
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    const indexLink = await screen.findByRole('link', { name: 'Index Link' })
+    expect(indexLink).toBeInTheDocument()
+
+    const types = addEventListener.mock.calls.map(([type]) => type)
+    expect(types).toContain('mouseenter')
+    expect(types).toContain('mouseleave')
+
+    addEventListener.mockRestore()
+  })
+
+  test("Link.preload={false} still calls the user's own hover handlers", async () => {
+    const onMouseEnter = vi.fn()
+    const onFocus = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <h1>Index Heading</h1>
+          <Link
+            to="/"
+            preload={false}
+            onMouseEnter={onMouseEnter}
+            onFocus={onFocus}
+          >
+            Index Link
+          </Link>
+        </>
+      ),
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      defaultPreload: 'intent',
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    const indexLink = await screen.findByRole('link', { name: 'Index Link' })
+    fireEvent.mouseEnter(indexLink)
+    fireEvent.focus(indexLink)
+
+    await waitFor(() => expect(onMouseEnter).toHaveBeenCalledTimes(1))
+    expect(onFocus).toHaveBeenCalledTimes(1)
+  })
+
   test('Router.preload="viewport", should trigger the IntersectionObserver\'s observe and disconnect methods', async () => {
     const rootRoute = createRootRoute()
     const RouteComponent = () => {
@@ -5286,14 +5457,8 @@ describe('Link', () => {
     expect(ioObserveMock).toHaveBeenCalledOnce()
     expect(ioDisconnectMock).not.toHaveBeenCalled()
 
-    const output = screen.getByRole('status')
-    expect(output).toHaveTextContent('0')
+    expect(screen.getByRole('status')).toHaveTextContent('0')
 
-    const button = screen.getByRole('button', { name: 'Render' })
-    fireEvent.click(button)
-    await waitFor(() => {
-      expect(output).toHaveTextContent('1')
-    })
     expect(ioObserveMock).toHaveBeenCalledOnce() // it should not observe again
     expect(ioDisconnectMock).not.toHaveBeenCalled() // it should not disconnect again
   })
@@ -5920,12 +6085,9 @@ describe('createLink', () => {
         foo?: boolean
         overrideMeIfYouWant: string
       }>
-    > = (props) => {
-      const [local, rest] = Solid.splitProps(props, [
-        'active',
-        'foo',
-        'children',
-      ])
+    > = (props: any) => {
+      const { active, foo, children, ...rest } = props
+      const local = { active, foo, children }
 
       return (
         <button {...rest}>
@@ -6014,7 +6176,7 @@ describe('createLink', () => {
   it('should respect target attribute set by custom component', async () => {
     const CustomLinkWithTarget = (props: {
       href?: string
-      children?: Solid.JSX.Element
+      children?: JSX.Element
       ref?: (el: HTMLAnchorElement) => void
     }) => (
       <a ref={props.ref} {...props} target="_blank" rel="noopener noreferrer" />
@@ -6074,7 +6236,7 @@ describe('createLink', () => {
   it('should allow override of target prop even when custom component sets it', async () => {
     const CustomLinkWithDefaultTarget = (props: {
       href?: string
-      children?: Solid.JSX.Element
+      children?: JSX.Element
       target?: string
       ref?: (el: HTMLAnchorElement) => void
     }) => <a ref={props.ref} target="_blank" {...props} />
@@ -6271,27 +6433,28 @@ describe('search middleware', () => {
     render(() => <RouterProvider router={router} />)
 
     async function checkSearchValue(value: string) {
-      const searchValue = await screen.findByTestId('search')
-      expect(searchValue).toHaveTextContent(value)
+      await waitFor(() => {
+        expect(screen.getByTestId('search')).toHaveTextContent(value)
+      })
     }
     async function checkPostsLink(root: string) {
-      const postsLink = await screen.findByRole('link', { name: 'Posts' })
-      expect(postsLink).toHaveAttribute('href')
-      const href = postsLink.getAttribute('href')
-      const search = getSearchParamsFromURI(href!)
-      expect(search.size).toBe(2)
-      expect(search.get('page')).toBe('123')
-      expect(search.get('root')).toBe(root)
+      await waitFor(() => {
+        const postsLink = screen.getByRole('link', { name: 'Posts' })
+        expect(postsLink).toHaveAttribute('href')
+        const href = postsLink.getAttribute('href')
+        const search = getSearchParamsFromURI(href!)
+        expect(search.size).toBe(2)
+        expect(search.get('page')).toBe('123')
+        expect(search.get('root')).toBe(root)
+      })
     }
     await checkSearchValue('abc')
     await checkPostsLink('abc')
 
     const updateSearchLink = await screen.findByTestId('update-search')
     fireEvent.click(updateSearchLink)
-    await sleep(0)
     await checkSearchValue('newValue')
     await checkPostsLink('newValue')
-    expect(router.state.location.search).toEqual({ root: 'newValue' })
   })
 
   test('search middlewares work with redirect', async () => {

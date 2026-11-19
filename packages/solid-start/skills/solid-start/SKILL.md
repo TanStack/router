@@ -45,7 +45,7 @@ Server utilities (`getRequest`, `getRequestHeader`, `setResponseHeader`, `setCoo
 
 ```bash
 npm i @tanstack/solid-start @tanstack/solid-router solid-js
-npm i -D vite vite-plugin-solid typescript
+npm i -D vite @solidjs/vite-plugin typescript
 ```
 
 ### 2. package.json
@@ -67,7 +67,7 @@ npm i -D vite vite-plugin-solid typescript
 {
   "compilerOptions": {
     "jsx": "preserve",
-    "jsxImportSource": "solid-js",
+    "jsxImportSource": "@solidjs/web",
     "moduleResolution": "Bundler",
     "module": "ESNext",
     "target": "ES2022",
@@ -82,7 +82,7 @@ npm i -D vite vite-plugin-solid typescript
 ```ts
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
-import solidPlugin from 'vite-plugin-solid'
+import solidPlugin from '@solidjs/vite-plugin'
 
 export default defineConfig({
   plugins: [
@@ -116,7 +116,6 @@ import {
   HeadContent,
   Scripts,
 } from '@tanstack/solid-router'
-import { HydrationScript } from 'solid-js/web'
 import { Suspense } from 'solid-js'
 
 export const Route = createRootRoute({
@@ -135,10 +134,9 @@ function RootDocument(props: { children: any }) {
   return (
     <html>
       <head>
-        <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <Suspense>{props.children}</Suspense>
         <Scripts />
       </body>

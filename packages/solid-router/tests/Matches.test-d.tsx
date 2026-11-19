@@ -9,6 +9,7 @@ import {
   useMatches,
 } from '../src'
 import type { AnyRouteMatch, RouteMatch } from '@tanstack/router-core'
+import type { JSX } from '@solidjs/web'
 import type * as Solid from 'solid-js'
 import type { MakeMatchRouteOptions } from '../src'
 
@@ -142,11 +143,11 @@ const routeTree = rootRoute.addChildren([
   layoutRoute.addChildren([commentsRoute]),
 ])
 
-const defaultRouter = createRouter({
+const _defaultRouter = createRouter({
   routeTree,
 })
 
-type DefaultRouter = typeof defaultRouter
+type DefaultRouter = typeof _defaultRouter
 
 const useDefaultMatchRoute = useMatchRoute<DefaultRouter>
 
@@ -248,6 +249,6 @@ test('MatchRoute children are typed from resolved params under pathless layouts'
   >
 
   expectTypeOf<CommentsMatchRouteRenderFn>().toEqualTypeOf<
-    (params?: { id: string } | undefined) => Solid.JSX.Element
+    (params?: { id: string } | undefined) => JSX.Element
   >()
 })

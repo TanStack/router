@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'vitest'
-import { createSignal } from 'solid-js'
+import { createMemo, createSignal } from 'solid-js'
 import {
   cleanup,
   fireEvent,
@@ -42,31 +42,37 @@ const invoicesRoute = createRoute({
 const InvoicesIndex = () => {
   const matches = useMatches<DefaultRouter>()
 
-  const loaderDataMatches = matches().filter((match) =>
-    isMatch(match, 'loaderData.0.id'),
+  const loaderDataMatches = createMemo(() =>
+    matches().filter((match) => isMatch(match, 'loaderData.0.id')),
   )
 
-  const contextMatches = matches().filter((match) =>
-    isMatch(match, 'context.permissions'),
+  const contextMatches = createMemo(() =>
+    matches().filter((match) => isMatch(match, 'context.permissions')),
   )
 
-  const incorrectMatches = matches().filter((match) =>
-    isMatch(match, 'loaderData.6.id'),
+  const incorrectMatches = createMemo(() =>
+    matches().filter((match) => isMatch(match, 'loaderData.6.id')),
   )
 
   return (
     <div>
       <section>
         Loader Matches -{' '}
-        {loaderDataMatches.map((match) => match.fullPath).join(',')}
+        {loaderDataMatches()
+          .map((match) => match.fullPath)
+          .join(',')}
       </section>
       <section>
         Context Matches -{' '}
-        {contextMatches.map((match) => match.fullPath).join(',')}
+        {contextMatches()
+          .map((match) => match.fullPath)
+          .join(',')}
       </section>
       <section>
         Incorrect Matches -{' '}
-        {incorrectMatches.map((match) => match.fullPath).join(',')}
+        {incorrectMatches()
+          .map((match) => match.fullPath)
+          .join(',')}
       </section>
     </div>
   )
@@ -299,6 +305,57 @@ test('MatchRoute updates for navigation and reactive params changes', async () =
   await waitFor(() => {
     expect(screen.getByTestId('function-match')).toHaveTextContent('no-match')
     expect(screen.queryByTestId('plain-match')).not.toBeInTheDocument()
+  })
+})
+
+test('Outlet disposes index content when passed through wrapper children', async () => {
+  function RootDocument(props: { children: any }) {
+    return (
+      <div>
+        <Link to="/posts">Posts</Link>
+        {props.children}
+      </div>
+    )
+  }
+
+  const rootRoute = createRootRoute({
+    component: () => (
+      <RootDocument>
+        <Outlet />
+      </RootDocument>
+    ),
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <h1>Home</h1>,
+  })
+
+  const postsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'posts',
+    component: () => <h1>Posts</h1>,
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  render(() => <RouterProvider router={router} />)
+
+  expect(
+    await screen.findByRole('heading', { name: 'Home' }),
+  ).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('link', { name: 'Posts' }))
+
+  await waitFor(() => {
+    expect(screen.getByRole('heading', { name: 'Posts' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Home' }),
+    ).not.toBeInTheDocument()
   })
 })
 

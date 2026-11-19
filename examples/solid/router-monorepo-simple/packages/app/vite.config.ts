@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url'
 import * as path from 'node:path'
 import { defineConfig } from 'vite'
 import dts from 'vite-plugin-dts'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 import tailwindcss from '@tailwindcss/vite'
 
 const __filename = fileURLToPath(import.meta.url)

@@ -16,9 +16,9 @@ const invoicesRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([invoicesRoute, indexRoute])
 
-const defaultRouter = createRouter({ routeTree })
+const _defaultRouter = createRouter({ routeTree })
 
-type DefaultRouter = typeof defaultRouter
+type DefaultRouter = typeof _defaultRouter
 
 test('should have the types for a ParsedLocation in useLocation', () => {
   const location = useLocation<DefaultRouter>()

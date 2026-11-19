@@ -1,8 +1,8 @@
 /// <reference types="vite/client" />
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/solid-router'
-import { HydrationScript, Suspense } from 'solid-js/web'
+import { Loading } from '@solidjs/web'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
-import type * as Solid from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import appCss from '~/styles/app.css?url'
 import AppConvexProvider from '~/providers/convex'
 import { fetchAuth } from '~/library/server'
@@ -18,17 +18,16 @@ export const Route = createRootRoute({
   shellComponent: RootDocument,
 })
 
-function RootDocument(props: { children: Solid.JSX.Element }) {
+function RootDocument(props: { children: JSX.Element }) {
   return (
     <html>
       <head>
-        <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
-        <Suspense>
+        <Loading>
           <AppConvexProvider>{props.children}</AppConvexProvider>
-        </Suspense>
+        </Loading>
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
       </body>

@@ -12,19 +12,21 @@
     "#memory-client/lifecycle": "./lifecycle.ts"
   },
   "dependencies": {
+    "@solidjs/web": "^2.0.1",
     "@tanstack/react-router": "workspace:*",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/solid-router": "workspace:*",
     "@tanstack/vue-router": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "solid-js": "^1.9.10",
+    "solid-js": "^2.0.1",
     "vue": "^3.5.16"
   },
   "devDependencies": {
     "@codspeed/vitest-plugin": "^6.0.1",
     "@datadog/pprof": "^5.13.2",
     "@platformatic/flame": "^1.6.0",
+    "@solidjs/vite-plugin": "^3.0.1",
     "@testing-library/react": "^16.2.0",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitejs/plugin-vue": "^6.0.5",
@@ -36,7 +38,6 @@
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
-    "vite-plugin-solid": "^2.11.11",
     "vitest": "catalog:"
   },
   "nx": {

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, render, screen } from '@solidjs/testing-library'
 
 import {
@@ -18,12 +18,14 @@ let history: RouterHistory
 
 beforeEach(() => {
   history = createBrowserHistory()
+  window.scrollTo = vi.fn()
   expect(window.location.pathname).toBe('/')
 })
 
 afterEach(() => {
   history.destroy()
   window.history.replaceState(null, 'root', '/')
+  vi.resetAllMocks()
   cleanup()
 })
 
@@ -98,24 +100,20 @@ test.each([
         indexRoute,
         settingsRoute.addChildren([settingsIndexRoute]),
       ]),
-      history,
       notFoundMode,
     })
 
     render(() => <RouterProvider router={router} />)
-    await router.load()
     await screen.findByTestId('root-component')
 
-    const settingsLink = screen.getByTestId('settings-link')
-    settingsLink.click()
+    await router.navigate({ to: '/settings/' })
 
     const settingsIndexComponent = await screen.findByTestId(
       'settings-index-component',
     )
     expect(settingsIndexComponent).toBeInTheDocument()
 
-    const nonExistingLink = screen.getByTestId('non-existing-link')
-    nonExistingLink.click()
+    await router.navigate({ to: '/settings/does-not-exist' })
 
     const notFoundComponent = await screen.findByTestId(
       expectedNotFoundComponent,
@@ -210,12 +208,10 @@ test('defaultNotFoundComponent and notFoundComponent receives data props via spr
       defaultNotFoundRoute,
       notFoundRoute,
     ]),
-    history,
     defaultNotFoundComponent: DefaultNotFoundComponentWithProps,
   })
 
   render(() => <RouterProvider router={router} />)
-  await router.load()
   await screen.findByTestId('root-component')
 
   const defaultNotFoundRouteLink = screen.getByTestId(
@@ -351,7 +347,6 @@ test('beforeLoad notFound with routeId targets parent notFoundComponent', async 
 
   const router = createRouter({
     routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
-    history,
   })
 
   render(() => <RouterProvider router={router} />)
@@ -395,7 +390,6 @@ test('beforeLoad notFound with routeId targets parent boundary and preserves par
 
   const router = createRouter({
     routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
-    history,
   })
 
   render(() => <RouterProvider router={router} />)
@@ -435,7 +429,6 @@ test('beforeLoad notFound with routeId targets root notFoundComponent', async ()
 
   const router = createRouter({
     routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
-    history,
   })
 
   render(() => <RouterProvider router={router} />)
@@ -473,7 +466,6 @@ test('beforeLoad notFound with non-exact routeId falls back to root notFoundComp
 
   const router = createRouter({
     routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
-    history,
     notFoundMode: 'fuzzy',
   })
 

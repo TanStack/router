@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/solid-router'
 import { queryOptions, useQuery } from '@tanstack/solid-query'
-import { Suspense, createSignal } from 'solid-js'
+import { Loading, createSignal } from 'solid-js'
 
 const deferredQueryOptions = () =>
   queryOptions({
@@ -28,9 +28,9 @@ function Deferred() {
 
   return (
     <div class="p-2">
-      <Suspense fallback="Loading Middleman...">
+      <Loading fallback="Loading Middleman...">
         <DeferredQuery />
-      </Suspense>
+      </Loading>
       <div>Count: {count()}</div>
       <div>
         <button onClick={() => setCount(count() + 1)}>Increment</button>
@@ -41,13 +41,17 @@ function Deferred() {
 
 function DeferredQuery() {
   const deferredQuery = useQuery(() => deferredQueryOptions())
-
   return (
     <div>
       <h1>Deferred Query</h1>
-      <div>Status: {deferredQuery.data?.status}</div>
-      <div>Message: {deferredQuery.data?.message}</div>
-      <div>Time: {deferredQuery.data?.time.toISOString()}</div>
+      <div>Status: {deferredQuery.data?.status ?? 'loading...'}</div>
+      <div>Message: {deferredQuery.data?.message ?? ''}</div>
+      <div>
+        Time:{' '}
+        {deferredQuery.data
+          ? new Date(deferredQuery.data.time).toISOString()
+          : ''}
+      </div>
     </div>
   )
 }

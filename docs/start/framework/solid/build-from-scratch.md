@@ -33,7 +33,7 @@ We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.jso
 {
   "compilerOptions": {
     "jsx": "preserve",
-    "jsxImportSource": "solid-js",
+    "jsxImportSource": "@solidjs/web",
     "moduleResolution": "Bundler",
     "module": "ESNext",
     "target": "ES2022",
@@ -69,7 +69,7 @@ Install the build tool and Solid integration you want to use:
 # Vite
 
 ```shell
-npm i -D vite vite-plugin-solid
+npm i -D vite @solidjs/vite-plugin
 ```
 
 # Rsbuild
@@ -129,7 +129,7 @@ Then configure TanStack Start's build tool plugin:
 ```ts title="vite.config.ts"
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
-import viteSolid from 'vite-plugin-solid'
+import viteSolid from '@solidjs/vite-plugin'
 
 export default defineConfig({
   server: {
@@ -227,7 +227,6 @@ import {
   HeadContent,
   Scripts,
 } from '@tanstack/solid-router'
-import { HydrationScript } from 'solid-js/web'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -259,10 +258,9 @@ function RootDocument({ children }: Readonly<{ children: Solid.JSX.Element }>) {
   return (
     <html>
       <head>
-        <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <Solid.Suspense>{children}</Solid.Suspense>
         <Scripts />
       </body>

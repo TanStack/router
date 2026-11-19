@@ -1,5 +1,5 @@
 import { Link, redirect, useNavigate } from '@tanstack/solid-router'
-import { onMount } from 'solid-js'
+import { onSettled } from 'solid-js'
 import type {
   RegisteredRouter,
   ValidateFromPath,
@@ -8,7 +8,7 @@ import type {
   ValidateNavigateOptions,
   ValidateRedirectOptions,
 } from '@tanstack/solid-router'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 export function customRedirect<TRouter extends RegisteredRouter, TOptions>(
   options: ValidateRedirectOptions<TRouter, TOptions>,
@@ -23,7 +23,7 @@ export function useCustomNavigate<TRouter extends RegisteredRouter, TOptions>(
 export function useCustomNavigate(options: ValidateNavigateOptions): void {
   const navigate = useNavigate()
 
-  onMount(() => {
+  onSettled(() => {
     navigate(options)
   })
 }

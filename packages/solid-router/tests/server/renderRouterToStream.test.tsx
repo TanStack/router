@@ -1,4 +1,4 @@
-import { Suspense, createResource } from 'solid-js'
+import { Loading, createMemo } from 'solid-js'
 import { expect, test, vi } from 'vitest'
 import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
 import { createMemoryHistory, createRootRoute, createRouter } from '../../src'
@@ -10,7 +10,7 @@ test('the lifetime limit rejects a native Solid bot wait before its resource set
     resolveResource = resolve
   })
   function Deferred() {
-    const [value] = createResource(() => resource)
+    const value = createMemo(() => resource)
     return <span>{value()}</span>
   }
 
@@ -39,9 +39,9 @@ test('the lifetime limit rejects a native Solid bot wait before its resource set
     children: () => (
       <html>
         <body>
-          <Suspense fallback={<p>waiting</p>}>
+          <Loading fallback={<p>waiting</p>}>
             <Deferred />
-          </Suspense>
+          </Loading>
         </body>
       </html>
     ),

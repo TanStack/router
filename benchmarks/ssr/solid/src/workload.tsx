@@ -29,9 +29,10 @@ function ParamsProbe(props: { salt: number }) {
       ),
   })
 
-  createEffect(() => {
-    void params()
-  })
+  createEffect(
+    () => params(),
+    () => {},
+  )
 
   return null
 }
@@ -43,9 +44,10 @@ function SearchProbe(props: { salt: number }) {
       runSelectorWork(String(nextSearch.q ?? ''), props.salt),
   })
 
-  createEffect(() => {
-    void search()
-  })
+  createEffect(
+    () => search(),
+    () => {},
+  )
 
   return null
 }

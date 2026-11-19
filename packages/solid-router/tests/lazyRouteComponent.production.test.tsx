@@ -1,11 +1,11 @@
 import { resolve } from 'node:path'
 import { setImmediate } from 'node:timers/promises'
 import * as Solid from 'solid-js'
-import * as SolidWeb from 'solid-js/web'
+import * as SolidWeb from '@solidjs/web'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@solidjs/testing-library'
 import { build } from 'vite'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 import type { lazyRouteComponent } from '../src/lazyRouteComponent'
 
 let productionLazyRouteComponent: typeof lazyRouteComponent
@@ -14,7 +14,7 @@ beforeAll(async () => {
   const result = await build({
     configFile: false,
     logLevel: 'silent',
-    plugins: [solid({ dev: false, hot: false })],
+    plugins: [solid({ dev: false, refresh: false })],
     define: { 'process.env.NODE_ENV': JSON.stringify('production') },
     build: {
       write: false,
@@ -23,7 +23,7 @@ beforeAll(async () => {
         entry: resolve(import.meta.dirname, '../src/lazyRouteComponent.tsx'),
         formats: ['cjs'],
       },
-      rollupOptions: { external: ['solid-js', 'solid-js/web'] },
+      rollupOptions: { external: ['solid-js', '@solidjs/web'] },
     },
   })
   const outputs = Array.isArray(result) ? result : [result]
@@ -44,7 +44,7 @@ beforeAll(async () => {
     if (id === 'solid-js') {
       return Solid
     }
-    if (id === 'solid-js/web') {
+    if (id === '@solidjs/web') {
       return SolidWeb
     }
     throw new Error(`Unexpected external module: ${id}`)
@@ -75,11 +75,11 @@ test.each([
     }
 
     const { container } = render(() => (
-      <Solid.ErrorBoundary fallback={onError}>
-        <Solid.Suspense fallback={<span>Loading component</span>}>
+      <Solid.Errored fallback={onError}>
+        <Solid.Loading fallback={<span>Loading component</span>}>
           <Page />
-        </Solid.Suspense>
-      </Solid.ErrorBoundary>
+        </Solid.Loading>
+      </Solid.Errored>
     ))
 
     await waitFor(() =>
@@ -103,9 +103,9 @@ test('a preloaded production component renders synchronously with its props', as
   await Page.preload?.()
 
   render(() => (
-    <Solid.Suspense fallback={<span>Loading component</span>}>
+    <Solid.Loading fallback={<span>Loading component</span>}>
       <Page label="Ready component" />
-    </Solid.Suspense>
+    </Solid.Loading>
   ))
 
   expect(screen.getByText('Ready component')).toBeInTheDocument()
@@ -121,11 +121,13 @@ test('a rejected production import reaches the error boundary', async () => {
   const Page = productionLazyRouteComponent(importer)
 
   render(() => (
-    <Solid.ErrorBoundary fallback={(error) => <span>{error.message}</span>}>
-      <Solid.Suspense fallback={<span>Loading component</span>}>
+    <Solid.Errored
+      fallback={(error) => <span>{(error() as Error).message}</span>}
+    >
+      <Solid.Loading fallback={<span>Loading component</span>}>
         <Page />
-      </Solid.Suspense>
-    </Solid.ErrorBoundary>
+      </Solid.Loading>
+    </Solid.Errored>
   ))
 
   expect(

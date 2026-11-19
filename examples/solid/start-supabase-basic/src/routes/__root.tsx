@@ -8,13 +8,12 @@ import {
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { createServerFn } from '@tanstack/solid-start'
-import { HydrationScript } from 'solid-js/web'
 import { DefaultCatchBoundary } from '../components/DefaultCatchBoundary'
 import { NotFound } from '../components/NotFound'
 import appCss from '../styles/app.css?url'
 import { seo } from '../utils/seo'
 import { getSupabaseServerClient } from '../utils/supabase'
-import type * as Solid from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   const supabase = getSupabaseServerClient()
@@ -94,16 +93,15 @@ function RootComponent() {
   )
 }
 
-function RootDocument({ children }: { children: Solid.JSX.Element }) {
+function RootDocument({ children }: { children: JSX.Element }) {
   const { user } = Route.useRouteContext()()
 
   return (
     <html>
       <head>
-        <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <div class="p-2 flex gap-2 text-lg">
           <Link
             to="/"

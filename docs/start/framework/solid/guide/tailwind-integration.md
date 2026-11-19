@@ -4,7 +4,7 @@ replace:
   {
     '@tanstack/react-start': '@tanstack/solid-start',
     '@tanstack/react-router': '@tanstack/solid-router',
-    '@vitejs/plugin-react': 'vite-plugin-solid',
+    '@vitejs/plugin-react': '@solidjs/vite-plugin',
     'viteReact()': 'viteSolid({ ssr: true })',
     'viteReact': 'viteSolid',
     "import { pluginReact } from '@rsbuild/plugin-react'": "import { pluginBabel } from '@rsbuild/plugin-babel'\nimport { pluginSolid } from '@rsbuild/plugin-solid'",

@@ -1,274 +1,381 @@
 # @tanstack/solid-router
 
-## 1.170.43
+## 2.0.0-rc.11
 
 ### Patch Changes
 
-- [#8670](https://github.com/TanStack/router/pull/8670) [`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c) - Reference agent skills in other packages by their `intent load` identifier (`@tanstack/<package>#<skill>`) instead of relative file links that break once packages are installed.
+- [#8946](https://github.com/TanStack/router/pull/8946) [`b81b955`](https://github.com/TanStack/router/commit/b81b95577dd27afe62718fe1fc81d7622bed16f0) - Bump solid-js and @solidjs/web to ^2.0.1 and @solidjs/vite-plugin to ^3.0.1, @tanstack/solid-query and @tanstack/solid-query-devtools to ^6.0.0-rc.6 across the monorepo (with @solidjs/babel-plugin 2.0.1 for the webpack path and the `@rsbuild/plugin-solid` compiler overrides), and raise the Solid packages' solid-js / @solidjs/web peer floors to 2.0.1.
 
-- Updated dependencies [[`32a3360`](https://github.com/TanStack/router/commit/32a3360cba0e0f884b3215813a48c63467f5a53c)]:
-  - @tanstack/router-core@1.171.39
+- [#8885](https://github.com/TanStack/router/pull/8885) [`04e5e4d`](https://github.com/TanStack/router/commit/04e5e4d9e2a5bf92a5b6d81bf84ac3a033acc962) - Bump solid-js and @solidjs/web to ^2.0.0-rc.21 and @solidjs/vite-plugin to ^3.0.0-next.57 across the monorepo (with @solidjs/babel-plugin 2.0.0-rc.21 for the webpack path and the `@rsbuild/plugin-solid` compiler overrides), and raise the Solid packages' solid-js / @solidjs/web peer floors to 2.0.0-rc.21.
 
-## 1.170.42
-
-### Patch Changes
-
-- Updated dependencies [[`18154b1`](https://github.com/TanStack/router/commit/18154b1c45454a70aa77e9d6d27c8a6e0733d031)]:
-  - @tanstack/router-core@1.171.38
-
-## 1.170.41
+## 2.0.0-rc.10
 
 ### Patch Changes
 
-- Updated dependencies [[`d6ba115`](https://github.com/TanStack/router/commit/d6ba115d5751c75e20943f0062577cf17b446d82)]:
-  - @tanstack/router-core@1.171.37
+- [#8837](https://github.com/TanStack/router/pull/8837) [`887caaf`](https://github.com/TanStack/router/commit/887caaf00c137dd32a067dffe7f3de85662f7b17) - Bump solid-js and @solidjs/web to ^2.0.0-rc.20 and @solidjs/vite-plugin to ^3.0.0-next.54 across the monorepo (with @solidjs/babel-plugin 2.0.0-rc.20 for the webpack path and the `@rsbuild/plugin-solid` compiler overrides), and raise the Solid packages' solid-js / @solidjs/web peer floors to 2.0.0-rc.20.
 
-## 1.170.40
-
-### Patch Changes
-
-- Updated dependencies [[`94d6d8e`](https://github.com/TanStack/router/commit/94d6d8e49694e225cb07e2a6777633d08aeeb3c5)]:
-  - @tanstack/router-core@1.171.36
-
-## 1.170.39
+## 2.0.0-rc.9
 
 ### Patch Changes
 
-- [#8602](https://github.com/TanStack/router/pull/8602) [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb) - Links of a route that the pending navigation leaves skip deriving the destination location, and clicks and preloads follow the href a Link displays. `buildLocation` now builds `mask` and `routeMasks` locations from the same `_fromLocation` as the destination.
+- [#8751](https://github.com/TanStack/router/pull/8751) [`acd08ef`](https://github.com/TanStack/router/commit/acd08ef685fc164c836ec85b9cde940a4580b0b9) - Bump solid-js and @solidjs/web to ^2.0.0-rc.16 and @solidjs/vite-plugin to ^3.0.0-next.51 across the monorepo (with @solidjs/babel-plugin 2.0.0-rc.16 for the webpack path and the `@rsbuild/plugin-solid` compiler overrides), and raise the Solid packages' solid-js / @solidjs/web peer floors to 2.0.0-rc.16. @solidjs/vite-plugin 3.0.0-next.51 peer-requires rc.16 and no longer adds a `$$moduleUrl` export to SSR entry chunks, which Cloudflare Workers rejected (solidjs/solid-vite-plugin#423).
 
-- [#8579](https://github.com/TanStack/router/pull/8579) [`d35aab4`](https://github.com/TanStack/router/commit/d35aab425b07b46e222a507c0f0239644669757b) - Cancel pending link preload timers when starting navigation to avoid redundant preloading while the destination is loading.
+  Bump @tanstack/solid-query to ^6.0.0-rc.5 and move @tanstack/solid-query-devtools off its exact 6.0.0-rc.1 pin to ^6.0.0-rc.5; every solid-js export the rc.5 devtools import exists in rc.16.
 
-- [#8619](https://github.com/TanStack/router/pull/8619) [`e7ab157`](https://github.com/TanStack/router/commit/e7ab1570ec3ba461cd1ef2c75d5fab2011cf1043) - Solid Links resolve their own props through one reactive memo instead of two, which makes mounting and updating many Links slightly faster.
+  `<Await>` no longer renders its children with `undefined` data while hydrating a streamed deferred promise. seroval has already settled the promise by then, but `defer()` only records the result in a `.then` callback, so `<Await>` now reads seroval's synchronous status markers when the deferred state is still pending.
 
-- [#8602](https://github.com/TanStack/router/pull/8602) [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb) - Solid and Vue Links reuse the router's built destination across navigations and derive their state through fewer reactive nodes. Solid Links call a user `ref` once per element and create no reactive nodes on the server.
+- [#8467](https://github.com/TanStack/router/pull/8467) [`0dc3a9e`](https://github.com/TanStack/router/commit/0dc3a9e3a56f589578d8bae994171211f7b148c6) - Bump solid-js and @solidjs/web to ^2.0.0-rc.9 and @solidjs/vite-plugin to ^3.0.0-next.44 across the monorepo (with @solidjs/babel-plugin 2.0.0-rc.9 for the webpack path). @solidjs/vite-plugin 3.0.0-next.44 peer-requires solid-js ^2.0.0-rc.9 and ships the rc.9 compiler.
 
-- Updated dependencies [[`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`efc2042`](https://github.com/TanStack/router/commit/efc2042c2d02a9780c3e7efe81f123d066a869eb), [`dfe3dea`](https://github.com/TanStack/router/commit/dfe3dea88a28400db1677111e2b15ae7914782c2), [`663282b`](https://github.com/TanStack/router/commit/663282b0ebbc494aee3595ed95867ee29d01938e)]:
-  - @tanstack/history@1.162.5
-  - @tanstack/router-core@1.171.35
+  rc.9 changed `serverFunctionUrl` to describe a `GET()` reference's own call (`serverFunctionUrl(fn, ...args)`) and moved the id-based form-post address to `serverFunctionActionUrl` / `parseServerFunctionActionUrl` (solidjs/solid#3440); @tanstack/solid-start's server-function handler now uses those.
 
-## 1.170.38
+  Rsbuild apps: `@rsbuild/plugin-solid@2.0.0-rc.0` hard-pins the rc.6 compiler, which emits the old delegated-event key (`el.$$click`) that the rc.9 runtime no longer reads (`_$$click`), so delegated handlers never fire. Until the plugin ships an rc.9-based release, override its `@solidjs/compiler` and `@solidjs/babel-plugin` to 2.0.0-rc.9 (the monorepo does this in `pnpm-workspace.yaml`).
 
-### Patch Changes
+- [#8574](https://github.com/TanStack/router/pull/8574) [`1015223`](https://github.com/TanStack/router/commit/10152238ab8cdc993ace477f19ca19d4d3ce3a61) - Observe tier (Solid's dev and observe builds only): a navigation that passes a `useBlocker` keeps the interaction that requested it and is dated from the request, though the history awaits the blocker before it changes; one the blocker holds until `proceed()` joins the interaction that proceeds and is dated from it, as `@solidjs/router`'s `retry()` makes it. The router notes the request at `commitLocation` for the history change to take. A navigation the blocker stops, or a request that changes no history (the same location reloading), leaves nothing noted behind. Nothing changes in production, where `OBSERVE` is undefined.
 
-- Updated dependencies [[`d521abd`](https://github.com/TanStack/router/commit/d521abd71c69f1ff010bb3def4d417cb5fa058cb)]:
-  - @tanstack/router-core@1.171.34
+- [#8574](https://github.com/TanStack/router/pull/8574) [`1015223`](https://github.com/TanStack/router/commit/10152238ab8cdc993ace477f19ca19d4d3ce3a61) - Observe tier (Solid's dev and observe builds only): a redirect while the first page loads — a client-rendered arrival whose `beforeLoad` or loader throws `redirect()` — is recorded as a navigation from the arrival to where the redirect sent it, after the initial record that names the arrival, as `@solidjs/router` records one. It had no record: nothing was shown yet to navigate from. Nothing changes in production, where `OBSERVE` is undefined.
 
-## 1.170.37
+- [#8574](https://github.com/TanStack/router/pull/8574) [`1015223`](https://github.com/TanStack/router/commit/10152238ab8cdc993ace477f19ca19d4d3ce3a61) - Observe tier (Solid's dev and observe builds only): the router declares the route the document arrived on, with the same `OBSERVE.attribution.withOrigin` call it makes for every navigation (`initial: true` on the ref), around the work that establishes its initial match — the Transitioner's on the client, `RouterProvider`'s load on the server. On the client this is the first `"navigation"` record (`initial: true`, `at` the document's navigation start, no write to wait for), kept out of `feedback().navigations`; on the server the same declaration names the request's `"render"` record (`RenderEvent.route`: the matched route's `fullPath`, the path and search, the params), read when the render settles, so a render whose provider ran the load names the location it resolved. A consumer naming page loads and requests by route (`/users/$id` rather than one name per user) had this for every navigation but the first; now it has the first too.
 
-### Patch Changes
+  The Transitioner committing the canonical form of the arrival location (search defaults, trailing slash) is part of the arrival, as in `@solidjs/router`: the initial record names the canonical location, a router loaded before it mounted no longer records the commit as a navigation, and the next navigation is dated from its own request rather than from that commit. Nothing changes in production, where `OBSERVE` is undefined.
 
-- [#8436](https://github.com/TanStack/router/pull/8436) [`f5ffd38`](https://github.com/TanStack/router/commit/f5ffd3884ba26778a2a8ce53b379a5bded231676) - Skip unused Link preload cleanup when preloading is disabled and ignore queued viewport notifications after their effect has been cleaned up.
+- [#8574](https://github.com/TanStack/router/pull/8574) [`1015223`](https://github.com/TanStack/router/commit/10152238ab8cdc993ace477f19ca19d4d3ce3a61) - Observe tier (Solid's dev and observe builds only): a navigation's record joins the interaction that requested it — the `<Link>` click, or any handler that called `navigate()` — though the match publish it wraps runs after the loaders, long after the handler returned. The Transitioner captures `OBSERVE.attribution.currentOrigin()` with the request time when the history changes and hands it back as `NavigationRef.interaction` (solid-js 2.0.0-rc.12), so the record, and every hold and re-run the publish causes, carries the click. A navigation requested outside any interaction declares none. Nothing changes in production, where `OBSERVE` is undefined.
 
-- Updated dependencies [[`488d046`](https://github.com/TanStack/router/commit/488d046a907d330429e2c807ef95326dad87480f), [`0c1b5e3`](https://github.com/TanStack/router/commit/0c1b5e38de71b7e81bbf1fd81c73ee0cd68ffe47), [`3cdd1af`](https://github.com/TanStack/router/commit/3cdd1af04b3e2d6f777797ee7bddf285318dd9d2)]:
-  - @tanstack/router-core@1.171.33
+- [#8574](https://github.com/TanStack/router/pull/8574) [`1015223`](https://github.com/TanStack/router/commit/10152238ab8cdc993ace477f19ca19d4d3ce3a61) - Observe tier (Solid's dev and observe builds only): a navigation's `to` and `from`, the initial record's `to`, and a server render's `RenderEvent.route.to` are the location's path, search and hash (`/users/42?tab=posts#bio`) rather than its pathname, as `@solidjs/router` gives them — its `href`, in the router's own path space, the one `name` is in (before a basepath or rewrite). A request carries no hash, so a render's `to` is the path and search. The name stays the route pattern the pathname matches. Nothing changes in production, where `OBSERVE` is undefined.
 
-## 1.170.36
+- [#8574](https://github.com/TanStack/router/pull/8574) [`1015223`](https://github.com/TanStack/router/commit/10152238ab8cdc993ace477f19ca19d4d3ce3a61) - Observe tier (Solid's dev and observe builds only): a not-found under a route with a loader (`/users/2/nope` under `/users/$id`) is recorded, named by its pathname, as `@solidjs/router` records an unmatched path. The route's match sits below the not-found boundary and never loads, so it stays `pending` in the publish that lands, which was mistaken for the pending offer and published undeclared: the navigation had no record. Only a match pending at or above the not-found boundary marks the pending offer now. Nothing changes in production, where `OBSERVE` is undefined.
 
-### Patch Changes
+- [#8574](https://github.com/TanStack/router/pull/8574) [`1015223`](https://github.com/TanStack/router/commit/10152238ab8cdc993ace477f19ca19d4d3ce3a61) - Observe tier (Solid's dev and observe builds only): a navigation sent elsewhere while it is pending — a `beforeLoad` or loader redirecting it, or another navigation requested before it published — is one record with its hops, as `@solidjs/router` declares one: the record keeps the first request's time and interaction, names the destination that showed, and lists the destinations it abandoned in `redirects` (each with its name, `to`, params, and when it was sent on). The router declares a `redirect: n` ref per hop around the publish that lands. The browser moving (back, forward) while a navigation is pending supersedes it instead: a record of its own, from the location shown. Before, the record named only the final destination and kept no hops. Nothing changes in production, where `OBSERVE` is undefined.
 
-- Updated dependencies [[`cecae54`](https://github.com/TanStack/router/commit/cecae5440b8edaea77c5448fe3d74bbd20fe10a4), [`0103578`](https://github.com/TanStack/router/commit/01035782e53af9b929c784b94ddd64b95efb89c7), [`ce10dcd`](https://github.com/TanStack/router/commit/ce10dcd4d9d3d23738744e453205aad5c6dbd716), [`84936cc`](https://github.com/TanStack/router/commit/84936cc04530bba11059c57b293a794922bbc5aa), [`bbd2336`](https://github.com/TanStack/router/commit/bbd2336b8446de3f7dd85070895e7cf43980183e)]:
-  - @tanstack/router-core@1.171.32
+- [#8574](https://github.com/TanStack/router/pull/8574) [`1015223`](https://github.com/TanStack/router/commit/10152238ab8cdc993ace477f19ca19d4d3ce3a61) - Observe tier (Solid's dev and observe builds only): a navigation's record names a not-found by its pathname instead of the route above it, so `/nope` no longer files under `/` beside the home page, and its `params` are the strings the path bound rather than the values `params.parse` returned, as Solid's `NavigationRef` declares them. Nothing changes in production, where `OBSERVE` is undefined.
 
-## 1.170.35
+- [#8569](https://github.com/TanStack/router/pull/8569) [`665e9d8`](https://github.com/TanStack/router/commit/665e9d86a4c6fb630684677eb371b359d57c2efa) - Bump solid-js and @solidjs/web to ^2.0.0-rc.13 (and @solidjs/vite-plugin to ^3.0.0-next.46), and raise the Solid peer floors to 2.0.0-rc.13.
 
-### Patch Changes
+  @tanstack/solid-router moves off Solid's internal `sharedConfig` and the raw `_$HY` registry onto the public hydration API rc.13 ships (solidjs/solid#3718): `useHydrated` reads `isHydrating()`; the native SSR match transfer writes through `getHydrationWriter()` gated on `isHydratable()`, so it now respects `<NoHydration>`; and the client boot takes each match's entry with `takeHydrationValue()`.
 
-- [#8418](https://github.com/TanStack/router/pull/8418) [`e561fa1`](https://github.com/TanStack/router/commit/e561fa1d7118e3d29267cc3b6ce1130d6581f387) - `deepEqual` now takes its flags as positional arguments — `deepEqual(a, b, partial?, explicitUndefined?)` — instead of an options object. The router's hot callers (Link option stabilization and active-state checks, `matchRoute`) no longer allocate an options object per comparison, and the comparator reads two booleans instead of a polymorphic object. `explicitUndefined` replaces `ignoreUndefined: false`. `deepEqual` is an internal helper; it stays exported for compatibility of two-argument calls.
+- [#7607](https://github.com/TanStack/router/pull/7607) [`81ee38e`](https://github.com/TanStack/router/commit/81ee38eee5695cfdeb623f085f7e54b0e1ef2fe5) - fix: keep route-scoped accessors (e.g. `Route.useParams()`, `Route.useSearch()`) readable when read from async work after navigating away. Once the owning scope is disposed, the accessor returns its last known value instead of `undefined` for the now-missing match.
 
-- [#8419](https://github.com/TanStack/router/pull/8419) [`a1c8d1a`](https://github.com/TanStack/router/commit/a1c8d1aa759c227eae9601a030321ac4c53c24bd) - `resolvePath` (internal helper) now takes positional arguments — `resolvePath(base, to, trailingSlash?, cache?)` — so `buildLocation` and `matchRoute` no longer allocate an options object per path resolution.
-
-- [#8204](https://github.com/TanStack/router/pull/8204) [`cbbfbe3`](https://github.com/TanStack/router/commit/cbbfbe37ab1dbe328c343cb437c5660769cc9f26) - Stream large deferred SSR hydration payloads through a backpressure-aware router transport, fail known setup errors before response creation, and close cancelled or expired transforms safely.
-
-  Start now cancels discarded middleware and HEAD response bodies, including plain streams and derived branches.
-
-  Server-function raw streams share one ordered response. Arbitrary or sequential consumption can require potentially unbounded buffering of unread data on the client. Cancelling one raw stream discards it locally, while aborting the whole call cancels the response and server work. Consume streams concurrently, cancel unused streams promptly, or use separate calls when independent backpressure is required. A raw stream that exceeds its unread-byte limit now fails alone; sibling streams and the JSON result keep flowing.
-
-  The JSON wire shape of a `RawStream` server-function argument changed. Clients and servers must run matching versions for requests that pass a `RawStream`.
-
-  The frame-protocol constants (`FRAME_TYPE_*`, `MAX_FRAME_PAYLOAD_SIZE`, `MAX_FRAMED_STREAMS`) moved from the `@tanstack/start-client-core` root to the `@tanstack/start-client-core/client-rpc` subpath.
-
-  Router requests whose `Accept` header allows neither `text/html` nor `*/*` now receive `406 Not Acceptable` instead of `500`.
-
-  Framework adapters share the body `<Scripts>` composition (`getSsrBodyScriptParts`, `composeSsrBodyScripts`) and the eager HTML response wrapper (`renderSsrHtmlResponse`) from `@tanstack/router-core`.
-
-  Solid SSR now emits one document type and renders late lazy errors through route boundaries. A Solid `<Await>` without a `fallback` no longer holds the streamed shell; it renders inside the nearest `<Suspense>` boundary like React and Vue, and now renders falsy resolved values.
-
-  Static server functions decode cached `RawStream` values with the client deserializer plugins.
-
-  SSR Query integrations now keep request cleanup and stream ownership aligned with the router lifecycle.
-
-- Updated dependencies [[`bc80866`](https://github.com/TanStack/router/commit/bc80866f6d6eb3e6f152ee3682eb783c96403e83), [`e561fa1`](https://github.com/TanStack/router/commit/e561fa1d7118e3d29267cc3b6ce1130d6581f387), [`cbbfbe3`](https://github.com/TanStack/router/commit/cbbfbe37ab1dbe328c343cb437c5660769cc9f26), [`a1c8d1a`](https://github.com/TanStack/router/commit/a1c8d1aa759c227eae9601a030321ac4c53c24bd), [`cbbfbe3`](https://github.com/TanStack/router/commit/cbbfbe37ab1dbe328c343cb437c5660769cc9f26), [`a0b2ad9`](https://github.com/TanStack/router/commit/a0b2ad99aee64af08d16b0e4ff26b3ba42a99f0a), [`1ca361b`](https://github.com/TanStack/router/commit/1ca361ba52a627d2f76ab33323bd83d1d0aa65a3)]:
-  - @tanstack/router-core@1.171.31
-
-## 1.170.34
+## 2.0.0-rc.8
 
 ### Patch Changes
 
-- [#8318](https://github.com/TanStack/router/pull/8318) [`9b2adaf`](https://github.com/TanStack/router/commit/9b2adaf8c3fca905f156c42f6a4fe17a787afcc8) - Keep Solid Link's computed `href`, `target`, and `disabled` values authoritative when active or inactive state props contain routing options, while preserving state-prop refs, event handlers, and class/style merging.
+- [#8348](https://github.com/TanStack/router/pull/8348) [`8981eb7`](https://github.com/TanStack/router/commit/8981eb78775ef3ff3701b51189e2d9dff34b488f) - Bump solid-js and @solidjs/web to ^2.0.0-rc.8 and @solidjs/vite-plugin to ^3.0.0-next.43 across the monorepo (with @rsbuild/plugin-solid ^2.0.0-rc.0 and @solidjs/babel-plugin ^2.0.0-rc.8 for the rsbuild/webpack paths). rc.8 is ESM-only and declares `engines.node >= 22.12`. @solidjs/vite-plugin 3.0.0-next.43 is the first release that honors `resolve.noExternal` patterns when it externalizes the dependencies of packages that consume the Solid runtime (solidjs/solid-vite-plugin#360); on next.41 and next.42, `vite dev` fails for TanStack Start apps with "Package import specifier '#tanstack-router-entry' is not defined".
 
-- [#8318](https://github.com/TanStack/router/pull/8318) [`9b2adaf`](https://github.com/TanStack/router/commit/9b2adaf8c3fca905f156c42f6a4fe17a787afcc8) - Allow active and inactive Link props to override base element props in React and Solid while preserving class/style merging. Keep React's `href`, `target`, and `disabled` values controlled by routing options. Preserve Vue object and nested-array class bindings, including reactive updates and server rendering, without mutating cached bindings during VNode normalization.
+- [#8179](https://github.com/TanStack/router/pull/8179) [`465d15a`](https://github.com/TanStack/router/commit/465d15a15d82ff583adb7deba3f3e83dac98a6b8) - Stop installing intent-preload listeners on `<Link>` when intent preloading is off.
 
-- [#8327](https://github.com/TanStack/router/pull/8327) [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef) - Make `pathParamsAllowedCharacters` initialization-only. Configure it when creating the router; changing allowed characters requires a new router instance. Remove decoder-update bookkeeping and decoder-change checks from route-owned path caches.
+  `useLinkProps` handed out `onFocus`/`onBlur`/`onMouseEnter`/`onMouseLeave` (and the
+  mouse-over/out/touch-start pair) unconditionally, with the `preload() !== 'intent'`
+  check living _inside_ each handler. Solid does not delegate `mouseenter`,
+  `mouseleave`, `focus` or `blur`, so every anchor installed four real listeners that
+  did nothing but return — on a list view that is four per row (a 165-row board
+  measured 660 listeners whose only job was to bail).
 
-- [#8370](https://github.com/TanStack/router/pull/8370) [`e9396c9`](https://github.com/TanStack/router/commit/e9396c928945d1dd6fd3f3bd8052143794f688b5) - Stop exporting the internal `isPlainObject` and `isPlainArray` helpers.
+  The handlers are now resolved through getters: with intent preloading off the
+  property yields whatever the consumer passed (or `undefined`, which `spread()`
+  treats as removal), and nothing is attached. Behaviour is unchanged — the getters
+  stay reactive, so flipping `preload` back to `'intent'` re-runs the consuming
+  spread and attaches the composed handler.
 
-- [#8318](https://github.com/TanStack/router/pull/8318) [`9b2adaf`](https://github.com/TanStack/router/commit/9b2adaf8c3fca905f156c42f6a4fe17a787afcc8) - Reduce Link bundle size by sharing exact/fuzzy active-path checks and resolving only the selected active or inactive props. Avoid unnecessary class/style allocations while preserving reactive style updates, server rendering, and each framework's prop-override behavior.
+- [#8109](https://github.com/TanStack/router/pull/8109) [`d46b8ee`](https://github.com/TanStack/router/commit/d46b8ee00b942855cef525d83d2e28b6d31b41b7) - Preserve caller-provided roles on enabled links.
 
-- Updated dependencies [[`d76a332`](https://github.com/TanStack/router/commit/d76a33284bc0668f7af4c972a6d32bd0f42b22a6), [`b747fb8`](https://github.com/TanStack/router/commit/b747fb8891b3347b1ffdfe0fa81e7d15049cb776), [`6cfb1e8`](https://github.com/TanStack/router/commit/6cfb1e8b564be282584765352250bf61747895ed), [`700a714`](https://github.com/TanStack/router/commit/700a714c5fb64199b4edfaa3273d230c9894e274), [`700a714`](https://github.com/TanStack/router/commit/700a714c5fb64199b4edfaa3273d230c9894e274), [`8fff7fa`](https://github.com/TanStack/router/commit/8fff7fa1f2e6f061916b0bf5e0ec486b2e732f94), [`f021f6d`](https://github.com/TanStack/router/commit/f021f6d1c6dce6c9b54d70766f1d636d8fd9e184), [`ae68535`](https://github.com/TanStack/router/commit/ae68535929043607d4ee9438f8ae401f3a064862), [`7e349c3`](https://github.com/TanStack/router/commit/7e349c3071ef7a346698d320fc0989998ad55734), [`873c830`](https://github.com/TanStack/router/commit/873c830ccb2610a864ee697250e10fcc99772ffa), [`7e349c3`](https://github.com/TanStack/router/commit/7e349c3071ef7a346698d320fc0989998ad55734), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`e9396c9`](https://github.com/TanStack/router/commit/e9396c928945d1dd6fd3f3bd8052143794f688b5), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`f151ab0`](https://github.com/TanStack/router/commit/f151ab018eede64ae849b77e68f3cdf31cb95cc5), [`bc57fa3`](https://github.com/TanStack/router/commit/bc57fa3f12450cf34c731450947c7c8f1ea05e58), [`9872d2a`](https://github.com/TanStack/router/commit/9872d2ac39fc05f4ef6566c0b421f71ceb115244), [`d76a332`](https://github.com/TanStack/router/commit/d76a33284bc0668f7af4c972a6d32bd0f42b22a6), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`7e349c3`](https://github.com/TanStack/router/commit/7e349c3071ef7a346698d320fc0989998ad55734), [`9448caa`](https://github.com/TanStack/router/commit/9448caa03a89076b9770631c356c0cc502802c09), [`e9396c9`](https://github.com/TanStack/router/commit/e9396c928945d1dd6fd3f3bd8052143794f688b5), [`700a714`](https://github.com/TanStack/router/commit/700a714c5fb64199b4edfaa3273d230c9894e274), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef)]:
-  - @tanstack/router-core@1.171.30
-  - @tanstack/history@1.162.4
+- [#8399](https://github.com/TanStack/router/pull/8399) [`9de3573`](https://github.com/TanStack/router/commit/9de3573f7f838dfcc2f0992300497fe7e442b12b) - Declare navigations to Solid's observe tier. On Solid's dev and observe builds (`OBSERVE` defined), the match publish inside `startTransition` is wrapped in `OBSERVE.attribution.withOrigin` with the destination route's `fullPath`, params, `to`/`from` pathnames and `at` from the history change that started the load, so the holds and re-runs a navigation causes are named after the route and the record spans the loader wait. The pending offer, the initial load and same-location reloads are published undeclared. Nothing changes in production, where `OBSERVE` is undefined.
 
-## 1.170.33
+- [#8461](https://github.com/TanStack/router/pull/8461) [`bf7f924`](https://github.com/TanStack/router/commit/bf7f924b602061c73edd4fb6d0535cc0d727098e) - Consume Solid server-function response metadata. `RouterContextProvider` registers the router as the transport's unnamed single-flight consumer on the client, so the response helpers a mutation returns take effect without the caller wrapping the call: `redirect()` navigates — same-origin targets softly under the router with `replace`, other origins through a document navigation via `navigate({ href })` so the protocol allowlist and blockers still apply — and any declaration of a write (`redirect()`, `reload({ revalidate })`, `respond(value, { revalidate })`, the reserved `revalidate: '*'`) reloads route data through `router.invalidate()`. An empty declaration (`revalidate: []`) is honored as nothing to reload. Navigation runs before invalidation so a redirect costs one load: the destination commits with its shared layouts reloaded and the page being left never reruns its own loaders. `X-Revalidate` keys name entries in caches the router does not own and are left to those caches' consumers.
 
-### Patch Changes
-
-- [#8316](https://github.com/TanStack/router/pull/8316) [`b1c9219`](https://github.com/TanStack/router/commit/b1c92194397e57cecfab72de70e2dd8064a4f6d5) - Skip client-only hydration, preloading, observer, and event-handler setup for all server-rendered links.
-
-- [#8270](https://github.com/TanStack/router/pull/8270) [`76239a3`](https://github.com/TanStack/router/commit/76239a34b732ca19d1b16d42efb83824b1de1c69) - Avoid duplicate external script execution when a Solid script includes both `src` and children. Reuse each Solid hydration boundary's marker element instead of scanning all document markers on mount.
-
-## 1.170.32
-
-### Patch Changes
-
-- [#8308](https://github.com/TanStack/router/pull/8308) [`9c1871c`](https://github.com/TanStack/router/commit/9c1871ccc88bc1157186b8b460941a304ec740b8) - Validate navigation and redirect destinations, keep ambiguous relative URLs on the current origin, and constrain prerender requests and output paths. Prevent redirect headers from appearing in serialized server function response bodies.
-
-  Preserve native form HTTP redirects, route error handling and masks for document redirects, and per-navigation destinations for shared loader redirects. Avoid redundant origin parsing and reduce link styling and server-rendering work. Configured origins must already be normalized.
-
-  Keep blocked-link inactive props consistent during React hydration, honor explicit redirect Location headers before checking route options, and refresh Vue link state when destinations become internal. Reuse the protocol-relative URL check while parsing redirect schemes once.
-
-  Reduce React link bundle size by sharing pathname comparisons, state-prop selection, and element creation.
-
-  Share normalized pathname comparisons in Solid and Vue links to reduce bundle size.
-
-- Updated dependencies [[`f9836f1`](https://github.com/TanStack/router/commit/f9836f16f0e25b0a8495f5e01e3f303b1cbc8725), [`9c1871c`](https://github.com/TanStack/router/commit/9c1871ccc88bc1157186b8b460941a304ec740b8), [`9871c06`](https://github.com/TanStack/router/commit/9871c0625806001d6bf373524821a00303438a91), [`0654c0a`](https://github.com/TanStack/router/commit/0654c0a1a427db24d9af13c1d6ad1217a588c0c9)]:
-  - @tanstack/router-core@1.171.29
-  - @tanstack/history@1.162.3
-
-## 1.170.31
+## 2.0.0-rc.7
 
 ### Patch Changes
 
-- [#8165](https://github.com/TanStack/router/pull/8165) [`2f20c00`](https://github.com/TanStack/router/commit/2f20c00224c5ba63467551914e0c37012588c4c2) - Exclude structural descendants below error and not-found boundaries from route lifecycle callbacks. Preserve lifecycle membership through invalidation, hydration, background reloads, and superseded navigation publication.
+- [#8254](https://github.com/TanStack/router/pull/8254) [`a09b50c`](https://github.com/TanStack/router/commit/a09b50cac19250236455cce0ce76e2551a0afe59) - Fall back to the router instance's server flag during development SSR. This prevents router construction from entering client hydration on the server and restores provider-owned loading and match-state serialization.
 
-- [#8209](https://github.com/TanStack/router/pull/8209) [`28a5e45`](https://github.com/TanStack/router/commit/28a5e4504e4ea5cb1480667a4bea2588a53e110f) - Preserve falsy thrown values in React and Vue error boundaries. Type React and Vue boundary error components and `onCatch` callbacks as `unknown`. Solid boundary errors remain typed as `Error`; SSR now wraps non-`Error` loader errors to match Solid’s native boundary behavior, preserving the original value in `cause`. Router state and loader `onError` values are unchanged.
-
-  When upgrading React or Vue, narrow boundary errors (for example, with `error instanceof Error`) before reading `message` or `stack`. `ErrorComponentProps<TError>` remains available for values narrowed to a specific error type. Route `onError` types are unchanged.
-
-- [#8161](https://github.com/TanStack/router/pull/8161) [`f0b5eda`](https://github.com/TanStack/router/commit/f0b5eda544606686a8a8d675a686ca1366428b96) - Retain successful not-found matches as terminal shared boundaries during client navigation, preserving route context while the destination loads.
-
-- [#8251](https://github.com/TanStack/router/pull/8251) [`0497cae`](https://github.com/TanStack/router/commit/0497caeef3ff7e1c1c6080eca38bca24e7ec320b) - Use URL.canParse for absolute URL checks in links, navigation, redirects, and build configuration. Preserve a URL constructor fallback for older browsers.
-
-- [#8169](https://github.com/TanStack/router/pull/8169) [`0caf6b9`](https://github.com/TanStack/router/commit/0caf6b9a2b7e14b0b146c74cc27cb05c19d700a5) - Fix route-scoped `useMatch`, `useSearch`, and `useParams` APIs to forward the `shouldThrow` option and preserve optional return types when `shouldThrow: false`.
-
-- Updated dependencies [[`edf0e16`](https://github.com/TanStack/router/commit/edf0e16ebfe82ec6e8f68f403a1fda8de9e28889), [`2f20c00`](https://github.com/TanStack/router/commit/2f20c00224c5ba63467551914e0c37012588c4c2), [`28a5e45`](https://github.com/TanStack/router/commit/28a5e4504e4ea5cb1480667a4bea2588a53e110f), [`08eff50`](https://github.com/TanStack/router/commit/08eff50c447a154a3373909009e9e4375cea17ce), [`216c0c4`](https://github.com/TanStack/router/commit/216c0c48036fd1a33163b70dcabfed2b893808b0), [`2f91503`](https://github.com/TanStack/router/commit/2f9150309bc472f4a75cbe98adcdb50c76b12c7a), [`f0b5eda`](https://github.com/TanStack/router/commit/f0b5eda544606686a8a8d675a686ca1366428b96), [`50eafca`](https://github.com/TanStack/router/commit/50eafcaebbbedb6fde3b2816de7a0ace8cde4832), [`0497cae`](https://github.com/TanStack/router/commit/0497caeef3ff7e1c1c6080eca38bca24e7ec320b), [`ee28348`](https://github.com/TanStack/router/commit/ee283480dfa51150a2e0b096a6eff94a89ff8b3f), [`9035abc`](https://github.com/TanStack/router/commit/9035abc41163d83409ef582f7743a3c7be57dd93), [`c18e690`](https://github.com/TanStack/router/commit/c18e69081475a7c98f9d40bd0fe6da78ccb84598)]:
-  - @tanstack/router-core@1.171.28
-  - @tanstack/history@1.162.2
-
-## 1.170.30
+## 2.0.0-rc.6
 
 ### Patch Changes
 
-- [#8132](https://github.com/TanStack/router/pull/8132) [`fa65287`](https://github.com/TanStack/router/commit/fa652872812c9433ba8b9d9a285e51b535e7367c) - Build client preload locations on demand and remove the prebuilt-location argument used by framework links.
+- [#8236](https://github.com/TanStack/router/pull/8236) [`cc25e82`](https://github.com/TanStack/router/commit/cc25e8227829a938aa3ff7b67648a45f84f9df31) - Remove all router-owned `Loading` boundaries from `Matches`, `Match`, and `Outlet`, and only install one in `Await` when a `fallback` is provided. Async reads in route components are no longer caught by an invisible router boundary, so Solid's implicit transitions hold the previous view — live and interactive — until the new route settles, then swap atomically. `pendingComponent` is presented through router pending state (`pendingMs`/`pendingMinMs`) as before; loading boundaries are now exclusively user-provided.
 
-- [#8130](https://github.com/TanStack/router/pull/8130) [`cb281d7`](https://github.com/TanStack/router/commit/cb281d70c1f5fe780f9d07bc500ea3a284a4e04b) - preserve context during reloads
+- [#8236](https://github.com/TanStack/router/pull/8236) [`cc25e82`](https://github.com/TanStack/router/commit/cc25e8227829a938aa3ff7b67648a45f84f9df31) - Resolve the `router.startTransition` render acknowledgement when the commit's transition actually settles instead of immediately after flush. View transitions, `onRendered` (scroll restoration), pending minimum-display timing, and `status: 'idle'` now observe the committed swap instead of firing against held DOM; superseded or rolled-back commits acknowledge `false` instead of leaking. Synchronous navigations still acknowledge within the same flush.
 
-- Updated dependencies [[`fa65287`](https://github.com/TanStack/router/commit/fa652872812c9433ba8b9d9a285e51b535e7367c), [`cb281d7`](https://github.com/TanStack/router/commit/cb281d70c1f5fe780f9d07bc500ea3a284a4e04b)]:
-  - @tanstack/router-core@1.171.27
+- [#8236](https://github.com/TanStack/router/pull/8236) [`cc25e82`](https://github.com/TanStack/router/commit/cc25e8227829a938aa3ff7b67648a45f84f9df31) - Stop force-flushing Solid's scheduler on every router-core batch. Store writes now coalesce through the scheduler (one settle per navigation instead of 3-5 full synchronous flushes) while reads stay synchronously fresh via a shadow value in the store bridge.
 
-## 1.170.29
-
-### Patch Changes
-
-- Updated dependencies [[`3e016ac`](https://github.com/TanStack/router/commit/3e016ac84ffec8119f0c25cfdd1fb17e5292bd34)]:
-  - @tanstack/router-core@1.171.26
-
-## 1.170.28
+## 2.0.0-rc.5
 
 ### Patch Changes
 
-- [#8084](https://github.com/TanStack/router/pull/8084) [`5d3785d`](https://github.com/TanStack/router/commit/5d3785dcc366b66b1c261b5d01e66af778ff1175) - preserve pending UI across retained routes
+- [#8192](https://github.com/TanStack/router/pull/8192) [`96f50d9`](https://github.com/TanStack/router/commit/96f50d94a68ab1e52beb05769999d8959958256b) - Bump solid-js, @solidjs/web, and @solidjs/signals to ^2.0.0-rc.6 across the monorepo. rc.6 provides the named flight-data source API (registerFlightDataSource / two-argument subscribeFlightData) that the Start single-flight integration now requires; @tanstack/solid-start's peer floor moves to rc.6 accordingly.
 
-- Updated dependencies [[`5d3785d`](https://github.com/TanStack/router/commit/5d3785dcc366b66b1c261b5d01e66af778ff1175), [`63d2cc9`](https://github.com/TanStack/router/commit/63d2cc9155ff5374112f7d067d0b278bafeb8486)]:
-  - @tanstack/router-core@1.171.25
+- [#8192](https://github.com/TanStack/router/pull/8192) [`96f50d9`](https://github.com/TanStack/router/commit/96f50d94a68ab1e52beb05769999d8959958256b) - New `loadFlightTarget` helper (exported from `@tanstack/solid-router/ssr/server`): the router's half of a single-flight refresh. Given the mutation request's target href, it builds a router for that location, loads it, and returns the dehydrated payload for the `tsr` flight-data slice, so server collectors can refresh router state alongside other caches on the same mutation response.
 
-## 1.170.27
+- [#8213](https://github.com/TanStack/router/pull/8213) [`b445b89`](https://github.com/TanStack/router/commit/b445b892819f70e4e2650a4df7ce18e718a0ddcb) - Native SSR state transfer for Solid: router match state (loaderData, beforeLoad context, status, errors) now rides Solid's hydration registry under `tsr:` keys instead of a bespoke bootstrap script, deferred `loaderData` promises stream natively via seroval, the client primes router state from the registry in the Router constructor (before any render context, eliminating boot-time refetches and `bootLoad`-style workarounds), and `RouterProvider` owns the server-side `router.load()` dispatch so server entries no longer await it manually.
 
-### Patch Changes
-
-- [#8073](https://github.com/TanStack/router/pull/8073) [`0fdf9ff`](https://github.com/TanStack/router/commit/0fdf9ff16fc532de9fc131d18df167ebd8038720) - inline isCtrlKey inside Link component for byte shaving
-
-- Updated dependencies [[`4c89b15`](https://github.com/TanStack/router/commit/4c89b15dd2b46491ee5e57985559bae8e31d62c2), [`cf6ab17`](https://github.com/TanStack/router/commit/cf6ab178b39e7628bf784759f384e0f4230e6d9e), [`bdaf73a`](https://github.com/TanStack/router/commit/bdaf73a4063ee2b02e3c9cc105ad10ce82a5a0ff)]:
-  - @tanstack/router-core@1.171.24
-
-## 1.170.26
+## 2.0.0-rc.4
 
 ### Patch Changes
 
-- [#8054](https://github.com/TanStack/router/pull/8054) [`31882c7`](https://github.com/TanStack/router/commit/31882c7fa87debef236228831655cb112c20ce90) - Reuse resolved lazy route components when revisiting code-split routes, preventing unnecessary pending UI.
+- [#8189](https://github.com/TanStack/router/pull/8189) [`22fd367`](https://github.com/TanStack/router/commit/22fd367d8103edd0150acf3be75af9aa03eec6c3) - Bump solid-js and @solidjs/web to ^2.0.0-rc.4 and @solidjs/vite-plugin to ^3.0.0-next.35 across the monorepo.
 
-- [#8002](https://github.com/TanStack/router/pull/8002) [`3848503`](https://github.com/TanStack/router/commit/38485038c52ff898777cabeeeb2eaaa29c93f789) - Keep active route components mounted by default when route params change.
-
-- Updated dependencies [[`31882c7`](https://github.com/TanStack/router/commit/31882c7fa87debef236228831655cb112c20ce90)]:
-  - @tanstack/router-core@1.171.23
-
-## 1.170.25
+## 2.0.0-rc.3
 
 ### Patch Changes
 
-- [#8045](https://github.com/TanStack/router/pull/8045) [`f500760`](https://github.com/TanStack/router/commit/f5007607d62e932b8df19de866cdc6bddcff8db3) - Warn when an Outlet is rendered inside a pending, error, or not-found component.
+- [#8170](https://github.com/TanStack/router/pull/8170) [`a09f492`](https://github.com/TanStack/router/commit/a09f492463986c7553573dcb535d94bf8eea1ae9) - Run Solid Start server functions through the Solid 2 server-function runtime, including request handling, serialization, middleware, direct SSR calls, and no-JS forms.
 
-- [#8043](https://github.com/TanStack/router/pull/8043) [`1aafca9`](https://github.com/TanStack/router/commit/1aafca9b45d24f8f0dba78e716fc9582346c6ca1) - remove the undocumented Link `isTransitioning` state and `data-transitioning` attribute
+  POST server functions now use Solid 2's single-flight transport to return updated Router loader and hydration data with the mutation response.
 
-- [#8044](https://github.com/TanStack/router/pull/8044) [`aa10b65`](https://github.com/TanStack/router/commit/aa10b6589eeda215f5a60ea0af95a3101d8c414e) - Apply `preloadDelay` to viewport link preloading and cancel pending preloads when links leave the viewport.
-
-- Updated dependencies [[`7e93431`](https://github.com/TanStack/router/commit/7e93431ae9ff58c91c3c5ca10ffcb8414c1d0b13)]:
-  - @tanstack/router-core@1.171.22
-
-## 1.170.24
+## 2.0.0-rc.2
 
 ### Patch Changes
 
-- Updated dependencies [[`51138a8`](https://github.com/TanStack/router/commit/51138a824cea053738f125c4c95073bd6286ff05)]:
-  - @tanstack/router-core@1.171.21
+- [#8166](https://github.com/TanStack/router/pull/8166) [`eaa2e8d`](https://github.com/TanStack/router/commit/eaa2e8d5ce0df6b55e3bb787844e44e1a49f6548) - Bump solid-js and @solidjs/web to ^2.0.0-rc.2 and @solidjs/vite-plugin to ^3.0.0-next.32 across the monorepo.
 
-## 1.170.23
-
-### Patch Changes
-
-- Updated dependencies [[`44a8c3e`](https://github.com/TanStack/router/commit/44a8c3e1d2af305064b2363d97fc7847c6f1a246), [`5253e70`](https://github.com/TanStack/router/commit/5253e70db2083d68a788fb7c9a043bb0c5518f2a)]:
-  - @tanstack/router-core@1.171.20
-
-## 1.170.22
+## 2.0.0-rc.1
 
 ### Patch Changes
 
-- Updated dependencies [[`ea3a665`](https://github.com/TanStack/router/commit/ea3a665d81cbb5074c2d77ec953255ab534e7db9)]:
-  - @tanstack/router-core@1.171.19
+- [#8081](https://github.com/TanStack/router/pull/8081) [`252caa8`](https://github.com/TanStack/router/commit/252caa85343cdb6ff8d599b266f213bd14f6ece2) - `lazyRouteComponent` now delegates to Solid's `lazy()` using its `{ export }`
+  option (solid-js 2.0.0-rc.1): the module namespace passes through untouched,
+  so SSR'd route chunks resolve their client assets (stylesheet links,
+  modulepreload hints, hydration gating) through the client-assets manifest,
+  and hydration claims the component synchronously from the preloaded module.
+  Failed chunk downloads are retried by the next preload or render, and the
+  module-not-found reload-once behavior is unchanged. Solid packages are
+  bumped to the 2.0.0-rc.1 line (`@solidjs/vite-plugin` 3.0.0-next.30).
 
-## 1.170.21
+- [#8080](https://github.com/TanStack/router/pull/8080) [`b60b741`](https://github.com/TanStack/router/commit/b60b741a882ef5f55544b437decb29b09e7e547e) - Register head tags through Solid's `useHead` registry. `HeadContent` now
+  feeds the route-derived tags to Solid's head registry as one reactive group
+  instead of rendering elements in-tree: the registry owns head emission on
+  both runtimes (SSR splicing/streaming and client-side patching), replacing
+  the manual relocate-into-head, imperative script injection, and
+  `document.title` syncing. Inline scripts and styles carry a stable
+  content-derived key so server and client reconcile on the same identity.
+  `HeadContent` can now be rendered anywhere in the tree. The dedicated
+  development entry (`index.dev`) and its `development` export conditions are
+  retired along with it.
+
+## 2.0.0-rc.0
 
 ### Patch Changes
 
-- [#7970](https://github.com/TanStack/router/pull/7970) [`2435885`](https://github.com/TanStack/router/commit/2435885fa8b5e31c8c4b74d93920919f27316ebf) - createFileRoute does not rely on FileRoute class
+- [#8058](https://github.com/TanStack/router/pull/8058) [`56cc90e`](https://github.com/TanStack/router/commit/56cc90ea2c29b8d8c3aa21252b60f0995083b713) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-rc.0`, and migrate from `vite-plugin-solid` to its new name `@solidjs/vite-plugin` at `3.0.0-next.28`
 
-- [#7985](https://github.com/TanStack/router/pull/7985) [`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b) - perf: compact private bundle boundaries- [#7975](https://github.com/TanStack/router/issues/7975)
+  `vite-plugin-solid` was renamed to `@solidjs/vite-plugin`; its final release (`3.0.0-next.27`) is a re-export shim over the new package. `@solidjs/vite-plugin@3.0.0-next.28` requires `solid-js`/`@solidjs/web` `^2.0.0-rc.0`, so the rename and the `rc` bump land together.
 
-- [#7971](https://github.com/TanStack/router/pull/7971) [`86bf510`](https://github.com/TanStack/router/commit/86bf510c2923afb76804223bd04afc2a809b33e7) - clean intersection observer options in link component
+  `@tanstack/router-plugin` is intentionally untouched: it detects the Solid JSX plugin by its Vite plugin _name_ (`solid`), which the renamed package still registers, and its `vite-plugin-solid` peer is optional — so it keeps working for both Solid 1 and Solid 2 consumers without a change.
 
-- [#7967](https://github.com/TanStack/router/pull/7967) [`6aefb33`](https://github.com/TanStack/router/commit/6aefb3392595a07a93f89301d7b5e3558ff9190c) - Preserve path params in their raw string form while matching routes so structured values returned by `params.parse` produce stable match IDs and do not reuse stale loader data.
+  Also bumps `@tanstack/solid-query` and `@tanstack/solid-query-devtools` to `^6.0.0-rc.0` (whose peer requires `solid-js >=2.0.0-rc.0`), and converges `@tanstack/query-core` on `5.101.4` — `solid-query` depends on query-core `5.101.0`, which previously resolved to a stale `5.99.0` and produced two incompatible `QueryClient` types.
 
-  `RouterCore.getMatchedRoutes()` now returns `[matchedRoutes, rawParams, foundRoute]` instead of an object.
-
-- Updated dependencies [[`84db4a8`](https://github.com/TanStack/router/commit/84db4a842311df3f7e58073f6f12aaf371aeb5c7), [`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b), [`6aefb33`](https://github.com/TanStack/router/commit/6aefb3392595a07a93f89301d7b5e3558ff9190c)]:
-  - @tanstack/router-core@1.171.18
-  - @tanstack/history@1.162.1
-
-## 1.170.20
+## 2.0.0-beta.30
 
 ### Patch Changes
 
-- Updated dependencies [[`b2908c6`](https://github.com/TanStack/router/commit/b2908c642ac09aa08e6d965d2a820d7186e42fd5)]:
-  - @tanstack/router-core@1.171.17
+- [#8014](https://github.com/TanStack/router/pull/8014) [`980ed57`](https://github.com/TanStack/router/commit/980ed5794acd88b8dccf8e2969ecdf9106ff7b0a) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.32`
+
+## 2.0.0-beta.29
+
+### Patch Changes
+
+- [#7928](https://github.com/TanStack/router/pull/7928) [`3d40733`](https://github.com/TanStack/router/commit/3d40733d4a053dfde499f9f0b55cf7c1d5624915) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.29`
+
+## 2.0.0-beta.28
+
+### Patch Changes
+
+- [#7916](https://github.com/TanStack/router/pull/7916) [`84c43e0`](https://github.com/TanStack/router/commit/84c43e0595c4f5b69291bf75a6e380c47543d319) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.27`
+
+## 2.0.0-beta.27
+
+### Patch Changes
+
+- [#7888](https://github.com/TanStack/router/pull/7888) [`a7e9835`](https://github.com/TanStack/router/commit/a7e9835e1c333688bde4da482745f50d9c5a7f8c) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.25`
+
+## 2.0.0-beta.26
+
+### Patch Changes
+
+- [#7865](https://github.com/TanStack/router/pull/7865) [`714e11f`](https://github.com/TanStack/router/commit/714e11f1915d3356134bea1ed8ab74617d91f55b) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.21`
+
+## 2.0.0-beta.25
+
+### Patch Changes
+
+- [#7850](https://github.com/TanStack/router/pull/7850) [`62f3b26`](https://github.com/TanStack/router/commit/62f3b2697f6da8d495af880d808064dc10962786) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.20`
+
+## 2.0.0-beta.24
+
+### Patch Changes
+
+- [#7813](https://github.com/TanStack/router/pull/7813) [`ebe104c`](https://github.com/TanStack/router/commit/ebe104c01c35229d755458febe8ea40fb446a482) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.17`
+
+- [#7813](https://github.com/TanStack/router/pull/7813) [`ebe104c`](https://github.com/TanStack/router/commit/ebe104c01c35229d755458febe8ea40fb446a482) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.18`
+
+- [#7813](https://github.com/TanStack/router/pull/7813) [`ebe104c`](https://github.com/TanStack/router/commit/ebe104c01c35229d755458febe8ea40fb446a482) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.19` and `vite-plugin-solid` to `3.0.0-next.11`
+
+- [#7813](https://github.com/TanStack/router/pull/7813) [`ebe104c`](https://github.com/TanStack/router/commit/ebe104c01c35229d755458febe8ea40fb446a482) - Suspend on the match `loadPromise` only during SSR. On the client, suspending on the pending match kept a live async source in the tree, which since `solid-js@2.0.0-beta.16` routed signal writes into a transition hold and broke synchronous write-then-load flows such as `invalidate()` on a `notFound` match.
+
+## 2.0.0-beta.23
+
+### Patch Changes
+
+- [#7734](https://github.com/TanStack/router/pull/7734) [`f9b0e57`](https://github.com/TanStack/router/commit/f9b0e57ce00780b1887bd50a6543c0ad4ff5b8e7) - Fix hydration desync by resolving `defaultNotFoundComponent` at render time instead of lazily mutating the boundary route's `options.notFoundComponent`. Route objects are module singletons shared across server requests, so once the server handled any 404, later SSRs of valid URLs wrapped the match in a `CatchNotFound` boundary the client didn't render, shifting hydration keys and leaving the subtree inert.
+
+## 2.0.0-beta.22
+
+### Patch Changes
+
+- [#7584](https://github.com/TanStack/router/pull/7584) [`41e7a24`](https://github.com/TanStack/router/commit/41e7a24f693b0f58c2bef89a2b8c4d084acbd531) - Remove unnecessary setTimeout from Match components
+
+- [#7609](https://github.com/TanStack/router/pull/7609) [`51b4bd4`](https://github.com/TanStack/router/commit/51b4bd4f372ac81ac0cd5a3cf51150f7b799c95e) - perf(solid-router): make `useLinkProps` proxy-free in the spread hot path
+
+  `useLinkProps` previously layered four proxies (`merge` for defaults, two
+  `splitProps`/`omit` proxies, and a final `merge` of spreadable props with the
+  resolved props memo). Solid's `spread()` re-enumerated all of them through V8
+  proxy traps on every navigation, for every `Link`, which showed up in CodSpeed
+  profiles as a large unattributed "NodeJS internals" cost.
+
+  `useLinkProps` now returns a plain object with a stable key set whose
+  reactivity lives in property getters backed by fine-grained memos. Values that
+  no longer apply resolve to `undefined`, which `spread()` treats as attribute
+  removal. The built-location memo also gained href-based equality so downstream
+  memos skip work when a navigation doesn't change a link's target.
+
+  This makes the client-side navigation benchmark ~30% faster.
+
+  Note: keys returned by `activeProps`/`inactiveProps` functions are discovered
+  once at setup — functions that later return brand-new keys (beyond the initial
+  set plus `class`/`style`) won't have those keys applied.
+
+- [#7688](https://github.com/TanStack/router/pull/7688) [`259efbe`](https://github.com/TanStack/router/commit/259efbe5301df3246f1a13dd7eece24f1d3038f9) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.15`
+
+## 2.0.0-beta.21
+
+### Patch Changes
+
+- [#7532](https://github.com/TanStack/router/pull/7532) [`ff136aa`](https://github.com/TanStack/router/commit/ff136aaea6f03446fb5aedc17319974106b72165) - fix: use TSR_DEFERRED_PROMISE
+
+## 2.0.0-beta.20
+
+### Patch Changes
+
+- [#7528](https://github.com/TanStack/router/pull/7528) [`440a0c9`](https://github.com/TanStack/router/commit/440a0c92708c977d146e694fe828707dc7e61c3f) - sync main
+
+## 2.0.0-beta.19
+
+### Patch Changes
+
+- Fix two related issues with HeadContent in solid-router ([#7510](https://github.com/TanStack/router/pull/7510))
+
+## 2.0.0-beta.18
+
+### Patch Changes
+
+- Upgrade to solidjs beta 14 ([#7415](https://github.com/TanStack/router/pull/7415))
+
+## 2.0.0-beta.17
+
+### Patch Changes
+
+- Upgrade to solid v2 beta 10 ([#7284](https://github.com/TanStack/router/pull/7284))
+
+## 2.0.0-beta.16
+
+### Patch Changes
+
+- fix: move HydrationScript to HeadContent ([#7296](https://github.com/TanStack/router/pull/7296))
+
+## 2.0.0-beta.15
+
+### Patch Changes
+
+- Update to solid v2 beta 8 ([#7241](https://github.com/TanStack/router/pull/7241))
+
+## 2.0.0-beta.14
+
+### Patch Changes
+
+- chore: bump solid 2 to beta.7 ([#7210](https://github.com/TanStack/router/pull/7210))
+
+## 2.0.0-beta.13
+
+### Patch Changes
+
+- fix: pin solid 2 beta.6 due to server range with -experimental tag ([#7171](https://github.com/TanStack/router/pull/7171))
+
+## 2.0.0-beta.12
+
+### Patch Changes
+
+- Upgrade to Solid v2.0.0-beta.6 ([#7145](https://github.com/TanStack/router/pull/7145))
+
+## 2.0.0-beta.11
+
+### Patch Changes
+
+- fix: adjust pre-release ranges ([#7130](https://github.com/TanStack/router/pull/7130))
+
+## 2.0.0-beta.10
+
+### Patch Changes
+
+- chore: sync main to pre-release branch ([#7106](https://github.com/TanStack/router/pull/7106))
+
+## 2.0.0-alpha.9
+
+### Patch Changes
+
+- chore: bump solid-query and vite-plugin-solid ([#7103](https://github.com/TanStack/router/pull/7103))
+
+## 2.0.0-alpha.8
+
+### Patch Changes
+
+- Upgrade to Solid 2.0.0-beta.5 ([#7102](https://github.com/TanStack/router/pull/7102))
+
+## 2.0.0-alpha.7
+
+### Patch Changes
+
+- chore: sync main branch with store refactor ([#7001](https://github.com/TanStack/router/pull/7001))
+
+## 2.0.0-alpha.6
+
+### Patch Changes
+
+- Update to beta.4 ([#6991](https://github.com/TanStack/router/pull/6991))
+
+## 2.0.0-alpha.5
+
+### Patch Changes
+
+- fix: add vite 8 compat ([`dfd64e4`](https://github.com/TanStack/router/commit/dfd64e4a08e74ef292c6bd7baab77283c258bb92))
+
+## 2.0.0-alpha.4
+
+### Patch Changes
+
+- Bump to solid js 2.0.0-beta.3 ([#6943](https://github.com/TanStack/router/pull/6943))
+
+## 2.0.0-alpha.3
+
+### Patch Changes
+
+- build: bundle packages with rolldown ([#6931](https://github.com/TanStack/router/pull/6931))
+
+## 2.0.0-alpha.2
+
+### Patch Changes
+
+- Upgrade solid refresh, fix deep equal for promises ([#6910](https://github.com/TanStack/router/pull/6910))
+
+## 2.0.0-alpha.1
+
+### Patch Changes
+
+- bump to alpha.1 ([`4c5bb71`](https://github.com/TanStack/router/commit/4c5bb71d320df8aa9cb41a67103b671335a1bb7d))
+
+## 2.0.0-alpha.0
+
+### Major Changes
+
+- solid v2 pre-release for solid-router and start ([#6904](https://github.com/TanStack/router/pull/6904))
 
 ## 1.170.19
 

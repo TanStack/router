@@ -13,9 +13,10 @@ import {
 } from '../src'
 import type { LinkProps } from '../src'
 import type * as Solid from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 const createRouterRenderer =
-  (routesCount: number) => (children: Solid.JSX.Element) => {
+  (routesCount: number) => (children: JSX.Element) => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -39,7 +40,7 @@ const InterpolatePathLink = ({
   to,
   params,
   children,
-}: Solid.PropsWithChildren<{
+}: Solid.ParentProps<{
   to: string
   params: Record<string, number>
 }>) => {
@@ -55,7 +56,7 @@ const InterpolatePathLink = ({
 const BuildLocationLink = ({
   children,
   ...props
-}: Solid.PropsWithChildren<LinkProps>) => {
+}: Solid.ParentProps<LinkProps>) => {
   const router = useRouter()
   const { href } = router.buildLocation(props)
   return <a href={href}>{children}</a>

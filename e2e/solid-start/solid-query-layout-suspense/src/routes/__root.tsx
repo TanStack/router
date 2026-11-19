@@ -5,8 +5,7 @@ import {
   Scripts,
   createRootRouteWithContext,
 } from '@tanstack/solid-router'
-import { Suspense } from 'solid-js'
-import { HydrationScript } from 'solid-js/web'
+import { Loading } from 'solid-js'
 
 export const Route = createRootRouteWithContext()({
   head: () => ({ meta: [{ charset: 'utf-8' }] }),
@@ -17,16 +16,15 @@ function RootDocument() {
   return (
     <html>
       <head>
-        <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <nav>
           <Link to="/">Home</Link> <Link to="/layout/page2">👉 To page2</Link>
         </nav>
-        <Suspense>
+        <Loading>
           <Outlet />
-        </Suspense>
+        </Loading>
         <Scripts />
       </body>
     </html>

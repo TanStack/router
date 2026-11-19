@@ -6,5 +6,5 @@
       "@tanstack/solid-start/server": ["./src/server.tsx"]
     }
   },
-  "include": ["src/default-entry"]
+  "include": ["src/default-entry", "src/tanstack-start.d.ts"]
 }

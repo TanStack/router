@@ -1,4 +1,4 @@
-import * as Solid from 'solid-js/web'
+import * as Solid from '@solidjs/web'
 import { isbot } from 'isbot'
 import {
   createSsrStreamResponse,
@@ -7,19 +7,23 @@ import {
   waitForRequest,
 } from '@tanstack/router-core/ssr/server'
 import { getSolidRenderOptions } from './renderOptions'
-import type { JSXElement } from 'solid-js'
 import type { AnyRouter } from '@tanstack/router-core'
+import type { JSX } from '@solidjs/web'
+
+const doctype = new TextEncoder().encode('<!DOCTYPE html>')
 
 export const renderRouterToStream = async ({
   request,
   router,
   responseHeaders,
   children,
+  manifest,
 }: {
   request: Request
   router: AnyRouter
   responseHeaders: Headers
-  children: () => JSXElement
+  children: () => JSX.Element
+  manifest?: unknown
 }) => {
   const signal = request.signal
   if (signal.aborted) {
@@ -28,21 +32,29 @@ export const renderRouterToStream = async ({
   }
 
   try {
-    const docType = Solid.ssr('<!DOCTYPE html>')
     const stream = Solid.renderToStream(
-      () => (
-        <>
-          {docType}
-          {children()}
-        </>
-      ),
-      getSolidRenderOptions(router),
+      () => children,
+      getSolidRenderOptions(router, manifest),
     )
 
     // Cancelling the transform's reader errors this writable, which makes
     // Solid's later writes reject and be ignored. Solid exposes no disposal
     // handle for unresolved renderer work; see router-core's STREAMING.md.
-    const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>()
+    let doctypeWritten = false
+    const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>({
+      // The doctype joins the shell so it stays one renderer record.
+      transform(chunk, controller) {
+        if (doctypeWritten) {
+          controller.enqueue(chunk)
+          return
+        }
+        doctypeWritten = true
+        const out = new Uint8Array(doctype.length + chunk.length)
+        out.set(doctype, 0)
+        out.set(chunk, doctype.length)
+        controller.enqueue(out)
+      },
+    })
     const rendererAbort = isbot(request.headers.get('User-Agent'))
       ? new AbortController()
       : undefined

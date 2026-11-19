@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
-import viteSolid from 'vite-plugin-solid'
+import viteSolid from '@solidjs/vite-plugin'
 
 const outDir = process.env.E2E_DIST_DIR ?? 'dist-vite-ssr'
 

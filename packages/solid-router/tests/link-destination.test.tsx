@@ -1,7 +1,6 @@
+import { createSignal, createStore, flush } from 'solid-js'
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import { afterEach, expect, test, vi } from 'vitest'
-import { createSignal } from 'solid-js'
-import { createStore } from 'solid-js/store'
 import {
   Link,
   Outlet,
@@ -13,7 +12,7 @@ import {
   defaultStringifySearch,
   useLinkProps,
 } from '../src'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 afterEach(cleanup)
 
@@ -94,16 +93,21 @@ test('rebuilds on a destination prop change, not a presentation prop change', as
   expect(link).toHaveAttribute('href', '/target/one?build=1#first')
 
   setId('two')
+  flush()
   expect(link).toHaveAttribute('href', '/target/two?build=1#first')
   setSearch({ build: 2 })
+  flush()
   expect(link).toHaveAttribute('href', '/target/two?build=2#first')
   setHash('second')
+  flush()
   expect(link).toHaveAttribute('href', '/target/two?build=2#second')
   setTo('/visible/$id')
+  flush()
   expect(link).toHaveAttribute('href', '/visible/two?build=2#second')
 
   const settled = builds()
   setCls('b')
+  flush()
   expect(link).toHaveClass('b')
   await go('three')
   expect(builds()).toBe(settled)
@@ -119,19 +123,30 @@ test('store-backed params and search follow in-place mutations at the next navig
   const link = await screen.findByTestId('link')
   expect(link).toHaveAttribute('href', '/target/one?build=1')
 
-  setParams('id', 'two')
-  setSearch('build', 2)
+  setParams((draft) => {
+    draft.id = 'two'
+  })
+  setSearch((draft) => {
+    draft.build = 2
+  })
+  flush()
   // As before: a store read during a build is not tracked.
   expect(link).toHaveAttribute('href', '/target/one?build=1')
   await go('two')
   expect(link).toHaveAttribute('href', '/target/two?build=2')
 
-  setParams('id', 'three')
+  setParams((draft) => {
+    draft.id = 'three'
+  })
+  flush()
   await go('three')
   expect(link).toHaveAttribute('href', '/target/three?build=2')
 
   // Clicks and preloads read the store as it is now.
-  setParams('id', 'four')
+  setParams((draft) => {
+    draft.id = 'four'
+  })
+  flush()
   fireEvent.click(link)
   await vi.waitFor(() =>
     expect(screen.getByTestId('link')).toHaveAttribute('data-status', 'active'),
@@ -154,7 +169,10 @@ test('does not re-read a store nested inside a plain object', async () => {
   ))
   const link = await screen.findByTestId('link')
   const href = link.getAttribute('href')
-  setFilters('page', 2)
+  setFilters((draft) => {
+    draft.page = 2
+  })
+  flush()
   await go('two')
   expect(link).toHaveAttribute('href', href!)
 })
@@ -174,7 +192,10 @@ test('state store values are not reused either', async () => {
   router.subscribe('onResolved', ({ toLocation }) => {
     seen.push((toLocation.state as any).label)
   })
-  setState('label', 'two')
+  setState((draft) => {
+    draft.label = 'two'
+  })
+  flush()
   fireEvent.click(link)
   await vi.waitFor(() => expect(seen).toEqual(['two']))
 })
@@ -219,11 +240,15 @@ test('masked destinations follow their inputs', async () => {
   const inheritedMask = screen.getByTestId('inherited-mask')
   expect(storeMask).toHaveAttribute('href', '/visible/one')
   expect(inheritedMask).toHaveAttribute('href', '/visible/one#a')
-  setParams('id', 'two')
+  setParams((draft) => {
+    draft.id = 'two'
+  })
+  flush()
   await go('two')
   expect(storeMask).toHaveAttribute('href', '/visible/two')
   expect(inheritedMask).toHaveAttribute('href', '/visible/two#a')
   setHash('b')
+  flush()
   expect(inheritedMask).toHaveAttribute('href', '/visible/two#b')
 })
 
@@ -245,20 +270,30 @@ test('switches a mounted Link between plain and store-backed inputs', async () =
   expect(link).toHaveAttribute('href', '/target/fixed?build=0')
 
   setLive(true)
+  flush()
   expect(link).toHaveAttribute('href', '/target/one?build=1')
-  setParams('id', 'two')
-  setSearch('build', 2)
+  setParams((draft) => {
+    draft.id = 'two'
+  })
+  setSearch((draft) => {
+    draft.build = 2
+  })
+  flush()
   await go('two')
   expect(link).toHaveAttribute('href', '/target/two?build=2')
 
   setLive(false)
+  flush()
   expect(link).toHaveAttribute('href', '/target/fixed?build=0')
   const plain = builds()
   await go('three')
   expect(builds()).toBe(plain)
 
   setLive(true)
-  setParams('id', 'three')
+  setParams((draft) => {
+    draft.id = 'three'
+  })
+  flush()
   await go('four')
   expect(link).toHaveAttribute('href', '/target/three?build=2')
 })
@@ -354,6 +389,7 @@ test('calls a user ref once per element across state changes', async () => {
   ))
   const link = await screen.findByTestId('link')
   setId('two')
+  flush()
   expect(link).toHaveAttribute('href', '/target/two')
   await go('two')
   fireEvent.click(link)

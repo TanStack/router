@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/solid-router'
-import type * as Solid from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
-export function NotFound({ children }: { children?: Solid.JSX.Element }) {
+export function NotFound({ children }: { children?: JSX.Element }) {
   return (
     <div class="space-y-2 p-2">
       <div class="text-gray-600 dark:text-gray-400">

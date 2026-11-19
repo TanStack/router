@@ -1,4 +1,3 @@
-import { isServer } from '@tanstack/router-core/isServer'
 import * as Solid from 'solid-js'
 import { replaceEqualDeep } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
@@ -30,23 +29,6 @@ export function useRouterState<
   })
   const router = opts?.router || contextRouter
 
-  // During SSR we render exactly once and do not need reactivity.
-  // Avoid subscribing to the store on the server since the server store
-  // implementation does not provide subscribe() semantics.
-  // The expression must stay inlined in the `if` so bundlers fold the
-  // browser-build constant `isServer = false` and drop this server block.
-  if (isServer ?? router.isServer) {
-    const state = router.stores.__store.get() as RouterState<
-      TRouter['routeTree']
-    >
-    const selected = (
-      opts?.select ? opts.select(state) : state
-    ) as UseRouterStateResult<TRouter, TSelected>
-    return (() => selected) as Accessor<
-      UseRouterStateResult<TRouter, TSelected>
-    >
-  }
-
   if (!opts?.select) {
     return (() => router.stores.__store.get()) as Accessor<
       UseRouterStateResult<TRouter, TSelected>
@@ -55,9 +37,14 @@ export function useRouterState<
 
   const select = opts.select
 
-  return Solid.createMemo((prev: TSelected | undefined) => {
-    const res = select(router.stores.__store.get())
-    if (prev === undefined) return res
-    return replaceEqualDeep(prev, res)
-  }) as Accessor<UseRouterStateResult<TRouter, TSelected>>
+  return Solid.createMemo(
+    (prev: TSelected | undefined) => {
+      const res = select(router.stores.__store.get())
+      if (prev === undefined) return res
+      return replaceEqualDeep(prev, res)
+    },
+    { transparent: true } as Solid.MemoOptions<TSelected> & {
+      ssrSource?: 'server' | 'hybrid'
+    },
+  ) as Accessor<UseRouterStateResult<TRouter, TSelected>>
 }

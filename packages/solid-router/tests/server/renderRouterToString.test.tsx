@@ -1,4 +1,4 @@
-import { Suspense } from 'solid-js'
+import { Loading } from 'solid-js'
 import { expect, it } from 'vitest'
 import { Await, createRootRoute, createRoute, createRouter } from '../../src'
 import {
@@ -7,7 +7,7 @@ import {
   renderRouterToString,
 } from '../../src/ssr/server'
 
-it('renders the Suspense fallback while finishing deferred hydration data', async () => {
+it('renders the Loading fallback while finishing deferred hydration data', async () => {
   let resolveDeferred!: (value: string) => void
   const deferred = new Promise<string>((resolve) => {
     resolveDeferred = resolve
@@ -21,11 +21,11 @@ it('renders the Suspense fallback while finishing deferred hydration data', asyn
       const data = indexRoute.useLoaderData()
       queueMicrotask(() => resolveDeferred('deferred value'))
       return (
-        <Suspense fallback={<span data-testid="pending">pending</span>}>
+        <Loading fallback={<span data-testid="pending">pending</span>}>
           <Await promise={data().deferred}>
             {(value) => <span data-testid="resolved">{String(value)}</span>}
           </Await>
-        </Suspense>
+        </Loading>
       )
     },
   })

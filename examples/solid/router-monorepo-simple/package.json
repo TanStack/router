@@ -8,15 +8,16 @@
     "dev": "pnpm router build && pnpm post-feature build && pnpm app dev"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.170.43",
-    "@tanstack/solid-router-devtools": "^1.167.3",
+    "@solidjs/web": "^2.0.1",
+    "@tanstack/solid-router": "^2.0.0-rc.11",
+    "@tanstack/solid-router-devtools": "^2.0.0-rc.9",
     "@tanstack/router-plugin": "^1.169.0",
-    "solid-js": "^1.9.10",
+    "solid-js": "^2.0.1",
     "redaxios": "^0.5.1"
   },
   "devDependencies": {
+    "@solidjs/vite-plugin": "^3.0.1",
     "@types/node": "^22.7.4",
-    "vite-plugin-solid": "^2.11.11",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",

@@ -1,7 +1,7 @@
 import url from 'node:url'
 import path from 'node:path'
 import { defineConfig } from 'vite'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import tailwindcss from '@tailwindcss/vite'
 

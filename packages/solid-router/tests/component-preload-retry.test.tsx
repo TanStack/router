@@ -1,4 +1,4 @@
-import { ErrorBoundary, Suspense } from 'solid-js'
+import { Errored, Loading } from 'solid-js'
 import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import { createControlledPromise } from '@tanstack/router-core'
@@ -43,6 +43,23 @@ test('a component loads when rendered before preload', async () => {
 
   expect(await screen.findByText('Page content')).toBeInTheDocument()
   expect(importer).toHaveBeenCalledTimes(1)
+})
+
+test('a failed preload is retried at render', async () => {
+  const importer = vi
+    .fn<() => Promise<{ default: () => any }>>()
+    .mockRejectedValueOnce(new Error('component download failed'))
+    .mockResolvedValue({ default: () => <div>Page content</div> })
+  const Page = lazyRouteComponent(importer)
+
+  // The preload failure is swallowed; the render-time attempt re-imports.
+  await Page.preload?.()
+  expect(importer).toHaveBeenCalledTimes(1)
+
+  render(() => <Page />)
+
+  expect(await screen.findByText('Page content')).toBeInTheDocument()
+  expect(importer).toHaveBeenCalledTimes(2)
 })
 
 test('a resolved client component preload is reused', async () => {
@@ -153,6 +170,9 @@ test('a failed component download is retried from the route error UI', async () 
   onTestFinished(() => retryImport.resolve({ default: PageContent }))
   const importer = vi
     .fn<() => Promise<{ default: typeof PageContent }>>()
+    // Fail the route-load preload AND the render-time retry so the error
+    // reaches the route error boundary.
+    .mockRejectedValueOnce(new Error('component download failed'))
     .mockRejectedValueOnce(new Error('component download failed'))
     .mockImplementation(() => retryImport)
   const Page = lazyRouteComponent(importer)
@@ -188,12 +208,12 @@ test('a failed component download is retried from the route error UI', async () 
 
   fireEvent.click(await screen.findByRole('button', { name: 'Retry' }))
 
-  await vi.waitFor(() => expect(importer).toHaveBeenCalledTimes(2))
+  await vi.waitFor(() => expect(importer).toHaveBeenCalledTimes(3))
   expect(screen.queryByText('Page content')).not.toBeInTheDocument()
   retryImport.resolve({ default: PageContent })
 
   expect(await screen.findByText('Page content')).toBeInTheDocument()
-  expect(importer).toHaveBeenCalledTimes(2)
+  expect(importer).toHaveBeenCalledTimes(3)
   expect(Page.preload).toBeUndefined()
 })
 
@@ -209,7 +229,7 @@ test('a component first loaded during render recovers after an awaited preload r
   let retry: Promise<void> | undefined
 
   render(() => (
-    <ErrorBoundary
+    <Errored
       fallback={(error, reset) => (
         <button
           type="button"
@@ -218,14 +238,14 @@ test('a component first loaded during render recovers after an awaited preload r
             void retry?.then(reset)
           }}
         >
-          Retry {error.message}
+          Retry {(error() as Error).message}
         </button>
       )}
     >
-      <Suspense fallback={<span>Loading component</span>}>
+      <Loading fallback={<span>Loading component</span>}>
         <Page />
-      </Suspense>
-    </ErrorBoundary>
+      </Loading>
+    </Errored>
   ))
 
   const button = await screen.findByRole('button', {

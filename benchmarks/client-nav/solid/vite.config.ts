@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 import { cpuSimulationExecArgv } from '../../cpu-simulation'
 
@@ -16,7 +16,7 @@ export default defineConfig({
   plugins: [
     !!(process.env.VITEST && process.env.WITH_INSTRUMENTATION) &&
       codspeedPlugin(),
-    solid({ hot: false, dev: false }),
+    solid({ refresh: false, dev: false }),
   ],
   build: {
     outDir: './solid/dist',

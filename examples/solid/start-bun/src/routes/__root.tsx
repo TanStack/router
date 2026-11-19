@@ -2,11 +2,10 @@ import { TanStackDevtools } from '@tanstack/solid-devtools'
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/solid-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/solid-router-devtools'
 
-import { HydrationScript } from 'solid-js/web'
 import Header from '../components/Header'
 
 import appCss from '../styles.css?url'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -37,10 +36,9 @@ function RootDocument({ children }: { children: JSX.Element }) {
   return (
     <html lang="en">
       <head>
-        <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <Header />
         {children}
         <TanStackDevtools

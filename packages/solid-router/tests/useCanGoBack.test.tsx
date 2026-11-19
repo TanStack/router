@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
+import { createEffect } from 'solid-js'
 import {
   Link,
   Outlet,
@@ -28,7 +29,12 @@ describe('useCanGoBack', () => {
       const location = useLocation()
       const canGoBack = useCanGoBack()
 
-      expect(canGoBack()).toBe(location().pathname === '/' ? false : true)
+      createEffect(
+        () => [canGoBack(), location().pathname] as const,
+        ([goBack, pathname]) => {
+          expect(goBack).toBe(pathname === '/' ? false : true)
+        },
+      )
 
       return (
         <>

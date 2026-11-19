@@ -103,7 +103,17 @@
         "default": "./dist/cjs/esbuild.cjs"
       }
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./context": {
+      "import": {
+        "types": "./dist/esm/context.d.ts",
+        "default": "./dist/esm/context.js"
+      },
+      "require": {
+        "types": "./dist/cjs/context.d.cts",
+        "default": "./dist/cjs/context.cjs"
+      }
+    }
   },
   "sideEffects": false,
   "files": [

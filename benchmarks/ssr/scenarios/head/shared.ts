@@ -46,7 +46,10 @@ export async function assertHeadSanity(handler: StartRequestHandler) {
     new Request(`${origin}/h/${a}/${b}/${c}`, requestInit),
   )
   const body = await response.text()
-  const dedupedMetaCount = body.split(dedupedMetaName).length - 1
+  // Count meta elements carrying the shared name, not raw substring hits:
+  // Solid's head registry also writes the identity into a data-dh attribute
+  // (data-dh="meta:name:<name>") on the same element.
+  const dedupedMetaCount = body.split(`name="${dedupedMetaName}"`).length - 1
 
   expect(response.status).toBe(200)
   expect(body).toContain(`c-${c}-9`)

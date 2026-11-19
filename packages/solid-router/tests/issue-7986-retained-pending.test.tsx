@@ -417,7 +417,13 @@ test('a success hidden below an error boundary retries through pending UI', asyn
   const navigation = track(router.navigate({ to: '/parent/child' }))
   await childReloadStarted
 
-  expect(await screen.findByTestId('pending')).toBeVisible()
+  // Query fresh on each attempt: the retried subtree renders the pending
+  // fallback from two nested slots in quick succession (the Show fallback,
+  // then the Loading boundary once the child suspends), so a cached element
+  // handle can go stale across the swap.
+  await waitFor(() => {
+    expect(screen.getByTestId('pending')).toBeVisible()
+  })
   expect(screen.queryByTestId('error')).not.toBeInTheDocument()
 
   childReload.resolve()

@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import codspeedPlugin from '@codspeed/vitest-plugin'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 import { memoryConfig } from '../../../../runtime'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
@@ -14,7 +14,7 @@ export default defineConfig({
   plugins: [
     !!(process.env.VITEST && process.env.WITH_INSTRUMENTATION) &&
       codspeedPlugin(),
-    solid({ hot: false, dev: false }),
+    solid({ refresh: false, dev: false }),
   ],
   build: {
     outDir: './dist',

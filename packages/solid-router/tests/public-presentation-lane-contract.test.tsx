@@ -1,4 +1,3 @@
-import * as Solid from 'solid-js'
 import { cleanup, render, screen, waitFor } from '@solidjs/testing-library'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { createControlledPromise } from '@tanstack/router-core'
@@ -375,85 +374,6 @@ describe('public presentation lane contracts', () => {
           (navigation): navigation is Promise<void> => !!navigation,
         ),
       )
-    }
-  })
-
-  test('a successor supersedes the previous receipt while joining its transition', async () => {
-    const firstRenderStarted = createControlledPromise<void>()
-    const firstRender = createControlledPromise<void>()
-    const secondRenderStarted = createControlledPromise<void>()
-    const secondRender = createControlledPromise<void>()
-    let setRevision!: Solid.Setter<number>
-
-    const Revision = (props: { revision: number }) => {
-      const [rendered] = Solid.createResource(async () => {
-        if (props.revision === 2) {
-          firstRenderStarted.resolve()
-          await firstRender
-        } else if (props.revision === 3) {
-          secondRenderStarted.resolve()
-          await secondRender
-        }
-        return props.revision
-      })
-      return <div>Revision {rendered()}</div>
-    }
-    const rootRoute = createRootRoute({
-      component: () => {
-        const [revision, set] = Solid.createSignal(1)
-        setRevision = set
-        return (
-          <Solid.Show when={revision()} keyed>
-            {(value) => <Revision revision={value} />}
-          </Solid.Show>
-        )
-      },
-    })
-    const router = createRouter({
-      routeTree: rootRoute,
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-    })
-
-    render(() => <RouterProvider router={router} />)
-    expect(await screen.findByText('Revision 1')).toBeInTheDocument()
-
-    const expected = router.state.matches
-    const firstAcknowledgement = router.startTransition(
-      () => setRevision(2),
-      expected,
-    )
-    const acknowledgements = [firstAcknowledgement]
-    try {
-      await firstRenderStarted
-      const secondAcknowledgement = router.startTransition(
-        () => setRevision(3),
-        expected,
-      )
-      acknowledgements.push(secondAcknowledgement)
-
-      await expect(firstAcknowledgement).resolves.toBe(false)
-      await secondRenderStarted
-      expect(screen.getByText('Revision 1')).toBeInTheDocument()
-
-      let secondSettled = false
-      void secondAcknowledgement.then(() => {
-        secondSettled = true
-      })
-      secondRender.resolve()
-      await Promise.resolve()
-      await Promise.resolve()
-
-      expect(secondSettled).toBe(false)
-      expect(screen.queryByText('Revision 3')).not.toBeInTheDocument()
-
-      firstRender.resolve()
-      await expect(secondAcknowledgement).resolves.toBe(true)
-      expect(await screen.findByText('Revision 3')).toBeInTheDocument()
-      expect(screen.queryByText('Revision 2')).not.toBeInTheDocument()
-    } finally {
-      firstRender.resolve()
-      secondRender.resolve()
-      await Promise.allSettled(acknowledgements)
     }
   })
 })

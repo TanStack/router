@@ -1,5 +1,5 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
-import { Suspense } from 'solid-js'
+import { Loading } from 'solid-js'
 import { makeBigPayload, sleep0 } from '../../../shared-data'
 
 export const Route = createFileRoute('/stream/$id')({
@@ -18,11 +18,11 @@ function StreamComponent() {
     <>
       <p>{data().fast.label}</p>
       <p>loading-small</p>
-      <Suspense fallback={null}>
+      <Loading fallback={null}>
         <Await promise={data().slowSmall}>{(d) => <p>{d.label}</p>}</Await>
-      </Suspense>
+      </Loading>
       <p>loading-big</p>
-      <Suspense fallback={null}>
+      <Loading fallback={null}>
         <Await promise={data().slowBig}>
           {(d) => (
             <section>
@@ -33,7 +33,7 @@ function StreamComponent() {
             </section>
           )}
         </Await>
-      </Suspense>
+      </Loading>
     </>
   )
 }

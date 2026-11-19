@@ -84,8 +84,19 @@ export function useMatch<
     return nearestMatch?.[1 /* match */]()
   }
 
-  Solid.createEffect(() => {
-    if (match() !== undefined) {
+  // The returned accessor can be read after the owning scope has been
+  // disposed (e.g. async work started by a route component that resolves
+  // after navigating away). Once disposed, keep returning the last known
+  // value instead of dropping to undefined for the now-missing match.
+  let isDisposed = false
+  if (Solid.getOwner()) {
+    Solid.onCleanup(() => {
+      isDisposed = true
+    })
+  }
+
+  Solid.createEffect(match, (selectedMatch) => {
+    if (selectedMatch !== undefined) {
       return
     }
 
@@ -104,6 +115,10 @@ export function useMatch<
     const selectedMatch = match()
 
     if (selectedMatch === undefined) {
+      if (prev !== undefined && isDisposed) {
+        return prev
+      }
+
       return undefined
     }
 

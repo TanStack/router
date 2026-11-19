@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/solid-query'
 import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
-import { For, Suspense } from 'solid-js'
+import { For, Loading } from 'solid-js'
 import { postsQueryOptions } from '~/utils/posts'
 
 export const Route = createFileRoute('/posts')({
@@ -17,7 +17,7 @@ function PostsComponent() {
   return (
     <div class="p-2 flex gap-2">
       <ul class="list-disc pl-4">
-        <Suspense fallback={<div>Loading posts...</div>}>
+        <Loading fallback={<div>Loading posts...</div>}>
           <For
             each={[
               ...(postsQuery.data || []),
@@ -39,7 +39,7 @@ function PostsComponent() {
               </li>
             )}
           </For>
-        </Suspense>
+        </Loading>
       </ul>
       <hr />
       <Outlet />

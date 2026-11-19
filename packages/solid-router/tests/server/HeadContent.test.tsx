@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { renderToStringAsync } from 'solid-js/web'
 import {
   HeadContent,
   RouterProvider,
@@ -7,6 +6,7 @@ import {
   createRootRoute,
   createRouter,
 } from '../../src'
+import { renderToStringAsync } from './renderToStringAsync'
 import type { Manifest } from '@tanstack/router-core'
 
 async function renderHeadContent(manifest: Omit<Manifest, 'routes'> = {}) {

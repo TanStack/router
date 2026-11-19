@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/solid-router'
-import { createSignal, onMount } from 'solid-js'
+import { createSignal, onSettled } from 'solid-js'
 
 export const Route = createFileRoute('/error-normalization')({
   validateSearch: (search) => ({
@@ -11,7 +11,9 @@ export const Route = createFileRoute('/error-normalization')({
   },
   errorComponent: ({ error }) => {
     const [hydrated, setHydrated] = createSignal(false)
-    onMount(() => setHydrated(true))
+    onSettled(() => {
+      setHydrated(true)
+    })
 
     return (
       <section
@@ -19,7 +21,7 @@ export const Route = createFileRoute('/error-normalization')({
         data-name={error.name}
         data-message={error.message}
         data-cause={String(error.cause)}
-        data-hydrated={hydrated()}
+        data-hydrated={String(hydrated())}
       >
         <Link to="/error-normalization" search={{ kind: 'null' }}>
           Throw null

@@ -1,5 +1,5 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
-import { Suspense } from 'solid-js'
+import { Loading } from 'solid-js'
 import {
   deferredDataDelay,
   deferredErrorMessage,
@@ -27,14 +27,14 @@ function DeferredRejection() {
   return (
     <div style={{ padding: '20px' }}>
       <h2>Deferred Rejection Test</h2>
-      <Suspense
+      <Loading
         fallback={<div data-testid="deferred-loading">Loading deferred...</div>}
       >
         <Await
           promise={data().deferredData}
           children={(value) => <div data-testid="deferred-data">{value}</div>}
         />
-      </Suspense>
+      </Loading>
     </div>
   )
 }

@@ -1,8 +1,9 @@
 import { useRouter, useRouterState } from '@tanstack/solid-router'
 import { TanStackRouterDevtoolsPanelCore } from '@tanstack/router-devtools-core'
-import { createEffect, createSignal, onCleanup, onMount } from 'solid-js'
+import { createEffect, createSignal, untrack } from 'solid-js'
 import type { AnyRouter } from '@tanstack/solid-router'
-import type { Component, JSX } from 'solid-js'
+import type { Component } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 export interface TanStackRouterDevtoolsPanelOptions {
   /**
@@ -38,50 +39,59 @@ export interface TanStackRouterDevtoolsPanelOptions {
 export const TanStackRouterDevtoolsPanel: Component<
   TanStackRouterDevtoolsPanelOptions
 > = (props): JSX.Element | null => {
-  const activeRouter = props.router ?? useRouter()
+  const activeRouter = untrack(() => props.router) ?? useRouter()
   const activeRouterState = useRouterState({ router: activeRouter })
 
-  const usedProps = {
-    ...props,
-    router: activeRouter,
-    routerState: activeRouterState,
-  }
+  const options = () => ({
+    className: props.className,
+    style: props.style,
+    shadowDOMTarget: props.shadowDOMTarget,
+  })
 
-  let devToolRef: HTMLDivElement | undefined
+  const [devToolRef, setDevToolRef] = createSignal<HTMLDivElement>()
   const [devtools] = createSignal(
-    new TanStackRouterDevtoolsPanelCore(usedProps),
+    new TanStackRouterDevtoolsPanelCore({
+      ...untrack(options),
+      isOpen: untrack(() => props.isOpen),
+      setIsOpen: untrack(() => props.setIsOpen),
+      handleDragStart: untrack(() => props.handleDragStart),
+      router: activeRouter,
+      routerState: untrack(activeRouterState),
+    }),
   )
 
-  // Update devtools when props change
-  createEffect(() => {
-    devtools().setRouter(usedProps.router)
+  createEffect(devtools, (d) => {
+    d.setRouter(activeRouter)
   })
 
-  createEffect(() => {
-    devtools().setRouterState(usedProps.routerState)
-  })
+  createEffect(
+    () => ({ d: devtools(), state: activeRouterState() }),
+    ({ d, state }) => {
+      d.setRouterState(state)
+    },
+  )
 
-  createEffect(() => {
-    devtools().setOptions({
-      className: usedProps.className,
-      style: usedProps.style,
-      shadowDOMTarget: usedProps.shadowDOMTarget,
-    })
-  })
+  createEffect(
+    () => ({ d: devtools(), options: options() }),
+    ({ d, options }) => {
+      d.setOptions(options)
+    },
+  )
 
-  onMount(() => {
-    if (devToolRef) {
-      devtools().mount(devToolRef)
-
-      onCleanup(() => {
-        devtools().unmount()
-      })
-    }
-  })
+  createEffect(
+    () => ({ d: devtools(), el: devToolRef() }),
+    ({ d, el }) => {
+      if (el) {
+        d.mount(el)
+        return () => d.unmount()
+      }
+      return undefined
+    },
+  )
 
   return (
     <>
-      <div ref={devToolRef} />
+      <div ref={setDevToolRef} />
     </>
   )
 }

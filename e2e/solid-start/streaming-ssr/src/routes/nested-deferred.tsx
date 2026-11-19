@@ -1,6 +1,6 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
-import { Suspense } from 'solid-js'
+import { Loading } from 'solid-js'
 import {
   delay,
   makeDeferred,
@@ -42,7 +42,7 @@ function Level2Content(props: {
 }) {
   return (
     <div style={{ 'margin-left': '20px', 'padding-left': '10px' }}>
-      <Suspense
+      <Loading
         fallback={<div data-testid="level3-loading">Loading level 3...</div>}
       >
         <Await
@@ -53,7 +53,7 @@ function Level2Content(props: {
             </div>
           )}
         />
-      </Suspense>
+      </Loading>
     </div>
   )
 }
@@ -64,7 +64,7 @@ function Level1Content(props: {
 }) {
   return (
     <div style={{ 'margin-left': '20px', 'padding-left': '10px' }}>
-      <Suspense
+      <Loading
         fallback={<div data-testid="level2-loading">Loading level 2...</div>}
       >
         <Await
@@ -76,7 +76,7 @@ function Level1Content(props: {
             </div>
           )}
         />
-      </Suspense>
+      </Loading>
     </div>
   )
 }
@@ -90,16 +90,16 @@ function NestedDeferred() {
       <p>
         Tests multiple nested deferred promises resolving at different times.
       </p>
-      <Suspense
+      <Loading
         fallback={<div data-testid="plain-loading">Loading plain...</div>}
       >
         <Await
           promise={data().plainDeferred}
           children={(value) => <div data-testid="plain-deferred">{value}</div>}
         />
-      </Suspense>
+      </Loading>
       <div style={{ 'margin-top': '20px' }}>
-        <Suspense
+        <Loading
           fallback={<div data-testid="level1-loading">Loading level 1...</div>}
         >
           <Await
@@ -111,7 +111,7 @@ function NestedDeferred() {
               </div>
             )}
           />
-        </Suspense>
+        </Loading>
       </div>
     </div>
   )

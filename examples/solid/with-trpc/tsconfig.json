@@ -3,7 +3,7 @@
     "strict": true,
     "esModuleInterop": true,
     "jsx": "preserve",
-    "jsxImportSource": "solid-js",
+    "jsxImportSource": "@solidjs/web",
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "bundler",

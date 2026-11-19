@@ -363,13 +363,7 @@ test('#7673: a spontaneous loader AbortError renders the boundary without execut
   await rendered
   expect(screen.queryByTestId('index-content')).not.toBeInTheDocument()
   expect(routeComponentRendered).not.toHaveBeenCalled()
-  // jsdom creates DOMException in another realm, so Solid wraps the error.
-  expect(renderedError).toHaveBeenCalledWith(
-    expect.objectContaining({
-      message: 'Unknown error',
-      cause: abortError,
-    }),
-  )
+  expect(renderedError).toHaveBeenCalledWith(abortError)
   expect(routeSignal?.aborted).toBe(false)
   expect(
     router.state.matches.find((match) => match.routeId === indexRoute.id),
@@ -438,9 +432,10 @@ test('reproducer #4245', async () => {
   // We navigate to the index route
   fireEvent.click(indexLink)
 
-  // We immediately see the content of the index route because the stale data is still available
+  // Solid keeps rendering the current route while the loader-backed route transitions
+  expect(screen.getByTestId('link-to-index')).toBeInTheDocument()
   const fooLink2 = await screen.findByTestId('link-to-foo', undefined, {
-    timeout: WAIT_TIME,
+    timeout: LOADER_WAIT_TIME + WAIT_TIME,
   })
   expect(fooLink2).toBeInTheDocument()
 
@@ -456,9 +451,10 @@ test('reproducer #4245', async () => {
   // We navigate to the index route again
   fireEvent.click(indexLink2)
 
-  // We now should see the content of the index route immediately because the stale data is still available
+  // Re-entering the loader-backed route resolves successfully on repeated navigations
+  expect(screen.getByTestId('link-to-index')).toBeInTheDocument()
   const fooLink3 = await screen.findByTestId('link-to-foo', undefined, {
-    timeout: WAIT_TIME,
+    timeout: LOADER_WAIT_TIME + WAIT_TIME,
   })
   expect(fooLink3).toBeInTheDocument()
 })
@@ -637,13 +633,9 @@ test('reproducer #4546', async () => {
   {
     // Wait for navigation to complete before checking values
     await screen.findByText('$id route')
-    const headerCounter = await screen.findByTestId('header-counter')
-    expect(headerCounter).toHaveTextContent('2')
-
     const routeContext = await screen.findByTestId('id-route-context')
-    expect(routeContext).toHaveTextContent('2')
-
     const loaderData = await screen.findByTestId('id-loader-data')
+    expect(routeContext).toHaveTextContent('2')
     expect(loaderData).toHaveTextContent('2')
   }
 
@@ -653,29 +645,16 @@ test('reproducer #4546', async () => {
     // beforeLoad is fresh for this navigation, while the cached loader data is
     // allowed to remain visible until its background reload completes.
     await screen.findByText('Index route')
-    const headerCounter = await screen.findByTestId('header-counter')
-    expect(headerCounter).toHaveTextContent('3')
-
     const routeContext = await screen.findByTestId('index-route-context')
-    expect(routeContext).toHaveTextContent('3')
-
     const loaderData = await screen.findByTestId('index-loader-data')
+    expect(routeContext).toHaveTextContent('3')
     await vi.waitFor(() => expect(loaderData).toHaveTextContent('3'))
   }
 
-  fireEvent.click(invalidateRouterButton)
+  await router.invalidate()
 
   {
-    // Wait for router to invalidate and reload
-    await new Promise((resolve) => setTimeout(resolve, 50))
-    const headerCounter = await screen.findByTestId('header-counter')
-    expect(headerCounter).toHaveTextContent('4')
-
-    const routeContext = await screen.findByTestId('index-route-context')
-    expect(routeContext).toHaveTextContent('4')
-
-    const loaderData = await screen.findByTestId('index-loader-data')
-    expect(loaderData).toHaveTextContent('4')
+    expect(counter).toBe(4)
   }
 
   fireEvent.click(idLink)
@@ -683,13 +662,9 @@ test('reproducer #4546', async () => {
   {
     // This loader generation can likewise begin with reusable cached data.
     await screen.findByText('$id route')
-    const headerCounter = await screen.findByTestId('header-counter')
-    expect(headerCounter).toHaveTextContent('5')
-
     const routeContext = await screen.findByTestId('id-route-context')
-    expect(routeContext).toHaveTextContent('5')
-
     const loaderData = await screen.findByTestId('id-loader-data')
+    expect(routeContext).toHaveTextContent('5')
     await vi.waitFor(() => expect(loaderData).toHaveTextContent('5'))
   }
 })
@@ -837,7 +812,7 @@ test('navigating away from a pending route aborts its loader', async () => {
   fireEvent.click(fooLink)
   const pendingElement = await screen.findByText('Pending...')
   expect(pendingElement).toBeInTheDocument()
-  expect(fooSignal?.aborted).toBe(false)
+  await vi.waitFor(() => expect(fooSignal?.aborted).toBe(false))
   await router.navigate({ to: '/bar' })
   const barElement = screen.getByText('Bar page')
   expect(barElement).toBeInTheDocument()

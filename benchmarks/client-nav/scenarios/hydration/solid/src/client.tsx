@@ -1,5 +1,5 @@
-import { sharedConfig } from 'solid-js'
-import { hydrate as hydrateDOM, isServer as solidIsServer } from 'solid-js/web'
+import { isHydrating } from 'solid-js'
+import { hydrate as hydrateDOM, isServer as solidIsServer } from '@solidjs/web'
 import { RouterProvider } from '@tanstack/solid-router'
 import { hydrate } from '@tanstack/router-core/ssr/client'
 import { isServer } from '@tanstack/router-core/isServer'
@@ -25,7 +25,7 @@ export async function start(countUpdates = false) {
     throw new Error('Missing SSR hydration payload')
   }
   const bootstrap = (window as HydrationWindow)._$HY
-  if (!bootstrap || bootstrap.done || sharedConfig.context) {
+  if (!bootstrap || bootstrap.done || isHydrating()) {
     throw new Error('Missing or already consumed Solid hydration bootstrap')
   }
   diagnostics = createDiagnostics(countUpdates)
@@ -44,12 +44,12 @@ export function ready() {
   if (
     !diagnostics.mounted ||
     !diagnostics.rendered ||
-    sharedConfig.context ||
+    isHydrating() ||
     router?.stores.status.get() === 'pending'
   ) {
     return false
   }
-  // Each Link's onMount updates its hydration signal. Solid updates attributes
+  // Each Link's hydration effect updates its hydration signal. Solid updates attributes
   // through fine-grained effects, without rerendering the route components.
   for (let index = 0; index < hashLinkCount; index++) {
     const anchor = document.getElementById(`hash-${index}`)
@@ -70,7 +70,7 @@ export function snapshot() {
       initialHashStates: [...diagnostics.initialHashStates],
       hashStates: [...diagnostics.hashStates],
     },
-    hydrating: !!sharedConfig.context,
+    hydrating: isHydrating(),
     location: router?.stores.location.get().href,
     resolvedLocation: router?.stores.resolvedLocation.get()?.href,
     matches: router?.stores.matches.get().map((match) => ({

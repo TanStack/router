@@ -93,7 +93,7 @@ function SetTimeZoneCookie() {
 
 ```tsx
 import { ClientOnly } from '@tanstack/solid-router'
-import { NoHydration } from 'solid-js/web'
+import { NoHydration } from '@solidjs/web'
 
 <ClientOnly fallback={<span>—</span>}>
   <RelativeTime ts={someTs} />

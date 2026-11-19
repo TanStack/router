@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/solid-router'
-import { Suspense, createResource } from 'solid-js'
+import { createMemo, Loading } from 'solid-js'
 import { z } from 'zod'
 
 export const Route = createFileRoute('/transition/count/create-resource')({
@@ -29,20 +29,18 @@ function Home() {
 function Result() {
   const searchQuery = Route.useSearch()
 
-  const [doubleQuery] = createResource(
-    () => searchQuery().n,
-    async (n) => {
-      await new Promise((r) => setTimeout(r, 1000))
-      return n * 2
-    },
-  )
+  const doubleQuery = createMemo(async () => {
+    const n = searchQuery().n
+    await new Promise((r) => setTimeout(r, 1000))
+    return n * 2
+  })
 
   return (
     <div class="mt-2">
-      <Suspense fallback="Loading...">
-        <div data-testid="n-value">n: {searchQuery().n}</div>
-        <div data-testid="double-value">double: {doubleQuery()}</div>
-      </Suspense>
+      <Loading fallback="Loading...">
+        <div data-testid="n-value">n: {String(searchQuery().n)}</div>
+        <div data-testid="double-value">double: {String(doubleQuery())}</div>
+      </Loading>
     </div>
   )
 }

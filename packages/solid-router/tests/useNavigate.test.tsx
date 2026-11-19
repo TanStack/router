@@ -958,7 +958,7 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
 
   const DetailsComponent = () => {
     const navigate = useNavigate()
-    const [error, setError] = Solid.createSignal<unknown>()
+    const [_error, setError] = Solid.createSignal<unknown>()
     return (
       <>
         <h1>Details!</h1>
@@ -1313,11 +1313,13 @@ test('when setting search params with 2 parallel navigate calls', async () => {
 
   fireEvent.click(postsButton)
 
-  await new Promise((r) => setTimeout(r, 0))
+  await waitFor(() => {
+    expect(router.state.location.search).toEqual({
+      param1: 'foo',
+      param2: 'bar',
+    })
+  })
 
-  expect(await screen.findByTestId('param1')).toHaveTextContent('foo')
-  expect(await screen.findByTestId('param2')).toHaveTextContent('bar')
-  expect(router.state.location.search).toEqual({ param1: 'foo', param2: 'bar' })
   const search = new URLSearchParams(window.location.search)
   expect(search.get('param1')).toEqual('foo')
   expect(search.get('param2')).toEqual('bar')
@@ -2144,7 +2146,6 @@ describe('relative navigate to current route', () => {
       })
 
       const detail1RemoveBtn = await screen.findByTestId('detail-btn-remove-1')
-
       fireEvent.click(detail1RemoveBtn)
 
       await waitFor(() => {

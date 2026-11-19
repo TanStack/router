@@ -1,10 +1,10 @@
 import { resolve } from 'node:path'
-import { Suspense, lazy } from 'solid-js'
+import { Loading, lazy } from 'solid-js'
 import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import { cleanup, render, screen } from '@solidjs/testing-library'
 import { createControlledPromise } from '@tanstack/router-core'
 import { build } from 'vite'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 import {
   CatchBoundary,
   Outlet,
@@ -51,7 +51,7 @@ test('keeps the Outlet diagnostic context after a route render throws', async ()
   )
 })
 
-test('keeps a lazy error fallback inside its own Suspense boundary', async () => {
+test('keeps a lazy error fallback inside its own Loading boundary', async () => {
   const renderError = new Error('Render failed')
   const onCatch = vi.fn()
   const ErrorFallback = (props: ErrorComponentProps) => (
@@ -67,7 +67,7 @@ test('keeps a lazy error fallback inside its own Suspense boundary', async () =>
   }
 
   render(() => (
-    <Suspense fallback={<span>Outer pending</span>}>
+    <Loading fallback={<span>Outer pending</span>}>
       <span>Ready shell</span>
       <CatchBoundary
         getResetKey={() => 0}
@@ -76,7 +76,7 @@ test('keeps a lazy error fallback inside its own Suspense boundary', async () =>
       >
         <Broken />
       </CatchBoundary>
-    </Suspense>
+    </Loading>
   ))
 
   expect(importer).toHaveBeenCalledOnce()
@@ -101,7 +101,7 @@ test('removes the diagnostic context from the production bundle', async () => {
   const result = await build({
     configFile: false,
     logLevel: 'silent',
-    plugins: [solid({ dev: false, hot: false })],
+    plugins: [solid({ dev: false, refresh: false })],
     define: { 'process.env.NODE_ENV': JSON.stringify('production') },
     build: {
       write: false,
@@ -110,7 +110,7 @@ test('removes the diagnostic context from the production bundle', async () => {
         entry: resolve(import.meta.dirname, '../src/CatchBoundary.tsx'),
         formats: ['es'],
       },
-      rollupOptions: { external: ['solid-js', 'solid-js/web'] },
+      rollupOptions: { external: ['solid-js', '@solidjs/web'] },
     },
   })
   const outputs = Array.isArray(result) ? result : [result]
@@ -126,6 +126,6 @@ test('removes the diagnostic context from the production bundle', async () => {
     .join('\n')
 
   expect(code).toContain('CatchBoundary')
-  expect(code).toContain('Suspense')
+  expect(code).toContain('Loading')
   expect(code).not.toContain('.Provider')
 })

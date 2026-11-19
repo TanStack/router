@@ -1,4 +1,4 @@
-import { renderToString } from 'solid-js/web'
+import { renderToString } from '@solidjs/web'
 import { afterEach, expect, test, vi } from 'vitest'
 import {
   Link,
@@ -11,9 +11,14 @@ import { linkHrefCases } from '../link-href-cases'
 
 afterEach(() => vi.restoreAllMocks())
 
-test.each(linkHrefCases)(
+// The v2 provider loads the router, which rejects a rewrite to a blocked protocol.
+const cases = linkHrefCases.filter(
+  ([kind, , blocked]) => !(kind === 'rewrite' && blocked),
+)
+
+test.each(cases)(
   'validates SSR %s href %j and its active state',
-  (kind, href, blocked, active) => {
+  async (kind, href, blocked, active) => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     const history = createMemoryHistory({ initialEntries: ['/safe'] })
     history.createHref = vi.fn((path) => (kind === 'history' ? href : path))
@@ -31,6 +36,8 @@ test.each(linkHrefCases)(
     })
     const activeProps = { class: 'active', href: 'javascript:active()' }
     const inactiveProps = { class: 'inactive', href: 'javascript:inactive()' }
+    // The v2 provider parks a server render on the router load.
+    await router.load()
     const html = renderToString(() => (
       <RouterContextProvider router={router}>
         {() => (
@@ -50,7 +57,11 @@ test.each(linkHrefCases)(
     expect(html.match(/href="([^"]*)"/)?.[1] ?? null).toBe(
       blocked ? null : href,
     )
-    expect(html.replace(/<[^>]*>/g, '')).toBe(String(active))
+    expect(
+      html
+        .replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '')
+        .replace(/<[^>]*>/g, ''),
+    ).toBe(String(active))
     expect(html.match(/class="([^"]*)"/)?.[1]?.trim()).toBe(
       active ? 'active' : 'inactive',
     )

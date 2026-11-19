@@ -215,16 +215,14 @@ test('a superseded suspended generation does not emit onRendered', async () => {
     }),
     component: () => {
       const search = rootRoute.useSearch()
-      const [revision] = Solid.createResource(
-        () => search().revision,
-        async (nextRevision) => {
-          if (nextRevision === 1) {
-            firstRenderStarted.resolve()
-            await firstRenderGate
-          }
-          return nextRevision
-        },
-      )
+      const revision = Solid.createMemo(async () => {
+        const nextRevision = search().revision
+        if (nextRevision === 1) {
+          firstRenderStarted.resolve()
+          await firstRenderGate
+        }
+        return nextRevision
+      })
       return <div>Root revision {revision()}</div>
     },
   })
@@ -284,19 +282,17 @@ test('a suspending all-success successor ignores stale resource resolution', asy
     }),
     component: () => {
       const search = rootRoute.useSearch()
-      const [revision] = Solid.createResource(
-        () => search().revision,
-        async (nextRevision) => {
-          if (nextRevision === 1) {
-            firstRenderStarted.resolve()
-            await firstRenderGate
-          } else if (nextRevision === 2) {
-            secondRenderStarted.resolve()
-            await secondRenderGate
-          }
-          return nextRevision
-        },
-      )
+      const revision = Solid.createMemo(async () => {
+        const nextRevision = search().revision
+        if (nextRevision === 1) {
+          firstRenderStarted.resolve()
+          await firstRenderGate
+        } else if (nextRevision === 2) {
+          secondRenderStarted.resolve()
+          await secondRenderGate
+        }
+        return nextRevision
+      })
       return <div>Root revision {revision()}</div>
     },
   })

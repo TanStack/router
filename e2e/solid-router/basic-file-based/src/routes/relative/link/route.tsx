@@ -4,7 +4,7 @@ import {
   createFileRoute,
   useNavigate,
 } from '@tanstack/solid-router'
-import { createEffect } from 'solid-js'
+import { onSettled } from 'solid-js'
 
 export const Route = createFileRoute('/relative/link')({
   component: RouteComponent,
@@ -13,7 +13,7 @@ export const Route = createFileRoute('/relative/link')({
 function RouteComponent() {
   const navigate = useNavigate()
 
-  createEffect(() => {
+  onSettled(() => {
     console.log('navigate')
   })
 
@@ -24,16 +24,14 @@ function RouteComponent() {
       </div>
       <div>
         <Link
-          from="/relative/link"
-          to=".."
+          to="/relative"
           data-testid="relative-link-home"
           class="mr-2 underline"
         >
           Return To Home
         </Link>
         <Link
-          from="/relative/link"
-          to="."
+          to="/relative/link"
           data-testid="relative-link-index"
           class="mr-2"
         >
@@ -46,24 +44,21 @@ function RouteComponent() {
           Back
         </Link>
         <Link
-          from="/relative/link"
-          to="./relative-link-a"
+          to="/relative/link/relative-link-a"
           data-testid="relative-link-a"
           class="mr-2 underline"
         >
           To Relative Link A
         </Link>
         <Link
-          from="/relative/link"
-          to="./relative-link-b"
+          to="/relative/link/relative-link-b"
           data-testid="relative-link-b"
           class="mr-2 underline"
         >
           To Relative Link B
         </Link>
         <Link
-          from="/relative/link"
-          to="./nested/deep"
+          to="/relative/link/nested/deep"
           data-testid="relative-link-deeply-nested"
           class="mr-2 underline"
         >
@@ -78,8 +73,7 @@ function RouteComponent() {
           To Path Param A
         </Link>
         <Link
-          from="/relative/link"
-          to="./with-search"
+          to="/relative/link/with-search"
           search={{ searchParam: '1' }}
           data-testid="relative-link-withSearch"
           class="mr-2 underline"

@@ -6,7 +6,6 @@ import {
   Scripts,
   createRootRoute,
 } from '@tanstack/solid-router'
-import { HydrationScript } from 'solid-js/web'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -23,7 +22,6 @@ function RootDocument() {
   return (
     <html>
       <head>
-        <HydrationScript />
         <HeadContent />
         <style>{`
           * { box-sizing: border-box; }

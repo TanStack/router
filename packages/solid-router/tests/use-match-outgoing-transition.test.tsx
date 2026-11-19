@@ -24,9 +24,12 @@ test('an outgoing component never observes its own active match disappear', asyn
     path: '/first',
     component: () => {
       const match = useMatch({ from: '/first', shouldThrow: false })
-      Solid.createRenderEffect(() => {
-        observedRouteIds.push(match()?.routeId)
-      })
+      Solid.createRenderEffect(
+        () => match()?.routeId,
+        (routeId) => {
+          observedRouteIds.push(routeId)
+        },
+      )
       return <div>First</div>
     },
   })
@@ -65,10 +68,13 @@ test('a persistent observer releases an explicit match only with the destination
         shouldThrow: false,
         select: (match) => match.routeId,
       })
-      Solid.createRenderEffect(() => {
-        observations.push({
-          routeId: routeId(),
-          destinationRendered: screen.queryByText('Next') !== null,
+      Solid.createRenderEffect(routeId, (currentRouteId) => {
+        // Parent effects run before the Outlet's DOM swap in the same commit.
+        queueMicrotask(() => {
+          observations.push({
+            routeId: currentRouteId,
+            destinationRendered: screen.queryByText('Next') !== null,
+          })
         })
       })
       return <Outlet />

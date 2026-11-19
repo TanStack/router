@@ -1,6 +1,6 @@
 import { queryOptions, useQuery } from '@tanstack/solid-query'
 import { createFileRoute } from '@tanstack/solid-router'
-import { Suspense } from 'solid-js'
+import { Loading } from 'solid-js'
 
 import {
   delay,
@@ -60,13 +60,13 @@ function QuerySuspense(props: {
   fallback: string
 }) {
   return (
-    <Suspense
+    <Loading
       fallback={
         <div data-testid={`${props.testId}-loading`}>{props.fallback}</div>
       }
     >
       <QueryDisplay queryOpts={props.queryOpts} testId={props.testId} />
-    </Suspense>
+    </Loading>
   )
 }
 

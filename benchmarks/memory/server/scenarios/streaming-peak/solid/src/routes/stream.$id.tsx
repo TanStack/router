@@ -1,5 +1,5 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
-import { Suspense } from 'solid-js'
+import { Loading } from 'solid-js'
 import {
   makeDeferredSectionPayload,
   type DeferredSectionPayload,
@@ -66,11 +66,11 @@ function StreamComponent() {
           <p data-bench={`streaming-peak-fallback-${index}`}>
             streaming-peak-fallback-{index}
           </p>
-          <Suspense fallback={null}>
+          <Loading fallback={null}>
             <Await promise={promise}>
               {(section) => <DeferredSection section={section} />}
             </Await>
-          </Suspense>
+          </Loading>
         </>
       ))}
     </main>

@@ -1,6 +1,6 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
-import { Suspense } from 'solid-js'
+import { Loading } from 'solid-js'
 import {
   makeDeferredMessage,
   makeServerData,
@@ -54,7 +54,7 @@ function SlowRender() {
       <div data-testid="loader-source">
         Loader source: {data().loaderSource}
       </div>
-      <Suspense fallback={<div data-testid="deferred-loading">Loading...</div>}>
+      <Loading fallback={<div data-testid="deferred-loading">Loading...</div>}>
         <Await
           promise={data().deferredData}
           children={(value) => (
@@ -63,7 +63,7 @@ function SlowRender() {
             </div>
           )}
         />
-      </Suspense>
+      </Loading>
       {slowRenderComponents.map((data, index) => (
         <SlowComponent data={data} index={index + 1} />
       ))}

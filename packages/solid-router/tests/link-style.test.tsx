@@ -1,5 +1,5 @@
+import { createStore, flush } from 'solid-js'
 import * as Solid from 'solid-js'
-import { createStore } from 'solid-js/store'
 import { afterEach, expect, test, vi } from 'vitest'
 import {
   cleanup,
@@ -17,6 +17,7 @@ import {
   createRoute,
   createRouter,
 } from '../src'
+import type { JSX } from '@solidjs/web'
 
 const disposers: Array<() => void> = []
 afterEach(() => {
@@ -98,7 +99,7 @@ test.each([true, false])(
 )
 
 test('tracks additions to an initially empty state-only style store', async () => {
-  const [style, setStyle] = createStore<Solid.JSX.CSSProperties>({})
+  const [style, setStyle] = createStore<JSX.CSSProperties>({})
   renderLinks(() => (
     <Link to="/target" activeProps={() => ({ style })}>
       Reactive
@@ -106,18 +107,24 @@ test('tracks additions to an initially empty state-only style store', async () =
   ))
   const link = await screen.findByRole('link', { name: 'Reactive' })
   expect(link.style.color).toBe('')
-  setStyle('color', 'red')
+  setStyle((draft) => {
+    draft.color = 'red'
+  })
+  flush()
   await waitFor(() => expect(link.style.color).toBe('red'))
-  setStyle('color', undefined)
+  setStyle((draft) => {
+    draft.color = undefined
+  })
+  flush()
   await waitFor(() => expect(link.style.color).toBe(''))
 })
 
 test('merges only the selected state and tracks reactive style properties', async () => {
-  const [base, setBase] = createStore<Solid.JSX.CSSProperties>({
+  const [base, setBase] = createStore<JSX.CSSProperties>({
     color: 'red',
     'margin-top': '2px',
   })
-  const [stateStyle, setStateStyle] = createStore<Solid.JSX.CSSProperties>({
+  const [stateStyle, setStateStyle] = createStore<JSX.CSSProperties>({
     'background-color': 'white',
   })
   const [stateClass, setStateClass] = Solid.createSignal('selected')
@@ -152,9 +159,14 @@ test('merges only the selected state and tracks reactive style properties', asyn
   expect(link).toHaveAttribute('href', '/target')
   expect(inactive).not.toHaveBeenCalled()
 
-  setBase('color', 'blue')
-  setStateStyle('background-color', 'black')
+  setBase((draft) => {
+    draft.color = 'blue'
+  })
+  setStateStyle((draft) => {
+    draft['background-color'] = 'black'
+  })
   setStateClass('updated')
+  flush()
   await waitFor(() => {
     expect(link).toHaveClass('base', 'updated')
     expect(link.style).toMatchObject({
@@ -172,7 +184,10 @@ test('merges only the selected state and tracks reactive style properties', asyn
   })
   active.mockClear()
   inactive.mockClear()
-  setBase('margin-top', '3px')
+  setBase((draft) => {
+    draft['margin-top'] = '3px'
+  })
+  flush()
   await waitFor(() => expect(link.style).toMatchObject({ marginTop: '3px' }))
   expect(active).not.toHaveBeenCalled()
   expect(inactive).toHaveBeenCalled()
@@ -202,12 +217,14 @@ test('switches between default and custom state props without stale attributes',
   const link = await screen.findByRole('link', { name: 'Defaults' })
   expect(link).toHaveClass('active')
   setCustom(true)
+  flush()
   await waitFor(() => {
     expect(link).not.toHaveClass('active')
     expect(link).toHaveAttribute('title', 'custom')
     expect(link.style).toMatchObject({ color: 'red' })
   })
   setCustom(false)
+  flush()
   await waitFor(() => {
     expect(link).toHaveClass('active')
     expect(link).not.toHaveAttribute('title')

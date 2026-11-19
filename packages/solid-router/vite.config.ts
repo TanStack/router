@@ -1,22 +1,30 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 import packageJson from './package.json'
 import type { ViteUserConfig } from 'vitest/config'
 
 const config = defineConfig(({ mode }) => {
   if (mode === 'server') {
     return {
-      plugins: [solid({ ssr: true })] as ViteUserConfig['plugins'],
+      plugins: [
+        solid({ ssr: true, refresh: !process.env.VITEST }),
+      ] as ViteUserConfig['plugins'],
       test: {
         name: `${packageJson.name} (server)`,
         dir: './tests/server',
         watch: false,
         environment: 'node',
         typecheck: { enabled: true },
+        exclude: ['**/errorComponent*'],
+        resolve: {
+          alias: {
+            'solid-js/web': '@solidjs/web',
+          },
+        },
         server: {
           deps: {
-            inline: [/@solidjs/, /@tanstack\/solid-store/],
+            inline: [/@solidjs/, /@tanstack\/solid-store/, /@solid-primitives/],
           },
         },
       },
@@ -24,12 +32,17 @@ const config = defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [solid()] as ViteUserConfig['plugins'],
+    plugins: [
+      solid({ refresh: !process.env.VITEST }),
+    ] as ViteUserConfig['plugins'],
     // Add 'development' condition for tests to resolve @tanstack/router-core/isServer
     // to the development export (isServer = undefined) instead of node (isServer = true)
     ...(process.env.VITEST && {
       resolve: {
         conditions: ['development'],
+        alias: {
+          'solid-js/web': '@solidjs/web',
+        },
       },
     }),
     test: {
@@ -42,7 +55,7 @@ const config = defineConfig(({ mode }) => {
       setupFiles: ['./tests/jest-dom.setup.ts', './tests/setupTests.tsx'],
       server: {
         deps: {
-          inline: [/@solidjs/, /@tanstack\/solid-store/],
+          inline: [/@solidjs/, /@tanstack\/solid-store/, /@solid-primitives/],
         },
       },
     },
@@ -54,12 +67,7 @@ export default defineConfig((env) =>
     config(env),
     tanstackViteConfig({
       tsconfigPath: './tsconfig.build.json',
-      entry: [
-        './src/index.tsx',
-        './src/index.dev.tsx',
-        './src/ssr/client.ts',
-        './src/ssr/server.ts',
-      ],
+      entry: ['./src/index.tsx', './src/ssr/client.ts', './src/ssr/server.ts'],
       srcDir: './src',
     }),
   ),

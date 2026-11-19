@@ -1,6 +1,6 @@
 import { queryOptions, useQuery } from '@tanstack/solid-query'
 import { Link, createFileRoute } from '@tanstack/solid-router'
-import { Suspense } from 'solid-js'
+import { Loading } from 'solid-js'
 
 const doubleQueryOptions = (n: number) =>
   queryOptions({
@@ -47,9 +47,7 @@ function Result() {
   return (
     <div class="mt-2 border p-4">
       {/* This manual Suspense boundary should transition, not immediately show fallback */}
-      <Suspense
-        fallback={<div data-testid="suspense-fallback">Loading...</div>}
-      >
+      <Loading fallback={<div data-testid="suspense-fallback">Loading...</div>}>
         <div data-testid="suspense-content">
           <div>
             n: <span data-testid="n-value">{search().n}</span>
@@ -58,7 +56,7 @@ function Result() {
             double: <span data-testid="double-value">{doubleQuery.data}</span>
           </div>
         </div>
-      </Suspense>
+      </Loading>
     </div>
   )
 }

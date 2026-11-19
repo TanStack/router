@@ -68,7 +68,7 @@
   },
   "devDependencies": {
     "@testing-library/jest-dom": "catalog:",
-    "solid-js": "catalog:",
+    "solid-js": "1.9.12",
     "vite": "*",
     "vite-plugin-solid": "catalog:",
     "@tanstack/vite-config": "catalog:",

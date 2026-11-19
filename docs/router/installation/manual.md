@@ -204,7 +204,7 @@ function About() {
 
 ```tsx title="src/main.tsx"
 /* @refresh reload */
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import { RouterProvider, createRouter } from '@tanstack/solid-router'
 
 // Import the generated route tree
@@ -319,7 +319,7 @@ if (!rootElement.innerHTML) {
 
 ```tsx
 /* @refresh reload */
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import {
   Outlet,
   RouterProvider,

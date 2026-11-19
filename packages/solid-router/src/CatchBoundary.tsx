@@ -1,58 +1,107 @@
 import * as Solid from 'solid-js'
-import { Dynamic } from 'solid-js/web'
+import { Dynamic } from '@solidjs/web'
 import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
 import type { ErrorRouteComponent } from './route'
+import type { JSX } from '@solidjs/web'
 
 export function CatchBoundary(
   props: {
     getResetKey: () => unknown
-    children: Solid.JSX.Element
+    children?: JSX.Element
+    render?: () => JSX.Element
     errorComponent?: ErrorRouteComponent
     onCatch?: (error: Error) => void
   } & Solid.ParentProps,
 ) {
-  return (
-    <Solid.ErrorBoundary
-      fallback={(error, reset) => {
-        props.onCatch?.(error)
+  const [retryKey, setRetryKey] = Solid.createSignal<object>({})
+  let resetBoundary: (() => void) | undefined
+  let initialized = false
+  let previousKey: unknown
 
-        Solid.createEffect(
-          Solid.on(props.getResetKey, () => reset(), { defer: true }),
-        )
+  Solid.onCleanup(() => {
+    resetBoundary = undefined
+  })
+
+  Solid.createEffect(props.getResetKey, (key) => {
+    if (!initialized) {
+      initialized = true
+      previousKey = key
+      return
+    }
+
+    // The effect re-runs on every recompute of the key function, not only
+    // on value changes — gate on the value so an unchanged key can't
+    // recreate the retried subtree while it settles.
+    if (key === previousKey) {
+      return
+    }
+    previousKey = key
+
+    const reset = resetBoundary
+    if (reset) {
+      queueMicrotask(() => {
+        if (resetBoundary !== reset) {
+          return
+        }
+        setRetryKey({})
+        reset()
+        Solid.flush()
+      })
+    }
+  })
+
+  return (
+    <Solid.Errored
+      fallback={(error, reset) => {
+        // Primitives become Errors; objects pass through, since an error from
+        // another realm (a DOMException) is not an `instanceof Error`.
+        const thrown: unknown = Solid.untrack(error)
+        const resolvedError = (
+          typeof thrown === 'object' && thrown !== null
+            ? thrown
+            : new Error(typeof thrown === 'string' ? thrown : 'Unknown error', {
+                cause: thrown,
+              })
+        ) as Error
+
+        props.onCatch?.(resolvedError)
+        resetBoundary = reset
 
         // A lazy error component can suspend after the route enters its
         // error state. Keep that suspension here so it does not render the
         // route's pending fallback again.
         if (process.env.NODE_ENV !== 'production') {
           return (
-            <Solid.Suspense>
+            <Solid.Loading>
               {renderInNonRouteComponentContext(
                 () => (
                   <Dynamic
                     component={props.errorComponent ?? ErrorComponent}
-                    error={error}
+                    error={resolvedError}
                     reset={reset}
                   />
                 ),
                 'errorComponent',
               )}
-            </Solid.Suspense>
+            </Solid.Loading>
           )
         }
 
         return (
-          <Solid.Suspense>
+          <Solid.Loading>
             <Dynamic
               component={props.errorComponent ?? ErrorComponent}
-              error={error}
+              error={resolvedError}
               reset={reset}
             />
-          </Solid.Suspense>
+          </Solid.Loading>
         )
       }}
     >
-      {props.children}
-    </Solid.ErrorBoundary>
+      <Solid.Show when={retryKey()} keyed>
+        {(_retryKey) => props.render?.() ?? props.children}
+      </Solid.Show>
+    </Solid.Errored>
   )
 }
 

@@ -1,5 +1,9 @@
+import * as Solid from 'solid-js'
 import { RouterCore } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { getStoreFactory } from './routerStores'
+import { primeRouterFromRegistry } from './registryTransfer'
+import { noteRequest, releaseRequest } from './observe'
 import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRoute,
@@ -12,7 +16,7 @@ import type {
   NotFoundRouteComponent,
   RouteComponent,
 } from './route'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 declare module '@tanstack/router-core' {
   export interface RouterOptionsExtensions {
@@ -100,5 +104,28 @@ export class Router<
     >,
   ) {
     super(options, getStoreFactory)
+    // The hydration-claiming boot (see registryTransfer). Router creation is
+    // the client's natural pre-render moment: module code runs after the
+    // document — and the registry entries the server's RouterProvider wrote —
+    // have parsed, and always before hydrate(). Committing here keeps every
+    // store write outside the hydration render, where it would desync the
+    // claiming walk. Inert without entries: an SPA page has no registry, and
+    // a Start app transfers through its own channel (`router.serverSsr`),
+    // so the first missing entry falls through to unchanged behavior.
+    if (!(isServer ?? this.isServer)) {
+      primeRouterFromRegistry(this)
+      // Solid's observe tier dates a navigation from its request and joins
+      // it to the interaction it was requested in, both gone by the time a
+      // blocked history notifies (see `noteRequest`).
+      if (Solid.OBSERVE !== undefined) {
+        const commitLocation = this.commitLocation
+        this.commitLocation = (opts) => {
+          noteRequest(this)
+          const committed = commitLocation(opts)
+          releaseRequest(this)
+          return committed
+        }
+      }
+    }
   }
 }

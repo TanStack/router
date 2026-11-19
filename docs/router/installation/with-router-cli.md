@@ -37,7 +37,7 @@ If you are using TypeScript, you should also add the following options to your `
 {
   "compilerOptions": {
     "jsx": "preserve",
-    "jsxImportSource": "solid-js"
+    "jsxImportSource": "@solidjs/web"
   }
 }
 ```

@@ -20,9 +20,12 @@ function InteractiveBox(props: { id: string; label: string }) {
   const [count, setCount] = Solid.createSignal(0)
   const [hydrated, setHydrated] = Solid.createSignal(false)
 
-  Solid.onMount(() => {
-    setHydrated(true)
-  })
+  Solid.createEffect(
+    () => true,
+    () => {
+      setHydrated(true)
+    },
+  )
 
   return (
     <button
@@ -37,16 +40,12 @@ function InteractiveBox(props: { id: string; label: string }) {
 
 function DelayedFallbackBox() {
   if (typeof window !== 'undefined') {
-    const [ready] = Solid.createResource(async () => {
+    const child = Solid.createMemo(async () => {
       await new Promise((resolve) => window.setTimeout(resolve, 1000))
-      return true
+      return 'fallback child'
     })
 
-    return (
-      <Solid.Show when={ready()}>
-        <div data-testid="component-fallback-child">fallback child</div>
-      </Solid.Show>
-    )
+    return <div data-testid="component-fallback-child">{child()}</div>
   }
 
   return <div data-testid="component-fallback-child">fallback child</div>

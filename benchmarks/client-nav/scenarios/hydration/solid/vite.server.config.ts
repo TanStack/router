@@ -1,11 +1,11 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 
 export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
   define: { 'process.env.NODE_ENV': JSON.stringify('production') },
-  plugins: [solid({ ssr: true, hot: false, dev: false })],
+  plugins: [solid({ ssr: true, refresh: false, dev: false })],
   resolve: { conditions: ['solid', 'node', 'production'] },
   ssr: {
     noExternal: true,

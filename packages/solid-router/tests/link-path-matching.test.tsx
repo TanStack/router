@@ -1,4 +1,4 @@
-import { createSignal } from 'solid-js'
+import { createSignal, flush } from 'solid-js'
 import { cleanup, render } from '@solidjs/testing-library'
 import { afterEach, expect, test } from 'vitest'
 import {
@@ -67,6 +67,7 @@ test('pathname matching reacts when exact mode changes', () => {
   const anchor = container.querySelector('a')!
   for (const mode of [true, false, true]) {
     setExact(mode)
+    flush()
     expect(anchor.textContent).toBe(String(!mode))
     expect(anchor.getAttribute('aria-current')).toBe(mode ? null : 'page')
     expect(anchor.className).toBe(mode ? 'inactive' : 'active')

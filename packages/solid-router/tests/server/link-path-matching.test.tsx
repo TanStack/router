@@ -1,4 +1,4 @@
-import { renderToString } from 'solid-js/web'
+import { renderToString } from '@solidjs/web'
 import { expect, test } from 'vitest'
 import {
   Link,
@@ -12,7 +12,7 @@ import { linkPathCases } from '../link-path-cases'
 for (const basepath of ['', '/app']) {
   test.each(linkPathCases)(
     `SSR pathname matching with basepath "${basepath}": $current -> $to, exact=$exact`,
-    ({ current, to, exact, active }) => {
+    async ({ current, to, exact, active }) => {
       const router = createRouter({
         routeTree: createRootRoute(),
         history: createMemoryHistory({ initialEntries: [basepath + current] }),
@@ -20,6 +20,8 @@ for (const basepath of ['', '/app']) {
         trailingSlash: 'preserve',
         isServer: true,
       })
+      // The v2 provider parks a server render on the router load.
+      await router.load()
       const html = renderToString(() => (
         <RouterContextProvider router={router}>
           {() => (
@@ -33,7 +35,11 @@ for (const basepath of ['', '/app']) {
           )}
         </RouterContextProvider>
       ))
-      expect(html.replace(/<[^>]*>/g, '')).toBe(String(active))
+      expect(
+        html
+          .replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '')
+          .replace(/<[^>]*>/g, ''),
+      ).toBe(String(active))
       expect(html.match(/class="([^"]*)"/)?.[1]?.trim()).toBe(
         active ? 'active' : 'inactive',
       )

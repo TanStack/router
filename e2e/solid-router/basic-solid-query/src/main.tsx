@@ -1,4 +1,4 @@
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import {
   ErrorComponent,
   HeadContent,
@@ -120,8 +120,7 @@ function PostErrorComponent({ error, reset }: ErrorComponentProps) {
   if (error instanceof NotFoundError) {
     return <div>{error.message}</div>
   }
-  createEffect(() => {
-    reset()
+  createEffect(reset, () => {
     queryClient.resetQueries()
   })
 

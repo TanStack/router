@@ -1,5 +1,6 @@
 import * as Solid from 'solid-js'
 import { useRouter } from './useRouter'
+import { dropRequest, holdRequest, noteRequest } from './observe'
 import type {
   BlockerFnArgs,
   HistoryAction,
@@ -160,7 +161,7 @@ export function useBlocker(
   opts?: UseBlockerOpts | LegacyBlockerOpts | LegacyBlockerFn,
   condition?: boolean | any,
 ): Solid.Accessor<BlockerResolver> | void {
-  const props = Solid.mergeProps(
+  const props = Solid.merge(
     {
       enableBeforeUnload: true,
       disabled: false,
@@ -180,88 +181,117 @@ export function useBlocker(
     reset: undefined,
   })
 
-  Solid.createEffect(() => {
-    const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
-      function getLocation(
-        location: HistoryLocation,
-      ): AnyShouldBlockFnLocation {
-        const parsedLocation = router.parseLocation(location)
-        const [, rawParams, foundRoute] = router.getMatchedRoutes(
-          parsedLocation.pathname,
-        )
-        if (foundRoute === undefined) {
+  let disposeBlock: (() => void) | undefined
+
+  Solid.createEffect(
+    () => props.disabled,
+    (disabled) => {
+      // Dispose previous blocker registration when re-running
+      disposeBlock?.()
+      disposeBlock = undefined
+
+      if (disabled) {
+        return
+      }
+
+      const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
+        // Called before the history's first `await` when this is the first
+        // blocker, so the request `commitLocation` noted outlives the
+        // commit. A later blocker finds it held by the first, or released
+        // (the navigation is then dated when the history notifies).
+        holdRequest(router)
+        function getLocation(
+          location: HistoryLocation,
+        ): AnyShouldBlockFnLocation {
+          const parsedLocation = router.parseLocation(location)
+          const [, rawParams, foundRoute] = router.getMatchedRoutes(
+            parsedLocation.pathname,
+          )
+          if (foundRoute === undefined) {
+            return {
+              routeId: '__notFound__',
+              fullPath: parsedLocation.pathname,
+              pathname: parsedLocation.pathname,
+              params: rawParams,
+              search: parsedLocation.search,
+            }
+          }
           return {
-            routeId: '__notFound__',
-            fullPath: parsedLocation.pathname,
+            routeId: foundRoute.id,
+            fullPath: foundRoute.fullPath,
             pathname: parsedLocation.pathname,
             params: rawParams,
             search: parsedLocation.search,
           }
         }
-        return {
-          routeId: foundRoute.id,
-          fullPath: foundRoute.fullPath,
-          pathname: parsedLocation.pathname,
-          params: rawParams,
-          search: parsedLocation.search,
+
+        const current = getLocation(blockerFnArgs.currentLocation)
+        const next = getLocation(blockerFnArgs.nextLocation)
+
+        if (
+          current.routeId === '__notFound__' &&
+          next.routeId !== '__notFound__'
+        ) {
+          return false
         }
-      }
 
-      const current = getLocation(blockerFnArgs.currentLocation)
-      const next = getLocation(blockerFnArgs.nextLocation)
-
-      if (
-        current.routeId === '__notFound__' &&
-        next.routeId !== '__notFound__'
-      ) {
-        return false
-      }
-
-      const shouldBlock = await props.shouldBlockFn({
-        action: blockerFnArgs.action,
-        current,
-        next,
-      })
-      if (!props.withResolver) {
-        return shouldBlock
-      }
-
-      if (!shouldBlock) {
-        return false
-      }
-
-      const promise = new Promise<boolean>((resolve) => {
-        setResolver({
-          status: 'blocked',
+        const shouldBlock = await props.shouldBlockFn({
+          action: blockerFnArgs.action,
           current,
           next,
-          action: blockerFnArgs.action,
-          proceed: () => resolve(false),
-          reset: () => resolve(true),
         })
-      })
+        if (!props.withResolver) {
+          if (shouldBlock) dropRequest(router)
+          return shouldBlock
+        }
 
-      const canNavigateAsync = await promise
-      setResolver({
-        status: 'idle',
-        current: undefined,
-        next: undefined,
-        action: undefined,
-        proceed: undefined,
-        reset: undefined,
-      })
+        if (!shouldBlock) {
+          return false
+        }
 
-      return canNavigateAsync
+        const promise = new Promise<boolean>((resolve) => {
+          setResolver({
+            status: 'blocked',
+            current,
+            next,
+            action: blockerFnArgs.action,
+            // The navigation goes ahead in the interaction that proceeds, as
+            // `@solidjs/router`'s `retry()` makes it.
+            proceed: () => {
+              noteRequest(router)
+              resolve(false)
+            },
+            reset: () => resolve(true),
+          })
+        })
+
+        const canNavigateAsync = await promise
+        setResolver({
+          status: 'idle',
+          current: undefined,
+          next: undefined,
+          action: undefined,
+          proceed: undefined,
+          reset: undefined,
+        })
+
+        if (canNavigateAsync) dropRequest(router)
+        return canNavigateAsync
+      }
+
+      disposeBlock = router.history.block({
+        blockerFn: blockerFnComposed,
+        enableBeforeUnload: props.enableBeforeUnload,
+      })
+    },
+  )
+
+  // Clean up on unmount
+  Solid.onSettled(() => {
+    return () => {
+      disposeBlock?.()
+      disposeBlock = undefined
     }
-
-    const disposeBlock = props.disabled
-      ? undefined
-      : router.history.block({
-          blockerFn: blockerFnComposed,
-          enableBeforeUnload: props.enableBeforeUnload,
-        })
-
-    Solid.onCleanup(() => disposeBlock?.())
   })
 
   return resolver
@@ -310,8 +340,12 @@ interface BlockComponent {
 export const Block: BlockComponent = function Block(
   opts: PromptProps | LegacyPromptProps,
 ): SolidNode {
-  const [propsWithChildren, rest] = Solid.splitProps(opts, ['children'])
-  const args = _resolvePromptBlockerArgs(rest)
+  const propsWithChildren = {
+    get children() {
+      return opts.children
+    },
+  }
+  const args = _resolvePromptBlockerArgs(opts)
 
   const resolver = useBlocker(args)
   const children = Solid.createMemo(() => {

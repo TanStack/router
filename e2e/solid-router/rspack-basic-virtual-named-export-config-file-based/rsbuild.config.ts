@@ -8,7 +8,11 @@ export default defineConfig({
     pluginBabel({
       include: /\.(?:jsx|tsx)$/,
     }),
-    pluginSolid(),
+    pluginSolid({
+      solidPresetOptions: {
+        moduleName: '@solidjs/web',
+      },
+    }),
   ],
   tools: {
     rspack: {
@@ -19,6 +23,11 @@ export default defineConfig({
           virtualRouteConfig: './routes.ts',
         }),
       ],
+      resolve: {
+        alias: {
+          'solid-js/web': '@solidjs/web',
+        },
+      },
     },
   },
 })

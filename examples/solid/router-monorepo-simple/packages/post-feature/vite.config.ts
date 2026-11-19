@@ -2,7 +2,7 @@ import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import dts from 'vite-plugin-dts'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -33,7 +33,7 @@ export default defineConfig({
       // External packages that should not be bundled into your library.
       external: [
         'solid-js',
-        'solid-js/web',
+        '@solidjs/web',
         '@tanstack/solid-router',
         '@router-solid-mono-simple/post-feature',
         '@router-solid-mono-simple/router',

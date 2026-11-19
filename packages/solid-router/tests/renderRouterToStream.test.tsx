@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
 import { createMemoryHistory, createRootRoute, createRouter } from '../src'
 import type * as RouterSsrServer from '@tanstack/router-core/ssr/server'
-import type * as SolidWeb from 'solid-js/web'
+import type * as SolidWeb from '@solidjs/web'
 
 const solidMocks = vi.hoisted(() => ({
   renderToStream: vi.fn(),
@@ -25,8 +25,8 @@ vi.mock('@tanstack/router-core/ssr/server', async (importOriginal) => {
   }
 })
 
-vi.mock('solid-js/web', async () => {
-  const actual = await vi.importActual<typeof SolidWeb>('solid-js/web')
+vi.mock('@solidjs/web', async () => {
+  const actual = await vi.importActual<typeof SolidWeb>('@solidjs/web')
   return {
     ...actual,
     renderToStream: solidMocks.renderToStream,
@@ -243,9 +243,8 @@ describe('renderRouterToStream', () => {
   })
 
   test('bot response does not wait for a backpressured pipe', async () => {
-    const html = new TextEncoder().encode(
-      '<!DOCTYPE html><html><body>solid</body></html>',
-    )
+    // The adapter prepends the document type to Solid 2's shell.
+    const html = new TextEncoder().encode('<html><body>solid</body></html>')
     let pipeCompletion: Promise<void> | undefined
     solidMocks.renderToStream.mockImplementationOnce(
       () =>
@@ -276,7 +275,7 @@ describe('renderRouterToStream', () => {
       expect(pipeCompletion).toBeDefined()
       const response = unwrapResponse(result)
       await expect(response.text()).resolves.toBe(
-        new TextDecoder().decode(html),
+        `<!DOCTYPE html>${new TextDecoder().decode(html)}`,
       )
       await expect(pipeCompletion).resolves.toBeUndefined()
     } finally {

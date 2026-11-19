@@ -9,16 +9,17 @@
   "types": "./dist/index.d.ts",
   "dependencies": {
     "@tanstack/history": "^1.162.5",
-    "@tanstack/solid-query": "^5.90.9",
-    "@tanstack/solid-router": "^1.170.43",
+    "@tanstack/solid-query": "^6.0.0-rc.6",
+    "@tanstack/solid-router": "^2.0.0-rc.11",
     "@tanstack/router-plugin": "^1.169.0",
     "@router-solid-mono-solid-query/post-query": "workspace:*",
     "redaxios": "^0.5.1",
     "zod": "^4.4.3",
-    "solid-js": "^1.9.10"
+    "solid-js": "^2.0.1",
+    "@solidjs/web": "^2.0.1"
   },
   "devDependencies": {
-    "vite-plugin-solid": "^2.11.11",
+    "@solidjs/vite-plugin": "^3.0.1",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",

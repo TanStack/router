@@ -3,7 +3,7 @@
     "strict": true,
     "esModuleInterop": true,
     "jsx": "preserve",
-    "jsxImportSource": "solid-js",
+    "jsxImportSource": "@solidjs/web",
     "skipLibCheck": true,
     "lib": ["DOM", "DOM.Iterable", "ES2022"]
   }

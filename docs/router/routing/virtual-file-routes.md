@@ -73,7 +73,7 @@ export default defineConfig({
 
 ```tsx title="vite.config.ts"
 import { defineConfig } from 'vite'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 export default defineConfig({
@@ -132,7 +132,7 @@ export default defineConfig({
 
 ```tsx title="vite.config.ts"
 import { defineConfig } from 'vite'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 const routes = rootRoute('root.tsx', [

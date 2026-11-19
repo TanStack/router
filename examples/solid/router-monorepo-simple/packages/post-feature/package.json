@@ -9,10 +9,11 @@
   "types": "./dist/index.d.ts",
   "dependencies": {
     "@router-solid-mono-simple/router": "workspace:*",
-    "solid-js": "^1.9.10"
+    "solid-js": "^2.0.1",
+    "@solidjs/web": "^2.0.1"
   },
   "devDependencies": {
-    "vite-plugin-solid": "^2.11.11",
+    "@solidjs/vite-plugin": "^3.0.1",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",

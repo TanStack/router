@@ -1,7 +1,5 @@
-import { MetaProvider } from '@solidjs/meta'
-import { For } from 'solid-js'
-import { Asset } from './Asset'
-import { useTags } from './headContentUtils'
+import { HydrationScript, useHead } from '@solidjs/web'
+import { toHeadTags, useTags } from './headContentUtils'
 import type { AssetCrossOriginConfig } from '@tanstack/router-core'
 
 export interface HeadContentProps {
@@ -9,17 +7,16 @@ export interface HeadContentProps {
 }
 
 /**
- * @description The `HeadContent` component is used to render meta tags, links, and scripts for the current route.
- * When using full document hydration (hydrating from `<html>`), this component should be rendered in the `<body>`
- * to ensure it's part of the reactive tree and updates correctly during client-side navigation.
- * The component uses portals internally to render content into the `<head>` element.
+ * @description The `HeadContent` component registers the current route's meta
+ * tags, links, and scripts with Solid's head registry, which owns emission
+ * into `<head>` (SSR splicing/streaming and client-side patching alike). It
+ * can be rendered anywhere in the tree, though placing it inside the `<head>`
+ * of your document keeps the hydration script in the right place.
  */
 export function HeadContent(props: HeadContentProps) {
   const tags = useTags(props.assetCrossOrigin)
 
-  return (
-    <MetaProvider>
-      <For each={tags()}>{(tag) => <Asset {...tag} />}</For>
-    </MetaProvider>
-  )
+  useHead(() => toHeadTags(tags()))
+
+  return <HydrationScript />
 }

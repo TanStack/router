@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 import { cpuSimulationExecArgv } from '../../../../cpu-simulation'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
@@ -20,7 +20,7 @@ export default defineConfig({
         },
       },
     }),
-    solid({ ssr: true, hot: false, dev: false }),
+    solid({ ssr: true, refresh: false, dev: false }),
   ],
   build: {
     outDir: './dist',

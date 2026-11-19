@@ -1,9 +1,22 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
+import packageJson from './package.json'
 
 const config = defineConfig({
   plugins: [solid()],
+  test: {
+    name: packageJson.name,
+    dir: './tests',
+    watch: false,
+    environment: 'jsdom',
+    testTimeout: 60_000,
+    server: {
+      deps: {
+        inline: [/solid-js/, /@solidjs/],
+      },
+    },
+  },
 })
 
 export default mergeConfig(

@@ -1,3 +1,4 @@
 {
-  "presets": ["babel-preset-solid", "@babel/preset-typescript"]
+  "presets": ["@babel/preset-typescript"],
+  "plugins": ["@solidjs/babel-plugin"]
 }

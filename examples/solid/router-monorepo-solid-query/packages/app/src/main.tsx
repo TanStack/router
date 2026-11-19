@@ -1,4 +1,4 @@
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import { RouterProvider } from '@tanstack/solid-router'
 import { QueryClientProvider } from '@tanstack/solid-query'
 import { queryClient, router } from '@router-solid-mono-solid-query/router'
@@ -10,7 +10,7 @@ import {
 import { RootComponent } from './rootComponent'
 import type { RouterIds } from '@router-solid-mono-solid-query/router'
 import './style.css'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 // Not lazy loaded for simplicity, but you could expose from your library component
 // individually, and enforce here to use react lazy components via typings
 // so that you have code splitting

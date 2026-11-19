@@ -42,7 +42,7 @@ Or, you can clone our [Quickstart Vite example](https://github.com/TanStack/rout
 
 ```ts title="vite.config.ts"
 import { defineConfig } from 'vite'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 // https://vitejs.dev/config/

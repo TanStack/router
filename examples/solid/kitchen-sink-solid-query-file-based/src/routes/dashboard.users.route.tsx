@@ -44,10 +44,6 @@ function UsersComponent() {
 
   const [filterDraft, setFilterDraft] = Solid.createSignal(filterBy ?? '')
 
-  Solid.createEffect(() => {
-    setFilterDraft(filterBy ?? '')
-  }, [filterBy])
-
   const sortedUsers = Solid.createMemo(() => {
     if (!users) return []
 
@@ -56,7 +52,7 @@ function UsersComponent() {
       : [...users].sort((a, b) => {
           return a[sortBy] > b[sortBy] ? 1 : -1
         })
-  }, [users, sortBy])
+  })
 
   const filteredUsers = Solid.createMemo(() => {
     if (!filterBy) return sortedUsers()
@@ -64,7 +60,7 @@ function UsersComponent() {
     return sortedUsers().filter((user) =>
       user.name.toLowerCase().includes(filterBy.toLowerCase()),
     )
-  }, [sortedUsers, filterBy])
+  })
 
   const setSortBy = (sortBy: UsersViewSortBy) =>
     navigate({
@@ -80,7 +76,7 @@ function UsersComponent() {
       replace: true,
     })
 
-  Solid.createEffect(() => {
+  Solid.createEffect(filterDraft, () => {
     navigate({
       search: (old) => {
         return {
@@ -93,7 +89,7 @@ function UsersComponent() {
       },
       replace: true,
     })
-  }, [filterDraft])
+  })
 
   return (
     <div class="flex-1 flex">
@@ -139,7 +135,9 @@ function UsersComponent() {
                     }}
                     pending
                   >
-                    {(match) => <Spinner show={!!match} wait="delay-50" />}
+                    {(match) => (
+                      <Spinner show={() => !!match} wait="delay-50" />
+                    )}
                   </MatchRoute>
                 </pre>
               </Link>

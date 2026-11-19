@@ -16,11 +16,9 @@ try {
   const scripts = scriptElements.map((script) => script.textContent)
   assert.ok(scripts.some((script) => script.includes('$_TSR')))
   assert.ok(scripts.some((script) => script.includes('_$HY')))
-  assert.ok(doc.documentElement.hasAttribute('data-hk'))
-  assert.ok(doc.getElementById('hydration-content')?.hasAttribute('data-hk'))
-  assert.ok(
-    [...doc.querySelectorAll('a')].every((a) => a.hasAttribute('data-hk')),
-  )
+  assert.ok(doc.documentElement.hasAttribute('_hk'))
+  assert.ok(doc.getElementById('hydration-content')?.hasAttribute('_hk'))
+  assert.ok([...doc.querySelectorAll('a')].every((a) => a.hasAttribute('_hk')))
   await writeFile(
     new URL('./dist/fixture.json', import.meta.url),
     JSON.stringify({ html, scripts }),

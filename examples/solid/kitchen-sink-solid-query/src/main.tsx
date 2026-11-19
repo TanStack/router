@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import * as Solid from 'solid-js'
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import {
   ErrorComponent,
   Link,
@@ -435,7 +435,7 @@ function InvoiceComponent() {
   const updateInvoiceMutation = useUpdateInvoiceMutation(params().invoiceId)
   const [notes, setNotes] = Solid.createSignal(search().notes ?? '')
 
-  Solid.createEffect(() => {
+  Solid.createEffect(notes, () => {
     navigate({
       search: (old: any) => ({
         ...old,
@@ -552,24 +552,22 @@ function UsersComponent() {
   const usersQuery = useQuery(() =>
     usersQueryOptions(usersLayoutRoute.useLoaderDeps()()),
   )
-  const users = usersQuery.data
   const sortBy = Solid.createMemo(() => search().usersView?.sortBy ?? 'name')
   const filterBy = Solid.createMemo(() => search().usersView?.filterBy)
 
   const [filterDraft, setFilterDraft] = Solid.createSignal(filterBy() ?? '')
 
-  Solid.createEffect(() => {
+  Solid.createEffect(filterBy, () => {
     setFilterDraft(filterBy() ?? '')
   })
 
   const sortedUsers = Solid.createMemo(() => {
-    if (!users) return []
+    const list = usersQuery.data
+    if (!list) return []
 
-    return !sortBy
-      ? users
-      : [...users].sort((a: any, b: any) => {
-          return a[sortBy()] > b[sortBy()] ? 1 : -1
-        })
+    return [...list].sort((a: any, b: any) => {
+      return a[sortBy()] > b[sortBy()] ? 1 : -1
+    })
   })
 
   const filteredUsers = Solid.createMemo(() => {
@@ -594,7 +592,7 @@ function UsersComponent() {
       replace: true,
     })
 
-  Solid.createEffect(() => {
+  Solid.createEffect(filterDraft, () => {
     navigate({
       search: (old: any) => {
         return {
@@ -607,7 +605,7 @@ function UsersComponent() {
       },
       replace: true,
     })
-  }, [filterDraft])
+  })
 
   return (
     <div class="flex-1 flex">
@@ -805,11 +803,14 @@ function LoginComponent() {
   }
 
   // Ah, the subtle nuances of client side auth. 🙄
-  Solid.createRenderEffect(() => {
-    if (routeContext().status === 'loggedIn' && search().redirect) {
-      router.history.push(search().redirect!)
-    }
-  }, [routeContext().status, search().redirect])
+  Solid.createRenderEffect(
+    () => [routeContext().status, search().redirect] as const,
+    ([status, redirect]) => {
+      if (status === 'loggedIn' && redirect) {
+        router.history.push(redirect)
+      }
+    },
+  )
 
   return status === 'loggedIn' ? (
     <div>
@@ -1103,7 +1104,7 @@ function useSessionStorage<T>(key: string, initialValue: T) {
     stored ? JSON.parse(stored) : initialValue,
   )
 
-  Solid.createEffect(() => {
+  Solid.createEffect(state, () => {
     sessionStorage.setItem(key, JSON.stringify(state()))
   })
 

@@ -6,13 +6,17 @@ import {
   setupServerFnTransportBench,
 } from '../bench'
 import type { StartRequestHandler } from '../bench'
+import { solidServerFnTransportBenchAdapter } from './adapter'
 
 const { default: handler } = (await import(
   /* @vite-ignore */ new URL('./dist/server/server.js', import.meta.url).href
 )) as {
   default: StartRequestHandler
 }
-const context = await setupServerFnTransportBench(handler)
+const context = await setupServerFnTransportBench(
+  handler,
+  solidServerFnTransportBenchAdapter,
+)
 
 await assertServerFnTransportScenario(handler, context)
 

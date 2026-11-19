@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { cpuSimulationExecArgv } from '../../../../cpu-simulation'
@@ -20,7 +20,7 @@ export default defineConfig({
       routesDirectory: `${rootDir}src/routes`,
       generatedRouteTree: `${rootDir}src/routeTree.gen.ts`,
     }),
-    solid({ hot: false, dev: false }),
+    solid({ refresh: false, dev: false }),
   ],
   build: {
     outDir: './dist',

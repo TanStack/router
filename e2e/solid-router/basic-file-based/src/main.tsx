@@ -3,7 +3,7 @@ import {
   createRouteMask,
   createRouter,
 } from '@tanstack/solid-router'
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import { routeTree } from './routeTree.gen'
 import './styles.css'
 

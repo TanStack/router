@@ -1,10 +1,12 @@
-import { ErrorBoundary, Suspense } from 'solid-js'
+import { Errored, Loading } from 'solid-js'
 import { describe, expect, it, vi } from 'vitest'
-import { renderToStream, renderToStringAsync } from 'solid-js/web'
+import { renderToStream } from '@solidjs/web'
 import { Await } from '../../src/awaited'
+import { renderToStringAsync } from './renderToStringAsync'
 
 describe('Await (server)', () => {
-  it('flushes blank content while an Await without a fallback is pending', async () => {
+  // Solid 2 holds the shell for an async read outside a Loading boundary.
+  it('holds the shell while an Await without a fallback is pending', async () => {
     let resolvePromise!: (value: string) => void
     const promise = new Promise<string>((resolve) => {
       resolvePromise = resolve
@@ -24,7 +26,7 @@ describe('Await (server)', () => {
       }),
     )
 
-    await vi.waitFor(() => expect(records.length).toBeGreaterThan(0))
+    await new Promise((resolve) => setTimeout(resolve, 0))
     expect(records.join('')).not.toContain('resolved')
 
     resolvePromise('resolved')
@@ -34,15 +36,17 @@ describe('Await (server)', () => {
 
   it('renders an error boundary when an Await without a fallback rejects', async () => {
     const html = await renderToStringAsync(() => (
-      <Suspense fallback={<span>outer pending</span>}>
-        <ErrorBoundary fallback={(error) => <span>{error.message}</span>}>
-          <Suspense fallback={<span>inner pending</span>}>
+      <Loading fallback={<span>outer pending</span>}>
+        <Errored
+          fallback={(error) => <span>{(error() as Error).message}</span>}
+        >
+          <Loading fallback={<span>inner pending</span>}>
             <Await promise={Promise.reject(new Error('rejected'))}>
               {(value) => <span>{value}</span>}
             </Await>
-          </Suspense>
-        </ErrorBoundary>
-      </Suspense>
+          </Loading>
+        </Errored>
+      </Loading>
     ))
 
     expect(html).toContain('rejected')

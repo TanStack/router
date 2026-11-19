@@ -17,9 +17,9 @@ const invoicesRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([invoicesRoute, indexRoute])
 
-const defaultRouter = createRouter({ routeTree })
+const _defaultRouter = createRouter({ routeTree })
 
-type DefaultRouter = typeof defaultRouter
+type DefaultRouter = typeof _defaultRouter
 
 type TRouteMatch = MakeRouteMatch<DefaultRouter['routeTree']>
 

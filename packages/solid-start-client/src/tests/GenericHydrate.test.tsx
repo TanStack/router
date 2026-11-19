@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import { GenericHydrate } from '../GenericHydrate'
 import { never } from '../hydration/never'
 

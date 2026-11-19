@@ -1,12 +1,22 @@
+import * as Solid from 'solid-js'
+import { isServer } from '@tanstack/router-core/isServer'
 import { routerContext } from './routerContext'
 import { SafeFragment } from './SafeFragment'
 import { Matches } from './Matches'
+import { serializeMatchTransfer } from './registryTransfer'
+import { setupFlightDataConsumer } from './flightData'
+import { describeInitial } from './observe'
 import type {
   AnyRouter,
   RegisteredRouter,
   RouterOptions,
 } from '@tanstack/router-core'
-import type * as Solid from 'solid-js'
+import type { JSX } from '@solidjs/web'
+
+const RouterContext = routerContext as unknown as Solid.Component<{
+  value: any
+  children: any
+}>
 
 export function RouterContextProvider<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -16,25 +26,77 @@ export function RouterContextProvider<
   children,
   ...rest
 }: RouterProps<TRouter, TDehydrated> & {
-  children: () => Solid.JSX.Element
+  children: () => JSX.Element
 }) {
-  // Allow the router to update options on the router instance
-  router.update({
-    ...router.options,
-    ...rest,
-    context: {
-      ...router.options.context,
-      ...rest.context,
-    },
-  })
+  if (Object.keys(rest).length > 0) {
+    Solid.runWithOwner(null, () => {
+      router.update({
+        ...router.options,
+        ...rest,
+        context: {
+          ...router.options.context,
+          ...rest.context,
+        },
+      } as any)
+    })
+  }
+
+  // Server-side, the provider owns the load dispatch: if the app (or a host
+  // framework like Start) hasn't already loaded the router, kick `load()`
+  // and park the render on it. Solid's SSR awaits parked reads natively, so
+  // blocking-loader semantics are preserved without a top-level
+  // `await router.load()` in the server entry. The memo exists on both
+  // environments so the component tree (and hydration keys) stay identical;
+  // on the client it resolves immediately and the boot is handled by the
+  // registry priming in the Router constructor plus Transitioner's
+  // settled-time load.
+  const establish = () =>
+    Solid.createMemo(() =>
+      (isServer ?? router.isServer) && !router._serverResult
+        ? router.load().then(() => true)
+        : true,
+    )
+  // The route the request is for, declared to Solid's observe tier around
+  // the load that establishes it — the render's route (see
+  // `describeInitial`); the client declares its arrival in Transitioner.
+  // Folded out of production with `OBSERVE`.
+  const ready =
+    Solid.OBSERVE && (isServer ?? router.isServer)
+      ? Solid.OBSERVE.attribution.withOrigin(
+          describeInitial(router, () => router.latestLocation),
+          establish,
+        )
+      : establish()
+
+  // Client-side, the provider is where the router meets Solid's
+  // server-function transport: it consumes the response metadata mutations
+  // return (`redirect()`, `reload()`, `respond(value, { revalidate })`) so
+  // a mutation's navigation and reload happen without the caller wrapping
+  // the call. Never on the server — a render has no mutations to answer.
+  if (!(isServer ?? router.isServer)) {
+    Solid.onCleanup(setupFlightDataConsumer(router))
+  }
 
   const OptionalWrapper = router.options.Wrap || SafeFragment
 
   return (
     <OptionalWrapper>
-      <routerContext.Provider value={router as AnyRouter}>
-        {children()}
-      </routerContext.Provider>
+      <RouterContext value={router as AnyRouter}>
+        <Solid.Show when={ready()}>
+          {(_) => {
+            // Native SSR transfer for the bare pairing (no-op under Start —
+            // see registryTransfer): serialize settled match state into the
+            // hydration registry while the render's serialization context is
+            // live. Runs after the load gate so matches are committed. The
+            // client half — the hydration-claiming boot — runs at router
+            // creation, outside the render.
+            if (isServer ?? router.isServer) {
+              serializeMatchTransfer(router)
+            }
+            return children()
+          }}
+        </Solid.Show>
+      </RouterContext>
     </OptionalWrapper>
   )
 }

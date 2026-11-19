@@ -70,7 +70,7 @@ function createTestRouter(initialHistory?: RouterHistory) {
     getParentRoute: () => gLayoutRoute,
     path: '$username',
   })
-  const searchRoute = createRoute({
+  const _searchRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: 'search',
     validateSearch: (search: Record<string, unknown>) => {

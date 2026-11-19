@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/solid-router'
-import { Suspense } from 'solid-js'
+import { Loading } from 'solid-js'
 import { queryOptions, useQuery } from '@tanstack/solid-query'
 import { z } from 'zod'
 
@@ -32,7 +32,7 @@ function TransitionPage() {
   const doubleQuery = useQuery(() => doubleQueryOptions(search().n))
 
   return (
-    <Suspense fallback="Loading...">
+    <Loading fallback="Loading...">
       <div class="p-2">
         <Link
           data-testid="increase-button"
@@ -50,6 +50,6 @@ function TransitionPage() {
           </div>
         </div>
       </div>
-    </Suspense>
+    </Loading>
   )
 }

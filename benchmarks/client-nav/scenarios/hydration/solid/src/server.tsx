@@ -4,7 +4,7 @@ import {
   renderRouterToStream,
 } from '@tanstack/solid-router/ssr/server'
 import { isServer } from '@tanstack/router-core/isServer'
-import { isServer as solidIsServer } from 'solid-js/web'
+import { isServer as solidIsServer } from '@solidjs/web'
 import { createDiagnostics, serverUrl } from '../fixture'
 import { createFixtureRouter } from './app'
 

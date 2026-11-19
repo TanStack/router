@@ -33,7 +33,7 @@ export function Navigate<
 >(props: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): null {
   const { navigate } = useRouter()
 
-  Solid.onMount(() => {
+  Solid.onSettled(() => {
     navigate({
       ...props,
     })

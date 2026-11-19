@@ -30,11 +30,11 @@ test('when there is no loaders', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(useLoaderData<DefaultRouter>)
     .parameter(0)
@@ -94,12 +94,12 @@ test('when there is one loader', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices'>).returns.toEqualTypeOf<
     Accessor<{ data: Array<string> }>
@@ -157,12 +157,12 @@ test('when there is one loader that is async', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices'>).returns.toEqualTypeOf<
     Accessor<{ data: Array<string> }>
@@ -222,11 +222,11 @@ test('when there are multiple loaders', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(useLoaderData<DefaultRouter, '/'>).returns.toEqualTypeOf<
     Accessor<undefined>
@@ -318,11 +318,11 @@ test('when there are multiple loaders of objects and primtives', () => {
     postsRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(useLoaderData<DefaultRouter, '/'>).returns.toEqualTypeOf<
     Accessor<undefined>

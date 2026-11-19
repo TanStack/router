@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
-import viteSolid from 'vite-plugin-solid'
+import viteSolid from '@solidjs/vite-plugin'
 import { isSpaMode } from './tests/utils/isSpaMode'
 import { isPrerender } from './tests/utils/isPrerender'
 import tailwindcss from '@tailwindcss/vite'
@@ -29,6 +29,8 @@ const prerenderConfiguration = {
       '/users',
     ].some((p) => page.path.includes(p)),
   maxRedirects: 100,
+  retryCount: 2,
+  retryDelay: 1000,
 }
 
 const outDir = process.env.E2E_DIST_DIR ?? 'dist'

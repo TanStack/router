@@ -133,38 +133,38 @@ const routeTreeObjects = rootRoute.addChildren({
   indexRoute,
 })
 
-const defaultRouter = createRouter({
+const _defaultRouter = createRouter({
   routeTree: routeTreeTuples,
 })
 
-const defaultRouterObjects = createRouter({
+const _defaultRouterObjects = createRouter({
   routeTree: routeTreeObjects,
 })
 
-const routerAlwaysTrailingSlashes = createRouter({
+const _routerAlwaysTrailingSlashes = createRouter({
   routeTree: routeTreeTuples,
   trailingSlash: 'always',
 })
 
-const routerNeverTrailingSlashes = createRouter({
+const _routerNeverTrailingSlashes = createRouter({
   routeTree: routeTreeTuples,
   trailingSlash: 'never',
 })
 
-const routerPreserveTrailingSlashes = createRouter({
+const _routerPreserveTrailingSlashes = createRouter({
   routeTree: routeTreeTuples,
   trailingSlash: 'preserve',
 })
 
-type DefaultRouter = typeof defaultRouter
+type DefaultRouter = typeof _defaultRouter
 
-type DefaultRouterObjects = typeof defaultRouterObjects
+type DefaultRouterObjects = typeof _defaultRouterObjects
 
-type RouterAlwaysTrailingSlashes = typeof routerAlwaysTrailingSlashes
+type RouterAlwaysTrailingSlashes = typeof _routerAlwaysTrailingSlashes
 
-type RouterNeverTrailingSlashes = typeof routerNeverTrailingSlashes
+type RouterNeverTrailingSlashes = typeof _routerNeverTrailingSlashes
 
-type RouterPreserveTrailingSlashes = typeof routerPreserveTrailingSlashes
+type RouterPreserveTrailingSlashes = typeof _routerPreserveTrailingSlashes
 
 test('when navigating to the root', () => {
   const DefaultRouterLink = Link<DefaultRouter, string, '/'>

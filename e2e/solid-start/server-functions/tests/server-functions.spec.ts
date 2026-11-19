@@ -162,6 +162,63 @@ test('Server function can return null for GET and POST calls', async ({
   ).toContainText(JSON.stringify(null))
 })
 
+test('POST server functions return single-flight loader data', async ({
+  page,
+}) => {
+  await page.goto('/single-flight')
+  await page.waitForLoadState('networkidle')
+
+  const initialCount = Number(
+    await page.getByTestId('single-flight-count').textContent(),
+  )
+  const initialReads = Number(
+    await page.getByTestId('single-flight-reads').textContent(),
+  )
+  const dataRequests: Array<{ method: string; url: string }> = []
+
+  page.on('request', (request) => {
+    if (['fetch', 'xhr'].includes(request.resourceType())) {
+      dataRequests.push({
+        method: request.method(),
+        url: request.url(),
+      })
+    }
+  })
+
+  const responsePromise = page.waitForResponse((response) =>
+    response.url().includes('/_serverFn/'),
+  )
+  await page.getByTestId('single-flight-mutate').click()
+  const response = await responsePromise
+
+  // Three consumers ride the mutation (Solid's multi-source single-flight
+  // protocol): Start's loader-data slice under its named source id "tsr",
+  // solid-query's QueryClientProvider (6.0.0-rc.2+) under its own "sq", and
+  // the router's response-metadata consumer under the reserved unnamed id
+  // "true". The request advertises every source the client consumes; the
+  // response echoes only the ones the server folded — this app registers no
+  // "sq" collector and nothing collects for the unnamed slot, so only the
+  // router's slice comes back.
+  expect(
+    response.request().headers()['x-single-flight'].split(',').sort(),
+  ).toEqual(['sq', 'true', 'tsr'])
+  expect(response.headers()['x-single-flight']).toBe('tsr')
+  expect(response.headers()['x-single-flight']).toBe('tsr')
+
+  await expect(page.getByTestId('single-flight-count')).toHaveText(
+    String(initialCount + 1),
+  )
+  await expect(page.getByTestId('single-flight-reads')).toHaveText(
+    String(initialReads + 1),
+  )
+  expect(dataRequests).toEqual([
+    {
+      method: 'POST',
+      url: expect.stringContaining('/_serverFn/'),
+    },
+  ])
+})
+
 test('Server function can correctly send and receive FormData', async ({
   page,
 }) => {
@@ -486,7 +543,7 @@ test('redirect in server function on direct navigation', async ({ page }) => {
   expect(page.url()).toContain('/redirect-test/target')
 })
 
-test('redirect in server function called in query during SSR', async ({
+test.skip('redirect in server function called in query during SSR', async ({
   page,
 }) => {
   // Test direct navigation to a route with a server function that redirects

@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/solid-start",
-  "version": "1.169.6",
+  "version": "2.0.0-rc.11",
   "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -75,6 +75,18 @@
         "default": "./dist/esm/server.js"
       }
     },
+    "./server-functions-handler": {
+      "import": {
+        "types": "./dist/esm/server-functions-handler.d.ts",
+        "default": "./dist/esm/server-functions-handler.js"
+      }
+    },
+    "./createSolidStartHandler": {
+      "import": {
+        "types": "./dist/esm/createSolidStartHandler.d.ts",
+        "default": "./dist/esm/createSolidStartHandler.js"
+      }
+    },
     "./plugin/vite": {
       "import": {
         "types": "./dist/esm/plugin/vite.d.ts",
@@ -107,6 +119,14 @@
     },
     "./package.json": "./package.json"
   },
+  "imports": {
+    "#tanstack-start-entry": {
+      "default": "./dist/esm/empty-start-entry.js"
+    },
+    "#tanstack-start-plugin-adapters": {
+      "default": "./dist/esm/empty-plugin-adapters.js"
+    }
+  },
   "sideEffects": false,
   "files": [
     "dist",
@@ -125,12 +145,15 @@
     "@tanstack/start-client-core": "workspace:*",
     "@tanstack/start-plugin-core": "workspace:*",
     "@tanstack/start-server-core": "workspace:*",
+    "@tanstack/start-storage-context": "workspace:*",
     "pathe": "catalog:"
   },
   "devDependencies": {
     "@rsbuild/core": "catalog:",
+    "@solidjs/web": "^2.0.1",
     "@tanstack/router-utils": "workspace:*",
     "@types/node": ">=20",
+    "solid-js": "^2.0.1",
     "vite": "*",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
@@ -142,8 +165,9 @@
     "rimraf": "catalog:"
   },
   "peerDependencies": {
+    "@solidjs/web": ">=2.0.1 <3.0.0",
     "@rsbuild/core": "^2.0.5",
-    "solid-js": ">=1.0.0",
+    "solid-js": ">=2.0.1 <3.0.0",
     "vite": ">=8.0.0"
   },
   "peerDependenciesMeta": {

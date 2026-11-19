@@ -1,5 +1,4 @@
-import { For, onMount } from 'solid-js'
-import { HydrationScript } from 'solid-js/web'
+import { For, onSettled } from 'solid-js'
 import {
   HeadContent,
   Link,
@@ -16,7 +15,7 @@ import {
   ordinaryLinkCount,
   serverUrl,
 } from '../fixture'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type { Diagnostics } from '../fixture'
 
 export function createFixtureRouter(server: boolean, diagnostics: Diagnostics) {
@@ -88,9 +87,7 @@ export function createFixtureRouter(server: boolean, diagnostics: Diagnostics) {
   function Document(props: { children: JSX.Element }) {
     return (
       <html lang="en">
-        <head>
-          <HydrationScript />
-        </head>
+        <head></head>
         <body>
           <HeadContent />
           {props.children}
@@ -115,7 +112,7 @@ export function createFixtureRouter(server: boolean, diagnostics: Diagnostics) {
   function Items() {
     const data = items.useLoaderData()
     const context = items.useRouteContext()
-    onMount(() => {
+    onSettled(() => {
       diagnostics.mounted = true
     })
     return (

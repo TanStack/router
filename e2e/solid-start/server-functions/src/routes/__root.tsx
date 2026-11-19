@@ -6,7 +6,6 @@ import {
 } from '@tanstack/solid-router'
 
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
-import { HydrationScript } from 'solid-js/web'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 
@@ -34,10 +33,9 @@ function RootComponent() {
   return (
     <html>
       <head>
-        <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <Outlet />
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />

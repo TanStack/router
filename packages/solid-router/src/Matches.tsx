@@ -1,15 +1,12 @@
 import * as Solid from 'solid-js'
-import { replaceEqualDeep, rootRouteId } from '@tanstack/router-core'
-import { isServer } from '@tanstack/router-core/isServer'
+import { replaceEqualDeep } from '@tanstack/router-core'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { Rendered, Transitioner } from './Transitioner'
 import { nearestMatchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { Match } from './Match'
-import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
 import type {
-  AnyRoute,
   AnyRouter,
   DeepPartial,
   Expand,
@@ -22,54 +19,33 @@ import type {
   ResolveRoute,
   ToSubOptionsProps,
 } from '@tanstack/router-core'
+import type { JSX } from '@solidjs/web'
+
+const NearestMatchContext = nearestMatchContext as unknown as Solid.Component<{
+  value: any
+  children: any
+}>
 
 declare module '@tanstack/router-core' {
   export interface RouteMatchExtensions {
-    meta?: Array<Solid.JSX.IntrinsicElements['meta'] | undefined>
-    links?: Array<Solid.JSX.IntrinsicElements['link'] | undefined>
-    scripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
-    styles?: Array<Solid.JSX.IntrinsicElements['style'] | undefined>
-    headScripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
+    meta?: Array<JSX.IntrinsicElements['meta'] | undefined>
+    links?: Array<JSX.IntrinsicElements['link'] | undefined>
+    scripts?: Array<JSX.IntrinsicElements['script'] | undefined>
+    styles?: Array<JSX.IntrinsicElements['style'] | undefined>
+    headScripts?: Array<JSX.IntrinsicElements['script'] | undefined>
   }
 }
 
 export function Matches() {
   const router = useRouter()
 
-  const ResolvedSuspense =
-    (isServer ?? router.isServer) ||
-    (typeof document !== 'undefined' && router.ssr)
-      ? SafeFragment
-      : Solid.Suspense
-
-  const rootRoute: () => AnyRoute = () => router.routesById[rootRouteId]
-  const PendingComponent =
-    rootRoute().options.pendingComponent ??
-    router.options.defaultPendingComponent
-
   const OptionalWrapper = router.options.InnerWrap || SafeFragment
 
   return (
     <OptionalWrapper>
-      <ResolvedSuspense
-        fallback={
-          PendingComponent
-            ? (() => {
-                if (process.env.NODE_ENV !== 'production') {
-                  return renderInNonRouteComponentContext(
-                    () => <PendingComponent />,
-                    'pendingComponent',
-                  )
-                }
-                return <PendingComponent />
-              })()
-            : null
-        }
-      >
-        <Transitioner />
-        <MatchesInner />
-        <Rendered />
-      </ResolvedSuspense>
+      <Transitioner />
+      <MatchesInner />
+      <Rendered />
     </OptionalWrapper>
   )
 }
@@ -81,37 +57,40 @@ function MatchesInner() {
     routeId() ? router.stores.byRoute.get(routeId()!)?.get() : undefined
   const nearestMatch = [routeId, match] as const
 
-  const matchComponent = () => {
+  const matchContent = () => (
+    <Solid.Show when={routeId()} keyed>
+      {(currentRouteId) => <Match routeId={currentRouteId} />}
+    </Solid.Show>
+  )
+
+  if (router.options.disableGlobalCatchBoundary) {
+    // When disableGlobalCatchBoundary is true, render without any internal
+    // error boundary so errors bubble up freely to an external Errored boundary.
     return (
-      <Solid.Show when={routeId()}>
-        <Match routeId={routeId()!} />
-      </Solid.Show>
+      <NearestMatchContext value={nearestMatch}>
+        {matchContent()}
+      </NearestMatchContext>
     )
   }
 
   return (
-    <nearestMatchContext.Provider value={nearestMatch}>
-      {router.options.disableGlobalCatchBoundary ? (
-        matchComponent()
-      ) : (
-        <CatchBoundary
-          getResetKey={match}
-          errorComponent={ErrorComponent}
-          onCatch={
-            process.env.NODE_ENV !== 'production'
-              ? (error) => {
-                  console.warn(
-                    `Warning: The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
-                  )
-                  console.warn(`Warning: ${error.message || error.toString()}`)
-                }
-              : undefined
-          }
-        >
-          {matchComponent()}
-        </CatchBoundary>
-      )}
-    </nearestMatchContext.Provider>
+    <NearestMatchContext value={nearestMatch}>
+      <CatchBoundary
+        getResetKey={() => router.stores.matches.get()}
+        render={matchContent}
+        errorComponent={ErrorComponent}
+        onCatch={
+          process.env.NODE_ENV !== 'production'
+            ? (error) => {
+                console.warn(
+                  `Warning: The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
+                )
+                console.warn(`Warning: ${error.message || error.toString()}`)
+              }
+            : undefined
+        }
+      />
+    </NearestMatchContext>
   )
 }
 
@@ -169,8 +148,8 @@ export type MakeMatchRouteOptions<
         params?: Expand<
           ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']
         >,
-      ) => Solid.JSX.Element)
-    | Solid.JSX.Element
+      ) => JSX.Element)
+    | JSX.Element
 }
 
 export function MatchRoute<

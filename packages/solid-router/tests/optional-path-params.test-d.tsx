@@ -10,11 +10,11 @@ test('when creating a route with optional parameters', () => {
     path: '/users/{-$tab}',
   })
 
-  const router = createRouter({
+  const _router = createRouter({
     routeTree: rootRoute.addChildren([usersRoute]),
   })
 
-  expectTypeOf(usersRoute.useParams<typeof router>()).toEqualTypeOf<
+  expectTypeOf(usersRoute.useParams<typeof _router>()).toEqualTypeOf<
     Accessor<{
       tab?: string
     }>
@@ -28,11 +28,11 @@ test('when creating a route with mixed optional and required parameters', () => 
     path: '/users/$id/{-$tab}',
   })
 
-  const router = createRouter({
+  const _router = createRouter({
     routeTree: rootRoute.addChildren([usersRoute]),
   })
 
-  expectTypeOf(usersRoute.useParams<typeof router>()).toEqualTypeOf<
+  expectTypeOf(usersRoute.useParams<typeof _router>()).toEqualTypeOf<
     Accessor<{
       id: string
       tab?: string
@@ -47,11 +47,11 @@ test('when creating a route with optional param with prefix and suffix', () => {
     path: '/files/prefix{-$name}.txt',
   })
 
-  const router = createRouter({
+  const _router = createRouter({
     routeTree: rootRoute.addChildren([filesRoute]),
   })
 
-  expectTypeOf(filesRoute.useParams<typeof router>()).toEqualTypeOf<
+  expectTypeOf(filesRoute.useParams<typeof _router>()).toEqualTypeOf<
     Accessor<{
       name?: string
     }>
@@ -65,11 +65,11 @@ test('when creating Link with optional parameters', () => {
     path: '/posts/{-$category}/{-$slug}',
   })
 
-  const router = createRouter({
+  const _router = createRouter({
     routeTree: rootRoute.addChildren([postsRoute]),
   })
 
-  expectTypeOf(postsRoute.useParams<typeof router>()).toEqualTypeOf<
+  expectTypeOf(postsRoute.useParams<typeof _router>()).toEqualTypeOf<
     Accessor<{
       category?: string
       slug?: string
@@ -88,11 +88,11 @@ test('when using optional parameters in loaders', () => {
     },
   })
 
-  const router = createRouter({
+  const _router = createRouter({
     routeTree: rootRoute.addChildren([postsRoute]),
   })
 
-  expectTypeOf(postsRoute.useLoaderData<typeof router>()).toEqualTypeOf<
+  expectTypeOf(postsRoute.useLoaderData<typeof _router>()).toEqualTypeOf<
     Accessor<{
       category?: string
     }>
@@ -110,11 +110,11 @@ test('when using optional parameters in beforeLoad', () => {
     },
   })
 
-  const router = createRouter({
+  const _router = createRouter({
     routeTree: rootRoute.addChildren([postsRoute]),
   })
 
-  expectTypeOf(postsRoute.useParams<typeof router>()).toEqualTypeOf<
+  expectTypeOf(postsRoute.useParams<typeof _router>()).toEqualTypeOf<
     Accessor<{
       category?: string
     }>
@@ -141,12 +141,12 @@ test('when using params.parse with optional parameters', () => {
     },
   })
 
-  const router = createRouter({
+  const _router = createRouter({
     routeTree: rootRoute.addChildren([postsRoute]),
   })
 
   // Note: Type inference for params.parse is still complex - this represents current working behavior
-  expectTypeOf(postsRoute.useParams<typeof router>()).toMatchTypeOf<
+  expectTypeOf(postsRoute.useParams<typeof _router>()).toMatchTypeOf<
     Accessor<{
       page?: number | undefined
     }>
@@ -164,11 +164,11 @@ test('when nesting routes with optional parameters', () => {
     path: '/$postId',
   })
 
-  const router = createRouter({
+  const _router = createRouter({
     routeTree: rootRoute.addChildren([postsRoute.addChildren([postRoute])]),
   })
 
-  expectTypeOf(postRoute.useParams<typeof router>()).toEqualTypeOf<
+  expectTypeOf(postRoute.useParams<typeof _router>()).toEqualTypeOf<
     Accessor<{
       category?: string
       postId: string
@@ -183,11 +183,11 @@ test('when combining optional parameters with wildcards', () => {
     path: '/docs/{-$version}/$',
   })
 
-  const router = createRouter({
+  const _router = createRouter({
     routeTree: rootRoute.addChildren([docsRoute]),
   })
 
-  expectTypeOf(docsRoute.useParams<typeof router>()).toEqualTypeOf<
+  expectTypeOf(docsRoute.useParams<typeof _router>()).toEqualTypeOf<
     Accessor<{
       version?: string
       _splat?: string
@@ -214,11 +214,11 @@ test('complex scenario with optional parameters only', () => {
     path: '/app/{-$env}/api/{-$version}/users/$id/{-$tab}/$',
   })
 
-  const router = createRouter({
+  const _router = createRouter({
     routeTree: rootRoute.addChildren([complexRoute]),
   })
 
-  expectTypeOf(complexRoute.useParams<typeof router>()).toEqualTypeOf<
+  expectTypeOf(complexRoute.useParams<typeof _router>()).toEqualTypeOf<
     Accessor<{
       env?: string
       version?: string
@@ -236,11 +236,11 @@ test('edge case - all optional parameters', () => {
     path: '/{-$category}/{-$subcategory}/{-$item}',
   })
 
-  const router = createRouter({
+  const _router = createRouter({
     routeTree: rootRoute.addChildren([allOptionalRoute]),
   })
 
-  expectTypeOf(allOptionalRoute.useParams<typeof router>()).toEqualTypeOf<
+  expectTypeOf(allOptionalRoute.useParams<typeof _router>()).toEqualTypeOf<
     Accessor<{
       category?: string
       subcategory?: string

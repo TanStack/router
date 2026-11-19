@@ -9,7 +9,7 @@ export const Route = createFileRoute('/multi-cookie-redirect/target')({
 function RouteComponent() {
   const [cookies, setCookies] = Solid.createSignal<Record<string, string>>({})
 
-  Solid.onMount(() => {
+  Solid.onSettled(() => {
     setCookies({
       session: Cookies.get('session') || '',
       csrf: Cookies.get('csrf') || '',

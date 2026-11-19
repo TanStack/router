@@ -1,5 +1,14 @@
 cleanupUnusedCatalogs: true
 minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - solid-js
+  - '@solidjs/*'
+  - babel-preset-solid
+  - babel-plugin-jsx-dom-expressions
+  - '@dom-expressions/*'
+  - vite-plugin-solid
+  - '@tanstack/solid-query'
+  - '@tanstack/solid-query-devtools'
 linkWorkspacePackages: true
 preferWorkspacePackages: true
 blockExoticSubdeps: true
@@ -57,7 +66,6 @@ catalog:
   publint: ^0.3.16
   redaxios: ^0.5.1
   rimraf: ^6.1.2
-  solid-js: 1.9.12
   tinyglobby: ^0.2.17
   vite: ^8.3.8
   vite-plugin-solid: 2.11.10
@@ -68,13 +76,17 @@ catalog:
   '@playwright/test': ^1.63.0
   '@tanstack/query-core': ^5.102.0
   '@tanstack/react-query': ^5.102.0
-  '@tanstack/solid-query': ^5.102.0
+  '@tanstack/solid-query': ^6.0.0-rc.6
   '@tanstack/vue-query': ^5.102.0
 
 overrides:
+  # @rsbuild/plugin-solid@2.0.0-rc.0 hard-pins the rc.6 compiler, whose delegated-event
+  # key (`$$click`) the solid-js 2.0 RC runtime no longer reads (`_$$click`); keep its
+  # compiler on the same RC as the runtime.
+  '@rsbuild/plugin-solid>@solidjs/compiler': 2.0.1
+  '@rsbuild/plugin-solid>@solidjs/babel-plugin': 2.0.1
   '@types/babel__traverse': '^7.28.0'
   vite-plugin-dts: 4.2.3
-  solid-js: 'catalog:'
   react: 'catalog:'
   react-dom: 'catalog:'
   '@types/react': 'catalog:'
@@ -166,3 +178,4 @@ allowBuilds:
 
   # protobufjs
   protobufjs: false # transitive dep
+

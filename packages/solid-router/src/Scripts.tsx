@@ -1,4 +1,5 @@
 import * as Solid from 'solid-js'
+import { NoHydration } from '@solidjs/web'
 import {
   composeSsrBodyScripts,
   getSsrBodyScriptParts,
@@ -38,8 +39,8 @@ export const Scripts = () => {
       ? composeSsrBodyScripts([scripts(), []], initialHydrationScripts)
       : scripts()
   return (
-    <>
+    <NoHydration>
       <Solid.For each={tags()}>{(asset) => <Asset {...asset} />}</Solid.For>
-    </>
+    </NoHydration>
   )
 }

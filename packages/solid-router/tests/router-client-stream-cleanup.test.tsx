@@ -1,6 +1,6 @@
 import { cleanup, render, screen, waitFor } from '@solidjs/testing-library'
 import { afterEach, expect, test, vi } from 'vitest'
-import { ErrorBoundary } from 'solid-js'
+import * as Solid from 'solid-js'
 import { RouterClient } from '../src/ssr/RouterClient'
 import { createMemoryHistory, createRootRoute, createRouter } from '../src'
 
@@ -28,9 +28,9 @@ test.runIf(typeof window !== 'undefined')(
     window.$_TSR = { h: hydrated } as any
 
     render(() => (
-      <ErrorBoundary fallback={(caught) => caught.message}>
+      <Solid.Errored fallback={(caught) => (caught() as Error).message}>
         <RouterClient router={router} />
-      </ErrorBoundary>
+      </Solid.Errored>
     ))
 
     await waitFor(() => expect(hydrated).toHaveBeenCalledTimes(1))

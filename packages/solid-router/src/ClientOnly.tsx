@@ -1,14 +1,15 @@
 import * as Solid from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 export interface ClientOnlyProps {
   /**
    * The children to render when the JS is loaded.
    */
-  children: Solid.JSX.Element
+  children: JSX.Element
   /**
    * The fallback component to render if the JS is not yet loaded.
    */
-  fallback?: Solid.JSX.Element
+  fallback?: JSX.Element
 }
 
 /**
@@ -32,7 +33,7 @@ export function ClientOnly(props: ClientOnlyProps) {
   const hydrated = useHydrated()
   return (
     <Solid.Show when={hydrated()} fallback={props.fallback ?? null}>
-      <>{props.children}</>
+      {props.children}
     </Solid.Show>
   )
 }
@@ -60,13 +61,16 @@ let globalHydrated = false
 
 export function useHydrated(): Solid.Accessor<boolean> {
   const [hydrated, setHydrated] = Solid.createSignal(
-    globalHydrated && !Solid.sharedConfig.context,
+    globalHydrated && !Solid.isHydrating(),
   )
 
-  Solid.onMount(() => {
-    globalHydrated = true
-    setHydrated(true)
-  })
+  Solid.createEffect(
+    () => true,
+    () => {
+      globalHydrated = true
+      setHydrated(true)
+    },
+  )
 
   return hydrated
 }

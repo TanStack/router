@@ -10,7 +10,15 @@ import {
 async function renderDocument(mode: 'stream' | 'string') {
   const request = new Request('http://localhost/')
   const rootRoute = createRootRoute({
-    component: () => <main>home</main>,
+    // The v2 RouterServer renders no document shell of its own.
+    component: () => (
+      <html>
+        <head></head>
+        <body>
+          <main>home</main>
+        </body>
+      </html>
+    ),
   })
   const handler = createRequestHandler({
     request,

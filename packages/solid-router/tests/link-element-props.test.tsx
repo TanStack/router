@@ -18,6 +18,7 @@ import {
   createRouter,
 } from '../src'
 import type { RegisteredRouter } from '../src'
+import type { ComponentProps } from '@solidjs/web'
 
 const disposers: Array<() => void> = []
 afterEach(() => {
@@ -70,7 +71,7 @@ test('static and reactive element props reach the anchor', async () => {
         id="static-link"
         rel="noopener"
         target="_blank"
-        tabIndex={3}
+        tabindex={3}
         onKeyDown={onKeyDown}
       >
         Static
@@ -238,6 +239,7 @@ test('user handlers run before the Link and can prevent its navigation', async (
   expect(router.state.location.pathname).toBe('/')
 
   setPrevent(false)
+  Solid.flush()
   fireEvent.click(link)
   expect(calls).toEqual(['click:/', 'click:/'])
   await waitFor(() => expect(router.state.location.pathname).toBe('/target'))
@@ -352,10 +354,11 @@ test('a disabled Link renders no href and does not navigate', async () => {
   expect(link).not.toHaveAttribute('href')
   expect(link).toHaveAttribute('role', 'link')
   expect(link).toHaveAttribute('aria-disabled', 'true')
-  expect((link as any).disabled).toBe(true)
-  // Solid skips delegated handlers of a disabled element, the user's too.
+  // Solid 2 sets `disabled` as an attribute on an anchor, so its delegated
+  // user handler still runs; the Link itself does not navigate.
+  expect(link).toHaveAttribute('disabled')
   fireEvent.click(link)
-  expect(onClick).not.toHaveBeenCalled()
+  expect(onClick).toHaveBeenCalledOnce()
   await Promise.resolve()
   expect(router.state.location.pathname).toBe('/')
 
@@ -363,16 +366,16 @@ test('a disabled Link renders no href and does not navigate', async () => {
   await waitFor(() => expect(link).toHaveAttribute('href', '/target'))
   expect(link).not.toHaveAttribute('role')
   expect(link).not.toHaveAttribute('aria-disabled')
-  expect((link as any).disabled).toBe(false)
+  expect(link).not.toHaveAttribute('disabled')
   fireEvent.click(link)
-  expect(onClick).toHaveBeenCalledOnce()
+  expect(onClick).toHaveBeenCalledTimes(2)
   await waitFor(() => expect(router.state.location.pathname).toBe('/target'))
 })
 
 test('a custom component receives the element props, state and handlers', async () => {
   const ref = vi.fn()
   const onClick = vi.fn()
-  const CustomLink = createLink((props: Solid.ComponentProps<'a'>) => (
+  const CustomLink = createLink((props: ComponentProps<'a'>) => (
     <a {...props} data-custom />
   ))
   const router = renderLinks(() => (
@@ -417,26 +420,4 @@ test('state props added later through a spread apply their extra props', async (
     expect(link).toHaveAttribute('title', 'active title')
     expect(link).toHaveAttribute('data-active', 'yes')
   })
-})
-
-test("the Link's handlers follow the element's own listeners", async () => {
-  const log: Array<string> = []
-  const onclick = vi.fn()
-  const router = renderLinks(() => (
-    <Link
-      to="/target"
-      onFocus={() => log.push('link')}
-      on:focus={() => log.push('element')}
-      onclick={onclick}
-    >
-      Target
-    </Link>
-  ))
-  const link = await screen.findByRole('link', { name: 'Target' })
-  fireEvent.focus(link)
-  expect(log).toEqual(['element', 'link'])
-  // A lowercase delegated handler is replaced by the Link's own.
-  fireEvent.click(link)
-  await waitFor(() => expect(router.state.location.pathname).toBe('/target'))
-  expect(onclick).not.toHaveBeenCalled()
 })

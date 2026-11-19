@@ -1,5 +1,8 @@
-import { createFileRoute } from '@tanstack/solid-router'
-import { ErrorComponent, useRouter } from '@tanstack/solid-router'
+import {
+  createFileRoute,
+  ErrorComponent,
+  useRouter,
+} from '@tanstack/solid-router'
 import { useQuery } from '@tanstack/solid-query'
 import { createEffect, createMemo } from 'solid-js'
 import { PostNotFoundError } from '../posts'
@@ -13,8 +16,7 @@ export function PostErrorComponent({ error, reset }: ErrorComponentProps) {
     return <div>{error.message}</div>
   }
 
-  createEffect(() => {
-    reset()
+  createEffect(reset, () => {
     queryClient.resetQueries()
   })
 

@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import { createSignal } from 'solid-js'
-import { onMount } from 'solid-js'
+import { createSignal, onSettled } from 'solid-js'
 
 export const Route = createFileRoute('/notRemountDeps')({
   validateSearch(search: { searchParam: string }) {
@@ -21,7 +20,7 @@ function Home() {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
 
-  onMount(() => {
+  onSettled(() => {
     setMounts((m) => m + 1)
   })
 

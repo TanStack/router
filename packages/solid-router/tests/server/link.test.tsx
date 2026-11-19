@@ -1,5 +1,4 @@
-/** @jsxImportSource solid-js */
-import { renderToString } from 'solid-js/web'
+import { renderToString } from '@solidjs/web'
 import { expect, test, vi } from 'vitest'
 import {
   Link,
@@ -9,7 +8,7 @@ import {
   createRootRoute,
   createRouter,
 } from '../../src'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 test.each([
   { to: '/', href: '/' },
@@ -17,7 +16,7 @@ test.each([
   { to: 'https://example.com/', href: 'https://example.com/' },
   { to: '/external', href: 'https://example.com/rewritten' },
   { to: 'javascript:blocked()', href: undefined },
-])('SSR custom links retain caller props for $to', ({ to, href }) => {
+])('SSR custom links retain caller props for $to', async ({ to, href }) => {
   let received: JSX.AnchorHTMLAttributes<HTMLAnchorElement> | undefined
   const CustomLink = createLink(
     (props: JSX.AnchorHTMLAttributes<HTMLAnchorElement>) => {
@@ -50,6 +49,8 @@ test.each([
   const callerProps = { ref, ...handlers }
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
   try {
+    // The v2 provider parks a server render on the router load.
+    await router.load()
     renderToString(() => (
       <RouterContextProvider router={router}>
         {() => (
@@ -82,7 +83,7 @@ test.each([
       expect(handlers[name]).toHaveBeenCalledExactlyOnceWith(event)
     }
     if (!href) {
-      expect(received).toMatchObject({ role: 'link', 'aria-disabled': true })
+      expect(received).toMatchObject({ role: 'link', 'aria-disabled': 'true' })
     }
   } finally {
     warn.mockRestore()
@@ -96,67 +97,72 @@ test.each([
   { to: 'mailto:person@example.com', href: undefined },
   { to: '/external', href: 'https://example.com/rewritten' },
   { to: '/blocked', href: undefined },
-])('keeps the final SSR href safe and inactive for $to', ({ to, href }) => {
-  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-  try {
-    const router = createRouter({
-      routeTree: createRootRoute(),
-      history: createMemoryHistory(),
-      isServer: true,
-      protocolAllowlist: ['http:', 'https:', 'myapp:'],
-      rewrite: {
-        output: ({ url }) =>
-          url.pathname === '/external'
-            ? new URL('https://example.com/rewritten')
-            : url.pathname === '/blocked'
-              ? new URL('javascript:alert(1)')
-              : url,
-      },
-    })
-    for (const disabled of [false, true]) {
-      for (const customStyles of [false, true]) {
-        const inactiveProps = customStyles
-          ? {
-              class: 'inactive',
-              style: { color: 'red' },
-              href: 'javascript:inactive()',
-            }
-          : undefined
-        const html = renderToString(() => (
-          <RouterContextProvider router={router}>
-            {() => (
-              <Link
-                to={to}
-                disabled={disabled}
-                href={to.startsWith('/') ? undefined : 'javascript:spoofed()'}
-                class={customStyles ? 'base' : undefined}
-                inactiveProps={inactiveProps}
-              >
-                {({ isActive }) => String(isActive)}
-              </Link>
-            )}
-          </RouterContextProvider>
-        ))
-        // Direct schemes retain their href when disabled; built locations do not.
-        const expectedHref = disabled && to.startsWith('/') ? undefined : href
-        if (expectedHref) {
-          expect(html).toContain(`href="${expectedHref}"`)
-        } else {
-          expect(html).not.toContain('href=')
-        }
-        expect(html).not.toContain('javascript:')
-        expect(html).not.toContain('aria-current')
-        expect(html).toContain('false')
-        if (disabled || !href) {
-          expect(html).toContain('aria-disabled="true"')
-        }
-        if (customStyles) {
-          expect(html).toContain('base inactive')
-          expect(html).toContain('color:red')
+])(
+  'keeps the final SSR href safe and inactive for $to',
+  async ({ to, href }) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const router = createRouter({
+        routeTree: createRootRoute(),
+        history: createMemoryHistory(),
+        isServer: true,
+        protocolAllowlist: ['http:', 'https:', 'myapp:'],
+        rewrite: {
+          output: ({ url }) =>
+            url.pathname === '/external'
+              ? new URL('https://example.com/rewritten')
+              : url.pathname === '/blocked'
+                ? new URL('javascript:alert(1)')
+                : url,
+        },
+      })
+      // The v2 provider parks a server render on the router load.
+      await router.load()
+      for (const disabled of [false, true]) {
+        for (const customStyles of [false, true]) {
+          const inactiveProps = customStyles
+            ? {
+                class: 'inactive',
+                style: { color: 'red' },
+                href: 'javascript:inactive()',
+              }
+            : undefined
+          const html = renderToString(() => (
+            <RouterContextProvider router={router}>
+              {() => (
+                <Link
+                  to={to}
+                  disabled={disabled}
+                  href={to.startsWith('/') ? undefined : 'javascript:spoofed()'}
+                  class={customStyles ? 'base' : undefined}
+                  inactiveProps={inactiveProps}
+                >
+                  {({ isActive }) => String(isActive)}
+                </Link>
+              )}
+            </RouterContextProvider>
+          ))
+          // Direct schemes retain their href when disabled; built locations do not.
+          const expectedHref = disabled && to.startsWith('/') ? undefined : href
+          if (expectedHref) {
+            expect(html).toContain(`href="${expectedHref}"`)
+          } else {
+            expect(html).not.toContain('href=')
+          }
+          expect(html).not.toContain('javascript:')
+          expect(html).not.toContain('aria-current')
+          expect(html).toContain('false')
+          if (disabled || !href) {
+            expect(html).toContain('aria-disabled="true"')
+          }
+          if (customStyles) {
+            expect(html).toContain('base inactive')
+            expect(html).toContain('color:red')
+          }
         }
       }
+    } finally {
+      warn.mockRestore()
     }
-  } finally {
-    warn.mockRestore()
-  }
-})
+  },
+)

@@ -1,7 +1,7 @@
 import * as Solid from 'solid-js'
 import { rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { Dynamic } from 'solid-js/web'
+import { Dynamic } from '@solidjs/web'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { CatchNotFound, getNotFound } from './not-found'
@@ -20,6 +20,11 @@ import type {
   RootRouteOptions,
 } from '@tanstack/router-core'
 
+const NearestMatchContext = nearestMatchContext as unknown as Solid.Component<{
+  value: any
+  children?: any
+}>
+
 // Keep the client constant undefined so the server-only script can be dropped.
 const renderScrollRestoration =
   isServer === false
@@ -33,165 +38,190 @@ const renderScrollRestoration =
 
 export const Match = (props: { routeId: string }) => {
   const router = useRouter()
-
-  const currentMatch = Solid.createMemo(
-    () => router.stores.byRoute.get(props.routeId)!.get()!,
+  const currentMatch = Solid.createMemo(() =>
+    router.stores.getMatchStore(props.routeId).get(),
   )
+  const matchState = Solid.createMemo(() => {
+    const match = currentMatch()
+    if (!match) {
+      return null
+    }
 
+    return {
+      routeId: match.routeId,
+      ssr: match.ssr,
+      status: match.status,
+    }
+  })
   const nearestMatch = [() => props.routeId, currentMatch] as const
 
-  const route: AnyRoute = router.routesById[props.routeId]
-
-  // Lazy route option mutations become observable with the next client match
-  // publication. Server stores are non-reactive and options load before render.
-  const routeOptions =
-    (isServer ?? router.isServer)
-      ? () => route.options
-      : () => {
-          currentMatch()
+  return (
+    <Solid.Show when={matchState()}>
+      {(currentMatchState) => {
+        const route = router.routesById[props.routeId] as AnyRoute
+        const routeOptions = () => {
+          // Lazy route options become observable with the next publication.
+          currentMatchState()
           return route.options
         }
+        const resolvePendingComponent = Solid.createMemo(
+          () =>
+            routeOptions().pendingComponent ??
+            router.options.defaultPendingComponent,
+        )
+        const routeErrorComponent = Solid.createMemo(
+          () =>
+            routeOptions().errorComponent ??
+            router.options.defaultErrorComponent,
+        )
+        const routeNotFoundComponent = Solid.createMemo(() =>
+          route.isRoot
+            ? (routeOptions().notFoundComponent ??
+              router.options.notFoundRoute?.options.component ??
+              router.options.defaultNotFoundComponent)
+            : (routeOptions().notFoundComponent ??
+              router.options.defaultNotFoundComponent),
+        )
+        const resolvedNoSsr = Solid.createMemo(
+          () =>
+            currentMatchState().ssr === false ||
+            currentMatchState().ssr === 'data-only',
+        )
+        const ResolvedNotFoundBoundary = Solid.createMemo(() =>
+          routeNotFoundComponent() ? CatchNotFound : SafeFragment,
+        )
+        const ShellComponent = Solid.createMemo(() =>
+          route.isRoot
+            ? ((route.options as RootRouteOptions).shellComponent ??
+              SafeFragment)
+            : SafeFragment,
+        )
 
-  const resolvePendingComponent = () =>
-    routeOptions().pendingComponent ?? router.options.defaultPendingComponent
-
-  const routeErrorComponent = () =>
-    routeOptions().errorComponent ?? router.options.defaultErrorComponent
-
-  const routeNotFoundComponent = () =>
-    route.isRoot
-      ? // If it's the root route, use the _notFound option, with fallback to the notFoundRoute's component
-        (routeOptions().notFoundComponent ??
-        router.options.notFoundRoute?.options.component)
-      : routeOptions().notFoundComponent
-
-  const resolvedNoSsr = () =>
-    currentMatch().ssr === false || currentMatch().ssr === 'data-only'
-
-  const shouldSkipSuspenseFallback = () =>
-    (isServer ?? router.isServer)
-      ? resolvedNoSsr()
-      : currentMatch().ssr === 'data-only'
-
-  const ShellComponent = route.isRoot
-    ? ((route.options as RootRouteOptions).shellComponent ?? SafeFragment)
-    : SafeFragment
-
-  const MatchContent = () => (
-    <Solid.Show
-      when={currentMatch().status !== 'pending'}
-      fallback={(() => {
-        if (process.env.NODE_ENV !== 'production') {
-          return renderInNonRouteComponentContext(
-            () => <Dynamic component={resolvePendingComponent()} />,
-            'pendingComponent',
-          )
-        }
-        return <Dynamic component={resolvePendingComponent()} />
-      })()}
-    >
-      <MatchInner />
-    </Solid.Show>
-  )
-
-  return (
-    <ShellComponent>
-      <nearestMatchContext.Provider value={nearestMatch}>
-        <Solid.Suspense
-          fallback={(() => {
-            // Data-only SSR renders the inner fallback on the server, so
-            // avoid adding an extra suspense fallback on the client.
-            if (shouldSkipSuspenseFallback()) {
-              return undefined
-            }
-            if (process.env.NODE_ENV !== 'production') {
-              return renderInNonRouteComponentContext(
-                () => <Dynamic component={resolvePendingComponent()} />,
-                'pendingComponent',
-              )
-            }
-            return <Dynamic component={resolvePendingComponent()} />
-          })()}
-        >
+        const MatchContent = () => (
+          <Solid.Show
+            when={currentMatchState().status !== 'pending'}
+            fallback={(() => {
+              if (process.env.NODE_ENV !== 'production') {
+                return renderInNonRouteComponentContext(
+                  () => <Dynamic component={resolvePendingComponent()} />,
+                  'pendingComponent',
+                )
+              }
+              return <Dynamic component={resolvePendingComponent()} />
+            })()}
+          >
+            <MatchInner />
+          </Solid.Show>
+        )
+        const RouteContent = () => (
           <Dynamic
-            component={routeErrorComponent() ? CatchBoundary : SafeFragment}
-            getResetKey={currentMatch}
-            errorComponent={routeErrorComponent() as any}
-            onCatch={(error: Error) => {
-              // Forward not found errors (we don't want to show the error component for these)
-              const notFoundError = getNotFound(error)
-              if (notFoundError) {
-                notFoundError.routeId ??= currentMatch().routeId
+            component={ResolvedNotFoundBoundary()}
+            fallback={(error: any) => {
+              const notFoundError = getNotFound(error) ?? error
+              notFoundError.routeId ??= currentMatchState().routeId
+
+              if (notFoundError.routeId !== currentMatchState().routeId) {
                 throw notFoundError
               }
-              if (process.env.NODE_ENV !== 'production') {
-                console.warn(
-                  `Warning: Error in route match: ${currentMatch().routeId}`,
+
+              return process.env.NODE_ENV !== 'production' ? (
+                renderInNonRouteComponentContext(
+                  () => (
+                    <Dynamic
+                      component={routeNotFoundComponent()}
+                      {...notFoundError}
+                    />
+                  ),
+                  'notFoundComponent',
                 )
-              }
-              ;(route.options.onCatch ?? router.options.defaultOnCatch)?.(error)
+              ) : (
+                <Dynamic
+                  component={routeNotFoundComponent()}
+                  {...notFoundError}
+                />
+              )
             }}
           >
-            <Dynamic
-              component={
-                routeNotFoundComponent() ? CatchNotFound : SafeFragment
-              }
-              fallback={(error: any) => {
-                const notFoundError = getNotFound(error) ?? error
+            <Solid.Switch>
+              <Solid.Match when={resolvedNoSsr()}>
+                <ClientOnly
+                  fallback={(() => {
+                    if (process.env.NODE_ENV !== 'production') {
+                      return renderInNonRouteComponentContext(
+                        () => <Dynamic component={resolvePendingComponent()} />,
+                        'pendingComponent',
+                      )
+                    }
+                    return <Dynamic component={resolvePendingComponent()} />
+                  })()}
+                >
+                  <MatchContent />
+                </ClientOnly>
+              </Solid.Match>
+              <Solid.Match when={!resolvedNoSsr()}>
+                <MatchContent />
+              </Solid.Match>
+            </Solid.Switch>
+          </Dynamic>
+        )
 
-                notFoundError.routeId ??= currentMatch().routeId
-
-                if (notFoundError.routeId !== currentMatch().routeId) {
-                  throw notFoundError
-                }
-
-                return process.env.NODE_ENV !== 'production' ? (
-                  renderInNonRouteComponentContext(
-                    () => (
-                      <Dynamic
-                        component={routeNotFoundComponent()}
-                        {...notFoundError}
-                      />
-                    ),
-                    'notFoundComponent',
-                  )
-                ) : (
-                  <Dynamic
-                    component={routeNotFoundComponent()}
-                    {...notFoundError}
-                  />
-                )
-              }}
-            >
-              <Solid.Switch>
-                <Solid.Match when={resolvedNoSsr()}>
-                  <ClientOnly
-                    fallback={(() => {
+        return (
+          <Dynamic component={ShellComponent()}>
+            <NearestMatchContext value={nearestMatch}>
+              <Solid.Show
+                when={routeErrorComponent()}
+                fallback={<RouteContent />}
+              >
+                {(errorComponent) => (
+                  <CatchBoundary
+                    // Scope the reset key to this match and its
+                    // descendants (whose errors bubble here when they
+                    // have no errorComponent of their own): resetting on
+                    // unrelated matches' transitions just re-throws the
+                    // still-stale error and recreates the retried
+                    // subtree mid-settle.
+                    getResetKey={() => {
+                      const matches = router.stores.matches.get()
+                      const index = matches.findIndex(
+                        (match) => match.routeId === props.routeId,
+                      )
+                      if (index === -1) {
+                        return ''
+                      }
+                      let key = ''
+                      for (let i = index; i < matches.length; i++) {
+                        const match = matches[i]!
+                        key += `${match.status}|${match.updatedAt},`
+                      }
+                      return key
+                    }}
+                    errorComponent={errorComponent() as any}
+                    onCatch={(error: Error) => {
+                      const notFoundError = getNotFound(error)
+                      if (notFoundError) {
+                        notFoundError.routeId ??= currentMatchState().routeId
+                        throw notFoundError
+                      }
                       if (process.env.NODE_ENV !== 'production') {
-                        return renderInNonRouteComponentContext(
-                          () => (
-                            <Dynamic component={resolvePendingComponent()} />
-                          ),
-                          'pendingComponent',
+                        console.warn(
+                          `Warning: Error in route match: ${currentMatchState().routeId}`,
                         )
                       }
-                      return <Dynamic component={resolvePendingComponent()} />
-                    })()}
-                  >
-                    <MatchContent />
-                  </ClientOnly>
-                </Solid.Match>
-                <Solid.Match when={!resolvedNoSsr()}>
-                  <MatchContent />
-                </Solid.Match>
-              </Solid.Switch>
-            </Dynamic>
-          </Dynamic>
-        </Solid.Suspense>
-      </nearestMatchContext.Provider>
+                      ;(
+                        routeOptions().onCatch ?? router.options.defaultOnCatch
+                      )?.(error)
+                    }}
+                    render={RouteContent}
+                  />
+                )}
+              </Solid.Show>
+            </NearestMatchContext>
 
-      {renderScrollRestoration?.(router, route)}
-    </ShellComponent>
+            {renderScrollRestoration?.(router, route)}
+          </Dynamic>
+        )
+      }}
+    </Solid.Show>
   )
 }
 
@@ -200,92 +230,124 @@ export const MatchInner = (): any => {
   const nearestMatch = Solid.useContext(nearestMatchContext)
   const match = nearestMatch[1 /* match */]
   const routeId = nearestMatch[0 /* route id */]
-  const route = router.routesById[routeId()!]!
-  const currentMatch = () => match()!
 
-  const componentKey = () => {
-    const current = currentMatch()
+  const matchState = Solid.createMemo(() => {
+    const currentMatch = match()
+    const currentRouteId = routeId()
+    if (!currentMatch || !currentRouteId) {
+      return null
+    }
+
+    const route = router.routesById[currentRouteId] as AnyRoute
     const remount =
       route.options.remountDeps ?? router.options.defaultRemountDeps
+    let componentKey: string
     if (!remount) {
-      return routeId()
+      componentKey = currentRouteId
+    } else {
+      const deps = remount({
+        routeId: currentRouteId,
+        loaderDeps: currentMatch.loaderDeps,
+        params: currentMatch._strictParams,
+        search: currentMatch._strictSearch,
+      })
+      componentKey = JSON.stringify(deps) ?? currentRouteId
     }
-    const deps = remount({
-      routeId: routeId()!,
-      loaderDeps: current.loaderDeps,
-      params: current._strictParams,
-      search: current._strictSearch,
-    })
-    return JSON.stringify(deps) ?? routeId()
-  }
 
-  const out = () => {
-    const Comp = route.options.component ?? router.options.defaultComponent
-    if (Comp) {
-      return <Comp />
+    return {
+      route,
+      routeId: currentRouteId,
+      match: {
+        id: currentMatch.id,
+        status: currentMatch.status,
+        error: currentMatch.error,
+      },
+      componentKey,
     }
-    return <Outlet />
-  }
-
-  const keyedOut = () => (
-    <Solid.Show when={componentKey()} keyed>
-      {(_key) => out()}
-    </Solid.Show>
-  )
+  })
 
   return (
-    <Solid.Switch>
-      <Solid.Match when={currentMatch().status === 'notFound'}>
-        {(_) => renderRouteNotFound(router, route, currentMatch().error)}
-      </Solid.Match>
-      <Solid.Match when={currentMatch().status === 'error'}>
-        {(_) => {
-          if (isServer ?? router.isServer) {
-            // Match Solid.ErrorBoundary's normalization without changing router state.
-            const thrown = currentMatch().error
-            const error =
-              thrown instanceof Error
-                ? thrown
-                : new Error(
-                    typeof thrown === 'string' ? thrown : 'Unknown error',
-                    {
-                      cause: thrown,
-                    },
+    <Solid.Show when={matchState()}>
+      {(currentMatchState) => {
+        const route = Solid.createMemo(() => currentMatchState().route)
+        const currentMatch = Solid.createMemo(() => currentMatchState().match)
+        const componentKey = Solid.createMemo(
+          () => currentMatchState().componentKey,
+        )
+        const OutComponent = Solid.createMemo(
+          () =>
+            route().options.component ??
+            router.options.defaultComponent ??
+            Outlet,
+        )
+        const keyedOut = () => (
+          <Solid.Show when={componentKey()} keyed>
+            {(_key) => <Dynamic component={OutComponent()} />}
+          </Solid.Show>
+        )
+
+        return (
+          <Solid.Switch>
+            <Solid.Match when={currentMatch().status === 'notFound'}>
+              {(_) =>
+                Solid.untrack(() =>
+                  renderRouteNotFound(router, route(), currentMatch().error),
+                )
+              }
+            </Solid.Match>
+            <Solid.Match when={currentMatch().status === 'error'}>
+              {(_) => {
+                const matchError = Solid.untrack(
+                  () => currentMatch().error,
+                ) as Error
+                if (isServer ?? router.isServer) {
+                  // Match the client error boundary's normalization without changing router state.
+                  const thrown: unknown = matchError
+                  const error = (
+                    typeof thrown === 'object' && thrown !== null
+                      ? thrown
+                      : new Error(
+                          typeof thrown === 'string' ? thrown : 'Unknown error',
+                          {
+                            cause: thrown,
+                          },
+                        )
+                  ) as Error
+                  const RouteErrorComponent =
+                    (route().options.errorComponent ??
+                      router.options.defaultErrorComponent) ||
+                    ErrorComponent
+
+                  return process.env.NODE_ENV !== 'production' ? (
+                    renderInNonRouteComponentContext(
+                      () => (
+                        <RouteErrorComponent
+                          error={error}
+                          reset={undefined as any}
+                          info={{ componentStack: '' }}
+                        />
+                      ),
+                      'errorComponent',
+                    )
+                  ) : (
+                    <RouteErrorComponent
+                      error={error}
+                      reset={undefined as any}
+                      info={{ componentStack: '' }}
+                    />
                   )
-            const RouteErrorComponent =
-              (route.options.errorComponent ??
-                router.options.defaultErrorComponent) ||
-              ErrorComponent
+                }
 
-            return process.env.NODE_ENV !== 'production' ? (
-              renderInNonRouteComponentContext(
-                () => (
-                  <RouteErrorComponent
-                    error={error}
-                    info={{
-                      componentStack: '',
-                    }}
-                  />
-                ),
-                'errorComponent',
-              )
-            ) : (
-              <RouteErrorComponent
-                error={error}
-                info={{
-                  componentStack: '',
-                }}
-              />
-            )
-          }
-
-          throw currentMatch().error
-        }}
-      </Solid.Match>
-      <Solid.Match when={currentMatch().status === 'success'}>
-        {keyedOut()}
-      </Solid.Match>
-    </Solid.Switch>
+                throw matchError
+              }}
+            </Solid.Match>
+            <Solid.Match when={currentMatch().status === 'success'}>
+              {keyedOut()}
+            </Solid.Match>
+          </Solid.Switch>
+        )
+      }}
+    </Solid.Show>
   )
 }
 
@@ -303,54 +365,44 @@ export const Outlet = () => {
   const nearestParentMatch = Solid.useContext(nearestMatchContext)
   const parentMatch = nearestParentMatch[1 /* match */]
   const routeId = nearestParentMatch[0 /* route id */]
-  const route = router.routesById[routeId()!]!
-
-  const childRouteId = () => {
-    if (parentMatch()!._notFound) {
-      return
+  const route = Solid.createMemo(() => {
+    const currentRouteId = routeId()
+    return currentRouteId
+      ? (router.routesById[currentRouteId] as AnyRoute)
+      : undefined
+  })
+  const parentNotFound = Solid.createMemo(() => parentMatch()?._notFound)
+  const parentNotFoundError = Solid.createMemo(() => parentMatch()?.error)
+  const childRouteId = Solid.createMemo(() => {
+    if (parentNotFound()) {
+      return undefined
+    }
+    const currentRouteId = routeId()
+    if (!currentRouteId) {
+      return undefined
     }
     const ids = router.stores.ids.get()
-    return ids[ids.indexOf(routeId()!) + 1]
-  }
-
+    return ids[ids.indexOf(currentRouteId) + 1]
+  })
   return (
     <Solid.Show
       when={childRouteId()}
       keyed
       fallback={
-        parentMatch()!._notFound
-          ? renderRouteNotFound(router, route, parentMatch()!.error)
-          : undefined
+        <Solid.Show when={parentNotFound() && route()}>
+          {(resolvedRoute) =>
+            Solid.untrack(() =>
+              renderRouteNotFound(
+                router,
+                resolvedRoute(),
+                parentNotFoundError(),
+              ),
+            )
+          }
+        </Solid.Show>
       }
     >
-      {(_routeKey: string) => {
-        return (
-          <Solid.Show
-            when={routeId() === rootRouteId}
-            fallback={<Match routeId={childRouteId()!} />}
-          >
-            <Solid.Suspense
-              fallback={(() => {
-                if (process.env.NODE_ENV !== 'production') {
-                  return renderInNonRouteComponentContext(
-                    () => (
-                      <Dynamic
-                        component={router.options.defaultPendingComponent}
-                      />
-                    ),
-                    'pendingComponent',
-                  )
-                }
-                return (
-                  <Dynamic component={router.options.defaultPendingComponent} />
-                )
-              })()}
-            >
-              <Match routeId={childRouteId()!} />
-            </Solid.Suspense>
-          </Solid.Show>
-        )
-      }}
+      {(currentChildRouteId) => <Match routeId={currentChildRouteId} />}
     </Solid.Show>
   )
 }

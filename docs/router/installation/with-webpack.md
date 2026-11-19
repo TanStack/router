@@ -47,13 +47,14 @@ export default {
 }
 ```
 
-And in the .babelrc (SWC doesn't support solid-js, see [here](https://www.answeroverflow.com/m/1135200483116593182)), add these presets:
+And in the .babelrc (SWC doesn't support solid-js, see [here](https://www.answeroverflow.com/m/1135200483116593182)), add the Solid compiler plugin:
 
 ```tsx
 // .babelrc
 
 {
-  "presets": ["babel-preset-solid", "@babel/preset-typescript"]
+  "presets": ["@babel/preset-typescript"],
+  "plugins": ["@solidjs/babel-plugin"]
 }
 
 ```

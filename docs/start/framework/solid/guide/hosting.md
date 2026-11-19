@@ -3,7 +3,7 @@ ref: docs/start/framework/react/guide/hosting.md
 replace:
   {
     '@tanstack/react-start': '@tanstack/solid-start',
-    '@vitejs/plugin-react': 'vite-plugin-solid',
+    '@vitejs/plugin-react': '@solidjs/vite-plugin',
     'viteReact()': 'viteSolid({ ssr: true })',
     'viteReact': 'viteSolid',
     'examples/react/start-basic-cloudflare': 'examples/solid/start-basic-cloudflare',

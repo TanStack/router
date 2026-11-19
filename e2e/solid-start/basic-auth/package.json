@@ -16,16 +16,18 @@
     "@libsql/client": "^0.15.15",
     "@prisma/adapter-libsql": "^7.0.0",
     "@prisma/client": "^7.0.0",
+    "@solidjs/web": "^2.0.1",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
     "iron-session": "^9.0.1",
     "redaxios": "catalog:",
-    "solid-js": "^1.9.10",
+    "solid-js": "^2.0.1",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",
+    "@solidjs/vite-plugin": "^3.0.1",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
@@ -35,8 +37,7 @@
     "tailwindcss": "^4.2.2",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.0.14",
-    "vite-plugin-solid": "^2.11.11"
+    "vite": "^8.0.14"
   },
   "nx": {
     "targets": {

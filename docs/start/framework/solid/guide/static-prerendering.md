@@ -16,7 +16,7 @@ TanStack Start can prerender your application to static HTML files, which can th
 ```ts title="vite.config.ts"
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
-import viteSolid from 'vite-plugin-solid'
+import viteSolid from '@solidjs/vite-plugin'
 
 export default defineConfig({
   plugins: [

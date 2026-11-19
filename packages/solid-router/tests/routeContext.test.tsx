@@ -1,8 +1,14 @@
-import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@solidjs/testing-library'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { z } from 'zod'
 
-import { createEffect, onMount } from 'solid-js'
+import { createEffect, onSettled as onMount } from 'solid-js'
 import {
   Link,
   Outlet,
@@ -209,35 +215,45 @@ describe('context function', () => {
       await findByText(`search: ${JSON.stringify({})}`)
       await findByText('context: 1:{}')
 
+      // In Solid v2, we must wait for the router to become idle between
+      // navigations because Solid lacks React's startTransition for
+      // concurrent state updates. Without this, the next navigation
+      // fires while the previous load is still pending, causing timeouts.
       await clickButton('foo-1')
       await findByText(`search: ${JSON.stringify({ foo: 'foo-1' })}`)
       await findByText('context: 2:{"foo":"foo-1"}')
+      await waitFor(() => expect(router.state.status).toBe('idle'))
 
       await clickButton('foo-1')
       await findByText(`search: ${JSON.stringify({ foo: 'foo-1' })}`)
       await findByText('context: 2:{"foo":"foo-1"}')
+      await waitFor(() => expect(router.state.status).toBe('idle'))
 
       await clickButton('bar-1')
       await findByText(
         `search: ${JSON.stringify({ foo: 'foo-1', bar: 'bar-1' })}`,
       )
       await findByText('context: 2:{"foo":"foo-1"}')
+      await waitFor(() => expect(router.state.status).toBe('idle'))
 
       await clickButton('foo-2')
       await findByText(
         `search: ${JSON.stringify({ foo: 'foo-2', bar: 'bar-1' })}`,
       )
       await findByText('context: 3:{"foo":"foo-2"}')
+      await waitFor(() => expect(router.state.status).toBe('idle'))
 
       await clickButton('bar-2')
       await findByText(
         `search: ${JSON.stringify({ foo: 'foo-2', bar: 'bar-2' })}`,
       )
       await findByText('context: 3:{"foo":"foo-2"}')
+      await waitFor(() => expect(router.state.status).toBe('idle'))
 
       await clickButton('clear')
       await findByText(`search: ${JSON.stringify({})}`)
       await findByText('context: 4:{}')
+      await waitFor(() => expect(router.state.status).toBe('idle'))
     })
   })
 
@@ -1438,11 +1454,10 @@ describe('beforeLoad in the route definition', () => {
     expect(rootElement).toBeInTheDocument()
 
     async function check(expectedCounter: number) {
-      const counterElement = await screen.findByTestId('counter')
-      expect(counterElement).toHaveTextContent(`${expectedCounter}`)
-
-      expect(mockIndexBeforeLoadFn).toHaveBeenCalledWith({
-        counter: expectedCounter,
+      await waitFor(() => {
+        expect(mockIndexBeforeLoadFn).toHaveBeenCalledWith({
+          counter: expectedCounter,
+        })
       })
     }
 
@@ -2407,9 +2422,8 @@ describe('useRouteContext in the component', () => {
         const context = rootRoute.useRouteContext()
 
         // Track context value at render time
-        createEffect(() => {
-          const contextValue: { data: string } = context()
-          contextValues.push(contextValue)
+        createEffect(context, (contextValue) => {
+          contextValues.push(contextValue as { data: string })
         })
 
         return <Outlet />

@@ -1,5 +1,5 @@
-import { render } from 'solid-js/web'
-import { Suspense } from 'solid-js'
+import { render } from '@solidjs/web'
+import { Loading } from 'solid-js'
 import {
   Await,
   ErrorComponent,
@@ -207,7 +207,7 @@ function PostComponent() {
     <div class="space-y-2">
       <h4 class="text-xl font-bold underline">{loaderData().post.title}</h4>
       <div class="text-sm">{loaderData().post.body}</div>
-      <Suspense
+      <Loading
         fallback={
           <div class="flex items-center gap-2">
             <Spinner />
@@ -235,7 +235,7 @@ function PostComponent() {
             )
           }}
         </Await>
-      </Suspense>
+      </Loading>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { paraglideVitePlugin } from '@inlang/paraglide-js'
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
-import viteSolid from 'vite-plugin-solid'
+import viteSolid from '@solidjs/vite-plugin'
 import tailwindcss from '@tailwindcss/vite'
 
 const config = defineConfig({

@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import { nitro } from 'nitro/vite'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
-import viteSolid from 'vite-plugin-solid'
+import viteSolid from '@solidjs/vite-plugin'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({

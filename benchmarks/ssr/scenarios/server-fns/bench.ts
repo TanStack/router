@@ -23,6 +23,13 @@ type FnUrls = {
   context: string
 }
 
+export type ServerFnBenchAdapter = {
+  responseHeader: string
+  decodeResponse: (json: unknown) => unknown
+  buildGetRequest: (url: string, query: string, index: number) => Request
+  buildPostRequest: (url: string, body: string, index: number) => Request
+}
+
 export type ServerFnBenchContext = {
   urls: FnUrls
   bodies: Array<string>
@@ -47,6 +54,13 @@ const postHeaders = {
   ...commonHeaders,
   'content-type': 'application/json',
 } satisfies HeadersInit
+const tanstackServerFnBenchAdapter: ServerFnBenchAdapter = {
+  responseHeader: xTssSerialized,
+  decodeResponse: (json) => fromCrossJSON(json as SerovalNode, {}),
+  buildGetRequest: buildTanStackGetRequest,
+  buildPostRequest: buildTanStackPostRequest,
+}
+let activeServerFnBenchAdapter = tanstackServerFnBenchAdapter
 const documentRequestInit = {
   method: 'GET',
   headers: {
@@ -167,8 +181,10 @@ function validateSerializedResponse(response: Response, label: string) {
     throw new Error(`${label} request failed with status ${response.status}`)
   }
 
-  if (!response.headers.get(xTssSerialized)) {
-    throw new Error(`${label} response missing ${xTssSerialized} header`)
+  if (!response.headers.get(activeServerFnBenchAdapter.responseHeader)) {
+    throw new Error(
+      `${label} response missing ${activeServerFnBenchAdapter.responseHeader} header`,
+    )
   }
 }
 
@@ -211,7 +227,7 @@ async function readSerializedServerFnResult(response: Response, label: string) {
     })
   }
 
-  return { text, decoded: fromCrossJSON(json as SerovalNode, {}) }
+  return { text, decoded: activeServerFnBenchAdapter.decodeResponse(json) }
 }
 
 async function assertServerFnResponse({
@@ -243,12 +259,14 @@ async function assertServerFnRedirectResponse(response: Response) {
 
   let payload: {
     href?: string
+    to?: string
     isSerializedRedirect?: boolean
     statusCode?: number
   }
 
   try {
-    payload = JSON.parse(text) as typeof payload
+    const json = JSON.parse(text) as typeof payload & { error?: typeof payload }
+    payload = json.error ?? json
   } catch (error) {
     throw new Error(`redirect sanity check returned invalid JSON: ${text}`, {
       cause: error,
@@ -256,7 +274,7 @@ async function assertServerFnRedirectResponse(response: Response) {
   }
 
   if (
-    payload.href !== '/' ||
+    (payload.href ?? payload.to) !== '/' ||
     payload.statusCode !== 307 ||
     payload.isSerializedRedirect !== true
   ) {
@@ -340,7 +358,15 @@ async function assertDocumentServerFnCallResponse(response: Response) {
 }
 
 function buildGetRequest(urls: FnUrls, queries: Array<string>, index: number) {
-  return new Request(`${origin}${urls.get}${queries[index % queries.length]}`, {
+  return activeServerFnBenchAdapter.buildGetRequest(
+    urls.get,
+    queries[index % queries.length]!,
+    index,
+  )
+}
+
+function buildTanStackGetRequest(url: string, query: string) {
+  return new Request(`${origin}${url}${query}`, {
     method: 'GET',
     headers: commonHeaders,
   })
@@ -351,10 +377,18 @@ function buildPostUrlRequest(
   bodies: Array<string>,
   index: number,
 ) {
+  return activeServerFnBenchAdapter.buildPostRequest(
+    url,
+    bodies[index % bodies.length]!,
+    index,
+  )
+}
+
+function buildTanStackPostRequest(url: string, body: string) {
   return new Request(`${origin}${url}`, {
     method: 'POST',
     headers: postHeaders,
-    body: bodies[index % bodies.length],
+    body,
   })
 }
 
@@ -393,7 +427,11 @@ function buildSsrCallRequest(random: () => number) {
   )
 }
 
-export async function setupServerFnBench(handler: StartRequestHandler) {
+export async function setupServerFnBench(
+  handler: StartRequestHandler,
+  adapter: ServerFnBenchAdapter = tanstackServerFnBenchAdapter,
+) {
+  activeServerFnBenchAdapter = adapter
   const urls = await discoverUrls(handler)
   const payloads = createPayloads()
   const bodies = await createBodies(payloads)

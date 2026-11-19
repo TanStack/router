@@ -41,8 +41,8 @@ function SSRBinaryHintTest() {
   const [isLoading, setIsLoading] = createSignal(true)
   const [error, setError] = createSignal<string | null>(null)
 
-  createEffect(() => {
-    const { textData, binaryData } = loaderData()
+  createEffect(loaderData, (loaderDataValue) => {
+    const { textData, binaryData } = loaderDataValue
     if (!textData || !binaryData) {
       return
     }

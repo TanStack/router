@@ -9,7 +9,7 @@
     "strict": true,
     "moduleResolution": "Bundler",
     "jsx": "preserve",
-    "jsxImportSource": "solid-js",
+    "jsxImportSource": "@solidjs/web",
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     /* These compiler options are required by Convex */

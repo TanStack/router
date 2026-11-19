@@ -10,10 +10,9 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { createServerFn } from '@tanstack/solid-start'
 import { getRequest } from '@tanstack/solid-start/server'
-import { HydrationScript } from 'solid-js/web'
 import { Show } from 'solid-js'
 import { getSession } from 'start-authjs'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { authConfig } from '~/utils/auth'
 import appCss from '~/styles/app.css?url'
 
@@ -64,10 +63,9 @@ function RootDocument({ children }: { children: JSX.Element }) {
   return (
     <html>
       <head>
-        <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <NavBar />
         <main class="p-4">{children}</main>
         <TanStackRouterDevtools position="bottom-right" />

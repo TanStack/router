@@ -93,8 +93,8 @@ export function setup({ countUpdates = false } = {}) {
       assert.equal(anchors.length, ordinaryLinkCount + hashLinkCount)
       const content = doc.getElementById('hydration-content')
       assert.ok(content)
-      assert.ok(content.hasAttribute('data-hk'))
-      assert.ok(anchors.every((anchor) => anchor.hasAttribute('data-hk')))
+      assert.ok(content.hasAttribute('_hk'))
+      assert.ok(anchors.every((anchor) => anchor.hasAttribute('_hk')))
       for (let index = 0; index < hashLinkCount; index++) {
         assert.equal(
           doc.getElementById(`hash-${index}`)?.getAttribute('data-status'),

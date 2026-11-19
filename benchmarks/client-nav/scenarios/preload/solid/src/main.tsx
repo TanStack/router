@@ -1,5 +1,5 @@
 import type { RouterHistory } from '@tanstack/history'
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import { RouterProvider, createRouter } from '@tanstack/solid-router'
 import { routeTree } from './routeTree.gen'
 

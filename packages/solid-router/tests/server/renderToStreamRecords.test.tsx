@@ -1,20 +1,20 @@
-import { Suspense, createResource } from 'solid-js'
+import { Loading, createMemo } from 'solid-js'
 import { describe, expect, test } from 'vitest'
-import { renderToStream } from 'solid-js/web'
+import { renderToStream } from '@solidjs/web'
 
 describe('installed Solid stream renderer', () => {
-  test('writes a resolved Suspense patch as complete records', async () => {
+  test('writes a resolved Loading patch as complete records', async () => {
     let resolveResource!: (value: string) => void
     const resource = new Promise<string>((resolve) => {
       resolveResource = resolve
     })
 
     function Deferred() {
-      const [value] = createResource(() => resource)
+      const value = createMemo(() => resource)
       return (
-        <Suspense fallback={<p>solid-fallback</p>}>
+        <Loading fallback={<p>solid-fallback</p>}>
           <p>{value()}</p>
-        </Suspense>
+        </Loading>
       )
     }
 
@@ -51,11 +51,9 @@ describe('installed Solid stream renderer', () => {
       record.includes('solid-resolved'),
     )
     expect(templateIndex).toBeGreaterThan(0)
+    // Solid 2 writes a patch's template and script as one complete record.
     expect(records[templateIndex]).toMatch(
-      /^<template\b[^>]*>[\s\S]*<\/template>$/,
+      /^<template\b[^>]*>[\s\S]*<\/template><script\b[^>]*>[\s\S]*<\/script>$/,
     )
-
-    const scriptRecord = records[templateIndex + 1]
-    expect(scriptRecord).toMatch(/^<script\b[^>]*>[\s\S]*<\/script>$/)
   })
 })

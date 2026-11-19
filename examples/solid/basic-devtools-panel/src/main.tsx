@@ -8,7 +8,7 @@ import {
   createRootRoute,
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/solid-router-devtools'
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 
 const rootRoute = createRootRoute({
   component: () => (

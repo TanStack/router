@@ -1,5 +1,5 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
-import { Suspense } from 'solid-js'
+import { Loading } from 'solid-js'
 import { createManyPromises } from '../../../../streaming-ssr-fixtures'
 
 export const Route = createFileRoute('/many-promises')({
@@ -13,7 +13,7 @@ function PromiseItem(props: {
   label: string
 }) {
   return (
-    <Suspense
+    <Loading
       fallback={
         <div data-testid={`${props.testId}-loading`}>
           Loading {props.label}...
@@ -28,7 +28,7 @@ function PromiseItem(props: {
           </div>
         )}
       />
-    </Suspense>
+    </Loading>
   )
 }
 

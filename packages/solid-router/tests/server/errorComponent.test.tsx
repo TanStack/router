@@ -1,4 +1,4 @@
-import { Suspense, onCleanup } from 'solid-js'
+import { Loading, onCleanup } from 'solid-js'
 import { describe, expect, it, vi } from 'vitest'
 import {
   Await,
@@ -175,7 +175,7 @@ describe('errorComponent (server)', () => {
         expect(html).toContain('data-testid="error-component"')
         expect(html).toContain('render boom')
       } else {
-        // The error boundary's Suspense fallback is blank during string rendering.
+        // The error boundary's Loading fallback is blank during string rendering.
         expect(html.startsWith('<!DOCTYPE html>')).toBe(true)
         expect(html).not.toContain('data-testid="error-component"')
       }
@@ -195,11 +195,11 @@ describe('errorComponent (server)', () => {
       component: () => {
         const data = indexRoute.useLoaderData()
         return (
-          <Suspense fallback={<span>pending</span>}>
+          <Loading fallback={<span>pending</span>}>
             <Await promise={data().deferred}>
               {() => <span>resolved</span>}
             </Await>
-          </Suspense>
+          </Loading>
         )
       },
       errorComponent: createLazyErrorComponent(),

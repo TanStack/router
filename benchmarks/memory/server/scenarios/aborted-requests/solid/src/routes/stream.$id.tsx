@@ -1,7 +1,7 @@
 import { createServerOnlyFn } from '@tanstack/solid-start'
 import { getRequest } from '@tanstack/solid-start/server'
-import { createFileRoute } from '@tanstack/solid-router'
-import { Show, Suspense, createResource } from 'solid-js'
+import { Await, createFileRoute } from '@tanstack/solid-router'
+import { Loading } from 'solid-js'
 import { makeDeferredRecords } from '../../../deferred-records'
 import type { DeferredRecord } from '../../../deferred-records'
 
@@ -22,48 +22,47 @@ function StreamComponent() {
   return (
     <main data-bench="aborted-requests-stream">
       <p data-bench="aborted-requests-eager">{data().eager}</p>
-      <Suspense
+      <Loading
         fallback={
           <p data-bench="aborted-requests-alpha-fallback">loading-alpha</p>
         }
       >
-        <DeferredRecords
-          promise={data().alpha}
-          dataBench="aborted-requests-alpha"
-        />
-      </Suspense>
-      <Suspense
+        <Await promise={data().alpha}>
+          {(records) => (
+            <DeferredRecords
+              records={records}
+              dataBench="aborted-requests-alpha"
+            />
+          )}
+        </Await>
+      </Loading>
+      <Loading
         fallback={
           <p data-bench="aborted-requests-beta-fallback">loading-beta</p>
         }
       >
-        <DeferredRecords
-          promise={data().beta}
-          dataBench="aborted-requests-beta"
-        />
-      </Suspense>
+        <Await promise={data().beta}>
+          {(records) => (
+            <DeferredRecords
+              records={records}
+              dataBench="aborted-requests-beta"
+            />
+          )}
+        </Await>
+      </Loading>
     </main>
   )
 }
 
 function DeferredRecords(props: {
-  promise: Promise<Array<DeferredRecord>>
+  records: Array<DeferredRecord>
   dataBench: string
 }) {
-  const [records] = createResource(
-    () => props.promise,
-    (promise) => promise,
-  )
-
   return (
-    <Show when={records()}>
-      {(resolvedRecords) => (
-        <ul data-bench={props.dataBench}>
-          {resolvedRecords().map((record) => (
-            <li>{record.label}</li>
-          ))}
-        </ul>
-      )}
-    </Show>
+    <ul data-bench={props.dataBench}>
+      {props.records.map((record) => (
+        <li>{record.label}</li>
+      ))}
+    </ul>
   )
 }
