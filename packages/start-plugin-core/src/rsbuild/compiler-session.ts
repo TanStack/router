@@ -355,7 +355,7 @@ export class StartRsbuildCompilerSession {
       // 2.3.1: the context never reaches the native resolver), so the memo keys answers by it.
       // Options that depend on the issuer (a matched rule's `resolve`, `issuerLayer`) would
       // join the key; the RSC layer's do (`resolveScope`)
-      const dirOf = (importer: string) => path.dirname(identify(importer).path)
+      const dirOf = (importer: string) => path.dirname(pathOfId(importer))
       host = this.start.host(
         async (specifier, importer) => {
           const id = await resolve(dirOf(importer), specifier, options)
