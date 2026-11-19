@@ -34,8 +34,10 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
   compilation wrote it (dev; RSC builds too): Rspack's watcher ignores `node_modules`, so the write alone never builds
   it again.
 - `host-plugin.ts` holds the Rspack hooks of one environment compiler (below).
-- `router-generator.ts` runs the route generator as a precondition of every compiler and serves the client route
-  tree without its server-only routes.
+- `router-generator.ts` runs the route generator and serves the client route tree without its server-only routes. A
+  production build generates once for its environments, in Rsbuild's `onBeforeBuild`; a program that runs the compiler
+  of `createCompiler()` itself gets no `onBeforeBuild`, and each environment's compiler generates in its `run` (after
+  Rsbuild's own `run` tap, which awaits `onBeforeBuild`); a watch compilation generates in its `watchRun`.
 - `virtual-modules.ts` owns the pure virtual modules (manifest, server-fn resolver, adapters, RSC runtime and HMR)
   and the import-protection edge module files, under `<root>/node_modules/.virtual/`.
 

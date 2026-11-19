@@ -1,7 +1,8 @@
 /**
  * The Rspack plugin of one Start environment compiler: installs the loader
  * implementation on the compiler, the generator as a precondition of a
- * watch compilation (`watchRun`), the intake of the file events into
+ * watch compilation (`watchRun`) and of a run Rsbuild dispatched no
+ * `onBeforeBuild` for (`run`: `createCompiler().run()`), the intake of the file events into
  * the one invalidation operation (`watchRun`, `make`), the `finishMake`
  * drain of the environment's stale set and replay of plan, server-fn and import-protection
  * `buildInfo` (persistent cache), the import-protection build reports
@@ -65,6 +66,8 @@ interface StartHostPluginOptions {
   /** Writes a virtual module file of this environment (import-protection edge modules). */
   writeVirtualModule: (file: string, content: string) => void
   generator: RsbuildRouteGenerator
+  /** Whether a run generates in the compiler's `run`: Rsbuild dispatched no `onBeforeBuild` (`createCompiler().run()`). */
+  generatesInRun: () => boolean
   /** The client route tree module (client environment only): rebuilt when it is stale. */
   clientRouteTree?: {
     path: () => string
@@ -374,7 +377,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         }
       })
 
-      // (a production build's generation: `onBeforeBuild`, `start-compiler.ts`)
       compiler.hooks.beforeRun.tap(PLUGIN_NAME, () => {
         // one warning per file per run (J2.19): the session's ledger is
         // shared by every environment's compiler; the client's run starts it
@@ -382,6 +384,16 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           session.start.warnings.reset()
         }
       })
+      // a production build's generation: `onBeforeBuild` (`start-compiler.ts`), which
+      // Rsbuild's own `run` tap awaits; a run without it generates here, after that tap
+      compiler.hooks.run.tapPromise(
+        { name: PLUGIN_NAME, stage: 1 },
+        async () => {
+          if (opts.generatesInRun()) {
+            await opts.generator.build()
+          }
+        },
+      )
 
       /** A modified file's event (`CompilationFiles.eventOf`): edited, created, or a watched directory. */
       const eventOf = (file: string) =>

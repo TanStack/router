@@ -1,7 +1,8 @@
 /**
  * The route generator of Start's Rsbuild plugin (J1.10, J2.15): one
  * `Generator` per plugin and its session (`createGeneratorSession`), run
- * once before a production build's environments compile (`build`), and as
+ * once before a production build's environments compile (`build`; once per
+ * environment compiler when a program runs the compiler itself), and as
  * a precondition of every watch compilation (`watchRun`, whose first one
  * starts the generator's own watcher for the files outside the bundle:
  * created route files, `physical()` mounts). It publishes the
@@ -26,7 +27,7 @@ import type { RouteRegistry } from '@tanstack/router-utils/compiler'
 export interface RsbuildRouteGenerator {
   /** The route registry (a route file's entry by its scanned or real path). */
   routes: RouteRegistry
-  /** A production build's generation, once for all its environments (Rsbuild's `onBeforeBuild`). */
+  /** A production build's generation, once for all its environments (Rsbuild's `onBeforeBuild`; without it, each compiler's `run`). */
   build: () => Promise<void>
   /** A watch compilation: the generator's own watcher from the first one, the compiler's file events after. */
   watchRun: (

@@ -99,9 +99,11 @@ import type {
 import type { TanStackStartInputConfig } from '../src'
 import type { ViolationInfo } from './importProtection/public-types'
 import type {
+  EnvironmentContext,
   RsbuildConfig,
   RsbuildInstance,
   RsbuildPlugin,
+  Rspack,
 } from '@rsbuild/core'
 import type { InlineConfig, Plugin, Rolldown, ViteBuilder } from 'vite'
 
@@ -314,6 +316,13 @@ export interface StartBuildOptions {
    * Default: each build has plugins of its own, as a config file gives them.
    */
   samePlugins?: boolean
+  /**
+   * Rsbuild builds: through the instance's compiler (`createCompiler()`,
+   * then its `run()`), as a program that drives the compiler itself does:
+   * Rsbuild dispatches none of its build hooks (`onBeforeBuild`,
+   * `onAfterEnvironmentCompile`, `onAfterBuild`). Not with `watchEdits`.
+   */
+  rsbuildCompiler?: boolean
   /**
    * Vite builds: Start's plugins come from the app's config file
    * (`vite.config.mjs`), as `vite build` loads them: each config resolution
@@ -666,6 +675,7 @@ export async function buildStart(
     viteBuild: options.viteBuild,
     watchEdits: options.watchEdits,
     samePlugins: options.samePlugins ?? false,
+    rsbuildCompiler: options.rsbuildCompiler ?? false,
     viteConfigFile: options.viteConfigFile ?? false,
     cwd: options.cwd,
     configuredRoot: options.root?.(app.root),
@@ -853,6 +863,7 @@ interface BuildTarget {
   viteBuild?: (builder: ViteBuilder) => Promise<void>
   watchEdits?: Record<string, string | null> | ReadonlyArray<WatchStep>
   samePlugins: boolean
+  rsbuildCompiler: boolean
   viteConfigFile: boolean
   /** Start's Vite plugins of every build (`samePlugins`), once created. */
   startPlugins?: ReturnType<typeof startPlugins>
@@ -1377,6 +1388,8 @@ interface RsbuildRecords {
   channel: Channel
   compiles: ReturnType<typeof trackCompiles>
   clientParsedModules: ReturnType<typeof parsedModules>
+  /** The environments of the compiler this build created (`rsbuildCompiler`). */
+  environments?: Record<string, EnvironmentContext>
 }
 
 /**
@@ -1420,8 +1433,9 @@ async function buildWithRsbuild(
           )
         }
       })
-      api.onAfterCreateCompiler(({ compiler }) => {
+      api.onAfterCreateCompiler(({ compiler, environments }) => {
         const { compiles, channel } = records()
+        records().environments = environments
         compiles.track(compiler)
         for (const child of 'compilers' in compiler
           ? compiler.compilers
@@ -1447,28 +1461,35 @@ async function buildWithRsbuild(
         records().compiles.done()
       })
       api.onAfterEnvironmentCompile(({ stats, environment }) => {
-        const { outputs, errors, warnings, clientParsedModules } = records()
-        const env = environment.name as Env
-        if (!stats) {
-          errors.push(`[${env}] no compilation stats`)
-          return
-        }
-        const json = stats.toJson(statsOptions) as StatsJson
-        warnings[env].push(...statsDiagnostics(json.warnings, 'warning'))
-        errors.push(
-          ...statsMessages(json.errors).map((message) => `[${env}] ${message}`),
-        )
-        outputs[env] = {
-          outDir: environment.distPath,
-          chunks: chunksOfStats(json, {
-            entry: configuredEntry(environment.entry, env),
-            extension: '.js',
-          }),
-          esModules: environment.config.output.module,
-          ...(env === 'client' && { parsedModules: clientParsedModules }),
-        }
+        recordCompile(environment, stats)
       })
     },
+  }
+  /** What an environment's compile emitted and reported. */
+  const recordCompile = (
+    environment: EnvironmentContext,
+    stats: Rspack.Stats | undefined,
+  ) => {
+    const { outputs, errors, warnings, clientParsedModules } = records()
+    const env = environment.name as Env
+    if (!stats) {
+      errors.push(`[${env}] no compilation stats`)
+      return
+    }
+    const json = stats.toJson(statsOptions) as StatsJson
+    warnings[env].push(...statsDiagnostics(json.warnings, 'warning'))
+    errors.push(
+      ...statsMessages(json.errors).map((message) => `[${env}] ${message}`),
+    )
+    outputs[env] = {
+      outDir: environment.distPath,
+      chunks: chunksOfStats(json, {
+        entry: configuredEntry(environment.entry, env),
+        extension: '.js',
+      }),
+      esModules: environment.config.output.module,
+      ...(env === 'client' && { parsedModules: clientParsedModules }),
+    }
   }
   try {
     const rsbuild =
@@ -1524,6 +1545,25 @@ async function buildWithRsbuild(
         }
       } finally {
         await watching.close()
+      }
+    } else if (target.rsbuildCompiler) {
+      const compiler = await rsbuild.createCompiler()
+      const stats = await new Promise<Rspack.Stats | Rspack.MultiStats>(
+        (resolve, reject) => {
+          compiler.run((error, result) => {
+            if (error || !result) {
+              reject(error ?? new Error('no compilation stats'))
+            } else {
+              resolve(result)
+            }
+          })
+        },
+      ).finally(
+        () => new Promise((resolve) => compiler.close(() => resolve(null))),
+      )
+      // (each environment's compiler is named after it)
+      for (const one of 'stats' in stats ? stats.stats : [stats]) {
+        recordCompile(own.environments![one.compilation.name ?? '']!, one)
       }
     } else {
       await rsbuild.build()
