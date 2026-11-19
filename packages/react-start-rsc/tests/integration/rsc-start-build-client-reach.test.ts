@@ -141,6 +141,41 @@ if (process.env.NODE_ENV === 'development') {
 }
 hydrateRoot(document, <StartClient />)
 `,
+  // A `'use client'` component a server component renders, importing a
+  // debug server fn in development only (the same dependency).
+  'src/guarded/debug.ts': `import { createServerFn } from '@tanstack/react-start'
+import { label } from 'dev-only-adapter'
+export const guardedDebug = createServerFn().handler(() => label)
+`,
+  'src/guarded/ping.ts': `import { createServerFn } from '@tanstack/react-start'
+export const ping = createServerFn({ method: 'GET' }).handler(() => 'MARK_PING')
+`,
+  'src/guarded/Ping.tsx': `'use client'
+import { useState } from 'react'
+import { ping } from './ping'
+if (process.env.NODE_ENV === 'development') {
+  void import('./debug').then(({ guardedDebug }) => Object.assign(window, { guardedDebug }))
+}
+export function Ping() {
+  const [result, setResult] = useState('')
+  return <button data-testid="ping" onClick={() => ping().then(setResult)}>ping {result}</button>
+}
+`,
+  'src/guarded/card.tsx': `import { createServerFn } from '@tanstack/react-start'
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+import { Ping } from './Ping'
+export const getCard = createServerFn().handler(() => renderServerComponent(<div>card <Ping /></div>))
+`,
+  'src/routes/guarded.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { getCard } from '../guarded/card'
+export const Route = createFileRoute('/guarded')({
+  loader: async () => ({ tree: await getCard() }),
+  component: Page,
+})
+function Page() {
+  return <main>{Route.useLoaderData().tree}</main>
+}
+`,
   'src/greet.ts': `import { createServerFn } from '@tanstack/react-start'
 export const greet = createServerFn().handler(() => 'MARK_GREET')
 `,
@@ -224,6 +259,21 @@ describe("Vite production build with RSC: server fns only 'use client' component
     await page.waitForText('called MARK_GREET', {
       selector: '[data-testid=greet]',
     })
+    expect(page.errors).toEqual([])
+  })
+
+  // SPEC J4.2, G1: the same when the development branch is in a `'use
+  // client'` component a server component renders: it builds, and the
+  // component's server fn answers.
+  test("a server fn only development code of a 'use client' component imports adds no production dependency", async () => {
+    const page = await open('/guarded')
+    const button = '[data-testid=ping]'
+    const response = page.page.waitForResponse((r) =>
+      r.url().includes('/_serverFn/'),
+    )
+    await page.page.locator(button).click()
+    expect((await response).status()).toBe(200)
+    await page.waitForText('ping MARK_PING', { selector: button })
     expect(page.errors).toEqual([])
   })
 })
