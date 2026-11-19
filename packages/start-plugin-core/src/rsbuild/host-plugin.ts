@@ -1,7 +1,7 @@
 /**
  * The Rspack plugin of one Start environment compiler: installs the loader
- * implementation on the compiler, the generator as a precondition of the
- * compilation (`beforeRun`/`watchRun`), the intake of the file events into
+ * implementation on the compiler, the generator as a precondition of a
+ * watch compilation (`watchRun`), the intake of the file events into
  * the one invalidation operation (`watchRun`, `make`), the `finishMake`
  * drain of the environment's stale set and replay of plan, server-fn and import-protection
  * `buildInfo` (persistent cache), the import-protection build reports
@@ -367,13 +367,13 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         }
       })
 
-      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, async () => {
+      // (a production build's generation: `onBeforeBuild`, `start-compiler.ts`)
+      compiler.hooks.beforeRun.tap(PLUGIN_NAME, () => {
         // one warning per file per run (J2.19): the session's ledger is
         // shared by every environment's compiler; the client's run starts it
         if (environment.type === 'client') {
           session.start.warnings.reset()
         }
-        await opts.generator.beforeRun()
       })
 
       /** A modified file's event (`CompilationFiles.eventOf`): edited, created, or a watched directory. */

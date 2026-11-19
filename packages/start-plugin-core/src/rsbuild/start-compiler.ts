@@ -99,6 +99,12 @@ export function registerStartCompiler(
     return session
   }
 
+  // a production build generates once for all its environments: Rsbuild
+  // runs `onBeforeBuild` once per build run, and each environment's compiler
+  // waits for it before it compiles. A watch build generates in its
+  // compilations' `watchRun` (the host plugin)
+  api.onBeforeBuild(({ isWatch }) => (isWatch ? undefined : generator.build()))
+
   // the client's route tree without its server-only routes (J2.15)
   api.transform(
     {

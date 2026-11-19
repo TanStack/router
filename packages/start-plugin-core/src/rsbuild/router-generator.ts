@@ -1,9 +1,10 @@
 /**
  * The route generator of Start's Rsbuild plugin (J1.10, J2.15): one
- * `Generator` per plugin and its session (`createGeneratorSession`), run as
- * a precondition of every environment compiler (`beforeRun`; `watchRun`,
- * whose first one starts the generator's own watcher for the files outside
- * the bundle: created route files, `physical()` mounts). It publishes the
+ * `Generator` per plugin and its session (`createGeneratorSession`), run
+ * once before a production build's environments compile (`build`), and as
+ * a precondition of every watch compilation (`watchRun`, whose first one
+ * starts the generator's own watcher for the files outside the bundle:
+ * created route files, `physical()` mounts). It publishes the
  * route registry the router planner reads and serves the client's route
  * tree without its server-only routes.
  */
@@ -25,8 +26,8 @@ import type { RouteRegistry } from '@tanstack/router-utils/compiler'
 export interface RsbuildRouteGenerator {
   /** The route registry (a route file's entry by its scanned or real path). */
   routes: RouteRegistry
-  /** A build's generation (every compiler awaits it). */
-  beforeRun: () => Promise<void>
+  /** A production build's generation, once for all its environments (Rsbuild's `onBeforeBuild`). */
+  build: () => Promise<void>
   /** A watch compilation: the generator's own watcher from the first one, the compiler's file events after. */
   watchRun: (
     modified: ReadonlyArray<string>,
@@ -97,7 +98,7 @@ export function createRsbuildRouteGenerator(opts: {
 
   return {
     routes: registry,
-    beforeRun: () => session.build(),
+    build: () => session.build(),
     watchRun: (modified, removed) => session.watchRun(modified, removed),
     close: () => session.close(),
     onRoutesChanged(listener) {
