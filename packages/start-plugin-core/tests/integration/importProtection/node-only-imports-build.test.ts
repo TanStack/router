@@ -16,6 +16,7 @@ import {
   reportedViolations,
 } from '../../importProtection/start-apps'
 import {
+  aliasedReexport,
   deniedPackage,
   keptWhole,
   nodeOnlyMark,
@@ -140,6 +141,31 @@ describe.each(startBundlers)('%s build', (bundler) => {
       }).toEqual({
         packageCode: 'nowhere',
         show: 'a safe mock',
+        reported: ['src/entry.ts'],
+      })
+    },
+    timeout,
+  )
+
+  test(
+    'a specifier rule denying the package judges a re-export under another name: mock mode serves the mock under that name',
+    async () => {
+      const built = await buildStart({
+        bundler,
+        files: { ...nodeOnlyPackage, 'src/entry.ts': aliasedReexport },
+        entry: 'src/entry.ts',
+        start: { importProtection: { ...deniedPackage, behavior: 'mock' } },
+      })
+      const { result } = await built.client.run(
+        `${describeValuePrelude}return [entry.read(), entry.version].map((value) => describeValue(value, ${JSON.stringify(nodeOnlyMark)}))`,
+      )
+      expect({
+        packageCode: built.client.where(nodeOnlyMark),
+        values: result,
+        reported: importersIn(built, 'client'),
+      }).toEqual({
+        packageCode: 'nowhere',
+        values: ['a safe mock', 'a safe mock'],
         reported: ['src/entry.ts'],
       })
     },

@@ -49,5 +49,12 @@ export const getSecret = createServerFn().handler(() => readSecret())
 export const show = () => version
 `
 
+/**
+ * The module re-exports the package's bindings, one under another name, next
+ * to a type. Source: Astra review 5 fact-check (N2).
+ */
+export const aliasedReexport = `export { readSecret as read, type Config, version } from 'node-only-pkg'
+`
+
 /** Import protection denying the package by specifier on the client. */
 export const deniedPackage = { client: { specifiers: ['node-only-pkg'] } }

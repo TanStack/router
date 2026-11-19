@@ -95,6 +95,10 @@ interface ReexportEntry {
   specifierRange: Range
   statementRange: Range
   kind: 'star' | 'named' | 'namespace'
+  /**
+   * The names a named re-export reads of its target (`a` of `a as b`), as an
+   * import's edge names; its type-only specifiers are left out.
+   */
   names: Array<string>
   typeOnly: boolean
 }
@@ -461,13 +465,16 @@ export class ModuleAnalysis {
             for (const spec of stmt.specifiers) {
               const exported = moduleExportNameOf(spec.exported)
               const local = moduleExportNameOf(spec.local)
-              names.push(exported)
+              const typeSpecifier = typeOnly || spec.exportKind === 'type'
+              if (!typeSpecifier) {
+                names.push(local)
+              }
               exportEntries.push({
                 kind: 'reExport',
                 name: exported,
                 specifier: stmt.source.value,
                 fromName: local,
-                typeOnly: typeOnly || spec.exportKind === 'type',
+                typeOnly: typeSpecifier,
                 range: { start: spec.start, end: spec.end },
               })
             }
