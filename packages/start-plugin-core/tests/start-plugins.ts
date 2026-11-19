@@ -18,7 +18,10 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { resolveModulePath } from 'exsolve'
-import { workspacePackage } from '@tanstack/compiler-test-utils/workspace-packages'
+import {
+  workspacePackage,
+  workspacePackageLinks,
+} from '@tanstack/compiler-test-utils/workspace-packages'
 import type { RsbuildPlugin } from '@rsbuild/core'
 import type { PluginOption } from 'vite'
 
@@ -177,6 +180,19 @@ export function rscDependency(name: string): string {
       `${name}/package.json`,
     ),
   )
+}
+
+/**
+ * What an Rsbuild RSC app installs besides Start's runtime (`symlinks` of a
+ * build): `@tanstack/react-start-rsc` and its `react-server-dom-rspack`.
+ */
+export function rsbuildRscLinks(): Record<string, string> {
+  return {
+    ...workspacePackageLinks(['@tanstack/react-start-rsc']),
+    'node_modules/react-server-dom-rspack': rscDependency(
+      'react-server-dom-rspack',
+    ),
+  }
 }
 
 /**

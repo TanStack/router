@@ -11,14 +11,13 @@
  */
 import { describe, expect, test } from 'vitest'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import { buildStart } from '../../build-harness'
 import {
   expectPrinted,
   rejection,
   violationsOf,
 } from '../../importProtection/start-apps'
-import { rscDependency } from '../../start-plugins'
+import { rsbuildRscLinks } from '../../start-plugins'
 import type {
   StartBuild,
   StartBuildError,
@@ -26,14 +25,6 @@ import type {
 } from '../../build-harness'
 
 const timeout = 120_000
-
-/** What an RSC app installs besides Start's runtime. */
-const rscLinks = () => ({
-  ...workspacePackageLinks(['@tanstack/react-start-rsc']),
-  'node_modules/react-server-dom-rspack': rscDependency(
-    'react-server-dom-rspack',
-  ),
-})
 
 /**
  * An RSC app whose `'use client'` `ClientBox` imports a `.client` file
@@ -128,7 +119,7 @@ function buildRscApp(
     bundler: 'rsbuild',
     files: rscApp(routeImports),
     entry: 'src/entry.ts',
-    symlinks: rscLinks(),
+    symlinks: rsbuildRscLinks(),
     start: { ...rscEnabled, importProtection: { behavior } },
     ...options,
   })
