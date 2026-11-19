@@ -61,7 +61,8 @@ const prune = (
 
 /**
  * Function-local declarators (and `var`/block declarators of the module
- * level the core's units do not model) and destructuring leaves all of
+ * level the core's units do not model), the declarations of a namespace
+ * body (its non-exported members) and destructuring leaves all of
  * whose references are erased in the env output: the initialiser goes with
  * the declarator whatever it does, a hook call included (J4.12, documented
  * removal, as main). Iterates to a fixpoint.
@@ -211,11 +212,18 @@ export function cleanOrphanedDeclarations(
       if (
         (parent.type === 'FunctionDeclaration' ||
           parent.type === 'ClassDeclaration') &&
-        parent.id === decl &&
-        t1.inFunctionAt(parent.start)
+        parent.id === decl
       ) {
+        // a function's block, or a namespace body (its own scope, not the
+        // module's: placement does not decide its members)
         const stmtParent = file.parentOf(parent)
-        if (!stmtParent || stmtParent.type !== 'BlockStatement') {
+        if (
+          !(
+            stmtParent?.type === 'TSModuleBlock' ||
+            (stmtParent?.type === 'BlockStatement' &&
+              t1.inFunctionAt(parent.start))
+          )
+        ) {
           continue
         }
         handled.add(b.id)
@@ -358,6 +366,7 @@ function removeDeclaration(
     case 'Program':
     case 'SwitchCase':
     case 'StaticBlock':
+    case 'TSModuleBlock':
       remove(extendOverTrailingLine(code, statement.end), [])
       return true
     case 'ForStatement':

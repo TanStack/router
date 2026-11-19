@@ -1152,6 +1152,42 @@ namespace Repo { export const get = () => db.users() }
 export const fn = createServerFn().handler(async () => Repo.get())`,
       check: { expression: 'module.fn !== undefined', expected: true },
     },
+    // A namespace's own helpers only a server-only fn reads, as in
+    // hikma-health's models (`const sha256 = … createHash(…)`).
+    // Source: review round 4 fact-check (N1).
+    {
+      name: 'a namespace-local const only a createServerOnlyFn reads',
+      code: `import { createServerOnlyFn } from '@tanstack/react-start'
+import { db } from './db.server'
+namespace Repo {
+  const run = (s: string) => db.users(s)
+  export const read = createServerOnlyFn(() => run('get'))
+}
+export const read = Repo.read`,
+      check: { expression: 'module.read()', expected: throwsError },
+    },
+    {
+      name: 'a namespace-local function only a createServerOnlyFn reads',
+      code: `import { createServerOnlyFn } from '@tanstack/react-start'
+import { db } from './db.server'
+namespace Repo {
+  function run(s: string) { return db.users(s) }
+  export const read = createServerOnlyFn(() => run('get'))
+}
+export const read = Repo.read`,
+      check: { expression: 'module.read()', expected: throwsError },
+    },
+    {
+      name: 'a namespace-local class only a createServerOnlyFn reads',
+      code: `import { createServerOnlyFn } from '@tanstack/react-start'
+import { db } from './db.server'
+namespace Repo {
+  class Run { static get(s: string) { return db.users(s) } }
+  export const read = createServerOnlyFn(() => Run.get('get'))
+}
+export const read = Repo.read`,
+      check: { expression: 'module.read()', expected: throwsError },
+    },
     {
       name: 'an overloaded function used by a server fn handler',
       code: `import { createServerFn } from '@tanstack/react-start'

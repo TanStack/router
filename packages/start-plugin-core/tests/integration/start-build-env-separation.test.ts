@@ -181,6 +181,9 @@ export const ${name} = (..._args: Array<unknown>) => '${marker}'
       ...dependency('destructuredDefault', 'MARK_DESTRUCTURED_DEFAULT'),
       ...dependency('restDefault', 'MARK_REST_DEFAULT'),
       ...dependency('arrayServerOnly', 'MARK_ARRAY_SERVER_ONLY'),
+      ...dependency('namespaceConst', 'MARK_NAMESPACE_CONST'),
+      ...dependency('namespaceFunction', 'MARK_NAMESPACE_FUNCTION'),
+      ...dependency('namespaceClass', 'MARK_NAMESPACE_CLASS'),
       ...dependency('routeServerFn', 'MARK_ROUTE_SERVER_FN'),
       ...dependency('serverRouteHandler', 'MARK_SERVER_ROUTE'),
       ...dependency('startMiddleware', 'MARK_START_MIDDLEWARE'),
@@ -291,6 +294,28 @@ export const isomorphic = createIsomorphicFn()
   .client(() => 'MARK_ISOMORPHIC_CLIENT')
 export const serverOnly = createServerOnlyFn(() => serverOnlyDep())
 `,
+      // A namespace's own helpers only server-only fns read (hikma-health's
+      // models: `const sha256 = … createHash(…)` in a model namespace).
+      'src/namespace-model.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+import { namespaceConst } from './deps/namespaceConst'
+import { namespaceFunction } from './deps/namespaceFunction'
+import { namespaceClass } from './deps/namespaceClass'
+namespace Model {
+  const viaConst = () => namespaceConst()
+  function viaFunction() {
+    return namespaceFunction()
+  }
+  class ViaClass {
+    static read() {
+      return namespaceClass()
+    }
+  }
+  export const readConst = createServerOnlyFn(() => viaConst())
+  export const readFunction = createServerOnlyFn(() => viaFunction())
+  export const readClass = createServerOnlyFn(() => ViaClass.read())
+}
+export default Model
+`,
       // Server fns whose handlers return what the middleware put into
       // their context (the request middleware of src/start.ts runs first,
       // then the server fn's own) and the data its validator gave: a call
@@ -399,6 +424,7 @@ export {
   viaMiddlewareFactory,
   viaStartMiddleware,
 } from './middleware-fns'
+export { default as Model } from './namespace-model'
 export { getRouter } from './router'
 `,
       // Start's server entry: its server-fn HTTP handler finds the server
@@ -563,6 +589,19 @@ const get = async (path) =>
         run: `return await callById(serverFnId(entry.viaBuilderMiddleware))`,
         expected: 'MARK_BUILDER_MIDDLEWARE_SERVER',
       },
+      // Source: review round 4 fact-check (N1).
+      ...(
+        [
+          ['const', 'Const'],
+          ['function', 'Function'],
+          ['class', 'Class'],
+        ] as const
+      ).map(([kind, name]) => ({
+        construct: `a namespace-local ${kind} only a createServerOnlyFn reads`,
+        marker: `MARK_NAMESPACE_${kind.toUpperCase()}`,
+        run: `return entry.Model.read${name}()`,
+        expected: `MARK_NAMESPACE_${kind.toUpperCase()}`,
+      })),
     ])(
       '$construct: its server code is not in the client bundle, and runs in the SSR build',
       async ({ marker, run, expected }) => {
