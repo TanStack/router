@@ -30,11 +30,12 @@ if (import.meta.webpackHot) {
   if (routeId) {
     hotData['tsr-route-id'] = routeId
   }
+  const ownRoute = hotData['tsr-route'] ?? Route
   const existingRoute =
     typeof window !== 'undefined' && routeId
       ? window.__TSR_ROUTER__?.routesById?.[routeId]
       : undefined
-  if (routeId && existingRoute && existingRoute !== Route) {
+  if (routeId && existingRoute === ownRoute && existingRoute !== Route) {
     ;(function handleRouteUpdate(routeId, newRoute) {
       const router = window.__TSR_ROUTER__
       const oldRoute = router.routesById[routeId]
@@ -102,6 +103,7 @@ if (import.meta.webpackHot) {
     if (routeId) {
       data['tsr-route-id'] = routeId
     }
+    data['tsr-route'] = ownRoute
   })
   hot.accept()
 }
