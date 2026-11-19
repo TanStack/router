@@ -734,6 +734,7 @@ async function runAttempt(
       const ctx: PolicyContext = {
         identity,
         env,
+        config: input.config.perPlanner[p.name],
         host,
         code: input.code,
         analysis: t0,

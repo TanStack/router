@@ -330,7 +330,10 @@ export class StartCompilerSession {
           ip: this.ip?.config.configKey ?? null,
         }),
         perPlanner: {
-          [IMPORT_EDGES_PLANNER]: env.type satisfies ImportEdgesConfig,
+          [IMPORT_EDGES_PLANNER]: {
+            type: env.type,
+            clientReferences: rsc,
+          } satisfies ImportEdgesConfig,
           [START_ENV]: startEnv,
           [HYDRATE_PLANNER]: hydrate,
           [RSC_CSS]: rscCss,
@@ -381,7 +384,7 @@ export class StartCompilerSession {
           ? {
               configKey: lateConfigKey(config.configKey),
               perPlanner: {
-                [IMPORT_EDGES_PLANNER]: env.type,
+                [IMPORT_EDGES_PLANNER]: config.perPlanner[IMPORT_EDGES_PLANNER],
                 [START_ENV]: {
                   // (`configFor` sets it)
                   ...config.perPlanner[START_ENV]!,

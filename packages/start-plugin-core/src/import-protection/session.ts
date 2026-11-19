@@ -180,9 +180,8 @@ export class ImportProtection {
    * ledger (`ImportProtectionEnv.allowedImporters`: they live as long as an
    * import allowed for them); a released one's stay for the session: the
    * module also comes to environments of that type where nothing checked
-   * imports it (RSC: the `ssr` environment loads the `'use client'` module
-   * the `rsc` environment allowed, from plugin code), and a build releases
-   * the first environment before the next one builds.
+   * imports it (from plugin code), and a build releases the first
+   * environment before the next one builds.
    */
   private readonly releasedTargets: Record<EnvType, Set<string>> = {
     client: new Set(),

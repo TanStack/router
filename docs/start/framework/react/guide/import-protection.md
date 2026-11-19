@@ -116,6 +116,8 @@ When the plugin sees a marker import, it records the file as restricted. If that
 
 Markers are useful when a file doesn't follow the `.server.*` / `.client.*` naming convention but still contains environment-specific code.
 
+With React Server Components, a `'use client'` module that a server component imports is a client reference where server components render (the `rsc` environment on Vite, the RSC layer on Rsbuild): none of its code runs there. There, its file pattern and marker don't deny the import, and its own imports are not checked. It is checked where it runs, in SSR and on the client. A specifier pattern still denies the import.
+
 ## Behavior Modes
 
 The `behavior` option controls what happens when a violation is detected:
@@ -370,6 +372,8 @@ In the Vite dev server, a denied file stays the real module after an edit remove
 On Rsbuild, a module that a worker or service-worker plugin builds (a child compiler of the client build, such as `worker-rspack-loader` or workbox's `InjectManifest`) is checked like the client's own, but a child compiler cannot load a mock: a denied import there fails the build whatever `behavior` is, and `allowImport` is not asked. Call a server function from the worker instead.
 
 Not covered, as in earlier versions: a `?worker`'s own imports and `new URL` of a denied file on Vite, a marked non-script file (`.mdx`, `.vue`) or a marked file that does not parse with an asset query, and a plain pattern of a non-code file on Rsbuild.
+
+With React Server Components on Vite, a denied `'use client'` component that a server component renders is mocked in SSR with this warning: its only importer there is `@vitejs/plugin-rsc`'s client-reference module, which is not checked. The client renders the real component after hydration (a hydration mismatch is logged).
 
 A dev server also warns about a denied file it compiles without any importer, for example when a `server.warmup` glob matches `*.server.ts` files. This is a warning, not a leak: the client gets the file's mock.
 
@@ -691,7 +695,7 @@ It is called once per denied import for a build or a dev session, and the answer
 
 Its answers must be stable: the same answer for the same import, whatever the order of the calls or the environment build it runs in.
 
-A denied file that no import the compiler can read brings into an environment (a [pattern import](#pattern-imports)) is asked about itself: `info.importer` is the file, as `info.resolved` is. A file you allow also comes along where nothing checked imports it: with React Server Components, a `.client` file with `'use client'` you allow from the `rsc` environment is the real module in `ssr` too.
+A denied file that no import the compiler can read brings into an environment (a [pattern import](#pattern-imports)) is asked about itself: `info.importer` is the file, as `info.resolved` is. A file you allow also comes along where nothing checked imports it, in every environment of the same kind.
 
 ## Disabling Import Protection
 

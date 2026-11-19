@@ -32,6 +32,11 @@
  * An asset query of a denied file is never compiled, and the same verdict
  * reaches it through its host (`ImportProtectionEnv.assetOutput`).
  *
+ * Where server components render (`ImportEdgesConfig.clientReferences`), a
+ * `'use client'` module is client references: its `env` output's edges are
+ * neither resolved nor judged, and an import of it skips its file and
+ * marker rules (specifier rules still apply). It is judged where it runs.
+ *
  * Violations are recorded in the plan's facts (`ImportEdgesFacts`), so a
  * cached plan reports and registers them again without re-judging.
  */
@@ -91,8 +96,17 @@ export type ImportRewrite = (
   names: ReadonlyArray<string>,
 ) => Array<string> | null
 
-/** The planner's configuration of a compile (`CompileConfig.perPlanner`): its environment's type. */
-export type ImportEdgesConfig = EnvType
+/**
+ * The planner's configuration of a compile (`CompileConfig.perPlanner`):
+ * its environment's type, and whether the compile renders server components
+ * (RSC: Vite's `rsc` environment, Rsbuild's RSC layer). There the bundler
+ * replaces a `'use client'` module by client references: none of its code
+ * runs there, and an import of it brings nothing of it.
+ */
+export interface ImportEdgesConfig {
+  type: EnvType
+  clientReferences: boolean
+}
 
 interface Judged {
   edge: EdgeRecord
@@ -309,9 +323,8 @@ export function importEdgesPlanner(
         return true
       }
       const path = ctx.identity.path
-      // the environment's type (`ImportEdgesConfig`): a module importing
-      // nothing can still be its own violation there
-      const envType = ctx.config
+      // a module importing nothing can still be its own violation there
+      const envType = ctx.config?.type
       if (
         t0.imports.length === 0 &&
         t0.reexports.length === 0 &&
@@ -329,6 +342,19 @@ export function importEdgesPlanner(
     plan() {},
     async policy(plan, output, edges, ctx) {
       const env = ip.env(ctx.env.name, ctx.env.type)
+      const clientReferences = ctx.config?.clientReferences === true
+      // the module is client references here: its imports are neither
+      // resolved (a resolution is a request of the environment: plugin-rsc
+      // fails the build on `client-only`) nor judged. Its derived provider
+      // output runs here, and is judged.
+      if (
+        clientReferences &&
+        output === 'env' &&
+        ctx.analysis.header.directives.some((d) => d.value === 'use client')
+      ) {
+        env.edges.set(ctx.identity.canonicalId, [], plan.revision)
+        return
+      }
       const facts = (plan.facts.planners[IMPORT_EDGES_PLANNER] ??= {
         violations: {},
       })
@@ -398,7 +424,13 @@ export function importEdgesPlanner(
               target,
               (id) => ctx.targetMarker(markerIdOf(envType, id)),
             )
-            if (targetRule !== null) {
+            // a client reference: the module runs where client code runs
+            // (judged there), never here (read only for a denied target:
+            // other edges keep the marker-only fingerprint)
+            if (
+              targetRule !== null &&
+              !(clientReferences && (await ctx.targetFacts(target)).useClient)
+            ) {
               rule = targetRule
               resolved = target
               break

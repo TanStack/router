@@ -53,6 +53,8 @@ export interface TargetFacts {
   lazyImports: Array<string>
   /** An ES module (false: CommonJS, script or unparseable — exports unknown). */
   esm: boolean
+  /** Its directive prologue holds `'use client'`: where server components render, an import of it is a client reference. */
+  useClient: boolean
   /** Per environment type, whether its own statements have effects there, module loading (`imports`) aside (`ModuleAnalysis.effects().code`). */
   codeEffects: CodeEffects
   /** Per environment type, the `imports` its compile does not evaluate: only code it erases reads them (`ModuleAnalysis.effects().erasedImports`; absent when none is). */
@@ -114,6 +116,7 @@ const OPAQUE_TARGET: Omit<TargetFacts, 'digest'> = {
   imports: [],
   lazyImports: [],
   esm: false,
+  useClient: false,
   codeEffects: ALL_EFFECTS,
 }
 
@@ -125,6 +128,7 @@ const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
   imports: [],
   lazyImports: [],
   esm: false,
+  useClient: false,
   codeEffects: ALL_EFFECTS,
 }
 
@@ -672,6 +676,7 @@ export class RawFactsCache {
       imports: [],
       lazyImports: [],
       esm: true,
+      useClient: false,
       codeEffects: { client: false, server: false },
     }
     return {
@@ -810,6 +815,7 @@ export class RawFactsCache {
         imports: [],
         lazyImports: [],
         esm: false,
+        useClient: false,
         codeEffects: ALL_EFFECTS,
       }
       return {
@@ -859,6 +865,9 @@ export class RawFactsCache {
       imports,
       lazyImports,
       esm: analysis.sourceType === 'module',
+      useClient: analysis.header.directives.some(
+        (d) => d.value === 'use client',
+      ),
       codeEffects: effects.code,
       ...(effects.erasedImports && {
         erasedImports: {

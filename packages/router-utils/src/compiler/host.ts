@@ -291,9 +291,11 @@ export interface PrefetchContext<TName extends string = string> {
   set: (data: PlannerPrefetch<TName>) => void
 }
 
-export interface PolicyContext {
+export interface PolicyContext<TName extends string = string> {
   identity: SourceIdentity
   env: EnvInfo
+  /** The planner's configuration of this compile (`CompileConfig.perPlanner`), as the gate's. */
+  config: PlannerConfig<TName>
   host: HostServices
   /** The input text of this compile (the plan's offsets index it). */
   code: string
@@ -354,7 +356,7 @@ export interface Planner<TName extends string = any> {
     plan: EmitPlan,
     output: OutputId,
     edges: Readonly<PlanEdges>,
-    ctx: PolicyContext,
+    ctx: PolicyContext<TName>,
   ) => Promise<void>
 }
 
