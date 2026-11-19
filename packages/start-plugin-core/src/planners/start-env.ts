@@ -273,9 +273,10 @@ function inForInit(file: PlanContext['analysis']['file'], node: Node): boolean {
  * factory returns calls its implementation with none); else `kept`, in
  * parentheses when `needsParens` says. A `new` without an argument list
  * takes an empty one there instead (`new Factory()`, same value): SWC 1.15.33
- * prints `(new Factory)()` as `new Factory()`, dropping the call. A `kept`
- * call in `replaced` (a factory call passed to another) renders as its own
- * rewrite, of any shape: it is treated as one of unknown shape.
+ * prints `(new Factory)()` (and `(new Factory<T>)()`) as `new Factory()`,
+ * dropping the call (https://github.com/swc-project/swc/issues/12810). A
+ * `kept` call in `replaced` (a factory call passed to another) renders as
+ * its own rewrite, of any shape: it is treated as one of unknown shape.
  */
 function keptText(
   code: string,
@@ -304,7 +305,10 @@ function keptText(
   if (!needsParens(code, kept, original, file, opaque)) {
     return [slice(rangeOf(kept))]
   }
-  return kept.type === 'NewExpression' && kept.callee.end === kept.end
+  // no argument list: the node ends at its callee or its type arguments
+  // (`new Factory<T>`, which SWC prints without them)
+  return kept.type === 'NewExpression' &&
+    (kept.typeArguments ?? kept.callee).end === kept.end
     ? [slice(rangeOf(kept)), text('()')]
     : [text('('), slice(rangeOf(kept)), text(')')]
 }

@@ -475,9 +475,10 @@ export function nestedArrow() {
     timeout,
   )
 
-  // a kept `new Factory`, written without an argument list, called or read
-  // in place: the call and the read apply to the constructed value, not to
-  // the constructor. Source: Astra review 4 (core B5)
+  // a kept `new Factory` (`new Factory<T>`), written without an argument
+  // list, called or read in place: the call and the read apply to the
+  // constructed value, not to the constructor. Source: Astra review 4 (core
+  // B5), the generic spelling Astra review 5 (core B3)
   test(
     'a server-only fn whose implementation is a `new` without arguments, called or read in place: the server calls or reads the constructed value',
     async () => {
@@ -492,11 +493,19 @@ const Factory = class {
 } as unknown as new () => (() => number) & { label: string }
 export const called = () => createServerOnlyFn(new Factory)()
 export const read = () => createServerOnlyFn(new Factory).label
+const Generic = Factory as unknown as new <T>() => (() => number) & { label: string }
+export const calledGeneric = () => createServerOnlyFn(new Generic<string>)()
+export const readGeneric = () => createServerOnlyFn(new Generic<string>).label
 `,
         },
       })
-      expect((await ssr.run(`return entry.read()`)).result).toBe('constructed')
-      expect((await ssr.run(`return entry.called()`)).result).toBe(7)
+      expect(
+        (
+          await ssr.run(
+            `return [entry.read(), entry.called(), entry.readGeneric(), entry.calledGeneric()]`,
+          )
+        ).result,
+      ).toEqual(['constructed', 7, 'constructed', 7])
     },
     timeout,
   )
