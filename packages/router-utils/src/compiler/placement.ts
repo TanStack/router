@@ -975,10 +975,13 @@ export function computePlacement(input: PlacementInput): Placement {
    * source references, by value or in a type (an export is a use), a bare
    * `import './polyfill'` or `import './a.css'` included. When the env
    * module reads a shared name (its first import is then the shared
-   * module's), they move there,
-   * in source order with its own imports: they run at the same point, once,
-   * and a module a shared declaration reads still runs after a bare import
-   * written before it. Otherwise they stay in the env module. Chunks and
+   * module's), they move there, in source order with its own imports: they
+   * run once, with the shared module's imports, so a module a shared
+   * declaration reads still runs after a bare import written before it. They
+   * then run before every import and re-export the env module keeps, those
+   * the source wrote before them included (`export * from './a'; import
+   * './b'` runs `./b` first), as on main. Otherwise they stay in the env
+   * module. Chunks and
    * Start's derived outputs load after the env module has run and get none.
    * Only what the source wrote (not a planner's generated import, the route
    * module's `lazyRouteComponent`). A declaration already unused stays in
