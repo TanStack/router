@@ -38,6 +38,7 @@ import {
 } from '../server-fns/resolver'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
+import { layerKey } from '../import-protection/session'
 import {
   RSBUILD_ENVIRONMENT_NAMES,
   RSBUILD_RSC_LAYER_RESOLVE,
@@ -147,7 +148,11 @@ interface EnvState {
   name: string
   type: 'client' | 'server'
   transformImport: Array<TransformImportRule>
-  /** The resources the loader compiled in the current compilation (host: cleared at `thisCompilation`). */
+  /**
+   * The modules the loader compiled in the current compilation, by
+   * `layerKey` of resource and layer (a file both RSC layers import is a
+   * module of each; host: cleared at `thisCompilation`).
+   */
   compiled: Set<string>
   /** Where the file's text goes when the module map names it without it (host: `emittedMapTexts`). */
   recordMapText: RecordMapText | null
@@ -568,7 +573,7 @@ export class StartRsbuildCompilerSession {
       // the bundler requested this edge module from the importer's post-SWC
       // code: `allowImport` decides between the real module and the mock
       const ipEnv = ip?.env(env.name, env.type)
-      env.compiled.add(ctx.resource)
+      env.compiled.add(layerKey(ctx.resource, ctx._module?.layer ?? undefined))
       const error = await ipEnv?.confirm(ctx.resource)
       if (error) {
         // (it fails the edge module: Rspack reports it there, not at the importer)
@@ -692,13 +697,9 @@ export class StartRsbuildCompilerSession {
     id: string,
     out: CompiledOutputLike,
   ): Promise<LoaderResult | null> {
-    env.compiled.add(ctx.resource)
-    const outcome = this.start.afterCompile(
-      env,
-      id,
-      out,
-      ctx._module?.layer ?? undefined,
-    )
+    const layer = ctx._module?.layer ?? undefined
+    env.compiled.add(layerKey(ctx.resource, layer))
+    const outcome = this.start.afterCompile(env, id, out, layer)
     const { error, mock } = outcome instanceof Promise ? await outcome : outcome
     if (error) {
       throwLocated(ctx, error as DevViolationError)

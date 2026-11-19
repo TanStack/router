@@ -10,6 +10,7 @@
  * R3-G5-3, ruling F1).
  */
 import { describe, expect, test } from 'vitest'
+import { layerKey } from '../../src/import-protection/session'
 import { LOCATED_DIAGNOSTICS } from '../../src/rsbuild/compiler-session'
 import { handOverWarnings } from '../../src/rsbuild/host-plugin'
 import type { LocatedDiagnostic } from '@tanstack/router-utils/compiler'
@@ -24,8 +25,10 @@ const warning = (message: string, line = 1): LocatedDiagnostic => ({
 const moduleOf = (
   resource: string,
   records: Array<LocatedDiagnostic> = [],
+  layer?: string,
 ) => ({
   resource,
+  layer,
   buildInfo: { [LOCATED_DIAGNOSTICS.field]: records },
   identifier: () => resource,
 })
@@ -85,6 +88,20 @@ describe('warnings handed over to the next compilation', () => {
       [role]: [warning('MARK_ROLE')],
       [other]: [warning('MARK_OTHER')],
     })
+  })
+
+  // (an Rsbuild RSC build: a file both layers import is a module of each)
+  test("a file's module of each layer: the warnings of each, handed over to the one the newer compilation kept", () => {
+    const ssr = moduleOf(role, [warning('MARK_SSR')], 'ssr')
+    const rsc = moduleOf(role, [warning('MARK_RSC', 2)], 'rsc')
+    const older = handOverWarnings(null, [ssr, rsc], () => true)
+    // (the newer compilation built the RSC layer's module again, and kept the SSR layer's)
+    const { handed } = handOverWarnings(
+      older.reported,
+      [ssr, rsc],
+      (key) => key === layerKey(role, 'rsc'),
+    )
+    expect(handed).toEqual([{ module: ssr, warning: warning('MARK_SSR') }])
   })
 
   test('the warnings of a module the newer compilation kept without a record of them: not its own', () => {
