@@ -948,7 +948,9 @@ Paths under `start-plugin-core/tests/` unless noted.
 - **Vite RSC build: a server fn whose only importer is a `'use client'` component is not registered** (the
   provider build never reaches a module only a client reference imports), so the call answers 500. SPEC J4.2.
   `react-start-rsc/tests/integration/rsc-start-build.test.ts`: "a server fn only a 'use client' component of a server
-  component imports runs when clicked". Fix: every server fn the client references is callable by id.
+  component imports runs when clicked"; `rsc-start-build-client-reach.test.ts`: "a server fn written as the %s
+  spelling runs when clicked" (an imported builder's typed, parenthesized and non-null `.handler` calls). Fix: every
+  server fn the client references is callable by id.
 
 ### J5 Deferred hydration `<Hydrate>`
 

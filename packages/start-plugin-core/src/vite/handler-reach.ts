@@ -7,8 +7,13 @@ import { NODE_MODULES_RE } from '../compiler/scope'
 import type { HostServices } from '@tanstack/router-utils/compiler'
 import type { Session, ViteStartEnvironment } from './compiler-state'
 
-/** A module naming no server-fn factory nor `.handler(` defines no server function (a text gate before any analysis). */
-const SERVER_FN_TEXT_RE = /createServerFn|\.handler\s*\(/
+/**
+ * A module naming neither the server-fn factory nor `handler` defines no
+ * server function (a text gate before any analysis; the planner decides the
+ * rest, whatever the spelling of the call: `.handler<T>(`, `(b.handler)(`,
+ * `.handler!(`, a comment between).
+ */
+const SERVER_FN_TEXT_RE = /createServerFn|\bhandler\b/
 
 /**
  * A separate provider's build (RSC; plugin-rsc's `buildApp` builds the
