@@ -3848,6 +3848,76 @@ describe('createStartHandler direct server routes', () => {
       })
       expect(routeHandler).not.toHaveBeenCalled()
     })
+
+    it('keeps earlier validator output over a later passthrough schema', async () => {
+      const clampLimit = createMiddleware({ type: 'request' })
+        .validator({
+          query: schema((v) => ({ limit: Math.min(Number(v?.limit), 10) })),
+        })
+        .server(({ next }) => next())
+      const handler = setup({
+        middleware: [clampLimit],
+        handlers: {
+          GET: {
+            validator: { query: schema((v) => v) },
+            handler: ({ data }: any) => Response.json(data),
+          },
+        },
+      })
+
+      const response = await handler(
+        new Request('http://localhost/items/42?limit=999&extra=1'),
+        {},
+      )
+
+      await expect(response.json()).resolves.toEqual({
+        query: { limit: 10, extra: '1' },
+      })
+    })
+
+    it('enforces route middleware validators when the route only renders', async () => {
+      const requireLimit = createMiddleware({ type: 'request' })
+        .validator({ query: limitQuery })
+        .server(({ next }) => next())
+      startMocks.router = makeRouter({
+        path: '/items/$itemId',
+        component: () => null,
+        server: { middleware: [requireLimit] },
+      })
+      const render = vi.fn(() => new Response('rendered'))
+      const handler = createStartHandler(render)
+
+      const response = await handler(
+        new Request('http://localhost/items/42'),
+        {},
+      )
+
+      expect(response.status).toBe(400)
+      expect(render).not.toHaveBeenCalled()
+    })
+
+    it('enforces global request middleware validators', async () => {
+      startMocks.requestMiddleware = [
+        createMiddleware({ type: 'request' })
+          .validator({ query: limitQuery })
+          .server(({ next }) => next()),
+      ]
+      const routeHandler = vi.fn(() => new Response('must not run'))
+      const handler = setup({ handlers: { GET: routeHandler } })
+
+      const rejected = await handler(
+        new Request('http://localhost/items/42'),
+        {},
+      )
+      expect(rejected.status).toBe(400)
+      expect(routeHandler).not.toHaveBeenCalled()
+
+      const accepted = await handler(
+        new Request('http://localhost/items/42?limit=1'),
+        {},
+      )
+      expect(accepted.status).toBe(200)
+    })
   })
 
   it.each(

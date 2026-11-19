@@ -179,17 +179,18 @@ describe('flattenMiddlewares', () => {
   })
 })
 
-test('request middleware slot validators are not run as server function validators', async () => {
+test('rejects request middleware with slot validators in a server function', async () => {
   const schema = {
     '~standard': {
       version: 1 as const,
       vendor: 'test',
-      validate: () => ({ issues: [{ message: 'must not run' }] }),
+      validate: (value: unknown) => ({ value }),
     },
   }
+  const server = vi.fn(({ next }: any) => next())
   const middleware = createMiddleware({ type: 'request' })
-    .validator({ query: schema })
-    .server(({ next }) => next())
+    .validator({ headers: schema })
+    .server(server)
 
   const result = await executeMiddleware([middleware], 'server', {
     method: 'POST',
@@ -197,6 +198,9 @@ test('request middleware slot validators are not run as server function validato
     context: {},
   } as any)
 
-  expect(result.error).toBeUndefined()
-  expect(result.data).toEqual({ input: 1 })
+  expect(result.error).toBeInstanceOf(Error)
+  expect((result.error as Error).message).toMatch(
+    /cannot be used in a server function/,
+  )
+  expect(server).not.toHaveBeenCalled()
 })
