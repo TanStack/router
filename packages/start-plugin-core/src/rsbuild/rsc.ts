@@ -3,10 +3,7 @@
  * native RSC plugins (step 7), and the RSC build's manifest placeholder
  * replacement in the server assets (step 8b).
  */
-import {
-  rebuildModules,
-  reportingFailure,
-} from '@tanstack/router-utils/compiler'
+import { rebuildModules } from '@tanstack/router-utils/compiler'
 import { CALLABLE_IDS_PLACEHOLDER } from '../server-fns/resolver'
 import { isJsAsset } from './compiler-session'
 import {
@@ -16,6 +13,7 @@ import {
 } from './planning'
 import { START_MANIFEST_PLACEHOLDER } from './virtual-modules'
 import { tapServerFnResolverRebuild } from './server-fn-resolver-rebuild'
+import { tapManifestRebuild } from './manifest-rebuild'
 import { enableSwcReactServerComponents } from './swc-rsc'
 import type { registerClientBuildCapture } from './normalized-client-build'
 import type { registerStartCompiler } from './start-compiler'
@@ -157,57 +155,16 @@ export function registerRsc(
 
       config.plugins.push({
         apply(compiler: RspackCompiler) {
-          // The manifest write count this compiler last rebuilt from (dev)
-          let rebuiltAtWriteCount: number | undefined
-
-          compiler.hooks.finishMake.tapPromise(
-            {
-              name: 'TanStackStartRscManifestRebuild',
-              // The native RSC ServerPlugin completes the client-entry
-              // handoff during its finishMake hook. Rebuild the manifest
-              // after that point so it reflects the client build: the
-              // module is the manifest written from it instead of the
-              // placeholder, also when it was written while this
-              // compilation was already running (the client and server
-              // compile concurrently).
-              stage: 10,
-            },
-            (compilation: RspackCompilationExtended) =>
-              reportingFailure(
-                compiler,
-                compilation.errors,
-                {
-                  tag: '[tanstack-start]',
-                  what: 'Building the RSC manifest again',
-                },
-                async () => {
-                  const clientBuild = getClientBuild()
-
-                  if (!clientBuild) {
-                    return
-                  }
-
-                  virtualModuleState.updateManifest(clientBuild)
-
-                  if (api.context.action === 'dev') {
-                    // only when the manifest changed: rebuilding an
-                    // unchanged module can rebuild the whole chunk graph
-                    const writeCount =
-                      virtualModuleState.getManifestWriteCount()
-                    if (writeCount === rebuiltAtWriteCount) {
-                      return
-                    }
-                    rebuiltAtWriteCount = writeCount
-                  }
-
-                  await rebuildModules(
-                    compilation,
-                    new Set([virtualModuleState.manifestPath]),
-                    (r) => r,
-                  )
-                },
-              ),
-          )
+          // The native RSC ServerPlugin completes the client-entry handoff
+          // during its finishMake hook; the manifest is rebuilt after it, from
+          // the client build, also when that completed while this compilation
+          // was already running (the client and server compile concurrently).
+          tapManifestRebuild(compiler, {
+            name: 'TanStackStartRscManifestRebuild',
+            virtualModuleState,
+            onlyWhenWritten: api.context.action === 'dev',
+            clientBuild: getClientBuild,
+          })
         },
       })
     }

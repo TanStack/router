@@ -30,6 +30,9 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
   replaces it before it is read; any other file is left untouched, its bytes never decoded.
 - `server-fn-resolver-rebuild.ts` rebuilds the server-function resolver within `finishMake` while its content still
   changes (each rebuild may register the functions of the provider modules it reaches; bounded).
+- `manifest-rebuild.ts` rebuilds the Start manifest module within the server compiler's `finishMake` once a client
+  compilation wrote it (dev; RSC builds too): Rspack's watcher ignores `node_modules`, so the write alone never builds
+  it again.
 - `host-plugin.ts` holds the Rspack hooks of one environment compiler (below).
 - `router-generator.ts` runs the route generator as a precondition of every compiler and serves the client route
   tree without its server-only routes.
