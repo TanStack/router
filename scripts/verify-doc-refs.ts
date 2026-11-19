@@ -69,6 +69,9 @@ function parsePage(text: string): Page {
 /** The named sections of `text`, by name; unpaired markers go to `errors`. */
 function sectionsOf(text: string, where: string, errors: Array<string>) {
   const found = new Map<string, RegExpMatchArray>()
+  if ([...text.matchAll(sectionMarker)].length % 2 === 1) {
+    errors.push(`${where}: a section marker has no closing marker`)
+  }
   for (const match of text.matchAll(section)) {
     if (match[1] !== match[2]) {
       errors.push(`${where}: section '${match[1]}' is closed by '${match[2]}'`)
@@ -131,7 +134,7 @@ function compose(
 
 const errors: Array<string> = []
 const files = await glob('docs/**/*.md', { ignore: ['**/node_modules/**'] })
-let composed = 0
+const composedFiles = new Set<string>()
 for (const file of files.sort()) {
   const source = readFileSync(file, 'utf8')
   const page = parsePage(source)
@@ -150,7 +153,7 @@ for (const file of files.sort()) {
     continue
   }
   const result = compose(origin, page, errors, file)
-  composed++
+  composedFiles.add(file)
   if (result.length > 2 * (origin.length + source.length)) {
     errors.push(
       `${file}: composes to ${result.length} characters from ${origin.length} + ${source.length}`,
@@ -173,8 +176,8 @@ for (const file of files.sort()) {
   }
 }
 for (const file of Object.keys(expectations)) {
-  if (!files.includes(file)) {
-    errors.push(`${file}: has expectations but is not a docs page`)
+  if (!composedFiles.has(file)) {
+    errors.push(`${file}: has expectations but is not a page composed by ref`)
   }
 }
 
@@ -185,4 +188,4 @@ if (errors.length > 0) {
   }
   process.exit(1)
 }
-console.log(`✅ ${composed} pages composed by ref: no problems`)
+console.log(`✅ ${composedFiles.size} pages composed by ref: no problems`)
