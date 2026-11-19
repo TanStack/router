@@ -5,7 +5,10 @@ import { playwright } from '@vitest/browser-playwright'
 
 // A Start app. The same config serves the app and its tests.
 //
-// `test:e2e` type-checks the project and runs these tests three times:
+// `test:e2e` type-checks the project in a copy that is installed like a
+// user's project (`test:e2e:types`: the workspace installs `vitest` several
+// times, once per set of peers, and the types Start adds to Vitest's test
+// context reach only one of those copies), then runs these tests three times:
 // - here, where `@tanstack/*` are links to `packages/*`, with an empty Vitest
 //   cache (`test:e2e:linked`),
 // - here again, now with the compiled modules of the first run in Vitest's

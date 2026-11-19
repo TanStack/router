@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url'
+import { normalizePath } from 'vite'
 import { ENTRY_POINTS } from '../constants'
 import { isVitestRun } from '../test-mode'
 import { createVirtualModule } from './createVirtualModule'
@@ -32,6 +34,44 @@ export function excludeFromTestRuns(option: PluginOption): PluginOption {
       return apply === undefined || apply === env.command
     },
   }
+}
+
+/** The part of a Vitest project that a plugin may change. */
+interface VitestProject {
+  config: { setupFiles: Array<string> }
+}
+
+/** Vitest calls this hook of a Vite plugin for each of its projects. */
+interface VitestPluginHooks {
+  configureVitest?: (context: { project: VitestProject }) => void
+}
+
+/**
+ * Adds Start's setup file to every Vitest project of a test run. The file
+ * ends the mocks of `mockServerFn` and `mockMiddleware` with the test that
+ * registered them.
+ *
+ * The file goes in through `configureVitest`, because `test.setupFiles`
+ * returned from the `config` hook only reaches a browser project.
+ */
+export function vitestSetupFilePlugin(isTestRun: () => boolean): Plugin {
+  const plugin: Plugin & VitestPluginHooks = {
+    name: 'tanstack-start-core:vitest-setup-file',
+    configureVitest({ project }) {
+      if (!isTestRun()) {
+        return
+      }
+      const setupFile = normalizePath(
+        fileURLToPath(
+          import.meta.resolve('@tanstack/start-client-core/testing/vitest'),
+        ),
+      )
+      if (!project.config.setupFiles.includes(setupFile)) {
+        project.config.setupFiles.push(setupFile)
+      }
+    },
+  }
+  return plugin
 }
 
 /**

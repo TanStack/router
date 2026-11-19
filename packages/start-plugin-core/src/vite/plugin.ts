@@ -39,7 +39,11 @@ import {
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
 import { serializationAdaptersPlugin } from './serialization-adapters-plugin'
-import { excludeFromTestRuns, testRunRouterEntryPlugin } from './test-run'
+import {
+  excludeFromTestRuns,
+  testRunRouterEntryPlugin,
+  vitestSetupFilePlugin,
+} from './test-run'
 import type {
   TanStackStartVitePluginCoreOptions,
   ViteRscForwardSsrResolverStrategy,
@@ -262,6 +266,7 @@ export function tanStackStartVite(
       serverFnProviderModuleDirectives:
         corePluginOpts.serverFnProviderModuleDirectives,
       providerEnvName: serverFnProviderEnv,
+      isTestRun,
     }),
     importProtectionPlugin({
       getConfig,
@@ -276,6 +281,7 @@ export function tanStackStartVite(
       isTestRun,
     ),
     loadEnvPlugin(),
+    vitestSetupFilePlugin(isTestRun),
     testRunRouterEntryPlugin(),
     excludeFromTestRuns(
       createDevClientEntryPlugin({

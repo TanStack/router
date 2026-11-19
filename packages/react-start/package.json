@@ -60,6 +60,24 @@
         "default": "./dist/esm/client-rpc.js"
       }
     },
+    "./testing": {
+      "import": {
+        "types": "./dist/esm/testing.d.ts",
+        "default": "./dist/esm/testing.js"
+      }
+    },
+    "./testing/client-rpc": {
+      "import": {
+        "types": "./dist/esm/testing/client-rpc.d.ts",
+        "default": "./dist/esm/testing/client-rpc.js"
+      }
+    },
+    "./testing/server": {
+      "import": {
+        "types": "./dist/esm/testing/server.d.ts",
+        "default": "./dist/esm/testing/server.js"
+      }
+    },
     "./server": {
       "react-server": {
         "types": "./dist/esm/server.rsc.d.ts",
