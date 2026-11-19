@@ -2,16 +2,23 @@
 
 import { use } from 'react'
 import { trackPostProcessPromise } from '@tanstack/start-client-core'
-import { createFromReadableStream as browserDecode } from 'virtual:tanstack-rsc-browser-decode'
-
-import { awaitLazyElements } from './awaitLazyElements'
 import { createRscProxy } from './createRscProxy'
-import { unwrapRscCssEnvelope } from './rscCssEnvelope'
+import type { decodeRscStream } from './decodeRscStream'
 import type {
   AnyCompositeComponent,
   RscSlotUsageEvent,
   ServerComponentStream,
 } from './ServerComponentTypes'
+
+type DecoderModule = { decodeRscStream: typeof decodeRscStream }
+
+// Once loaded, decode without another `import()` hop: a resolved dynamic
+// import still settles in a later task, which would let React show Suspense
+// fallbacks for streams that previously decoded within the same task.
+let decoderModule: DecoderModule | undefined
+
+const loadDecoderModule = () =>
+  import('./decodeRscStream').then((mod) => (decoderModule = mod))
 
 type StreamDecodeOptions = {
   cssHrefs?: Iterable<string>
@@ -99,16 +106,19 @@ function setupStreamDecode(
   const startDecode = () => {
     if (!transformedTreePromise) {
       // Promise for the tree with lazy elements awaited.
-      transformedTreePromise = Promise.resolve(browserDecode(stream)).then(
-        async (result) => {
-          await awaitLazyElements(result, (href) => {
-            cssHrefs.add(href)
-          })
-          cachedTree = unwrapRscCssEnvelope(result)
-          cacheReady = true
-          return cachedTree
-        },
-      )
+      // The Flight client runtime is imported on first decode so it stays out
+      // of the entry chunk for routes that never render a server component.
+      const decode = ({ decodeRscStream }: DecoderModule) =>
+        decodeRscStream(stream, (href) => {
+          cssHrefs.add(href)
+        })
+      transformedTreePromise = (
+        decoderModule ? decode(decoderModule) : loadDecoderModule().then(decode)
+      ).then((tree) => {
+        cachedTree = tree
+        cacheReady = true
+        return tree
+      })
 
       // Track the lazy element loading - prevents flash for RPC/RSC fetches.
       trackPostProcessPromise(transformedTreePromise)
