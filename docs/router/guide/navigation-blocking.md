@@ -465,3 +465,88 @@ function MyComponent() {
 ```
 
 <!-- ::end:framework -->
+
+## Global navigation blocking state
+
+`useBlocker` exposes the `proceed`/`reset` controls only where it is called. If you want a single, shared confirmation UI (for example a modal rendered once at the root) that reacts to _any_ blocker registered anywhere in the app, use `useBlockerState`.
+
+It returns `{ status, proceed, reset, proceedAll }`:
+
+- `status`: `'idle'` or `'blocked'`.
+- `proceed`: allow the currently blocked navigation.
+- `reset`: keep it blocked (cancel the navigation).
+- `proceedAll`: allow the navigation and skip any remaining blockers.
+
+A blocker participates in this global state when it is registered with `withResolver: true` (which is what the `useBlocker` hook does). Blockers registered directly against `history.block` with a plain `boolean`/`Promise` still block navigation, but are not surfaced through `useBlockerState`.
+
+<!-- ::start:framework -->
+
+# React
+
+```tsx
+import { useBlockerState } from '@tanstack/react-router'
+
+function GlobalBlockerModal() {
+  const { status, proceed, reset, proceedAll } = useBlockerState()
+
+  if (status !== 'blocked') {
+    return null
+  }
+
+  return (
+    <div>
+      <p>You have unsaved changes. Leave anyway?</p>
+      <button onClick={proceed}>Proceed</button>
+      <button onClick={proceedAll}>Proceed all</button>
+      <button onClick={reset}>Stay</button>
+    </div>
+  )
+}
+```
+
+# Solid
+
+```tsx
+import { useBlockerState } from '@tanstack/solid-router'
+
+function GlobalBlockerModal() {
+  const blocker = useBlockerState()
+
+  return (
+    <Show when={blocker().status === 'blocked'}>
+      <div>
+        <p>You have unsaved changes. Leave anyway?</p>
+        <button onClick={() => blocker().proceed()}>Proceed</button>
+        <button onClick={() => blocker().proceedAll()}>Proceed all</button>
+        <button onClick={() => blocker().reset()}>Stay</button>
+      </div>
+    </Show>
+  )
+}
+```
+
+# Vue
+
+```tsx
+import { useBlockerState } from '@tanstack/vue-router'
+
+const GlobalBlockerModal = defineComponent({
+  setup() {
+    const blocker = useBlockerState()
+
+    return () =>
+      blocker.value.status === 'blocked' ? (
+        <div>
+          <p>You have unsaved changes. Leave anyway?</p>
+          <button onClick={() => blocker.value.proceed()}>Proceed</button>
+          <button onClick={() => blocker.value.proceedAll()}>
+            Proceed all
+          </button>
+          <button onClick={() => blocker.value.reset()}>Stay</button>
+        </div>
+      ) : null
+  },
+})
+```
+
+<!-- ::end:framework -->

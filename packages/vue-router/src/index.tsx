@@ -280,6 +280,8 @@ export {
 
 export type { UseBlockerOpts, ShouldBlockFn } from './useBlocker'
 export { useBlocker, Block } from './useBlocker'
+export { useBlockerState } from './useBlockerState'
+export type { BlockerState } from './useBlockerState'
 
 export { useNavigate, Navigate } from './useNavigate'
 
