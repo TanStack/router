@@ -32,11 +32,12 @@ export function AgeTicker(props: {
     }
 
     const router = props.router()
-    const route = (router.routesById as Record<string, AnyRoute>)[
+    const route = (router.routesById as Record<string, AnyRoute | undefined>)[
       match.routeId
-    ]!
+    ]
 
-    if (!route.options.loader) {
+    // A history match can belong to a route the current router no longer has.
+    if (!route?.options.loader) {
       return undefined
     }
 
