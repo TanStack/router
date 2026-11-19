@@ -16,7 +16,6 @@ import {
   StaleSetDrain,
   displayPath,
   emittedMapTexts,
-  identify,
   locateDiagnostics,
   normalizePath,
   pathsOf,
@@ -126,6 +125,18 @@ interface CompilationLike {
 const PLUGIN_NAME = 'tanstack-router:compiler'
 
 const JS_FILE_RE = /\.[cm]?[jt]sx?$/
+
+/**
+ * The file of a module resource, as the stale sets spell it
+ * (`identify(webpackResourceId(resource)).path`: the id before its query),
+ * without parsing the query: the drain asks it of every module of every
+ * compilation.
+ */
+function resourcePath(resource: string): string {
+  const id = webpackResourceId(resource)
+  const q = id.indexOf('?')
+  return q === -1 ? id : id.slice(0, q)
+}
 
 let loaderPath: string | null = null
 
@@ -308,9 +319,7 @@ export function createRouterCompilerWebpackPlugin(
             if (!resource || !DEPENDENCY_ID_RE.test(resource)) {
               continue
             }
-            const file = normalizePath(
-              identify(webpackResourceId(resource)).path,
-            )
+            const file = resourcePath(resource)
             if (!isRouteFile(file)) {
               continue
             }
@@ -378,8 +387,7 @@ export function createRouterCompilerWebpackPlugin(
               await drain.rebuild(
                 envName,
                 compilation as unknown as RebuildCompilationLike<ModuleLike>,
-                (resource) =>
-                  normalizePath(identify(webpackResourceId(resource)).path),
+                resourcePath,
               )
             },
           )
