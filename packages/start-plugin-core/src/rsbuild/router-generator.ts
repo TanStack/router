@@ -47,6 +47,8 @@ export interface RsbuildRouteGenerator {
      * module restored from the persistent cache).
      */
     stale: () => boolean
+    /** The pruned route set's version (bumped when it changes). */
+    version: () => number
   }
 }
 
@@ -118,6 +120,7 @@ export function createRsbuildRouteGenerator(opts: {
         return code
       },
       stale: () => served !== version,
+      version: () => version,
     },
   }
 }

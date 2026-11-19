@@ -66,7 +66,11 @@ interface StartHostPluginOptions {
   writeVirtualModule: (file: string, content: string) => void
   generator: RsbuildRouteGenerator
   /** The client route tree module (client environment only): rebuilt when it is stale. */
-  clientRouteTree?: { path: () => string; stale: () => boolean }
+  clientRouteTree?: {
+    path: () => string
+    stale: () => boolean
+    version: () => number
+  }
   /** After the `finishMake` replay rebuilt the registry (the resolver virtual module is rewritten). */
   onServerFnsReplayed: () => void
   /**
@@ -804,9 +808,13 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // the client route tree without its server-only routes: served by the host's transform
       // of the tree module; when its routes changed since it served the module (the file
       // did not), or it served none (a module restored from the persistent cache), the
-      // module is rebuilt
+      // module is rebuilt. A child compiler (a worker) runs the transform too: what it
+      // served is not this compiler's module, so the tree is fresh here once this
+      // compiler built its module at the current route set
       if (opts.clientRouteTree && environment.type === 'client') {
         const tree = opts.clientRouteTree
+        /** The route set's version this compiler's tree module has (none known: -1). */
+        let builtAt = -1
         compiler.hooks.finishMake.tapPromise(
           { name: `${PLUGIN_NAME}:route-tree`, stage: -30 },
           (compilation) =>
@@ -817,14 +825,23 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 if (compilation.compiler !== compiler) {
                   return
                 }
-                if (!tree.stale()) {
+                const version = tree.version()
+                const id = normalizePath(tree.path())
+                const builtHere = () =>
+                  [...compilation.builtModules].some((m) => {
+                    const { resource } = m as unknown as ModuleLike
+                    return !!resource && canonicalResource(resource) === id
+                  })
+                if (!tree.stale() && (builtAt === version || builtHere())) {
+                  builtAt = version
                   return
                 }
                 await rebuildModules(
                   compilation,
-                  new Set([normalizePath(tree.path())]),
+                  new Set([id]),
                   canonicalResource,
                 )
+                builtAt = version
               },
             ),
         )
