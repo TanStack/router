@@ -1,7 +1,7 @@
 /**
  * What a dev server's compiles resolve, after edits that change no module
- * the compiler compiled: a `package.json` edit changes what a specifier
- * resolves to; the input texts the compiler reads differ between
+ * the compiler compiled: a `package.json` edit or removal changes what a
+ * specifier resolves to; the input texts the compiler reads differ between
  * environments; a registry change with a resolver that throws. On running
  * Vite and Rsbuild dev servers (source: external review 2, claims 5 to 7).
  */
@@ -10,7 +10,7 @@ import { utimes, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
-import { startDevServer } from '../dev-server'
+import { callServerFn, startDevServer, startRequestFiles } from '../dev-server'
 import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
 import type { RsbuildPlugin } from '@rsbuild/core'
 
@@ -160,6 +160,46 @@ export const fn = base.handler(async () => 'MARK_HANDLER')
       )
       expect(before).toContain('MARK_HANDLER')
       expect(after).not.toContain('MARK_HANDLER')
+    },
+    timeout,
+  )
+})
+
+describe('Vite dev: a nested package.json removed', () => {
+  // `src/section/package.json` maps `#impl` to a plain object; the app's
+  // own maps it to a server fn builder. Removing the nested one has
+  // `#impl` find the builder at once, with no change to the caller or
+  // either target: the caller is built again at the removal, in both
+  // environments, and its server fn answers. Source: Astra review round 4
+  // (B2: both environments kept the old answer until a restart; main too).
+  test(
+    'the importer becomes a server fn at the removal, in the client and in SSR',
+    async () => {
+      const server = await startDevServer({
+        files: {
+          ...startRequestFiles,
+          'package.json': packageJson('./src/lib/builder.ts'),
+          'src/lib/builder.ts': builder,
+          'src/section/package.json': JSON.stringify({
+            private: true,
+            type: 'module',
+            imports: { '#lib': './plain.ts' },
+          }),
+          'src/section/plain.ts': plain,
+          'src/section/a.ts': importer,
+        },
+      })
+      expect(await server.transform('/src/section/a.ts')).toContain(
+        'MARK_HANDLER',
+      )
+      const before = await server.import('/src/section/a.ts')
+      expect(await before.fn()).toBe('MARK_HANDLER')
+      await server.edit({ 'src/section/package.json': null })
+      expect(await server.transform('/src/section/a.ts')).not.toContain(
+        'MARK_HANDLER',
+      )
+      const { fn } = await server.import('/src/section/a.ts')
+      expect(await callServerFn(server, fn)).toBe('MARK_HANDLER')
     },
     timeout,
   )

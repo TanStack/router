@@ -681,12 +681,15 @@ async function applyChange(
     }
   }
   // any event of a file but its removal: a creation may hide in a change
-  // (a removal and re-creation reported as one)
+  // (a removal and re-creation reported as one). A `package.json`'s removal
+  // too: the resolutions under it found what its `imports` and `exports`
+  // named, and may now find what a parent's name
   // (a `package.json`'s repeat moved nothing: only its first event asks)
   // (a virtual module's change moves no file: no resolution moves)
   const shadows =
     !virtual &&
-    (change.kind === 'add' ||
+    ((change.kind === 'unlink' && manifestAt) ||
+      change.kind === 'add' ||
       (change.kind === 'change' && (!manifestAt || manifest)))
       ? shadowTest(change.path)
       : null
