@@ -30,6 +30,10 @@ const merged = mergeConfig(
   }),
 )
 
+// The library output is not minified, but styles.css is inlined as a string
+// that consumers' minifiers cannot shrink, so minify the CSS here. esbuild
+// keeps declaration values as written.
+merged.build.cssMinify = 'esbuild'
 merged.build.rolldownOptions.output.manualChunks = undefined
 merged.build.rolldownOptions.output.preserveModules = false
 

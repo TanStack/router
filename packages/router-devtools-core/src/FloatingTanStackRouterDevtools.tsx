@@ -1,5 +1,3 @@
-import { clsx as cx } from 'clsx'
-
 import { createEffect, createMemo, createSignal } from 'solid-js'
 import { Dynamic } from 'solid-js/web'
 
@@ -8,7 +6,7 @@ import { useIsMounted } from './utils'
 import { BaseTanStackRouterDevtoolsPanel } from './BaseTanStackRouterDevtoolsPanel'
 import useLocalStorage from './useLocalStorage'
 import { TanStackLogo } from './logo'
-import { useStyles } from './useStyles'
+import { attachStyles } from './styles'
 import type { Accessor, JSX } from 'solid-js'
 import type { AnyRouter } from '@tanstack/router-core'
 
@@ -52,7 +50,12 @@ export interface FloatingDevtoolsOptions {
   router: Accessor<AnyRouter>
   routerState: Accessor<any>
   /**
-   * Use this to attach the devtool's styles to specific element in the DOM.
+   * The element the devtools are mounted in. Its document or shadow root gets
+   * the devtools styles.
+   */
+  mountElement?: Element
+  /**
+   * Adds the devtools styles to this shadow root instead.
    */
   shadowDOMTarget?: ShadowRoot
 }
@@ -66,8 +69,12 @@ export function FloatingTanStackRouterDevtools({
   containerElement: Container = 'footer',
   router,
   routerState,
+  mountElement,
   shadowDOMTarget,
 }: FloatingDevtoolsOptions): JSX.Element | null {
+  if (mountElement) {
+    attachStyles(mountElement, shadowDOMTarget)
+  }
   const [rootEl, setRootEl] = createSignal<HTMLDivElement>()
 
   // eslint-disable-next-line prefer-const
@@ -86,7 +93,6 @@ export function FloatingTanStackRouterDevtools({
   const [isResolvedOpen, setIsResolvedOpen] = createSignal(false)
   const [isResizing, setIsResizing] = createSignal(false)
   const isMounted = useIsMounted()
-  const styles = useStyles()
 
   const handleDragStart = (
     panelElement: HTMLDivElement | undefined,
@@ -205,32 +211,31 @@ export function FloatingTanStackRouterDevtools({
   const resolvedHeight = createMemo(() => devtoolsHeight() ?? 500)
 
   const basePanelClass = createMemo(() => {
-    return cx(
-      styles().devtoolsPanelContainer,
-      styles().devtoolsPanelContainerVisibility(!!isOpen()),
-      styles().devtoolsPanelContainerResizing(isResizing),
-      styles().devtoolsPanelContainerAnimation(
-        isResolvedOpen(),
-        resolvedHeight() + 16,
-      ),
-    )
+    return [
+      'tsrd-devtools-panel-container',
+      isOpen() ? '' : 'tsrd-devtools-panel-container-hidden',
+      isResizing() ? 'tsrd-devtools-panel-container-resizing' : '',
+      // The closed offset comes from `--tsrd-panel-offset`.
+      isResolvedOpen() ? '' : 'tsrd-devtools-panel-container-closed',
+    ].join(' ')
   })
 
   const basePanelStyle = createMemo(() => {
     return {
       height: `${resolvedHeight()}px`,
+      '--tsrd-panel-offset': `${resolvedHeight() + 16}px`,
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       ...(panelStyle || {}),
     }
   })
 
   const buttonStyle = createMemo(() => {
-    return cx(
-      styles().mainCloseBtn,
-      styles().mainCloseBtnPosition(position),
-      styles().mainCloseBtnAnimation(!!isOpen()),
-      toggleButtonClassName,
-    )
+    return [
+      'tsrd-main-close-btn',
+      `tsrd-main-close-btn-${position}`,
+      isOpen() ? 'tsrd-main-close-btn-hidden' : '',
+      toggleButtonClassName ?? '',
+    ].join(' ')
   })
 
   return (
@@ -255,7 +260,6 @@ export function FloatingTanStackRouterDevtools({
           isOpen={isResolvedOpen()}
           setIsOpen={setIsOpen}
           handleDragStart={(e) => handleDragStart(panelRef, e)}
-          shadowDOMTarget={shadowDOMTarget}
         />
         {/* ) : (
           <p>No router</p>
@@ -272,16 +276,16 @@ export function FloatingTanStackRouterDevtools({
         }}
         class={buttonStyle()}
       >
-        <div class={styles().mainCloseBtnIconContainer}>
-          <div class={styles().mainCloseBtnIconOuter}>
+        <div class="tsrd-main-close-btn-icon-container">
+          <div class="tsrd-main-close-btn-icon-outer">
             <TanStackLogo />
           </div>
-          <div class={styles().mainCloseBtnIconInner}>
+          <div class="tsrd-main-close-btn-icon-inner">
             <TanStackLogo />
           </div>
         </div>
-        <div class={styles().mainCloseBtnDivider}>-</div>
-        <div class={styles().routerLogoCloseButton}>TanStack Router</div>
+        <div class="tsrd-main-close-btn-divider">-</div>
+        <div class="tsrd-router-logo-close-button">TanStack Router</div>
       </button>
     </Dynamic>
   )

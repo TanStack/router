@@ -14789,25 +14789,22 @@ importers:
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
       csstype:
         specifier: ^3.0.10
         version: 3.2.3
-      goober:
-        specifier: ^2.1.16
-        version: 2.1.16(csstype@3.2.3)
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
         version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(rollup@4.63.1)(supports-color@10.2.2)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: 'catalog:'
         version: 7.0.1(@testing-library/dom@10.4.1)(vitest@5.0.4)
+      esbuild:
+        specifier: ^0.27.4
+        version: 0.27.4
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1(supports-color@10.2.2)
@@ -14822,13 +14819,13 @@ importers:
         version: 1.9.12
       vite:
         specifier: ^8.3.8
-        version: 8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
+        version: 8.3.8(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
       vite-plugin-solid:
         specifier: 'catalog:'
-        version: 2.11.10(@testing-library/jest-dom@7.0.1(@testing-library/dom@10.4.1)(vitest@5.0.4))(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 2.11.10(@testing-library/jest-dom@7.0.1(@testing-library/dom@10.4.1)(vitest@5.0.4))(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       vitest:
         specifier: 'catalog:'
-        version: 5.0.4(@opentelemetry/api@1.9.1)(@types/node@25.0.9)(@vitest/ui@5.0.4)(jsdom@25.0.1(supports-color@10.2.2))(msw@2.15.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 5.0.4(@opentelemetry/api@1.9.1)(@types/node@25.0.9)(@vitest/ui@5.0.4)(jsdom@25.0.1(supports-color@10.2.2))(msw@2.15.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.3.8(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/router-generator:
     dependencies:
@@ -44197,6 +44194,21 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  vite-plugin-solid@2.11.10(@testing-library/jest-dom@7.0.1(@testing-library/dom@10.4.1)(vitest@5.0.4))(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)):
+    dependencies:
+      '@babel/core': 7.29.7(supports-color@10.2.2)
+      '@types/babel__core': 7.20.5
+      babel-preset-solid: 1.9.10(@babel/core@7.29.7(supports-color@10.2.2))(solid-js@1.9.12)
+      merge-anything: 5.1.7
+      solid-js: 1.9.12
+      solid-refresh: 0.6.3(solid-js@1.9.12)(supports-color@10.2.2)
+      vite: 8.3.8(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
+      vitefu: 1.1.3(vite@8.3.8(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+    optionalDependencies:
+      '@testing-library/jest-dom': 7.0.1(@testing-library/dom@10.4.1)(vitest@5.0.4)
+    transitivePeerDependencies:
+      - supports-color
+
   vite-plugin-solid@2.11.10(@testing-library/jest-dom@7.0.1(@testing-library/dom@10.4.1)(vitest@5.0.4))(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)):
     dependencies:
       '@babel/core': 7.29.7(supports-color@10.2.2)
@@ -44373,6 +44385,10 @@ snapshots:
   vitefu@1.1.1(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)):
     optionalDependencies:
       vite: 8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
+
+  vitefu@1.1.3(vite@8.3.8(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)):
+    optionalDependencies:
+      vite: 8.3.8(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
 
   vitefu@1.1.3(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)):
     optionalDependencies:
