@@ -116,7 +116,7 @@ When the plugin sees a marker import, it records the file as restricted. If that
 
 Markers are useful when a file doesn't follow the `.server.*` / `.client.*` naming convention but still contains environment-specific code.
 
-With React Server Components, a `'use client'` module that a server component imports is a client reference where server components render (the `rsc` environment on Vite, the RSC layer on Rsbuild): none of its code runs there. There, its file pattern and marker don't deny the import, and its own imports are not checked. It is checked where it runs, in SSR and on the client. A specifier pattern still denies the import.
+With React Server Components, server components render in the `rsc` environment: Vite's environment of that name, and on Rsbuild the server compiler's RSC layer, which `onViolation` and `allowImport` also call `rsc` (`info.env`). It is a server environment: the server rules apply, and `info.envType === 'server'` matches it and `ssr`. A `'use client'` module that a server component imports is a client reference there: none of its code runs there. There, its file pattern and marker don't deny the import, and its own imports are not checked. It is checked where it runs, in SSR and on the client. A specifier pattern still denies the import.
 
 ## Behavior Modes
 
@@ -652,7 +652,7 @@ A re-export that nothing uses still fails the build when the denied file has a t
 ```ts
 importProtection: {
   onViolation: async (info) => {
-    // info.env -- environment name (e.g. 'client', 'ssr', ...)
+    // info.env -- environment name (e.g. 'client', 'ssr', 'rsc', ...)
     // info.envType -- 'client' or 'server'
     // info.type -- 'specifier', 'file', or 'marker'
     // info.specifier -- the raw import string
@@ -689,7 +689,7 @@ importProtection: {
 - `true` gives the import the real module, from the first pass: the import is not a violation, nothing is reported for it, and `onViolation` is not called for it.
 - `false` or nothing means no override: the normal outcome under `behavior`, so a build failure with `error`, a mock and a warning with `mock`.
 
-It is called once per denied import for a build or a dev session, and the answer is remembered.
+It is called once per denied import and environment (`info.env`) for a build or a dev session, and the answer is remembered.
 
 `allowImport` runs before tree-shaking, so it also sees imports tree-shaking removes later. Use it to decide, not to report: `onViolation` is the one that hears only about what stays. For the same reason its `info` has no `trace` (the import graph is not finished) and no `snippet` (source rendered for a report).
 
