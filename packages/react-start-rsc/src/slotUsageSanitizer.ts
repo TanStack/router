@@ -25,8 +25,7 @@ const REACT_ELEMENT_PLACEHOLDER = 'React element'
 
 function sanitizeSlotArg(
   value: unknown,
-  seen: WeakSet<object>,
-  depth: number,
+  seen: WeakMap<object, unknown>,
 ): unknown {
   if (isReactElementLike(value)) {
     return REACT_ELEMENT_PLACEHOLDER
@@ -40,15 +39,27 @@ function sanitizeSlotArg(
     return value
   }
 
+  const cached = seen.get(value)
+  if (cached !== undefined) {
+    return cached
+  }
+
   if (Array.isArray(value)) {
-    return value.map((d) => sanitizeSlotArg(d, seen, depth + 1))
+    const out = new Array(value.length)
+    seen.set(value, out)
+    value.forEach((item, index) => {
+      out[index] = sanitizeSlotArg(item, seen)
+    })
+    return out
   }
 
   const proto = Object.getPrototypeOf(value)
   if (proto === Object.prototype || proto === null) {
     const out: Record<string, unknown> = {}
+    // Register before descending so shared references and cycles reuse the clone.
+    seen.set(value, out)
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      out[k] = sanitizeSlotArg(v, seen, depth + 1)
+      out[k] = sanitizeSlotArg(v, seen)
     }
     return out
   }
@@ -57,6 +68,6 @@ function sanitizeSlotArg(
 }
 
 export function sanitizeSlotArgs(args: Array<any>): Array<any> {
-  const seen = new WeakSet<object>()
-  return args.map((d) => sanitizeSlotArg(d, seen, 0))
+  const seen = new WeakMap<object, unknown>()
+  return args.map((d) => sanitizeSlotArg(d, seen))
 }
