@@ -285,7 +285,8 @@ function orphaned(
  * (e.g. a Solid ref setter assigning a local whose only source reference it
  * replaced): read there, as placement reads a claim's place
  * (`reads.ts`). A claim not in scope or whose occurrence is erased places
- * nothing.
+ * nothing. Planner placeholders outside claims are left out: they name only
+ * generated symbols (split's helpers and importers, Start's RPC imports).
  */
 function placeholderReads(rewrites: RewriteSet): ReadonlySet<SymbolId> {
   const env = rewrites.view('env')
