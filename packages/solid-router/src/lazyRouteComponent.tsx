@@ -16,17 +16,42 @@ export function lazyRouteComponent<
   let loadPromise: Promise<any> | undefined
   let comp: T[TKey] | T['default']
   let error: any
+  let resolved = false
 
   const load = () => {
+    const server = isServer ?? typeof window === 'undefined'
+
+    // On the server, cache only a resolved module. Sharing a pending
+    // import across requests leaves later SSR stuck if the first request
+    // is cancelled (Cloudflare Workers never settle that promise).
+    if (server) {
+      if (resolved) {
+        return loadPromise ?? Promise.resolve()
+      }
+
+      error = undefined
+      const promise = importer()
+        .then((res) => {
+          if (!resolved) {
+            comp = res[exportName ?? 'default']
+            loadPromise = promise
+            resolved = true
+          }
+          return comp
+        })
+        .catch((err) => {
+          error = err
+        })
+      return promise
+    }
+
     if (!loadPromise) {
       error = undefined
       loadPromise = importer()
         .then((res) => {
-          // Resolved clients have no preload work; SSR can reuse the import.
-          if (!(isServer ?? typeof window === 'undefined')) {
-            loadPromise = undefined
-            ;(Lazy as any).preload = undefined
-          }
+          // Resolved clients have no preload work.
+          loadPromise = undefined
+          ;(Lazy as any).preload = undefined
           comp = res[exportName ?? 'default']
           return comp
         })
