@@ -5,15 +5,19 @@ interface Props extends NavigateOptions {
   router: Accessor<AnyRouter>
 }
 
-export function NavigateButton({ to, params, search, router }: Props) {
+export function NavigateButton(props: Props) {
   return (
     <button
       type="button"
-      title={`Navigate to ${to}`}
+      title={`Navigate to ${props.to}`}
       class="tsrd-navigate-button"
       onClick={(e) => {
         e.stopPropagation()
-        router().navigate({ to, params, search })
+        props.router().navigate({
+          to: props.to,
+          params: props.params,
+          search: props.search,
+        })
       }}
     >
       ➔
