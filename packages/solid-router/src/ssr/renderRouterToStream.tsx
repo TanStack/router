@@ -42,17 +42,13 @@ export const renderRouterToStream = async ({
     // handle for unresolved renderer work; see router-core's STREAMING.md.
     let doctypeWritten = false
     const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>({
-      // The doctype joins the shell so it stays one renderer record.
+      // Its own chunk: late records only follow the boundary, and merging copies the shell.
       transform(chunk, controller) {
-        if (doctypeWritten) {
-          controller.enqueue(chunk)
-          return
+        if (!doctypeWritten) {
+          doctypeWritten = true
+          controller.enqueue(doctype.slice())
         }
-        doctypeWritten = true
-        const out = new Uint8Array(doctype.length + chunk.length)
-        out.set(doctype, 0)
-        out.set(chunk, doctype.length)
-        controller.enqueue(out)
+        controller.enqueue(chunk)
       },
     })
     const rendererAbort = isbot(request.headers.get('User-Agent'))

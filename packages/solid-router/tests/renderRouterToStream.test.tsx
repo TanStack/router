@@ -242,6 +242,45 @@ describe('renderRouterToStream', () => {
     }
   })
 
+  test('writes the document type without copying the shell', async () => {
+    const html = new TextEncoder().encode('<html><body>solid</body></html>')
+    solidMocks.renderToStream.mockImplementationOnce(
+      () =>
+        ({
+          pipeTo(writable: WritableStream<Uint8Array>) {
+            const writer = writable.getWriter()
+            return writer.write(html).then(() => writer.close())
+          },
+        }) as any,
+    )
+
+    const router = await buildRouter()
+    router.serverSsr!.disableHydration()
+    try {
+      const result = await renderRouterToStream({
+        request: new Request('http://localhost/'),
+        router,
+        responseHeaders: new Headers(),
+        children: () => null,
+      })
+
+      const reader = unwrapResponse(result).body!.getReader()
+      const chunks: Array<Uint8Array> = []
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) {
+          break
+        }
+        chunks.push(value)
+      }
+
+      expect(new TextDecoder().decode(chunks[0])).toBe('<!DOCTYPE html>')
+      expect(chunks).toContain(html)
+    } finally {
+      router.serverSsr?.cleanup()
+    }
+  })
+
   test('bot response does not wait for a backpressured pipe', async () => {
     // The adapter prepends the document type to Solid 2's shell.
     const html = new TextEncoder().encode('<html><body>solid</body></html>')
