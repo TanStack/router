@@ -74,3 +74,46 @@ export const getRouter = () => createRouter({ routeTree })
   },
   timeout,
 )
+
+// The client route tree leaves out a server-only route (SPEC J2.15), so no
+// client module imports its file: an edit that gives the route a component
+// makes it a page, and the client's rebuild has it.
+// Source: research on review round 4 (the client did not compile again: the
+// route file was no dependency of the client build, and the route tree file
+// did not change).
+const review = (options: string) =>
+  `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/review')({ ${options} })
+`
+const reviewHandlers = `server: { handlers: { GET: () => new Response('MARK_REVIEW_HANDLER') } }`
+
+test.each(['vite', 'rsbuild'] as const)(
+  '%s build --watch: a server-only route that gains a component is in the client build',
+  async (bundler) => {
+    const build = await buildStart({
+      bundler,
+      files: {
+        'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute()
+`,
+        'src/routes/review.tsx': review(reviewHandlers),
+        'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
+`,
+        'src/entry.ts': `export { getRouter } from './router'\n`,
+      },
+      // (both bundle the route tree)
+      entry: { client: 'src/entry.ts', ssr: 'src/entry.ts' },
+      start: { importProtection: { enabled: false } },
+      watchEdits: {
+        'src/routes/review.tsx': review(
+          `${reviewHandlers}, component: () => 'MARK_REVIEW_PAGE'`,
+        ),
+      },
+    })
+    expect(build.client.where('MARK_REVIEW_PAGE')).not.toBe('nowhere')
+    expect(build.ssr.where('MARK_REVIEW_PAGE')).not.toBe('nowhere')
+  },
+  timeout,
+)
