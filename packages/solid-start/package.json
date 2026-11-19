@@ -144,13 +144,17 @@
   "peerDependencies": {
     "@rsbuild/core": "^2.0.5",
     "solid-js": ">=1.0.0",
-    "vite": ">=8.0.0"
+    "vite": ">=8.0.0",
+    "vitest": ">=5.1.1"
   },
   "peerDependenciesMeta": {
     "@rsbuild/core": {
       "optional": true
     },
     "vite": {
+      "optional": true
+    },
+    "vitest": {
       "optional": true
     }
   }
