@@ -295,6 +295,7 @@ function typePathOf(node: RouteNode): string {
 const reservedNames = new Set([
   'rootRouteImport',
   'rootRouteChildren',
+  'RootRouteChildren',
   'routeTree',
   'createFileRoute',
   'lazyRouteComponent',

@@ -99,6 +99,37 @@ export type Check = Expect<Equal<FileRoutesByTo['/foo']['id'], '/foo'>>
   }, 30_000)
 })
 
+// Bug: a route file named `root` with child routes is given the route tree's
+// own name for the root route's children (`RootRouteChildren`), so the tree
+// declares it twice: the children of `routeTree` are typed as the `root`
+// route's (`/root/settings` in place of `/root`), and a tree printed without
+// the `// @ts-nocheck` header (`routeTreeFileHeader`) fails to type-check.
+// Source: src/model/build.ts (`reservedNames`: the printer's own names
+// a route's names must not take).
+// Impact: a legal route name breaks the types of the tree's children.
+describe('the root route children', () => {
+  test('a route named `root` with child routes is a child of the root route in the types', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/root.tsx': fileRoute('/root'),
+      'src/routes/root.settings.tsx': fileRoute('/root/settings'),
+    })
+    await generate(root, { routeTreeFileHeader: [] })
+
+    expect(
+      await typeErrorsOf(
+        root,
+        'src/checks.ts',
+        `import type { routeTree } from './routeTree.gen'
+${typeAssertions}
+type Children = (typeof routeTree)['children']
+export type Check = Expect<Equal<NonNullable<Children>[keyof NonNullable<Children>]['id'], '/root'>>
+`,
+      ),
+    ).toEqual([])
+  }, 30_000)
+})
+
 // (Through the router's public lookup by full path on `typeof routeTree`;
 // the tree's own type names are free.)
 describe('routes by full path', () => {
