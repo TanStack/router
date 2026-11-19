@@ -31,7 +31,8 @@ function getPrerenderablePaths(
     // filter routes that do not have a component, i.e api routes
     if (!route.createFileRouteProps?.has('component')) continue
 
-    paths.add(inferFullPath(route))
+    const fullPath = inferFullPath(route)
+    paths.add(fullPath === '/' ? fullPath : fullPath.replace(/\/$/, ''))
   }
 
   return Array.from(paths).map((path) => ({ path }))
