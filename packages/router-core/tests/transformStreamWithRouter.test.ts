@@ -2874,4 +2874,42 @@ describe('transformReadableStreamWithRouter — hydration output ordering', () =
       errorSpy.mockRestore()
     }
   })
+
+  test('does not eagerly pull from upstream appStream upon creation when highWaterMark is 0', async () => {
+    const { router } = makeRouter()
+    let readCalled = false
+
+    const appStream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(new Uint8Array([1]))
+      },
+    })
+    const origGetReader = appStream.getReader.bind(appStream)
+    ;(appStream as any).getReader = () => {
+      const reader = origGetReader()
+      const origRead = reader.read.bind(reader)
+      reader.read = () => {
+        readCalled = true
+        return origRead()
+      }
+      return reader
+    }
+
+    const transformed = transformReadableStreamWithRouter(
+      router as any,
+      appStream,
+      { highWaterMark: 0 },
+    )
+
+    // Wait for any eager pull microtasks
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    expect(readCalled).toBe(false)
+
+    // Once downstream actually reads, it should pull from upstream
+    const reader = transformed.getReader()
+    void reader.read()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(readCalled).toBe(true)
+  })
 })

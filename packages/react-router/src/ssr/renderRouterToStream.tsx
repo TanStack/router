@@ -51,6 +51,7 @@ export const renderRouterToStream = async ({
       const responseStream = transformReadableStreamWithRouter(router, stream, {
         rendererSafePoint: 'script-close',
         signal,
+        highWaterMark: bot ? 0 : undefined,
         onAbort: (reason) => {
           rendererTeardown = true
           rendererAbort?.abort(reason)

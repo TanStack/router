@@ -39,6 +39,11 @@ export type TransformStreamWithRouterOptions = {
    * Errors thrown from this callback are swallowed.
    */
   onAbort?: (reason?: unknown) => void
+  /**
+   * Queuing strategy highWaterMark for the transformed ReadableStream.
+   * Set to 0 to prevent eager pull from upstream streams before downstream consumption begins.
+   */
+  highWaterMark?: number
 }
 
 type AppStreamValue = Uint8Array | string
@@ -931,21 +936,26 @@ function makeMergeStream(
     terminate('failure', error)
   }
 
-  const stream = new ReadableStream<Uint8Array>({
-    start(c) {
-      controller = c
+  const stream = new ReadableStream<Uint8Array>(
+    {
+      start(c) {
+        controller = c
+      },
+      pull() {
+        // One async frame per pull: pass-through must stay as cheap as a plain
+        // read-and-forward loop.
+        return applicationPhase === ApplicationPhase.PassThrough
+          ? pumpPassThrough()
+          : pump().catch(handlePumpError)
+      },
+      cancel(reason) {
+        return terminate('cancel', reason)
+      },
     },
-    pull() {
-      // One async frame per pull: pass-through must stay as cheap as a plain
-      // read-and-forward loop.
-      return applicationPhase === ApplicationPhase.PassThrough
-        ? pumpPassThrough()
-        : pump().catch(handlePumpError)
-    },
-    cancel(reason) {
-      return terminate('cancel', reason)
-    },
-  })
+    opts?.highWaterMark !== undefined
+      ? { highWaterMark: opts.highWaterMark }
+      : undefined,
+  )
 
   if (hydrationOutput) {
     stopHydrationOutputListener = hydrationOutput.subscribe(() => {
