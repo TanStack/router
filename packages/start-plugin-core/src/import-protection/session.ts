@@ -566,11 +566,12 @@ const NO_ERROR: CompileOutcome = { error: null }
 const NO_TRACE: Trace = { steps: [], fromEntry: false }
 
 /**
- * The id of an importer's records: the importer, of a bundler layer when it
- * has one (Rspack: a file compiled in two layers has two modules).
+ * The key of a module by its id (or resource) and bundler layer, when it
+ * has one (Rspack: a file compiled in two layers has two modules): the id of
+ * an importer's records, and of the Rsbuild host's compiled modules.
  */
-function recordId(importerId: string, layer: string | undefined): string {
-  return layer === undefined ? importerId : `${layer}\u0000${importerId}`
+export function layerKey(id: string, layer: string | undefined): string {
+  return layer === undefined ? id : `${layer}\u0000${id}`
 }
 
 /** One Start environment's import protection. */
@@ -583,9 +584,9 @@ class ImportProtectionEnv {
   reporter: DevReporter | null = null
   private readonly modules = new Map<string, RegisteredModule>()
   /**
-   * The edge modules of each importer's last compile, by record id
-   * (`recordId`: an importer of a layer has records of its own, as its edge
-   * keys are the layer's).
+   * The edge modules of each importer's last compile, by `layerKey` (an
+   * importer of a layer has records of its own, as its edge keys are the
+   * layer's).
    */
   private readonly byImporter = new Map<
     string,
@@ -1076,7 +1077,7 @@ class ImportProtectionEnv {
       record?.version === 1 &&
       record.env === this.name &&
       record.violations.length > 0 &&
-      !this.byImporter.has(recordId(importerId, layer))
+      !this.byImporter.has(layerKey(importerId, layer))
     )
   }
 
@@ -1162,7 +1163,7 @@ class ImportProtectionEnv {
         v,
       )
     }
-    const id = recordId(importerId, layer)
+    const id = layerKey(importerId, layer)
     const previous = this.byImporter.get(id)?.keys
     if (!previous) {
       this.importersByFile.add(id, traceFile(importerId))
@@ -1389,7 +1390,7 @@ class ImportProtectionEnv {
     }
   }
 
-  /** Forgets an importer's records (by `recordId`). */
+  /** Forgets an importer's records (by `layerKey`). */
   private forgetImporter(id: string): void {
     const { importerId, keys } = this.byImporter.get(id)!
     this.byImporter.delete(id)

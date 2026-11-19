@@ -24,7 +24,7 @@ import {
   reportingFailure,
 } from '@tanstack/router-utils/compiler'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
-import { heldIn, outputKey } from '../import-protection/session'
+import { heldIn, layerKey, outputKey } from '../import-protection/session'
 import {
   readRspackWitness,
   rspackGraphView,
@@ -108,19 +108,20 @@ interface ModuleLike {
 
 /**
  * Development: the warnings a compilation reports for the one before it,
- * which Rsbuild never printed (`before`: what that one reported, by
- * resource). Rspack reports a module's warnings only in the compilation that
- * built it, and the session reports a warning once per dev session (the
- * warning ledger), so a module the compilation kept, or built again, reports
- * none of them: each recorded warning of one of its modules that it does not
- * report itself (`built`: it built the module) is handed over. Also returns
- * what the compilation reports, by resource (its built modules' warnings and
- * the handed ones), for the compilation after it.
+ * which Rsbuild never printed (`before`: what that one reported, by module:
+ * `layerKey` of resource and layer). Rspack reports a module's warnings only
+ * in the compilation that built it, and the session reports a warning once
+ * per dev session (the warning ledger), so a module the compilation kept, or
+ * built again, reports none of them: each recorded warning of one of its
+ * modules that it does not report itself (`built`: it built the module, by
+ * its key) is handed over. Also returns what the compilation reports, by
+ * module (its built modules' warnings and the handed ones), for the
+ * compilation after it.
  */
 export function handOverWarnings(
   before: ReadonlyMap<string, ReadonlyArray<LocatedDiagnostic>> | null,
   modules: Iterable<ModuleLike>,
-  built: (resource: string) => boolean,
+  built: (key: string) => boolean,
 ): {
   handed: Array<{ module: ModuleLike; warning: LocatedDiagnostic }>
   reported: Map<string, Array<LocatedDiagnostic>>
@@ -128,17 +129,17 @@ export function handOverWarnings(
   const handed: Array<{ module: ModuleLike; warning: LocatedDiagnostic }> = []
   const reported = new Map<string, Array<LocatedDiagnostic>>()
   for (const module of modules) {
-    const resource = module.resource
-    if (!resource) {
+    if (!module.resource) {
       continue
     }
-    const own = built(resource)
+    const key = layerKey(module.resource, module.layer ?? undefined)
+    const own = built(key)
       ? (
           (module.buildInfo?.[LOCATED_DIAGNOSTICS.field] ??
             []) as Array<LocatedDiagnostic>
         ).filter((d) => d.severity === 'warning')
       : []
-    const missing = (before?.get(resource) ?? []).filter(
+    const missing = (before?.get(key) ?? []).filter(
       (d) =>
         !own.some(
           (o) =>
@@ -151,7 +152,7 @@ export function handOverWarnings(
       handed.push({ module, warning })
     }
     if (own.length > 0 || missing.length > 0) {
-      reported.set(resource, [...own, ...missing])
+      reported.set(key, [...own, ...missing])
     }
   }
   return { handed, reported }
@@ -353,7 +354,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         warnings: ReadonlyMap<string, ReadonlyArray<LocatedDiagnostic>>
         reports: Array<string>
       } | null = null
-      /** Development: this compilation's import-protection reports, and its modules' warnings (theirs and the ones it reports for the one before), by resource. */
+      /** Development: this compilation's import-protection reports, and its modules' warnings (theirs and the ones it reports for the one before), by module (`layerKey`). */
       let reports: Array<string> = []
       let warned: ReadonlyMap<
         string,
@@ -562,7 +563,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                       const module = m as unknown as ModuleLike
                       if (
                         !module.resource ||
-                        env.compiled.has(module.resource)
+                        env.compiled.has(
+                          layerKey(module.resource, module.layer ?? undefined),
+                        )
                       ) {
                         continue
                       }
@@ -668,7 +671,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         const { handed, reported } = handOverWarnings(
           from?.warnings ?? null,
           modules,
-          (resource) => env.compiled.has(resource),
+          (key) => env.compiled.has(key),
         )
         for (const { module, warning } of handed) {
           compilation.warnings.push(
@@ -855,7 +858,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                   if (
                     typeof plan === 'string' &&
                     module.resource &&
-                    !env.compiled.has(module.resource)
+                    !env.compiled.has(
+                      layerKey(module.resource, module.layer ?? undefined),
+                    )
                   ) {
                     restored.push({
                       plan: JSON.parse(plan) as PersistedPlan,
@@ -884,7 +889,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                   if (
                     ip &&
                     module.resource &&
-                    !env.compiled.has(module.resource) &&
+                    !env.compiled.has(
+                      layerKey(module.resource, module.layer ?? undefined),
+                    ) &&
                     ipEnv.unjudged(
                       canonicalResource(module.resource),
                       ip,
