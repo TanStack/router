@@ -24,7 +24,6 @@ import {
   rendered,
   summary,
 } from './rsc-environments-app'
-import type { Rspack } from '@rsbuild/core'
 
 const timeout = 60_000
 
@@ -161,8 +160,33 @@ describe('Rsbuild build with RSC: the rsc environment', () => {
  * in a child compiler of the client compilation, emitted as `worker.js`
  * with the client's assets (what a worker or service-worker plugin does).
  */
+/** What the plugin uses of Rspack's compiler (structural: the package has no `@rsbuild/core` types). */
+interface CompilerLike {
+  context: string
+  rspack: {
+    EntryPlugin: new (context: string, entry: string, options: object) => object
+    webworker: { WebWorkerTemplatePlugin: new () => object }
+  }
+  hooks: {
+    make: {
+      tapPromise: (
+        name: string,
+        run: (compilation: {
+          createChildCompiler: (
+            name: string,
+            output: object,
+            plugins: Array<object>,
+          ) => {
+            runAsChild: (callback: (error?: Error | null) => void) => void
+          }
+        }) => Promise<void>,
+      ) => void
+    }
+  }
+}
+
 const workerPlugin = {
-  apply(compiler: Rspack.Compiler) {
+  apply(compiler: CompilerLike) {
     compiler.hooks.make.tapPromise('app:worker', (compilation) => {
       const child = compilation.createChildCompiler(
         'app-worker',
