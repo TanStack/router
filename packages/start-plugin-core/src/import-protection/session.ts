@@ -514,6 +514,14 @@ function unknownEdgeLoad(
 interface Served {
   verdict: 'mock' | 'real'
   self: EdgeViolation | null
+  /**
+   * An edge module's state read from a restored module's record (Rspack's
+   * persistent cache: another session's answer), until this session's
+   * `allowImport` answer replaces it (`mismatches`). Any other edge state was
+   * written from this session's answer on the module's one import
+   * (`dedupeKey`), asked once and remembered: it never differs.
+   */
+  restored?: true
 }
 
 /**
@@ -1003,7 +1011,11 @@ class ImportProtectionEnv {
       const ref = this.ip.ids.parse(importerId)
       if (ref?.kind === 'edge') {
         if (record.served && !this.served.has(ref.key)) {
-          this.served.set(ref.key, { verdict: record.served, self: null })
+          this.served.set(ref.key, {
+            verdict: record.served,
+            self: null,
+            restored: true,
+          })
         }
         return
       }
@@ -1031,8 +1043,8 @@ class ImportProtectionEnv {
    * What the ledger says was served and what the compilation's importers now
    * ask for disagree (design 4, I3): a denied file served the mock whose
    * exempt importer was compiled or restored after it, one served real whose
-   * exempt import is gone, a restored edge module or file whose
-   * `allowImport` answer (asked once per import, now if not yet) differs. The
+   * exempt import is gone, a restored edge module (`Served.restored`) or
+   * file whose `allowImport` answer (asked once per import, now if not yet) differs. The
    * ids of the modules to build again (an edge module by its id among our
    * modules). Edge modules first: an allowed import brings the module it
    * allows (`allowedImporters`).
@@ -1040,7 +1052,7 @@ class ImportProtectionEnv {
   async mismatches(): Promise<Array<string>> {
     const out: Array<string> = []
     for (const [key, entry] of this.served) {
-      const m = entry.self ? undefined : this.modules.get(key)
+      const m = entry.restored ? this.modules.get(key) : undefined
       if (!m) {
         continue
       }
