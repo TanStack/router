@@ -1,4 +1,5 @@
 import * as Vue from 'vue'
+import { waitForPageToStay, watchPageUnload } from '@tanstack/router-core'
 import { Outlet } from './Match'
 import { ClientOnly } from './ClientOnly'
 import type { AsyncRouteComponent } from './route'
@@ -34,6 +35,8 @@ export function lazyRouteComponent<
   let comp: T[TKey] | T['default'] | null = null
   let error: any = null
   let attemptedReload = false
+  let cancelledByUnload = false
+  let staying: Promise<void> | undefined
 
   const load = () => {
     // If we're on the server and SSR is disabled for this component
@@ -45,8 +48,11 @@ export function lazyRouteComponent<
     // Use existing promise or create new one
     if (!loadPromise) {
       error = undefined
+      cancelledByUnload = false
+      const stopWatchingUnload = watchPageUnload()
       loadPromise = importer()
         .then((res) => {
+          stopWatchingUnload()
           if (typeof document !== 'undefined') {
             loadPromise = undefined
             ;(lazyComp as any).preload = undefined
@@ -57,6 +63,10 @@ export function lazyRouteComponent<
         .catch((err) => {
           error = err
           loadPromise = undefined
+          cancelledByUnload = stopWatchingUnload() && isModuleNotFoundError(err)
+          // Start listening now: a pageshow before the component mounts
+          // would otherwise go unseen and leave the route empty.
+          staying = cancelledByUnload ? waitForPageToStay() : undefined
 
           // If it's a module not found error, we'll try to handle it in the component
           if (isModuleNotFoundError(error)) {
@@ -69,6 +79,39 @@ export function lazyRouteComponent<
 
     return loadPromise
   }
+  // Reload once for a missing module. Returns true if a reload was started.
+  const reloadOnce = (err: any) => {
+    if (
+      attemptedReload ||
+      typeof window === 'undefined' ||
+      typeof sessionStorage === 'undefined'
+    ) {
+      return false
+    }
+    const storageKey = `tanstack_router_reload:${err.message}`
+    if (sessionStorage.getItem(storageKey)) {
+      return false
+    }
+    sessionStorage.setItem(storageKey, '1')
+    attemptedReload = true
+    window.location.reload()
+    return true
+  }
+
+  // After a retry, a failed import comes back as null with the error recorded.
+  // Wait again if this import was also cancelled by an unload, otherwise give
+  // the missing module the same single reload as the first render would.
+  const settleRetry = (result: any): any => {
+    if (result || !error) return result
+    if (cancelledByUnload && staying) {
+      return staying.then(load).then(settleRetry)
+    }
+    if (isModuleNotFoundError(error) && reloadOnce(error)) {
+      return null
+    }
+    throw error
+  }
+
   // Create a lazy component wrapper using defineComponent so it works in Vue SFC templates
   const lazyComp = Vue.defineComponent({
     name: 'LazyRouteComponent',
@@ -76,15 +119,19 @@ export function lazyRouteComponent<
       // Create refs to track component state
       // Use shallowRef for component to avoid making it reactive (Vue warning)
       const component = Vue.shallowRef<any>(comp ? Vue.markRaw(comp) : comp)
-      const errorState = Vue.ref<any>(error)
+      // The browser cancelled the import because the page is unloading, so a
+      // reload would replace the navigation the user started. If the page
+      // stays after all, retry the import instead.
+      const retryAfterUnload = !!error && cancelledByUnload && !!staying
+      const stay = staying
+      const errorState = Vue.ref<any>(retryAfterUnload ? null : error)
       const loading = Vue.ref(!component.value && !errorState.value)
 
       // Setup effect to load the component when this component is used
       Vue.onMounted(() => {
         if (!component.value && !errorState.value) {
           loading.value = true
-
-          load()
+          ;(retryAfterUnload ? stay!.then(load).then(settleRetry) : load())
             .then((result) => {
               // Use markRaw to prevent Vue from making the component reactive
               component.value = result ? Vue.markRaw(result) : result
@@ -101,21 +148,9 @@ export function lazyRouteComponent<
       if (
         errorState.value &&
         isModuleNotFoundError(errorState.value) &&
-        !attemptedReload
+        reloadOnce(errorState.value)
       ) {
-        if (
-          typeof window !== 'undefined' &&
-          typeof sessionStorage !== 'undefined'
-        ) {
-          // Try to reload once on module not found error
-          const storageKey = `tanstack_router_reload:${errorState.value.message}`
-          if (!sessionStorage.getItem(storageKey)) {
-            sessionStorage.setItem(storageKey, '1')
-            attemptedReload = true
-            window.location.reload()
-            return () => null // Return empty while reloading
-          }
-        }
+        return () => null // Return empty while reloading
       }
 
       // If we have a non-module-not-found error, throw it
