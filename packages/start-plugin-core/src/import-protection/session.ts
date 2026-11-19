@@ -858,7 +858,7 @@ class ImportProtectionEnv {
 
   /** The mock a module that is its own violation is served as. */
   private mockOf(self: EdgeViolation): { code: string; id: string } {
-    const key = self.module!.key
+    const key = self.module.key
     return {
       code: this.edgeLoad(key)!.code,
       id: this.ip.ids.specifier({ env: this.name, kind: 'edge', key }),
@@ -886,7 +886,7 @@ class ImportProtectionEnv {
       this.answers.set(key, answer)
     }
     const allowed = await answer
-    if (v.module && !v.self) {
+    if (!v.self) {
       this.served.set(v.module.key, {
         verdict: allowed ? 'real' : 'mock',
         self: null,
@@ -1186,7 +1186,7 @@ class ImportProtectionEnv {
   ): void {
     const keys = new Set<string>()
     for (const v of violations) {
-      if (v.env !== this.name || !v.module) {
+      if (v.env !== this.name) {
         continue
       }
       keys.add(v.module.key)
@@ -1490,7 +1490,7 @@ class ImportProtectionEnv {
     return (id) => {
       const served = this.served.get(normalizePath(id))
       if (served?.self && served.verdict === 'mock') {
-        const key = served.self.module!.key
+        const key = served.self.module.key
         const m = this.modules.get(key)
         if (m) {
           return { key, effectful: m.content.effectful }
@@ -1675,7 +1675,7 @@ class ImportProtectionEnv {
           c.checked.length === 0 &&
           // (nothing of the file the build kept harms no importer)
           (c.verdict === 'mock'
-            ? survived.has(c.self.module!.key)
+            ? survived.has(c.self.module.key)
             : (rendered?.(id) ?? true))
         ) {
           unsettled.set(id, { verdict: c.verdict, self: c.self, order: c })

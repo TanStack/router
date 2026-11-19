@@ -37,8 +37,8 @@ export interface EdgeViolation {
   /** The original source around `loc`, when the original text is known. */
   snippet: CodeFrame | null
   behavior: 'error' | 'mock'
-  /** The edge module the specifier was substituted with (null: not substituted, dev `error`). */
-  module: { key: string; content: EdgeModuleContent } | null
+  /** The edge module the specifier was substituted with. */
+  module: { key: string; content: EdgeModuleContent }
   /**
    * Dev: the bundler's TypeScript transform may erase the import; nothing is
    * decided or reported until the bundler requests the edge module

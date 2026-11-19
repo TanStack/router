@@ -4,7 +4,8 @@
  * mock after edits, after the importer is removed and added again, and
  * after the callback would answer otherwise for the re-created import (the
  * answer is asked once per import for the session, and remembered:
- * guide/import-protection.md "The `allowImport` Callback").
+ * guide/import-protection.md "The `allowImport` Callback"). Under
+ * `behavior: 'error'` too, an import it allows gets the real module.
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -89,43 +90,54 @@ function answering() {
 }
 
 describe.each(['vite', 'rsbuild'] as const)('%s dev', (bundler) => {
+  /** A dev server of `files`: `run` reads the client's uses, `edit` applies changes once the server settled. */
+  async function serve(
+    importProtection: ImportProtectionOptions,
+    files: Record<string, string>,
+  ): Promise<{
+    run: () => Promise<unknown>
+    edit: (changes: Record<string, string | null>) => Promise<void>
+  }> {
+    if (bundler === 'vite') {
+      const server = await startDevServer({
+        browser: true,
+        start: { importProtection },
+        files,
+      })
+      return {
+        run: async () =>
+          (await runViteClient(server, '/src/router.ts', readScript)).result,
+        edit: async (changes) => {
+          await server.edit(changes)
+          await server.idle()
+        },
+      }
+    }
+    const server = await startRsbuildStartDevServer({
+      compileTimeout: timeout,
+      browser: true,
+      hmr: false,
+      files,
+      start: { importProtection },
+    })
+    return {
+      run: async () =>
+        ((await runInClient(server, readScript)) as { result: unknown }).result,
+      edit: async (changes) => {
+        await settledAcrossTurn(server)
+        await server.edit(changes)
+        await settledAcrossTurn(server)
+      },
+    }
+  }
+
   // Source: perf pass item 14 (the ledger's reconciliation after each
   // compile asks only restored edge modules again).
   test(
     'allowImport answers hold after edits, a removed and re-added importer, and a callback that would answer otherwise',
     async () => {
       const { importProtection, asked, flip } = answering()
-      let run: () => Promise<unknown>
-      let edit: (changes: Record<string, string | null>) => Promise<void>
-      if (bundler === 'vite') {
-        const server = await startDevServer({
-          browser: true,
-          start: { importProtection },
-          files,
-        })
-        run = async () =>
-          (await runViteClient(server, '/src/router.ts', readScript)).result
-        edit = async (changes) => {
-          await server.edit(changes)
-          await server.idle()
-        }
-      } else {
-        const server = await startRsbuildStartDevServer({
-          compileTimeout: timeout,
-          browser: true,
-          hmr: false,
-          files,
-          start: { importProtection },
-        })
-        run = async () =>
-          ((await runInClient(server, readScript)) as { result: unknown })
-            .result
-        edit = async (changes) => {
-          await settledAcrossTurn(server)
-          await server.edit(changes)
-          await settledAcrossTurn(server)
-        }
-      }
+      const { run, edit } = await serve(importProtection, files)
       const seen: Record<string, unknown> = { first: await run() }
       await edit(edited)
       seen.edited = await run()
@@ -145,6 +157,34 @@ describe.each(['vite', 'rsbuild'] as const)('%s dev', (bundler) => {
       expect(
         asked.filter((file) => file !== 'secret.server.ts').sort(),
       ).toEqual(['allowed.ts', 'plain.ts'])
+    },
+    timeout,
+  )
+  // Source: research-allowimport-importer.md (dev `error` left an allowed
+  // import unsubstituted: the denied file was asked about itself and failed).
+  test(
+    "behavior 'error': an import allowImport allows by its importer gets the real module, as in a build, and the denied file is not asked about itself",
+    async () => {
+      const asked: Array<string> = []
+      const importProtection: ImportProtectionOptions = {
+        behavior: 'error',
+        mockAccess: 'off',
+        allowImport: (info) => {
+          const file = info.importer.split('?')[0]!.split('/').pop()!
+          asked.push(file)
+          return file === 'allowed.ts'
+        },
+      }
+      const { run } = await serve(importProtection, {
+        'src/secret.server.ts': files['src/secret.server.ts'],
+        'src/allowed.ts': files['src/allowed.ts'],
+        'src/entry.ts': `import { use as allowed } from './allowed'
+;(globalThis as any).uses = { allowed }
+`,
+        'src/router.ts': files['src/router.ts'],
+      })
+      expect(await run()).toEqual({ allowed: 'MARK_SECRET' })
+      expect(asked).toEqual(['allowed.ts'])
     },
     timeout,
   )

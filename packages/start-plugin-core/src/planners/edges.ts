@@ -6,13 +6,13 @@
  * target facts). A violation is substituted by its edge module (the specifier
  * literal only):
  *
- * - dev: `mock` substitutes the edge module, `error` leaves the specifier and
- *   the host decides after the compile (`ImportProtectionEnv.afterCompile`:
- *   `allowImport`, then the report or the failure of the module). An edge the
- *   bundler's TypeScript transform may erase (a static import of a
- *   `.ts`/`.tsx` module with no binding used as a value) is substituted in
- *   both behaviours and recorded *pending*: the host confirms it when the
- *   bundler requests its edge module from the transformed importer
+ * - dev: every violation gets its edge module, in both behaviours, and the
+ *   host decides after the compile (`ImportProtectionEnv.afterCompile`:
+ *   `allowImport`, then the mock and its report, or for `error` the failure
+ *   of the importer). An edge the bundler's TypeScript transform may erase
+ *   (a static import of a `.ts`/`.tsx` module with no binding used as a
+ *   value) is recorded *pending*: the host confirms it when the bundler
+ *   requests its edge module from the transformed importer
  *   (`ImportProtectionEnv.confirm`), which never happens for an erased
  *   import;
  * - build: every violation gets its edge module, in both behaviours; what
@@ -531,8 +531,6 @@ export function importEdgesPlanner(
           typescript &&
           j.edge.form === 'static' &&
           j.edge.kind === 'evaluation'
-        const substitute =
-          config.mode === 'build' || behavior === 'mock' || pending
         // a server rendering client-only code: whether it renders it as a component
         const ownStatic = envType === 'server' && j.offset !== undefined
         const offsets = j.edge.locations.map((l) => l.range.start)
@@ -563,7 +561,10 @@ export function importEdgesPlanner(
                 )
             : []
         const spec = specs.find((s) => /^[A-Z]/.test(s.localName)) ?? specs[0]
-        const base: EdgeViolation = {
+        const content = await edgeModuleContent(edges, j, ctx)
+        const key = edgeModuleKey(content)
+        ctx.substitute(j.edge.edgeKey, ip.ids.request(key, content))
+        violations.push({
           edgeKey: j.edge.edgeKey,
           env: ctx.env.name,
           envType,
@@ -575,7 +576,7 @@ export function importEdgesPlanner(
           loc,
           snippet: loc && locator.frame(loc),
           behavior,
-          module: null,
+          module: { key, content },
           ...(pending && { pending: true }),
           ...(rendered && {
             rendered: {
@@ -590,14 +591,7 @@ export function importEdgesPlanner(
             binding: { name: spec.localName, imported: spec.imported },
           }),
           ...(j.edge.form === 'reexport' && { reexport: true }),
-        }
-        if (substitute) {
-          const content = await edgeModuleContent(edges, j, ctx)
-          const key = edgeModuleKey(content)
-          base.module = { key, content }
-          ctx.substitute(j.edge.edgeKey, ip.ids.request(key, content))
-        }
-        violations.push(base)
+        })
       }
       // the module's own violation
       if (output === 'env') {
