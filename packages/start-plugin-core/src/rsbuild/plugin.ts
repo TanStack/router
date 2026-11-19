@@ -15,6 +15,7 @@ import { registerStartCompiler } from './start-compiler'
 import { registerVirtualModules } from './virtual-modules'
 import { registerClientBuildCapture } from './normalized-client-build'
 import { tapServerFnResolverRebuild } from './server-fn-resolver-rebuild'
+import { tapManifestRebuild } from './manifest-rebuild'
 import { postBuildWithRsbuild } from './post-build'
 import { modifyStartRsbuildConfig } from './rsbuild-config'
 import { registerRsc, registerRscManifestReplacement } from './rsc'
@@ -160,6 +161,17 @@ export function tanStackStartRsbuild(
                     (r) => r,
                   ),
               })
+              // Dev: each client compilation writes the manifest (step 9)
+              // before this compiler compiles again (step 8's ordering), but
+              // the write alone never builds the module again. A build
+              // compiles the server once, after the write.
+              if (api.context.action === 'dev') {
+                tapManifestRebuild(compiler, {
+                  name: 'TanStackStartManifestRebuild',
+                  virtualModuleState,
+                  onlyWhenWritten: true,
+                })
+              }
             },
           })
         })

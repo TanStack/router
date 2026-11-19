@@ -3,8 +3,15 @@
  * manifest (route preloads, stylesheets) from each client compilation. After
  * an edit that changes nothing structural, adds an import of a module in a
  * chunk of its own, adds a CSS import, or adds a route, the pages the server
- * renders link what a dev server started on the edited app links.
+ * renders link what a dev server started on the edited app links; so do the
+ * pages of a server restarted from Rspack's persistent cache after an edit
+ * made while it was down.
+ * Source: perf pass of #8817, item 3 (main too since #8889: the manifest is
+ * written into a virtual module under `node_modules/.virtual/`, which
+ * Rspack's watcher ignores, and no later server compilation built it again).
  */
+import { writeFile } from 'node:fs/promises'
+import path from 'node:path'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import { reactApp } from '../hydrate-dev-edits'
@@ -82,25 +89,24 @@ async function linksOf(server: RsbuildDevServer) {
   return links
 }
 
-const start = (app: Record<string, string>) =>
+const start = (app: Record<string, string>, extraConfig = {}) =>
   startRsbuildStartDevServer({
     browser: true,
     hmr: true,
     registerCleanup: onTestFinished,
-    config,
+    config: { ...config, ...extraConfig },
     files: app,
   })
 
+/** Route `/a` importing the `lib` chunk's module and a stylesheet. */
+const aWithImports = route(
+  '/a',
+  '{format("MARK_A_V2")}',
+  `import { format } from '../lib/format'\nimport './a.css'\n`,
+)
+
 describe('Rsbuild dev: the Start manifest after edits', () => {
-  // Fails on main too (#8889, 3f226869e0): the client compilation writes the
-  // manifest into the server environment's virtual module
-  // (`node_modules/.virtual/`, `VirtualModulesPlugin.writeModule`), whose
-  // change event goes through Rspack's watcher, which ignores `node_modules`
-  // (`watchOptions.ignored`'s default): no server compilation after the
-  // first builds the module again, and every page links what the first
-  // client compilation emitted. Before #8889 the server read a global of the
-  // build process, current after each client compilation.
-  test.fails(
+  test(
     'pages link what a dev server started on the edited app links',
     async () => {
       const server = await start(files)
@@ -151,6 +157,31 @@ describe('Rsbuild dev: the Start manifest after edits', () => {
       await server.close()
       const fresh = await start(app)
       expect(edited).toEqual(await linksOf(fresh))
+    },
+    timeout,
+  )
+
+  test(
+    'pages of a server restarted from the persistent cache link the edit made while it was down',
+    async () => {
+      const buildCache = { performance: { buildCache: true } }
+      const first = await start(files, buildCache)
+      expect((await linksAt(first, '/a')).links).not.toContainEqual(
+        expect.stringContaining('/lib.js'),
+      )
+      await first.stop()
+      await writeFile(path.join(first.root, 'src/routes/a.tsx'), aWithImports)
+      const server = await first.restart()
+      const links = await linksOf(server)
+      expect(links['/a']!.links).toContainEqual(
+        expect.stringContaining('/lib.js'),
+      )
+      expect(links['/a']!.links).toContainEqual(
+        expect.stringMatching(/rel="stylesheet"/),
+      )
+
+      const fresh = await start({ ...files, 'src/routes/a.tsx': aWithImports })
+      expect(links).toEqual(await linksOf(fresh))
     },
     timeout,
   )
