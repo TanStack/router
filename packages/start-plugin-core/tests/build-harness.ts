@@ -547,7 +547,9 @@ const harnessFiles = (
   files: Record<string, string | Uint8Array>,
   framework: StartFramework,
 ) => {
-  const ownStart = 'src/start.ts' in files
+  const ownStart = Object.keys(files).some((file) =>
+    /^src\/start\.[cm]?[jt]sx?$/.test(file),
+  )
   const ownRouter = Object.keys(files).some((file) =>
     /^src\/router\.[cm]?[jt]sx?$/.test(file),
   )
