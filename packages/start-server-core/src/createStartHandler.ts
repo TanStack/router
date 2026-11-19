@@ -11,6 +11,7 @@ import {
 } from '@tanstack/start-client-core'
 import {
   _getRenderedMatches,
+  deepEqual,
   isDangerousProtocol,
   isPromise,
   isRedirect,
@@ -1142,8 +1143,8 @@ const requestSlots = ['path', 'query', 'headers', 'body'] as const
 /**
  * Validate request slots before the handler runs and pass the result as
  * `ctx.data`. Runs after middleware, so auth rejects before validation does.
- * Each schema in a slot must pass; object outputs are shallow-merged with
- * earlier validators taking precedence.
+ * Each schema in a slot must pass; object outputs are shallow-merged and
+ * must agree on shared keys.
  */
 function withValidatedData(
   handler: TODO,
@@ -1165,16 +1166,32 @@ function withValidatedData(
           issues.push({ slot, issues: result.issues })
           continue
         }
-        // Earlier (outer) validators win: a later schema that passes raw input
-        // through must not overwrite values an earlier one transformed or
-        // stripped. Later schemas only add keys.
         const prev = data[slot]
-        data[slot] =
-          prev === undefined
-            ? result.value
-            : isPlainObject(prev) && isPlainObject(result.value)
-              ? { ...result.value, ...prev }
-              : prev
+        const value = result.value
+        if (prev === undefined) {
+          data[slot] = value
+          continue
+        }
+        const merge = isPlainObject(prev) && isPlainObject(value)
+        // Validators of one slot must agree on every key they share. Any
+        // precedence order would let a schema that passes raw input through
+        // replace a value another schema transformed or rejected, so a
+        // disagreement is a configuration error, not something to resolve.
+        const conflict = merge
+          ? Object.keys(value).find(
+              (key) => key in prev && !deepEqual(prev[key], value[key]),
+            )
+          : !deepEqual(prev, value) && slot
+        if (conflict) {
+          throw new Error(
+            process.env.NODE_ENV !== 'production'
+              ? `Request validators disagree on "${slot}" output${merge ? ` key "${conflict}"` : ''}. Every validator for a slot must produce the same value for keys they share.`
+              : 'Request validator conflict',
+          )
+        }
+        if (merge) {
+          data[slot] = { ...prev, ...value }
+        }
       }
     }
 

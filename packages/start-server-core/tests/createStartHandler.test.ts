@@ -3849,30 +3849,62 @@ describe('createStartHandler direct server routes', () => {
       expect(routeHandler).not.toHaveBeenCalled()
     })
 
-    it('keeps earlier validator output over a later passthrough schema', async () => {
-      const clampLimit = createMiddleware({ type: 'request' })
-        .validator({
+    it.each([
+      { clampIn: 'middleware', passthroughIn: 'handler' },
+      { clampIn: 'handler', passthroughIn: 'middleware' },
+    ])(
+      'rejects a $passthroughIn passthrough schema that disagrees with a $clampIn transform',
+      async ({ clampIn }) => {
+        const clamp = {
           query: schema((v) => ({ limit: Math.min(Number(v?.limit), 10) })),
+        }
+        const passthrough = { query: schema((v) => v) }
+        const routeHandler = vi.fn(() => new Response('must not run'))
+        const handler = setup({
+          middleware: [
+            createMiddleware({ type: 'request' })
+              .validator(clampIn === 'middleware' ? clamp : passthrough)
+              .server(({ next }) => next()),
+          ],
+          handlers: {
+            GET: {
+              validator: clampIn === 'handler' ? clamp : passthrough,
+              handler: routeHandler,
+            },
+          },
         })
-        .server(({ next }) => next())
+
+        await expect(
+          handler(new Request('http://localhost/items/42?limit=999'), {}),
+        ).rejects.toThrow(
+          'Request validators disagree on "query" output key "limit"',
+        )
+        expect(routeHandler).not.toHaveBeenCalled()
+      },
+    )
+
+    it('merges validators that agree on shared keys', async () => {
+      const limit = schema((v) => ({ limit: Number(v?.limit) }))
       const handler = setup({
-        middleware: [clampLimit],
+        middleware: [
+          createMiddleware({ type: 'request' })
+            .validator({ query: limit })
+            .server(({ next }) => next()),
+        ],
         handlers: {
           GET: {
-            validator: { query: schema((v) => v) },
+            validator: { query: limit },
             handler: ({ data }: any) => Response.json(data),
           },
         },
       })
 
       const response = await handler(
-        new Request('http://localhost/items/42?limit=999&extra=1'),
+        new Request('http://localhost/items/42?limit=5'),
         {},
       )
 
-      await expect(response.json()).resolves.toEqual({
-        query: { limit: 10, extra: '1' },
-      })
+      await expect(response.json()).resolves.toEqual({ query: { limit: 5 } })
     })
 
     it('enforces route middleware validators when the route only renders', async () => {
