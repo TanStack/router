@@ -709,10 +709,12 @@ async function applyChange(
       )
     }
     if (kind !== 'registry' && !virtual) {
-      // failed resolutions have no path; re-resolve them all (the memo asks
-      // the host once per distinct entry). Every file event asks them: one
-      // may hide a creation (a removal and re-creation reported as one
-      // change, or a file back reported as modified)
+      // failed resolutions have no path; re-resolve them all (a miss leaves
+      // the resolution memo once it settles: the plans, judged one after
+      // the other, ask the host once each, and each environment's event of
+      // the path asks again). Every file event asks them: one may hide a
+      // creation (a removal and re-creation reported as one change, or a
+      // file back reported as modified)
       await revalidate(
         cache,
         UNRESOLVED_DEPENDENCY,
