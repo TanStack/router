@@ -1,6 +1,6 @@
 /**
  * An Rsbuild dev server of an RSC app whose shared files are two modules
- * each, one per layer of the `ssr` environment (`rsc-layers-app.ts`): every
+ * each, one per layer of the server compiler (`rsc-layers-app.ts`): every
  * state the RSC investigation's model audit lists as keyed by environment
  * name, id or path holds both modules apart, so each layer's module serves
  * its own role (SPEC J4.1, J4.2: the SSR layer's caller and the RSC layer's

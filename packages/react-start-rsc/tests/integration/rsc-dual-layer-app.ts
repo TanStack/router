@@ -2,7 +2,7 @@
  * An RSC app whose `'use client'` component `ClientBox` is rendered from two
  * places: the route `/uc` renders it (SSR renders the route) and a server
  * component renders it (in the provider: Vite's `rsc` environment,
- * Rsbuild's RSC layer of the `ssr` environment, where it is a client
+ * Rsbuild's RSC layer of the server compiler, where it is a client
  * reference that SSR renders again). `ClientBox` imports a `.client.ts`
  * helper, denied on the server, and import protection exempts the
  * component (`exclude`), so its import is real in every environment: both

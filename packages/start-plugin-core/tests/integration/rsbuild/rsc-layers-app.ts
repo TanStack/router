@@ -1,6 +1,6 @@
 /**
  * An Rsbuild RSC app with two modules of each shared file, one per layer of
- * the `ssr` environment (SSR: what the route renders; RSC: what the server
+ * the server compiler (SSR: what the route renders; RSC: what the server
  * fn's server component runs), for rsc-layers-dev.test.ts and
  * rsc-layers-build.test.ts:
  * - `fns.ts`, a server fn the route's loader calls (the SSR layer's module:

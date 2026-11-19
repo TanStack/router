@@ -122,10 +122,10 @@ describe('Rsbuild dev with RSC: an exempt client component in both layers', () =
   )
 })
 
-// SPEC J6.6, J6.7: `allowImport` answers for an import, which both layers'
-// modules of the importer make: a positive answer by importer gives the
-// real module in both, through the same dev-first start (model audit row
-// 27: one answer per import; Astra 11-19: passes).
+// SPEC J6.6, J6.7: `allowImport` answers for an import in each environment
+// (both layers' modules of the importer make it, `ssr` and `rsc`): a
+// positive answer by importer gives the real module in both, through the
+// same dev-first start (model audit row 27; Astra 11-19: passes).
 describe('Rsbuild dev with RSC: allowImport for a client component in both layers', () => {
   let server: RsbuildDevServer
   afterAll(async () => {

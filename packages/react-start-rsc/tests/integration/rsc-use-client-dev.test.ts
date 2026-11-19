@@ -4,7 +4,8 @@
  * The provider (Vite's `rsc` environment, Rsbuild's RSC layer) compiles the
  * component's module, which the bundler then replaces by client
  * references: its imports are judged where its code runs (SSR, the
- * client), not there. Rsbuild names both layers `ssr`.
+ * client), not there. Rsbuild's RSC layer is the `rsc` environment, as
+ * Vite's.
  */
 import { describe, expect, test } from 'vitest'
 import { startRscDevServer, startRscRsbuildDevServer } from './rsc-app'

@@ -1,7 +1,7 @@
 /**
  * Server import protection of an Rsbuild RSC build whose `'use client'`
  * `ClientBox` the route and a server component both render (a module in
- * each layer of the `ssr` environment), for the import-protection state the
+ * layer of the server compiler), for the import-protection state the
  * RSC investigation's model audit keys by importer id or path (the edge
  * index, a denied file's own verdict): an exempt component's import is real
  * in both layers (SPEC J6.7), and a component that is itself a denied file
