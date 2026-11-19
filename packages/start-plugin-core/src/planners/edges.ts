@@ -64,6 +64,7 @@ import type {
   EdgeRecord,
   EmitPlan,
   ModuleAnalysis,
+  PlanEdges,
   Planner,
   PolicyContext,
 } from '@tanstack/router-utils/compiler'
@@ -408,9 +409,9 @@ export function importEdgesPlanner(
         return { edge: e, raw, importerPath, resolved, rule, offset }
       }
 
-      const judged = (await Promise.all(edges.map(judge))).filter(
-        (j): j is Judged => j !== null,
-      )
+      const judged = (
+        await Promise.all((edges[output] ?? []).map(judge))
+      ).filter((j): j is Judged => j !== null)
       env.edges.set(
         importerId,
         judged
@@ -508,7 +509,7 @@ export function importEdgesPlanner(
           ...(j.edge.form === 'reexport' && { reexport: true }),
         }
         if (substitute) {
-          const content = await edgeModuleContent(plan, j, ctx)
+          const content = await edgeModuleContent(edges, j, ctx)
           const key = edgeModuleKey(content)
           base.module = { key, content }
           ctx.substitute(j.edge.edgeKey, ip.ids.request(key, content))
@@ -574,7 +575,7 @@ export function importEdgesPlanner(
 
   /** The edge module of a violation: names, effect witness and allowed form. */
   async function edgeModuleContent(
-    plan: EmitPlan,
+    edges: Readonly<PlanEdges>,
     j: Judged,
     ctx: PolicyContext,
   ): Promise<EdgeModuleContent> {
@@ -588,7 +589,7 @@ export function importEdgesPlanner(
         : null
     const names = new Set<string>(target?.names ?? [])
     // every name any output of this plan reads through the same logical edge
-    for (const list of Object.values(plan.edges)) {
+    for (const list of Object.values(edges)) {
       for (const e of list) {
         if (e.edgeKey === j.edge.edgeKey) {
           for (const n of e.names) {

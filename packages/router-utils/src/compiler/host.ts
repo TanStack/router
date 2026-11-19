@@ -25,10 +25,10 @@ import type { ModuleAnalysis } from './analysis'
 import type { Diagnostic } from './diagnostics'
 import type { Lang, PlanKey, SourceIdentity } from './identity'
 import type {
-  EdgeRecord,
   EmitPlan,
   EnvInfo,
   PlanContext,
+  PlanEdges,
   PlanFacts,
 } from './plan'
 import type { OutputId } from './rewrite'
@@ -345,10 +345,15 @@ export interface Planner<TName extends string = any> {
    * `plan`.
    */
   serverCode?: (ctx: PlanContext<TName>) => ReadonlyArray<ServerOnlyText>
+  /**
+   * Phase C, once per output: `edges` holds this compile's edges of every
+   * output (`edges[output]` are this one's; a logical edge can appear in
+   * several), a working value never cached with the plan.
+   */
   policy?: (
     plan: EmitPlan,
     output: OutputId,
-    edges: Array<EdgeRecord>,
+    edges: Readonly<PlanEdges>,
     ctx: PolicyContext,
   ) => Promise<void>
 }

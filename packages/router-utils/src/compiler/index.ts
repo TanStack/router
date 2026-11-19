@@ -78,6 +78,7 @@ export type {
   EmitPlan,
   EnvInfo,
   PlanContext,
+  PlanEdges,
   PlanFacts,
 } from './plan'
 export { listEnd, removeListItems } from './orphans'

@@ -110,11 +110,21 @@ export interface PlanFacts {
 export interface EmitPlan {
   revision: string
   outputs: Record<string, OutputRecipe>
-  /** Per output, for the planners' policies: a tier-0 plan with no policy to read them has none. */
-  edges: Record<string, Array<EdgeRecord>>
   facts: PlanFacts
   dependencies: Array<DependencyFingerprint>
   diagnostics: Array<Diagnostic>
+}
+
+/**
+ * A compile's edge records by output, for the planners' policies only: a
+ * working value of the compile, never part of the cached `EmitPlan`.
+ */
+export type PlanEdges = Record<string, Array<EdgeRecord>>
+
+/** `freeze`'s result: the plan to cache and the edges its policies read. */
+export interface FrozenPlan {
+  plan: EmitPlan
+  edges: PlanEdges
 }
 
 export interface FallbackRecord {
@@ -535,7 +545,7 @@ export class AnalysisPlan implements PlanContext {
     return out
   }
 
-  freeze(revision: string): EmitPlan {
+  freeze(revision: string): FrozenPlan {
     return freezePlan(this, revision)
   }
 }

@@ -48,8 +48,10 @@ import type {
   EmitPlan,
   EnvInfo,
   FallbackRecord,
+  FrozenPlan,
   OutputRecipe,
   PlanContext,
+  PlanEdges,
 } from './plan'
 import type { PlanKey, SourceIdentity } from './identity'
 import type { OutputId } from './rewrite'
@@ -627,10 +629,10 @@ async function runAttempt(
 
   // ---- B: planning (sync) ------------------------------------------------------
   const tier1Needed = planners.some((p) => p.tier === 1)
-  let emitPlan: EmitPlan
+  let frozen: FrozenPlan
   if (!tier1Needed) {
     // the edge records' only readers are the planners' policies (phase C)
-    emitPlan = tier0Plan(
+    frozen = tier0Plan(
       t0,
       identity,
       env,
@@ -691,7 +693,7 @@ async function runAttempt(
       }
       fallbacks = [...fallbacks, ...fresh]
     }
-    emitPlan = plan.freeze(rev)
+    frozen = plan.freeze(rev)
     if (langFromId(input.id) === null && plan.outputs.size > 1) {
       throw new Error(
         `A plan of ${identity.path}, whose code is no JS/TS of its own, declared a derived output (it would load the file)`,
@@ -700,16 +702,17 @@ async function runAttempt(
     checkServerCode(
       planners,
       (p) => withConfig(plan, input.config.perPlanner[p.name]),
-      emitPlan,
+      frozen.plan,
       env,
       identity.canonicalId,
       tagOf(host),
       displayFile,
     )
     if (SELF_CHECKS) {
-      verifyPlan(plan, emitPlan, input.code, identity)
+      verifyPlan(plan, frozen.plan, input.code, identity)
     }
   }
+  const { plan: emitPlan, edges } = frozen
   // ---- C: per-output edge policy (async) ----------------------------------------
   let inputMap: InputSourceMap | null | undefined
   const readInputMap = (): InputSourceMap | null => {
@@ -740,16 +743,14 @@ async function runAttempt(
         targetMarker: targetMarkerOf,
         substitute: (edgeKey, specifier) => {
           // one record per logical edge, with every location of it
-          const edge = emitPlan.edges[output]?.find(
-            (e) => e.edgeKey === edgeKey,
-          )
+          const edge = edges[output]?.find((e) => e.edgeKey === edgeKey)
           if (edge) {
             substituteSpecifier(recipe, edge, specifier, input.code)
           }
         },
         diagnostic: (d) => emitPlan.diagnostics.push(d),
       }
-      await p.policy(emitPlan, output, emitPlan.edges[output] ?? [], ctx)
+      await p.policy(emitPlan, output, edges, ctx)
     }
   }
   return { kind: 'plan', plan: emitPlan }
@@ -762,14 +763,14 @@ function tier0Plan(
   env: EnvInfo,
   rev: string,
   withEdges: boolean,
-): EmitPlan {
+): FrozenPlan {
   const code = t0.source.code
   const segments: EmitPlan['outputs'][string]['segments'] = [
     { k: 'slice', start: 0, end: code.length },
   ]
   const edgeKey = (raw: string, form: string) =>
     edgeKeyOf(env.name, env.layer, identity.canonicalId, raw, form)
-  const edges: EmitPlan['edges'] = withEdges
+  const edges: PlanEdges = withEdges
     ? {
         env: dedupeEdges(
           sourceEdges(t0, edgeKey, identity.canonicalId, wholeModule()),
@@ -777,19 +778,21 @@ function tier0Plan(
       }
     : {}
   return {
-    revision: rev,
-    outputs: {
-      env: {
-        kind: 'env',
-        derivedId: null,
-        mapSource: identity.path,
-        segments,
+    plan: {
+      revision: rev,
+      outputs: {
+        env: {
+          kind: 'env',
+          derivedId: null,
+          mapSource: identity.path,
+          segments,
+        },
       },
+      facts: { marker: t0.markers, planners: {} },
+      dependencies: [],
+      diagnostics: [],
     },
     edges,
-    facts: { marker: t0.markers, planners: {} },
-    dependencies: [],
-    diagnostics: [],
   }
 }
 

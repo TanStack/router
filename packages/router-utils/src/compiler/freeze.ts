@@ -21,8 +21,9 @@ import type { EdgeView } from './edges'
 import type {
   AnalysisPlan,
   EdgeRecord,
-  EmitPlan,
+  FrozenPlan,
   OutputRecipe,
+  PlanEdges,
   Segment,
 } from './plan'
 import type { OutputDecl, Placement } from './placement'
@@ -43,14 +44,14 @@ import type {
 } from './rewrite'
 import type { Node } from 'yuku'
 
-export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
+export function freezePlan(plan: AnalysisPlan, revision: string): FrozenPlan {
   const placement = plan.placement ?? plan.resolve()
   const { analysis } = plan
   // two edits of one range that differ in an output, rendered or not
   plan.rewrites.checkConflicts(plan.outputs.keys())
   const code = analysis.source.code
   const outputs: Record<string, OutputRecipe> = {}
-  const edges: Record<string, Array<EdgeRecord>> = {}
+  const edges: PlanEdges = {}
 
   // export names for symbols other outputs import from their home
   const exportNameOf = new Map<OutputId, Map<SymbolId, string>>()
@@ -142,20 +143,22 @@ export function freezePlan(plan: AnalysisPlan, revision: string): EmitPlan {
   }
 
   return {
-    revision,
-    outputs,
-    edges,
-    facts: {
-      marker: analysis.markers,
-      planners: plan.facts,
+    plan: {
+      revision,
+      outputs,
+      facts: {
+        marker: analysis.markers,
+        planners: plan.facts,
+      },
+      dependencies: [],
+      diagnostics: [
+        ...plan.diagnostics.map((d) => ({
+          ...d,
+          range: d.range ? { ...d.range } : undefined,
+        })),
+      ],
     },
-    dependencies: [],
-    diagnostics: [
-      ...plan.diagnostics.map((d) => ({
-        ...d,
-        range: d.range ? { ...d.range } : undefined,
-      })),
-    ],
+    edges,
   }
 }
 

@@ -21,7 +21,8 @@ function edgeRecorder(
     edges,
     gate: (t0) => t0.hasImportOrExport || t0.dynamicEdges.length > 0,
     plan() {},
-    policy(_plan, output, outputEdges, ctx) {
+    policy(_plan, output, planEdges, ctx) {
+      const outputEdges = planEdges[output] ?? []
       edges[output] = outputEdges.map((e) => ({ ...e }))
       onPolicy?.(outputEdges, ctx)
       return Promise.resolve()
@@ -75,8 +76,8 @@ function denyServer(verdicts: Array<string>): Planner {
     tier: 0,
     gate: (t0) => t0.hasImportOrExport,
     plan() {},
-    async policy(_plan, _output, edges, ctx) {
-      for (const e of edges) {
+    async policy(_plan, output, edges, ctx) {
+      for (const e of edges[output] ?? []) {
         const target = await ctx.resolve(e.specifier)
         if (target !== null) {
           await ctx.targetFacts(target)

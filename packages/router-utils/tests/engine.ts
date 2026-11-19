@@ -45,7 +45,7 @@ export function engine(
   let frozen: EmitPlan | null = null
   const freeze = () => {
     if (!frozen) {
-      frozen = plan.freeze(revision(code))
+      frozen = plan.freeze(revision(code)).plan
     }
     return frozen
   }
