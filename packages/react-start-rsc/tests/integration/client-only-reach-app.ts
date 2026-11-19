@@ -162,9 +162,8 @@ export const clientOnlyPositions = [
 export async function expectClientOnlyCallAnswers(
   server: RscPreviewServer,
   name: string,
-  registerCleanup?: (cleanup: () => Promise<void>) => void,
 ) {
-  const page = await openRscPage(server, '/client-only', { registerCleanup })
+  const page = await openRscPage(server, '/client-only')
   await waitForHydration(page)
   if (name.startsWith('hydrate')) {
     await page.page.locator('[data-testid=to-hydrate]').click()

@@ -395,14 +395,8 @@ describe('Vite production build with RSC', () => {
     }
   })
 
-  const open = async (pathname: string): Promise<BrowserPage> => {
-    const page = await openRscPage(server, pathname, {
-      registerCleanup: (cleanup) => {
-        cleanups.push(cleanup)
-      },
-    })
-    return page
-  }
+  const open = (pathname: string): Promise<BrowserPage> =>
+    openRscPage(server, pathname)
 
   // J4.3, J4.16, J4.12: the provider runs the handler with `react-server`
   // and initialises the package once, whether SSR or the browser calls it;
