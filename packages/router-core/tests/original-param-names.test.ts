@@ -27,34 +27,43 @@ test('keeps original names when different templates share a trie prefix', () => 
   })
 })
 
-test("keeps a terminal route's names when a later alias adds a parser", () => {
-  const tree = processRouteTree({
-    id: '__root__',
-    isRoot: true,
-    fullPath: '/',
-    children: [
-      { id: '/$id/detail', path: '$id/detail', fullPath: '/$id/detail' },
-      {
-        id: '/$name',
-        path: '$name',
-        fullPath: '/$name',
-        children: [
-          {
-            id: '/$name/detail',
-            path: 'detail',
-            fullPath: '/$name/detail',
-            options: {
-              params: { parse: (params: Record<string, string>) => params },
+test.each([
+  ['rejects', () => false, '/$id/detail', { id: 'abc' }],
+  [
+    'accepts',
+    (params: Record<string, string>) => params,
+    '/$name/detail',
+    { name: 'abc' },
+  ],
+])(
+  "keeps each route's names when a later alias's parser %s",
+  (_, parse, routeId, rawParams) => {
+    const tree = processRouteTree({
+      id: '__root__',
+      isRoot: true,
+      fullPath: '/',
+      children: [
+        { id: '/$id/detail', path: '$id/detail', fullPath: '/$id/detail' },
+        {
+          id: '/$name',
+          path: '$name',
+          fullPath: '/$name',
+          children: [
+            {
+              id: '/$name/detail',
+              path: 'detail',
+              fullPath: '/$name/detail',
+              options: { params: { parse } },
             },
-          },
-        ],
-      },
-    ],
-  }).processedTree
-  const match = findRouteMatch('/abc/detail', tree)
-  expect(match?.route.id).toBe('/$id/detail')
-  expect(match?.rawParams).toEqual({ id: 'abc' })
-})
+          ],
+        },
+      ],
+    }).processedTree
+    const match = findRouteMatch('/abc/detail', tree)
+    expect(match?.route.id).toBe(routeId)
+    expect(match?.rawParams).toEqual(rawParams)
+  },
+)
 
 test('resumes through a route-less parse gate with skipped optional names', () => {
   const seen: Array<Record<string, string>> = []
