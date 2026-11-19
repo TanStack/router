@@ -416,7 +416,8 @@ export function createRouterCompilerWebpackPlugin(
           if (
             typeof plan === 'string' &&
             m.resource &&
-            !persisted!.compiled.has(m.resource)
+            !persisted!.compiled.has(m.resource) &&
+            !plans.has(plan)
           ) {
             plans.set(plan, JSON.parse(plan) as PersistedPlan)
           }
