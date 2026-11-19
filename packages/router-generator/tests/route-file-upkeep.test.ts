@@ -728,6 +728,13 @@ export const Route = createFileRoute('/old')({})
       head: '',
       attached: `// @ts-expect-error The @jsx option does not type this value\nexport const count`,
     },
+    // (TypeScript applies a suppression across blank and comment lines)
+    {
+      name: 'a suppression comment and a blank line before the first statement',
+      source: `// @ts-ignore\n\nexport const count: number = 'one'\nexport const Route = createFileRoute('/old')({})\n`,
+      head: '',
+      attached: `// @ts-ignore\n\nexport const count`,
+    },
     {
       name: 'a triple-slash reference and an import',
       source: `/// <reference types="vite/client" />\nimport { useState } from 'react'\nexport const state = useState\nexport const Route = createFileRoute('/old')({})\n`,

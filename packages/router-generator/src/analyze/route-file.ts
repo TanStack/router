@@ -189,8 +189,10 @@ const leadingCommentRe =
 
 /**
  * A TypeScript suppression comment (`// @ts-expect-error`, `// @ts-ignore`,
- * as TypeScript reads it): it applies to the next line, so it stays with its
- * statement, whatever its explanation names (`@jsx`, `@license`).
+ * as TypeScript reads it): it applies to the next line of code, across blank
+ * and comment lines, so it stays with its statement, whatever its
+ * explanation names (`@jsx`, `@license`) and with a blank line before the
+ * statement.
  */
 const suppressionCommentRe = /^\/\/\/?\s*@ts-(?:expect-error|ignore)/
 
@@ -198,7 +200,7 @@ const suppressionCommentRe = /^\/\/\/?\s*@ts-(?:expect-error|ignore)/
  * Where an added import goes: after the directive prologue and the
  * comments leading the file, before the comments the first statement starts
  * with (no blank line between them and it, license, pragmas and directives
- * aside).
+ * aside; a suppression comment always).
  */
 function headerInsertOffset(file: SourceFile) {
   let prologueEnd = 0
@@ -218,8 +220,9 @@ function headerInsertOffset(file: SourceFile) {
       const c = leading[i]!
       const text = file.source.slice(c.start, c.end)
       if (
-        /\n[^\S\n]*\r?\n/.test(file.source.slice(c.end, at)) ||
-        (!suppressionCommentRe.test(text) && leadingCommentRe.test(text))
+        !suppressionCommentRe.test(text) &&
+        (/\n[^\S\n]*\r?\n/.test(file.source.slice(c.end, at)) ||
+          leadingCommentRe.test(text))
       ) {
         break
       }
