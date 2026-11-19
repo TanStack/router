@@ -52,6 +52,13 @@ export interface EdgeViolation {
    */
   self?: true
   /**
+   * An RSC app's server environment, a module that is its own violation
+   * (`self`, and the build's importer violations it stands for): its parsed
+   * prologue has the `'use client'` directive, so SSR renders it as a client
+   * component a server component renders (the report's fixes).
+   */
+  useClient?: true
+  /**
    * Server environment: the importer renders a binding of the import as a
    * component (a JSX element, a route's `component` option), so the fix is
    * `<ClientOnly>`, never `createClientOnlyFn` (it throws while rendering on

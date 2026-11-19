@@ -327,8 +327,14 @@ export function importEdgesPlanner(
   /** A module of no package and not virtual. */
   const isSourceModule = (path: string) =>
     !NODE_MODULES_RE.test(path) && !path.startsWith('\0')
+  /** A `'use client'` directive in the module's parsed prologue (`TargetFacts.useClient` of its importers). */
+  const isUseClient = (ctx: PolicyContext) =>
+    ctx.analysis.header.directives.some((d) => d.value === 'use client')
   /** The module's own violation, if its file rule or its marker denies it here. */
-  const ownViolation = async (ctx: PolicyContext, plan: EmitPlan) => {
+  const ownViolation = async (
+    ctx: PolicyContext,
+    plan: EmitPlan,
+  ): Promise<EdgeViolation | null> => {
     const id = ctx.identity.canonicalId
     // an entry's own marker is judged at its marker import (located there)
     const entry = ip.isEntry(ctx.identity.path)
@@ -338,10 +344,20 @@ export function importEdgesPlanner(
       ctx.identity.path,
       () => (entry ? null : plan.facts.marker),
     )
-    return (
-      rule &&
-      selfViolationOf(config, ctx.env, id, rule, await describeTarget(id, ctx))
+    if (!rule) {
+      return null
+    }
+    const own = selfViolationOf(
+      config,
+      ctx.env,
+      id,
+      rule,
+      await describeTarget(id, ctx),
     )
+    if (ip.report.rsc && ctx.env.type === 'server' && isUseClient(ctx)) {
+      own.useClient = true
+    }
+    return own
   }
   return {
     name: IMPORT_EDGES_PLANNER,
@@ -375,11 +391,7 @@ export function importEdgesPlanner(
       // resolved (a resolution is a request of the environment: plugin-rsc
       // fails the build on `client-only`) nor judged. Its derived provider
       // output runs here, and is judged.
-      if (
-        clientReferences &&
-        output === 'env' &&
-        ctx.analysis.header.directives.some((d) => d.value === 'use client')
-      ) {
+      if (clientReferences && output === 'env' && isUseClient(ctx)) {
         env.edges.set(ctx.identity.canonicalId, [], plan.revision)
         return
       }

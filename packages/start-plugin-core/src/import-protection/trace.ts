@@ -4,7 +4,6 @@ import {
   langFromId,
   parseModule,
 } from '@tanstack/router-utils/compiler'
-import { USE_CLIENT_RE } from '../compiler/scope'
 import { Locator } from './locate'
 import {
   findPatternImport,
@@ -652,30 +651,20 @@ function patternSuggestions(
  */
 function clientComponentOf(
   v: EdgeViolation,
-  info: ViolationInfo,
-  ctx: ReportContext,
   site: PatternSite | null,
 ): 'imported' | 'chunk' | null {
-  if (
-    !ctx.rsc ||
-    info.envType !== 'server' ||
-    info.type === 'specifier' ||
-    !site ||
-    site.found
-  ) {
+  // (`useClient`: the planner's read of the parsed prologue, on an RSC
+  // app's server environment only)
+  if (!v.useClient || !site || site.found) {
     return null
   }
-  const reached =
-    site.cause === 'imported'
-      ? 'imported'
-      : site.cause === 'added' &&
-          v.pattern !== undefined &&
-          identify(v.importerId).path !== site.importer
-        ? 'chunk'
-        : null
-  const text =
-    reached && ctx.readSource(identify(info.resolved ?? info.importer).path)
-  return text && USE_CLIENT_RE.test(text) ? reached : null
+  return site.cause === 'imported'
+    ? 'imported'
+    : site.cause === 'added' &&
+        v.pattern !== undefined &&
+        identify(v.importerId).path !== site.importer
+      ? 'chunk'
+      : null
 }
 
 /** The fixes of a `'use client'` component an RSC app's server environment denies (`clientComponentOf`). */
@@ -845,7 +834,7 @@ export function formatViolation(
     loc ? `${rel(file)}:${loc.line}:${loc.column}` : rel(file)
   const trace = info.freezeTrace()
   const site = patternSiteOf(v, info, trace, ctx)
-  const clientComponent = clientComponentOf(v, info, ctx, site)
+  const clientComponent = clientComponentOf(v, site)
 
   const lines: Array<string> = []
   lines.push(``)
