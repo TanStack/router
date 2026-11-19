@@ -217,6 +217,8 @@ export class LazyRoute<TRoute extends AnyRoute> {
     this.options = opts
   }
 
+  /* eslint-disable react-hooks/rules-of-hooks -- these members are custom hooks that
+     components call (`Route.useParams()`); the rule treats any class body as a class component */
   useMatch: UseMatchRoute<TRoute['id']> = (opts) => {
     return useMatch({ ...opts, from: this.options.id } as any) as any
   }
@@ -245,6 +247,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
     const router = useRouter()
     return useNavigate({ from: router.routesById[this.options.id].fullPath })
   }
+  /* eslint-enable react-hooks/rules-of-hooks */
 }
 
 /**

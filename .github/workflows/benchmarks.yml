@@ -81,12 +81,12 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
 
       - name: Setup Tools
-        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+        uses: TanStack/config/.github/setup@a041f4eeb8e4d595aee89f8992b20c669288a741 # main
 
       # Run the build outside of the CodSpeed action to avoid being slowed by intrumentation overhead.
       # (and then run the task itself with --excludeTaskDependencies)
@@ -96,7 +96,7 @@ jobs:
           @benchmarks/${{ matrix.benchmark }}:build:${{ matrix.framework }}
 
       - name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
-        uses: CodSpeedHQ/action@373d6868929f444bc08d901fd0eb0ad52a8875ea # v5.2.1
+        uses: CodSpeedHQ/action@af75f77f17a054769abefaa42fe8dc2975469b5f # v5.6.3
         timeout-minutes: 20
         with:
           mode: ${{ matrix.mode }}

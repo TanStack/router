@@ -42,9 +42,7 @@ export function useRouterState<
     const selected = (
       opts?.select ? opts.select(state) : state
     ) as UseRouterStateResult<TRouter, TSelected>
-    return (() => selected) as Accessor<
-      UseRouterStateResult<TRouter, TSelected>
-    >
+    return () => selected
   }
 
   if (!opts?.select) {

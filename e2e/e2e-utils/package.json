@@ -34,10 +34,10 @@
     "node": "^22.18.0 || >=24.0.0"
   },
   "devDependencies": {
-    "@msw/playwright": "0.6.7",
-    "msw": "2.15.0",
+    "@msw/playwright": "0.7.0",
+    "msw": "3.0.6",
     "rimraf": "catalog:",
-    "vite": "^8.0.14",
+    "vite": "^8.3.8",
     "vite-plugin-dts": "^4.5.4",
     "vitest": "catalog:"
   }

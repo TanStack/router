@@ -67,9 +67,9 @@
     "@tanstack/router-ssr-query-core": "workspace:*"
   },
   "devDependencies": {
-    "@tanstack/solid-query": ">=5.102.0",
+    "@tanstack/solid-query": ">=5.108.0",
     "@tanstack/solid-router": "workspace:*",
-    "eslint-plugin-solid": "^0.14.5",
+    "eslint-plugin-solid": "^0.20.0",
     "solid-js": "catalog:",
     "vite": "*",
     "vite-plugin-solid": "catalog:",

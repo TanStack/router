@@ -106,6 +106,8 @@ export class RouteApi<
     super({ id })
   }
 
+  /* eslint-disable react-hooks/rules-of-hooks -- these members are custom hooks that
+     components call (`Route.useParams()`); the rule treats any class body as a class component */
   useMatch: UseMatchRoute<TId> = (opts) => {
     return useMatch({ ...opts, from: this.id } as any) as any
   }
@@ -136,6 +138,7 @@ export class RouteApi<
     const router = useRouter()
     return useNavigate({ from: router.routesById[this.id as string].fullPath })
   }
+  /* eslint-enable react-hooks/rules-of-hooks */
 
   notFound = (opts?: NotFoundError) => {
     return notFound({ routeId: this.id as string, ...opts })
@@ -246,6 +249,8 @@ export class Route<
     super(options)
   }
 
+  /* eslint-disable react-hooks/rules-of-hooks -- these members are custom hooks that
+     components call (`Route.useParams()`); the rule treats any class body as a class component */
   useMatch: UseMatchRoute<TId> = (opts) => {
     return useMatch({ ...opts, from: this.id } as any) as any
   }
@@ -273,9 +278,11 @@ export class Route<
   useNavigate = (): UseNavigateResult<TFullPath> => {
     return useNavigate({ from: this.fullPath })
   }
+  /* eslint-enable react-hooks/rules-of-hooks */
 
   Link: LinkComponentRoute<TFullPath> = React.forwardRef(
     (props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- required when built against the generic LinkComponent props
       return <Link ref={ref} from={this.fullPath as never} {...props} />
     },
   ) as unknown as LinkComponentRoute<TFullPath>
@@ -503,6 +510,8 @@ export class RootRoute<
     super(options)
   }
 
+  /* eslint-disable react-hooks/rules-of-hooks -- these members are custom hooks that
+     components call (`Route.useParams()`); the rule treats any class body as a class component */
   useMatch: UseMatchRoute<RootRouteId> = (opts) => {
     return useMatch({ ...opts, from: this.id } as any) as any
   }
@@ -530,6 +539,7 @@ export class RootRoute<
   useNavigate = (): UseNavigateResult<'/'> => {
     return useNavigate({ from: this.fullPath })
   }
+  /* eslint-enable react-hooks/rules-of-hooks */
 
   Link: LinkComponentRoute<'/'> = React.forwardRef(
     (props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
@@ -616,8 +626,7 @@ export function createRouteMask<
 
 export interface DefaultRouteTypes<TProps> {
   component:
-    | ((props: TProps) => any)
-    | React.LazyExoticComponent<(props: TProps) => any>
+    ((props: TProps) => any) | React.LazyExoticComponent<(props: TProps) => any>
 }
 export interface RouteTypes<TProps> extends DefaultRouteTypes<TProps> {}
 

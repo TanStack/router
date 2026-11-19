@@ -103,9 +103,7 @@ export function isStartCompilerPluginEnabledForEnv(
 
 function isStartCompilerEnvironmentEnabled(
   environment:
-    | StartCompilerEnvironment
-    | Array<StartCompilerEnvironment>
-    | undefined,
+    StartCompilerEnvironment | Array<StartCompilerEnvironment> | undefined,
   env: StartCompilerEnvironment,
 ): boolean {
   if (!environment) return true

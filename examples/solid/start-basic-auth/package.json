@@ -11,26 +11,26 @@
     "prisma-generate": "prisma generate"
   },
   "dependencies": {
-    "@libsql/client": "^0.15.15",
-    "@prisma/adapter-libsql": "^7.0.0",
-    "@prisma/client": "^7.0.0",
+    "@libsql/client": "^0.18.0",
+    "@prisma/adapter-libsql": "~7.9.1",
+    "@prisma/client": "~7.9.1",
     "@tanstack/solid-router": "^1.170.43",
     "@tanstack/solid-router-devtools": "^1.167.3",
     "@tanstack/solid-start": "^1.169.6",
-    "iron-session": "^9.0.1",
+    "iron-session": "^9.1.0",
     "redaxios": "^0.5.1",
-    "solid-js": "^1.9.10",
-    "tailwind-merge": "^3.6.0"
+    "solid-js": "^1.9.19",
+    "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.2.2",
+    "@tailwindcss/vite": "^4.3.5",
     "@types/node": "^22.5.4",
-    "dotenv": "^17.2.3",
-    "prisma": "^7.0.0",
-    "tailwindcss": "^4.2.2",
+    "dotenv": "^17.4.2",
+    "prisma": "~7.9.1",
+    "tailwindcss": "^4.3.5",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.0.14",
-    "vite-plugin-solid": "^2.11.11"
+    "vite": "^8.3.8",
+    "vite-plugin-solid": "^2.11.16"
   }
 }

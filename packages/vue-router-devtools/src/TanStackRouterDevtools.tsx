@@ -52,7 +52,7 @@ export const TanStackRouterDevtools = /* #__PURE__ */ defineComponent({
     'containerElement',
     'router',
     'shadowDOMTarget',
-  ] as unknown as undefined,
+  ],
   setup(props: TanStackRouterDevtoolsOptions) {
     const devToolRef = ref<HTMLDivElement | null>(null)
     let isMounted = false

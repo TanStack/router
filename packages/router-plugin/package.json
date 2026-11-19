@@ -139,11 +139,11 @@
     "react-dom": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "prettier": "^3.9.6",
+    "prettier": "^3.10.1",
     "@arethetypeswrong/cli": "catalog:",
     "publint": "catalog:",
     "rimraf": "catalog:",
-    "webpack": "^5.104.1"
+    "webpack": "^5.112.2"
   },
   "peerDependencies": {
     "@rsbuild/core": ">=1.0.2 || ^2.0.0",

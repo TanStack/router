@@ -136,12 +136,7 @@ test('does not re-read a reactive object nested inside a plain object', async ()
 
 test('inherited params and search rebuild on every navigation', async () => {
   const { go } = setup(() => (
-    <Link
-      to="/target/$id"
-      params={true as any}
-      search={true as any}
-      data-testid="link"
-    />
+    <Link to="/target/$id" params={true} search={true} data-testid="link" />
   ))
   const link = await screen.findByTestId('link')
   expect(link).toHaveAttribute('href', '/target/one')

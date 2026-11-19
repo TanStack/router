@@ -9,8 +9,7 @@ import type {
 } from '@tanstack/solid-start/server'
 
 type CreateTransformContext =
-  | { warmup: true }
-  | { request: Request; warmup: false }
+  { warmup: true } | { request: Request; warmup: false }
 
 const cdnOrigin = 'https://cdn.example.com'
 

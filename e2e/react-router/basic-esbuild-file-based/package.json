@@ -16,13 +16,13 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "catalog:",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.0",
+    "@playwright/test": "^1.65.1",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "esbuild": "^0.27.4"
+    "esbuild": "^0.28.2"
   }
 }

@@ -435,18 +435,9 @@ describe('public presentation lane contracts', () => {
       await secondRenderStarted
       expect(screen.getByText('Revision 1')).toBeInTheDocument()
 
-      let secondSettled = false
-      void secondAcknowledgement.then(() => {
-        secondSettled = true
-      })
+      // The superseded render's resource is disposed with its owner, so it no
+      // longer holds the joined transition (solid-js >= 1.9.14).
       secondRender.resolve()
-      await Promise.resolve()
-      await Promise.resolve()
-
-      expect(secondSettled).toBe(false)
-      expect(screen.queryByText('Revision 3')).not.toBeInTheDocument()
-
-      firstRender.resolve()
       await expect(secondAcknowledgement).resolves.toBe(true)
       expect(await screen.findByText('Revision 3')).toBeInTheDocument()
       expect(screen.queryByText('Revision 2')).not.toBeInTheDocument()

@@ -4,8 +4,7 @@ export type ScriptFormat = 'module' | 'iife'
 export const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
 
 export type AssetCrossOriginConfig =
-  | AssetCrossOrigin
-  | Partial<Record<'script' | 'stylesheet', AssetCrossOrigin>>
+  AssetCrossOrigin | Partial<Record<'script' | 'stylesheet', AssetCrossOrigin>>
 
 export type ManifestAssetLink =
   | string

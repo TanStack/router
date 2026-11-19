@@ -653,7 +653,7 @@ export function importProtectionPlugin(
   }
 
   function getRulesForEnvironment(envName: string): EnvRules {
-    return getImportProtectionRulesForEnvironment(config, envName) as EnvRules
+    return getImportProtectionRulesForEnvironment(config, envName)
   }
 
   const environmentNames = new Set<string>([

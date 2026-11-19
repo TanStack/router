@@ -1170,8 +1170,7 @@ async function handleServerRoutes({
   // in the request phase
   for (const route of matchedRoutes) {
     const serverMiddleware = route.options.server?.middleware as
-      | Array<AnyRequestMiddleware>
-      | undefined
+      Array<AnyRequestMiddleware> | undefined
     if (serverMiddleware) {
       const flattened = flattenMiddlewares(serverMiddleware)
       for (const m of flattened) {

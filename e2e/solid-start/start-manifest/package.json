@@ -12,17 +12,17 @@
   "dependencies": {
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
-    "solid-js": "^1.9.10"
+    "solid-js": "^1.9.19"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.0",
+    "@playwright/test": "^1.65.1",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
-    "srvx": "^1.0.0",
+    "srvx": "^1.0.8",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.0.14",
-    "vite-plugin-solid": "^2.11.11"
+    "vite": "^8.3.8",
+    "vite-plugin-solid": "^2.11.16"
   },
   "nx": {
     "targets": {

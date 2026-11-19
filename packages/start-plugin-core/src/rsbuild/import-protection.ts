@@ -340,7 +340,7 @@ export function getRulesForEnvironment(
   config: PluginConfig,
   envName: string,
 ): EnvRules {
-  return getImportProtectionRulesForEnvironment(config, envName) as EnvRules
+  return getImportProtectionRulesForEnvironment(config, envName)
 }
 
 export function serializePattern(pattern: string | RegExp): string {
@@ -633,7 +633,7 @@ function buildTransformResultProvider(opts: {
         )
       }
       code = String(sourceAndMap.source)
-      map = normalizeSourceMap(sourceAndMap.map as SourceMapLike | null)
+      map = normalizeSourceMap(sourceAndMap.map)
     }
 
     const originalCodeStartedAt = opts.perf ? performance.now() : 0

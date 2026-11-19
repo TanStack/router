@@ -443,7 +443,7 @@ export function compileCodeSplitReferenceRoute(
                     insertionPath,
                     routeOptions,
                     createRouteFn,
-                    opts: opts as CompileCodeSplitReferenceRouteOptions,
+                    opts: opts,
                   })
 
                   if (pluginResult?.modified) {
@@ -473,7 +473,7 @@ export function compileCodeSplitReferenceRoute(
                     insertionPath,
                     routeOptions,
                     createRouteFn,
-                    opts: opts as CompileCodeSplitReferenceRouteOptions,
+                    opts: opts,
                   })
 
                   if (pluginResult?.modified) {
@@ -486,7 +486,7 @@ export function compileCodeSplitReferenceRoute(
                     (prop) => {
                       if (t.isObjectProperty(prop)) {
                         const key = getObjectPropertyKeyName(prop)
-                        if (key && opts.deleteNodes!.has(key as any)) {
+                        if (key && opts.deleteNodes!.has(key)) {
                           modified = true
                           return false
                         }
@@ -503,7 +503,7 @@ export function compileCodeSplitReferenceRoute(
                       insertionPath,
                       routeOptions,
                       createRouteFn,
-                      opts: opts as CompileCodeSplitReferenceRouteOptions,
+                      opts: opts,
                     })
 
                     if (pluginResult?.modified) {
@@ -1412,12 +1412,10 @@ export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
               return
             }
 
-            if (
-              !(
-                path.node.callee.name === 'createRoute' ||
-                path.node.callee.name === 'createFileRoute'
-              )
-            ) {
+            if (!(
+              path.node.callee.name === 'createRoute' ||
+              path.node.callee.name === 'createFileRoute'
+            )) {
               return
             }
 

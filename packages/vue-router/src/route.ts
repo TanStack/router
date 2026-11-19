@@ -273,7 +273,7 @@ export class Route<
   Link: LinkComponentRoute<TFullPath> = ((props, ctx?: Vue.SetupContext) => {
     return Vue.h(
       Link as any,
-      { from: this.fullPath as never, ...(props as any) },
+      { from: this.fullPath, ...(props as any) },
       ctx?.slots,
     )
   }) as LinkComponentRoute<TFullPath>
@@ -504,7 +504,7 @@ export class RootRoute<
   }
 
   Link: LinkComponentRoute<'/'> = ((props, ctx?: Vue.SetupContext) => {
-    return Vue.h(Link, { from: this.fullPath as never, ...props }, ctx?.slots)
+    return Vue.h(Link, { from: this.fullPath, ...props }, ctx?.slots)
   }) as LinkComponentRoute<'/'>
 }
 

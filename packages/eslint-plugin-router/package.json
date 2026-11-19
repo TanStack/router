@@ -52,12 +52,12 @@
     "src"
   ],
   "dependencies": {
-    "@typescript-eslint/utils": "^8.23.0"
+    "@typescript-eslint/utils": "^8.73.0"
   },
   "devDependencies": {
-    "@typescript-eslint/rule-tester": "^8.23.0",
+    "@typescript-eslint/rule-tester": "^8.73.0",
     "combinate": "catalog:",
-    "eslint": "^9.22.0",
+    "eslint": "^9.39.5",
     "vite": "*",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",

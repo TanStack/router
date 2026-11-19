@@ -41,11 +41,9 @@ function RscNodeRenderInner({
  */
 export function RscNodeRenderer({ data }: { data: any }): React.ReactNode {
   const cssHrefs = data[SERVER_COMPONENT_CSS_HREFS] as
-    | ReadonlySet<string>
-    | undefined
+    ReadonlySet<string> | undefined
   const jsPreloads = data[SERVER_COMPONENT_JS_PRELOADS] as
-    | ReadonlySet<string>
-    | undefined
+    ReadonlySet<string> | undefined
 
   const path = (data[RSC_PROXY_PATH] as Array<string> | undefined) ?? []
 

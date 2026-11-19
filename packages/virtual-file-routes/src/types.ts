@@ -23,10 +23,7 @@ export type Route = {
   children?: Array<VirtualRouteNode>
 }
 export type VirtualRouteNode =
-  | IndexRoute
-  | LayoutRoute
-  | Route
-  | PhysicalSubtree
+  IndexRoute | LayoutRoute | Route | PhysicalSubtree
 
 export type VirtualRootRoute = {
   type: 'root'

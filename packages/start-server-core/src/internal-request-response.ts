@@ -1112,7 +1112,7 @@ export function getRequestProtocol(opts?: {
     }
   }
   const url = getStartEvent().requestUrl
-  return url.protocol.slice(0, -1) as 'http' | 'https' | (string & {})
+  return url.protocol.slice(0, -1)
 }
 
 export function setResponseHeaders(
@@ -1121,7 +1121,7 @@ export function setResponseHeaders(
   if (headers instanceof Headers) {
     for (const [name, value] of headers) {
       if (name !== 'set-cookie') {
-        setResponseHeader(name as ResponseHeaderName, value)
+        setResponseHeader(name, value)
       }
     }
 
@@ -1139,7 +1139,7 @@ export function setResponseHeaders(
     for (const [name, value] of Object.entries(
       headers as unknown as Record<string, string | Array<string>>,
     )) {
-      setResponseHeader(name as ResponseHeaderName, value)
+      setResponseHeader(name, value)
     }
     return
   }
@@ -1152,7 +1152,7 @@ export function setResponseHeaders(
     const normalizedName = normalizeHeaderName(name)
     let header = groupedHeaders.get(normalizedName)
     if (!header) {
-      header = { name: name as ResponseHeaderName, values: [] }
+      header = { name: name, values: [] }
       groupedHeaders.set(normalizedName, header)
     }
     header.values.push(value)

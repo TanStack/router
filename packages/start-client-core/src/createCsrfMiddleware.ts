@@ -10,10 +10,7 @@ import type { Register } from '@tanstack/router-core'
 export const csrfSymbol = Symbol.for('tanstack-start:csrf-middleware')
 
 export type CsrfSecFetchSite =
-  | 'same-origin'
-  | 'same-site'
-  | 'cross-site'
-  | 'none'
+  'same-origin' | 'same-site' | 'cross-site' | 'none'
 
 export type CsrfMatcher<TValue, TRegister = Register, TMiddlewares = unknown> =
   | TValue

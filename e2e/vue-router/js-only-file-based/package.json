@@ -11,21 +11,21 @@
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.2.2",
+    "@tailwindcss/vite": "^4.3.5",
     "@tanstack/router-plugin": "workspace:^",
-    "@tanstack/vue-query": "^5.90.0",
-    "@tanstack/vue-query-devtools": "^6.1.2",
+    "@tanstack/vue-query": "^5.108.0",
+    "@tanstack/vue-query-devtools": "^6.4.3",
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-router-devtools": "workspace:^",
     "redaxios": "catalog:",
-    "tailwindcss": "^4.2.2",
-    "vue": "^3.5.16"
+    "tailwindcss": "^4.3.5",
+    "vue": "^3.5.44"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.0",
+    "@playwright/test": "^1.65.1",
     "@tanstack/router-e2e-utils": "workspace:^",
-    "@vitejs/plugin-vue": "^6.0.5",
-    "@vitejs/plugin-vue-jsx": "^5.1.5",
-    "vite": "^8.0.14"
+    "@vitejs/plugin-vue": "^6.0.11",
+    "@vitejs/plugin-vue-jsx": "^5.1.6",
+    "vite": "^8.3.8"
   }
 }

@@ -417,7 +417,7 @@ export function collectIdentifiersFromPattern(
   if (t.isObjectPattern(node)) {
     return node.properties.flatMap((prop) => {
       if (t.isObjectProperty(prop)) {
-        return collectIdentifiersFromPattern(prop.value as t.LVal)
+        return collectIdentifiersFromPattern(prop.value)
       }
       if (t.isRestElement(prop)) {
         return collectIdentifiersFromPattern(prop.argument)

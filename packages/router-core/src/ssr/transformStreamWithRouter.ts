@@ -330,6 +330,7 @@ export function transformReadableStreamWithRouter(
 
   let reader: AppStreamReader
   try {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- TypeScript < 5.9 types Node.js web stream readers differently
     reader = appStream.getReader() as AppStreamReader
   } catch (error) {
     cleanupFailedStreamCreation(serverSsr, opts?.onAbort, error)
