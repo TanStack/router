@@ -8,6 +8,7 @@ import { normalizePath } from 'vite'
 import { VITE_ENVIRONMENT_NAMES } from '../../constants'
 import { startGeneratorConfig } from '../../start-router-plugin/generator-config'
 import { pruneServerOnlySubtrees } from '../../start-router-plugin/pruneServerOnlySubtrees'
+import { hasRouteTreeSources } from '../../start-router-plugin/has-route-tree-sources'
 import { SERVER_PROP } from '../../start-router-plugin/constants'
 import { escapeRegExp } from '../../utils'
 import type { GetConfigFn } from '../../types'
@@ -34,6 +35,13 @@ export function tanStackStartRouter(
   startPluginOpts: TanStackStartInputConfig,
   getConfig: GetConfigFn,
   corePluginOpts: TanStackStartVitePluginCoreOptions,
+  /**
+   * Whether Vitest resolves the config to run tests. The route tree is then
+   * generated once, at startup, and only for a project that has routes; route
+   * files are never written; and a route file does not have to be known to
+   * the generator to lose its server-only options in client code.
+   */
+  isTestRun: () => boolean = () => false,
 ): Array<PluginOption> {
   const routerPluginContext = createRouterPluginContext()
 
@@ -109,6 +117,10 @@ export function tanStackStartRouter(
           return null
         }
         if (!generatorInstance) {
+          if (isTestRun()) {
+            // No generator runs for a project without routes.
+            return null
+          }
           throw new Error('Generator instance not initialized')
         }
         const crawlingResult = await generatorInstance.getCrawlingResult()
@@ -147,21 +159,38 @@ export function tanStackStartRouter(
           clientRouteTree: clientTreeGeneratorPlugin,
         }),
       routerPluginContext,
+      {
+        enabled: ({ config }) =>
+          !isTestRun() ||
+          hasRouteTreeSources({
+            routerFilePath: getConfig().resolvedStartConfig.routerFilePath,
+            generatorConfig: config,
+          }),
+        watch: () => !isTestRun(),
+        writeRouteFiles: () => !isTestRun(),
+      },
     ),
-    tanStackRouterCodeSplitter(() => {
-      const routerConfig = getConfig().startConfig.router
-      return {
-        ...routerConfig,
-        codeSplittingOptions: {
-          ...routerConfig.codeSplittingOptions,
-          deleteNodes: ['ssr', 'server', 'headers'],
-          addHmr: true,
-        },
-        plugin: {
-          vite: { environmentName: VITE_ENVIRONMENT_NAMES.client },
-        },
-      }
-    }, routerPluginContext),
+    tanStackRouterCodeSplitter(
+      () => {
+        const routerConfig = getConfig().startConfig.router
+        return {
+          ...routerConfig,
+          codeSplittingOptions: {
+            ...routerConfig.codeSplittingOptions,
+            deleteNodes: ['ssr', 'server', 'headers'],
+            // Vitest has no HMR.
+            addHmr: !isTestRun(),
+          },
+          plugin: {
+            vite: { environmentName: VITE_ENVIRONMENT_NAMES.client },
+          },
+        }
+      },
+      routerPluginContext,
+      {
+        deleteNodesInUnknownRoutes: isTestRun,
+      },
+    ),
     tanStackRouterCodeSplitter(() => {
       const routerConfig = getConfig().startConfig.router
       return {

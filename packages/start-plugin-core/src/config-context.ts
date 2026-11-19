@@ -3,6 +3,7 @@ import {
   createNormalizedOutputDirectories,
   deriveRouterBasepath,
   resolveStartEntryPlan,
+  resolveStartTestEntryPlan,
 } from './planning'
 import type { TanStackStartOutputConfig } from './schema'
 import type {
@@ -15,6 +16,11 @@ export interface StartConfigContext {
   resolvedStartConfig: ResolvedStartConfig
   getConfig: GetConfigFn
   resolveEntries: () => ReturnType<typeof resolveStartEntryPlan>
+  /**
+   * The entries of a project under a test runner. The router entry is
+   * optional there, see `isTestRun`.
+   */
+  resolveTestEntries: () => ReturnType<typeof resolveStartTestEntryPlan>
 }
 
 export function createStartConfigContext<TInputConfig>(opts: {
@@ -25,6 +31,12 @@ export function createStartConfigContext<TInputConfig>(opts: {
     core: { framework: TanStackStartCoreOptions['framework'] },
     root: string,
   ) => TanStackStartOutputConfig
+  /**
+   * Whether the bundler runs for a test runner. `getConfig` then does not
+   * require a router entry: `resolvedStartConfig.routerFilePath` is an empty
+   * string when the project has none.
+   */
+  isTestRun?: () => boolean
 }): StartConfigContext {
   const resolvedStartConfig: ResolvedStartConfig = {
     root: '',
@@ -47,6 +59,9 @@ export function createStartConfigContext<TInputConfig>(opts: {
   let startConfig: TanStackStartOutputConfig | null = null
   let resolvedEntryPlanCache:
     | ReturnType<typeof resolveStartEntryPlan>
+    | undefined
+  let resolvedTestEntryPlanCache:
+    | ReturnType<typeof resolveStartTestEntryPlan>
     | undefined
 
   function requireRoot(): string {
@@ -89,9 +104,33 @@ export function createStartConfigContext<TInputConfig>(opts: {
     return resolvedEntryPlanCache
   }
 
+  function getResolvedTestEntryPlan() {
+    if (resolvedTestEntryPlanCache) {
+      return resolvedTestEntryPlanCache
+    }
+
+    resolvedTestEntryPlanCache = resolveStartTestEntryPlan({
+      root: requireRoot(),
+      startConfig: getStartConfig(),
+      defaultEntryPaths: opts.corePluginOpts.defaultEntryPaths,
+    })
+
+    Object.assign(resolvedStartConfig, {
+      srcDirectory: resolvedTestEntryPlanCache.srcDirectory,
+      startFilePath: resolvedTestEntryPlanCache.startFilePath,
+      routerFilePath: resolvedTestEntryPlanCache.routerFilePath ?? '',
+    })
+
+    return resolvedTestEntryPlanCache
+  }
+
   const getConfig: GetConfigFn = () => {
     const startConfig = getStartConfig()
-    getResolvedEntryPlan()
+    if (opts.isTestRun?.()) {
+      getResolvedTestEntryPlan()
+    } else {
+      getResolvedEntryPlan()
+    }
 
     return { startConfig, resolvedStartConfig }
   }
@@ -100,10 +139,15 @@ export function createStartConfigContext<TInputConfig>(opts: {
     return getResolvedEntryPlan()
   }
 
+  function resolveTestEntries() {
+    return getResolvedTestEntryPlan()
+  }
+
   return {
     resolvedStartConfig,
     getConfig,
     resolveEntries,
+    resolveTestEntries,
   }
 }
 

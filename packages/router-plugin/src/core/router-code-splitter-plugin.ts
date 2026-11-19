@@ -26,6 +26,7 @@ import type { GetRoutesByFileMapResultValue } from '@tanstack/router-generator'
 import type { CodeSplitCompilerPlugin } from './code-splitter/plugins'
 import type { Config } from './config'
 import type { HmrStyle } from './hmr'
+import type { RouterCodeSplitterHostOptions } from './host-options'
 import type { RouterPluginContext } from './router-plugin-context'
 import type {
   UnpluginFactory,
@@ -82,6 +83,7 @@ export function createRouterCodeSplitterPlugin(
   options: Partial<Config | (() => Config)> | undefined = {},
   routerPluginContext: RouterPluginContext,
   hmrStyle: HmrStyle = 'vite',
+  hostOptions: RouterCodeSplitterHostOptions = {},
 ): ReturnType<UnpluginFactory<Partial<Config | (() => Config)> | undefined>> {
   let ROOT: string = process.cwd()
   let userConfig: Config
@@ -209,6 +211,34 @@ export function createRouterCodeSplitterPlugin(
     return compiledReferenceRoute
   }
 
+  const handleDeletingNodesInUnknownRoute = (
+    code: string,
+    id: string,
+  ): UnpluginTransformResult => {
+    const deleteNodes = userConfig.codeSplittingOptions?.deleteNodes
+    if (!deleteNodes?.length) {
+      return null
+    }
+
+    if (debug) {
+      console.info('Deleting nodes in route unknown to the generator: ', id)
+    }
+
+    // Without split groupings the reference compiler only removes the listed
+    // route options and the code that nothing else uses anymore.
+    return compileCodeSplitReferenceRoute({
+      code,
+      codeSplitGroupings: [],
+      targetFramework: userConfig.target,
+      filename: id,
+      id,
+      isProduction,
+      deleteNodes: new Set(deleteNodes),
+      addHmr: false,
+      hmrStyle,
+    })
+  }
+
   const handleCompilingVirtualFile = (
     code: string,
     id: string,
@@ -275,6 +305,10 @@ export function createRouterCodeSplitterPlugin(
               normalizedId,
               generatorFileInfo,
             )
+          }
+
+          if (hostOptions.deleteNodesInUnknownRoutes?.()) {
+            return handleDeletingNodesInUnknownRoute(code, normalizedId)
           }
 
           return null
