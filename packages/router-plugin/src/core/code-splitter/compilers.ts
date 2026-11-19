@@ -334,9 +334,29 @@ function findExportedSharedBindings(
 /**
  * Remove declarations of shared bindings from the AST.
  * Handles both plain and exported declarations, including destructured patterns.
- * Removes the entire statement if all bindings in it are shared.
+ * Removes the entire statement if all bindings in it are shared; a shared
+ * default-exported declaration is reduced to `export default <name>`.
+ * TypeScript overload signatures of a shared function are removed along with
+ * its implementation: left behind, they read as a local declaration of the
+ * same name and shadow the import from the shared module.
  */
 function removeSharedDeclarations(ast: t.File, sharedBindings: Set<string>) {
+  // `export default function Layout() {}` declares `Layout` as well. With the
+  // declaration gone the default export still has to be there, so it becomes
+  // `export default Layout` and picks up the import from the shared module.
+  ast.program.body = ast.program.body.map((stmt) => {
+    if (
+      t.isExportDefaultDeclaration(stmt) &&
+      (t.isFunctionDeclaration(stmt.declaration) ||
+        t.isClassDeclaration(stmt.declaration)) &&
+      stmt.declaration.id &&
+      sharedBindings.has(stmt.declaration.id.name)
+    ) {
+      return t.exportDefaultDeclaration(t.identifier(stmt.declaration.id.name))
+    }
+    return stmt
+  })
+
   ast.program.body = ast.program.body.filter((stmt) => {
     const decl =
       t.isExportNamedDeclaration(stmt) && stmt.declaration
@@ -351,7 +371,10 @@ function removeSharedDeclarations(ast: t.File, sharedBindings: Set<string>) {
       })
       // If no declarators remain, remove the entire statement
       if (decl.declarations.length === 0) return false
-    } else if (t.isFunctionDeclaration(decl) && decl.id) {
+    } else if (
+      (t.isFunctionDeclaration(decl) || t.isTSDeclareFunction(decl)) &&
+      decl.id
+    ) {
       if (sharedBindings.has(decl.id.name)) return false
     } else if (t.isClassDeclaration(decl) && decl.id) {
       if (sharedBindings.has(decl.id.name)) return false
@@ -896,6 +919,10 @@ export function compileCodeSplitVirtualRoute(
   const intendedSplitNodes = new Set(opts.splitTargets)
 
   const knownExportedIdents = new Set<string>()
+  // local name -> the name the reference file exports it under, e.g.
+  // `export { Layout as PublicLayout }` maps `Layout` to `PublicLayout` and
+  // `export default Layout` maps `Layout` to `default`
+  const exportedNameByLocal = new Map<string, string>()
 
   babel.traverse(ast, {
     Program: {
@@ -955,7 +982,24 @@ export function compileCodeSplitVirtualRoute(
                       // If the node is exported, we need to remove
                       // the export from the split file
                       if (isExported && t.isIdentifier(value)) {
+                        const exportedName = findRuntimeExportName(
+                          ast,
+                          value.name,
+                        )
                         removeExports(ast, value)
+                        if (exportedName !== undefined) {
+                          exportedNameByLocal.set(value.name, exportedName)
+                          // `export { Layout as PublicLayout }` and `export
+                          // default Layout` leave the `function Layout() {}`
+                          // declaration behind. The reference file keeps that
+                          // declaration, so drop the copy here; if another
+                          // split node still needs it, it is imported from
+                          // the reference file below.
+                          removeModuleLevelDeclaration(ast, value.name)
+                        }
+                        // A binding with only a type export (`export type {
+                        // Layout }`) has no runtime export to import, so its
+                        // declaration stays for the split nodes that use it.
                       } else {
                         const meta = SPLIT_NODES_CONFIG.get(splitType)!
                         trackedNodesToSplitByType[splitType] = {
@@ -1032,6 +1076,18 @@ export function compileCodeSplitVirtualRoute(
               if (!splitNode.id) {
                 throw new Error(
                   `Function declaration for "${SPLIT_TYPE}" must have an identifier.`,
+                )
+              }
+
+              splitMeta.shouldRemoveNode = false
+              splitMeta.localExporterIdent = splitNode.id.name
+            } else if (t.isClassDeclaration(splitNode)) {
+              // declared as `class Layout extends React.Component {}`; like a
+              // function declaration it stays in place and is exported under
+              // the split name
+              if (!splitNode.id) {
+                throw new Error(
+                  `Class declaration for "${SPLIT_TYPE}" must have an identifier.`,
                 )
               }
 
@@ -1167,6 +1223,72 @@ export function compileCodeSplitVirtualRoute(
             ]),
           ])
         })
+
+        // Exported split values stay in the reference file, so `removeExports`
+        // dropped their declarations from this module. Another split node in
+        // the same group may still refer to one of them (`loader: () =>
+        // Layout.name` next to an exported `Layout` component), so import those
+        // from the reference file under the name it exports them as. Shared
+        // bindings are left out: they are imported from the shared module
+        // further down.
+        if (knownExportedIdents.size > 0) {
+          programPath.scope.crawl()
+          const unresolvedExportedIdents = new Set<string>()
+          programPath.traverse({
+            ReferencedIdentifier(identPath) {
+              const { name } = identPath.node
+              if (
+                knownExportedIdents.has(name) &&
+                !opts.sharedBindings?.has(name) &&
+                !identPath.scope.getBinding(name)
+              ) {
+                unresolvedExportedIdents.add(name)
+              }
+            },
+          })
+
+          if (unresolvedExportedIdents.size > 0) {
+            const [importPath] = programPath.unshiftContainer(
+              'body',
+              t.importDeclaration(
+                [...unresolvedExportedIdents]
+                  .map((name) => ({
+                    name,
+                    exportedName: exportedNameByLocal.get(name) ?? name,
+                  }))
+                  // a default specifier has to come first
+                  .sort(
+                    (a, b) =>
+                      Number(b.exportedName === 'default') -
+                      Number(a.exportedName === 'default'),
+                  )
+                  .map(({ name, exportedName }) =>
+                    exportedName === 'default'
+                      ? t.importDefaultSpecifier(t.identifier(name))
+                      : t.importSpecifier(
+                          t.identifier(name),
+                          t.identifier(exportedName),
+                        ),
+                  ),
+                t.stringLiteral(
+                  removeSplitSearchParamFromFilename(opts.filename),
+                ),
+              ),
+            )
+
+            importPath.traverse({
+              Identifier(identPath) {
+                if (
+                  (identPath.parentPath.isImportSpecifier() ||
+                    identPath.parentPath.isImportDefaultSpecifier()) &&
+                  identPath.key === 'local'
+                ) {
+                  refIdents.add(identPath)
+                }
+              },
+            })
+          }
+        }
 
         // convert exports to imports from the original file
         programPath.traverse({
@@ -1626,13 +1748,21 @@ function hasExport(ast: t.File, node: t.Identifier): boolean {
           })
         }
 
-        // declared as `function loaderFn() {}`
-        if (t.isFunctionDeclaration(path.node.declaration)) {
+        // declared as `function loaderFn() {}` or `class Layout {}`
+        if (
+          t.isFunctionDeclaration(path.node.declaration) ||
+          t.isClassDeclaration(path.node.declaration)
+        ) {
           if (t.isIdentifier(path.node.declaration.id)) {
             if (path.node.declaration.id.name === node.name) {
               found = true
             }
           }
+        }
+      } else if (!path.node.source) {
+        // declared as `export { loaderFn }` or `export { loaderFn as load }`
+        if (hasLocalExportSpecifier(path.node, node.name)) {
+          found = true
         }
       }
     },
@@ -1644,8 +1774,11 @@ function hasExport(ast: t.File, node: t.Identifier): boolean {
         }
       }
 
-      // declared as `export default function loaderFn() {}`
-      if (t.isFunctionDeclaration(path.node.declaration)) {
+      // declared as `export default function loaderFn() {}` or `export default class Layout {}`
+      if (
+        t.isFunctionDeclaration(path.node.declaration) ||
+        t.isClassDeclaration(path.node.declaration)
+      ) {
         if (t.isIdentifier(path.node.declaration.id)) {
           if (path.node.declaration.id.name === node.name) {
             found = true
@@ -1656,6 +1789,126 @@ function hasExport(ast: t.File, node: t.Identifier): boolean {
   })
 
   return found
+}
+
+/**
+ * Whether an `export { ... }` statement without a source exports the given
+ * local binding, under its own name or an alias.
+ */
+function hasLocalExportSpecifier(
+  node: t.ExportNamedDeclaration,
+  name: string,
+): boolean {
+  return node.specifiers.some(
+    (specifier) =>
+      t.isExportSpecifier(specifier) &&
+      t.isIdentifier(specifier.local) &&
+      specifier.local.name === name,
+  )
+}
+
+/**
+ * Returns the name a module-level binding can be imported under at runtime. A
+ * declaration export (`export function Layout() {}`) and `export { Layout }`
+ * give back the local name, `export { Layout as PublicLayout }` gives back
+ * `PublicLayout`, and a binding that is only the default export gives back
+ * `default`. Type-only exports (`export type { Layout }`, `export { type
+ * Layout }`) have no runtime value, so a binding with nothing else gives back
+ * `undefined`.
+ */
+function findRuntimeExportName(
+  ast: t.File,
+  localName: string,
+): string | undefined {
+  let isDefaultExport = false
+
+  for (const stmt of ast.program.body) {
+    if (t.isExportDefaultDeclaration(stmt)) {
+      const declaration = stmt.declaration
+      if (
+        (t.isIdentifier(declaration) && declaration.name === localName) ||
+        ((t.isFunctionDeclaration(declaration) ||
+          t.isClassDeclaration(declaration)) &&
+          declaration.id?.name === localName)
+      ) {
+        isDefaultExport = true
+      }
+      continue
+    }
+
+    if (
+      !t.isExportNamedDeclaration(stmt) ||
+      stmt.source ||
+      stmt.exportKind === 'type'
+    ) {
+      continue
+    }
+
+    if (stmt.declaration) {
+      if (
+        (t.isFunctionDeclaration(stmt.declaration) ||
+          t.isClassDeclaration(stmt.declaration)) &&
+        stmt.declaration.id?.name === localName
+      ) {
+        return localName
+      }
+      if (t.isVariableDeclaration(stmt.declaration)) {
+        for (const decl of stmt.declaration.declarations) {
+          if (collectIdentifiersFromPattern(decl.id).includes(localName)) {
+            return localName
+          }
+        }
+      }
+      continue
+    }
+
+    for (const specifier of stmt.specifiers) {
+      if (
+        t.isExportSpecifier(specifier) &&
+        specifier.exportKind !== 'type' &&
+        t.isIdentifier(specifier.local) &&
+        specifier.local.name === localName
+      ) {
+        return t.isIdentifier(specifier.exported)
+          ? specifier.exported.name
+          : specifier.exported.value
+      }
+    }
+  }
+
+  return isDefaultExport ? 'default' : undefined
+}
+
+/**
+ * Removes the module-level declaration of `name` (a function, class or
+ * single-identifier variable declarator). Declarations that are still part of
+ * an `export` statement are left alone; use `removeExports` for those first.
+ */
+function removeModuleLevelDeclaration(ast: t.File, name: string) {
+  babel.traverse(ast, {
+    Program(programPath) {
+      for (const stmtPath of programPath.get('body')) {
+        if (
+          (stmtPath.isFunctionDeclaration() ||
+            stmtPath.isClassDeclaration() ||
+            stmtPath.isTSDeclareFunction()) &&
+          stmtPath.node.id?.name === name
+        ) {
+          stmtPath.remove()
+        } else if (stmtPath.isVariableDeclaration()) {
+          for (const declPath of stmtPath.get('declarations')) {
+            if (
+              t.isIdentifier(declPath.node.id) &&
+              declPath.node.id.name === name
+            ) {
+              declPath.remove()
+            }
+          }
+        }
+      }
+      programPath.stop()
+    },
+  })
 }
 
 function removeExports(ast: t.File, node: t.Identifier): boolean {
@@ -1691,14 +1944,35 @@ function removeExports(ast: t.File, node: t.Identifier): boolean {
               }
             }
           })
-        } else if (t.isFunctionDeclaration(path.node.declaration)) {
-          // declared as `export const loaderFn = () => {}`
+        } else if (
+          t.isFunctionDeclaration(path.node.declaration) ||
+          t.isClassDeclaration(path.node.declaration)
+        ) {
+          // declared as `export function loaderFn() {}` or `export class Layout {}`
           if (t.isIdentifier(path.node.declaration.id)) {
             if (path.node.declaration.id.name === node.name) {
               path.remove()
               removed = true
             }
           }
+        }
+      } else if (!path.node.source) {
+        // declared as `export { loaderFn }` or `export { loaderFn as load }`
+        if (hasLocalExportSpecifier(path.node, node.name)) {
+          const specifiers = path.node.specifiers.filter(
+            (specifier) =>
+              !(
+                t.isExportSpecifier(specifier) &&
+                t.isIdentifier(specifier.local) &&
+                specifier.local.name === node.name
+              ),
+          )
+          if (specifiers.length === 0) {
+            path.remove()
+          } else {
+            path.node.specifiers = specifiers
+          }
+          removed = true
         }
       }
     },
@@ -1709,8 +1983,11 @@ function removeExports(ast: t.File, node: t.Identifier): boolean {
           path.remove()
           removed = true
         }
-      } else if (t.isFunctionDeclaration(path.node.declaration)) {
-        // declared as `export default function loaderFn() {}`
+      } else if (
+        t.isFunctionDeclaration(path.node.declaration) ||
+        t.isClassDeclaration(path.node.declaration)
+      ) {
+        // declared as `export default function loaderFn() {}` or `export default class Layout {}`
         if (t.isIdentifier(path.node.declaration.id)) {
           if (path.node.declaration.id.name === node.name) {
             path.remove()
