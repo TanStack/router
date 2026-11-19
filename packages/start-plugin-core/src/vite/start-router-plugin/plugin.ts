@@ -252,18 +252,6 @@ export function tanStackStartRouter(
         )
         return { code: 'export const apiRouteTree = undefined\n', map: null }
       }
-      // The API tree replaces __root with a bare root, so root server
-      // middleware (often auth) would be silently skipped. Fail closed,
-      // including when the root options cannot be read statically.
-      if (
-        await rootRouteMayHaveServerOptions(
-          crawlingResult.rootRouteNode.fullPath,
-        )
-      ) {
-        return disabled(
-          'the root route defines `server` options (or its options could not be read statically). Move root server middleware to the API routes or to global requestMiddleware.',
-        )
-      }
       // Keep only subtrees where every node is server-only, so the tree never
       // imports a route file with a component.
       const routeNodes: Array<RouteNode> = []
@@ -286,6 +274,22 @@ export function tanStackStartRouter(
       const routeTree = crawlingResult.acc.routeTree
         .map(keep)
         .filter((n): n is RouteNode => n !== null)
+      // No server-only routes: skip the per-request match entirely.
+      if (routeNodes.length === 0) {
+        return { code: 'export const apiRouteTree = undefined\n', map: null }
+      }
+      // The API tree replaces __root with a bare root, so root server
+      // middleware (often auth) would be silently skipped. Fail closed,
+      // including when the root options cannot be read statically.
+      if (
+        await rootRouteMayHaveServerOptions(
+          crawlingResult.rootRouteNode.fullPath,
+        )
+      ) {
+        return disabled(
+          'the root route defines `server` options (or its options could not be read statically). Move root server middleware to the API routes or to global requestMiddleware.',
+        )
+      }
       // A kept param or splat route must not win a path that a pruned route
       // would win in the full tree (`/api/$` vs a pruned `/api/docs` page).
       for (const kept of routeNodes) {

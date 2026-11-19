@@ -79,6 +79,25 @@ describe('virtual API route tree', () => {
     expect(result.code).toContain('api/health')
   }, 30_000)
 
+  it('exports undefined without a warning when no route is server-only', async () => {
+    await rm(path.join(routesDir, 'api'), { recursive: true, force: true })
+    await writeFile(
+      path.join(routesDir, '__root.tsx'),
+      `import { createRootRoute } from '@tanstack/react-router'\nexport const Route = createRootRoute({ server: { middleware: [] } })\n`,
+    )
+    const { generator, apiTree } = setup()
+    await generator.vite.configResolved({ root })
+    const warn = vi.fn()
+
+    const result = await apiTree.load.call(
+      { warn },
+      '\0#tanstack-start-api-route-tree',
+    )
+
+    expect(result.code).toBe('export const apiRouteTree = undefined\n')
+    expect(warn).not.toHaveBeenCalled()
+  }, 30_000)
+
   it('exports undefined with a warning when the root route has server options', async () => {
     await writeFile(
       path.join(routesDir, '__root.tsx'),
