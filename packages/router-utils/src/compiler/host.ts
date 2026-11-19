@@ -561,12 +561,6 @@ async function applyChange(
         }
       }
     }
-    if (kind === 'unlink' && !knownAt(caches, path)) {
-      // nothing read the file (a resolution memo that names it is of an
-      // older file-set version)
-      caches.removed?.(path)
-      return
-    }
   }
   const change: InvalidateChange = { path, kind }
   const hostOf = typeof hosts === 'function' ? hosts : () => hosts
