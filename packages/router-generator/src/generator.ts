@@ -740,7 +740,9 @@ export class Generator {
       const real = this.files.get(file)?.realPath ?? file
       routesByRealPath.set(real, (routesByRealPath.get(real) ?? 0) + 1)
     }
-    await Promise.all(
+    // (every write settles before the run does: a failed one, or a throwing
+    // `onWrite` observer, fails the run with the first failure)
+    const writes = await Promise.allSettled(
       upkeep.map(async ([file, state]) => {
         const pending = state.pending!
         if (!treeFiles.has(file)) {
@@ -777,6 +779,10 @@ export class Generator {
         })
       }),
     )
+    const failed = writes.find((write) => write.status === 'rejected')
+    if (failed) {
+      throw failed.reason
+    }
   }
 
   private async publishTree(model: TreeModel) {

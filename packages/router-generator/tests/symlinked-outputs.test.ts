@@ -6,7 +6,8 @@
  * routes: a link whose route its target doesn't hold becomes a file of its
  * own, as on `main`, and the router loads both routes (Astra overall #5).
  * The route tree gets a file of its own, as on `main`: its imports are
- * relative to where it is configured (Astra round 3, B1).
+ * relative to where it is configured (Astra round 3, B1). `onWrite` is told
+ * of each file replaced, and a run settles after all its writes.
  */
 import {
   chmod,
@@ -219,5 +220,51 @@ describe('symlinked files the generator rewrites', () => {
     // (a run that leaves every file as it is replaces none)
     await generator.run()
     expect(reported).toHaveLength(2)
+  })
+
+  // A run settles once its writes have: an observer that throws fails the
+  // run, after every route file it kept up got its upkeep.
+  test('a throwing onWrite observer fails the run once every write is done', async () => {
+    const files: Record<string, string> = {
+      'src/routes/__root.tsx': rootRoute(),
+    }
+    const names = Array.from({ length: 36 }, (_, i) => `item${i}`)
+    for (const name of names) {
+      files[`src/routes/${name}.tsx`] = wrongId
+    }
+    const root = await createApp(files)
+    let reported = 0
+    const generator = new Generator({
+      config: configOf(root),
+      root,
+      onWrite: () => {
+        if (++reported === 1) {
+          throw new Error('MARK_OBSERVER')
+        }
+      },
+    })
+    /** The route files not kept up yet and the files reported, read as the run settles. */
+    const settled = () => ({
+      notKeptUp: names.filter(
+        (name) =>
+          !readFileSync(
+            path.join(root, `src/routes/${name}.tsx`),
+            'utf8',
+          ).includes(`'/${name}'`),
+      ),
+      reported,
+    })
+    const {
+      outcome,
+      notKeptUp,
+      reported: reportedWhenSettled,
+    } = await generator.run().then(
+      () => ({ outcome: 'resolved', ...settled() }),
+      (error: unknown) => ({ outcome: String(error), ...settled() }),
+    )
+
+    expect(outcome).toContain('MARK_OBSERVER')
+    expect(notKeptUp).toEqual([])
+    expect(reportedWhenSettled).toBe(names.length)
   })
 })
