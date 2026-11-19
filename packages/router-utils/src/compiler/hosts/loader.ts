@@ -38,7 +38,7 @@ export function loaderText(source: Uint8Array): string {
  * A loader's output map: the compiler's map naming the module's absolute
  * path (`resourcePath`), composed with the input map (an earlier loader's
  * map is not lost, an index map included); without one, the file's text is in the map or, with a
- * recorder, in the emitted maps (`emittedMapTexts`).
+ * recorder that takes it, in the emitted maps (`emittedMapTexts`).
  */
 export function composeLoaderMap(
   map: RawSourceMap | null,
@@ -52,8 +52,7 @@ export function composeLoaderMap(
   }
   const ours = { ...map, sources: [resourcePath] }
   if (!inputMap) {
-    if (recordMapText) {
-      recordMapText(resourcePath, source)
+    if (recordMapText?.(resourcePath, source)) {
       return ours
     }
     return { ...ours, sourcesContent: [source] }

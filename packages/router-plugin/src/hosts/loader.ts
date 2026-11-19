@@ -3,9 +3,9 @@
  * for every JavaScript module (raw: what is no route goes on as its bytes)
  * and compiles every id of a route module (env and derived `NormalModule`s
  * hit the same plan), composes its map with the input map (an earlier
- * loader's map is not lost) and names the
- * absolute path as the map source, whose text is in the map or, with a
- * recorder, in the emitted maps (`emittedMapTexts`). The static loader file
+ * loader's map is not lost) and names the absolute path as the map source,
+ * whose text is in the map or, with a recorder that takes it, in the
+ * emitted maps (`emittedMapTexts`). The static loader file
  * (`loader/index.cjs`) finds this implementation on the compiler.
  */
 import {

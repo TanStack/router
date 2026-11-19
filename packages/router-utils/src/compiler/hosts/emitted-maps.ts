@@ -11,8 +11,8 @@
  * module maps name the file without its text (the devtool never reads it
  * from disk) and the text goes into the map files once the hashes are
  * computed: those are what a debugger reads. Otherwise (production, maps
- * inside the code: `eval-*`, `inline-*`, or source names the fill cannot
- * turn back into files) the module maps carry the text.
+ * inside the code: `eval-*`, `inline-*`, or a file whose source name the
+ * fill cannot turn back into it) the module maps carry the text.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -39,25 +39,31 @@ function fileOf(source: string, context: string, mapDir: string): string {
 }
 
 /**
- * Whether the sources the devtool names with `template` (an
- * `output.devtool[Fallback]ModuleFilenameTemplate`; none: the bundler's
- * default) name a file of the app by a name `fileOf` turns back into it,
- * from a map in the output directory and from one below it. The template
- * runs on a file of the context: a function gets the context the bundler
- * gives it, a string its placeholders (an unknown one stays, and the name
- * names no file; `[relative-resource-path]` is relative to the map).
+ * Whether the source the devtool names `file` (a normalized absolute path)
+ * with `template` (an `output.devtool[Fallback]ModuleFilenameTemplate`;
+ * none: the bundler's default) is a name `fileOf` turns back into it, from
+ * a map in the output directory and from one below it. A function gets the
+ * paths the bundler gives it, a string its placeholders (an unknown one
+ * stays, and the name names no file; `[relative-resource-path]` is relative
+ * to the map). What the loader does not know of the module (its hash, id,
+ * query and loaders) the template gets as `0` or empty: a template naming
+ * the file by those is not followed.
  */
 function namesRoundTrip(
   template: unknown,
   context: string,
   outDir: string,
+  file: string,
 ): boolean {
   if (template === undefined) {
     return true
   }
-  const file = path.join(context, 'src', 'route.tsx')
   const posix = (p: string) => p.split(path.sep).join('/')
-  const relative = `./${posix(path.relative(context, file))}`
+  // (as webpack shortens a path: `./` unless it leaves the context)
+  const fromContext = posix(path.relative(context, file))
+  const relative = fromContext.startsWith('../')
+    ? fromContext
+    : `./${fromContext}`
   const info: Record<string, string> = {
     identifier: file,
     shortIdentifier: relative,
@@ -195,8 +201,12 @@ interface EmittedMapsCompilationLike {
   ) => void
 }
 
-/** Records the text of a compiled file (its absolute path) for the emitted maps. */
-export type RecordMapText = (file: string, text: string) => void
+/**
+ * Records the text of a compiled file (its absolute path) for the emitted
+ * maps; false: they will not find the file (its module map carries the
+ * text).
+ */
+export type RecordMapText = (file: string, text: string) => boolean
 
 /**
  * Development with a devtool writing map files: fills them with the text
@@ -210,12 +220,12 @@ export type RecordMapText = (file: string, text: string) => void
  * (Rspack copies a string source into its own memory). `fill` false:
  * nothing reads the map files' text (Start's server environment in Rsbuild
  * dev, kept in memory), so they are left without it, as under
- * `nosources-*`. Otherwise null: the module maps carry the text; so too
- * when the devtool's source names do not lead back to their files (an app's
- * `devtoolModuleFilenameTemplate`: `namesRoundTrip`), as the fill finds a
- * file by its name. The maps are the ones the devtool records on the assets
- * they map (`info.related.sourceMap`): an asset of the app may end in
- * `.map` too.
+ * `nosources-*`. Otherwise null: the module maps carry the text. The
+ * recorder declines a file whose source name does not lead back to it (an
+ * app's `devtoolModuleFilenameTemplate`: `namesRoundTrip`), as the fill
+ * finds a file by its name. The maps are the ones the devtool records on
+ * the assets they map (`info.related.sourceMap`): an asset of the app may
+ * end in `.map` too.
  */
 export function emittedMapTexts(
   compiler: EmittedMapsCompilerLike,
@@ -233,22 +243,24 @@ export function emittedMapTexts(
     return null
   }
   if (!fill || devtool.includes('nosources')) {
-    return () => {}
+    return () => true
   }
   const { output } = compiler.options
-  const roundTrips = (template: unknown) =>
-    namesRoundTrip(template, compiler.context, output.path ?? compiler.context)
-  if (
-    !roundTrips(output.devtoolModuleFilenameTemplate) ||
-    !roundTrips(output.devtoolFallbackModuleFilenameTemplate)
-  ) {
-    return null
-  }
+  const roundTrips = (template: unknown, file: string) =>
+    namesRoundTrip(
+      template,
+      compiler.context,
+      output.path ?? compiler.context,
+      file,
+    )
   /** By normalized path; null: not a file the host compiles. A deleted file's goes. */
   const texts = new Map<string, string | null>()
+  /** Whether the fill finds a file by its source names (`namesRoundTrip`), by normalized path. */
+  const found = new Map<string, boolean>()
   compiler.hooks.watchRun.tap('tanstack:emitted-maps', () => {
     for (const file of compiler.removedFiles ?? []) {
       texts.delete(path.normalize(file))
+      found.delete(path.normalize(file))
     }
   })
   const textOf = (file: string): string | undefined => {
@@ -393,6 +405,17 @@ export function emittedMapTexts(
     )
   })
   return (file, text) => {
-    texts.set(path.normalize(file), text)
+    const key = path.normalize(file)
+    let finds = found.get(key)
+    if (finds === undefined) {
+      finds =
+        roundTrips(output.devtoolModuleFilenameTemplate, key) &&
+        roundTrips(output.devtoolFallbackModuleFilenameTemplate, key)
+      found.set(key, finds)
+    }
+    if (finds) {
+      texts.set(key, text)
+    }
+    return finds
   }
 }

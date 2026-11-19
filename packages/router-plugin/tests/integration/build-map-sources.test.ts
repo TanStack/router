@@ -135,12 +135,45 @@ test.each(['rspack', 'webpack'] as const)(
 // The app names the sources of its maps (`devtoolModuleFilenameTemplate`):
 // whatever the names, the sources naming the route file hold its text, and
 // the split component's code maps to its line there.
+
+/** A name per directory: route files in their own namespace, the other files by absolute path. */
+function routesApart(info: {
+  resourcePath: string
+  absoluteResourcePath: string
+}) {
+  return info.resourcePath.includes('routes/')
+    ? `app://routes/${info.resourcePath}`
+    : info.absoluteResourcePath
+}
+
+/** Every source of `maps` naming the route file holds `text`; one does. */
+function expectRouteText(
+  maps: Awaited<ReturnType<typeof emittedMaps>>,
+  text: string,
+) {
+  const named = maps.flatMap(({ map }) =>
+    map.sources.flatMap((source, i) =>
+      source?.split('?')[0]!.endsWith('routes/index.tsx')
+        ? [{ source, content: map.sourcesContent?.[i] ?? null }]
+        : [],
+    ),
+  )
+  expect(named.length, 'a source names the route file').toBeGreaterThan(0)
+  for (const { source, content } of named) {
+    expect(content, source).toBe(text)
+  }
+}
+
 const templates = [
   { name: 'the string [resource-path]', template: '[resource-path]' },
   {
     name: 'a function naming app://bundle/<path>',
     template: (info: { resourcePath: string }) =>
       `app://bundle/${info.resourcePath}`,
+  },
+  {
+    name: 'a function naming route files apart',
+    template: routesApart,
   },
 ]
 const templateBuilds = (['rspack', 'webpack'] as const).flatMap((bundler) =>
@@ -165,17 +198,7 @@ test.each(templateBuilds)(
     })
     expect(app.where('MARK_PAGE ')).toBe('lazy')
     const maps = await emittedMaps(app.outDir)
-    const named = maps.flatMap(({ map }) =>
-      map.sources.flatMap((source, i) =>
-        source?.split('?')[0]!.endsWith('routes/index.tsx')
-          ? [{ source, content: map.sourcesContent?.[i] ?? null }]
-          : [],
-      ),
-    )
-    expect(named.length, 'a source names the route file').toBeGreaterThan(0)
-    for (const { source, content } of named) {
-      expect(content, source).toBe(route)
-    }
+    expectRouteText(maps, route)
     const page = maps.find(({ code }) => code.includes('MARK_PAGE '))
     const original = originalPositionOf(
       page!.map,
@@ -185,6 +208,31 @@ test.each(templateBuilds)(
     expect(original?.line).toBe(
       positionAt(route, tokenOffsets(route, { string: 'MARK_PAGE ' })[0]!).line,
     )
+  },
+  timeout,
+)
+
+// After an edit in watch mode, the maps hold the route file as it is now.
+test.each(['rspack', 'webpack'] as const)(
+  'a %s development watch build whose source names differ per directory holds the edited route text in every map',
+  async (bundler) => {
+    const edited = route.replace("'MARK_PAGE '", "'MARK_PAGE_V2 '")
+    const app = await build({
+      bundler,
+      env: 'client',
+      mode: 'development',
+      minify: false,
+      sourcemap: true,
+      files,
+      rebuildAfter: { 'routes/index.tsx': edited },
+      configure: (options) => {
+        ;(
+          options.output as Record<string, unknown>
+        ).devtoolModuleFilenameTemplate = routesApart
+      },
+    })
+    expect(app.where('MARK_PAGE_V2 ')).toBe('lazy')
+    expectRouteText(await emittedMaps(app.outDir), edited)
   },
   timeout,
 )
