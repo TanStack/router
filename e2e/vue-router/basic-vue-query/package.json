@@ -18,7 +18,7 @@
     "@tanstack/vue-router-devtools": "workspace:^",
     "redaxios": "catalog:",
     "tailwindcss": "^4.3.5",
-    "vue": "^3.5.45"
+    "vue": "^3.5.44"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",

@@ -14,7 +14,7 @@
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-router-devtools": "workspace:^",
     "@tanstack/vue-start": "workspace:^",
-    "vue": "^3.5.45"
+    "vue": "^3.5.44"
   },
   "devDependencies": {
     "@tanstack/router-e2e-utils": "workspace:^",

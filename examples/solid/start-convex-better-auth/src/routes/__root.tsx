@@ -12,8 +12,8 @@ export const Route = createRootRoute({
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
   beforeLoad: async () => {
-    const { session, token } = await fetchAuth()
-    return { session, token }
+    const { token } = await fetchAuth()
+    return { token }
   },
   shellComponent: RootDocument,
 })

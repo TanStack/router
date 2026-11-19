@@ -16,7 +16,7 @@
     "@tanstack/vue-start": "workspace:^",
     "express": "^5.3.0",
     "redaxios": "catalog:",
-    "vue": "^3.5.45"
+    "vue": "^3.5.44"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",

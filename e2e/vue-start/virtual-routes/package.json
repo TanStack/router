@@ -18,7 +18,7 @@
     "@tanstack/vue-start": "workspace:^",
     "redaxios": "catalog:",
     "tailwind-merge": "^3.7.0",
-    "vue": "^3.5.45",
+    "vue": "^3.5.44",
     "zod": "^4.6.7"
   },
   "devDependencies": {

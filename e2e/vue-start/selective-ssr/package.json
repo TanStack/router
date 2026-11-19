@@ -14,7 +14,7 @@
   "dependencies": {
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-start": "workspace:^",
-    "vue": "^3.5.45",
+    "vue": "^3.5.44",
     "zod": "^4.6.7"
   },
   "devDependencies": {

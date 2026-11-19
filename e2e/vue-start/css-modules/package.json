@@ -16,7 +16,7 @@
   "dependencies": {
     "@tanstack/vue-router": "workspace:*",
     "@tanstack/vue-start": "workspace:*",
-    "vue": "^3.5.45"
+    "vue": "^3.5.44"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",
