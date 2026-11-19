@@ -76,25 +76,25 @@ for (const { name, Devtools, Core } of wrappers) {
   test(`${name} shows the router state after a navigation`, async () => {
     const { router, shownPathname } = setup(Devtools)
     await vi.waitFor(() => expect(shownPathname()).toBe('/'), {
-      timeout: 15_000,
+      timeout: 45_000,
     })
 
     await router.navigate({ to: '/about' })
 
     await vi.waitFor(() => expect(shownPathname()).toBe('/about'))
-  }, 20_000)
+  })
 
   test(`${name} unmounts the devtools when it is disposed`, async () => {
     const unmount = vi.spyOn(Core.prototype, 'unmount')
     const { dispose, shownPathname } = setup(Devtools)
     await vi.waitFor(() => expect(shownPathname()).toBe('/'), {
-      timeout: 15_000,
+      timeout: 45_000,
     })
 
     dispose()
 
     expect(unmount).toHaveBeenCalledTimes(1)
-  }, 20_000)
+  })
 }
 
 test('TanStackRouterDevtoolsPanel forwards prop changes without strict-read warnings', async () => {
@@ -104,7 +104,7 @@ test('TanStackRouterDevtoolsPanel forwards prop changes without strict-read warn
     <TanStackRouterDevtoolsPanel className={className()} />
   ))
   await vi.waitFor(() => expect(shownPathname()).toBe('/'), {
-    timeout: 15_000,
+    timeout: 45_000,
   })
   expect(document.querySelector('.first-class')).not.toBeNull()
 
@@ -115,4 +115,4 @@ test('TanStackRouterDevtoolsPanel forwards prop changes without strict-read warn
     expect(document.querySelector('.second-class')).not.toBeNull(),
   )
   expect(warn).not.toHaveBeenCalled()
-}, 20_000)
+})

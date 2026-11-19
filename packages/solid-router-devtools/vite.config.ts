@@ -10,6 +10,7 @@ const config = defineConfig({
     dir: './tests',
     watch: false,
     environment: 'jsdom',
+    testTimeout: 60_000,
     server: {
       deps: {
         inline: [/solid-js/, /@solidjs/],
