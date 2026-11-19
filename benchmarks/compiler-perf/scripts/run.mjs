@@ -139,18 +139,63 @@ const SOAK_SNAPSHOTS = new Set(
 )
 const SOAK_BUNDLERS = args['soak-bundlers'].split(',').filter(Boolean)
 const SOAK_MODES = args['soak-modes'].split(',').filter(Boolean)
-const variants = args.variants.split(',').filter(Boolean)
-for (const variant of variants) {
-  if (!ALL_VARIANTS.includes(variant)) {
-    throw new Error(`Unknown variant ${variant}`)
+const usage = (message) => {
+  console.error(`${message} (see --help)`)
+  process.exit(2)
+}
+const unknown = (what, names, known) => {
+  const bad = names.filter((name) => !known.includes(name))
+  if (bad.length) {
+    usage(`Unknown ${what}: ${bad.join(', ')}; known: ${known.join(', ')}`)
   }
 }
+const variants = args.variants.split(',').filter(Boolean)
+unknown('variant', variants, ALL_VARIANTS)
 const scenarios = new Set(args.scenarios.split(',').filter(Boolean))
+unknown('scenario', [...scenarios], [...ALL_SCENARIOS, ...EXTRA_SCENARIOS])
 if (scenarios.has('rsbuild')) {
+  scenarios.delete('rsbuild')
   scenarios.add('rsbuild-build')
   scenarios.add('rsbuild-dev')
 }
 const floorKinds = new Set(args.floor.split(',').filter(Boolean))
+unknown('floor scenario', [...floorKinds], FLOOR_KINDS)
+unknown('soak bundler', SOAK_BUNDLERS, ['vite', 'rsbuild'])
+unknown('soak mode', SOAK_MODES, ['real', 'replay', 'transform-off'])
+
+/** The requested scenarios that do something for `variant`. */
+function scenariosFor(variant) {
+  const runs = (scenario) => {
+    switch (scenario) {
+      case 'rsbuild-build':
+      case 'rsbuild-dev':
+        return hasRsbuild(variant)
+      case 'floor':
+        return [...floorKinds].some(
+          (kind) => kind !== 'rsbuild-build' || hasRsbuild(variant),
+        )
+      case 'soak':
+        return SOAK_BUNDLERS.some(
+          (bundler) =>
+            (bundler === 'vite' || hasRsbuild(variant)) &&
+            SOAK_MODES.some(
+              (mode) =>
+                mode !== 'transform-off' ||
+                (bundler === 'vite' && !isStart(variant)),
+            ),
+        )
+      default:
+        return true
+    }
+  }
+  return new Set([...scenarios].filter(runs))
+}
+const planned = new Map(variants.map((v) => [v, scenariosFor(v)]))
+if (![...planned.values()].some((set) => set.size)) {
+  usage(
+    `Nothing to run: scenarios ${[...scenarios].join(',') || '(none)'} schedule nothing for variants ${variants.join(',') || '(none)'} (rsbuild-*: react-start only)`,
+  )
+}
 const outDir = path.resolve(
   args.out ?? path.join(benchRoot, 'results', args.label),
 )
@@ -2055,19 +2100,24 @@ async function main() {
     log(
       `${variant}: generated ${info.fileCount} files (${info.routeCount} route files, ${info.serverFnCount} server fns), hash ${info.hash}`,
     )
+    const want = planned.get(variant)
+    const skipped = [...scenarios].filter((scenario) => !want.has(scenario))
+    if (skipped.length) {
+      log(`${variant}: ${skipped.join(', ')} not supported, skipped`)
+    }
 
-    if (scenarios.has('build')) {
+    if (want.has('build')) {
       await repeat(`${variant}/build`, () => viteBuildRun(variant))
     }
-    if (scenarios.has('dev-compile')) {
+    if (want.has('dev-compile')) {
       await repeat(`${variant}/dev-compile`, () => devCompileRun(variant))
     }
-    if (scenarios.has('dev-cold')) {
+    if (want.has('dev-cold')) {
       await repeat(`${variant}/dev-cold`, () =>
         devBrowserRun(variant, { cold: true }),
       )
     }
-    if (scenarios.has('dev-warm')) {
+    if (want.has('dev-warm')) {
       // The first (warmup) run fills the dependency cache that later runs reuse.
       await repeat(
         `${variant}/dev-warm`,
@@ -2075,35 +2125,31 @@ async function main() {
         { warmup: Math.max(1, WARMUP) },
       )
     }
-    if (scenarios.has('hmr')) {
+    if (want.has('hmr')) {
       await hmrScenario(variant)
     }
-    if (hasRsbuild(variant)) {
-      if (scenarios.has('rsbuild-build')) {
-        await repeat(`${variant}/rsbuild-build`, () => rsbuildBuildRun(variant))
-      }
-      if (scenarios.has('rsbuild-dev')) {
-        await repeat(`${variant}/rsbuild-dev-cold`, () =>
-          rsbuildDevRun(variant),
-        )
-      }
+    if (want.has('rsbuild-build')) {
+      await repeat(`${variant}/rsbuild-build`, () => rsbuildBuildRun(variant))
     }
-    if (scenarios.has('floor')) {
+    if (want.has('rsbuild-dev')) {
+      await repeat(`${variant}/rsbuild-dev-cold`, () => rsbuildDevRun(variant))
+    }
+    if (want.has('floor')) {
       await floorScenario(variant)
     }
-    if (scenarios.has('memory')) {
+    if (want.has('memory')) {
       await memoryScenario(variant)
     }
-    if (scenarios.has('leak')) {
+    if (want.has('leak')) {
       await repeat(`${variant}/leak`, () => leakRun(variant), {
         runs: 1,
         warmup: 0,
       })
     }
-    if (scenarios.has('soak')) {
+    if (want.has('soak')) {
       await soakScenario(variant)
     }
-    if (scenarios.has('profile')) {
+    if (want.has('profile')) {
       await profileScenario(variant)
     }
   }

@@ -54,7 +54,9 @@ Useful options (`--help` lists all):
   per scenario, but Solid's own JSX transform runs Babel in every variant.
 - `--scenarios build,dev-compile,dev-cold,dev-warm,hmr,rsbuild,profile` (the
   default set); also `rsbuild-build`/`rsbuild-dev` (the halves of `rsbuild`),
-  `floor`, `memory`, `leak` (see below)
+  `floor`, `memory`, `leak` (see below). Unknown variant or scenario names,
+  and a selection that runs nothing (e.g. `rsbuild-build` with only Solid
+  variants; rsbuild is react-start only), exit with status 2
 - `--runs 5 --warmup 1` (startup/build), `--hmr-iterations 20 --hmr-warmup 3`
 - `--skip-package-builds` when the packages are already built
 - `--max-busy 1.5`: before every run (and every HMR edit) the harness samples
