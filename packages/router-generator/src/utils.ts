@@ -1107,6 +1107,33 @@ function checkUnique<TElement>(routes: Array<TElement>, key: keyof TElement) {
   return undefined
 }
 
+/**
+ * Different files can derive the same variable name, e.g. the pathless layout
+ * `_auth.tsx` and the route `auth.tsx` both become `Auth`. Number the later
+ * ones so the generated route tree never declares an identifier twice.
+ */
+export function ensureUniqueVariableNames(nodes: Array<RouteNode>) {
+  const baseNames = new Set<string>()
+  for (const node of nodes) {
+    // Cached nodes are reused across runs, so always start from the base name.
+    node._baseVariableName ??= node.variableName
+    baseNames.add(node._baseVariableName)
+  }
+
+  const used = new Set<string>(['root'])
+  for (const node of nodes) {
+    const base = node._baseVariableName!
+    let name = base
+    let i = 1
+    // A numbered name must not take another file's own name, e.g. `Auth2`.
+    while (used.has(name) || (name !== base && baseNames.has(name))) {
+      name = `${base}${++i}`
+    }
+    used.add(name)
+    node.variableName = name
+  }
+}
+
 export function checkRouteFullPathUniqueness(
   _routes: Array<RouteNode>,
   config: Config,
