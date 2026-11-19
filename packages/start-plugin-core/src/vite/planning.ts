@@ -144,6 +144,11 @@ export function createViteTestConfigPlan(opts: {
   if (opts.entryPaths.router) {
     alias[ENTRY_POINTS.router] = normalizePath(opts.entryPaths.router)
   }
+  // Compiled client code imports `createClientRpc` from this module. No
+  // server takes the request of a client test, so the call goes to the mock
+  // that `mockServerFn` registered instead.
+  alias[`@tanstack/${opts.framework}-start/client-rpc`] =
+    `@tanstack/${opts.framework}-start/testing/client-rpc`
 
   return {
     environments: {

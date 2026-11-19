@@ -8,7 +8,7 @@ A TanStack Start app that tests its own code with Vitest. `tanstackStart()` is i
 pnpm nx run tanstack-react-start-e2e-vitest-app:test:e2e
 ```
 
-`test:e2e` type-checks the project in this directory. It then runs the tests in a copy of the project whose `@tanstack/*` packages are installed as in a user's project. The copy runs them twice, first with an empty Vitest cache and then from the warm cache.
+`test:e2e` runs in a copy of the project whose `@tanstack/*` packages are installed as in a user's project. The copy type-checks the project and then runs the tests twice, first with an empty Vitest cache and then from the warm cache.
 
 [Running an e2e project as an installed project](../../../scripts/e2e/run-as-installed.md) explains why the tests run in a copy and how the copy is made.
 

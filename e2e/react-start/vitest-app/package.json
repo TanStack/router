@@ -4,10 +4,9 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "test:e2e": "pnpm run test:e2e:types && pnpm run test:e2e:installed",
-    "test:e2e:types": "tsc --noEmit",
-    "test:e2e:installed": "node ../../../scripts/e2e/run-as-installed.mjs test:e2e:cold-then-cached",
-    "test:e2e:cold-then-cached": "vitest run && vitest run"
+    "test:e2e": "pnpm run test:e2e:installed",
+    "test:e2e:installed": "node ../../../scripts/e2e/run-as-installed.mjs test:e2e:in-copy",
+    "test:e2e:in-copy": "tsc6 --noEmit && vitest run && vitest run"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",

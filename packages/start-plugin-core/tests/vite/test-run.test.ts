@@ -1,7 +1,9 @@
+import { existsSync } from 'node:fs'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   excludeFromTestRuns,
   testRunRouterEntryPlugin,
+  vitestSetupFilePlugin,
 } from '../../src/vite/test-run'
 import type { ConfigEnv, Plugin } from 'vite'
 
@@ -71,5 +73,38 @@ describe('testRunRouterEntryPlugin', () => {
     expect(callHook(plugin.load, resolved)).toBe(
       'export function getRouter() {}\n',
     )
+  })
+})
+
+describe('vitestSetupFilePlugin', () => {
+  type ConfigureVitest = (context: {
+    project: { config: { setupFiles: Array<string> } }
+  }) => void
+
+  function configureVitest(isTestRun: boolean, setupFiles: Array<string>) {
+    const plugin = vitestSetupFilePlugin(() => isTestRun) as Plugin & {
+      configureVitest: ConfigureVitest
+    }
+    plugin.configureVitest({ project: { config: { setupFiles } } })
+  }
+
+  test('adds the setup file of Start after the ones of the project, once', () => {
+    const setupFiles = ['/project/tests/setup.ts']
+
+    configureVitest(true, setupFiles)
+    configureVitest(true, setupFiles)
+
+    expect(setupFiles).toHaveLength(2)
+    expect(setupFiles[0]).toBe('/project/tests/setup.ts')
+    expect(setupFiles[1]).toMatch(/start-client-core\/.*testing\/vitest\.js$/)
+    expect(existsSync(setupFiles[1]!)).toBe(true)
+  })
+
+  test('leaves a project alone outside of a test run', () => {
+    const setupFiles: Array<string> = []
+
+    configureVitest(false, setupFiles)
+
+    expect(setupFiles).toEqual([])
   })
 })

@@ -40,6 +40,8 @@ export {
   type FunctionClientResultWithContext,
   type AssignAllClientContextBeforeNext,
   type AssignAllMiddleware,
+  type AssignAllServerFnContext,
+  type AssignAllServerRequestContext,
   type FunctionMiddlewareAfterValidator,
   type FunctionMiddlewareClientFn,
   type FunctionMiddlewareServerFnResult,

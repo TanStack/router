@@ -44,6 +44,7 @@ export default mergeConfig(
         './src/request-response.ts',
         './src/constants.ts',
         './src/virtual-modules.ts',
+        './src/testing/index.ts',
         './src/fake-start-server-fn-resolver.ts',
         './src/empty-plugin-adapters.ts',
       ],
