@@ -132,6 +132,15 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   `start-plugin-core/tests/integration/pages/hydrate-ids-and-captures.test.ts`: "client: split children passing the
   component's arguments as a shorthand property render its props". Fix: emit `arguments: tsrArguments` (React) and
   `arguments: props.tsrArguments` (Solid) for a shorthand property. Workaround: write `{ arguments: arguments }`.
+- **A nested `<Hydrate>` inside a `function` callback reads the component's `arguments`, not the callback's** (Astra
+  round 4 hydrate B4; `main` is wrong too, differently: `[object Object]`): an inner placeholder that needs
+  `arguments` makes the outer extraction forward the outer component's arguments unconditionally, although the inner
+  placeholder stands inside `function (row) {…}`, whose own `arguments` it should read. The server renders `row`, the
+  client `page` (React #418). Not fixed (R182 precedent: not a one-line change). SPEC J5.2.
+  `start-plugin-core/tests/integration/pages/hydrate-ids-and-captures.test.ts`: "client: a nested boundary in a
+  function callback reads the arguments of the callback". Fix: each `arguments` site gets its lexical owner (the
+  nearest non-arrow function): forwarded from the parent only when that owner is outside the parent's moved region.
+  Workaround: read the callback's parameter.
 - **Solid: `ref={field}` in `<Hydrate>` children naming a module-level `let` assigns the chunk's copy** (Astra hydrate
   B4; `main` too): the chunk copies the `let` (R161 D1), and the `hydrate-module-write` refusal (H4) misses the write
   because a JSX ref is not an assignment before Solid lowers it. Code outside the boundary reads `undefined`. SPEC J5.5,

@@ -641,6 +641,27 @@ export function Icons({ ids }) {
     },
   )
 
+  // Bug: a nested boundary inside a `function` callback reading `arguments`
+  // makes its outer boundary forward the component's arguments
+  // unconditionally, so the inner children read those, not the callback's:
+  // the server renders `row`, the client `page` (React #418).
+  // Impact: wrong text after hydration; main is wrong too (`[object
+  // Object]`). Not fixed (R182 precedent: it needs a lexical owner per
+  // `arguments` site, not a one-line change).
+  // Source: Astra review of #8817, round 4, hydrate B4.
+  test.fails(
+    'client: a nested boundary in a function callback reads the arguments of the callback',
+    async () => {
+      const code = `${head}export function Page(props: { tag: string }) {
+  return <Hydrate when={load()}><section>{['row'].map(function (row) { return <Hydrate key={row} when={load()}><b>{String(arguments[0]?.tag ?? arguments[0])}</b></Hydrate> })}</section></Hydrate>
+}`
+      const { client } = await expectRendersLikeSource(await hosts(), code, {
+        props: { tag: 'page' },
+      })
+      expect(client.html).toContain('<b>row</b>')
+    },
+  )
+
   // On main, valid code fails to build.
   // Source: SolidStart compile.spec.ts "allows `this` and `arguments` in a
   // function expression"
