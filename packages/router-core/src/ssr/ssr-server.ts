@@ -444,13 +444,21 @@ export function attachRouterServerSsrUtils({
           matchesToDehydrate,
           cacheKey,
         )
+        // Inlined route ids would look like URLs to crawlers, so key the
+        // routes like match ids; `hydrate` decodes them. The root key has no
+        // '/', so request assets still merge into it.
+        const routes: FilteredRoutes = {}
+        for (const routeId in preparedManifest.routes) {
+          routes[dehydrateSsrMatchId(routeId)] =
+            preparedManifest.routes[routeId]!
+        }
 
         manifestToDehydrate = composeManifest(
           manifest.scriptFormat,
           preparedManifest.inlineCssHrefs
             ? createInlineCssPlaceholderAsset()
             : undefined,
-          preparedManifest.routes,
+          routes,
           opts?.requestAssets,
         )
       }
