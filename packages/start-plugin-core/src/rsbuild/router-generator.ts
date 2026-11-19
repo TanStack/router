@@ -99,7 +99,11 @@ export function createRsbuildRouteGenerator(opts: {
   return {
     routes: registry,
     build: () => session.build(),
-    watchRun: (modified, removed) => session.watchRun(modified, removed),
+    // (the client tree's module is built again by the host when its routes
+    // changed: `clientRouteTree.stale`)
+    watchRun: async (modified, removed) => {
+      await session.watchRun(modified, removed)
+    },
     close: () => session.close(),
     onRoutesChanged(listener) {
       return onRoutesChanged(context, (next, previous) => {

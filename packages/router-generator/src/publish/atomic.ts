@@ -73,8 +73,17 @@ export class AtomicPublisher {
   private tmpDirReady: Promise<unknown> | undefined
   /** Destination directories whose renames from `tmpDir` cross devices. */
   private readonly besideDestination = new Set<string>()
+  /** The files replaced since the last `takeWritten` (their real paths). */
+  private written = new Set<string>()
 
   constructor(private readonly tmpDir: string) {}
+
+  /** The files replaced since the last call (their real paths), then none. */
+  takeWritten(): ReadonlySet<string> {
+    const written = this.written
+    this.written = new Set()
+    return written
+  }
 
   /**
    * Replaces `destination` with `content`. With `expected`, the file must still
@@ -184,6 +193,7 @@ export class AtomicPublisher {
         }
       }
       await fsp.rename(temporary, file)
+      this.written.add(file)
     } catch (error) {
       await fsp.rm(temporary, { force: true }).catch(() => {})
       throw error

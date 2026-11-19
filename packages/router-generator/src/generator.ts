@@ -331,6 +331,14 @@ export class Generator {
     return this.files.get(file)?.realPath
   }
 
+  /**
+   * The files the generator wrote since the last call (the route tree, the
+   * route files it kept up: their real paths), then none.
+   */
+  public takeWrittenFiles(): ReadonlySet<string> {
+    return this.publisher.takeWritten()
+  }
+
   /** Whether a run has generated the route tree (and its registry) yet. */
   public hasGenerated(): boolean {
     return this.model !== undefined
