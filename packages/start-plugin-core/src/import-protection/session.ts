@@ -565,6 +565,14 @@ const NO_ERROR: CompileOutcome = { error: null }
 /** The trace of a report that prints none (each `violationInfo` copies it). */
 const NO_TRACE: Trace = { steps: [], fromEntry: false }
 
+/**
+ * The id of an importer's records: the importer, of a bundler layer when it
+ * has one (Rspack: a file compiled in two layers has two modules).
+ */
+function recordId(importerId: string, layer: string | undefined): string {
+  return layer === undefined ? importerId : `${layer}\u0000${importerId}`
+}
+
 /** One Start environment's import protection. */
 class ImportProtectionEnv {
   /** Resolved edges of every judged importer (trace steps). */
@@ -574,7 +582,15 @@ class ImportProtectionEnv {
   /** Dev report queue (`useDevReporter`). */
   reporter: DevReporter | null = null
   private readonly modules = new Map<string, RegisteredModule>()
-  private readonly byImporter = new Map<string, Set<string>>()
+  /**
+   * The edge modules of each importer's last compile, by record id
+   * (`recordId`: an importer of a layer has records of its own, as its edge
+   * keys are the layer's).
+   */
+  private readonly byImporter = new Map<
+    string,
+    { importerId: string; keys: Set<string> }
+  >()
   private readonly importersByFile = new IdsByFile()
   /** `allowImport`'s answers: one per import (`dedupeKey`) for this environment's session or build. */
   private readonly answers = new Map<string, Promise<boolean>>()
@@ -731,14 +747,17 @@ class ImportProtectionEnv {
    * served as its mock unless it has real demand (`allowsSelf`), and the
    * verdict is written to the served ledger; a build reports a served mock on
    * survival (`surviving`), a dev compile now, as its only violation (its
-   * imports reach nothing).
+   * imports reach nothing). `layer`: the bundler's layer of the module
+   * (Rspack: a file both the RSC and the SSR layer import is a module of
+   * each, with violations of its own).
    */
   afterCompile(
     importerId: string,
     out: CompiledOutputLike,
+    layer?: string,
   ): CompileOutcome | Promise<CompileOutcome> {
     const violations = violationsOf(out)
-    this.register(importerId, violations)
+    this.register(importerId, violations, layer)
     if (!(IMPORT_EDGES_PLANNER in out.facts.planners)) {
       // the planner did not run (the module imports nothing now): what it
       // imported before is no edge any more, nor a real demand it made
@@ -974,9 +993,10 @@ class ImportProtectionEnv {
    * Replays an Rspack module's `buildInfo` record (a module restored from the
    * persistent cache): an importer's violations and edges, and what was
    * served (`mismatches` compares it with this compilation's importers). A
-   * module compiled in this process wrote its own.
+   * module compiled in this process wrote its own. `layer`: the module's
+   * (`afterCompile`).
    */
-  replay(importerId: string, info: unknown): void {
+  replay(importerId: string, info: unknown, layer?: string): void {
     const record = info as RspackImportProtectionBuildInfo | undefined
     if (record?.version === 1 && record.env === this.name) {
       const ref = this.ip.ids.parse(importerId)
@@ -986,7 +1006,7 @@ class ImportProtectionEnv {
         }
         return
       }
-      this.register(importerId, record.violations)
+      this.register(importerId, record.violations, layer)
       const self = record.violations.find((v) => v.self)
       if (self && !this.served.has(normalizePath(importerId))) {
         this.served.set(normalizePath(importerId), {
@@ -1047,16 +1067,16 @@ class ImportProtectionEnv {
   /**
    * Development: whether an Rspack module's record holds violations this
    * session must report again (a module restored from the persistent cache:
-   * another session reported them).
+   * another session reported them). `layer`: the module's (`afterCompile`).
    */
-  unjudged(importerId: string, info: unknown): boolean {
+  unjudged(importerId: string, info: unknown, layer?: string): boolean {
     const record = info as RspackImportProtectionBuildInfo | undefined
     return (
       this.ip.config.mode === 'dev' &&
       record?.version === 1 &&
       record.env === this.name &&
       record.violations.length > 0 &&
-      !this.byImporter.has(importerId)
+      !this.byImporter.has(recordId(importerId, layer))
     )
   }
 
@@ -1126,7 +1146,11 @@ class ImportProtectionEnv {
       : null
   }
 
-  private register(importerId: string, violations: Array<EdgeViolation>): void {
+  private register(
+    importerId: string,
+    violations: Array<EdgeViolation>,
+    layer: string | undefined,
+  ): void {
     const keys = new Set<string>()
     for (const v of violations) {
       if (v.env !== this.name || !v.module) {
@@ -1138,11 +1162,12 @@ class ImportProtectionEnv {
         v,
       )
     }
-    const previous = this.byImporter.get(importerId)
+    const id = recordId(importerId, layer)
+    const previous = this.byImporter.get(id)?.keys
     if (!previous) {
-      this.importersByFile.add(importerId)
+      this.importersByFile.add(id, traceFile(importerId))
     }
-    this.byImporter.set(importerId, keys)
+    this.byImporter.set(id, { importerId, keys })
     if (previous) {
       for (const key of previous) {
         if (!keys.has(key)) {
@@ -1348,10 +1373,10 @@ class ImportProtectionEnv {
         this.edges.delete(importerId)
       }
     }
-    for (const importerId of [...this.byImporter.keys()]) {
+    for (const [id, { importerId }] of [...this.byImporter]) {
       if (!holds(importerId)) {
-        this.importersByFile.delete(importerId)
-        this.forgetImporter(importerId)
+        this.importersByFile.delete(id, traceFile(importerId))
+        this.forgetImporter(id)
       }
     }
   }
@@ -1359,16 +1384,17 @@ class ImportProtectionEnv {
   /** Forgets a deleted file's importer records (edges, violations of its ids). `allowImport` is asked once per import for the session: its answers stay. */
   forget(path: string): void {
     this.edges.forget(path)
-    for (const importerId of this.importersByFile.take(path)) {
-      this.forgetImporter(importerId)
+    for (const id of this.importersByFile.take(path)) {
+      this.forgetImporter(id)
     }
   }
 
-  private forgetImporter(importerId: string): void {
+  /** Forgets an importer's records (by `recordId`). */
+  private forgetImporter(id: string): void {
+    const { importerId, keys } = this.byImporter.get(id)!
+    this.byImporter.delete(id)
     this.served.delete(normalizePath(importerId))
-    const keys = this.byImporter.get(importerId)
-    this.byImporter.delete(importerId)
-    for (const key of keys ?? []) {
+    for (const key of keys) {
       this.release(importerId, key)
     }
   }

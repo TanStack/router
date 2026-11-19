@@ -885,7 +885,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                     ip &&
                     module.resource &&
                     !env.compiled.has(module.resource) &&
-                    ipEnv.unjudged(canonicalResource(module.resource), ip)
+                    ipEnv.unjudged(
+                      canonicalResource(module.resource),
+                      ip,
+                      module.layer ?? undefined,
+                    )
                   ) {
                     unjudged.add(module.resource)
                   }
@@ -894,7 +898,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                   const module = m as unknown as ModuleLike
                   const ip = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
                   if (ip && module.resource) {
-                    ipEnv.replay(canonicalResource(module.resource), ip)
+                    ipEnv.replay(
+                      canonicalResource(module.resource),
+                      ip,
+                      module.layer ?? undefined,
+                    )
                   }
                 }
                 const unconfirmed = new Set<string>()
@@ -934,7 +942,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 }
                 const ip = info[RSPACK_BUILD_INFO_KEY]
                 if (ipEnv && !judgesRestored && ip && module.resource) {
-                  ipEnv.replay(canonicalResource(module.resource), ip)
+                  ipEnv.replay(
+                    canonicalResource(module.resource),
+                    ip,
+                    module.layer ?? undefined,
+                  )
                 }
                 addServerFns(snapshot, info)
               }

@@ -49,12 +49,12 @@ export function readSourceFile(path: string): string | null {
  * The module ids of each file (one file has an id per query), so that
  * forgetting a deleted file touches that file's records only: a checkout
  * deleting many files would otherwise pay for every module of the app per file.
+ * A record id that is not a module id gives the file of its module.
  */
 export class IdsByFile {
   private readonly ids = new Map<string, Set<string>>()
 
-  add(id: string): void {
-    const file = traceFile(id)
+  add(id: string, file = traceFile(id)): void {
     let set = this.ids.get(file)
     if (!set) {
       set = new Set()
@@ -64,8 +64,7 @@ export class IdsByFile {
   }
 
   /** Forgets one id. */
-  delete(id: string): void {
-    const file = traceFile(id)
+  delete(id: string, file = traceFile(id)): void {
     const set = this.ids.get(file)
     set?.delete(id)
     if (set?.size === 0) {

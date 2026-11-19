@@ -693,7 +693,12 @@ export class StartRsbuildCompilerSession {
     out: CompiledOutputLike,
   ): Promise<LoaderResult | null> {
     env.compiled.add(ctx.resource)
-    const outcome = this.start.afterCompile(env, id, out)
+    const outcome = this.start.afterCompile(
+      env,
+      id,
+      out,
+      ctx._module?.layer ?? undefined,
+    )
     const { error, mock } = outcome instanceof Promise ? await outcome : outcome
     if (error) {
       throwLocated(ctx, error as DevViolationError)

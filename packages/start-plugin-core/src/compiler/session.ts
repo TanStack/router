@@ -432,14 +432,19 @@ export class StartCompilerSession {
    * `error`-behaviour one fails the module (the host serves no output). A
    * module that is its own violation is served as its mock (`mock`). A
    * promise only when violations are decided now (`log: 'always'`, a
-   * module's own violation in Vite's dev server).
+   * module's own violation in Vite's dev server). `layer`: the bundler's
+   * layer of the module (Rspack).
    */
   afterCompile(
     env: StartCompilerEnvironment,
     id: string,
     out: CompiledOutputLike,
+    layer?: string,
   ): CompileOutcome | Promise<CompileOutcome> {
-    return this.ip?.env(env.name, env.type).afterCompile(id, out) ?? NO_OUTCOME
+    return (
+      this.ip?.env(env.name, env.type).afterCompile(id, out, layer) ??
+      NO_OUTCOME
+    )
   }
 
   /** Import protection's verdict on an id with an asset query, for `afterCompile`; null when it is not denied (`ImportProtectionEnv.assetOutput`). */
