@@ -105,7 +105,12 @@ export function tanstackStart(
                     : ['react-dom/server']),
                   // `@tanstack/react-store` has a dependency on `use-sync-external-store`, which is CJS.
                   // It therefore needs to be included so that it is converted to ESM.
-                  '@tanstack/react-router > @tanstack/react-store',
+                  // The path starts at `@tanstack/react-start`, because a
+                  // package that only uses Start's compile-time APIs (and runs
+                  // its tests with this plugin) may not depend on
+                  // `@tanstack/react-router` itself, and Vite resolves the path
+                  // from the project.
+                  '@tanstack/react-start > @tanstack/react-router > @tanstack/react-store',
                   ...(options.optimizeDeps?.exclude?.find(
                     (x) => x === '@tanstack/react-form',
                   )

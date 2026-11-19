@@ -7,6 +7,7 @@ import type { GeneratorEvent } from '@tanstack/router-generator'
 import type { FSWatcher } from 'chokidar'
 import type { UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
+import type { RouterGeneratorHostOptions } from './host-options'
 import type { RouterPluginContext } from './router-plugin-context'
 
 const PLUGIN_NAME = 'unplugin:router-generator'
@@ -14,10 +15,11 @@ const PLUGIN_NAME = 'unplugin:router-generator'
 export function createRouterGeneratorPlugin(
   options: Partial<Config | (() => Config)> | undefined = {},
   routerPluginContext: RouterPluginContext,
+  hostOptions: RouterGeneratorHostOptions = {},
 ): ReturnType<UnpluginFactory<Partial<Config | (() => Config)> | undefined>> {
   let ROOT: string = process.cwd()
   let userConfig: Config
-  let generator: Generator
+  let generator: Generator | undefined
 
   const getRoutesDirectoryPath = () => {
     return isAbsolute(userConfig.routesDirectory)
@@ -34,9 +36,14 @@ export function createRouterGeneratorPlugin(
     } else {
       userConfig = getConfig(options, ROOT)
     }
+    if (hostOptions.enabled?.({ config: userConfig, root: ROOT }) === false) {
+      generator = undefined
+      return
+    }
     generator = new Generator({
       config: userConfig,
       root: ROOT,
+      writeRouteFiles: hostOptions.writeRouteFiles?.(),
     })
   }
 
@@ -54,6 +61,10 @@ export function createRouterGeneratorPlugin(
       generatorEvent = { path: filePath, type: opts.event }
     }
 
+    if (!generator) {
+      return
+    }
+
     try {
       await generator.run(generatorEvent)
       routerPluginContext.routesByFile = generator.getRoutesByFileMap()
@@ -66,6 +77,9 @@ export function createRouterGeneratorPlugin(
     name: 'tanstack:router-generator',
     enforce: 'pre',
     async watchChange(id, { event }) {
+      if (hostOptions.watch?.() === false) {
+        return
+      }
       await generate({
         file: id,
         event,

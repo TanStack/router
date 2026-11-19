@@ -7,7 +7,8 @@
  *
  * The app links the workspace's `@tanstack/react-start` and the
  * `@tanstack/react-router`, `react` and `react-dom` it uses, as an installed
- * app would.
+ * app would. A package that only uses Start's compile-time APIs links fewer
+ * (`createStartApp`'s `dependencies`).
  */
 import { realpathSync } from 'node:fs'
 import {
@@ -64,10 +65,18 @@ export interface StartApp {
  * `vite` or `rsbuild` in the app's directory does (the generator and
  * Rsbuild's virtual modules write under it). Both are undone when the test
  * finishes.
+ *
+ * `dependencies` are the packages the app depends on besides
+ * `@tanstack/react-start`: only these resolve from the app's directory.
  */
 export async function createStartApp(
   files: Record<string, string>,
   prefix = 'start-app-',
+  dependencies: Array<string> = [
+    '@tanstack/react-router',
+    'react',
+    'react-dom',
+  ],
 ): Promise<StartApp> {
   const root = realpathSync(await mkdtemp(path.join(os.tmpdir(), prefix)))
   const cwd = process.cwd()
@@ -79,7 +88,7 @@ export async function createStartApp(
   const links: Record<string, string> = {
     '@tanstack/react-start': reactStartDir,
   }
-  for (const name of ['@tanstack/react-router', 'react', 'react-dom']) {
+  for (const name of dependencies) {
     links[name] = realpathSync(path.join(reactStartDir, 'node_modules', name))
   }
   for (const [name, target] of Object.entries(links)) {
@@ -181,6 +190,58 @@ export async function startViteDevServer(
   })
   onTestFinished(() => server.close())
   return server
+}
+
+export interface ViteTestServer {
+  server: ViteDevServer
+  /** The warnings Vite logged while the server started. */
+  warnings: Array<string>
+}
+
+/**
+ * Starts the Vite server a test runner creates to run a project's tests: the
+ * `serve` command and the `test` mode, as Vitest resolves its config, without
+ * HMR. These tests run in a Vitest worker themselves (`process.env.VITEST`),
+ * so Start's plugin sees what it sees in a user's Vitest run. Closed when
+ * the test finishes.
+ *
+ * `browser`: as for tests that run in a browser, the server pre-bundles the
+ * dependencies of the client.
+ */
+export async function startViteTestServer(
+  app: StartApp,
+  options: StartOptions = {},
+  browser = false,
+): Promise<ViteTestServer> {
+  const warnings: Array<string> = []
+  const customLogger = createLogger('error')
+  customLogger.warn = (message) => warnings.push(message)
+  customLogger.warnOnce = customLogger.warn
+  const server = await createServer({
+    root: app.root,
+    configFile: false,
+    mode: 'test',
+    customLogger,
+    // (Vite starts pre-bundling when the server takes requests, which a
+    // server in middleware mode does at once)
+    server: { middlewareMode: browser, hmr: false },
+    // (the pre-bundle is written when it is ready, not when a page has loaded)
+    optimizeDeps: { holdUntilCrawlEnd: false },
+    plugins: [await startPlugin('vite', options)],
+  })
+  onTestFinished(async () => {
+    // Closing the server does not wait for a pre-bundle in progress, which
+    // would then be written into the removed app directory.
+    const optimizer = server.environments.client.depsOptimizer
+    if (browser && optimizer) {
+      await optimizer.scanProcessing
+      await Promise.all(
+        optimizer.metadata.depInfoList.map((dep) => dep.processing),
+      )
+    }
+    await server.close()
+  })
+  return { server, warnings }
 }
 
 /**

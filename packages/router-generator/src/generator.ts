@@ -209,6 +209,7 @@ export class Generator {
   public targetTemplate: TargetTemplate
 
   private root: string
+  private writeRouteFiles: boolean
   private routesDirectoryPath: string
   private sessionId?: string
   private fs: fs
@@ -243,10 +244,21 @@ export class Generator {
   private static componentPieceRegex =
     /[./](component|errorComponent|notFoundComponent|pendingComponent|loader|lazy)[.]/
 
-  constructor(opts: { config: Config; root: string; fs?: fs }) {
+  constructor(opts: {
+    config: Config
+    root: string
+    fs?: fs
+    /**
+     * `false` keeps the generator from scaffolding empty route files and from
+     * updating the route path or factory in existing ones. Only the route tree
+     * is written. A route file that would have been written gets a warning.
+     */
+    writeRouteFiles?: boolean
+  }) {
     this.config = opts.config
     this.logger = logging({ disabled: this.config.disableLogging })
     this.root = opts.root
+    this.writeRouteFiles = opts.writeRouteFiles ?? true
     this.fs = opts.fs || DefaultFileSystem
     this.generatedRouteTreePath = this.getGeneratedRouteTreePath()
     this.targetTemplate = getTargetTemplate(this.config)
@@ -1034,6 +1046,12 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     let shouldWriteTree = false
     // now we need to either scaffold the file or transform it
     if (!existingRouteFile.fileContent) {
+      if (!this.writeRouteFiles) {
+        this.logger.warn(
+          `Warning: Route file "${node.fullPath}" is empty. It is left as it is and is not included in the route tree, because this run does not write route files.`,
+        )
+        return null
+      }
       shouldWriteRouteFile = true
       shouldWriteTree = true
       // Creating a new lazy route file
@@ -1129,8 +1147,14 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
         )
       }
       if (transformResult.result === 'modified') {
-        updatedCacheEntry.fileContent = transformResult.output
-        shouldWriteRouteFile = true
+        if (this.writeRouteFiles) {
+          updatedCacheEntry.fileContent = transformResult.output
+          shouldWriteRouteFile = true
+        } else {
+          this.logger.warn(
+            `Warning: Route file "${node.fullPath}" is out of date: its route path or route factory does not match its location. It is left as it is, because this run does not write route files.`,
+          )
+        }
       }
     }
 
@@ -1369,6 +1393,11 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
 
     // scaffold the root route
     if (!rootNodeFile.fileContent) {
+      if (!this.writeRouteFiles) {
+        throw new Error(
+          `The root route file "${node.fullPath}" is empty, and this run does not write route files.`,
+        )
+      }
       const rootTemplate = this.targetTemplate.rootRoute
       const rootRouteContent = await fillTemplate(
         this.config,

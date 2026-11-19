@@ -8,7 +8,10 @@ import {
 } from '../constants'
 import { getBundlerOptions } from '../utils'
 import type { CompileStartFrameworkOptions } from '../types'
-import type { ResolvedStartEntryPlan } from '../planning'
+import type {
+  ResolvedStartEntryPlan,
+  ResolvedStartTestEntryPlan,
+} from '../planning'
 import type * as vite from 'vite'
 
 export interface ViteResolvedEntryAliases {
@@ -114,16 +117,82 @@ export function createViteConfigPlan(opts: {
       }),
     },
     resolve: {
-      noExternal: [
-        '@tanstack/start**',
-        `@tanstack/${opts.framework}-start**`,
-        ...opts.noExternal,
-      ],
+      noExternal: createNoExternal(opts),
       alias: {
         ...opts.entryAliases.alias,
       },
     },
   } satisfies Pick<vite.UserConfig, 'environments' | 'resolve'>
+}
+
+/**
+ * The part of the Vite config that code needs when Vitest runs it: Start's
+ * packages go through the compiler instead of being pre-bundled or
+ * externalized, and the entries that exist can be imported. Nothing here
+ * plans a build or a dev server of the app.
+ */
+export function createViteTestConfigPlan(opts: {
+  framework: CompileStartFrameworkOptions
+  entryPaths: ResolvedStartTestEntryPlan['entryPaths']
+  optimizeDepsExclude: Array<string>
+  noExternal: Array<string>
+}) {
+  const alias: Record<string, string> = {
+    [ENTRY_POINTS.client]: normalizePath(opts.entryPaths.client),
+    [ENTRY_POINTS.server]: normalizePath(opts.entryPaths.server),
+    [ENTRY_POINTS.start]: normalizePath(opts.entryPaths.start),
+  }
+  // Without a router entry the alias stays unset, and the placeholder of
+  // `testRunRouterEntryPlugin` answers the import.
+  if (opts.entryPaths.router) {
+    alias[ENTRY_POINTS.router] = normalizePath(opts.entryPaths.router)
+  }
+
+  return {
+    environments: {
+      [START_ENVIRONMENT_NAMES.client]: {
+        optimizeDeps: {
+          exclude: opts.optimizeDepsExclude,
+          include: createTestRunOptimizeDepsInclude(opts.framework),
+        },
+      },
+    },
+    resolve: {
+      noExternal: createNoExternal(opts),
+      alias,
+    },
+  } satisfies Pick<vite.UserConfig, 'environments' | 'resolve'>
+}
+
+/**
+ * Dependencies of Router Core that a browser test loads, by a path from the
+ * Start package of the project, which also resolves when the project depends
+ * on Start only.
+ *
+ * Start's packages are not pre-bundled, so Vite's scan at start-up does not
+ * see what they import. Vite found these when a test first imported them,
+ * pre-bundled them and reloaded the page. Vitest's browser mode does not
+ * survive that reliably: a test iframe could fail to start ("did not become
+ * ready within 60000ms").
+ */
+function createTestRunOptimizeDepsInclude(
+  framework: CompileStartFrameworkOptions,
+): Array<string> {
+  const routerCore = `@tanstack/${framework}-start > @tanstack/${framework}-router > @tanstack/router-core`
+  return ['cookie-es', 'seroval', 'seroval-plugins/web'].map(
+    (dependency) => `${routerCore} > ${dependency}`,
+  )
+}
+
+function createNoExternal(opts: {
+  framework: CompileStartFrameworkOptions
+  noExternal: Array<string>
+}) {
+  return [
+    '@tanstack/start**',
+    `@tanstack/${opts.framework}-start**`,
+    ...opts.noExternal,
+  ]
 }
 
 export function createViteDefineConfig(opts: {

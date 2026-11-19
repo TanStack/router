@@ -145,6 +145,10 @@ export interface TanStackStartCoreOptions {
 export interface ResolvedStartConfig {
   root: string
   startFilePath: string | undefined
+  /**
+   * An empty string when a project that runs under a test runner has no
+   * router entry. An app always has one.
+   */
   routerFilePath: string
   srcDirectory: string
   basePaths: NormalizedBasePaths
