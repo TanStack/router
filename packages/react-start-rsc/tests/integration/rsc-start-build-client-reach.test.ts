@@ -161,10 +161,26 @@ export function Ping() {
   return <button data-testid="ping" onClick={() => ping().then(setResult)}>ping {result}</button>
 }
 `,
+  // A `'use client'` component that imports a server fn's module lazily.
+  'src/guarded/lazy.ts': `import { createServerFn } from '@tanstack/react-start'
+export const lazyPing = createServerFn({ method: 'GET' }).handler(() => 'MARK_LAZY')
+`,
+  'src/guarded/LazyPing.tsx': `'use client'
+import { useState } from 'react'
+export function LazyPing() {
+  const [result, setResult] = useState('')
+  return (
+    <button data-testid="lazy" onClick={() => import('./lazy').then((m) => m.lazyPing()).then(setResult, (error) => setResult('error ' + error))}>
+      lazy {result}
+    </button>
+  )
+}
+`,
   'src/guarded/card.tsx': `import { createServerFn } from '@tanstack/react-start'
 import { renderServerComponent } from '@tanstack/react-start/rsc'
+import { LazyPing } from './LazyPing'
 import { Ping } from './Ping'
-export const getCard = createServerFn().handler(() => renderServerComponent(<div>card <Ping /></div>))
+export const getCard = createServerFn().handler(() => renderServerComponent(<div>card <Ping /><LazyPing /></div>))
 `,
   'src/routes/guarded.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { getCard } from '../guarded/card'
@@ -276,4 +292,29 @@ describe("Vite production build with RSC: server fns only 'use client' component
     await page.waitForText('ping MARK_PING', { selector: button })
     expect(page.errors).toEqual([])
   })
+
+  // Known bug (KNOWN-BUGS, "Vite RSC build: a server fn a `'use client'`
+  // component imports lazily is not registered"; as `main`, #7943). SPEC
+  // J4.2: a server fn the client calls is callable by id. Bug: the early
+  // compile follows no lazy import at or below a `'use client'` module (so a
+  // development-only one adds no production dependency), and nothing else
+  // compiles the lazily imported module in the provider before its manifest
+  // is written. Impact: the click answers "Server function info not found".
+  // Fix: every server fn the client references is callable by id, with no
+  // production dependency on modules only development code reaches.
+  test.fails(
+    "a server fn a 'use client' component imports lazily runs when clicked",
+    async () => {
+      const page = await open('/guarded')
+      const button = '[data-testid=lazy]'
+      await page.page.locator(button).click()
+      expect(
+        await settledValue(
+          page,
+          () => page.text(button),
+          (text) => text.includes('MARK_') || text.includes('error'),
+        ),
+      ).toBe('lazy MARK_LAZY')
+    },
+  )
 })

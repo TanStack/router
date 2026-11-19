@@ -72,6 +72,13 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   `Server function info not found`. SPEC J4.2. `react-start-rsc/tests/integration/rsc-start-rsbuild-build.test.ts`: "a
   server fn only a 'use client' component of a server component imports runs when clicked". Fix: every server fn the
   client references is callable by id, with no production dependency on modules only development code reaches.
+- **Vite RSC build: a server fn a `'use client'` component imports lazily is not registered** (as `main`, #7943): the
+  early compile of the provider's reach follows no `import()` at or below a `'use client'` module, so that a
+  development-only one (`if (process.env.NODE_ENV === 'development') import('./debug')`) adds no production
+  dependency, and nothing else compiles the lazily imported module before the manifest is written. The click answers
+  `Server function info not found`. SPEC J4.2. `react-start-rsc/tests/integration/rsc-start-build-client-reach.test.ts`:
+  "a server fn a 'use client' component imports lazily runs when clicked". Fix: every server fn the client references
+  is callable by id, with no production dependency on modules only development code reaches.
 - **Rsbuild checks importers by file extension** (JS/TS only): a custom module type's denied specifier is never
   checked (a denied file it imports is: it is its own violation in the client). SPEC J6.1, §2.1.
   `start-plugin-core/tests/integration/importProtection/dev-outcomes.test.ts`: "a module of a custom type importing
@@ -955,8 +962,9 @@ Paths under `start-plugin-core/tests/` unless noted.
   provider build never reaches a module only a client reference imports), so the call answers 500. SPEC J4.2.
   `react-start-rsc/tests/integration/rsc-start-build.test.ts`: "a server fn only a 'use client' component of a server
   component imports runs when clicked"; `rsc-start-build-client-reach.test.ts`: "a server fn written as the %s
-  spelling runs when clicked" (an imported builder's typed, parenthesized and non-null `.handler` calls). Fix: every
-  server fn the client references is callable by id.
+  spelling runs when clicked" (an imported builder's typed, parenthesized and non-null `.handler` calls). A lazy
+  import from a `'use client'` module is still not followed (see "Remaining pins"). Fix: every server fn the client
+  references is callable by id.
 
 ### J5 Deferred hydration `<Hydrate>`
 

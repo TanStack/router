@@ -15,6 +15,10 @@ import type { Session, ViteStartEnvironment } from './compiler-state'
  */
 const SERVER_FN_TEXT_RE = /createServerFn|\bhandler\b/
 
+/** A `'use client'` directive in the module's prologue (after comments and other directives). */
+const USE_CLIENT_RE =
+  /^(?:\s|\/\/[^\n]*|\/\*[\s\S]*?\*\/|(['"])(?:(?!\1)[^\\\n]|\\.)*\1\s*;?)*?(['"])use client\2/
+
 /**
  * A separate provider's build (RSC; plugin-rsc's `buildApp` builds the
  * provider before the client, after scanning the provider and the SSR
@@ -31,6 +35,15 @@ const SERVER_FN_TEXT_RE = /createServerFn|\bhandler\b/
  * server function is compiled in the provider environment, outside any
  * transform, so the manifest lists its functions; the build then imports
  * and compiles it in place (the plans are reused).
+ *
+ * At and below a `'use client'` module only static imports are followed: a
+ * client component's `import()` loads in the browser, often in a
+ * development-only branch whose module has dependencies the provider
+ * cannot resolve in production (a package with a `development` export
+ * only), which failed the provider's build. What that gives up: a server fn
+ * a client component imports lazily (`onClick={() =>
+ * import('./fn').then((m) => m.fn())}`) is not in the manifest and answers
+ * `Server function info not found`, as on main.
  */
 export async function compileHandlerReach(
   s: Session,
@@ -38,14 +51,19 @@ export async function compileHandlerReach(
   host: HostServices,
 ): Promise<void> {
   const { registry, rawFacts } = s.start
-  const seen = new Set<string>()
-  const queue = registry.entries().map((e) => e.definingCanonicalId)
+  // module → whether it was reached only at or below a client boundary (a
+  // module reached again from server code is walked again, lazily too)
+  const seen = new Map<string, boolean>()
+  const queue = registry
+    .entries()
+    .map((e) => ({ id: e.definingCanonicalId, client: false }))
   while (queue.length > 0) {
-    const id = queue.pop()!
-    if (seen.has(id)) {
+    const { id, client: reachedClient } = queue.pop()!
+    const before = seen.get(id)
+    if (before === false || (before && reachedClient)) {
       continue
     }
-    seen.add(id)
+    seen.set(id, reachedClient)
     const identity = identify(id)
     if (NODE_MODULES_RE.test(identity.path)) {
       continue
@@ -54,8 +72,9 @@ export async function compileHandlerReach(
     if (!facts.targetFacts.exists) {
       continue
     }
-    if (!registry.definedIn(identity.canonicalId)) {
-      const code = await fs.readFile(identity.path, 'utf8').catch(() => null)
+    const code = await fs.readFile(identity.path, 'utf8').catch(() => null)
+    const client = reachedClient || (code !== null && USE_CLIENT_RE.test(code))
+    if (before === undefined && !registry.definedIn(identity.canonicalId)) {
       // the cheap text gate of a module that may define a server function
       if (code !== null && SERVER_FN_TEXT_RE.test(code)) {
         // (the compile registers the module's functions)
@@ -71,16 +90,15 @@ export async function compileHandlerReach(
         )
       }
     }
-    for (const spec of [
-      ...facts.targetFacts.imports,
-      ...facts.targetFacts.lazyImports,
-    ]) {
+    for (const spec of client
+      ? facts.targetFacts.imports
+      : [...facts.targetFacts.imports, ...facts.targetFacts.lazyImports]) {
       if (rawFacts.isKnownSpecifier(spec) || !isAnalyzableSpecifier(spec)) {
         continue
       }
       const r = await host.resolve(spec, identity.canonicalId)
       if (r && !r.external) {
-        queue.push(identify(r.id).canonicalId)
+        queue.push({ id: identify(r.id).canonicalId, client })
       }
     }
   }
