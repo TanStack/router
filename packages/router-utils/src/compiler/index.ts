@@ -19,6 +19,7 @@ export {
   langFromId,
   normalizePath,
   OWNED_QUERY_KEYS,
+  pathOfId,
   planKeyString,
   resolveSameFileSpecifier,
   revision,

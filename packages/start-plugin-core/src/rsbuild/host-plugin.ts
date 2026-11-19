@@ -14,7 +14,6 @@ import path from 'node:path'
 import {
   compilerCacheKey,
   emittedMapTexts,
-  identify,
   invariantDiagnostic,
   invariantViolated,
   locateDiagnostics,
@@ -35,6 +34,7 @@ import {
   SERVER_FN_BUILD_INFO_FIELD,
   canonicalResource,
   isJsAsset,
+  resourcePath,
 } from './compiler-session'
 import { LOADER_REGISTRY } from './loader-registry'
 import type { LoaderImpl } from './compiler-loader'
@@ -513,7 +513,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             for (const m of modules) {
               const resource = (m as unknown as ModuleLike).resource
               if (resource) {
-                paths.add(identify(canonicalResource(resource)).path)
+                paths.add(resourcePath(resource))
               }
             }
             for (const file of session.dependencyFiles(
@@ -695,7 +695,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         ipEnv: NonNullable<ReturnType<typeof ipEnvOf>>,
         compilation: Rspack.Compilation,
       ): Promise<void> {
-        const pathOf = (id: string) => identify(canonicalResource(id)).path
         const flipped = new Set<string>()
         for (;;) {
           const ids = await ipEnv.mismatches()
@@ -706,11 +705,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           for (const m of compilation.modules) {
             const resource = (m as unknown as ModuleLike).resource
             if (resource) {
-              held.add(pathOf(resource))
+              held.add(resourcePath(resource))
             }
           }
           // (one the compilation no longer holds is judged when it comes back)
-          const paths = ids.map(pathOf).filter((p) => held.has(p))
+          const paths = ids.map(resourcePath).filter((p) => held.has(p))
           if (paths.length === 0) {
             return
           }
@@ -732,7 +731,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             flipped.add(p)
             session.start.caches.stale.add(environment.name, p)
           }
-          await session.drain.rebuild(environment.name, compilation, pathOf)
+          await session.drain.rebuild(
+            environment.name,
+            compilation,
+            resourcePath,
+          )
         }
       }
 
@@ -873,7 +876,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               await session.drain.rebuild(
                 environment.name,
                 compilation,
-                (r) => identify(canonicalResource(r)).path,
+                resourcePath,
               )
               const ipEnv = ipEnvOf()
               // a compiler's first compilation judges what it restored: its modules'

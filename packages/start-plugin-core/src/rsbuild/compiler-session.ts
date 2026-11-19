@@ -22,6 +22,7 @@ import {
   loaderText,
   locatedDiagnostic,
   normalizePath,
+  pathOfId,
   pathsOf,
   planDependencyFiles,
   planKeyString,
@@ -974,6 +975,16 @@ export function canonicalResource(resource: string): string {
   return query.length > 0
     ? `${normalized.slice(0, q)}?${query}`
     : normalized.slice(0, q)
+}
+
+/**
+ * The file of a module resource, as the stale sets and the plans spell it
+ * (`identify(canonicalResource(resource)).path`: the id before its query),
+ * without parsing the query: the drain and the watched-file scan ask it of
+ * every module of every compilation.
+ */
+export function resourcePath(resource: string): string {
+  return pathOfId(webpackResourceId(resource))
 }
 
 /** Rspack's RSC plugin's query on a server entry's original module. */
