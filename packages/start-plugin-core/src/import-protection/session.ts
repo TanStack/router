@@ -97,6 +97,13 @@ export interface CreateImportProtectionOptions {
   isEntry?: (path: string) => boolean
   /** The app's framework: the package reports name for `<ClientOnly>` (default `react`). */
   framework?: CompileStartFrameworkOptions
+  /**
+   * The checked file a virtual importer stands for, if any (Vite RSC: the
+   * module plugin-rsc generates in `ssr` to load the client references of
+   * a server chunk stands for the chunk's entry, the server code that
+   * imports them). A build reports a denied module it imports at that file.
+   */
+  importerFileOf?: (importerId: string) => string | null
 }
 
 /** The code of one of our modules, for a host's `load` (or virtual file). */
@@ -129,6 +136,7 @@ export function createImportProtection(
         opts.isEntry ?? (() => false),
         opts.readSource,
         opts.framework,
+        opts.importerFileOf,
       )
     : null
 }
@@ -200,6 +208,9 @@ export class ImportProtection {
     /** Raw source text for trace positions (`CreateImportProtectionOptions.readSource`). */
     readonly readSource: SourceReader = readSourceFile,
     readonly framework: CompileStartFrameworkOptions = 'react',
+    private readonly importerFileOf: (
+      importerId: string,
+    ) => string | null = () => null,
   ) {
     this.planner = importEdgesPlanner(this)
     this.report = { config, readSource, framework }
@@ -307,6 +318,12 @@ export class ImportProtection {
   /** Whether an importer path is checked (cached per path). */
   inScope(importerPath: string): boolean {
     return importerInScope(this.config, importerPath, this.scopeCache)
+  }
+
+  /** The file of a build graph's importer whose imports are checked: its own, or the one a virtual importer stands for (`CreateImportProtectionOptions.importerFileOf`); null when unchecked. @internal */
+  checkedImporter(importerId: string): string | null {
+    const file = this.importerFileOf(importerId) ?? traceFile(importerId)
+    return this.inScope(file) ? file : null
   }
 
   /**
@@ -1529,8 +1546,9 @@ class ImportProtectionEnv {
         if (this.ip.ids.parse(importerId) !== null) {
           continue
         }
-        if (this.ip.inScope(importer)) {
-          checked.add(importer)
+        const file = this.ip.checkedImporter(importerId)
+        if (file !== null) {
+          checked.add(file)
         } else if (!needers.includes(importer)) {
           unread.add(importer)
         }
@@ -1797,11 +1815,11 @@ class ImportProtectionEnv {
     const { self: _self, ...violation } = self
     const out: Array<EdgeViolation> = []
     for (const importerId of new Set(importers)) {
-      const importer = traceFile(importerId)
-      if (
-        this.ip.ids.parse(importerId) !== null ||
-        !this.ip.inScope(importer)
-      ) {
+      const importer =
+        this.ip.ids.parse(importerId) === null
+          ? this.ip.checkedImporter(importerId)
+          : null
+      if (importer === null) {
         continue
       }
       out.push({

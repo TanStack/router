@@ -47,4 +47,26 @@ describe('Vite build with RSC', () => {
     },
     timeout,
   )
+
+  // SSR renders the component: its only importer there is plugin-rsc's
+  // client-reference module of the server component's chunk, which stands
+  // for the server component
+  test(
+    'a client-only-marked component a server component renders fails the build where SSR renders it (error)',
+    async () => {
+      const { violations, start } = recorder('error')
+      const built = await startRscPreviewServer({
+        start,
+        files: markedApp,
+      }).then(
+        () => null,
+        (error: unknown) => error,
+      )
+      expect(built).toBeInstanceOf(Error)
+      expect(summary(violations)).toEqual([
+        'ssr marker page.tsx -> src/c/Comp.tsx',
+      ])
+    },
+    timeout,
+  )
 })

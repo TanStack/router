@@ -108,6 +108,8 @@ export interface StartCompilerSessionOptions {
   edgeModuleIds?: EdgeModuleIds
   /** Whether a path is an app entry (import protection: a marked entry is its own violation). */
   isEntry: (path: string) => boolean
+  /** The checked file a virtual importer stands for (import protection: `CreateImportProtectionOptions.importerFileOf`). */
+  importerFileOf?: (importerId: string) => string | null
   /** The route registry (the generator's `routesByFile`). */
   routes: RouteRegistry
   readFile: (file: string) => Promise<string | null>
@@ -174,6 +176,7 @@ export class StartCompilerSession {
       readFile: opts.readFile,
       isEntry: opts.isEntry,
       framework: opts.framework,
+      importerFileOf: opts.importerFileOf,
     })
     for (const env of opts.environments) {
       this.ip?.env(env.name, env.type)

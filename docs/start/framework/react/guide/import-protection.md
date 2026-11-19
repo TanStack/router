@@ -373,7 +373,7 @@ On Rsbuild, a module that a worker or service-worker plugin builds (a child comp
 
 Not covered, as in earlier versions: a `?worker`'s own imports and `new URL` of a denied file on Vite, a marked non-script file (`.mdx`, `.vue`) or a marked file that does not parse with an asset query, and a plain pattern of a non-code file on Rsbuild.
 
-With React Server Components on Vite, a denied `'use client'` component that a server component renders is mocked in SSR with this warning: its only importer there is `@vitejs/plugin-rsc`'s client-reference module, which is not checked. The client renders the real component after hydration (a hydration mismatch is logged).
+With React Server Components on Vite, a denied `'use client'` component that a server component renders is mocked in SSR with this warning when the server component's chunk is shared, or named by the `clientChunks` option of `@vitejs/plugin-rsc`: its only importer in SSR is then a client-reference module of the RSC plugin that names no server module. Otherwise that module stands for the entry module of the server component's chunk, and the build reports a violation imported by that module. The client renders the real component after hydration (a hydration mismatch is logged).
 
 A dev server also warns about a denied file it compiles without any importer, for example when a `server.warmup` glob matches `*.server.ts` files. This is a warning, not a leak: the client gets the file's mock.
 

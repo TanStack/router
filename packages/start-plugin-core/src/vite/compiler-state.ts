@@ -114,6 +114,25 @@ export function cacheDirRe(cacheDir: string, script = false): RegExp {
 
 const readEntries = (entries: Set<string>) => ({ size: entries.size })
 
+/** @vitejs/plugin-rsc's module (in `ssr`) loading the client references of the server chunk whose entry it names, root-relative. */
+const CLIENT_REFERENCE_GROUP_PREFIX =
+  '\0virtual:vite-rsc/client-references/group/facade:'
+
+/**
+ * The server module a client-reference group of @vitejs/plugin-rsc stands
+ * for: in `ssr`, the group is the only importer of the `'use client'`
+ * modules a server chunk renders, and it is named after the chunk's entry
+ * (the server code importing them). Null for any other id, a group of a
+ * shared chunk and a group the app's `clientChunks` names.
+ */
+function clientReferenceGroupFile(id: string, root: string): string | null {
+  return id.startsWith(CLIENT_REFERENCE_GROUP_PREFIX)
+    ? normalizePath(
+        path.resolve(root, id.slice(CLIENT_REFERENCE_GROUP_PREFIX.length)),
+      )
+    : null
+}
+
 /**
  * The source entry of a pre-bundled dependency, when `id` is the dependency
  * optimizer's bundle (`<cacheDir>/deps/x.js?v=…`, the optimizer's own
@@ -533,6 +552,10 @@ export class ViteCompilerState implements ClientBuilds {
         hmrStyle: 'vite',
         importProtection: startConfig.importProtection,
         isEntry: (p) => this.entriesOf(s).has(normalizePath(p)),
+        ...(this.opts.rsc && {
+          importerFileOf: (id: string) =>
+            clientReferenceGroupFile(id, config.root),
+        }),
         routes: new RouteRegistryView(this.opts.routerPluginContext),
         readFile: (file) => fs.readFile(file, 'utf8').catch(() => null),
         loadVirtual: async (id, env) => {
