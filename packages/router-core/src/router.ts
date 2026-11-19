@@ -129,12 +129,14 @@ import type {
 import type { GetStoreConfig, RouterStores } from './stores'
 
 function isExternalUrl(url: URL, origin: string) {
-  return (
-    (url.protocol !== 'http:' && url.protocol !== 'https:') ||
-    url.origin !== origin ||
-    !!url.username ||
-    !!url.password
-  )
+  return getUrlOrigin(url) !== origin || !!url.username || !!url.password
+}
+
+// The same as `url.origin` for http(s), but also gives a custom-scheme app
+// (e.g. `tauri://localhost`) its own origin, where `url.origin` can be "null".
+// Other schemes (`javascript:`, `data:`...) never match the router's origin.
+function getUrlOrigin(url: URL) {
+  return url.protocol + '//' + url.host
 }
 
 function getUrlPath(url: URL) {
@@ -1496,7 +1498,7 @@ export class RouterCore<
       url.search = searchStr
 
       return {
-        href: url.href.replace(url.origin, ''),
+        href: getUrlPath(url),
         publicHref: href,
         // An input rewrite can expose a path like "//evil.example".
         // Normalize it to "/evil.example" to keep it on the current origin.
@@ -2144,7 +2146,7 @@ export class RouterCore<
       if (this.rewrite) {
         // With rewrite, we need to construct URL to apply the rewrite
         const url = new URL(fullPath, this.origin)
-        const origin = url.origin
+        const origin = getUrlOrigin(url)
         const rewrittenUrl = executeRewriteOutput(this.rewrite, url)
         href = getUrlPath(url)
         // If rewrite changed the origin, publicHref needs full URL
