@@ -15,10 +15,6 @@ import type { Session, ViteStartEnvironment } from './compiler-state'
  */
 const SERVER_FN_TEXT_RE = /createServerFn|\bhandler\b/
 
-/** A `'use client'` directive in the module's prologue (after comments and other directives). */
-const USE_CLIENT_RE =
-  /^(?:\s|\/\/[^\n]*|\/\*[\s\S]*?\*\/|(['"])(?:(?!\1)[^\\\n]|\\.)*\1\s*;?)*?(['"])use client\2/
-
 /**
  * A separate provider's build (RSC; plugin-rsc's `buildApp` builds the
  * provider before the client, after scanning the provider and the SSR
@@ -36,7 +32,8 @@ const USE_CLIENT_RE =
  * transform, so the manifest lists its functions; the build then imports
  * and compiles it in place (the plans are reused).
  *
- * At and below a `'use client'` module only static imports are followed: a
+ * At and below a `'use client'` module (the directive in its parsed
+ * prologue, `TargetFacts.useClient`) only static imports are followed: a
  * client component's `import()` loads in the browser, often in a
  * development-only branch whose module has dependencies the provider
  * cannot resolve in production (a package with a `development` export
@@ -72,9 +69,9 @@ export async function compileHandlerReach(
     if (!facts.targetFacts.exists) {
       continue
     }
-    const code = await fs.readFile(identity.path, 'utf8').catch(() => null)
-    const client = reachedClient || (code !== null && USE_CLIENT_RE.test(code))
+    const client = reachedClient || facts.targetFacts.useClient
     if (before === undefined && !registry.definedIn(identity.canonicalId)) {
+      const code = await fs.readFile(identity.path, 'utf8').catch(() => null)
       // the cheap text gate of a module that may define a server function
       if (code !== null && SERVER_FN_TEXT_RE.test(code)) {
         // (the compile registers the module's functions)
