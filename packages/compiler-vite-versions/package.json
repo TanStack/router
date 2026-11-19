@@ -8,7 +8,7 @@
     ".": "./index.js"
   },
   "dependencies": {
-    "vite6": "npm:vite@^6.0.0",
-    "vite7": "npm:vite@^7.0.0"
+    "vite6": "npm:vite@^6.4.6",
+    "vite7": "npm:vite@^7.3.8"
   }
 }
