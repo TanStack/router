@@ -351,6 +351,16 @@ setTheme(t) { theme = t }`, `export function getTheme()`), children calling the 
   `detect()` runs once, `main` runs it again in its copy). With `let cfg` assigned in the children, the boundary is
   refused (`hydrate-module-write`), where `main`'s chunk assigns its copy; the PR's base refuses it too. Rare (a
   top-level statement declaring a `var` and reading module state the children use). No test.
+- **Vite RSC build: a denied `'use client'` component that a server component renders is judged in SSR at the
+  server chunk's entry** (user, 2026-11-19). In `ssr` its only importer is `@vitejs/plugin-rsc`'s client-reference
+  group module, which names the entry module of the server chunk, not the server component importing the
+  component. A violation of a server component that another one in the same chunk renders is reported as imported by
+  the chunk's entry module. Groups of a shared chunk and groups the app's `clientChunks` option names no server
+  module: there the component gets its mock in SSR and the build warns (an `'error'` build does not fail; the client
+  renders the real component after hydration, with a hydration mismatch logged).
+  `react-start-rsc/tests/integration/rsc-use-client-build.test.ts`: "a client-only-marked component a server
+  component renders fails the build where SSR renders it (error)" (the chunk-entry case); the shared-chunk and
+  `clientChunks` cases have no test.
 
 ## Fixed, kept as regression tests
 
