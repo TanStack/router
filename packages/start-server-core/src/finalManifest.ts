@@ -37,12 +37,10 @@ export interface FinalManifestOptions {
 }
 
 type FinalManifestCacheKey = 'inline-css' | 'linked-css'
-// An entry holds the pending manifest, then the manifest itself once it
-// resolves, so later requests read it without waiting.
-type FinalManifestCache = Map<
-  FinalManifestCacheKey,
-  ServerManifest | Promise<ServerManifest>
->
+// Cache only resolved manifests. Storing a pending promise would hang later
+// Cloudflare Worker requests if the request that started the load ended first
+// (`handle_cross_request_promise_resolution`).
+type FinalManifestCache = Map<FinalManifestCacheKey, ServerManifest>
 export type GetBaseManifest = () => Promise<ServerManifest>
 
 export interface FinalManifestRequestOptions {
@@ -75,17 +73,19 @@ export interface FinalManifestResolver {
 export function createCachedBaseManifestLoader(
   loadBaseManifest: GetBaseManifest,
 ): GetBaseManifest {
-  let baseManifestPromise: Promise<ServerManifest> | undefined
+  let baseManifest: ServerManifest | undefined
 
   return () => {
-    if (!baseManifestPromise) {
-      baseManifestPromise = loadBaseManifest().catch((error) => {
-        baseManifestPromise = undefined
-        throw error
-      })
+    if (baseManifest) {
+      return Promise.resolve(baseManifest)
     }
 
-    return baseManifestPromise
+    return loadBaseManifest().then(
+      (manifest) => (baseManifest ??= manifest),
+      (error) => {
+        throw error
+      },
+    )
   }
 }
 
@@ -104,10 +104,10 @@ function createFinalManifestTransformResolver(
     'warmup' in transformAssets &&
     transformAssets.warmup === true
 
-  let cachedCreateTransformPromise: Promise<TransformAssetsFn> | undefined
+  let cachedCreateTransform: TransformAssetsFn | undefined
 
   const clearCachedCreateTransform = () => {
-    cachedCreateTransformPromise = undefined
+    cachedCreateTransform = undefined
   }
 
   return {
@@ -125,16 +125,16 @@ function createFinalManifestTransformResolver(
         return transformConfig.createTransform(ctx)
       }
 
-      if (!cachedCreateTransformPromise) {
-        cachedCreateTransformPromise = Promise.resolve(
-          transformConfig.createTransform(ctx),
-        ).catch((error) => {
-          clearCachedCreateTransform()
-          throw error
-        })
+      if (cachedCreateTransform) {
+        return cachedCreateTransform
       }
 
-      return cachedCreateTransformPromise
+      return Promise.resolve(transformConfig.createTransform(ctx)).then(
+        (fn) => (cachedCreateTransform ??= fn),
+        (error) => {
+          throw error
+        },
+      )
     },
   }
 }
@@ -223,23 +223,14 @@ function cacheFinalManifestPromise(
   cacheKey: FinalManifestCacheKey,
   promise: Promise<ServerManifest>,
 ): Promise<ServerManifest> {
-  const cachedPromise = promise.then(
-    (manifest) => {
-      if (finalManifestCache.get(cacheKey) === cachedPromise) {
-        finalManifestCache.set(cacheKey, manifest)
-      }
-      return manifest
-    },
-    (error) => {
-      if (finalManifestCache.get(cacheKey) === cachedPromise) {
-        finalManifestCache.delete(cacheKey)
-      }
-      throw error
-    },
-  )
-
-  finalManifestCache.set(cacheKey, cachedPromise)
-  return cachedPromise
+  return promise.then((manifest) => {
+    const existing = finalManifestCache.get(cacheKey)
+    if (existing) {
+      return existing
+    }
+    finalManifestCache.set(cacheKey, manifest)
+    return manifest
+  })
 }
 
 function getOrCreateCachedFinalManifest(
