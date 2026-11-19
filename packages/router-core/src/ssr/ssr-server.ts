@@ -403,7 +403,9 @@ export function attachRouterServerSsrUtils({
   // still be pending when the response ends.
   let settled = false
   let disposeSerialization: (() => void) | undefined
-  const hydrationScripts = createHydrationScripts(router.options.ssr?.nonce)
+  const hydrationScripts = createHydrationScripts(
+    () => router.options.ssr?.nonce,
+  )
 
   const serverSsr: ServerSsr = {
     hydrationScripts,
