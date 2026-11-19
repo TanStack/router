@@ -291,10 +291,14 @@ export function createRouterGeneratorPlugin(
         }
       })
       // webpack decides from the files' timestamps, not from its change
-      // set: the modules of the files the generator wrote for this
-      // compilation are built again, before webpack checks them against the
-      // compilation's changes (rebuilding them at `finishMake` would leave
-      // the error the tree's old imports gave at `make`).
+      // set: it checks a cached module's snapshot first, which it took
+      // before the generator wrote, and asks `needBuild` only about a module
+      // that check would reuse; the modules whose resource is a file the
+      // generator wrote for this compilation answer true there and are built
+      // again (rebuilding them at `finishMake` would leave the error the
+      // tree's old imports gave at `make`). A module of another resource
+      // that declares a written file as an input is reused (KNOWN-BUGS,
+      // accepted limit).
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
         const files = written
         written = new Set()
@@ -307,7 +311,7 @@ export function createRouterGeneratorPlugin(
           if (files.has(fileOf(module.resource))) {
             callback(null, true)
           } else {
-            // (no answer: webpack checks the module's snapshot)
+            // (no answer: webpack reuses the module)
             callback()
           }
         })

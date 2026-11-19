@@ -406,6 +406,16 @@ setTheme(t) { theme = t }`, `export function getTheme()`), children calling the 
   cache (`performance.buildCache`) after such a change. A module the worker newly imports is compiled: the client's
   restored module of the same file is still checked
   (`start-plugin-core/tests/integration/rsbuild/child-compiler-build-cache.test.ts`).
+- **webpack watch: a module whose loader declares the route tree as an input fails one compilation after a route
+  file is deleted** (astra-r4-factcheck-router.md B4). The route-delete fix builds again the modules whose resource is
+  a file the generator wrote (`needBuild`); a loader of another resource (`catalog.txt`) that calls
+  `this.addDependency(routeTree)` and emits the tree's imports keeps its result, whose snapshot webpack took before
+  the generator wrote: the next compilation reports `Can't resolve './routes/about'` from that module, then builds
+  cleanly. `main` reports the error from that module and from the route tree. Rspack is clean (the written files
+  reach it as changes, so every dependent rebuilds; `main` errors twice). Rare (a third-party loader reading the
+  generated tree as a declared dependency). A fix reads each cached module's snapshot file list in `needBuild`
+  (webpack clears `buildInfo.fileDependencies` after a build; the snapshot is private shape). No test (the outcome is
+  the limit).
 
 ## Fixed, kept as regression tests
 
