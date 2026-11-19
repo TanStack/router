@@ -723,6 +723,12 @@ export const Route = createFileRoute('/old')({})
       attached: `// @ts-expect-error: unlike @ts-check, this one line\nexport const count`,
     },
     {
+      name: 'a suppression comment naming @jsx on the first statement',
+      source: `// @ts-expect-error The @jsx option does not type this value\nexport const count: number = 'one'\nexport const Route = createFileRoute('/old')({})\n`,
+      head: '',
+      attached: `// @ts-expect-error The @jsx option does not type this value\nexport const count`,
+    },
+    {
       name: 'a triple-slash reference and an import',
       source: `/// <reference types="vite/client" />\nimport { useState } from 'react'\nexport const state = useState\nexport const Route = createFileRoute('/old')({})\n`,
       head: `/// <reference types="vite/client" />\n`,
