@@ -25,7 +25,8 @@
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
     "vite-plugin-solid": "^2.11.11",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "hono": "^4.7.10"
   },
   "nx": {
     "targets": {
@@ -48,6 +49,7 @@
               "@benchmarks/ssr-server-fn-transport-react",
               "@benchmarks/ssr-server-fns-react",
               "@benchmarks/ssr-server-routes-react",
+              "@benchmarks/ssr-server-routes-matrix-react",
               "@benchmarks/ssr-server-routes-middleware-react",
               "@benchmarks/ssr-streaming-react"
             ],
@@ -182,6 +184,7 @@
               "@benchmarks/ssr-server-fn-transport-react",
               "@benchmarks/ssr-server-fns-react",
               "@benchmarks/ssr-server-routes-react",
+              "@benchmarks/ssr-server-routes-matrix-react",
               "@benchmarks/ssr-server-routes-middleware-react",
               "@benchmarks/ssr-streaming-react",
               "@benchmarks/ssr-solid",
