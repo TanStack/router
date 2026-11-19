@@ -29,16 +29,36 @@ const baseManifest: ServerManifest = {
 }
 
 describe('final manifest resolver', () => {
-  it('shares cached base manifest load promises', async () => {
+  it('reuses a resolved base manifest without sharing a pending load', async () => {
     const loadBaseManifest = vi.fn(async () => baseManifest)
+    const getBaseManifest = createCachedBaseManifestLoader(loadBaseManifest)
+
+    await expect(getBaseManifest()).resolves.toBe(baseManifest)
+    await expect(getBaseManifest()).resolves.toBe(baseManifest)
+    expect(loadBaseManifest).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not let a pending base manifest load block a later request', async () => {
+    let resolveFirst!: (manifest: ServerManifest) => void
+    const loadBaseManifest = vi
+      .fn<() => Promise<ServerManifest>>()
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve
+          }),
+      )
+      .mockResolvedValueOnce(baseManifest)
     const getBaseManifest = createCachedBaseManifestLoader(loadBaseManifest)
 
     const first = getBaseManifest()
     const second = getBaseManifest()
 
-    expect(second).toBe(first)
+    await expect(second).resolves.toBe(baseManifest)
+    expect(loadBaseManifest).toHaveBeenCalledTimes(2)
+
+    resolveFirst(baseManifest)
     await expect(first).resolves.toBe(baseManifest)
-    expect(loadBaseManifest).toHaveBeenCalledTimes(1)
   })
 
   it('evicts rejected cached base manifest promises so requests can retry', async () => {
@@ -111,7 +131,7 @@ describe('final manifest resolver', () => {
     expect(getBaseManifest).toHaveBeenCalledTimes(2)
   })
 
-  it('shares warmup and request resolution for the same cached manifest', async () => {
+  it('shares a settled warmup manifest with later request resolution', async () => {
     const transformAssets = vi.fn<TransformAssetsFn>(({ url }) => url)
     const getBaseManifest = vi.fn(async () => baseManifest)
     const resolver = createFinalManifestResolver({
@@ -123,16 +143,52 @@ describe('final manifest resolver', () => {
       cacheCreateTransform: true,
     })
 
-    const warmupPromise = resolver.warmup({ getBaseManifest })
-    const requestManifest = await resolver.resolveCached({
+    const warmupManifest = await resolver.warmup({ getBaseManifest })
+    const requestManifest = resolver.resolveCached({
       request: new Request('https://example.com'),
       requestInlineCss: undefined,
       getBaseManifest,
     })
 
-    await expect(warmupPromise).resolves.toBe(requestManifest)
-    expect(requestManifest.inlineCss).toBeUndefined()
+    expect(requestManifest).toBe(warmupManifest)
+    expect(warmupManifest?.inlineCss).toBeUndefined()
     expect(transformAssets).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not let a pending final manifest load block a later request', async () => {
+    let resolveFirst!: (manifest: ServerManifest) => void
+    const getBaseManifest = vi
+      .fn<() => Promise<ServerManifest>>()
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve
+          }),
+      )
+      .mockResolvedValueOnce(baseManifest)
+    const resolver = createFinalManifestResolver({ cacheCreateTransform: true })
+    const request = new Request('https://example.com')
+
+    const first = resolver.resolveCached({
+      request,
+      requestInlineCss: true,
+      getBaseManifest,
+    })
+    const second = resolver.resolveCached({
+      request,
+      requestInlineCss: true,
+      getBaseManifest,
+    })
+
+    await expect(second).resolves.toMatchObject({
+      inlineCss: baseManifest.inlineCss,
+    })
+    expect(getBaseManifest).toHaveBeenCalledTimes(2)
+
+    resolveFirst(baseManifest)
+    await expect(first).resolves.toMatchObject({
+      inlineCss: baseManifest.inlineCss,
+    })
   })
 
   it('returns a settled cached manifest without a promise', async () => {
