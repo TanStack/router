@@ -1,5 +1,14 @@
 # @tanstack/solid-router-devtools
 
+## 1.167.4
+
+### Patch Changes
+
+- [#8959](https://github.com/TanStack/router/pull/8959) [`bb11d90`](https://github.com/TanStack/router/commit/bb11d90332edca7d897174546769622826431ee3) - Add a `trustedTypesPolicy` option, so the devtools render on pages that enforce `require-trusted-types-for 'script'`.
+
+- Updated dependencies [[`30aaa94`](https://github.com/TanStack/router/commit/30aaa94e7c8912d4e510ccb40af8cebaf4d01c39), [`e75f0ff`](https://github.com/TanStack/router/commit/e75f0ffb2de05e6480a1214ee718fde477cd2052), [`bb11d90`](https://github.com/TanStack/router/commit/bb11d90332edca7d897174546769622826431ee3)]:
+  - @tanstack/router-devtools-core@1.168.4
+
 ## 1.167.3
 
 ### Patch Changes

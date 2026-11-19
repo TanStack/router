@@ -92,18 +92,18 @@ A full‑stack framework built on Router, designed for server rendering, streami
         <td>
       <a href="https://www.coderabbit.ai/?via=tanstack&dub_id=aCcEEdAOqqutX6OS" >
         <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="https://tanstack.com/assets/coderabbit-dark-D643Zkrv.svg" />
-          <source media="(prefers-color-scheme: light)" srcset="https://tanstack.com/assets/coderabbit-light-CIzGLYU_.svg" />
-          <img src="https://tanstack.com/assets/coderabbit-light-CIzGLYU_.svg" height="40" alt="CodeRabbit" />
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/TanStack/tanstack.com/main/src/images/coderabbit-dark.svg" />
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/TanStack/tanstack.com/main/src/images/coderabbit-light.svg" />
+          <img src="https://raw.githubusercontent.com/TanStack/tanstack.com/main/src/images/coderabbit-light.svg" height="40" alt="CodeRabbit" />
         </picture>
       </a>
     </td>
     <td>
       <a href="https://www.cloudflare.com?utm_source=tanstack">
         <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="https://tanstack.com/assets/cloudflare-white-Co-Tyjbl.svg" />
-          <source media="(prefers-color-scheme: light)" srcset="https://tanstack.com/assets/cloudflare-black-6Ojsn8yh.svg" />
-          <img src="https://tanstack.com/assets/cloudflare-white-Co-Tyjbl.svg" height="60" alt="Cloudflare" />
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/TanStack/tanstack.com/main/src/images/cloudflare-white.svg" />
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/TanStack/tanstack.com/main/src/images/cloudflare-black.svg" />
+          <img src="https://raw.githubusercontent.com/TanStack/tanstack.com/main/src/images/cloudflare-white.svg" height="60" alt="Cloudflare" />
         </picture>
       </a>
     </td>
@@ -130,9 +130,9 @@ A full‑stack framework built on Router, designed for server rendering, streami
     <td>
       <a href="https://go.clerk.com/wOwHtuJ">
         <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="https://tanstack.com/assets/clerk-logo-dark-CRE22T_2.svg" height="40"/>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/TanStack/tanstack.com/main/src/images/clerk-logo-dark.svg" height="40"/>
           <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/clerk.svg" height="40"/>
-          <img src="https://tanstack.com/assets/clerk-logo-dark-CRE22T_2.svg" height="40" alt="Clerk" />
+          <img src="https://raw.githubusercontent.com/TanStack/tanstack.com/main/src/images/clerk-logo-dark.svg" height="40" alt="Clerk" />
         </picture>
       </a>
     </td>
@@ -159,18 +159,18 @@ A full‑stack framework built on Router, designed for server rendering, streami
     <td>
       <a href="https://www.prisma.io?utm_source=tanstack&via=tanstack">
         <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="https://tanstack.com/assets/prisma-dark-DwgDxLwn.svg" height="50"/>
-          <source media="(prefers-color-scheme: light)" srcset="https://tanstack.com/assets/prisma-light-Cloa3Onm.svg" height="50"/>
-          <img src="https://tanstack.com/assets/prisma-dark-DwgDxLwn.svg" height="50" alt="Prisma" />
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/TanStack/tanstack.com/main/src/images/prisma-dark.svg" height="50"/>
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/TanStack/tanstack.com/main/src/images/prisma-light.svg" height="50"/>
+          <img src="https://raw.githubusercontent.com/TanStack/tanstack.com/main/src/images/prisma-dark.svg" height="50" alt="Prisma" />
         </picture>
       </a>
     </td>
     <td>
       <a href="https://strapi.link/tanstack-start">
         <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="https://tanstack.com/assets/strapi-dark-CQ84tQTk.svg" height="40"/>
-          <source media="(prefers-color-scheme: light)" srcset="https://tanstack.com/assets/strapi-light-6x7linao.svg" height="40"/>
-          <img src="https://tanstack.com/assets/strapi-dark-CQ84tQTk.svg" height="40" alt="Strapi" />
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/TanStack/tanstack.com/main/src/images/strapi-dark.svg" height="40"/>
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/TanStack/tanstack.com/main/src/images/strapi-light.svg" height="40"/>
+          <img src="https://raw.githubusercontent.com/TanStack/tanstack.com/main/src/images/strapi-dark.svg" height="40" alt="Strapi" />
         </picture>
       </a>
     </td>

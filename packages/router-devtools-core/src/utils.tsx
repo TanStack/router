@@ -1,23 +1,4 @@
-import { Dynamic } from 'solid-js/web'
-import { createEffect, createRenderEffect, createSignal } from 'solid-js'
-import { useTheme } from './theme'
-import useMediaQuery from './useMediaQuery'
 import type { AnyRoute, AnyRouteMatch } from '@tanstack/router-core'
-
-import type { Theme } from './theme'
-import type { JSX } from 'solid-js'
-
-export const isServer = typeof window === 'undefined'
-
-type StyledComponent<T> = T extends 'button'
-  ? JSX.ButtonHTMLAttributes<HTMLButtonElement>
-  : T extends 'input'
-    ? JSX.InputHTMLAttributes<HTMLInputElement>
-    : T extends 'select'
-      ? JSX.SelectHTMLAttributes<HTMLSelectElement>
-      : T extends keyof HTMLElementTagNameMap
-        ? JSX.HTMLAttributes<HTMLElementTagNameMap[T]>
-        : never
 
 export function getStatusColor(match: AnyRouteMatch) {
   const colorMap = {
@@ -33,7 +14,6 @@ export function getStatusColor(match: AnyRouteMatch) {
       : 'blue'
     : colorMap[match.status]
 }
-
 export function getRouteStatusColor(
   matches: Array<AnyRouteMatch>,
   route: AnyRoute,
@@ -41,66 +21,6 @@ export function getRouteStatusColor(
   const found = matches.find((d) => d.routeId === route.id)
   if (!found) return 'gray'
   return getStatusColor(found)
-}
-
-type Styles =
-  | JSX.CSSProperties
-  | ((props: Record<string, any>, theme: Theme) => JSX.CSSProperties)
-
-export function styled<T extends keyof HTMLElementTagNameMap>(
-  type: T,
-  newStyles: Styles,
-  queries: Record<string, Styles> = {},
-) {
-  return ({
-    ref,
-    style,
-    ...rest
-  }: StyledComponent<T> & {
-    ref?: HTMLElementTagNameMap[T] | undefined
-  }) => {
-    const theme = useTheme()
-
-    const mediaStyles = Object.entries(queries).reduce(
-      (current, [key, value]) => {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        return useMediaQuery(key)
-          ? {
-              ...current,
-              ...(typeof value === 'function' ? value(rest, theme) : value),
-            }
-          : current
-      },
-      {},
-    )
-
-    const baseStyles =
-      typeof newStyles === 'function' ? newStyles(rest, theme) : newStyles
-
-    // Handle style being either a string or an object
-    const combinedStyles =
-      typeof style === 'string'
-        ? { ...baseStyles, ...mediaStyles, cssText: style }
-        : { ...baseStyles, ...style, ...mediaStyles }
-
-    return (
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      <Dynamic component={type} {...rest} style={combinedStyles} ref={ref} />
-    )
-  }
-}
-
-export function useIsMounted() {
-  const [isMounted, setIsMounted] = createSignal(false)
-
-  const effect = isServer ? createEffect : createRenderEffect
-
-  effect(() => {
-    setIsMounted(true)
-  })
-
-  return isMounted
 }
 
 // Symbols for RSC detection
@@ -243,42 +163,6 @@ export const displayValue = (value: unknown) => {
   } catch {
     return `unable to stringify`
   }
-}
-
-/**
- * This hook is a safe useState version which schedules state updates in microtasks
- * to prevent updating a component state while React is rendering different components
- * or when the component is not mounted anymore.
- */
-export function useSafeState<T>(initialState: T): [T, (value: T) => void] {
-  const isMounted = useIsMounted()
-  const [state, setState] = createSignal(initialState)
-
-  const safeSetState = (value: T) => {
-    scheduleMicrotask(() => {
-      if (isMounted()) {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        setState(value)
-      }
-    })
-  }
-
-  return [state(), safeSetState]
-}
-
-/**
- * Schedules a microtask.
- * This can be useful to schedule state updates after rendering.
- */
-function scheduleMicrotask(callback: () => void) {
-  Promise.resolve()
-    .then(callback)
-    .catch((error) =>
-      setTimeout(() => {
-        throw error
-      }),
-    )
 }
 
 export function multiSortBy<T>(
