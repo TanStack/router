@@ -13,10 +13,10 @@
     "test:e2e:dev:bundled-dev": "MODE=dev E2E_VITE_BUNDLED_DEV=true playwright test --project=chromium"
   },
   "dependencies": {
-    "@solidjs/web": "^2.0.0-rc.21",
+    "@solidjs/web": "^2.0.1",
     "@tanstack/solid-router": "workspace:*",
     "@tanstack/solid-start": "workspace:*",
-    "solid-js": "^2.0.0-rc.21"
+    "solid-js": "^2.0.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",
@@ -27,6 +27,6 @@
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "@solidjs/vite-plugin": "^3.0.0-next.57"
+    "@solidjs/vite-plugin": "^3.0.1"
   }
 }

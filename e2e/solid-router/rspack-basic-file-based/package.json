@@ -10,11 +10,11 @@
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
-    "@solidjs/web": "^2.0.0-rc.21",
+    "@solidjs/web": "^2.0.1",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "redaxios": "catalog:",
-    "solid-js": "^2.0.0-rc.21"
+    "solid-js": "^2.0.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",
