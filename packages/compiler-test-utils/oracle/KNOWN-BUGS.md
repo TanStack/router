@@ -110,20 +110,6 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   of `rsc-reach-app.ts`: "…, after a restart > a server fn only $position of a $where imports answers"; without the
   cache also "a server fn only a 'use client' component of a server component imports answers (#7943)". Fix: every
   server fn the client references is callable by id, whatever the start history.
-- **Rsbuild dev with RSC: an exempt importer's denied import is denied after a rebuild** (RSC investigation L1; `main`
-  serves the mock, which J6.7 also rules out): a `'use client'` component that a route and a server component both
-  render (a module in each layer of the `ssr` environment), exempt from import protection (`exclude`,
-  `ignoreImporters`), imports a denied file. Import protection's edge index is keyed by importer id, not by layer: the
-  RSC layer's compile of the component (a client reference there, with no imports) replaces the SSR layer's row, so
-  when the SSR layer compiles again nothing exempt demands the file and it is denied as its own violation. Hit by a
-  route added while the server was stopped (the first compile reads a tree without it; the generator's tree then
-  compiles it) and by removing or restoring one of the two uses; a fresh start passes, and so does a build;
-  `allowImport` answering by importer passes. The SSR compile fails and the document answers 200 without the
-  component; later edits leave it broken. SPEC J6.7. `react-start-rsc/tests/integration/rsc-dual-layer-dev-rsbuild.test.ts`:
-  "a route added while the server was stopped shows both real labels once the generator rebuilt the tree", "then
-  removing the server component's use keeps the route's real label", "then restoring the server component's use shows
-  both real labels", "after the fresh start, removing …", "after the fresh start, restoring …". Fix: the exempt import
-  is real after every rebuild (one edge row per layer).
 - **Rsbuild checks importers by file extension** (JS/TS only): a custom module type's denied specifier is never
   checked (a denied file it imports is: it is its own violation in the client). SPEC J6.1, §2.1.
   `start-plugin-core/tests/integration/importProtection/dev-outcomes.test.ts`: "a module of a custom type importing
@@ -1210,6 +1196,16 @@ Paths under `start-plugin-core/tests/integration/`; `ip/` means `integration/imp
 - **Rsbuild `source.transformImport` bypasses specifier denials, and its locations do not map back.** SPEC J6.1,
   J6.5. `rsbuild/import-protection.test.ts`: "the file rule denies the module it resolves to: the importer is reported at
   the import or the use"; "denied as written, the build fails on it, reporting the importer at the import or the use".
+- **Rsbuild dev with RSC: an exempt importer's denied import was denied after a rebuild** (RSC investigation L1;
+  `main` serves the mock, which J6.7 also rules out): a `'use client'` component that a route and a server component
+  both render (a module of the `ssr` and of the `rsc` compile environment), exempt from import protection, imports a
+  denied file; import protection's edge index was keyed by importer id, so the RSC layer's compile of the component
+  replaced the SSR layer's row and the SSR compile denied the file after a route added while the server was stopped
+  or a removed or restored use. Each Rspack layer is its own compile environment now (RSC phase 1). SPEC J6.7.
+  `react-start-rsc/tests/integration/rsc-dual-layer-dev-rsbuild.test.ts`: "a route added while the server was stopped
+  shows both real labels once the generator rebuilt the tree", "then removing the server component's use keeps the
+  route's real label", "then restoring the server component's use shows both real labels", "after the fresh start,
+  removing …", "after the fresh start, restoring …".
 
 ### J7 RSC CSS injection
 

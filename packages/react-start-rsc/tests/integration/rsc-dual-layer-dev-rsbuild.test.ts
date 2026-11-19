@@ -1,7 +1,8 @@
 /**
  * Rsbuild dev with RSC: a `'use client'` component the route and a server
  * component both render (`rsc-dual-layer-app.ts`: one file, a module of the
- * SSR layer and one of the RSC layer of the `ssr` environment), exempt
+ * SSR layer and one of the RSC layer of the server compiler: the `ssr` and
+ * the `rsc` compile environments), exempt
  * from import protection, so its `.client.ts` import is real in both (SPEC
  * J6.7). Dev first: a route added while the server was stopped (a pull:
  * the first compile reads a tree without it, then the generator writes the
@@ -34,16 +35,11 @@ async function page(server: RsbuildDevServer) {
   return { status: response.status, body: await response.text() }
 }
 
-// Known bug (KNOWN-BUGS, "Rsbuild dev with RSC: an exempt importer's denied
-// import is denied after a rebuild"). SPEC J6.7: an exempt importer gets the
-// real module. Bug: import protection's edge index is keyed by importer id,
-// not by layer: the RSC layer's compile of `ClientBox.tsx` (a client
-// reference there, no imports) replaces the row of the SSR layer's compile,
-// so when the SSR compile runs again nothing demands `browser.client.ts`
-// from an exempt importer and the file is denied as its own violation.
-// Impact: the SSR compile fails, the document answers 200 without the
-// component, and later edits leave it broken; a fresh start passes.
-// Fix: the exempt import is real after every rebuild (one row per layer).
+// SPEC J6.7: an exempt importer gets the real module, in each compile
+// environment, after every rebuild (KNOWN-BUGS, fixed: "Rsbuild dev with
+// RSC: an exempt importer's denied import was denied after a rebuild"; the
+// RSC layer's compile of `ClientBox.tsx`, a client reference there with no
+// imports, replaced the SSR layer's row of import protection's edge index).
 describe('Rsbuild dev with RSC: an exempt client component in both layers', () => {
   let server: RsbuildDevServer
   let since = 0
@@ -52,7 +48,7 @@ describe('Rsbuild dev with RSC: an exempt client component in both layers', () =
     await (server as RsbuildDevServer | undefined)?.close()
   })
 
-  test.fails(
+  test(
     'a route added while the server was stopped shows both real labels once the generator rebuilt the tree',
     async () => {
       server = await startRscRsbuildDevServer({
@@ -76,7 +72,7 @@ describe('Rsbuild dev with RSC: an exempt client component in both layers', () =
     timeout,
   )
 
-  test.fails(
+  test(
     "then removing the server component's use keeps the route's real label",
     async () => {
       since = server.diagnostics.length
@@ -86,7 +82,7 @@ describe('Rsbuild dev with RSC: an exempt client component in both layers', () =
     timeout,
   )
 
-  test.fails(
+  test(
     "then restoring the server component's use shows both real labels",
     async () => {
       since = server.diagnostics.length
@@ -105,7 +101,7 @@ describe('Rsbuild dev with RSC: an exempt client component in both layers', () =
     timeout,
   )
 
-  test.fails(
+  test(
     "after the fresh start, removing the server component's use keeps the route's real label",
     async () => {
       since = server.diagnostics.length
@@ -115,7 +111,7 @@ describe('Rsbuild dev with RSC: an exempt client component in both layers', () =
     timeout,
   )
 
-  test.fails(
+  test(
     "after the fresh start, restoring the server component's use shows both real labels",
     async () => {
       since = server.diagnostics.length
