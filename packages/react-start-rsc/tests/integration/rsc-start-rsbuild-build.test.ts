@@ -14,8 +14,8 @@ import {
   expectClientOnlyCallAnswers,
 } from './client-only-reach-app'
 import {
+  answeredText,
   openRscPage,
-  settledValue,
   startRscRsbuildPreviewServer,
   waitForHydration,
 } from './rsc-app'
@@ -175,9 +175,9 @@ test.fails(
     await waitForHydration(page)
     await page.page.locator('[data-testid=counter]').click()
     expect(
-      await settledValue(
+      await answeredText(
         page,
-        () => page.text('[data-testid=counter]'),
+        '[data-testid=counter]',
         (text) => text.includes('MARK_UPDATED') || text.includes('error'),
       ),
     ).toBe('counter MARK_UPDATED')

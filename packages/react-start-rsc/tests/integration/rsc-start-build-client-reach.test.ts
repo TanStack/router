@@ -23,6 +23,7 @@ import {
   expectClientOnlyCallAnswers,
 } from './client-only-reach-app'
 import {
+  answeredText,
   openRscPage,
   settledValue,
   startRscPreviewServer,
@@ -396,9 +397,9 @@ describe("Vite production build with RSC: server fns only 'use client' component
       const button = '[data-testid=lazy]'
       await page.page.locator(button).click()
       expect(
-        await settledValue(
+        await answeredText(
           page,
-          () => page.text(button),
+          button,
           (text) => text.includes('MARK_') || text.includes('error'),
         ),
       ).toBe('lazy MARK_LAZY')

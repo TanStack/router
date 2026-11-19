@@ -591,6 +591,25 @@ export async function settledValue<T>(
 }
 
 /**
+ * The text of `selector` once `answered` takes it (the outcome of a click
+ * that sends a request), read as `settledValue` reads it. A click that got
+ * no answer by the time the network settled throws a plain error: a broken
+ * test, not the value under test, so a known-bug pin does not read it as
+ * its bug (`pins-setup.ts`).
+ */
+export async function answeredText(
+  page: BrowserPage,
+  selector: string,
+  answered: (text: string) => boolean,
+): Promise<string> {
+  const text = await settledValue(page, () => page.text(selector), answered)
+  if (!answered(text)) {
+    throw new Error(`${selector}: the click got no answer (${text})`)
+  }
+  return text
+}
+
+/**
  * Waits until the app hydrated in the page (the root route of `rscAppFiles`
  * shows it through the router's `useHydrated()`): only then does the page
  * run the client, e.g. its HMR listeners.

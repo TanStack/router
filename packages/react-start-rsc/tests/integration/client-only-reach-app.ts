@@ -8,7 +8,7 @@
  * build files, in the app they already build.
  */
 import { expect } from 'vitest'
-import { openRscPage, settledValue, waitForHydration } from './rsc-app'
+import { answeredText, openRscPage, waitForHydration } from './rsc-app'
 import type { RscPreviewServer } from './rsc-app'
 
 const serverFn = (
@@ -172,9 +172,9 @@ export async function expectClientOnlyCallAnswers(
   const selector = `[data-testid=${name}]`
   await page.page.locator(selector).click()
   expect(
-    await settledValue(
+    await answeredText(
       page,
-      () => page.text(selector),
+      selector,
       (text) => text.includes('MARK_') || text.includes('error'),
     ),
   ).toBe(`${name} MARK_${name.toUpperCase()}`)
