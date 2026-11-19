@@ -10,7 +10,6 @@
  * R3-G5-3, ruling F1).
  */
 import { describe, expect, test } from 'vitest'
-import { layerKey } from '../../src/import-protection/session'
 import { LOCATED_DIAGNOSTICS } from '../../src/rsbuild/compiler-session'
 import { handOverWarnings } from '../../src/rsbuild/host-plugin'
 import type { LocatedDiagnostic } from '@tanstack/router-utils/compiler'
@@ -35,12 +34,19 @@ const moduleOf = (
 
 const role = '/app/src/role.ts'
 
+/** A module's key: its compile environment (here its layer) and resource. */
+const keyOf = (module: { resource: string; layer?: string | null }) =>
+  `${module.layer ?? ''}\0${module.resource}`
+const keyOfRole = keyOf({ resource: role })
+const keyOfOther = keyOf({ resource: '/app/src/other.ts' })
+
 describe('warnings handed over to the next compilation', () => {
   test('a module the newer compilation kept: its warnings', () => {
     const kept = moduleOf(role, [warning('MARK_ROLE')])
     const { handed } = handOverWarnings(
-      new Map([[role, [warning('MARK_ROLE')]]]),
+      new Map([[keyOfRole, [warning('MARK_ROLE')]]]),
       [kept],
+      keyOf,
       () => false,
     )
     expect(handed).toEqual([{ module: kept, warning: warning('MARK_ROLE') }])
@@ -49,9 +55,10 @@ describe('warnings handed over to the next compilation', () => {
   test('a module the newer compilation built again without reporting them: its warnings', () => {
     const rebuilt = moduleOf(role, [])
     const { handed } = handOverWarnings(
-      new Map([[role, [warning('MARK_ROLE')]]]),
+      new Map([[keyOfRole, [warning('MARK_ROLE')]]]),
       [rebuilt],
-      (resource) => resource === role,
+      keyOf,
+      (module) => module === rebuilt,
     )
     expect(handed).toEqual([{ module: rebuilt, warning: warning('MARK_ROLE') }])
   })
@@ -59,9 +66,10 @@ describe('warnings handed over to the next compilation', () => {
   test('a warning the newer compilation reports itself: not twice', () => {
     const rebuilt = moduleOf(role, [warning('MARK_ROLE')])
     const { handed } = handOverWarnings(
-      new Map([[role, [warning('MARK_ROLE'), warning('MARK_OTHER', 2)]]]),
+      new Map([[keyOfRole, [warning('MARK_ROLE'), warning('MARK_OTHER', 2)]]]),
       [rebuilt],
-      (resource) => resource === role,
+      keyOf,
+      (module) => module === rebuilt,
     )
     expect(handed).toEqual([
       { module: rebuilt, warning: warning('MARK_OTHER', 2) },
@@ -70,8 +78,9 @@ describe('warnings handed over to the next compilation', () => {
 
   test('a module no longer in the newer compilation: nothing', () => {
     const { handed } = handOverWarnings(
-      new Map([[role, [warning('MARK_ROLE')]]]),
+      new Map([[keyOfRole, [warning('MARK_ROLE')]]]),
       [moduleOf('/app/src/other.ts')],
+      keyOf,
       () => true,
     )
     expect(handed).toEqual([])
@@ -80,26 +89,29 @@ describe('warnings handed over to the next compilation', () => {
   test('what the newer compilation reports, for the one after it: its own warnings and the handed ones', () => {
     const other = '/app/src/other.ts'
     const { reported } = handOverWarnings(
-      new Map([[role, [warning('MARK_ROLE')]]]),
+      new Map([[keyOfRole, [warning('MARK_ROLE')]]]),
       [moduleOf(role, []), moduleOf(other, [warning('MARK_OTHER')])],
+      keyOf,
       () => true,
     )
     expect(Object.fromEntries(reported)).toEqual({
-      [role]: [warning('MARK_ROLE')],
-      [other]: [warning('MARK_OTHER')],
+      [keyOfRole]: [warning('MARK_ROLE')],
+      [keyOfOther]: [warning('MARK_OTHER')],
     })
   })
 
-  // (an Rsbuild RSC build: a file both layers import is a module of each)
+  // (an Rsbuild RSC build: a file both layers import is a module of each
+  // compile environment)
   test("a file's module of each layer: the warnings of each, handed over to the one the newer compilation kept", () => {
     const ssr = moduleOf(role, [warning('MARK_SSR')], 'ssr')
     const rsc = moduleOf(role, [warning('MARK_RSC', 2)], 'rsc')
-    const older = handOverWarnings(null, [ssr, rsc], () => true)
+    const older = handOverWarnings(null, [ssr, rsc], keyOf, () => true)
     // (the newer compilation built the RSC layer's module again, and kept the SSR layer's)
     const { handed } = handOverWarnings(
       older.reported,
       [ssr, rsc],
-      (key) => key === layerKey(role, 'rsc'),
+      keyOf,
+      (module) => module === rsc,
     )
     expect(handed).toEqual([{ module: ssr, warning: warning('MARK_SSR') }])
   })
@@ -108,6 +120,7 @@ describe('warnings handed over to the next compilation', () => {
     const { reported } = handOverWarnings(
       null,
       [moduleOf(role, [warning('MARK_ROLE')])],
+      keyOf,
       () => false,
     )
     expect(reported.size).toBe(0)

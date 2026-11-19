@@ -158,6 +158,7 @@ export {
   StaleSetDrain,
   pathsOf,
   rebuildModules,
+  rebuildModulesWhere,
   reportingFailure,
 } from './hosts/rebuild'
 export type { IdleCompilerLike, RebuildCompilationLike } from './hosts/rebuild'

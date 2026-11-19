@@ -58,7 +58,6 @@ export interface EnvInfo {
   type: 'client' | 'server'
   isProvider?: boolean
   mode: 'dev' | 'build'
-  layer?: string
 }
 
 export type EdgeForm =
@@ -372,7 +371,6 @@ export class AnalysisPlan implements PlanContext {
   ): string {
     return edgeKeyOf(
       this.env.name,
-      this.env.layer,
       this.identity.canonicalId,
       rawSpecifier,
       form,

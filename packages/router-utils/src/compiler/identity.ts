@@ -379,20 +379,19 @@ export function canonicalJson(value: unknown): string {
 }
 
 /**
- * The key of an import edge: unique per (environment, layer, importer,
- * specifier, form, origin) within a request. A plain join (one key per edge
+ * The key of an import edge: unique per (environment, importer, specifier,
+ * form, origin) within a request. A plain join (one key per edge
  * per output on every compile); an id derived from it hashes it
  * (`edgeModuleKey`).
  */
 export function edgeKeyOf(
   env: string,
-  layer: string | null | undefined,
   importer: string,
   rawSpecifier: string,
   form: string,
   origin = 'source',
 ): string {
-  return `${env}\0${layer ?? ''}\0${importer}\0${rawSpecifier}\0${form}\0${origin}`
+  return `${env}\0${importer}\0${rawSpecifier}\0${form}\0${origin}`
 }
 
 export function planKeyString(key: PlanKey): string {

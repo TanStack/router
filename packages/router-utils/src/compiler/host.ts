@@ -222,13 +222,6 @@ export interface HostServices {
     importerCanonicalId: string,
   ) => Promise<{ id: string; external?: boolean } | null>
   /**
-   * Which resolver of the environment `resolve` asks, when its modules do
-   * not all resolve alike (Rsbuild's RSC layer: `react-server` through rule
-   * `resolve` options); the resolution memo keeps each one's answers apart
-   * (R35). Absent: the environment's one resolver.
-   */
-  resolveScope?: string
-  /**
    * The part of the importer `resolve` hands the bundler's resolver, when
    * that is less than the importer: the resolution memo keys answers by it,
    * so importers it does not tell apart share them. Rsbuild: the importer's
@@ -237,7 +230,8 @@ export interface HostServices {
    * (a Vite plugin's `resolveId`, a tsconfig `include` per file) may answer
    * two files of one directory differently. Whatever else of the importer
    * reaches the resolver joins the key (per-issuer rule `resolve` options,
-   * `issuerLayer`; the RSC layer's: `resolveScope`).
+   * `issuerLayer`), unless it is the same for every module of the
+   * environment (Rsbuild's RSC environment: the layer's rule options).
    */
   resolveKey?: (importerCanonicalId: string) => string
   rawFacts: RawFactsCache
@@ -421,8 +415,8 @@ export interface InvalidateChange {
 /**
  * The hosts of an invalidation: one host for every plan, or a function of
  * the plan's key (a plan's resolutions are re-validated with its module's
- * own resolver: per-environment aliases and conditions, and an Rsbuild
- * layer's rule options, resolve a specifier differently).
+ * own resolver: per-environment aliases and conditions, and the rule options
+ * of an Rsbuild layer's environment, resolve a specifier differently).
  */
 type InvalidationHosts = HostServices | ((key: PlanKey) => HostServices)
 
@@ -970,7 +964,7 @@ export function isAnalyzableSpecifier(specifier: string): boolean {
 
 /**
  * Resolves a specifier for the analysis through the host's resolver (the
- * environment's own, `resolveScope`); returns the canonical id of the
+ * environment's own); returns the canonical id of the
  * target, `EXTERNAL_RESOLUTION` for an external, or null when nothing
  * readable is behind it. The environment's memo answers a pair that resolver
  * resolved before at the current file-set version, settling or settled (the
@@ -998,12 +992,10 @@ export function resolveForAnalysis(
     host.resolveKey === undefined
       ? importerCanonicalId
       : host.resolveKey(importerCanonicalId)
-  const memoKey =
-    host.resolveScope === undefined ? from : `${host.resolveScope}\0${from}`
-  let memo = memos.get(memoKey)
+  let memo = memos.get(from)
   if (!memo) {
     memo = new Map()
-    memos.set(memoKey, memo)
+    memos.set(from, memo)
   }
   const hit = memo.get(specifier)
   if (hit !== undefined) {

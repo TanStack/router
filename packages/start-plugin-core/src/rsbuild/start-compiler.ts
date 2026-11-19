@@ -15,7 +15,7 @@ import { StartRsbuildCompilerSession } from './compiler-session'
 import { createStartHostPlugin } from './host-plugin'
 import { createRsbuildRouteGenerator } from './router-generator'
 import { vueScriptBlockRule } from './vue'
-import { RSBUILD_ENVIRONMENT_NAMES, RSBUILD_RSC_LAYERS } from './planning'
+import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { TransformImportRule } from './compiler-session'
 import type { StartCompilerEnvironment } from '../compiler/session'
 import type { TanStackStartRsbuildInputConfig } from './schema'
@@ -56,7 +56,6 @@ export function registerStartCompiler(
   opts: RegisterStartCompilerOptions,
 ): RegisteredStartCompiler {
   const dev = api.context.action === 'dev'
-  const rscEnabled = opts.corePluginOpts.rsc !== undefined
   /**
    * The session of the compiler being configured, or of the last one
    * created: one per Rspack compiler of this Rsbuild instance (a `build()`
@@ -89,7 +88,6 @@ export function registerStartCompiler(
       srcDirectory: resolvedStartConfig.srcDirectory,
       environments: opts.environments,
       rsc: opts.corePluginOpts.rsc,
-      rscLayer: rscEnabled ? RSBUILD_RSC_LAYERS.rsc : undefined,
       generateFunctionId: opts.startPluginOpts.serverFns?.generateFunctionId,
       codeSplittingOptions: startConfig.router.codeSplittingOptions,
       importProtection: startConfig.importProtection,
@@ -138,7 +136,7 @@ export function registerStartCompiler(
       return
     }
     const s = configuredSession()
-    s.env(environment.name).transformImport = transformImportRules(
+    s.compiler(environment.name).transformImport = transformImportRules(
       utils.environment.config.source.transformImport,
     )
     const rules = (config.module.rules ??= [])

@@ -162,24 +162,29 @@ export function violationsOf(output: {
   return facts?.violations[output.output] ?? []
 }
 
-/** `log: 'once'` dedupes by this key: the logical edge's provenance (env, importer, raw specifier, target). */
-export function dedupeKey(v: EdgeViolation): string {
-  return [v.env, v.importer, v.specifier, v.resolved ?? ''].join('\u0000')
+/**
+ * `log: 'once'` and `allowImport`'s memo dedupe by this key: the logical
+ * edge's provenance (the environment name reports give, `env`; importer,
+ * raw specifier, target).
+ */
+export function dedupeKey(v: EdgeViolation, env = v.env): string {
+  return [env, v.importer, v.specifier, v.resolved ?? ''].join('\u0000')
 }
 
 /**
  * What `allowImport` is told of a violation: all that is known of the import
  * before the bundler's graph is finished, so no `trace` (no chain exists yet)
  * and no `snippet` (a rendering of the source for a report, nothing a decision
- * reads).
+ * reads). `env`: the name reports give the environment (default: its key).
  */
 export function allowImportInfo(
   v: EdgeViolation,
   config: ImportProtectionConfig,
+  env = v.env,
 ): AllowImportInfo {
   const pattern = patternOf(rulesFor(config, v.envType), v.rule)
   return {
-    env: v.env,
+    env,
     envType: v.envType,
     type: v.rule.type,
     behavior: v.behavior,
@@ -205,12 +210,14 @@ export type ReportedInfo = ViolationInfo & {
  * when printed), dropped after that read. The trace is cut at
  * `maxTraceDepth` and stays what it was then: an event kept after a later
  * edit still names the chain that brought the import, and an event kept
- * after a build holds no part of that build.
+ * after a build holds no part of that build. `env`: the name reports give
+ * the environment (default: its key).
  */
 export function violationInfo(
   v: EdgeViolation,
   config: ImportProtectionConfig,
   trace: Trace | (() => Trace),
+  env = v.env,
 ): ReportedInfo {
   let frozen: Trace | null = null
   let source: Trace | (() => Trace) | null = trace
@@ -237,7 +244,7 @@ export function violationInfo(
     return t
   }
   const info = {
-    ...allowImportInfo(v, config),
+    ...allowImportInfo(v, config, env),
     ...(v.snippet && {
       snippet: { ...v.snippet, lines: [...v.snippet.lines] },
     }),
@@ -260,9 +267,11 @@ export const RSPACK_BUILD_INFO_KEY = 'tanstack.start.ip'
 /**
  * The version of `RspackImportProtectionBuildInfo`. A module restored with a
  * record of another version (a persistent cache an earlier build wrote) is
- * built again, never replayed. 2: every violation has its edge module.
+ * built again, never replayed. 2: every violation has its edge module. 3:
+ * edge keys and edge-module ids of compile environments (no layer; an
+ * Rspack RSC layer's module records the `rsc` environment's).
  */
-export const RSPACK_BUILD_INFO_VERSION = 2
+export const RSPACK_BUILD_INFO_VERSION = 3
 
 /**
  * What the Rspack loader stores in an importer's `buildInfo[RSPACK_BUILD_INFO_KEY]`

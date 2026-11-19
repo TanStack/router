@@ -132,7 +132,8 @@ const devFiles = {
 /**
  * The provider's environment and the page of a dev server, per host. Vite's
  * provider is an environment of its own (`rsc`, `react-server` among its
- * conditions): the twin of the Rsbuild layer.
+ * conditions); Rsbuild's is the server compiler's RSC layer, which reports
+ * name `rsc` too.
  */
 const devHosts = {
   'Rsbuild dev': async (start: Record<string, unknown>) => {
@@ -142,7 +143,7 @@ const devHosts = {
       files: devFiles,
     })
     const page = await (await fetch(new URL('/', server.url))).text()
-    return { env: 'ssr', page }
+    return { env: 'rsc', page }
   },
   'Vite dev': async (start: Record<string, unknown>) => {
     const server = await startRscDevServer({
@@ -209,7 +210,7 @@ describe('Rsbuild build with RSC', () => {
         (error: unknown) => error,
       )
       expect(built).toBeInstanceOf(AggregateError)
-      expect(summary(violations)).toEqual(leakViolations('ssr'))
+      expect(summary(violations)).toEqual(leakViolations('rsc'))
     },
     timeout,
   )

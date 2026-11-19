@@ -72,9 +72,22 @@ import type {
   RouteRegistry,
 } from '@tanstack/router-utils/compiler'
 
+/**
+ * A compile environment: what a Start plan belongs to. Vite: one per
+ * configured environment. Rsbuild: one per compiler, and one per Rspack
+ * layer of the server compiler whose modules compile apart (RSC's layer:
+ * `rsc`).
+ */
 export interface StartCompilerEnvironment {
+  /** The key of its state: plans, stale sets, import protection, registry snapshots, edge keys, configuration. */
   name: string
   type: 'client' | 'server'
+  /**
+   * The environment name reports and import protection's callbacks give
+   * (`info.env`), when it is not `name` (an Rsbuild user layer: its
+   * compiler's).
+   */
+  publicName?: string
 }
 
 export interface StartCompilerSessionOptions {
@@ -83,21 +96,17 @@ export interface StartCompilerSessionOptions {
   mode: 'dev' | 'build'
   root: string
   srcDirectory: string
+  /** The compile environments known when the session starts (a host adds others: `addEnvironment`). */
   environments: Array<StartCompilerEnvironment>
   /**
-   * The environment whose compiles provide the server functions
-   * (`EnvInfo.isProvider`): Vite's provider environment (SSR, or RSC's
-   * own), Rsbuild's server environment (with RSC, its RSC layer only).
+   * The compile environment whose compiles provide the server functions
+   * (`EnvInfo.isProvider`): the SSR environment, or with RSC the one that
+   * renders server components (Vite's provider environment, Rsbuild's
+   * `rsc`).
    */
   providerEnv: string
-  /** RSC on: server components render, and provide the server functions, apart from SSR. */
+  /** RSC on: server components render, and provide the server functions, apart from SSR (in `providerEnv`). */
   rsc: StartRscOptions | undefined
-  /**
-   * Where server components render: Rsbuild's Rspack layer of the server
-   * environment; undefined on Vite, where they render in the provider
-   * environment.
-   */
-  rscLayer?: string
   generateFunctionId: GenerateFunctionId | undefined
   /** The user's `router.codeSplittingOptions` (Start's rules apply over them). */
   codeSplittingOptions: RouterConfig['codeSplittingOptions']
@@ -130,8 +139,6 @@ export interface StartCompileInput {
   id: string
   code: string
   env: StartCompilerEnvironment
-  /** The module's Rspack layer, if any. */
-  layer?: string
   inputMap: () => InputSourceMap | null
   wantMap: boolean
   /** How the map's consumer counts lines (`CompileInput.lines`). */
@@ -180,7 +187,7 @@ export class StartCompilerSession {
       rsc: opts.rsc !== undefined,
     })
     for (const env of opts.environments) {
-      this.ip?.env(env.name, env.type)
+      this.addEnvironment(env)
     }
     this.compiles = startCompileScope(this.ip)
     const packageModule = opaquePackageModule(this.ip)
@@ -207,6 +214,11 @@ export class StartCompilerSession {
     )
   }
 
+  /** A compile environment the host found (an Rsbuild layer's): its import protection's state. */
+  addEnvironment(env: StartCompilerEnvironment): void {
+    this.ip?.env(env.name, env.type, env.publicName)
+  }
+
   private static readStats(o: StartCompilerSession) {
     return collectionSizes(
       {
@@ -220,22 +232,16 @@ export class StartCompilerSession {
   }
 
   /**
-   * Whether a compile renders server components (RSC on): the router
-   * planner does not run there (its route modules are the providers' twins
-   * of the SSR ones and stay unsplit, so the router's lazy wrapper, a React
-   * hook in development, never resolves against the react-server build of
-   * React), and the `rsc-css` planner does.
+   * Whether a compile renders server components (RSC on, the provider
+   * environment): the router planner does not run there (its route modules
+   * are the providers' twins of the SSR ones and stay unsplit, so the
+   * router's lazy wrapper, a React hook in development, never resolves
+   * against the react-server build of React), and the `rsc-css` planner
+   * does. With RSC off the SSR environment provides and keeps the router
+   * planner.
    */
-  private rendersServerComponents(
-    env: string,
-    layer: string | undefined,
-  ): boolean {
-    return (
-      this.opts.rsc !== undefined &&
-      (this.opts.rscLayer !== undefined
-        ? layer === this.opts.rscLayer
-        : env === this.opts.providerEnv)
-    )
+  private rendersServerComponents(env: string): boolean {
+    return this.opts.rsc !== undefined && env === this.opts.providerEnv
   }
 
   /** The router planner's configuration of an environment type (Start's rules over the user's options). */
@@ -254,15 +260,12 @@ export class StartCompilerSession {
     return cfg
   }
 
-  private envInfo(env: StartCompilerEnvironment, layer?: string): EnvInfo {
+  private envInfo(env: StartCompilerEnvironment): EnvInfo {
     return {
       name: env.name,
       type: env.type,
-      isProvider:
-        env.name === this.opts.providerEnv &&
-        (this.opts.rscLayer === undefined || layer === this.opts.rscLayer),
+      isProvider: env.name === this.opts.providerEnv,
       mode: this.opts.mode,
-      ...(layer ? { layer } : {}),
     }
   }
 
@@ -301,10 +304,8 @@ export class StartCompilerSession {
   private configFor(
     env: StartCompilerEnvironment,
     rsc: boolean,
-    layer: string | undefined,
   ): CompileConfig {
-    const key = `${env.name}\u0000${layer ?? ''}`
-    let config = this.configs.get(key)
+    let config = this.configs.get(env.name)
     if (!config) {
       const { opts } = this
       const idMode: StartEnvConfig['idMode'] =
@@ -324,12 +325,14 @@ export class StartCompilerSession {
           : undefined
       config = {
         configKey: digestOf({
+          // 2: plans of compile environments (an Rspack layer's is its own,
+          // no `layer` field): every key persisted before is another's
+          model: 2,
           framework: opts.framework,
           root: opts.root,
           idMode,
           rsc: opts.rsc ?? null,
           env: env.name,
-          layer: layer ?? null,
           router: router && routerPlannerConfigDigest(router),
           ip: this.ip?.config.configKey ?? null,
         }),
@@ -344,7 +347,7 @@ export class StartCompilerSession {
           [ROUTER_PLANNER]: router ?? undefined,
         },
       }
-      this.configs.set(key, config)
+      this.configs.set(env.name, config)
     }
     return config
   }
@@ -375,14 +378,14 @@ export class StartCompilerSession {
     input: StartCompileInput,
     host: HostServices,
   ): Promise<CompileOutput | null> {
-    const { env, layer, late } = input
-    const rsc = this.rendersServerComponents(env.name, layer)
-    const config = this.configFor(env, rsc, layer)
+    const { env, late } = input
+    const rsc = this.rendersServerComponents(env.name)
+    const config = this.configFor(env, rsc)
     const out = await compileModule(
       {
         id: input.id,
         code: input.code,
-        env: this.envInfo(env, layer),
+        env: this.envInfo(env),
         planners: late ? this.latePlanners() : this.plannersFor(env, rsc),
         config: late
           ? {
@@ -417,18 +420,13 @@ export class StartCompilerSession {
 
   /**
    * Whether a plan's configuration key (one an earlier process persisted)
-   * is this session's for a module of `env` and `layer`, of the main
-   * compile or of the late pass.
+   * is this session's for a module of `env`, of the main compile or of the
+   * late pass.
    */
-  configured(
-    configKey: string,
-    env: StartCompilerEnvironment,
-    layer: string | undefined,
-  ): boolean {
+  configured(configKey: string, env: StartCompilerEnvironment): boolean {
     const own = this.configFor(
       env,
-      this.rendersServerComponents(env.name, layer),
-      layer,
+      this.rendersServerComponents(env.name),
     ).configKey
     return configKey === own || configKey === lateConfigKey(own)
   }
@@ -439,17 +437,15 @@ export class StartCompilerSession {
    * `error`-behaviour one fails the module (the host serves no output). A
    * module that is its own violation is served as its mock (`mock`). A
    * promise only when violations are decided now (`log: 'always'`, a
-   * module's own violation in Vite's dev server). `layer`: the bundler's
-   * layer of the module (Rspack).
+   * module's own violation in Vite's dev server).
    */
   afterCompile(
     env: StartCompilerEnvironment,
     id: string,
     out: CompiledOutputLike,
-    layer?: string,
   ): CompileOutcome | Promise<CompileOutcome> {
     return (
-      this.ip?.env(env.name, env.type).afterCompile(id, out, layer) ??
+      this.ip?.env(env.name, env.type, env.publicName).afterCompile(id, out) ??
       NO_OUTCOME
     )
   }
@@ -461,7 +457,7 @@ export class StartCompilerSession {
   ): Promise<CompiledOutputLike | null> {
     return (
       this.ip
-        ?.env(env.name, env.type)
+        ?.env(env.name, env.type, env.publicName)
         .assetOutput(id, (path) => this.rawFacts.marker(path, env.name)) ?? null
     )
   }

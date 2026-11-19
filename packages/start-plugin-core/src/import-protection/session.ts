@@ -200,6 +200,16 @@ export class ImportProtection {
     server: new Set(),
   }
   private warnedOnViolationFalse = false
+  /** The name reports give an environment whose key is not it (`env`'s `publicName`). */
+  private readonly publicNames = new Map<string, string>()
+  /**
+   * By the environment name reports give, `allowImport`'s answers: one per
+   * import (`dedupeKey`) for its session or build, shared by the compile
+   * environments of one name (an Rsbuild user layer and its compiler's).
+   */
+  private readonly answers = new Map<string, Map<string, Promise<boolean>>>()
+  /** By the environment name reports give, the imports `onViolation` was told about (`dedupeKey`): per dev session with `log: 'once'`, per build. */
+  private readonly notified = new Map<string, Set<string>>()
   /** How reports are formatted. */
   readonly report: ReportContext
 
@@ -243,8 +253,15 @@ export class ImportProtection {
     return this.config.markerSpecifiers
   }
 
-  /** The environment's state; `type` is required the first time (the planner passes `EnvInfo.type`). */
-  env(name: string, type?: EnvType): ImportProtectionEnv {
+  /**
+   * The state of a compile environment (by key); `type` is required the
+   * first time (the planner passes `EnvInfo.type`). `publicName`: the name
+   * reports and callbacks give it (default: its key).
+   */
+  env(name: string, type?: EnvType, publicName?: string): ImportProtectionEnv {
+    if (publicName !== undefined && publicName !== name) {
+      this.publicNames.set(name, publicName)
+    }
     let env = this.envs.get(name)
     if (!env) {
       if (!type) {
@@ -271,6 +288,39 @@ export class ImportProtection {
       }
     }
     this.envs.delete(name)
+    const publicName = this.publicNameOf(name)
+    if (
+      ![...this.envs.keys()].some((k) => this.publicNameOf(k) === publicName)
+    ) {
+      // (another build of the name asks again)
+      this.answers.delete(publicName)
+      this.notified.delete(publicName)
+    }
+  }
+
+  /** The name reports and callbacks give a compile environment. @internal */
+  publicNameOf(name: string): string {
+    return this.publicNames.get(name) ?? name
+  }
+
+  /** `allowImport`'s answers of an environment name (`answers`). @internal */
+  answersOf(publicName: string): Map<string, Promise<boolean>> {
+    let answers = this.answers.get(publicName)
+    if (!answers) {
+      answers = new Map()
+      this.answers.set(publicName, answers)
+    }
+    return answers
+  }
+
+  /** The imports `onViolation` was told about, of an environment name (`notified`). @internal */
+  notifiedOf(publicName: string): Set<string> {
+    let notified = this.notified.get(publicName)
+    if (!notified) {
+      notified = new Set()
+      this.notified.set(publicName, notified)
+    }
+    return notified
   }
 
   /** Whether an allowed import brought `resolved` into environments of this type. @internal */
@@ -595,15 +645,10 @@ const NO_ERROR: CompileOutcome = { error: null }
 const NO_TRACE: Trace = { steps: [], fromEntry: false }
 
 /**
- * The key of a module by its id (or resource) and bundler layer, when it
- * has one (Rspack: a file compiled in two layers has two modules): the id of
- * an importer's records, and of the Rsbuild host's compiled modules.
+ * One compile environment's import protection: its edges, edge modules,
+ * served ledger and importer records (an Rsbuild layer's module of a file
+ * is the layer environment's).
  */
-export function layerKey(id: string, layer: string | undefined): string {
-  return layer === undefined ? id : `${layer}\u0000${id}`
-}
-
-/** One Start environment's import protection. */
 class ImportProtectionEnv {
   /** Resolved edges of every judged importer (trace steps). */
   readonly edges: EdgeIndex
@@ -612,25 +657,17 @@ class ImportProtectionEnv {
   /** Dev report queue (`useDevReporter`). */
   reporter: DevReporter | null = null
   private readonly modules = new Map<string, RegisteredModule>()
-  /**
-   * The edge modules of each importer's last compile, by `layerKey` (an
-   * importer of a layer has records of its own, as its edge keys are the
-   * layer's).
-   */
+  /** The edge modules of each importer's last compile, by importer id. */
   private readonly byImporter = new Map<
     string,
     { importerId: string; keys: Set<string> }
   >()
   private readonly importersByFile = new IdsByFile()
-  /** `allowImport`'s answers: one per import (`dedupeKey`) for this environment's session or build. */
-  private readonly answers = new Map<string, Promise<boolean>>()
   /**
    * The served ledger (`Served`): an edge module by its key, a denied file
    * compiled under its own id by that id (`normalizePath`).
    */
   private readonly served = new Map<string, Served>()
-  /** The imports `onViolation` was told about (`dedupeKey`): per dev session with `log: 'once'`, per build. */
-  private readonly notified = new Set<string>()
   /** Dev: pending violations confirmed by the bundler's request (`${importerId}\0${edgeKey}`). */
   private readonly confirmed = new Set<string>()
   private runtimeEmitted = false
@@ -641,6 +678,11 @@ class ImportProtectionEnv {
     readonly type: EnvType,
   ) {
     this.edges = new EdgeIndex(ip.readSource)
+  }
+
+  /** What reports and callbacks call this environment (`info.env`). */
+  get publicName(): string {
+    return this.ip.publicNameOf(this.name)
   }
 
   /** Dev: print reports through `sink` once the graph knows the importer (`reachable`). */
@@ -777,17 +819,14 @@ class ImportProtectionEnv {
    * served as its mock unless it has real demand (`allowsSelf`), and the
    * verdict is written to the served ledger; a build reports a served mock on
    * survival (`surviving`), a dev compile now, as its only violation (its
-   * imports reach nothing). `layer`: the bundler's layer of the module
-   * (Rspack: a file both the RSC and the SSR layer import is a module of
-   * each, with violations of its own).
+   * imports reach nothing).
    */
   afterCompile(
     importerId: string,
     out: CompiledOutputLike,
-    layer?: string,
   ): CompileOutcome | Promise<CompileOutcome> {
     const violations = violationsOf(out)
-    this.register(importerId, violations, layer)
+    this.register(importerId, violations)
     if (!(IMPORT_EDGES_PLANNER in out.facts.planners)) {
       // the planner did not run (the module imports nothing now): what it
       // imported before is no edge any more, nor a real demand it made
@@ -879,12 +918,15 @@ class ImportProtectionEnv {
     if (!allowImport) {
       return false
     }
-    const key = dedupeKey(v)
-    let answer = this.answers.get(key)
+    const { publicName } = this
+    const answers = this.ip.answersOf(publicName)
+    const key = dedupeKey(v, publicName)
+    let answer = answers.get(key)
     if (!answer) {
       answer = (async () =>
-        (await allowImport(allowImportInfo(v, this.ip.config))) === true)()
-      this.answers.set(key, answer)
+        (await allowImport(allowImportInfo(v, this.ip.config, publicName))) ===
+        true)()
+      answers.set(key, answer)
     }
     const allowed = await answer
     if (!v.self) {
@@ -1001,17 +1043,19 @@ class ImportProtectionEnv {
       return
     }
     if (mode === 'build' || log === 'once') {
-      const key = dedupeKey(v)
-      if (this.notified.has(key)) {
+      const notified = this.ip.notifiedOf(this.publicName)
+      const key = dedupeKey(v, this.publicName)
+      if (notified.has(key)) {
         return
       }
-      this.notified.add(key)
+      notified.add(key)
     }
     const returned: unknown = await onViolation(
       violationInfo(
         v,
         this.ip.config,
         trace ?? (() => this.trace(v.importerId)),
+        this.publicName,
       ),
     )
     if (returned === false) {
@@ -1023,10 +1067,9 @@ class ImportProtectionEnv {
    * Replays an Rspack module's `buildInfo` record (a module restored from the
    * persistent cache): an importer's violations and edges, and what was
    * served (`mismatches` compares it with this compilation's importers). A
-   * module compiled in this process wrote its own. `layer`: the module's
-   * (`afterCompile`).
+   * module compiled in this process wrote its own.
    */
-  replay(importerId: string, info: unknown, layer?: string): void {
+  replay(importerId: string, info: unknown): void {
     const record = info as RspackImportProtectionBuildInfo | undefined
     if (
       record?.version === RSPACK_BUILD_INFO_VERSION &&
@@ -1043,7 +1086,7 @@ class ImportProtectionEnv {
         }
         return
       }
-      this.register(importerId, record.violations, layer)
+      this.register(importerId, record.violations)
       const self = record.violations.find((v) => v.self)
       if (self && !this.served.has(normalizePath(importerId))) {
         this.served.set(normalizePath(importerId), {
@@ -1106,9 +1149,9 @@ class ImportProtectionEnv {
    * be built again: a record of another version is not restorable (an
    * earlier build wrote the cache; `replay` skips it), and in development a
    * record's violations are this session's to report (another session
-   * reported them). `layer`: the module's (`afterCompile`).
+   * reported them).
    */
-  unjudged(importerId: string, info: unknown, layer?: string): boolean {
+  unjudged(importerId: string, info: unknown): boolean {
     if ((info as { version?: unknown }).version !== RSPACK_BUILD_INFO_VERSION) {
       return true
     }
@@ -1117,7 +1160,7 @@ class ImportProtectionEnv {
       this.ip.config.mode === 'dev' &&
       record.env === this.name &&
       record.violations.length > 0 &&
-      !this.byImporter.has(layerKey(importerId, layer))
+      !this.byImporter.has(importerId)
     )
   }
 
@@ -1192,11 +1235,7 @@ class ImportProtectionEnv {
       : null
   }
 
-  private register(
-    importerId: string,
-    violations: Array<EdgeViolation>,
-    layer: string | undefined,
-  ): void {
+  private register(importerId: string, violations: Array<EdgeViolation>): void {
     const keys = new Set<string>()
     for (const v of violations) {
       if (v.env !== this.name) {
@@ -1208,12 +1247,11 @@ class ImportProtectionEnv {
         v,
       )
     }
-    const id = layerKey(importerId, layer)
-    const previous = this.byImporter.get(id)?.keys
+    const previous = this.byImporter.get(importerId)?.keys
     if (!previous) {
-      this.importersByFile.add(id, traceFile(importerId))
+      this.importersByFile.add(importerId, traceFile(importerId))
     }
-    this.byImporter.set(id, { importerId, keys })
+    this.byImporter.set(importerId, { importerId, keys })
     if (previous) {
       for (const key of previous) {
         if (!keys.has(key)) {
@@ -1225,8 +1263,11 @@ class ImportProtectionEnv {
 
   /** Dev: queues a mock report; returns the report of an `error` violation (the importer must fail). */
   private report(v: EdgeViolation): Array<DevReport> {
-    const info = violationInfo(v, this.ip.config, () =>
-      this.trace(v.importerId),
+    const info = violationInfo(
+      v,
+      this.ip.config,
+      () => this.trace(v.importerId),
+      this.publicName,
     )
     if (v.behavior === 'error') {
       return [{ violation: v, info }]
@@ -1348,7 +1389,7 @@ class ImportProtectionEnv {
       const denied = { ...v, behavior: 'error' as const }
       const trace = this.trace(v.importerId)
       await this.notify(denied, trace)
-      const info = violationInfo(denied, this.ip.config, trace)
+      const info = violationInfo(denied, this.ip.config, trace, this.publicName)
       reports.push(
         formatViolation(denied, info, this.ip.report, {
           childCompiler: true,
@@ -1435,7 +1476,7 @@ class ImportProtectionEnv {
     }
   }
 
-  /** Forgets an importer's records (by `layerKey`). */
+  /** Forgets an importer's records (by importer id). */
   private forgetImporter(id: string): void {
     const { importerId, keys } = this.byImporter.get(id)!
     this.byImporter.delete(id)
@@ -1590,7 +1631,12 @@ class ImportProtectionEnv {
     message: string
     info: ViolationInfo
   } {
-    const info = violationInfo(c.self, this.ip.config, NO_TRACE)
+    const info = violationInfo(
+      c.self,
+      this.ip.config,
+      NO_TRACE,
+      this.publicName,
+    )
     return {
       severity: 'error',
       message: formatServedConflict(
@@ -1634,7 +1680,7 @@ class ImportProtectionEnv {
   /** A rebuild of `build --watch`: `onViolation` hears about what survives it again. */
   beginBuild(): void {
     if (this.ip.config.mode === 'build') {
-      this.notified.clear()
+      this.ip.notifiedOf(this.publicName).clear()
     }
   }
 
@@ -1759,7 +1805,7 @@ class ImportProtectionEnv {
       // (read once: an event kept after the build holds no reader of it)
       const trace = this.trace(v.importerId, graph)
       await this.notify(v, trace)
-      const info = violationInfo(v, this.ip.config, trace)
+      const info = violationInfo(v, this.ip.config, trace, this.publicName)
       reports.push({
         severity:
           v.behavior === 'error' ? ('error' as const) : ('warning' as const),
@@ -1769,7 +1815,7 @@ class ImportProtectionEnv {
     }
     // not violations (no `onViolation`, no failure): a warning per module
     for (const [v, importers] of unchecked.values()) {
-      const info = violationInfo(v, this.ip.config, NO_TRACE)
+      const info = violationInfo(v, this.ip.config, NO_TRACE, this.publicName)
       const message = formatUncheckedImporters(info, importers, this.ip.report)
       reports.push({
         severity: 'warning' as const,
@@ -1789,12 +1835,17 @@ class ImportProtectionEnv {
           relativizePath(v.importer, this.ip.config.root),
           iv,
         ).message,
-        info: violationInfo(v, this.ip.config, NO_TRACE) as ViolationInfo,
+        info: violationInfo(
+          v,
+          this.ip.config,
+          NO_TRACE,
+          this.publicName,
+        ) as ViolationInfo,
       })
     }
     // not violations either, but the build shipped what no importer asked for
     for (const { verdict, self: v, order } of unsettled.values()) {
-      const info = violationInfo(v, this.ip.config, NO_TRACE)
+      const info = violationInfo(v, this.ip.config, NO_TRACE, this.publicName)
       const others = order
         ? order.unread
         : [

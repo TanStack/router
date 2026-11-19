@@ -344,7 +344,9 @@ text compiles waits for it and emits its own output from the result.
     `invalidate()` checks every fact, and as `lazyHits` when only a resolution or a route-registry digest did, which
     the next request asks again by design; the compiler test suites fail a file whose compilers count a stale hit or
     leave a stale path), and a compile every attempt of which was overtaken.
-  - **Takers.** The webpack-family hosts take their environments' sets at `finishMake` (`StaleSetDrain`), the Vite
+  - **Takers.** The webpack-family hosts take their environments' sets at `finishMake` (`StaleSetDrain`: a compiler
+    takes the sets of the environments it builds, and builds a module again when its own environment's set holds its
+    file), the Vite
     dev hosts in each environment's `hotUpdate` (`staleHotUpdate`: the event's own file leaves the set first, its
     modules are the event's), and a Vite watch build at each environment's `buildStart`: a Rolldown watch rebuild runs
     every `load` and `transform` again, so it builds every stale module (an assumption test in
@@ -379,10 +381,9 @@ text compiles waits for it and emits its own output from the result.
   environment reads them).
 - Resolutions: each compile records its answers in its ledger; validation asks the module's resolver again (its
   host's: `invalidate` and `restorePlans` take the host of each plan's key) only once a file event was applied since
-  the plan's resolutions were validated (`CompilerCaches.fileSetVersion`). An environment may have more than
-  one resolver (Rsbuild's RSC layer resolves with `react-server` through rule options): `HostServices.resolveScope`
-  names the host's. The environment's `PlanCache` memoises each resolver's answers per (importer, specifier) for one
-  `fileSetVersion`
+  the plan's resolutions were validated (`CompilerCaches.fileSetVersion`). An environment has one resolver (Rsbuild's
+  RSC layer, which resolves with `react-server` through rule options, is an environment of its own). The
+  environment's `PlanCache` memoises its answers per (importer, specifier) for one `fileSetVersion`
   (the compiles of a build would otherwise ask for a barrel's re-exports once per importing module, and so would
   those of a dev server's start); the same version bump drops the memo, and `releaseEnvironment` releases it with the
   plans.
@@ -399,7 +400,7 @@ text compiles waits for it and emits its own output from the result.
 | Router, Rspack / webpack | `router-plugin/src/hosts/webpack.ts`, `loader.ts`: the plugin's own loader on every JS module outside `node_modules` (compiles route modules, composes input maps, `addDependency`); the stale set built again at `finishMake` (`StaleSetDrain`)                                                                                                                                                                                                                                                               |
 | Router, esbuild          | `router-plugin/src/esbuild.ts`: generator only; `autoCodeSplitting` throws                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Start, Vite              | `start-plugin-core/src/vite/compiler-plugin.ts` (+ `compiler-state.ts`, `invalidation.ts`, `late-pass-plugin.ts`, `server-fn-plugins.ts`, `handler-reach.ts`, `planning.ts`, `bundled-dev.ts`) over the Start session (`compiler/session.ts`, both Start hosts): Start planners and the router planner in one compile per module and env; the client build the server embeds is one record of the run (`ClientBuildRecord`), and a watch build's server watches a sentinel the client rewrites when it differs |
-| Start, Rsbuild           | `start-plugin-core/src/rsbuild/` ([COMPILER_ARCHITECTURE.md](../../../start-plugin-core/src/rsbuild/COMPILER_ARCHITECTURE.md)): Rspack loaders per env/layer, facts in `buildInfo` replayed for the persistent cache                                                                                                                                                                                                                                                                                           |
+| Start, Rsbuild           | `start-plugin-core/src/rsbuild/` ([COMPILER_ARCHITECTURE.md](../../../start-plugin-core/src/rsbuild/COMPILER_ARCHITECTURE.md)): Rspack loaders per compile environment (an Rspack layer is one), facts in `buildInfo` replayed for the persistent cache                                                                                                                                                                                                                                                        |
 
 The bundler-shaped helpers the hosts share (a Vite build's last pass, derived ids' `load`, module-graph
 invalidation and live modules of a hot update, a webpack-family loader's map and module id,

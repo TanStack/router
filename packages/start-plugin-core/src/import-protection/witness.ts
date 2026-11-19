@@ -98,6 +98,8 @@ export function rolldownGraphView(
 
 interface RspackModuleLike {
   resource?: string
+  /** The module's Rspack layer (`null`: none). */
+  layer?: string | null
   /** Inner modules of a ConcatenatedModule. */
   modules?: Iterable<RspackModuleLike>
   /** The module a ConcatenatedModule stands in for (it has no `resource` of its own). */
@@ -151,38 +153,54 @@ function runtimesOf(compilation: RspackCompilationLike): Array<string> {
   return [...out]
 }
 
+/** The layer of a module (an inner module of a ConcatenatedModule without one of its own: its holder's). */
+const layerOf = (
+  inner: RspackModuleLike,
+  holder: RspackModuleLike,
+): string | undefined => inner.layer ?? holder.layer ?? undefined
+
 /**
  * The keys of the edge modules that survived an Rspack compilation
- * (`processAssets`, any stage: graph readings do not depend on it),
- * sorted. Only modules in a chunk can survive (concatenated inner modules
- * included); a used export or an effectful target makes it live; `null`
- * used exports (usedExports off) leave it to inclusion.
+ * (`processAssets`, any stage: graph readings do not depend on it), by
+ * compile environment (`envOf`: of a module's layer; `lookups`: each
+ * environment's), sorted. Only modules in a chunk can survive (concatenated
+ * inner modules included); a used export or an effectful target makes it
+ * live; `null` used exports (usedExports off) leave it to inclusion. A file
+ * in two layers is a module of each environment.
  */
 export function readRspackWitness(
   compilation: RspackCompilationLike,
-  lookup: WitnessLookup,
-): Array<string> {
+  lookups: ReadonlyMap<string, WitnessLookup>,
+  envOf: (layer: string | undefined) => string,
+  idOf: (resource: string) => string = (resource) => resource,
+): Map<string, Array<string>> {
   const inChunk = new Map<
     string,
-    { module: RspackModuleLike; edge: WitnessModule }
+    { env: string; module: RspackModuleLike; edge: WitnessModule }
   >()
   for (const chunk of compilation.chunks) {
     for (const m of compilation.chunkGraph.getChunkModules(chunk)) {
       for (const inner of m.modules ?? [m]) {
         const res = inner.resource
-        if (!res || inChunk.has(res)) {
+        if (!res) {
           continue
         }
-        const edge = lookup(res)
+        const env = envOf(layerOf(inner, m))
+        const key = `${env}\0${res}`
+        const lookup = lookups.get(env)
+        if (!lookup || inChunk.has(key)) {
+          continue
+        }
+        const edge = lookup(idOf(res))
         if (edge) {
-          inChunk.set(res, { module: inner, edge })
+          inChunk.set(key, { env, module: inner, edge })
         }
       }
     }
   }
   const runtimes = runtimesOf(compilation)
-  const live = new Set<string>()
-  for (const { module, edge } of inChunk.values()) {
+  const live = new Map<string, Set<string>>()
+  for (const { env, module, edge } of inChunk.values()) {
     const used = compilation.moduleGraph.getUsedExports(module, runtimes)
     if (
       used === true ||
@@ -190,25 +208,51 @@ export function readRspackWitness(
       (Array.isArray(used) && used.length > 0) ||
       edge.effectful
     ) {
-      live.add(edge.key)
+      let keys = live.get(env)
+      if (!keys) {
+        keys = new Set()
+        live.set(env, keys)
+      }
+      keys.add(edge.key)
     }
   }
-  return [...live].sort()
+  const out = new Map<string, Array<string>>()
+  for (const env of lookups.keys()) {
+    out.set(env, [...(live.get(env) ?? [])].sort())
+  }
+  return out
 }
 
 /**
- * The module graph of an Rspack compilation for traces (by resource, as the
- * host's ids name it: `idOf`; entries from `compilation.entries`).
+ * The module graph of an Rspack compilation for traces, of one compile
+ * environment (by resource, as the host's ids name it: `idOf`; entries from
+ * `compilation.entries`). `scope`: the environment and the one of a layer
+ * (`envOf`): an id's importers are those of the environment's modules of it
+ * (a file in two layers is a module of each); when the environment has
+ * none, or they have no importer, those of the file's other modules: an
+ * importer of another layer is a real importer (Rspack's RSC plugin adds a
+ * `'use client'` file's SSR-layer module for the RSC layer's client
+ * reference, which the server component imports), and the walk reads it in
+ * its own layer from there (one a file of both layers imports across
+ * layers is read in the environment's). Without `scope`, every module of an
+ * id.
  */
 export function rspackGraphView(
   compilation: RspackCompilationLike,
   idOf: (resource: string) => string = (resource) => resource,
+  scope?: { env: string; envOf: (layer: string | undefined) => string },
 ): ImportGraphView {
   // a production module can also be an inner module of a ConcatenatedModule (scope hoisting),
   // which holds the connections from outside the concatenation
-  let byResource: Map<string, Array<RspackModuleLike>> | null = null
+  let byResource: Map<
+    string,
+    Array<{ module: RspackModuleLike; env: string | null }>
+  > | null = null
   let entries: Set<string> | null = null
-  const modulesOf = (id: string) => {
+  /** The modules of an id: the environment's (`own`), then the others. */
+  const modulesOf = (
+    id: string,
+  ): { own: Array<RspackModuleLike>; others: Array<RspackModuleLike> } => {
     if (!byResource) {
       byResource = new Map()
       for (const m of compilation.modules) {
@@ -222,15 +266,22 @@ export function rspackGraphView(
             list = []
             byResource.set(key, list)
           }
+          const env = scope ? scope.envOf(layerOf(inner, m)) : null
           for (const holder of inner === m ? [m] : [inner, m]) {
-            if (!list.includes(holder)) {
-              list.push(holder)
+            if (!list.some((one) => one.module === holder)) {
+              list.push({ module: holder, env })
             }
           }
         }
       }
     }
-    return byResource.get(id) ?? []
+    const all = byResource.get(id) ?? []
+    const own: Array<RspackModuleLike> = []
+    const others: Array<RspackModuleLike> = []
+    for (const one of all) {
+      ;(!scope || one.env === scope.env ? own : others).push(one.module)
+    }
+    return { own, others }
   }
   const { moduleGraph } = compilation
   return {
@@ -260,8 +311,14 @@ export function rspackGraphView(
           }
         }
       }
-      for (const m of modulesOf(id)) {
+      const { own, others } = modulesOf(id)
+      for (const m of own) {
         visit(m, false)
+      }
+      if (out.length === 0) {
+        for (const m of others) {
+          visit(m, false)
+        }
       }
       return out
     },

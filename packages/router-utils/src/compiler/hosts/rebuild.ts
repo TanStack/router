@@ -1,7 +1,7 @@
 /**
  * The webpack-family (Rspack, webpack) host's side of the stale sets, shared
  * by Start's Rsbuild host and the router's host (`StaleSetDrain`): each
- * environment's compiler builds the modules of its stale set again in place
+ * compiler builds the modules of its environments' stale sets again in place
  * at `finishMake` (`rebuildModules`, same loaders: the hosts' loader rules
  * read no mutable state), in the compilation of the event; a set that fills
  * while its compiler is idle gets it a compilation.
@@ -93,28 +93,34 @@ export function pathsOf(keys: Iterable<PlanKey>, env?: string): Array<string> {
 /** How many compilations in a row `wake` asks a compiler for without a cause. */
 const MAX_ASKED = 3
 
+/** A compiler of the drain: the environments it builds and how often `wake` asked it. */
+interface DrainCompiler {
+  compiler: IdleCompilerLike
+  /** The environments whose modules it builds (Rsbuild's server compiler: its layers' too). */
+  envs: Set<string>
+  /** The compilations `wake` asked for since its last cause, or since one ended with its sets empty. */
+  asked: number
+  /** The compiler whose compilations start this one's. */
+  startedBy?: string
+  /** By environment, the paths `building` took out of its set: built by its compilation, or by `rebuild`. */
+  takenAtMake: Map<string, Set<string>>
+}
+
 /**
  * The stale sets of a session's caches, taken by the webpack-family
- * compilers of its environments (one compiler per environment). A compiler
+ * compilers of its environments. A compiler builds the modules of one or
+ * more environments (Rsbuild's server compiler: the SSR and RSC layers); it
  * forwards its own file events to `invalidate()` and reports them here as a
  * cause (`caused`); the files a compilation builds from their own events
- * leave its set at `make` (`building`); the rest of the set is built at
- * `finishMake` (`rebuild`). What fills a set after its compilation's
- * `rebuild` (another environment's event, a registry change, a compile
- * overtaken) is built by another compilation (`compiled`).
+ * leave its environments' sets at `make` (`building`); the rest of the sets
+ * is built at `finishMake` (`rebuild`), a module when its own environment's
+ * set holds its file. What fills a set after its compilation's `rebuild`
+ * (another environment's event, a registry change, a compile overtaken) is
+ * built by another compilation (`compiled`).
  */
 export class StaleSetDrain {
-  /**
-   * Each environment's compiler; `asked`: the compilations `wake` asked for
-   * since its last cause, or since one ended with its set empty;
-   * `startedBy`: the environment whose compilations start this one's.
-   */
-  private readonly compilers = new Map<
-    string,
-    { compiler: IdleCompilerLike; asked: number; startedBy?: string }
-  >()
-  /** By environment, the paths `building` took out of its set: built by its compilation, or by `rebuild`. */
-  private readonly takenAtMake = new Map<string, Set<string>>()
+  /** Each compiler, by name. */
+  private readonly compilers = new Map<string, DrainCompiler>()
 
   constructor(
     private readonly caches: CompilerCaches,
@@ -123,73 +129,108 @@ export class StaleSetDrain {
   ) {}
 
   /**
-   * The compiler of an environment. `startedBy`: the environment whose
-   * compilations start this one's (Rspack's RSC coordinator starts the
+   * A compiler, of the environment of its name. `startedBy`: the compiler
+   * whose compilations start this one's (Rspack's RSC coordinator starts the
    * client's from the server's, and a client compilation started on its
-   * own waits for the next server compilation): its set gets that
-   * compiler a compilation.
+   * own waits for the next server compilation): its sets get that compiler
+   * a compilation.
    */
-  register(env: string, compiler: IdleCompilerLike, startedBy?: string): void {
-    this.compilers.set(env, { compiler, asked: 0, startedBy })
+  register(name: string, compiler: IdleCompilerLike, startedBy?: string): void {
+    this.compilers.set(name, {
+      compiler,
+      envs: new Set([name]),
+      asked: 0,
+      startedBy,
+      takenAtMake: new Map(),
+    })
   }
 
-  /** A file event of the environment's own compilation: `wake` may ask for compilations again. */
-  caused(env: string): void {
-    const entry = this.compilers.get(env)
+  /** Another environment whose modules a registered compiler builds (an Rspack layer's). */
+  addEnvironment(compiler: string, env: string): void {
+    this.compilers.get(compiler)?.envs.add(env)
+  }
+
+  /** A file event of the compiler's own compilation: `wake` may ask for compilations again. */
+  caused(compiler: string): void {
+    const entry = this.compilers.get(compiler)
     if (entry) {
       entry.asked = 0
     }
   }
 
   /**
-   * The files a compilation of `env` builds from their own events (its
-   * modified files, once every invalidation of its events ended): they
-   * leave the set (what makes them stale from here on enters it again).
-   * `rebuild` builds those the compilation did not (webpack with content
-   * hashes in its snapshots skips a file written again unchanged).
+   * The files a compilation builds from their own events (its modified
+   * files, once every invalidation of its events ended): they leave the
+   * sets of the compiler's environments (what makes them stale from here on
+   * enters them again). `rebuild` builds those the compilation did not
+   * (webpack with content hashes in its snapshots skips a file written
+   * again unchanged).
    */
-  building(env: string, files: Iterable<string>): void {
-    const { stale } = this.caches
-    let taken = this.takenAtMake.get(env)
-    for (const file of files) {
-      if (stale.holds(env, file)) {
-        taken ??= new Set()
-        taken.add(file)
-      }
+  building(compiler: string, files: Iterable<string>): void {
+    const entry = this.compilers.get(compiler)
+    if (!entry) {
+      return
     }
-    if (taken) {
-      this.takenAtMake.set(env, taken)
-      stale.drop(env, taken)
+    const { stale } = this.caches
+    const list = [...files]
+    for (const env of entry.envs) {
+      let taken = entry.takenAtMake.get(env)
+      for (const file of list) {
+        if (stale.holds(env, file)) {
+          taken ??= new Set()
+          taken.add(file)
+        }
+      }
+      if (taken) {
+        entry.takenAtMake.set(env, taken)
+        stale.drop(env, taken)
+      }
     }
   }
 
   /**
-   * Builds again the modules of the environment's stale set (a module
-   * importing a removed file fails here as it would in the bundler's own
-   * rebuild), once the invalidations running (a registry
-   * change published during this compilation's `watchRun`) ended, and the
-   * modules of what `building` took that the compilation did not build.
-   * `pathOf`: a module resource as the stale sets spell its path.
+   * Builds again the modules of the compiler's environments' stale sets (a
+   * module importing a removed file fails here as it would in the bundler's
+   * own rebuild), once the invalidations running (a registry change
+   * published during this compilation's `watchRun`) ended, and the modules
+   * of what `building` took that the compilation did not build. A module is
+   * built when its own environment's set (`envOf`; default: the compiler's)
+   * holds its file: a file the compiler builds in two environments is built
+   * again in the one it is stale in. `pathOf`: a module resource as the
+   * stale sets spell its path.
    */
   async rebuild<
     TModule extends { identifier: () => string; resource?: string },
     TDependency,
   >(
-    env: string,
+    compiler: string,
     compilation: RebuildCompilationLike<TModule, TDependency>,
     pathOf: (resource: string) => string,
+    envOf: (module: TModule) => string = () => compiler,
   ): Promise<void> {
     const { caches } = this
-    // the environment's compilation holds modules: a registry change stales
+    const entry = this.compilers.get(compiler)
+    const envs = entry?.envs ?? new Set([compiler])
+    // the compiler's compilation holds modules: a registry change stales
     // its file here whether or not a plan of it exists
-    caches.stale.track(env)
+    for (const env of envs) {
+      caches.stale.track(env)
+    }
     if (caches.invalidations.size > 0) {
       await caches.settled()
     }
-    const paths = new Set(caches.stale.take(env))
-    const taken = this.takenAtMake.get(env)
-    this.takenAtMake.delete(env)
-    if (paths.size === 0 && !taken) {
+    const paths = new Map<string, Set<string>>()
+    for (const env of envs) {
+      const taken = caches.stale.take(env)
+      if (taken.length > 0) {
+        paths.set(env, new Set(taken))
+      }
+    }
+    const taken = entry?.takenAtMake ?? new Map<string, Set<string>>()
+    if (entry) {
+      entry.takenAtMake = new Map()
+    }
+    if (paths.size === 0 && taken.size === 0) {
       return
     }
     // `builtModules`: undocumented compilation state of both bundlers
@@ -203,31 +244,34 @@ export class StaleSetDrain {
         if (!m.resource) {
           return false
         }
+        const env = envOf(m)
         const path = pathOf(m.resource)
         return (
-          paths.has(path) ||
-          (taken !== undefined && taken.has(path) && !built?.has(m))
+          paths.get(env)?.has(path) === true ||
+          (taken.get(env)?.has(path) === true && !built?.has(m))
         )
       })
     } catch (error) {
       // what this compilation was to build stays stale: the next
       // compilation builds it, which `compiled` asks for, within the bound
-      for (const path of [...paths, ...(taken ?? [])]) {
-        caches.stale.add(env, path)
+      for (const [env, set] of [...paths, ...taken]) {
+        for (const path of set) {
+          caches.stale.add(env, path)
+        }
       }
       throw error
     }
   }
 
   /**
-   * A compilation of `env` ended (`afterDone`: in `done` the compiler is not
-   * idle yet, and a compilation asked for there would start inside it): if
-   * its set is empty, the compilations asked for so far did their work.
-   * Then `wake`.
+   * A compilation of `compiler` ended (`afterDone`: in `done` the compiler
+   * is not idle yet, and a compilation asked for there would start inside
+   * it): if its sets are empty, the compilations asked for so far did their
+   * work. Then `wake`.
    */
-  compiled(env: string): void {
-    const entry = this.compilers.get(env)
-    if (entry && !this.caches.stale.has(env)) {
+  compiled(compiler: string): void {
+    const entry = this.compilers.get(compiler)
+    if (entry && !this.stale(entry)) {
       entry.asked = 0
     }
     this.wake()
@@ -241,22 +285,32 @@ export class StaleSetDrain {
     this.wake()
   }
 
+  /** Whether a set of the compiler's environments is not empty. */
+  private stale(entry: DrainCompiler): boolean {
+    for (const env of entry.envs) {
+      if (this.caches.stale.has(env)) {
+        return true
+      }
+    }
+    return false
+  }
+
   /**
-   * Asks for a compilation of each environment whose stale set is not empty
-   * (of the compiler that starts its compilations, `startedBy`), when that
-   * compiler is idle. At most `MAX_ASKED` in a row that each end with the
-   * set still not empty and no cause between: a module whose rebuild finds
-   * itself stale again
-   * (its plan's validation and its compile disagreeing) then waits for the
-   * next event instead of compiling forever, and a warning names its files.
+   * Asks for a compilation of each compiler one of whose environments' stale
+   * sets is not empty (of the compiler that starts its compilations,
+   * `startedBy`), when that compiler is idle. At most `MAX_ASKED` in a row
+   * that each end with a set still not empty and no cause between: a module
+   * whose rebuild finds itself stale again (its plan's validation and its
+   * compile disagreeing) then waits for the next event instead of compiling
+   * forever, and a warning names its files.
    */
   private wake(): void {
-    for (const [env, entry] of this.compilers) {
+    for (const [name, entry] of this.compilers) {
       const starter =
         entry.startedBy === undefined
           ? entry
           : this.compilers.get(entry.startedBy)
-      if (!starter?.compiler.idle || !this.caches.stale.has(env)) {
+      if (!starter?.compiler.idle || !this.stale(entry)) {
         continue
       }
       if (entry.asked < MAX_ASKED) {
@@ -264,11 +318,13 @@ export class StaleSetDrain {
         starter.compiler.watching?.invalidate()
       } else if (entry.asked === MAX_ASKED) {
         entry.asked++
-        const files = this.caches.stale
-          .paths(env)
-          .map((file) => displayPath(file, this.host.root))
+        const files = [
+          ...new Set(
+            [...entry.envs].flatMap((env) => this.caches.stale.paths(env)),
+          ),
+        ].map((file) => displayPath(file, this.host.root))
         console.warn(
-          `${this.host.tag} ${files.join(', ')} ${files.length === 1 ? 'was' : 'were'} still out of date after ${MAX_ASKED} rebuilds in a row (${env}), so the dev server stops rebuilding ${files.length === 1 ? 'it' : 'them'} until a file changes. Save ${files.length === 1 ? 'the file' : 'one of them'} to build ${files.length === 1 ? 'it' : 'them'} again, and please report this to TanStack.`,
+          `${this.host.tag} ${files.join(', ')} ${files.length === 1 ? 'was' : 'were'} still out of date after ${MAX_ASKED} rebuilds in a row (${name}), so the dev server stops rebuilding ${files.length === 1 ? 'it' : 'them'} until a file changes. Save ${files.length === 1 ? 'the file' : 'one of them'} to build ${files.length === 1 ? 'it' : 'them'} again, and please report this to TanStack.`,
         )
       }
     }
@@ -322,7 +378,7 @@ export async function rebuildModules<
 }
 
 /** Rebuilds the modules of `compilation` that `wanted` takes, in place. */
-async function rebuildModulesWhere<
+export async function rebuildModulesWhere<
   TModule extends { identifier: () => string; resource?: string },
   TDependency,
 >(

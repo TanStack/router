@@ -1,6 +1,7 @@
 /**
- * The Rspack plugin of one Start environment compiler: installs the loader
- * implementation on the compiler, the generator as a precondition of a
+ * The Rspack plugin of one Start compiler (an Rsbuild environment, with the
+ * compile environments of its layers: `StartRsbuildCompilerSession.envOf`):
+ * installs the loader implementation on the compiler, the generator as a precondition of a
  * watch compilation (`watchRun`) and of a run Rsbuild dispatched no
  * `onBeforeBuild` for (`run`: `createCompiler().run()`), the intake of the file events into
  * the one invalidation operation (`watchRun`, `make`), the `finishMake`
@@ -22,10 +23,11 @@ import {
   locatedError,
   normalizePath,
   rebuildModules,
+  rebuildModulesWhere,
   reportingFailure,
 } from '@tanstack/router-utils/compiler'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
-import { heldIn, layerKey, outputKey } from '../import-protection/session'
+import { heldIn, outputKey } from '../import-protection/session'
 import {
   readRspackWitness,
   rspackGraphView,
@@ -41,6 +43,7 @@ import {
 import { LOADER_REGISTRY } from './loader-registry'
 import type { LoaderImpl } from './compiler-loader'
 import type {
+  EnvState,
   ServerFnBuildInfo,
   StartRsbuildCompilerSession,
 } from './compiler-session'
@@ -103,10 +106,6 @@ const COMPILER_PACKAGES = [
   '@tanstack/router-utils',
 ]
 
-/** The compilation's graph view, by canonical resource. */
-const graphView = (compilation: Rspack.Compilation): ImportGraphView =>
-  rspackGraphView(compilation as never, canonicalResource)
-
 interface ModuleLike {
   resource?: string
   buildInfo?: Record<string, unknown>
@@ -117,20 +116,21 @@ interface ModuleLike {
 /**
  * Development: the warnings a compilation reports for the one before it,
  * which Rsbuild never printed (`before`: what that one reported, by module:
- * `layerKey` of resource and layer). Rspack before 2.3.3 reports a module's
- * warnings only in the compilation that built it (2.3.3 reports a kept
- * module's again, which `reportHandedOver` drops), and the session
- * reports a warning once per dev session (the warning ledger), so a module
- * the compilation kept, or built again, reports none of them: each recorded
- * warning of one of its modules that it does not report itself (`built`: it
- * built the module, by its key) is handed over. Also returns what the
+ * `keyOf`, its compile environment and resource). Rspack before 2.3.3
+ * reports a module's warnings only in the compilation that built it (2.3.3
+ * reports a kept module's again, which `reportHandedOver` drops), and the
+ * session reports a warning once per dev session (the warning ledger), so a
+ * module the compilation kept, or built again, reports none of them: each
+ * recorded warning of one of its modules that it does not report itself
+ * (`built`: it built the module) is handed over. Also returns what the
  * compilation reports, by module (its built modules' warnings and the handed
  * ones), for the compilation after it.
  */
 export function handOverWarnings(
   before: ReadonlyMap<string, ReadonlyArray<LocatedDiagnostic>> | null,
   modules: Iterable<ModuleLike>,
-  built: (key: string) => boolean,
+  keyOf: (module: ModuleLike & { resource: string }) => string,
+  built: (module: ModuleLike & { resource: string }) => boolean,
 ): {
   handed: Array<{ module: ModuleLike; warning: LocatedDiagnostic }>
   reported: Map<string, Array<LocatedDiagnostic>>
@@ -141,8 +141,9 @@ export function handOverWarnings(
     if (!module.resource) {
       continue
     }
-    const key = layerKey(module.resource, module.layer ?? undefined)
-    const own = built(key)
+    const one = module as ModuleLike & { resource: string }
+    const key = keyOf(one)
+    const own = built(one)
       ? (
           (module.buildInfo?.[LOCATED_DIAGNOSTICS.field] ??
             []) as Array<LocatedDiagnostic>
@@ -191,14 +192,49 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
   apply: (compiler: Rspack.Compiler) => void
 } {
   const { session, environment, rspack } = opts
-  const env = session.env(environment.name)
+  const own = session.compiler(environment.name)
+  /** The compile environment of a module of this compiler (its layer's). */
+  const envOf = (module: { layer?: string | null }): EnvState =>
+    session.envOf(environment.name, module.layer)
+  /** The key of the compile environment of a module (`envOf`), for the drain. */
+  const envKeyOf = (module: unknown): string =>
+    envOf(module as { layer?: string | null }).name
+  /** The key of a module of this compiler: its environment and resource. */
+  const keyOf = (module: ModuleLike & { resource: string }) =>
+    `${envOf(module).name}\0${module.resource}`
+  /** Whether the loader compiled a module in this compilation. */
+  const compiledHere = (module: ModuleLike & { resource: string }) =>
+    envOf(module).compiled.has(module.resource)
   /**
-   * This environment's import protection, looked up when a hook runs (not
-   * held by the hooks): the session releases it once the environment's
+   * A compile environment's import protection, looked up when a hook runs
+   * (not held by the hooks): the session releases it once the compiler's
    * build is finished.
    */
-  const ipEnvOf = () =>
-    session.start.ip?.env(environment.name, environment.type) ?? null
+  const ipEnvOf = (env: EnvState) =>
+    session.start.ip?.env(env.name, env.type, env.publicName) ?? null
+  /** The import protection of each compile environment of this compiler. */
+  const ipEnvs = () => {
+    const out: Array<{
+      env: EnvState
+      ip: NonNullable<ReturnType<typeof ipEnvOf>>
+    }> = []
+    for (const env of session.envsOf(environment.name)) {
+      const ip = ipEnvOf(env)
+      if (ip) {
+        out.push({ env, ip })
+      }
+    }
+    return out
+  }
+  /** The compilation's graph view of a compile environment, by canonical resource. */
+  const graphView = (
+    compilation: Rspack.Compilation,
+    env: EnvState,
+  ): ImportGraphView =>
+    rspackGraphView(compilation as never, canonicalResource, {
+      env: env.name,
+      envOf: (layer) => session.envOf(environment.name, layer).name,
+    })
   return {
     apply(compiler) {
       const { Compilation, WebpackError } = rspack
@@ -293,20 +329,20 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       session.registerCompiler(environment.name, compiler)
 
       const cache = compiler.options.cache
-      env.persistsModules = typeof cache === 'object' && cache.type !== 'memory'
+      own.persistsModules = typeof cache === 'object' && cache.type !== 'memory'
 
-      // import-protection edge modules are virtual files of this environment, written when
-      // they are defined (the importer's compile). With a persistent cache, an importer
-      // restored in a new process requests a module nothing defined: the request carries
-      // its content, which defines it before it resolves
+      // import-protection edge modules are virtual files of the compiler of their
+      // environment, written when they are defined (the importer's compile). With a
+      // persistent cache, an importer restored in a new process requests a module nothing
+      // defined: the request carries its content, which defines it before it resolves
       if (session.start.ip) {
         const ip = session.start.ip
         ip.onEdgeModule((file, load, ref) => {
-          if (ref.env === environment.name) {
+          if (session.compilerOf(ref.env) === environment.name) {
             opts.writeVirtualModule(file, load.code)
           }
         })
-        if (env.persistsModules) {
+        if (own.persistsModules) {
           compiler.hooks.normalModuleFactory.tap(PLUGIN_NAME, (factory) => {
             factory.hooks.beforeResolve.tap(PLUGIN_NAME, (data) => {
               ip.define(data.request)
@@ -315,8 +351,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         }
         // a child compiler of this one (a worker or service-worker plugin's) takes
         // these taps but not the virtual files: its requests of them fail the build
-        // with the violations they stand for (in this environment's compilation,
-        // which Rsbuild prints), and resolve to nothing
+        // with the violations they stand for (in this compiler's compilation,
+        // which Rsbuild prints), and resolve to nothing. The request is of the
+        // environment of the issuer's layer
         compiler.hooks.compilation.tap(PLUGIN_NAME, (compilation, params) => {
           if (compilation.compiler === compiler) {
             return
@@ -324,7 +361,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           params.normalModuleFactory.hooks.beforeResolve.tapPromise(
             PLUGIN_NAME,
             async (data) => {
-              const reports = await ipEnvOf()?.childCompilerRequest(
+              const issuerEnv = envOf({ layer: data.contextInfo.issuerLayer })
+              const reports = await ipEnvOf(issuerEnv)?.childCompilerRequest(
                 data.request,
                 data.contextInfo.issuer,
               )
@@ -341,7 +379,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         })
       }
 
-      env.recordMapText = emittedMapTexts(
+      own.recordMapText = emittedMapTexts(
         compiler,
         session.start.opts.mode,
         session.start.compiles,
@@ -349,7 +387,29 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       )
 
       let currentCompilation: Rspack.Compilation | null = null
-      let reporterInstalled = false
+      /** Development: the compile environments whose reports this compiler prints. */
+      const reporters = new Set<string>()
+      /** Development: reports a compile environment's import protection through this compiler's compilations (no timers: `finishModules` is the completion event). */
+      const installReporter = (env: EnvState) => {
+        const ip = ipEnvOf(env)
+        if (!ip || reporters.has(env.name)) {
+          return
+        }
+        reporters.add(env.name)
+        ip.useDevReporter(
+          {
+            warn: (message) => {
+              reports.push(message)
+              currentCompilation?.warnings.push(new WebpackError(message))
+            },
+          },
+          { setTimer: () => null, clearTimer: () => {} },
+        )
+      }
+      if (session.start.opts.mode === 'dev') {
+        // (a user layer's environment, found while the compilation builds)
+        session.onEnvironment(environment.name, installReporter)
+      }
       /**
        * Development: what this environment's last compilation reported,
        * until Rsbuild printed it: its modules' warnings and its
@@ -366,7 +426,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         warnings: ReadonlyMap<string, ReadonlyArray<LocatedDiagnostic>>
         reports: Array<string>
       } | null = null
-      /** Development: this compilation's import-protection reports, and its modules' warnings (theirs and the ones it reports for the one before), by module (`layerKey`). */
+      /** Development: this compilation's import-protection reports, and its modules' warnings (theirs and the ones it reports for the one before), by module (`keyOf`). */
       let reports: Array<string> = []
       let warned: ReadonlyMap<
         string,
@@ -424,7 +484,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             if (modified.length > 0 || removed.length > 0) {
               session.drain.caused(environment.name)
             }
-            ipEnvOf()?.beginBuild()
+            for (const { ip } of ipEnvs()) {
+              ip.beginBuild()
+            }
             await session.invalidateFileEvents([
               ...modified
                 .filter(
@@ -521,7 +583,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
         compilation.errors.push(...failedBeforeCompilation.splice(0))
         currentCompilation = compilation
-        env.compiled.clear()
+        for (const env of session.envsOf(environment.name)) {
+          env.compiled.clear()
+        }
         reports = []
         warned = new Map()
         handedOver = []
@@ -534,52 +598,50 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           // module depends on them: whether a change makes a module stale is the
           // invalidation's to decide), a file no output imports any more included
           compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) => {
-            const paths = new Set<string>()
+            // each environment's module paths
+            const paths = new Map<string, Set<string>>()
             for (const m of modules) {
-              const resource = (m as unknown as ModuleLike).resource
-              if (resource) {
-                paths.add(resourcePath(resource))
+              const module = m as unknown as ModuleLike
+              if (module.resource) {
+                const env = envOf(module).name
+                let own = paths.get(env)
+                if (!own) {
+                  own = new Set()
+                  paths.set(env, own)
+                }
+                own.add(resourcePath(module.resource))
               }
             }
-            for (const file of session.dependencyFiles(
-              environment.name,
-              paths,
-            )) {
+            for (const file of session.dependencyFiles(paths)) {
               compilation.fileDependencies.add(path.normalize(file))
             }
           })
         }
-        const ipEnv = ipEnvOf()
-        if (ipEnv) {
+        if (session.start.ip) {
           // Rspack's module graph is not readable while modules build (a loader asking for a
           // trace would abort the process): no graph until `finishModules`, when the
           // compilation's complete graph replaces it (traces built before use the edge index).
           // Rspack drops the previous compilation as it creates this one, and a read of it
           // would throw: no later read (an `onViolation` reading `info.trace` late) reaches it
-          ipEnv.graph = null
+          for (const { ip } of ipEnvs()) {
+            ip.graph = null
+          }
           if (session.start.opts.mode === 'dev') {
-            if (!reporterInstalled) {
-              reporterInstalled = true
-              // no timers: `finishModules` is the completion event
-              ipEnv.useDevReporter(
-                {
-                  warn: (message) => {
-                    reports.push(message)
-                    currentCompilation?.warnings.push(new WebpackError(message))
-                  },
-                },
-                { setTimer: () => null, clearTimer: () => {} },
-              )
+            for (const env of session.envsOf(environment.name)) {
+              installReporter(env)
             }
             compilation.hooks.finishModules.tapPromise(PLUGIN_NAME, (modules) =>
               reporting(
                 compilation.errors,
                 'Checking import protection',
                 async () => {
-                  ipEnv.graph = graphView(compilation)
-                  // importers that disagree (R147): an error of each compilation holding them
-                  for (const message of ipEnv.conflictReports(true)) {
-                    compilation.errors.push(new WebpackError(message))
+                  const envs = ipEnvs()
+                  for (const { env, ip } of envs) {
+                    ip.graph = graphView(compilation, env)
+                    // importers that disagree (R147): an error of each compilation holding them
+                    for (const message of ip.conflictReports(true)) {
+                      compilation.errors.push(new WebpackError(message))
+                    }
                   }
                   if (session.start.ip!.config.log === 'always') {
                     // modules this compilation kept without compiling them report again: an
@@ -588,21 +650,24 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                       const module = m as unknown as ModuleLike
                       if (
                         !module.resource ||
-                        env.compiled.has(
-                          layerKey(module.resource, module.layer ?? undefined),
+                        compiledHere(
+                          module as ModuleLike & { resource: string },
                         )
                       ) {
                         continue
                       }
+                      const ip = ipEnvOf(envOf(module))!
                       const record = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
                       if (record) {
-                        await ipEnv.reportAgain(record)
+                        await ip.reportAgain(record)
                       } else {
-                        await ipEnv.confirm(module.resource)
+                        await ip.confirm(module.resource)
                       }
                     }
                   }
-                  ipEnv.reporter?.flush(true)
+                  for (const { ip } of envs) {
+                    ip.reporter?.flush(true)
+                  }
                 },
               ),
             )
@@ -617,21 +682,26 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                   compilation.errors,
                   'Checking import protection',
                   async () => {
-                    const buildEnv = ipEnvOf()!
-                    const lookup = buildEnv.witness()
+                    const envs = ipEnvs()
                     const live = readRspackWitness(
                       compilation as never,
-                      (res) => lookup(canonicalResource(res)),
+                      new Map(
+                        envs.map(({ env, ip }) => [env.name, ip.witness()]),
+                      ),
+                      (layer) => session.envOf(environment.name, layer).name,
+                      canonicalResource,
                     )
-                    const reports = await buildEnv.surviving(
-                      live,
-                      graphView(compilation),
-                    )
-                    for (const report of reports) {
-                      ;(report.severity === 'error'
-                        ? compilation.errors
-                        : compilation.warnings
-                      ).push(new WebpackError(report.message))
+                    for (const { env, ip } of envs) {
+                      const reports = await ip.surviving(
+                        live.get(env.name) ?? [],
+                        graphView(compilation, env),
+                      )
+                      for (const report of reports) {
+                        ;(report.severity === 'error'
+                          ? compilation.errors
+                          : compilation.warnings
+                        ).push(new WebpackError(report.message))
+                      }
                     }
                   },
                 ),
@@ -696,7 +766,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         const { handed, reported } = handOverWarnings(
           from?.warnings ?? null,
           modules,
-          (key) => env.compiled.has(key),
+          keyOf,
+          compiledHere,
         )
         handedOver = handed
         warned = reported
@@ -716,10 +787,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           const module = (list[i] as { module?: ModuleLike | null }).module
           if (
             module?.resource &&
-            !env.compiled.has(
-              layerKey(module.resource, module.layer ?? undefined),
-            ) &&
-            isRecordedDiagnostic(list[i], 'warning', LOCATED_DIAGNOSTICS)
+            isRecordedDiagnostic(list[i], 'warning', LOCATED_DIAGNOSTICS) &&
+            // judged by the module's own compile environment (a file in both
+            // RSC layers is two modules)
+            !compiledHere(module as ModuleLike & { resource: string })
           ) {
             list.splice(i, 1)
           }
@@ -732,38 +803,57 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       }
 
       /**
-       * Builds again, through the environment's stale set, the modules of
-       * the compilation whose served state (import protection's ledger)
-       * differs from what the compilation's importers now ask for (design 4:
-       * an exempt importer compiled or restored after the denied file, an
-       * exempt import gone, a restored module's `allowImport` answer), until
-       * none differs. A module built real brings its own imports, which may
-       * ask for another one. A module flipped twice is an internal error
-       * (R116: thrown in our test runs, a warning otherwise).
+       * Builds again, through each environment's stale set, the modules of
+       * the compilation whose served state (import protection's ledger of
+       * their environment) differs from what the environment's importers now
+       * ask for (design 4: an exempt importer compiled or restored after the
+       * denied file, an exempt import gone, a restored module's `allowImport`
+       * answer), until none differs. A module built real brings its own
+       * imports, which may ask for another one. A module flipped twice is an
+       * internal error (R116: thrown in our test runs, a warning otherwise).
        */
       async function serveAsDemanded(
-        ipEnv: NonNullable<ReturnType<typeof ipEnvOf>>,
+        envs: ReturnType<typeof ipEnvs>,
         compilation: Rspack.Compilation,
       ): Promise<void> {
         const flipped = new Set<string>()
         for (;;) {
-          const ids = await ipEnv.mismatches()
-          if (ids.length === 0) {
-            return
-          }
-          const held = new Set<string>()
-          for (const m of compilation.modules) {
-            const resource = (m as unknown as ModuleLike).resource
-            if (resource) {
-              held.add(resourcePath(resource))
+          // (each environment's mismatches, of the modules it holds: one the compilation
+          // no longer holds is judged when it comes back)
+          const stale: Array<{ env: string; path: string }> = []
+          let held: Map<string, Set<string>> | null = null
+          for (const { env, ip } of envs) {
+            const ids = await ip.mismatches()
+            if (ids.length === 0) {
+              continue
+            }
+            if (!held) {
+              held = new Map()
+              for (const m of compilation.modules) {
+                const module = m as unknown as ModuleLike
+                if (module.resource) {
+                  const key = envOf(module).name
+                  let paths = held.get(key)
+                  if (!paths) {
+                    paths = new Set()
+                    held.set(key, paths)
+                  }
+                  paths.add(resourcePath(module.resource))
+                }
+              }
+            }
+            for (const p of ids.map(resourcePath)) {
+              if (held.get(env.name)?.has(p)) {
+                stale.push({ env: env.name, path: p })
+              }
             }
           }
-          // (one the compilation no longer holds is judged when it comes back)
-          const paths = ids.map(resourcePath).filter((p) => held.has(p))
-          if (paths.length === 0) {
+          if (stale.length === 0) {
             return
           }
-          const again = paths.find((p) => flipped.has(p))
+          const again = stale.find((s) =>
+            flipped.has(`${s.env}\0${s.path}`),
+          )?.path
           if (again !== undefined) {
             const v = invariantViolated({
               effect: 'import protection may serve it as its mock or as it is',
@@ -777,29 +867,31 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             )
             return
           }
-          for (const p of paths) {
-            flipped.add(p)
-            session.start.caches.stale.add(environment.name, p)
+          for (const s of stale) {
+            flipped.add(`${s.env}\0${s.path}`)
+            session.start.caches.stale.add(s.env, s.path)
           }
           await session.drain.rebuild(
             environment.name,
             compilation,
             resourcePath,
+            envKeyOf,
           )
         }
       }
 
-      /** The resources of a compilation's modules and of its child compilers' (built as this environment's). */
+      /** The resources of a compilation's modules and of its child compilers' (built as this compiler's), of one compile environment. */
       function* compilationResources(
         compilation: Rspack.Compilation,
+        env: EnvState,
       ): Generator<string> {
         const compilations = [compilation]
         for (const c of compilations) {
           compilations.push(...c.children)
           for (const m of c.modules) {
-            const resource = (m as unknown as ModuleLike).resource
-            if (resource) {
-              yield resource
+            const module = m as unknown as ModuleLike
+            if (module.resource && envOf(module) === env) {
+              yield module.resource
             }
           }
         }
@@ -913,123 +1005,135 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               }
               if (
                 !session.files.compiled(environment.name) &&
-                env.persistsModules
+                own.persistsModules
               ) {
-                const restored: Array<{
-                  plan: PersistedPlan
-                  layer: string | undefined
-                }> = []
+                const restored: Array<{ plan: PersistedPlan; env: EnvState }> =
+                  []
                 for (const m of compilation.modules) {
                   const module = m as unknown as ModuleLike
                   const plan = module.buildInfo?.[PLAN_BUILD_INFO_FIELD]
                   if (
                     typeof plan === 'string' &&
                     module.resource &&
-                    !env.compiled.has(
-                      layerKey(module.resource, module.layer ?? undefined),
-                    )
+                    !compiledHere(module as ModuleLike & { resource: string })
                   ) {
                     restored.push({
                       plan: JSON.parse(plan) as PersistedPlan,
-                      layer: module.layer ?? undefined,
+                      env: envOf(module),
                     })
                   }
                 }
-                await session.restorePlans(environment.name, restored)
+                await session.restorePlans(restored)
               }
               await session.drain.rebuild(
                 environment.name,
                 compilation,
                 resourcePath,
+                envKeyOf,
               )
-              const ipEnv = ipEnvOf()
+              const envs = ipEnvs()
               // a compiler's first compilation on a persistent cache judges what it
-              // restored: its modules' import-protection records are replayed first, the
-              // modules to judge again are rebuilt before the server-fn snapshot. A module
-              // compiled in this process wrote its own records
+              // restored: its modules' import-protection records are replayed first (each in
+              // its environment), the modules to judge again are rebuilt before the server-fn
+              // snapshot. A module compiled in this process wrote its own records
               const judgesRestored =
-                ipEnv !== null &&
-                env.persistsModules &&
+                envs.length > 0 &&
+                own.persistsModules &&
                 !session.files.compiled(environment.name)
               if (judgesRestored) {
+                /** The modules to build again, by `keyOf` (one environment's module of a file, not every one). */
                 const unjudged = new Set<string>()
-                for (const m of compilation.modules) {
+                const unconfirmed = new Set<string>()
+                const modules = [...compilation.modules].flatMap((m) => {
                   const module = m as unknown as ModuleLike
-                  const ip = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
+                  return module.resource
+                    ? [module as ModuleLike & { resource: string }]
+                    : []
+                })
+                for (const module of modules) {
+                  const record = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
                   if (
-                    ip &&
-                    module.resource &&
-                    !env.compiled.has(
-                      layerKey(module.resource, module.layer ?? undefined),
-                    ) &&
-                    ipEnv.unjudged(
+                    record &&
+                    !compiledHere(module) &&
+                    ipEnvOf(envOf(module))!.unjudged(
                       canonicalResource(module.resource),
-                      ip,
-                      module.layer ?? undefined,
+                      record,
                     )
                   ) {
-                    unjudged.add(module.resource)
+                    unjudged.add(keyOf(module))
                   }
                 }
-                for (const m of compilation.modules) {
-                  const module = m as unknown as ModuleLike
-                  const ip = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
-                  if (ip && module.resource) {
-                    ipEnv.replay(
+                for (const module of modules) {
+                  const record = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
+                  if (record) {
+                    ipEnvOf(envOf(module))!.replay(
                       canonicalResource(module.resource),
-                      ip,
-                      module.layer ?? undefined,
+                      record,
                     )
                   }
                 }
-                const unconfirmed = new Set<string>()
-                for (const m of compilation.modules) {
-                  const resource = (m as unknown as ModuleLike).resource
-                  if (resource && ipEnv.unconfirmed(resource)) {
-                    unconfirmed.add(resource)
+                for (const module of modules) {
+                  if (ipEnvOf(envOf(module))!.unconfirmed(module.resource)) {
+                    unconfirmed.add(keyOf(module))
                   }
                 }
-                if (unconfirmed.size > 0) {
-                  await rebuildModules(compilation, unconfirmed, (r) => r)
-                }
-                if (unjudged.size > 0) {
-                  await rebuildModules(compilation, unjudged, (r) => r)
+                for (const set of [unconfirmed, unjudged]) {
+                  if (set.size > 0) {
+                    await rebuildModulesWhere(compilation, (m) => {
+                      const module = m as unknown as ModuleLike
+                      return (
+                        module.resource !== undefined &&
+                        set.has(
+                          keyOf(module as ModuleLike & { resource: string }),
+                        )
+                      )
+                    })
+                  }
                 }
               }
-              if (ipEnv) {
+              for (const { env, ip } of envs) {
                 if (session.files.compiled(environment.name)) {
                   // a later compilation: what it no longer holds asks for nothing (the first
                   // one holds every module it restored or built)
-                  ipEnv.hold(
-                    heldIn(compilationResources(compilation), (r) =>
+                  ip.hold(
+                    heldIn(compilationResources(compilation, env), (r) =>
                       outputKey(canonicalResource(r)),
                     ),
                   )
                 }
-                await serveAsDemanded(ipEnv, compilation)
               }
-              // the server-fn snapshot, from each module's `buildInfo`
-              const snapshot = new Map<string, ReadonlyArray<ServerFnFact>>()
-              for (const m of compilation.modules) {
-                const info = (m as unknown as ModuleLike).buildInfo
-                if (info) {
-                  addServerFns(snapshot, info)
-                }
+              if (envs.length > 0) {
+                await serveAsDemanded(envs, compilation)
               }
-              // the modules of child compilers (a worker's, a service worker's:
-              // compiled as this environment's, done during `make`) call the
-              // server fns they define too
-              const children = [...compilation.children]
-              for (const child of children) {
-                children.push(...child.children)
-                for (const m of child.modules) {
-                  const info = (m as unknown as ModuleLike).buildInfo
-                  if (info) {
-                    addServerFns(snapshot, info)
+              // the server-fn snapshot of each environment, from each module's `buildInfo`;
+              // the modules of child compilers (a worker's, a service worker's: compiled as
+              // this compiler's, done during `make`) call the server fns they define too
+              const snapshots = new Map<
+                EnvState,
+                Map<string, ReadonlyArray<ServerFnFact>>
+              >()
+              for (const env of session.envsOf(environment.name)) {
+                snapshots.set(env, new Map())
+              }
+              const compilations = [compilation]
+              for (const c of compilations) {
+                compilations.push(...c.children)
+                for (const m of c.modules) {
+                  const module = m as unknown as ModuleLike
+                  if (module.buildInfo) {
+                    let snapshot = snapshots.get(envOf(module))
+                    if (!snapshot) {
+                      // (a user layer's environment, first seen here)
+                      snapshot = new Map()
+                      snapshots.set(envOf(module), snapshot)
+                    }
+                    addServerFns(snapshot, module.buildInfo)
                   }
                 }
               }
-              session.start.registry.replace(env, snapshot)
+              for (const [env, snapshot] of snapshots) {
+                session.start.registry.replace(env, snapshot)
+              }
               opts.onServerFnsReplayed()
             },
           ),

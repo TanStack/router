@@ -1,6 +1,6 @@
 # Rsbuild compiler architecture
 
-How TanStack Start's compiler runs on Rsbuild (Rspack): one compile per (environment, layer, module) on the shared
+How TanStack Start's compiler runs on Rsbuild (Rspack): one compile per (compile environment, module) on the shared
 compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils/src/compiler/README.md)), through Start's own Rspack loaders.
 
 ## Files
@@ -12,8 +12,9 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
   compiler, the client route tree transform.
 - `compiler-session.ts` is the state every environment compiler shares around the bundler-free Start session
   (`../compiler/session.ts`, also Vite's: compiler caches, raw facts, import protection, the server-function registry
-  and id allocator, the planners and configuration per environment and layer, the reporting policy): the loader
-  implementation, the invalidation operation, the resolver module content.
+  and id allocator, the planners and configuration per compile environment, the reporting policy): the compile
+  environments of each compiler (`envOf`, the one reader of a module's Rspack layer), the loader implementation, the
+  invalidation operation, the resolver module content.
 - `vue.ts` holds the Vue rules: the late pass over an SFC's script block under vue-loader's inline match resource
   (`x.vue.js?vue&type=script…`, which neither the `pre` rule, before vue-loader, nor the `.vue` late rule reads), a
   rule registered next to the late rule in every configuration (only vue-loader requests such a module, however it is
@@ -48,7 +49,7 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
 The loader runs for every JavaScript/TypeScript id of an environment, derived ids included (`?tsr-split=`,
 `?tss-hydrate=`, `?tss-serverfn-split`, `?tss-serverfn-handler`): each id compiles from the text Rspack hands it, derived ids hit the plan of
 their file at the same revision. The planners run in the core's fixed order: `start-env` (server functions,
-environment separation), `hydrate`, `rsc-css` (modules of the RSC layer), `router` (every layer but the RSC one; route
+environment separation), `hydrate`, `rsc-css` (the `rsc` environment's modules), `router` (every other environment; route
 HMR in the development client), `import-edges` (import protection). The loader composes its source map with the input map, names the absolute file
 as the map source, writes the plan's key and dependencies, the module's server-function facts and import-protection
 records into `module.buildInfo`, and fails the module on an error diagnostic. A module depends on no file but its own
@@ -60,14 +61,28 @@ are memoised until a file appears or disappears.
 Dependency modules under `node_modules` that import protection does not check are passed through without a parse
 when their text names nothing the planners recognise (`compiler/scope.ts`, the rule the Vite host shares).
 
-## Environments and layers
+## Compile environments and layers
 
-`client` and `ssr`; the `ssr` environment is the server-function provider. With
-RSC, server-function provider modules are the `?tss-serverfn-split` derived outputs of their files, placed in the
-`react-server-components` layer by the resource-query rule (with the `react-server` conditions and the
-`'use server-entry'` directive); every module of that layer gets the RSC CSS loader, and no router planner runs there
-(its route modules stay unsplit, as in Vite's provider environment). A file compiled in two layers is two modules with
-two plans (the layer is part of the plan configuration).
+A Start plan belongs to a compile environment: its key names the state (plans, stale sets, the resolution memo,
+import protection's edges, ledger and records, registry snapshots, edge keys, the configuration digest), its type is
+the Rsbuild environment's, and one host compiler builds its modules (its resolver, input file system, virtual files,
+watcher and drain entry stay the compiler's: `CompilerState`). Each Rsbuild environment is one: `client` and `ssr`;
+without RSC the `ssr` environment is the server-function provider. With RSC the server compiler builds a second one,
+`rsc`: the modules of the `react-server-components` layer, where server components render and which provides the
+server functions (their provider modules are the `?tss-serverfn-split` derived outputs of their files, placed in the
+layer by the resource-query rule, with the `react-server` conditions and the `'use server-entry'` directive). The
+`rsc` environment's modules get the RSC CSS planner, and no router planner runs there (its route modules stay
+unsplit, as in Vite's provider environment); they resolve with the layer's rule options. Reports and import
+protection's callbacks name it `rsc` (`info.env`, `envType: 'server'`), as on Vite. A module of the
+`server-side-rendering` layer, or of none, is the `ssr` environment's; any other layer (a user's rule) is an
+environment of its own (`<compiler>:<layer>`), which resolves with the compiler's base options (a rule's own
+`resolve` does not reach the compiler's resolver) and which reports name after its compiler. A file both layers
+compile is a module of each environment, with its own plan, import-protection records, stale-set entry and
+registry snapshot: every operation of the host groups modules by environment before it deduplicates by resource
+(the drain, the restore, the witness, the graph view, `hold`, the served ledger's rebuilds, the snapshots, the
+warning hand-over). The graph view of an environment reads a file through its own modules, and through the file's
+other modules when its own have no importer (Rspack's RSC plugin adds a `'use client'` file's SSR-layer module for
+the RSC layer's client reference).
 
 ## Server functions
 
@@ -112,12 +127,13 @@ re-export from the start.
 
 Each environment compiler forwards its own file events to the compiler core's invalidation, which compares the file
 with what the caches read (another compiler's event of the same change is a repeat and changes nothing) and puts the
-files of the plans it finds stale in each environment's stale set. The session keeps no record of the events. An edit
+files of the plans it finds stale in each compile environment's stale set. The session keeps no record of the events. An edit
 or a removal of a file the last compilation read is forwarded at `watchRun` (a file's facts need no resolver, and a
 resolution that found a removed file is stale); a created file at `make`, once Rspack's resolver forgot what it found
 in the last compilation (a file that appeared takes the resolutions it shadows). At `finishMake` (stage −20, after the
-client route tree's rebuild) each compiler takes its environment's stale set and builds those modules again in place
-(`rebuildModules`), in the compilation of the event: an edit's, a creation's and a route change's dependents alike.
+client route tree's rebuild) each compiler takes the stale sets of its compile environments and builds again in place
+the modules whose own environment's set holds their file (`rebuildModules`; the twin of a file in the other layer is
+not built), in the compilation of the event: an edit's, a creation's and a route change's dependents alike.
 What becomes stale after that (another environment's event, a registry change, a compile overtaken) is built by
 another compilation: after every compilation (`afterDone`, once Rspack marked the compiler idle) and after a registry
 change, each idle compiler with a non-empty set is asked for one, at most three in a row without a file event or a

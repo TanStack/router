@@ -770,7 +770,7 @@ function tier0Plan(
     { k: 'slice', start: 0, end: code.length },
   ]
   const edgeKey = (raw: string, form: string) =>
-    edgeKeyOf(env.name, env.layer, identity.canonicalId, raw, form)
+    edgeKeyOf(env.name, identity.canonicalId, raw, form)
   const edges: PlanEdges = withEdges
     ? {
         env: dedupeEdges(

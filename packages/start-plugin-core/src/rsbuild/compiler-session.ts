@@ -1,14 +1,17 @@
 /**
  * Start's Rspack host of the compiler core on Rsbuild (see the core's
- * README.md, "Hosts"): the loader implementation compiling every id (env and
- * derived) of a module of an environment and layer through the shared Start
- * session (`compiler/session.ts`), from one `pre` loader per environment
+ * README.md, "Hosts"): the compile environments of each compiler (one per
+ * Rsbuild environment, and one per Rspack layer of the server compiler whose
+ * modules compile apart: RSC's `rsc`; `envOf` is the one reader of a
+ * module's layer); the loader implementation compiling every id (env and
+ * derived) of a module of a compile environment through the shared Start
+ * session (`compiler/session.ts`), from one `pre` loader per compiler
  * (`compiler-loader.ts`); the server-fn facts and the plan's dependencies
  * persisted in the modules' `buildInfo`; and the intake of file events and
  * registry changes into the one invalidation operation, whose stale sets
- * the environment compilers take at `finishMake` (a module depends on no
- * file but its own). The Rspack hooks live in `host-plugin.ts`; this module
- * is bundler-API free except for the loader context shape.
+ * the compilers take at `finishMake` (a module depends on no file but its
+ * own). The Rspack hooks live in `host-plugin.ts`; this module is
+ * bundler-API free except for the loader context shape.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -39,13 +42,16 @@ import {
 } from '../server-fns/resolver'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
-import { layerKey } from '../import-protection/session'
 import {
   RSBUILD_ENVIRONMENT_NAMES,
+  RSBUILD_RSC_LAYERS,
   RSBUILD_RSC_LAYER_RESOLVE,
 } from './planning'
 import { runsAgainLater } from './vue'
-import type { StartCompilerSessionOptions } from '../compiler/session'
+import type {
+  StartCompilerEnvironment,
+  StartCompilerSessionOptions,
+} from '../compiler/session'
 import type { LoaderChainLike } from './vue'
 import type { CompiledOutputLike } from '../import-protection/session'
 import type { DevViolationError } from '../import-protection/report'
@@ -112,7 +118,14 @@ export interface TransformImportRule {
   ignoreEsComponent?: Array<string>
 }
 
-/** The Start session's options an Rsbuild plugin gives (the rest is the Rsbuild host's). */
+/**
+ * The compile environment of the server compiler's RSC layer (RSC on):
+ * where server components render, Start's server-fn provider; the name
+ * reports and import protection's callbacks give it (`info.env`).
+ */
+export const RSBUILD_RSC_ENVIRONMENT = 'rsc'
+
+/** The Start session's options an Rsbuild plugin gives (the rest is the Rsbuild host's): `environments`, its compilers'. */
 type StartRsbuildSessionOptions = Omit<
   StartCompilerSessionOptions,
   | 'providerEnv'
@@ -140,26 +153,19 @@ interface LoaderResult {
 }
 
 export interface LoaderOptions {
+  /** The loader's compiler (its Rsbuild environment). */
   environment: string
   /** `late`: the J6-only pass over the JS output of a non-JS module
    * (`.vue`, `.mdx`: Tier 0 only, with a host-supplied language). */
   pass?: 'late' | 'edge' | 'asset'
 }
 
-interface EnvState {
+/** What a compiler (an Rsbuild environment) owns for every compile environment it builds. */
+interface CompilerState {
+  /** The Rsbuild environment. */
   name: string
   type: 'client' | 'server'
   transformImport: Array<TransformImportRule>
-  /**
-   * The modules the loader compiled in the current compilation, by
-   * `layerKey` of resource and layer (a file both RSC layers import is a
-   * module of each; host: cleared at `thisCompilation`). The environment's
-   * compiler's only: a child compiler's (a worker's) module of the same
-   * resource and layer is another module, and the compiler's own one may be
-   * restored from the persistent cache (its readers walk the compiler's
-   * compilation).
-   */
-  compiled: Set<string>
   /** Where the file's text goes when the module map names it without it (host: `emittedMapTexts`). */
   recordMapText: RecordMapText | null
   /**
@@ -169,20 +175,40 @@ interface EnvState {
    * module at every build while any cache is on).
    */
   persistsModules: boolean
+  /** The compile environments whose modules it builds, by key (its own first). */
+  envs: Map<string, EnvState>
+}
+
+/** A compile environment of a compiler (`StartCompilerEnvironment`: its key is `name`). */
+export interface EnvState extends StartCompilerEnvironment {
+  compiler: CompilerState
+  /** The rule `resolve` options its layer's modules resolve with, over the compiler's (RSC: `RSBUILD_RSC_LAYER_RESOLVE`). */
+  resolve: Rspack.RuleSetRule['resolve'] | undefined
+  /**
+   * The modules the loader compiled in the current compilation, by resource
+   * (host: cleared at `thisCompilation`). The compiler's only: a child
+   * compiler's (a worker's) module of the same resource and environment is
+   * another module, and the compiler's own one may be restored from the
+   * persistent cache (its readers walk the compiler's compilation).
+   */
+  compiled: Set<string>
 }
 
 /** The session every compiler of one Rsbuild plugin shares. */
 export class StartRsbuildCompilerSession {
   /** The bundler-free Start session (caches, import protection, registry, warnings, compiles). */
   readonly start: StartCompilerSession
+  /** The compilers, by Rsbuild environment. */
+  readonly compilers = new Map<string, CompilerState>()
+  /** The compile environments, by key. */
   readonly envs = new Map<string, EnvState>()
-  /** Readers of files through the compilers' input file systems (virtual modules included), by environment. */
+  /** Readers of files through the compilers' input file systems (virtual modules included), by compiler. */
   readonly inputFileSystems = new Map<
     string,
     (file: string) => Promise<string | null>
   >()
   /**
-   * The resolver of each environment, for its compiles and its
+   * The resolver of each compiler, for its environments' compiles and
    * invalidations: the one a loader's `getResolve()` gives, asked outside
    * any loader (Rspack would record every file it looks at as a dependency
    * of the module compiling).
@@ -192,14 +218,16 @@ export class StartRsbuildCompilerSession {
     (
       importerDir: string,
       specifier: string,
-      /** A layer's rule options over the environment's (`hostFor`). */
+      /** A layer environment's rule options over the compiler's (`hostFor`). */
       options: Rspack.RuleSetRule['resolve'],
     ) => Promise<string | null>
   >()
-  /** The environment compilers' side of the stale sets: each takes its own at `finishMake`. */
+  /** The compilers' side of the stale sets: each takes its environments' at `finishMake`. */
   readonly drain: StaleSetDrain
-  /** The RSC layer of the server environment (RSC on). */
-  private readonly rscLayer: string | undefined
+  /** RSC on: the server compiler's RSC layer is the `rsc` environment. */
+  private readonly rscEnabled: boolean
+  /** Whether the constructor created the Start session and the drain. */
+  private started = false
   /**
    * The HTTP-callable server fns of the last client build (J4.2, R182):
    * those its emitted code calls (`publishClientOutput`); null before the
@@ -208,22 +236,37 @@ export class StartRsbuildCompilerSession {
   private callableIds: ReadonlySet<string> | null = null
 
   constructor(opts: StartRsbuildSessionOptions) {
-    this.rscLayer = opts.rscLayer
-    for (const env of opts.environments) {
-      this.envs.set(env.name, {
-        name: env.name,
-        type: env.type,
+    this.rscEnabled = opts.rsc !== undefined
+    const environments: Array<StartCompilerEnvironment> = []
+    for (const { name, type } of opts.environments) {
+      const compiler: CompilerState = {
+        name,
+        type,
         transformImport: [],
-        compiled: new Set(),
         recordMapText: null,
         persistsModules: false,
-      })
+        envs: new Map(),
+      }
+      this.compilers.set(name, compiler)
+      environments.push(this.addEnv({ name, type }, compiler, undefined))
+      if (this.rscEnabled && name === RSBUILD_ENVIRONMENT_NAMES.server) {
+        environments.push(
+          this.addEnv(
+            { name: RSBUILD_RSC_ENVIRONMENT, type },
+            compiler,
+            RSBUILD_RSC_LAYER_RESOLVE,
+          ),
+        )
+      }
     }
     this.start = new StartCompilerSession({
       ...opts,
-      // the server environment provides the server functions (under RSC,
-      // its RSC layer: `rscLayer`)
-      providerEnv: RSBUILD_ENVIRONMENT_NAMES.server,
+      environments,
+      // the SSR environment provides the server functions; under RSC, the
+      // RSC layer's
+      providerEnv: this.rscEnabled
+        ? RSBUILD_RSC_ENVIRONMENT
+        : RSBUILD_ENVIRONMENT_NAMES.server,
       hmrStyle: 'webpack',
       edgeModuleIds: rspackEdgeModuleIds(
         `${normalizePath(opts.root)}/node_modules/.virtual/tanstack-start/import-protection`,
@@ -240,6 +283,7 @@ export class StartRsbuildCompilerSession {
       tag: '[tanstack-start]',
       root: opts.root,
     })
+    this.started = true
     registerCompilerStats(
       'start:rsbuild:host',
       this,
@@ -251,12 +295,103 @@ export class StartRsbuildCompilerSession {
     return collectionSizes({ envs: o.envs, missing: o.missing }, 4)
   }
 
-  env(name: string): EnvState {
-    const env = this.envs.get(name)
-    if (!env) {
+  /** A compile environment of `compiler`, known from here on (the session's, the drain's). */
+  private addEnv(
+    env: StartCompilerEnvironment,
+    compiler: CompilerState,
+    resolve: Rspack.RuleSetRule['resolve'] | undefined,
+  ): EnvState {
+    const state: EnvState = { ...env, compiler, resolve, compiled: new Set() }
+    this.envs.set(env.name, state)
+    compiler.envs.set(env.name, state)
+    // (the constructor's are in the options of the sessions it creates)
+    if (this.started) {
+      this.start.addEnvironment(env)
+      this.drain.addEnvironment(compiler.name, env.name)
+      for (const listener of this.listeners.get(compiler.name) ?? []) {
+        listener(state)
+      }
+    }
+    return state
+  }
+
+  /** By compiler, what is told of a compile environment found after the session started (`onEnvironment`). */
+  private readonly listeners = new Map<string, Array<(env: EnvState) => void>>()
+
+  /** Tells `listener` of each compile environment of `compiler` found from here on (a user layer's). */
+  onEnvironment(compiler: string, listener: (env: EnvState) => void): void {
+    const list = this.listeners.get(compiler)
+    if (list) {
+      list.push(listener)
+    } else {
+      this.listeners.set(compiler, [listener])
+    }
+  }
+
+  /** A compiler (an Rsbuild environment). */
+  compiler(name: string): CompilerState {
+    const compiler = this.compilers.get(name)
+    if (!compiler) {
       throw new Error(`[tanstack-start] unknown Rsbuild environment "${name}"`)
     }
+    return compiler
+  }
+
+  /** A compile environment, by key. */
+  env(key: string): EnvState {
+    const env = this.envs.get(key)
+    if (!env) {
+      throw new Error(`[tanstack-start] unknown compile environment "${key}"`)
+    }
     return env
+  }
+
+  /**
+   * The compile environment of a module of `compiler` in Rspack layer
+   * `layer`: the one reader of a module's layer. The server compiler's RSC
+   * layer (RSC on) is `rsc`; its SSR layer and no layer are the compiler's
+   * own; any other layer (a user's rule) is one of its own, which resolves
+   * with the compiler's base options (a rule's own `resolve` does not reach
+   * the compiler's resolver) and which reports call by the compiler's name.
+   * A child compiler's module (a worker's) maps as its parent's.
+   */
+  envOf(compiler: string, layer: string | null | undefined): EnvState {
+    const c = this.compiler(compiler)
+    if (
+      layer === undefined ||
+      layer === null ||
+      (this.rscEnabled &&
+        compiler === RSBUILD_ENVIRONMENT_NAMES.server &&
+        layer === RSBUILD_RSC_LAYERS.ssr)
+    ) {
+      return c.envs.get(compiler)!
+    }
+    if (
+      this.rscEnabled &&
+      compiler === RSBUILD_ENVIRONMENT_NAMES.server &&
+      layer === RSBUILD_RSC_LAYERS.rsc
+    ) {
+      return c.envs.get(RSBUILD_RSC_ENVIRONMENT)!
+    }
+    const key = `${compiler}:${layer}`
+    return (
+      c.envs.get(key) ??
+      this.addEnv(
+        { name: key, type: c.type, publicName: compiler },
+        c,
+        undefined,
+      )
+    )
+  }
+
+  /** The compile environments a compiler builds (its own first). */
+  envsOf(compiler: string): Iterable<EnvState> {
+    return this.compiler(compiler).envs.values()
+  }
+
+  /** The compiler that builds a compile environment's modules (its virtual files, resolver, input file system). */
+  compilerOf(key: string): string | undefined {
+    return this.envs.get(key)?.compiler.name
   }
 
   /**
@@ -300,12 +435,12 @@ export class StartRsbuildCompilerSession {
   }
 
   /**
-   * The import rewrite of an environment: the file a request with inline
+   * The import rewrite of a compiler: the file a request with inline
    * loaders loads (`!!raw-loader!./x.ts`, `-!./x.ts`: its last segment,
    * whatever loaders run on it), and `source.transformImport`.
    */
-  private importRewrite(env: EnvState): ImportRewrite {
-    const rules = env.transformImport
+  private importRewrite(compiler: CompilerState): ImportRewrite {
+    const rules = compiler.transformImport
     return (specifier, names) => {
       const bang = specifier.lastIndexOf('!')
       if (bang !== -1) {
@@ -334,62 +469,53 @@ export class StartRsbuildCompilerSession {
   private readonly hosts = new Map<string, HostServices>()
 
   /**
-   * The host services of the compiles and invalidations of an environment's
-   * modules of `layer`: their own resolver (aliases and conditions differ by
-   * environment; the RSC layer's rules add `RSBUILD_RSC_LAYER_RESOLVE`).
+   * The host services of the compiles and invalidations of a compile
+   * environment's modules: its compiler's resolver (aliases and conditions
+   * differ by compiler) with the environment's rule options (the RSC
+   * layer's add `RSBUILD_RSC_LAYER_RESOLVE`). The resolution memo is the
+   * environment's plan cache's.
    */
-  private hostFor(envName: string, layer: string | undefined): HostServices {
-    const scope =
-      layer !== undefined && layer === this.rscLayer ? layer : undefined
-    const options = scope === undefined ? undefined : RSBUILD_RSC_LAYER_RESOLVE
-    const key = scope === undefined ? envName : `${envName}\0${scope}`
-    let host = this.hosts.get(key)
+  private hostFor(env: EnvState): HostServices {
+    let host = this.hosts.get(env.name)
     if (!host) {
-      const resolve = this.resolvers.get(envName)
+      const compiler = env.compiler.name
+      const resolve = this.resolvers.get(compiler)
       if (!resolve) {
         throw new Error(
-          `[tanstack-start] no resolver for the Rsbuild environment "${envName}"`,
+          `[tanstack-start] no resolver for the Rsbuild environment "${compiler}"`,
         )
       }
       // Rspack's resolver is given the importer's directory (`resolve(_context, path, request)`,
       // 2.3.1: the context never reaches the native resolver), so the memo keys answers by it.
       // Options that depend on the issuer (a matched rule's `resolve`, `issuerLayer`) would
-      // join the key; the RSC layer's do (`resolveScope`)
+      // join the key; an environment's are the same for each of its modules
       const dirOf = (importer: string) => path.dirname(pathOfId(importer))
+      const options = env.resolve
       host = this.start.host(
         async (specifier, importer) => {
           const id = await resolve(dirOf(importer), specifier, options)
           return id === null ? null : { id }
         },
-        { importRewrite: this.importRewrite(this.env(envName)) },
+        { importRewrite: this.importRewrite(env.compiler) },
       )
       host.resolveKey = dirOf
-      if (scope !== undefined) {
-        host.resolveScope = scope
-      }
-      this.hosts.set(key, host)
+      this.hosts.set(env.name, host)
     }
     return host
   }
 
-  /** The host of a plan's module (its layer: the one the plan's configuration is of; the RSC layer is the server environment's). */
+  /** The host of a plan's module: its environment's (the plan key names it). */
   private hostOfPlan(key: PlanKey): HostServices {
-    const layer =
-      this.rscLayer !== undefined &&
-      key.env === RSBUILD_ENVIRONMENT_NAMES.server &&
-      this.start.configured(key.configKey, this.env(key.env), this.rscLayer)
-        ? this.rscLayer
-        : undefined
-    return this.hostFor(key.env, layer)
+    return this.hostFor(this.env(key.env))
   }
 
-  /** What each environment's last compilation depended on (its file events; dev: `retain`). */
+  /** What each compiler's last compilation depended on (its file events; dev: `retain`). */
   readonly files = new CompilationFiles()
 
   /**
-   * After an environment's dev compilation (`files` recorded its
-   * dependencies): forget what the session holds of
-   * files the compilation no longer depends on (plans, raw facts, import
+   * After a compiler's dev compilation (`files` recorded its dependencies):
+   * forget what the session holds of files the compilation no longer
+   * depends on (the plans of each of its environments, raw facts, import
    * protection's scope cache; its importer records follow the modules each
    * compilation holds, at `finishMake`). Rspack reports a deleted file only while a module depends on it,
    * so a module the app stopped importing and then deleted never gets its
@@ -397,8 +523,8 @@ export class StartRsbuildCompilerSession {
    * must stay bounded by the live modules). Called only when the files
    * changed (not on an edit).
    */
-  retain(envName: string): void {
-    const live = this.files.of(envName)
+  retain(compiler: string): void {
+    const live = this.files.of(compiler)
     const isFile = (path: string) =>
       path.startsWith('/') || /^[A-Za-z]:\//.test(path)
     const keepIn =
@@ -406,16 +532,19 @@ export class StartRsbuildCompilerSession {
       (path: string): boolean =>
         !isFile(path) || path.includes('/node_modules/.virtual/') || set(path)
     const keepEnv = keepIn((p) => live.has(p))
-    const plans = this.start.caches.plans.get(envName)
-    if (plans) {
-      for (const key of plans.keys()) {
-        if (!keepEnv(identify(key.canonicalId).path)) {
-          plans.delete(key)
+    for (const env of this.envsOf(compiler)) {
+      const plans = this.start.caches.plans.get(env.name)
+      if (plans) {
+        for (const key of plans.keys()) {
+          if (!keepEnv(identify(key.canonicalId).path)) {
+            plans.delete(key)
+          }
         }
       }
     }
-    if (this.files.size === this.envs.size) {
-      // shared state: kept while any environment depends on the file
+    // (counted in compilers: the files are theirs)
+    if (this.files.size === this.compilers.size) {
+      // shared state: kept while any compiler depends on the file
       const anyEnv = keepIn((p) => this.files.known(p))
       this.start.rawFacts.retain((id) => anyEnv(identify(id).path))
       this.start.ip?.retain(anyEnv)
@@ -423,17 +552,16 @@ export class StartRsbuildCompilerSession {
   }
 
   /**
-   * After the last pass of an environment's production build: releases
-   * its plans and its import protection. What the environments share
-   * (raw facts, registry, id allocator, warnings) stays.
+   * After the last pass of a compiler's production build: releases the
+   * plans and the import protection of each of its environments. What the
+   * environments share (raw facts, registry, id allocator, warnings) stays.
    */
-  release(envName: string): void {
-    this.start.release(envName)
-    this.files.forget(envName)
-    const env = this.envs.get(envName)
-    if (env) {
+  release(compiler: string): void {
+    for (const env of this.envsOf(compiler)) {
+      this.start.release(env.name)
       env.compiled = new Set()
     }
+    this.files.forget(compiler)
   }
 
   /**
@@ -452,7 +580,7 @@ export class StartRsbuildCompilerSession {
   }
 
   /**
-   * The file events of a compilation that starts: each environment compiler
+   * The file events of a compilation that starts: each compiler
    * forwards its own (a repeat of another compiler's changes nothing), all
    * at once (calls for one path queue in the core).
    */
@@ -465,20 +593,22 @@ export class StartRsbuildCompilerSession {
   }
 
   /**
-   * The compiler of an environment, for the stale-set drain. Under RSC,
-   * Rspack's coordinator starts each client compilation from a server
-   * compilation: the client's stale set gets the server compiler a
+   * A compiler, with the environments it builds, for the stale-set drain.
+   * Under RSC, Rspack's coordinator starts each client compilation from a
+   * server compilation: the client's stale set gets the server compiler a
    * compilation.
    */
-  registerCompiler(envName: string, compiler: IdleCompilerLike): void {
+  registerCompiler(name: string, compiler: IdleCompilerLike): void {
     this.drain.register(
-      envName,
+      name,
       compiler,
-      this.rscLayer !== undefined &&
-        envName === RSBUILD_ENVIRONMENT_NAMES.client
+      this.rscEnabled && name === RSBUILD_ENVIRONMENT_NAMES.client
         ? RSBUILD_ENVIRONMENT_NAMES.server
         : undefined,
     )
+    for (const env of this.envsOf(name)) {
+      this.drain.addEnvironment(name, env.name)
+    }
   }
 
   /** Unsubscribes the route listener (`listenToRoutes`). */
@@ -520,42 +650,59 @@ export class StartRsbuildCompilerSession {
     }
   }
 
-  /** The files the plans of an environment's modules at `paths` read, but the modules' own (`planDependencyFiles`). */
-  dependencyFiles(envName: string, paths: ReadonlySet<string>): Array<string> {
-    return [...planDependencyFiles(this.start.caches, envName, paths)].filter(
-      (file) => !paths.has(file) && path.isAbsolute(file),
-    )
+  /**
+   * The files the plans of a compilation's modules read, but the modules'
+   * own (`planDependencyFiles`): `paths`, each environment's module paths.
+   */
+  dependencyFiles(
+    paths: ReadonlyMap<string, ReadonlySet<string>>,
+  ): Set<string> {
+    const out = new Set<string>()
+    for (const [env, own] of paths) {
+      for (const file of planDependencyFiles(this.start.caches, env, own)) {
+        if (!own.has(file) && path.isAbsolute(file)) {
+          out.add(file)
+        }
+      }
+    }
+    return out
   }
 
   /**
-   * The plans an earlier process persisted with an environment's modules
+   * The plans an earlier process persisted with a compiler's modules
    * (`PLAN_BUILD_INFO_FIELD`), which Rspack's persistent cache restored
-   * without a compile: each one compiled with this session's configuration
+   * without a compile, each with its module's environment (`envOf`): each
+   * one of that environment, compiled with this session's configuration,
    * and whose dependencies are all current joins the session's plans
-   * (`restorePlans`); the files of the others enter the environment's stale
-   * set (built again by the drain that follows).
+   * (`restorePlans`); the files of the others enter their module's
+   * environment's stale set (built again by the drain that follows).
    */
   async restorePlans(
-    envName: string,
-    modules: Iterable<{ plan: PersistedPlan; layer: string | undefined }>,
+    modules: Iterable<{ plan: PersistedPlan; env: EnvState }>,
   ): Promise<void> {
-    const env = this.env(envName)
     const current = new Map<string, PersistedPlan>()
-    const stale: Array<PlanKey> = []
-    for (const { plan, layer } of modules) {
-      if (this.start.configured(plan.key.configKey, env, layer)) {
+    const stale: Array<{ env: string; key: PlanKey }> = []
+    for (const { plan, env } of modules) {
+      if (
+        plan.key.env === env.name &&
+        this.start.configured(plan.key.configKey, env)
+      ) {
         current.set(planKeyString(plan.key), plan)
       } else {
-        stale.push(plan.key)
+        stale.push({ env: env.name, key: plan.key })
       }
     }
-    stale.push(
-      ...(await restorePlans(this.start.caches, current.values(), (key) =>
-        this.hostOfPlan(key),
-      )),
-    )
-    for (const file of pathsOf(stale)) {
-      this.start.caches.stale.add(envName, file)
+    for (const key of await restorePlans(
+      this.start.caches,
+      current.values(),
+      (key) => this.hostOfPlan(key),
+    )) {
+      stale.push({ env: key.env, key })
+    }
+    for (const { env, key } of stale) {
+      for (const file of pathsOf([key])) {
+        this.start.caches.stale.add(env, file)
+      }
     }
   }
 
@@ -574,17 +721,15 @@ export class StartRsbuildCompilerSession {
     inputMap: unknown,
     options: LoaderOptions,
   ): Promise<LoaderResult> {
-    const env = this.env(options.environment)
+    const env = this.envOf(options.environment, ctx._module?.layer)
     const passthrough: LoaderResult = { code: bytes, map: inputMap }
     const { ip } = this.start
     if (options.pass === 'edge') {
       // the bundler requested this edge module from the importer's post-SWC
       // code: `allowImport` decides between the real module and the mock
-      const ipEnv = ip?.env(env.name, env.type)
+      const ipEnv = ip?.env(env.name, env.type, env.publicName)
       if (!ctx._compiler?.isChild()) {
-        env.compiled.add(
-          layerKey(ctx.resource, ctx._module?.layer ?? undefined),
-        )
+        env.compiled.add(ctx.resource)
       }
       const error = await ipEnv?.confirm(ctx.resource)
       if (error) {
@@ -644,14 +789,13 @@ export class StartRsbuildCompilerSession {
         id,
         code: source,
         env,
-        layer: ctx._module?.layer ?? undefined,
         inputMap: readInputMap,
         wantMap: ctx.sourceMap !== false,
         // webpack-sources counts the map's lines at LF only
         lines: 'lf',
         late,
       },
-      this.hostFor(env.name, ctx._module?.layer ?? undefined),
+      this.hostFor(env),
     )
     if (!out) {
       return passthrough
@@ -666,7 +810,7 @@ export class StartRsbuildCompilerSession {
     )
     const mock = await this.protect(ctx, env, id, out)
     const buildInfo = ctx._module?.buildInfo
-    if (env.persistsModules && out.persisted && buildInfo) {
+    if (env.compiler.persistsModules && out.persisted && buildInfo) {
       // one string: Rspack converts a structured field value by value
       buildInfo[PLAN_BUILD_INFO_FIELD] = JSON.stringify(out.persisted)
     }
@@ -691,7 +835,7 @@ export class StartRsbuildCompilerSession {
         ctx.resourcePath,
         source,
         inputMap,
-        env.recordMapText,
+        env.compiler.recordMapText,
       ),
     }
   }
@@ -709,17 +853,16 @@ export class StartRsbuildCompilerSession {
     id: string,
     out: CompiledOutputLike,
   ): Promise<LoaderResult | null> {
-    const layer = ctx._module?.layer ?? undefined
     if (!ctx._compiler?.isChild()) {
-      env.compiled.add(layerKey(ctx.resource, layer))
+      env.compiled.add(ctx.resource)
     }
-    const outcome = this.start.afterCompile(env, id, out, layer)
+    const outcome = this.start.afterCompile(env, id, out)
     const { error, mock } = outcome instanceof Promise ? await outcome : outcome
     if (error) {
       throwLocated(ctx, error as DevViolationError)
     }
     const buildInfo = ctx._module?.buildInfo
-    const ipEnv = this.start.ip?.env(env.name, env.type)
+    const ipEnv = this.start.ip?.env(env.name, env.type, env.publicName)
     if (ipEnv && buildInfo) {
       const info = ipEnv.buildInfo(id, out)
       if (info) {
@@ -868,10 +1011,10 @@ function throwLocated(ctx: LoaderContextLike, error: DevViolationError): never {
 }
 
 /**
- * What each environment's last compilation depended on (`fileDependencies`,
+ * What each compiler's last compilation depended on (`fileDependencies`,
  * `contextDependencies`), normalized: tells a modified file's event. A file
- * no environment's last compilation knows was created (an `add`: it may take
- * resolutions that failed before); one any environment's knows was edited:
+ * no compiler's last compilation knows was created (an `add`: it may take
+ * resolutions that failed before); one any compiler's knows was edited:
  * under RSC, Rspack's coordinator tells the client compiler the server's
  * changed files, which the client's compilation never read. A directory a
  * compilation watched (Tailwind CSS's scan) is reported as modified when
