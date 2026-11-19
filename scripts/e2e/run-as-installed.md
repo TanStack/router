@@ -101,14 +101,6 @@ To look at a copy after a failure:
 node ../../../scripts/e2e/run-as-installed.mjs --keep vitest run
 ```
 
-## Type checks
-
-`e2e/react-start/vitest-*` also type-check as installed (`test:e2e:types`).
-In the workspace pnpm installs `vitest` once per set of peers, so
-`@tanstack/start-client-core` and an e2e project can resolve different copies,
-and the types that Start adds to Vitest's test context reach only one of them.
-A user's project has one copy, and so does the installed copy.
-
 ## In CI
 
 `pnpm test:pr` runs `test:e2e` of every affected project, and `test:ci` runs
