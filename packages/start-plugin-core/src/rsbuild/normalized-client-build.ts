@@ -111,6 +111,40 @@ function getHydrationIdsFromModules(
   return hydrationIds ?? []
 }
 
+function isRouteOrHydrationModule(module: RspackModule): boolean {
+  const identifier = module.identifier()
+  return identifier.includes(tsrSplit) || identifier.includes(tssHydrate)
+}
+
+/**
+ * Find chunks whose modules may contain route or hydration metadata. A tagged
+ * module can be nested in a concatenated module with an untagged identifier.
+ */
+function findRouteAndHydrationChunks(
+  compilation: RspackCompilation,
+): Set<RspackCompilationChunk> {
+  const routeAndHydrationChunks = new Set<RspackCompilationChunk>()
+  for (const mod of compilation.modules) {
+    let tagged = isRouteOrHydrationModule(mod)
+    if (!tagged) {
+      const concatenatedModules = (
+        mod as RspackModule & { modules?: Array<RspackModule> }
+      ).modules
+      if (concatenatedModules) {
+        tagged = getModulesIncludingConcatenated(concatenatedModules).some(
+          isRouteOrHydrationModule,
+        )
+      }
+    }
+    if (tagged) {
+      for (const chunk of compilation.chunkGraph.getModuleChunks(mod)) {
+        routeAndHydrationChunks.add(chunk)
+      }
+    }
+  }
+  return routeAndHydrationChunks
+}
+
 /**
  * Returns true for Rspack/webpack HMR runtime chunks that should never be
  * surfaced to the Start manifest. These files are emitted on every rebuild
@@ -131,34 +165,92 @@ function isManifestJsAsset(file: string): boolean {
 }
 
 /**
- * Get all JS file names from a chunk.
+ * Caches each graph read for this normalization call. Callers must not
+ * modify the returned arrays.
  */
-function getChunkJsFiles(chunk: RspackCompilationChunk): Array<string> {
-  const jsFiles: Array<string> = []
-  for (const file of chunk.files) {
-    if (isManifestJsAsset(file)) {
-      jsFiles.push(file)
+function memoizeGraphRead<TTarget extends object, TValue>(
+  read: (target: TTarget) => Array<TValue>,
+): (target: TTarget) => Array<TValue> {
+  const cache = new Map<TTarget, Array<TValue>>()
+  return (target) => {
+    let value = cache.get(target)
+    if (!value) {
+      value = read(target)
+      cache.set(target, value)
     }
+    return value
   }
-  return jsFiles
 }
 
 /**
- * Get unique CSS file names from both primary and auxiliary chunk assets.
+ * Joins file lists in order and keeps the first occurrence of each file.
  */
-function getChunkCssFiles(chunk: RspackCompilationChunk): Array<string> {
-  const cssFiles: Array<string> = []
+function mergeJsFiles(fileLists: Array<Array<string>>): Array<string> {
+  const files: Array<string> = []
   const seen = new Set<string>()
-
-  for (const file of [...chunk.auxiliaryFiles, ...chunk.files]) {
-    if (file.endsWith('.css') && !seen.has(file)) {
-      seen.add(file)
-      cssFiles.push(file)
+  for (const list of fileLists) {
+    for (const file of list) {
+      if (!seen.has(file)) {
+        seen.add(file)
+        files.push(file)
+      }
     }
   }
-
-  return cssFiles
+  return files
 }
+
+/**
+ * Reads each chunk and chunk group property at most once per normalization.
+ * Rspack builds a new collection on each property read.
+ */
+function createChunkGraphReader() {
+  const getFiles = memoizeGraphRead((chunk: RspackCompilationChunk) =>
+    Array.from(chunk.files),
+  )
+  const getAuxiliaryFiles = memoizeGraphRead((chunk: RspackCompilationChunk) =>
+    Array.from(chunk.auxiliaryFiles),
+  )
+  const getGroups = memoizeGraphRead((chunk: RspackCompilationChunk) =>
+    Array.from(chunk.groupsIterable),
+  )
+  const getGroupChunks = memoizeGraphRead((group: Rspack.ChunkGroup) =>
+    Array.from(group.chunks),
+  )
+  const getChunkJsFiles = memoizeGraphRead((chunk: RspackCompilationChunk) =>
+    getFiles(chunk).filter(isManifestJsAsset),
+  )
+  const getGroupJsFiles = memoizeGraphRead((group: Rspack.ChunkGroup) =>
+    mergeJsFiles(getGroupChunks(group).map(getChunkJsFiles)),
+  )
+  const getChildGroupJsFiles = memoizeGraphRead((group: Rspack.ChunkGroup) =>
+    mergeJsFiles(Array.from(group.childrenIterable).map(getGroupJsFiles)),
+  )
+
+  return {
+    getFiles,
+    getAuxiliaryFiles,
+    getGroups,
+    getGroupChunks,
+    getChunkJsFiles,
+    // The returned CSS list is mutable; dependency CSS is prepended later.
+    getChunkCssFiles(chunk: RspackCompilationChunk) {
+      const cssFiles: Array<string> = []
+      const seen = new Set<string>()
+      for (const file of [...getAuxiliaryFiles(chunk), ...getFiles(chunk)]) {
+        if (file.endsWith('.css') && !seen.has(file)) {
+          seen.add(file)
+          cssFiles.push(file)
+        }
+      }
+      return cssFiles
+    },
+    computeDynamicImports(chunk: RspackCompilationChunk) {
+      return mergeJsFiles(getGroups(chunk).map(getChildGroupJsFiles))
+    },
+  }
+}
+
+type ChunkGraphReader = ReturnType<typeof createChunkGraphReader>
 
 /**
  * Include inner modules so concatenation does not hide route metadata or
@@ -183,35 +275,6 @@ function getModulesIncludingConcatenated(
 }
 
 /**
- * Compute dynamicImports for a chunk by traversing its chunk groups'
- * childrenIterable (async/dynamic import edges).
- *
- * In rspack, a chunk belongs to one or more ChunkGroups. Each ChunkGroup
- * has childrenIterable — child ChunkGroups representing dynamic import()
- * points. The JS files from those child groups' chunks are the
- * dynamicImports (analogous to Rollup's OutputChunk.dynamicImports).
- */
-function computeDynamicImports(chunk: RspackCompilationChunk): Array<string> {
-  const dynamicImportFiles: Array<string> = []
-  const seen = new Set<string>()
-
-  for (const group of chunk.groupsIterable) {
-    for (const childGroup of group.childrenIterable) {
-      for (const childChunk of childGroup.chunks) {
-        for (const file of childChunk.files) {
-          if (isManifestJsAsset(file) && !seen.has(file)) {
-            seen.add(file)
-            dynamicImportFiles.push(file)
-          }
-        }
-      }
-    }
-  }
-
-  return dynamicImportFiles
-}
-
-/**
  * Compute the emitted chunks reached by active static module dependencies.
  * Dependencies nested in async blocks are deliberately excluded: those are
  * represented by chunk-group children in `dynamicImports` instead.
@@ -219,6 +282,7 @@ function computeDynamicImports(chunk: RspackCompilationChunk): Array<string> {
 function computeStaticDependencyChunks(
   compilation: RspackCompilation,
   chunk: RspackCompilationChunk,
+  graph: ChunkGraphReader,
   chunksOfModule: (module: RspackModule) => Array<RspackCompilationChunk>,
 ): Array<RspackCompilationChunk> {
   const importedChunks: Array<RspackCompilationChunk> = []
@@ -236,11 +300,11 @@ function computeStaticDependencyChunks(
   // chunk is satisfied per group, by that group's own chunk, so neither
   // route's chunk is a dependency of the shared chunk (#8780).
   let availableChunks: Set<RspackCompilationChunk> | undefined
-  for (const group of chunk.groupsIterable) {
+  for (const group of graph.getGroups(chunk)) {
     const groupChunks = new Set<RspackCompilationChunk>()
     const ancestors = new Set([group])
     for (const ancestor of ancestors) {
-      for (const availableChunk of ancestor.chunks) {
+      for (const availableChunk of graph.getGroupChunks(ancestor)) {
         groupChunks.add(availableChunk)
       }
       for (const parent of ancestor.getParents()) {
@@ -305,6 +369,7 @@ type GetStaticDependencyChunks = (
  */
 function createStaticDependencyChunkResolver(
   compilation: RspackCompilation,
+  graph: ChunkGraphReader,
 ): GetStaticDependencyChunks {
   const cache = new Map<RspackCompilationChunk, Array<RspackCompilationChunk>>()
   const moduleChunks = new Map<RspackModule, Array<RspackCompilationChunk>>()
@@ -325,6 +390,7 @@ function createStaticDependencyChunkResolver(
       importedChunks = computeStaticDependencyChunks(
         compilation,
         chunk,
+        graph,
         chunksOfModule,
       )
       cache.set(chunk, importedChunks)
@@ -340,13 +406,14 @@ function createStaticDependencyChunkResolver(
 function computeCssOnlyDependencyFiles(
   getStaticDependencyChunks: GetStaticDependencyChunks,
   chunks: Array<RspackCompilationChunk>,
+  graph: ChunkGraphReader,
 ): Array<string> {
   const cssFiles: Array<string> = []
   const seenChunks = new Set<RspackCompilationChunk>()
   const seenFiles = new Set<string>()
 
   const visit = (chunk: RspackCompilationChunk) => {
-    if (seenChunks.has(chunk) || getChunkJsFiles(chunk).length > 0) {
+    if (seenChunks.has(chunk) || graph.getChunkJsFiles(chunk).length > 0) {
       return
     }
     seenChunks.add(chunk)
@@ -355,7 +422,7 @@ function computeCssOnlyDependencyFiles(
       visit(importedChunk)
     }
 
-    for (const cssFile of getChunkCssFiles(chunk)) {
+    for (const cssFile of graph.getChunkCssFiles(chunk)) {
       if (!seenFiles.has(cssFile)) {
         seenFiles.add(cssFile)
         cssFiles.push(cssFile)
@@ -380,6 +447,15 @@ export function normalizeRspackClientBuild(
   compilation: RspackCompilation,
   inlineCssEnabled = false,
 ): NormalizedClientBuild {
+  const graph = createChunkGraphReader()
+  const {
+    getFiles,
+    getAuxiliaryFiles,
+    getGroupChunks,
+    getChunkJsFiles,
+    getChunkCssFiles,
+    computeDynamicImports,
+  } = graph
   const chunksByFileName = new Map<string, NormalizedClientChunk>()
   let cssContentByFileName: Map<string, string> | undefined
   let entryChunkFileName: string | undefined
@@ -390,33 +466,36 @@ export function normalizeRspackClientBuild(
   const initialJsFileNames: Array<string> = []
   const entryChunkSet = new Set<RspackCompilationChunk>()
   if (entrypoint) {
-    for (const chunk of entrypoint.chunks) {
+    for (const chunk of getGroupChunks(entrypoint)) {
       entryChunkSet.add(chunk)
-      for (const file of chunk.files) {
-        if (isManifestJsAsset(file)) {
-          initialJsFileNames.push(file)
-        }
-      }
+      initialJsFileNames.push(...getChunkJsFiles(chunk))
     }
   }
 
-  const getStaticDependencyChunks =
-    createStaticDependencyChunkResolver(compilation)
+  const getStaticDependencyChunks = createStaticDependencyChunkResolver(
+    compilation,
+    graph,
+  )
+  const routeAndHydrationChunks = findRouteAndHydrationChunks(compilation)
 
   // Iterate ALL chunks (initial + async) to capture route-split chunks
   for (const chunk of compilation.chunks) {
-    const modules = getModulesIncludingConcatenated(
-      compilation.chunkGraph.getChunkModules(chunk),
-    )
-    const routeFilePaths = getRouteFilePathsFromModules(modules)
-    const hydrationIds = getHydrationIdsFromModules(modules)
+    const modules = routeAndHydrationChunks.has(chunk)
+      ? getModulesIncludingConcatenated(
+          compilation.chunkGraph.getChunkModules(chunk),
+        )
+      : undefined
+    const routeFilePaths = modules ? getRouteFilePathsFromModules(modules) : []
+    const hydrationIds = modules ? getHydrationIdsFromModules(modules) : []
     const cssFiles = getChunkCssFiles(chunk)
 
     // The entry chunk is the one named 'index' in the 'index' entrypoint
     const isEntryChunk = chunk.name === 'index' && entryChunkSet.has(chunk)
 
     const jsFiles = getChunkJsFiles(chunk)
-    if (jsFiles.length === 0) continue
+    if (jsFiles.length === 0) {
+      continue
+    }
 
     // Compute dynamicImports from chunk group children
     const dynamicImports = computeDynamicImports(chunk)
@@ -424,6 +503,7 @@ export function normalizeRspackClientBuild(
     const dependencyCssFiles = computeCssOnlyDependencyFiles(
       getStaticDependencyChunks,
       staticDependencyChunks,
+      graph,
     ).filter((cssFile) => !cssFiles.includes(cssFile))
     if (dependencyCssFiles.length > 0) {
       cssFiles.unshift(...dependencyCssFiles)
@@ -493,8 +573,8 @@ export function normalizeRspackClientBuild(
   if (rscEntrypoint && entryChunkFileName) {
     const mainEntryChunk = chunksByFileName.get(entryChunkFileName)
     if (mainEntryChunk) {
-      for (const rscChunk of rscEntrypoint.chunks) {
-        const allFiles = [...rscChunk.files, ...rscChunk.auxiliaryFiles]
+      for (const rscChunk of getGroupChunks(rscEntrypoint)) {
+        const allFiles = [...getFiles(rscChunk), ...getAuxiliaryFiles(rscChunk)]
         for (const file of allFiles) {
           if (file.endsWith('.css') && !mainEntryChunk.css.includes(file)) {
             mainEntryChunk.css.push(file)
