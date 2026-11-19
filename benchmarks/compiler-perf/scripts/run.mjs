@@ -727,9 +727,7 @@ async function newPage() {
   const page = await context.newPage()
   const errors = []
   page.on('pageerror', (e) => errors.push(String(e.message ?? e)))
-  let loads = 0
-  page.on('load', () => loads++)
-  return { context, page, errors, loads: () => loads }
+  return { context, page, errors }
 }
 
 /**
@@ -1143,7 +1141,20 @@ async function hmrScenario(variant, { replay } = {}) {
   const inst = instrumentation({ replay })
   const dev = startViteDev(dir, { inst })
   const probePage = await newPage()
-  const { page, loads } = probePage
+  const { page } = probePage
+  // Document navigations started in the main frame: a full reload counts when
+  // its request starts, not when it loads. History API navigations send no
+  // request; redirect hops are the same navigation.
+  let navigations = 0
+  page.on('request', (request) => {
+    if (
+      request.isNavigationRequest() &&
+      request.frame() === page.mainFrame() &&
+      !request.redirectedFrom()
+    ) {
+      navigations++
+    }
+  })
   const edits = HMR_WARMUP + HMR_ITERATIONS
   try {
     await dev.waitFor('listening')
@@ -1163,7 +1174,7 @@ async function hmrScenario(variant, { replay } = {}) {
         const next = replay
           ? `${prefix}-r${++seq}`
           : `${prefix}-r${i + 1}x${Date.now().toString(36)}`
-        const loadsBefore = loads()
+        const navigationsBefore = navigations
         const source = fs.readFileSync(file, 'utf8')
         if (!source.includes(current)) {
           throw new Error(`${probe.file} does not contain ${current}`)
@@ -1177,9 +1188,10 @@ async function hmrScenario(variant, { replay } = {}) {
           () => fs.writeFileSync(file, source.replace(current, next)),
         )
         current = next
-        const fullReloads = loads() - loadsBefore
-        // Let the update settle (late invalidations, re-fetches) before the next edit.
+        // Let the update settle (late invalidations, re-fetches) before the next
+        // edit. A full reload that starts in this window counts for this edit.
         await sleep(400)
+        const fullReloads = navigations - navigationsBefore
         if (recording) {
           continue
         }
