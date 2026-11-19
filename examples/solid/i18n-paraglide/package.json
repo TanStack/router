@@ -10,11 +10,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@solidjs/web": "^2.0.0-rc.21",
+    "@solidjs/web": "^2.0.1",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/solid-router": "^2.0.0-rc.10",
     "@tanstack/router-plugin": "^1.169.0",
-    "solid-js": "^2.0.0-rc.21",
+    "solid-js": "^2.0.1",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
@@ -23,7 +23,7 @@
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
     "@inlang/paraglide-js": "^2.4.0",
-    "@solidjs/vite-plugin": "^3.0.0-next.57"
+    "@solidjs/vite-plugin": "^3.0.1"
   },
   "nx": {
     "targets": {
