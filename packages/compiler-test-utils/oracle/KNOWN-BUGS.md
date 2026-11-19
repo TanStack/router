@@ -395,6 +395,17 @@ setTheme(t) { theme = t }`, `export function getTheme()`), children calling the 
   `react-start-rsc/tests/integration/rsc-use-client-build.test.ts`: "a client-only-marked component a server
   component renders fails the build where SSR renders it (error)" (the chunk-entry case); the shared-chunk and
   `clientChunks` cases have no test.
+- **Rsbuild with a persistent cache: a child compiler's own modules restored from the cache are not checked**
+  (Astra round 4, Rsbuild host; known limit). A worker or service-worker plugin's child compiler of the client
+  (`createChildCompiler`) that imported `fns.ts` in the build the cache came from keeps its cached module of it after
+  an offline change of a file the module's plan read (`base` became a server fn builder, `fns.ts` unchanged):
+  `worker.js` ships the previous build's output, the handler's body included. The client's own modules are checked
+  (its page calls the server fn); the client compiler's `finishMake` checks the modules of its own compilation and
+  cannot rebuild a child compilation's. `main` builds that worker right but serves the client's stale module (the
+  page gets `undefined` from the server fn). No test (the outcome is the limit). Workaround: a build without the
+  cache (`performance.buildCache`) after such a change. A module the worker newly imports is compiled: the client's
+  restored module of the same file is still checked
+  (`start-plugin-core/tests/integration/rsbuild/child-compiler-build-cache.test.ts`).
 
 ## Fixed, kept as regression tests
 

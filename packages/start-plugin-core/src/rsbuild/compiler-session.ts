@@ -131,6 +131,7 @@ interface LoaderContextLike extends LoaderChainLike {
   addDependency: (file: string) => void
   emitWarning: (error: Error) => void
   _module?: { buildInfo?: Record<string, unknown>; layer?: string | null }
+  _compiler?: { isChild: () => boolean }
 }
 
 interface LoaderResult {
@@ -152,7 +153,11 @@ interface EnvState {
   /**
    * The modules the loader compiled in the current compilation, by
    * `layerKey` of resource and layer (a file both RSC layers import is a
-   * module of each; host: cleared at `thisCompilation`).
+   * module of each; host: cleared at `thisCompilation`). The environment's
+   * compiler's only: a child compiler's (a worker's) module of the same
+   * resource and layer is another module, and the compiler's own one may be
+   * restored from the persistent cache (its readers walk the compiler's
+   * compilation).
    */
   compiled: Set<string>
   /** Where the file's text goes when the module map names it without it (host: `emittedMapTexts`). */
@@ -576,7 +581,11 @@ export class StartRsbuildCompilerSession {
       // the bundler requested this edge module from the importer's post-SWC
       // code: `allowImport` decides between the real module and the mock
       const ipEnv = ip?.env(env.name, env.type)
-      env.compiled.add(layerKey(ctx.resource, ctx._module?.layer ?? undefined))
+      if (!ctx._compiler?.isChild()) {
+        env.compiled.add(
+          layerKey(ctx.resource, ctx._module?.layer ?? undefined),
+        )
+      }
       const error = await ipEnv?.confirm(ctx.resource)
       if (error) {
         // (it fails the edge module: Rspack reports it there, not at the importer)
@@ -701,7 +710,9 @@ export class StartRsbuildCompilerSession {
     out: CompiledOutputLike,
   ): Promise<LoaderResult | null> {
     const layer = ctx._module?.layer ?? undefined
-    env.compiled.add(layerKey(ctx.resource, layer))
+    if (!ctx._compiler?.isChild()) {
+      env.compiled.add(layerKey(ctx.resource, layer))
+    }
     const outcome = this.start.afterCompile(env, id, out, layer)
     const { error, mock } = outcome instanceof Promise ? await outcome : outcome
     if (error) {
