@@ -3,7 +3,10 @@ import { basename, extname, join } from 'pathe'
 import { NodeRequest, sendNodeResponse } from 'srvx/node'
 import { joinURL } from 'ufo'
 import { VITE_ENVIRONMENT_NAMES } from '../../constants'
-import { getServerOutputDirectory } from '../output-directory'
+import {
+  getServerOutputDirectory,
+  resolveOutputDirectory,
+} from '../output-directory'
 import { getBundlerOptions } from '../../utils'
 import type { Plugin } from 'vite'
 
@@ -36,7 +39,10 @@ export function previewServerPlugin(): Plugin {
 
                 // Get basename without extension and add .js
                 const outputFilename = `${basename(serverInput, extname(serverInput))}.js`
-                const serverOutputDir = getServerOutputDirectory(server.config)
+                const serverOutputDir = resolveOutputDirectory(
+                  server.config.root,
+                  getServerOutputDirectory(server.config),
+                )
                 const serverEntryPath = join(serverOutputDir, outputFilename)
                 const imported = await import(
                   pathToFileURL(serverEntryPath).toString()

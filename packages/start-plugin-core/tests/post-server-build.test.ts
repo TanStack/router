@@ -40,4 +40,23 @@ describe('postServerBuild', () => {
 
     expect(prerender).not.toHaveBeenCalled()
   })
+
+  it('resolves the client output directory against the Vite root', async () => {
+    vi.resetModules()
+    const postBuild = vi.fn(async () => {})
+    vi.doMock('../src/post-build', () => ({ postBuild }))
+    const { postServerBuild } = await import('../src/vite/post-server-build')
+
+    await postServerBuild({
+      builder: {
+        config: { root: '/app', build: { outDir: 'dist' } },
+      } as any,
+      startConfig: {} as any,
+    })
+
+    const [{ adapter }] = postBuild.mock.calls[0] as any
+    expect(adapter.getClientOutputDirectory()).toBe('/app/dist/client')
+
+    vi.doUnmock('../src/post-build')
+  })
 })

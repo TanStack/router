@@ -1,5 +1,6 @@
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { prerender } from '../prerender'
+import { resolveOutputDirectory } from './output-directory'
 import type { PrerenderHandler } from '../prerender'
 import type { TanStackStartOutputConfig } from '../schema'
 import type { PreviewServer, ResolvedConfig, ViteBuilder } from 'vite'
@@ -26,7 +27,10 @@ export async function prerenderWithVite({
     )
   }
 
-  const outputDir = clientEnv.config.build.outDir
+  const outputDir = resolveOutputDirectory(
+    clientEnv.config.root,
+    clientEnv.config.build.outDir,
+  )
 
   process.env.TSS_PRERENDERING = 'true'
   process.env.TSS_CLIENT_OUTPUT_DIR = outputDir
@@ -66,6 +70,7 @@ async function startPreviewServer(
 
   try {
     return await vite.preview({
+      root: viteConfig.root,
       configFile: viteConfig.configFile,
       preview: {
         port: 0,
