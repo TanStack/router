@@ -706,6 +706,83 @@ export const typePosition = (value: typeof secret) => value
   timeout,
 )
 
+// A dev server started on its persistent cache keeps what it restored
+// through later compilations: an exempt importer's denied file stays real,
+// edited or not, and a denied import stays the mock, across edits of the
+// denied file and of an unrelated file.
+test(
+  'Rsbuild dev restarted on its persistent cache, then edited: the exempt import stays real, the denied one the mock',
+  async () => {
+    const page = `import { secret } from './secret.server'
+export const read = () => secret()
+`
+    const recorder = violationRecorder({ exclude: ['src/generated/**'] })
+    const first = await startRsbuildDevServer({
+      compileTimeout,
+      config: { performance: { buildCache: true } },
+      importProtection: recorder.importProtection,
+      files: {
+        'src/generated/registry.ts': `import { secret } from '../lib/db.server'\nexport const registry = () => secret()\n`,
+        'src/lib/db.server.ts': `export const secret = () => 'MARK_DB_1'\n`,
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/page.ts': page,
+        'src/other.ts': `export const other = 'MARK_OTHER_1'\n`,
+        'src/entry.ts': `import { read } from './page'
+import { registry } from './generated/registry'
+import { other } from './other'
+console.log(read(), registry(), other)
+`,
+      },
+    })
+    const violation: ExpectedViolation = {
+      environment: 'client',
+      use: locationIn('src/page.ts', page, 2, 'secret()'),
+      also: ['src/page.ts:1'],
+    }
+    expect(first.errors).toEqual([])
+    const since = recorder.violations.length
+    const server = await first.restart()
+    const marks = async () => {
+      const code = Object.values(await server.outputs()).join('\n')
+      return [
+        'MARK_DB_1',
+        'MARK_DB_2',
+        'MARK_DB_3',
+        'MARK_SECRET',
+        'MARK_OTHER_1',
+        'MARK_OTHER_2',
+      ].filter((mark) => code.includes(mark))
+    }
+    expect(server.errors).toEqual([])
+    expect(await marks()).toEqual(['MARK_DB_1', 'MARK_OTHER_1'])
+    expect(
+      relevantViolations(
+        { root: server.root, violations: recorder.violations.slice(since) },
+        [violation],
+      ),
+    ).toEqual([violationLabel(violation)])
+
+    await server.edit({
+      'src/lib/db.server.ts': `export const secret = () => 'MARK_DB_2'\n`,
+    })
+    expect(server.errors).toEqual([])
+    expect(await marks()).toEqual(['MARK_DB_2', 'MARK_OTHER_1'])
+
+    await server.edit({
+      'src/other.ts': `export const other = 'MARK_OTHER_2'\n`,
+    })
+    expect(server.errors).toEqual([])
+    expect(await marks()).toEqual(['MARK_DB_2', 'MARK_OTHER_2'])
+
+    await server.edit({
+      'src/lib/db.server.ts': `export const secret = () => 'MARK_DB_3'\n`,
+    })
+    expect(server.errors).toEqual([])
+    expect(await marks()).toEqual(['MARK_DB_3', 'MARK_OTHER_2'])
+  },
+  timeout,
+)
+
 // Dev edits reclassify (SPEC J6.13): an edit that makes a module the
 // client already bundles a violation is reported and mocked, without an
 // edit of the importer when the violation comes from the target.

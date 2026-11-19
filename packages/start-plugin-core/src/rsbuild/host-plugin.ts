@@ -283,10 +283,13 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       )
       session.registerCompiler(environment.name, compiler)
 
+      const cache = compiler.options.cache
+      env.persistsModules = typeof cache === 'object' && cache.type !== 'memory'
+
       // import-protection edge modules are virtual files of this environment, written when
-      // they are defined (the importer's compile); an importer
-      // restored from the persistent cache in a new process requests a module nothing
-      // defined: the request carries its content, which defines it before it resolves
+      // they are defined (the importer's compile). With a persistent cache, an importer
+      // restored in a new process requests a module nothing defined: the request carries
+      // its content, which defines it before it resolves
       if (session.start.ip) {
         const ip = session.start.ip
         ip.onEdgeModule((file, load, ref) => {
@@ -294,11 +297,13 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             opts.writeVirtualModule(file, load.code)
           }
         })
-        compiler.hooks.normalModuleFactory.tap(PLUGIN_NAME, (factory) => {
-          factory.hooks.beforeResolve.tap(PLUGIN_NAME, (data) => {
-            ip.define(data.request)
+        if (env.persistsModules) {
+          compiler.hooks.normalModuleFactory.tap(PLUGIN_NAME, (factory) => {
+            factory.hooks.beforeResolve.tap(PLUGIN_NAME, (data) => {
+              ip.define(data.request)
+            })
           })
-        })
+        }
         // a child compiler of this one (a worker or service-worker plugin's) takes
         // these taps but not the virtual files: its requests of them fail the build
         // with the violations they stand for (in this environment's compilation,
@@ -327,8 +332,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         })
       }
 
-      const cache = compiler.options.cache
-      env.persistsModules = typeof cache === 'object' && cache.type !== 'memory'
       env.recordMapText = emittedMapTexts(
         compiler,
         session.start.opts.mode,
@@ -831,10 +834,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // the persistent cache): the plans of restored modules, then the modules of the
       // environment's stale set built again (a restored module whose plan read facts that
       // changed since, or no plan of this configuration, is in it; so are the dependents an
-      // invalidation found stale), then the import-protection records (in dev, a module
-      // restored with violations or an edge module restored with pending ones is built
-      // again: another session reported them), the modules served otherwise than their
-      // importers now ask for built again (`serveAsDemanded`), and the environment's
+      // invalidation found stale), then the import-protection records of restored modules
+      // (in dev, a module restored with violations or an edge module restored with pending
+      // ones is built again: another session reported them), the modules served otherwise
+      // than their importers now ask for built again (`serveAsDemanded`), and the environment's
       // server-fn snapshot. Only a compiler's first compilation restores modules (Rspack
       // loads the cache's module graph in a build, never in a rebuild)
       compiler.hooks.finishMake.tapPromise(
@@ -879,11 +882,14 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 resourcePath,
               )
               const ipEnv = ipEnvOf()
-              // a compiler's first compilation judges what it restored: its modules'
-              // import-protection records are replayed first, the modules to judge
-              // again are rebuilt before the server-fn snapshot
+              // a compiler's first compilation on a persistent cache judges what it
+              // restored: its modules' import-protection records are replayed first, the
+              // modules to judge again are rebuilt before the server-fn snapshot. A module
+              // compiled in this process wrote its own records
               const judgesRestored =
-                ipEnv !== null && !session.files.compiled(environment.name)
+                ipEnv !== null &&
+                env.persistsModules &&
+                !session.files.compiled(environment.name)
               if (judgesRestored) {
                 const unjudged = new Set<string>()
                 for (const m of compilation.modules) {
@@ -941,24 +947,13 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 }
                 await serveAsDemanded(ipEnv, compilation)
               }
-              // one read of each module's `buildInfo`: the server-fn snapshot and,
-              // but in a first compilation (replayed above), the records
+              // the server-fn snapshot, from each module's `buildInfo`
               const snapshot = new Map<string, ReadonlyArray<ServerFnFact>>()
               for (const m of compilation.modules) {
-                const module = m as unknown as ModuleLike
-                const info = module.buildInfo
-                if (!info) {
-                  continue
+                const info = (m as unknown as ModuleLike).buildInfo
+                if (info) {
+                  addServerFns(snapshot, info)
                 }
-                const ip = info[RSPACK_BUILD_INFO_KEY]
-                if (ipEnv && !judgesRestored && ip && module.resource) {
-                  ipEnv.replay(
-                    canonicalResource(module.resource),
-                    ip,
-                    module.layer ?? undefined,
-                  )
-                }
-                addServerFns(snapshot, info)
               }
               // the modules of child compilers (a worker's, a service worker's:
               // compiled as this environment's, done during `make`) call the
