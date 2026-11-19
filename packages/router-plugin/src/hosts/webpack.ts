@@ -91,6 +91,7 @@ export interface CompilerLike extends IdleCompilerLike {
     }
     afterDone: { tap: (name: string, fn: () => void) => void }
     watchRun: {
+      tap: (options: { name: string; stage: number }, fn: () => void) => void
       tapPromise: (
         name: string,
         fn: (compiler: {
@@ -272,24 +273,40 @@ export function createRouterCompilerWebpackPlugin(
         root: compiler.context,
       })
       drain.register(envName, compiler)
-      const unsubscribe = onRoutesChanged(
-        routerPluginContext,
-        (next, previous) => {
-          Promise.all(
-            changedRoutePaths(next, previous).map((file) =>
-              session.invalidate(file, 'registry'),
-            ),
-          )
-            .catch((error: unknown) => {
-              console.error(
-                `[tanstack-router] invalidating after a route change failed:`,
-                error,
-              )
-            })
-            // (what the change made stale before a failure gets its compilation)
-            .then(() => drain.registryChanged())
-        },
-      )
+      // the registry's changes reach the plans from `apply` (a `run()`, the
+      // first watching) until a watching closes or the compiler shuts down,
+      // and again from the start of each `watchRun`: the same compiler may
+      // watch again after its watching closed
+      let unsubscribe: (() => void) | undefined
+      const subscribe = () => {
+        unsubscribe ??= onRoutesChanged(
+          routerPluginContext,
+          (next, previous) => {
+            Promise.all(
+              changedRoutePaths(next, previous).map((file) =>
+                session.invalidate(file, 'registry'),
+              ),
+            )
+              .catch((error: unknown) => {
+                console.error(
+                  `[tanstack-router] invalidating after a route change failed:`,
+                  error,
+                )
+              })
+              // (what the change made stale before a failure gets its compilation)
+              .then(() => drain.registryChanged())
+          },
+        )
+      }
+      const unsubscribed = () => {
+        unsubscribe?.()
+        unsubscribe = undefined
+      }
+      subscribe()
+      // (before the generator's `watchRun`, which may change the registry)
+      compiler.hooks.watchRun.tap({ name: PLUGIN_NAME, stage: -100 }, () => {
+        subscribe()
+      })
       compiler.hooks.beforeRun.tap(PLUGIN_NAME, () => {
         // one warning per file per run (J2.19): the session's ledger is
         // shared by every environment's compiler; the client's run starts it
@@ -423,12 +440,10 @@ export function createRouterCompilerWebpackPlugin(
       // (a dev middleware closes its watching, not the compiler); the
       // context outlives both (the separate plugins share the module's)
       compiler.hooks.shutdown.tapPromise(PLUGIN_NAME, () => {
-        unsubscribe()
+        unsubscribed()
         return Promise.resolve()
       })
-      compiler.hooks.watchClose.tap(PLUGIN_NAME, () => {
-        unsubscribe()
-      })
+      compiler.hooks.watchClose.tap(PLUGIN_NAME, unsubscribed)
     },
   }
 }

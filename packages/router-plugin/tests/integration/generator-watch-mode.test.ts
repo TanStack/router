@@ -4,9 +4,10 @@
  * route file created while the compiler watches is scaffolded and joins the
  * route tree the bundle runs (the real router, in Node), every compile
  * succeeds, and closing the watch session stops the generator's watching
- * (SPEC J1.10): a route file created afterwards is left as it is. Waits are
- * on the compiler's own build events; nothing reacting after the close is
- * observed for a bounded time.
+ * (SPEC J1.10): a route file created afterwards is left as it is; a
+ * watching opened again on the same compiler applies route config edits to
+ * modules it already holds. Waits are on the compiler's own build events;
+ * nothing reacting after the close is observed for a bounded time.
  */
 import { readFile, writeFile } from 'node:fs/promises'
 import { expect, test } from 'vitest'
@@ -131,6 +132,88 @@ export { default as routeConfigSource } from './routes.ts?source'
         .filter((build) => routesOf(build).includes('/second < __root__'))
         .map((build) => createFileRouteCall(build.exports!.pageSource).path)
         .filter((path) => path !== '/second'),
+    ).toEqual([])
+  },
+  60_000,
+)
+
+/** A virtual route config with `contact.js` at `/contact`, or the root alone. */
+const contactRouteConfig = (withContact: boolean) =>
+  `export const routes = {
+  type: 'root',
+  file: '__root.js',
+  children: [${withContact ? `{ type: 'route', path: '/contact', file: 'contact.js' }` : ''}],
+}
+`
+
+// A watching closed and another opened on the same compiler (a tool that
+// pauses and resumes a compiler): a module the bundle already holds becomes
+// a route through the virtual route config alone (its source unchanged),
+// edited while no watching ran, and the reopened watching's first build
+// splits it as configured (`deleteNodes`), as a fresh process does; the
+// route config's next edit, while it watches, makes it a plain module
+// again. Source: Astra review round 4 (B3: webpack regenerated the route
+// tree but kept the module built before, loader and all; main misses the
+// route config's edit on both bundlers).
+test.each(['webpack', 'rspack'] as const)(
+  '%s: after a watching closed, route config edits reach a module the next watching already holds',
+  async (bundler) => {
+    const session = await startWatchSession(bundler, {
+      plugin: 'router',
+      files: {
+        'routes.ts': contactRouteConfig(false),
+        'routes/contact.js': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/contact')({
+  loader: () => 'MARK_LOADER',
+  component: () => 'MARK_CONTACT',
+})
+`,
+        'main.js': `export { routeTree } from './routeTree.gen.js'
+export { Route as contact } from './routes/contact.js'
+`,
+      },
+      pluginOptions: (file) => ({
+        virtualRouteConfig: file('routes.ts'),
+        autoCodeSplitting: true,
+        codeSplittingOptions: { deleteNodes: ['loader'] },
+      }),
+    })
+    const { builds, file, routesOf, waitForBuild } = session
+    const last = () => builds.at(-1)!
+    /** Waits for a build whose route tree has `/contact` as `routed` says, and whose contact module has its loader unless it is a route. */
+    const served = (from: number, routed: boolean) =>
+      until(
+        () =>
+          builds.length > from &&
+          !!last().exports &&
+          routesOf(last()).includes('/contact < __root__') === routed &&
+          typeof last().exports!.contact.options.loader ===
+            (routed ? 'undefined' : 'function'),
+        () =>
+          `no build served /contact ${routed ? 'as a route without' : 'as a plain module with'} its loader (last: ${JSON.stringify(
+            {
+              error: last().error,
+              errors: last().errors,
+              routes: last().exports && routesOf(last()),
+              loader: typeof last().exports?.contact.options.loader,
+            },
+          )})`,
+        waitForBuild,
+      )
+    expect(typeof last().exports!.contact.options.loader).toBe('function')
+
+    const reopened = builds.length
+    await session.reopen(() =>
+      writeFile(file('routes.ts'), contactRouteConfig(true)),
+    )
+    await served(reopened, true)
+    const edited = builds.length
+    await writeFile(file('routes.ts'), contactRouteConfig(false))
+    await served(edited, false)
+    expect(
+      builds
+        .slice(reopened)
+        .filter((build) => build.error || build.errors.length),
     ).toEqual([])
   },
   60_000,

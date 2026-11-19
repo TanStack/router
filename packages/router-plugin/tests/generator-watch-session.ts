@@ -66,6 +66,12 @@ export interface WatchSession {
   run: (pathname: string) => Promise<{ routes: Array<string>; html: string }>
   /** The routes of a router over the route tree of `build` (one with `exports`), as `run` lists them. */
   routesOf: (build: Build) => Array<string>
+  /**
+   * Closes the watching, runs `whileClosed`, and opens another watching on
+   * the same compiler (as a tool pausing and resuming a compiler does);
+   * waits for its first build.
+   */
+  reopen: (whileClosed?: () => Promise<void>) => Promise<void>
   /** Closes the watch session (idempotent). */
   close: () => Promise<unknown>
 }
@@ -81,6 +87,12 @@ export interface WatchSessionOptions {
   pluginOptions?: (
     file: (relative: string) => string,
   ) => Record<string, unknown>
+  /**
+   * The bundler's plugin: its generator entry (default), or its router
+   * plugin (`TanStackRouterWebpack`, `TanStackRouterRspack`: the generator
+   * and the route code splitter).
+   */
+  plugin?: 'generator' | 'router'
 }
 
 /**
@@ -154,17 +166,27 @@ export const Route = createRootRoute({ component: () => createElement('main', nu
   const createCompiler = async (): Promise<any> => {
     if (bundler === 'webpack') {
       const { default: webpack } = await import('webpack')
-      const { TanStackRouterGeneratorWebpack } = await import('../src/webpack')
+      const { TanStackRouterGeneratorWebpack, TanStackRouterWebpack } =
+        await import('../src/webpack')
+      const plugin =
+        options.plugin === 'router'
+          ? TanStackRouterWebpack
+          : TanStackRouterGeneratorWebpack
       return webpack({
         ...config,
-        plugins: [TanStackRouterGeneratorWebpack(pluginOptions)],
+        plugins: [plugin(pluginOptions)],
       } as any)
     }
     const { rspack } = await import('@rsbuild/core')
-    const { TanStackRouterGeneratorRspack } = await import('../src/rspack')
+    const { TanStackRouterGeneratorRspack, TanStackRouterRspack } =
+      await import('../src/rspack')
+    const plugin =
+      options.plugin === 'router'
+        ? TanStackRouterRspack
+        : TanStackRouterGeneratorRspack
     return rspack({
       ...config,
-      plugins: [TanStackRouterGeneratorRspack(pluginOptions)],
+      plugins: [plugin(pluginOptions)],
     } as any)
   }
 
@@ -215,29 +237,27 @@ export const Route = createRootRoute({ component: () => createElement('main', nu
   let nextBuild = new Promise<void>((resolve) => {
     built = resolve
   })
-  const watching = compiler.watch(
-    { aggregateTimeout: 50 },
-    (error: Error | null, stats: any) => {
-      const errors: Array<string> = stats?.hasErrors()
-        ? stats
-            .toJson({ all: false, errors: true })
-            .errors.map((entry: { message: string }) => entry.message)
-        : []
-      let exports: Record<string, any> | undefined
-      if (!error && errors.length === 0) {
-        try {
-          exports = load()
-        } catch (cause) {
-          errors.push(`the bundle threw: ${String(cause)}`)
-        }
+  const onBuild = (error: Error | null, stats: any) => {
+    const errors: Array<string> = stats?.hasErrors()
+      ? stats
+          .toJson({ all: false, errors: true })
+          .errors.map((entry: { message: string }) => entry.message)
+      : []
+    let exports: Record<string, any> | undefined
+    if (!error && errors.length === 0) {
+      try {
+        exports = load()
+      } catch (cause) {
+        errors.push(`the bundle threw: ${String(cause)}`)
       }
-      builds.push({ error: error ? String(error) : undefined, errors, exports })
-      built()
-      nextBuild = new Promise<void>((resolve) => {
-        built = resolve
-      })
-    },
-  )
+    }
+    builds.push({ error: error ? String(error) : undefined, errors, exports })
+    built()
+    nextBuild = new Promise<void>((resolve) => {
+      built = resolve
+    })
+  }
+  let watching = compiler.watch({ aggregateTimeout: 50 }, onBuild)
   let closed = false
   close = () =>
     closed
@@ -247,6 +267,17 @@ export const Route = createRootRoute({ component: () => createElement('main', nu
           watching.close(resolve)
         })
   const waitForBuild = () => nextBuild
+  const reopen = async (whileClosed?: () => Promise<void>) => {
+    await new Promise((resolve) => watching.close(resolve))
+    await whileClosed?.()
+    const reopened = builds.length
+    watching = compiler.watch({ aggregateTimeout: 50 }, onBuild)
+    await until(
+      () => builds.length > reopened,
+      () => 'no first build of the reopened watching',
+      waitForBuild,
+    )
+  }
 
   const routerOf = (exports: Record<string, any>, pathname = '/') => {
     const {
@@ -286,6 +317,7 @@ export const Route = createRootRoute({ component: () => createElement('main', nu
     waitForBuild,
     run,
     routesOf: (build) => routerOf(build.exports!).routes,
+    reopen,
     close: () => close(),
   }
 }
