@@ -133,9 +133,9 @@ A dev server started again on the persistent cache checks, at its compilers' fir
 with the modules the cache restored: a module whose plan read facts that changed meanwhile (or another configuration's
 plan) enters the stale set, built by the same drain; the others' plans join the session's invalidation.
 A route-registry change (the generator published new route ids) evicts the plans of the files concerned and puts them
-in every environment's stale set; the session listens once for all its compilers. The generator runs before each
-compilation with the compiler's file events (and its own watcher for files outside the bundle); when the client's
-pruned route set changes without the tree file changing, or the client compiler's tree module is one the cache
-restored, the client compiler rebuilds the tree module at `finishMake`. A child compiler (a worker) builds a tree
+in every environment's stale set; the session listens once for all its compilers. The generator runs once before a
+production build and before each watch compilation, with the compiler's file events (and its own watcher for files
+outside the bundle); when the client's pruned route set changes without the tree file changing, or the client
+compiler's tree module is one the cache restored, the client compiler rebuilds the tree module at `finishMake`. A child compiler (a worker) builds a tree
 module of its own: that the transform served it says nothing of the client's, which counts as fresh only once the
 client compiler built it (`compilation.builtModules`) at the current route set.

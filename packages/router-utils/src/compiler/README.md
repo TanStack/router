@@ -447,7 +447,8 @@ builder (`routerPlannerConfigFrom`) are exported from `@tanstack/router-plugin/p
 1. Implement `Planner` (`host.ts`): `name`, `tier` (0 if you only need import/export tables), a cheap `gate`, an
    optional async `prefetch` (everything cross-module happens here and is recorded as a dependency; resolve to
    `false` to withdraw), `plan(ctx)` (synchronous: register regions, emit edits, `declareOutput`/`addRoot` for
-   derived modules, `setFacts`, `diagnostic`), and an optional per-output `policy`.
+   derived modules, `setFacts`, `diagnostic`), and an optional per-output `policy` (async: it may resolve and read
+   target facts and markers too, recorded as dependencies the same way).
 2. Never walk the whole AST when a semantic query from the import table or a binding's references answers the
    question; never keep a Yuku node beyond `plan()`; facts must be JSON data.
 3. Declare its `PlannerData` entry (`host.ts`: the types of its config, prefetch result and facts, by its name) next

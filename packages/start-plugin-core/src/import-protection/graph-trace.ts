@@ -84,7 +84,9 @@ export class IdsByFile {
  * Per environment: the resolved edges of every module our compiles judged
  * (importer id → its edges, with the revision of the input they were judged
  * in), replaced when the importer is judged again. Bounded by the live
- * modules; only feeds traces (diagnostics).
+ * modules. It feeds traces (diagnostics) and the decisions on a module that
+ * is its own violation: an unchecked importer makes it real (`demanders`), a
+ * stale one explains it (`explainedByStaleImporter`).
  */
 export class EdgeIndex {
   private readonly forward = new Map<

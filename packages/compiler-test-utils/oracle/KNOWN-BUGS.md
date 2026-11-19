@@ -79,6 +79,14 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   `Server function info not found`. SPEC J4.2. `react-start-rsc/tests/integration/rsc-start-build-client-reach.test.ts`:
   "a server fn a 'use client' component imports lazily runs when clicked". Fix: every server fn the client references
   is callable by id, with no production dependency on modules only development code reaches.
+- **Vite RSC build: a server fn a `'use client'` component imports from an installed package, or through an import
+  the provider resolves to another file, is not registered** (as `main`, #7943): the early compile of the provider's
+  reach walks project modules only (a workspace package resolved to its real path is one) and resolves in the provider
+  environment, so it skips a module under `node_modules` and, where a `react-server` condition of the app's `imports`
+  points the specifier at another file, visits that file instead of the client's. The click answers
+  `Server function info not found`; importing the function from server code as well registers it. SPEC J4.2. No test
+  (the outcome is the limit). Fix: every server fn the client references is callable by id, with no production dependency on modules
+  only development code reaches.
 - **RSC builds: a server fn only client-only code imports is not registered** (Vite and Rsbuild, as `main`; ruled a
   known limit for #8817, 11-19): a server fn whose module only a `<ClientOnly>` child, a `createClientOnlyFn` body or a
   `<Hydrate>` `fallback` imports, in a route file or a component file. The SSR scan erases client-only code and the
