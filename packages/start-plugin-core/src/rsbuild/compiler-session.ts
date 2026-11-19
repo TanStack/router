@@ -358,8 +358,7 @@ export class StartRsbuildCompilerSession {
   envOf(compiler: string, layer: string | null | undefined): EnvState {
     const c = this.compiler(compiler)
     if (
-      layer === undefined ||
-      layer === null ||
+      !layer ||
       (this.rscEnabled &&
         compiler === RSBUILD_ENVIRONMENT_NAMES.server &&
         layer === RSBUILD_RSC_LAYERS.ssr)
