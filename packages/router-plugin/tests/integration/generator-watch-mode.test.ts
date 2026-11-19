@@ -70,3 +70,68 @@ test.each(['webpack', 'rspack'] as const)(
   },
   60_000,
 )
+
+/** A virtual route config with `page.js` at `pagePath`, evaluated slowly. */
+const slowRouteConfig = (pagePath: string) =>
+  `// (a config slower to evaluate than the bundler's batch: the generator
+// writes during the compilation the bundler's own event started)
+await new Promise((resolve) => setTimeout(resolve, 300))
+export const routes = {
+  type: 'root',
+  file: '__root.js',
+  children: [{ type: 'route', path: '${pagePath}', file: 'page.js' }],
+}
+`
+
+// The generator rewrites a route file whose path the virtual route config
+// changes; when the bundler's own watcher reports the config's edit (the app
+// imports it), the generator writes the route file and the route tree during
+// that compilation, which builds both from what it wrote. Source: review of
+// the route deletion fix (a tree-only fix ships the new route with the old
+// route file).
+test.each(['webpack', 'rspack'] as const)(
+  '%s: every build serving a route the virtual route config moved serves its rewritten route file',
+  async (bundler) => {
+    const session = await startWatchSession(bundler, {
+      files: {
+        'routes.ts': slowRouteConfig('/first'),
+        'routes/page.js': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/first')({ component: () => 'MARK_PAGE' })
+`,
+        'main.js': `export { routeTree } from './routeTree.gen.js'
+export { default as pageSource } from './routes/page.js?source'
+export { default as routeConfigSource } from './routes.ts?source'
+`,
+      },
+      pluginOptions: (file) => ({ virtualRouteConfig: file('routes.ts') }),
+    })
+    const { builds, file, routesOf, waitForBuild } = session
+    expect(routesOf(builds.at(-1)!)).toContain('/first < __root__')
+
+    const edited = builds.length
+    await writeFile(file('routes.ts'), slowRouteConfig('/second'))
+    await until(
+      () =>
+        builds.length > edited &&
+        !!builds.at(-1)!.exports &&
+        routesOf(builds.at(-1)!).includes('/second < __root__'),
+      () => `no build served /second (builds: ${JSON.stringify(builds)})`,
+      waitForBuild,
+    )
+    expect(
+      createFileRouteCall(await readFile(file('routes/page.js'), 'utf8')).path,
+    ).toBe('/second')
+    const since = builds.slice(edited)
+    expect(since.filter((build) => build.error || build.errors.length)).toEqual(
+      [],
+    )
+    // (no build served the new route with the route file's old text)
+    expect(
+      since
+        .filter((build) => routesOf(build).includes('/second < __root__'))
+        .map((build) => createFileRouteCall(build.exports!.pageSource).path)
+        .filter((path) => path !== '/second'),
+    ).toEqual([])
+  },
+  60_000,
+)

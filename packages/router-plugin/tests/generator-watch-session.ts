@@ -22,6 +22,8 @@ export type WatchBundler = 'webpack' | 'rspack'
 export interface Build {
   error: string | undefined
   errors: Array<string>
+  /** The exports of the bundle it wrote, loaded right after it (a build without errors). */
+  exports?: Record<string, any>
 }
 
 /**
@@ -62,8 +64,23 @@ export interface WatchSession {
    * page it renders at `pathname` once loaded (when it has that route).
    */
   run: (pathname: string) => Promise<{ routes: Array<string>; html: string }>
+  /** The routes of a router over the route tree of `build` (one with `exports`), as `run` lists them. */
+  routesOf: (build: Build) => Array<string>
   /** Closes the watch session (idempotent). */
   close: () => Promise<unknown>
+}
+
+export interface WatchSessionOptions {
+  /**
+   * App files over the session's (relative to its root; `main.js` is the
+   * entry). A module imported with the query `?source` is its text
+   * (`asset/source`).
+   */
+  files?: Record<string, string>
+  /** Generator options over the session's, given the app's `file`. */
+  pluginOptions?: (
+    file: (relative: string) => string,
+  ) => Record<string, unknown>
 }
 
 /**
@@ -73,6 +90,7 @@ export interface WatchSession {
  */
 export async function startWatchSession(
   bundler: WatchBundler,
+  options: WatchSessionOptions = {},
 ): Promise<WatchSession> {
   const root = await createAppDirectory(harnessDir, '.generator-watch-')
   let close: () => Promise<unknown> = () => Promise.resolve()
@@ -97,6 +115,10 @@ export const Route = createRootRoute({ component: () => createElement('main', nu
     file('main.js'),
     `export { routeTree } from './routeTree.gen.js'\n`,
   )
+  for (const [relative, code] of Object.entries(options.files ?? {})) {
+    await mkdir(path.dirname(file(relative)), { recursive: true })
+    await writeFile(file(relative), code)
+  }
   const pluginOptions = {
     target: 'react' as const,
     routesDirectory: file('routes'),
@@ -108,6 +130,7 @@ export const Route = createRootRoute({ component: () => createElement('main', nu
       routeTemplate:
         "%%tsrImports%%\n\n%%tsrExportStart%%{\n  component: () => 'MARK_SCAFFOLD',\n}%%tsrExportEnd%%\n",
     },
+    ...options.pluginOptions?.(file),
   }
   const config = {
     context: root,
@@ -124,6 +147,7 @@ export const Route = createRootRoute({ component: () => createElement('main', nu
       '@tanstack/react-router': 'commonjs @tanstack/react-router',
       react: 'commonjs react',
     },
+    module: { rules: [{ resourceQuery: /^\?source$/, type: 'asset/source' }] },
     infrastructureLogging: { level: 'none' },
     stats: 'none',
   }
@@ -172,8 +196,17 @@ export const Route = createRootRoute({ component: () => createElement('main', nu
     'routes/__root.js',
     'main.js',
     'routeTree.gen.js',
+    ...Object.keys(options.files ?? {}),
   ]) {
     await utimes(file(name), minuteAgo, minuteAgo)
+  }
+
+  const require = createRequire(file('main.js'))
+  const bundle = file('dist/main.cjs')
+  /** The exports of the bundle as built last. */
+  const load = () => {
+    delete require.cache[bundle]
+    return require(bundle) as Record<string, any>
   }
 
   const compiler = await createCompiler()
@@ -185,14 +218,20 @@ export const Route = createRootRoute({ component: () => createElement('main', nu
   const watching = compiler.watch(
     { aggregateTimeout: 50 },
     (error: Error | null, stats: any) => {
-      builds.push({
-        error: error ? String(error) : undefined,
-        errors: stats?.hasErrors()
-          ? stats
-              .toJson({ all: false, errors: true })
-              .errors.map((entry: { message: string }) => entry.message)
-          : [],
-      })
+      const errors: Array<string> = stats?.hasErrors()
+        ? stats
+            .toJson({ all: false, errors: true })
+            .errors.map((entry: { message: string }) => entry.message)
+        : []
+      let exports: Record<string, any> | undefined
+      if (!error && errors.length === 0) {
+        try {
+          exports = load()
+        } catch (cause) {
+          errors.push(`the bundle threw: ${String(cause)}`)
+        }
+      }
+      builds.push({ error: error ? String(error) : undefined, errors, exports })
       built()
       nextBuild = new Promise<void>((resolve) => {
         built = resolve
@@ -209,23 +248,23 @@ export const Route = createRootRoute({ component: () => createElement('main', nu
         })
   const waitForBuild = () => nextBuild
 
-  const require = createRequire(file('main.js'))
-  const run = async (pathname: string) => {
-    const bundle = file('dist/main.cjs')
-    delete require.cache[bundle]
-    const { routeTree } = require(bundle)
+  const routerOf = (exports: Record<string, any>, pathname = '/') => {
     const {
-      RouterProvider,
       createMemoryHistory,
       createRouter,
     } = require('@tanstack/react-router')
     const router = createRouter({
-      routeTree,
+      routeTree: exports.routeTree,
       history: createMemoryHistory({ initialEntries: [pathname] }),
     })
-    const routes = Object.values(router.routesById)
+    const routes: Array<string> = Object.values(router.routesById)
       .map((route: any) => `${route.id} < ${route.parentRoute?.id ?? ''}`)
       .sort()
+    return { router, routes }
+  }
+  const run = async (pathname: string) => {
+    const { RouterProvider } = require('@tanstack/react-router')
+    const { router, routes } = routerOf(load(), pathname)
     if (!(pathname in router.routesById)) {
       return { routes, html: '' }
     }
@@ -241,5 +280,12 @@ export const Route = createRootRoute({ component: () => createElement('main', nu
     () => 'no first build',
     waitForBuild,
   )
-  return { file, builds, waitForBuild, run, close: () => close() }
+  return {
+    file,
+    builds,
+    waitForBuild,
+    run,
+    routesOf: (build) => routerOf(build.exports!).routes,
+    close: () => close(),
+  }
 }

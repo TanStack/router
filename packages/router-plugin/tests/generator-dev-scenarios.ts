@@ -18,6 +18,7 @@ import {
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import {
+  appEntry,
   createFileRouteCall,
   expectLoadedOnNavigation,
   expectRouteFile,
@@ -92,6 +93,37 @@ function expectNoErrorsSince(app: GeneratorDevApp, since: DiagnosticsMark) {
       ({ text }) => text,
     ),
   ).toEqual([])
+}
+
+/**
+ * On an app with the route file `routes/bar.tsx` (and `options`): the route
+ * file deleted, then created again with another component, leaves the live
+ * routes and joins them again, the app serving each state, and no compile
+ * reported an error meanwhile.
+ */
+async function expectDeletedAndCreatedAgain(
+  options: Omit<GeneratorDevAppOptions, 'files'> & {
+    files?: Record<string, string>
+  },
+) {
+  const app = await generatorDevApp({
+    ...options,
+    files: {
+      ...index,
+      'routes/bar.tsx': route('/bar', 'MARK_BAR'),
+      ...options.files,
+    },
+  })
+  await app.visit('/bar', 'MARK_BAR')
+  const deleting = app.mark()
+  await app.edit({ 'routes/bar.tsx': null })
+  await app.visit('/', 'MARK_INDEX')
+  expect(await app.routes()).toEqual([rootLive, live('/')])
+
+  await app.edit({ 'routes/bar.tsx': route('/bar', 'MARK_BAR_AGAIN') })
+  await app.visit('/bar', 'MARK_BAR_AGAIN')
+  expect(await app.routes()).toEqual([rootLive, live('/'), live('/bar')])
+  expectNoErrorsSince(app, deleting)
 }
 
 export function describeRouteFileUpkeep(bundler: Bundler) {
@@ -242,22 +274,53 @@ export function describeRouteFileUpkeep(bundler: Bundler) {
     test(
       'a route file deleted and created again is served',
       async () => {
-        const app = await generatorDevApp({
-          bundler,
-          files: { ...index, 'routes/bar.tsx': route('/bar', 'MARK_BAR') },
-        })
-        await app.visit('/bar', 'MARK_BAR')
-        const deleting = app.mark()
-        await app.edit({ 'routes/bar.tsx': null })
-        await app.visit('/', 'MARK_INDEX')
-
-        await app.edit({ 'routes/bar.tsx': route('/bar', 'MARK_BAR_AGAIN') })
-        await app.visit('/bar', 'MARK_BAR_AGAIN')
-        expect(await app.routes()).toEqual([rootLive, live('/'), live('/bar')])
-        expectNoErrorsSince(app, deleting)
+        await expectDeletedAndCreatedAgain({ bundler })
       },
       timeout,
     )
+
+    if (bundler !== 'vite') {
+      // The route tree generated into a linked directory (`generated` names
+      // `physical`): the bundler builds its module from the directory the
+      // link names. Source: review of the route deletion fix.
+      test(
+        'a route file deleted and created again is served when the route tree is generated into a linked directory',
+        async () => {
+          await expectDeletedAndCreatedAgain({
+            bundler,
+            files: {
+              'main.tsx': appEntry('./generated/routeTree.gen'),
+              'physical/.keep': '',
+            },
+            symlinks: { generated: 'physical' },
+            pluginOptions: (root) => ({
+              generatedRouteTree: path.join(root, 'generated/routeTree.gen.ts'),
+            }),
+          })
+        },
+        timeout,
+      )
+
+      // A compilation that fails stops at its first error: the deletion's
+      // compile must not resolve the deleted file from the route tree.
+      // Source: review of the route deletion fix. (Rsbuild without its
+      // default lazy compilation of dynamic imports: with it and `bail`,
+      // Rspack 2.3.1 fails the compilation that deletes a module whose lazy
+      // `import()` the page loaded, on that import, though nothing imports
+      // the module any more; plain Rsbuild does the same. Upstream, not
+      // filed yet.)
+      test(
+        'a route file deleted and created again is served when the compilation stops at its first error (bail)',
+        async () => {
+          await expectDeletedAndCreatedAgain({
+            bundler,
+            bail: true,
+            rsbuild: { dev: { lazyCompilation: false } },
+          })
+        },
+        timeout,
+      )
+    }
 
     // Source: #6775 (reload loop): the dev
     // server settles (a bounded number of regenerations) and the page

@@ -30,6 +30,7 @@ import {
   writeFile,
 } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
+import { mergeRsbuildConfig } from '@rsbuild/core'
 import { pluginReact } from '@rsbuild/plugin-react'
 import react from '@vitejs/plugin-react'
 import { parseSync } from 'vite'
@@ -55,7 +56,7 @@ import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { AddressInfo } from 'node:net'
-import type { RsbuildPlugin } from '@rsbuild/core'
+import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
 import type { WebpackPluginInstance } from 'webpack'
 import type { Config } from '../src/vite'
 
@@ -86,14 +87,19 @@ function Page() {
 }
 `
 
-const main = `import { createRoot } from 'react-dom/client'
+/** The app's entry, importing the route tree from `routeTree` (relative to the app root). */
+export const appEntry = (
+  routeTree = './routeTree.gen',
+) => `import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
+import { routeTree } from '${routeTree}'
 const router = createRouter({ routeTree })
 // The app's own reference to its router, for the test to read
 ;(window as any).__APP_ROUTER__ = router
 createRoot(document.getElementById('app')!).render(<RouterProvider router={router} />)
 `
+
+const main = appEntry()
 
 /**
  * Dependencies the app imports, pre-bundled up front as Vite does for an app
@@ -214,6 +220,13 @@ export interface GeneratorDevAppOptions {
   symlinks?: Record<string, string>
   /** webpack: the app's own configuration over the harness's (e.g. `snapshot`; its `plugins` come after the router's). */
   webpack?: Record<string, unknown>
+  /** Rsbuild: the app's own configuration over the harness's. */
+  rsbuild?: RsbuildConfig
+  /**
+   * webpack and Rsbuild: a compilation stops at its first error (`bail`;
+   * Rsbuild's through `tools.rspack`).
+   */
+  bail?: boolean
   /**
    * webpack and Rsbuild: the bundler's persistent cache, in the app's
    * directory (webpack's `filesystem` cache, Rsbuild's `buildCache`): a
@@ -257,7 +270,7 @@ export async function generatorDevApp(
             files,
             symlinks,
             options.pluginOptions,
-            options.webpack,
+            { ...(options.bail && { bail: true }), ...options.webpack },
             options.persistentCache ?? false,
             () => printed().map((diagnostic) => diagnostic.text),
           )
@@ -266,6 +279,10 @@ export async function generatorDevApp(
             symlinks,
             options.pluginOptions,
             options.persistentCache ?? false,
+            mergeRsbuildConfig(
+              options.bail ? { tools: { rspack: { bail: true } } } : {},
+              options.rsbuild ?? {},
+            ),
             () => printed().map((diagnostic) => diagnostic.text),
           )
   await app.settle()
@@ -566,6 +583,7 @@ async function rsbuildApp(
   symlinks: Record<string, string>,
   pluginOptions: GeneratorDevAppOptions['pluginOptions'] = {},
   persistentCache: boolean,
+  config: RsbuildConfig,
   printedTexts: () => Array<string>,
 ): Promise<AppServer> {
   const first = await createRsbuildDevServer({
@@ -576,10 +594,13 @@ async function rsbuildApp(
     entry: 'main.tsx',
     symlinks,
     files,
-    config: {
-      html: { mountId: 'app' },
-      ...(persistentCache && { performance: { buildCache: true } }),
-    },
+    config: mergeRsbuildConfig(
+      {
+        html: { mountId: 'app' },
+        ...(persistentCache && { performance: { buildCache: true } }),
+      },
+      config,
+    ),
     plugins: ({ root }) => [
       pluginReact(),
       {
@@ -773,6 +794,8 @@ async function webpackApp(
     compiler.hooks.failed.tap(name, (error) => {
       compiling = false
       errors = [error.stack ?? error.message]
+      // (a compilation that stopped at its first error: `bail`)
+      diagnostics.push({ severity: 'error', text: error.message, raw: error })
     })
     const server = new WebpackDevServer(
       {

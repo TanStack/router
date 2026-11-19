@@ -27,7 +27,7 @@
  * the apps stand in for (where their imports resolve: see
  * `./app-directory`).
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { mkdir, readFile, readdir, rename, rm, utimes } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import path from 'node:path'
@@ -1229,15 +1229,35 @@ function readAppFile(file: string): AppFile | undefined {
   }
 }
 
-/** Every app file under `root`, by absolute path. */
+/**
+ * Every app file under `root`, by absolute path; a file under a linked
+ * directory of the app also by its path through the link (bundlers record
+ * the files they resolve through a link under both).
+ */
 function readAppFiles(root: string) {
   const files = new Map<string, AppFile>()
-  const visit = (directory: string) => {
+  const appRoot = realpathSync(root)
+  /** `ancestors`: the real paths of the directories `directory` is in (a link to one is not followed). */
+  const visit = (directory: string, ancestors: ReadonlySet<string>) => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       const full = path.join(directory, entry.name)
       if (entry.isDirectory()) {
         if (!nonAppDirectories.has(entry.name)) {
-          visit(full)
+          visit(full, new Set([...ancestors, realpathSync(full)]))
+        }
+      } else if (
+        entry.isSymbolicLink() &&
+        !nonAppDirectories.has(entry.name) &&
+        statSync(full, { throwIfNoEntry: false })?.isDirectory()
+      ) {
+        const real = realpathSync(full)
+        const relative = path.relative(appRoot, real)
+        if (
+          !relative.startsWith('..') &&
+          !path.isAbsolute(relative) &&
+          !ancestors.has(real)
+        ) {
+          visit(full, new Set([...ancestors, real]))
         }
       } else if (entry.isFile()) {
         const state = readAppFile(full)
@@ -1247,7 +1267,7 @@ function readAppFiles(root: string) {
       }
     }
   }
-  visit(root)
+  visit(root, new Set([appRoot]))
   return files
 }
 
