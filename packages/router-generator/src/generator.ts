@@ -439,11 +439,12 @@ export class Generator {
    * directory a physical scan lists whose path below it the scan's ignore
    * rules keep (none under a `-components/` directory), or under the
    * directory of a module that lists routes (the routes directory of a
-   * `virtualRouteConfig`, a `__virtual.ts` the last scan evaluated: it may
-   * name any file). With no successful scan to go by (none yet, or the last
-   * batch failed: a `physical()` mount of a directory not created yet, even
-   * one named like `-shared`, fails the scan until it is), any file under
-   * the routes directory or a mount of the last scan.
+   * `virtualRouteConfig` file, a `__virtual.ts` the last scan evaluated:
+   * it may name any file). An inline `virtualRouteConfig` object lists no
+   * more than the last scan saw. With no successful scan to go by (none
+   * yet, or the last batch failed: a `physical()` mount of a directory not
+   * created yet, even one named like `-shared`, fails the scan until it
+   * is), any file under the routes directory or a mount of the last scan.
    */
   private mayFind(file: string) {
     const lenient = !this.scan || this.stale
@@ -455,9 +456,10 @@ export class Generator {
           .split('/')
           .every(this.listed))
     return (
-      (this.config.virtualRouteConfig !== undefined
-        ? isUnder(file, this.routesDirectory)
-        : listedUnder(this.routesDirectory)) ||
+      (this.config.virtualRouteConfig === undefined
+        ? listedUnder(this.routesDirectory)
+        : (lenient || this.virtualConfigFile !== undefined) &&
+          isUnder(file, this.routesDirectory)) ||
       (this.scan?.physicalDirectories ?? []).some(listedUnder) ||
       (this.scan?.subtreeDirectories ?? []).some((dir) => isUnder(file, dir))
     )

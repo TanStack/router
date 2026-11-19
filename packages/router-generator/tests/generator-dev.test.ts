@@ -543,6 +543,34 @@ export default defineVirtualSubtreeConfig([route('/users', 'users.tsx')${mount ?
     },
   )
 
+  test('an inline virtualRouteConfig physical() mount of a directory not created yet joins the routes once it is', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/users.tsx': fileRoute('/users'),
+    })
+    const config = configOf(root, {
+      virtualRouteConfig: virtualRootRoute('__root.tsx', [
+        virtualRoute('/users', 'users.tsx'),
+        physical('/shared', '-shared'),
+      ]),
+    })
+    const generator = new Generator({ config, root })
+    await expect(generator.run()).rejects.toThrow(/ENOENT/)
+
+    const shared = await save(
+      root,
+      'src/routes/-shared/index.tsx',
+      fileRoute('/shared/'),
+    )
+    await generator.run({ type: 'create', path: shared })
+
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/shared/': 'routes/-shared/index.tsx',
+      '/users': 'routes/users.tsx',
+    })
+  })
+
   test('a virtualRouteConfig module listing an ignored directory gets a route for a file created there', async () => {
     const root = await createApp({
       'routes.ts': `import { readdirSync } from 'node:fs'
@@ -615,6 +643,46 @@ export default defineVirtualSubtreeConfig(() => {
     )
     await generator.run({ type: 'update', path: card })
     expect(await scans()).toBe(2)
+  })
+
+  test('with an inline virtualRouteConfig, a save under -components/ in its physical() mount scans nothing', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/index.tsx': fileRoute('/'),
+      'src/routes/-components/Card.tsx': 'export const Card = () => null\n',
+      'src/routes/blog/posts.tsx': fileRoute('/blog/posts'),
+    })
+    await save(
+      root,
+      'src/routes/blog/__virtual.ts',
+      `import { appendFileSync } from 'node:fs'
+import { defineVirtualSubtreeConfig, route } from '@tanstack/virtual-file-routes'
+
+export default defineVirtualSubtreeConfig(() => {
+  appendFileSync(${JSON.stringify(path.join(root, 'scans.log'))}, 'scan\\n')
+  return [route('/posts', 'posts.tsx')]
+})
+`,
+    )
+    let changes = 0
+    const { generator } = await startGenerator(root, {
+      virtualRouteConfig: virtualRootRoute('__root.tsx', [physical('.')]),
+      plugins: [{ name: 'changes', onRouteTreeChanged: () => changes++ }],
+    })
+    const scans = async () =>
+      (await read(root, 'scans.log')).split('\n').length - 1
+    const tree = await read(root, 'src/routeTree.gen.ts')
+    expect([await scans(), changes]).toEqual([1, 1])
+
+    const card = await save(
+      root,
+      'src/routes/-components/Card.tsx',
+      'export const Card = () => 1\n',
+    )
+    await generator.run({ type: 'update', path: card })
+
+    expect([await scans(), changes]).toEqual([1, 1])
+    expect(await read(root, 'src/routeTree.gen.ts')).toBe(tree)
   })
 })
 
