@@ -58,11 +58,21 @@ function pruneServerOnlyRoutes(model: TreeModel): TreeModel {
   }
 }
 
+/** The client's route tree module, and the route files it left out. */
+export interface ClientRouteTreeCode {
+  code: string
+  dependencies: Array<string>
+}
+
 /**
  * Serves the client route tree of a generator (bundler-neutral: the hosts
  * serve `code()` for the exact route tree module in the client
  * environment) and tells when its routes change without the route tree
  * file changing (an edit that makes a route server-only, or a page again).
+ * `code()` also gives the files of the routes it left out: the tree read
+ * them without importing them, so the hosts declare them as the tree
+ * module's dependencies (an edit that makes one a page rebuilds the
+ * client's tree; the route files it kept are client modules already).
  */
 export function createClientRouteTree(opts: {
   onClientRoutesChange?: () => void
@@ -88,7 +98,7 @@ export function createClientRouteTree(opts: {
 
   return {
     plugin,
-    async code() {
+    async code(): Promise<ClientRouteTreeCode> {
       if (!generator) {
         throw new Error('Generator instance not initialized')
       }
@@ -96,11 +106,18 @@ export function createClientRouteTree(opts: {
       if (!model) {
         throw new Error('Route tree not generated')
       }
-      return generator.printRouteTree(pruneServerOnlyRoutes(model), {
-        disableTypes: true,
-        header: [],
-        footer: [],
-      })
+      const pruned = pruneServerOnlyRoutes(model)
+      const kept = new Set(pruned.routes.map((route) => route.id))
+      return {
+        code: generator.printRouteTree(pruned, {
+          disableTypes: true,
+          header: [],
+          footer: [],
+        }),
+        dependencies: model.routes.flatMap((route) =>
+          !kept.has(route.id) && route.file ? [route.file] : [],
+        ),
+      }
     },
   }
 }

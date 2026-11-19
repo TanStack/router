@@ -20,6 +20,7 @@ import {
 import { RouteRegistryView } from '@tanstack/router-plugin/planners'
 import { startGeneratorConfig } from '../start-router-plugin/generator-config'
 import { createClientRouteTree } from '../start-router-plugin/client-route-tree'
+import type { ClientRouteTreeCode } from '../start-router-plugin/client-route-tree'
 import type { GetConfigFn, TanStackStartCoreOptions } from '../types'
 import type { TanStackStartRsbuildInputConfig } from './schema'
 import type { RouteRegistry } from '@tanstack/router-utils/compiler'
@@ -40,7 +41,7 @@ export interface RsbuildRouteGenerator {
   /** The client's route tree module. */
   clientRouteTree: {
     path: () => string
-    code: () => Promise<string>
+    code: () => Promise<ClientRouteTreeCode>
     /**
      * Whether the tree module of the compilation may hold another pruned route
      * set than the current one: its routes changed since `code()` last served

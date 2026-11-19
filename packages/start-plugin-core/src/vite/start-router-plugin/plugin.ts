@@ -1,6 +1,7 @@
 import { tanstackRouterGenerator } from '@tanstack/router-plugin/vite'
 import path from 'pathe'
 import { normalizePath } from 'vite'
+import { watchDependencies } from '@tanstack/router-utils/compiler'
 import { VITE_ENVIRONMENT_NAMES } from '../../constants'
 import { startGeneratorConfig } from '../../start-router-plugin/generator-config'
 import { createClientRouteTree } from '../../start-router-plugin/client-route-tree'
@@ -80,13 +81,16 @@ export function tanStackStartRouter(
         // this will be set in the config hook above since it relies on `config` hook being called first
       },
       async handler(id) {
-        if (
-          normalizePath(id.replace(/\?.*$/, '')) !==
-          resolvedGeneratedRouteTreePath
-        ) {
+        const file = normalizePath(id.replace(/\?.*$/, ''))
+        if (file !== resolvedGeneratedRouteTreePath) {
           return null
         }
-        return { code: await clientRouteTree.code(), map: null }
+        const tree = await clientRouteTree.code()
+        // `vite build --watch`: the watcher reports an edit of a route the
+        // tree left out (no client module imports it). A dev server
+        // invalidates the tree itself (`onClientRoutesChange`)
+        watchDependencies(this, tree, file)
+        return { code: tree.code, map: null }
       },
     },
   }

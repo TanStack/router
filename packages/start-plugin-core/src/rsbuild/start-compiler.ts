@@ -111,7 +111,9 @@ export function registerStartCompiler(
     return isWatch ? undefined : generator.build()
   })
 
-  // the client's route tree without its server-only routes (J2.15)
+  // the client's route tree without its server-only routes (J2.15); it
+  // depends on the files of the routes it left out, which no client module
+  // imports (an edit that makes one a page compiles the client again)
   api.transform(
     {
       test: (resource: string) =>
@@ -119,7 +121,13 @@ export function registerStartCompiler(
       environments: [RSBUILD_ENVIRONMENT_NAMES.client],
       order: 'pre',
     },
-    () => generator.clientRouteTree.code(),
+    async ({ addDependency }) => {
+      const tree = await generator.clientRouteTree.code()
+      for (const file of tree.dependencies) {
+        addDependency(file)
+      }
+      return tree.code
+    },
   )
 
   api.modifyRspackConfig((config, utils) => {
