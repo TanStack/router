@@ -122,18 +122,29 @@ if (args.help) {
   process.exit(0)
 }
 
-const RUNS = Number(args.runs)
-const WARMUP = Number(args.warmup)
-const HMR_ITERATIONS = Number(args['hmr-iterations'])
-const HMR_WARMUP = Number(args['hmr-warmup'])
+/** The value of the count option `--<name>`; exits 2 unless an integer ≥ `min`. */
+function countArg(name, min) {
+  const value = Number(args[name])
+  if (!/^\d+$/.test(args[name]) || value < min) {
+    console.error(
+      `--${name} must be an integer of at least ${min}: ${args[name]}`,
+    )
+    process.exit(2)
+  }
+  return value
+}
+const RUNS = countArg('runs', 1)
+const WARMUP = countArg('warmup', 0)
+const HMR_ITERATIONS = countArg('hmr-iterations', 1)
+const HMR_WARMUP = countArg('hmr-warmup', 0)
 const MAX_BUSY = Number(args['max-busy'])
 const QUIET_TIMEOUT_MS = Number(args['quiet-timeout']) * 1000
-const RETRIES = Number(args.retries)
+const RETRIES = countArg('retries', 0)
 const PORT = Number(args.port)
-const MEMORY_RUNS = Number(args['memory-runs'])
-const LEAK_CYCLES = Number(args['leak-cycles'])
-const SOAK_CYCLES = Number(args['soak-cycles'])
-const SOAK_EVERY = Number(args['soak-every'])
+const MEMORY_RUNS = countArg('memory-runs', 1)
+const LEAK_CYCLES = countArg('leak-cycles', 1)
+const SOAK_CYCLES = countArg('soak-cycles', 1)
+const SOAK_EVERY = countArg('soak-every', 1)
 const SOAK_SNAPSHOTS = new Set(
   args['soak-snapshots'].split(',').filter(Boolean).map(Number),
 )
@@ -786,11 +797,30 @@ async function loadUntilHydrated(
   { quietMs = 1500, timeoutMs = 300_000 } = {},
 ) {
   const deadline = Date.now() + timeoutMs
-  // Counts document loads only; history API navigations do not fire this.
-  let docs = 0
-  const onDoc = () => {
-    docs++
+  // Main-frame documents: requested when the navigation request starts (as
+  // in the HMR scenarios), settled at DOMContentLoaded or when the request
+  // fails. A hit counts only while no requested document is still in flight.
+  let requested = 0
+  let settled = 0
+  const isDocument = (request) =>
+    request.isNavigationRequest() &&
+    request.frame() === page.mainFrame() &&
+    !request.redirectedFrom()
+  const onRequest = (request) => {
+    if (isDocument(request)) {
+      requested++
+    }
   }
+  const onFailed = (request) => {
+    if (isDocument(request)) {
+      settled++
+    }
+  }
+  const onDoc = () => {
+    settled++
+  }
+  page.on('request', onRequest)
+  page.on('requestfailed', onFailed)
   page.on('domcontentloaded', onDoc)
   let hydratedAt
   try {
@@ -799,6 +829,7 @@ async function loadUntilHydrated(
       if (Date.now() > deadline) {
         throw new Error(`page never hydrated: ${url}`)
       }
+      const requestedBefore = requested
       const t = await page
         .waitForFunction(() => window.__PERF_HYDRATED__, null, {
           timeout: Math.max(1, deadline - Date.now()),
@@ -815,17 +846,23 @@ async function loadUntilHydrated(
       if (t === undefined) {
         continue
       }
+      if (requested !== requestedBefore || settled < requested) {
+        // The mark may be the replaced document's.
+        await sleep(20)
+        continue
+      }
       hydratedAt = t
-      const docsAtHit = docs
       await sleep(quietMs)
-      if (docs === docsAtHit) {
+      if (requested === requestedBefore) {
         break
       }
     }
   } finally {
+    page.off('request', onRequest)
+    page.off('requestfailed', onFailed)
     page.off('domcontentloaded', onDoc)
   }
-  return { hydratedAt, reloads: Math.max(0, docs - 1) }
+  return { hydratedAt, reloads: Math.max(0, requested - 1) }
 }
 
 // ---------------------------------------------------------------------------
