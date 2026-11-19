@@ -392,6 +392,43 @@ export { Setup as server } from './src/server-calls'
     timeout,
   )
 
+  // a kept class expression with a decorator at the left edge of a
+  // statement: `@dec class {}.f.bind(null)()` would open a declaration.
+  // Vite (Oxc) leaves standard decorators to the runtime, which Node does
+  // not run yet: there the build is the outcome. Source: Astra review 5
+  // (core B4)
+  test(
+    'a server-only fn whose implementation is a decorated class expression starting its statement: the server runs it',
+    async () => {
+      const { ssr } = await buildStart({
+        bundler,
+        files: {
+          'entry.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+function dec<T extends new (...args: Array<any>) => any>(ctor: T) {
+  return ctor
+}
+export function anonymous() {
+  let count = 0
+  createServerOnlyFn(@dec class { static f() { count++ } }.f.bind(null))()
+  return count
+}
+export function named() {
+  let count = 0
+  createServerOnlyFn(@dec class Named { static f() { count++ } }.f.bind(null))()
+  return count
+}
+`,
+        },
+      })
+      if (bundler === 'rsbuild') {
+        expect(
+          (await ssr.run(`return [entry.anonymous(), entry.named()]`)).result,
+        ).toEqual([1, 1])
+      }
+    },
+    timeout,
+  )
+
   // a kept expression holding `in` in a classic `for` initialiser, where the
   // factory call's parentheses delimited it: `for (let cb = 'a' in cfg ? …;;)`
   // would read as a `for…in`. Source: Astra review 5 (core B2)
