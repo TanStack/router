@@ -9,7 +9,6 @@ test('the route tree of the server has every route', () => {
     '/',
     '/api/health',
     '/posts/$postId',
-    '/visits',
     '__root__',
   ])
 })

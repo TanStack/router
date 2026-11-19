@@ -19,7 +19,6 @@ test('the route tree of the client has no server-only route', () => {
   expect(Object.keys(router.routesById).sort()).toEqual([
     '/',
     '/posts/$postId',
-    '/visits',
     '__root__',
   ])
 })
