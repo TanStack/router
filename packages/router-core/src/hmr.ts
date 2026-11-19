@@ -20,13 +20,15 @@ export interface RouteHmrMeta {
    */
   noComponents?: true
   /**
-   * Solid: the split chunk of each split component option
-   * (`<option>:<chunk>`, sorted, comma-separated; empty: none split).
-   * solid-refresh patches per module, from the first proxy a module
-   * registered under a name, and stops patching a module that lost a
+   * Solid: the module of each component option the route module declares
+   * (`<option>:<chunk>`, sorted, comma-separated; an empty chunk: the route
+   * module). solid-refresh patches per module, from the first proxy a
+   * module registered under a name, and stops patching a module that lost a
    * component (https://github.com/solidjs/solid-refresh/issues/88): a
-   * component that moved to another module (a `codeSplitGroupings` edit)
-   * cannot be updated in place, so the page reloads (`applyRouteHmr`).
+   * component that moved to another module (a `codeSplitGroupings` edit),
+   * or that left a split chunk another component stays in, cannot be
+   * updated in place, so the page reloads (`applyRouteHmr`). Another
+   * component added or removed changes nothing in place.
    */
   chunks?: string
   /** React + Vite: the module id plugin-react uses and the export names it ignores (the route, the anchor, the glue name of every module-level binding, and its own name when the user does not export it and the module has no `export *`). */
@@ -239,7 +241,7 @@ const componentKeys = [
 interface HotRouteRecord {
   routes: WeakMap<AnyRoute, ReadonlyArray<string>>
   latest: AnyRoute
-  /** The first evaluation's `RouteHmrMeta.chunks`. */
+  /** The latest evaluation's `RouteHmrMeta.chunks`. */
   chunks: string | undefined
 }
 
@@ -306,8 +308,8 @@ function setRoutes(router: AnyRouter, adapter: RouteHmrAdapter): void {
  * Later evaluations update the live route when the router on the page holds
  * a route this module evaluated to under `routeId` (the first one, or a
  * later one a rebuilt route tree imported), and do nothing otherwise. An
- * evaluation whose split components live in other chunks than the first
- * one's reloads the page (`RouteHmrMeta.chunks`, Solid).
+ * evaluation that moves a component of the previous one to another module
+ * reloads the page (`RouteHmrMeta.chunks`, Solid).
  *
  * Not a public API: called by the framework packages' `__tsrRouteHmr`.
  */
@@ -343,9 +345,11 @@ export function applyRouteHmr(
       return
     }
     if (known.chunks !== meta.chunks) {
-      // a component moved to another module (`RouteHmrMeta.chunks`)
-      window.location.reload()
-      return
+      if (regrouped(known.chunks, meta.chunks)) {
+        window.location.reload()
+        return
+      }
+      known.chunks = meta.chunks
     }
     known.routes.set(route, own)
     known.latest = route
@@ -377,6 +381,28 @@ export function applyRouteHmr(
     }
     scheduleRefresh(routeId, route, meta, adapter, known)
   }
+}
+
+/**
+ * Whether `next` puts a component option of `before` in another module, or
+ * leaves the split chunk of one it removed holding another
+ * (`RouteHmrMeta.chunks`).
+ */
+function regrouped(before = '', next = ''): boolean {
+  const chunkOf = (layout: string) =>
+    new Map(
+      layout.split(',').map((entry) => entry.split(':') as [string, string]),
+    )
+  const was = chunkOf(before)
+  const is = chunkOf(next)
+  const kept = new Set(is.values())
+  for (const [key, chunk] of was) {
+    // moved, or removed from a split chunk another component stays in
+    if (is.has(key) ? is.get(key) !== chunk : chunk !== '' && kept.has(chunk)) {
+      return true
+    }
+  }
+  return false
 }
 
 /** A lazy route file's `Route` (`createLazyFileRoute(id)(options)`). */

@@ -340,11 +340,15 @@ export function planHmrBlock(
     metaParts.push('noComponents: true')
   }
   if (cfg.framework === 'solid' && route.kind !== 'lazy') {
-    // the chunk each split component lives in: solid-refresh cannot follow
-    // a component to another module, so the runtime reloads when it moves
-    const chunks = round.plan.decisions
-      .filter((d) => COMPONENT_KEYS.includes(d.key))
-      .map((d) => `${d.key}:${d.groupKey}`)
+    // the module each component option lives in (its split chunk, or the
+    // route module): solid-refresh cannot follow a component to another
+    // module, so the runtime reloads when one moves
+    const chunkOf = new Map(
+      round.plan.decisions.map((d) => [d.key, d.groupKey]),
+    )
+    const chunks = route.props
+      .filter((o) => o.key !== null && COMPONENT_KEYS.includes(o.key))
+      .map((o) => `${o.key}:${chunkOf.get(o.key!) ?? ''}`)
       .sort()
       .join(',')
     metaParts.push(`chunks: ${stringLiteral(chunks, '"')}`)

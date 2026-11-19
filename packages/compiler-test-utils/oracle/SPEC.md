@@ -550,7 +550,10 @@ dir)` is not a conflict by itself.
   component (a new Refresh family), a new split loader (even when only the chunk changed), an added or removed option
   (including a removed split option the page had loaded), with or without the framework's refresh plugin. A full
   reload is acceptable only for factory-built options (§2.2), and on Solid for a rename or a removed component in an
-  unsplit route file (solid-refresh invalidates a module that lost a component): one reload, later edits in place.
+  unsplit route file (solid-refresh invalidates a module that lost a component), for a component that moves to
+  another module (a `codeSplitGroupings` edit), and for one removed from a split chunk another component stays in
+  (solid-refresh stops patching that chunk): one reload, later edits in place. A component added or removed next to
+  components that stay where they are shows in place.
 - **J3.4 Correct target.** The update applies to the route whose id the current tree assigns, not to a stale id kept
   in hot data.
 - **J3.5 Root route.** Root route edits, including adding, editing or removing `shellComponent`, hot-update.
