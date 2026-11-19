@@ -9,8 +9,10 @@
  * builder). And what the early compile must not change: a module a client
  * component's import keeps for its side effects (`verbatimModuleSyntax`)
  * still answers, and a server fn only development code imports adds no
- * production dependency. The first case of each kind is in
- * rsc-start-build.test.ts ("a server fn only a 'use client' component …").
+ * production dependency (also under a comment in the client component's
+ * directive prologue). A server handler's lazy import is followed, also
+ * when a comment of its module quotes the directive. The first case of
+ * each kind is in rsc-start-build.test.ts ("a server fn only a 'use client' component …").
  * Pinned in the same build: server fns only client-only code imports
  * (`client-only-reach-app.ts`).
  */
@@ -169,6 +171,19 @@ export function Ping() {
   return <button data-testid="ping" onClick={() => ping().then(setResult)}>ping {result}</button>
 }
 `,
+  // The same with a comment in the component's directive prologue.
+  'src/guarded/NotedPing.tsx': `"use strict" /* generated module */;
+'use client'
+import { useState } from 'react'
+import { ping } from './ping'
+if (process.env.NODE_ENV === 'development') {
+  void import('./debug').then(({ guardedDebug }) => Object.assign(window, { guardedDebug }))
+}
+export function NotedPing() {
+  const [result, setResult] = useState('')
+  return <button data-testid="noted" onClick={() => ping().then(setResult)}>noted {result}</button>
+}
+`,
   // A `'use client'` component that imports a server fn's module lazily.
   'src/guarded/lazy.ts': `import { createServerFn } from '@tanstack/react-start'
 export const lazyPing = createServerFn({ method: 'GET' }).handler(() => 'MARK_LAZY')
@@ -187,8 +202,50 @@ export function LazyPing() {
   'src/guarded/card.tsx': `import { createServerFn } from '@tanstack/react-start'
 import { renderServerComponent } from '@tanstack/react-start/rsc'
 import { LazyPing } from './LazyPing'
+import { NotedPing } from './NotedPing'
 import { Ping } from './Ping'
-export const getCard = createServerFn().handler(() => renderServerComponent(<div>card <Ping /><LazyPing /></div>))
+export const getCard = createServerFn().handler(() => renderServerComponent(<div>card <Ping /><NotedPing /><LazyPing /></div>))
+`,
+  // A server fn whose handler imports a server component lazily, which
+  // renders a `'use client'` component calling another server fn; a comment
+  // in the server module quotes the directive.
+  'src/split/inner-fn.ts': `import { createServerFn } from '@tanstack/react-start'
+export const innerFn = createServerFn({ method: 'GET' }).handler(() => 'MARK_INNER')
+`,
+  'src/split/InnerCall.tsx': `'use client'
+import { useState } from 'react'
+import { innerFn } from './inner-fn'
+export function InnerCall() {
+  const [result, setResult] = useState('')
+  return (
+    <button data-testid="inner" onClick={() => innerFn().then(setResult, (error) => setResult('error ' + error))}>
+      inner {result}
+    </button>
+  )
+}
+`,
+  'src/split/inner.tsx': `import { InnerCall } from './InnerCall'
+export function Inner() {
+  return <div><InnerCall /></div>
+}
+`,
+  'src/split/content.tsx': `// This server module renders a 'use client' component.
+import { createServerFn } from '@tanstack/react-start'
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+export const getSplit = createServerFn().handler(async () => {
+  const { Inner } = await import('./inner')
+  return renderServerComponent(<div>split <Inner /></div>)
+})
+`,
+  'src/routes/split.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { getSplit } from '../split/content'
+export const Route = createFileRoute('/split')({
+  loader: async () => ({ tree: await getSplit() }),
+  component: Page,
+})
+function Page() {
+  return <main>{Route.useLoaderData().tree}</main>
+}
 `,
   'src/routes/guarded.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { getCard } from '../guarded/card'
@@ -235,12 +292,10 @@ describe("Vite production build with RSC: server fns only 'use client' component
     }
   })
 
+  // (a page closes when its test ends: a test process keeps at most 16
+  // pages open, `openPageLimit` of the browser harness)
   const open = async (pathname: string): Promise<BrowserPage> => {
-    const page = await openRscPage(server, pathname, {
-      registerCleanup: (cleanup) => {
-        cleanups.push(cleanup)
-      },
-    })
+    const page = await openRscPage(server, pathname)
     await waitForHydration(page)
     return page
   }
@@ -287,18 +342,42 @@ describe("Vite production build with RSC: server fns only 'use client' component
   })
 
   // SPEC J4.2, G1: the same when the development branch is in a `'use
-  // client'` component a server component renders: it builds, and the
-  // component's server fn answers.
-  test("a server fn only development code of a 'use client' component imports adds no production dependency", async () => {
-    const page = await open('/guarded')
-    const button = '[data-testid=ping]'
-    const response = page.page.waitForResponse((r) =>
-      r.url().includes('/_serverFn/'),
-    )
+  // client'` component a server component renders, also one whose directive
+  // prologue holds a comment: it builds, and the component's server fn
+  // answers.
+  test.for([
+    { name: 'ping', prologue: 'directive' },
+    { name: 'noted', prologue: 'commented directive' },
+  ])(
+    "a server fn only development code of a 'use client' component ($prologue prologue) imports adds no production dependency",
+    async ({ name }) => {
+      const page = await open('/guarded')
+      const button = `[data-testid=${name}]`
+      const response = page.page.waitForResponse((r) =>
+        r.url().includes('/_serverFn/'),
+      )
+      await page.page.locator(button).click()
+      expect((await response).status()).toBe(200)
+      await page.waitForText(`${name} MARK_PING`, { selector: button })
+      expect(page.errors).toEqual([])
+    },
+  )
+
+  // SPEC J4.2: a server fn a `'use client'` component calls, in a server
+  // component a server fn's handler imports lazily, is callable by id; a
+  // comment in the handler's module that quotes the directive does not
+  // make it a client boundary.
+  test("a server fn below a server handler's lazy import runs when clicked", async () => {
+    const page = await open('/split')
+    const button = '[data-testid=inner]'
     await page.page.locator(button).click()
-    expect((await response).status()).toBe(200)
-    await page.waitForText('ping MARK_PING', { selector: button })
-    expect(page.errors).toEqual([])
+    expect(
+      await settledValue(
+        page,
+        () => page.text(button),
+        (text) => text.includes('MARK_') || text.includes('error'),
+      ),
+    ).toBe('inner MARK_INNER')
   })
 
   // Known bug (KNOWN-BUGS, "Vite RSC build: a server fn a `'use client'`
@@ -340,9 +419,7 @@ describe("Vite production build with RSC: server fns only 'use client' component
   test.fails.for(clientOnlyPositions)(
     'a server fn only $position of a $where imports runs when clicked',
     async ({ name }) => {
-      await expectClientOnlyCallAnswers(server, name, (cleanup) => {
-        cleanups.push(cleanup)
-      })
+      await expectClientOnlyCallAnswers(server, name)
     },
   )
 })
