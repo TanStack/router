@@ -826,6 +826,7 @@ async function webpackApp(
       rename: async (from, to) => {
         writtenAt = started
         lastWrite = { files: [from, to], printed: printedTexts().length }
+        await mkdir(path.dirname(path.join(root, to)), { recursive: true })
         await rename(path.join(root, from), path.join(root, to))
       },
       settle: (settleOptions = {}) =>

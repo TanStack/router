@@ -227,11 +227,34 @@ export function describeRouteFileUpkeep(bundler: Bundler) {
           files: { ...index, 'routes/bar.tsx': route('/bar', 'MARK_BAR') },
         })
         await app.visit('/bar', 'MARK_BAR')
+        const deleting = app.mark()
         await app.edit({ 'routes/bar.tsx': null })
 
         await app.visit('/', 'MARK_INDEX')
         expect(await app.routes()).toEqual([rootLive, live('/')])
-        expect(app.errors()).toEqual([])
+        // (no compile of the delete reported the deleted file missing, the
+        // last one's errors included)
+        expectNoErrorsSince(app, deleting)
+      },
+      timeout,
+    )
+
+    test(
+      'a route file deleted and created again is served',
+      async () => {
+        const app = await generatorDevApp({
+          bundler,
+          files: { ...index, 'routes/bar.tsx': route('/bar', 'MARK_BAR') },
+        })
+        await app.visit('/bar', 'MARK_BAR')
+        const deleting = app.mark()
+        await app.edit({ 'routes/bar.tsx': null })
+        await app.visit('/', 'MARK_INDEX')
+
+        await app.edit({ 'routes/bar.tsx': route('/bar', 'MARK_BAR_AGAIN') })
+        await app.visit('/bar', 'MARK_BAR_AGAIN')
+        expect(await app.routes()).toEqual([rootLive, live('/'), live('/bar')])
+        expectNoErrorsSince(app, deleting)
       },
       timeout,
     )
