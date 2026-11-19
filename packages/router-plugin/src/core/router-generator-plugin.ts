@@ -53,6 +53,11 @@ export function createRouterGeneratorPlugin(
   }) => {
     let generatorEvent: GeneratorEvent | undefined = undefined
     if (opts) {
+      // (Vite reports file changes through `watchChange`, webpack and rspack
+      // new files through chokidar)
+      if (hostOptions.watch?.() === false) {
+        return
+      }
       const filePath = normalize(opts.file)
       if (filePath === resolveConfigPath({ configDirectory: ROOT })) {
         initConfigAndGenerator()
@@ -77,9 +82,6 @@ export function createRouterGeneratorPlugin(
     name: 'tanstack:router-generator',
     enforce: 'pre',
     async watchChange(id, { event }) {
-      if (hostOptions.watch?.() === false) {
-        return
-      }
       await generate({
         file: id,
         event,
