@@ -39,6 +39,8 @@ export interface GetRouteNodesResult {
   rootRouteNode?: RouteNode
   routeNodes: Array<RouteNode>
   physicalDirectories: Array<string>
+  /** The directories of the `__virtual.*` modules the scan evaluated (each may list any file under its directory). */
+  subtreeDirectories: Array<string>
 }
 
 /**

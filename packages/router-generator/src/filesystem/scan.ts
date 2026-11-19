@@ -17,6 +17,12 @@ export interface ScanResult {
   routeNodes: ReadonlyArray<RouteNode>
   /** The directories `physical()` mounts scan (absolute, `/`-separated). */
   physicalDirectories: ReadonlyArray<string>
+  /**
+   * The directories of the `__virtual.*` modules the scan evaluated
+   * (absolute, `/`-separated): each module may list any file under its
+   * directory.
+   */
+  subtreeDirectories: ReadonlyArray<string>
 }
 
 /**
@@ -61,14 +67,15 @@ export async function scanRoutes(
   return {
     rootRouteNode: result.rootRouteNode,
     routeNodes,
-    physicalDirectories: [
-      ...new Set(
-        result.physicalDirectories.map((dir) =>
-          replaceBackslash(path.resolve(dir)),
-        ),
-      ),
-    ].sort(),
+    physicalDirectories: normalizeDirectories(result.physicalDirectories),
+    subtreeDirectories: normalizeDirectories(result.subtreeDirectories),
   }
+}
+
+function normalizeDirectories(directories: Array<string>) {
+  return [
+    ...new Set(directories.map((dir) => replaceBackslash(path.resolve(dir)))),
+  ].sort()
 }
 
 /**

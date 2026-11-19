@@ -90,6 +90,7 @@ export async function getRouteNodes(
 
   const routeNodes: Array<RouteNode> = []
   const allPhysicalDirectories: Array<string> = []
+  const allSubtreeDirectories: Array<string> = []
 
   async function recurse(dir: string): Promise<Array<RouteNode>> {
     const fullDir = path.resolve(config.routesDirectory, dir)
@@ -120,18 +121,22 @@ export async function getRouteNodes(
         file: '',
         children: virtualRouteSubtreeConfig,
       }
-      const { routeNodes: virtualRouteNodes, physicalDirectories } =
-        await getRouteNodesVirtual(
-          {
-            ...config,
-            routesDirectory: fullDir,
-            virtualRouteConfig: dummyRoot,
-          },
-          root,
-          tokenRegexes,
-          logger,
-        )
+      const {
+        routeNodes: virtualRouteNodes,
+        physicalDirectories,
+        subtreeDirectories,
+      } = await getRouteNodesVirtual(
+        {
+          ...config,
+          routesDirectory: fullDir,
+          virtualRouteConfig: dummyRoot,
+        },
+        root,
+        tokenRegexes,
+        logger,
+      )
       allPhysicalDirectories.push(...physicalDirectories)
+      allSubtreeDirectories.push(fullDir, ...subtreeDirectories)
       virtualRouteNodes.forEach((node) => {
         const normalizedDir = dir === './' ? '' : dir
         const filePath = replaceBackslash(
@@ -393,6 +398,7 @@ export async function getRouteNodes(
     rootRouteNode,
     routeNodes,
     physicalDirectories: allPhysicalDirectories,
+    subtreeDirectories: allSubtreeDirectories,
   }
 }
 

@@ -72,14 +72,15 @@ export async function getRouteNodes(
   } else {
     virtualRouteConfig = tsrConfig.virtualRouteConfig
   }
-  const { children, physicalDirectories } = await getRouteNodesRecursive(
-    tsrConfig,
-    root,
-    fullDir,
-    virtualRouteConfig.children,
-    tokenRegexes,
-    logger,
-  )
+  const { children, physicalDirectories, subtreeDirectories } =
+    await getRouteNodesRecursive(
+      tsrConfig,
+      root,
+      fullDir,
+      virtualRouteConfig.children,
+      tokenRegexes,
+      logger,
+    )
   const allNodes = flattenTree({
     children,
     filePath: virtualRouteConfig.file,
@@ -92,7 +93,7 @@ export async function getRouteNodes(
   const rootRouteNode = allNodes[0]
   const routeNodes = allNodes.slice(1)
 
-  return { rootRouteNode, routeNodes, physicalDirectories }
+  return { rootRouteNode, routeNodes, physicalDirectories, subtreeDirectories }
 }
 
 /**
@@ -151,11 +152,17 @@ async function getRouteNodesRecursive(
   tokenRegexes: TokenRegexBundle,
   logger: Logger,
   parent?: RouteNode,
-): Promise<{ children: Array<RouteNode>; physicalDirectories: Array<string> }> {
+): Promise<
+  { children: Array<RouteNode> } & Pick<
+    GetRouteNodesResult,
+    'physicalDirectories' | 'subtreeDirectories'
+  >
+> {
   if (nodes === undefined) {
-    return { children: [], physicalDirectories: [] }
+    return { children: [], physicalDirectories: [], subtreeDirectories: [] }
   }
   const allPhysicalDirectories: Array<string> = []
+  const allSubtreeDirectories: Array<string> = []
   const children = await Promise.all(
     nodes.map(async (node) => {
       if (node.type === 'physical') {
@@ -167,19 +174,21 @@ async function getRouteNodesRecursive(
               removeLeadingSlash(node.pathPrefix),
             )
           : { routePath: '', originalRoutePath: '' }
-        const { routeNodes, physicalDirectories } = await getRouteNodesPhysical(
-          {
-            ...tsrConfig,
-            routesDirectory: resolve(fullDir, node.directory),
-          },
-          root,
-          tokenRegexes,
-          logger,
-        )
+        const { routeNodes, physicalDirectories, subtreeDirectories } =
+          await getRouteNodesPhysical(
+            {
+              ...tsrConfig,
+              routesDirectory: resolve(fullDir, node.directory),
+            },
+            root,
+            tokenRegexes,
+            logger,
+          )
         allPhysicalDirectories.push(
           resolve(fullDir, node.directory),
           ...physicalDirectories,
         )
+        allSubtreeDirectories.push(...subtreeDirectories)
         routeNodes.forEach((subtreeNode) => {
           const pathPrefix = cleanPath(
             `${parent?.routePath ?? ''}${routePathPrefix}`,
@@ -287,7 +296,7 @@ async function getRouteNodesRecursive(
           }
 
           if (node.children !== undefined) {
-            const { children, physicalDirectories } =
+            const { children, physicalDirectories, subtreeDirectories } =
               await getRouteNodesRecursive(
                 tsrConfig,
                 root,
@@ -299,6 +308,7 @@ async function getRouteNodesRecursive(
               )
             routeNode.children = children
             allPhysicalDirectories.push(...physicalDirectories)
+            allSubtreeDirectories.push(...subtreeDirectories)
 
             // If the route has children, it should be a layout
             routeNode._fsRouteType = 'layout'
@@ -346,7 +356,7 @@ async function getRouteNodesRecursive(
           }
 
           if (node.children !== undefined) {
-            const { children, physicalDirectories } =
+            const { children, physicalDirectories, subtreeDirectories } =
               await getRouteNodesRecursive(
                 tsrConfig,
                 root,
@@ -358,6 +368,7 @@ async function getRouteNodesRecursive(
               )
             routeNode.children = children
             allPhysicalDirectories.push(...physicalDirectories)
+            allSubtreeDirectories.push(...subtreeDirectories)
           }
           return routeNode
         }
@@ -367,5 +378,6 @@ async function getRouteNodesRecursive(
   return {
     children: children.flat(),
     physicalDirectories: allPhysicalDirectories,
+    subtreeDirectories: allSubtreeDirectories,
   }
 }

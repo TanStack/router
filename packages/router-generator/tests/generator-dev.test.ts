@@ -570,6 +570,52 @@ export const routes = rootRoute(
       '/b': 'routes/-pages/b.tsx',
     })
   })
+
+  test('a __virtual.ts listing an ignored directory gets a route for a file created there, and a save under -components/ elsewhere scans nothing', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/-components/Card.tsx': 'export const Card = () => null\n',
+      'src/routes/blog/-pages/a.tsx': fileRoute('/blog/a'),
+    })
+    await save(
+      root,
+      'src/routes/blog/__virtual.ts',
+      `import { appendFileSync, readdirSync } from 'node:fs'
+import { defineVirtualSubtreeConfig, route } from '@tanstack/virtual-file-routes'
+
+export default defineVirtualSubtreeConfig(() => {
+  appendFileSync(${JSON.stringify(path.join(root, 'scans.log'))}, 'scan\\n')
+  return readdirSync(new URL('./-pages', import.meta.url)).map((file) =>
+    route('/' + file.replace(/\\.tsx$/, ''), '-pages/' + file),
+  )
+})
+`,
+    )
+    const { config, generator } = await startGenerator(root)
+    const scans = async () =>
+      (await read(root, 'scans.log')).split('\n').length - 1
+
+    const page = await save(
+      root,
+      'src/routes/blog/-pages/b.tsx',
+      fileRoute('/blog/b'),
+    )
+    await generator.run({ type: 'create', path: page })
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/blog/a': 'routes/blog/-pages/a.tsx',
+      '/blog/b': 'routes/blog/-pages/b.tsx',
+    })
+    expect(await scans()).toBe(2)
+
+    const card = await save(
+      root,
+      'src/routes/-components/Card.tsx',
+      'export const Card = () => 1\n',
+    )
+    await generator.run({ type: 'update', path: card })
+    expect(await scans()).toBe(2)
+  })
 })
 
 describe('events that arrive together', () => {

@@ -437,12 +437,13 @@ export class Generator {
   /**
    * Whether a scan may find a file the last one did not: one under a
    * directory a physical scan lists whose path below it the scan's ignore
-   * rules keep (none under a `-components/` directory), or under the routes
-   * directory of a `virtualRouteConfig` (its module may name any file). With
-   * no successful scan to go by (none yet, or the last batch failed: a
-   * `physical()` mount of a directory not created yet, even one named like
-   * `-shared`, fails the scan until it is), any file under the routes
-   * directory or a mount of the last scan.
+   * rules keep (none under a `-components/` directory), or under the
+   * directory of a module that lists routes (the routes directory of a
+   * `virtualRouteConfig`, a `__virtual.ts` the last scan evaluated: it may
+   * name any file). With no successful scan to go by (none yet, or the last
+   * batch failed: a `physical()` mount of a directory not created yet, even
+   * one named like `-shared`, fails the scan until it is), any file under
+   * the routes directory or a mount of the last scan.
    */
   private mayFind(file: string) {
     const lenient = !this.scan || this.stale
@@ -457,7 +458,8 @@ export class Generator {
       (this.config.virtualRouteConfig !== undefined
         ? isUnder(file, this.routesDirectory)
         : listedUnder(this.routesDirectory)) ||
-      (this.scan?.physicalDirectories ?? []).some(listedUnder)
+      (this.scan?.physicalDirectories ?? []).some(listedUnder) ||
+      (this.scan?.subtreeDirectories ?? []).some((dir) => isUnder(file, dir))
     )
   }
 
