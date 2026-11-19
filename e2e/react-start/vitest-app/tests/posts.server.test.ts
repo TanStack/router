@@ -7,7 +7,12 @@ import {
 } from '@tanstack/react-start/testing/server'
 import { expect, test } from 'vitest'
 import { authMiddleware } from '../src/middleware/auth'
-import { fetchPost, likePost } from '../src/posts'
+import {
+  draftsMiddleware,
+  fetchPost,
+  fetchPostCount,
+  likePost,
+} from '../src/posts'
 import { recordedCalls } from '../src/server-only'
 
 test('runInRequest resolves to what a server function returns', async () => {
@@ -48,6 +53,17 @@ test('the middleware of a server function refuses a request without a session', 
   await expect(runInRequest(() => likePost({ data: '1' }))).rejects.toThrow(
     'Not signed in',
   )
+})
+
+// `draftsMiddleware` is created in src/posts.ts, the file of `fetchPostCount`.
+test('mockMiddleware replaces a middleware that is created in the file of its server function', async () => {
+  await expect(runInRequest(() => fetchPostCount())).resolves.toBe(3)
+
+  mockMiddleware(draftsMiddleware, ({ next }) =>
+    next({ context: { drafts: 2 } }),
+  )
+
+  await expect(runInRequest(() => fetchPostCount())).resolves.toBe(5)
 })
 
 test('mockMiddleware puts a user of the test in place of the session', async () => {

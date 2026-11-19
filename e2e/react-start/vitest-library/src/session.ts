@@ -1,8 +1,8 @@
 import { createMiddleware } from '@tanstack/react-start'
 import { getCookie } from '@tanstack/react-start/server'
 
-// A middleware in a file of its own, so that a test can replace it with
-// `mockMiddleware` (see tests/account.server.test.ts).
+// The middleware of `account.ts`. A test replaces it with `mockMiddleware`
+// (see tests/account.server.test.ts).
 export const sessionMiddleware = createMiddleware({ type: 'function' })
   .client(({ next }) => {
     // Stands for client code that needs a browser. A server test runs the

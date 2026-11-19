@@ -34,17 +34,15 @@ test('mockServerFn refuses a server function in a server test', () => {
   )
 })
 
-// `secretMiddleware` is created in the file of `greet`. The server loads that
-// file a second time for the server side of `greet`, with a middleware object
-// of its own, which the mock does not reach.
-test('a middleware that is created in the file of its server function cannot be mocked', async () => {
+// `secretMiddleware` is created in the file of `greet`.
+test('mockMiddleware replaces a middleware that is created in the file of its server function', async () => {
   await expect(
-    runInRequest(async () => {
+    runInRequest(() => {
       mockMiddleware(secretMiddleware, ({ next }) =>
         next({ context: { secret: 'a mocked secret' } }),
       )
 
-      await greet({ data: 'Ada' })
+      return greet({ data: 'Ada' })
     }),
-  ).rejects.toThrow('Create the middleware in a file of its own to mock it.')
+  ).resolves.toBe('Hello Ada, a mocked secret')
 })

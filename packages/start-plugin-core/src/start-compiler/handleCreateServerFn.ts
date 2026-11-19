@@ -184,6 +184,12 @@ function generateCallerRpcStub(
  * - Creates an extractedFn that calls __executeServer
  * - Modifies .handler() to pass (extractedFn, serverFn) - two arguments
  *
+ * For a server module of a test run (`singleServerFnModule`):
+ * - Rewrites the server function like a provider file does, in the module
+ *   that declares it, and leaves the exports of the module alone
+ * - A call from server code then runs the handler of the same module, and the
+ *   file is evaluated once
+ *
  * @param candidates - All ServerFn candidates to process
  * @param context - The compilation context with helpers and mutable state
  * @returns Result containing runtime code to add, or null if no candidates processed
@@ -203,6 +209,12 @@ export function handleCreateServerFn(
       context.serverFnProviderModuleDirectives,
     )
   }
+
+  // A caller that keeps its handlers. Only a request to the URL of a server
+  // function still resolves to the provider file.
+  const isSingleModule =
+    context.singleServerFnModule && context.env === 'server' && !isProviderFile
+  const keepsHandlers = isProviderFile || isSingleModule
 
   // Get environment-specific configuration
   const envConfig = getEnvConfig(context, isProviderFile)
@@ -325,7 +337,7 @@ export function handleCreateServerFn(
       }
     }
 
-    if (isProviderFile) {
+    if (keepsHandlers) {
       // PROVIDER FILE: This is the extracted file that contains the actual implementation
       // We need to:
       // 1. Create an extractedFn that calls __executeServer
@@ -447,7 +459,7 @@ export function handleCreateServerFn(
   // Add runtime import using cached AST node
   const runtimeCode = getCachedRuntimeCode(
     context.framework,
-    envConfig.runtimeCodeType,
+    keepsHandlers ? 'provider' : envConfig.runtimeCodeType,
   )
   context.ast.program.body.unshift(t.cloneNode(runtimeCode))
 }
