@@ -18,9 +18,11 @@ import {
   symlink,
   writeFile,
 } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { createApp, fileRoute, generate, rootRoute } from './app'
+import { Generator } from '../src'
+import { configOf, createApp, fileRoute, generate, rootRoute } from './app'
 import { withRouteTree } from './route-tree'
 
 const wrongId = `import { createFileRoute } from '@tanstack/react-router'\nexport const Route = createFileRoute('/wrong')({})\n`
@@ -176,4 +178,46 @@ describe('symlinked files the generator rewrites', () => {
       expect(await readFile(target, 'utf8')).toContain(`'/about'`)
     },
   )
+
+  // The hosts whose compilation already took its changed files build the
+  // reported files again (the router plugin's webpack and Rspack watch mode).
+  test('onWrite reports each replaced file as the generator names it and as it replaced it, once replaced', async () => {
+    const root = await createApp({ 'src/routes/__root.tsx': rootRoute() })
+    await linked(root, 'src/routes/about.tsx', 'shared/about.tsx', wrongId)
+    const reported: Array<{ destination: string; file: string; text: string }> =
+      []
+    const generator = new Generator({
+      config: configOf(root),
+      root,
+      onWrite: ({ destination, file }) => {
+        const relative = (absolute: string) =>
+          path.relative(root, absolute).split(path.sep).join('/')
+        reported.push({
+          destination: relative(destination),
+          file: relative(file),
+          text: readFileSync(file, 'utf8'),
+        })
+      },
+    })
+    await generator.run()
+    expect(
+      reported.map(({ destination, file }) => ({ destination, file })),
+    ).toEqual(
+      expect.arrayContaining([
+        { destination: 'src/routes/about.tsx', file: 'shared/about.tsx' },
+        {
+          destination: 'src/routeTree.gen.ts',
+          file: 'src/routeTree.gen.ts',
+        },
+      ]),
+    )
+    expect(reported).toHaveLength(2)
+    for (const { file, text } of reported) {
+      expect(text).toBe(await readFile(path.join(root, file), 'utf8'))
+    }
+
+    // (a run that leaves every file as it is replaces none)
+    await generator.run()
+    expect(reported).toHaveLength(2)
+  })
 })

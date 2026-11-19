@@ -73,17 +73,19 @@ export class AtomicPublisher {
   private tmpDirReady: Promise<unknown> | undefined
   /** Destination directories whose renames from `tmpDir` cross devices. */
   private readonly besideDestination = new Set<string>()
-  /** The files replaced since the last `takeWritten` (their real paths). */
-  private written = new Set<string>()
 
-  constructor(private readonly tmpDir: string) {}
-
-  /** The files replaced since the last call (their real paths), then none. */
-  takeWritten(): ReadonlySet<string> {
-    const written = this.written
-    this.written = new Set()
-    return written
-  }
+  /**
+   * `onWrite`: told of each file replaced (`destination` as the caller
+   * named it, `file` the path renamed over: its real path when a link was
+   * kept), once the replacement is done.
+   */
+  constructor(
+    private readonly tmpDir: string,
+    private readonly onWrite?: (written: {
+      destination: string
+      file: string
+    }) => void,
+  ) {}
 
   /**
    * Replaces `destination` with `content`. With `expected`, the file must still
@@ -99,6 +101,15 @@ export class AtomicPublisher {
   ): Promise<void> {
     await fsp.mkdir(path.dirname(destination), { recursive: true })
     const file = ownFile ? destination : await realPathOf(destination)
+    await this.replace(file, content, expected)
+    this.onWrite?.({ destination, file })
+  }
+
+  private async replace(
+    file: string,
+    content: string,
+    expected: string | null | undefined,
+  ) {
     const dir = path.dirname(file)
     if (this.besideDestination.has(dir)) {
       await this.writeVia(this.besideName(file), file, content, expected)
@@ -193,7 +204,6 @@ export class AtomicPublisher {
         }
       }
       await fsp.rename(temporary, file)
-      this.written.add(file)
     } catch (error) {
       await fsp.rm(temporary, { force: true }).catch(() => {})
       throw error

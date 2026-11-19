@@ -25,16 +25,14 @@ export interface GeneratorSession {
    * (`watch`); every later one hands the generator the compiler's modified
    * and removed files and waits for their run, so the published registry is
    * the one its own events generate (the own watcher reports them too: a
-   * file read again unchanged is no change). It gives the files the
-   * generator wrote since the last `watchRun` (the route tree, route files
-   * it kept up; real paths): the bundler fixed the compilation's changed
-   * files before `watchRun`, so the host has it build those again from
-   * their new content (their own events start the next compilation).
+   * file read again unchanged is no change). The bundler fixed the
+   * compilation's changed files before: the files the run writes (the
+   * generator's `onWrite`) are the host's to add to it.
    */
   watchRun: (
     modified: Iterable<string>,
     removed: Iterable<string>,
-  ) => Promise<ReadonlySet<string>>
+  ) => Promise<void>
   /** Stops watching; `watch` starts again with the current generator. */
   close: () => Promise<void>
 }
@@ -106,8 +104,7 @@ export function createGeneratorSession(opts: {
     },
     async watchRun(modified, removed) {
       if (!watching) {
-        await session.watch()
-        return opts.generator().takeWrittenFiles()
+        return session.watch()
       }
       await watching
       const generator = opts.generator()
@@ -121,7 +118,6 @@ export function createGeneratorSession(opts: {
       if (runs.length > 0) {
         await settle(Promise.all(runs).then(() => undefined))
       }
-      return generator.takeWrittenFiles()
     },
     async close() {
       const w = watcher

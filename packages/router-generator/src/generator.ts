@@ -251,6 +251,15 @@ export class Generator {
      * its own.
      */
     logger?: Logger
+    /**
+     * Told of each file the generator replaced (the route tree, a route file
+     * it kept up), once it is replaced: `destination` as the generator names
+     * it, `file` the path it renamed over (the real path of a linked route
+     * file). Linked directories on the way are not resolved. A bundler whose
+     * compilation already took its changed files builds them again (the
+     * router plugin's webpack and Rspack watch mode).
+     */
+    onWrite?: (written: { destination: string; file: string }) => void
   }) {
     this.config = opts.config
     this.root = opts.root
@@ -268,7 +277,7 @@ export class Generator {
         ? normalize(path.resolve(this.root, this.config.virtualRouteConfig))
         : undefined
     this.listed = listsEntryNamed(this.config)
-    this.publisher = new AtomicPublisher(this.config.tmpDir)
+    this.publisher = new AtomicPublisher(this.config.tmpDir, opts.onWrite)
     this.plugins = [...(this.config.plugins ?? [])]
     for (const plugin of this.plugins) {
       plugin.init?.({ generator: this })
@@ -329,14 +338,6 @@ export class Generator {
    */
   public realPathOf(file: string): string | undefined {
     return this.files.get(file)?.realPath
-  }
-
-  /**
-   * The files the generator wrote since the last call (the route tree, the
-   * route files it kept up: their real paths), then none.
-   */
-  public takeWrittenFiles(): ReadonlySet<string> {
-    return this.publisher.takeWritten()
   }
 
   /** Whether a run has generated the route tree (and its registry) yet. */

@@ -1,4 +1,6 @@
+import { realpath } from 'node:fs'
 import { isAbsolute, normalize, relative } from 'node:path'
+import { promisify } from 'node:util'
 import {
   Generator,
   createGeneratorSession,
@@ -8,8 +10,6 @@ import {
 import {
   identify,
   normalizePath,
-  rebuildModules,
-  reportingFailure,
   webpackResourceId,
 } from '@tanstack/router-utils/compiler'
 import { getConfig } from './config'
@@ -19,16 +19,45 @@ import {
   publishRoutes,
 } from './router-plugin-context'
 
-import type { RebuildCompilationLike } from '@tanstack/router-utils/compiler'
 import type { UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
 import type { RouterPluginContext } from './router-plugin-context'
 
 const PLUGIN_NAME = 'unplugin:router-generator'
 
-/** The file of a webpack-family module's resource, as `written` spells it. */
+/** The file of a webpack module's resource, normalised. */
 const fileOf = (resource: string) =>
   normalizePath(identify(webpackResourceId(resource)).path)
+
+/**
+ * (Node's real path in JavaScript, which resolves link by link as webpack's
+ * and Rspack's resolvers do; the native one can differ on some Windows
+ * drives)
+ */
+const realPathOf = promisify(realpath)
+
+/**
+ * The files of `written` that still exist, as the generator named them and
+ * at their real paths (a linked directory on the way resolved: the path the
+ * bundler resolves their modules to).
+ */
+async function existingFiles(written: Iterable<string>) {
+  const files = new Set<string>()
+  await Promise.all(
+    [...written].map(async (file) => {
+      try {
+        const real = await realPathOf(file)
+        files.add(file)
+        files.add(real)
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw error
+        }
+      }
+    }),
+  )
+  return files
+}
 
 export function createRouterGeneratorPlugin(
   options: Partial<Config | (() => Config)> | undefined = {},
@@ -52,6 +81,14 @@ export function createRouterGeneratorPlugin(
    * environment's, and generate in each). The build's start ends them.
    */
   let printed: Set<string> | undefined
+  /**
+   * Rspack/webpack watch mode: the files the generator replaced that no
+   * compilation took yet (`watchRun`), as it named them and as it replaced
+   * them. A write can come before the `watchRun` of its compilation (the
+   * generator's own watcher), or during the compilation (the next one
+   * takes it).
+   */
+  let unbuilt = new Set<string>()
   const session = createGeneratorSession({
     generator: () => generator,
     publish: (routesByFile, failure) => {
@@ -72,6 +109,12 @@ export function createRouterGeneratorPlugin(
     generator = new Generator({
       config: userConfig,
       root: ROOT,
+      onWrite: ({ destination, file }) => {
+        if (watching) {
+          unbuilt.add(destination)
+          unbuilt.add(file)
+        }
+      },
       logger: {
         ...logger,
         warn: (...args) => {
@@ -90,24 +133,29 @@ export function createRouterGeneratorPlugin(
     normalize(file) === resolveConfigPath({ configDirectory: ROOT })
 
   /**
-   * Rspack/webpack watch mode: the files the generator wrote for the
-   * compilation the last `watchRun` started (the route tree, route files it
-   * kept up; `fileOf` spelling), which the compilation builds again from
-   * their new content.
+   * Rspack/webpack watch mode: hands the generator the compiler's changes
+   * and waits for its run. Gives the files the generator replaced since the
+   * last `watchRun` (the route tree, route files it kept up) that still
+   * exist (`existingFiles`). The compiler fixed the compilation's changed
+   * files before `watchRun`, so the compilation would build those from
+   * their old content (and the route tree's module would import a deleted
+   * route file); their own events start the next compilation.
    */
-  let written: ReadonlySet<string> = new Set()
-  /** Gives the files the generator wrote (as the file system spells them). */
   const watchRun = async (compiler: {
     modifiedFiles?: ReadonlySet<string>
     removedFiles?: ReadonlySet<string>
   }) => {
     watching = true
-    const files = await session.watchRun(
+    await session.watchRun(
       compiler.modifiedFiles ?? [],
       compiler.removedFiles ?? [],
     )
-    written = new Set([...files].map(normalizePath))
-    return files
+    if (unbuilt.size === 0) {
+      return unbuilt
+    }
+    const written = unbuilt
+    unbuilt = new Set()
+    return existingFiles(written)
   }
 
   return {
@@ -203,37 +251,26 @@ export function createRouterGeneratorPlugin(
       // created, or outside the bundle (unparsable, `physical()` mounts), come
       // from the generator's own watcher.
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async (c) => {
-        await watchRun(c)
+        const written = await watchRun(c)
+        if (written.size === 0) {
+          return
+        }
+        // The files the generator wrote join this compilation's changes, so
+        // it builds them from what it wrote, before it resolves anything (a
+        // compilation that stops at its first error included). This relies
+        // on Rspack reading `modifiedFiles`/`removedFiles` after the
+        // `watchRun` hooks, when it starts the rebuild (`Compiler.compile`:
+        // `instance.rebuild([...this.modifiedFiles], …)`; @rspack/core
+        // 2.3.1, 2.2.9 and 1.0.14 by source): replacing the sets there is
+        // not a documented contract (the hook's documentation only reads
+        // them). The watcher's own sets are not mutated.
+        c.modifiedFiles = new Set([...(c.modifiedFiles ?? []), ...written])
+        if (c.removedFiles && c.removedFiles.size > 0) {
+          c.removedFiles = new Set(
+            [...c.removedFiles].filter((file) => !written.has(file)),
+          )
+        }
       })
-      // The compiler fixed the compilation's changed files before
-      // `watchRun`, so the files the generator wrote in it would be built
-      // by the next one (their own events'): this one would keep the tree
-      // module that imports a deleted route file and fail on it. They are
-      // built again in place (`rebuildModules`: safe with this plugin's
-      // static loader rules).
-      compiler.hooks.finishMake.tapPromise(PLUGIN_NAME, (compilation) =>
-        reportingFailure(
-          compiler,
-          compilation.errors,
-          {
-            tag: '[tanstack-router]',
-            what: 'Building the generated files again',
-          },
-          async () => {
-            if (compilation.compiler !== compiler || written.size === 0) {
-              return
-            }
-            await rebuildModules(
-              compilation as unknown as RebuildCompilationLike<{
-                identifier: () => string
-                resource?: string
-              }>,
-              written,
-              fileOf,
-            )
-          },
-        ),
-      )
       compiler.hooks.watchClose.tap(PLUGIN_NAME, () => {
         void session.close()
       })
@@ -242,26 +279,35 @@ export function createRouterGeneratorPlugin(
       initConfigAndGenerator()
       compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () => session.build())
       // See rspack above
+      /** The files the generator wrote for the compilation the last `watchRun` started (`fileOf` spelling). */
+      let written = new Set<string>()
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async (c) => {
         const files = await watchRun(c)
+        written = new Set([...files].map(normalizePath))
         // (webpack read the files before: its input file system would give
         // the old content)
         if (files.size > 0) {
           compiler.inputFileSystem?.purge?.([...files])
         }
       })
-      // The files the generator wrote for this compilation are built again
-      // (see rspack above), before their modules are checked against the
-      // compilation's changes: rebuilding them at `finishMake` would leave
-      // the error the tree's old imports gave at `make`.
+      // webpack decides from the files' timestamps, not from its change
+      // set: the modules of the files the generator wrote for this
+      // compilation are built again, before webpack checks them against the
+      // compilation's changes (rebuilding them at `finishMake` would leave
+      // the error the tree's old imports gave at `make`).
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
+        const files = written
+        written = new Set()
+        if (files.size === 0) {
+          return
+        }
         compiler.webpack.NormalModule.getCompilationHooks(
           compilation,
         ).needBuild.tapAsync(PLUGIN_NAME, (module, _context, callback) => {
-          // (no answer: webpack checks the module's snapshot)
-          if (written.size > 0 && written.has(fileOf(module.resource))) {
+          if (files.has(fileOf(module.resource))) {
             callback(null, true)
           } else {
+            // (no answer: webpack checks the module's snapshot)
             callback()
           }
         })
