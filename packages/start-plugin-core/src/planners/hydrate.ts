@@ -1122,10 +1122,13 @@ function extract(
   const liveEnv = ctx.liveness('env')
   const declaredInside = (sym: SymbolId) => declaredWithin(ctx, sym, region)
   const solid = b.framework === 'solid'
-  // Solid: `ref={x}` on a captured reassignable binding becomes a setter prop
+  // Solid: `ref={x}` on a captured reassignable binding becomes a setter
+  // prop (a ref the client erased, e.g. in an isomorphic fn's server
+  // implementation, sets nothing)
   const setters = solid
     ? scan.refAttrs.filter(
         (r) =>
+          !liveEnv.isErased(r.range) &&
           !symbols.isModuleLevel(r.sym) &&
           !declaredInside(r.sym) &&
           symbols.isReassignable(r.sym),
@@ -1220,11 +1223,13 @@ function extract(
   }
   // Solid: `use:x` reads `x` (a core value ref, captured above); a directive
   // names an identifier, so a captured local stays a local: `const x = props.x`
+  // (one the client erased is no capture)
   const directiveLocals: Array<{ name: string; sym: SymbolId }> = []
   if (solid) {
     for (const d of scan.directives) {
       if (
         d.sym === null ||
+        liveEnv.isErased(d.nameRange) ||
         declaredInside(d.sym) ||
         symbols.isModuleLevel(d.sym)
       ) {

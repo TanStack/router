@@ -162,6 +162,41 @@ function directivePage(where: 'module' | 'component') {
 }
 
 /**
+ * A page whose split children (`children`, before a counter) use `setup`, a
+ * local of the component, only through a Solid directive or `ref`, inside a
+ * visible error boundary (Solid's own: a free name in the children shows
+ * there instead of a blank page). `nested` puts the children in a boundary
+ * inside another. `iso(server, client)` writes an inline isomorphic fn
+ * rendering one element per environment.
+ */
+function captureOnlyPage(setup: string, children: string, nested = false) {
+  const inner = `<Hydrate when={idle()}>${children}<Counter label="child" /></Hydrate>`
+  return `${head}import { ErrorBoundary } from 'solid-js'
+import { createIsomorphicFn } from '@tanstack/solid-start'
+export function Page() {
+  ${setup}
+  return <ErrorBoundary fallback={(error) => <p data-error>{String(error)}</p>}>${nested ? `<Hydrate when={idle()}><section>${inner}</section></Hydrate>` : inner}</ErrorBoundary>
+}`
+}
+const iso = (server: string, client: string) =>
+  `{createIsomorphicFn().server(() => ${server}).client(() => ${client})()}`
+/** A directive or callback ref setting `data-painted` to `value`. */
+const paint = (value: string) =>
+  `(el: HTMLElement) => { el.dataset.painted = '${value}' }`
+
+/**
+ * Page script of `captureOnlyPage`: once the children hydrated (the counter
+ * counts) or the error boundary shows, what the page shows: the error, the
+ * `<b>`'s text and its `data-painted`.
+ */
+const readCaptureOnly = `const counter = () => root.querySelector('button[data-label="child"]')
+const error = () => root.querySelector('[data-error]')
+await waitFor(() => error() || counter())
+await clickUntil(() => counter() ?? root, () => error() || counter().textContent === 'child:1')
+const b = root.querySelector('b')
+return { error: error()?.textContent ?? null, text: b?.textContent ?? null, painted: b?.dataset.painted ?? null }`
+
+/**
  * A page rendering `boundary` once the app hydrated (`useHydrated` of the
  * real router), like a boundary that appears after the app started (e.g.
  * after a client-side navigation): Solid's `Hydrate` then renders its
@@ -298,6 +333,34 @@ export function Page() {
   isomorphicServerWrite: isomorphicServerWritePage('solid'),
   lateRef: lateRefPage(''),
   lateRefReference: lateRefPage(' split={false}'),
+  // Locals the split children use only through a directive or a ref
+  // (`captureOnlyPage`). The server-only ones carry a canary the client
+  // must not ship.
+  directiveServerHalf: captureOnlyPage(
+    `function paint(el: HTMLElement) { el.dataset.painted = 'server-directive-canary' }`,
+    iso('<b use:paint>ok</b>', '<b>ok</b>'),
+  ),
+  directiveClientHalf: captureOnlyPage(
+    `function paint(el: HTMLElement) { el.dataset.painted = 'client-directive-mark' }`,
+    iso('<b>ok</b>', '<b use:paint>ok</b>'),
+  ),
+  refServerHalfNested: captureOnlyPage(
+    `let paint = ${paint('server-ref-canary')}`,
+    iso('<b ref={paint}>ok</b>', '<b>ok</b>'),
+    true,
+  ),
+  refClientHalf: captureOnlyPage(
+    `let paint = ${paint('client-ref-mark')}`,
+    iso('<b>ok</b>', '<b ref={paint}>ok</b>'),
+  ),
+  refLetFunction: captureOnlyPage(
+    `let paint = ${paint('ref')}`,
+    '<b ref={paint}>ok</b>',
+  ),
+  refLetElement: captureOnlyPage(
+    'let el: HTMLElement | undefined',
+    '<b ref={el}>ok</b>',
+  ),
   // A context declared in the page module itself.
 }
 
@@ -446,6 +509,82 @@ export function solidPageSuite(bundler: StartBundler) {
       },
     )
   })
+
+  // Locals the children use only through a Solid directive or `ref`: the
+  // placeholder passes those the client's children use, and only those.
+  // Source: Astra review of #8817, round 4, hydrate B1 (head rendered
+  // "paint is not defined" / "el is not defined" in the error boundary for
+  // the server-half directive and the refs of a `let` nothing else reads,
+  // and refused the nested server-half ref; main renders and builds them).
+  describe.concurrent(
+    'locals the children use only through a directive or a ref',
+    () => {
+      test.each([
+        {
+          fixture: 'directiveServerHalf',
+          how: 'a directive in the server implementation of an isomorphic fn',
+          painted: null,
+        },
+        {
+          fixture: 'directiveClientHalf',
+          how: 'a directive in the client implementation of an isomorphic fn',
+          painted: 'client-directive-mark',
+        },
+        {
+          fixture: 'refServerHalfNested',
+          how: 'a ref in the server implementation of an isomorphic fn, under two boundaries',
+          painted: null,
+        },
+        {
+          fixture: 'refClientHalf',
+          how: 'a ref in the client implementation of an isomorphic fn',
+          painted: 'client-ref-mark',
+        },
+        {
+          fixture: 'refLetFunction',
+          how: 'a ref naming a let holding a function',
+          painted: 'ref',
+        },
+        {
+          fixture: 'refLetElement',
+          how: 'a ref of a let nothing else reads',
+          painted: null,
+        },
+      ] as const)('$how', async ({ fixture, painted }) => {
+        for (const mode of ['hydrate', 'mount'] as const) {
+          const page = await app.hydrate(fixture, {
+            mode,
+            script: readCaptureOnly,
+          })
+          expect({
+            mode,
+            shown: page.result,
+            consoleErrors: page.consoleErrors,
+          }).toEqual({
+            mode,
+            shown: { error: null, text: 'ok', painted },
+            consoleErrors: [],
+          })
+        }
+      })
+
+      // What only the server's code uses stays out of the client; the same
+      // local in the client implementation ships (the control).
+      test.each([
+        { canary: 'server-directive-canary', mark: 'client-directive-mark' },
+        { canary: 'server-ref-canary', mark: 'client-ref-mark' },
+      ])('the client ships no $canary', ({ canary, mark }) => {
+        const shipped = (marker: string) => {
+          const { eager, lazy } = app.build.client.locate(marker)
+          return eager.length + lazy.length
+        }
+        expect({ canary: shipped(canary), mark: shipped(mark) > 0 }).toEqual({
+          canary: 0,
+          mark: true,
+        })
+      })
+    },
+  )
 
   describe.concurrent(
     'which elements are boundaries, and when code loads',

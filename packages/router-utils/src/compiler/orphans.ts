@@ -79,6 +79,7 @@ export function cleanOrphanedDeclarations(
   // each only the next one reads is cleaned however long it is
   for (;;) {
     const live = ctx.liveness('env')
+    const placed = placeholderReads(rewrites)
     let shared: LivenessView | null = null
     const everyOutput = () => (shared ??= ctx.liveness(EVERY_OUTPUT))
     /**
@@ -119,9 +120,10 @@ export function cleanOrphanedDeclarations(
       if (symbols.kind(sym) !== 'source') {
         continue
       }
-      // orphaned: used, and only by erased code (most bindings fail here)
+      // orphaned: used, and only by erased code (most bindings fail here);
+      // a placeholder naming it reads it where the placeholder stands
       const refs = t1.refs.refsOf(sym)
-      if (!orphaned(b, refs, live)) {
+      if (!orphaned(b, refs, live) || placed.has(sym)) {
         continue
       }
       const decl = b.declarations[0]
@@ -276,6 +278,35 @@ function orphaned(
     refs.length > 0 ||
     b.references.some((r) => r.inTypePosition && live.isErased(rangeOf(r.node)))
   )
+}
+
+/**
+ * The symbols the placeholders of claims standing in the env module name
+ * (e.g. a Solid ref setter assigning a local whose only source reference it
+ * replaced): read there, as placement reads a claim's place
+ * (`reads.ts`). A claim not in scope or whose occurrence is erased places
+ * nothing.
+ */
+function placeholderReads(rewrites: RewriteSet): ReadonlySet<SymbolId> {
+  const env = rewrites.view('env')
+  const named = new Set<SymbolId>()
+  for (const claim of rewrites.claims.values()) {
+    const { range } = rewrites.regions.get(claim.region)
+    if (env.placeholderAt(range) !== claim || env.isErasedAround(range)) {
+      continue
+    }
+    for (const f of claim.placeholder) {
+      if (f.k !== 'text') {
+        continue
+      }
+      for (const p of f.parts) {
+        if (typeof p !== 'string') {
+          named.add(p.sym)
+        }
+      }
+    }
+  }
+  return named
 }
 
 /**
