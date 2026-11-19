@@ -183,21 +183,30 @@ function getModulesIncludingConcatenated(
 }
 
 /**
- * Compute dynamicImports for a chunk by traversing its chunk groups'
- * childrenIterable (async/dynamic import edges).
+ * Compute dynamicImports for a chunk (analogous to Rollup's
+ * `OutputChunk.dynamicImports`): the JS files of the chunk groups that the
+ * async blocks (`import()` points) of the chunk's own modules load.
  *
- * In rspack, a chunk belongs to one or more ChunkGroups. Each ChunkGroup
- * has childrenIterable — child ChunkGroups representing dynamic import()
- * points. The JS files from those child groups' chunks are the
- * dynamicImports (analogous to Rollup's OutputChunk.dynamicImports).
+ * Not the children of the chunk's groups: a shared chunk is in the group of
+ * every route that uses it, and those groups' children are every route's
+ * `import()` targets, not the shared chunk's.
  */
-function computeDynamicImports(chunk: RspackCompilationChunk): Array<string> {
+function computeDynamicImports(
+  compilation: RspackCompilation,
+  modules: Array<RspackModule>,
+): Array<string> {
   const dynamicImportFiles: Array<string> = []
   const seen = new Set<string>()
 
-  for (const group of chunk.groupsIterable) {
-    for (const childGroup of group.childrenIterable) {
-      for (const childChunk of childGroup.chunks) {
+  for (const module of modules) {
+    const blocks = [...module.blocks]
+    for (const block of blocks) {
+      blocks.push(...block.blocks)
+      const group = compilation.chunkGraph.getBlockChunkGroup(block)
+      if (!group) {
+        continue
+      }
+      for (const childChunk of group.chunks) {
         for (const file of childChunk.files) {
           if (isManifestJsAsset(file) && !seen.has(file)) {
             seen.add(file)
@@ -214,7 +223,7 @@ function computeDynamicImports(chunk: RspackCompilationChunk): Array<string> {
 /**
  * Compute the emitted chunks reached by active static module dependencies.
  * Dependencies nested in async blocks are deliberately excluded: those are
- * represented by chunk-group children in `dynamicImports` instead.
+ * the chunk's `dynamicImports` instead.
  */
 function computeStaticDependencyChunks(
   compilation: RspackCompilation,
@@ -446,8 +455,7 @@ export function normalizeRspackClientBuild(
     const jsFiles = getChunkJsFiles(chunk)
     if (jsFiles.length === 0) continue
 
-    // Compute dynamicImports from chunk group children
-    const dynamicImports = computeDynamicImports(chunk)
+    const dynamicImports = computeDynamicImports(compilation, modules)
     const staticDependencyChunks = getStaticDependencyChunks(chunk)
     const dependencyCssFiles = computeCssOnlyDependencyFiles(
       getStaticDependencyChunks,

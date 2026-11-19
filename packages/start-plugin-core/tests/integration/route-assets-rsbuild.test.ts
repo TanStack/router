@@ -7,23 +7,32 @@
  * Rspack copies a small one into each).
  */
 import { routeAssetsSuite } from './route-assets-cases'
+import type { RsbuildConfig } from '@rsbuild/core'
+
+const sharedLazyChunks = {
+  splitChunks: {
+    cacheGroups: {
+      sharedLazy: {
+        chunks: 'async',
+        minChunks: 2,
+        minSize: 0,
+        priority: 10,
+        reuseExistingChunk: true,
+      },
+    },
+  },
+} satisfies RsbuildConfig
 
 routeAssetsSuite('rsbuild')
 routeAssetsSuite('rsbuild', { sideEffects: false })
 routeAssetsSuite('rsbuild', {
   sideEffects: false,
   label: 'and shared lazy modules in chunks of their own',
-  rsbuildConfig: {
-    splitChunks: {
-      cacheGroups: {
-        sharedLazy: {
-          chunks: 'async',
-          minChunks: 2,
-          minSize: 0,
-          priority: 10,
-          reuseExistingChunk: true,
-        },
-      },
-    },
-  },
+  rsbuildConfig: sharedLazyChunks,
+})
+routeAssetsSuite('rsbuild', { app: 'lazy boundaries' })
+routeAssetsSuite('rsbuild', {
+  app: 'lazy boundaries',
+  label: 'and shared lazy modules in chunks of their own',
+  rsbuildConfig: sharedLazyChunks,
 })

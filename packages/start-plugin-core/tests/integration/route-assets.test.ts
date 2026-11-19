@@ -6,3 +6,4 @@ import { routeAssetsSuite } from './route-assets-cases'
 
 routeAssetsSuite('vite')
 routeAssetsSuite('vite', { sideEffects: false })
+routeAssetsSuite('vite', { app: 'lazy boundaries' })

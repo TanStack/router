@@ -32,6 +32,12 @@
  * one component, holding a boundary, as `component` and `errorComponent`.
  * The layout `/posts` renders its export `PostCard`, which its child
  * `/posts/$id` imports; its sibling `/posts/new` does not.
+ *
+ * A second app (`lazyBoundariesApp`) has `<Hydrate>` in lazy routes only,
+ * so the code of `<Hydrate>` and its triggers is shared by those routes'
+ * chunks and not in the entry: `/css` has CSS in its boundaries, `/imported`
+ * and `/media` boundaries without CSS, and `/widget-a` and `/widget-b` render
+ * a shared widget whose own boundary has CSS.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { buildStart } from '../build-harness'
@@ -58,7 +64,7 @@ ${counts ? `  ${name.toLowerCase()}Renders++\n` : ''}  return <b className={${na
 
 const exportedNames = ['Card', 'Chip', 'Badge', 'Tile', 'Banner']
 
-const files: Record<string, string> = {
+const shellFiles: Record<string, string> = {
   'src/routes/__root.tsx': `import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
 import { Hydrate } from '@tanstack/react-start'
 import { interaction } from '@tanstack/react-start/hydration'
@@ -299,7 +305,9 @@ interface Assets {
  * `may`, which it may link besides (code it loads lazily itself). Anything
  * else is foreign, unless the app shell links it on every page.
  */
-const routes: Record<string, { needs: Assets; may?: Partial<Assets> }> = {
+type RouteAssets = Record<string, { needs: Assets; may?: Partial<Assets> }>
+
+const shellRoutes: RouteAssets = {
   '/exported': {
     needs: {
       js: ['EXPORTED', 'CARD', 'CHIP', 'BADGE', 'TILE', 'BANNER'],
@@ -375,7 +383,7 @@ const routes: Record<string, { needs: Assets; may?: Partial<Assets> }> = {
  * `Gem`: an export of `/hyd` stays in its route file, as on main, R153, and
  * every page imports the route files.)
  */
-const routeOnly = [
+const shellRouteOnly = [
   'EXPORTED',
   'INDEX',
   'THIRD',
@@ -394,6 +402,154 @@ const routeOnly = [
   'POSTID',
   'POSTNEW',
 ]
+
+/** An app, the files each route's page links, and code only routes need. */
+interface AssetsApp {
+  files: Record<string, string>
+  routes: RouteAssets
+  /** Markers the app shell never links (`shellRouteOnly`). */
+  routeOnly: Array<string>
+}
+
+const shellApp: AssetsApp = {
+  files: shellFiles,
+  routes: shellRoutes,
+  routeOnly: shellRouteOnly,
+}
+
+/** A route of `lazyBoundariesApp` rendering `body` (its marker: `MARK_JS_<name>`). */
+const lazyBoundaryRoute = (
+  path: string,
+  name: string,
+  imports: string,
+  body: string,
+) => `${head}import { Hydrate } from '@tanstack/react-start'
+${imports}export const Route = createFileRoute('/${path}')({
+  component: () => (
+    <section>
+      MARK_JS_${name}
+      ${body}
+    </section>
+  ),
+})
+`
+
+const lazyBoundariesApp: AssetsApp = {
+  files: {
+    'src/routes/__root.tsx': `import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute({
+  component: Root,
+  notFoundComponent: () => <p>not found</p>,
+})
+function Root() {
+  return (
+    <html>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <Outlet />
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+`,
+    'src/routes/index.tsx': `${head}export const Route = createFileRoute('/')({
+  component: () => <p>MARK_JS_INDEX</p>,
+})
+`,
+    'src/routes/css.tsx': lazyBoundaryRoute(
+      'css',
+      'CSS',
+      `import { never, visible } from '@tanstack/react-start/hydration'
+import pageCss from './csspage.module.css'
+import deferredCss from './cssdeferred.module.css'
+import nestedCss from './cssnested.module.css'
+`,
+      `<b className={pageCss.m}>page</b>
+      <Hydrate when={visible()}>
+        <u className={deferredCss.m}>MARK_JS_CSSDEFERRED</u>
+      </Hydrate>
+      <Hydrate when={visible()}>
+        <Hydrate when={never()}>
+          <u className={nestedCss.m}>MARK_JS_CSSNESTED</u>
+        </Hydrate>
+      </Hydrate>`,
+    ),
+    'src/routes/imported.tsx': lazyBoundaryRoute(
+      'imported',
+      'IMPORTED',
+      `import { interaction } from '@tanstack/react-start/hydration'
+`,
+      `<Hydrate when={interaction()}>
+        <u>MARK_JS_IMPORTEDCHILD</u>
+      </Hydrate>`,
+    ),
+    'src/routes/media.tsx': lazyBoundaryRoute(
+      'media',
+      'MEDIA',
+      `import { media } from '@tanstack/react-start/hydration'
+`,
+      `<Hydrate when={media('(min-width: 1px)')}>
+        <u>MARK_JS_MEDIACHILD</u>
+      </Hydrate>`,
+    ),
+    'src/routes/widget-a.tsx': `${head}import { HydratedWidget } from '../hydrated-widget'
+export const Route = createFileRoute('/widget-a')({
+  component: () => <p>MARK_JS_WIDGETA<HydratedWidget /></p>,
+})
+`,
+    'src/routes/widget-b.tsx': `${head}import { HydratedWidget } from '../hydrated-widget'
+export const Route = createFileRoute('/widget-b')({
+  component: () => <p>MARK_JS_WIDGETB<HydratedWidget /></p>,
+})
+`,
+    'src/hydrated-widget.tsx': `import { Hydrate } from '@tanstack/react-start'
+import { interaction } from '@tanstack/react-start/hydration'
+import widgetCss from './widgetchild.module.css'
+export function HydratedWidget() {
+  return (
+    <Hydrate when={interaction()}>
+      <u className={widgetCss.m}>MARK_JS_WIDGETCHILD</u>
+    </Hydrate>
+  )
+}
+`,
+    'src/widgetchild.module.css': cssModule('WIDGETCHILD'),
+    ...Object.fromEntries(
+      ['CssPage', 'CssDeferred', 'CssNested'].map((name) => [
+        `src/routes/${name.toLowerCase()}.module.css`,
+        cssModule(name.toUpperCase()),
+      ]),
+    ),
+  },
+  // The boundaries' children render on the server with their CSS (J5.7),
+  // the CSS of other routes' boundaries is foreign (J2.22).
+  routes: {
+    '/css': {
+      needs: { js: ['CSS'], css: ['CSSPAGE', 'CSSDEFERRED', 'CSSNESTED'] },
+    },
+    '/imported': { needs: { js: ['IMPORTED'], css: [] } },
+    '/media': { needs: { js: ['MEDIA'], css: [] } },
+    '/widget-a': { needs: { js: ['WIDGETA'], css: ['WIDGETCHILD'] } },
+    '/widget-b': { needs: { js: ['WIDGETB'], css: ['WIDGETCHILD'] } },
+  },
+  routeOnly: [
+    'INDEX',
+    'CSS',
+    'CSSPAGE',
+    'CSSDEFERRED',
+    'CSSNESTED',
+    'IMPORTED',
+    'IMPORTEDCHILD',
+    'MEDIA',
+    'MEDIACHILD',
+    'WIDGETA',
+    'WIDGETB',
+    'WIDGETCHILD',
+  ],
+}
 
 /** The markers of the files the server-rendered page at `pathname` links, by kind. */
 async function linkedMarkers(url: string, pathname: string): Promise<Assets> {
@@ -426,21 +582,28 @@ async function linkedMarkers(url: string, pathname: string): Promise<Assets> {
 const bundlerName = { vite: 'Vite', rsbuild: 'Rsbuild' } as const
 
 /**
- * The rows of `bundler`'s production build: `sideEffects`, the app's
- * `package.json` field; `rsbuildConfig`, Rsbuild configuration of the app
- * (`label` names it).
+ * The rows of `bundler`'s production build: `app`, the app (`'shell'`: the
+ * one with a boundary in its root route, the default; `'lazy boundaries'`:
+ * `lazyBoundariesApp`); `sideEffects`, the app's `package.json` field;
+ * `rsbuildConfig`, Rsbuild configuration of the app (`label` names it).
  */
 export function routeAssetsSuite(
   bundler: StartBundler,
   options: {
+    app?: 'shell' | 'lazy boundaries'
     sideEffects?: false
     rsbuildConfig?: RsbuildConfig
     label?: string
   } = {},
 ) {
   const { sideEffects, rsbuildConfig } = options
+  const { files, routes, routeOnly } =
+    options.app === 'lazy boundaries' ? lazyBoundariesApp : shellApp
   const name = [
     `${bundlerName[bundler]} build`,
+    ...(options.app === 'lazy boundaries'
+      ? ['of an app with boundaries in lazy routes only']
+      : []),
     ...(sideEffects === false ? ['with "sideEffects": false'] : []),
     ...(options.label ? [options.label] : []),
   ].join(' ')

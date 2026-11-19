@@ -132,6 +132,7 @@ function makeWindowsCompilation(readCss: () => string | Uint8Array) {
           ? [
               {
                 dependencies: [],
+                blocks: [],
                 identifier: () =>
                   'builtin:swc-loader??ruleSet[0]!C:\\app\\src\\routes\\posts.tsx?tsr-split=component',
                 nameForCondition: () => 'C:\\app\\src\\routes\\posts.tsx',
