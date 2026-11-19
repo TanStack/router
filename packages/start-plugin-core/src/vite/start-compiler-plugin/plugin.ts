@@ -200,11 +200,24 @@ function invalidateModuleNodes(
   }
 }
 
-function getDevServerFnValidatorModule(): string {
-  return `
-export async function getServerFnById(id, _access) {
+/**
+ * The resolver of a dev server. A function id names the file and the export
+ * of the function. `validateId` first asks the compiler whether it compiled
+ * a server function with that id, because a dev server takes ids from HTTP
+ * requests.
+ *
+ * A test run passes `validateId: false`. No request reaches it from outside,
+ * and a test runner can serve a compiled file from its cache, so that the
+ * compiler never sees the file and has no record of its functions.
+ */
+function getDevServerFnResolverModule(opts: { validateId: boolean }): string {
+  const validateId = opts.validateId
+    ? `
   const validateIdImport = ${JSON.stringify(validateServerFnIdVirtualModule)} + '?id=' + id
-  await import(/* @vite-ignore */ '/@id/__x00__' + validateIdImport)
+  await import(/* @vite-ignore */ '/@id/__x00__' + validateIdImport)`
+    : ''
+  return `
+export async function getServerFnById(id, _access) {${validateId}
   const decoded = Buffer.from(id, 'base64url').toString('utf8')
   const devServerFn = JSON.parse(decoded)
   const mod = await import(/* @vite-ignore */ devServerFn.file)
@@ -243,6 +256,11 @@ export interface StartCompilerPluginOptions {
    * The Vite environment name for the server function provider.
    */
   providerEnvName: string
+  /**
+   * Whether the bundler runs for a test runner. The resolver of a test run
+   * finds a server function without the compiler's record of it.
+   */
+  isTestRun?: () => boolean
 }
 
 export function startCompilerPlugin(
@@ -670,7 +688,9 @@ export function startCompilerPlugin(
         }
 
         if (this.environment.mode !== 'build') {
-          return getDevServerFnValidatorModule()
+          return getDevServerFnResolverModule({
+            validateId: !opts.isTestRun?.(),
+          })
         }
 
         // When SSR is the provider, server-only-referenced functions aren't in the manifest,

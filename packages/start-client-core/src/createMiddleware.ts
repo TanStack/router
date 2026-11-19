@@ -511,7 +511,6 @@ export interface FunctionMiddlewareServerFnOptions<
   >
   method: Method
   serverFnMeta: ServerFnMeta
-  signal: AbortSignal
 }
 
 export type FunctionMiddlewareServerFnResult<

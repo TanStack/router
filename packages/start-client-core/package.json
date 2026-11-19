@@ -60,6 +60,24 @@
         "default": "./dist/esm/client-rpc/index.js"
       }
     },
+    "./testing": {
+      "import": {
+        "types": "./dist/esm/testing/index.d.ts",
+        "default": "./dist/esm/testing/index.js"
+      }
+    },
+    "./testing/client-rpc": {
+      "import": {
+        "types": "./dist/esm/testing/client-rpc.d.ts",
+        "default": "./dist/esm/testing/client-rpc.js"
+      }
+    },
+    "./testing/vitest": {
+      "import": {
+        "types": "./dist/esm/testing/vitest.d.ts",
+        "default": "./dist/esm/testing/vitest.js"
+      }
+    },
     "./hydration": {
       "import": {
         "types": "./dist/esm/hydration.d.ts",
@@ -120,5 +138,13 @@
     "@arethetypeswrong/cli": "catalog:",
     "publint": "catalog:",
     "rimraf": "catalog:"
+  },
+  "peerDependencies": {
+    "vitest": ">=5.1.1"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
   }
 }

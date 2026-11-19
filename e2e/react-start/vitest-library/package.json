@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test:e2e": "pnpm run test:e2e:types && pnpm run test:e2e:linked && pnpm run test:e2e:cached && pnpm run test:e2e:installed",
-    "test:e2e:types": "tsc --noEmit",
+    "test:e2e:types": "node ../../../scripts/e2e/run-as-installed.mjs tsc6 --noEmit",
     "test:e2e:linked": "vitest --clearCache && vitest run",
     "test:e2e:cached": "vitest run",
     "test:e2e:installed": "node ../../../scripts/e2e/run-as-installed.mjs vitest run"
