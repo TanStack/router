@@ -183,6 +183,59 @@ describe('lazy route component hot updates', () => {
     expect(state).toMatchObject({ comp: v('v2'), error: undefined })
   })
 
+  test('recovered: the first import that succeeds after a failed one of a wrapper holding a component calls it, then the wrapper settles as usual', async () => {
+    const held = v('v1')
+    const { state, hot } = wrapper(held)
+    const recovered = vi.fn()
+    const adapter: RouteHmrAdapter = { keep: () => true, recovered }
+    const ok = () => Promise.resolve({ component: v('v2') })
+    hot.update(ok, 'component', adapter)
+    await state.pending
+    expect(recovered).not.toHaveBeenCalled()
+    for (let i = 0; i < 2; i++) {
+      hot.update(
+        () => Promise.reject(new Error('missing')),
+        'component',
+        adapter,
+      )
+      await state.pending
+    }
+    expect(recovered).not.toHaveBeenCalled()
+    hot.update(ok, 'component', adapter)
+    await state.pending
+    expect(recovered).toHaveBeenCalledOnce()
+    expect(state).toMatchObject({ comp: held, error: undefined, renders: 2 })
+    hot.update(ok, 'component', adapter)
+    await state.pending
+    expect(recovered).toHaveBeenCalledOnce()
+  })
+
+  test('recovered: not called for a wrapper whose first load failed, or for a failure an adapter without it saw', async () => {
+    const recovered = vi.fn()
+    const failedFirst = wrapper(undefined, new Error('offline'))
+    failedFirst.hot.update(
+      () => Promise.reject(new Error('missing')),
+      'component',
+      { recovered },
+    )
+    await failedFirst.state.pending
+    failedFirst.hot.update(
+      () => Promise.resolve({ component: v('v2') }),
+      'component',
+      { recovered },
+    )
+    await failedFirst.state.pending
+    const { state, hot } = wrapper(v('v1'))
+    hot.update(() => Promise.reject(new Error('missing')), 'component', swap)
+    await state.pending
+    hot.update(() => Promise.resolve({ component: v('v2') }), 'component', {
+      recovered,
+    })
+    await state.pending
+    expect(recovered).not.toHaveBeenCalled()
+    expect(state.comp).toEqual(v('v2'))
+  })
+
   test('a failed wrapper re-imports (it counts as loaded)', async () => {
     const { state, hot } = wrapper(undefined, new Error('offline'))
     hot.update(() => Promise.resolve({ component: v('v2') }), 'component', swap)

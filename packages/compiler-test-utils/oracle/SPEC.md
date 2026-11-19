@@ -552,7 +552,9 @@ dir)` is not a conflict by itself.
   reload is acceptable only for factory-built options (§2.2), and on Solid for a rename or a removed component in an
   unsplit route file (solid-refresh invalidates a module that lost a component), for a component that moves to
   another module (a `codeSplitGroupings` edit), and for one removed from a split chunk another component stays in
-  (solid-refresh stops patching that chunk): one reload, later edits in place. A component added or removed next to
+  (solid-refresh stops patching that chunk), and on Solid + Vite for the return of a deleted file a split component
+  reads after its chunk failed to import (solid-refresh patches a module only in its own update there): one reload,
+  later edits in place. A component added or removed next to
   components that stay where they are shows in place.
 - **J3.4 Correct target.** The update applies to the route whose id the current tree assigns, not to a stale id kept
   in hot data.

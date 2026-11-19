@@ -352,6 +352,11 @@ export function planHmrBlock(
       .sort()
       .join(',')
     metaParts.push(`chunks: ${stringLiteral(chunks, '"')}`)
+    if (vite) {
+      // a restored import reloads the page on Vite only (solid-router's
+      // `restoredImportReload`)
+      metaParts.push('vite: true')
+    }
   }
   const hot = vite ? 'import.meta.hot' : 'import.meta.webpackHot'
   // the dev-only runtime lives on its own subpath: production never loads it

@@ -31,6 +31,11 @@ export interface RouteHmrMeta {
    * component added or removed changes nothing in place.
    */
   chunks?: string
+  /**
+   * Solid + Vite: solid-refresh's Vite mode patches a module only in its own
+   * accept callback (solid-router's `restoredImportReload`).
+   */
+  vite?: true
   /** React + Vite: the module id plugin-react uses and the export names it ignores (the route, the anchor, the glue name of every module-level binding, and its own name when the user does not export it and the module has no `export *`). */
   refreshExports?: { id: string; anchor: string; exports: Array<string> }
 }
@@ -60,6 +65,13 @@ export interface RouteHmrAdapter {
    * would remount what the refresh patches in place.
    */
   settled?: (apply: () => void) => void
+  /**
+   * Called when a lazy wrapper that holds a component sees its import
+   * succeed after its previous one failed (a deleted file its chunk reads,
+   * restored), before the wrapper settles as usual. Absent: such a failure
+   * is not recorded.
+   */
+  recovered?: () => void
   /** Forgets what the framework records for a route id the router no longer holds. */
   retire?: (routeId: string) => void
 }
@@ -103,6 +115,10 @@ export interface LazyRouteComponentHot {
 // created with.
 const currentExports = new WeakMap<LazyRouteComponentHot, string>()
 
+// The hot slots whose latest import failed while their wrapper held a
+// component, for an adapter with `recovered`.
+const failedImports = new WeakSet<LazyRouteComponentHot>()
+
 function currentExportOf(hot: LazyRouteComponentHot): string {
   return currentExports.get(hot) ?? hot.exportName ?? 'default'
 }
@@ -121,6 +137,9 @@ function settleWith(
     (res) => {
       if (hot.pending() !== promise) {
         return hot.pending()
+      }
+      if (failedImports.delete(hot)) {
+        adapter.recovered?.()
       }
       const next = res[name]
       const keep = handedOver.has(res) ? adapter.keepPatched : adapter.keep
@@ -156,6 +175,8 @@ function settleWith(
       const held = hot.held()
       if (held == null) {
         hot.settle(held, err)
+      } else if (adapter.recovered) {
+        failedImports.add(hot)
       }
       return undefined
     },
