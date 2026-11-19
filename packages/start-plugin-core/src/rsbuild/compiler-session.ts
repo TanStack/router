@@ -345,17 +345,19 @@ export class StartRsbuildCompilerSession {
           `[tanstack-start] no resolver for the Rsbuild environment "${envName}"`,
         )
       }
+      // Rspack's resolver is given the importer's directory (`resolve(_context, path, request)`,
+      // 2.3.1: the context never reaches the native resolver), so the memo keys answers by it.
+      // Options that depend on the issuer (a matched rule's `resolve`, `issuerLayer`) would
+      // join the key; the RSC layer's do (`resolveScope`)
+      const dirOf = (importer: string) => path.dirname(identify(importer).path)
       host = this.start.host(
         async (specifier, importer) => {
-          const id = await resolve(
-            path.dirname(identify(importer).path),
-            specifier,
-            options,
-          )
+          const id = await resolve(dirOf(importer), specifier, options)
           return id === null ? null : { id }
         },
         { importRewrite: this.importRewrite(this.env(envName)) },
       )
+      host.resolveKey = dirOf
       if (scope !== undefined) {
         host.resolveScope = scope
       }

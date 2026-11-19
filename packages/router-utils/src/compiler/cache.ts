@@ -680,10 +680,10 @@ export class PlanCache {
    */
   readonly counters = { planHits: 0, staleHits: 0, lazyHits: 0 }
   /**
-   * The environment's resolutions, importer → specifier → the resolver's
-   * answer (settling, or the settled canonical id; unresolved pairs are not
-   * kept), shared by every compile and validation of the environment. The
-   * keys are the importer and specifier strings the compiles already hold.
+   * The environment's resolutions, importer (or the host's `resolveKey` of
+   * it) → specifier → the resolver's answer (settling, or the settled
+   * canonical id; unresolved pairs are not kept), shared by every compile
+   * and validation of the environment.
    * The memo is good for one `fileSetVersion` (a file appearing or
    * disappearing, a `package.json` changing) and dropped as one at the next
    * (`resolutionsAt`): the plans' resolution fingerprints have the same

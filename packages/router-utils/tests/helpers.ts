@@ -487,6 +487,8 @@ export interface MemoryHostOptions {
     importer: string,
     files: Record<string, string>,
   ) => string | { id: string; external: true } | null
+  /** The host's `resolveKey` (a resolver that sees less than the importer). */
+  resolveKey?: (importerCanonicalId: string) => string
   /** Hook to suspend reads (overlapping-save tests). */
   onRead?: (path: string) => Promise<void> | void
   /** Hook to suspend resolutions. */
@@ -526,8 +528,11 @@ export class MemoryHost implements HostServices {
   private readonly writtenAt = new Map<string, number>()
   private writes = 0
 
+  readonly resolveKey?: (importerCanonicalId: string) => string
+
   constructor(opts: MemoryHostOptions) {
     this.opts = opts
+    this.resolveKey = opts.resolveKey
     this.files = { ...opts.files }
     this.rawFacts = new RawFactsCache({
       readFile: (p) => this.readFile(p),

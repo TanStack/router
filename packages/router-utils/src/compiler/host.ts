@@ -228,6 +228,18 @@ export interface HostServices {
    * (R35). Absent: the environment's one resolver.
    */
   resolveScope?: string
+  /**
+   * The part of the importer `resolve` hands the bundler's resolver, when
+   * that is less than the importer: the resolution memo keys answers by it,
+   * so importers it does not tell apart share them. Rsbuild: the importer's
+   * directory (Rspack's resolver is given a directory and a request, no
+   * file). Absent: the importer itself; a resolver that sees the importer
+   * (a Vite plugin's `resolveId`, a tsconfig `include` per file) may answer
+   * two files of one directory differently. Whatever else of the importer
+   * reaches the resolver joins the key (per-issuer rule `resolve` options,
+   * `issuerLayer`; the RSC layer's: `resolveScope`).
+   */
+  resolveKey?: (importerCanonicalId: string) => string
   rawFacts: RawFactsCache
   /** The project root: messages name a file relative to it (`displayPath`). */
   root?: string
@@ -976,10 +988,12 @@ export function resolveForAnalysis(
     return Promise.resolve(null)
   }
   const memos = planCacheFor(caches, env).resolutionsAt(caches.fileSetVersion)
-  const memoKey =
-    host.resolveScope === undefined
+  const from =
+    host.resolveKey === undefined
       ? importerCanonicalId
-      : `${host.resolveScope}\0${importerCanonicalId}`
+      : host.resolveKey(importerCanonicalId)
+  const memoKey =
+    host.resolveScope === undefined ? from : `${host.resolveScope}\0${from}`
   let memo = memos.get(memoKey)
   if (!memo) {
     memo = new Map()
