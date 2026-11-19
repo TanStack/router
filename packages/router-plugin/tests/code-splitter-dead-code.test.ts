@@ -87,6 +87,16 @@ function pong(): number { return ping() }`,
       component: '<p>{helper()}</p>',
       declared: ['helper', 'unused', 'ping', 'pong'],
     },
+    {
+      // A reference cycle longer than two declarations: d closes it
+      name: 'a reference cycle of four declarations',
+      setup: `import { register } from './registry'
+const a = register(() => b)
+const b = register(() => c)
+const c = register(() => d)
+const d = register(() => a)`,
+      declared: ['a', 'b', 'c', 'd'],
+    },
   ])(
     'keeps $name that nothing used before splitting',
     async ({ setup, component = '<div />', declared }) => {
@@ -143,6 +153,22 @@ export const Route = createFileRoute('/')({
     expect(importedNames(modules['virtual component']!, 'bar')).toContain(
       'used',
     )
+    await expectValidModules(modules)
+  })
+
+  it('does not declare a side effect nothing reads in the shared module', async () => {
+    const { modules } =
+      compileRouteModules(`${head}import { createStore, track } from './store'
+const store = createStore()
+const stop = track(() => stop())
+export const Route = createFileRoute('/')({
+  beforeLoad: () => store.get(),
+  component: () => <p>{store.get()}</p>,
+})
+`)
+    expect(modules.shared).toMatch(declarationOf('store'))
+    expect(modules.shared).not.toMatch(declarationOf('stop'))
+    expect(modules.reference).toMatch(declarationOf('stop'))
     await expectValidModules(modules)
   })
 
@@ -237,6 +263,22 @@ export const Route = createFileRoute('/')({
       expect(await renderSplitComponent(modules)).toBe(rendered)
     },
   )
+
+  // Bundlers drop unused calls of a function annotated #__NO_SIDE_EFFECTS__,
+  // so the annotation must move with the function, also when every output
+  // module repeats a file-level pragma comment.
+  it('keeps the #__NO_SIDE_EFFECTS__ annotation of a function moved into the chunk in a file with a pragma', () => {
+    const { modules } =
+      compileRouteModules(`/** @jsxImportSource @emotion/react */
+${head}/* #__NO_SIDE_EFFECTS__ */ function makeLabel() { return 'label' }
+export const Route = createFileRoute('/')({
+  component: () => <p>{makeLabel()}</p>,
+})
+`)
+    expect(modules['virtual component']).toMatch(
+      /\/\* #__NO_SIDE_EFFECTS__ \*\/\s*function makeLabel\(/,
+    )
+  })
 
   // Source: React Compiler hook-ref-callback.js and
   // dont-memoize-primitive-function-call-non-escaping.js: a function shared by

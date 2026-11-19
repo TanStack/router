@@ -114,6 +114,19 @@ export const Route = createFileRoute({})
 `,
     expectedGrouping: undefined,
   },
+  {
+    name: 'code-based-createRoute',
+    code: `
+import { createRoute } from '@tanstack/react-router'
+import { rootRoute } from './__root'
+export const Route = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/posts',
+  codeSplitGroupings: [['loader', 'component']],
+})
+`,
+    expectedGrouping: [['loader', 'component']],
+  },
 ]
 
 describe('detectCodeSplitGroupingsFromRoute - success', () => {

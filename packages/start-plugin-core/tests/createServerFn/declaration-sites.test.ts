@@ -1,5 +1,10 @@
 import { expect, test } from 'vitest'
-import { compileFor, outputs } from '../regression-helpers'
+import {
+  callProvider,
+  compileAll,
+  compileFor,
+  outputs,
+} from '../regression-helpers'
 import { getModuleErrors } from '../validate-module'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
@@ -119,4 +124,24 @@ test.each([
       output,
     ).rejects.toThrow(error)
   }
+})
+
+// Sources: TanStack/router#5496 and #5892, where `.handler<T>(...)` was not
+// recognized as a server fn and its body reached the client.
+test.each([
+  { name: 'a type argument', handler: `.handler<number>(() => 1)` },
+  {
+    name: 'a Promise type argument',
+    handler: `.handler<Promise<{ secret: number }>>(async () => ({ secret: 1 }))`,
+  },
+])('extracts a server fn whose handler has $name', async ({ handler }) => {
+  const compiled = await compileAll(
+    `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn({ method: 'GET' })${handler}`,
+  )
+  expect(Object.keys(compiled.serverFns)).toHaveLength(1)
+  expect(compiled.client).not.toMatch(/=>\s*(1|\(\{ secret: 1 \}\))/)
+  expect(await callProvider(compiled.provider, 'fn')).toEqual(
+    handler.includes('secret') ? { secret: 1 } : 1,
+  )
 })

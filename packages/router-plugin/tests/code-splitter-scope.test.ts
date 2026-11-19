@@ -1,3 +1,4 @@
+import { transformWithOxc } from 'vite'
 import { describe, expect, it } from 'vitest'
 import {
   compileRouteModules,
@@ -8,6 +9,7 @@ import {
   importSources,
   importedNames,
 } from './regression-helpers'
+import { getModuleErrors } from './validate-module'
 
 const pageRoute = (body: string) => `${head}${body}
 export const Route = createFileRoute('/')({ component: Page })
@@ -228,6 +230,38 @@ export const Route = createFileRoute('/')({
     expect(sharedBindings).toEqual(['kind'])
     await expectValidModules(modules)
   })
+
+  it('neither do declarations in helpers that move into the chunk, named like a shared binding', async () => {
+    const { modules, sharedBindings } =
+      compileRouteModules(`${head}import { createStore } from './store'
+const store = createStore()
+function readVar() {
+  const store = 'var,'
+  return store
+}
+function readFunction() {
+  function store() { return 'function,' }
+  return store()
+}
+function readClass() {
+  class store { static value = 'class,' }
+  return store.value
+}
+function readEnum() {
+  enum store { Value = 'enum,' }
+  return store.Value
+}
+export const Route = createFileRoute('/')({
+  loader: () => store.get(),
+  component: () => <p>{readVar()}{readFunction()}{readClass()}{readEnum()}{store.get()}</p>,
+})
+`)
+    expect(sharedBindings).toEqual(['store'])
+    const chunk = await evaluateModule(modules['virtual component']!, {
+      'route.tsx?tsr-shared=1': { store: { get: () => 'shared' } },
+    })
+    expect(chunk.component!()).toBe('<p>var,function,class,enum,shared</p>')
+  })
 })
 
 describe('imports read in nested positions follow the code that reads them', () => {
@@ -335,5 +369,50 @@ export const Route = createFileRoute('/compare')({
       { filename: 'route.js' },
     )
     expect(sharedBindings).toEqual(['a', 'b', 'c', 'r'])
+  })
+
+  // Source: @babel/generator using-declarations/using-and-await-using
+  it('keeps the using declarations of a split component', async () => {
+    const chunk = compileRouteModules(
+      pageRoute(`const log = []
+const resource = (name) => ({ [Symbol.dispose]: () => log.push(name) })
+function Page() {
+  {
+    using first = resource('first'), second = resource('second')
+    log.push('body')
+  }
+  return log.join()
+}`),
+      { filename: 'route.js' },
+    ).modules['virtual component']!
+    await expectValidModules({ chunk })
+    expect((await evaluateModule(chunk)).component!()).toBe('body,second,first')
+  })
+})
+
+describe('plain TypeScript route files', () => {
+  // Source: TanStack/router#7341. In a `.ts` file, `<T>value` is a type
+  // assertion and `<T>(value: T) => value` a generic arrow function, not JSX.
+  it('keeps angle-bracket type assertions in every module', async () => {
+    const { modules } = compileRouteModules(
+      `${head}const identity = <T>(value: T) => value
+export const Route = createFileRoute('/')({
+  loader: () => <number>identity(<unknown>1),
+  component: () => <string>identity(<unknown>'page'),
+})
+`,
+      { filename: 'route.ts' },
+    )
+    for (const [name, code] of Object.entries(modules)) {
+      expect(await getModuleErrors(code!, 'module.ts'), name).toEqual([])
+    }
+    const erase = async (code: string) =>
+      (await transformWithOxc(code, 'module.ts')).code
+    const shared = await evaluateModule(await erase(modules.shared!))
+    const chunk = await evaluateModule(
+      await erase(modules['virtual component']!),
+      { 'route.ts?tsr-shared=1': shared },
+    )
+    expect(chunk.component!()).toBe('page')
   })
 })
