@@ -338,6 +338,60 @@ export { default } from './src/default'
     timeout,
   )
 
+  // a replacement starting with `(` at the start of a statement of a
+  // namespace body, after a statement without `;`: it starts a statement of
+  // its own, as in a function's body. Source: Astra review 5 (core B1)
+  test(
+    'an env-only fn called or written as a statement of a namespace body: each statement runs on its own',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        entry: { client: 'client.ts', ssr: 'ssr.ts' },
+        files: {
+          // the other environment's replacement, in both builds
+          'src/both.ts': `import { createClientOnlyFn, createServerOnlyFn } from '@tanstack/react-start'
+export namespace Setup {
+  export const events: Array<number> = []
+  const box = { run: () => events.push(0) }
+  events.push(1)
+  createServerOnlyFn(box.run)
+  events.push(2)
+  createClientOnlyFn(box.run)
+  events.push(3)
+}
+`,
+          // the implementation kept and called in place, in the server build
+          'src/server-calls.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+export namespace Setup {
+  export const events: Array<number> = []
+  const box = { run: () => events.push(2) }
+  events.push(1)
+  createServerOnlyFn(box.run)()
+  events.push(3)
+  createServerOnlyFn(function () { events.push(4) })()
+}
+`,
+          'client.ts': `export { Setup as both } from './src/both'
+`,
+          'ssr.ts': `export { Setup as both } from './src/both'
+export { Setup as server } from './src/server-calls'
+`,
+        },
+      })
+      expect((await client.run(`return entry.both.events`)).result).toEqual([
+        1, 2, 3,
+      ])
+      expect(
+        (await ssr.run(`return [entry.both.events, entry.server.events]`))
+          .result,
+      ).toEqual([
+        [1, 2, 3],
+        [1, 2, 3, 4],
+      ])
+    },
+    timeout,
+  )
+
   // a kept `new Factory`, written without an argument list, called or read
   // in place: the call and the read apply to the constructed value, not to
   // the constructor. Source: Astra review 4 (core B5)

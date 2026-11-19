@@ -1374,7 +1374,7 @@ const LEADING_TRIVIA = /^(?:\s|\/\*[\s\S]*?\*\/|\/\/.*)*/
 
 /**
  * Whether a statement of a statement list inside `statement` (a block's, a
- * static block's, a case's) starts at `offset`: a descent from `statement`
+ * static block's, a case's, a namespace body's) starts at `offset`: a descent from `statement`
  * through the nodes holding `offset`.
  */
 function nestedStatementAt(statement: Node, offset: number): boolean {
@@ -1442,6 +1442,7 @@ function isStatementList(holder: Node, key: string): boolean {
   switch (holder.type) {
     case 'BlockStatement':
     case 'StaticBlock':
+    case 'TSModuleBlock':
       return key === 'body'
     case 'SwitchCase':
       return key === 'consequent'
