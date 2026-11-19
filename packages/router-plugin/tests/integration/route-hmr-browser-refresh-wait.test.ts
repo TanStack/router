@@ -11,7 +11,8 @@
  * plugin debounces it, Rspack's waits 30 ms), so an update that waited for
  * it would not show until they run again. The overlapping-saves row pauses
  * them the same way to hold an update that waits while a newer one, which
- * holds no component, applies at once.
+ * holds no component, applies at once. The lazy-file row holds two updates
+ * of a lazy route file that both wait.
  */
 import { describe, it } from 'vitest'
 import { openRouteHmrPage } from '../route-hmr-page'
@@ -87,6 +88,25 @@ function Root() {
     </>
   )
 }
+`,
+}
+
+/** The index route's lazy file: a `.ts` module (no React Refresh pass for it) recording each evaluation, rendering `Card<version>`. */
+const tsLazyFile = (version: number) =>
+  `import { createLazyFileRoute } from '@tanstack/react-router'
+import { Card${version} } from '../cards'
+import { evaluated } from '../evaluations'
+evaluated(${version})
+export const Route = createLazyFileRoute('/')({ component: Card${version} })
+`
+
+const lazyFiles = {
+  ...evaluationFiles,
+  'cards.tsx': [1, 2, 3]
+    .map((n) => `export function Card${n}() {\n  return <p>card ${n}</p>\n}\n`)
+    .join(''),
+  'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ loader: () => 'L' })
 `,
 }
 
@@ -205,6 +225,48 @@ describe.concurrent.each(['vite', 'rsbuild'] as const)(
         await app.page.waitForText(/^evaluated 1,2,3 data L3$/, {
           selector: '#app',
         })
+      },
+    )
+
+    // Bug: the older update's commit loaded its own options, and the newer
+    // one, seeing the route not loaded, never applied. Impact: the page kept
+    // the previous save's component until the next save or a reload.
+    it(
+      'of a lazy route file held for React Refresh leaves the newest of two held updates applied',
+      { timeout },
+      async ({ expect, onTestFinished }: TestContext) => {
+        const app = await openRouteHmrPage({
+          bundler,
+          onTestFinished,
+          files: { ...lazyFiles, 'routes/index.lazy.ts': tsLazyFile(1) },
+          ready: 'evaluated 1 data Lcard 1',
+        })
+        const { clock } = app.page.page
+        await clock.install()
+        await clock.pauseAt(Date.now() + 1_000)
+        try {
+          // each evaluated, held until the refresh pass or its bound (timers)
+          for (const version of [2, 3]) {
+            expect(
+              await app.edit(
+                { 'routes/index.lazy.ts': tsLazyFile(version) },
+                `evaluated ${[1, 2, 3].slice(0, version).join(',')} data Lcard 1`,
+              ),
+            ).toEqual(inPlace)
+          }
+          await clock.runFor(1_000)
+        } finally {
+          await clock.resume()
+        }
+        expect(
+          await app.evaluate(
+            `window.__APP_ROUTER__.routesById['/'].options.component.name`,
+          ),
+        ).toBe('Card3')
+        await app.page.waitForText('evaluated 1,2,3 data Lcard 3', {
+          selector: '#app',
+        })
+        expect(app.loads()).toBe(1)
       },
     )
   },

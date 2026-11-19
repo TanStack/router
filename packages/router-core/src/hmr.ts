@@ -393,7 +393,8 @@ const hotLazyRoutes = new Map<string, LazyRouteEvaluation>()
  * The route loads its lazy options from this evaluation from now on (the
  * route tree's `import()` of the file keeps answering the module it first
  * loaded); a route that loaded the earlier evaluation's options takes the
- * new ones in place once the adapter's refresh settled: a component keeps
+ * new ones in place once the adapter's refresh settled, when this is still
+ * the file's latest evaluation (as for a route module): a component keeps
  * its held value when the framework patches it (`keepPatched`, as for a
  * route module). The first evaluation only records itself. The page
  * reloads, as on every lazy file edit without route HMR, when the live
@@ -427,18 +428,23 @@ function applyLazyRouteHmr(
       window.location.reload()
       return
     }
-    router._replaceRouteChunk?.(live, () => Promise.resolve(lazy as any))
-    if (state === undefined) {
-      // not loaded: its first load takes this evaluation
-      return
-    }
+    const importer = () => Promise.resolve(lazy as any)
     if (state !== true) {
-      // loading the earlier evaluation, which the router now drops: the
-      // refresh loads this one
-      void router._refreshRoute?.()
+      router._replaceRouteChunk?.(live, importer)
+      // not loaded: its first load takes this evaluation; loading the
+      // earlier one, which the router now drops: the refresh loads this one
+      if (state !== undefined) {
+        void router._refreshRoute?.()
+      }
       return
     }
+    // the route stays loaded until the latest evaluation commits: a newer
+    // one evaluated while this one waits commits instead
     whenSettled(adapter, () => {
+      if (hotLazyRoutes.get(routeId) !== lazy) {
+        return
+      }
+      router._replaceRouteChunk?.(live, importer)
       for (const key of componentKeys) {
         const held = live.options[key]
         const value = next[key]
