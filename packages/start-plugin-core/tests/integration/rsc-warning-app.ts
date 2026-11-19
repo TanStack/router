@@ -95,6 +95,10 @@ export async function startViteRscApp(
 /** An Rsbuild dev server on the RSC app of `files` (over `rscAppFiles`). */
 export async function startRsbuildRscApp(
   files: Record<string, string>,
+  options: {
+    /** Default `onTestFinished`. */
+    registerCleanup?: (cleanup: () => Promise<void>) => void
+  } = {},
 ): Promise<RsbuildDevServer> {
   const start = await startRsbuildPluginFactory('react')
   const cwd = process.cwd()
@@ -102,7 +106,7 @@ export async function startRsbuildRscApp(
     return await createRsbuildDevServer({
       dir: appsDir,
       prefix: '.start-rsc-warnings-rsbuild-',
-      registerCleanup: onTestFinished,
+      registerCleanup: options.registerCleanup ?? onTestFinished,
       browser: true,
       // Start's plugin defines the entries of its environments
       entry: 'src/router.tsx',

@@ -64,7 +64,12 @@ import {
   rootRouteFile,
   routerFile,
 } from './request-probe'
-import { startPackages, startPluginFactory } from './start-plugins'
+import {
+  rscDependency,
+  rscPluginFactory,
+  startPackages,
+  startPluginFactory,
+} from './start-plugins'
 import type { StartFramework, StartPluginOptions } from './start-plugins'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
@@ -111,6 +116,14 @@ export interface StartHostOptions {
    * Default: first.
    */
   startLast?: boolean
+  /**
+   * React only: an RSC app, as `@tanstack/react-start-rsc`'s guide
+   * configures it: Start's `rsc: { enabled: true }` and Vite's RSC plugin
+   * (`@vitejs/plugin-rsc`) after Start's, whose `rsc` environment renders
+   * server components and is Start's server-fn provider
+   * (`StartCase.rsc`, `served(file, 'rsc')`).
+   */
+  rsc?: boolean
 }
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
@@ -416,13 +429,21 @@ export interface StartCase {
    * The code an environment (default `client`) serves for a case file
    * (default `module.tsx`). A failed transform rejects with its error.
    */
-  served: (file?: string, environment?: 'client' | 'ssr') => Promise<string>
+  served: (
+    file?: string,
+    environment?: 'client' | 'ssr' | 'rsc',
+  ) => Promise<string>
   /**
    * The case file (default `module.tsx`) evaluated by the SSR environment's
    * module runner: its namespace, in this process. Calling a server fn needs
    * a request: `inRequest`.
    */
   ssr: (file?: string) => Promise<Record<string, any>>
+  /**
+   * An RSC host (`rsc: true`): the case file (default `module.tsx`)
+   * evaluated by the `rsc` environment's module runner, in this process.
+   */
+  rsc: (file?: string) => Promise<Record<string, any>>
   /**
    * Runs `run` inside a real request of the app (a server route of the app
    * calls it, so Start's request context is the one of that request), and
@@ -583,18 +604,27 @@ export async function createStartHost(
   options: StartHostOptions = {},
 ): Promise<StartHost> {
   const framework = options.framework ?? 'react'
+  if (options.rsc && framework !== 'react') {
+    throw new Error('rsc: React Start only')
+  }
   const startFactory = await startPluginFactory(framework)
+  const rscFactory = options.rsc ? await rscPluginFactory() : undefined
   // Import protection off unless the test configures it (see `appTsconfig`)
   const startOptions = {
     importProtection: { enabled: false },
     ...options.start,
+    ...(options.rsc ? { rsc: { enabled: true } } : {}),
   }
   const userPlugins = options.plugins ?? []
   /** The plugins of the app's `vite.config.ts`: Start's, the framework's, the app's own. */
   const appPlugins = (): Array<PluginOption> => {
     const others = [...frameworkPlugins(framework, options), ...userPlugins]
-    const start = startFactory(startOptions)
-    return options.startLast ? [...others, start] : [start, ...others]
+    // (Vite's RSC plugin right after Start's, as the guide lists them)
+    const start = [
+      startFactory(startOptions),
+      ...(rscFactory ? [rscFactory()] : []),
+    ]
+    return options.startLast ? [...others, ...start] : [...start, ...others]
   }
   const serve = options.serve ?? true
   /**
@@ -635,9 +665,16 @@ export async function createStartHost(
       ...workspacePackageLinks([
         startPackages[framework],
         ...(framework === 'react' ? [] : [routerPackages[framework]]),
+        ...(options.rsc ? ['@tanstack/react-start-rsc'] : []),
         ...(options.links ?? []),
       ]),
       ...frameworkLinks(framework),
+      ...(options.rsc
+        ? {
+            'node_modules/@vitejs/plugin-rsc':
+              rscDependency('@vitejs/plugin-rsc'),
+          }
+        : {}),
     },
     files: {
       'tsconfig.json': appTsconfig(framework),
@@ -1026,6 +1063,13 @@ export async function createStartHost(
           return inAppRequest((context) => context!.load(buildKey(file)))
         }
         return host.importServer(url(file), 'ssr')
+      },
+      rsc: async (file) => {
+        devOnly('rsc()')
+        if (!options.rsc) {
+          throw new Error('rsc() needs a host created with `rsc: true`')
+        }
+        return host.importServer(url(file), 'rsc')
       },
       inRequest: (run) => inAppRequest(() => run()),
       client: (script, clientOptions = {}) =>
