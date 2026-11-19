@@ -435,6 +435,105 @@ describe('normalizeRspackClientBuild', () => {
     }
   })
 
+  test('imports every chunk available to a route chunk that it uses, in import order', async () => {
+    const { clientBuild, directory } = await buildClientFixture(
+      {
+        'index.js': `
+          import { util } from './util.js'
+          globalThis.util = util
+          globalThis.routes = [
+            () => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component'),
+          ]
+        `,
+        'alpha.js': `
+          import { util } from './util.js'
+          import { one } from './one.js'
+          import { two } from './two.js'
+          export const render = () => util() + one() + two()
+        `,
+        'util.js': `export const util = () => 'util'`,
+        'one.js': `export const one = () => 'one'`,
+        'two.js': `export const two = () => 'two'`,
+      },
+      {
+        optimization: {
+          splitChunks: {
+            minSize: 0,
+            cacheGroups: {
+              default: false,
+              defaultVendors: false,
+              one: {
+                name: 'one',
+                test: /one\.js$/,
+                chunks: 'async',
+                enforce: true,
+              },
+              two: {
+                name: 'two',
+                test: /two\.js$/,
+                chunks: 'async',
+                enforce: true,
+              },
+            },
+          },
+        },
+      },
+    )
+
+    // the chunks of its group and the entry's, the last one included
+    expect(clientBuild.chunksByFileName.get('alpha.js')?.imports).toEqual([
+      'index.js',
+      'one.js',
+      'two.js',
+    ])
+    const manifest = buildStartManifest({
+      clientBuild,
+      basePath: '/',
+      routeTreeRoutes: {
+        __root__: { children: ['/alpha'] },
+        '/alpha': { filePath: join(directory, 'alpha.js') },
+      },
+    })
+    expect(manifest.routes['/alpha']?.preloads).toEqual([
+      '/alpha.js',
+      '/one.js',
+      '/two.js',
+    ])
+  })
+
+  test('gives the root the css of a css-only chunk of the entry', async () => {
+    const { clientBuild } = await buildClientFixture(
+      {
+        'index.js': `import './theme.css'`,
+        'theme.css': '.theme { color: red; }',
+      },
+      {
+        optimization: {
+          splitChunks: {
+            minSize: 0,
+            cacheGroups: {
+              default: false,
+              defaultVendors: false,
+              theme: {
+                name: 'theme',
+                test: /theme\.css$/,
+                chunks: 'initial',
+                enforce: true,
+              },
+            },
+          },
+        },
+      },
+    )
+
+    const manifest = buildStartManifest({
+      clientBuild,
+      basePath: '/',
+      routeTreeRoutes: { __root__: {} },
+    })
+    expect(manifest.routes.__root__?.css).toEqual(['/theme.css'])
+  })
+
   test('keeps route css off the root when an initial vendor chunk is shared with route groups', async () => {
     const { clientBuild, directory } = await buildClientFixture(
       {

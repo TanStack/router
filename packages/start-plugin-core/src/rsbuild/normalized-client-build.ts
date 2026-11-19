@@ -221,13 +221,6 @@ function computeStaticDependencyChunks(
   chunk: RspackCompilationChunk,
   graph: CompilationGraph,
 ): Array<RspackCompilationChunk> {
-  const importedChunks: Array<RspackCompilationChunk> = []
-  const seen = new Set<RspackCompilationChunk>([chunk])
-  const modules = getModulesIncludingConcatenated(
-    compilation.chunkGraph.getChunkModules(chunk),
-  )
-  const localModules = new Set(modules)
-  const runtime = Array.from(chunk.runtime)
   // A shared chunk can belong to several route groups. Group membership
   // limits where dependencies can be loaded from; it does not establish
   // an import from the shared chunk back to every route in those groups.
@@ -259,24 +252,47 @@ function computeStaticDependencyChunks(
   }
   availableChunks ??= new Set()
 
+  const importedChunks: Array<RspackCompilationChunk> = []
+  // Only the available chunks other than this one can be found: once all of
+  // them are, the module walk has nothing left to add. An entry chunk alone
+  // in its group never walks.
+  let unfound = availableChunks.size - (availableChunks.has(chunk) ? 1 : 0)
+  if (unfound === 0) {
+    return importedChunks
+  }
+
+  const seen = new Set<RspackCompilationChunk>([chunk])
+  const modules = getModulesIncludingConcatenated(
+    compilation.chunkGraph.getChunkModules(chunk),
+  )
+  const localModules = new Set(modules)
+  const runtime = Array.from(chunk.runtime)
   // Every connection to a module adds the same chunks, so a module counts
   // once, from its first active connection (an inactive one adds nothing and
   // leaves the module to a later active one).
   const counted = new Set<RspackModule>()
   for (const module of modules) {
-    for (const { importedModule, connection } of graph.importsOf(module)) {
-      if (localModules.has(importedModule) || counted.has(importedModule)) {
+    for (const dependency of graph.dependenciesOf(module)) {
+      const imported = graph.importOf(dependency)
+      if (
+        !imported ||
+        localModules.has(imported.module) ||
+        counted.has(imported.module)
+      ) {
         continue
       }
-      if (connection.getActiveState(runtime) === false) {
+      if (imported.connection.getActiveState(runtime) === false) {
         continue
       }
-      counted.add(importedModule)
+      counted.add(imported.module)
 
-      for (const importedChunk of graph.chunksOf(importedModule)) {
+      for (const importedChunk of graph.chunksOf(imported.module)) {
         if (availableChunks.has(importedChunk) && !seen.has(importedChunk)) {
           seen.add(importedChunk)
           importedChunks.push(importedChunk)
+          if (--unfound === 0) {
+            return importedChunks
+          }
         }
       }
     }
@@ -291,14 +307,17 @@ type GetStaticDependencyChunks = (
 
 /**
  * What the static dependency resolution reads from Rspack's graphs, read once
- * per module: a module is in several chunks and imported from many.
+ * per module or dependency, and only when the walk gets to it: a module is in
+ * several chunks and imported from many, and most walks stop early.
  */
 interface CompilationGraph {
-  /** The module's static dependencies that resolved to a module, in order. */
-  importsOf: (module: RspackModule) => Array<{
-    importedModule: RspackModule
+  /** The module's static dependencies, in order. */
+  dependenciesOf: (module: RspackModule) => Array<Rspack.Dependency>
+  /** The module a dependency resolved to, if any. */
+  importOf: (dependency: Rspack.Dependency) => {
+    module: RspackModule
     connection: Rspack.ModuleGraphConnection
-  }>
+  } | null
   chunksOf: (module: RspackModule) => Array<RspackCompilationChunk>
 }
 
@@ -326,16 +345,11 @@ function createStaticDependencyChunkResolver(
   compilation: RspackCompilation,
 ): GetStaticDependencyChunks {
   const graph: CompilationGraph = {
-    importsOf: memoize((module) => {
-      const imports: ReturnType<CompilationGraph['importsOf']> = []
-      for (const dependency of module.dependencies) {
-        const connection = compilation.moduleGraph.getConnection(dependency)
-        const importedModule = connection?.module
-        if (connection && importedModule) {
-          imports.push({ importedModule, connection })
-        }
-      }
-      return imports
+    dependenciesOf: memoize((module) => module.dependencies),
+    importOf: memoize((dependency) => {
+      const connection = compilation.moduleGraph.getConnection(dependency)
+      const module = connection?.module
+      return connection && module ? { module, connection } : null
     }),
     chunksOf: memoize((module) =>
       Array.from(compilation.chunkGraph.getModuleChunksIterable(module)),
