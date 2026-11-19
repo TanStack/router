@@ -392,6 +392,52 @@ export { Setup as server } from './src/server-calls'
     timeout,
   )
 
+  // a kept expression holding `in` in a classic `for` initialiser, where the
+  // factory call's parentheses delimited it: `for (let cb = 'a' in cfg ? …;;)`
+  // would read as a `for…in`. Source: Astra review 5 (core B2)
+  test(
+    'a server-only fn whose implementation reads `in`, in a classic `for` initialiser: the server runs the loop',
+    async () => {
+      const { ssr } = await buildStart({
+        bundler,
+        files: {
+          'entry.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+const cfg = { a: 1 }
+export function declared() {
+  for (let cb = createServerOnlyFn('a' in cfg ? () => 42 : () => 0); ; ) {
+    return cb()
+  }
+}
+export function assigned() {
+  let cb: () => number
+  for (cb = createServerOnlyFn('a' in cfg ? () => 42 : () => 0); ; ) {
+    return cb()
+  }
+}
+export function arrowBody() {
+  for (let cb = createServerOnlyFn(() => 'a' in cfg); ; ) {
+    return cb()
+  }
+}
+export function nestedArrow() {
+  for (let cb = () => createServerOnlyFn('a' in cfg ? () => 42 : () => 0); ; ) {
+    return cb()()
+  }
+}
+`,
+        },
+      })
+      expect(
+        (
+          await ssr.run(
+            `return [entry.declared(), entry.assigned(), entry.arrowBody(), entry.nestedArrow()]`,
+          )
+        ).result,
+      ).toEqual([42, 42, true, 42])
+    },
+    timeout,
+  )
+
   // a kept `new Factory`, written without an argument list, called or read
   // in place: the call and the read apply to the constructed value, not to
   // the constructor. Source: Astra review 4 (core B5)

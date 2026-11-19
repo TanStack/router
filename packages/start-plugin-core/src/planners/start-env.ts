@@ -218,6 +218,11 @@ function needsParens(
   if (loose.has(kind)) {
     return false
   }
+  // in a classic `for` initialiser an `in` the factory call's parentheses
+  // delimited would start a `for…in` (`for (let cb = 'a' in o ? f : g; ;)`)
+  if (kept !== 'arrow' && inForInit(file, original)) {
+    return true
+  }
   switch (parent.type) {
     case 'CallExpression':
     case 'NewExpression':
@@ -242,6 +247,22 @@ function needsParens(
     default:
       return false
   }
+}
+
+/**
+ * Whether `node` is in the initialiser of a classic `for`, outside any
+ * block (a function body's statements are not the initialiser's grammar).
+ */
+function inForInit(file: PlanContext['analysis']['file'], node: Node): boolean {
+  for (let n = node, p = file.parentOf(n); p; n = p, p = file.parentOf(p)) {
+    if (p.type === 'ForStatement') {
+      return p.init === n
+    }
+    if (p.type === 'BlockStatement') {
+      return false
+    }
+  }
+  return false
 }
 
 /**
