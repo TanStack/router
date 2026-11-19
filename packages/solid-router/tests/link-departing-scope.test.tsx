@@ -671,6 +671,7 @@ describe('links in a departing match', () => {
       update()
       return {
         updateCallbackDone: Promise.resolve(),
+        ready: Promise.resolve(),
         finished: Promise.resolve(),
       }
     }

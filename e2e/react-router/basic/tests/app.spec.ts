@@ -61,3 +61,44 @@ test('Link in SVG does not trigger a full page reload', async ({ page }) => {
 
   expect(fullPageLoad).toBeFalsy()
 })
+
+for (const linkName of ['View Transition', 'View Transition types']) {
+  test(`${linkName} still navigates when duplicate names skip the animation`, async ({
+    page,
+  }) => {
+    const errors: Array<string> = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    expect(await page.evaluate(() => typeof document.startViewTransition)).toBe(
+      'function',
+    )
+    if (linkName === 'View Transition types') {
+      expect(
+        await page.evaluate(() =>
+          CSS.supports('selector(:active-view-transition-type(a))'),
+        ),
+      ).toBe(true)
+    }
+    await page.evaluate(() => {
+      for (const text of ['first', 'second']) {
+        const element = document.createElement('div')
+        element.textContent = text
+        element.style.viewTransitionName = 'duplicate'
+        document.body.append(element)
+      }
+    })
+    await page.getByRole('link', { name: linkName, exact: true }).click()
+    await expect(
+      page.getByRole('link', { name: 'sunt aut facere repe' }),
+    ).toBeVisible()
+    // Flush rendering and its promise-rejection checkpoint, not an arbitrary delay.
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+        }),
+    )
+    expect(errors).toEqual([])
+    await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
+    await expect(page.getByRole('heading')).toContainText('sunt aut facere')
+  })
+}
