@@ -1180,6 +1180,7 @@ function extract(
         b,
         'hydrate-capture-write',
         `Hydrate cannot code-split JSX that assigns \`${symbols.name(ref.sym)}\`, a local of the enclosing component: the split children receive its value, not the variable. Move the variable and the code that assigns it into a component rendered inside the boundary, or use split={false}.`,
+        ref.range,
       )
       return null
     }

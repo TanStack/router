@@ -697,11 +697,12 @@ export function Page() {
 
   // Children writing state the split code would hold a copy of (a local
   // of the component, in a handler or in the client implementation of an
-  // isomorphic fn; a `var` a top-level statement declares, which the chunk
-  // imports), and a Solid `ref` of a `let` outside two nested boundaries:
-  // the client rejects them at the boundary. (A write in the server
-  // implementation only is no write of the client's children: those split,
-  // hydrate-pages-react.ts and hydrate-pages-solid.ts.)
+  // isomorphic fn, rejected at the write; a `var` a top-level statement
+  // declares, which the chunk imports), and a Solid `ref` of a `let` outside
+  // two nested boundaries: the client rejects them (`at`, default the
+  // boundary). (A write in the server implementation only is no write of
+  // the client's children: those split, hydrate-pages-react.ts and
+  // hydrate-pages-solid.ts.)
   const solidHead = `import { Hydrate } from '@tanstack/solid-start'
 import { load } from '@tanstack/solid-start/hydration'
 `
@@ -722,21 +723,25 @@ export function Page() {
       name: 'assigning a captured local (React)',
       framework: 'react',
       code: capturedLocal(head),
+      at: 'count++',
     },
     {
       name: 'assigning a captured local (Solid)',
       framework: 'solid',
       code: capturedLocal(solidHead),
+      at: 'count++',
     },
     {
       name: 'assigning a captured local in the client implementation of an isomorphic fn (React)',
       framework: 'react',
       code: isomorphicClientWrite('react'),
+      at: 'n)()',
     },
     {
       name: 'assigning a captured local in the client implementation of an isomorphic fn (Solid)',
       framework: 'solid',
       code: isomorphicClientWrite('solid'),
+      at: 'n)()',
     },
     {
       name: 'assigning a var a top-level statement declares',
@@ -759,21 +764,17 @@ export const Page = () => <Hydrate><button onClick={() => { flag = 1 }}>{String(
   return <Hydrate when={load()}><section><Hydrate when={load()}><input ref={input} /></Hydrate></section></Hydrate>
 }`,
     },
-  ] as const)(
-    'client: children $name are rejected at the boundary',
-    async ({ framework, code }) => {
-      const start =
-        framework === 'solid'
-          ? (await solidHost()).start
-          : (await hosts()).start
-      const startCase = await start.case({ 'module.tsx': code })
-      expectCompileError(await compileError(startCase, 'client'), {
-        source: code,
-        at: '<Hydrate',
-        column: true,
-      })
-    },
-  )
+  ] as const)('client: children $name are rejected', async (row) => {
+    const { framework, code } = row
+    const start =
+      framework === 'solid' ? (await solidHost()).start : (await hosts()).start
+    const startCase = await start.case({ 'module.tsx': code })
+    expectCompileError(await compileError(startCase, 'client'), {
+      source: code,
+      at: 'at' in row ? row.at : '<Hydrate',
+      column: true,
+    })
+  })
 
   // Bug: Solid's `ref={field}` assigns `field`, but before Solid lowers it
   // the JSX ref is not a write, so the `hydrate-module-write` refusal (H4)
