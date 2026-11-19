@@ -4,7 +4,9 @@
  * build did: the module state a loader and its split component share
  * initialises once and both see one instance, on a fully cached rebuild and
  * on a rebuild after an edit of an unrelated file (SPEC G3, G4, J2.4; §9:
- * a regression test, not a pin).
+ * a regression test, not a pin). A rebuild after a split configuration
+ * edit the bundler's cache does not see splits as a fresh build does
+ * (astra-r4-factcheck-router.md B1).
  */
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -72,11 +74,46 @@ function initialFiles() {
   return { ...initial, 'entry.ts': withUnrelatedImport(initial['entry.ts']!) }
 }
 
+/**
+ * A build of an app with the bundler's persistent filesystem cache in
+ * `cacheDirectory` (shared by the builds given the same one).
+ */
+async function bundleWithCache(
+  app: Awaited<ReturnType<typeof createApp>>,
+  bundler: 'rspack' | 'webpack',
+  cacheDirectory: string,
+  outDir: string,
+  codeSplittingOptions: Record<string, unknown> = {},
+) {
+  const { tanstackRouter } = await import(`../../src/${bundler}`)
+  return app.bundle({
+    bundler,
+    env: 'client',
+    outDir,
+    plugin: ({ root }) =>
+      tanstackRouter({
+        target: 'react',
+        autoCodeSplitting: true,
+        routesDirectory: path.join(root, 'routes'),
+        generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+        codeSplittingOptions: { addHmr: false, ...codeSplittingOptions },
+      }),
+    configure: (options) => {
+      options.cache =
+        bundler === 'webpack'
+          ? { type: 'filesystem', cacheDirectory }
+          : {
+              type: 'persistent',
+              storage: { type: 'filesystem', directory: cacheDirectory },
+            }
+    },
+  })
+}
+
 describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
   test(
     'with a persistent filesystem cache, a cached rebuild and a rebuild after an unrelated edit keep one instance of the shared state',
     async () => {
-      const { tanstackRouter } = await import(`../../src/${bundler}`)
       const app = await createApp({
         dir: appsDir,
         prefix: `.build-cache-${bundler}-`,
@@ -85,33 +122,7 @@ describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
       })
       const cacheDirectory = path.join(app.root, '.bundler-cache')
       const bundle = (outDir: string) =>
-        app.bundle({
-          bundler,
-          env: 'client',
-          outDir,
-          plugin: ({ root }) =>
-            tanstackRouter({
-              target: 'react',
-              autoCodeSplitting: true,
-              routesDirectory: path.join(root, 'routes'),
-              generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
-              codeSplittingOptions: { addHmr: false },
-            }),
-          configure: (options) => {
-            if (bundler === 'webpack') {
-              options.cache = { type: 'filesystem', cacheDirectory }
-            } else {
-              options.cache = true
-              options.experiments = {
-                ...(options.experiments as Record<string, unknown>),
-                cache: {
-                  type: 'persistent',
-                  storage: { type: 'filesystem', directory: cacheDirectory },
-                },
-              }
-            }
-          },
-        })
+        bundleWithCache(app, bundler, cacheDirectory, outDir)
       await expectOneSharedInstance(await bundle('dist-cold'))
       await expectOneSharedInstance(await bundle('dist-cached'))
       await writeFile(
@@ -119,6 +130,69 @@ describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
         files(2)['lib/unrelated.ts']!,
       )
       await expectOneSharedInstance(await bundle('dist-edited'))
+    },
+    timeout,
+  )
+
+  // the bundler's cache does not see a split configuration it is not told
+  // about (raw webpack without `buildDependencies`, options computed from
+  // the environment, `tsr.config.json`): the plans it restores are checked
+  // against the configuration of this build
+  test(
+    'with a persistent filesystem cache, a rebuild after a grouping edit splits as a build with a fresh cache does',
+    async () => {
+      const app = await createApp({
+        dir: appsDir,
+        prefix: `.build-cache-groups-${bundler}-`,
+        registerCleanup: onTestFinished,
+        files: routeApp(
+          `${routeHead()}function Page() {
+  return <p>MARK_COMPONENT</p>
+}
+export const Route = createFileRoute('/')({
+  loader: () => 'MARK_LOADER',
+  component: Page,
+})
+`,
+          { env: 'client' },
+        ),
+      })
+      const regrouped = { defaultBehavior: [['loader'], ['component']] }
+      const outcome = async (build: Promise<BuildResult>) => {
+        const app = await build
+        const run = await app.run(`return await entry.Route.options.loader()`)
+        return {
+          loader: app.where('MARK_LOADER'),
+          component: app.where('MARK_COMPONENT'),
+          result: run.result,
+        }
+      }
+      const cacheDirectory = path.join(app.root, '.bundler-cache')
+      expect(
+        await outcome(
+          bundleWithCache(app, bundler, cacheDirectory, 'dist-cold', {
+            defaultBehavior: [['component']],
+          }),
+        ),
+      ).toEqual({ loader: 'eager', component: 'lazy', result: 'MARK_LOADER' })
+      const warm = await outcome(
+        bundleWithCache(app, bundler, cacheDirectory, 'dist-warm', regrouped),
+      )
+      const fresh = await outcome(
+        bundleWithCache(
+          app,
+          bundler,
+          path.join(app.root, '.bundler-cache-fresh'),
+          'dist-fresh',
+          regrouped,
+        ),
+      )
+      expect(fresh).toEqual({
+        loader: 'lazy',
+        component: 'lazy',
+        result: 'MARK_LOADER',
+      })
+      expect(warm).toEqual(fresh)
     },
     timeout,
   )

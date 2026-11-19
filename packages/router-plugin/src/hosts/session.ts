@@ -180,6 +180,11 @@ export class RouterCompiler {
     return derived === null || ROUTER_DERIVED_KINDS.has(derived.kind)
   }
 
+  /** The digest of the compile configuration of an env type (a persisted plan's `key.configKey`). */
+  configKey(envType: 'client' | 'server'): string {
+    return this.configs[envType].compile.configKey
+  }
+
   /** Whether the router planner can apply in an env of this type (else the host skips the parse). */
   appliesTo(envType: 'client' | 'server'): boolean {
     return routerPlannerApplies(this.configs[envType].planner)

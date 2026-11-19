@@ -48,6 +48,7 @@ import type {
   EmittedMapsCompilerLike,
   IdleCompilerLike,
   PersistedPlan,
+  PlanKey,
   RebuildCompilationLike,
 } from '@tanstack/router-utils/compiler'
 
@@ -409,23 +410,36 @@ export function createRouterCompilerWebpackPlugin(
           )
         }
       })
+      // a plan compiled under another configuration (an edit the bundler's
+      // cache does not see: `tsr.config.json`, options computed from the
+      // environment, a bundler config outside its `buildDependencies`) is
+      // stale: its module is built again
       const restoreRoutePlans = async (modules: Iterable<ModuleLike>) => {
+        // (each persisted string parsed once: modules of one file share it)
         const plans = new Map<string, PersistedPlan>()
         for (const m of modules) {
-          const plan = m.buildInfo?.[PLAN_BUILD_INFO_FIELD]
+          const text = m.buildInfo?.[PLAN_BUILD_INFO_FIELD]
           if (
-            typeof plan === 'string' &&
+            typeof text === 'string' &&
             m.resource &&
             !persisted!.compiled.has(m.resource) &&
-            !plans.has(plan)
+            !plans.has(text)
           ) {
-            plans.set(plan, JSON.parse(plan) as PersistedPlan)
+            plans.set(text, JSON.parse(text) as PersistedPlan)
           }
         }
-        const stale = await restorePlans(
-          session.caches,
-          plans.values(),
-          session.host,
+        const configKey = session.configKey(envType)
+        const current: Array<PersistedPlan> = []
+        const stale: Array<PlanKey> = []
+        for (const plan of plans.values()) {
+          if (plan.key.configKey === configKey) {
+            current.push(plan)
+          } else {
+            stale.push(plan.key)
+          }
+        }
+        stale.push(
+          ...(await restorePlans(session.caches, current, session.host)),
         )
         for (const file of pathsOf(stale, envName)) {
           session.caches.stale.add(envName, file)
