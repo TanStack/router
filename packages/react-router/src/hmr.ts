@@ -78,6 +78,11 @@ function whenRefreshed(apply: () => void): void {
   const entry = () => {
     if (!done) {
       done = true
+      // the bound ran it: the pass's flush has nothing left to run
+      const index = waiting.indexOf(entry)
+      if (index !== -1) {
+        waiting.splice(index, 1)
+      }
       apply()
     }
   }

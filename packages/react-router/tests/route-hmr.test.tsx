@@ -5,6 +5,8 @@
  * and `known-bugs-route-hmr*.test.ts`; which hot import of a lazy wrapper
  * wins: router-core `lazy-route-component-hot.test.ts`.
  */
+import { setFlagsFromString } from 'node:v8'
+import { runInNewContext } from 'node:vm'
 import * as React from 'react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { act, cleanup, render, screen } from '@testing-library/react'
@@ -169,6 +171,31 @@ describe('route HMR (React)', () => {
     await act(async () => {})
     expect(firstImporter).toHaveBeenCalledTimes(firstImporterCalls)
     expect(screen.getByRole('button', { name: 'v1 0' })).toBeInTheDocument()
+  })
+
+  // Bug: an update the refresh bound applied stayed queued until React
+  // Refresh's next pass, which a route file the refresh plugin doesn't
+  // compile never gets. Impact: every such edit kept its route evaluation
+  // for the rest of the session.
+  test('an update applied by the refresh bound keeps nothing of its evaluation', async () => {
+    setFlagsFromString('--expose-gc')
+    const gc: () => void = runInNewContext('gc')
+    // a React Refresh runtime whose pass never comes
+    ;(window as any).__registerBeforePerformReactRefresh = () => {}
+    const { evaluate, router, path } = setup(() => ({
+      component: makeComponent('v1'),
+    }))
+    const live = (router.routesById as Record<string, AnyRoute>)[path]!
+    const applied = (version: string) =>
+      vi.waitFor(() => expect(live.options.loader?.()).toBe(version))
+    const evaluation = new WeakRef(
+      evaluate({ component: makeComponent('v2'), loader: () => 'v2' }),
+    )
+    await applied('v2')
+    evaluate({ component: makeComponent('v3'), loader: () => 'v3' })
+    await applied('v3')
+    gc()
+    expect(evaluation.deref()).toBeUndefined()
   })
 
   test('an update for a route another router holds leaves both routers alone', () => {
