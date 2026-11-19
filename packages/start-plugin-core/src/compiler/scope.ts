@@ -10,6 +10,10 @@ import type { ImportProtection } from '../import-protection/session'
 
 export const NODE_MODULES_RE = /[\\/]node_modules[\\/]/
 
+/** A `'use client'` directive in the module's prologue (after comments and other directives). */
+export const USE_CLIENT_RE =
+  /^(?:\s|\/\/[^\n]*|\/\*[\s\S]*?\*\/|(['"])(?:(?!\1)[^\\\n]|\\.)*\1\s*;?)*?(['"])use client\2/
+
 /**
  * The app's own modules are all compiled: a Start value reaches a module
  * under any name (recognition by binding, through re-exports), and import

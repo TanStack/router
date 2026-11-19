@@ -97,6 +97,8 @@ export interface CreateImportProtectionOptions {
   isEntry?: (path: string) => boolean
   /** The app's framework: the package reports name for `<ClientOnly>` (default `react`). */
   framework?: CompileStartFrameworkOptions
+  /** Whether the app renders React Server Components (`ReportContext.rsc`). */
+  rsc?: boolean
   /**
    * The checked file a virtual importer stands for, if any (Vite RSC: the
    * module plugin-rsc generates in `ssr` to load the client references of
@@ -137,6 +139,7 @@ export function createImportProtection(
         opts.readSource,
         opts.framework,
         opts.importerFileOf,
+        opts.rsc ?? false,
       )
     : null
 }
@@ -211,9 +214,10 @@ export class ImportProtection {
     private readonly importerFileOf: (
       importerId: string,
     ) => string | null = () => null,
+    rsc = false,
   ) {
     this.planner = importEdgesPlanner(this)
-    this.report = { config, readSource, framework }
+    this.report = { config, readSource, framework, rsc }
   }
 
   /**

@@ -177,6 +177,7 @@ export class StartCompilerSession {
       isEntry: opts.isEntry,
       framework: opts.framework,
       importerFileOf: opts.importerFileOf,
+      rsc: opts.rsc !== undefined,
     })
     for (const env of opts.environments) {
       this.ip?.env(env.name, env.type)

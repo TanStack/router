@@ -818,6 +818,9 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   cannot resolve (it fails, e.g. a package with only a `node` export on the client) has no resolved target: file and
   marker checks skip it, specifier rules apply, and the bundler decides on it (it fails the build if it keeps the
   import; nothing of it ships if it drops it). A denied file the bundler still loads through it is denied itself.
+  With RSC, a `'use client'` module a server component imports is a client reference where server components render
+  (Vite `rsc`, the Rsbuild RSC layer): there its file pattern and marker do not deny the import and its own imports are
+  not judged (a specifier rule still matches); SSR and the client judge it, as the import-protection guide says.
 - **J6.2 Type-only edges are ignored**; mixed imports count.
 - **J6.3 Behaviour.** Default dev `mock` (warn once, replace with a recursive-Proxy mock), default build `error`
   (fail the build); overridable globally or per mode, including `mock` in production builds; `enabled: false`

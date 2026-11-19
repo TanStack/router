@@ -72,12 +72,18 @@ export interface EdgeViolation {
 
 /** How an importer renders an import as a component (`EdgeViolation.rendered`). */
 export interface RenderedUse {
-  /** The binding as the importer names it. */
+  /** The binding as the importer names it: the expression's source text (`UI.Chart`, `Screens?.['chart']`). */
   name: string
   /** `jsx`: `<Name …>`; `option`: a route option such as `component: Name`. */
   via: 'jsx' | 'option'
   /** The option's key (`via: 'option'`). */
   key?: string
+  /**
+   * A free module-level name to bind the option's value to first, when
+   * `name` is no JSX tag of a component (a lowercase identifier names an
+   * intrinsic element; a computed member or an optional chain is no tag).
+   */
+  alias?: string
   at: OriginalLocation | null
 }
 

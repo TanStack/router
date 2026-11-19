@@ -4,6 +4,7 @@ import {
   langFromId,
   parseModule,
 } from '@tanstack/router-utils/compiler'
+import { USE_CLIENT_RE } from '../compiler/scope'
 import { Locator } from './locate'
 import {
   findPatternImport,
@@ -11,7 +12,7 @@ import {
   namesFile,
   relativeSpecifier,
 } from './pattern-imports'
-import { importerInScope } from './rules'
+import { importerInScope, ownFileRule } from './rules'
 import { relativizePath } from './utils'
 import type { ImportProtectionConfig } from './config'
 import type { CodeFrame, OriginalLocation } from './locate'
@@ -151,6 +152,8 @@ export interface ReportContext {
   config: ImportProtectionConfig
   readSource: SourceReader
   framework: CompileStartFrameworkOptions
+  /** The app renders React Server Components: a `'use client'` module a server component imports renders in SSR too. */
+  rsc: boolean
 }
 
 /**
@@ -638,6 +641,72 @@ function patternSuggestions(
   }
 }
 
+/**
+ * How an RSC app's server environment reaches a denied `'use client'`
+ * module that is its own violation (SSR renders what a server component
+ * renders as a client component): `imported`, by the importer the report
+ * names; `chunk`, by a server component of the chunk whose entry it names
+ * (Vite: plugin-rsc's client references of a server chunk stand for its
+ * entry, and that entry's source does not import it). Null for any other
+ * violation.
+ */
+function clientComponentOf(
+  v: EdgeViolation,
+  info: ViolationInfo,
+  ctx: ReportContext,
+  site: PatternSite | null,
+): 'imported' | 'chunk' | null {
+  if (
+    !ctx.rsc ||
+    info.envType !== 'server' ||
+    info.type === 'specifier' ||
+    !site ||
+    site.found
+  ) {
+    return null
+  }
+  const reached =
+    site.cause === 'imported'
+      ? 'imported'
+      : site.cause === 'added' &&
+          v.pattern !== undefined &&
+          identify(v.importerId).path !== site.importer
+        ? 'chunk'
+        : null
+  const text =
+    reached && ctx.readSource(identify(info.resolved ?? info.importer).path)
+  return text && USE_CLIENT_RE.test(text) ? reached : null
+}
+
+/** The fixes of a `'use client'` component an RSC app's server environment denies (`clientComponentOf`). */
+function clientComponentSuggestions(
+  info: ViolationInfo,
+  ctx: ReportContext,
+): Array<string> {
+  const { root } = ctx.config
+  const denied = identify(info.resolved ?? info.importer).path
+  const rel = relativizePath(denied, root)
+  const renamed = path.posix.join(
+    path.posix.dirname(denied),
+    path.posix.basename(denied).replace('.client.', '.'),
+  )
+  const marker =
+    info.type === 'marker' ? markerOf(ctx, denied, info.envType) : null
+  const allow =
+    info.type === 'marker'
+      ? marker
+        ? `remove its import of "${marker.specifier}"`
+        : 'remove its client-only marker'
+      : renamed !== denied &&
+          ownFileRule(ctx.config, info.envType, renamed) === null
+        ? `rename ${rel} to ${relativizePath(renamed, root)} (and the imports of it)`
+        : `rename ${rel} so that ${String(info.pattern)} does not match it`
+  return [
+    `A 'use client' component also renders on the server, for the page's HTML: if it can render there, ${allow}`,
+    `If it must render in the browser only, render it inside <ClientOnly fallback={...}> (ClientOnly from ${routerPackage(ctx.framework)}) in another 'use client' component, and render that component from the server component: a <ClientOnly> written in a server component does not keep it out of the server render`,
+  ]
+}
+
 /** The fix of client-only code a server renders as a component (`EdgeViolation.rendered`). */
 function renderedSuggestion(
   v: EdgeViolation,
@@ -648,13 +717,18 @@ function renderedSuggestion(
     ? ` (${relativizePath(r.at.file, ctx.config.root)}:${r.at.line}:${r.at.column})`
     : ''
   const from = `ClientOnly from ${routerPackage(ctx.framework)}`
-  return r.via === 'jsx'
-    ? [
-        `<${r.name}> renders it on the server${where}: render it inside <ClientOnly fallback={...}><${r.name} /></ClientOnly> (${from}), so the server renders the fallback and the browser the component after hydration`,
-      ]
-    : [
-        `The route option ${r.key}: ${r.name} renders it on the server${where}: write ${r.key}: (props) => <ClientOnly fallback={...}><${r.name} {...props} /></ClientOnly> (${from}), so the server renders the fallback and the browser the component after hydration`,
-      ]
+  if (r.via === 'jsx') {
+    return [
+      `<${r.name}> renders it on the server${where}: render it inside <ClientOnly fallback={...}><${r.name} /></ClientOnly> (${from}), so the server renders the fallback and the browser the component after hydration`,
+    ]
+  }
+  // (a value that is no component's tag: bound to a capitalised name first)
+  const bind = r.alias
+    ? `const ${r.alias} = ${r.name} after the imports, and `
+    : ''
+  return [
+    `The route option ${r.key}: ${r.name} renders it on the server${where}: write ${bind}${r.key}: (props) => <ClientOnly fallback={...}><${r.alias ?? r.name} {...props} /></ClientOnly> (${from}), so the server renders the fallback and the browser the component after hydration`,
+  ]
 }
 
 function suggestionsOf(
@@ -662,7 +736,11 @@ function suggestionsOf(
   info: ViolationInfo,
   ctx: ReportContext,
   site: PatternSite | null,
+  clientComponent: 'imported' | 'chunk' | null,
 ): Array<string> {
+  if (clientComponent) {
+    return clientComponentSuggestions(info, ctx)
+  }
   // (the import of a file the compiler reads the marker of only when it
   // compiles it: a plain import's fixes, its use unknown; a Vue SFC's
   // template keeps its components imported inside <ClientOnly>)
@@ -730,8 +808,9 @@ function isAppFile(file: string, root: string): boolean {
 
 /**
  * The steps a report prints: from the first file of the app (the framework's
- * own entry modules left out; every step when none is the app's), each file
- * once in a row (a route module and its split module), cut at
+ * own entry modules left out; none when no step is the app's, as for a
+ * Vite RSC client-reference group: the lines above name the importer), each
+ * file once in a row (a route module and its split module), cut at
  * `maxTraceDepth` on the entry side. The first app module reached from an
  * entry is where the app's code starts: its entry.
  */
@@ -740,13 +819,10 @@ function printedSteps(
   root: string,
   maxDepth: number,
 ): { steps: Array<TraceStep>; first: number; entry: boolean } {
-  const start = Math.max(
-    0,
-    trace.steps.findIndex((s) => isAppFile(s.file, root)),
+  const start = trace.steps.findIndex((s) => isAppFile(s.file, root))
+  const steps = (start === -1 ? [] : trace.steps.slice(start)).filter(
+    (s, i, all) => all[i + 1]?.file !== s.file,
   )
-  const steps = trace.steps
-    .slice(start)
-    .filter((s, i, all) => all[i + 1]?.file !== s.file)
   const keep = Math.max(1, maxDepth + 1)
   const cut = Math.max(0, steps.length - keep)
   return {
@@ -769,6 +845,7 @@ export function formatViolation(
     loc ? `${rel(file)}:${loc.line}:${loc.column}` : rel(file)
   const trace = info.freezeTrace()
   const site = patternSiteOf(v, info, trace, ctx)
+  const clientComponent = clientComponentOf(v, info, ctx, site)
 
   const lines: Array<string> = []
   lines.push(``)
@@ -785,15 +862,17 @@ export function formatViolation(
         ? `  Imported by: ${at(site.importer, site.loc)}, through ${requireText(site.found)}`
         : site?.found
           ? `  Matched by: ${site.found.kind === 'import()' ? 'an import() with a variable path' : site.found.kind} in ${at(site.importer, site.loc)}`
-          : site?.cause === 'unchecked'
-            ? `  Imported by: ${rel(site.importer)}, which import protection does not check (outside srcDirectory/include, or exempt by exclude/ignoreImporters)`
-            : site?.cause === 'added'
-              ? `  Imported by: ${rel(site.importer)}, through an import its source does not have (another plugin's transform added it)`
-              : site?.cause === 'imported'
-                ? `  Imported by: ${rel(site.importer)}`
-                : site
-                  ? `  Matched by: a pattern import in ${rel(site.importer)} (import.meta.glob, an import() with a variable path, import.meta.webpackContext)`
-                  : `  Loaded by an import the compiler does not read: a pattern import (import.meta.glob, an import() with a variable path, import.meta.webpackContext), an import another plugin added, or a request of the file itself (a server.warmup glob)`,
+          : clientComponent === 'chunk'
+            ? `  Imported by: a server component of the chunk whose entry is ${rel(site!.importer)}`
+            : site?.cause === 'unchecked'
+              ? `  Imported by: ${rel(site.importer)}, which import protection does not check (outside srcDirectory/include, or exempt by exclude/ignoreImporters)`
+              : site?.cause === 'added'
+                ? `  Imported by: ${rel(site.importer)}, through an import its source does not have (another plugin's transform added it)`
+                : site?.cause === 'imported'
+                  ? `  Imported by: ${rel(site.importer)}`
+                  : site
+                    ? `  Matched by: a pattern import in ${rel(site.importer)} (import.meta.glob, an import() with a variable path, import.meta.webpackContext)`
+                    : `  Loaded by an import the compiler does not read: a pattern import (import.meta.glob, an import() with a variable path, import.meta.webpackContext), an import another plugin added, or a request of the file itself (a server.warmup glob)`,
     )
   } else {
     const loc = info.importerLoc
@@ -860,7 +939,7 @@ export function formatViolation(
 
   lines.push(``)
   lines.push(`  Suggestions:`)
-  for (const s of suggestionsOf(v, info, ctx, site)) {
+  for (const s of suggestionsOf(v, info, ctx, site, clientComponent)) {
     lines.push(`    - ${s}`)
   }
   lines.push(``)

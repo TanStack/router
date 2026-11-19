@@ -151,8 +151,13 @@ interface RenderedAt {
   name: string
   via: RenderedUse['via']
   key?: string
+  alias?: string
   start: number
 }
+
+/** A member chain of identifiers that names a component as a JSX tag (`Chart`, `UI.Chart`; not `chart`). */
+const COMPONENT_TAG =
+  /^(?:[A-Z_$][\w$]*|[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+)$/
 
 type NodeLike = { type: string; start: number; end: number } & Record<
   string,
@@ -168,14 +173,18 @@ type NodeLike = { type: string; start: number; end: number } & Record<
  * as a JSX element (`<Widget />`, `<UI.Chart />`), else as a route's
  * component option (`component: Widget`, `component: UI.Chart`). Null when
  * no use is kept as written (a generated or rewritten one): the report then
- * gives the plain suggestions. A query of the bindings' references, read
- * only for a violation (a reference's node is built when read).
+ * gives the plain suggestions. A route's split output (`splitKeys`: the
+ * options it holds) renders the options it holds through generated code
+ * (`const TsrSplitComponent = Chart`): their uses are its own. A query of
+ * the bindings' references, read only for a violation (a reference's node
+ * is built when read).
  */
 function renderedUse(
   analysis: ModuleAnalysis,
   code: string,
   offsets: ReadonlyArray<number>,
   segments: ReadonlyArray<Segment> | undefined,
+  splitKeys: ReadonlySet<string> | null,
 ): RenderedAt | null {
   const { file } = analysis
   const parentOf = (n: NodeLike) =>
@@ -220,15 +229,16 @@ function renderedUse(
           continue
         }
         const node = ref.node as unknown as NodeLike
-        if (
-          (jsx && jsx.start < node.start) ||
-          !kept(node) ||
-          insideClientOnly(node)
-        ) {
+        if ((jsx && jsx.start < node.start) || insideClientOnly(node)) {
           continue
         }
-        // the whole tag or value: `UI.Chart` of `<UI.Chart />` (and of
-        // `UI?.Chart`: an element's name has no optional chain)
+        const asWritten = kept(node)
+        if (!asWritten && !splitKeys) {
+          continue
+        }
+        // the whole tag or value, as written: `UI.Chart` of `<UI.Chart />`,
+        // `UI?.Chart` or `Screens['chart']` of an option (no JSX tag: the
+        // report binds it to `alias` first)
         let outer = node
         let parent = parentOf(node)
         while (
@@ -240,9 +250,11 @@ function renderedUse(
           outer = parent
           parent = parentOf(parent)
         }
-        const name = code.slice(outer.start, outer.end).replaceAll('?.', '.')
+        const name = code.slice(outer.start, outer.end)
         if (node.type === 'JSXIdentifier') {
-          jsx = { name, via: 'jsx', start: node.start }
+          if (asWritten) {
+            jsx = { name, via: 'jsx', start: node.start }
+          }
           continue
         }
         if (jsx || (option && option.start < node.start)) {
@@ -260,12 +272,16 @@ function renderedUse(
           parent.value === outer &&
           !parent.computed &&
           key?.type === 'Identifier' &&
-          COMPONENT_OPTIONS.has(key.name as string)
+          COMPONENT_OPTIONS.has(key.name as string) &&
+          (asWritten || splitKeys!.has(key.name as string))
         ) {
           option = {
             name,
             via: 'option',
             key: key.name as string,
+            ...(!COMPONENT_TAG.test(name) && {
+              alias: freeName(analysis, pascalCase(key.name as string)),
+            }),
             start: node.start,
           }
         }
@@ -273,6 +289,18 @@ function renderedUse(
     }
   }
   return jsx ?? option
+}
+
+const pascalCase = (key: string) => key.charAt(0).toUpperCase() + key.slice(1)
+
+/** `name`, or `name` and a number, that no module-level binding of the module has. */
+function freeName(analysis: ModuleAnalysis, name: string): string {
+  const scope = analysis.file.rootScope
+  let free = name
+  for (let n = 2; scope.find(free); n++) {
+    free = `${name}${n}`
+  }
+  return free
 }
 
 /** The framework's packages the analysis knows by specifier (never resolved, all free of side effects). */
@@ -496,8 +524,18 @@ export function importEdgesPlanner(
         // a server rendering client-only code: whether it renders it as a component
         const ownStatic = envType === 'server' && j.offset !== undefined
         const offsets = j.edge.locations.map((l) => l.range.start)
+        const split =
+          recipe?.kind === 'split' && recipe.derivedId !== null
+            ? identify(recipe.derivedId).derived
+            : null
         const rendered = ownStatic
-          ? renderedUse(ctx.analysis, ctx.code, offsets, recipe?.segments)
+          ? renderedUse(
+              ctx.analysis,
+              ctx.code,
+              offsets,
+              recipe?.segments,
+              split?.kind === 'split' ? new Set(split.value.split('~')) : null,
+            )
           : null
         // a Vue template renders a component through no JSX: its binding and
         // the export it imports name the fix (a capitalised one: a
@@ -532,6 +570,7 @@ export function importEdgesPlanner(
               name: rendered.name,
               via: rendered.via,
               ...(rendered.key !== undefined && { key: rendered.key }),
+              ...(rendered.alias !== undefined && { alias: rendered.alias }),
               at: locator.at(rendered.start),
             },
           }),
