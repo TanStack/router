@@ -66,6 +66,12 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   still emits the async chunk of the `import()` inside it (webpack behaves the same). SPEC J5.6.
   `start-plugin-core/tests/integration/hydrate-build-cases.ts`: "an unused exported component with a boundary is not
   in the client" (Rsbuild).
+- **Rsbuild RSC build: a server fn whose only importer is a `'use client'` component is not registered** (as `main`,
+  #7943; Vite fixed, see "Fixed, kept as regression tests"): the provider builds before the client, and nothing
+  compiles the reach of the provider's server fn modules before its manifest is written, so the click answers
+  `Server function info not found`. SPEC J4.2. `react-start-rsc/tests/integration/rsc-start-rsbuild-build.test.ts`: "a
+  server fn only a 'use client' component of a server component imports runs when clicked". Fix: every server fn the
+  client references is callable by id, with no production dependency on modules only development code reaches.
 - **Rsbuild checks importers by file extension** (JS/TS only): a custom module type's denied specifier is never
   checked (a denied file it imports is: it is its own violation in the client). SPEC J6.1, §2.1.
   `start-plugin-core/tests/integration/importProtection/dev-outcomes.test.ts`: "a module of a custom type importing

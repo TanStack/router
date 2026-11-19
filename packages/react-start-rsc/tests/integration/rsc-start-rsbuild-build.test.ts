@@ -8,6 +8,7 @@
 import { afterAll, beforeAll, expect, test } from 'vitest'
 import {
   openRscPage,
+  settledValue,
   startRscRsbuildPreviewServer,
   waitForHydration,
 } from './rsc-app'
@@ -77,6 +78,38 @@ beforeAll(async () => {
     },
     files: {
       ...privateFnFiles,
+      // A server fn whose only importer is a `'use client'` component that
+      // a server component renders.
+      'src/client-ref/update.ts': `import { createServerFn } from '@tanstack/react-start'
+export const update = createServerFn({ method: 'POST' }).handler(() => 'MARK_UPDATED')
+`,
+      'src/client-ref/Counter.tsx': `'use client'
+import { useState } from 'react'
+import { update } from './update'
+export function Counter() {
+  const [result, setResult] = useState('')
+  return (
+    <button data-testid="counter" onClick={() => update().then(setResult, (error) => setResult('error ' + error))}>
+      counter {result}
+    </button>
+  )
+}
+`,
+      'src/client-ref/page.tsx': `import { createServerFn } from '@tanstack/react-start'
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+import { Counter } from './Counter'
+export const getPage = createServerFn().handler(() => renderServerComponent(<div>server <Counter /></div>))
+`,
+      'src/routes/client-ref.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { getPage } from '../client-ref/page'
+export const Route = createFileRoute('/client-ref')({
+  loader: async () => ({ tree: await getPage() }),
+  component: Page,
+})
+function Page() {
+  return <main>{Route.useLoaderData().tree}</main>
+}
+`,
       'src/routes/component-fn.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
@@ -117,6 +150,31 @@ test("a server fn only its route's component calls renders on the server and ans
     selector: '[data-testid=called]',
   })
 })
+
+// Known bug (KNOWN-BUGS, "Rsbuild RSC build: a server fn whose only
+// importer is a `'use client'` component is not registered"; as `main`,
+// #7943). SPEC J4.2: a server fn the client calls is callable by id.
+// Bug: the provider builds before the client, and on Rsbuild nothing
+// compiles the provider's reach of `'use client'` modules before its
+// manifest is written (Vite does, `compileHandlerReach`). Impact: the
+// click answers "Server function info not found". Fix: every server fn
+// the client references is callable by id.
+test.fails(
+  "a server fn only a 'use client' component of a server component imports runs when clicked",
+  async () => {
+    const page = await openRscPage(server, '/client-ref')
+    await page.page.locator('[data-testid=counter]').waitFor()
+    await waitForHydration(page)
+    await page.page.locator('[data-testid=counter]').click()
+    expect(
+      await settledValue(
+        page,
+        () => page.text('[data-testid=counter]'),
+        (text) => text.includes('MARK_UPDATED') || text.includes('error'),
+      ),
+    ).toBe('counter MARK_UPDATED')
+  },
+)
 
 // SPEC J4.2: in a production build only server functions client code
 // calls are callable over HTTP (R182). `internal` and `sameFile` are called by `greet`'s
