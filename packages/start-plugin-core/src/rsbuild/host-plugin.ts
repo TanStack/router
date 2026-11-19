@@ -864,8 +864,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // environment's stale set built again (a restored module whose plan read facts that
       // changed since, or no plan of this configuration, is in it; so are the dependents an
       // invalidation found stale), then the import-protection records of restored modules
-      // (in dev, a module restored with violations or an edge module restored with pending
-      // ones is built again: another session reported them), the modules served otherwise
+      // (a module restored with a record of another version is built again, and so, in dev,
+      // is one restored with violations or an edge module restored with pending ones:
+      // another session reported them), the modules served otherwise
       // than their importers now ask for built again (`serveAsDemanded`), and the environment's
       // server-fn snapshot. Only a compiler's first compilation restores modules (Rspack
       // loads the cache's module graph in a build, never in a rebuild)

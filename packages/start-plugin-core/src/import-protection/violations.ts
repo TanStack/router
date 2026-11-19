@@ -258,12 +258,19 @@ export function violationInfo(
 export const RSPACK_BUILD_INFO_KEY = 'tanstack.start.ip'
 
 /**
+ * The version of `RspackImportProtectionBuildInfo`. A module restored with a
+ * record of another version (a persistent cache an earlier build wrote) is
+ * built again, never replayed. 2: every violation has its edge module.
+ */
+export const RSPACK_BUILD_INFO_VERSION = 2
+
+/**
  * What the Rspack loader stores in an importer's `buildInfo[RSPACK_BUILD_INFO_KEY]`
  * (plain JSON, restored with the module by the persistent cache) and what
  * `finishMake` replays into the environment (`ImportProtectionEnv.replay`).
  */
 export interface RspackImportProtectionBuildInfo {
-  version: 1
+  version: typeof RSPACK_BUILD_INFO_VERSION
   env: string
   /** The violations of this module's output (with their edge modules). */
   violations: Array<EdgeViolation>

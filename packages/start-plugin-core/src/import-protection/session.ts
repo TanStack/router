@@ -39,6 +39,7 @@ import { normalizeFilePath, relativizePath } from './utils'
 import {
   IMPORT_EDGES_PLANNER,
   RSPACK_BUILD_INFO_KEY,
+  RSPACK_BUILD_INFO_VERSION,
   allowImportInfo,
   dedupeKey,
   selfViolationOf,
@@ -666,7 +667,7 @@ class ImportProtectionEnv {
   async reportAgain(info: unknown): Promise<void> {
     const record = info as RspackImportProtectionBuildInfo | undefined
     if (
-      record?.version !== 1 ||
+      record?.version !== RSPACK_BUILD_INFO_VERSION ||
       record.env !== this.name ||
       this.ip.config.mode !== 'dev' ||
       this.ip.config.log !== 'always'
@@ -1027,7 +1028,10 @@ class ImportProtectionEnv {
    */
   replay(importerId: string, info: unknown, layer?: string): void {
     const record = info as RspackImportProtectionBuildInfo | undefined
-    if (record?.version === 1 && record.env === this.name) {
+    if (
+      record?.version === RSPACK_BUILD_INFO_VERSION &&
+      record.env === this.name
+    ) {
       const ref = this.ip.ids.parse(importerId)
       if (ref?.kind === 'edge') {
         if (record.served && !this.served.has(ref.key)) {
@@ -1098,15 +1102,19 @@ class ImportProtectionEnv {
   }
 
   /**
-   * Development: whether an Rspack module's record holds violations this
-   * session must report again (a module restored from the persistent cache:
-   * another session reported them). `layer`: the module's (`afterCompile`).
+   * Whether a module restored from the persistent cache with this record must
+   * be built again: a record of another version is not restorable (an
+   * earlier build wrote the cache; `replay` skips it), and in development a
+   * record's violations are this session's to report (another session
+   * reported them). `layer`: the module's (`afterCompile`).
    */
   unjudged(importerId: string, info: unknown, layer?: string): boolean {
-    const record = info as RspackImportProtectionBuildInfo | undefined
+    if ((info as { version?: unknown }).version !== RSPACK_BUILD_INFO_VERSION) {
+      return true
+    }
+    const record = info as RspackImportProtectionBuildInfo
     return (
       this.ip.config.mode === 'dev' &&
-      record?.version === 1 &&
       record.env === this.name &&
       record.violations.length > 0 &&
       !this.byImporter.has(layerKey(importerId, layer))
@@ -1154,7 +1162,7 @@ class ImportProtectionEnv {
       ? {
           key: RSPACK_BUILD_INFO_KEY,
           value: {
-            version: 1,
+            version: RSPACK_BUILD_INFO_VERSION,
             env: this.name,
             violations,
             ...(edges.length > 0 && { edges }),
@@ -1174,7 +1182,12 @@ class ImportProtectionEnv {
     return served
       ? {
           key: RSPACK_BUILD_INFO_KEY,
-          value: { version: 1, env: this.name, violations: [], served },
+          value: {
+            version: RSPACK_BUILD_INFO_VERSION,
+            env: this.name,
+            violations: [],
+            served,
+          },
         }
       : null
   }

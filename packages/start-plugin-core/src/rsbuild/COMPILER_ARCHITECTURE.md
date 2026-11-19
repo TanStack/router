@@ -100,7 +100,8 @@ specifier with a per-edge mock module written as a virtual file of the environme
 pending until Rspack builds its edge module, which it does only for an import the importer kept after SWC: the
 loader's `edge` pass asks `allowImport` (also in builds, when one is configured) and confirms it. Reports are printed at `finishModules`, when the module graph
 knows the importer's trace. At `finishMake` the records of modules restored from the persistent cache are replayed; a
-module or an edge module another session judged is built again, so `allowImport` answers in this session, and so is a
+module whose record is of another version (an earlier build wrote the cache) is built again instead, and so is a
+module or an edge module another session judged, so `allowImport` answers in this session, and so is a
 module compiled as its own violation that a restored exempt importer imports (its edges were replayed after the module
 compiled: the importer gets the real module). In builds
 the mock is the survival witness: at `processAssets` the host reads which edge modules survived tree-shaking, tells
