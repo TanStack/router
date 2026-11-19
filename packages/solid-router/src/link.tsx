@@ -19,6 +19,7 @@ import { nearestMatchContext } from './matchContext'
 import { useIntersectionObserver } from './utils'
 
 import { useHydrated } from './ClientOnly'
+
 import type {
   AnyRouter,
   Constrain,
@@ -96,9 +97,10 @@ function createLinkProps(
   const dest =
     (isServer ?? router.isServer) ? getDest : Solid.createMemo(getDest)
 
-  // Only a hydrating client renders the server's hash-less active state first.
-  const hasHydrated =
-    !(isServer ?? router.isServer) && router.options.ssr
+  // Only actual client hydration renders the server's hash-less state first,
+  // and needs reactive state and a mount callback.
+  const hydrated =
+    !(isServer ?? router.isServer) && Solid.sharedConfig.context
       ? useHydrated()
       : undefined
 
@@ -127,8 +129,24 @@ function createLinkProps(
       const options_ = dest()
       // Clicks and preloads go where the href points.
       options_._fromLocation = location
+      // Non-string hashes are either true (inherit) or an updater.
+      const hash = options_.hash
+      // Only hash-dependent destinations need the server's empty hash. Keep
+      // the source location identity so links share the route-match cache.
+      const hydratingHash =
+        !options_.href &&
+        hash &&
+        typeof hash !== 'string' &&
+        hydrated &&
+        !hydrated()
       // untrack because router-core will also access stores, which are signals in solid
-      const next = Solid.untrack(() => router.buildLocation(options_))
+      const next = Solid.untrack(() =>
+        router.buildLocation(
+          hydratingHash
+            ? { ...options_, hash: hash === true ? '' : hash('') }
+            : options_,
+        ),
+      )
       if (!disabled) {
         // Use publicHref - it contains the correct href for display
         // When a rewrite changes the origin, publicHref is the full URL
@@ -178,7 +196,7 @@ function createLinkProps(
               activeOptions?.explicitUndefined,
             )) &&
           (!activeOptions?.includeHash ||
-            (hasHydrated && !hasHydrated() ? '' : location.hash) === next.hash)
+            (hydrated && !hydrated() ? '' : location.hash) === next.hash)
       }
     }
     href = external === null ? undefined : external || href
