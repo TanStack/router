@@ -409,6 +409,14 @@ export function startCompilerPlugin(
           compilers.delete(this.environment.name)
         }
       },
+      buildEnd() {
+        if (this.environment.mode === 'build') {
+          // Nothing reads this environment's compiler after its build ends.
+          // Release its module cache and hook context so they do not stay
+          // alive while later environments build.
+          compilers.delete(this.environment.name)
+        }
+      },
       async watchChange(id) {
         if (bundledDev && this.environment.mode === 'dev') {
           if (environment.type === 'server') {
