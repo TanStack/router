@@ -18,6 +18,7 @@ import {
   emittedMapTexts,
   locateDiagnostics,
   normalizePath,
+  pathOfId,
   pathsOf,
   reportingFailure,
   restorePlans,
@@ -133,9 +134,7 @@ const JS_FILE_RE = /\.[cm]?[jt]sx?$/
  * compilation.
  */
 function resourcePath(resource: string): string {
-  const id = webpackResourceId(resource)
-  const q = id.indexOf('?')
-  return q === -1 ? id : id.slice(0, q)
+  return pathOfId(webpackResourceId(resource))
 }
 
 let loaderPath: string | null = null
