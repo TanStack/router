@@ -13,6 +13,11 @@ export interface CompilationContext extends StartCompilerTransformContext {
   getKnownServerFns: () => Record<string, ServerFn>
   /** Module-level directives to add to extracted server function provider files. */
   serverFnProviderModuleDirectives: ReadonlyArray<string> | undefined
+  /**
+   * Whether a server module that declares server functions is the caller and
+   * the provider at once. A test run sets this.
+   */
+  singleServerFnModule: boolean
 
   /**
    * Callback when server functions are discovered.

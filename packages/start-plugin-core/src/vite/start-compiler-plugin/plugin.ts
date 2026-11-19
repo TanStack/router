@@ -257,7 +257,8 @@ export interface StartCompilerPluginOptions {
    */
   providerEnvName: string
   /**
-   * Whether the bundler runs for a test runner. The resolver of a test run
+   * Whether the bundler runs for a test runner. A test run compiles a server
+   * module that declares server functions as one module, and its resolver
    * finds a server function without the compiler's record of it.
    */
   isTestRun?: () => boolean
@@ -469,6 +470,7 @@ export function startCompilerPlugin(
               compilerTransforms,
               compilerPlugins,
               serverFnProviderModuleDirectives,
+              singleServerFnModule: opts.isTestRun?.(),
               onServerFnsById,
               getKnownServerFns: () => serverFnsById,
               encodeModuleSpecifierInDev:

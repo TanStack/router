@@ -29,6 +29,8 @@ interface StartCompilerOptions {
   /** `serverFnProviderModuleDirectives` */
   directives?: Array<string>
   compilerPlugins?: Array<StartCompilerPlugin>
+  /** `singleServerFnModule`: how a test run compiles server modules. */
+  singleServerFnModule?: boolean
 }
 
 /**
@@ -51,6 +53,7 @@ export function createStartCompiler(options: StartCompilerOptions) {
     devServerFnModuleSpecifierEncoder: ({ extractedFilename, root }) =>
       `/@id${extractedFilename.slice(root.length)}`,
     serverFnProviderModuleDirectives: options.directives,
+    singleServerFnModule: options.singleServerFnModule,
     onServerFnsById: (fns) => Object.assign(serverFns, fns),
     loadModule: async (id) => {
       const code = files[id]

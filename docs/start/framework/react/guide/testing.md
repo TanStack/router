@@ -425,8 +425,6 @@ A mock registered inside the callback of `runInRequest` belongs to that request.
 
 The request middleware of `src/start.ts` has already run when the callback starts. Mock one of them before you call `runInRequest`.
 
-`mockMiddleware` replaces one middleware object. On the server, Start loads the file of a server function a second time, for the server side of the function. A middleware that is created in that file therefore exists twice, and a mock reaches only one of the two. Create a middleware that tests replace in a file of its own, like `src/middleware/auth.ts` above.
-
 ### `runMiddleware(middleware, input, next)`
 
 Calls the server function of one middleware and nothing else. The middleware that it lists itself does not run, and neither does its validator or its client function. Call it inside `runInRequest`, which provides the request.
@@ -562,5 +560,5 @@ The request middleware of `src/start.ts` has already run when the callback of `r
 - Vitest is the only supported test runner.
 - `runInRequest` sends no HTTP request. A server function call inside it skips the serializer, and a test cannot call a server route through it.
 - A test cannot call the handler of a server function without its middleware and its validator. To take a middleware out of the way, replace it with `mockMiddleware`.
-- `mockMiddleware` cannot replace a middleware that is created in the same file as a server function that uses it.
+- A file with server functions is one module in a server test. In the app, the server loads such a file a second time for the handlers of its functions, so there a handler and the other code of the file each have their own copy of the file's module state. A test does not show a mistake that depends on this.
 - The route tree is not regenerated while Vitest watches.

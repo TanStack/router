@@ -590,6 +590,12 @@ export class StartCompiler {
       compilerTransforms?: Array<StartCompilerImportTransform> | undefined
       compilerPlugins?: Array<StartCompilerPlugin> | undefined
       serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
+      /**
+       * Compile a server module that declares server functions as the caller
+       * and the provider at once, instead of a caller next to a provider
+       * module. The file is then evaluated once. A test run sets this.
+       */
+      singleServerFnModule?: boolean
       warn?: (message: string) => void
       /**
        * Returns the currently known server functions from previous builds.
@@ -1427,6 +1433,7 @@ export class StartCompiler {
         getKnownServerFns: this.options.getKnownServerFns,
         serverFnProviderModuleDirectives:
           this.options.serverFnProviderModuleDirectives,
+        singleServerFnModule: this.options.singleServerFnModule ?? false,
         onServerFnsById: this.options.onServerFnsById,
       }
 

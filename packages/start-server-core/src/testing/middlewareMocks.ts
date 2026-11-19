@@ -169,10 +169,8 @@ export function mockMiddleware<TMiddleware extends AnyMiddleware>(
     mock: mock as AnyFn,
     ran: false,
     neverRan: new Error(
-      'A middleware was mocked inside runInRequest() and did not run in that request. Either nothing in the request used it after the mock was registered ' +
-        '(the request middleware of src/start.ts has run before the callback starts: mock it before runInRequest()), ' +
-        'or the server ran another copy of it: the server loads the file of a server function a second time, ' +
-        'so a middleware that is created in that file exists twice. Create the middleware in a file of its own to mock it.',
+      'A middleware was mocked inside runInRequest() and did not run in that request. Nothing in the request used it after the mock was registered. ' +
+        'The request middleware of src/start.ts has run before the callback starts: mock it before runInRequest().',
     ),
   })
 }
