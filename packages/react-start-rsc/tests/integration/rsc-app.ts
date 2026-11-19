@@ -195,7 +195,9 @@ export interface RscPreviewServer {
  * environments, `buildApp()`), and serves the build with `vite preview`
  * (Start's own preview server runs the built server entry). The test
  * process runs with `NODE_ENV=production` until the cleanup, as `vite
- * preview` does, so the server's React matches the client's.
+ * preview` does, so the server's React matches the client's. No `vite
+ * build --watch` counterpart: `@vitejs/plugin-rsc`'s watch build exits
+ * before its server output exists (KNOWN-BUGS, "Upstream issues").
  */
 export async function startRscPreviewServer(options: {
   files: Record<string, string>
@@ -306,6 +308,15 @@ export async function startRscRsbuildPreviewServer(options: {
    * is the second.
    */
   rebuildWith?: Record<string, string>
+  /**
+   * Files written after a first build, then `rsbuild build` runs again (a
+   * new Rsbuild instance and new plugins, what the first build left in the
+   * directory kept, e.g. its persistent cache): the build served is the
+   * second.
+   */
+  buildAgainWith?: Record<string, string>
+  /** Rsbuild's `performance` (e.g. `{ buildCache: true }`). */
+  performance?: Record<string, unknown>
 }): Promise<RscPreviewServer & { errors: Array<string> }> {
   const registerCleanup = options.registerCleanup ?? onTestFinished
   // Loaded by Node: Start's preview middleware imports the built server
@@ -373,6 +384,7 @@ export async function startRscRsbuildPreviewServer(options: {
           ],
           // Start serves the pages, not an HTML template
           tools: { ...options.tools, htmlPlugin: false },
+          performance: options.performance,
           server: { host: '127.0.0.1' },
           // Absolute: Start's preview middleware imports the server build
           // from the output directory, which it resolves against the
@@ -390,6 +402,13 @@ export async function startRscRsbuildPreviewServer(options: {
         }
         const rebuilt = await instance.build()
         await rebuilt.close()
+      }
+      if (options.buildAgainWith) {
+        for (const [file, content] of Object.entries(options.buildAgainWith)) {
+          await writeFile(path.join(app.root, file), content)
+        }
+        const again = await (await rsbuild()).build()
+        await again.close()
       }
     }).catch((error: unknown) => {
       // Rsbuild's error says only that the build failed: the errors are
@@ -465,8 +484,24 @@ export async function startRscRsbuildDevServer(
   } = options
   const tanstackStart = await tanstackStartPlugin('rsbuild')
   const cwd = process.cwd()
-  try {
-    return await createRsbuildDevServer({
+  /** In the test process's directory again once `open()` resolved. */
+  const inTestDirectory = async (
+    open: () => Promise<RsbuildDevServer>,
+  ): Promise<RsbuildDevServer> => {
+    try {
+      const server = await open()
+      const { restart } = server
+      // `rsbuild dev` run again in the app: new plugin instances (`plugins`
+      // is called again), the directory's caches kept
+      return Object.assign(server, {
+        restart: () => inTestDirectory(restart),
+      })
+    } finally {
+      process.chdir(cwd)
+    }
+  }
+  return inTestDirectory(() =>
+    createRsbuildDevServer({
       dir: harnessDir,
       prefix: '.rsc-rsbuild-dev-server-',
       registerCleanup: onTestFinished,
@@ -490,7 +525,7 @@ export async function startRscRsbuildDevServer(
           ...config?.tools,
         },
       },
-      plugins: [
+      plugins: () => [
         ...(pluginNames(config?.plugins).includes('rsbuild:react')
           ? []
           : [pluginReact()]),
@@ -504,10 +539,8 @@ export async function startRscRsbuildDevServer(
         },
         tanstackStart({ ...start, rsc: { enabled: true } }) as never,
       ],
-    })
-  } finally {
-    process.chdir(cwd)
-  }
+    }),
+  )
 }
 
 /** The HTTP requests of a page in flight, and when that last changed. */
