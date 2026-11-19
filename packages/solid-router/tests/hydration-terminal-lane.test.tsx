@@ -3,9 +3,11 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { hydrate } from '@tanstack/router-core/ssr/client'
 import { dehydrateSsrMatchId } from '../../router-core/src/ssr/ssr-match-id'
 import {
+  Outlet,
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
+  createRoute,
   createRouter,
 } from '../src'
 import type { AnyRouteMatch } from '@tanstack/router-core'
@@ -44,6 +46,7 @@ function bootstrap(
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   vi.useRealTimers()
   delete window.$_TSR
 })
@@ -83,5 +86,49 @@ describe('hydration terminal lane', () => {
 
     await vi.advanceTimersByTimeAsync(5)
     expect(screen.getByText('Missing page')).toBeInTheDocument()
+  })
+
+  test('counts the minimum of a server-rendered pending fallback from its first paint', async () => {
+    // The server-rendered pending UI is painted at 50ms; the client JS
+    // hydrates at 300ms.
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
+    vi.spyOn(performance, 'getEntriesByName').mockImplementation((name) =>
+      name === 'first-contentful-paint'
+        ? [{ startTime: 50 } as PerformanceEntry]
+        : [],
+    )
+    const rootRoute = createRootRoute({ component: Outlet })
+    const dashboardRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/dashboard',
+      ssr: false,
+      pendingMs: 0,
+      pendingMinMs: 400,
+      pendingComponent: () => <div role="status">Dashboard pending</div>,
+      loader: () => 'dashboard data',
+      component: () => <div>{dashboardRoute.useLoaderData()()}</div>,
+    })
+    const router = createRouter({
+      history: createMemoryHistory({ initialEntries: ['/dashboard'] }),
+      routeTree: rootRoute.addChildren([dashboardRoute]),
+    })
+    const matches = router.matchRoutes(router.state.location)
+    bootstrap([
+      { match: matches[0]!, status: 'success', ssr: true },
+      { match: matches[1]!, status: 'pending', ssr: false },
+    ])
+    await vi.advanceTimersByTimeAsync(300)
+
+    await hydrate(router)
+    render(() => <RouterProvider router={router} />)
+    expect(screen.getByRole('status')).toHaveTextContent('Dashboard pending')
+
+    await vi.advanceTimersByTimeAsync(140)
+    expect(screen.getByRole('status')).toHaveTextContent('Dashboard pending')
+
+    await vi.advanceTimersByTimeAsync(20)
+    expect(screen.getByText('dashboard data')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })
