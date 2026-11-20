@@ -861,7 +861,8 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
 - **J6.7 Exemptions give the real module.** An importer exempted by `ignoreImporters`, `exclude` or outside
   `include` gets the real module through a plain import, and nothing is reported for it, when the importer itself is
   in the app without the help of a denied module that is not real (a denied module served as its mock brings none of
-  its imports: dev and watch rebuilds serve what a fresh build of the same source serves). Pattern imports
+  its imports: dev and watch rebuilds serve what a fresh build of the same source serves). "In the app" is reached
+  from what the compilation holds by itself (its entries and includes, however a plugin adds them). Pattern imports
   (`import.meta.glob`, a template-literal `import()`, `require.context` / `import.meta.webpackContext`) are not
   covered (R142): a pattern importer, exempt or checked, gets the file as its plain importers make it served (the real
   module when an exempt importer imports it plainly or `allowImport` allows it, the mock otherwise), with no report of

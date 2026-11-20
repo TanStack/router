@@ -367,7 +367,7 @@ export function viteDevNodeGraph(
 
 /** A compilation's graph as a fresh build of the same source has it (`groundedGraph`). */
 export interface GroundedGraph extends NodeGraph {
-  /** Whether a node is supported: an entry, a root, or imported by an importer that `counts`. */
+  /** Whether a node is supported: an entry, or imported by an importer that `counts`. */
   supported: (node: GraphNode) => boolean
   /** Whether a node's imports are in a fresh build: it is supported and not blocked. */
   counts: (node: GraphNode) => boolean
@@ -375,18 +375,20 @@ export interface GroundedGraph extends NodeGraph {
 
 /**
  * A compilation's graph as a fresh build of the same source has it
- * (design-rsc-phase1-settlement.md §2.2, SPEC J6.7): an importer counts
- * when it is supported and not `blocked`; a node is supported when it is
- * an entry, has no importer (something the graph does not show holds it),
- * or a supported importer that is not `blocked` (a denied module served as
+ * (design-rsc-phase1-settlement.md §2.2 and amendment 3, SPEC J6.7): an
+ * importer counts when it is supported and not `blocked`; a node is
+ * supported when it is an entry (the compilation holds it by itself) or has
+ * a supported importer that is not `blocked` (a denied module served as
  * its mock: what it imported is in the graph only because an earlier state
- * served it as it is). A cycle supports nothing by itself. `extra`: the importers the
+ * served it as it is). A node with no importer and not an entry is not
+ * supported: a module held for a reason the graph does not show grants
+ * nothing. A cycle supports nothing by itself. `extra`: the importers the
  * graph does not show (client-reference handoffs), read through the same
  * graph.
  *
  * Read backward from the nodes asked about (a forward walk from the
  * entries would touch every module): a node's ancestors, through the
- * nodes that are not blocked, until an entry or a root. Each answer is
+ * nodes that are not blocked, until an entry. Each answer is
  * remembered for the view's life: `blocked` must not change during it.
  */
 export function groundedGraph(
@@ -416,10 +418,8 @@ export function groundedGraph(
           found = key
           break search
         }
-        let root = true
         for (const importers of [graph.importers(node), extra(node, graph)]) {
           for (const i of importers ?? []) {
-            root = false
             const k = nodeKey(i)
             if (from.has(k) || no.has(k) || blocked(i)) {
               continue
@@ -427,10 +427,6 @@ export function groundedGraph(
             from.set(k, key)
             level.push(i)
           }
-        }
-        if (root) {
-          found = key
-          break search
         }
       }
       queue = level

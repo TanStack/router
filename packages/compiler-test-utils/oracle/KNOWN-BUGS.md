@@ -425,6 +425,13 @@ setTheme(t) { theme = t }`, `export function getTheme()`), children calling the 
   over HTTP was not checked. Same on db260cf3a3. Driver: `/var/tmp/rsc-p1-design3/retained.py` (`python3
 retained.py head base`). No test (the outcome is the limit). A fix grounds the registry as the settlement grounds
   denied modules: a provider counts once a module the app reaches without it references the function.
+- **Rsbuild: a module under a Module Federation container, a shared provide or a DLL counts as outside the app**
+  (RSC phase 1, design-rsc-phase1-settlement.md amendment 3; stated limit, no fixture). The compilation holds such a
+  module through a module with no file (container entry, provide-shared module, `DllModule`), not by itself, so
+  import protection's settlement does not count its imports: an exempt import of a denied file made only from it is
+  served the mock, and `allowImport` on the file itself is not asked for it. Nothing denied ships. A fix would admit
+  the file-less holder by the dependency type of its connection with no origin (`container entry`,
+  `provide shared module`), never by its shape (a client reference's SSR module has the same one). No test.
 - **Rsbuild: a file that is a module of the compilation and of a child compilation in one environment** (RSC phase 1,
   design-rsc-phase1-settlement.md §5; stated limit, no fixture reaches it). The settlement decides the compilation's
   own module from the edges arriving at both (one node, `(environment, id)`); the child's module, finished before

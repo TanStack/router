@@ -143,11 +143,9 @@ interface RspackCompilationLike {
     getIncomingConnections: (
       module: RspackModuleLike,
     ) => Iterable<RspackConnectionLike>
-    getModule: (dependency: unknown) => RspackModuleLike | null
     /** The module a dependency belongs to (the inner module of a ConcatenatedModule). */
     getParentModule: (dependency: unknown) => RspackModuleLike | null
   }
-  entries: { values: () => Iterable<{ dependencies: Iterable<unknown> }> }
   /** The child compilations (a worker plugin's), done during `make`. */
   children?: Iterable<RspackCompilationLike>
 }
@@ -256,8 +254,12 @@ export interface RspackNodeGraph extends NodeGraph {
  * canonical resource (`idOf`): a node's importers are the origins of the
  * connections into its modules (a file in two layers is a module of each;
  * a file in the compilation and in a child is one node, its importers
- * those of both), each a node of its own environment; entries are nodes
- * too (`entries` of each compilation). Its index is built on its first
+ * those of both), each a node of its own environment. A node is an entry
+ * when the compilation holds it by itself: a connection with no origin
+ * module arrives at one of its own modules (config and named entries, an
+ * unnamed `EntryPlugin`, `addInclude` with or without an entry, a child
+ * compilation's entry, in that compilation's graph); entry data lists no
+ * global include. Its index is built on its first
  * read: a compilation with no denied module reads nothing. Readable once
  * the compilation's modules are built (`finishMake`, later hooks); a step
  * that builds modules again needs a new one.
@@ -279,10 +281,15 @@ export function rspackNodeGraph(
     }
     return out
   }
-  /** A node's modules holding its connections, and whether one is a module of the compilation itself. */
+  /**
+   * A node's modules holding its connections, whether one is a module of
+   * the compilation itself, and whether the compilation holds it by itself
+   * (read once, on the first `isEntry`).
+   */
   interface Entry {
     held: Array<Held>
     own: boolean
+    byItself?: boolean
   }
   // a production module can also be an inner module of a ConcatenatedModule (scope hoisting),
   // which holds the connections from outside the concatenation
@@ -293,7 +300,6 @@ export function rspackNodeGraph(
   let byEnv: Map<string, Map<string, Entry>> | null = null
   /** The environment of each concatenated inner module of the index (from its holder). */
   const envs = new Map<RspackModuleLike, string>()
-  let entries: Set<string> | null = null
   const key = (env: string, id: string) => `${env}\0${id}`
   const entryOf = (node: GraphNode): Entry | undefined => {
     if (!byEnv) {
@@ -380,22 +386,29 @@ export function rspackNodeGraph(
       return out
     },
     isEntry(node) {
-      if (!entries) {
-        entries = new Set()
-        for (const c of compilations()) {
-          for (const entry of c.entries.values()) {
-            for (const dep of entry.dependencies) {
-              // a production entry is usually a ConcatenatedModule (scope hoisting)
-              const m = c.moduleGraph.getModule(dep)
-              const module = m?.resource ? m : m?.rootModule
-              if (m && module?.resource) {
-                entries.add(key(envOf(module, m), idOf(module.resource)))
-              }
-            }
+      const entry = entryOf(node)
+      if (!entry) {
+        return false
+      }
+      entry.byItself ??= entry.held.some(({ module, moduleGraph }) => {
+        // a production entry is usually a ConcatenatedModule (scope
+        // hoisting): its connection from no module is its root module's
+        const target = module.resource ? module : module.rootModule
+        if (
+          !target?.resource ||
+          idOf(target.resource) !== node.id ||
+          (envs.get(target) ?? envOf(target, module)) !== node.env
+        ) {
+          return false
+        }
+        for (const c of moduleGraph.getIncomingConnections(module)) {
+          if (c.originModule === null) {
+            return true
           }
         }
-      }
-      return entries.has(key(node.env, node.id))
+        return false
+      })
+      return entry.byItself
     },
     holds: (node) => entryOf(node) !== undefined,
     builds: (node) => entryOf(node)?.own === true,

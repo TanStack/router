@@ -92,7 +92,11 @@ registry snapshot: every operation of the host groups modules by environment bef
 warning hand-over). Import protection reads one graph per compilation (`rspackNodeGraph`, built on its first read):
 a node is a module of one environment, and its importers are nodes of their own environments (an issuer-layer
 rule: an SSR-layer module importing the RSC layer's server-fn module; a user's rule moving an imported file to its
-layer), so a walk goes on through the module it reached, and an entry is an entry of its environment only. The
+layer), so a walk goes on through the module it reached, and an entry is an entry of its environment only. An entry
+is a module the compilation holds by itself: a connection with no origin module arrives at it (config and named
+entries, an unnamed `EntryPlugin`, `addInclude` with or without an entry, a child compilation's entry); a module with
+no importer and no such connection is not in the app, so it supports nothing (design-rsc-phase1-settlement.md
+amendment 3). The
 `rsc` environment declares where its client references render (`clientReferencesInto: 'ssr'`): Rspack's RSC plugin
 adds the SSR-layer module of a `'use client'` file a server component imports, with no importer of its own, and the
 server component's import of it (recorded in `rsc`, never substituted) is how SSR gets it.
