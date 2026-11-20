@@ -12,7 +12,10 @@
  *   traced through the child's graph (`r.ts` → `pattern.ts` → the file).
  *   A child that fails before its settlement (another plugin's tap) still
  *   reports what it requested, whether the plugin running it goes on or
- *   fails with it.
+ *   fails with it, into the run that ran it and no other: a child run in a
+ *   `done` tap after Start's fails its run, not the next one, and a run
+ *   that fails has `onViolation` answered before the compiler's next run
+ *   begins and before the build returns (a rejection of it is handled).
  * - `ProvideSharedPlugin` provides `r.ts` (exempt), which imports
  *   `d.client.ts` (denied); the route renders the shared module's value.
  *   The provide-shared module (no file) holds `r.ts`, which the
@@ -27,7 +30,10 @@
  * `small-child.py`: 86b46c235e traced the violation to the dropped import,
  * `r.ts` → `w.client.ts`); re-check 8 (/var/tmp/rsc-p1-recheck8/report.md,
  * a child that fails before its closure, `clean8.py`: 99cc175358 reported
- * nothing and built when the plugin went on).
+ * nothing and built when the plugin went on); re-check 9
+ * (/var/tmp/rsc-p1-recheck9/report.md, the two P2 findings, `terminal9.py`:
+ * 75d806ac5c failed the next run with the child's error, returned before
+ * `onViolation` answered, and left its rejection unhandled).
  */
 import { describe, expect, test } from 'vitest'
 import { StartBuildError, buildStart } from '../../build-harness'
@@ -333,6 +339,246 @@ export const read = () => files('./w.client.ts').value()
     },
     timeout,
   )
+
+  describe('what a child requested is reported into the run that ran it', () => {
+    /** A promise of the end of `ms` milliseconds. */
+    const delay = (ms: number) =>
+      new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+    /** What one run of the server compiler ended with: whether its errors name the denied file, or `failed`. */
+    type Outcome = boolean | 'failed'
+
+    /**
+     * The server environment's config: a plugin running a child compiler of
+     * `r.ts` in the compiler's first run only, at `when` (`make`, or a
+     * `done` tap after Start's), whose `finishMake` fails before the
+     * settlement's (stage −100, `aborted`: the plugin goes on, `recover`, or
+     * fails with the child's error, `propagate`). `outcomes`: each run's
+     * outcome, as the compiler's last `done` tap sees it; `onCompilation`:
+     * called when a compilation of the compiler begins.
+     */
+    const firstRunChild = (options: {
+      when: 'make' | 'done'
+      aborted?: 'recover' | 'propagate'
+      outcomes: Array<Outcome>
+      onCompilation?: () => void
+    }) => ({
+      ssr: {
+        tools: {
+          rspack: (config: any) => {
+            config.plugins.push({
+              apply(compiler: any) {
+                let ran = false
+                const run = (compilation: any) => {
+                  if (compilation.compiler !== compiler || ran) {
+                    return Promise.resolve()
+                  }
+                  ran = true
+                  const child = compilation.createChildCompiler(
+                    'held-child',
+                    { filename: 'held-child.js' },
+                    [
+                      new compiler.rspack.EntryPlugin(
+                        compiler.context,
+                        './src/r.ts',
+                        { name: 'child' },
+                      ),
+                    ],
+                  )
+                  if (options.aborted) {
+                    child.hooks.finishMake.tap(
+                      { name: 'test:sidecar', stage: -100 },
+                      () => {
+                        throw new Error('SIDECAR_FAILED')
+                      },
+                    )
+                  }
+                  return new Promise<void>((resolve, reject) => {
+                    child.runAsChild((error: unknown) =>
+                      error && options.aborted === 'propagate'
+                        ? reject(error)
+                        : resolve(),
+                    )
+                  })
+                }
+                if (options.when === 'make') {
+                  compiler.hooks.make.tapPromise('test:child', run)
+                } else {
+                  compiler.hooks.done.tapPromise(
+                    { name: 'test:child', stage: 1000 },
+                    (stats: any) => run(stats.compilation),
+                  )
+                }
+                compiler.hooks.thisCompilation.tap('test:runs', () =>
+                  options.onCompilation?.(),
+                )
+                compiler.hooks.done.tap(
+                  { name: 'test:runs', stage: 2000 },
+                  (stats: any) => {
+                    const { errors = [] } = stats.toJson({
+                      all: false,
+                      errors: true,
+                    })
+                    options.outcomes.push(
+                      errors.some((error: { message: string }) =>
+                        error.message.includes('src/w.client.ts'),
+                      ),
+                    )
+                  },
+                )
+                compiler.hooks.failed.tap('test:runs', () => {
+                  options.outcomes.push('failed')
+                })
+              },
+            })
+          },
+        },
+      },
+    })
+
+    /** Two runs of one compiler of the app (`createCompiler()`), the child in the first: what the last one gave. */
+    const twoRuns = (
+      environments: ReturnType<typeof firstRunChild>,
+      onViolation?: () => Promise<void>,
+    ) =>
+      buildStart({
+        bundler: 'rsbuild',
+        files: childFiles(false),
+        entry: 'src/entry.ts',
+        rsbuildConfig: { environments } as never,
+        start: { importProtection: { ...importProtection, onViolation } },
+        builds: 2,
+        samePlugins: true,
+        rsbuildCompiler: true,
+      }).then(
+        () => 'built',
+        (error: unknown) =>
+          error instanceof StartBuildError ? error.errors : error,
+      )
+
+    test(
+      'a child run in a done tap after Start’s, failing before its settlement, the plugin going on: the run fails with the context, the next one builds',
+      async () => {
+        const outcomes: Array<Outcome> = []
+        const last = await twoRuns(
+          firstRunChild({ when: 'done', aborted: 'recover', outcomes }),
+        )
+        expect({ outcomes, last }).toEqual({
+          outcomes: [true, false],
+          last: 'built',
+        })
+      },
+      timeout,
+    )
+
+    test(
+      'a child failing before its settlement, the plugin failing with it, onViolation answering after the next run began or 1 s: the next run begins once it answered, and builds',
+      async () => {
+        const outcomes: Array<Outcome> = []
+        const events: Array<string> = []
+        let nextCompilation = () => {}
+        const last = await twoRuns(
+          firstRunChild({
+            when: 'make',
+            aborted: 'propagate',
+            outcomes,
+            onCompilation: () => {
+              events.push('compilation')
+              nextCompilation()
+            },
+          }),
+          async () => {
+            await Promise.race([
+              new Promise<void>((resolve) => {
+                nextCompilation = resolve
+              }),
+              delay(1000),
+            ])
+            events.push('answered')
+          },
+        )
+        expect({ outcomes, events, last }).toEqual({
+          outcomes: ['failed', false],
+          events: ['compilation', 'answered', 'compilation'],
+          last: 'built',
+        })
+      },
+      timeout,
+    )
+
+    test(
+      'a child failing before its settlement, the plugin failing with it, onViolation rejecting: the next run builds, and nothing is left unhandled',
+      async () => {
+        const unhandled: Array<unknown> = []
+        const listener = (reason: unknown) => {
+          unhandled.push(String(reason))
+        }
+        process.on('unhandledRejection', listener)
+        try {
+          const outcomes: Array<Outcome> = []
+          const last = await twoRuns(
+            firstRunChild({ when: 'make', aborted: 'propagate', outcomes }),
+            () => Promise.reject(new Error('CALLBACK_REJECTED')),
+          )
+          // (a rejection is unhandled once the microtasks after it ran)
+          await delay(0)
+          expect({ outcomes, last, unhandled }).toEqual({
+            outcomes: ['failed', false],
+            last: 'built',
+            unhandled: [],
+          })
+        } finally {
+          process.off('unhandledRejection', listener)
+        }
+      },
+      timeout,
+    )
+
+    test(
+      'Rsbuild build, a child failing before its settlement, the plugin failing with it, onViolation answering after the build returned or 1 s: the build returns once it answered',
+      async () => {
+        const events: Array<string> = []
+        let returned = () => {}
+        const build = buildStart({
+          bundler: 'rsbuild',
+          files: childFiles(false),
+          entry: 'src/entry.ts',
+          rsbuildConfig: {
+            environments: firstRunChild({
+              when: 'make',
+              aborted: 'propagate',
+              outcomes: [],
+            }),
+          } as never,
+          start: {
+            importProtection: {
+              ...importProtection,
+              onViolation: async () => {
+                await Promise.race([
+                  new Promise<void>((resolve) => {
+                    returned = resolve
+                  }),
+                  delay(1000),
+                ])
+                events.push('answered')
+              },
+            },
+          },
+        })
+        const error = await build.then(
+          () => null,
+          (e: unknown) => {
+            events.push('returned')
+            returned()
+            return e
+          },
+        )
+        expect(error, 'the build fails').toBeInstanceOf(StartBuildError)
+        expect(events).toEqual(['answered', 'returned'])
+      },
+      timeout,
+    )
+  })
 })
 
 describe('a module a file-less holder adds after the settlement first ran', () => {

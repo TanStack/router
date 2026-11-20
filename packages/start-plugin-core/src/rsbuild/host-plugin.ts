@@ -53,6 +53,7 @@ import type { RsbuildRouteGenerator } from './router-generator'
 import type { ServerFnFact } from '../server-fns/registry'
 import type { RspackNodeGraph } from '../import-protection/witness'
 import type { NodeGraph } from '../import-protection/graph-trace'
+import type { EdgeViolation } from '../import-protection/violations'
 import type {
   LocatedDiagnostic,
   PersistedPlan,
@@ -263,12 +264,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
    * build is finished.
    */
   const ipEnvOf = (env: EnvState) => session.start.ip?.env(env.name) ?? null
+  /** A compile environment's import protection (`ipEnvOf`). */
+  type IpEnv = NonNullable<ReturnType<typeof ipEnvOf>>
   /** The import protection of each compile environment of this compiler. */
   const ipEnvs = () => {
-    const out: Array<{
-      env: EnvState
-      ip: NonNullable<ReturnType<typeof ipEnvOf>>
-    }> = []
+    const out: Array<{ env: EnvState; ip: IpEnv }> = []
     for (const env of session.envsOf(environment.name)) {
       const ip = ipEnvOf(env)
       if (ip) {
@@ -291,38 +291,81 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       const failedBeforeCompilation: Array<Error> = []
       /**
        * The import-protection requests each child compilation made
-       * (`childCompilerViolations`) and not yet reported, each reported once
-       * by `reportChildRequests`: by the child's closure (`close`), with the
+       * (`childCompilerViolations`) and not yet reported, by the compilation
+       * of this compiler that runs the child (`ownerOf`), from its
+       * `thisCompilation` to its end (`done`, `failed`). Each is reported once, into the errors of that compilation only
+       * (`reportChildRequests`): by the child's closure (`close`), with the
        * trace in the child's graph (Rspack's module graph is not readable
        * while modules build, and an import the records hold may be one the
        * bundler dropped); for a child that ends without its closure (a tap of
-       * its `finishMake` before ours failed), by the next closure of this
-       * compiler's compilation (before `hold` forgets the child's records),
-       * else when the compilation ends (`done`, `failed`):
-       * `reportEndedChildren`.
+       * its `finishMake` before ours failed), by the compilation's next
+       * closure (before `hold` forgets the child's records), else by its end
+       * (`reportEndedChildren`). A child the compilation runs after its end
+       * (a `done` tap after ours) has its requests reported as it makes them.
        */
-      const childRequests = new Map<
+      const childRequests = new WeakMap<
         Rspack.Compilation,
-        Array<(graph: NodeGraph | null) => Promise<Array<string>>>
+        Map<Rspack.Compilation, Array<{ ip: IpEnv; violation: EdgeViolation }>>
       >()
-      /** Reports what `child` requested and nothing reported yet (`childRequests`), as errors of this compiler's compilation. */
-      const reportChildRequests = async (
-        child: Rspack.Compilation,
+      /** The compilation of this compiler that runs `child` (a child compiler's compilation, at any depth). */
+      const ownerOf = (child: Rspack.Compilation) => {
+        let owner = child
+        while (
+          owner.compiler !== compiler &&
+          owner.compiler.parentCompilation
+        ) {
+          owner = owner.compiler.parentCompilation
+        }
+        return owner
+      }
+      /** Reports `requests` (a child's) as errors of `owner`, with the trace in `graph` (null: the records' trace). */
+      const reportInto = async (
+        owner: Rspack.Compilation,
+        requests: Iterable<{ ip: IpEnv; violation: EdgeViolation }>,
         graph: NodeGraph | null,
       ) => {
-        const requested = childRequests.get(child) ?? []
-        childRequests.delete(child)
-        for (const report of requested) {
-          for (const message of await report(graph)) {
-            ;(currentCompilation ?? child).errors.push(
-              new WebpackError(message),
-            )
+        for (const { ip, violation } of requests) {
+          for (const message of await ip.childCompilerReports(
+            [violation],
+            graph,
+          )) {
+            owner.errors.push(new WebpackError(message))
           }
         }
       }
-      /** Reports the requests of every child with some left (`childRequests`): with its graph when Rspack can still read it, else the recorded trace. */
-      const reportEndedChildren = async () => {
-        for (const child of [...childRequests.keys()]) {
+      /** Reports what `child` requested and nothing reported yet (`childRequests`), as errors of `owner`. */
+      const reportChildRequests = async (
+        owner: Rspack.Compilation,
+        child: Rspack.Compilation,
+        graph: NodeGraph | null,
+      ) => {
+        const children = childRequests.get(owner)
+        const requested = children?.get(child)
+        if (requested) {
+          children!.delete(child)
+          await reportInto(owner, requested, graph)
+        }
+      }
+      /**
+       * Reports the requests of every child of `owner` with some left: with
+       * the child's graph when Rspack can still read it, else the records'
+       * trace. `ended`: the compilation's end, after which a child's
+       * request is reported as it is made.
+       */
+      const reportEndedChildren = async (
+        owner: Rspack.Compilation,
+        ended: boolean,
+      ) => {
+        const children = childRequests.get(owner)
+        for (;;) {
+          const next = children?.keys().next()
+          if (!next || next.done) {
+            if (ended) {
+              childRequests.delete(owner)
+            }
+            return
+          }
+          const child = next.value
           const graph = nodeGraph(child)
           let readable = true
           try {
@@ -331,9 +374,17 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             // (a read throws once Rspack dropped the child's compilation)
             readable = false
           }
-          await reportChildRequests(child, readable ? graph : null)
+          await reportChildRequests(owner, child, readable ? graph : null)
         }
       }
+      /**
+       * The reports of the compilation that failed last (`failed`, a hook
+       * that cannot wait): waited for before the compiler's next run begins
+       * (`run`, `watchRun`) and before it closes (`shutdown`). A failure of
+       * one (`onViolation` rejecting) is printed: its build has failed
+       * already.
+       */
+      let failedReports: Promise<void> = Promise.resolve()
       /** Runs a hook of ours whose failure goes to `errors` (`reportingFailure`: in watch mode it never rejects). */
       const reporting = (
         errors: Array<Error>,
@@ -459,9 +510,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           if (compilation.compiler === compiler) {
             return
           }
-          params.normalModuleFactory.hooks.beforeResolve.tap(
+          params.normalModuleFactory.hooks.beforeResolve.tapPromise(
             PLUGIN_NAME,
-            (data) => {
+            async (data) => {
               const ip = ipEnvOf(
                 session.envOf(environment.name, data.contextInfo.issuerLayer),
               )
@@ -472,26 +523,51 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               if (!violations) {
                 return undefined
               }
-              let pending = childRequests.get(compilation)
-              if (!pending) {
-                pending = []
-                childRequests.set(compilation, pending)
+              const owner = ownerOf(compilation)
+              const children = childRequests.get(owner)
+              if (!children) {
+                // (the compilation ended: nothing of it reports later. Rspack's
+                // graph cannot be read while modules build: the records' trace)
+                await reportInto(
+                  owner,
+                  violations.map((violation) => ({ ip: ip!, violation })),
+                  null,
+                )
+                return false
               }
-              pending.push((graph) =>
-                ip!.childCompilerReports(violations, graph),
-              )
+              let requested = children.get(compilation)
+              if (!requested) {
+                requested = []
+                children.set(compilation, requested)
+              }
+              for (const violation of violations) {
+                requested.push({ ip: ip!, violation })
+              }
               return false
             },
           )
         })
-        // (the children that ended after this compilation's last closure, or
-        // in a compilation that fails: no error is reported then, `onViolation`
-        // is told)
-        compiler.hooks.done.tapPromise(PLUGIN_NAME, async () => {
-          await reportEndedChildren()
-        })
+        // (the children that ended after the compilation's last closure: in a
+        // compilation that fails no error is reported, `onViolation` is told)
+        compiler.hooks.done.tapPromise(PLUGIN_NAME, (stats) =>
+          reportEndedChildren(stats.compilation, true),
+        )
         compiler.hooks.failed.tap(PLUGIN_NAME, () => {
-          void reportEndedChildren()
+          // (the compilation that failed is the compiler's last)
+          if (currentCompilation) {
+            const reports = reportEndedChildren(currentCompilation, true).catch(
+              (error: unknown) => {
+                compiler
+                  .getInfrastructureLogger(PLUGIN_NAME)
+                  .error(
+                    `[tanstack-start] Reporting the import-protection violations of a child compiler of a failed compilation failed:\n${error instanceof Error ? (error.stack ?? error.message) : String(error)}`,
+                  )
+              },
+            )
+            // (and the ones of a failure before it, still made)
+            const before = failedReports
+            failedReports = before.then(() => reports)
+          }
         })
       }
 
@@ -560,8 +636,14 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // a production run (`build()`, or a program's `run()` of the compiler of
       // `createCompiler()`, maybe again), which generates the routes once for all its
       // compilers: after Rsbuild's own `run` tap (its `onBeforeBuild`)
-      compiler.hooks.run.tapPromise({ name: PLUGIN_NAME, stage: 1 }, () =>
-        session.beginRun(environment.name, () => opts.generator.build()),
+      // (once the reports of the run that failed before it are made:
+      // `failedReports`)
+      compiler.hooks.run.tapPromise(
+        { name: PLUGIN_NAME, stage: 1 },
+        async () => {
+          await failedReports
+          await session.beginRun(environment.name, () => opts.generator.build())
+        },
       )
 
       /** A modified file's event (`CompilationFiles.eventOf`): edited, created, or a watched directory. */
@@ -576,6 +658,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           failedBeforeCompilation,
           'Finding the modules the changed files affect',
           async () => {
+            // (once the reports of the compilation that failed before it are
+            // made: `failedReports`)
+            await failedReports
             if (
               environment.type === 'client' &&
               session.start.opts.mode === 'build'
@@ -648,7 +733,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // Rsbuild instance creates another one)
       compiler.hooks.shutdown.tapPromise(PLUGIN_NAME, () => {
         unsubscribeRoutes()
-        return Promise.resolve()
+        return failedReports
       })
       compiler.hooks.watchClose.tap(PLUGIN_NAME, () => {
         void opts.generator.close()
@@ -688,6 +773,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
         compilation.errors.push(...failedBeforeCompilation.splice(0))
         currentCompilation = compilation
+        // (until its end: `childRequests`)
+        childRequests.set(compilation, new Map())
         for (const env of session.envsOf(environment.name)) {
           env.compiled.clear()
         }
@@ -982,17 +1069,19 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         // nothing (the first one holds every module it restored or built;
         // the last run follows the first, which held)
         let unheld = !child && !last && session.files.compiled(environment.name)
+        const owner = ownerOf(compilation)
         if (!child) {
           // (a child that ended without its closure: before `hold` forgets
           // its records)
-          await reportEndedChildren()
+          await reportEndedChildren(owner, false)
         }
         for (;;) {
           const round = ++history.round
           // (what the child's requests stood for since its last round: its
           // `make`, the round's builds)
-          if (child && childRequests.has(compilation)) {
+          if (child && childRequests.get(owner)?.has(compilation)) {
             await reportChildRequests(
+              owner,
               compilation,
               (graph ??= nodeGraph(compilation)),
             )

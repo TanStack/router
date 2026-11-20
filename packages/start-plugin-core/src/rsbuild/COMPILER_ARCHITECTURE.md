@@ -167,8 +167,11 @@ too. A module the settlement serves otherwise is built again and serves the sett
 settlement (a compile before it guesses from its own environment's edges); a child compiler cannot load a mock, so
 lowering a child's module fails the build with its violation, which the child's closure reports with its trace in
 the child's graph (the request comes while modules build, when Rspack's graph cannot be read, and the records may
-hold an import the bundler dropped); a child that ends without its closure (another plugin's `finishMake` tap failed)
-has its requests reported by the compiler's next closure or, after it, when the compilation ends (`done`, `failed`).
+hold an import the bundler dropped). A child's requests are reported into the compilation of the compiler that runs
+the child, and nowhere else: a child that ends without its closure (another plugin's `finishMake` tap failed) has
+them reported by that compilation's next closure or, after it, at its end (`done`; `failed`, which cannot wait: the
+compiler's next run and its close wait for them); a child it runs after its end (a later `done` tap) reports them as
+it makes them, with the records' trace.
 A module's records (edges, violations,
 verdict) are written by its compile, a cached plan's as a fresh one's (the edges are in the plan's facts), and
 forgotten once the compilation and its children no longer hold it. In development the
