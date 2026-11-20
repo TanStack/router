@@ -149,6 +149,7 @@
     "@rsbuild/plugin-solid": "^1.2.2",
     "@rsbuild/plugin-vue": "^1.2.7",
     "@rsbuild/plugin-vue-jsx": "^2.0.0",
+    "@rspack/core": "catalog:",
     "@tanstack/compiler-test-utils": "workspace:*",
     "@tanstack/compiler-vite-versions": "workspace:*",
     "@tanstack/solid-router": "workspace:*",

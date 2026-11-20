@@ -149,14 +149,7 @@ export const Route = createFileRoute('/')({ component: () => <p>home</p> })
         }
       },
     )
-  },
-)
 
-// Not on Rsbuild (lazy compilation, its default): the page that reload loads
-// shows Rspack's "Chunk is from another build" error instead.
-describe.concurrent.each(['vite', 'webpack'] as const)(
-  '%s: a solid app',
-  (bundler) => {
     it(
       'reloads once to remove the error component sharing the chunk of the open route component, then edits and adds it back in place',
       { timeout },

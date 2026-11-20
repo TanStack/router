@@ -1,9 +1,10 @@
 /**
  * TEMPORARY WORKAROUND of Rspack's lazy compilation, upstream:
  * https://github.com/web-infra-dev/rspack/issues/16594 (repro:
- * https://github.com/Sheraff/rspack-lazy-self-accept-import). Remove this
- * module, its uses in `hmr.ts`, the router plugin's `chunkImporterCall`
- * (planners/split.ts) and their tests once the issue is fixed.
+ * https://github.com/Sheraff/rspack-lazy-self-accept-import), fixed in
+ * Rspack 2.3.3. Remove this module, its uses in `hmr.ts`, the router
+ * plugin's `chunkImporterCall` (planners/split.ts) and their tests once the
+ * supported Rsbuild range starts at a release with that Rspack.
  *
  * Reason: with lazy compilation on (Rsbuild's dev default), a module that
  * accepts its own updates and is loaded with `import()` evaluates again on

@@ -2,17 +2,17 @@
  * A route module's first server fn on Start's Rsbuild dev server: an edit
  * that adds `createServerFn` to a code-split route whose page is open shows
  * on the page as a hot update (SPEC J3.1, J3.3, G10). Found by Lane F's
- * soak replay. Known bug, upstream (Rspack's HMR runtime, KNOWN-BUGS
- * "Upstream issues"): when the modules the route's component chunk gained
- * land in a new async chunk (Rspack's default `defaultVendors` cache group
- * on Start's `chunks: 'async'` client), the hot update of the already
- * loaded component chunk re-executes the route's component module, which
- * requires them before anything loads the new chunk (`Cannot read
+ * soak replay. The modules the route's component chunk gains land in a new
+ * async chunk (Rspack's default `defaultVendors` cache group on Start's
+ * `chunks: 'async'` client); before 2.3.2, Rspack's HMR runtime re-executed
+ * the route's component module in the hot update of the already loaded
+ * component chunk before anything loaded the new chunk (`Cannot read
  * properties of undefined (reading 'call')`; web-infra-dev/rspack#11324,
- * #11922). A plain Rsbuild app fails the same way. A loader-only edit works
- * (the loader chunk loads only when the loader runs), and so does the same
- * component edit when the client entry already imports a server fn (the
- * runtime is in the entry chunk: no new chunk).
+ * #11922; a plain Rsbuild app failed the same way). 2.3.2 loads newly
+ * required chunks before the accept callbacks run. A loader-only edit (the
+ * loader chunk loads only when the loader runs) and the same component edit
+ * when the client entry already imports a server fn (the runtime is in the
+ * entry chunk: no new chunk) are the controls.
  */
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
@@ -140,22 +140,9 @@ describe('Rsbuild dev: a route module gains its first server fn', () => {
     timeout,
   )
 
-  // Known bug (upstream, see the module comment): the component chunk's
-  // hot update throws, the route renders nothing.
-  test.fails(
+  test(
     'an edit that adds a server fn to the component shows its result on the open page',
-    () =>
-      editInFirstServerFn({ target: 'component' }).catch((error: unknown) => {
-        // The bug fails the pin's assertion; any other failure (another
-        // page error included) fails the pin as an error
-        expect(
-          String(error),
-          'the hot update of the component chunk requires only modules that loaded',
-        ).not.toMatch(/Cannot read properties of undefined \(reading 'call'\)/)
-        throw new Error('the edit failed otherwise than by the pinned bug', {
-          cause: error,
-        })
-      }),
+    () => editInFirstServerFn({ target: 'component' }),
     timeout,
   )
 

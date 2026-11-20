@@ -307,9 +307,10 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
 
 /**
  * TEMPORARY WORKAROUND of Rspack's lazy compilation,
- * https://github.com/web-infra-dev/rspack/issues/16594 (the reason and the
- * scope: `@tanstack/solid-router`'s `src/hmr-chunk-importer.ts`; remove with
- * it once the issue is fixed). Solid, development on the
+ * https://github.com/web-infra-dev/rspack/issues/16594, fixed in Rspack
+ * 2.3.3 (the reason and the scope: `@tanstack/solid-router`'s
+ * `src/hmr-chunk-importer.ts`; remove with it once the supported Rsbuild
+ * range starts at a release with that Rspack). Solid, development on the
  * client, webpack-style hosts: each group's importer is wrapped,
  * `__tsrChunkImporter(<route id>, <group>, () => import(…))`, to answer the
  * chunk's newest evaluation. Otherwise the importer stays as it is.

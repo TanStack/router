@@ -281,8 +281,8 @@ export class StaleSetDrain {
  * answers the call of a module another rebuild of the pass removed with an
  * error ("no longer in the module graph"), which the plain `Promise.all` of
  * `rebuildModulesWhere` rejects on: unset until that path accepts it. The
- * batch works on 2.3.3 as well. The assumption test (start-plugin-core,
- * `rspack-rebuild-batch.test.ts`) fails once the lockfile reaches 2.3.3.
+ * batch works on 2.3.3 as well (its assumption test, start-plugin-core
+ * `rspack-rebuild-batch.test.ts`, runs the lockfile's 2.3.3).
  */
 export const RSPACK_REBUILD_CALLBACKS_FIXED_IN: string | undefined = undefined
 
