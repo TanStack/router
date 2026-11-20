@@ -390,16 +390,16 @@ export function importEdgesPlanner(
     },
     plan() {},
     async policy(plan, output, edges, ctx) {
-      const env = ip.env(ctx.env.name)
       const clientReferences = ctx.config?.clientReferences === true
       // the module is client references here: its imports are neither
       // resolved (a resolution is a request of the environment: plugin-rsc
       // fails the build on `client-only`) nor judged. Its derived provider
       // output runs here, and is judged.
       if (clientReferences && output === 'env' && isUseClient(ctx)) {
-        env.edges.set(ctx.identity.canonicalId, [], plan.revision)
         plan.facts.planners[IMPORT_EDGES_PLANNER] = {
           violations: {},
+          edges: { [output]: [] },
+          revision: plan.revision,
           clientReferences: true,
         }
         return
@@ -493,19 +493,17 @@ export function importEdgesPlanner(
       const judged = (
         await Promise.all((edges[output] ?? []).map(judge))
       ).filter((j): j is Judged => j !== null)
-      env.edges.set(
-        importerId,
-        judged
-          .filter((j) => j.resolved !== null)
-          .map(
-            (j): IndexedEdge => ({
-              resolved: j.resolved!,
-              specifier: j.raw,
-              ...(j.offset !== undefined && { offset: j.offset }),
-            }),
-          ),
-        plan.revision,
-      )
+      // (the edge index's records of the output: its compile indexes them)
+      ;(facts.edges ??= {})[output] = judged
+        .filter((j) => j.resolved !== null)
+        .map(
+          (j): IndexedEdge => ({
+            resolved: j.resolved!,
+            specifier: j.raw,
+            ...(j.offset !== undefined && { offset: j.offset }),
+          }),
+        )
+      facts.revision = plan.revision
       if (judgedOwn && output === 'env') {
         const own = await ownViolation(ctx, plan)
         if (own) {

@@ -161,8 +161,27 @@ export function selfViolationOf(
 export interface ImportEdgesFacts {
   /** Violations by output id (only outputs that have some). */
   violations: Record<string, Array<EdgeViolation>>
+  /**
+   * The resolved edges the policy judged, by output id (each output's
+   * importer id is its own): what a compile of the output gives the edge
+   * index (`ImportProtectionEnv.afterCompile`, its one writer), a cached
+   * plan's compile as a fresh one's.
+   */
+  edges?: Record<string, Array<IndexedEdge>>
+  /** The revision of the input the edges were judged in. */
+  revision?: string
   /** The module's `env` output is client references here (`ImportEdgesConfig.clientReferences`, a `'use client'` module). */
   clientReferences?: true
+}
+
+/** The resolved edges of one compiled output and the revision they were judged in; null when the policy judged none of it. */
+export function judgedEdgesOf(output: {
+  facts: Pick<PlanFacts, 'planners'>
+  output: string
+}): { edges: Array<IndexedEdge>; revision: string | null } | null {
+  const facts = output.facts.planners[IMPORT_EDGES_PLANNER]
+  const edges = facts?.edges?.[output.output]
+  return edges ? { edges, revision: facts.revision ?? null } : null
 }
 
 /** Whether a compiled output is client references in its environment (`ImportEdgesFacts.clientReferences`). */

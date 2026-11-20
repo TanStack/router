@@ -334,8 +334,10 @@ export class StartCompilerSession {
       config = {
         configKey: digestOf({
           // 2: plans of compile environments (an Rspack layer's is its own,
-          // no `layer` field): every key persisted before is another's
-          model: 2,
+          // no `layer` field); 3: import protection's judged edges in the
+          // plan's facts (the edge index reads them at each compile): every
+          // key persisted before is another's
+          model: 3,
           framework: opts.framework,
           root: opts.root,
           idMode,

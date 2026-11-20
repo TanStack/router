@@ -43,6 +43,7 @@ import {
   allowImportInfo,
   clientReferencesOf,
   dedupeKey,
+  judgedEdgesOf,
   selfViolationOf,
   violationInfo,
   violationsOf,
@@ -979,9 +980,14 @@ class ImportProtectionEnv {
     } else if (this.clientReferences.size > 0 && out.output === 'env') {
       this.clientReferences.delete(normalizePath(importerId))
     }
-    if (!(IMPORT_EDGES_PLANNER in out.facts.planners)) {
-      // the planner did not run (the module imports nothing now): what it
-      // imported before is no edge any more, nor a real demand it made
+    // the edges its plan judged, a cached plan's as a fresh one's (the
+    // index's one writer); none (the planner did not run: the module imports
+    // nothing now): what it imported before is no edge any more, nor a real
+    // demand it made
+    const judged = judgedEdgesOf(out)
+    if (judged) {
+      this.edges.set(importerId, judged.edges, judged.revision)
+    } else {
       this.edges.delete(importerId)
     }
     const dev = this.ip.config.mode === 'dev'
@@ -1561,8 +1567,9 @@ class ImportProtectionEnv {
     value: RspackImportProtectionBuildInfo
   } | null {
     const violations = violationsOf(out)
-    const edges = this.edges.edgesOf(importerId)
-    const revision = this.edges.revisionOf(importerId)
+    const judged = judgedEdgesOf(out)
+    const edges = judged?.edges ?? []
+    const revision = judged?.revision ?? null
     const served = this.served.get(normalizePath(importerId))?.verdict
     const clientReferences = clientReferencesOf(out)
     return violations.length > 0 || edges.length > 0 || clientReferences
