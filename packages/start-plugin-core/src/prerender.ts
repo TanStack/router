@@ -89,7 +89,7 @@ export async function prerender({
   async function prerenderPages({ outputDir }: { outputDir: string }) {
     const seen = new Set<string>()
     const prerendered = new Set<string>()
-    const retriesByPath = new Map<string, number>()
+    const errors: Array<unknown> = []
     const concurrency = startConfig.prerender?.concurrency ?? os.cpus().length
     logger.info(`Concurrency: ${concurrency}`)
     const queue = new Queue({ concurrency })
@@ -107,6 +107,10 @@ export async function prerender({
     }
 
     await queue.start()
+
+    if (errors.length) {
+      throw errors[0]
+    }
 
     return Array.from(prerendered)
 
@@ -133,9 +137,10 @@ export async function prerender({
         ...page.prerender,
       }
 
-      queue.add(async () => {
+      const prerenderPage = async (retries: number) => {
+        if (errors.length) return
+
         logger.info(`Crawling: ${page.path}`)
-        const retries = retriesByPath.get(page.path) || 0
 
         try {
           const res = await requestWithRedirects(
@@ -232,13 +237,14 @@ export async function prerender({
               `Encountered error, retrying: ${page.path} in ${retryDelay}ms`,
             )
             await new Promise((resolve) => setTimeout(resolve, retryDelay))
-            retriesByPath.set(page.path, retries + 1)
-            addCrawlPageTask(page)
+            queue.add(() => prerenderPage(retries + 1), { priority: true })
           } else if (prerenderOptions.failOnError ?? true) {
-            throw error
+            errors.push(error)
           }
         }
-      })
+      }
+
+      queue.add(() => prerenderPage(0))
     }
   }
 
