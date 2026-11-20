@@ -8,7 +8,8 @@
  *   (denied) through `pattern.ts` (checked, a context) and names it in an
  *   import the bundler drops (`if (false)`): guessed real on its compile.
  *   No other import arrives at it, so it is its mock, which a child
- *   compiler cannot load: the build fails with the context's violation.
+ *   compiler cannot load: the build fails with the context's violation,
+ *   traced through the child's graph (`r.ts` → `pattern.ts` → the file).
  * - `ProvideSharedPlugin` provides `r.ts` (exempt), which imports
  *   `d.client.ts` (denied); the route renders the shared module's value.
  *   The provide-shared module (no file) holds `r.ts`, which the
@@ -19,7 +20,9 @@
  * small-child.py, boundaries.py holders, lateholder.py: 0a261a0259 and
  * db260cf3a3 ran the child's `CHILD_BODY` with no report, and served
  * `HOLDER_REAL` cold), design-rsc-phase1-settlement.md amendment 4, C0 to
- * C4, L1 to L4.
+ * C4, L1 to L4; re-check 7 (/var/tmp/rsc-p1-recheck7/report.md finding 3,
+ * `small-child.py`: 86b46c235e traced the violation to the dropped import,
+ * `r.ts` → `w.client.ts`).
  */
 import { describe, expect, test } from 'vitest'
 import { StartBuildError, buildStart } from '../../build-harness'
@@ -73,6 +76,16 @@ const settlementErrors = (texts: ReadonlyArray<string>) =>
 /** The distinct denied files `recorded` reports. */
 const mocked = (recorded: Recorded) =>
   [...new Set(violationsOf(recorded).map(({ specifier }) => specifier))].sort()
+
+/** The distinct traces `onViolation` received of the violations `recorded` reports, entry first. */
+const traces = (recorded: Recorded) =>
+  [
+    ...new Set(
+      violationsOf(recorded).map(({ trace }) =>
+        JSON.stringify(trace.map(({ at }) => at)),
+      ),
+    ),
+  ].map((trace) => JSON.parse(trace) as Array<string>)
 
 // (`mockAccess: 'off'`: a mock the server calls is not an error of the
 // compilation)
@@ -171,10 +184,17 @@ export const read = () => files('./w.client.ts').value()
       ]),
       reported: mocked(failed),
       context: failed.errors.some((text) => text.includes('src/w.client.ts')),
+      traces: traces(failed),
     }
   }
 
-  const expected = { errors: [], reported: ['src/w.client.ts'], context: true }
+  const expected = {
+    errors: [],
+    reported: ['src/w.client.ts'],
+    context: true,
+    // (through the context the child's graph holds, not the dropped import)
+    traces: [['src/r.ts:1:22', 'src/pattern.ts', 'src/w.client.ts']],
+  }
 
   test.each<{ when: When; dropped: boolean }>([
     { when: 'make', dropped: true },
@@ -237,6 +257,7 @@ export const read = () => files('./w.client.ts').value()
           errors: settlementErrors(errors),
           reported: mocked({ root: server.root, ...recorder }),
           context: errors.some((text) => text.includes('src/w.client.ts')),
+          traces: traces({ root: server.root, ...recorder }),
         }
       }
       expect(await state(0)).toEqual(expected)

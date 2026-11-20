@@ -52,6 +52,7 @@ import type { StartCompilerEnvironment } from '../compiler/session'
 import type { RsbuildRouteGenerator } from './router-generator'
 import type { ServerFnFact } from '../server-fns/registry'
 import type { RspackNodeGraph } from '../import-protection/witness'
+import type { NodeGraph } from '../import-protection/graph-trace'
 import type {
   LocatedDiagnostic,
   PersistedPlan,
@@ -288,6 +289,17 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       const { Compilation, WebpackError } = rspack
       /** A failed `watchRun` of ours, reported by the compilation it started. */
       const failedBeforeCompilation: Array<Error> = []
+      /**
+       * The reports of the import-protection requests each child compilation
+       * made (`childCompilerViolations`), made by its closure (`close`) with
+       * its graph: Rspack's module graph is not readable while modules build,
+       * and the trace is the graph's (an import the records hold may be one
+       * the bundler dropped).
+       */
+      const childReports = new WeakMap<
+        Rspack.Compilation,
+        Array<(graph: NodeGraph) => Promise<Array<string>>>
+      >()
       /** Runs a hook of ours whose failure goes to `errors` (`reportingFailure`: in watch mode it never rejects). */
       const reporting = (
         errors: Array<Error>,
@@ -407,30 +419,34 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         // a child compiler of this one (a worker or service-worker plugin's) takes
         // these taps but not the virtual files: its requests of them fail the build
         // with the violations they stand for (in this compiler's compilation,
-        // which Rsbuild prints), and resolve to nothing. The request is of the
-        // environment of the issuer's layer
+        // which Rsbuild prints, reported by the child's closure: `childReports`),
+        // and resolve to nothing. The request is of the environment of the
+        // issuer's layer
         compiler.hooks.compilation.tap(PLUGIN_NAME, (compilation, params) => {
           if (compilation.compiler === compiler) {
             return
           }
-          params.normalModuleFactory.hooks.beforeResolve.tapPromise(
+          params.normalModuleFactory.hooks.beforeResolve.tap(
             PLUGIN_NAME,
-            async (data) => {
-              const issuerEnv = session.envOf(
-                environment.name,
-                data.contextInfo.issuerLayer,
+            (data) => {
+              const ip = ipEnvOf(
+                session.envOf(environment.name, data.contextInfo.issuerLayer),
               )
-              const reports = await ipEnvOf(issuerEnv)?.childCompilerRequest(
+              const violations = ip?.childCompilerViolations(
                 data.request,
                 data.contextInfo.issuer,
               )
-              if (!reports) {
+              if (!violations) {
                 return undefined
               }
-              const target = currentCompilation ?? compilation
-              for (const message of reports) {
-                target.errors.push(new WebpackError(message))
+              let pending = childReports.get(compilation)
+              if (!pending) {
+                pending = []
+                childReports.set(compilation, pending)
               }
+              pending.push((graph) =>
+                ip!.childCompilerReports(violations, graph),
+              )
               return false
             },
           )
@@ -926,6 +942,19 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         let unheld = !child && !last && session.files.compiled(environment.name)
         for (;;) {
           const round = ++history.round
+          // (what the child's requests stood for since its last round: its
+          // `make`, the round's builds)
+          const requested = child ? childReports.get(compilation) : undefined
+          if (requested && requested.length > 0) {
+            const g = (graph ??= nodeGraph(compilation))
+            for (const report of requested.splice(0)) {
+              for (const message of await report(g)) {
+                ;(currentCompilation ?? compilation).errors.push(
+                  new WebpackError(message),
+                )
+              }
+            }
+          }
           const content = child ? null : (fnResolver?.pending() ?? null)
           if (content !== null) {
             if (contents.includes(content)) {

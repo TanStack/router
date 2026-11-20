@@ -838,7 +838,7 @@ export function formatViolation(
   v: EdgeViolation,
   info: ReportedInfo,
   ctx: ReportContext,
-  /** The importer is a module of a child compiler (`ImportProtectionEnv.childCompilerRequest`). */
+  /** The importer is a module of a child compiler (`ImportProtectionEnv.childCompilerReports`). */
   opts: { childCompiler?: boolean } = {},
 ): string {
   const { root } = ctx.config

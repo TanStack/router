@@ -2011,18 +2011,18 @@ class ImportProtectionEnv {
   }
 
   /**
-   * Rspack: a request of an import-protection module in a child compiler of
-   * this environment (a worker or service-worker plugin's). The modules are
+   * Rspack: the violations a request of an import-protection module in a
+   * child compiler of this environment (a worker or service-worker
+   * plugin's) stands for: an edge module's, of its importer; the
+   * runtime's, of the module that is its own violation. The modules are
    * virtual files of the environment's compiler, which a child compiler
-   * cannot load, so every violation the request stands for (an edge
-   * module's, of its importer; the runtime's, of the module that is its own
-   * violation) fails the build: told to `onViolation` and returned as its
-   * report. Null for any other request, or when no violation is known.
+   * cannot load, so each fails the build (`childCompilerReports`). Null for
+   * any other request, or when no violation is known.
    */
-  async childCompilerRequest(
+  childCompilerViolations(
     request: string,
     issuer: string | undefined,
-  ): Promise<Array<string> | null> {
+  ): Array<EdgeViolation> | null {
     const ref = this.ip.ids.parse(request)
     if (ref?.env !== this.name || !issuer) {
       return null
@@ -2043,13 +2043,22 @@ class ImportProtectionEnv {
         [...one.violations.values()].filter((v) => v.self && ofImporter(v)),
       )
     }
-    if (violations.length === 0) {
-      return null
-    }
+    return violations.length > 0 ? violations : null
+  }
+
+  /**
+   * The reports of a child compiler's violations (`childCompilerViolations`),
+   * each told to `onViolation` with its trace in the child compilation's
+   * `graph`: errors, whatever the behavior.
+   */
+  async childCompilerReports(
+    violations: ReadonlyArray<EdgeViolation>,
+    graph: NodeGraph,
+  ): Promise<Array<string>> {
     const reports: Array<string> = []
     for (const v of violations) {
       const denied = { ...v, behavior: 'error' as const }
-      const trace = this.trace(v.importerId)
+      const trace = this.trace(v.importerId, graph)
       await this.notify(denied, trace)
       const info = violationInfo(denied, this.ip.config, trace, this.publicName)
       reports.push(

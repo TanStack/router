@@ -165,7 +165,9 @@ restored edge modules are the compiler's state). A module's verdict is compared 
 (its `buildInfo` record), not with the environment's ledger, which another compilation's module of the file writes
 too. A module the settlement serves otherwise is built again and serves the settled verdict until the next
 settlement (a compile before it guesses from its own environment's edges); a child compiler cannot load a mock, so
-lowering a child's module fails the build with its violation. A module's records (edges, violations,
+lowering a child's module fails the build with its violation, which the child's closure reports with its trace in
+the child's graph (the request comes while modules build, when Rspack's graph cannot be read, and the records may
+hold an import the bundler dropped). A module's records (edges, violations,
 verdict) are written by its compile, a cached plan's as a fresh one's (the edges are in the plan's facts), and
 forgotten once the compilation and its children no longer hold it. In development the
 module's own violation is reported once its verdict is final, at `finishModules`; its compile reports nothing but,
