@@ -80,9 +80,11 @@ environment of its own (`<compiler>:<layer>`), which resolves with the compiler'
 compile is a module of each environment, with its own plan, import-protection records, stale-set entry and
 registry snapshot: every operation of the host groups modules by environment before it deduplicates by resource
 (the drain, the restore, the witness, the graph view, `hold`, the served ledger's rebuilds, the snapshots, the
-warning hand-over). The graph view of an environment reads a file through its own modules, and through the file's
-other modules when its own have no importer (Rspack's RSC plugin adds a `'use client'` file's SSR-layer module for
-the RSC layer's client reference).
+warning hand-over). The graph view of an environment reads a file through its own modules. One pair adds an edge,
+the client-reference handoff: `ssr` also reads the `rsc` importers of a file whose raw facts read `'use client'`
+(Rspack's RSC plugin adds that file's SSR-layer module for the RSC layer's client reference, with no importer of its
+own). No other environment reads another's importers. An importer found in another layer (an issuer-layer rule: an
+SSR-layer module importing the RSC layer's server-fn module) is read in that layer from there on.
 
 ## Server functions
 

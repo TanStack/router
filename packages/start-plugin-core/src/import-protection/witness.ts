@@ -224,23 +224,69 @@ export function readRspackWitness(
 }
 
 /**
+ * The files (by `idOf`) with a module in each of the compile environments
+ * `envs` (`envOf`: of a module's layer), concatenated inner modules included.
+ */
+export function rspackFilesIn(
+  compilation: Pick<RspackCompilationLike, 'modules'>,
+  idOf: (resource: string) => string,
+  envOf: (layer: string | undefined) => string,
+  envs: ReadonlyArray<string>,
+): Array<string> {
+  const found = new Map<string, Set<string>>()
+  for (const m of compilation.modules) {
+    for (const inner of [m, ...(m.modules ?? [])]) {
+      const env = inner.resource ? envOf(layerOf(inner, m)) : null
+      if (env === null || !envs.includes(env)) {
+        continue
+      }
+      const id = idOf(inner.resource!)
+      let seen = found.get(id)
+      if (!seen) {
+        seen = new Set()
+        found.set(id, seen)
+      }
+      seen.add(env)
+    }
+  }
+  return [...found].flatMap(([id, seen]) =>
+    seen.size === envs.length ? [id] : [],
+  )
+}
+
+/**
+ * The client-reference handoff into a compile environment: the environment
+ * whose server components render its client references (`from`), and the
+ * files that are client references there (`'use client'`). Rspack's RSC
+ * plugin adds a `'use client'` file's SSR-layer module for the RSC layer's
+ * client reference, with no importer of its own: the server component that
+ * imports the file in `from` is its importer.
+ */
+export interface ClientReferenceHandoff {
+  from: string
+  clientReferences: ReadonlySet<string>
+}
+
+/**
  * The module graph of an Rspack compilation for traces, of one compile
  * environment (by resource, as the host's ids name it: `idOf`; entries from
  * `compilation.entries`). `scope`: the environment and the one of a layer
- * (`envOf`): an id's importers are those of the environment's modules of it
- * (a file in two layers is a module of each); when the environment has
- * none, or they have no importer, those of the file's other modules: an
- * importer of another layer is a real importer (Rspack's RSC plugin adds a
- * `'use client'` file's SSR-layer module for the RSC layer's client
- * reference, which the server component imports), and the walk reads it in
- * its own layer from there (one a file of both layers imports across
- * layers is read in the environment's). Without `scope`, every module of an
- * id.
+ * (`envOf`). An id's importers are those of the environment's modules of
+ * it (a file in two layers is a module of each), of its modules in each
+ * environment an importer of another layer was found in (an issuer-layer
+ * rule: an SSR-layer module importing the RSC layer's server-fn module; the
+ * walk goes on in the layer it reached the file in), and, for a client
+ * reference of `handoff`, of its modules in `handoff.from`. Without `scope`,
+ * every module of an id.
  */
 export function rspackGraphView(
   compilation: RspackCompilationLike,
   idOf: (resource: string) => string = (resource) => resource,
-  scope?: { env: string; envOf: (layer: string | undefined) => string },
+  scope?: {
+    env: string
+    envOf: (layer: string | undefined) => string
+    handoff?: ClientReferenceHandoff
+  },
 ): ImportGraphView {
   // a production module can also be an inner module of a ConcatenatedModule (scope hoisting),
   // which holds the connections from outside the concatenation
@@ -249,10 +295,10 @@ export function rspackGraphView(
     Array<{ module: RspackModuleLike; env: string | null }>
   > | null = null
   let entries: Set<string> | null = null
-  /** The modules of an id: the environment's (`own`), then the others. */
-  const modulesOf = (
-    id: string,
-  ): { own: Array<RspackModuleLike>; others: Array<RspackModuleLike> } => {
+  /** The environments of other layers each importer was found in (`importers`). */
+  const reached = new Map<string, Set<string>>()
+  /** The modules of an id whose importers are its importers in the environment (see `rspackGraphView`). */
+  const modulesOf = (id: string): Array<RspackModuleLike> => {
     if (!byResource) {
       byResource = new Map()
       for (const m of compilation.modules) {
@@ -276,12 +322,15 @@ export function rspackGraphView(
       }
     }
     const all = byResource.get(id) ?? []
-    const own: Array<RspackModuleLike> = []
-    const others: Array<RspackModuleLike> = []
-    for (const one of all) {
-      ;(!scope || one.env === scope.env ? own : others).push(one.module)
+    if (!scope) {
+      return all.map((one) => one.module)
     }
-    return { own, others }
+    const envs = new Set(reached.get(id))
+    envs.add(scope.env)
+    if (scope.handoff?.clientReferences.has(id)) {
+      envs.add(scope.handoff.from)
+    }
+    return all.filter((one) => envs.has(one.env!)).map((one) => one.module)
   }
   const { moduleGraph } = compilation
   return {
@@ -304,6 +353,19 @@ export function rspackGraphView(
             if (res !== id && !out.includes(res)) {
               out.push(res)
             }
+            // the walk goes on in the importer's layer
+            const env =
+              scope &&
+              origin &&
+              scope.envOf(layerOf(origin, c.originModule ?? origin))
+            if (env && env !== scope.env) {
+              let envs = reached.get(res)
+              if (!envs) {
+                envs = new Set()
+                reached.set(res, envs)
+              }
+              envs.add(env)
+            }
           } else if (origin && !viaContext) {
             // a context module (`import.meta.webpackContext`, a template
             // literal `import()`): the modules importing it import `id`
@@ -311,14 +373,8 @@ export function rspackGraphView(
           }
         }
       }
-      const { own, others } = modulesOf(id)
-      for (const m of own) {
+      for (const m of modulesOf(id)) {
         visit(m, false)
-      }
-      if (out.length === 0) {
-        for (const m of others) {
-          visit(m, false)
-        }
       }
       return out
     },

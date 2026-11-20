@@ -1,18 +1,24 @@
 /**
  * Server import protection of an Rsbuild RSC build whose `'use client'`
  * `ClientBox` the route and a server component both render (a module in
- * layer of the server compiler), for the import-protection state the
+ * each layer of the server compiler), for the import-protection state the
  * RSC investigation's model audit keys by importer id or path (the edge
  * index, a denied file's own verdict): an exempt component's import is real
  * in both layers (SPEC J6.7), and a component that is itself a denied file
- * is reported whichever layer compiles it (SPEC J6.1). The ledger keyed by
+ * is reported whichever layer compiles it (SPEC J6.1), also when an exempt
+ * route needs it as it is (the server component's client reference reaches
+ * the file itself where SSR renders it, R147). The ledger keyed by
  * layer is rsc-layers-rsbuild.test.ts; the dev rebuilds are react-start-rsc's
  * rsc-dual-layer-dev-rsbuild.test.ts.
  * Source: RSC investigation (rsc-investigation-model.md §4.2 rows 22 and 24,
- * Astra 11-19: both pass in a build; dev rebuilds fail row 22).
+ * Astra 11-19: both pass in a build; dev rebuilds fail row 22); the exempt
+ * route row: the RSC phase 1 reviews (review-rsc-phase1-fable.md §2 case C,
+ * /var/tmp/rsc-p1-review/astra/report.md Part B), main fails the build,
+ * 88dded8da0 and 55c11d81b8 built it silently.
  */
+import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { StartBuildError, buildStart } from '../../build-harness'
 import { rejection, violationsOf } from '../../importProtection/start-apps'
 import { rsbuildRscLinks } from '../../start-plugins'
 
@@ -145,6 +151,29 @@ describe('Rsbuild RSC build, a client component in both layers', () => {
         environment: 'server',
         denied: true,
         importer: 'src/routes/uc.tsx',
+      })
+    },
+    timeout,
+  )
+
+  // the exempt route needs the denied component as it is, and the server
+  // component (checked) reaches the file itself through its client
+  // reference, where SSR renders it: the build fails, naming the server
+  // component (main: its import's own report; here R147, one file served
+  // one way)
+  test(
+    "an exempt route and a server component's client reference both render a denied client component: the build fails, naming the server component",
+    async () => {
+      const failed = await rejection(
+        build(rscApp('ClientBox.client.tsx', false), {
+          behavior: 'error',
+          exclude: ['**/uc.tsx'],
+        }),
+      )
+      expect(failed).toBeInstanceOf(StartBuildError)
+      expectDiagnostic(failed.diagnostics, {
+        severity: 'error',
+        file: 'src/utils/ucServer.tsx',
       })
     },
     timeout,

@@ -388,6 +388,18 @@ export class StartRsbuildCompilerSession {
     return this.compiler(compiler).envs.values()
   }
 
+  /**
+   * The compile environment whose server components render the client
+   * references of compile environment `key` (the client-reference handoff,
+   * `ClientReferenceHandoff`): `rsc` for the server compiler's own, RSC on.
+   * No other pair: a user layer renders none.
+   */
+  clientReferencesFrom(key: string): string | undefined {
+    return this.rscEnabled && key === RSBUILD_ENVIRONMENT_NAMES.server
+      ? RSBUILD_RSC_ENVIRONMENT
+      : undefined
+  }
+
   /** The compiler that builds a compile environment's modules (its virtual files, resolver, input file system). */
   compilerOf(key: string): string | undefined {
     return this.envs.get(key)?.compiler.name

@@ -19,9 +19,11 @@ import {
   invariantDiagnostic,
   invariantViolated,
   isRecordedDiagnostic,
+  langFromId,
   locateDiagnostics,
   locatedError,
   normalizePath,
+  pathOfId,
   rebuildModules,
   rebuildModulesWhere,
   reportingFailure,
@@ -30,6 +32,7 @@ import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
 import { heldIn, outputKey } from '../import-protection/session'
 import {
   readRspackWitness,
+  rspackFilesIn,
   rspackGraphView,
 } from '../import-protection/witness'
 import {
@@ -226,15 +229,40 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
     }
     return out
   }
-  /** The compilation's graph view of a compile environment, by canonical resource. */
-  const graphView = (
+  /**
+   * The compilation's graph view of a compile environment, by canonical
+   * resource, with its client-reference handoff (`clientReferencesFrom`):
+   * the files of both environments whose raw facts read `'use client'`.
+   */
+  const graphView = async (
     compilation: Rspack.Compilation,
     env: EnvState,
-  ): ImportGraphView =>
-    rspackGraphView(compilation as never, canonicalResource, {
+  ): Promise<ImportGraphView> => {
+    const envOfLayer = (layer: string | undefined) =>
+      session.envOf(environment.name, layer).name
+    const from = session.clientReferencesFrom(env.name)
+    const clientReferences = new Set<string>()
+    if (from !== undefined) {
+      for (const id of rspackFilesIn(
+        compilation as never,
+        canonicalResource,
+        envOfLayer,
+        [env.name, from],
+      )) {
+        if (
+          langFromId(pathOfId(id)) !== null &&
+          (await session.start.rawFacts.get(id, from)).targetFacts.useClient
+        ) {
+          clientReferences.add(id)
+        }
+      }
+    }
+    return rspackGraphView(compilation as never, canonicalResource, {
       env: env.name,
-      envOf: (layer) => session.envOf(environment.name, layer).name,
+      envOf: envOfLayer,
+      ...(from !== undefined && { handoff: { from, clientReferences } }),
     })
+  }
   return {
     apply(compiler) {
       const { Compilation, WebpackError } = rspack
@@ -637,7 +665,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 async () => {
                   const envs = ipEnvs()
                   for (const { env, ip } of envs) {
-                    ip.graph = graphView(compilation, env)
+                    ip.graph = await graphView(compilation, env)
                     // importers that disagree (R147): an error of each compilation holding them
                     for (const message of ip.conflictReports(true)) {
                       compilation.errors.push(new WebpackError(message))
@@ -694,7 +722,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                     for (const { env, ip } of envs) {
                       const reports = await ip.surviving(
                         live.get(env.name) ?? [],
-                        graphView(compilation, env),
+                        await graphView(compilation, env),
                       )
                       for (const report of reports) {
                         ;(report.severity === 'error'
