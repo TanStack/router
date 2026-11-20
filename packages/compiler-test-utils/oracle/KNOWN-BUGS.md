@@ -385,6 +385,15 @@ setTheme(t) { theme = t }`, `export function getTheme()`), children calling the 
   prerender runs each build's server in a worker thread of its own; on Vite the prerender goes through
   `vite.preview()` (the platform plugins answer there), and a query on the entry would leave the RSC build's unhashed
   imports (`__vite_rsc_assets_manifest.js`, `rsc/index.js`) of the first build. No test.
+- **Rsbuild with a persistent cache: a second `build()` of one Rsbuild instance serves the first build's client
+  JS URLs** (re-check 6 finding 1; known bug, user decision 2026-11-20: no workaround). Non-RSC app,
+  `performance.buildCache`: build, edit a route, call `build()` again on the same instance: the server renders the
+  edited page and references the first build's two JS files, which the second build removed. Start's server plugin
+  seeds its manifest virtual module from the previous client build and writes the new one at `thisCompilation`;
+  Rspack's persistent cache checks its snapshot before that, so a `VirtualModulesPlugin` write there is unseen (bare
+  Rspack reproduces it with two compilers on one disk cache). A new process, the cache off, RSC, or `run()` again on
+  the compiler of `createCompiler()` are right, and so is `main`. Upstream draft:
+  `/home/flo/compiler-rewrite-notes/upstream-issues/rspack-15-vmp-persistent-cache-stale.md` (not filed). No test.
 - **Rsbuild with a persistent cache: a child compiler's own modules restored from the cache are not checked**
   (Astra round 4, Rsbuild host; known limit). A worker or service-worker plugin's child compiler of the client
   (`createChildCompiler`) that imported `fns.ts` in the build the cache came from keeps its cached module of it after
