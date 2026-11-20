@@ -327,17 +327,30 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         }
         return owner
       }
-      /** Reports `requests` (a child's) as errors of `owner`, with the trace in `graph` (null: the records' trace). */
+      /**
+       * Reports `requests` (a child's) as errors of `owner`, with the trace
+       * in `graph` (null: the records' trace). `failing`: what a report
+       * that fails (`onViolation` rejecting) is given, the next one made
+       * still; without it the failure ends the reports.
+       */
       const reportInto = async (
         owner: Rspack.Compilation,
         requests: Iterable<{ ip: IpEnv; violation: EdgeViolation }>,
         graph: NodeGraph | null,
+        failing?: (error: unknown) => void,
       ) => {
         for (const { ip, violation } of requests) {
-          for (const message of await ip.childCompilerReports(
-            [violation],
-            graph,
-          )) {
+          let messages: Array<string>
+          try {
+            messages = await ip.childCompilerReports([violation], graph)
+          } catch (error) {
+            if (!failing) {
+              throw error
+            }
+            failing(error)
+            continue
+          }
+          for (const message of messages) {
             owner.errors.push(new WebpackError(message))
           }
         }
@@ -347,23 +360,25 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         owner: Rspack.Compilation,
         child: Rspack.Compilation,
         graph: NodeGraph | null,
+        failing?: (error: unknown) => void,
       ) => {
         const children = childRequests.get(owner)
         const requested = children?.get(child)
         if (requested) {
           children!.delete(child)
-          await reportInto(owner, requested.values(), graph)
+          await reportInto(owner, requested.values(), graph, failing)
         }
       }
       /**
        * Reports the requests of every child of `owner` with some left: with
        * the child's graph when Rspack can still read it, else the records'
        * trace. `ended`: the compilation's end, after which a child's
-       * request is reported as it is made.
+       * request is reported as it is made (`failing`: `reportInto`).
        */
       const reportEndedChildren = async (
         owner: Rspack.Compilation,
         ended: boolean,
+        failing?: (error: unknown) => void,
       ) => {
         const children = childRequests.get(owner)
         for (;;) {
@@ -383,15 +398,20 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             // (a read throws once Rspack dropped the child's compilation)
             readable = false
           }
-          await reportChildRequests(owner, child, readable ? graph : null)
+          await reportChildRequests(
+            owner,
+            child,
+            readable ? graph : null,
+            failing,
+          )
         }
       }
       /**
        * The reports of the compilation that failed last (`failed`, a hook
        * that cannot wait): waited for before the compiler's next run begins
-       * (`run`, `watchRun`) and before it closes (`shutdown`). A failure of
-       * one (`onViolation` rejecting) is printed: its build has failed
-       * already.
+       * (`run`, `watchRun`) and before it closes (`shutdown`). A report
+       * that fails (`onViolation` rejecting) is printed, and the others are
+       * made: its build has failed already.
        */
       let failedReports: Promise<void> = Promise.resolve()
       /** Runs a hook of ours whose failure goes to `errors` (`reportingFailure`: in watch mode it never rejects). */
@@ -567,15 +587,18 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         compiler.hooks.failed.tap(PLUGIN_NAME, () => {
           // (the compilation that failed is the compiler's last)
           if (currentCompilation) {
-            const reports = reportEndedChildren(currentCompilation, true).catch(
-              (error: unknown) => {
-                compiler
-                  .getInfrastructureLogger(PLUGIN_NAME)
-                  .error(
-                    `[tanstack-start] Reporting the import-protection violations of a child compiler of a failed compilation failed:\n${error instanceof Error ? (error.stack ?? error.message) : String(error)}`,
-                  )
-              },
-            )
+            const print = (error: unknown) => {
+              compiler
+                .getInfrastructureLogger(PLUGIN_NAME)
+                .error(
+                  `[tanstack-start] Reporting an import-protection violation of a child compiler of a failed compilation failed:\n${error instanceof Error ? (error.stack ?? error.message) : String(error)}`,
+                )
+            }
+            const reports = reportEndedChildren(
+              currentCompilation,
+              true,
+              print,
+            ).catch(print)
             // (and the ones of a failure before it, still made)
             const before = failedReports
             failedReports = before.then(() => reports)

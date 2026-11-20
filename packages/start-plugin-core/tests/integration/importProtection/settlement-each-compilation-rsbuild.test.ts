@@ -440,14 +440,15 @@ export const read = () => files('./w.client.ts').value()
       },
     })
 
-    /** Two runs of one compiler of the app (`createCompiler()`), the child in the first: what the last one gave. */
+    /** Two runs of one compiler of the app (`createCompiler()`, `files` over the child's), the child in the first: what the last one gave. */
     const twoRuns = (
       environments: ReturnType<typeof firstRunChild>,
-      onViolation?: () => Promise<void>,
+      onViolation?: (info: { specifier: string }) => Promise<void>,
+      files: Record<string, string> = {},
     ) =>
       buildStart({
         bundler: 'rsbuild',
-        files: childFiles(false),
+        files: { ...childFiles(false), ...files },
         entry: 'src/entry.ts',
         rsbuildConfig: { environments } as never,
         start: { importProtection: { ...importProtection, onViolation } },
@@ -511,7 +512,7 @@ export const read = () => files('./w.client.ts').value()
     )
 
     test(
-      'a child failing before its settlement, the plugin failing with it, onViolation rejecting: the next run builds, and nothing is left unhandled',
+      'a child failing before its settlement with two violations, the plugin failing with it, onViolation rejecting: both are told, the next run builds, and nothing is left unhandled',
       async () => {
         const unhandled: Array<unknown> = []
         const listener = (reason: unknown) => {
@@ -520,14 +521,31 @@ export const read = () => files('./w.client.ts').value()
         process.on('unhandledRejection', listener)
         try {
           const outcomes: Array<Outcome> = []
+          const told: Array<string> = []
           const last = await twoRuns(
             firstRunChild({ when: 'make', aborted: 'propagate', outcomes }),
-            () => Promise.reject(new Error('CALLBACK_REJECTED')),
+            (info) => {
+              told.push(info.specifier)
+              return Promise.reject(new Error('CALLBACK_REJECTED'))
+            },
+            {
+              // (`two.ts`, checked, imports two denied files)
+              'src/r.ts': `import { read } from './two'
+;(globalThis as any).readHeld = () => String(read())
+export {}
+`,
+              'src/two.ts': `import { value as w } from './w.client'
+import { value as v } from './v.client'
+export const read = () => w() + v()
+`,
+              'src/v.client.ts': `export const value = () => 'OTHER_BODY'\n`,
+            },
           )
           // (a rejection is unhandled once the microtasks after it ran)
           await delay(0)
-          expect({ outcomes, last, unhandled }).toEqual({
+          expect({ outcomes, told: told.sort(), last, unhandled }).toEqual({
             outcomes: ['failed', false],
+            told: ['./v.client', './w.client'],
             last: 'built',
             unhandled: [],
           })
