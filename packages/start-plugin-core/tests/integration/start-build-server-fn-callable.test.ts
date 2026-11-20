@@ -671,3 +671,52 @@ ${callByIdExports}`,
     timeout,
   )
 })
+
+// The gate token with the minifiers Vite also supports (design-rsc-phase2.md
+// §4, test 7: terser drops an argument the runtime ignores; Start's Vite
+// plugin requires Vite 8, whose own minifier is Oxc). The server fn the
+// client calls answers; its unused sibling, whose custom id is also text of
+// the client, is refused.
+describe.for(['terser', 'esbuild'] as const)(
+  'vite build, build.minify %s',
+  (minify) => {
+    test('SSR: a custom-id server fn the client calls answers over HTTP', async () => {
+      const ids: Record<string, string> = {
+        liveFn_createServerFn_handler: 'live-fn',
+        siblingFn_createServerFn_handler: 'sibling-fn',
+      }
+      const { ssr } = await buildStart({
+        bundler: 'vite',
+        viteConfig: { build: { minify } },
+        start: {
+          serverFns: {
+            generateFunctionId: ({ functionName }: { functionName: string }) =>
+              ids[functionName],
+          },
+        },
+        files: {
+          'fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const liveFn = createServerFn().handler(async () => 'live fn')
+export const siblingFn = createServerFn().handler(async () => 'sibling fn')
+`,
+          'client-entry.ts': `import { liveFn } from './fns'
+export const call = () => liveFn()
+export const text = () => 'sibling-fn'
+`,
+          'ssr-entry.ts': callByIdExports,
+        },
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+      })
+      const { result } =
+        await ssr.run(`${callByIdPrelude}const overHttp = async (id) => {
+  try {
+    return await callById(id)
+  } catch {
+    return 'rejected'
+  }
+}
+return { live: await overHttp('live-fn'), sibling: await overHttp('sibling-fn') }`)
+      expect(result).toEqual({ live: 'live fn', sibling: 'rejected' })
+    }, 60_000)
+  },
+)
