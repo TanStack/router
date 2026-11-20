@@ -404,13 +404,6 @@ setTheme(t) { theme = t }`, `export function getTheme()`), children calling the 
   `detect()` runs once, `main` runs it again in its copy). With `let cfg` assigned in the children, the boundary is
   refused (`hydrate-module-write`), where `main`'s chunk assigns its copy; the PR's base refuses it too. Rare (a
   top-level statement declaring a `var` and reading module state the children use). No test.
-- **Rsbuild dev: an exempt importer's import of a denied file that a user's rule puts in another layer is reported once,
-  at the file's first compile** (RSC phase 1, design-rsc-phase1-graph.md §1.4; known limit). The compile guesses the
-  verdict from the edges its own environment read (the importer's edge is its layer's), serves the mock and reports
-  it (`onViolation` included); the settlement at `finishMake` reads the edge in the compilation's graph and builds the
-  file again, real: the page renders the real module, and later compiles serve it real. A build reports only after
-  the settlement: no report. `react-start-rsc/tests/integration/rsc-user-layer-demand-dev-rsbuild.test.ts` pins the
-  page, not the absence of the first report.
 - **Rsbuild with a persistent cache: a child compiler's own modules restored from the cache are not checked**
   (Astra round 4, Rsbuild host; known limit). A worker or service-worker plugin's child compiler of the client
   (`createChildCompiler`) that imported `fns.ts` in the build the cache came from keeps its cached module of it after

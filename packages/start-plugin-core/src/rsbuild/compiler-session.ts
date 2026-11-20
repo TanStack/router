@@ -280,6 +280,8 @@ export class StartRsbuildCompilerSession {
       edgeModuleIds: rspackEdgeModuleIds(
         `${normalizePath(opts.root)}/node_modules/.virtual/tanstack-start/import-protection`,
       ),
+      // (the host plugin's `finishMake` closure; dev reports at `finishModules`)
+      settlesImportVerdicts: true,
       readFile: (file) => this.readFile(file),
       // our virtual modules go through `readFile`
       loadVirtual: () => Promise.resolve(null),

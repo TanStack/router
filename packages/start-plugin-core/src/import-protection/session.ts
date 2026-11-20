@@ -101,6 +101,14 @@ export interface CreateImportProtectionOptions {
   framework?: CompileStartFrameworkOptions
   /** Whether the app renders React Server Components (`ReportContext.rsc`). */
   rsc?: boolean
+  /**
+   * Whether the host settles a denied file's verdict from the compilation's
+   * finished graph before it serves the compilation (Rsbuild's
+   * `finishMake`): in development a module's own verdict is reported once
+   * it is final (`ImportProtectionEnv.reportSettled`), not at its compile,
+   * whose verdict is a guess. Default: the compile's verdict is final.
+   */
+  settles?: boolean
 }
 
 /** The code of one of our modules, for a host's `load` (or virtual file). */
@@ -134,6 +142,7 @@ export function createImportProtection(
         opts.readSource,
         opts.framework,
         opts.rsc ?? false,
+        opts.settles ?? false,
       )
     : null
 }
@@ -226,6 +235,8 @@ export class ImportProtection {
     readonly readSource: SourceReader = readSourceFile,
     readonly framework: CompileStartFrameworkOptions = 'react',
     rsc = false,
+    /** Whether the host settles verdicts (`CreateImportProtectionOptions.settles`). */
+    readonly settles = false,
   ) {
     this.planner = importEdgesPlanner(this)
     this.report = { config, readSource, framework, rsc }
@@ -846,18 +857,16 @@ class ImportProtectionEnv {
         v.env !== this.name ||
         v.behavior !== 'mock' ||
         v.pending ||
-        // (a denied handoff is reported with the module it brings)
+        // (a denied handoff is reported with the module it brings, and a
+        // module's own violation by `reportSettled`)
         v.handoff ||
-        (v.self
-          ? this.served.get(normalizePath(v.importerId))?.verdict !== 'mock'
-          : await this.allows(v))
+        v.self ||
+        (await this.allows(v))
       ) {
         continue
       }
-      for (const { v: reported, owner } of this.devReportsOf(v)) {
-        await owner.notify(reported)
-        owner.report(reported)
-      }
+      await this.notify(v)
+      this.report(v)
     }
   }
 
@@ -1001,9 +1010,18 @@ class ImportProtectionEnv {
         return { error: null, mock }
       }
       const errors: Array<DevReport> = []
-      for (const { v, owner } of this.devReportsOf(self)) {
-        await owner.notify(v)
-        errors.push(...owner.report(v))
+      for (const { v, owner } of this.devReportsOf(self, null)) {
+        if (this.ip.settles) {
+          // (the verdict is a guess: it is reported once final,
+          // `reportSettled`; the module's failure is its compile's, and a
+          // settlement that serves it otherwise builds it again)
+          if (v.behavior === 'error') {
+            errors.push(owner.devReport(v))
+          }
+        } else {
+          await owner.notify(v)
+          errors.push(...owner.report(v))
+        }
       }
       return { error: this.errorOf(errors), mock }
     }
@@ -1057,13 +1075,15 @@ class ImportProtectionEnv {
   /**
    * Dev: what a module that is its own violation, served its mock, is
    * reported as: the denied client-reference imports that bring it (each
-   * of its own environment, at its position), else itself.
+   * of its own environment, at its position; in `graph`, else those its
+   * environments read), else itself.
    */
   private devReportsOf(
     self: EdgeViolation,
+    graph: NodeGraph | null,
   ): Array<{ v: EdgeViolation; owner: ImportProtectionEnv }> {
     const out: Array<{ v: EdgeViolation; owner: ImportProtectionEnv }> = []
-    for (const c of this.incoming(self, null).checked) {
+    for (const c of this.incoming(self, graph).checked) {
       const owner = c.handoff && this.ip.liveEnv(c.env)
       if (owner) {
         out.push({ v: c.handoff!, owner })
@@ -1609,17 +1629,56 @@ class ImportProtectionEnv {
 
   /** Dev: queues a mock report; returns the report of an `error` violation (the importer must fail). */
   private report(v: EdgeViolation): Array<DevReport> {
-    const info = violationInfo(
-      v,
-      this.ip.config,
-      () => this.trace(v.importerId),
-      this.publicName,
-    )
+    const report = this.devReport(v)
     if (v.behavior === 'error') {
-      return [{ violation: v, info }]
+      return [report]
     }
-    this.reporter?.enqueue({ violation: v, info })
+    this.reporter?.enqueue(report)
     return []
+  }
+
+  /** Dev: the report of a violation (its trace read from the graph when first read). */
+  private devReport(v: EdgeViolation): DevReport {
+    return {
+      violation: v,
+      info: violationInfo(
+        v,
+        this.ip.config,
+        () => this.trace(v.importerId),
+        this.publicName,
+      ),
+    }
+  }
+
+  /**
+   * Development, on a host that settles (`ImportProtection.settles`:
+   * Rsbuild's `finishModules`, after the settlement at `finishMake`): the
+   * modules that are their own violation the compilation's graph (`graph`)
+   * reaches, served as their mock, reported now that their verdict is final
+   * for the module the host serves (`devReportsOf`), as a compile reports
+   * them on a host whose compile is final. `log` says how often: `'once'`
+   * drops what was reported (`notify`, the reporter), `'always'` reports
+   * them in every compilation bundling them.
+   */
+  async reportSettled(): Promise<void> {
+    const { graph } = this
+    if (this.ip.config.mode !== 'dev' || !graph) {
+      return
+    }
+    for (const entry of this.served.values()) {
+      const self = entry.self
+      if (
+        !self ||
+        entry.verdict !== 'mock' ||
+        !this.reachable(self.importerId)
+      ) {
+        continue
+      }
+      for (const { v, owner } of this.devReportsOf(self, graph)) {
+        await owner.notify(v)
+        owner.report(v)
+      }
+    }
   }
 
   private errorOf(errors: Array<DevReport>): Error | null {

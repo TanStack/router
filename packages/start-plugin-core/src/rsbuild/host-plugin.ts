@@ -655,6 +655,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                       compilation.errors.push(new WebpackError(message))
                     }
                   }
+                  // a module's own verdict, final once the settlement ran (`finishMake`)
+                  for (const { ip } of envs) {
+                    await ip.reportSettled()
+                  }
                   if (session.start.ip!.config.log === 'always') {
                     // modules this compilation kept without compiling them report again: an
                     // importer its violations, an edge module the pending ones it witnesses

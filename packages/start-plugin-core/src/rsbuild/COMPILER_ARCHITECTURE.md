@@ -131,10 +131,13 @@ module whose record is of another version (an earlier build wrote the cache) is 
 module or an edge module another session judged, so `allowImport` answers in this session, and so is a
 module compiled as its own violation that a restored exempt importer imports (its edges were replayed after the module
 compiled: the importer gets the real module). The verdict on a module compiled as its own violation is settled at
-`finishMake` (stage −5: after the server-fn resolver's rebuilds, which bring the provider modules and what they
-import, and before the RSC plugin's client handoff at stage 0) from the edges that arrive at it in the compilation's
-graph, each read with its own environment's records: a module the settlement serves otherwise is built again and
-serves the settled verdict until the next settlement (a compile before it guesses from its own environment's edges).
+`finishMake` (stage −10, in the closure with the server-fn resolver's rebuilds, which bring the provider modules and
+what they import, and before the RSC plugin's client handoff at stage 0) from the edges that arrive at it in the
+compilation's graph, each read with its own environment's records (a client-reference import replayed from a
+restored importer is asked there): a module the settlement serves otherwise is built again and serves the settled
+verdict until the next settlement (a compile before it guesses from its own environment's edges). In development the
+module's own violation is reported once its verdict is final, at `finishModules`; its compile reports nothing but,
+under `behavior: 'error'`, fails the module.
 In builds
 the mock is the survival witness: at `processAssets` the host reads which edge modules survived tree-shaking, tells
 `onViolation` once per surviving import and publishes the reports. An edge `allowImport` allows is a transparent

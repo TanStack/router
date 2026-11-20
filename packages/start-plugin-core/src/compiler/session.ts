@@ -122,6 +122,8 @@ export interface StartCompilerSessionOptions {
   importProtection: ImportProtectionOptions | undefined
   /** How the host names import-protection edge modules (default: Vite ids). */
   edgeModuleIds?: EdgeModuleIds
+  /** Whether the host settles import protection's verdicts from the compilation's graph (`CreateImportProtectionOptions.settles`). */
+  settlesImportVerdicts?: boolean
   /** Whether a path is an app entry (import protection: a marked entry is its own violation). */
   isEntry: (path: string) => boolean
   /** The route registry (the generator's `routesByFile`). */
@@ -185,6 +187,7 @@ export class StartCompilerSession {
       srcDirectory: opts.srcDirectory,
       mode: opts.mode,
       ids: opts.edgeModuleIds,
+      settles: opts.settlesImportVerdicts,
       readFile: opts.readFile,
       isEntry: opts.isEntry,
       framework: opts.framework,
