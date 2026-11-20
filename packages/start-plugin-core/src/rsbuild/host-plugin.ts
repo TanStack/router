@@ -25,7 +25,10 @@ import {
   rebuildModulesWhere,
   reportingFailure,
 } from '@tanstack/router-utils/compiler'
-import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
+import {
+  RSPACK_BUILD_INFO_KEY,
+  dedupeKey,
+} from '../import-protection/violations'
 import {
   readRspackWitness,
   rspackNodeGraph,
@@ -293,7 +296,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
        * The import-protection requests each child compilation made
        * (`childCompilerViolations`) and not yet reported, by the compilation
        * of this compiler that runs the child (`ownerOf`), from its
-       * `thisCompilation` to its end (`done`, `failed`). Each is reported once, into the errors of that compilation only
+       * `thisCompilation` to its end (`done`, `failed`), each child's by
+       * violation (`dedupeKey`: a barrel's import of the denied file and its
+       * re-export of the binding are two requests of one violation). Each is
+       * reported once, into the errors of that compilation only
        * (`reportChildRequests`): by the child's closure (`close`), with the
        * trace in the child's graph (Rspack's module graph is not readable
        * while modules build, and an import the records hold may be one the
@@ -305,7 +311,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
        */
       const childRequests = new WeakMap<
         Rspack.Compilation,
-        Map<Rspack.Compilation, Array<{ ip: IpEnv; violation: EdgeViolation }>>
+        Map<
+          Rspack.Compilation,
+          Map<string, { ip: IpEnv; violation: EdgeViolation }>
+        >
       >()
       /** The compilation of this compiler that runs `child` (a child compiler's compilation, at any depth). */
       const ownerOf = (child: Rspack.Compilation) => {
@@ -343,7 +352,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         const requested = children?.get(child)
         if (requested) {
           children!.delete(child)
-          await reportInto(owner, requested, graph)
+          await reportInto(owner, requested.values(), graph)
         }
       }
       /**
@@ -537,11 +546,14 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               }
               let requested = children.get(compilation)
               if (!requested) {
-                requested = []
+                requested = new Map()
                 children.set(compilation, requested)
               }
               for (const violation of violations) {
-                requested.push({ ip: ip!, violation })
+                const key = dedupeKey(violation)
+                if (!requested.has(key)) {
+                  requested.set(key, { ip: ip!, violation })
+                }
               }
               return false
             },

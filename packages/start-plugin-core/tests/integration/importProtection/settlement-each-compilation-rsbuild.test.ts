@@ -16,6 +16,8 @@
  *   `done` tap after Start's fails its run, not the next one, and a run
  *   that fails has `onViolation` answered before the compiler's next run
  *   begins and before the build returns (a rejection of it is handled).
+ *   A barrel the child reads, side-effect-free, imports the denied file
+ *   and re-exports its binding (two requests of one violation): one error.
  * - `ProvideSharedPlugin` provides `r.ts` (exempt), which imports
  *   `d.client.ts` (denied); the route renders the shared module's value.
  *   The provide-shared module (no file) holds `r.ts`, which the
@@ -33,7 +35,9 @@
  * nothing and built when the plugin went on); re-check 9
  * (/var/tmp/rsc-p1-recheck9/report.md, the two P2 findings, `terminal9.py`:
  * 75d806ac5c failed the next run with the child's error, returned before
- * `onViolation` answered, and left its rejection unhandled).
+ * `onViolation` answered, and left its rejection unhandled; the P3
+ * finding, `confirm9.py`: 75d806ac5c and db260cf3a3 printed the barrel's
+ * violation twice).
  */
 import { describe, expect, test } from 'vitest'
 import { StartBuildError, buildStart } from '../../build-harness'
@@ -575,6 +579,41 @@ export const read = () => files('./w.client.ts').value()
         )
         expect(error, 'the build fails').toBeInstanceOf(StartBuildError)
         expect(events).toEqual(['answered', 'returned'])
+      },
+      timeout,
+    )
+
+    test(
+      'Rsbuild build, side-effect-free, the child reading a barrel that imports the denied file and re-exports its binding: the build fails with one error of the violation',
+      async () => {
+        // (Rspack resolves the barrel's import of the denied file twice when
+        // the package is side-effect-free: the import and the re-export)
+        const error = await buildStart({
+          bundler: 'rsbuild',
+          files: {
+            ...childFiles(false),
+            'src/r.ts': `import { read } from './relay'
+;(globalThis as any).readHeld = () => String(read())
+export {}
+`,
+            'src/relay.ts': `import { read } from './w.client'
+export { read }
+`,
+            'src/w.client.ts': `export const read = () => 'CHILD_BODY'\n`,
+          },
+          sideEffects: false,
+          entry: 'src/entry.ts',
+          rsbuildConfig: { environments: environments('make') } as never,
+          start: { importProtection } as never,
+        }).catch((e: unknown) => e)
+        expect(error, 'the build fails').toBeInstanceOf(StartBuildError)
+        const failed = error as StartBuildError
+        expect({
+          errors: failed.errors.filter((text) =>
+            text.includes('src/w.client.ts'),
+          ).length,
+          told: failed.violations.length,
+        }).toEqual({ errors: 1, told: 1 })
       },
       timeout,
     )
