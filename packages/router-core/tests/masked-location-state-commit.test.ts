@@ -53,3 +53,39 @@ describe('masked location remnants in history state', () => {
     expect(history.location.state.__tempLocation).toBeUndefined()
   })
 })
+
+describe('masked location hash', () => {
+  const navigateFromRoot = async (hash: string, masked: boolean) => {
+    const rootRoute = new BaseRootRoute({})
+    const routeTree = rootRoute.addChildren([
+      new BaseRoute({ getParentRoute: () => rootRoute, path: '/real' }),
+      new BaseRoute({ getParentRoute: () => rootRoute, path: '/pretty' }),
+    ])
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    await router.load()
+    if (masked) {
+      await router.navigate({ to: '/real', hash, mask: { to: '/pretty' } })
+    } else {
+      await router.navigate({ to: '/real', hash })
+    }
+    return router.latestLocation
+  }
+
+  test('keeps the hash of the location under the mask', async () => {
+    const location = await navigateFromRoot('tab', true)
+
+    expect(location.href).toBe('/real#tab')
+    expect(location.hash).toBe('tab')
+  })
+
+  test('encodes the hash under the mask like an unmasked href', async () => {
+    const unmasked = await navigateFromRoot('my tab', false)
+    const masked = await navigateFromRoot('my tab', true)
+
+    expect(masked.href).toBe(unmasked.href)
+    expect(masked.hash).toBe('my tab')
+  })
+})
