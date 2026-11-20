@@ -73,24 +73,24 @@ export async function liveClientReferences(
   )
 }
 
-/** The references (`liveClientReferences`) an entry's client manifest lacks, with the entries lacking each. */
+/**
+ * The references (`liveClientReferences`) no entry's client manifest holds,
+ * with the entries. (Per entry needs each entry's own required side: a
+ * component one entry lacks while another holds it is not reported.)
+ */
 export function undeliveredReferences(
   required: ReadonlyArray<FlightReference>,
   manifest: RscManifestLike,
 ): Array<{ reference: FlightReference; entries: Array<string> }> {
-  const out: Array<{ reference: FlightReference; entries: Array<string> }> = []
-  for (const reference of required) {
-    const entries = Object.keys(manifest)
-      .filter(
-        (entry) =>
-          !Object.hasOwn(manifest[entry]!.clientManifest, reference.resource),
-      )
-      .sort()
-    if (entries.length > 0) {
-      out.push({ reference, entries })
-    }
-  }
-  return out
+  const entries = Object.keys(manifest).sort()
+  return required
+    .filter(
+      (reference) =>
+        !entries.some((entry) =>
+          Object.hasOwn(manifest[entry]!.clientManifest, reference.resource),
+        ),
+    )
+    .map((reference) => ({ reference, entries }))
 }
 
 /** The warning of a client reference the client build lacks. */
