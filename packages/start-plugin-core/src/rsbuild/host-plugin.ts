@@ -970,6 +970,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                   .join(', ') || 'none'
               reportUnsettled(
                 compilation,
+                { file: '', cause: `server function resolver: ${differing}` },
                 `the server function resolver of this compilation went back to the functions it had in a round before (round ${round}; the functions that differ: ${differing})`,
                 [
                   `[tanstack-start] The server function resolver could not settle in this compilation: in round ${round} it lists the functions it listed in a round before.`,
@@ -1018,6 +1019,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                   const first = before[0]!
                   reportUnsettled(
                     compilation,
+                    { file: id, cause: `import protection: ${env.name}` },
                     `import protection's served state of ${id} (${env.name}) did not settle in one compilation`,
                     [
                       `[tanstack-start] Import protection could not settle ${file} (${ipEnvOf(env)!.publicName}) in this compilation.`,
@@ -1078,13 +1080,24 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
        * dev server warns, and the next edit starts a new closure. In our
        * test runs it throws (`invariantViolated`, R116). The one place that
        * decides it (DECISIONS 2026-11-20, design-rsc-phase1-settlement.md
-       * §2.4).
+       * §2.4). Once per `what` and run (the session's `WarningLedger`): a
+       * compilation's last run meets its first run's refusal again, with
+       * the same history.
        */
       function reportUnsettled(
         compilation: Rspack.Compilation,
+        what: { file: string; cause: string },
         detail: string,
         message: string,
       ): void {
+        if (
+          !session.start.warnings.once(what.file, {
+            code: 'unsettled',
+            message: what.cause,
+          })
+        ) {
+          return
+        }
         invariantViolated({
           effect:
             'import protection may serve a module as its mock or as it is',
