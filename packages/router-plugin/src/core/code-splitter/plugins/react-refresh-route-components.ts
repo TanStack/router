@@ -35,7 +35,10 @@ function getRouteComponentKey(prop: t.ObjectProperty) {
   return key && REACT_REFRESH_ROUTE_COMPONENT_IDENTS.has(key) ? key : undefined
 }
 
-function prepareRouteComponentsForReactRefresh(ctx: RouteComponentContext) {
+function prepareRouteComponentsForReactRefresh(
+  ctx: RouteComponentContext,
+  sharedBindings?: Set<string>,
+) {
   const hoistedDeclarations: Array<t.VariableDeclaration> = []
   let modified = false
 
@@ -51,7 +54,13 @@ function prepareRouteComponentsForReactRefresh(ctx: RouteComponentContext) {
     }
 
     if (t.isIdentifier(prop.value)) {
-      if (isReactComponentName(prop.value.name)) {
+      // Shared bindings belong to the shared module, just like imports. Keep
+      // their names intact so extraction removes the original declaration and
+      // all chunks refer to the same exported binding/initialization.
+      if (
+        isReactComponentName(prop.value.name) ||
+        sharedBindings?.has(prop.value.name)
+      ) {
         continue
       }
 
@@ -112,7 +121,7 @@ export function createReactRefreshRouteComponentsPlugin(): ReferenceRouteCompile
       return [...REACT_REFRESH_ROUTE_COMPONENT_IDENTS]
     },
     onAddHmr(ctx) {
-      if (prepareRouteComponentsForReactRefresh(ctx)) {
+      if (prepareRouteComponentsForReactRefresh(ctx, ctx.opts.sharedBindings)) {
         return { modified: true }
       }
 
