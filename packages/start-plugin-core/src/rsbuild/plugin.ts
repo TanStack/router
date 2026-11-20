@@ -105,7 +105,7 @@ export function tanStackStartRsbuild(
       }
 
       // ---------------------------------------------------------------
-      // 2. The compiler: one compile per (environment, layer, module) of
+      // 2. The compiler: one compile per (compile environment, module) of
       //    every planner (server fns, env separation, Hydrate, RSC CSS,
       //    route splitting and HMR, import protection), the route
       //    generator, the client route tree

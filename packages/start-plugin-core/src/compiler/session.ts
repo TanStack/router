@@ -270,20 +270,17 @@ export class StartCompilerSession {
     }
   }
 
-  private plannersFor(
-    env: StartCompilerEnvironment,
-    rsc: boolean,
-  ): Array<Planner> {
-    const key = `${env.name}\u0000${rsc ? 'rsc' : ''}`
-    let planners = this.planners.get(key)
+  private plannersFor(env: StartCompilerEnvironment): Array<Planner> {
+    let planners = this.planners.get(env.name)
     if (!planners) {
+      const rsc = this.rendersServerComponents(env.name)
       planners = startPlanners({
         hydrate: createHydratePlanner(),
         rscCss: rsc,
         router: rsc ? null : routerPlanner(),
         importEdges: this.ip?.planner ?? null,
       })
-      this.planners.set(key, planners)
+      this.planners.set(env.name, planners)
     }
     return planners
   }
@@ -302,13 +299,11 @@ export class StartCompilerSession {
     return planners
   }
 
-  private configFor(
-    env: StartCompilerEnvironment,
-    rsc: boolean,
-  ): CompileConfig {
+  private configFor(env: StartCompilerEnvironment): CompileConfig {
     let config = this.configs.get(env.name)
     if (!config) {
       const { opts } = this
+      const rsc = this.rendersServerComponents(env.name)
       const idMode: StartEnvConfig['idMode'] =
         opts.mode === 'dev' ? 'dev' : this.allocator ? 'placeholder' : 'default'
       const startEnv: StartEnvConfig = {
@@ -380,14 +375,13 @@ export class StartCompilerSession {
     host: HostServices,
   ): Promise<CompileOutput | null> {
     const { env, late } = input
-    const rsc = this.rendersServerComponents(env.name)
-    const config = this.configFor(env, rsc)
+    const config = this.configFor(env)
     const out = await compileModule(
       {
         id: input.id,
         code: input.code,
         env: this.envInfo(env),
-        planners: late ? this.latePlanners() : this.plannersFor(env, rsc),
+        planners: late ? this.latePlanners() : this.plannersFor(env),
         config: late
           ? {
               configKey: lateConfigKey(config.configKey),
@@ -425,10 +419,7 @@ export class StartCompilerSession {
    * late pass.
    */
   configured(configKey: string, env: StartCompilerEnvironment): boolean {
-    const own = this.configFor(
-      env,
-      this.rendersServerComponents(env.name),
-    ).configKey
+    const own = this.configFor(env).configKey
     return configKey === own || configKey === lateConfigKey(own)
   }
 
