@@ -560,7 +560,7 @@ export { PostBadge as badge } from './routes/badge'
       timeout,
     )
 
-    // Control for the pin below (same build): an unused export without a
+    // Control for the row below (same build): an unused export without a
     // boundary is not in the client.
     test(
       'an unused exported component without a boundary is not in the client',
@@ -573,11 +573,14 @@ export { PostBadge as badge } from './routes/badge'
 
     // The client parent declares the lazy component of each boundary with a
     // call marked pure, so the children of an unused exported component do
-    // not ship. Source: fuzzing. (Rsbuild: Rspack's inner graph drops the
-    // unused declaration (`/* unused pure expression */ null && (…)`) but
-    // still emits the async chunk of the `import()` inside it, so the chunk
-    // file ships, unreferenced; webpack behaves the same.)
-    ;(bundler === 'rsbuild' ? test.fails : test)(
+    // not ship. Source: fuzzing. (Rsbuild: before Rspack 2.3.2, which the
+    // supported `@rsbuild/core ^2.2.13` still allows, Rspack's inner graph
+    // drops the unused declaration (`/* unused pure expression */ null &&
+    // (…)`) but still emits the async chunk of the `import()` inside it, so
+    // the chunk file ships, unreferenced; webpack behaves the same. 2.3.2's
+    // release notes list "prune dynamic imports from unused exports",
+    // web-infra-dev/rspack#15449.)
+    test(
       'an unused exported component with a boundary is not in the client',
       async () => {
         const build = await sharedApp()

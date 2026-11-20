@@ -57,10 +57,6 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   the importer**, whose client output keeps the handler. SPEC J4.5, G10.
   `start-plugin-core/tests/integration/start-compiler-dev-server.test.ts`: "a module whose factory becomes a server fn
   builder: the client bundle drops the handler".
-- **Rsbuild ships the chunk of an unused exported component's boundary**: Rspack drops the unused declaration but
-  still emits the async chunk of the `import()` inside it (webpack behaves the same). SPEC J5.6.
-  `start-plugin-core/tests/integration/hydrate-build-cases.ts`: "an unused exported component with a boundary is not
-  in the client" (Rsbuild).
 - **Rsbuild RSC build: a server fn whose only importer is a `'use client'` component is not registered** (as `main`,
   #7943; Vite fixed, see "Fixed, kept as regression tests"): the provider builds before the client, and nothing
   compiles the reach of the provider's server fn modules before its manifest is written, so the click answers
