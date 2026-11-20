@@ -17,4 +17,4 @@ export type UseParamsResult<
   TSelected,
 > = unknown extends TSelected
   ? ResolveUseParams<TRouter, TFrom, TStrict>
-  : TSelected
+  : NoInfer<TSelected>

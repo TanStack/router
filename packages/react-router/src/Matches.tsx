@@ -250,7 +250,9 @@ export interface UseMatchesBaseOptions<
 export type UseMatchesResult<
   TRouter extends AnyRouter,
   TSelected,
-> = unknown extends TSelected ? Array<MakeRouteMatchUnion<TRouter>> : TSelected
+> = unknown extends TSelected
+  ? Array<MakeRouteMatchUnion<TRouter>>
+  : NoInfer<TSelected>
 
 export function useMatches<
   TRouter extends AnyRouter = RegisteredRouter,
