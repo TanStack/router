@@ -87,11 +87,16 @@ type WorkerAnswer =
   | { id: number; error: string }
 
 /**
- * The worker's code (CommonJS, `eval`): imports the server bundle's entry
- * (`workerData`) and answers each request message with its response.
+ * The worker's code: imports the server bundle's entry (`workerData`) and
+ * answers each request message with its response. An ES module of a
+ * `data:` URL: Node evaluates `eval` code of a worker in the module format
+ * the process was started with (`--input-type`, inherited with the
+ * parent's options), and a URL's format is its MIME type's, however Node
+ * was started (a program from module-mode standard input, a CommonJS one,
+ * the CLI).
  */
 const SERVER_WORKER = `
-const { parentPort, workerData } = require('node:worker_threads')
+import { parentPort, workerData } from 'node:worker_threads'
 const loading = import(workerData.entry).then((serverModule) => {
   const handler = serverModule.default
   if (typeof handler === 'function') return handler
@@ -114,10 +119,10 @@ parentPort.on('message', async ({ id, url, init }) => {
 
 function startServerWorker(serverOutputDirectory: string) {
   const entry = pathToFileURL(join(serverOutputDirectory, 'index.js')).href
-  const worker = new Worker(SERVER_WORKER, {
-    eval: true,
-    workerData: { entry },
-  })
+  const worker = new Worker(
+    new URL(`data:text/javascript,${encodeURIComponent(SERVER_WORKER)}`),
+    { workerData: { entry } },
+  )
   const pending = new Map<
     number,
     { resolve: (response: Response) => void; reject: (error: Error) => void }
