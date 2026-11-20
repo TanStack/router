@@ -9,7 +9,12 @@
  * Source: the RSC phase 1 re-check (/var/tmp/rsc-p1-recheck/report.md §1,
  * probes demand-target-exempt and case-marker-target-ok: 407da6ddac
  * rendered the mock, db260cf3a3 the real value), design-rsc-phase1-graph.md
- * §5.4 R1, R1b, R1c.
+ * §5.4 R1, R1b, R1c. A denied target whose real module brings another
+ * through an exempt file, each in a layer of its own: the second one's
+ * layer is found while the settlement builds the first (the RSC phase 1
+ * re-check 3, /var/tmp/rsc-p1-recheck3/report.md §1, `nested.py`:
+ * 2169b4165c served the second one's mock, db260cf3a3 the real value;
+ * design-rsc-phase1-settlement.md S1, S1c).
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart } from '../../build-harness'
@@ -246,6 +251,69 @@ function Uc() {
         marked: ['marker value'],
         boxes: ['client-only label', 'client-only label'],
       })
+    },
+    timeout,
+  )
+})
+
+/**
+ * `feature.ts` (exempt) imports `upper.client.ts`, whose real module imports
+ * `bridge.ts` (exempt), which imports `lower.client.ts`: the route renders
+ * `UP(LOW_REAL)` when both denied files are real.
+ */
+const nested = {
+  ...files,
+  'src/feature.ts': `import { value } from './upper.client'
+export const read = () => value()
+`,
+  'src/upper.client.ts': `import { read } from './bridge'
+export const value = () => 'UP(' + String(read()) + ')'
+`,
+  'src/bridge.ts': `import { value } from './lower.client'
+export const read = () => value()
+`,
+  'src/lower.client.ts': `export const value = () => 'LOW_REAL'\n`,
+}
+
+/** The server compiler's rules of each layout of `nested`. */
+const nestedLayouts = [
+  {
+    layout: 'a layer each',
+    rules: [
+      { test: /upper\.client\.ts$/, layer: 'upper' },
+      { test: /lower\.client\.ts$/, layer: 'lower' },
+    ],
+  },
+  {
+    layout: 'one layer for both',
+    rules: [{ test: /(upper|lower)\.client\.ts$/, layer: 'upper' }],
+  },
+  { layout: 'no layer', rules: [] },
+]
+
+describe('Rsbuild build, a denied target the real module of another brings through an exempt file', () => {
+  // (the two layouts whose second layer is known before the settlement: one
+  // row each)
+  test.each([
+    ...(['mock', 'error'] as const).flatMap((behavior) =>
+      [false, true].map((rsc) => ({ ...nestedLayouts[0]!, behavior, rsc })),
+    ),
+    ...nestedLayouts
+      .slice(1)
+      .map((layout) => ({ ...layout, behavior: 'error' as const, rsc: true })),
+  ])(
+    '$layout, $behavior, RSC $rsc: both are real, nothing reported',
+    async ({ rules, behavior, rsc }) => {
+      const built = await build(
+        nested,
+        rules,
+        { behavior, exclude: ['**/feature.ts', '**/bridge.ts'] },
+        rsc,
+      )
+      expect(violationsOf(built)).toEqual([])
+      const { url } = await built.preview()
+      const html = await (await fetch(new URL('/', url))).text()
+      expect(texts(html, 'label')).toEqual(['UP(LOW_REAL)'])
     },
     timeout,
   )
