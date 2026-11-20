@@ -160,6 +160,14 @@ describe.each([
     await page.waitForText('display refused', {
       selector: '[data-testid=outcome]',
     })
+    // (no report names the module: the server build provides what the
+    // client calls)
+    expect(
+      findDiagnostics(server.messages, {
+        file: 'src/label-fns.ts',
+        root: server.root,
+      }),
+    ).toEqual([])
   }, 60_000)
 
   test('custom ids the browser calls reach their handlers; a deprecated one warns', async () => {

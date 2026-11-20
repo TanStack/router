@@ -17,6 +17,7 @@
  * (`client-only-reach-app.ts`).
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   clientOnlyPositions,
   clientOnlyReachFiles,
@@ -379,6 +380,37 @@ describe("Vite production build with RSC: server fns only 'use client' component
         (text) => text.includes('MARK_') || text.includes('error'),
       ),
     ).toBe('inner MARK_INNER')
+  })
+
+  // The two known bugs below: the build warns of each server fn the
+  // client's emitted code calls that the RSC environment's build does not
+  // provide, naming its file (design-rsc-phase2.md §5.2: a warning until
+  // decision 5's evidence rule). A server fn only development code imports
+  // is not called by the production client: no warning names it.
+  test('the build warns of each server fn the client calls that the server build does not provide', () => {
+    const naming = (file: string) =>
+      findDiagnostics(server.messages, { file, root: server.root }).length
+    expect({
+      notProvided: Object.fromEntries(
+        [
+          ...clientOnlyPositions.map(
+            ({ name }) => `src/client-only/${name}.ts`,
+          ),
+          'src/guarded/lazy.ts',
+        ].map((file) => [file, naming(file) > 0]),
+      ),
+      developmentOnly: [naming('src/debug.ts'), naming('src/guarded/debug.ts')],
+    }).toEqual({
+      notProvided: Object.fromEntries(
+        [
+          ...clientOnlyPositions.map(
+            ({ name }) => `src/client-only/${name}.ts`,
+          ),
+          'src/guarded/lazy.ts',
+        ].map((file) => [file, true]),
+      ),
+      developmentOnly: [0, 0],
+    })
   })
 
   // Known bug (KNOWN-BUGS, "Vite RSC build: a server fn a `'use client'`

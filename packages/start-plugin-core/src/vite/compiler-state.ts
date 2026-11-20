@@ -359,6 +359,13 @@ export interface Session {
    */
   clientBuild: ClientBuildRecord | null
   /**
+   * A build with a separate provider (RSC): the ids its resolver listed, as
+   * the provider's last written build produced it (null: none yet). The
+   * caller environment, built after the client, warns of a function the
+   * client calls that is not among them (`callableNotProvided`).
+   */
+  providerListed: ReadonlySet<string> | null
+  /**
    * `build --watch`: the digests of the client builds each server
    * environment's current build embedded (emptied when its build starts).
    * The environments build at once, in any order: a client build whose
@@ -560,6 +567,7 @@ export class ViteCompilerState implements ClientBuilds {
       virtualLoaders,
       virtualWaits: createVirtualWaits(),
       clientBuild: null,
+      providerListed: null,
       embedded: new Map(),
       sentinel: undefined,
       watching: new Set(),

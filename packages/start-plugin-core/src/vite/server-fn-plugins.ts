@@ -168,6 +168,30 @@ export function forwardPlugin(state: ViteCompilerState): Plugin {
   })
 }
 
+/**
+ * The functions the client's emitted code calls (`callable`) that the
+ * separate provider's resolver did not list (`listed`, null: no provider
+ * build wrote one): a click answers "Server function info not found". The
+ * provider builds before the client, from the server fns its own graph and
+ * the early compile of their reach found (J4.2; KNOWN-BUGS: server fns only
+ * client-only code or a lazy import below a `'use client'` module imports).
+ */
+function callableNotProvided(
+  entries: ReadonlyArray<ServerFnEntry>,
+  callable: ReadonlyArray<string>,
+  listed: ReadonlySet<string> | null,
+): Array<ServerFnEntry> {
+  if (!listed) {
+    return []
+  }
+  const called = new Set(callable)
+  return entries.filter((e) => called.has(e.id) && !listed.has(e.id))
+}
+
+function callableNotProvidedWarning(e: ServerFnEntry): string {
+  return `[tanstack-start] The client build calls the server function ${e.name} of ${e.rootRel}, which the RSC server build does not provide: a call answers "Server function info not found". The RSC environment builds before the client and finds the server functions from server code, and no server code it built imports ${e.rootRel} (only client-only code, or a lazy import below a 'use client' module, does). Import ${e.rootRel} from server code as well, e.g. a module a server component or a server function's handler imports.`
+}
+
 /** Each resolver environment's `getServerFnById` module (`VIRTUAL_MODULES.serverFnResolver`). */
 export function resolverPlugin(state: ViteCompilerState): Plugin {
   return createVirtualModule({
@@ -212,6 +236,13 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
             // the client, so its manifest lists every function; this
             // environment builds last (plugin-rsc: rsc, client, ssr) and
             // gates client-origin calls on the functions the client calls
+            for (const e of callableNotProvided(
+              s.start.registry.entries(),
+              callableIds,
+              s.providerListed,
+            )) {
+              this.warn(callableNotProvidedWarning(e))
+            }
             return callerGateModule(SERVER_FN_FORWARD_VIRTUAL_ID, callableIds)
           }
           return mod
@@ -223,8 +254,16 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
       if (this.environment.mode !== 'build') {
         return devResolverModule()
       }
+      const entries = referenced(s.start.registry.entries())
+      if (
+        !state.ssrIsProvider &&
+        // (not a scan: plugin-rsc analyses the environments first)
+        this.environment.config.build.write !== false
+      ) {
+        s.providerListed = new Set(entries.map((e) => e.id))
+      }
       return productionResolverModule({
-        entries: referenced(s.start.registry.entries()),
+        entries,
         providerModuleId,
         clientReferencedOnly: state.ssrIsProvider,
         // the HTTP-callable functions (R182); the RSC provider builds
