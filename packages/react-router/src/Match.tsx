@@ -231,25 +231,27 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   }
 
   if (match.status === 'error') {
-    if (isServer ?? router.isServer) {
-      const RouteErrorComponent =
-        (route.options.errorComponent ??
-          router.options.defaultErrorComponent) ||
-        ErrorComponent
-      const errorElement = (
-        <RouteErrorComponent
-          error={match.error}
-          reset={undefined as any}
-          info={{
-            componentStack: '',
-          }}
-        />
-      )
-      return process.env.NODE_ENV !== 'production'
-        ? wrapInNonRouteComponentContext(errorElement, 'errorComponent')
-        : errorElement
-    }
-    throw match.error
+    const RouteErrorComponent =
+      (route.options.errorComponent ?? router.options.defaultErrorComponent) ||
+      ErrorComponent
+    const errorElement = (
+      <RouteErrorComponent
+        error={match.error}
+        reset={
+          (isServer ?? router.isServer)
+            ? (undefined as any)
+            : () => {
+                router.invalidate({ filter: (d) => d.id === match.id })
+              }
+        }
+        info={{
+          componentStack: '',
+        }}
+      />
+    )
+    return process.env.NODE_ENV !== 'production'
+      ? wrapInNonRouteComponentContext(errorElement, 'errorComponent')
+      : errorElement
   }
 
   return out
