@@ -381,10 +381,18 @@ setTheme(t) { theme = t }`, `export function getTheme()`), children calling the 
   Vite half; seen on 0a261a0259 with `/var/tmp/rsc-p1-r10/vite-prerender/app/run.mjs`, `main` not run). A program that
   calls `createBuilder()` and `buildApp()` again after an edit writes the first build's page to
   `dist/client/index.html`; a new process writes the edited one. Start's preview plugin imports `dist/server/server.js`
-  by its file URL (`vite/preview-server-plugin/plugin.ts`), which Node keeps for the process's life. Rsbuild's
-  prerender runs each build's server in a worker thread of its own; on Vite the prerender goes through
-  `vite.preview()` (the platform plugins answer there), and a query on the entry would leave the RSC build's unhashed
-  imports (`__vite_rsc_assets_manifest.js`, `rsc/index.js`) of the first build. No test.
+  by its file URL (`vite/preview-server-plugin/plugin.ts`), which Node keeps for the process's life. The prerender
+  goes through `vite.preview()` (the platform plugins answer there), and a query on the entry would leave the RSC
+  build's unhashed imports (`__vite_rsc_assets_manifest.js`, `rsc/index.js`) of the first build. No test.
+- **Rsbuild: a second `build()` in one process prerenders with the first build's server** (re-check 6 finding 2, the
+  Rsbuild half; same cause as the Vite entry above; `main` and the PR's base do it too: re-check 8, `owner.py`). A
+  program that calls `build()` again on its Rsbuild instance after an edit writes the first build's page (and its
+  removed file names) to `dist/client/index.html`; a new process writes the edited one. Start's prerender imports
+  `dist/server/index.js` by its file URL (`rsbuild/post-build.ts`), which Node keeps for the process's life, and the
+  server's files keep their names from one build to the next. Running each build's server in a worker thread of its
+  own was tried and reverted (re-check 8: a worker answers a request only once it has read the whole body, so a
+  redirect whose body errors or stays open lost the page it leads to; `Response.error()` failed the build under
+  `failOnError: false`; environment writes, `process.chdir()` and preloads behave otherwise in a worker). No test.
 - **Rsbuild with a persistent cache: a second `build()` of one Rsbuild instance serves the first build's client
   JS URLs** (re-check 6 finding 1; known bug, user decision 2026-11-20: no workaround). Non-RSC app,
   `performance.buildCache`: build, edit a route, call `build()` again on the same instance: the server renders the

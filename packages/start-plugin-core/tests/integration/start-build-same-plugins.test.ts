@@ -10,12 +10,8 @@
  * plugin's `buildApp`, a hand-written `createBuilder().build(ssr)`), in the
  * first build or a later one, fails instead of producing a server that
  * answers no client call: the server's manifest of HTTP-callable server
- * fns lists what the client build references. A second build prerenders
- * with its own server (Node keeps a module it imported by its URL, and the
- * server's files keep their names from one build to the next).
+ * fns lists what the client build references.
  */
-import fs from 'node:fs'
-import path from 'node:path'
 import { expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
@@ -26,7 +22,6 @@ import {
   startBundlers,
 } from '../build-harness'
 import type { StartBuild } from '../build-harness'
-import type { RsbuildConfig } from '@rsbuild/core'
 import type { Plugin, ViteBuilder } from 'vite'
 
 const timeout = 90_000
@@ -192,93 +187,6 @@ export const other = defineFn().handler(() => 'MARK_HANDLER')
     })
     expect(await callFromClient(second)).toBe('MARK_GREETING')
     expect(second.client.where('MARK_HANDLER')).toBe('nowhere')
-  },
-  timeout,
-)
-
-test(
-  'rsbuild: a second build prerenders with its own server',
-  async () => {
-    const route = (
-      caption: string,
-    ) => `import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/')({ component: Home })
-function Home() {
-  return <main>${caption}</main>
-}
-`
-    const first = await buildStart({
-      bundler: 'rsbuild',
-      samePlugins: true,
-      // (absolute: Start resolves the output directories it prerenders
-      // from against the process's working directory)
-      rsbuildConfig: {
-        plugins: [
-          {
-            name: 'test:absolute-dist',
-            setup(api) {
-              api.modifyRsbuildConfig({
-                order: 'pre',
-                handler: (config: RsbuildConfig) => {
-                  config.output = {
-                    ...config.output,
-                    distPath: {
-                      ...(config.output?.distPath as object),
-                      root: path.join(api.context.rootPath, 'dist'),
-                    },
-                  }
-                },
-              })
-            },
-          },
-        ],
-      },
-      entry: 'src/entry.ts',
-      files: {
-        'src/router.ts': `import { createRouter } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
-export function getRouter() {
-  return createRouter({ routeTree })
-}
-`,
-        'src/routes/__root.tsx': `import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({ component: Root })
-function Root() {
-  return (
-    <html>
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <Outlet />
-        <Scripts />
-      </body>
-    </html>
-  )
-}
-`,
-        'src/routes/index.tsx': route('PRERENDER_FIRST'),
-        'src/entry.ts': `export {}\n`,
-        'tsconfig.json': JSON.stringify({
-          compilerOptions: { jsx: 'react-jsx' },
-        }),
-      },
-      start: {
-        pages: [{ path: '/' }],
-        prerender: {
-          enabled: true,
-          autoStaticPathsDiscovery: false,
-          crawlLinks: false,
-        },
-      },
-    })
-    const page = () =>
-      fs
-        .readFileSync(path.join(first.client.outDir, 'index.html'), 'utf8')
-        .match(/<main>(.*?)<\/main>/)?.[1]
-    expect(page()).toBe('PRERENDER_FIRST')
-    await first.rebuild({ 'src/routes/index.tsx': route('PRERENDER_SECOND') })
-    expect(page()).toBe('PRERENDER_SECOND')
   },
   timeout,
 )

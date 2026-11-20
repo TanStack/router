@@ -1,9 +1,7 @@
 /**
  * An Rsbuild build of a Start app with prerendering, started by a program
  * Node reads as module-mode input (`node --input-type=module`, from standard
- * input or `--eval`): the prerender writes the page. The prerender runs the
- * build's server in a worker thread, and the worker's options come from the
- * process's, its module format included.
+ * input or `--eval`): the prerender writes the page.
  * Source: the RSC phase 1 re-check 7 (/var/tmp/rsc-p1-recheck7/report.md
  * finding 1, `build-controls7.py`: 86b46c235e exited 1 with "require is not
  * defined in ES module scope" and wrote no HTML, db260cf3a3 rendered).
