@@ -18,7 +18,7 @@
  *   which imports the barrel; the route switches from the barrel to a
  *   pattern import of `a.client.ts`. The same with a checked barrel whose
  *   import of `a.client.ts` `allowImport` allows.
- * - A late first correction: the real module of `upper.client.ts` imports
+ * - A late lowering: the real module of `upper.client.ts` imports
  *   exempt `ghost.ts`, which reads `lower.client.ts` through a pattern
  *   import and names it in an import the bundler drops (`if (false)`).
  * Source: the RSC phase 1 re-check 3 (/var/tmp/rsc-p1-recheck3/report.md

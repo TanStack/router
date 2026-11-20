@@ -105,11 +105,11 @@ stage 0) in rounds of one loop, until a round builds nothing: the resolver modul
 changed (`server-fn-resolver-rebuild.ts`), the records of what the compilation no longer holds are forgotten, and
 import protection's settlement (below) builds again the modules served otherwise than a fresh build of the source
 serves them. Each step can add modules the other must see (a provider's imports; a module built real defines server
-functions). No count bounds the loop: a denied module is built again at most twice by the settlement (its first
-correction either way, in whatever round first judges it, then only to its real module), and the resolver's content
-only grows; a module asked to flip otherwise, or a resolver content seen before in the closure (its differing
-functions named by id and provider), ends it naming the history (a module whose imports differ between two builds of
-one source): a build fails, a dev server warns (the next edit starts a new closure), our test runs throw. The resolver is a manifest importing each provider module; production builds
+functions). No count bounds the loop: the settlement builds a denied module as its real module at most once (builds
+as its mock are not counted: a module that left and came back is a new module, with a new guess), and the resolver's
+content only grows; a module asked for as its real module a second time, or a resolver content seen before in the
+closure (its differing functions named by id and provider), ends it naming the history (a module whose imports differ
+between two builds of one source): a build fails, a dev server warns (the next edit starts a new closure), our test runs throw. The resolver is a manifest importing each provider module; production builds
 whose SSR environment is the provider list only client-referenced functions (the client compiles first:
 `MultiCompiler.setDependencies`). When the SSR environment is the provider, every module defining server functions
 has a `?tss-serverfn-handler` derived module (its lazy module), which the resolver imports and which re-exports each

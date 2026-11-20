@@ -200,19 +200,17 @@ interface Flip {
 
 /**
  * The flip rule of a compilation's closure (design-rsc-phase1-settlement.md
- * §2.4 and its amendment): whether a denied module may be built again with
- * `flip`'s verdict, after `before`, its own builds in the same closure.
- * Its first correction goes either way, in whatever round: the verdict its
- * compile guessed (or an earlier compilation settled) can be wrong in both
- * directions, and a module a round brings is first judged in the next one.
- * After it, only to its real module, once: the settlement's real verdicts
- * only grow (they rest on imports of modules served as they are, and
- * lowering one nothing makes real removes nothing a real verdict rests
- * on). Anything else is a module whose imports differ between two builds
- * of one source.
+ * §2.4, amendment 2): whether a denied module may be built again with
+ * `flip`'s verdict, after `before`, its own builds in the same closure. A
+ * closure builds a module as its real module at most once; builds as its
+ * mock are not counted (a module that left the compilation and came back
+ * is a new module, with a new guess). Under deterministic builds the
+ * settlement's real verdicts only grow (they rest on imports of modules
+ * served as they are), so a module asked for as its real module a second
+ * time has imports that differ between two builds of one source.
  */
 function flipped(before: ReadonlyArray<Flip>, flip: Flip): boolean {
-  return flip.real ? !before.some((f) => f.real) : before.length === 0
+  return !flip.real || !before.some((f) => f.real)
 }
 
 /** What a closure that cannot settle says of its cause (`reportUnsettled`). */
@@ -888,8 +886,12 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
        * `allowImport` answer differs. A module built real brings its
        * imports, so possibly server fns the resolver must have (a build has
        * no next compilation). No count bounds it: a denied module is built
-       * again at most twice (`flipped`), and the resolver's content only
-       * grows; what breaks that ends the closure with an error
+       * as its real module at most once (`flipped`), each resolver content
+       * once, each restored edge module once; a round that builds only
+       * mocks brings no module (a mock imports the mock runtime only), so
+       * the round after it builds no mock. So rounds are at most
+       * 2 · (modules built real + resolver contents + restored edge
+       * modules) + 2. What breaks that ends the closure with an error
        * (`reportUnsettled`).
        */
       async function close(compilation: Rspack.Compilation): Promise<void> {
@@ -960,7 +962,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 const flip = { round, ...verdict }
                 if (!flipped(before, flip)) {
                   const file = path.relative(session.start.opts.root, id)
-                  const first = before[0] ?? flip
+                  const first = before[0]!
                   reportUnsettled(
                     compilation,
                     `import protection's served state of ${id} (${env.name}) did not settle in one compilation`,
