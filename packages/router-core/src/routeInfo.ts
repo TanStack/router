@@ -115,18 +115,12 @@ export type RoutePaths<TRouteTree extends AnyRoute> = unknown extends TRouteTree
       | '/'
 
 export type RouteToPathAlwaysTrailingSlash<TRoute extends AnyRoute> =
-  TRoute['path'] extends '/'
-    ? TRoute['fullPath']
-    : TRoute['fullPath'] extends '/'
-      ? TRoute['fullPath']
-      : `${TRoute['fullPath']}/`
+  AddTrailingSlash<TRoute['fullPath']>
 
 export type RouteToPathNeverTrailingSlash<TRoute extends AnyRoute> =
-  TRoute['path'] extends '/'
-    ? TRoute['fullPath'] extends '/'
-      ? TRoute['fullPath']
-      : RemoveTrailingSlashes<TRoute['fullPath']>
-    : TRoute['fullPath']
+  TRoute['fullPath'] extends '/'
+    ? TRoute['fullPath']
+    : RemoveTrailingSlashes<TRoute['fullPath']>
 
 export type RouteToPathPreserveTrailingSlash<TRoute extends AnyRoute> =
   | RouteToPathNeverTrailingSlash<TRoute>

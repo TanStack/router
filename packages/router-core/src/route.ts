@@ -271,13 +271,14 @@ export type RoutePrefix<
   ? RootRouteId
   : TPath extends string
     ? TPrefix extends RootRouteId
-      ? TPath extends '/'
-        ? '/'
-        : `/${TrimPath<TPath>}`
-      : `${TPrefix}/${TPath}` extends '/'
-        ? '/'
-        : `/${TrimPathLeft<`${TrimPathRight<TPrefix>}/${TrimPath<TPath>}`>}`
+      ? CleanPath<`/${TPath}`>
+      : CleanPath<`${TPrefix}/${TPath}`>
     : never
+
+// Type-level `cleanPath`: collapse repeated slashes, keep a trailing slash
+type CleanPath<T extends string> = T extends `${infer L}//${infer R}`
+  ? CleanPath<`${L}/${R}`>
+  : T
 
 export type TrimPath<T extends string> = '' extends T
   ? ''
