@@ -384,6 +384,29 @@ Available utilities:
 - `setResponseHeaders(headers)` - Set multiple response headers via Headers object
 - `setResponseStatus(code)` - Set the HTTP status code
 
+#### Response helpers during SSR
+
+Response helpers modify the current HTTP request's response. When a route loader calls a server function during SSR, that function shares the document request's response context. Calling `setResponseStatus(503)` therefore makes the rendered page respond with 503, even if the loader catches an error or renders fallback data. Response headers and cookies set by the function also apply to the document response.
+
+If a response change should apply only to a server function's RPC response, use [request middleware](./middleware.md#request-middleware) to pass the request's `handlerType` through context:
+
+```tsx
+// src/start.ts
+import { createMiddleware, createStart } from '@tanstack/react-start'
+
+const responseScope = createMiddleware().server(({ next, handlerType }) => {
+  return next({
+    context: { isServerFnRpc: handlerType === 'serverFn' },
+  })
+})
+
+export const startInstance = createStart(() => ({
+  requestMiddleware: [responseScope],
+}))
+```
+
+The server function can then read `context.isServerFnRpc` and call `setResponseStatus(503)` only when it is `true`. During a document request, `handlerType` is `'router'`, so an in-process call can return fallback data without changing the document's status. `handlerType` is available on request middleware, not directly on function middleware or server function handlers.
+
 ### Streaming
 
 Stream typed data from server functions to the client. See the [Streaming Data from Server Functions guide](./streaming-data-from-server-functions).
