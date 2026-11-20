@@ -1,4 +1,3 @@
-import { useStyles } from './useStyles'
 import type { AnyRouter, NavigateOptions } from '@tanstack/router-core'
 import type { Accessor } from 'solid-js'
 
@@ -6,17 +5,19 @@ interface Props extends NavigateOptions {
   router: Accessor<AnyRouter>
 }
 
-export function NavigateButton({ to, params, search, router }: Props) {
-  const styles = useStyles()
-
+export function NavigateButton(props: Props) {
   return (
     <button
       type="button"
-      title={`Navigate to ${to}`}
-      class={styles().navigateButton}
+      title={`Navigate to ${props.to}`}
+      class="tsrd-navigate-button"
       onClick={(e) => {
         e.stopPropagation()
-        router().navigate({ to, params, search })
+        props.router().navigate({
+          to: props.to,
+          params: props.params,
+          search: props.search,
+        })
       }}
     >
       ➔
