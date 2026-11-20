@@ -3,7 +3,7 @@
  * session: per env, the server fns each defining module's last compile
  * reported (the snapshots; a compile replaces its module's, also with none),
  * and one entry per id over them. `clientReferenced`: a client-env snapshot
- * reports the id.
+ * reports the id; `serverDeclared`: a server-env snapshot does.
  */
 import { deriveId } from '@tanstack/router-utils/compiler'
 import type { ServerFnKey } from './ids'
@@ -24,6 +24,7 @@ export interface ServerFnEntry extends ServerFnKey {
   /** The module the registry imports the `createServerRpc` wrapper from (`ProviderModule`). */
   provider: ProviderModule
   clientReferenced: boolean
+  serverDeclared: boolean
 }
 
 /** What a compile reports about one server fn (planner facts; plain data). */
@@ -167,6 +168,9 @@ export class ServerFnRegistry {
             clientReferenced:
               (byId.get(f.id)?.clientReferenced ?? false) ||
               env.type === 'client',
+            serverDeclared:
+              (byId.get(f.id)?.serverDeclared ?? false) ||
+              env.type === 'server',
           })
         }
       }
@@ -174,6 +178,21 @@ export class ServerFnRegistry {
     this.byId = byId
     return byId
   }
+}
+
+/**
+ * The functions the resolver of a production build lists when its provider
+ * builds before the client is final (Rsbuild RSC, J4.2): those a server
+ * compile declares (server code calls them by id) and those the client's
+ * emitted code calls (`callable`, null before the client's first build). A
+ * function only a client compile stubbed, whose stub the bundler dropped,
+ * is not listed: its provider and what the provider imports are not built.
+ */
+export function providedEntries(
+  entries: ReadonlyArray<ServerFnEntry>,
+  callable: ReadonlySet<string> | null,
+): Array<ServerFnEntry> {
+  return entries.filter((e) => e.serverDeclared || callable?.has(e.id))
 }
 
 /** The module an entry's `createServerRpc` wrapper is exported from. */

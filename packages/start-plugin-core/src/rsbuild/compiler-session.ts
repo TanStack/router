@@ -35,7 +35,7 @@ import {
 } from '@tanstack/router-utils/compiler'
 import { StartCompilerSession, serverFnFactsOf } from '../compiler/session'
 import { isVueSfc } from '../compiler/vue'
-import { providerModuleId } from '../server-fns/registry'
+import { providedEntries, providerModuleId } from '../server-fns/registry'
 import {
   CALLABLE_IDS_PLACEHOLDER,
   manifestResolverModule,
@@ -1062,6 +1062,11 @@ export class StartRsbuildCompilerSession {
     }
   }
 
+  /** A production client build emitted `codes` (its JS assets, minified and with final ids): the callable set. */
+  publishClientOutput(codes: ReadonlyArray<string>): void {
+    this.callableIds = this.start.clientCallableIds(codes)
+  }
+
   /**
    * The resolver module of an environment: the registry's manifest, of the
    * client-referenced entries in production builds whose SSR environment is
@@ -1070,28 +1075,29 @@ export class StartRsbuildCompilerSession {
    * once the client compiled, before the server compiles); in development every entry, with a
    * warning for a client call of a function no client module references
    * (the client compilation's replay rewrites the resolver, so the flags
-   * follow the client graph). The RSC provider lists its environment's
-   * functions (the RSC build order).
+   * follow the client graph). The RSC provider lists every entry in
+   * development, and in a build the functions server code declares or the
+   * client's emitted code calls (`providedEntries`: the server
+   * compilation's last settlement run builds it again from what the
+   * finished client build calls).
    */
-  /** A production client build emitted `codes` (its JS assets, minified and with final ids): the callable set. */
-  publishClientOutput(codes: ReadonlyArray<string>): void {
-    this.callableIds = this.start.clientCallableIds(codes)
-  }
-
   resolverModule(): string {
     const { opts } = this.start
+    const entries = this.start.registry.entries()
     return manifestResolverModule({
-      entries: this.start.registry.entries(),
+      entries:
+        opts.mode === 'build' && opts.rsc !== undefined
+          ? providedEntries(entries, this.callableIds)
+          : entries,
       providerModuleId,
       clientReferencedOnly: opts.mode === 'build' && opts.rsc === undefined,
       warnUnreferenced: opts.mode === 'dev' && opts.rsc === undefined,
       staticImports: opts.rsc !== undefined && opts.mode === 'dev',
       memoizeModules: opts.mode === 'build',
       // RSC build (J4.2): the RSC coordinator interleaves the server and client
-      // compilations, so the manifest is generated before the client's
-      // references are known; it lists every function (server-origin calls
-      // reach the provider through it) and gates client-origin calls on a
-      // set the server asset pipeline fills in once the client build exists
+      // compilations, so the manifest is first generated before the client's
+      // calls are known; client-origin calls are gated on a set the server
+      // asset pipeline fills in once the client build exists
       clientOriginGate:
         opts.mode !== 'build'
           ? undefined

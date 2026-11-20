@@ -639,7 +639,8 @@ dir)` is not a conflict by itself.
   bundle); `serverFnMeta.name` is the variable's name, also when it is exported under another one. The golden test
   `start-build-server-fn-format.test.ts` reads them from real builds, the one test that reads printed code. A server
   function only server code references is not HTTP-callable (J4.2); whether the provider's manifest lists it is not
-  a contract (a separate provider's manifest lists every function). _Dev_: an
+  a contract. With RSC, a production build provides only the server functions a server compile holds or the emitted
+  client code calls: one only a dropped client stub names is not built, nor what its handler imports. _Dev_: an
   implementation-specific lookup id is allowed; within one dev session every caller and the provider agree on it;
   ids need not match between dev and build (G13); `generateFunctionId` may or may not apply. An id comes from the
   caller and may name any file, so a by-id request answers a function a compile of the running dev session
