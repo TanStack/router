@@ -3,7 +3,6 @@
  * native RSC plugins (step 7), and the RSC build's manifest placeholder
  * replacement in the server assets (step 8b).
  */
-import { CALLABLE_IDS_PLACEHOLDER } from '../server-fns/resolver'
 import { isJsAsset } from './compiler-session'
 import {
   RSBUILD_ENVIRONMENT_NAMES,
@@ -14,7 +13,6 @@ import { START_MANIFEST_PLACEHOLDER } from './virtual-modules'
 import { tapManifestRebuild } from './manifest-rebuild'
 import { enableSwcReactServerComponents } from './swc-rsc'
 import type { registerClientBuildCapture } from './normalized-client-build'
-import type { registerStartCompiler } from './start-compiler'
 import type {
   ModifyRspackConfigFn,
   RsbuildDevServer,
@@ -174,18 +172,17 @@ export function registerRsc(
   }
 }
 
-/** Step 8b (RSC build): the server assets' manifest and callable ids placeholders, once the client build is known. */
+/** Step 8b (RSC build): the server assets' manifest placeholder, once the client build is known. */
 export function registerRscManifestReplacement(
   api: RsbuildPluginAPI,
   opts: {
-    compiler: ReturnType<typeof registerStartCompiler>
     virtualModuleState: VirtualModuleState
     getClientBuild: ReturnType<
       typeof registerClientBuildCapture
     >['getClientBuild']
   },
 ): void {
-  const { compiler, virtualModuleState, getClientBuild } = opts
+  const { virtualModuleState, getClientBuild } = opts
   // ---------------------------------------------------------------
   // 8b. Manifest asset replacement fallback (RSC build only)
   //     Rsbuild's native RSC coordinator interleaves server and client
@@ -195,9 +192,6 @@ export function registerRscManifestReplacement(
   //     chance to run.
   // ---------------------------------------------------------------
   const manifestPlaceholderLiteral = JSON.stringify(START_MANIFEST_PLACEHOLDER)
-  const callableIdsPlaceholderLiteral = JSON.stringify(CALLABLE_IDS_PLACEHOLDER)
-  const callableIdsLiteral = () =>
-    compiler.session()?.callableIdsLiteral() ?? '[]'
   api.modifyRspackConfig((config, utils) => {
     if (utils.environment.name !== RSBUILD_ENVIRONMENT_NAMES.server) return
 
@@ -223,10 +217,7 @@ export function registerRscManifestReplacement(
                   }
 
                   const sourceStr = String(asset.source.source())
-                  if (
-                    !sourceStr.includes(manifestPlaceholderLiteral) &&
-                    !sourceStr.includes(callableIdsPlaceholderLiteral)
-                  ) {
+                  if (!sourceStr.includes(manifestPlaceholderLiteral)) {
                     continue
                   }
 
@@ -252,25 +243,17 @@ export function registerRscManifestReplacement(
 
                 const manifestValueLiteral =
                   virtualModuleState.generateManifestValueLiteral(clientBuild)
-                // the server fn resolver's client-origin gate (J4.2): the
-                // client compiled, so its references are known
-                const callableIds = callableIdsLiteral()
 
                 for (const { asset, sourceStr } of assetsWithPlaceholder) {
                   compilation.updateAsset(
                     asset.name,
                     new utils.rspack.sources.RawSource(
-                      // replacement functions: ids and paths are text, not
-                      // `$` patterns
-                      sourceStr
-                        .replace(
-                          manifestPlaceholderLiteral,
-                          () => manifestValueLiteral,
-                        )
-                        .replaceAll(
-                          callableIdsPlaceholderLiteral,
-                          () => callableIds,
-                        ),
+                      // a replacement function: paths are text, not `$`
+                      // patterns
+                      sourceStr.replace(
+                        manifestPlaceholderLiteral,
+                        () => manifestValueLiteral,
+                      ),
                     ),
                   )
                 }

@@ -289,3 +289,61 @@ test('custom ids with $ patterns gate the same functions', async () => {
   })
   await expectOnlyClientCalledFnsCallable(built)
 })
+
+// SPEC J4.2 (R182): an app whose client calls no server fn builds; its
+// server fns answer server code (the route's server-only loader) and the
+// browser's request by id is refused, as the resolver of the client's
+// empty publication gates it.
+test('a client that calls no server fn: server code calls one, the browser is refused', async () => {
+  const built = await startRscRsbuildPreviewServer({
+    files: {
+      'src/quiet/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const serverOnly = createServerFn().handler(() => 'MARK_SERVER_ONLY')
+`,
+      'src/routes/quiet.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createServerOnlyFn } from '@tanstack/react-start'
+import { createClientRpc } from '@tanstack/react-start/client-rpc'
+import { serverOnly } from '../quiet/fns'
+const load = createServerOnlyFn(async () => ({
+  value: await serverOnly(),
+  url: serverOnly.url,
+}))
+export const Route = createFileRoute('/quiet')({
+  loader: () => load(),
+  component: Page,
+})
+if (typeof window !== 'undefined') {
+  // Start's own client RPC of an id: the request a stub would send
+  ;(window as any).callId = async (id: string) => {
+    try {
+      const reply = await createClientRpc(id)({})
+      return 'error' in reply ? 'refused' : 'answered ' + String(reply.result)
+    } catch {
+      return 'refused'
+    }
+  }
+}
+function Page() {
+  const data = Route.useLoaderData()
+  return (
+    <main>
+      <p data-testid="value">{data.value}</p>
+      <p data-testid="url">{data.url}</p>
+    </main>
+  )
+}
+`,
+    },
+  })
+  expect(built.errors).toEqual([])
+  const page = await openRscPage(built, '/quiet')
+  await page.waitForText('MARK_SERVER_ONLY', {
+    selector: '[data-testid=value]',
+  })
+  await waitForHydration(page)
+  const url = await page.text('[data-testid=url]')
+  const id = url.slice(url.lastIndexOf('/') + 1)
+  expect(
+    await page.page.evaluate((fnId) => (window as any).callId(fnId), id),
+  ).toBe('refused')
+})

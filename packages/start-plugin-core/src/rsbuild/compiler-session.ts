@@ -36,10 +36,7 @@ import {
 import { StartCompilerSession, serverFnFactsOf } from '../compiler/session'
 import { isVueSfc } from '../compiler/vue'
 import { providedEntries, providerModuleId } from '../server-fns/registry'
-import {
-  CALLABLE_IDS_PLACEHOLDER,
-  manifestResolverModule,
-} from '../server-fns/resolver'
+import { manifestResolverModule } from '../server-fns/resolver'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
 import {
@@ -1087,10 +1084,27 @@ export class StartRsbuildCompilerSession {
    * (the client compilation's replay rewrites the resolver, so the flags
    * follow the client graph). The RSC provider lists every entry in
    * development, and in a build the functions server code declares or the
-   * client's emitted code calls (`providedEntries`: the server
-   * compilation's last settlement run builds it again from what the
-   * finished client build calls).
+   * client's emitted code calls (`providedEntries`), gated likewise: the
+   * server compilation's last settlement run builds it again from what the
+   * finished client build calls (`clientOutputMissing` before it).
    */
+  /**
+   * The error of an RSC build's server compilation whose last settlement
+   * run finds no client publication (the client compilation it runs beside
+   * did not build): its resolver would refuse every client call. Null
+   * otherwise.
+   */
+  clientOutputMissing(): Error | null {
+    const { opts } = this.start
+    return opts.mode === 'build' &&
+      opts.rsc !== undefined &&
+      this.start.clientPublication() === null
+      ? new Error(
+          'TanStack Start could not gate the server functions of the rsbuild RSC server because the client build was unavailable',
+        )
+      : null
+  }
+
   resolverModule(): string {
     const { opts } = this.start
     const entries = this.start.registry.entries()
@@ -1105,38 +1119,15 @@ export class StartRsbuildCompilerSession {
       warnUnreferenced: opts.mode === 'dev' && opts.rsc === undefined,
       staticImports: opts.rsc !== undefined && opts.mode === 'dev',
       memoizeModules: opts.mode === 'build',
-      // RSC build (J4.2): the RSC coordinator interleaves the server and client
-      // compilations, so the manifest is first generated before the client's
-      // calls are known; client-origin calls are gated on a set the server
-      // asset pipeline fills in once the client build exists
+      // the functions the client's emitted code calls (J4.2, R182); an RSC
+      // build's first resolver precedes the client build (the RSC
+      // coordinator interleaves the compilations): the server compilation's
+      // last settlement run builds it again from the client's publication
       clientOriginGate:
-        opts.mode !== 'build'
-          ? undefined
-          : opts.rsc !== undefined
-            ? JSON.stringify(CALLABLE_IDS_PLACEHOLDER)
-            : JSON.stringify([...(callable ?? [])].sort()),
+        opts.mode === 'build'
+          ? JSON.stringify([...(callable ?? [])].sort())
+          : undefined,
     })
-  }
-
-  /**
-   * The JSON array of the HTTP-callable function ids (the RSC gate's set,
-   * J4.2, R182): final ids, also with a custom generator (the gate is
-   * filled in after the ids were patched, so its placeholders resolve here).
-   */
-  callableIdsLiteral(): string {
-    const callable = this.start.clientPublication()?.callable
-    if (!callable) {
-      throw new Error(
-        'TanStack Start could not gate the server functions of the rsbuild RSC server because the client build was unavailable',
-      )
-    }
-    const allocator =
-      this.start.allocator && this.start.allocateIds('client').allocator
-    return JSON.stringify(
-      [...callable]
-        .map((id) => (allocator ? allocator.patch(id).code : id))
-        .sort(),
-    )
   }
 }
 

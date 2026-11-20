@@ -253,7 +253,6 @@ export function tanStackStartRsbuild(
       // ---------------------------------------------------------------
       if (api.context.action !== 'dev' && rscEnabled) {
         registerRscManifestReplacement(api, {
-          compiler,
           virtualModuleState,
           getClientBuild,
         })

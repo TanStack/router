@@ -1533,7 +1533,16 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           reporting(
             compilation.errors,
             'Building the out-of-date modules again',
-            () => close(compilation, true),
+            async () => {
+              const missing =
+                fnResolver && compilation.compiler === compiler
+                  ? session.clientOutputMissing()
+                  : null
+              if (missing) {
+                throw missing
+              }
+              await close(compilation, true)
+            },
           ),
       )
     },

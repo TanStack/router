@@ -91,9 +91,7 @@ interface ManifestResolverOptions {
    * Production: a client-origin call (an HTTP request) of a function not in
    * this set is refused (J4.2, R182): the functions whose client call
    * survives in the client's emitted code. Server-origin calls reach every
-   * listed function. A JavaScript expression evaluating to those ids: a
-   * JSON array literal, or a placeholder literal the host replaces once the
-   * client build is known (Rsbuild RSC).
+   * listed function. A JSON array literal of those ids.
    */
   clientOriginGate?: string
 }
@@ -228,9 +226,6 @@ export async function getServerFnById(id, access) {
 }
 `
 }
-
-/** Replaced in the server bundle by the JSON array of the HTTP-callable ids (Rsbuild RSC builds, after the client compiled). */
-export const CALLABLE_IDS_PLACEHOLDER = '__TSS_CALLABLE_IDS__'
 
 /** A function of a manifest resolver module (`manifestFunctionsDiffering`). */
 export interface ManifestFunction {
