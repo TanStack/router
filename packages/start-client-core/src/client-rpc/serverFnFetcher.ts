@@ -5,7 +5,7 @@ import {
   parseRedirect,
 } from '@tanstack/router-core'
 import { createRawStreamDeserializePlugin } from '@tanstack/router-core/ssr/client'
-import { fromCrossJSON, toJSONAsync } from 'seroval'
+import { fromCrossJSON, isStream, toJSONAsync } from 'seroval'
 import { getDefaultSerovalPlugins } from '../getDefaultSerovalPlugins'
 import {
   TSS_CONTENT_TYPE_FRAMED,
@@ -344,12 +344,16 @@ async function processFramedResponse(
   const reader = jsonStream.getReader()
   const options = { refs: new Map(), plugins }
 
-  // TODO: promises and streams that Seroval created from earlier records stay
-  // pending after a transport failure. Rejecting them needs a Seroval API for
-  // aborting a cross-JSON deserialization session; do not reach into
-  // Seroval's refs to do it here.
+  // Streams Seroval materialized from earlier records are rejected so a
+  // consumer iterating one observes the failure. Promises stay pending:
+  // settling those needs a Seroval API for aborting a deserialization session.
   const fail = (error: unknown) => {
     void reader.cancel(error).catch(() => {})
+    for (const value of options.refs.values()) {
+      if (typeof value === 'object' && value !== null && isStream(value)) {
+        value.throw(error)
+      }
+    }
   }
 
   let result: any
