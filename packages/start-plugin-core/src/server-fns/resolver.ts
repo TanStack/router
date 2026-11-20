@@ -232,29 +232,71 @@ export async function getServerFnById(id, access) {
 /** Replaced in the server bundle by the JSON array of the HTTP-callable ids (Rsbuild RSC builds, after the client compiled). */
 export const CALLABLE_IDS_PLACEHOLDER = '__TSS_CALLABLE_IDS__'
 
+/** A function of a manifest resolver module (`manifestFunctionsDiffering`). */
+export interface ManifestFunction {
+  /** Its `functionName` entry, as printed. */
+  functionName: string
+  /** The id of the module that provides it (`providerModuleId`). */
+  provider: string
+}
+
 /**
  * The functions only one of two manifest resolver modules lists
- * (`manifestResolverModule`'s content), by their `functionName` entries as
- * written, sorted: what a report of two contents names.
+ * (`manifestResolverModule`'s content), by manifest identity: the entry's
+ * id and its provider module (two files may export one function name).
+ * In the order of `a`, then `b`: what a report of two contents names.
  */
 export function manifestFunctionsDiffering(
   a: string,
   b: string,
-): Array<string> {
-  const names = (content: string) =>
-    new Set(
-      content
-        .split('\n')
-        .map((line) => line.trim())
-        .filter((line) => line.startsWith('functionName:'))
-        .map((line) =>
-          line.slice('functionName:'.length).trim().replace(/,$/, ''),
-        ),
-    )
-  const x = names(a)
-  const y = names(b)
+): Array<ManifestFunction> {
+  const entries = (content: string) => {
+    const lines = content.split('\n').map((line) => line.trim())
+    /** The static imports' specifiers (`staticImports`), by module binding. */
+    const modules = new Map<string, string>()
+    for (const line of lines) {
+      const m = /^import \* as (\w+) from (".*")$/.exec(line)
+      if (m) {
+        modules.set(m[1]!, JSON.parse(m[2]!))
+      }
+    }
+    const out = new Map<string, ManifestFunction>()
+    let key: string | null = null
+    let functionName = ''
+    for (const line of lines) {
+      if (line.endsWith(': {') && !line.startsWith('const ')) {
+        key = line
+        continue
+      }
+      if (key === null) {
+        continue
+      }
+      if (line.startsWith('functionName:')) {
+        functionName = line
+          .slice('functionName:'.length)
+          .trim()
+          .replace(/,$/, '')
+        continue
+      }
+      const imported = /^importer: \(\) => import\((".*")\),?$/.exec(line)
+      const bound = /^module: (\w+),?$/.exec(line)
+      const specifier = imported
+        ? (JSON.parse(imported[1]!) as string)
+        : bound
+          ? modules.get(bound[1]!)
+          : undefined
+      if (specifier !== undefined) {
+        const provider = resolveRegistrySpecifier(specifier)
+        out.set(`${key}\0${provider}`, { functionName, provider })
+        key = null
+      }
+    }
+    return out
+  }
+  const x = entries(a)
+  const y = entries(b)
   return [
-    ...[...x].filter((name) => !y.has(name)),
-    ...[...y].filter((name) => !x.has(name)),
-  ].sort()
+    ...[...x].filter(([k]) => !y.has(k)),
+    ...[...y].filter(([k]) => !x.has(k)),
+  ].map(([, f]) => f)
 }

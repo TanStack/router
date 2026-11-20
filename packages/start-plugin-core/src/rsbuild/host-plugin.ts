@@ -905,16 +905,22 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           const content = fnResolver?.pending() ?? null
           if (content !== null) {
             if (contents.includes(content)) {
-              const differing = manifestFunctionsDiffering(
-                contents[contents.length - 1]!,
-                content,
-              )
+              const differing =
+                manifestFunctionsDiffering(
+                  contents[contents.length - 1]!,
+                  content,
+                )
+                  .map(
+                    (f) =>
+                      `${f.functionName} of ${path.relative(session.start.opts.root, resourcePath(f.provider))}`,
+                  )
+                  .join(', ') || 'none'
               reportUnsettled(
                 compilation,
-                `the server function resolver of this compilation went back to the functions it had in a round before (round ${round}; the functions that differ: ${differing.join(', ') || 'none'})`,
+                `the server function resolver of this compilation went back to the functions it had in a round before (round ${round}; the functions that differ: ${differing})`,
                 [
                   `[tanstack-start] The server function resolver could not settle in this compilation: in round ${round} it lists the functions it listed in a round before.`,
-                  `  The functions that differ: ${differing.join(', ') || 'none'}`,
+                  `  The functions that differ: ${differing}`,
                   unsettledCause,
                 ].join('\n'),
               )
@@ -998,13 +1004,13 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
 
       /**
        * Ends a compilation's closure that cannot settle (`close`): its
-       * modules are served as the last round built them, and the
-       * compilation fails (a build exits non-zero; a dev server shows the
-       * error, and the next edit starts a new closure). In our test runs
-       * it throws (`invariantViolated`, R116). An error, not R116's
-       * warning: the output holds a module served otherwise than its source
-       * asks for (design-rsc-phase1-settlement.md §2.4). The one place that
-       * decides it.
+       * modules are served as the last round built them. A build fails
+       * (it exits non-zero: the output holds a module served otherwise
+       * than its source asks for; R116's warning only for dev servers); a
+       * dev server warns, and the next edit starts a new closure. In our
+       * test runs it throws (`invariantViolated`, R116). The one place that
+       * decides it (DECISIONS 2026-11-20, design-rsc-phase1-settlement.md
+       * §2.4).
        */
       function reportUnsettled(
         compilation: Rspack.Compilation,
@@ -1016,7 +1022,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             'import protection may serve a module as its mock or as it is',
           detail,
         })
-        compilation.errors.push(new WebpackError(message))
+        ;(session.start.opts.mode === 'dev'
+          ? compilation.warnings
+          : compilation.errors
+        ).push(new WebpackError(message))
       }
 
       /** Custom server-fn ids: this environment's rank, patched before minification. */

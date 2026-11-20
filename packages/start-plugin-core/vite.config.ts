@@ -26,6 +26,7 @@ import noncompilerTests from './tests/noncompiler-tests.json' with { type: 'json
  */
 const aloneTests = [
   'integration/start-build-server-code-check-unchecked.test.ts',
+  'integration/rsbuild/server-fn-resolver-repeat-unchecked.test.ts',
 ]
 
 /** This package's build output (`dist`), as its `exports` name it. */

@@ -98,6 +98,8 @@ export async function startRsbuildRscApp(
   options: {
     /** Default `onTestFinished`. */
     registerCleanup?: (cleanup: () => Promise<void>) => void
+    /** The app's Rsbuild `tools` (Start's pages need no `htmlPlugin`). */
+    tools?: Record<string, unknown>
   } = {},
 ): Promise<RsbuildDevServer> {
   const start = await startRsbuildPluginFactory('react')
@@ -116,6 +118,7 @@ export async function startRsbuildRscApp(
         tools: {
           // Start serves the pages, not an HTML template
           htmlPlugin: false,
+          ...options.tools,
         },
       },
       plugins: [

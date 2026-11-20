@@ -105,10 +105,11 @@ stage 0) in rounds of one loop, until a round builds nothing: the resolver modul
 changed (`server-fn-resolver-rebuild.ts`), the records of what the compilation no longer holds are forgotten, and
 import protection's settlement (below) builds again the modules served otherwise than a fresh build of the source
 serves them. Each step can add modules the other must see (a provider's imports; a module built real defines server
-functions). No count bounds the loop: a denied module is built again at most twice by the settlement, and the
-resolver's content only grows; a module asked to flip otherwise, or a resolver content seen before in the closure,
-ends it with a compilation error naming the history (a module whose imports differ between two builds of one
-source). The resolver is a manifest importing each provider module; production builds
+functions). No count bounds the loop: a denied module is built again at most twice by the settlement (its first
+correction either way, in whatever round first judges it, then only to its real module), and the resolver's content
+only grows; a module asked to flip otherwise, or a resolver content seen before in the closure (its differing
+functions named by id and provider), ends it naming the history (a module whose imports differ between two builds of
+one source): a build fails, a dev server warns (the next edit starts a new closure), our test runs throw. The resolver is a manifest importing each provider module; production builds
 whose SSR environment is the provider list only client-referenced functions (the client compiles first:
 `MultiCompiler.setDependencies`). When the SSR environment is the provider, every module defining server functions
 has a `?tss-serverfn-handler` derived module (its lazy module), which the resolver imports and which re-exports each
@@ -141,7 +142,10 @@ compilation's graph, each read with its own environment's records (a client-refe
 restored importer is asked there), over every compile environment the graph has in that round. It is the least
 solution (`ImportProtection.ground`): a denied module is real exactly when an exempt or allowed import arrives at it
 from a module an entry reaches without passing a denied module that is not real, so dev and watch rebuilds serve
-what a fresh build of the same source serves (a cycle with an exempt barrel does not keep itself real). The graph is
+what a fresh build of the same source serves (a cycle with an exempt barrel does not keep itself real). The
+type-wide grant (R96: an allowed import of the file in an environment of its type) counts a live environment's
+importer only when it is reached so too (a cycle whose barrel's import `allowImport` allows does not keep itself
+real either); a released environment's grant and `allowImport` on the file itself are constants. The graph is
 the compilation's and its child compilations' (a worker plugin's): a child's module is in it, reached from its
 entry, but only the compilation's own modules are decided (a child is finished, its modules served as their compile
 decided). A module the settlement serves otherwise is built again and serves the settled verdict until the next
