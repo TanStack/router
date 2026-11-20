@@ -41,6 +41,13 @@ export interface NodeGraph {
   walkImporters?: (node: GraphNode) => Iterable<GraphNode> | null
   /** Whether `node` is an entry of the graph (a file can be an entry in one environment only). */
   isEntry: (node: GraphNode) => boolean
+  /**
+   * Whether a module of the graph imports `node`, one with no file
+   * included (a Module Federation container exposing it, a provide-shared
+   * module providing it, a DLL); not an entry of its own. Default:
+   * `importers` has one.
+   */
+  imported?: (node: GraphNode) => boolean
   /** A view's (`groundedGraph`): the bundler's graph it reads, with every importer. */
   built?: NodeGraph
 }

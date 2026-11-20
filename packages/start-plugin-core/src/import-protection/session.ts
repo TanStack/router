@@ -1290,14 +1290,19 @@ class ImportProtectionEnv {
   /**
    * Whether anything imports the module that is its own violation `self`
    * in the bundler's `graph` (`NodeGraph.built`: an importer outside the
-   * app included, one a file-less module holds: a provide-shared module's,
-   * a container's, whose mock nothing reports, as in dev), else, where the
-   * graph cannot read the environment, in its records. Not the records
-   * where the graph reads it: they keep an import the bundler dropped.
+   * app included, one a file-less module holds or the file-less module
+   * itself: a provide-shared module's, a container's, whose mock nothing
+   * reports, as in dev), else, where the graph cannot read the
+   * environment, in its records. Not the records where the graph reads it:
+   * they keep an import the bundler dropped.
    */
   private imported(self: EdgeViolation, graph: NodeGraph): boolean {
-    const known = graph.importers({ env: this.name, id: self.importerId })
-    for (const _ of known ?? this.edges.importers(self.resolved!)) {
+    const node = { env: this.name, id: self.importerId }
+    if (graph.imported) {
+      return graph.imported(node)
+    }
+    for (const _ of graph.importers(node) ??
+      this.edges.importers(self.resolved!)) {
       return true
     }
     return false

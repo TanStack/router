@@ -351,6 +351,27 @@ export function rspackNodeGraph(
     }
     return byEnv.get(node.env)?.get(node.id)
   }
+  /**
+   * Whether `c`, a connection into a module holding `node`'s connections,
+   * arrives at `node`: a ConcatenatedModule holds the connections of each
+   * of its inner modules.
+   */
+  const arrives = (c: RspackConnectionLike, node: GraphNode) => {
+    const target = c.resolvedModule
+    return (
+      target?.resource === undefined ||
+      (idOf(target.resource) === node.id &&
+        (envs.get(target) ?? envOf(target, target)) === node.env)
+    )
+  }
+  /** The module `c` comes from: the importing module itself, inside a ConcatenatedModule origin. */
+  const originOf = (
+    c: RspackConnectionLike,
+    moduleGraph: Held['moduleGraph'],
+  ) =>
+    (c.dependency !== undefined
+      ? moduleGraph.getParentModule(c.dependency)
+      : null) ?? c.originModule
   return {
     importers(node) {
       const out: Array<GraphNode> = []
@@ -361,20 +382,10 @@ export function rspackNodeGraph(
         viaContext: boolean,
       ) => {
         for (const c of moduleGraph.getIncomingConnections(m)) {
-          // a ConcatenatedModule holds the connections of each of its inner modules
-          const target = c.resolvedModule
-          if (
-            target?.resource !== undefined &&
-            (idOf(target.resource) !== node.id ||
-              (envs.get(target) ?? envOf(target, target)) !== node.env)
-          ) {
+          if (!arrives(c, node)) {
             continue
           }
-          // the importing module itself, inside a ConcatenatedModule origin
-          const origin =
-            (c.dependency !== undefined
-              ? moduleGraph.getParentModule(c.dependency)
-              : null) ?? c.originModule
+          const origin = originOf(c, moduleGraph)
           if (origin?.resource) {
             const from = {
               env: envs.get(origin) ?? envOf(origin, c.originModule ?? origin),
@@ -396,6 +407,16 @@ export function rspackNodeGraph(
         visit(module, moduleGraph, false)
       }
       return out
+    },
+    imported(node) {
+      return (entryOf(node)?.held ?? []).some(({ module, moduleGraph }) => {
+        for (const c of moduleGraph.getIncomingConnections(module)) {
+          if (arrives(c, node) && originOf(c, moduleGraph)) {
+            return true
+          }
+        }
+        return false
+      })
     },
     isEntry(node) {
       const entry = entryOf(node)
