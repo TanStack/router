@@ -19,11 +19,26 @@ import { identify, revision } from '@tanstack/router-utils/compiler'
 import { Locator } from './locate'
 import type { TraceStep } from './trace'
 
-/** The bundler's graph, as a trace needs it. Ids are bundler module ids. */
-export interface ImportGraphView {
-  importers: (id: string) => Iterable<string>
-  isEntry: (id: string) => boolean
+/** A module of one compile environment: the environment's key and the bundler's module id. */
+export interface GraphNode {
+  env: string
+  id: string
 }
+
+/**
+ * The bundler's graph of a compilation (or of a dev server), by node: each
+ * importer is a module of its own environment, which may differ from the
+ * imported module's (an Rspack rule's `layer`).
+ */
+export interface NodeGraph {
+  /** The nodes importing `node`; null when the graph cannot read `node`'s environment (another Vite build's). */
+  importers: (node: GraphNode) => Iterable<GraphNode> | null
+  /** Whether `node` is an entry of the graph (a file can be an entry in one environment only). */
+  isEntry: (node: GraphNode) => boolean
+}
+
+/** A node's key, for sets. */
+export const nodeKey = (node: GraphNode): string => `${node.env}\0${node.id}`
 
 export interface IndexedEdge {
   /** The target's canonical id (as the env's resolver gave it). */
@@ -85,7 +100,7 @@ export class IdsByFile {
  * (importer id → its edges, with the revision of the input they were judged
  * in), replaced when the importer is judged again. Bounded by the live
  * modules. It feeds traces (diagnostics) and the decisions on a module that
- * is its own violation: an unchecked importer makes it real (`demanders`), a
+ * is its own violation: an unchecked importer makes it real (`incoming`), a
  * stale one explains it (`explainedByStaleImporter`).
  */
 export class EdgeIndex {
@@ -208,63 +223,78 @@ export function cutTrace<T>(steps: Array<T>, maxDepth: number): Array<T> {
 }
 
 /**
- * The whole trace of `importerId`: entry first, importer last. Each step
- * names its import of the next module (and where it is) when known.
+ * The whole trace of `start`: entry first, importer last. Each step is a
+ * node, whose importers are those the graph has, those import protection
+ * recorded in its environment (`edgesOf`: all there is when the graph
+ * cannot read it) and those `extra` adds (the client-reference handoff); each
+ * step names its import of the next module (and where it is) from its own
+ * environment's records.
  */
 export function traceOf(
-  importerId: string,
-  graph: ImportGraphView | null,
-  index: EdgeIndex | null,
+  start: GraphNode,
+  graph: NodeGraph | null,
+  edgesOf: (env: string) => EdgeIndex | null,
+  extra?: (node: GraphNode) => Iterable<GraphNode>,
 ): Trace {
-  const next = new Map<string, string>()
-  const seen = new Set<string>([importerId])
-  let queue = [importerId]
-  let root: string | null = null
-  let firstRootless: string | null = null
+  const next = new Map<string, GraphNode>()
+  const seen = new Set<string>([nodeKey(start)])
+  let queue = [start]
+  let root: GraphNode | null = null
+  let firstRootless: GraphNode | null = null
   search: while (queue.length > 0) {
-    const level: Array<string> = []
-    for (const id of queue) {
-      if (id !== importerId && graph?.isEntry(id)) {
-        root = id
+    const level: Array<GraphNode> = []
+    for (const node of queue) {
+      if (node !== start && graph?.isEntry(node)) {
+        root = node
         break search
       }
-      // (the host's graph first, then the edges import protection recorded)
+      // (the host's graph first, then the edges import protection recorded
+      // in the node's environment: a full-bundle dev server's graph has few)
       let rootless = true
-      for (const importers of [graph?.importers(id), index?.importers(id)]) {
+      const recorded = [...(edgesOf(node.env)?.importers(node.id) ?? [])].map(
+        (id) => ({ env: node.env, id }),
+      )
+      for (const importers of [
+        graph?.importers(node),
+        recorded,
+        extra?.(node),
+      ]) {
         for (const i of importers ?? []) {
           rootless = false
-          if (seen.has(i)) {
+          const key = nodeKey(i)
+          if (seen.has(key)) {
             continue
           }
-          seen.add(i)
-          next.set(i, id)
+          seen.add(key)
+          next.set(key, node)
           level.push(i)
         }
       }
       if (rootless && firstRootless === null) {
-        firstRootless = id
+        firstRootless = node
       }
     }
     queue = level
   }
-  root ??= firstRootless ?? importerId
+  root ??= firstRootless ?? start
   const fromEntry = graph?.isEntry(root) === true
-  const chain: Array<string> = [root]
-  for (let id = root; id !== importerId; ) {
-    const n = next.get(id)
+  const chain: Array<GraphNode> = [root]
+  for (let node = root; nodeKey(node) !== nodeKey(start); ) {
+    const n = next.get(nodeKey(node))
     if (n === undefined) {
       break
     }
     chain.push(n)
-    id = n
+    node = n
   }
-  const steps: Array<TraceStep> = chain.map((id, i) => {
-    const step: TraceStep = { file: traceFile(id) }
+  const steps: Array<TraceStep> = chain.map((node, i) => {
+    const step: TraceStep = { file: traceFile(node.id) }
     const to = chain[i + 1]
-    const edge = to !== undefined ? index?.edge(id, to) : undefined
+    const index = to !== undefined ? edgesOf(node.env) : null
+    const edge = index?.edge(node.id, to!.id)
     if (edge) {
       step.specifier = edge.specifier
-      const at = index!.position(id, edge)
+      const at = index!.position(node.id, edge)
       if (at !== null) {
         step.line = at.line
         step.column = at.column
@@ -283,25 +313,30 @@ interface ViteModuleGraphLike {
 }
 
 /**
- * The dev server's graph of an environment for traces and report readiness
- * (`ImportProtectionEnv.graph`). `entries`: the environment's resolved entry
- * ids (router entry, start entry, client/server entry); a module nothing
- * imports is a root too.
+ * The dev server's graph for traces and report readiness
+ * (`ImportProtectionEnv.graph`): a node's importers are those of its
+ * environment's module graph (`moduleGraphOf`), in that environment.
+ * `isEntry`: the resolved entry ids (router entry, start entry,
+ * client/server entry); a module nothing imports is a root too.
  */
-export function viteDevGraphView(
-  moduleGraph: ViteModuleGraphLike,
+export function viteDevNodeGraph(
+  moduleGraphOf: (env: string) => ViteModuleGraphLike | undefined,
   isEntry: (id: string) => boolean,
-): ImportGraphView {
+): NodeGraph {
   return {
-    importers(id) {
-      const out: Array<string> = []
-      for (const m of moduleGraph.getModuleById(id)?.importers ?? []) {
+    importers(node) {
+      const graph = moduleGraphOf(node.env)
+      if (!graph) {
+        return null
+      }
+      const out: Array<GraphNode> = []
+      for (const m of graph.getModuleById(node.id)?.importers ?? []) {
         if (m.id !== null) {
-          out.push(m.id)
+          out.push({ env: node.env, id: m.id })
         }
       }
       return out
     },
-    isEntry,
+    isEntry: (node) => isEntry(node.id),
   }
 }

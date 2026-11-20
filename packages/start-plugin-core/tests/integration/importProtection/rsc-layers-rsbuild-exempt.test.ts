@@ -14,7 +14,8 @@
  * Astra 11-19: both pass in a build; dev rebuilds fail row 22); the exempt
  * route row: the RSC phase 1 reviews (review-rsc-phase1-fable.md §2 case C,
  * /var/tmp/rsc-p1-review/astra/report.md Part B), main fails the build,
- * 88dded8da0 and 55c11d81b8 built it silently.
+ * 88dded8da0 and 55c11d81b8 built it silently, 407da6ddac failed it with
+ * no position (design-rsc-phase1-graph.md §5.4 R2d).
  */
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
@@ -157,12 +158,11 @@ describe('Rsbuild RSC build, a client component in both layers', () => {
   )
 
   // the exempt route needs the denied component as it is, and the server
-  // component (checked) reaches the file itself through its client
-  // reference, where SSR renders it: the build fails, naming the server
-  // component (main: its import's own report; here R147, one file served
-  // one way)
+  // component's import of it (checked: allowImport does not allow it) is
+  // how SSR, which renders it, gets it: the build fails at that import
+  // (main: its import's own report; here R147, one file served one way)
   test(
-    "an exempt route and a server component's client reference both render a denied client component: the build fails, naming the server component",
+    "an exempt route and a server component's client reference both render a denied client component: the build fails at the server component's import",
     async () => {
       const failed = await rejection(
         build(rscApp('ClientBox.client.tsx', false), {
@@ -174,6 +174,7 @@ describe('Rsbuild RSC build, a client component in both layers', () => {
       expectDiagnostic(failed.diagnostics, {
         severity: 'error',
         file: 'src/utils/ucServer.tsx',
+        position: { line: 3, column: 27 },
       })
     },
     timeout,

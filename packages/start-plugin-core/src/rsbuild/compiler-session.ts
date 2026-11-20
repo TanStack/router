@@ -255,7 +255,13 @@ export class StartRsbuildCompilerSession {
       if (this.rscEnabled && name === RSBUILD_ENVIRONMENT_NAMES.server) {
         environments.push(
           this.addEnv(
-            { name: RSBUILD_RSC_ENVIRONMENT, type },
+            {
+              name: RSBUILD_RSC_ENVIRONMENT,
+              type,
+              // (the RSC plugin adds the SSR layer's module of a client
+              // reference the RSC layer imports)
+              clientReferencesInto: name,
+            },
             compiler,
             RSBUILD_RSC_LAYER_RESOLVE,
           ),
@@ -427,18 +433,6 @@ export class StartRsbuildCompilerSession {
   /** The compile environments a compiler builds (its own first). */
   envsOf(compiler: string): Iterable<EnvState> {
     return this.compiler(compiler).envs.values()
-  }
-
-  /**
-   * The compile environment whose server components render the client
-   * references of compile environment `key` (the client-reference handoff,
-   * `ClientReferenceHandoff`): `rsc` for the server compiler's own, RSC on.
-   * No other pair: a user layer renders none.
-   */
-  clientReferencesFrom(key: string): string | undefined {
-    return this.rscEnabled && key === RSBUILD_ENVIRONMENT_NAMES.server
-      ? RSBUILD_RSC_ENVIRONMENT
-      : undefined
   }
 
   /** The compiler that builds a compile environment's modules (its virtual files, resolver, input file system). */

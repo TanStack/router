@@ -79,15 +79,17 @@ environment of its own (`<compiler>:<layer>`), which resolves with the compiler'
 `resolve` does not reach the compiler's resolver) and which reports name after its compiler. Its key names it, so a
 persisted edge-module request of a restored importer finds it before any module of the layer was seen
 (`envOfKey`). An import-protection edge module belongs to the environment its id names, whatever layer a user's rule
-puts the file in (`envOfModule`: an `.mjs` rule's), for the loader, the witness and the graph view. A file both layers
+puts the file in (`envOfModule`: an `.mjs` rule's), for the loader, the witness and the graph. A file both layers
 compile is a module of each environment, with its own plan, import-protection records, stale-set entry and
 registry snapshot: every operation of the host groups modules by environment before it deduplicates by resource
-(the drain, the restore, the witness, the graph view, `hold`, the served ledger's rebuilds, the snapshots, the
-warning hand-over). The graph view of an environment reads a file through its own modules. One pair adds an edge,
-the client-reference handoff: `ssr` also reads the `rsc` importers of a file whose raw facts read `'use client'`
-(Rspack's RSC plugin adds that file's SSR-layer module for the RSC layer's client reference, with no importer of its
-own). No other environment reads another's importers. An importer found in another layer (an issuer-layer rule: an
-SSR-layer module importing the RSC layer's server-fn module) is read in that layer from there on.
+(the drain, the restore, the witness, the graph, `hold`, the served ledger's rebuilds, the snapshots, the
+warning hand-over). Import protection reads one graph per compilation (`rspackNodeGraph`, built on its first read):
+a node is a module of one environment, and its importers are nodes of their own environments (an issuer-layer
+rule: an SSR-layer module importing the RSC layer's server-fn module; a user's rule moving an imported file to its
+layer), so a walk goes on through the module it reached, and an entry is an entry of its environment only. The
+`rsc` environment declares where its client references render (`clientReferencesInto: 'ssr'`): Rspack's RSC plugin
+adds the SSR-layer module of a `'use client'` file a server component imports, with no importer of its own, and the
+server component's import of it (recorded in `rsc`, never substituted) is how SSR gets it.
 
 ## Server functions
 
@@ -123,7 +125,12 @@ knows the importer's trace. At `finishMake` the records of modules restored from
 module whose record is of another version (an earlier build wrote the cache) is built again instead, and so is a
 module or an edge module another session judged, so `allowImport` answers in this session, and so is a
 module compiled as its own violation that a restored exempt importer imports (its edges were replayed after the module
-compiled: the importer gets the real module). In builds
+compiled: the importer gets the real module). The verdict on a module compiled as its own violation is settled at
+`finishMake` (stage −5: after the server-fn resolver's rebuilds, which bring the provider modules and what they
+import, and before the RSC plugin's client handoff at stage 0) from the edges that arrive at it in the compilation's
+graph, each read with its own environment's records: a module the settlement serves otherwise is built again and
+serves the settled verdict until the next settlement (a compile before it guesses from its own environment's edges).
+In builds
 the mock is the survival witness: at `processAssets` the host reads which edge modules survived tree-shaking, tells
 `onViolation` once per surviving import and publishes the reports. An edge `allowImport` allows is a transparent
 re-export from the start.

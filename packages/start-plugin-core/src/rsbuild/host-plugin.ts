@@ -19,11 +19,9 @@ import {
   invariantDiagnostic,
   invariantViolated,
   isRecordedDiagnostic,
-  langFromId,
   locateDiagnostics,
   locatedError,
   normalizePath,
-  pathOfId,
   rebuildModules,
   rebuildModulesWhere,
   reportingFailure,
@@ -32,8 +30,7 @@ import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
 import { heldIn, outputKey } from '../import-protection/session'
 import {
   readRspackWitness,
-  rspackFilesIn,
-  rspackGraphView,
+  rspackNodeGraph,
 } from '../import-protection/witness'
 import {
   LOCATED_DIAGNOSTICS,
@@ -53,7 +50,7 @@ import type {
 import type { StartCompilerEnvironment } from '../compiler/session'
 import type { RsbuildRouteGenerator } from './router-generator'
 import type { ServerFnFact } from '../server-fns/registry'
-import type { ImportGraphView } from '../import-protection/graph-trace'
+import type { NodeGraph } from '../import-protection/graph-trace'
 import type {
   LocatedDiagnostic,
   PersistedPlan,
@@ -234,37 +231,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
     return out
   }
   /**
-   * The compilation's graph view of a compile environment, by canonical
-   * resource, with its client-reference handoff (`clientReferencesFrom`):
-   * the files of both environments whose raw facts read `'use client'`.
+   * The compilation's graph, of every compile environment of this compiler
+   * (`rspackNodeGraph`: built on its first read).
    */
-  const graphView = async (
-    compilation: Rspack.Compilation,
-    env: EnvState,
-  ): Promise<ImportGraphView> => {
-    const from = session.clientReferencesFrom(env.name)
-    const clientReferences = new Set<string>()
-    if (from !== undefined) {
-      for (const id of rspackFilesIn(
-        compilation as never,
-        canonicalResource,
-        envKeyOfModule,
-        [env.name, from],
-      )) {
-        if (
-          langFromId(pathOfId(id)) !== null &&
-          (await session.start.rawFacts.get(id, from)).targetFacts.useClient
-        ) {
-          clientReferences.add(id)
-        }
-      }
-    }
-    return rspackGraphView(compilation as never, canonicalResource, {
-      env: env.name,
-      envOf: envKeyOfModule,
-      ...(from !== undefined && { handoff: { from, clientReferences } }),
-    })
-  }
+  const nodeGraph = (compilation: Rspack.Compilation): NodeGraph =>
+    rspackNodeGraph(compilation as never, canonicalResource, envKeyOfModule)
   return {
     apply(compiler) {
       const { Compilation, WebpackError } = rspack
@@ -672,8 +643,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 'Checking import protection',
                 async () => {
                   const envs = ipEnvs()
-                  for (const { env, ip } of envs) {
-                    ip.graph = await graphView(compilation, env)
+                  const graph = nodeGraph(compilation)
+                  for (const { ip } of envs) {
+                    ip.graph = graph
                     // importers that disagree (R147): an error of each compilation holding them
                     for (const message of ip.conflictReports(true)) {
                       compilation.errors.push(new WebpackError(message))
@@ -727,10 +699,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                       envKeyOfModule,
                       canonicalResource,
                     )
+                    const graph = nodeGraph(compilation)
                     for (const { env, ip } of envs) {
                       const reports = await ip.surviving(
                         live.get(env.name) ?? [],
-                        await graphView(compilation, env),
+                        graph,
                       )
                       for (const report of reports) {
                         ;(report.severity === 'error'
@@ -858,8 +831,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           // no longer holds is judged when it comes back)
           const stale: Array<{ env: string; path: string }> = []
           let held: Map<string, Set<string>> | null = null
+          // (read again each round: a rebuilt module has new connections)
+          const graph = nodeGraph(compilation)
           for (const { env, ip } of envs) {
-            const ids = await ip.mismatches()
+            const ids = await ip.mismatches(graph)
             if (ids.length === 0) {
               continue
             }
@@ -1025,9 +1000,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // invalidation found stale), then the import-protection records of restored modules
       // (a module restored with a record of another version is built again, and so, in dev,
       // is one restored with violations or an edge module restored with pending ones:
-      // another session reported them), the modules served otherwise
-      // than their importers now ask for built again (`serveAsDemanded`), and the environment's
-      // server-fn snapshot. Only a compiler's first compilation restores modules (Rspack
+      // another session reported them), and the environment's server-fn snapshot. Only a compiler's first compilation restores modules (Rspack
       // loads the cache's module graph in a build, never in a rebuild)
       compiler.hooks.finishMake.tapPromise(
         { name: `${PLUGIN_NAME}:replay`, stage: -20 },
@@ -1138,9 +1111,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                   )
                 }
               }
-              if (envs.length > 0) {
-                await serveAsDemanded(envs, compilation)
-              }
               // the server-fn snapshot of each environment, from each module's `buildInfo`;
               // the modules of child compilers (a worker's, a service worker's: compiled as
               // this compiler's, done during `make`) call the server fns they define too
@@ -1171,6 +1141,27 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 session.start.registry.replace(env, snapshot)
               }
               opts.onServerFnsReplayed()
+            },
+          ),
+      )
+
+      // the modules served otherwise than the edges arriving at them in the compilation's
+      // graph ask for, built again (`serveAsDemanded`): once every module is in, after the
+      // server-fn resolver's rebuilds (stage -10), which bring the provider modules and what
+      // they import, and before the RSC plugin's client handoff (stage 0). A server fn only a
+      // module built real here brings is not in this compilation's resolver (a build; the
+      // next dev compilation's has it)
+      compiler.hooks.finishMake.tapPromise(
+        { name: `${PLUGIN_NAME}:serve-as-demanded`, stage: -5 },
+        (compilation) =>
+          reporting(
+            compilation.errors,
+            'Building the out-of-date modules again',
+            async () => {
+              const envs = ipEnvs()
+              if (compilation.compiler === compiler && envs.length > 0) {
+                await serveAsDemanded(envs, compilation)
+              }
             },
           ),
       )

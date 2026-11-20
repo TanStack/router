@@ -41,6 +41,7 @@ import {
   RSPACK_BUILD_INFO_KEY,
   RSPACK_BUILD_INFO_VERSION,
   allowImportInfo,
+  clientReferencesOf,
   dedupeKey,
   selfViolationOf,
   violationInfo,
@@ -65,7 +66,7 @@ import type {
   EdgeModuleRef,
   ProductionMock,
 } from './edge-modules'
-import type { ImportGraphView, SourceReader, Trace } from './graph-trace'
+import type { GraphNode, NodeGraph, SourceReader, Trace } from './graph-trace'
 import type { DevReport, DevReporterOptions, ReportSink } from './report'
 import type { EnvType } from './rules'
 import type {
@@ -100,13 +101,6 @@ export interface CreateImportProtectionOptions {
   framework?: CompileStartFrameworkOptions
   /** Whether the app renders React Server Components (`ReportContext.rsc`). */
   rsc?: boolean
-  /**
-   * The checked file a virtual importer stands for, if any (Vite RSC: the
-   * module plugin-rsc generates in `ssr` to load the client references of
-   * a server chunk stands for the chunk's entry, the server code that
-   * imports them). A build reports a denied module it imports at that file.
-   */
-  importerFileOf?: (importerId: string) => string | null
 }
 
 /** The code of one of our modules, for a host's `load` (or virtual file). */
@@ -139,7 +133,6 @@ export function createImportProtection(
         opts.isEntry ?? (() => false),
         opts.readSource,
         opts.framework,
-        opts.importerFileOf,
         opts.rsc ?? false,
       )
     : null
@@ -205,6 +198,14 @@ export class ImportProtection {
   /** The name reports give an environment whose key is not it (`addEnvironment`). */
   private readonly publicNames = new Map<string, string>()
   /**
+   * The client-reference handoff (`addEnvironment`): by environment that
+   * renders server components, the one that renders their client
+   * references on the server.
+   */
+  private readonly clientReferencesInto = new Map<string, string>()
+  /** Environments whose release waits for their handoff's destination's (`release`). */
+  private readonly releaseWithInto = new Set<string>()
+  /**
    * By the environment name reports give, `allowImport`'s answers: one per
    * import (`dedupeKey`) for its session or build, shared by the compile
    * environments of one name (an Rsbuild user layer and its compiler's).
@@ -224,9 +225,6 @@ export class ImportProtection {
     /** Raw source text for trace positions (`CreateImportProtectionOptions.readSource`). */
     readonly readSource: SourceReader = readSourceFile,
     readonly framework: CompileStartFrameworkOptions = 'react',
-    private readonly importerFileOf: (
-      importerId: string,
-    ) => string | null = () => null,
     rsc = false,
   ) {
     this.planner = importEdgesPlanner(this)
@@ -257,12 +255,23 @@ export class ImportProtection {
 
   /**
    * A compile environment (by key) and its type; `publicName`: the name
-   * reports and callbacks give it (default: its key).
+   * reports and callbacks give it (default: its key);
+   * `clientReferencesInto`: where it renders server components, the
+   * environment the bundler brings the `'use client'` files they import to
+   * (the client-reference handoff: `EdgeViolation.handoff`).
    */
-  addEnvironment(name: string, type: EnvType, publicName?: string): void {
+  addEnvironment(
+    name: string,
+    type: EnvType,
+    publicName?: string,
+    clientReferencesInto?: string,
+  ): void {
     this.types.set(name, type)
     if (publicName !== undefined && publicName !== name) {
       this.publicNames.set(name, publicName)
+    }
+    if (clientReferencesInto !== undefined) {
+      this.clientReferencesInto.set(name, clientReferencesInto)
     }
   }
 
@@ -283,9 +292,25 @@ export class ImportProtection {
   /**
    * Releases an environment's state once its build is finished (edges,
    * edge modules, verdicts): nothing later reads it, and a later compile in
-   * the environment starts over (`env`).
+   * the environment starts over (`env`). An environment whose client
+   * references another one renders is released with it: that one's
+   * verdicts read its handoff records (a Vite build builds `rsc` first).
    */
   release(name: string): void {
+    const into = this.clientReferencesInto.get(name)
+    if (into !== undefined && this.envs.has(into)) {
+      this.releaseWithInto.add(name)
+      return
+    }
+    this.releaseNow(name)
+    for (const [source, dest] of this.clientReferencesInto) {
+      if (dest === name && this.releaseWithInto.delete(source)) {
+        this.releaseNow(source)
+      }
+    }
+  }
+
+  private releaseNow(name: string): void {
     const env = this.envs.get(name)
     if (env) {
       for (const target of env.allowedTargets()) {
@@ -300,6 +325,51 @@ export class ImportProtection {
       // (another build of the name asks again)
       this.answers.delete(publicName)
       this.notified.delete(publicName)
+    }
+  }
+
+  /** A live compile environment's state, by key (none: not created yet, or released). @internal */
+  liveEnv(name: string): ImportProtectionEnv | undefined {
+    return this.envs.get(name)
+  }
+
+  /** The edges import protection recorded in an environment (traces). @internal */
+  edgesOf(name: string): EdgeIndex | null {
+    return this.envs.get(name)?.edges ?? null
+  }
+
+  /**
+   * The environments whose client references environment `dest` renders,
+   * of which `target` is one (`addEnvironment`'s `clientReferencesInto`).
+   * @internal
+   */
+  handoffSources(dest: string, target: string): Array<ImportProtectionEnv> {
+    const out: Array<ImportProtectionEnv> = []
+    for (const [source, into] of this.clientReferencesInto) {
+      const env = into === dest ? this.envs.get(source) : undefined
+      if (env?.clientReferences.has(normalizePath(target))) {
+        out.push(env)
+      }
+    }
+    return out
+  }
+
+  /**
+   * The importers of a module through the client-reference handoff: of
+   * the module of its file in each environment whose client references it
+   * is (`handoffSources`), from `graph`, else from that environment's
+   * records. @internal
+   */
+  *handoffImporters(
+    node: GraphNode,
+    graph: NodeGraph | null,
+  ): Generator<GraphNode> {
+    for (const source of this.handoffSources(node.env, node.id)) {
+      yield* graph?.importers({ env: source.name, id: node.id }) ??
+        [...source.edges.importers(node.id)].map((id) => ({
+          env: source.name,
+          id,
+        }))
     }
   }
 
@@ -378,12 +448,6 @@ export class ImportProtection {
   /** Whether an importer path is checked (cached per path). */
   inScope(importerPath: string): boolean {
     return importerInScope(this.config, importerPath, this.scopeCache)
-  }
-
-  /** The file of a build graph's importer whose imports are checked: its own, or the one a virtual importer stands for (`CreateImportProtectionOptions.importerFileOf`); null when unchecked. @internal */
-  checkedImporter(importerId: string): string | null {
-    const file = this.importerFileOf(importerId) ?? traceFile(importerId)
-    return this.inScope(file) ? file : null
   }
 
   /**
@@ -606,6 +670,44 @@ interface Served {
    * (`dedupeKey`), asked once and remembered: it never differs.
    */
   restored?: true
+  /**
+   * A denied file's verdict as the compilation's finished graph gives it
+   * (`mismatches(graph)`: Rsbuild's `finishMake`), which its next compiles
+   * serve until the next settlement: the edges a compile reads in its own
+   * environment can disagree with the graph (an exempt importer whose
+   * import a user's rule moved to another layer's module).
+   */
+  settled?: boolean
+}
+
+/**
+ * A checked importer whose import reaches a denied file compiled under its
+ * own id (`Incoming.checked`): an import the compiler does not read (a
+ * pattern import, an import another plugin added), or a denied
+ * client-reference import (`handoff`: its violation).
+ */
+interface CheckedEdge {
+  /** The importer's file. */
+  importer: string
+  importerId: string
+  /** The importer's compile environment. */
+  env: string
+  handoff?: EdgeViolation
+}
+
+/**
+ * The edges that arrive at a denied file compiled under its own id, each
+ * classified by the records of its own environment (`incoming`).
+ */
+interface Incoming {
+  /** The unchecked importers (files) whose import of it the compiler read: each makes it real (SPEC J6.7, R89). */
+  exempt: Set<string>
+  /** The importers (files) whose import of it `allowImport` allowed. */
+  allowed: Set<string>
+  /** The checked importers that reach the file itself. */
+  checked: Array<CheckedEdge>
+  /** The unchecked importers (files) that reach it through an import the compiler does not read. */
+  unread: Set<string>
 }
 
 /**
@@ -619,8 +721,8 @@ interface Conflict {
   allowed: Array<string>
   /** An allowed import of another environment of this type brought it. */
   elsewhere: boolean
-  /** The checked importers that reach the file itself (files). */
-  checked: Array<string>
+  /** The checked importers that reach the file itself. */
+  checked: Array<CheckedEdge>
   /**
    * The unchecked importers that reach the file itself, through an import
    * the compiler does not read (an exempt pattern import, an import another
@@ -634,6 +736,8 @@ interface RegisteredModule {
   content: EdgeModuleContent
   /** Violations importing it, by `${importerId}\0${edgeKey}`. */
   violations: Map<string, EdgeViolation>
+  /** Whether its code was handed to the listeners (a handoff's key has no module: `EdgeViolation.handoff`). */
+  emitted: boolean
 }
 
 /** A compile output, as `compileModule` returns it (structural). */
@@ -665,8 +769,10 @@ const NO_TRACE: Trace = { steps: [], fromEntry: false }
 class ImportProtectionEnv {
   /** Resolved edges of every judged importer (trace steps). */
   readonly edges: EdgeIndex
-  /** The bundler's graph (dev: the dev server's module graph; build: set per pass by the witness reader). */
-  graph: ImportGraphView | null = null
+  /** The bundler's graph (dev: the dev server's module graphs; build: the compilation's, set per pass by the witness reader). */
+  graph: NodeGraph | null = null
+  /** The modules (canonical ids) that are client references here (`ImportEdgesFacts.clientReferences`). @internal */
+  readonly clientReferences = new Set<string>()
   /** Dev report queue (`useDevReporter`). */
   reporter: DevReporter | null = null
   private readonly modules = new Map<string, RegisteredModule>()
@@ -734,14 +840,18 @@ class ImportProtectionEnv {
         v.env !== this.name ||
         v.behavior !== 'mock' ||
         v.pending ||
+        // (a denied handoff is reported with the module it brings)
+        v.handoff ||
         (v.self
           ? this.served.get(normalizePath(v.importerId))?.verdict !== 'mock'
           : await this.allows(v))
       ) {
         continue
       }
-      await this.notify(v)
-      this.report(v)
+      for (const { v: reported, owner } of this.devReportsOf(v)) {
+        await owner.notify(reported)
+        owner.report(reported)
+      }
     }
   }
 
@@ -751,21 +861,30 @@ class ImportProtectionEnv {
     if (!g) {
       return false
     }
-    if (g.isEntry(importerId)) {
+    const node = { env: this.name, id: importerId }
+    if (g.isEntry(node)) {
       return true
     }
-    for (const _ of g.importers(importerId)) {
-      return true
-    }
-    for (const _ of this.edges.importers(importerId)) {
-      return true
+    for (const importers of [
+      g.importers(node) ?? [],
+      this.edges.importers(importerId),
+      this.ip.handoffImporters(node, g),
+    ]) {
+      for (const _ of importers) {
+        return true
+      }
     }
     return false
   }
 
   /** The whole trace of an importer from the graph as it is now. */
   trace(importerId: string, graph = this.graph): Trace {
-    return traceOf(importerId, graph, this.edges)
+    return traceOf(
+      { env: this.name, id: importerId },
+      graph,
+      (env) => this.ip.edgesOf(env),
+      (node) => this.ip.handoffImporters(node, graph),
+    )
   }
 
   /**
@@ -840,6 +959,11 @@ class ImportProtectionEnv {
   ): CompileOutcome | Promise<CompileOutcome> {
     const violations = violationsOf(out)
     this.register(importerId, violations)
+    if (clientReferencesOf(out)) {
+      this.clientReferences.add(normalizePath(importerId))
+    } else if (this.clientReferences.size > 0 && out.output === 'env') {
+      this.clientReferences.delete(normalizePath(importerId))
+    }
     if (!(IMPORT_EDGES_PLANNER in out.facts.planners)) {
       // the planner did not run (the module imports nothing now): what it
       // imported before is no edge any more, nor a real demand it made
@@ -854,10 +978,14 @@ class ImportProtectionEnv {
       return violations.length > 0 ? this.answer(violations) : NO_ERROR
     }
     const decided = async (): Promise<CompileOutcome> => {
-      const real = await this.allowsSelf(self)
-      this.served.set(normalizePath(importerId), {
+      const id = normalizePath(importerId)
+      // (the graph's verdict of the last settlement, else the guess)
+      const settled = this.served.get(id)?.settled
+      const real = settled ?? (await this.allowsSelf(self))
+      this.served.set(id, {
         verdict: real ? 'real' : 'mock',
         self,
+        ...(settled !== undefined && { settled }),
       })
       if (real) {
         return this.answer(violations.filter((v) => v !== self))
@@ -866,8 +994,12 @@ class ImportProtectionEnv {
       if (!dev || this.explainedByStaleImporter(self)) {
         return { error: null, mock }
       }
-      await this.notify(self)
-      return { error: this.errorOf(this.report(self)), mock }
+      const errors: Array<DevReport> = []
+      for (const { v, owner } of this.devReportsOf(self)) {
+        await owner.notify(v)
+        errors.push(...owner.report(v))
+      }
+      return { error: this.errorOf(errors), mock }
     }
     return decided()
   }
@@ -901,12 +1033,37 @@ class ImportProtectionEnv {
   ): Promise<CompileOutcome> {
     const errors: Array<DevReport> = []
     for (const v of violations) {
-      if (v.env === this.name && !v.pending && !(await this.allows(v))) {
+      if (
+        v.env === this.name &&
+        !v.pending &&
+        !(await this.allows(v)) &&
+        // (a denied handoff is reported when the module it brings compiles
+        // as its mock: `devReportsOf`)
+        !v.handoff
+      ) {
         await this.notify(v)
         errors.push(...this.report(v))
       }
     }
     return { error: this.errorOf(errors) }
+  }
+
+  /**
+   * Dev: what a module that is its own violation, served its mock, is
+   * reported as: the denied client-reference imports that bring it (each
+   * of its own environment, at its position), else itself.
+   */
+  private devReportsOf(
+    self: EdgeViolation,
+  ): Array<{ v: EdgeViolation; owner: ImportProtectionEnv }> {
+    const out: Array<{ v: EdgeViolation; owner: ImportProtectionEnv }> = []
+    for (const c of this.incoming(self, null).checked) {
+      const owner = c.handoff && this.ip.liveEnv(c.env)
+      if (owner) {
+        out.push({ v: c.handoff!, owner })
+      }
+    }
+    return out.length > 0 ? out : [{ v: self, owner: this }]
   }
 
   /** The mock a module that is its own violation is served as. */
@@ -952,51 +1109,175 @@ class ImportProtectionEnv {
   }
 
   /**
-   * Whether a module that is its own violation has real demand, known
-   * without asking: an allowed import brought it (one module, one identity, in
-   * every environment of this type), or an exempt importer imports it (SPEC
-   * J6.7: it gets the real module; compiled before the module, its imports
-   * are indexed).
+   * The edges that arrive at a module that is its own violation, each
+   * classified with the records of its own environment: the connections
+   * of `graph` into this environment's module of the file (null: the
+   * edges this environment read, the guess of a compile before the graph
+   * is complete), and, when the file is client references in an
+   * environment whose client references this one renders, the connections
+   * into that environment's module of it (its imports there are handoffs:
+   * `EdgeViolation.handoff`). Nothing asks which modules import the path
+   * in this environment: an exempt importer's import is demand where the
+   * bundler resolved it to (SPEC J6.7).
    */
-  private selfAllowed(self: EdgeViolation): boolean {
+  private incoming(self: EdgeViolation, graph: NodeGraph | null): Incoming {
+    const target = self.resolved!
+    const out: Incoming = {
+      exempt: new Set(),
+      allowed: new Set(),
+      checked: [],
+      unread: new Set(),
+    }
+    // (an importer merely outside the scope: only of a file outside it too, R89)
+    const inside = this.ip.inScope(traceFile(target))
+    const sources = this.ip.handoffSources(this.name, target)
+    const classify = (from: GraphNode, read: boolean) => {
+      const ref = this.ip.ids.parse(from.id)
+      if (ref) {
+        // an edge module importing it re-exports it: allowed
+        if (ref.kind === 'edge') {
+          for (const importer of this.ip.liveEnv(ref.env)?.allowedBy(ref.key) ??
+            []) {
+            out.allowed.add(importer)
+          }
+        }
+        return
+      }
+      const importer = traceFile(from.id)
+      if (
+        read &&
+        !this.ip.inScope(importer) &&
+        (!inside || this.ip.exempt(importer))
+      ) {
+        out.exempt.add(importer)
+      } else if (!this.ip.inScope(importer)) {
+        out.unread.add(importer)
+      } else {
+        // (an import read but not substituted: of a file whose marker only its
+        // own compile reads, an SFC)
+        out.checked.push({ importer, importerId: from.id, env: from.env })
+      }
+    }
+    const node = { env: this.name, id: self.importerId }
+    const known = graph?.importers(node) ?? null
+    if (known === null) {
+      // (the guess: what this environment read is demand or nothing: a
+      // checked import of it is substituted)
+      for (const importerId of this.edges.importers(target)) {
+        const importer = traceFile(importerId)
+        if (!this.ip.inScope(importer)) {
+          classify({ env: this.name, id: importerId }, true)
+        }
+      }
+    } else {
+      for (const from of known) {
+        // (the bundler's module loading a server chunk's client references:
+        // plugin-rsc's in `ssr`; the handoff below is the import)
+        if (sources.length > 0 && from.id.startsWith('\0')) {
+          continue
+        }
+        if (traceFile(from.id) === self.importer && from.id !== node.id) {
+          // (Rsbuild: an SFC's own module imports its compiled script block,
+          // the module denied here; the SFC's importers import it)
+          for (const sfcImporter of graph!.importers(from) ?? []) {
+            classify(sfcImporter, false)
+          }
+          continue
+        }
+        classify(
+          from,
+          this.ip.edgesOf(from.env)?.edge(from.id, target) !== undefined,
+        )
+      }
+    }
+    for (const source of sources) {
+      const into =
+        graph?.importers({ env: source.name, id: target }) ??
+        [...source.edges.importers(target)].map((id) => ({
+          env: source.name,
+          id,
+        }))
+      for (const from of into) {
+        const handoff = source.handoffOf(from.id, target)
+        if (!handoff) {
+          classify(from, source.edges.edge(from.id, target) !== undefined)
+        } else if (source.allowedBy(handoff.module.key).next().done) {
+          out.checked.push({
+            importer: handoff.importer,
+            importerId: from.id,
+            env: source.name,
+            handoff,
+          })
+        } else {
+          out.allowed.add(handoff.importer)
+        }
+      }
+    }
+    return out
+  }
+
+  /** Whether the edges arriving at a module that is its own violation make it real (`incoming`), or an allowed import of this type brought it (R96). */
+  private demanded(self: EdgeViolation, incoming: Incoming): boolean {
     return (
-      this.ip.targetAllowed(this.type, self.resolved!) ||
-      !this.demanders(self).next().done
+      incoming.exempt.size > 0 ||
+      incoming.allowed.size > 0 ||
+      this.ip.targetAllowed(this.type, self.resolved!)
     )
   }
 
-  /** The importers (files) that import a module that is its own violation and are not checked: each makes it real. */
-  private *demanders(self: EdgeViolation): Generator<string> {
-    // (an importer merely outside the scope: only of a file outside it too, R89)
-    const inside = this.ip.inScope(traceFile(self.resolved!))
-    for (const importerId of this.edges.importers(self.resolved!)) {
-      const importer = traceFile(importerId)
-      if (!this.ip.inScope(importer) && (!inside || this.ip.exempt(importer))) {
-        yield importer
-      }
-    }
+  /** Whether a module that is its own violation has real demand, known without asking, from the edges its compile can read (`incoming` without a graph). */
+  private selfAllowed(self: EdgeViolation): boolean {
+    return this.demanded(self, this.incoming(self, null))
   }
 
   /**
-   * Development: whether an importer whose plan is stale in this environment
+   * Development: whether an importer whose plan is stale in its environment
    * explains the presence of a module that is its own violation (a module
    * edited to be marked, built before its unchanged importer): the
    * importer's rebuild reports the import or allows it. The module is then
    * stale too, judged again once the importer is built (it is reported if
-   * something else still brings it).
+   * something else still brings it). The importers are those the guess
+   * reads: this environment's, and the handoff's.
    */
   private explainedByStaleImporter(self: EdgeViolation): boolean {
     const stale = this.ip.stale
     if (!stale) {
       return false
     }
-    for (const importerId of this.edges.importers(self.resolved!)) {
-      if (stale.holds(this.name, traceFile(importerId))) {
-        stale.add(this.name, traceFile(self.importerId))
-        return true
+    const target = self.resolved!
+    for (const env of [this, ...this.ip.handoffSources(this.name, target)]) {
+      for (const importerId of env.edges.importers(target)) {
+        if (stale.holds(env.name, traceFile(importerId))) {
+          stale.add(this.name, traceFile(self.importerId))
+          return true
+        }
       }
     }
     return false
+  }
+
+  /** A denied client-reference import of `target` by `importerId` recorded here (`EdgeViolation.handoff`). @internal */
+  handoffOf(importerId: string, target: string): EdgeViolation | undefined {
+    for (const m of this.modules.values()) {
+      if (m.content.resolved !== target) {
+        continue
+      }
+      for (const v of m.violations.values()) {
+        if (v.handoff && v.importerId === importerId) {
+          return v
+        }
+      }
+    }
+    return undefined
+  }
+
+  /** The importers (files) of an edge module or handoff `allowImport` allowed (by key), while their import is there. @internal */
+  *allowedBy(key: string): Generator<string> {
+    if (this.served.get(key)?.verdict === 'real') {
+      for (const v of this.modules.get(key)?.violations.values() ?? []) {
+        yield v.importer
+      }
+    }
   }
 
   /**
@@ -1100,6 +1381,9 @@ class ImportProtectionEnv {
         return
       }
       this.register(importerId, record.violations)
+      if (record.clientReferences) {
+        this.clientReferences.add(normalizePath(importerId))
+      }
       const self = record.violations.find((v) => v.self)
       if (self && !this.served.has(normalizePath(importerId))) {
         this.served.set(normalizePath(importerId), {
@@ -1127,9 +1411,12 @@ class ImportProtectionEnv {
    * file whose `allowImport` answer (asked once per import, now if not yet) differs. The
    * ids of the modules to build again (an edge module by its id among our
    * modules). Edge modules first: an allowed import brings the module it
-   * allows (`allowedImporters`).
+   * allows (`allowedImporters`). With the compilation's finished `graph`
+   * (Rsbuild's `finishMake`), a denied file's verdict is the edges that
+   * arrive at it there (`incoming`), written to the ledger as settled
+   * (`Served.settled`: its rebuild serves it); without, the guess.
    */
-  async mismatches(): Promise<Array<string>> {
+  async mismatches(graph?: NodeGraph): Promise<Array<string>> {
     const out: Array<string> = []
     for (const [key, entry] of this.served) {
       const m = entry.restored ? this.modules.get(key) : undefined
@@ -1147,10 +1434,17 @@ class ImportProtectionEnv {
       }
     }
     for (const [id, entry] of this.served) {
-      if (
-        entry.self &&
-        (await this.allowsSelf(entry.self)) !== (entry.verdict === 'real')
-      ) {
+      if (!entry.self) {
+        continue
+      }
+      const real = graph
+        ? this.demanded(entry.self, this.incoming(entry.self, graph)) ||
+          (await this.allows(entry.self))
+        : await this.allowsSelf(entry.self)
+      if (graph) {
+        entry.settled = real
+      }
+      if (real !== (entry.verdict === 'real')) {
         out.push(id)
       }
     }
@@ -1214,7 +1508,8 @@ class ImportProtectionEnv {
     const edges = this.edges.edgesOf(importerId)
     const revision = this.edges.revisionOf(importerId)
     const served = this.served.get(normalizePath(importerId))?.verdict
-    return violations.length > 0 || edges.length > 0
+    const clientReferences = clientReferencesOf(out)
+    return violations.length > 0 || edges.length > 0 || clientReferences
       ? {
           key: RSPACK_BUILD_INFO_KEY,
           value: {
@@ -1224,6 +1519,7 @@ class ImportProtectionEnv {
             ...(edges.length > 0 && { edges }),
             ...(revision !== null && { revision }),
             ...(served && { served }),
+            ...(clientReferences && { clientReferences: true as const }),
           },
         }
       : null
@@ -1255,10 +1551,11 @@ class ImportProtectionEnv {
         continue
       }
       keys.add(v.module.key)
-      this.defineModule(v.module.key, v.module.content).violations.set(
-        `${v.importerId}\u0000${v.edgeKey}`,
-        v,
-      )
+      this.defineModule(
+        v.module.key,
+        v.module.content,
+        !v.handoff,
+      ).violations.set(`${v.importerId}\u0000${v.edgeKey}`, v)
     }
     const previous = this.byImporter.get(importerId)?.keys
     if (!previous) {
@@ -1434,12 +1731,23 @@ class ImportProtectionEnv {
     }
   }
 
-  /** An edge module of this environment: registered (and emitted, the runtime first) unless it is known. @internal */
-  defineModule(key: string, content: EdgeModuleContent): RegisteredModule {
+  /**
+   * An edge module of this environment: registered unless it is known, and
+   * emitted (the runtime first) unless it is a handoff's key only (`emit`:
+   * `EdgeViolation.handoff`). @internal
+   */
+  defineModule(
+    key: string,
+    content: EdgeModuleContent,
+    emit = true,
+  ): RegisteredModule {
     let m = this.modules.get(key)
     if (!m) {
-      m = { content, violations: new Map() }
+      m = { content, violations: new Map(), emitted: false }
       this.modules.set(key, m)
+    }
+    if (emit && !m.emitted) {
+      m.emitted = true
       this.defineRuntime()
       this.ip.emit(
         { env: this.name, kind: 'edge', key },
@@ -1473,6 +1781,11 @@ class ImportProtectionEnv {
         this.edges.delete(importerId)
       }
     }
+    for (const id of [...this.clientReferences]) {
+      if (!holds(id)) {
+        this.clientReferences.delete(id)
+      }
+    }
     for (const [id, { importerId }] of [...this.byImporter]) {
       if (!holds(importerId)) {
         this.importersByFile.delete(id, traceFile(importerId))
@@ -1486,6 +1799,11 @@ class ImportProtectionEnv {
     this.edges.forget(path)
     for (const id of this.importersByFile.take(path)) {
       this.forgetImporter(id)
+    }
+    for (const id of [...this.clientReferences]) {
+      if (traceFile(id) === path) {
+        this.clientReferences.delete(id)
+      }
     }
   }
 
@@ -1569,16 +1887,16 @@ class ImportProtectionEnv {
   }
 
   /**
-   * R147: the denied files compiled under their own id (`holds`: those the
-   * build holds) whose importers disagree in `graph`: one needs the file as
-   * it is (an exempt or unchecked importer, an import `allowImport` allowed),
-   * and a checked importer reaches the file itself (a pattern import, an
-   * import another plugin added: it cannot get a mock of its own). Read
-   * once the graph is complete, so the result does not depend on the order
-   * the bundler compiled them in.
+   * R147: the denied files compiled under their own id whose importers
+   * disagree in `graph`: one needs the file as it is (an exempt or
+   * unchecked importer, an import `allowImport` allowed), and a checked
+   * importer reaches the file itself (a pattern import, an import another
+   * plugin added: it cannot get a mock of its own; a denied
+   * client-reference import). Read once the graph is complete, so the
+   * result does not depend on the order the bundler compiled them in.
    */
-  conflicts(graph: ImportGraphView): Map<string, Conflict> {
-    const out = this.demanded(graph)
+  conflicts(graph: NodeGraph): Map<string, Conflict> {
+    const out = this.demandedFiles(graph)
     for (const [id, c] of out) {
       if (c.checked.length === 0) {
         out.delete(id)
@@ -1592,8 +1910,8 @@ class ImportProtectionEnv {
    * holds) with real demand and another importer in `graph` that reaches the
    * file itself: checked (R147) or not (`Conflict.unread`).
    */
-  private demanded(
-    graph: ImportGraphView,
+  private demandedFiles(
+    graph: NodeGraph,
     holds?: (id: string) => boolean,
   ): Map<string, Conflict> {
     const out = new Map<string, Conflict>()
@@ -1602,38 +1920,22 @@ class ImportProtectionEnv {
       if (!self || (holds && !holds(id))) {
         continue
       }
-      const needers = [...new Set(this.demanders(self))]
-      const allowed = [...new Set(this.allowedImporters(self.resolved!))]
-      const elsewhere =
-        needers.length === 0 &&
-        allowed.length === 0 &&
-        this.ip.targetAllowed(this.type, self.resolved!)
-      if (needers.length === 0 && allowed.length === 0 && !elsewhere) {
+      const incoming = this.incoming(self, graph)
+      if (!this.demanded(self, incoming)) {
         continue
       }
-      const checked = new Set<string>()
-      const unread = new Set<string>()
-      for (const importerId of graph.importers(self.importerId)) {
-        const importer = traceFile(importerId)
-        if (this.ip.ids.parse(importerId) !== null) {
-          continue
-        }
-        const file = this.ip.checkedImporter(importerId)
-        if (file !== null) {
-          checked.add(file)
-        } else if (!needers.includes(importer)) {
-          unread.add(importer)
-        }
-      }
-      if (checked.size > 0 || unread.size > 0) {
+      const needers = [...incoming.exempt]
+      const allowed = [...incoming.allowed]
+      const unread = [...incoming.unread].filter((f) => !incoming.exempt.has(f))
+      if (incoming.checked.length > 0 || unread.length > 0) {
         out.set(id, {
           self,
           verdict: entry.verdict,
           needers,
           allowed,
-          elsewhere,
-          checked: [...checked],
-          unread: [...unread],
+          elsewhere: needers.length === 0 && allowed.length === 0,
+          checked: incoming.checked,
+          unread,
         })
       }
     }
@@ -1714,7 +2016,7 @@ class ImportProtectionEnv {
    */
   async surviving(
     liveKeys: ReadonlyArray<string>,
-    graph: ImportGraphView,
+    graph: NodeGraph,
     holds?: (id: string) => boolean,
     /** Vite: whether the output kept any code of a module (a denied file served as it is). */
     rendered?: (id: string) => boolean,
@@ -1728,7 +2030,7 @@ class ImportProtectionEnv {
     this.graph = graph
     // R147 first: it replaces the file's other reports
     const demanded =
-      this.served.size > 0 ? this.demanded(graph, holds) : new Map()
+      this.served.size > 0 ? this.demandedFiles(graph, holds) : new Map()
     const conflicts = new Map(
       [...demanded].filter(([, c]) => c.checked.length > 0),
     )
@@ -1772,11 +2074,15 @@ class ImportProtectionEnv {
     // (one entry per environment; a dev server reports the file when it
     // compiles it), so no report accounts for it (design 4, I5)
     const unaccounted: Array<EdgeViolation> = []
-    const live = new Map<string, EdgeViolation>()
-    const add = (v: EdgeViolation) => {
+    /** The violations to report, each with the environment it is of. */
+    const live = new Map<
+      string,
+      { v: EdgeViolation; owner: ImportProtectionEnv }
+    >()
+    const add = (v: EdgeViolation, owner: ImportProtectionEnv = this) => {
       const key = dedupeKey(v)
       if (!live.has(key)) {
-        live.set(key, v)
+        live.set(key, { v, owner })
       }
     }
     for (const key of liveKeys) {
@@ -1794,17 +2100,17 @@ class ImportProtectionEnv {
         ) {
           continue
         }
-        // (Rsbuild: an SFC's own module imports its compiled script block,
-        // the module denied here; the SFC's importers import it)
-        const importers = [...graph.importers(v.importerId)].flatMap((i) =>
-          traceFile(i) === v.importer ? [...graph.importers(i)] : [i],
-        )
-        const checked = this.importsOf(v, importers)
-        checked.forEach(add)
-        const others = importers.filter((id) => this.ip.ids.parse(id) === null)
-        if (!checked.length && others.length) {
-          unchecked.set(v.edgeKey, [v, [...new Set(others.map(traceFile))]])
-        } else if (!checked.length) {
+        // one report per checked import that reaches it: a denied handoff
+        // as recorded, an import the compiler does not read by its importer
+        const incoming = this.incoming(v, graph)
+        for (const c of incoming.checked) {
+          const owner = this.ip.liveEnv(c.env) ?? this
+          add(c.handoff ?? owner.importOf(v, c), owner)
+        }
+        const others = new Set([...incoming.exempt, ...incoming.unread])
+        if (incoming.checked.length === 0 && others.size > 0) {
+          unchecked.set(v.edgeKey, [v, [...others]])
+        } else if (incoming.checked.length === 0) {
           unaccounted.push(v)
         }
       }
@@ -1815,11 +2121,11 @@ class ImportProtectionEnv {
       reports.push(this.formatConflict(c))
     }
     for (const key of [...live.keys()].sort()) {
-      const v = live.get(key)!
+      const { v, owner } = live.get(key)!
       // (read once: an event kept after the build holds no reader of it)
-      const trace = this.trace(v.importerId, graph)
-      await this.notify(v, trace)
-      const info = violationInfo(v, this.ip.config, trace, this.publicName)
+      const trace = owner.trace(v.importerId, graph)
+      await owner.notify(v, trace)
+      const info = violationInfo(v, this.ip.config, trace, owner.publicName)
       reports.push({
         severity:
           v.behavior === 'error' ? ('error' as const) : ('warning' as const),
@@ -1860,15 +2166,7 @@ class ImportProtectionEnv {
     // not violations either, but the build shipped what no importer asked for
     for (const { verdict, self: v, order } of unsettled.values()) {
       const info = violationInfo(v, this.ip.config, NO_TRACE, this.publicName)
-      const others = order
-        ? order.unread
-        : [
-            ...new Set(
-              [...graph.importers(v.importerId)]
-                .filter((i) => this.ip.ids.parse(i) === null)
-                .map(traceFile),
-            ),
-          ]
+      const others = order ? order.unread : [...this.incoming(v, graph).unread]
       reports.push({
         severity:
           v.behavior === 'error' ? ('error' as const) : ('warning' as const),
@@ -1886,33 +2184,21 @@ class ImportProtectionEnv {
   }
 
   /**
-   * Build: the violations a module's own violation stands for, one per module
-   * of the graph importing it that import protection checks (our own modules
-   * aside).
+   * Build: the violation a module's own violation stands for at a checked
+   * importer of this environment whose import the compiler does not read
+   * (`incoming`), found by the pattern import in its text.
    */
-  private importsOf(
-    self: EdgeViolation,
-    importers: Iterable<string> = [],
-  ): Array<EdgeViolation> {
+  private importOf(self: EdgeViolation, c: CheckedEdge): EdgeViolation {
     const { self: _self, ...violation } = self
-    const out: Array<EdgeViolation> = []
-    for (const importerId of new Set(importers)) {
-      const importer =
-        this.ip.ids.parse(importerId) === null
-          ? this.ip.checkedImporter(importerId)
-          : null
-      if (importer === null) {
-        continue
-      }
-      out.push({
-        ...violation,
-        edgeKey: `${self.edgeKey}\u0000${importerId}`,
-        importer,
-        importerId,
-        ...this.patternImportOf(importer, self.resolved!),
-      })
+    return {
+      ...violation,
+      env: this.name,
+      envType: this.type,
+      edgeKey: `${self.edgeKey}\u0000${c.importerId}`,
+      importer: c.importer,
+      importerId: c.importerId,
+      ...this.patternImportOf(c.importer, self.resolved!),
     }
-    return out
   }
 
   /**

@@ -71,6 +71,16 @@ export interface EdgeViolation {
    * imports (`'default'` for a default import).
    */
   binding?: { name: string; imported: string }
+  /**
+   * A client-reference handoff: the import of a `'use client'` file in an
+   * environment that renders server components, which the bundler turns
+   * into client references (nothing of the file runs there). The file's
+   * module comes to the environment that renders client references on the
+   * server (`clientReferencesInto`): this import is how it does, and
+   * `allowImport`'s answer on it is what that module gets. Never
+   * substituted (`module` is its ledger key, no edge module of ours).
+   */
+  handoff?: true
   /** The edge is a re-export (`export … from`): a barrel passes the module on. */
   reexport?: true
   /** Build: one importer's import of a module that is its own violation, by the pattern import found in its text. */
@@ -151,6 +161,19 @@ export function selfViolationOf(
 export interface ImportEdgesFacts {
   /** Violations by output id (only outputs that have some). */
   violations: Record<string, Array<EdgeViolation>>
+  /** The module's `env` output is client references here (`ImportEdgesConfig.clientReferences`, a `'use client'` module). */
+  clientReferences?: true
+}
+
+/** Whether a compiled output is client references in its environment (`ImportEdgesFacts.clientReferences`). */
+export function clientReferencesOf(output: {
+  facts: Pick<PlanFacts, 'planners'>
+  output: string
+}): boolean {
+  return (
+    output.output === 'env' &&
+    output.facts.planners[IMPORT_EDGES_PLANNER]?.clientReferences === true
+  )
 }
 
 /** The violations of one compiled output (`CompileOutput.facts`, `CompileOutput.output`). */
@@ -269,9 +292,10 @@ export const RSPACK_BUILD_INFO_KEY = 'tanstack.start.ip'
  * record of another version (a persistent cache an earlier build wrote) is
  * built again, never replayed. 2: every violation has its edge module. 3:
  * edge keys and edge-module ids of compile environments (no layer; an
- * Rspack RSC layer's module records the `rsc` environment's).
+ * Rspack RSC layer's module records the `rsc` environment's). 4: the
+ * client-reference handoff (`EdgeViolation.handoff`, `clientReferences`).
  */
-export const RSPACK_BUILD_INFO_VERSION = 3
+export const RSPACK_BUILD_INFO_VERSION = 4
 
 /**
  * What the Rspack loader stores in an importer's `buildInfo[RSPACK_BUILD_INFO_KEY]`
@@ -289,4 +313,6 @@ export interface RspackImportProtectionBuildInfo {
   revision?: string
   /** What was served: a module that is its own violation, or an edge module (`ImportProtectionEnv.mismatches`). */
   served?: 'mock' | 'real'
+  /** The module is client references in its environment (`ImportEdgesFacts.clientReferences`). */
+  clientReferences?: true
 }

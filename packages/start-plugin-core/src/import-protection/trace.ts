@@ -371,14 +371,18 @@ export function formatServedConflict(
     allowed: Array<string>
     elsewhere: boolean
   },
-  checked: Array<string>,
+  /** The checked importers, each with its denied client-reference import (`handoff`) or by an import the compiler does not read. */
+  checked: Array<{ importer: string; handoff?: EdgeViolation }>,
   served: 'mock' | 'real',
   ctx: ReportContext,
 ): string {
   const root = ctx.config.root
   const rel = (p: string) => relativizePath(p, root)
   const denied = identify(info.resolved ?? info.importer).path
-  const sites = checked.map((importer) => reachOf(ctx, importer, denied))
+  const handoffs = checked.flatMap((c) => (c.handoff ? [c.handoff] : []))
+  const sites = checked.flatMap((c) =>
+    c.handoff ? [] : [reachOf(ctx, c.importer, denied)],
+  )
   const exempt = demand.needers.filter((f) => !demand.allowed.includes(f))
   const lines = [
     ``,
@@ -400,6 +404,10 @@ export function formatServedConflict(
         ]
       : []),
     `  Reached by checked importers, which would get it as it is:`,
+    ...handoffs.map(
+      (v) =>
+        `    - ${rel(v.loc?.file ?? v.importer)}${v.loc ? `:${v.loc.line}:${v.loc.column}` : ''}, through its import "${v.specifier}" (a server component's import of a 'use client' file, which SSR renders): allowImport did not allow it`,
+    ),
     ...sites.map((x) => `    - ${reachLine(x, ctx)}`),
     ``,
     `  A file is served once, as its mock or as it is, to every importer that reaches it: one of these imports is a mistake. ${
@@ -410,6 +418,11 @@ export function formatServedConflict(
     ``,
     `  Suggestions:`,
   ]
+  for (const v of handoffs) {
+    lines.push(
+      `    - If ${rel(v.importer)} should render it: allow its import with allowImport (asked with env "${v.env}", importer ${rel(v.importer)}, specifier "${v.specifier}")`,
+    )
+  }
   const first = sites.find((x) => x.found) ?? sites[0]
   if (first) {
     for (const s of patternSuggestions(
@@ -834,7 +847,8 @@ export function formatViolation(
     loc ? `${rel(file)}:${loc.line}:${loc.column}` : rel(file)
   const trace = info.freezeTrace()
   const site = patternSiteOf(v, info, trace, ctx)
-  const clientComponent = clientComponentOf(v, site)
+  // (a handoff: a server component's import of a denied 'use client' file)
+  const clientComponent = v.handoff ? 'imported' : clientComponentOf(v, site)
 
   const lines: Array<string> = []
   lines.push(``)

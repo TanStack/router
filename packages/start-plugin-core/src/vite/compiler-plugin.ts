@@ -43,11 +43,11 @@ import { resolveRegistrySpecifier } from '../server-fns/resolver'
 import { resolveViteId } from '../utils'
 import { isVueSfc } from '../compiler/vue'
 import { resolveViteEdgeModuleId } from '../import-protection/edge-modules'
-import { viteDevGraphView } from '../import-protection/graph-trace'
+import { viteDevNodeGraph } from '../import-protection/graph-trace'
 import { heldIn } from '../import-protection/session'
 import {
   readRolldownWitness,
-  rolldownGraphView,
+  rolldownNodeGraph,
 } from '../import-protection/witness'
 import {
   inputMapOf,
@@ -216,8 +216,10 @@ function envCompilerPlugins(
       if (s.start.ip && environment) {
         const ipEnv = s.start.ip.env(env.name)
         const entries = state.entriesOf(s)
-        ipEnv.graph = viteDevGraphView(environment.moduleGraph, (id) =>
-          entries.has(id),
+        // (one environment's importers can be another's: the handoff)
+        ipEnv.graph = viteDevNodeGraph(
+          (name) => viteServer.environments[name]?.moduleGraph,
+          (id) => entries.has(id),
         )
         const reporter = ipEnv.useDevReporter({
           warn: (message) => environment.logger.warn(message),
@@ -526,7 +528,7 @@ function envCompilerPlugins(
       const live = readRolldownWitness(bundle as never, ipEnv.witness())
       const reports = await ipEnv.surviving(
         live,
-        rolldownGraphView((id) => this.getModuleInfo(id)),
+        rolldownNodeGraph(env.name, (id) => this.getModuleInfo(id)),
         // (a denied file served as it was compiled first is reported: a
         // build compiles it once)
         (id) => this.getModuleInfo(id) !== null,

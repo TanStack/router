@@ -9,7 +9,7 @@
  * Rspack's `processAssets` hand the host.
  */
 import type { EdgeModuleIds } from './edge-modules'
-import type { ImportGraphView } from './graph-trace'
+import type { GraphNode, NodeGraph } from './graph-trace'
 
 /** An edge module as the readers see it: its key and whether its target is effectful. */
 interface WitnessModule {
@@ -79,16 +79,30 @@ interface RollupModuleInfoLike {
   isEntry: boolean
 }
 
-/** The module graph of a Rolldown build for traces (`this.getModuleInfo`). */
-export function rolldownGraphView(
+/**
+ * The module graph of the Rolldown build of environment `env`
+ * (`this.getModuleInfo`): another environment's nodes are not readable
+ * there (null).
+ */
+export function rolldownNodeGraph(
+  env: string,
   getModuleInfo: (id: string) => RollupModuleInfoLike | null,
-): ImportGraphView {
+): NodeGraph {
   return {
-    importers(id) {
-      const info = getModuleInfo(id)
-      return info ? [...info.importers, ...info.dynamicImporters] : []
+    importers(node) {
+      if (node.env !== env) {
+        return null
+      }
+      const info = getModuleInfo(node.id)
+      return info
+        ? [...info.importers, ...info.dynamicImporters].map((id) => ({
+            env,
+            id,
+          }))
+        : []
     },
-    isEntry: (id) => getModuleInfo(id)?.isEntry === true,
+    isEntry: (node) =>
+      node.env === env && getModuleInfo(node.id)?.isEntry === true,
   }
 }
 
@@ -226,123 +240,66 @@ export function readRspackWitness(
 }
 
 /**
- * The files (by `idOf`) with a module in each of the compile environments
- * `envs` (`envOf`), concatenated inner modules included.
+ * The module graph of an Rspack compilation, of all its compile
+ * environments (`envOf`), by canonical resource (`idOf`): a node's
+ * importers are the origins of the connections into its modules (a file
+ * in two layers is a module of each), each a node of its own environment;
+ * entries are nodes too (`compilation.entries`). Its index is built on its
+ * first read: a compilation with no denied module reads nothing. Readable
+ * once the compilation's modules are built (`finishMake`, later hooks).
  */
-export function rspackFilesIn(
-  compilation: Pick<RspackCompilationLike, 'modules'>,
+export function rspackNodeGraph(
+  compilation: RspackCompilationLike,
   idOf: (resource: string) => string,
   envOf: RspackEnvOf,
-  envs: ReadonlyArray<string>,
-): Array<string> {
-  const found = new Map<string, Set<string>>()
-  for (const m of compilation.modules) {
-    for (const inner of [m, ...(m.modules ?? [])]) {
-      const env = inner.resource ? envOf(inner, m) : null
-      if (env === null || !envs.includes(env)) {
-        continue
-      }
-      const id = idOf(inner.resource!)
-      let seen = found.get(id)
-      if (!seen) {
-        seen = new Set()
-        found.set(id, seen)
-      }
-      seen.add(env)
-    }
-  }
-  return [...found].flatMap(([id, seen]) =>
-    seen.size === envs.length ? [id] : [],
-  )
-}
-
-/**
- * The client-reference handoff into a compile environment: the environment
- * whose server components render its client references (`from`), and the
- * files that are client references there (`'use client'`). Rspack's RSC
- * plugin adds a `'use client'` file's SSR-layer module for the RSC layer's
- * client reference, with no importer of its own: the server component that
- * imports the file in `from` is its importer.
- */
-export interface ClientReferenceHandoff {
-  from: string
-  clientReferences: ReadonlySet<string>
-}
-
-/**
- * The module graph of an Rspack compilation for traces, of one compile
- * environment (by resource, as the host's ids name it: `idOf`; entries from
- * `compilation.entries`). `scope`: the environment and the one of a module
- * (`envOf`). An id's importers are those of the environment's modules of
- * it (a file in two layers is a module of each), of its modules in each
- * environment an importer of another layer was found in (an issuer-layer
- * rule: an SSR-layer module importing the RSC layer's server-fn module; the
- * walk goes on in the layer it reached the file in), and, for a client
- * reference of `handoff`, of its modules in `handoff.from`. Without `scope`,
- * every module of an id.
- */
-export function rspackGraphView(
-  compilation: RspackCompilationLike,
-  idOf: (resource: string) => string = (resource) => resource,
-  scope?: {
-    env: string
-    envOf: RspackEnvOf
-    handoff?: ClientReferenceHandoff
-  },
-): ImportGraphView {
+): NodeGraph {
   // a production module can also be an inner module of a ConcatenatedModule (scope hoisting),
   // which holds the connections from outside the concatenation
-  let byResource: Map<
-    string,
-    Array<{ module: RspackModuleLike; env: string | null }>
-  > | null = null
+  let byNode: Map<string, Array<RspackModuleLike>> | null = null
+  /** The environment of each module of the index (an inner module's, from its holder). */
+  const envs = new Map<RspackModuleLike, string>()
   let entries: Set<string> | null = null
-  /** The environments of other layers each importer was found in (`importers`). */
-  const reached = new Map<string, Set<string>>()
-  /** The modules of an id whose importers are its importers in the environment (see `rspackGraphView`). */
-  const modulesOf = (id: string): Array<RspackModuleLike> => {
-    if (!byResource) {
-      byResource = new Map()
+  const key = (env: string, id: string) => `${env}\0${id}`
+  const modulesOf = (node: GraphNode): Array<RspackModuleLike> => {
+    if (!byNode) {
+      byNode = new Map()
       for (const m of compilation.modules) {
         for (const inner of [m, ...(m.modules ?? [])]) {
           if (!inner.resource) {
             continue
           }
-          const key = idOf(inner.resource)
-          let list = byResource.get(key)
+          const env = envOf(inner, m)
+          envs.set(inner, env)
+          const k = key(env, idOf(inner.resource))
+          let list = byNode.get(k)
           if (!list) {
             list = []
-            byResource.set(key, list)
+            byNode.set(k, list)
           }
-          const env = scope ? scope.envOf(inner, m) : null
           for (const holder of inner === m ? [m] : [inner, m]) {
-            if (!list.some((one) => one.module === holder)) {
-              list.push({ module: holder, env })
+            if (!list.includes(holder)) {
+              list.push(holder)
             }
           }
         }
       }
     }
-    const all = byResource.get(id) ?? []
-    if (!scope) {
-      return all.map((one) => one.module)
-    }
-    const envs = new Set(reached.get(id))
-    envs.add(scope.env)
-    if (scope.handoff?.clientReferences.has(id)) {
-      envs.add(scope.handoff.from)
-    }
-    return all.filter((one) => envs.has(one.env!)).map((one) => one.module)
+    return byNode.get(key(node.env, node.id)) ?? []
   }
   const { moduleGraph } = compilation
   return {
-    importers(id) {
-      const out: Array<string> = []
+    importers(node) {
+      const out: Array<GraphNode> = []
+      const seen = new Set<string>([key(node.env, node.id)])
       const visit = (m: RspackModuleLike, viaContext: boolean) => {
         for (const c of moduleGraph.getIncomingConnections(m)) {
           // a ConcatenatedModule holds the connections of each of its inner modules
-          const target = c.resolvedModule?.resource
-          if (target !== undefined && idOf(target) !== id) {
+          const target = c.resolvedModule
+          if (
+            target?.resource !== undefined &&
+            (idOf(target.resource) !== node.id ||
+              (envs.get(target) ?? envOf(target, target)) !== node.env)
+          ) {
             continue
           }
           // the importing module itself, inside a ConcatenatedModule origin
@@ -350,48 +307,43 @@ export function rspackGraphView(
             (c.dependency !== undefined
               ? moduleGraph.getParentModule(c.dependency)
               : null) ?? c.originModule
-          const res = origin?.resource && idOf(origin.resource)
-          if (res) {
-            if (res !== id && !out.includes(res)) {
-              out.push(res)
+          if (origin?.resource) {
+            const from = {
+              env: envs.get(origin) ?? envOf(origin, c.originModule ?? origin),
+              id: idOf(origin.resource),
             }
-            // the walk goes on in the importer's layer
-            const env = scope?.envOf(origin, c.originModule ?? origin)
-            if (scope && env && env !== scope.env) {
-              let envs = reached.get(res)
-              if (!envs) {
-                envs = new Set()
-                reached.set(res, envs)
-              }
-              envs.add(env)
+            const k = key(from.env, from.id)
+            if (!seen.has(k)) {
+              seen.add(k)
+              out.push(from)
             }
           } else if (origin && !viaContext) {
             // a context module (`import.meta.webpackContext`, a template
-            // literal `import()`): the modules importing it import `id`
+            // literal `import()`): the modules importing it import `node`
             visit(origin, true)
           }
         }
       }
-      for (const m of modulesOf(id)) {
+      for (const m of modulesOf(node)) {
         visit(m, false)
       }
       return out
     },
-    isEntry(id) {
+    isEntry(node) {
       if (!entries) {
         entries = new Set()
         for (const entry of compilation.entries.values()) {
           for (const dep of entry.dependencies) {
             // a production entry is usually a ConcatenatedModule (scope hoisting)
             const m = compilation.moduleGraph.getModule(dep)
-            const res = m?.resource ?? m?.rootModule?.resource
-            if (res) {
-              entries.add(idOf(res))
+            const module = m?.resource ? m : m?.rootModule
+            if (m && module?.resource) {
+              entries.add(key(envOf(module, m), idOf(module.resource)))
             }
           }
         }
       }
-      return entries.has(id)
+      return entries.has(key(node.env, node.id))
     },
   }
 }

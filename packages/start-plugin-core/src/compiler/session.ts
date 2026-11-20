@@ -88,6 +88,13 @@ export interface StartCompilerEnvironment {
    * compiler's).
    */
   publicName?: string
+  /**
+   * Where the environment renders server components (RSC on): the
+   * environment that renders their client references on the server, to
+   * which the bundler brings the `'use client'` files they import (import
+   * protection: `EdgeViolation.handoff`).
+   */
+  clientReferencesInto?: string
 }
 
 export interface StartCompilerSessionOptions {
@@ -117,8 +124,6 @@ export interface StartCompilerSessionOptions {
   edgeModuleIds?: EdgeModuleIds
   /** Whether a path is an app entry (import protection: a marked entry is its own violation). */
   isEntry: (path: string) => boolean
-  /** The checked file a virtual importer stands for (import protection: `CreateImportProtectionOptions.importerFileOf`). */
-  importerFileOf?: (importerId: string) => string | null
   /** The route registry (the generator's `routesByFile`). */
   routes: RouteRegistry
   readFile: (file: string) => Promise<string | null>
@@ -183,7 +188,6 @@ export class StartCompilerSession {
       readFile: opts.readFile,
       isEntry: opts.isEntry,
       framework: opts.framework,
-      importerFileOf: opts.importerFileOf,
       rsc: opts.rsc !== undefined,
     })
     for (const env of opts.environments) {
@@ -216,7 +220,12 @@ export class StartCompilerSession {
 
   /** A compile environment the host found (an Rsbuild layer's): its import protection's state. */
   addEnvironment(env: StartCompilerEnvironment): void {
-    this.ip?.addEnvironment(env.name, env.type, env.publicName)
+    this.ip?.addEnvironment(
+      env.name,
+      env.type,
+      env.publicName,
+      env.clientReferencesInto,
+    )
     this.ip?.env(env.name)
   }
 

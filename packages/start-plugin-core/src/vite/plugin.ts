@@ -85,6 +85,11 @@ export function tanStackStartVite(
     environments.push({
       name: serverFnProviderEnv,
       type: 'server',
+      // (RSC: the provider renders the server components, SSR their client
+      // references)
+      ...(corePluginOpts.rsc && {
+        clientReferencesInto: START_ENVIRONMENT_NAMES.server,
+      }),
     })
   }
   // the compiler's state of each run (its sessions), shared with the start

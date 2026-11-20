@@ -34,8 +34,11 @@
  *
  * Where server components render (`ImportEdgesConfig.clientReferences`), a
  * `'use client'` module is client references: its `env` output's edges are
- * neither resolved nor judged, and an import of it skips its file and
- * marker rules (specifier rules still apply). It is judged where it runs.
+ * neither resolved nor judged (it is judged where it runs), and the facts
+ * say so. An import of it that a file or marker rule denies is recorded,
+ * not substituted (`EdgeViolation.handoff`): the bundler brings the file
+ * to the environment that renders client references on the server
+ * through it, so it is asked about and reported like any import.
  *
  * Violations are recorded in the plan's facts (`ImportEdgesFacts`), so a
  * cached plan reports and registers them again without re-judging.
@@ -116,6 +119,8 @@ interface Judged {
   rule: RuleRef | null
   /** Offset of the specifier in this compile's input text, when it is in that text. */
   offset: number | undefined
+  /** A denied client reference (`EdgeViolation.handoff`). */
+  handoff: boolean
 }
 
 interface TargetDescription {
@@ -393,6 +398,10 @@ export function importEdgesPlanner(
       // output runs here, and is judged.
       if (clientReferences && output === 'env' && isUseClient(ctx)) {
         env.edges.set(ctx.identity.canonicalId, [], plan.revision)
+        plan.facts.planners[IMPORT_EDGES_PLANNER] = {
+          violations: {},
+          clientReferences: true,
+        }
         return
       }
       const facts = (plan.facts.planners[IMPORT_EDGES_PLANNER] ??= {
@@ -441,6 +450,7 @@ export function importEdgesPlanner(
           rule = { type: 'marker' }
         }
         let resolved = await ctx.resolve(raw, from)
+        let handoff = false
         if (rule === null && !exempt) {
           // a bundler rewrite of the import (Rsbuild `source.transformImport`,
           // inline loaders) makes the rules judge what the bundler loads
@@ -464,21 +474,20 @@ export function importEdgesPlanner(
               target,
               (id) => ctx.targetMarker(markerIdOf(envType, id)),
             )
-            // a client reference: the module runs where client code runs
-            // (judged there), never here (read only for a denied target:
-            // other edges keep the marker-only fingerprint)
-            if (
-              targetRule !== null &&
-              !(clientReferences && (await ctx.targetFacts(target)).useClient)
-            ) {
+            if (targetRule !== null) {
               rule = targetRule
               resolved = target
+              // a client reference: nothing of the module runs here, the
+              // import hands it to SSR (read only for a denied target:
+              // other edges keep the marker-only fingerprint)
+              handoff =
+                clientReferences && (await ctx.targetFacts(target)).useClient
               break
             }
           }
         }
         const offset = e.locations[0]?.range.start
-        return { edge: e, raw, importerPath, resolved, rule, offset }
+        return { edge: e, raw, importerPath, resolved, rule, offset, handoff }
       }
 
       const judged = (
@@ -528,6 +537,7 @@ export function importEdgesPlanner(
         // decides when the bundler asks for the edge module
         const pending =
           config.mode === 'dev' &&
+          !j.handoff &&
           typescript &&
           j.edge.form === 'static' &&
           j.edge.kind === 'evaluation'
@@ -563,7 +573,9 @@ export function importEdgesPlanner(
         const spec = specs.find((s) => /^[A-Z]/.test(s.localName)) ?? specs[0]
         const content = await edgeModuleContent(edges, j, ctx)
         const key = edgeModuleKey(content)
-        ctx.substitute(j.edge.edgeKey, ip.ids.request(key, content))
+        if (!j.handoff) {
+          ctx.substitute(j.edge.edgeKey, ip.ids.request(key, content))
+        }
         violations.push({
           edgeKey: j.edge.edgeKey,
           env: ctx.env.name,
@@ -591,6 +603,7 @@ export function importEdgesPlanner(
             binding: { name: spec.localName, imported: spec.imported },
           }),
           ...(j.edge.form === 'reexport' && { reexport: true }),
+          ...(j.handoff && { handoff: true }),
         })
       }
       // the module's own violation
