@@ -98,6 +98,57 @@ for (const count of [100, 1000, 10000]) {
           throws: true,
         })
       })
+
+      test('construction + first match', async ({ bench }) => {
+        await bench(
+          'construction + first match',
+          {
+            beforeEach: () => {
+              tree = createTree(count, shape)
+            },
+            afterAll: verify,
+          },
+          () => {
+            result = processRouteTree<AnyRoute>(tree)
+            findRouteMatch(expectedPath, result.processedTree)
+          },
+        ).run({ time: 1500, warmupTime: 500, throws: true })
+      })
+
+      test('construction + ten distinct route matches', async ({ bench }) => {
+        const paths = Array.from({ length: 10 }, (_, index) => {
+          return shape === 'static'
+            ? `/static-${index}/about`
+            : shape === 'dynamic'
+              ? `/section-${index}/one`
+              : shape === 'nested'
+                ? `/orgs/group-${index}/one/items/section-0/two`
+                : [
+                    `/mixed-${index}/one/items/two`,
+                    `/mixed-${index}/two`,
+                    `/mixed-${index}/prevaluesuffix/en`,
+                    `/mixed-${index}/files/prefixdir/file.txt`,
+                  ][index % 4]!
+        })
+        for (const path of paths) {
+          expect(findRouteMatch(path, result.processedTree)).not.toBeNull()
+        }
+        await bench(
+          'construction + ten distinct route matches',
+          {
+            beforeEach: () => {
+              tree = createTree(count, shape)
+            },
+            afterAll: verify,
+          },
+          () => {
+            result = processRouteTree<AnyRoute>(tree)
+            for (const path of paths) {
+              findRouteMatch(path, result.processedTree)
+            }
+          },
+        ).run({ time: 1500, warmupTime: 500, throws: true })
+      })
     },
   )
 }

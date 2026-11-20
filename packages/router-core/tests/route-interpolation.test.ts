@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute } from '../src'
+import { BaseRootRoute, BaseRoute, getRouteSegments } from '../src'
 import {
   cleanPath,
   compileDecodeCharMap,
@@ -100,6 +100,7 @@ describe.each([false, true])(
         { id: 0, lang: false, _splat: 0 },
         { id: 'next', lang: undefined, _splat: 'next/file' },
       ]
+      const segments = getRouteSegments(route)
       for (const params of [...inputs, ...inputs]) {
         const expectedUsed = Object.create(null)
         const actualUsed = Object.create(null)
@@ -111,27 +112,17 @@ describe.each([false, true])(
           expectedUsed,
         )
         expect(
-          route._interpolation
-            ? interpolatePath(
-                path,
-                route._interpolation,
-                params,
-                decoder,
-                actualUsed,
-              )
+          segments
+            ? interpolatePath(path, segments, params, decoder, actualUsed)
             : path,
         ).toBe(expected)
         expect(actualUsed).toEqual(expectedUsed)
-        expect(
-          route._interpolation
-            ? routeTreeUtils.getParamNames(route._interpolation)
-            : [],
-        ).toEqual(routeTreeUtils.getParamNames(template))
-        expect(
-          route._interpolation
-            ? hasMissingPathParams(route._interpolation, params)
-            : false,
-        ).toBe(hasMissingPathParams(template, params))
+        expect(segments ? routeTreeUtils.getParamNames(segments) : []).toEqual(
+          routeTreeUtils.getParamNames(template),
+        )
+        expect(segments ? hasMissingPathParams(segments, params) : false).toBe(
+          hasMissingPathParams(template, params),
+        )
       }
     })
 
@@ -149,17 +140,17 @@ describe.each([false, true])(
         scrollRestoration: false,
       })
       history.destroy()
-      const prepared = route._interpolation
+      const prepared = getRouteSegments(route)
       expect(prepared).toBeDefined()
       expect(() =>
-        interpolatePath(route.fullPath, route._interpolation!, {
+        interpolatePath(route.fullPath, getRouteSegments(route)!, {
           first: '\uD800',
           second: 'two',
         }),
       ).toThrow(URIError)
-      expect(route._interpolation).toBe(prepared)
+      expect(getRouteSegments(route)).toBe(prepared)
       expect(
-        interpolatePath(route.fullPath, route._interpolation!, {
+        interpolatePath(route.fullPath, getRouteSegments(route)!, {
           first: 'one',
           second: 'two',
         }),
@@ -168,7 +159,7 @@ describe.each([false, true])(
   },
 )
 
-test('never reparses a processed route for first use, Link misses or match metadata', () => {
+test('reuses interpolation after first use for Link misses and match metadata', () => {
   const root = new BaseRootRoute({})
   const route = new BaseRoute({
     getParentRoute: () => root,
@@ -182,7 +173,7 @@ test('never reparses a processed route for first use, Link misses or match metad
     scrollRestoration: false,
   })
   history.destroy()
-  const prepared = route._interpolation
+  const prepared = getRouteSegments(route)
   expect(prepared).toBeDefined()
   const parse = vi.spyOn(routeTreeUtils, 'parseSegments')
   routeTreeUtils.parseSegments(
@@ -213,7 +204,7 @@ test('never reparses a processed route for first use, Link misses or match metad
       params: { id: '@last' },
     }).href,
   ).toBe('/items/Pre@lastSuffix')
-  expect(route._interpolation).toBe(prepared)
+  expect(getRouteSegments(route)).toBe(prepared)
   expect(parse).not.toHaveBeenCalled()
 })
 
@@ -233,15 +224,16 @@ test.each([false, true])(
       scrollRestoration: false,
     })
     history.destroy()
+    const prepared = getRouteSegments(route)!
     const parse = vi.spyOn(routeTreeUtils, 'parseSegments')
     for (const path of [
       '/files/pre{$}.txt',
       '/files/pre{$}.txt/',
       '/files/pre{$}.txt',
     ]) {
-      expect(
-        interpolatePath(path, route._interpolation!, { _splat: 'a/b' }),
-      ).toBe(path.endsWith('/') ? '/files/prea/b.txt//' : '/files/prea/b.txt')
+      expect(interpolatePath(path, prepared, { _splat: 'a/b' })).toBe(
+        path.endsWith('/') ? '/files/prea/b.txt//' : '/files/prea/b.txt',
+      )
     }
     expect(parse).not.toHaveBeenCalled()
   },
@@ -267,7 +259,7 @@ test.each([false, true])(
       history.destroy()
       const params = { _splat: 'a/b', lang: 'en' }
       expect(
-        interpolatePath(child.fullPath, child._interpolation!, params),
+        interpolatePath(child.fullPath, getRouteSegments(child)!, params),
       ).toBe(
         interpolatePath(
           child.fullPath,
