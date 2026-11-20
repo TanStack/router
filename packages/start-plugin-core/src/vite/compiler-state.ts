@@ -858,7 +858,7 @@ export class ViteCompilerState implements ClientBuilds {
       if (error) {
         fail(error)
       }
-      const ipEnv = s.start.ip?.env(env.name, env.type)
+      const ipEnv = s.start.ip?.env(env.name)
       ipEnv?.reporter?.flush()
       return s.server && ipEnv?.serving
         ? reloadMismatched(s, env).then(() => mock)

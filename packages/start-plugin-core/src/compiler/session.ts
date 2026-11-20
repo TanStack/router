@@ -216,7 +216,8 @@ export class StartCompilerSession {
 
   /** A compile environment the host found (an Rsbuild layer's): its import protection's state. */
   addEnvironment(env: StartCompilerEnvironment): void {
-    this.ip?.env(env.name, env.type, env.publicName)
+    this.ip?.addEnvironment(env.name, env.type, env.publicName)
+    this.ip?.env(env.name)
   }
 
   private static readStats(o: StartCompilerSession) {
@@ -444,10 +445,7 @@ export class StartCompilerSession {
     id: string,
     out: CompiledOutputLike,
   ): CompileOutcome | Promise<CompileOutcome> {
-    return (
-      this.ip?.env(env.name, env.type, env.publicName).afterCompile(id, out) ??
-      NO_OUTCOME
-    )
+    return this.ip?.env(env.name).afterCompile(id, out) ?? NO_OUTCOME
   }
 
   /** Import protection's verdict on an id with an asset query, for `afterCompile`; null when it is not denied (`ImportProtectionEnv.assetOutput`). */
@@ -457,7 +455,7 @@ export class StartCompilerSession {
   ): Promise<CompiledOutputLike | null> {
     return (
       this.ip
-        ?.env(env.name, env.type, env.publicName)
+        ?.env(env.name)
         .assetOutput(id, (path) => this.rawFacts.marker(path, env.name)) ?? null
     )
   }

@@ -147,7 +147,7 @@ export async function reloadMismatched(
   s: Session,
   env: { name: string; type: 'client' | 'server' },
 ): Promise<void> {
-  const ipEnv = s.start.ip?.env(env.name, env.type)
+  const ipEnv = s.start.ip?.env(env.name)
   const environment = s.server?.environments[env.name]
   if (!ipEnv?.serving || !environment) {
     return

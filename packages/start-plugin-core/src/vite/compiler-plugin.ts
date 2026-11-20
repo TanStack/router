@@ -214,7 +214,7 @@ function envCompilerPlugins(
         })
       }
       if (s.start.ip && environment) {
-        const ipEnv = s.start.ip.env(env.name, env.type)
+        const ipEnv = s.start.ip.env(env.name)
         const entries = state.entriesOf(s)
         ipEnv.graph = viteDevGraphView(environment.moduleGraph, (id) =>
           entries.has(id),
@@ -234,7 +234,7 @@ function envCompilerPlugins(
         )
       }
       if (this.environment.mode === 'build' && this.meta.watchMode) {
-        s.start.ip?.env(env.name, env.type).beginBuild()
+        s.start.ip?.env(env.name).beginBuild()
         // a file event's invalidation asks this environment's resolutions
         // with its resolver; the build embeds the client build afresh, and
         // compiles every module again (Rolldown's watch rebuilds run every
@@ -286,7 +286,7 @@ function envCompilerPlugins(
       const s = state.sessionOf(this.environment)
       // an importer this rebuild no longer holds asks for nothing (its
       // module is not compiled again: its records would stay)
-      s.start.ip?.env(env.name, env.type).hold(heldIn(this.getModuleIds()))
+      s.start.ip?.env(env.name).hold(heldIn(this.getModuleIds()))
       if (env.type === 'client') {
         // a rebuild keeps the registry (a new build cleared it): the
         // functions the client references are those of the modules this
@@ -328,7 +328,7 @@ function envCompilerPlugins(
             importer === undefined
               ? null
               : state.sessionOf(this.environment).start.ip
-          const ipEnv = ip?.env(env.name, env.type) ?? null
+          const ipEnv = ip?.env(env.name) ?? null
           const confirmation = ipEnv?.confirm(edge) ?? null
           if (confirmation === null) {
             return edge
@@ -522,7 +522,7 @@ function envCompilerPlugins(
       if (!s.start.ip) {
         return
       }
-      const ipEnv = s.start.ip.env(env.name, env.type)
+      const ipEnv = s.start.ip.env(env.name)
       const live = readRolldownWitness(bundle as never, ipEnv.witness())
       const reports = await ipEnv.surviving(
         live,

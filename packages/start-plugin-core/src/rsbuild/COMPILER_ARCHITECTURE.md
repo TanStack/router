@@ -76,7 +76,10 @@ unsplit, as in Vite's provider environment); they resolve with the layer's rule 
 protection's callbacks name it `rsc` (`info.env`, `envType: 'server'`), as on Vite. A module of the
 `server-side-rendering` layer, or of none, is the `ssr` environment's; any other layer (a user's rule) is an
 environment of its own (`<compiler>:<layer>`), which resolves with the compiler's base options (a rule's own
-`resolve` does not reach the compiler's resolver) and which reports name after its compiler. A file both layers
+`resolve` does not reach the compiler's resolver) and which reports name after its compiler. Its key names it, so a
+persisted edge-module request of a restored importer finds it before any module of the layer was seen
+(`envOfKey`). An import-protection edge module belongs to the environment its id names, whatever layer a user's rule
+puts the file in (`envOfModule`: an `.mjs` rule's), for the loader, the witness and the graph view. A file both layers
 compile is a module of each environment, with its own plan, import-protection records, stale-set entry and
 registry snapshot: every operation of the host groups modules by environment before it deduplicates by resource
 (the drain, the restore, the witness, the graph view, `hold`, the served ledger's rebuilds, the snapshots, the

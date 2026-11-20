@@ -200,7 +200,9 @@ export class ImportProtection {
     server: new Set(),
   }
   private warnedOnViolationFalse = false
-  /** The name reports give an environment whose key is not it (`env`'s `publicName`). */
+  /** The type of each compile environment (`addEnvironment`): a released one starts over with it. */
+  private readonly types = new Map<string, EnvType>()
+  /** The name reports give an environment whose key is not it (`addEnvironment`). */
   private readonly publicNames = new Map<string, string>()
   /**
    * By the environment name reports give, `allowImport`'s answers: one per
@@ -254,20 +256,23 @@ export class ImportProtection {
   }
 
   /**
-   * The state of a compile environment (by key); `type` is required the
-   * first time (the planner passes `EnvInfo.type`). `publicName`: the name
+   * A compile environment (by key) and its type; `publicName`: the name
    * reports and callbacks give it (default: its key).
    */
-  env(name: string, type?: EnvType, publicName?: string): ImportProtectionEnv {
+  addEnvironment(name: string, type: EnvType, publicName?: string): void {
+    this.types.set(name, type)
     if (publicName !== undefined && publicName !== name) {
       this.publicNames.set(name, publicName)
     }
+  }
+
+  /** The state of a compile environment (`addEnvironment`), by key. */
+  env(name: string): ImportProtectionEnv {
     let env = this.envs.get(name)
     if (!env) {
+      const type = this.types.get(name)
       if (!type) {
-        throw new Error(
-          `[import-protection] unknown environment "${name}" (create it with its type first)`,
-        )
+        throw new Error(`[import-protection] unknown environment "${name}"`)
       }
       env = new ImportProtectionEnv(this, name, type)
       this.envs.set(name, env)
@@ -278,7 +283,7 @@ export class ImportProtection {
   /**
    * Releases an environment's state once its build is finished (edges,
    * edge modules, verdicts): nothing later reads it, and a later compile in
-   * the environment starts over (`env(name, type)`).
+   * the environment starts over (`env`).
    */
   release(name: string): void {
     const env = this.envs.get(name)
@@ -416,7 +421,13 @@ export class ImportProtection {
     const env = this.envs.get(ref.env)
     return env
       ? env.edgeLoad(ref.key)
-      : unknownEdgeLoad(ref.env, ref.key, this.ids, this.productionMock)
+      : unknownEdgeLoad(
+          ref.env,
+          ref.key,
+          this.ids,
+          this.productionMock,
+          this.publicNameOf(ref.env),
+        )
   }
 
   /**
@@ -550,6 +561,7 @@ function unknownEdgeLoad(
   key: string,
   ids: EdgeModuleIds,
   production: ProductionMock | null,
+  publicName: string,
 ): EdgeModuleLoad {
   const edgeKey = key.split('.')[0] ?? key
   return {
@@ -569,6 +581,7 @@ function unknownEdgeLoad(
       },
       ids.specifier({ env, kind: 'runtime' }),
       production,
+      publicName,
     ),
     moduleSideEffects: null,
   }
@@ -1511,6 +1524,7 @@ class ImportProtectionEnv {
         key,
         this.ip.ids,
         this.ip.productionMock,
+        this.publicName,
       )
     }
     const runtime = this.ip.ids.specifier({ env: this.name, kind: 'runtime' })
@@ -1522,7 +1536,7 @@ class ImportProtectionEnv {
       }
     }
     return {
-      code: mockModuleCode(c, runtime, this.ip.productionMock),
+      code: mockModuleCode(c, runtime, this.ip.productionMock, this.publicName),
       moduleSideEffects: null,
     }
   }

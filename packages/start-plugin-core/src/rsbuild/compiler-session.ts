@@ -125,6 +125,9 @@ export interface TransformImportRule {
  */
 export const RSBUILD_RSC_ENVIRONMENT = 'rsc'
 
+/** Between a compiler's name and a user layer's in the key of the layer's compile environment (`envOf`). */
+const USER_LAYER_SEPARATOR = ':'
+
 /** The Start session's options an Rsbuild plugin gives (the rest is the Rsbuild host's): `environments`, its compilers'. */
 type StartRsbuildSessionOptions = Omit<
   StartCompilerSessionOptions,
@@ -372,7 +375,7 @@ export class StartRsbuildCompilerSession {
     ) {
       return c.envs.get(RSBUILD_RSC_ENVIRONMENT)!
     }
-    const key = `${compiler}:${layer}`
+    const key = `${compiler}${USER_LAYER_SEPARATOR}${layer}`
     return (
       c.envs.get(key) ??
       this.addEnv(
@@ -380,6 +383,44 @@ export class StartRsbuildCompilerSession {
         c,
         undefined,
       )
+    )
+  }
+
+  /**
+   * The compile environment of a key (`envOf`'s keys), known or not yet: a
+   * persisted request of an importer restored in a new process names a user
+   * layer's environment before any module of the layer was seen. Undefined
+   * for a key no compiler of the session builds.
+   */
+  envOfKey(key: string): EnvState | undefined {
+    const known = this.envs.get(key)
+    if (known) {
+      return known
+    }
+    const at = key.indexOf(USER_LAYER_SEPARATOR)
+    const compiler = at > 0 ? key.slice(0, at) : null
+    return compiler !== null && this.compilers.has(compiler)
+      ? this.envOf(compiler, key.slice(at + 1))
+      : undefined
+  }
+
+  /**
+   * The compile environment of a module of `compiler` (an inner module of a
+   * concatenation: `holder`'s layer when it has none): a Start edge module's
+   * is the one its id names, wherever a user's rule puts the file (a
+   * `.mjs` rule's layer); any other module's that of its layer (`envOf`).
+   */
+  envOfModule(
+    compiler: string,
+    module: { resource?: string; layer?: string | null },
+    holder: { layer?: string | null } = module,
+  ): EnvState {
+    const ref = module.resource
+      ? this.start.ip?.ids.parse(module.resource)
+      : null
+    return (
+      (ref && this.envOfKey(ref.env)) ||
+      this.envOf(compiler, module.layer ?? holder.layer)
     )
   }
 
@@ -732,13 +773,16 @@ export class StartRsbuildCompilerSession {
     inputMap: unknown,
     options: LoaderOptions,
   ): Promise<LoaderResult> {
-    const env = this.envOf(options.environment, ctx._module?.layer)
+    const env = this.envOfModule(options.environment, {
+      resource: ctx.resource,
+      layer: ctx._module?.layer,
+    })
     const passthrough: LoaderResult = { code: bytes, map: inputMap }
     const { ip } = this.start
     if (options.pass === 'edge') {
       // the bundler requested this edge module from the importer's post-SWC
       // code: `allowImport` decides between the real module and the mock
-      const ipEnv = ip?.env(env.name, env.type, env.publicName)
+      const ipEnv = ip?.env(env.name)
       if (!ctx._compiler?.isChild()) {
         env.compiled.add(ctx.resource)
       }
@@ -873,7 +917,7 @@ export class StartRsbuildCompilerSession {
       throwLocated(ctx, error as DevViolationError)
     }
     const buildInfo = ctx._module?.buildInfo
-    const ipEnv = this.start.ip?.env(env.name, env.type, env.publicName)
+    const ipEnv = this.start.ip?.env(env.name)
     if (ipEnv && buildInfo) {
       const info = ipEnv.buildInfo(id, out)
       if (info) {

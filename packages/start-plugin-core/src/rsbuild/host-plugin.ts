@@ -196,12 +196,17 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
 } {
   const { session, environment, rspack } = opts
   const own = session.compiler(environment.name)
-  /** The compile environment of a module of this compiler (its layer's). */
-  const envOf = (module: { layer?: string | null }): EnvState =>
-    session.envOf(environment.name, module.layer)
+  /** The compile environment of a module of this compiler (`envOfModule`; `holder`: of a concatenated inner module). */
+  const envOf = (
+    module: { resource?: string; layer?: string | null },
+    holder?: { layer?: string | null },
+  ): EnvState => session.envOfModule(environment.name, module, holder)
   /** The key of the compile environment of a module (`envOf`), for the drain. */
   const envKeyOf = (module: unknown): string =>
-    envOf(module as { layer?: string | null }).name
+    envOf(module as { resource?: string; layer?: string | null }).name
+  /** The key of the compile environment of a module of a compilation (`envOf`), for the witness and graph readers. */
+  const envKeyOfModule = (module: object, holder: object): string =>
+    envOf(module as ModuleLike, holder as ModuleLike).name
   /** The key of a module of this compiler: its environment and resource. */
   const keyOf = (module: ModuleLike & { resource: string }) =>
     `${envOf(module).name}\0${module.resource}`
@@ -213,8 +218,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
    * (not held by the hooks): the session releases it once the compiler's
    * build is finished.
    */
-  const ipEnvOf = (env: EnvState) =>
-    session.start.ip?.env(env.name, env.type, env.publicName) ?? null
+  const ipEnvOf = (env: EnvState) => session.start.ip?.env(env.name) ?? null
   /** The import protection of each compile environment of this compiler. */
   const ipEnvs = () => {
     const out: Array<{
@@ -238,15 +242,13 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
     compilation: Rspack.Compilation,
     env: EnvState,
   ): Promise<ImportGraphView> => {
-    const envOfLayer = (layer: string | undefined) =>
-      session.envOf(environment.name, layer).name
     const from = session.clientReferencesFrom(env.name)
     const clientReferences = new Set<string>()
     if (from !== undefined) {
       for (const id of rspackFilesIn(
         compilation as never,
         canonicalResource,
-        envOfLayer,
+        envKeyOfModule,
         [env.name, from],
       )) {
         if (
@@ -259,7 +261,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
     }
     return rspackGraphView(compilation as never, canonicalResource, {
       env: env.name,
-      envOf: envOfLayer,
+      envOf: envKeyOfModule,
       ...(from !== undefined && { handoff: { from, clientReferences } }),
     })
   }
@@ -362,7 +364,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // import-protection edge modules are virtual files of the compiler of their
       // environment, written when they are defined (the importer's compile). With a
       // persistent cache, an importer restored in a new process requests a module nothing
-      // defined: the request carries its content, which defines it before it resolves
+      // defined: the request carries its content, which defines it before it resolves, in
+      // the environment its id names (a user layer's is found here, before any module of
+      // the layer is: `envOfKey`)
       if (session.start.ip) {
         const ip = session.start.ip
         ip.onEdgeModule((file, load, ref) => {
@@ -373,7 +377,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         if (own.persistsModules) {
           compiler.hooks.normalModuleFactory.tap(PLUGIN_NAME, (factory) => {
             factory.hooks.beforeResolve.tap(PLUGIN_NAME, (data) => {
-              ip.define(data.request)
+              const ref = ip.ids.parse(data.request)
+              if (ref) {
+                session.envOfKey(ref.env)
+                ip.define(data.request)
+              }
             })
           })
         }
@@ -716,7 +724,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                       new Map(
                         envs.map(({ env, ip }) => [env.name, ip.witness()]),
                       ),
-                      (layer) => session.envOf(environment.name, layer).name,
+                      envKeyOfModule,
                       canonicalResource,
                     )
                     for (const { env, ip } of envs) {

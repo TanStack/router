@@ -251,17 +251,19 @@ function productionLabel(
  * The mock state of an edge module (pure; owns its exports; the effect
  * witness when the target is effectful). Its metadata is what the runtime
  * of `production` (`mockRuntimeCode`) reads: in production, only the name
- * its report gives (`productionLabel`).
+ * its report gives (`productionLabel`); in dev, the environment by the name
+ * reports give it (`publicName`).
  */
 export function mockModuleCode(
   content: EdgeModuleContent,
   runtimeSpecifier: string,
   production: ProductionMock | null,
+  publicName: string = content.env,
 ): string {
   const meta = production
     ? productionLabel(content, production)
     : JSON.stringify({
-        e: content.env,
+        e: publicName,
         s: content.specifier,
         i: content.importer,
         ...(content.file !== null && { f: content.file }),

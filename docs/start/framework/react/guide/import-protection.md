@@ -118,6 +118,8 @@ Markers are useful when a file doesn't follow the `.server.*` / `.client.*` nami
 
 With React Server Components, server components render in the `rsc` environment: Vite's environment of that name, and on Rsbuild the server compiler's RSC layer, which `onViolation` and `allowImport` also call `rsc` (`info.env`). It is a server environment: the server rules apply, and `info.envType === 'server'` matches it and `ssr`. A `'use client'` module that a server component imports is a client reference there: none of its code runs there. There, its file pattern and marker don't deny the import, and its own imports are not checked. It is checked where it runs, in SSR and on the client. A specifier pattern still denies the import.
 
+On Rsbuild, a module rule of your own that sets a `layer` (an Rspack layer other than the RSC ones) keeps that layer's import-protection state apart, like a separate environment of its compiler: `onViolation` and `allowImport` call it by the compiler's name (`info.env`: `ssr` or `client`), and the rules of that environment type apply. Start resolves the imports it reads in such a layer with the compiler's own `resolve` options: a `resolve` set on the layer's rule (other conditions or aliases) does not reach it. So an import Start judges there (a specifier pattern, a denied file) is checked, and served when allowed, as the compiler's own options resolve it, while Rspack resolves the layer's other imports with the rule's options.
+
 ## Behavior Modes
 
 The `behavior` option controls what happens when a violation is detected:

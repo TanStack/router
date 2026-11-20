@@ -385,7 +385,7 @@ export function importEdgesPlanner(
     },
     plan() {},
     async policy(plan, output, edges, ctx) {
-      const env = ip.env(ctx.env.name, ctx.env.type)
+      const env = ip.env(ctx.env.name)
       const clientReferences = ctx.config?.clientReferences === true
       // the module is client references here: its imports are neither
       // resolved (a resolution is a request of the environment: plugin-rsc
