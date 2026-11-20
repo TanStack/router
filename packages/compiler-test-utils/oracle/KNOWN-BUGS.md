@@ -452,6 +452,51 @@ retained.py head base`). No test (the outcome is the limit). A fix grounds the r
 - **Rsbuild dev: an edit of a file only a failed child compilation read starts no compilation** (seen on
   0a261a0259 and db260cf3a3 while writing the amendment 4 rows; cause not isolated: Start or Rspack). A worker
   plugin's child whose build failed (a denied import) is built again by the next edit of a file of the parent. No test.
+- **Rsbuild: a retry on the same compiler after another plugin's `make` tap rejected while a child compilation's
+  reports were pending fails with the first run's child errors** (RSC phase 1, Astra re-check 10; known limit, user
+  11-20). One plugin's `make` tap awaits a child with two denied imports, another's rejects while the first
+  `onViolation` call is pending; the caller handles the error and runs the compiler again, no child or rejection in
+  that run: its stats hold the two errors of the first run. Same on db260cf3a3; `main`'s retry passes (`main` reports
+  no violation of a child compilation at all). The child's closure takes its requests off the queue
+  (`reportChildRequests`) before awaiting their reports, so the `failed` tap finds none and `failedReports`, which the
+  next `run` waits for, is settled while they are still made; they go into the failed compilation's `errors`, which
+  Rspack shows in the next build's stats (bare Rspack does that with a retained compilation). A fix tracks the reports
+  already started, by owner, in what `failed`, `run` and `shutdown` wait for; upstream, Rspack would keep a
+  compilation's diagnostics with its own build. Drivers: `/var/tmp/rsc-p1-recheck10/race10.py` (deterministic),
+  `natural10.py` (independent timers, 1,000-module app), `native10.py` (bare Rspack). No test (the outcome is the
+  limit).
+- **Rsbuild: an `onViolation` that rejects in a child compilation whose failure the parent recovers skips the child's
+  other violations, and the build passes** (RSC phase 1, Astra re-check 10; known limit, user 11-20). An optional
+  child (a sidecar the plugin lets fail) imports two denied files and the first `onViolation` call throws or rejects:
+  the second call is never made, the parent ends with no error and the CLI exits 0. db260cf3a3 makes both calls and
+  exits 1; `main` (no check of child compilations) exits 0. The child's closure (`close`) reports its requests without
+  `failing`, so the first rejection ends the reports and becomes an error of the child's own compilation (its
+  `finishMake` tap's `reporting`), which the plugin drops with the child. A fix makes every report whatever an earlier
+  one did, and puts a failed report into the owner's errors, not the child's. Driver:
+  `/var/tmp/rsc-p1-recheck10/extra10.py` (cases `sink-*`). No test (the outcome is the limit).
+- **Rsbuild: a child compilation run after the parent compilation's end can trace its violation through an import
+  Rspack dropped** (RSC phase 1, Astra re-check 10; known limit, user 11-20; diagnostic only, the denial and the exit
+  are right). A child started from a `done` tap after Start's, whose entry `r.ts` (exempt by `exclude`) imports a
+  reader of `import.meta.webpackContext` reaching a denied `w.client.ts` and has `if (false) import('./w.client')`:
+  the trace is `r.ts` (line 2, the dead import) → `w.client.ts`, without the reader, and the suggestions name `r.ts`.
+  The same child run from `make` traces `r.ts → pattern.ts → w.client.ts`. Once Start's `done` tap has reported the
+  owner's children (`reportEndedChildren`), the owner has no queue, and the child's `beforeResolve` reports at once
+  with the records' trace (Rspack's graph cannot be read while modules build), which holds the dead import. A fix
+  keeps such a child's requests until its own closure and reports them there, with its graph, into the owner.
+  Drivers: `/var/tmp/rsc-p1-recheck10/extra10.py`, `over10.py` (cases `trace-*`, `context-*`). No test (the outcome is
+  the limit).
+- **Rsbuild: closing a watch compiler during a compilation can drop a child compilation's queued violations** (RSC
+  phase 1, Astra re-check 10; known limit, user 11-20). A child started in the parent's `processAssets` requests two
+  denied files and fails before its closure (a `finishMake` tap before Start's), and the plugin recovers it: its
+  requests wait for the parent's end. Closing the watcher (`Watching.close`, of the SSR compiler or of Rsbuild's
+  MultiCompiler) while the parent still processes assets runs the close callback with no `onViolation` call
+  (db260cf3a3 makes both; `main` none); the canceled compilation publishes no stats, so only the calls are lost. A
+  custom host's `compile(callback)` then `close` on the SSR compiler, with the same child, ends with a successful
+  compilation, no error and no call (`build`, `run`, and a watch compilation that finishes, report it). Rspack ends
+  both without `done` or `failed`, the hooks that report what the owner still holds (`reportEndedChildren`), and
+  `shutdown` waits only for `failedReports`. A fix reports the open compilation's remaining requests at `shutdown` and
+  at an end `compile()` reaches (`afterCompile`). Drivers: `/var/tmp/rsc-p1-recheck10/watch10.py`, `over10.py`
+  (`compile()`). No test (the outcome is the limit).
 - **webpack watch: a module whose loader declares the route tree as an input fails one compilation after a route
   file is deleted** (astra-r4-factcheck-router.md B4). The route-delete fix builds again the modules whose resource is
   a file the generator wrote (`needBuild`); a loader of another resource (`catalog.txt`) that calls
