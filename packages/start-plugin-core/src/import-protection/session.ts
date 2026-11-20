@@ -872,8 +872,8 @@ class ImportProtectionEnv {
       return true
     }
     for (const importers of [
-      g.importers(node) ?? [],
-      this.edges.importers(importerId),
+      (g.walkImporters ?? g.importers)(node) ??
+        this.edges.importers(importerId),
       this.ip.handoffImporters(node, g),
     ]) {
       for (const _ of importers) {

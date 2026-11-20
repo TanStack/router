@@ -217,8 +217,10 @@ function envCompilerPlugins(
         const ipEnv = s.start.ip.env(env.name)
         const entries = state.entriesOf(s)
         // (one environment's importers can be another's: the handoff)
+        const ip = s.start.ip
         ipEnv.graph = viteDevNodeGraph(
           (name) => viteServer.environments[name]?.moduleGraph,
+          (name) => ip.edgesOf(name),
           (id) => entries.has(id),
         )
         const reporter = ipEnv.useDevReporter({
