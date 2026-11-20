@@ -465,6 +465,8 @@ The generator receives:
 
 Return `undefined` (or an empty string) to use the default ID. Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
 
+A production build answers HTTP calls only for the server functions its client code calls (see above). With `generateFunctionId` set, it tells them apart by a build token each client stub passes to the client RPC (`#` and 16 hex digits, about 12 bytes gzipped per server function the client keeps), not by the ID: a custom ID is any text, and a string of your app equal to an unused function's ID does not make that function callable. The token is never sent. A custom minifier must keep the string arguments of the client RPC calls; one that drops them makes the client's calls answer `Server function info not found`.
+
 The ID becomes one segment of the server function's URL (`/_serverFn/<id>`), unencoded, so use only ASCII letters, digits, `-`, `.`, `_`, `~` and `$`, and not `.` or `..`. An ID with whitespace, a control or non-ASCII character, or any of `"`, `#`, `/`, `<`, `>`, `?`, `\`, `^`, `` ` ``, `{` and `}`, an ID that is `.` or `..`, or one with a percent-encoding the server reads as another ID (`%41`, read as `A`; `%2E`, read as `.`; `%3c`, read as `%3C`) or rejects, fails the build with an error naming the file, the function and the ID: the request would reach another function or none. Other characters (`%`, `+`, `:`, `;`, `@`, `'`, `|`, `[`, `]`, …) still work, with a deprecation warning: the next major version rejects them, since proxies and servers may encode or normalise them in the URL. `filename` contains `/`, so hash it (as in the example below) rather than embedding it as is.
 
 Please note that this customization is **experimental** and subject to change.

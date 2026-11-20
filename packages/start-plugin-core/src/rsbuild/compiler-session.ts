@@ -76,7 +76,7 @@ import type {
 /**
  * Whether an emitted asset is JavaScript: the assets whose server-fn ids
  * the host patches, whose code decides the callable set, and whose
- * callable-ids placeholder the RSC build fills in.
+ * manifest placeholder the RSC build fills in.
  */
 export function isJsAsset(name: string): boolean {
   return /\.[cm]?js$/.test(name)

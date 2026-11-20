@@ -66,15 +66,18 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   answers them; Rsbuild answers them since RSC phase 1 (see "Fixed"). SPEC J4.2.
   `react-start-rsc/tests/integration/rsc-start-build-client-reach.test.ts`, rows of `client-only-reach-app.ts`: "a
   server fn only $position of a $where imports runs when clicked" (`<ClientOnly>` child, `createClientOnlyFn` body,
-  `<Hydrate>` fallback; route file and component file). Fix: every server fn the client references is callable by id,
+  `<Hydrate>` fallback; route file and component file). The build warns, naming each such function and its file
+  (RSC phase 2; a warning until decision 5's evidence runs): "the build warns of each server fn the client calls that
+  the server build does not provide" in the same file. Fix: every server fn the client references is callable by id,
   with no production dependency on modules only development code reaches.
 - **Vite RSC build: a server fn a `'use client'` component imports lazily is not registered** (as `main`, #7943): the
   early compile of the provider's reach follows no `import()` at or below a `'use client'` module, so that a
   development-only one (`if (process.env.NODE_ENV === 'development') import('./debug')`) adds no production
   dependency, and nothing else compiles the lazily imported module before the manifest is written. The click answers
   `Server function info not found`. SPEC J4.2. `react-start-rsc/tests/integration/rsc-start-build-client-reach.test.ts`:
-  "a server fn a 'use client' component imports lazily runs when clicked". Fix: every server fn the client references
-  is callable by id, with no production dependency on modules only development code reaches.
+  "a server fn a 'use client' component imports lazily runs when clicked". The build warns, naming the function and
+  its file (the same warning row as the entry above). Fix: every server fn the client references is callable by id,
+  with no production dependency on modules only development code reaches.
 - **Vite RSC build: a server fn a `'use client'` component imports from an installed package, or through an import
   the provider resolves to another file, is not registered** (as `main`, #7943): the early compile of the provider's
   reach walks project modules only (a workspace package resolved to its real path is one) and resolves in the provider
@@ -421,8 +424,20 @@ setTheme(t) { theme = t }`, `export function getTheme()`), children calling the 
   and the rebuilt resolver keeps it: `fn2.ts?tss-serverfn-split` is in `dist/server` (`DEEP_VALUE`), where a cold
   build of the same source has none. The page renders the edited source's value; whether the kept function answers
   over HTTP was not checked. Same on db260cf3a3. Driver: `/var/tmp/rsc-p1-design3/retained.py` (`python3
-retained.py head base`). No test (the outcome is the limit). A fix grounds the registry as the settlement grounds
+retained.py head base`). The same with RSC for a server fn whose last client call an edit removed (RSC phase 2,
+  design-rsc-phase2.md §3.3, ruled with this entry on 11-20): its provider's own record makes it a function a server
+  compile declares, so the rebuilt resolver keeps it and its provider; HTTP refuses it (no client code calls it). A
+  new build has neither. No test (the outcome is the limit). A fix grounds the registry as the settlement grounds
   denied modules: a provider counts once a module the app reaches without it references the function.
+- **Without RSC, a server fn nothing calls is still built: a handler import that resolves only under development
+  conditions fails the production build** (as `main`; RSC phase 2 decision B, 11-20). A route renders a label of a
+  module that also exports a server fn no code calls, whose handler imports a package with a `development` export
+  only. The SSR provider lists the functions a client compile stubbed (`clientReferencedOnly`), before the bundler
+  drops the stub, so it builds the handler: `Package subpath '.' is not defined by "exports"` on Rsbuild (main,
+  db260cf3a3 and the PR alike; Vite without RSC not run). With RSC the build lists only what a server compile declares
+  or the client's emitted code calls, and succeeds (`react-start-rsc/tests/integration/rsc-start-build-unused-fn.test.ts`).
+  Narrowing the SSR provider needs "a server module declares it", which Vite's resolver cannot know when it loads. No
+  test (the outcome is the limit; design-rsc-phase2.md §7 B, `/var/tmp/rsc-p2-design/logs/min-*-rsc0.build`).
 - **Rsbuild: a module under a Module Federation container, a shared provide or a DLL counts as outside the app**
   (RSC phase 1, design-rsc-phase1-settlement.md amendment 3; stated limit, no fixture). The compilation holds such a
   module through a module with no file (container entry, provide-shared module, `DllModule`), not by itself, so
@@ -438,8 +453,17 @@ retained.py head base`). No test (the outcome is the limit). A fix grounds the r
   build** (RSC phase 1, design-rsc-phase1-settlement.md amendment 4; the nested-reach limit). The server compiler's closure runs again at the last `finishMake` stage, after the RSC
   plugin's client handoff at stage 0: a module a plugin adds late, built there as its real module, or the resolver built
   again there, can bring client references the finished client build does not have: a nested chain, a server fn whose
-  handler renders a client component nothing else renders, which calls another server fn. The module is settled,
-  nothing fails. No test.
+  handler renders a client component nothing else renders, which calls another server fn. The module is settled, and
+  the browser cannot decode the outer server fn's result (the client build has no module of the component). The build
+  warns, naming the component's file, its exports and the entry (RSC phase 2: Rspack's per-entry client manifest,
+  `onManifest`, compared with the live client references of the `rsc` chunks, only when the last run built something;
+  builds only, RSC decision E1; a warning until decision 4's evidence runs). Dev has no warning: the next compilation
+  has the reference. `react-start-rsc/tests/integration/rsc-start-rsbuild-flight.test.ts`: the nested pair, a route
+  that also renders the component from client code, a client plugin watching its file (all warn), and the way out
+  (a server fn a route's loader calls renders it too: both clicks answer, no warning). The warning does not name the
+  server fn whose handler renders the component (its provider's record makes every function one a server compile
+  declares), and with several server entries it reports a component no entry's manifest holds (one entry lacking a
+  component another holds is not reported).
 - **Rsbuild: import protection's settlement does not judge what another plugin's `finishMake` tap at the last stage
   adds or builds** (RSC phase 1, design-rsc-phase1-settlement.md amendment 4; stated limit, no plugin known to tap
   there). Every compilation settles its modules at stage −10 and again at the last stage (`0x7fffffff`); a tap

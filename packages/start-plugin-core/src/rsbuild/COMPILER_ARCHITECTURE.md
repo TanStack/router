@@ -132,7 +132,14 @@ evaluation reads, by name, something the module keeps stays and runs at load; wh
 its top level, stay in place. A split route chunk's copy of a server function is a caller (R159): the chain with its
 middleware and without its validator, `createSsrRpc(id)` as its handler, calling the one instance through the
 resolver. Custom ids (`generateFunctionId`) are placeholders in the outputs, allocated per
-rank (client first) and patched at `processAssets` before minification.
+rank (client first) and patched at `processAssets` before minification. The HTTP-callable functions (R182) are the
+client build's publication (`StartCompilerSession.publishClientOutput`, at the client's report stage, on the emitted
+JS): the functions whose default id, or with a generator whose gate token (`gateToken`, which the client stub passes
+and the runtime stores on the RPC), is in the minified code. The resolver prints its gate from it; an RSC build's
+first resolver precedes the client, and the server's last settlement run builds it again from the publication. An
+RSC production build also compares, when that last run built something, the live client references of its `rsc`
+chunks with the client manifests Rspack's ServerPlugin reports (`onManifest`) and warns at `done` of one missing
+(`flight-check.ts`: a client component only a late server fn renders).
 
 ## Import protection
 

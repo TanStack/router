@@ -600,7 +600,8 @@ dir)` is not a conflict by itself.
   function no emitted client code calls must not answer a direct HTTP call by id, also when the client imports its
   module (a helper only another server function's handler calls); one that reaches the browser only by serialization
   (a loader returning it) is not callable either. A stub the client code keeps counts as a call: its id is in the
-  bundle. The client's stub of a server function is a call the bundler may drop when nothing uses its value, with its id
+  bundle, and with `generateFunctionId` set its gate token (a spelling only a compile produces; a custom id is any
+  text, and an unrelated string of the client equal to it admits nothing). The client's stub of a server function is a call the bundler may drop when nothing uses its value, with its id
   (Vite with `build.minify` at its default, `false` or `'terser'`, and Rsbuild with its minifier; not Vite with
   `build.minify: 'esbuild'` nor Rsbuild with `output.minify: false`, which keep an unused pure call whose arguments
   hold a call; not where a call of the user's continues the stub, `….handler(fn).bind(x)`); what the user's chain
