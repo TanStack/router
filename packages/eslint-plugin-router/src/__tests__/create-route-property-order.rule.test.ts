@@ -28,7 +28,15 @@ const testedCheckedProperties = [
 ]
 type TestedCheckedProperties = (typeof testedCheckedProperties)[number]
 const orderIndependentProps = ['gcTime', '...foo'] as const
-type OrderIndependentProps = (typeof orderIndependentProps)[number]
+const spreads = [
+  '...foo',
+  '...shared()',
+  '...opts.route',
+  '...(flag ? a : b)',
+] as const
+type OrderIndependentProps =
+  | (typeof orderIndependentProps)[number]
+  | (typeof spreads)[number]
 
 // reduce the number of test cases by only testing the first function of createRouteFunctionsDirect
 const testedCreateRouteFunctions = [
@@ -177,6 +185,22 @@ invalidTestMatrix.push({
   createRouteFunction: 'createFileRoute',
   properties: { invalid: ['head', 'loader'], valid: ['loader', 'head'] },
 })
+
+for (const spread of spreads) {
+  const properties: TestCase['properties'] = [spread, 'beforeLoad', 'loader']
+  validTestCases.push({
+    name: `should pass when order is correct for createFileRoute with order: ${properties.join(', ')}`,
+    code: getCode({ createRouteFunction: 'createFileRoute', properties }),
+  })
+
+  invalidTestMatrix.push({
+    createRouteFunction: 'createFileRoute',
+    properties: {
+      invalid: ['loader', spread, 'beforeLoad'],
+      valid: ['beforeLoad', spread, 'loader'],
+    },
+  })
+}
 
 const invalidTestCases = invalidTestMatrix.map(
   ({ createRouteFunction, properties }) => ({
