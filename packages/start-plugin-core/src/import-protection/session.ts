@@ -732,6 +732,12 @@ interface Conflict {
   unread: Array<string>
 }
 
+/**
+ * A registered edge, by its key (`ImportProtectionEnv.modules`): the
+ * import's state, of which an edge module is one form; a client-reference
+ * handoff has none until its target stops being one (`emitted`). The
+ * names (`modules`, `defineModule`) still say module for what holds edges.
+ */
 interface RegisteredModule {
   content: EdgeModuleContent
   /** Violations importing it, by `${importerId}\0${edgeKey}`. */
@@ -1198,18 +1204,22 @@ class ImportProtectionEnv {
           id,
         }))
       for (const from of into) {
-        const handoff = source.handoffOf(from.id, target)
-        if (!handoff) {
+        const handoffs = source.handoffsOf(from.id, target)
+        if (handoffs.length === 0) {
           classify(from, source.edges.edge(from.id, target) !== undefined)
-        } else if (source.allowedBy(handoff.module.key).next().done) {
-          out.checked.push({
-            importer: handoff.importer,
-            importerId: from.id,
-            env: source.name,
-            handoff,
-          })
-        } else {
-          out.allowed.add(handoff.importer)
+        }
+        // (each import statement is an edge, with its own answer)
+        for (const handoff of handoffs) {
+          if (source.allowedBy(handoff.module.key).next().done) {
+            out.checked.push({
+              importer: handoff.importer,
+              importerId: from.id,
+              env: source.name,
+              handoff,
+            })
+          } else {
+            out.allowed.add(handoff.importer)
+          }
         }
       }
     }
@@ -1256,19 +1266,20 @@ class ImportProtectionEnv {
     return false
   }
 
-  /** A denied client-reference import of `target` by `importerId` recorded here (`EdgeViolation.handoff`). @internal */
-  handoffOf(importerId: string, target: string): EdgeViolation | undefined {
+  /** The denied client-reference imports of `target` by `importerId` recorded here, one per import statement (`EdgeViolation.handoff`). @internal */
+  handoffsOf(importerId: string, target: string): Array<EdgeViolation> {
+    const out: Array<EdgeViolation> = []
     for (const m of this.modules.values()) {
       if (m.content.resolved !== target) {
         continue
       }
       for (const v of m.violations.values()) {
         if (v.handoff && v.importerId === importerId) {
-          return v
+          out.push(v)
         }
       }
     }
-    return undefined
+    return out
   }
 
   /** The importers (files) of an edge module or handoff `allowImport` allowed (by key), while their import is there. @internal */

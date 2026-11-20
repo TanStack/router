@@ -166,6 +166,42 @@ describe.each(hosts)('$host build with RSC', ({ serve }) => {
     timeout,
   )
 
+  // each import statement is an edge with its own answer: the denied one
+  // fails the build whichever comes first.
+  // Source: the RSC phase 1 re-check 2 (/var/tmp/rsc-p1-recheck2/report.md
+  // §2, `isolated.py aliases_only`: 2f8afeccc0 built the allowed-first app
+  // with zero reports and failed the denied-first one)
+  test.each([
+    { order: 'allowed first', deniedFirst: false, line: 4 },
+    { order: 'denied first', deniedFirst: true, line: 3 },
+  ])(
+    'the server component imports it twice, allowImport allows one spelling ($order): the build fails at the denied import',
+    async ({ deniedFirst, line }) => {
+      const allowed = `import { ClientBox } from './ClientBox.client'`
+      const denied = `import { ClientBox as Another } from './ClientBox.client.tsx'`
+      const files = app(false)
+      files['src/utils/ucServer.tsx'] = files[
+        'src/utils/ucServer.tsx'
+      ]!.replace(
+        `${allowed}\n`,
+        `${deniedFirst ? `${denied}\n${allowed}` : `${allowed}\n${denied}`}\n`,
+      ).replace('<ClientBox />', '<ClientBox />\n      <Another />')
+      const failed = await labels(serve, files, {
+        allowImport: (info: Asked) => !info.specifier.endsWith('.tsx'),
+      }).then(
+        () => null,
+        (error: unknown) => error,
+      )
+      expect(failed).toBeInstanceOf(Error)
+      expectDiagnostic(failed, {
+        severity: 'error',
+        file: 'src/utils/ucServer.tsx',
+        position: { line, column: 38 },
+      })
+    },
+    timeout,
+  )
+
   test(
     'an exempt server component alone imports it: the page renders, nothing is reported',
     async () => {
