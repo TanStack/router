@@ -12,6 +12,7 @@ import {
   BaseRootRoute,
   BaseRoute,
   RouterCore,
+  createControlledPromise,
   createNonReactiveMutableStore,
   createNonReactiveReadonlyStore,
   createSerializationAdapter,
@@ -1212,7 +1213,212 @@ describe('createStartHandler response reconciliation', () => {
   })
 })
 
+describe('createStartHandler early hints', () => {
+  it('sends route hints before a custom dehydration hook settles', async () => {
+    const started = createControlledPromise<void>()
+    const gate = createControlledPromise<void>()
+    const hintedHrefs: Array<string> = []
+    let dynamicEvents = 0
+    const router = makeRouter({
+      head: () => ({
+        links: [{ rel: 'preload', href: '/ordinary.png', as: 'image' }],
+      }),
+    })
+    router.update({
+      dehydrate: () => {
+        started.resolve()
+        return gate
+      },
+    })
+    startMocks.router = router
+    const handler = createStartHandler(
+      ({ responseHeaders }) => new Response('ok', { headers: responseHeaders }),
+    )
+    const responsePromise = handler(new Request('http://localhost/'), {
+      onEarlyHints: (event) => {
+        if (event.phase === 'dynamic') {
+          dynamicEvents++
+          hintedHrefs.push(...event.hints.map((hint) => hint.href))
+        }
+      },
+      responseLinkHeader: true,
+    })
+    try {
+      await started
+      expect(hintedHrefs).toEqual(['/ordinary.png'])
+    } finally {
+      gate.resolve()
+      await responsePromise
+    }
+    const response = await responsePromise
+    expect(response.status).toBe(200)
+    expect(dynamicEvents).toBe(1)
+    expect(hintedHrefs).toEqual(['/ordinary.png'])
+    expect(response.headers.get('Link')).toContain(
+      '</ordinary.png>; rel=preload; as=image',
+    )
+  })
+
+  it.each(['lifecycle', 'dehydrate'] as const)(
+    'collects final hints after a load started by %s',
+    async (phase) => {
+      const started = createControlledPromise<void>()
+      const gate = createControlledPromise<string>()
+      const hintedHrefs: Array<string> = []
+      let dynamicEvents = 0
+      let calls = 0
+      let reentered = false
+      let nested: Promise<void> | undefined
+      const router = makeRouter({
+        loader: () => {
+          if (++calls === 1) {
+            return 'initial'
+          }
+          started.resolve()
+          return gate
+        },
+        head: ({ loaderData }: { loaderData: string }) => ({
+          links: [
+            { rel: 'preload', href: '/shared.png', as: 'image' },
+            { rel: 'preload', href: `/${loaderData}.png`, as: 'image' },
+          ],
+        }),
+        onEnter: () => {
+          if (phase === 'lifecycle' && !reentered) {
+            reentered = true
+            nested = router.load()
+          }
+        },
+      })
+      if (phase === 'dehydrate') {
+        router.update({
+          dehydrate: () => {
+            nested = router.load()
+            return {}
+          },
+        })
+      }
+      startMocks.router = router
+      const handler = createStartHandler(
+        ({ responseHeaders }) =>
+          new Response('ok', { headers: responseHeaders }),
+      )
+      const responsePromise = handler(new Request('http://localhost/'), {
+        onEarlyHints: (event) => {
+          if (event.phase === 'dynamic') {
+            dynamicEvents++
+            hintedHrefs.push(...event.hints.map((hint) => hint.href))
+          }
+        },
+        responseLinkHeader: true,
+      })
+      try {
+        await started
+        expect(hintedHrefs).toEqual(
+          phase === 'lifecycle' ? [] : ['/shared.png', '/initial.png'],
+        )
+      } finally {
+        gate.resolve('final')
+        await nested
+        await responsePromise
+      }
+      const response = await responsePromise
+      expect(response.status).toBe(200)
+      expect(dynamicEvents).toBe(phase === 'lifecycle' ? 1 : 2)
+      expect(router.state.matches.at(-1)?.loaderData).toBe('final')
+      expect(hintedHrefs).toEqual(
+        phase === 'lifecycle'
+          ? ['/shared.png', '/final.png']
+          : ['/shared.png', '/initial.png', '/final.png'],
+      )
+      expect(response.headers.get('Link')).toContain(
+        '</final.png>; rel=preload; as=image',
+      )
+      if (phase === 'lifecycle') {
+        expect(response.headers.get('Link')).not.toContain('/initial.png')
+      }
+    },
+  )
+
+  it('returns a hook-started redirect without another dynamic event or HTML render', async () => {
+    const dynamicHints: Array<Array<string>> = []
+    let calls = 0
+    const router = makeRouter({
+      loader: () => {
+        if (++calls === 1) {
+          return 'initial'
+        }
+        throw redirect({ href: '/target', statusCode: 307 })
+      },
+      head: () => ({
+        links: [{ rel: 'preload', href: '/initial.png', as: 'image' }],
+      }),
+    })
+    router.update({ dehydrate: () => router.load() })
+    startMocks.router = router
+    const render = vi.fn(() => new Response('unexpected HTML'))
+    const handler = createStartHandler(render)
+    const response = await handler(new Request('http://localhost/'), {
+      onEarlyHints: (event) => {
+        if (event.phase === 'dynamic') {
+          dynamicHints.push(event.hints.map((hint) => hint.href))
+        }
+      },
+      responseLinkHeader: true,
+    })
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get('location')).toBe('/target')
+    expect(response.headers.get('Link')).toBeNull()
+    expect(dynamicHints).toEqual([['/initial.png']])
+    expect(render).not.toHaveBeenCalled()
+    expect(router.state).toMatchObject({ status: 'idle', isLoading: false })
+  })
+})
+
 describe('createStartHandler redirect safety', () => {
+  it('returns a redirect from a lifecycle-started load before rendering HTML', async () => {
+    const started = createControlledPromise<void>()
+    const gate = createControlledPromise<void>()
+    let calls = 0
+    let reentered = false
+    let nested: Promise<void> | undefined
+    const router = makeRouter({
+      loader: async () => {
+        if (++calls > 1) {
+          started.resolve()
+          await gate
+          throw redirect({ href: '/target', statusCode: 307 })
+        }
+        return 'initial data'
+      },
+      onEnter: () => {
+        if (!reentered) {
+          reentered = true
+          nested = router.load()
+        }
+      },
+    })
+    startMocks.router = router
+    const render = vi.fn(() => new Response('unexpected HTML'))
+    const handler = createStartHandler(render)
+    const responsePromise = handler(new Request('http://localhost/'), {})
+    try {
+      await started
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(render).not.toHaveBeenCalled()
+      gate.resolve()
+      const response = await responsePromise
+      expect(response.status).toBe(307)
+      expect(response.headers.get('location')).toBe('/target')
+      expect(render).not.toHaveBeenCalled()
+      expect(router.state).toMatchObject({ status: 'idle', isLoading: false })
+    } finally {
+      gate.resolve()
+      await nested
+    }
+  })
+
   it('publishes early normalized redirects with helper writes from the custom entry', async () => {
     const handler = createStartHandler(() => {
       throw new Error('Early redirects should not render HTML')
