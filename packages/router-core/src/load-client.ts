@@ -449,7 +449,7 @@ async function contextualize(
       options[7 /* onReady */]?.()
     }
     try {
-      setFetching(router, match, 'beforeLoad', options[0 /* controller */])
+      match.isFetching = 'beforeLoad'
       const value = beforeLoad({
         ...common,
         search: match.search,
@@ -458,8 +458,15 @@ async function contextualize(
       })
       // Always await to give a queued replacement navigation one microtask to
       // kick in before checking cancellation, even for synchronous context.
+      // Only an asynchronous beforeLoad has a fetching window worth presenting.
       const result = await (typeof value?.then === 'function'
-        ? waitFor(value, signal)
+        ? (setFetching(
+            router,
+            match,
+            'beforeLoad',
+            options[0 /* controller */],
+          ),
+          waitFor(value, signal))
         : value)
       if (signal.aborted) {
         return [index, CANCELED_OUTCOME]
@@ -577,13 +584,12 @@ function setFetching(
   value: AnyRouteMatch['isFetching'],
   owner?: AbortController,
 ): void {
-  match.isFetching = value
-  if (owner && router._tx?.[0 /* controller */] !== owner) {
-    return
-  }
   const store = router.stores.byRoute.get(match.routeId)
   const presented = store?.get()
-  if (presented?.id === match.id) {
+  // Compare before writing: `match` can be the presented object itself.
+  const changed = presented?.id === match.id && presented.isFetching !== value
+  match.isFetching = value
+  if (changed && (!owner || router._tx?.[0 /* controller */] === owner)) {
     store!.set({ ...presented, isFetching: value })
   }
 }
@@ -2037,9 +2043,7 @@ export async function loadClientRoute(
       if (router._tx !== tx) {
         break
       }
-      if (match.isFetching) {
-        setFetching(router, match, false)
-      }
+      setFetching(router, match, false)
     }
     previousOwner[0 /* controller */].abort()
     transferMatchResources(
