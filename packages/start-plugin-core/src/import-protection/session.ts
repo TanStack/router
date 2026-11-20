@@ -1360,7 +1360,8 @@ class ImportProtectionEnv {
         if (handoffs.length === 0) {
           classify(from, source.edges.edge(from.id, target) !== undefined)
         }
-        // (each import statement is an edge, with its own answer)
+        // (each import of the file, its own edge with its own answer:
+        // `dedupeKey`, one per specifier)
         for (const handoff of handoffs) {
           if (source.allowedBy(handoff.module.key).next().done) {
             out.checked.push({
@@ -1418,7 +1419,7 @@ class ImportProtectionEnv {
     return false
   }
 
-  /** The denied client-reference imports of `target` by `importerId` recorded here, one per import statement (`EdgeViolation.handoff`). @internal */
+  /** The denied client-reference imports of `target` by `importerId` recorded here, one per import (a specifier: `EdgeViolation.handoff`). @internal */
   handoffsOf(importerId: string, target: string): Array<EdgeViolation> {
     const out: Array<EdgeViolation> = []
     for (const m of this.modules.values()) {

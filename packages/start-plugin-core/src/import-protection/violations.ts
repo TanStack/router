@@ -207,7 +207,9 @@ export function violationsOf(output: {
 /**
  * `log: 'once'` and `allowImport`'s memo dedupe by this key: the logical
  * edge's provenance (the environment name reports give, `env`; importer,
- * raw specifier, target).
+ * raw specifier, target). It is the contract's unit, one import: two
+ * declarations of one specifier in a file, or a static and a dynamic import
+ * of it, are one question, asked at the first (its `loc`).
  */
 export function dedupeKey(v: EdgeViolation, env = v.env): string {
   return [env, v.importer, v.specifier, v.resolved ?? ''].join('\u0000')

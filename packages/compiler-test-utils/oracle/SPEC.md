@@ -854,9 +854,14 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   unambiguous.
 - **J6.6 `onViolation` and `allowImport`.** `onViolation` is called for every violation with the documented info,
   and only reports. `allowImport` is asked before the import is mocked, once per import (dev and build), tree-shaken
-  imports included; returning `true` allows the import: real module, no mock, no report, no `onViolation` call.
+  imports included; returning `true` allows the import: real module, no mock, no report, no `onViolation` call. An
+  import is a file's request of a specifier in an environment, resolved to one file (environment, importer, raw
+  specifier, target): two declarations of one specifier in a file, or a static and a dynamic import of it, are one
+  import, asked at the first (`importerLoc`).
 - **J6.7 Exemptions give the real module.** An importer exempted by `ignoreImporters`, `exclude` or outside
-  `include` gets the real module through a plain import, and nothing is reported for it. Pattern imports
+  `include` gets the real module through a plain import, and nothing is reported for it, when the importer itself is
+  in the app without the help of a denied module that is not real (a denied module served as its mock brings none of
+  its imports: dev and watch rebuilds serve what a fresh build of the same source serves). Pattern imports
   (`import.meta.glob`, a template-literal `import()`, `require.context` / `import.meta.webpackContext`) are not
   covered (R142): a pattern importer, exempt or checked, gets the file as its plain importers make it served (the real
   module when an exempt importer imports it plainly or `allowImport` allows it, the mock otherwise), with no report of

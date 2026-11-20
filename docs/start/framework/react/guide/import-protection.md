@@ -689,7 +689,7 @@ importProtection: {
 - `true` gives the import the real module, from the first pass: the import is not a violation, nothing is reported for it, and `onViolation` is not called for it.
 - `false` or nothing means no override: the normal outcome under `behavior`, so a build failure with `error`, a mock and a warning with `mock`.
 
-It is called once per denied import and environment (`info.env`) for a build or a dev session, and the answer is remembered.
+It is called once per denied import for a build or a dev session, and the answer is remembered. An import is a file's request of a specifier in an environment (`info.env`), resolved to one file: two import declarations of the same specifier in one file are one import, and so are a static and a dynamic import of it. `info.importerLoc` is where the first of them is, and the answer is for all of them (a report names the first).
 
 `allowImport` runs before tree-shaking, so it also sees imports tree-shaking removes later. Use it to decide, not to report: `onViolation` is the one that hears only about what stays. For the same reason its `info` has no `trace` (the import graph is not finished) and no `snippet` (source rendered for a report).
 

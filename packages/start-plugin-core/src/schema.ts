@@ -54,7 +54,10 @@ const importProtectionOptionsSchema = z
     /**
      * Decides, during the build and before a mock is chosen, whether a denied
      * import gets the real module (`true`). `false` or nothing: the normal
-     * outcome under `behavior`. Asked once per import, including imports
+     * outcome under `behavior`. Asked once per import (a file's request of
+     * a specifier in an environment, resolved to one file: two declarations
+     * of one specifier in a file, or a static and a dynamic import of it,
+     * are one import, `importerLoc` the first), including imports
      * tree-shaking removes later, so it decides and does not report; its
      * answers must be stable.
      */
