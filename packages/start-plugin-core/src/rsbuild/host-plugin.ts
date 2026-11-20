@@ -224,11 +224,30 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
 } {
   const { session, environment, rspack } = opts
   const own = session.compiler(environment.name)
+  /**
+   * The compile environment of each module of this compiler `envOf` was
+   * asked about (a concatenated inner module's is not kept: its holder's
+   * layer may decide it). A module's resource and layer never change and an
+   * environment stays once known, while Rspack's `layer` getter calls into
+   * the binding on every read, and the passes of a compilation read each
+   * module's environment several times.
+   */
+  const moduleEnvs = new WeakMap<object, EnvState>()
   /** The compile environment of a module of this compiler (`envOfModule`; `holder`: of a concatenated inner module). */
   const envOf = (
     module: { resource?: string; layer?: string | null },
-    holder?: { layer?: string | null },
-  ): EnvState => session.envOfModule(environment.name, module, holder)
+    holder: { layer?: string | null } = module,
+  ): EnvState => {
+    if (holder !== module) {
+      return session.envOfModule(environment.name, module, holder)
+    }
+    let env = moduleEnvs.get(module)
+    if (!env) {
+      env = session.envOfModule(environment.name, module)
+      moduleEnvs.set(module, env)
+    }
+    return env
+  }
   /** The key of the compile environment of a module (`envOf`), for the drain. */
   const envKeyOf = (module: unknown): string =>
     envOf(module as { resource?: string; layer?: string | null }).name
@@ -400,7 +419,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           params.normalModuleFactory.hooks.beforeResolve.tapPromise(
             PLUGIN_NAME,
             async (data) => {
-              const issuerEnv = envOf({ layer: data.contextInfo.issuerLayer })
+              const issuerEnv = session.envOf(
+                environment.name,
+                data.contextInfo.issuerLayer,
+              )
               const reports = await ipEnvOf(issuerEnv)?.childCompilerRequest(
                 data.request,
                 data.contextInfo.issuer,
