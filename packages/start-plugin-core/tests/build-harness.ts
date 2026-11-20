@@ -312,7 +312,8 @@ export interface StartBuildOptions {
    * Every build of the app (`builds`, `rebuild`) reuses the first one's
    * plugins: Vite builds are given the same Start plugin objects, as a
    * program that calls `createBuilder` again with the same inline config
-   * does; Rsbuild builds call `build()` again on the same Rsbuild instance.
+   * does; Rsbuild builds call `build()` again on the same Rsbuild instance
+   * (`rsbuildCompiler`: `run()` again on the same compiler).
    * Default: each build has plugins of its own, as a config file gives them.
    */
   samePlugins?: boolean
@@ -320,7 +321,9 @@ export interface StartBuildOptions {
    * Rsbuild builds: through the instance's compiler (`createCompiler()`,
    * then its `run()`), as a program that drives the compiler itself does:
    * Rsbuild dispatches none of its build hooks (`onBeforeBuild`,
-   * `onAfterEnvironmentCompile`, `onAfterBuild`). Not with `watchEdits`.
+   * `onAfterEnvironmentCompile`, `onAfterBuild`). With `samePlugins`, every
+   * build runs the first one's compiler again, closed when the app is
+   * removed. Not with `watchEdits`.
    */
   rsbuildCompiler?: boolean
   /**
@@ -676,6 +679,7 @@ export async function buildStart(
     watchEdits: options.watchEdits,
     samePlugins: options.samePlugins ?? false,
     rsbuildCompiler: options.rsbuildCompiler ?? false,
+    registerCleanup: options.registerCleanup ?? onTestFinished,
     viteConfigFile: options.viteConfigFile ?? false,
     cwd: options.cwd,
     configuredRoot: options.root?.(app.root),
@@ -864,11 +868,21 @@ interface BuildTarget {
   watchEdits?: Record<string, string | null> | ReadonlyArray<WatchStep>
   samePlugins: boolean
   rsbuildCompiler: boolean
+  /** Registers what the app's removal also undoes (`StartBuildOptions.registerCleanup`). */
+  registerCleanup: (cleanup: () => Promise<void>) => void
   viteConfigFile: boolean
   /** Start's Vite plugins of every build (`samePlugins`), once created. */
   startPlugins?: ReturnType<typeof startPlugins>
-  /** The Rsbuild instance of every build (`samePlugins`), once created, and the records of its current build. */
-  rsbuild?: { instance: RsbuildInstance; records: RsbuildRecords }
+  /**
+   * The Rsbuild instance of every build (`samePlugins`), once created, and
+   * the records of its current build; `compiler`: the compiler every build
+   * runs (`rsbuildCompiler`), once created.
+   */
+  rsbuild?: {
+    instance: RsbuildInstance
+    records: RsbuildRecords
+    compiler?: Rspack.Compiler | Rspack.MultiCompiler
+  }
   cwd?: string
   /** The bundler's `root` as configured (`StartBuildOptions.root`). */
   configuredRoot?: string
@@ -1418,6 +1432,8 @@ async function buildWithRsbuild(
     clientParsedModules,
   }
   if (target.rsbuild) {
+    // (a compiler run again: `rsbuildCompiler`)
+    own.environments = target.rsbuild.records.environments
     target.rsbuild.records = own
   }
   /** This build's records (a reused instance's plugins record each build's: `samePlugins`). */
@@ -1428,8 +1444,16 @@ async function buildWithRsbuild(
     setup(api) {
       api.modifyRspackConfig((config, { environment }) => {
         if (environment.name === 'client' && target.mode === 'production') {
+          // (into the records of the build that runs the compiler: `rsbuildCompiler` runs it again)
           config.plugins.push(
-            recordParsedModules(records().clientParsedModules),
+            recordParsedModules({
+              get modules() {
+                return records().clientParsedModules.modules
+              },
+              get transformed() {
+                return records().clientParsedModules.transformed
+              },
+            }),
           )
         }
       })
@@ -1547,10 +1571,28 @@ async function buildWithRsbuild(
         await watching.close()
       }
     } else if (target.rsbuildCompiler) {
-      const compiler = await rsbuild.createCompiler()
-      const stats = await new Promise<Rspack.Stats | Rspack.MultiStats>(
+      const close = (compiler: Rspack.Compiler | Rspack.MultiCompiler) =>
+        new Promise<void>((resolve) => compiler.close(() => resolve()))
+      let compiler = target.rsbuild?.compiler
+      if (compiler) {
+        // what the loaders print goes to this build's channel
+        for (const child of 'compilers' in compiler
+          ? compiler.compilers
+          : [compiler]) {
+          channel.scopeRspack(child)
+        }
+      } else {
+        const created = await rsbuild.createCompiler()
+        compiler = created
+        if (target.rsbuild) {
+          target.rsbuild.compiler = created
+          target.registerCleanup(() => close(created))
+        }
+      }
+      const running = compiler
+      const run = new Promise<Rspack.Stats | Rspack.MultiStats>(
         (resolve, reject) => {
-          compiler.run((error, result) => {
+          running.run((error, result) => {
             if (error || !result) {
               reject(error ?? new Error('no compilation stats'))
             } else {
@@ -1558,9 +1600,10 @@ async function buildWithRsbuild(
             }
           })
         },
-      ).finally(
-        () => new Promise((resolve) => compiler.close(() => resolve(null))),
       )
+      const stats = await (target.rsbuild
+        ? run
+        : run.finally(() => close(running)))
       // (each environment's compiler is named after it)
       for (const one of 'stats' in stats ? stats.stats : [stats]) {
         recordCompile(own.environments![one.compilation.name ?? '']!, one)
