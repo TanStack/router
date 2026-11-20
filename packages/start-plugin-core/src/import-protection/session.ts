@@ -69,7 +69,13 @@ import type {
   EdgeModuleRef,
   ProductionMock,
 } from './edge-modules'
-import type { GraphNode, NodeGraph, SourceReader, Trace } from './graph-trace'
+import type {
+  GraphNode,
+  GroundedGraph,
+  NodeGraph,
+  SourceReader,
+  Trace,
+} from './graph-trace'
 import type { DevReport, DevReporterOptions, ReportSink } from './report'
 import type { EnvType } from './rules'
 import type {
@@ -462,7 +468,7 @@ export class ImportProtection {
         const why =
           real.has(d.key) || !grounded.supported(d.node)
             ? null
-            : await d.env.ownGrant(d.self)
+            : await d.env.ownGrant(d.self, grounded)
         if (why) {
           real.set(d.key, why)
           added = true
@@ -529,14 +535,29 @@ export class ImportProtection {
     return notified
   }
 
-  /** Whether an allowed import brought `resolved` into environments of this type. @internal */
-  targetAllowed(type: EnvType, resolved: string): boolean {
+  /**
+   * Whether an allowed import brought `resolved` into environments of this
+   * type (R96): a released environment's, or a live one's whose importer
+   * `counts` (default: every one; the settlement's verdicts count an
+   * importer in its compilation's graph only when the importer is in a
+   * fresh build, `groundedGraph`, so a denied module a cycle allows does
+   * not stay real by itself). @internal
+   */
+  targetAllowed(
+    type: EnvType,
+    resolved: string,
+    counts: (importer: GraphNode) => boolean = () => true,
+  ): boolean {
     if (this.releasedTargets[type].has(resolved)) {
       return true
     }
     for (const env of this.envs.values()) {
-      if (env.type === type && !env.allowedImporters(resolved).next().done) {
-        return true
+      if (env.type === type) {
+        for (const importer of env.allowedImporters(resolved)) {
+          if (counts(importer)) {
+            return true
+          }
+        }
       }
     }
     return false
@@ -1458,11 +1479,11 @@ class ImportProtectionEnv {
   }
 
   /**
-   * The importers (files) of this environment whose import of `resolved`
-   * `allowImport` allowed and is still there (its edge module served real,
-   * with a violation of the importer registered).
+   * The importers (their modules) of this environment whose import of
+   * `resolved` `allowImport` allowed and is still there (its edge module
+   * served real, with a violation of the importer registered).
    */
-  *allowedImporters(resolved: string): Generator<string> {
+  *allowedImporters(resolved: string): Generator<GraphNode> {
     for (const [key, entry] of this.served) {
       const m =
         entry.self === null && entry.verdict === 'real'
@@ -1470,7 +1491,7 @@ class ImportProtectionEnv {
           : undefined
       if (m?.content.resolved === resolved) {
         for (const v of m.violations.values()) {
-          yield v.importer
+          yield { env: this.name, id: v.importerId }
         }
       }
     }
@@ -1685,9 +1706,18 @@ class ImportProtectionEnv {
     return null
   }
 
-  /** What makes a denied module itself real (an allowed import of an environment of its type, R96; `allowImport` on the file), as the settlement's history names it; null: nothing. @internal */
-  async ownGrant(self: EdgeViolation): Promise<string | null> {
-    if (this.ip.targetAllowed(this.type, self.resolved!)) {
+  /**
+   * What makes a denied module itself real, as the settlement's history
+   * names it: an allowed import of an environment of its type (R96) whose
+   * importer is in `graph` as a fresh build has it (a released
+   * environment's: any), or `allowImport` on the file; null: nothing.
+   * @internal
+   */
+  async ownGrant(
+    self: EdgeViolation,
+    graph: GroundedGraph,
+  ): Promise<string | null> {
+    if (this.ip.targetAllowed(this.type, self.resolved!, graph.counts)) {
       return `an allowed import of another ${this.type} environment brings it`
     }
     return (await this.allows(self)) ? 'allowImport allows the file' : null

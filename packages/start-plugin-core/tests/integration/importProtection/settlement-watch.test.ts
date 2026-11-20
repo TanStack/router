@@ -9,11 +9,15 @@
  *   next through an exempt file that re-exports a denied file of a layer of
  *   the user's; the chain's middle function becomes a plain function, then
  *   comes back.
+ * - `rsbuild build --watch`: a denied file in a cycle with a checked barrel
+ *   whose import of it `allowImport` allows; the route switches from the
+ *   barrel to a pattern import of the denied file.
  * Source: the RSC phase 1 re-check 3 (/var/tmp/rsc-p1-recheck3/report.md
  * "Resolver removal, watch and other limits", `closure.py edits`,
  * `layercontrols.py`: `L0 L1 [import-protection mock]` restored on
  * db260cf3a3 and 2169b4165c), design-rsc-phase1-settlement.md fact 8
- * (`vitewatch.py`: the mock, reported, on both), S5, S5v.
+ * (`vitewatch.py`: the mock, reported, on both), S5, S5v; re-check 4
+ * (/var/tmp/rsc-p1-recheck4/report.md §2, `grounded.py cyclewatch`).
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart } from '../../build-harness'
@@ -177,6 +181,89 @@ describe('rsbuild build --watch with RSC, a server fn whose module leaves the bu
         label: texts(await response.text(), 'label'),
         violations: violationsOf(built),
       }).toEqual({ status: 200, label: ['L0 L1 DEEP_VALUE'], violations: [] })
+    },
+    timeout,
+  )
+})
+
+describe('rsbuild build --watch, a denied file in a cycle with a barrel whose import of it allowImport allows', () => {
+  // (re-check 4 §2: 012645978b and db260cf3a3 failed the rebuild with R147
+  // and kept the real module)
+  test(
+    'once only a pattern import reaches it, the rebuild serves its mock, as a fresh build of the source',
+    async () => {
+      const route = (
+        from: string,
+      ) => `import { createFileRoute } from '@tanstack/react-router'
+import { createIsomorphicFn } from '@tanstack/react-start'
+import { read } from '../${from}'
+const label = createIsomorphicFn()
+  .server(() => String(read()))
+  .client(() => 'client control')
+export const Route = createFileRoute('/')({ component: Home })
+function Home() {
+  return <main data-testid="label">{label()}</main>
+}
+`
+      const start = {
+        importProtection: {
+          behavior: 'mock',
+          allowImport: (info: { importer: string; specifier: string }) =>
+            info.importer.endsWith('/kit/index.ts') &&
+            info.specifier === './a.client',
+        },
+      }
+      const built = await buildStart({
+        bundler: 'rsbuild',
+        files: {
+          ...root,
+          'src/kit/index.ts': `export { value } from './a.client'
+export const helper = () => 'H'
+`,
+          'src/kit/a.client.ts': `import { helper } from './index'
+export const value = () => 'A_REAL ' + helper()
+`,
+          'src/feature.ts': `import { value } from './kit/index'
+export const read = () => value()
+`,
+          'src/topPattern.ts': `const files = import.meta.webpackContext('./kit', {
+  recursive: false,
+  regExp: /^\\.\\/a\\.client\\.ts$/,
+})
+export const read = () => files('./a.client.ts').value()
+`,
+          'src/routes/index.tsx': route('feature'),
+        },
+        entry: 'src/entry.ts',
+        start: start as never,
+        watchEdits: { 'src/routes/index.tsx': route('topPattern') },
+      })
+      // (each distinct report: a watch edit may take more than one
+      // compilation, and each reports what it serves as a mock)
+      const served = async (b: typeof built) => {
+        const { url } = await b.preview()
+        return {
+          label: texts(await (await fetch(new URL('/', url))).text(), 'label'),
+          violations: [
+            ...new Set(
+              violationsOf(b).map(({ importer, specifier }) =>
+                JSON.stringify({
+                  importer: importer.replace(/:.*/, ''),
+                  specifier,
+                }),
+              ),
+            ),
+          ].map((v) => JSON.parse(v)),
+        }
+      }
+      const watched = await served(built)
+      expect(watched).toEqual({
+        label: ['[import-protection mock]'],
+        violations: [
+          { importer: 'src/topPattern.ts', specifier: 'src/kit/a.client.ts' },
+        ],
+      })
+      expect(await served(await built.rebuild())).toEqual(watched)
     },
     timeout,
   )

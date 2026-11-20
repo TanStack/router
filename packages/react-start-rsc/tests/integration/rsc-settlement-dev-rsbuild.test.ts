@@ -129,8 +129,9 @@ async function start(
   files: Record<string, string>,
   exclude: Array<string>,
   rules: Array<Record<string, unknown>>,
+  allow?: Parameters<typeof recorder>[1],
 ) {
-  const { violations, start: options } = recorder('mock')
+  const { violations, start: options } = recorder('mock', allow)
   const server = await startRscRsbuildDevServer({
     browser: true,
     start: {
@@ -291,10 +292,24 @@ describe('Rsbuild dev with RSC, one edit that flips two denied files', () => {
   )
 })
 
-describe('Rsbuild dev with RSC, a denied file in a cycle with its exempt barrel', () => {
-  test(
-    'once only a pattern import reaches it, it is served as its mock and reported once, no conflict',
-    async () => {
+describe('Rsbuild dev with RSC, a denied file in a cycle with its barrel', () => {
+  test.each([
+    {
+      grant: 'an exempt barrel',
+      exclude: ['**/kit/index.ts'],
+      allow: undefined,
+    },
+    // (re-check 4 §2: 012645978b and db260cf3a3 kept `A_REAL H`, with R147)
+    {
+      grant: 'a checked barrel whose import allowImport allows',
+      exclude: [],
+      allow: (info: { importer: string; specifier: string }) =>
+        info.importer.endsWith('/kit/index.ts') &&
+        info.specifier === './a.client',
+    },
+  ])(
+    '$grant: once only a pattern import reaches it, it is served as its mock and reported once, no conflict',
+    async ({ exclude, allow }) => {
       const { server, violations } = await start(
         {
           'src/kit/index.ts': `export { value } from './a.client'
@@ -309,8 +324,9 @@ export const read = () => value()
           'src/topPattern.ts': pattern('a', './kit'),
           'src/routes/index.tsx': route('feature', 'LIVE'),
         },
-        ['**/kit/index.ts'],
+        exclude,
         [],
+        allow,
       )
       expect(await page(server, 'LIVE')).toEqual({
         tag: true,

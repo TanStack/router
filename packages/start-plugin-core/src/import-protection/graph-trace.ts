@@ -365,6 +365,14 @@ export function viteDevNodeGraph(
   }
 }
 
+/** A compilation's graph as a fresh build of the same source has it (`groundedGraph`). */
+export interface GroundedGraph extends NodeGraph {
+  /** Whether a node is supported: an entry, a root, or imported by an importer that `counts`. */
+  supported: (node: GraphNode) => boolean
+  /** Whether a node's imports are in a fresh build: it is supported and not blocked. */
+  counts: (node: GraphNode) => boolean
+}
+
 /**
  * A compilation's graph as a fresh build of the same source has it
  * (design-rsc-phase1-settlement.md §2.2, SPEC J6.7): an importer counts
@@ -385,7 +393,7 @@ export function groundedGraph(
   graph: NodeGraph,
   blocked: (node: GraphNode) => boolean,
   extra: (node: GraphNode, graph: NodeGraph) => Iterable<GraphNode>,
-): NodeGraph & { supported: (node: GraphNode) => boolean } {
+): GroundedGraph {
   const yes = new Set<string>()
   const no = new Set<string>()
   const supported = (start: GraphNode): boolean => {
@@ -442,14 +450,16 @@ export function groundedGraph(
     }
     return true
   }
+  // (an importer's imports are in a fresh build when it is there and its
+  // imports are: not a denied module served as its mock)
+  const counts = (node: GraphNode) => !blocked(node) && supported(node)
   return {
-    // (an importer's imports are in a fresh build when it is there and its
-    // imports are: not a denied module served as its mock)
     importers(node) {
       const known = graph.importers(node)
-      return known && [...known].filter((i) => !blocked(i) && supported(i))
+      return known && [...known].filter(counts)
     },
     isEntry: graph.isEntry,
     supported,
+    counts,
   }
 }
