@@ -70,6 +70,8 @@ This is the easiest and most powerful way to code split your route files.
 
 When using the `autoCodeSplitting` feature, TanStack Router will automatically code split your route files based on the non-critical route configuration mentioned above.
 
+By default, it splits the `component`, `errorComponent` and `notFoundComponent` into separate chunks. The `pendingComponent` stays in the route's main chunk unless you add it to a split grouping. See [What gets code split?](./automatic-code-splitting.md#what-gets-code-split) for the defaults and how to change them.
+
 > [!IMPORTANT]
 > The automatic code-splitting feature is **ONLY** available when you are using file-based routing with one of our [supported bundlers](../routing/file-based-routing.md#getting-started-with-file-based-routing).
 > This will **NOT** work if you are **only** using the CLI (`@tanstack/router-cli`).
