@@ -5,8 +5,8 @@
  * one gone (a moved checkout, a CI cache restored into another workspace).
  * The second build compiles correctly: an import `allowImport` allows gets
  * the real module, a denied one its mock, and it is reported. (Rspack 2.3.1
- * restores no module of the app at the new path; the test holds whether it
- * does or not.)
+ * and 2.3.3 restore no module of the app at the new path; the test holds
+ * whether it does or not.)
  */
 import { mkdtempSync } from 'node:fs'
 import { rename } from 'node:fs/promises'

@@ -287,8 +287,9 @@ for await (const result of [tlaForFn()]) {
   // a top-level block and in a top-level `for` head: the module awaits each
   // disposal before it finishes evaluating. (Not directly at the top level:
   // with the harness's targets Rolldown 1.2.13 drops that declaration, and
-  // Rsbuild 2.3.1's SWC lowering moves the module's later declarations after
-  // the disposal.) Source: Astra review 4 (architecture B2, core B1)
+  // the SWC lowering of Rsbuild (2.3.1 to 2.3.3) moves the module's later
+  // declarations after the disposal.) Source: Astra review 4 (architecture
+  // B2, core B1)
   'tla-using-block.ts': `${head}import { value } from './tla-using-dep.server'
 export const prefix = ['tla-using-block', ''].join(':')
 export const tlaUsingFn = createServerFn().handler(async () => prefix + value)

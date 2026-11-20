@@ -305,10 +305,10 @@ export function describeRouteFileUpkeep(bundler: Bundler) {
       // compile must not resolve the deleted file from the route tree.
       // Source: review of the route deletion fix. (Rsbuild without its
       // default lazy compilation of dynamic imports: with it and `bail`,
-      // Rspack 2.3.1 fails the compilation that deletes a module whose lazy
-      // `import()` the page loaded, on that import, though nothing imports
-      // the module any more; plain Rsbuild does the same. Upstream, not
-      // filed yet.)
+      // Rspack (2.3.1 to 2.3.3) fails the compilation that deletes a module
+      // whose lazy `import()` the page loaded, on that import, though nothing
+      // imports the module any more; plain Rsbuild does the same. Upstream,
+      // not filed yet.)
       test(
         'a route file deleted and created again is served when the compilation stops at its first error (bail)',
         async () => {
