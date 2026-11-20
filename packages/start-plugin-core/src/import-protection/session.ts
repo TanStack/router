@@ -1448,6 +1448,9 @@ class ImportProtectionEnv {
       if (!entry.self) {
         continue
       }
+      if (graph) {
+        await this.answerHandoffs(entry.self, graph)
+      }
       const real = graph
         ? this.demanded(entry.self, this.incoming(entry.self, graph)) ||
           (await this.allows(entry.self))
@@ -1460,6 +1463,28 @@ class ImportProtectionEnv {
       }
     }
     return out
+  }
+
+  /**
+   * `allowImport`'s answers on the client-reference imports that arrive at
+   * a module that is its own violation in `graph` (`incoming`), asked once
+   * per import: an importer compiled in this process asked at its compile,
+   * a restored one's imports were replayed from its record (`replay`) and
+   * are asked here, as a restored edge module's state is (`mismatches`).
+   */
+  private async answerHandoffs(
+    self: EdgeViolation,
+    graph: NodeGraph,
+  ): Promise<void> {
+    const target = self.resolved!
+    for (const source of this.ip.handoffSources(this.name, target)) {
+      for (const from of graph.importers({ env: source.name, id: target }) ??
+        []) {
+        for (const handoff of source.handoffsOf(from.id, target)) {
+          await source.allows(handoff)
+        }
+      }
+    }
   }
 
   /**

@@ -8,10 +8,11 @@
  * `allowImport` about the import again: a policy that changed between the
  * builds decides, as in a cold build.
  * Source: design-rsc-phase1-graph.md §5.4 R4 (the persisted handoff
- * records and client-reference mark, record version 4). Seen while writing
- * it: the second build restores the SSR layer's modules and compiles the
- * RSC layer's provider modules again (the server-fn resolver's rebuild), so
- * the server component's import is asked by its compile.
+ * records and client-reference mark, record version 4). In these apps the
+ * second build compiles the RSC layer's provider modules again (the
+ * server-fn resolver's rebuild), so the import is asked by its compile; the
+ * last row restores the importer itself (another entry of the RSC layer
+ * brings it before the resolver's rebuild): its replayed import is asked.
  */
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
@@ -184,4 +185,104 @@ describe('Rsbuild RSC build on the persistent cache', () => {
     },
     timeout,
   )
+
+  // Source: the RSC phase 1 re-check 2 (/var/tmp/rsc-p1-recheck2/report.md
+  // §3, `cachedentry.py`: 2f8afeccc0 built cold and failed warm, reporting
+  // the import it never asked; db260cf3a3 failed both, asking about the file)
+  test(
+    'a nested server component another RSC entry brings is restored: its import is asked again, the page renders as cold',
+    async () => {
+      const asked: Array<string> = []
+      const files = app(false)
+      files['src/utils/ucServer.tsx'] = files[
+        'src/utils/ucServer.tsx'
+      ]!.replace(
+        `import { ClientBox } from './ClientBox.client'`,
+        `import { Nested } from './Nested'`,
+      ).replace('<ClientBox />', '<Nested />')
+      const cold = await buildStart({
+        bundler: 'rsbuild',
+        files: {
+          ...files,
+          'src/utils/Nested.tsx': `import { ClientBox as Inner } from './ClientBox.client'
+export function Nested() {
+  return (
+    <aside>
+      <Inner />
+    </aside>
+  )
+}
+`,
+          'src/utils/extra.ts': `import { Nested } from './Nested'
+;(globalThis as any).extraComponent = Nested
+`,
+          'src/utils/clientEntry.ts': `export {}\n`,
+        },
+        entry: 'src/entry.ts',
+        symlinks: rsbuildRscLinks(),
+        rsbuildConfig: {
+          performance: { buildCache: true },
+          environments: {
+            // (an RSC entry needs its client entry of the same name)
+            client: {
+              tools: {
+                rspack: (config: { plugins?: Array<unknown> }) => {
+                  ;(config.plugins ??= []).push(
+                    entryIn('./src/utils/clientEntry.ts'),
+                  )
+                },
+              },
+            },
+            ssr: {
+              tools: {
+                rspack: (config: { plugins?: Array<unknown> }) => {
+                  ;(config.plugins ??= []).push(
+                    entryIn('./src/utils/extra.ts', 'react-server-components'),
+                  )
+                },
+              },
+            },
+          },
+        } as never,
+        start: {
+          rsc: { enabled: true },
+          importProtection: {
+            behavior: 'error',
+            allowImport: (info: Asked) => {
+              asked.push(`${info.env} ${info.importer.split('/').pop()}`)
+              return info.importer.endsWith('/Nested.tsx')
+            },
+          },
+        } as never,
+      })
+      expect(await boxes(cold)).toEqual(['client-only label'])
+      asked.length = 0
+      const warm = await cold.rebuild()
+      expect([...new Set(asked)]).toContain('rsc Nested.tsx')
+      expect(violationsOf(warm)).toEqual([])
+      expect(await boxes(warm)).toEqual(['client-only label'])
+    },
+    timeout,
+  )
 })
+
+/** Rspack's `EntryPlugin` adding `file` as entry `independent` (in `layer`) to a compiler. */
+function entryIn(file: string, layer?: string) {
+  return {
+    apply(compiler: {
+      context: string
+      rspack: {
+        EntryPlugin: new (
+          context: string,
+          entry: string,
+          options: { name: string; layer?: string },
+        ) => { apply: (compiler: unknown) => void }
+      }
+    }) {
+      new compiler.rspack.EntryPlugin(compiler.context, file, {
+        name: 'independent',
+        ...(layer !== undefined && { layer }),
+      }).apply(compiler)
+    },
+  }
+}
