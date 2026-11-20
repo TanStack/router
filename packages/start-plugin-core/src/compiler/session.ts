@@ -36,8 +36,8 @@ import { HYDRATE_PLANNER, createHydratePlanner } from '../planners/hydrate'
 import { RSC_CSS } from '../planners/rsc-css'
 import {
   FunctionIdAllocator,
-  calledIds,
   callSpellings,
+  calledIds,
   gateToken,
 } from '../server-fns/ids'
 import { ServerFnRegistry } from '../server-fns/registry'

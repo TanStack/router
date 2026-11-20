@@ -8,7 +8,7 @@
  * builds' rows are in integration/start-build-server-fn-callable.test.ts.
  */
 import { describe, expect, test } from 'vitest'
-import { calledIds, callSpellings, gateToken } from '../src/server-fns/ids'
+import { callSpellings, calledIds, gateToken } from '../src/server-fns/ids'
 
 const key = { rootRel: 'src/fns.ts', stableKey: 'save' }
 const token = gateToken(key)

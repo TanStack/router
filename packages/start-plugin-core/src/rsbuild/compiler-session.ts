@@ -35,7 +35,6 @@ import {
 } from '@tanstack/router-utils/compiler'
 import { StartCompilerSession, serverFnFactsOf } from '../compiler/session'
 import { isVueSfc } from '../compiler/vue'
-import type { RscManifestLike } from './flight-check'
 import { providedEntries, providerModuleId } from '../server-fns/registry'
 import { manifestResolverModule } from '../server-fns/resolver'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
@@ -46,6 +45,7 @@ import {
   RSBUILD_RSC_LAYER_RESOLVE,
 } from './planning'
 import { runsAgainLater } from './vue'
+import type { RscManifestLike } from './flight-check'
 import type {
   StartCompilerEnvironment,
   StartCompilerSessionOptions,
