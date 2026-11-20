@@ -183,7 +183,7 @@ export async function getRouteNodesRecursive(
             createLiteralRoutePathSegmentMetadata(pathPrefix, parent, true)
           const routePath = cleanPath(`${pathPrefix}${subtreeNode.routePath}`)
           subtreeNode.variableName = routePathToVariable(
-            `${routePathPrefix}/${removeExt(subtreeNode.filePath)}`,
+            `${pathPrefix}/${removeExt(subtreeNode.filePath)}`,
           )
           subtreeNode._routePathSegmentMetadata = joinRoutePathSegmentMetadata(
             routePath,

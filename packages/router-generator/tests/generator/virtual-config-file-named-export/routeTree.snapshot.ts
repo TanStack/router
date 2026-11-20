@@ -15,11 +15,11 @@ import { Route as pagesRouteImport } from './routes/pages'
 import { Route as dbDashboardRouteImport } from './routes/db/dashboard'
 import { Route as dbDashboardIndexRouteImport } from './routes/db/dashboard-index'
 import { Route as dbDashboardInvoicesRouteImport } from './routes/db/dashboard-invoices'
-import { Route as HelloIndexRouteImport } from './routes/subtree/index'
+import { Route as LayoutHelloIndexRouteImport } from './routes/subtree/index'
 import { Route as dbInvoicesIndexRouteImport } from './routes/db/invoices-index'
 import { Route as dbInvoiceDetailRouteImport } from './routes/db/invoice-detail'
-import { Route as HelloFooIndexRouteImport } from './routes/subtree/foo/index'
-import { Route as HelloFooIdRouteImport } from './routes/subtree/foo/$id'
+import { Route as LayoutHelloFooIndexRouteImport } from './routes/subtree/foo/index'
+import { Route as LayoutHelloFooIdRouteImport } from './routes/subtree/foo/$id'
 
 const indexRoute = indexRouteImport.update({
   id: '/',
@@ -50,7 +50,7 @@ const dbDashboardInvoicesRoute = dbDashboardInvoicesRouteImport.update({
   path: '/invoices',
   getParentRoute: () => dbDashboardRoute,
 } as any)
-const HelloIndexRoute = HelloIndexRouteImport.update({
+const LayoutHelloIndexRoute = LayoutHelloIndexRouteImport.update({
   id: '/hello/',
   path: '/hello/',
   getParentRoute: () => layoutRoute,
@@ -65,12 +65,12 @@ const dbInvoiceDetailRoute = dbInvoiceDetailRouteImport.update({
   path: '/$id',
   getParentRoute: () => dbDashboardInvoicesRoute,
 } as any)
-const HelloFooIndexRoute = HelloFooIndexRouteImport.update({
+const LayoutHelloFooIndexRoute = LayoutHelloFooIndexRouteImport.update({
   id: '/hello/foo/',
   path: '/hello/foo/',
   getParentRoute: () => layoutRoute,
 } as any)
-const HelloFooIdRoute = HelloFooIdRouteImport.update({
+const LayoutHelloFooIdRoute = LayoutHelloFooIdRouteImport.update({
   id: '/hello/foo/$id',
   path: '/hello/foo/$id',
   getParentRoute: () => layoutRoute,
@@ -82,21 +82,21 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof dbDashboardRouteWithChildren
   '/dashboard/': typeof dbDashboardIndexRoute
   '/dashboard/invoices': typeof dbDashboardInvoicesRouteWithChildren
-  '/hello/': typeof HelloIndexRoute
+  '/hello/': typeof LayoutHelloIndexRoute
   '/dashboard/invoices/': typeof dbInvoicesIndexRoute
   '/dashboard/invoices/$id': typeof dbInvoiceDetailRoute
-  '/hello/foo/$id': typeof HelloFooIdRoute
-  '/hello/foo/': typeof HelloFooIndexRoute
+  '/hello/foo/$id': typeof LayoutHelloFooIdRoute
+  '/hello/foo/': typeof LayoutHelloFooIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof indexRoute
   '/$lang': typeof pagesRoute
   '/dashboard': typeof dbDashboardIndexRoute
-  '/hello': typeof HelloIndexRoute
+  '/hello': typeof LayoutHelloIndexRoute
   '/dashboard/invoices': typeof dbInvoicesIndexRoute
   '/dashboard/invoices/$id': typeof dbInvoiceDetailRoute
-  '/hello/foo/$id': typeof HelloFooIdRoute
-  '/hello/foo': typeof HelloFooIndexRoute
+  '/hello/foo/$id': typeof LayoutHelloFooIdRoute
+  '/hello/foo': typeof LayoutHelloFooIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -106,11 +106,11 @@ export interface FileRoutesById {
   '/_layout/dashboard': typeof dbDashboardRouteWithChildren
   '/_layout/dashboard/': typeof dbDashboardIndexRoute
   '/_layout/dashboard/invoices': typeof dbDashboardInvoicesRouteWithChildren
-  '/_layout/hello/': typeof HelloIndexRoute
+  '/_layout/hello/': typeof LayoutHelloIndexRoute
   '/_layout/dashboard/invoices/': typeof dbInvoicesIndexRoute
   '/_layout/dashboard/invoices/$id': typeof dbInvoiceDetailRoute
-  '/_layout/hello/foo/$id': typeof HelloFooIdRoute
-  '/_layout/hello/foo/': typeof HelloFooIndexRoute
+  '/_layout/hello/foo/$id': typeof LayoutHelloFooIdRoute
+  '/_layout/hello/foo/': typeof LayoutHelloFooIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -204,7 +204,7 @@ declare module '@tanstack/react-router' {
       id: '/_layout/hello/'
       path: '/hello'
       fullPath: '/hello/'
-      preLoaderRoute: typeof HelloIndexRouteImport
+      preLoaderRoute: typeof LayoutHelloIndexRouteImport
       parentRoute: typeof layoutRoute
     }
     '/_layout/dashboard/invoices/': {
@@ -225,14 +225,14 @@ declare module '@tanstack/react-router' {
       id: '/_layout/hello/foo/'
       path: '/hello/foo'
       fullPath: '/hello/foo/'
-      preLoaderRoute: typeof HelloFooIndexRouteImport
+      preLoaderRoute: typeof LayoutHelloFooIndexRouteImport
       parentRoute: typeof layoutRoute
     }
     '/_layout/hello/foo/$id': {
       id: '/_layout/hello/foo/$id'
       path: '/hello/foo/$id'
       fullPath: '/hello/foo/$id'
-      preLoaderRoute: typeof HelloFooIdRouteImport
+      preLoaderRoute: typeof LayoutHelloFooIdRouteImport
       parentRoute: typeof layoutRoute
     }
   }
@@ -267,16 +267,16 @@ const dbDashboardRouteWithChildren = dbDashboardRoute._addFileChildren(
 
 interface layoutRouteChildren {
   dbDashboardRoute: typeof dbDashboardRouteWithChildren
-  HelloIndexRoute: typeof HelloIndexRoute
-  HelloFooIdRoute: typeof HelloFooIdRoute
-  HelloFooIndexRoute: typeof HelloFooIndexRoute
+  LayoutHelloIndexRoute: typeof LayoutHelloIndexRoute
+  LayoutHelloFooIdRoute: typeof LayoutHelloFooIdRoute
+  LayoutHelloFooIndexRoute: typeof LayoutHelloFooIndexRoute
 }
 
 const layoutRouteChildren: layoutRouteChildren = {
   dbDashboardRoute: dbDashboardRouteWithChildren,
-  HelloIndexRoute: HelloIndexRoute,
-  HelloFooIdRoute: HelloFooIdRoute,
-  HelloFooIndexRoute: HelloFooIndexRoute,
+  LayoutHelloIndexRoute: LayoutHelloIndexRoute,
+  LayoutHelloFooIdRoute: LayoutHelloFooIdRoute,
+  LayoutHelloFooIndexRoute: LayoutHelloFooIndexRoute,
 }
 
 const layoutRouteWithChildren =

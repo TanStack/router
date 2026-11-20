@@ -10,40 +10,41 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as layoutRouteImport } from './routes/layout'
-import { Route as Char91_Char93nestedIndexRouteImport } from './routes/physical-routes/[_]nested/index'
-import { Route as Char91_Char93nestedIdRouteImport } from './routes/physical-routes/[_]nested/$id'
+import { Route as LayoutChar91_Char93nestedIndexRouteImport } from './routes/physical-routes/[_]nested/index'
+import { Route as LayoutChar91_Char93nestedIdRouteImport } from './routes/physical-routes/[_]nested/$id'
 
 const layoutRoute = layoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char91_Char93nestedIndexRoute =
-  Char91_Char93nestedIndexRouteImport.update({
+const LayoutChar91_Char93nestedIndexRoute =
+  LayoutChar91_Char93nestedIndexRouteImport.update({
     id: '/_nested/',
     path: '/_nested/',
     getParentRoute: () => layoutRoute,
   } as any)
-const Char91_Char93nestedIdRoute = Char91_Char93nestedIdRouteImport.update({
-  id: '/_nested/$id',
-  path: '/_nested/$id',
-  getParentRoute: () => layoutRoute,
-} as any)
+const LayoutChar91_Char93nestedIdRoute =
+  LayoutChar91_Char93nestedIdRouteImport.update({
+    id: '/_nested/$id',
+    path: '/_nested/$id',
+    getParentRoute: () => layoutRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof layoutRouteWithChildren
-  '/_nested/$id': typeof Char91_Char93nestedIdRoute
-  '/_nested/': typeof Char91_Char93nestedIndexRoute
+  '/_nested/$id': typeof LayoutChar91_Char93nestedIdRoute
+  '/_nested/': typeof LayoutChar91_Char93nestedIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof layoutRouteWithChildren
-  '/_nested/$id': typeof Char91_Char93nestedIdRoute
-  '/_nested': typeof Char91_Char93nestedIndexRoute
+  '/_nested/$id': typeof LayoutChar91_Char93nestedIdRoute
+  '/_nested': typeof LayoutChar91_Char93nestedIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_layout': typeof layoutRouteWithChildren
-  '/_layout/_nested/$id': typeof Char91_Char93nestedIdRoute
-  '/_layout/_nested/': typeof Char91_Char93nestedIndexRoute
+  '/_layout/_nested/$id': typeof LayoutChar91_Char93nestedIdRoute
+  '/_layout/_nested/': typeof LayoutChar91_Char93nestedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -70,27 +71,27 @@ declare module '@tanstack/react-router' {
       id: '/_layout/_nested/'
       path: '/_nested'
       fullPath: '/_nested/'
-      preLoaderRoute: typeof Char91_Char93nestedIndexRouteImport
+      preLoaderRoute: typeof LayoutChar91_Char93nestedIndexRouteImport
       parentRoute: typeof layoutRoute
     }
     '/_layout/_nested/$id': {
       id: '/_layout/_nested/$id'
       path: '/_nested/$id'
       fullPath: '/_nested/$id'
-      preLoaderRoute: typeof Char91_Char93nestedIdRouteImport
+      preLoaderRoute: typeof LayoutChar91_Char93nestedIdRouteImport
       parentRoute: typeof layoutRoute
     }
   }
 }
 
 interface layoutRouteChildren {
-  Char91_Char93nestedIdRoute: typeof Char91_Char93nestedIdRoute
-  Char91_Char93nestedIndexRoute: typeof Char91_Char93nestedIndexRoute
+  LayoutChar91_Char93nestedIdRoute: typeof LayoutChar91_Char93nestedIdRoute
+  LayoutChar91_Char93nestedIndexRoute: typeof LayoutChar91_Char93nestedIndexRoute
 }
 
 const layoutRouteChildren: layoutRouteChildren = {
-  Char91_Char93nestedIdRoute: Char91_Char93nestedIdRoute,
-  Char91_Char93nestedIndexRoute: Char91_Char93nestedIndexRoute,
+  LayoutChar91_Char93nestedIdRoute: LayoutChar91_Char93nestedIdRoute,
+  LayoutChar91_Char93nestedIndexRoute: LayoutChar91_Char93nestedIndexRoute,
 }
 
 const layoutRouteWithChildren =
