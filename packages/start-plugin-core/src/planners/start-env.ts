@@ -37,7 +37,7 @@ import {
 } from '../compiler/recognizer'
 import { prefetchStartValues } from '../compiler/prefetch'
 import { isFunctionNode, startAnalysisOf } from '../compiler/start-analysis'
-import { devFunctionId, placeholderId } from '../server-fns/ids'
+import { devFunctionId, gateToken, placeholderId } from '../server-fns/ids'
 import {
   defaultFunctionId,
   fileTag as fileTagOf,
@@ -1088,19 +1088,32 @@ function planStartEnv(
     // (the manifest's `functionName` stays `site.functionName`)
     const { local: rpcLocal, exportName } = site.wrapper
     if (role === 'client') {
-      const rpc = glueImport(
-        specs.clientRpc,
-        'createClientServerFn',
-        'tsrClientServerFn',
-      )
+      // with a custom generator (`placeholder` ids) the stub also passes its
+      // gate token, which the runtime stores on the RPC: the client build's
+      // code holds it where the stub survives (J4.2, R182), whatever id the
+      // generator gives (a custom id is any text: its text proves nothing)
+      const gated = config.idMode === 'placeholder'
+      const rpc = gated
+        ? glueImport(
+            specs.clientRpc,
+            'createGatedClientServerFn',
+            'tsrGatedClientServerFn',
+          )
+        : glueImport(
+            specs.clientRpc,
+            'createClientServerFn',
+            'tsrClientServerFn',
+          )
       // in dev the stub also names its file's revision (an argument the runtime ignores): the
       // handler may have changed with any edit of the file, and a webpack-family host
       // hot-updates a module only when its output changed, so the client module of an edited
       // server fn changes and its route refreshes (Vite updates every module of the file)
-      const revisionArg =
+      const lastArg =
         config.idMode === 'dev'
           ? `, ${moduleLiteral((devRevision ??= revision(ctx.analysis.source.code)))}`
-          : ''
+          : gated
+            ? `, ${moduleLiteral(gateToken(key))}`
+            : ''
       // the stub is a call of ours only, `createClientServerFn(id, chain)`
       // (the runtime calls `chain.handler(createClientRpc(id))`), marked
       // pure: a bundler drops an unused server fn's stub and its id (R182:
@@ -1123,7 +1136,7 @@ function planStartEnv(
             `(${moduleLiteral(id)}, `,
           ),
           slice(rangeOf(site.receiver)),
-          text(`${revisionArg})`),
+          text(`${lastArg})`),
         ],
         by,
       })

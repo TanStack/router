@@ -34,7 +34,12 @@ import {
 import { START_ENV, startEnvPlanner, startPlanners } from '../planners'
 import { HYDRATE_PLANNER, createHydratePlanner } from '../planners/hydrate'
 import { RSC_CSS } from '../planners/rsc-css'
-import { FunctionIdAllocator, ID_QUOTES, idLiterals } from '../server-fns/ids'
+import {
+  FunctionIdAllocator,
+  calledIds,
+  callSpellings,
+  gateToken,
+} from '../server-fns/ids'
 import { ServerFnRegistry } from '../server-fns/registry'
 import { createImportProtection } from '../import-protection/session'
 import { IMPORT_EDGES_PLANNER } from '../import-protection/violations'
@@ -592,63 +597,28 @@ export class StartCompilerSession {
 
   /**
    * The HTTP-callable server fns of a production build (J4.2, R182): the
-   * client-referenced entries whose id still occurs as a string literal in
-   * the client build's emitted code (`codes`, tree-shaken, custom ids
-   * patched). A client compile stubs every server fn of a module the client
-   * imports; the bundler drops each stub no client code calls, and a server
-   * fn the client never calls stays callable by server code only. By the
-   * id the registry holds (a custom id's placeholder). Another literal
-   * spelling an id only admits it, as before.
-   *
-   * One walk over the code's quote characters, where every literal starts:
-   * the literals by their first `k` characters (the shortest literal's
-   * length, at most 12), so a quote looks up the few that can start there.
+   * client-referenced entries whose stub survives in the client build's
+   * emitted code (`codes`, tree-shaken and minified). A client compile
+   * stubs every server fn of a module the client imports; the bundler drops
+   * each stub no client code calls, and a server fn the client never calls
+   * stays callable by server code only. A stub is seen by a spelling only a
+   * compile produces: its default id (a digest), or with a custom generator
+   * its gate token (`gateToken`; a custom id is any text, e.g. a label of
+   * the app). By the id the registry holds (a custom id's placeholder).
    */
   private clientCallableIds(codes: ReadonlyArray<string>): Set<string> {
-    const allocator = this.allocator && this.allocateIds('client').allocator
-    const literals: Array<{ literal: string; id: string }> = []
-    let k = 12
+    const gated = this.allocator !== null
+    const fns: Array<{ id: string; spelling: string; name: string }> = []
     for (const e of this.registry.entries()) {
-      if (!e.clientReferenced) {
-        continue
-      }
-      for (const literal of idLiterals(
-        allocator ? allocator.patch(e.id).code : e.id,
-      )) {
-        literals.push({ literal, id: e.id })
-        k = Math.min(k, literal.length)
+      if (e.clientReferenced) {
+        fns.push({
+          id: e.id,
+          spelling: gated ? gateToken(e) : e.id,
+          name: `${e.name} of ${e.rootRel}`,
+        })
       }
     }
-    if (literals.length === 0) {
-      return new Set()
-    }
-    const byPrefix = new Map<string, Array<{ literal: string; id: string }>>()
-    for (const l of literals) {
-      const prefix = l.literal.slice(0, k)
-      const same = byPrefix.get(prefix)
-      if (same) {
-        same.push(l)
-      } else {
-        byPrefix.set(prefix, [l])
-      }
-    }
-    const callable = new Set<string>()
-    for (const code of codes) {
-      for (const quote of ID_QUOTES) {
-        for (
-          let i = code.indexOf(quote);
-          i !== -1;
-          i = code.indexOf(quote, i + 1)
-        ) {
-          for (const l of byPrefix.get(code.slice(i, i + k)) ?? []) {
-            if (code.startsWith(l.literal, i)) {
-              callable.add(l.id)
-            }
-          }
-        }
-      }
-    }
-    return callable
+    return calledIds(codes, callSpellings(fns))
   }
 
   /**

@@ -123,6 +123,252 @@ return results`)
     timeout,
   )
 
+  // SPEC J4.2 (R182) with a custom generator: a server fn is callable over
+  // HTTP when its stub survives in the client's emitted code, not when its
+  // id's text does. Each case: the server fns the client calls answer, the
+  // others are refused.
+  const overHttpPrelude = `${callByIdPrelude}const overHttp = async (id) => {
+  try {
+    return await callById(id)
+  } catch {
+    return 'rejected'
+  }
+}
+`
+
+  // c9701e2fc1: a quoted string equal to a custom id made its server fn
+  // callable (the client build was scanned for the id's text)
+  test(
+    'SSR: an unused server fn whose custom id is also a label of the client is refused over HTTP, and the label renders',
+    async () => {
+      const ids: Record<string, string> = {
+        unusedFn_createServerFn_handler: 'display',
+        usedFn_createServerFn_handler: 'used-fn',
+      }
+      const { client, ssr } = await buildStart({
+        bundler,
+        start: {
+          serverFns: {
+            generateFunctionId: ({ functionName }: { functionName: string }) =>
+              ids[functionName],
+          },
+        },
+        files: {
+          'fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const usedFn = createServerFn().handler(async () => 'used fn')
+export const unusedFn = createServerFn().handler(async () => 'unused fn')
+`,
+          'client-entry.ts': `export { usedFn } from './fns'
+export const label = () => 'display'
+`,
+          'ssr-entry.ts': `export { usedFn, unusedFn } from './fns'
+${callByIdExports}`,
+        },
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+      })
+      const { result: label } = await client.run(`return entry.label()`)
+      const { result } = await ssr.run(`${overHttpPrelude}return {
+  used: await overHttp('used-fn'),
+  display: await overHttp('display'),
+  fromSsr: await entry.unusedFn(),
+}`)
+      expect({ label, result }).toEqual({
+        label: 'display',
+        result: { used: 'used fn', display: 'rejected', fromSsr: 'unused fn' },
+      })
+    },
+    timeout,
+  )
+
+  test(
+    'SSR: the only server fn of an app, with a custom id the client calls, answers over HTTP',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        start: {
+          serverFns: { generateFunctionId: () => 'only-fn' },
+        },
+        files: {
+          'fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const onlyFn = createServerFn().handler(async () => 'only fn')
+`,
+          'client-entry.ts': `import { onlyFn } from './fns'
+export const call = () => onlyFn()
+export const url = () => onlyFn.url
+`,
+          'ssr-entry.ts': callByIdExports,
+        },
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+      })
+      const { result: url } = await client.run(`return entry.url()`)
+      const { result } = await ssr.run(
+        `${overHttpPrelude}return await overHttp(serverFnId(${JSON.stringify(url)}))`,
+      )
+      expect({ url, result }).toEqual({
+        url: expect.stringMatching(/\/only-fn$/),
+        result: 'only fn',
+      })
+    },
+    timeout,
+  )
+
+  test(
+    'SSR: the only server fn of an app, with a default id the client calls, answers over HTTP',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        files: {
+          'fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const onlyFn = createServerFn().handler(async () => 'only fn')
+`,
+          'client-entry.ts': `import { onlyFn } from './fns'
+export const call = () => onlyFn()
+export const url = () => onlyFn.url
+`,
+          'ssr-entry.ts': callByIdExports,
+        },
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+      })
+      const { result: url } = await client.run(`return entry.url()`)
+      const { result } = await ssr.run(
+        `${overHttpPrelude}return await overHttp(serverFnId(${JSON.stringify(url)}))`,
+      )
+      expect(result).toBe('only fn')
+    },
+    timeout,
+  )
+
+  test(
+    'SSR: a server fn with a custom id that only a lazily loaded client chunk calls answers over HTTP',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        start: {
+          serverFns: {
+            generateFunctionId: ({ functionName }: { functionName: string }) =>
+              functionName.startsWith('lazyFn_') ? 'lazy-fn' : undefined,
+          },
+        },
+        files: {
+          'fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const lazyFn = createServerFn().handler(async () => 'lazy fn')
+`,
+          'lazy.ts': `import { lazyFn } from './fns'
+export const callLazy = () => lazyFn()
+`,
+          'client-entry.ts': `export const load = () => import('./lazy').then((m) => typeof m.callLazy)
+`,
+          'ssr-entry.ts': callByIdExports,
+        },
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+      })
+      const { result: loaded } = await client.run(`return await entry.load()`)
+      const { result } = await ssr.run(
+        `${overHttpPrelude}return await overHttp('lazy-fn')`,
+      )
+      expect({ loaded, result }).toEqual({
+        loaded: 'function',
+        result: 'lazy fn',
+      })
+    },
+    timeout,
+  )
+
+  test(
+    'SSR: of two server fns with custom ids in one module, the one the client calls answers and the other, whose id is also text of the client, is refused',
+    async () => {
+      const ids: Record<string, string> = {
+        liveFn_createServerFn_handler: 'live-fn',
+        siblingFn_createServerFn_handler: 'sibling-fn',
+      }
+      const { client, ssr } = await buildStart({
+        bundler,
+        start: {
+          serverFns: {
+            generateFunctionId: ({ functionName }: { functionName: string }) =>
+              ids[functionName],
+          },
+        },
+        files: {
+          'fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const liveFn = createServerFn().handler(async () => 'live fn')
+export const siblingFn = createServerFn().handler(async () => 'sibling fn')
+`,
+          'client-entry.ts': `import { liveFn } from './fns'
+export const call = () => liveFn()
+export const text = () => ['sibling-fn', "sibling-fn", \`sibling-fn\`]
+`,
+          'ssr-entry.ts': `export { siblingFn } from './fns'
+${callByIdExports}`,
+        },
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+      })
+      const { result: text } = await client.run(`return entry.text()`)
+      const { result } = await ssr.run(`${overHttpPrelude}return {
+  live: await overHttp('live-fn'),
+  sibling: await overHttp('sibling-fn'),
+  siblingFromSsr: await entry.siblingFn(),
+}`)
+      expect({ text, result }).toEqual({
+        text: ['sibling-fn', 'sibling-fn', 'sibling-fn'],
+        result: {
+          live: 'live fn',
+          sibling: 'rejected',
+          siblingFromSsr: 'sibling fn',
+        },
+      })
+    },
+    timeout,
+  )
+
+  test(
+    'SSR: with a generator that gives some server fns no id, the ones the client calls answer, custom or default, and the others are refused',
+    async () => {
+      const ids: Record<string, string> = {
+        usedCustom_createServerFn_handler: 'used-custom',
+        unusedCustom_createServerFn_handler: 'unused-custom',
+      }
+      const { client, ssr } = await buildStart({
+        bundler,
+        start: {
+          serverFns: {
+            generateFunctionId: ({ functionName }: { functionName: string }) =>
+              ids[functionName],
+          },
+        },
+        files: {
+          'fns.ts': `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
+export const usedCustom = createServerFn().handler(async () => 'used custom')
+export const usedDefault = createServerFn().handler(async () => 'used default')
+export const unusedCustom = createServerFn().handler(async () => 'unused custom')
+export const unusedDefault = createServerFn().handler(async () => 'unused default')
+export const urls = createServerOnlyFn(() => [usedCustom, usedDefault, unusedCustom, unusedDefault].map((fn) => fn.url))
+`,
+          'client-entry.ts': `import { usedCustom, usedDefault } from './fns'
+export const call = () => [usedCustom(), usedDefault()]
+`,
+          'ssr-entry.ts': `export { urls } from './fns'
+${callByIdExports}`,
+        },
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+      })
+      const { result } = await ssr.run(`${overHttpPrelude}const results = []
+for (const url of entry.urls()) {
+  results.push(await overHttp(serverFnId(url)))
+}
+return results`)
+      expect(result).toEqual([
+        'used custom',
+        'used default',
+        'rejected',
+        'rejected',
+      ])
+      // (the client imports no unused stub)
+      expect(client.where('unused-custom')).toBe('nowhere')
+    },
+    timeout,
+  )
+
   // A custom id policy that names ids after `functionName`: the second `x`
   // of a module and a property named `'x#1'` are distinct server fns, each
   // with its own id and handler over HTTP.

@@ -80,6 +80,56 @@ const calledStart = {
   },
 }
 
+/**
+ * A route that shows the label `display`, calls `used` (custom id
+ * `used-id`) and sends `used`'s own request to the URL of `display`, the
+ * custom id of `unused`, a server fn no client code calls.
+ */
+const labelFiles = {
+  'src/label-fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const used = createServerFn().handler(async () => 'MARK_USED')
+export const unused = createServerFn().handler(async () => 'MARK_UNUSED')
+`,
+  'src/routes/label.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { used } from '../label-fns'
+export const Route = createFileRoute('/label')({ component: Page })
+function Page() {
+  const [outcome, setOutcome] = useState('none')
+  const call = async (id: string) => {
+    try {
+      const value = await used({
+        fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+          fetch(String(input).replace(/used-id$/, id), init),
+      } as any)
+      setOutcome(id + ' answered ' + String(value))
+    } catch {
+      setOutcome(id + ' refused')
+    }
+  }
+  return (
+    <main>
+      <p data-testid="label">{'display'}</p>
+      <p data-testid="outcome">{outcome}</p>
+      <button data-testid="used" onClick={() => call('used-id')}>used</button>
+      <button data-testid="display" onClick={() => call('display')}>display</button>
+    </main>
+  )
+}
+`,
+}
+
+const labelStart = {
+  serverFns: {
+    generateFunctionId: ({ functionName }: { functionName: string }) =>
+      functionName.startsWith('used_')
+        ? 'used-id'
+        : functionName.startsWith('unused_')
+          ? 'display'
+          : undefined,
+  },
+}
+
 describe.each([
   ['vite', startRscPreviewServer],
   ['rsbuild', startRscRsbuildPreviewServer],
@@ -91,6 +141,25 @@ describe.each([
     )
     expect(failure, 'the build failed').toBeDefined()
     expectDiagnostic(failure, { severity: 'error', file: 'src/fns.ts' })
+  }, 60_000)
+
+  // SPEC J4.2 (R182) with a custom generator: the server fn whose stub
+  // the client's emitted code holds answers the browser; `unused`, whose
+  // custom id is also a label the page shows, is refused (c9701e2fc1: the
+  // client build was scanned for the id's text, which admitted it)
+  test('a custom id that is also a label of the page admits nothing: the unused server fn is refused', async () => {
+    const server = await startServer({ files: labelFiles, start: labelStart })
+    const page = await openRscPage(server, '/label')
+    await waitForHydration(page)
+    expect(await page.text('[data-testid=label]')).toBe('display')
+    await page.page.locator('[data-testid=used]').click()
+    await page.waitForText('used-id answered MARK_USED', {
+      selector: '[data-testid=outcome]',
+    })
+    await page.page.locator('[data-testid=display]').click()
+    await page.waitForText('display refused', {
+      selector: '[data-testid=outcome]',
+    })
   }, 60_000)
 
   test('custom ids the browser calls reach their handlers; a deprecated one warns', async () => {

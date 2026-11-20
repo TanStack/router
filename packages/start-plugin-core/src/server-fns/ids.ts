@@ -4,6 +4,7 @@
  * production build prints (the default id, `functionName`, literals,
  * collision order, which custom ids it accepts): `./format`.
  */
+import { hash } from 'node:crypto'
 import {
   collisionOrder,
   customIdCheck,
@@ -54,6 +55,22 @@ function placeholderToken(key: ServerFnKey): string {
 
 export function placeholderId(key: ServerFnKey): string {
   return `${PLACEHOLDER_PREFIX}${placeholderToken(key)}${PLACEHOLDER_SUFFIX}`
+}
+
+/**
+ * The gate token of a server fn (J4.2, R182, with a custom generator): one
+ * spelling only a compile produces, which every client stub of a build with
+ * `generateFunctionId` passes to the runtime, which stores it on the RPC.
+ * Its presence in the client's emitted code proves the stub survived. `#`
+ * and 16 hex digits: `#` is refused in a custom id (`customIdCheck`) and is
+ * no hex digit, so a token equals no id. Never sent, never read at run
+ * time.
+ */
+export function gateToken(key: ServerFnKey): string {
+  return (
+    '#' +
+    hash('sha256', `tss-gate\0${key.rootRel}\0${key.stableKey}`).slice(0, 16)
+  )
 }
 
 export type GenerateFunctionId = (opts: {
@@ -164,6 +181,78 @@ export const ID_QUOTES = ['"', "'", '`'] as const
  */
 export function idLiterals(id: string): Array<string> {
   return ID_QUOTES.map((quote) => quote + escapeFor(quote, id) + quote)
+}
+
+/**
+ * The literals a client build's emitted code holds of each server fn it
+ * calls (`spelling`: its gate token, or its default id), by literal. Two
+ * server fns of one spelling (a token collision) fail the build: neither
+ * would be told apart.
+ */
+export function callSpellings(
+  fns: Iterable<{ id: string; spelling: string; name: string }>,
+): Map<string, string> {
+  const byLiteral = new Map<string, string>()
+  const nameOf = new Map<string, string>()
+  for (const fn of fns) {
+    const other = nameOf.get(fn.spelling)
+    if (other !== undefined) {
+      throw new Error(
+        `[tanstack-start] The server functions ${other} and ${fn.name} have the same build token (${fn.spelling}): rename one of them.`,
+      )
+    }
+    nameOf.set(fn.spelling, fn.name)
+    for (const literal of idLiterals(fn.spelling)) {
+      byLiteral.set(literal, fn.id)
+    }
+  }
+  return byLiteral
+}
+
+/**
+ * The ids whose literal (`callSpellings`) is in `codes`. One walk over the
+ * code's quote characters, where every literal starts: the literals by
+ * their first `k` characters (the shortest literal's length, at most 12),
+ * so a quote looks up the few that can start there.
+ */
+export function calledIds(
+  codes: ReadonlyArray<string>,
+  literals: ReadonlyMap<string, string>,
+): Set<string> {
+  const called = new Set<string>()
+  if (literals.size === 0) {
+    return called
+  }
+  let k = 12
+  for (const literal of literals.keys()) {
+    k = Math.min(k, literal.length)
+  }
+  const byPrefix = new Map<string, Array<[string, string]>>()
+  for (const entry of literals) {
+    const prefix = entry[0].slice(0, k)
+    const same = byPrefix.get(prefix)
+    if (same) {
+      same.push(entry)
+    } else {
+      byPrefix.set(prefix, [entry])
+    }
+  }
+  for (const code of codes) {
+    for (const quote of ID_QUOTES) {
+      for (
+        let i = code.indexOf(quote);
+        i !== -1;
+        i = code.indexOf(quote, i + 1)
+      ) {
+        for (const [literal, id] of byPrefix.get(code.slice(i, i + k)) ?? []) {
+          if (code.startsWith(literal, i)) {
+            called.add(id)
+          }
+        }
+      }
+    }
+  }
+  return called
 }
 
 /** `id` as the text of a string literal quoted with `quote`. */
