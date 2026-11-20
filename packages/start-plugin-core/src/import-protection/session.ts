@@ -26,6 +26,8 @@ import {
 import {
   EdgeIndex,
   IdsByFile,
+  groundedGraph,
+  nodeKey,
   readSourceFile,
   traceFile,
   traceOf,
@@ -385,6 +387,123 @@ export class ImportProtection {
     }
   }
 
+  /**
+   * The verdicts of the denied modules (compiled under their own id) of the
+   * compile environments `envs` in a compilation's `graph`, as a fresh
+   * build of the same source gives them (design-rsc-phase1-settlement.md
+   * §2.2, SPEC J6.7): a denied module is real exactly when an exempt or
+   * allowed import arrives at it from a module the app reaches without a
+   * denied module that is not real (`groundedGraph`), or, reached so
+   * itself, when an allowed import of an environment of its type brought
+   * it (R96) or `allowImport` allows the file (asked only of the modules
+   * still mock once no import makes another real). The least solution:
+   * every module starts mock, and the ones the rule makes real are added
+   * until none is, so a module is never real only because of itself (a
+   * cycle with its exempt barrel). Only the modules `decides` holds (the
+   * compilation's own) are decided; any other (a child compilation's)
+   * keeps what its compile served.
+   */
+  async ground(
+    envs: Iterable<ImportProtectionEnv>,
+    graph: NodeGraph,
+    decides: (node: GraphNode) => boolean,
+  ): Promise<Grounding> {
+    interface Denied {
+      env: ImportProtectionEnv
+      self: EdgeViolation
+      node: GraphNode
+      key: string
+    }
+    const denied = new Set<string>()
+    /** The real ones, by key: what makes each real. */
+    const real = new Map<string, string>()
+    const open: Array<Denied> = []
+    for (const env of envs) {
+      for (const { self, verdict } of env.deniedModules()) {
+        const node = { env: env.name, id: self.importerId }
+        const key = nodeKey(node)
+        denied.add(key)
+        if (decides(node)) {
+          open.push({ env, self, node, key })
+        } else if (verdict === 'real') {
+          real.set(key, 'its compile served it as it is')
+        }
+      }
+    }
+    // (the client-reference imports of restored importers, before a verdict reads them)
+    for (const d of open) {
+      await d.env.answerHandoffs(d.self, graph)
+    }
+    const view = () => {
+      const realNow = new Set(real.keys())
+      return groundedGraph(
+        graph,
+        (n) => {
+          const key = nodeKey(n)
+          return denied.has(key) && !realNow.has(key)
+        },
+        (n, g) => this.handoffImporters(n, g),
+      )
+    }
+    for (;;) {
+      const grounded = view()
+      let added = false
+      for (const d of open) {
+        const why = real.has(d.key) ? null : d.env.grantOf(d.self, grounded)
+        if (why) {
+          real.set(d.key, why)
+          added = true
+        }
+      }
+      if (added) {
+        continue
+      }
+      for (const d of open) {
+        const why =
+          real.has(d.key) || !grounded.supported(d.node)
+            ? null
+            : await d.env.ownGrant(d.self)
+        if (why) {
+          real.set(d.key, why)
+          added = true
+        }
+      }
+      if (!added) {
+        break
+      }
+    }
+    const decided = new Set(open.map((d) => d.key))
+    return {
+      verdictOf(node) {
+        const key = nodeKey(node)
+        if (!decided.has(key)) {
+          return null
+        }
+        const why = real.get(key)
+        return why
+          ? { real: true, why }
+          : { real: false, why: 'no allowed import arrives at it' }
+      },
+    }
+  }
+
+  /**
+   * `graph` as the ledgers' verdicts make it (`groundedGraph`: what a denied
+   * module served as its mock imported is in no fresh build), for what reads
+   * the edges arriving at a module once the settlement ran (R147, reports,
+   * traces); `graph` itself when no module is served as its mock.
+   */
+  servedGraph(graph: NodeGraph): NodeGraph {
+    if (![...this.envs.values()].some((env) => env.servesAnyMock())) {
+      return graph
+    }
+    return groundedGraph(
+      graph,
+      (n) => this.envs.get(n.env)?.servesMock(n.id) === true,
+      (n, g) => this.handoffImporters(n, g),
+    )
+  }
+
   /** The name reports and callbacks give a compile environment. @internal */
   publicNameOf(name: string): string {
     return this.publicNames.get(name) ?? name
@@ -683,11 +802,12 @@ interface Served {
    */
   restored?: true
   /**
-   * A denied file's verdict as the compilation's finished graph gives it
-   * (`mismatches(graph)`: Rsbuild's `finishMake`), which its next compiles
-   * serve until the next settlement: the edges a compile reads in its own
-   * environment can disagree with the graph (an exempt importer whose
-   * import a user's rule moved to another layer's module).
+   * A denied file's verdict as the settlement gives it from the
+   * compilation's graph (`ImportProtection.ground`, `settle`: Rsbuild's
+   * `finishMake`), which its next compiles serve until the next settlement
+   * (a prediction: each settlement decides again): the edges a compile
+   * reads in its own environment can disagree with the graph (an exempt
+   * importer whose import a user's rule moved to another layer's module).
    */
   settled?: boolean
 }
@@ -720,6 +840,12 @@ interface Incoming {
   checked: Array<CheckedEdge>
   /** The unchecked importers (files) that reach it through an import the compiler does not read. */
   unread: Set<string>
+}
+
+/** The settlement's verdicts of a compilation (`ImportProtection.ground`). */
+export interface Grounding {
+  /** A denied module's verdict and what makes it so, when the settlement decides it (a module of the compilation itself); null otherwise. */
+  verdictOf: (node: GraphNode) => { real: boolean; why: string } | null
 }
 
 /**
@@ -1441,19 +1567,14 @@ class ImportProtectionEnv {
   }
 
   /**
-   * What the ledger says was served and what the compilation's importers now
-   * ask for disagree (design 4, I3): a denied file served the mock whose
-   * exempt importer was compiled or restored after it, one served real whose
-   * exempt import is gone, a restored edge module (`Served.restored`) or
-   * file whose `allowImport` answer (asked once per import, now if not yet) differs. The
-   * ids of the modules to build again (an edge module by its id among our
-   * modules). Edge modules first: an allowed import brings the module it
-   * allows (`allowedImporters`). With the compilation's finished `graph`
-   * (Rsbuild's `finishMake`), a denied file's verdict is the edges that
-   * arrive at it there (`incoming`), written to the ledger as settled
-   * (`Served.settled`: its rebuild serves it); without, the guess.
+   * The restored edge modules (`Served.restored`: Rspack's persistent cache)
+   * whose `allowImport` answer (asked once per import, now if not yet)
+   * differs from the state their record says was served: the ids to build
+   * again (by their id among our modules), the state their rebuild loads
+   * written. An edge module's state brings the module it allows
+   * (`allowedImporters`): read before any denied module's verdict.
    */
-  async mismatches(graph?: NodeGraph): Promise<Array<string>> {
+  async restoredMismatches(): Promise<Array<string>> {
     const out: Array<string> = []
     for (const [key, entry] of this.served) {
       const m = entry.restored ? this.modules.get(key) : undefined
@@ -1470,21 +1591,24 @@ class ImportProtectionEnv {
         out.push(this.ip.ids.specifier({ env: this.name, kind: 'edge', key }))
       }
     }
+    return out
+  }
+
+  /**
+   * What the ledger says was served and what the importers this
+   * environment read now ask for disagree (design 4, I3), on a host with no
+   * graph settlement (Vite): a restored edge module (`restoredMismatches`),
+   * a denied file served the mock whose exempt importer was compiled after
+   * it, one served real whose exempt import is gone, or whose `allowImport`
+   * answer differs. The ids of the modules to build again.
+   */
+  async mismatches(): Promise<Array<string>> {
+    const out = await this.restoredMismatches()
     for (const [id, entry] of this.served) {
-      if (!entry.self) {
-        continue
-      }
-      if (graph) {
-        await this.answerHandoffs(entry.self, graph)
-      }
-      const real = graph
-        ? this.demanded(entry.self, this.incoming(entry.self, graph)) ||
-          (await this.allows(entry.self))
-        : await this.allowsSelf(entry.self)
-      if (graph) {
-        entry.settled = real
-      }
-      if (real !== (entry.verdict === 'real')) {
+      if (
+        entry.self &&
+        (await this.allowsSelf(entry.self)) !== (entry.verdict === 'real')
+      ) {
         out.push(id)
       }
     }
@@ -1492,16 +1616,91 @@ class ImportProtectionEnv {
   }
 
   /**
+   * The settlement's verdicts (`ImportProtection.ground`) of the denied
+   * modules it decides, written to the ledger as settled (`Served.settled`:
+   * their next compiles serve them); the ids of those served otherwise, to
+   * build again. A module it does not decide (a child compilation's)
+   * keeps what its compile served.
+   */
+  settle(grounding: Grounding): Array<{
+    id: string
+    verdict: { real: boolean; why: string }
+  }> {
+    const out: Array<{ id: string; verdict: { real: boolean; why: string } }> =
+      []
+    for (const [id, entry] of this.served) {
+      const verdict =
+        entry.self &&
+        grounding.verdictOf({ env: this.name, id: entry.self.importerId })
+      if (!verdict) {
+        continue
+      }
+      entry.settled = verdict.real
+      if (verdict.real !== (entry.verdict === 'real')) {
+        out.push({ id, verdict })
+      }
+    }
+    return out
+  }
+
+  /** The ledger's denied modules compiled under their own id, as served. @internal */
+  *deniedModules(): Generator<{
+    self: EdgeViolation
+    verdict: 'mock' | 'real'
+  }> {
+    for (const { self, verdict } of this.served.values()) {
+      if (self) {
+        yield { self, verdict }
+      }
+    }
+  }
+
+  /** Whether the ledger serves any module as the mock of its own violation. @internal */
+  servesAnyMock(): boolean {
+    for (const { self, verdict } of this.served.values()) {
+      if (self && verdict === 'mock') {
+        return true
+      }
+    }
+    return false
+  }
+
+  /** Whether the ledger serves module `id` as the mock of its own violation. @internal */
+  servesMock(id: string): boolean {
+    const entry = this.served.get(normalizePath(id))
+    return !!entry?.self && entry.verdict === 'mock'
+  }
+
+  /** What makes a denied module real in `graph` (an exempt or allowed import arriving at it: `incoming`), as the settlement's history names it; null: nothing. @internal */
+  grantOf(self: EdgeViolation, graph: NodeGraph): string | null {
+    const incoming = this.incoming(self, graph)
+    const { root } = this.ip.config
+    for (const exempt of incoming.exempt) {
+      return `${relativizePath(exempt, root)} imports it, and is not checked`
+    }
+    for (const allowed of incoming.allowed) {
+      return `allowImport allows the import of it in ${relativizePath(allowed, root)}`
+    }
+    return null
+  }
+
+  /** What makes a denied module itself real (an allowed import of an environment of its type, R96; `allowImport` on the file), as the settlement's history names it; null: nothing. @internal */
+  async ownGrant(self: EdgeViolation): Promise<string | null> {
+    if (this.ip.targetAllowed(this.type, self.resolved!)) {
+      return `an allowed import of another ${this.type} environment brings it`
+    }
+    return (await this.allows(self)) ? 'allowImport allows the file' : null
+  }
+
+  /**
    * `allowImport`'s answers on the client-reference imports that arrive at
    * a module that is its own violation in `graph` (`incoming`), asked once
    * per import: an importer compiled in this process asked at its compile,
    * a restored one's imports were replayed from its record (`replay`) and
-   * are asked here, as a restored edge module's state is (`mismatches`).
+   * are asked here, as a restored edge module's state is
+   * (`restoredMismatches`). @internal
    */
-  private async answerHandoffs(
-    self: EdgeViolation,
-    graph: NodeGraph,
-  ): Promise<void> {
+  async answerHandoffs(self: EdgeViolation, graph: NodeGraph): Promise<void> {
     const target = self.resolved!
     for (const source of this.ip.handoffSources(this.name, target)) {
       for (const from of graph.importers({ env: source.name, id: target }) ??

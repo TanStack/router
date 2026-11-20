@@ -231,3 +231,30 @@ export async function getServerFnById(id, access) {
 
 /** Replaced in the server bundle by the JSON array of the HTTP-callable ids (Rsbuild RSC builds, after the client compiled). */
 export const CALLABLE_IDS_PLACEHOLDER = '__TSS_CALLABLE_IDS__'
+
+/**
+ * The functions only one of two manifest resolver modules lists
+ * (`manifestResolverModule`'s content), by their `functionName` entries as
+ * written, sorted: what a report of two contents names.
+ */
+export function manifestFunctionsDiffering(
+  a: string,
+  b: string,
+): Array<string> {
+  const names = (content: string) =>
+    new Set(
+      content
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.startsWith('functionName:'))
+        .map((line) =>
+          line.slice('functionName:'.length).trim().replace(/,$/, ''),
+        ),
+    )
+  const x = names(a)
+  const y = names(b)
+  return [
+    ...[...x].filter((name) => !y.has(name)),
+    ...[...y].filter((name) => !x.has(name)),
+  ].sort()
+}

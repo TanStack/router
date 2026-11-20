@@ -364,3 +364,92 @@ export function viteDevNodeGraph(
     isEntry: (node) => isEntry(node.id),
   }
 }
+
+/**
+ * A compilation's graph as a fresh build of the same source has it
+ * (design-rsc-phase1-settlement.md §2.2, SPEC J6.7): an importer counts
+ * when it is supported and not `blocked`; a node is supported when it is
+ * an entry, has no importer (something the graph does not show holds it),
+ * or a supported importer that is not `blocked` (a denied module served as
+ * its mock: what it imported is in the graph only because an earlier state
+ * served it as it is). A cycle supports nothing by itself. `extra`: the importers the
+ * graph does not show (client-reference handoffs), read through the same
+ * graph.
+ *
+ * Read backward from the nodes asked about (a forward walk from the
+ * entries would touch every module): a node's ancestors, through the
+ * nodes that are not blocked, until an entry or a root. Each answer is
+ * remembered for the view's life: `blocked` must not change during it.
+ */
+export function groundedGraph(
+  graph: NodeGraph,
+  blocked: (node: GraphNode) => boolean,
+  extra: (node: GraphNode, graph: NodeGraph) => Iterable<GraphNode>,
+): NodeGraph & { supported: (node: GraphNode) => boolean } {
+  const yes = new Set<string>()
+  const no = new Set<string>()
+  const supported = (start: GraphNode): boolean => {
+    const startKey = nodeKey(start)
+    if (yes.has(startKey)) {
+      return true
+    }
+    if (no.has(startKey)) {
+      return false
+    }
+    /** Each node seen, by key: the node it was found from (the start: null). */
+    const from = new Map<string, string | null>([[startKey, null]])
+    let queue = [start]
+    let found: string | null = null
+    search: while (queue.length > 0) {
+      const level: Array<GraphNode> = []
+      for (const node of queue) {
+        const key = nodeKey(node)
+        if (yes.has(key) || graph.isEntry(node)) {
+          found = key
+          break search
+        }
+        let root = true
+        for (const importers of [graph.importers(node), extra(node, graph)]) {
+          for (const i of importers ?? []) {
+            root = false
+            const k = nodeKey(i)
+            if (from.has(k) || no.has(k) || blocked(i)) {
+              continue
+            }
+            from.set(k, key)
+            level.push(i)
+          }
+        }
+        if (root) {
+          found = key
+          break search
+        }
+      }
+      queue = level
+    }
+    if (found === null) {
+      // (every node seen reaches no entry either: its ancestors were seen)
+      for (const k of from.keys()) {
+        no.add(k)
+      }
+      return false
+    }
+    // (each node on the path found: the start, and the importers up to it)
+    let k: string | undefined = found
+    while (k !== undefined) {
+      yes.add(k)
+      k = from.get(k) ?? undefined
+    }
+    return true
+  }
+  return {
+    // (an importer's imports are in a fresh build when it is there and its
+    // imports are: not a denied module served as its mock)
+    importers(node) {
+      const known = graph.importers(node)
+      return known && [...known].filter((i) => !blocked(i) && supported(i))
+    },
+    isEntry: graph.isEntry,
+    supported,
+  }
+}

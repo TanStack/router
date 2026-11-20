@@ -39,10 +39,8 @@ export interface VirtualModuleState {
   updateManifest: (clientBuild: NormalizedClientBuild) => void
   /** Number of times the manifest module was written (the server environment's) */
   getManifestWriteCount: () => number
-  /** Call to update server fn resolver content after compilation discovers fns */
-  updateServerFnResolver: () => void
-  /** Number of times the server fn resolver module was written (the server environment's) */
-  getServerFnResolverWriteCount: () => number
+  /** Call to update server fn resolver content after compilation discovers fns; the content */
+  updateServerFnResolver: () => string
   /** Get the virtual path for a given module ID */
   getVirtualPath: (moduleId: string) => string
   /** Writes a virtual module file of an environment (queued until its compiler is ready). */
@@ -297,17 +295,11 @@ export function registerVirtualModules(
   let manifestWriteCount = 0
   // the server fn resolver module lives in the server environment only
   let lastResolverContent: string | undefined
-  let resolverWriteCount = 0
   const hasSerializationAdapters = Boolean(opts.serializationAdapters?.length)
 
-  function writeResolverContent(content: string) {
+  function writeResolverContent(content: string): string {
     const changed = content !== lastResolverContent
-    if (changed) {
-      lastResolverContent = content
-      // the count tells the resolver rebuild whether the content it last
-      // rebuilt from is still current
-      resolverWriteCount++
-    }
+    lastResolverContent = content
     if (!isDev || changed) {
       tryWriteModule(
         RSBUILD_ENVIRONMENT_NAMES.server,
@@ -315,6 +307,7 @@ export function registerVirtualModules(
         content,
       )
     }
+    return content
   }
 
   function queuePendingWrite(
@@ -574,11 +567,7 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
     },
 
     updateServerFnResolver() {
-      writeResolverContent(opts.resolverModule())
-    },
-
-    getServerFnResolverWriteCount(): number {
-      return resolverWriteCount
+      return writeResolverContent(opts.resolverModule())
     },
 
     getVirtualPath(moduleId: string): string {

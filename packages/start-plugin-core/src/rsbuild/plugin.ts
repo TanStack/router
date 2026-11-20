@@ -121,7 +121,6 @@ export function tanStackStartRsbuild(
         serverFnResolver: {
           path: () => virtualModuleState.serverFnResolverPath,
           update: () => virtualModuleState.updateServerFnResolver(),
-          writeCount: () => virtualModuleState.getServerFnResolverWriteCount(),
         },
         isEntry: (file) => entryPaths().has(normalizePath(file)),
       })

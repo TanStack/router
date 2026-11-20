@@ -29,9 +29,9 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
   extension, imported as an asset, stays intact); it decodes only to compile.
 - `asset-query-loader.ts` is a pitch-only loader on ids with an asset query (`x.server.ts?raw`): a denied file's mock
   replaces it before it is read; any other file is left untouched, its bytes never decoded.
-- `server-fn-resolver-rebuild.ts` rebuilds the server-function resolver while its content still changes (each rebuild
-  may register the functions of the provider modules it reaches; bounded): the resolver step of the host plugin's
-  `finishMake` closure.
+- `server-fn-resolver-rebuild.ts` rebuilds the server-function resolver when its content differs from the one the
+  compiler last built it from (a rebuild may register the functions of the provider modules it reaches): the
+  resolver's part of each round of the host plugin's `finishMake` closure.
 - `manifest-rebuild.ts` rebuilds the Start manifest module within the server compiler's `finishMake` once a client
   compilation wrote it (dev; RSC builds too): Rspack's watcher ignores `node_modules`, so the write alone never builds
   it again.
@@ -101,10 +101,14 @@ the registry with those of every module of the compilation (built now or restore
 its child compilations (done during `make`), and the
 resolver virtual module is rewritten;
 at stage −10 the host plugin closes the compilation (on the server compiler, before the RSC plugin's client handoff at
-stage 0): the resolver module itself is rebuilt while its content changes (`server-fn-resolver-rebuild.ts`), then
-import protection's settlement (below) builds again the modules served otherwise than their importers ask for, and the
-two steps repeat while the settlement built something and the resolver's content changed: each can add modules the
-other must see (a provider's imports; a module built real defines server functions). The resolver is a manifest importing each provider module; production builds
+stage 0) in rounds of one loop, until a round builds nothing: the resolver module itself is rebuilt when its content
+changed (`server-fn-resolver-rebuild.ts`), the records of what the compilation no longer holds are forgotten, and
+import protection's settlement (below) builds again the modules served otherwise than a fresh build of the source
+serves them. Each step can add modules the other must see (a provider's imports; a module built real defines server
+functions). No count bounds the loop: a denied module is built again at most twice by the settlement, and the
+resolver's content only grows; a module asked to flip otherwise, or a resolver content seen before in the closure,
+ends it with a compilation error naming the history (a module whose imports differ between two builds of one
+source). The resolver is a manifest importing each provider module; production builds
 whose SSR environment is the provider list only client-referenced functions (the client compiles first:
 `MultiCompiler.setDependencies`). When the SSR environment is the provider, every module defining server functions
 has a `?tss-serverfn-handler` derived module (its lazy module), which the resolver imports and which re-exports each
@@ -134,8 +138,16 @@ compiled: the importer gets the real module). The verdict on a module compiled a
 `finishMake` (stage −10, in the closure with the server-fn resolver's rebuilds, which bring the provider modules and
 what they import, and before the RSC plugin's client handoff at stage 0) from the edges that arrive at it in the
 compilation's graph, each read with its own environment's records (a client-reference import replayed from a
-restored importer is asked there): a module the settlement serves otherwise is built again and serves the settled
-verdict until the next settlement (a compile before it guesses from its own environment's edges). In development the
+restored importer is asked there), over every compile environment the graph has in that round. It is the least
+solution (`ImportProtection.ground`): a denied module is real exactly when an exempt or allowed import arrives at it
+from a module an entry reaches without passing a denied module that is not real, so dev and watch rebuilds serve
+what a fresh build of the same source serves (a cycle with an exempt barrel does not keep itself real). The graph is
+the compilation's and its child compilations' (a worker plugin's): a child's module is in it, reached from its
+entry, but only the compilation's own modules are decided (a child is finished, its modules served as their compile
+decided). A module the settlement serves otherwise is built again and serves the settled verdict until the next
+settlement (a compile before it guesses from its own environment's edges). A module's records (edges, violations,
+verdict) are written by its compile, a cached plan's as a fresh one's (the edges are in the plan's facts), and
+forgotten once the compilation and its children no longer hold it. In development the
 module's own violation is reported once its verdict is final, at `finishModules`; its compile reports nothing but,
 under `behavior: 'error'`, fails the module.
 In builds

@@ -16,7 +16,6 @@ import path from 'node:path'
 import {
   compilerCacheKey,
   emittedMapTexts,
-  invariantDiagnostic,
   invariantViolated,
   isRecordedDiagnostic,
   locateDiagnostics,
@@ -27,11 +26,11 @@ import {
   reportingFailure,
 } from '@tanstack/router-utils/compiler'
 import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
-import { heldIn, outputKey } from '../import-protection/session'
 import {
   readRspackWitness,
   rspackNodeGraph,
 } from '../import-protection/witness'
+import { manifestFunctionsDiffering } from '../server-fns/resolver'
 import {
   LOCATED_DIAGNOSTICS,
   PLAN_BUILD_INFO_FIELD,
@@ -52,7 +51,7 @@ import type {
 import type { StartCompilerEnvironment } from '../compiler/session'
 import type { RsbuildRouteGenerator } from './router-generator'
 import type { ServerFnFact } from '../server-fns/registry'
-import type { NodeGraph } from '../import-protection/graph-trace'
+import type { RspackNodeGraph } from '../import-protection/witness'
 import type {
   LocatedDiagnostic,
   PersistedPlan,
@@ -192,6 +191,34 @@ export function isPackageManifest(file: string): boolean {
   return normalizePath(file).endsWith('/package.json')
 }
 
+/** A denied module's verdict a round of a compilation's closure builds (`close`), and what makes it so. */
+interface Flip {
+  round: number
+  real: boolean
+  why: string
+}
+
+/**
+ * The flip rule of a compilation's closure (design-rsc-phase1-settlement.md
+ * §2.4): whether a denied module may be built again with `flip`'s verdict,
+ * after `before` in the same closure. To its mock only in the closure's
+ * first round (served as it is by an earlier compilation, and nothing makes
+ * it real any more), and as it is once: after its first round the
+ * settlement only raises (the imports it reads are those of modules served
+ * as they are, and lowering one nothing makes real removes nothing a real
+ * verdict rests on). Anything else is a module whose imports differ
+ * between two builds of one source.
+ */
+function flipped(before: ReadonlyArray<Flip>, flip: Flip): boolean {
+  return flip.real
+    ? !before.some((f) => f.real)
+    : flip.round === 1 && before.length === 0
+}
+
+/** What a closure that cannot settle says of its cause (`reportUnsettled`). */
+const unsettledCause =
+  'The imports of a module changed between two builds of the same source in one compilation: a loader whose output is not a function of its input, or a defect of TanStack Start (please report it at https://github.com/TanStack/router/issues with this message).'
+
 export function createStartHostPlugin(opts: StartHostPluginOptions): {
   apply: (compiler: Rspack.Compiler) => void
 } {
@@ -235,10 +262,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
     return out
   }
   /**
-   * The compilation's graph, of every compile environment of this compiler
-   * (`rspackNodeGraph`: built on its first read).
+   * The compilation's graph and its child compilations', of every compile
+   * environment of this compiler (`rspackNodeGraph`: built on its first
+   * read).
    */
-  const nodeGraph = (compilation: Rspack.Compilation): NodeGraph =>
+  const nodeGraph = (compilation: Rspack.Compilation): RspackNodeGraph =>
     rspackNodeGraph(compilation as never, canonicalResource, envKeyOfModule)
   return {
     apply(compiler) {
@@ -647,7 +675,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 'Checking import protection',
                 async () => {
                   const envs = ipEnvs()
-                  const graph = nodeGraph(compilation)
+                  // (as the ledgers' verdicts make it: the settlement's)
+                  const graph = session.start.ip!.servedGraph(
+                    nodeGraph(compilation),
+                  )
                   for (const { ip } of envs) {
                     ip.graph = graph
                     // importers that disagree (R147): an error of each compilation holding them
@@ -707,7 +738,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                       envKeyOfModule,
                       canonicalResource,
                     )
-                    const graph = nodeGraph(compilation)
+                    const graph = session.start.ip!.servedGraph(
+                      nodeGraph(compilation),
+                    )
                     for (const { env, ip } of envs) {
                       const reports = await ip.surviving(
                         live.get(env.name) ?? [],
@@ -820,79 +853,115 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       }
 
       /**
-       * Builds again, through each environment's stale set, the modules of
-       * the compilation whose served state (import protection's ledger of
-       * their environment) differs from what the environment's importers now
-       * ask for (design 4: an exempt importer compiled or restored after the
-       * denied file, an exempt import gone, a restored module's `allowImport`
-       * answer), until none differs. A module built real brings its own
-       * imports, which may ask for another one. A module flipped twice in the
-       * compilation (`flipped`, across the closure's rounds) is an internal
-       * error (R116: thrown in our test runs, a warning otherwise). Whether
-       * it built anything.
+       * The closure of a compilation of this compiler (`finishMake`): rounds
+       * until one builds nothing. Each: the server-fn resolver built again
+       * when its content changed since this compiler built it (a rebuild
+       * brings providers and what they import: new denied modules, new
+       * edges arriving at them); the records of what the compilation (and
+       * its child compilations) no longer holds forgotten (`hold`: a
+       * module that left asks for nothing); and the denied modules of the
+       * compilation served otherwise than a fresh build of the source
+       * serves them (`ImportProtection.ground`, over the environments the
+       * graph has now) built again, with a restored edge module whose
+       * `allowImport` answer differs. A module built real brings its
+       * imports, so possibly server fns the resolver must have (a build has
+       * no next compilation). No count bounds it: a denied module is built
+       * again at most twice (`flipped`), and the resolver's content only
+       * grows; what breaks that ends the closure with an error
+       * (`reportUnsettled`).
        */
-      async function serveAsDemanded(
-        envs: ReturnType<typeof ipEnvs>,
-        compilation: Rspack.Compilation,
-        flipped: Set<string>,
-      ): Promise<boolean> {
-        let built = false
-        for (;;) {
-          // (each environment's mismatches, of the modules it holds: one the compilation
-          // no longer holds is judged when it comes back)
-          const stale: Array<{ env: string; path: string }> = []
-          let held: Map<string, Set<string>> | null = null
-          // (read again each round: a rebuilt module has new connections)
-          const graph = nodeGraph(compilation)
-          for (const { env, ip } of envs) {
-            const ids = await ip.mismatches(graph)
-            if (ids.length === 0) {
-              continue
+      async function close(compilation: Rspack.Compilation): Promise<void> {
+        /** The verdicts each denied module was built with in this closure (`flipped`), by environment and id. */
+        const flips = new Map<string, Array<Flip>>()
+        /** The resolver contents this closure built. */
+        const contents: Array<string> = []
+        let graph: RspackNodeGraph | null = null
+        // a later compilation: what it no longer holds asks for nothing (the
+        // first one holds every module it restored or built)
+        let unheld = session.files.compiled(environment.name)
+        for (let round = 1; ; round++) {
+          const content = fnResolver?.pending() ?? null
+          if (content !== null) {
+            if (contents.includes(content)) {
+              const differing = manifestFunctionsDiffering(
+                contents[contents.length - 1]!,
+                content,
+              )
+              reportUnsettled(
+                compilation,
+                `the server function resolver of this compilation went back to the functions it had in a round before (round ${round}; the functions that differ: ${differing.join(', ') || 'none'})`,
+                [
+                  `[tanstack-start] The server function resolver could not settle in this compilation: in round ${round} it lists the functions it listed in a round before.`,
+                  `  The functions that differ: ${differing.join(', ') || 'none'}`,
+                  unsettledCause,
+                ].join('\n'),
+              )
+              return
             }
-            if (!held) {
-              held = new Map()
-              for (const m of compilation.modules) {
-                const module = m as unknown as ModuleLike
-                if (module.resource) {
-                  const key = envOf(module).name
-                  let paths = held.get(key)
-                  if (!paths) {
-                    paths = new Set()
-                    held.set(key, paths)
-                  }
-                  paths.add(resourcePath(module.resource))
-                }
+            contents.push(content)
+            await fnResolver!.rebuild(compilation, content)
+            graph = null
+            unheld = true
+          }
+          // (a user layer's environment may be found while modules build)
+          const envs = ipEnvs()
+          const stale: Array<{ env: EnvState; id: string }> = []
+          if (envs.length > 0) {
+            const g = (graph ??= nodeGraph(compilation))
+            if (unheld) {
+              for (const { env, ip } of envs) {
+                ip.hold((id) => g.holds({ env: env.name, id }))
+              }
+              unheld = false
+            }
+            // (a restored edge module is a module of the compilation: `replay`)
+            for (const { env, ip } of envs) {
+              for (const id of await ip.restoredMismatches()) {
+                stale.push({ env, id })
               }
             }
-            for (const p of ids.map(resourcePath)) {
-              if (held.get(env.name)?.has(p)) {
-                stale.push({ env: env.name, path: p })
+            const grounding = await session.start.ip!.ground(
+              envs.map(({ ip }) => ip),
+              g,
+              g.builds,
+            )
+            for (const { env, ip } of envs) {
+              for (const { id, verdict } of ip.settle(grounding)) {
+                const key = `${env.name}\0${id}`
+                const before = flips.get(key) ?? []
+                const flip = { round, ...verdict }
+                if (!flipped(before, flip)) {
+                  const file = path.relative(session.start.opts.root, id)
+                  const first = before[0] ?? flip
+                  reportUnsettled(
+                    compilation,
+                    `import protection's served state of ${id} (${env.name}) did not settle in one compilation`,
+                    [
+                      `[tanstack-start] Import protection could not settle ${file} (${ipEnvOf(env)!.publicName}) in this compilation.`,
+                      `  served as ${first.real ? 'its mock' : 'it is'}`,
+                      ...before.map(
+                        (f) =>
+                          `  round ${f.round}  built as ${f.real ? 'it is' : 'its mock'}  (${f.why})`,
+                      ),
+                      `  round ${flip.round}  would be built as ${flip.real ? 'it is' : 'its mock'}  (${flip.why})`,
+                      unsettledCause,
+                    ].join('\n'),
+                  )
+                  return
+                }
+                flips.set(key, [...before, flip])
+                stale.push({ env, id })
               }
             }
           }
           if (stale.length === 0) {
-            return built
+            if (content === null) {
+              return
+            }
+            continue
           }
-          const again = stale.find((s) =>
-            flipped.has(`${s.env}\0${s.path}`),
-          )?.path
-          if (again !== undefined) {
-            const v = invariantViolated({
-              effect: 'import protection may serve it as its mock or as it is',
-              detail: `import protection's served state of ${again} did not settle in one compilation`,
-            })
-            const file = path.relative(session.start.opts.root, again)
-            compilation.warnings.push(
-              new WebpackError(
-                invariantDiagnostic('[tanstack-start] ', file, v).message,
-              ),
-            )
-            return false
-          }
-          built = true
           for (const s of stale) {
-            flipped.add(`${s.env}\0${s.path}`)
-            session.start.caches.stale.add(s.env, s.path)
+            session.start.caches.stale.add(s.env.name, resourcePath(s.id))
           }
           await session.drain.rebuild(
             environment.name,
@@ -900,24 +969,32 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             resourcePath,
             envKeyOf,
           )
+          graph = null
+          unheld = true
         }
       }
 
-      /** The resources of a compilation's modules and of its child compilers' (built as this compiler's), of one compile environment. */
-      function* compilationResources(
+      /**
+       * Ends a compilation's closure that cannot settle (`close`): its
+       * modules are served as the last round built them, and the
+       * compilation fails (a build exits non-zero; a dev server shows the
+       * error, and the next edit starts a new closure). In our test runs
+       * it throws (`invariantViolated`, R116). An error, not R116's
+       * warning: the output holds a module served otherwise than its source
+       * asks for (design-rsc-phase1-settlement.md §2.4). The one place that
+       * decides it.
+       */
+      function reportUnsettled(
         compilation: Rspack.Compilation,
-        env: EnvState,
-      ): Generator<string> {
-        const compilations = [compilation]
-        for (const c of compilations) {
-          compilations.push(...c.children)
-          for (const m of c.modules) {
-            const module = m as unknown as ModuleLike
-            if (module.resource && envOf(module) === env) {
-              yield module.resource
-            }
-          }
-        }
+        detail: string,
+        message: string,
+      ): void {
+        invariantViolated({
+          effect:
+            'import protection may serve a module as its mock or as it is',
+          detail,
+        })
+        compilation.errors.push(new WebpackError(message))
       }
 
       /** Custom server-fn ids: this environment's rank, patched before minification. */
@@ -1112,17 +1189,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                   }
                 }
               }
-              for (const { env, ip } of envs) {
-                if (session.files.compiled(environment.name)) {
-                  // a later compilation: what it no longer holds asks for nothing (the first
-                  // one holds every module it restored or built)
-                  ip.hold(
-                    heldIn(compilationResources(compilation, env), (r) =>
-                      outputKey(canonicalResource(r)),
-                    ),
-                  )
-                }
-              }
               // the server-fn snapshot of each environment, from each module's `buildInfo`;
               // the modules of child compilers (a worker's, a service worker's: compiled as
               // this compiler's, done during `make`) call the server fns they define too
@@ -1157,18 +1223,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           ),
       )
 
-      // the compilation's closure, once every module is in (after the replay and the
-      // registry's refresh, stage -20) and before the RSC plugin's client handoff (stage
-      // 0: the native ServerPlugin starts the client's make there and hands off once, and
-      // a module built real in `rsc` can bring client references). Each step can add
-      // modules the other must see: the server-fn resolver's rebuilds (the server
-      // compiler's) bring the provider modules and what they import, so new denied modules
-      // and new edges arriving at them; a module served otherwise than the edges arriving
-      // at it in the compilation's graph ask for is built again (`serveAsDemanded`), and
-      // one built real brings its imports, so possibly server fns the resolver must have
-      // (a build has no next compilation). The resolver until its content settles, the
-      // settlement until nothing differs, again while the settlement built something and
-      // the resolver changed
+      // the compilation's closure (`close`), once every module is in (after the replay
+      // and the registry's refresh, stage -20) and before the RSC plugin's client handoff
+      // (stage 0: the native ServerPlugin starts the client's make there and hands off
+      // once, and a module built real in `rsc` can bring client references)
       const fnResolver = opts.serverFnResolver
         ? serverFnResolverRebuild(opts.serverFnResolver)
         : null
@@ -1183,21 +1241,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 await fnResolver?.child(compilation)
                 return
               }
-              const flipped = new Set<string>()
-              for (let round = 0; ; round++) {
-                const rebuilt = (await fnResolver?.close(compilation)) ?? false
-                if (round > 0 && !rebuilt) {
-                  return
-                }
-                // (a user layer's environment may be found while modules build)
-                const envs = ipEnvs()
-                if (
-                  envs.length === 0 ||
-                  !(await serveAsDemanded(envs, compilation, flipped))
-                ) {
-                  return
-                }
-              }
+              await close(compilation)
             },
           ),
       )

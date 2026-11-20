@@ -148,6 +148,8 @@ interface RspackCompilationLike {
     getParentModule: (dependency: unknown) => RspackModuleLike | null
   }
   entries: { values: () => Iterable<{ dependencies: Iterable<unknown> }> }
+  /** The child compilations (a worker plugin's), done during `make`. */
+  children?: Iterable<RspackCompilationLike>
 }
 
 function runtimesOf(compilation: RspackCompilationLike): Array<string> {
@@ -239,59 +241,93 @@ export function readRspackWitness(
   return out
 }
 
+/** An Rspack compilation's graph (`rspackNodeGraph`). */
+export interface RspackNodeGraph extends NodeGraph {
+  /** Whether `node` is a module of the compilation or of one of its child compilations (what `hold` keeps). */
+  holds: (node: GraphNode) => boolean
+  /** Whether `node` is a module of the compilation itself: one it can build again (the settlement decides it). */
+  builds: (node: GraphNode) => boolean
+}
+
 /**
- * The module graph of an Rspack compilation, of all its compile
- * environments (`envOf`), by canonical resource (`idOf`): a node's
- * importers are the origins of the connections into its modules (a file
- * in two layers is a module of each), each a node of its own environment;
- * entries are nodes too (`compilation.entries`). Its index is built on its
- * first read: a compilation with no denied module reads nothing. Readable
- * once the compilation's modules are built (`finishMake`, later hooks).
+ * The module graph of an Rspack compilation and of its child compilations
+ * (a worker plugin's, done during `make`: their modules are compiled as
+ * this compiler's), of all their compile environments (`envOf`), by
+ * canonical resource (`idOf`): a node's importers are the origins of the
+ * connections into its modules (a file in two layers is a module of each;
+ * a file in the compilation and in a child is one node, its importers
+ * those of both), each a node of its own environment; entries are nodes
+ * too (`entries` of each compilation). Its index is built on its first
+ * read: a compilation with no denied module reads nothing. Readable once
+ * the compilation's modules are built (`finishMake`, later hooks); a step
+ * that builds modules again needs a new one.
  */
 export function rspackNodeGraph(
   compilation: RspackCompilationLike,
   idOf: (resource: string) => string,
   envOf: RspackEnvOf,
-): NodeGraph {
+): RspackNodeGraph {
+  /** A module holding a node's connections, with the graph of its compilation. */
+  interface Held {
+    module: RspackModuleLike
+    moduleGraph: RspackCompilationLike['moduleGraph']
+  }
+  const compilations = (): Array<RspackCompilationLike> => {
+    const out = [compilation]
+    for (const c of out) {
+      out.push(...(c.children ?? []))
+    }
+    return out
+  }
   // a production module can also be an inner module of a ConcatenatedModule (scope hoisting),
   // which holds the connections from outside the concatenation
-  let byNode: Map<string, Array<RspackModuleLike>> | null = null
+  let byNode: Map<string, Array<Held>> | null = null
+  /** The nodes of the compilation's own modules. */
+  const own = new Set<string>()
   /** The environment of each module of the index (an inner module's, from its holder). */
   const envs = new Map<RspackModuleLike, string>()
   let entries: Set<string> | null = null
   const key = (env: string, id: string) => `${env}\0${id}`
-  const modulesOf = (node: GraphNode): Array<RspackModuleLike> => {
+  const index = (): Map<string, Array<Held>> => {
     if (!byNode) {
       byNode = new Map()
-      for (const m of compilation.modules) {
-        for (const inner of [m, ...(m.modules ?? [])]) {
-          if (!inner.resource) {
-            continue
-          }
-          const env = envOf(inner, m)
-          envs.set(inner, env)
-          const k = key(env, idOf(inner.resource))
-          let list = byNode.get(k)
-          if (!list) {
-            list = []
-            byNode.set(k, list)
-          }
-          for (const holder of inner === m ? [m] : [inner, m]) {
-            if (!list.includes(holder)) {
-              list.push(holder)
+      for (const c of compilations()) {
+        for (const m of c.modules) {
+          for (const inner of [m, ...(m.modules ?? [])]) {
+            if (!inner.resource) {
+              continue
+            }
+            const env = envOf(inner, m)
+            envs.set(inner, env)
+            const k = key(env, idOf(inner.resource))
+            if (c === compilation) {
+              own.add(k)
+            }
+            let list = byNode.get(k)
+            if (!list) {
+              list = []
+              byNode.set(k, list)
+            }
+            for (const holder of inner === m ? [m] : [inner, m]) {
+              if (!list.some((h) => h.module === holder)) {
+                list.push({ module: holder, moduleGraph: c.moduleGraph })
+              }
             }
           }
         }
       }
     }
-    return byNode.get(key(node.env, node.id)) ?? []
+    return byNode
   }
-  const { moduleGraph } = compilation
   return {
     importers(node) {
       const out: Array<GraphNode> = []
       const seen = new Set<string>([key(node.env, node.id)])
-      const visit = (m: RspackModuleLike, viaContext: boolean) => {
+      const visit = (
+        m: RspackModuleLike,
+        moduleGraph: Held['moduleGraph'],
+        viaContext: boolean,
+      ) => {
         for (const c of moduleGraph.getIncomingConnections(m)) {
           // a ConcatenatedModule holds the connections of each of its inner modules
           const target = c.resolvedModule
@@ -320,30 +356,39 @@ export function rspackNodeGraph(
           } else if (origin && !viaContext) {
             // a context module (`import.meta.webpackContext`, a template
             // literal `import()`): the modules importing it import `node`
-            visit(origin, true)
+            visit(origin, moduleGraph, true)
           }
         }
       }
-      for (const m of modulesOf(node)) {
-        visit(m, false)
+      for (const { module, moduleGraph } of index().get(
+        key(node.env, node.id),
+      ) ?? []) {
+        visit(module, moduleGraph, false)
       }
       return out
     },
     isEntry(node) {
       if (!entries) {
         entries = new Set()
-        for (const entry of compilation.entries.values()) {
-          for (const dep of entry.dependencies) {
-            // a production entry is usually a ConcatenatedModule (scope hoisting)
-            const m = compilation.moduleGraph.getModule(dep)
-            const module = m?.resource ? m : m?.rootModule
-            if (m && module?.resource) {
-              entries.add(key(envOf(module, m), idOf(module.resource)))
+        for (const c of compilations()) {
+          for (const entry of c.entries.values()) {
+            for (const dep of entry.dependencies) {
+              // a production entry is usually a ConcatenatedModule (scope hoisting)
+              const m = c.moduleGraph.getModule(dep)
+              const module = m?.resource ? m : m?.rootModule
+              if (m && module?.resource) {
+                entries.add(key(envOf(module, m), idOf(module.resource)))
+              }
             }
           }
         }
       }
       return entries.has(key(node.env, node.id))
+    },
+    holds: (node) => index().has(key(node.env, node.id)),
+    builds(node) {
+      index()
+      return own.has(key(node.env, node.id))
     },
   }
 }

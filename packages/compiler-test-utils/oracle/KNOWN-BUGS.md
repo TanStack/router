@@ -415,6 +415,21 @@ setTheme(t) { theme = t }`, `export function getTheme()`), children calling the 
   cache (`performance.buildCache`) after such a change. A module the worker newly imports is compiled: the client's
   restored module of the same file is still checked
   (`start-plugin-core/tests/integration/rsbuild/child-compiler-build-cache.test.ts`).
+- **Rsbuild `build --watch`: a server function whose only caller an edit removed stays in the resolver** (RSC phase 1,
+  design-rsc-phase1-settlement.md §9 fact 14; known limit, labelled while the grounding of the server-fn registry is
+  open, option B there). A chain of server fns where `fn1`'s handler calls `fn2` through other modules: an edit turns
+  `fn1` into a plain function. The resolver the compilation started with still imports `fn2`'s provider, which keeps
+  the provider in the compilation, so the snapshot of the registry (read from the compilation's modules) lists `fn2`
+  and the rebuilt resolver keeps it: `fn2.ts?tss-serverfn-split` is in `dist/server` (`DEEP_VALUE`), where a cold
+  build of the same source has none. The page renders the edited source's value; whether the kept function answers
+  over HTTP was not checked. Same on db260cf3a3. Driver: `/var/tmp/rsc-p1-design3/retained.py` (`python3
+retained.py head base`). No test (the outcome is the limit). A fix grounds the registry as the settlement grounds
+  denied modules: a provider counts once a module the app reaches without it references the function.
+- **Rsbuild: a file that is a module of the compilation and of a child compilation in one environment** (RSC phase 1,
+  design-rsc-phase1-settlement.md §5; stated limit, no fixture reaches it). The settlement decides the compilation's
+  own module from the edges arriving at both (one node, `(environment, id)`); the child's module, finished before
+  the settlement and never built again, keeps what its compile decided, which may differ from the parent's final
+  verdict. No test.
 - **webpack watch: a module whose loader declares the route tree as an input fails one compilation after a route
   file is deleted** (astra-r4-factcheck-router.md B4). The route-delete fix builds again the modules whose resource is
   a file the generator wrote (`needBuild`); a loader of another resource (`catalog.txt`) that calls
