@@ -4,11 +4,11 @@
  * a module of each (`rsc-environments-app.ts`). Each module is compiled,
  * resolved, judged by import protection and built again in its own
  * environment:
- * - a `'use client'` file that gains a client-only marker is stale in SSR
- *   only (its importer's rebuild judges it there; in `rsc` it is a client
- *   reference): SSR reports it and serves the mock, and removing the marker
- *   gives the real component again (the stale set of the environment
- *   builds its own module);
+ * - a dependency only `rsc` resolves (`#where`'s `react-server` file) that
+ *   gains a client-only marker makes the importer's `rsc` plan stale, not
+ *   its SSR one: the server compiler builds the `rsc` module again, not the
+ *   SSR one (the stale set of an environment builds its own module), and
+ *   `rsc` reports the import and serves the mock;
  * - `allowImport` is asked once per import and environment, `env` naming
  *   the environment as on Vite (`rsc`, `ssr`; `envType: 'server'` for both);
  * - a denied import of the `rsc` environment is its edge module, a virtual
@@ -17,12 +17,13 @@
  * - each environment resolves with its own conditions: `#where` is the
  *   `react-server` file in `rsc`, the default one in SSR.
  * Source: RSC model v2 §2.5 (rows for A3, A4, A14 and the `allowImport` call
- * count; user decisions 1 and 2, 11-20).
+ * count; user decisions 1 and 2, 11-20); the A4 row as the phase 1 reviews
+ * gave it (review-rsc-phase1-fable.md §4, Astra's report Part B): 88dded8da0
+ * builds `label.ts` in both layers and reports `ssr`.
  */
 import { describe, expect, test } from 'vitest'
 import { startRscDevServer, startRscRsbuildDevServer } from './rsc-app'
 import {
-  box,
   calls,
   environmentsFiles,
   expectPage,
@@ -39,7 +40,7 @@ const secretViolations = [
 
 describe('Rsbuild dev with RSC: a file in both compile environments', () => {
   test(
-    "a 'use client' component that gains a client-only marker is mocked in SSR only, and real again once it loses it",
+    'a dependency only the rsc environment resolves gains a client-only marker: its importer is built again and mocks it in rsc only',
     async () => {
       const { violations, start } = recorder(
         'mock',
@@ -56,21 +57,24 @@ describe('Rsbuild dev with RSC: a file in both compile environments', () => {
         boxes: 2,
       }
       await expectPage(server.url!, real)
-      expect(violations).toEqual([])
-      await server.edit({ 'src/lib/Box.tsx': box(true) })
-      // (both boxes are SSR's rendering of the component: the route's and
-      // the server component's client reference)
-      await expectPage(server.url!, { ...real, boxes: 0 })
-      // (the import, and the module itself once its SSR module is built
-      // again after its importer: none in `rsc`)
+      // (no event on `label.ts`, which both environments compile: only its
+      // `rsc` plan reads `where/server.ts`)
+      await server.edit({
+        'src/where/server.ts': `import '@tanstack/react-start/client-only'
+export const where = () => 'MARK_WHERE_SERVER'
+`,
+      })
+      await expectPage(server.url!, {
+        ...real,
+        server: 'MARK_SECRET [import-protection mock]',
+      })
       expect(summary(violations)).toEqual([
-        'ssr server marker Box.tsx -> src/lib/Box.tsx',
-        'ssr server marker shared.tsx -> ./Box',
+        'rsc server marker label.ts -> #where',
       ])
-      const since = violations.length
-      await server.edit({ 'src/lib/Box.tsx': box(false) })
-      await expectPage(server.url!, real)
-      expect(violations.slice(since)).toEqual([])
+      // its `rsc` module only: the SSR one is not stale
+      expect(
+        server.rebuiltBy.ssr?.filter((file) => file === 'src/lib/label.ts'),
+      ).toEqual(['src/lib/label.ts'])
     },
     timeout,
   )

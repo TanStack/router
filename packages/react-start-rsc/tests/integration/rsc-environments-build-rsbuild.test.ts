@@ -11,15 +11,20 @@
  *   named it `ssr` (user decision 1: the name changed, the rules did not);
  * - a worker (a child compiler of the client) that imports a server fn the
  *   page calls compiles as the client: it gets the client stub, with the
- *   page's function id, and no handler code.
- * Source: RSC model v2 §2.5 (rows for A2, A9, A14, A15 and the `allowImport`
- * call count; user decisions 1 and 2, 11-20).
+ *   page's function id, and no handler code;
+ * - a child compiler of the server maps its modules through their layer, as
+ *   its parent does: a child entry in the RSC layer is of `rsc` (A15).
+ * Source: RSC model v2 §2.5 (rows for A2, A14, A15 and the `allowImport`
+ * call count; user decisions 1 and 2, 11-20); the child of the server as
+ * the phase 1 review gave it (Astra's report Part B: 88dded8da0 reports it
+ * in `ssr`).
  */
 import { describe, expect, test } from 'vitest'
 import { openRscPage, startRscRsbuildPreviewServer } from './rsc-app'
 import {
   calls,
   environmentsFiles,
+  labelModule,
   recorder,
   rendered,
   summary,
@@ -155,12 +160,7 @@ describe('Rsbuild build with RSC: the rsc environment', () => {
   )
 })
 
-/**
- * The app's own Rspack plugin of the client compiler: builds `src/worker.ts`
- * in a child compiler of the client compilation, emitted as `worker.js`
- * with the client's assets (what a worker or service-worker plugin does).
- */
-/** What the plugin uses of Rspack's compiler (structural: the package has no `@rsbuild/core` types). */
+/** What the plugins use of Rspack's compiler (structural: the package has no `@rsbuild/core` types). */
 interface CompilerLike {
   context: string
   rspack: {
@@ -185,17 +185,30 @@ interface CompilerLike {
   }
 }
 
-const workerPlugin = {
+/**
+ * The app's own Rspack plugin: builds `src/<name>.ts` in a child compiler
+ * of the compiler's compilation, emitted as `<name>.js` (what a worker or
+ * service-worker plugin does): with `worker`, as a web worker; with
+ * `layer`, its entry in that Rspack layer.
+ */
+const childCompilerPlugin = (
+  name: string,
+  { worker = false, layer }: { worker?: boolean; layer?: string },
+) => ({
   apply(compiler: CompilerLike) {
-    compiler.hooks.make.tapPromise('app:worker', (compilation) => {
+    compiler.hooks.make.tapPromise(`app:${name}`, (compilation) => {
       const child = compilation.createChildCompiler(
-        'app-worker',
-        { filename: 'worker.js', chunkFilename: 'worker-[name].js' },
+        `app-${name}`,
+        { filename: `${name}.js`, chunkFilename: `${name}-[name].js` },
         [
-          new compiler.rspack.EntryPlugin(compiler.context, './src/worker.ts', {
-            name: 'worker',
-          }),
-          new compiler.rspack.webworker.WebWorkerTemplatePlugin(),
+          new compiler.rspack.EntryPlugin(
+            compiler.context,
+            `./src/${name}.ts`,
+            { name, ...(layer !== undefined && { layer }) },
+          ),
+          ...(worker
+            ? [new compiler.rspack.webworker.WebWorkerTemplatePlugin()]
+            : []),
         ],
       )
       return new Promise<void>((resolve, reject) => {
@@ -203,7 +216,19 @@ const workerPlugin = {
       })
     })
   },
-}
+})
+
+/** Rsbuild's `tools.rspack` adding `plugin` to the compiler of `environment`. */
+const withPlugin = (environment: string, plugin: object) => ({
+  rspack: (
+    config: { plugins?: Array<unknown> },
+    context: { environment: { name: string } },
+  ) => {
+    if (context.environment.name === environment) {
+      ;(config.plugins ??= []).push(plugin)
+    }
+  },
+})
 
 describe('Rsbuild build with RSC: a worker of the client', () => {
   test(
@@ -231,16 +256,10 @@ export const Route = createFileRoute('/')({
 })
 `,
         },
-        tools: {
-          rspack: (
-            config: { plugins?: Array<unknown> },
-            { environment }: { environment: { name: string } },
-          ) => {
-            if (environment.name === 'client') {
-              ;(config.plugins ??= []).push(workerPlugin)
-            }
-          },
-        },
+        tools: withPlugin(
+          'client',
+          childCompilerPlugin('worker', { worker: true }),
+        ),
       })
       expect(server.errors).toEqual([])
       const page = await openRscPage(server, '/')
@@ -264,6 +283,39 @@ export const Route = createFileRoute('/')({
       expect(fromWorker).toMatch(/^\//)
       const worker = await fetch(new URL('/worker.js', server.url))
       expect(await worker.text()).not.toContain('MARK_SHARED')
+    },
+    timeout,
+  )
+})
+
+describe('Rsbuild build with RSC: a child compiler of the server', () => {
+  // A15: a child's request maps through its issuer's layer, as its
+  // parent's modules do: a child entry in the RSC layer is of `rsc`
+  test(
+    "a denied import of a child compiler's module in the RSC layer is reported in rsc and fails the build",
+    async () => {
+      const { violations, start } = recorder('error')
+      const error = await startRscRsbuildPreviewServer({
+        start,
+        files: {
+          ...environmentsFiles,
+          'src/lib/label.ts': labelModule(false),
+          'src/child.ts': `import { secretLabel } from './lib/secret.client'
+;(globalThis as { child?: string }).child = secretLabel()
+`,
+        },
+        tools: withPlugin(
+          'ssr',
+          childCompilerPlugin('child', { layer: 'react-server-components' }),
+        ),
+      }).then(
+        () => null,
+        (e: unknown) => e,
+      )
+      expect(error).not.toBeNull()
+      expect(summary(violations)).toEqual([
+        'rsc server file child.ts -> ./lib/secret.client',
+      ])
     },
     timeout,
   )
