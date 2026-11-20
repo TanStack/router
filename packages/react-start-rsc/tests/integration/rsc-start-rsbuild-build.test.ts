@@ -159,42 +159,31 @@ test("a server fn only its route's component calls renders on the server and ans
   })
 })
 
-// Known bug (KNOWN-BUGS, "Rsbuild RSC build: a server fn whose only
-// importer is a `'use client'` component is not registered"; as `main`,
-// #7943). SPEC J4.2: a server fn the client calls is callable by id.
-// Bug: the provider builds before the client, and on Rsbuild nothing
-// compiles the provider's reach of `'use client'` modules before its
-// manifest is written (Vite does, `compileHandlerReach`). Impact: the
-// click answers "Server function info not found". Fix: every server fn
-// the client references is callable by id.
-test.fails(
-  "a server fn only a 'use client' component of a server component imports runs when clicked",
-  async () => {
-    const page = await openRscPage(server, '/client-ref')
-    await page.page.locator('[data-testid=counter]').waitFor()
-    await waitForHydration(page)
-    await page.page.locator('[data-testid=counter]').click()
-    expect(
-      await answeredText(
-        page,
-        '[data-testid=counter]',
-        (text) => text.includes('MARK_UPDATED') || text.includes('error'),
-      ),
-    ).toBe('counter MARK_UPDATED')
-  },
-)
+// SPEC J4.2: a server fn the client calls is callable by id (#7943): the
+// server compilation's last settlement run builds the resolver again once
+// the client compiled, from what it calls (db260cf3a3 and 0a261a0259:
+// "Server function info not found").
+test("a server fn only a 'use client' component of a server component imports runs when clicked", async () => {
+  const page = await openRscPage(server, '/client-ref')
+  await page.page.locator('[data-testid=counter]').waitFor()
+  await waitForHydration(page)
+  await page.page.locator('[data-testid=counter]').click()
+  expect(
+    await answeredText(
+      page,
+      '[data-testid=counter]',
+      (text) => text.includes('MARK_UPDATED') || text.includes('error'),
+    ),
+  ).toBe('counter MARK_UPDATED')
+})
 
-// Known bug (KNOWN-BUGS, "RSC builds: a server fn only client-only code
-// imports is not registered"; as `main`). SPEC J4.2: a server fn the client
-// calls is callable by id. Bug: the SSR scan erases client-only code
-// (`<ClientOnly>` children, `createClientOnlyFn` bodies, `<Hydrate>`
-// fallbacks) and the imports only it reads, and on Rsbuild nothing compiles
-// the provider's reach before its manifest is written, so the provider's
-// manifest is written without these server fns. Impact: the click answers
-// "Server function info not found". Fix: every server fn the client
-// references is callable by id, with no production dependency on modules
-// only development code reaches.
-test.fails.for(clientOnlyPositions)(
+// SPEC J4.2: a server fn only client-only code imports (`<ClientOnly>`
+// children, `createClientOnlyFn` bodies, `<Hydrate>` fallbacks, which the
+// SSR scan erases) is callable by id: the server compilation's last
+// settlement run builds the resolver again once the client compiled, from
+// what it calls (db260cf3a3 and 0a261a0259: "Server function info not
+// found").
+test.for(clientOnlyPositions)(
   'a server fn only $position of a $where imports runs when clicked',
   async ({ name }) => {
     await expectClientOnlyCallAnswers(server, name)

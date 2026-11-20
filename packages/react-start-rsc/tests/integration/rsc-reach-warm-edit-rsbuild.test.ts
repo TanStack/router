@@ -41,23 +41,18 @@ afterAll(async () => {
   }
 })
 
-// Known bug (KNOWN-BUGS, "RSC builds: a server fn only client-only code
-// imports is not registered"; as `main`). SPEC J4.2: a server fn the client
-// calls is callable by id. Bug: Rsbuild compiles no reach of the provider,
-// and a build restored from the persistent cache does not either; nothing
-// compiles these modules in the RSC layer before the provider's manifest
-// is written. Impact: the click answers "Server function info not found".
-// Fix: every server fn the client references is callable by id, with no
-// production dependency on modules only development code reaches.
-test.fails.for(reachPositions)(
+// SPEC J4.2: a server fn only client-only code imports is callable by id
+// (the server compilation's last settlement run builds the resolver again
+// once the client compiled, from what it calls; db260cf3a3 and 0a261a0259
+// answered "Server function info not found").
+test.for(reachPositions)(
   'a warm build after an edit: a server fn only $position of a $where imports answers with the edited value',
   ({ name }) => {
     expectAnswer(outcomes, name, true)
   },
 )
 
-// SPEC J4.2 (KNOWN-BUGS, "Rsbuild RSC build: a server fn whose only importer
-// is a 'use client' component is not registered": a cold build fails it).
+// SPEC J4.2 (#7943).
 test(`a warm build after an edit: ${counterTest} with the edited value`, () => {
   expectAnswer(outcomes, 'counter', true)
 })

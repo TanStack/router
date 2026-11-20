@@ -16,9 +16,12 @@
  * So `d.client.ts` is real, `w.client.ts` its mock, and the one report is
  * the context's. An include is bundled, not run: the rows read the server
  * output and the reports.
+ * The include at stage 0 enters after the settlement's first run: its last
+ * run judges it.
  * Source: the RSC phase 1 round 7 gap probe (/var/tmp/rsc-p1-r7/probe,
  * 9b11ccf6be: "could not settle" for the global include, db260cf3a3: R147),
- * design-rsc-phase1-settlement.md amendment 3, V0 to V3.
+ * design-rsc-phase1-settlement.md amendment 3, V0 to V3, and amendment 4,
+ * L5 (the include at stage 0).
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart } from '../../build-harness'
@@ -101,8 +104,11 @@ const importProtection = {
   exclude: ['**/r.ts', '**/g.ts'],
 }
 
-/** How the server compiler holds `r.ts`. */
-type Hold = 'global include' | 'entry include' | 'unnamed entry'
+/**
+ * How the server compiler holds `r.ts` (`late`: a global include at
+ * `finishMake` stage 0, after the settlement's first run).
+ */
+type Hold = 'global include' | 'entry include' | 'unnamed entry' | 'late'
 
 /** The server environment's config: a plugin holding `r.ts` as `hold` says. */
 const environments = (hold: Hold) => ({
@@ -118,7 +124,7 @@ const environments = (hold: Hold) => ({
         config.plugins.push({
           apply(compiler: any) {
             compiler.hooks.finishMake.tapAsync(
-              { name: 'test:include', stage: -100 },
+              { name: 'test:include', stage: hold === 'late' ? 0 : -100 },
               (compilation: any, done: (error?: unknown) => void) => {
                 compilation.addInclude(
                   config.context,
@@ -172,7 +178,7 @@ async function outcome(built: Awaited<ReturnType<typeof buildStart>>) {
 }
 
 describe('Rsbuild build, a module the server compiler holds by itself, imported by a denied module served as its mock', () => {
-  test.each<Hold>(['global include', 'entry include', 'unnamed entry'])(
+  test.each<Hold>(['global include', 'entry include', 'unnamed entry', 'late'])(
     '%s: the held module supports its imports, the denied importer is its mock',
     async (hold) => {
       const built = await buildStart({
@@ -189,15 +195,15 @@ describe('Rsbuild build, a module the server compiler holds by itself, imported 
 })
 
 describe('rsbuild build --watch, the same source after an edit of the exempt importer', () => {
-  test(
-    'the rebuild serves what a fresh build serves',
-    async () => {
+  test.each<Hold>(['global include', 'late'])(
+    '%s: the rebuild serves what a fresh build serves',
+    async (hold) => {
       const built = await buildStart({
         bundler: 'rsbuild',
         files,
         entry: 'src/entry.ts',
         rsbuildConfig: {
-          environments: environments('global include'),
+          environments: environments(hold),
         } as never,
         start: { importProtection } as never,
         watchEdits: touched,

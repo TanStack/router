@@ -55,29 +55,24 @@ describe('Rsbuild dev with RSC, no cache, a fresh start', () => {
   })
 })
 
-// Known bug (KNOWN-BUGS, "Rsbuild dev with RSC: a server fn only client code
-// calls is not registered after a restart"). SPEC J4.2: a server fn the
-// client calls is callable by id. Bug: Rsbuild compiles no reach of the
-// provider (see the build entries); a dev server whose first compile reads
-// an up-to-date route tree never meets these modules in the RSC layer
-// (the first start answers: its route tree is generated, and the
-// compile after it does; the mechanism is not traced), and without the persistent cache the public counter fails too. Impact: the
-// click answers "Server function info not found" until an edit of the
-// module. Fix: every server fn the client references is callable by id,
-// whatever the start history.
+// SPEC J4.2: a server fn the client calls is callable by id, whatever the
+// start history: a restart whose route tree is up to date answers too (the
+// server compilation's last settlement run builds the resolver again once
+// the client compiled, from what it calls; db260cf3a3 and 0a261a0259
+// answered "Server function info not found").
 describe('Rsbuild dev with RSC, no cache, after a restart', () => {
   let outcomes: Record<string, ClickOutcome | Error>
   beforeAll(async () => {
     server = await server.restart()
     outcomes = await clickEveryButton(server)
   }, timeout)
-  test.fails.for(reachPositions)(
+  test.for(reachPositions)(
     'a server fn only $position of a $where imports answers',
     ({ name }) => {
       expectAnswer(outcomes, name)
     },
   )
-  test.fails(counterTest, () => {
+  test(counterTest, () => {
     expectAnswer(outcomes, 'counter')
   })
 })

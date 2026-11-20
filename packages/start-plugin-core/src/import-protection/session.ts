@@ -406,8 +406,8 @@ export class ImportProtection {
    * every module starts mock, and the ones the rule makes real are added
    * until none is, so a module is never real only because of itself (a
    * cycle with its exempt barrel). Only the modules `decides` holds (the
-   * compilation's own) are decided; any other (a child compilation's)
-   * keeps what its compile served.
+   * compilation's own) are decided; any other (another compilation's: a
+   * finished child's) keeps what its compile served.
    */
   async ground(
     envs: Iterable<ImportProtectionEnv>,
@@ -1639,26 +1639,30 @@ class ImportProtectionEnv {
 
   /**
    * The settlement's verdicts (`ImportProtection.ground`) of the denied
-   * modules it decides, written to the ledger as settled (`Served.settled`:
-   * their next compiles serve them); the ids of those served otherwise, to
-   * build again. A module it does not decide (a child compilation's)
-   * keeps what its compile served.
+   * modules a compilation decides, written to the ledger as settled
+   * (`Served.settled`: their next compiles serve them); the ids of those its
+   * own module was built otherwise (`served`: the module's record, else the
+   * ledger's; another compilation's module of the file, a child's or the
+   * parent's, writes the ledger too), to build again. A module it does not
+   * decide (another compilation's) keeps what its compile served.
    */
-  settle(grounding: Grounding): Array<{
+  settle(
+    grounding: Grounding,
+    served: (node: GraphNode) => 'mock' | 'real' | null,
+  ): Array<{
     id: string
     verdict: { real: boolean; why: string }
   }> {
     const out: Array<{ id: string; verdict: { real: boolean; why: string } }> =
       []
     for (const [id, entry] of this.served) {
-      const verdict =
-        entry.self &&
-        grounding.verdictOf({ env: this.name, id: entry.self.importerId })
+      const node = entry.self && { env: this.name, id: entry.self.importerId }
+      const verdict = node && grounding.verdictOf(node)
       if (!verdict) {
         continue
       }
       entry.settled = verdict.real
-      if (verdict.real !== (entry.verdict === 'real')) {
+      if (verdict.real !== ((served(node) ?? entry.verdict) === 'real')) {
         out.push({ id, verdict })
       }
     }
@@ -2402,9 +2406,9 @@ class ImportProtectionEnv {
     }
     // the mocked modules that are their own violation whose every importer is not checked (R89), with those importers
     const unchecked = new Map<string, [EdgeViolation, Array<string>]>()
-    // those nothing in the graph imports: no supported configuration has one
-    // (one entry per environment; a dev server reports the file when it
-    // compiles it), so no report accounts for it (design 4, I5)
+    // those nothing imports: no supported configuration has one (one entry
+    // per environment; a dev server reports the file when it compiles it), so
+    // no report accounts for it (design 4, I5)
     const unaccounted: Array<EdgeViolation> = []
     /** The violations to report, each with the environment it is of. */
     const live = new Map<
@@ -2442,7 +2446,13 @@ class ImportProtectionEnv {
         const others = new Set([...incoming.exempt, ...incoming.unread])
         if (incoming.checked.length === 0 && others.size > 0) {
           unchecked.set(v.edgeKey, [v, [...others]])
-        } else if (incoming.checked.length === 0) {
+        } else if (
+          incoming.checked.length === 0 &&
+          [...this.edges.importers(v.resolved!)].length === 0
+        ) {
+          // (an importer the compiler read that the graph has outside the
+          // app, held through a module with no file: a provide-shared
+          // module's, a container's, reports nothing, as in dev)
           unaccounted.push(v)
         }
       }

@@ -861,38 +861,72 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       }
 
       /**
-       * The closure of a compilation of this compiler (`finishMake`): rounds
-       * until one builds nothing. Each: the server-fn resolver built again
-       * when its content changed since this compiler built it (a rebuild
-       * brings providers and what they import: new denied modules, new
-       * edges arriving at them); the records of what the compilation (and
-       * its child compilations) no longer holds forgotten (`hold`: a
-       * module that left asks for nothing); and the denied modules of the
-       * compilation served otherwise than a fresh build of the source
-       * serves them (`ImportProtection.ground`, over the environments the
-       * graph has now) built again, with a restored edge module whose
-       * `allowImport` answer differs. A module built real brings its
-       * imports, so possibly server fns the resolver must have (a build has
-       * no next compilation). No count bounds it: a denied module is built
-       * as its real module at most once (`flipped`), each resolver content
-       * once, each restored edge module once; a round that builds only
-       * mocks brings no module (a mock imports the mock runtime only), so
-       * the round after it builds no mock. So rounds are at most
-       * 2 · (modules built real + resolver contents + restored edge
-       * modules) + 2. What breaks that ends the closure with an error
-       * (`reportUnsettled`).
+       * The history of each compilation's closure (`close`), shared by its
+       * two runs: the verdicts each denied module was built with
+       * (`flipped`), by environment and id, the resolver contents it built,
+       * and its rounds. A child compilation has its own.
        */
-      async function close(compilation: Rspack.Compilation): Promise<void> {
-        /** The verdicts each denied module was built with in this closure (`flipped`), by environment and id. */
-        const flips = new Map<string, Array<Flip>>()
-        /** The resolver contents this closure built. */
-        const contents: Array<string> = []
+      const histories = new WeakMap<
+        Rspack.Compilation,
+        {
+          flips: Map<string, Array<Flip>>
+          contents: Array<string>
+          round: number
+        }
+      >()
+
+      /**
+       * The closure of a compilation (`finishMake`): this compiler's, or a
+       * child compiler's (a worker plugin's, which runs this compiler's
+       * `finishMake` taps on its own compilation, at any depth). Every
+       * compilation settles the modules it builds: run at stage −10 (before
+       * the RSC plugin's client handoff at stage 0) and again at the last
+       * stage (`last`: a module a plugin adds after −10, a provide-shared
+       * module's, is judged; once the last tap returns the compilation's
+       * modules are final, Rspack refuses a rebuild later). Rounds until one
+       * builds nothing. Each: the server-fn resolver built again when its
+       * content changed since this compiler built it (a rebuild brings
+       * providers and what they import: new denied modules, new edges
+       * arriving at them); the records of what the compilation (and its
+       * child compilations) no longer holds forgotten (`hold`: a module
+       * that left asks for nothing); and the denied modules of the
+       * compilation built otherwise than a fresh build of the source
+       * serves them (`ImportProtection.ground`, over the environments the
+       * graph has now; `settle`, by each module's own record) built again,
+       * with a restored edge module whose `allowImport` answer differs. A
+       * module built real brings its imports, so possibly server fns the
+       * resolver must have (a build has no next compilation). A child's
+       * closure reads its own graph (its entry, its imports: what a build
+       * of the child alone gives) and builds its own modules: the resolver,
+       * `hold` and the restored edge modules are the compiler's state, and
+       * the drain takes the compiler's stale sets. No count bounds it: a
+       * denied module is built as its real module at most once per
+       * compilation (`flipped`), each resolver content once, each restored
+       * edge module once; a round that builds only mocks brings no module
+       * (a mock imports the mock runtime only), so the round after it
+       * builds no mock. So rounds are at most 2 · (modules built real +
+       * resolver contents + restored edge modules) + 4. What breaks that
+       * ends the closure with an error (`reportUnsettled`).
+       */
+      async function close(
+        compilation: Rspack.Compilation,
+        last: boolean,
+      ): Promise<void> {
+        const child = compilation.compiler !== compiler
+        let history = histories.get(compilation)
+        if (!history) {
+          history = { flips: new Map(), contents: [], round: 0 }
+          histories.set(compilation, history)
+        }
+        const { flips, contents } = history
         let graph: RspackNodeGraph | null = null
-        // a later compilation: what it no longer holds asks for nothing (the
-        // first one holds every module it restored or built)
-        let unheld = session.files.compiled(environment.name)
-        for (let round = 1; ; round++) {
-          const content = fnResolver?.pending() ?? null
+        // a later compilation's first run: what it no longer holds asks for
+        // nothing (the first one holds every module it restored or built;
+        // the last run follows the first, which held)
+        let unheld = !child && !last && session.files.compiled(environment.name)
+        for (;;) {
+          const round = ++history.round
+          const content = child ? null : (fnResolver?.pending() ?? null)
           if (content !== null) {
             if (contents.includes(content)) {
               const differing =
@@ -932,10 +966,12 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               }
               unheld = false
             }
-            // (a restored edge module is a module of the compilation: `replay`)
-            for (const { env, ip } of envs) {
-              for (const id of await ip.restoredMismatches()) {
-                stale.push({ env, id })
+            if (!child) {
+              // (a restored edge module is a module of the compilation: `replay`)
+              for (const { env, ip } of envs) {
+                for (const id of await ip.restoredMismatches()) {
+                  stale.push({ env, id })
+                }
               }
             }
             const grounding = await session.start.ip!.ground(
@@ -944,7 +980,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               g.builds,
             )
             for (const { env, ip } of envs) {
-              for (const { id, verdict } of ip.settle(grounding)) {
+              for (const { id, verdict } of ip.settle(grounding, g.served)) {
                 const key = `${env.name}\0${id}`
                 const before = flips.get(key) ?? []
                 const flip = { round, ...verdict }
@@ -978,17 +1014,30 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             }
             continue
           }
-          for (const s of stale) {
-            session.start.caches.stale.add(s.env.name, resourcePath(s.id))
+          if (child) {
+            const keys = new Set(stale.map((s) => `${s.env.name}\0${s.id}`))
+            await rebuildModulesWhere(compilation, (m) => {
+              const module = m as unknown as ModuleLike
+              return (
+                module.resource !== undefined &&
+                keys.has(
+                  `${envOf(module).name}\0${canonicalResource(module.resource)}`,
+                )
+              )
+            })
+          } else {
+            for (const s of stale) {
+              session.start.caches.stale.add(s.env.name, resourcePath(s.id))
+            }
+            await session.drain.rebuild(
+              environment.name,
+              compilation,
+              resourcePath,
+              envKeyOf,
+            )
           }
-          await session.drain.rebuild(
-            environment.name,
-            compilation,
-            resourcePath,
-            envKeyOf,
-          )
           graph = null
-          unheld = true
+          unheld = !child
         }
       }
 
@@ -1244,10 +1293,14 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           ),
       )
 
-      // the compilation's closure (`close`), once every module is in (after the replay
-      // and the registry's refresh, stage -20) and before the RSC plugin's client handoff
-      // (stage 0: the native ServerPlugin starts the client's make there and hands off
-      // once, and a module built real in `rsc` can bring client references)
+      // each compilation's closure (`close`, a child compiler's too: it runs these taps
+      // on its own compilation): after the replay and the registry's refresh (stage -20)
+      // and before the RSC plugin's client handoff (stage 0: the native ServerPlugin
+      // starts the client's make there and hands off once, and a module built real in
+      // `rsc` can bring client references), then again at the last stage: what a
+      // plugin added since is judged, and the resolver of an RSC server compiler is
+      // built again from what the finished client build calls (what a build there
+      // brings has no client references in that build: the nested-reach limit)
       const fnResolver = opts.serverFnResolver
         ? serverFnResolverRebuild(opts.serverFnResolver)
         : null
@@ -1260,10 +1313,18 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             async () => {
               if (compilation.compiler !== compiler) {
                 await fnResolver?.child(compilation)
-                return
               }
-              await close(compilation)
+              await close(compilation, false)
             },
+          ),
+      )
+      compiler.hooks.finishMake.tapPromise(
+        { name: `${PLUGIN_NAME}:close-last`, stage: 0x7fffffff },
+        (compilation) =>
+          reporting(
+            compilation.errors,
+            'Building the out-of-date modules again',
+            () => close(compilation, true),
           ),
       )
     },

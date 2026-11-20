@@ -110,15 +110,17 @@ the registry with those of every module of the compilation (built now or restore
 its child compilations (done during `make`), and the
 resolver virtual module is rewritten;
 at stage −10 the host plugin closes the compilation (on the server compiler, before the RSC plugin's client handoff at
-stage 0) in rounds of one loop, until a round builds nothing: the resolver module itself is rebuilt when its content
+stage 0), and again at the last stage (`0x7fffffff`: what a plugin added since, a provide-shared module's, is judged;
+once the last `finishMake` tap returns the compilation's modules are final), in rounds of one loop, until a round
+builds nothing: the resolver module itself is rebuilt when its content
 changed (`server-fn-resolver-rebuild.ts`), the records of what the compilation no longer holds are forgotten, and
 import protection's settlement (below) builds again the modules served otherwise than a fresh build of the source
 serves them. Each step can add modules the other must see (a provider's imports; a module built real defines server
 functions). No count bounds the loop: the settlement builds a denied module as its real module at most once (builds
 as its mock are not counted: a module that left and came back is a new module, with a new guess), and the resolver's
 content only grows; a module asked for as its real module a second time, or a resolver content seen before in the
-closure (its differing functions named by id and provider), ends it naming the history (a module whose imports differ
-between two builds of one source): a build fails, a dev server warns (the next edit starts a new closure), our test runs throw. The resolver is a manifest importing each provider module; production builds
+closure (its differing functions named by id and provider), ends it naming the history, shared by the compilation's
+two runs (a module whose imports differ between two builds of one source): a build fails, a dev server warns (the next edit starts a new closure), our test runs throw. The resolver is a manifest importing each provider module; production builds
 whose SSR environment is the provider list only client-referenced functions (the client compiles first:
 `MultiCompiler.setDependencies`). When the SSR environment is the provider, every module defining server functions
 has a `?tss-serverfn-handler` derived module (its lazy module), which the resolver imports and which re-exports each
@@ -156,9 +158,14 @@ type-wide grant (R96: an allowed import of the file in an environment of its typ
 importer only when it is reached so too (a cycle whose barrel's import `allowImport` allows does not keep itself
 real either); a released environment's grant and `allowImport` on the file itself are constants. The graph is
 the compilation's and its child compilations' (a worker plugin's): a child's module is in it, reached from its
-entry, but only the compilation's own modules are decided (a child is finished, its modules served as their compile
-decided). A module the settlement serves otherwise is built again and serves the settled verdict until the next
-settlement (a compile before it guesses from its own environment's edges). A module's records (edges, violations,
+entry, but only the compilation's own modules are decided. Every compilation settles the modules it builds: a child
+compiler runs these `finishMake` taps on its own compilation, whose closure reads the child's graph (its entry, its
+imports: what a build of the child alone gives) and builds its own modules again (the resolver, `hold` and the
+restored edge modules are the compiler's state). A module's verdict is compared with what that module was built as
+(its `buildInfo` record), not with the environment's ledger, which another compilation's module of the file writes
+too. A module the settlement serves otherwise is built again and serves the settled verdict until the next
+settlement (a compile before it guesses from its own environment's edges); a child compiler cannot load a mock, so
+lowering a child's module fails the build with its violation. A module's records (edges, violations,
 verdict) are written by its compile, a cached plan's as a fresh one's (the edges are in the plan's facts), and
 forgotten once the compilation and its children no longer hold it. In development the
 module's own violation is reported once its verdict is final, at `finishModules`; its compile reports nothing but,

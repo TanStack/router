@@ -8,8 +8,10 @@
  * Structural types only: the readers take what Vite's `generateBundle` and
  * Rspack's `processAssets` hand the host.
  */
+import { RSPACK_BUILD_INFO_KEY } from './violations'
 import type { EdgeModuleIds } from './edge-modules'
 import type { GraphNode, NodeGraph } from './graph-trace'
+import type { RspackImportProtectionBuildInfo } from './violations'
 
 /** An edge module as the readers see it: its key and whether its target is effectful. */
 interface WitnessModule {
@@ -112,6 +114,7 @@ export function rolldownNodeGraph(
 
 export interface RspackModuleLike {
   resource?: string
+  buildInfo?: Record<string, unknown>
   /** Inner modules of a ConcatenatedModule. */
   modules?: Iterable<RspackModuleLike>
   /** The module a ConcatenatedModule stands in for (it has no `resource` of its own). */
@@ -245,6 +248,14 @@ export interface RspackNodeGraph extends NodeGraph {
   holds: (node: GraphNode) => boolean
   /** Whether `node` is a module of the compilation itself: one it can build again (the settlement decides it). */
   builds: (node: GraphNode) => boolean
+  /**
+   * What the compilation's own module of `node` was built as, by its
+   * import-protection record (`RspackImportProtectionBuildInfo.served`):
+   * another compilation's module of the file (a child's, the parent's) may
+   * have been built otherwise. Null: no record says it (a module whose
+   * compile failed).
+   */
+  served: (node: GraphNode) => 'mock' | 'real' | null
 }
 
 /**
@@ -288,7 +299,8 @@ export function rspackNodeGraph(
    */
   interface Entry {
     held: Array<Held>
-    own: boolean
+    /** The node's modules of the compilation itself (`builds`, `served`). */
+    own: Array<RspackModuleLike>
     byItself?: boolean
   }
   // a production module can also be an inner module of a ConcatenatedModule (scope hoisting),
@@ -322,11 +334,11 @@ export function rspackNodeGraph(
             }
             let entry = ids.get(id)
             if (!entry) {
-              entry = { held: [], own: false }
+              entry = { held: [], own: [] }
               ids.set(id, entry)
             }
             if (c === compilation) {
-              entry.own = true
+              entry.own.push(inner)
             }
             for (const holder of inner === m ? [m] : [inner, m]) {
               if (!entry.held.some((h) => h.module === holder)) {
@@ -411,6 +423,17 @@ export function rspackNodeGraph(
       return entry.byItself
     },
     holds: (node) => entryOf(node) !== undefined,
-    builds: (node) => entryOf(node)?.own === true,
+    builds: (node) => (entryOf(node)?.own.length ?? 0) > 0,
+    served(node) {
+      for (const module of entryOf(node)?.own ?? []) {
+        const record = module.buildInfo?.[RSPACK_BUILD_INFO_KEY] as
+          | RspackImportProtectionBuildInfo
+          | undefined
+        if (record?.served) {
+          return record.served
+        }
+      }
+      return null
+    },
   }
 }

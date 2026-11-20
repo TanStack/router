@@ -57,17 +57,17 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   the importer**, whose client output keeps the handler. SPEC J4.5, G10.
   `start-plugin-core/tests/integration/start-compiler-dev-server.test.ts`: "a module whose factory becomes a server fn
   builder: the client bundle drops the handler".
-- **Rsbuild RSC build: a server fn whose only importer is a `'use client'` component is not registered** (as `main`,
-  #7943; Vite fixed, see "Fixed, kept as regression tests"): the provider builds before the client, and nothing
-  compiles the reach of the provider's server fn modules before its manifest is written, so the click answers
-  `Server function info not found`. A build restored from the persistent cache (`performance.buildCache`) answers it,
-  also after an edit of the server fn (cold 500, warm 200: a cold CI build fails what a warm local build passes; as
-  `main`). SPEC J4.2. `react-start-rsc/tests/integration/rsc-start-rsbuild-build.test.ts`: "a server fn only a 'use
-  client' component of a server component imports runs when clicked"; the warm outcome, ordinary tests:
-  `rsc-reach-warm-build-rsbuild.test.ts` and `rsc-reach-warm-edit-rsbuild.test.ts`: "a warm build: a server fn only a
-  'use client' component of a server component imports answers (#7943)", "a warm build after an edit: … with the edited
-  value". Fix: every server fn the client references is callable by id, with no production dependency on modules only
-  development code reaches.
+- **Vite RSC build: a server fn only client-only code imports is not registered** (as `main`; ruled a known limit for
+  #8817, 11-19): a server fn whose module only a `<ClientOnly>` child, a `createClientOnlyFn` body or a `<Hydrate>`
+  `fallback` imports, in a route file or a component file. The SSR scan erases client-only code and the imports only it
+  reads, so no server environment meets the module before the provider's manifest is written: the early compile of the
+  provider's reach starts only from server fn modules, which none of these files is. The client build emits the call,
+  and the click answers `Server function info not found`. Without RSC all these positions answer; the dev server
+  answers them; Rsbuild answers them since RSC phase 1 (see "Fixed"). SPEC J4.2.
+  `react-start-rsc/tests/integration/rsc-start-build-client-reach.test.ts`, rows of `client-only-reach-app.ts`: "a
+  server fn only $position of a $where imports runs when clicked" (`<ClientOnly>` child, `createClientOnlyFn` body,
+  `<Hydrate>` fallback; route file and component file). Fix: every server fn the client references is callable by id,
+  with no production dependency on modules only development code reaches.
 - **Vite RSC build: a server fn a `'use client'` component imports lazily is not registered** (as `main`, #7943): the
   early compile of the provider's reach follows no `import()` at or below a `'use client'` module, so that a
   development-only one (`if (process.env.NODE_ENV === 'development') import('./debug')`) adds no production
@@ -83,33 +83,6 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   `Server function info not found`; importing the function from server code as well registers it. SPEC J4.2. No test
   (the outcome is the limit). Fix: every server fn the client references is callable by id, with no production dependency on modules
   only development code reaches.
-- **RSC builds: a server fn only client-only code imports is not registered** (Vite and Rsbuild, as `main`; ruled a
-  known limit for #8817, 11-19): a server fn whose module only a `<ClientOnly>` child, a `createClientOnlyFn` body or a
-  `<Hydrate>` `fallback` imports, in a route file or a component file. The SSR scan erases client-only code and the
-  imports only it reads, so no server environment meets the module before the provider's manifest is written: on Vite
-  the early compile of the provider's reach starts only from server fn modules, which none of these files is; Rsbuild
-  has no such compile. The client build emits the call, and the click answers `Server function info not found`.
-  Without RSC all these positions answer. A build restored from the persistent cache fails them too, also after an
-  edit of the server fns. SPEC J4.2.
-  `react-start-rsc/tests/integration/rsc-start-build-client-reach.test.ts` (Vite) and `rsc-start-rsbuild-build.test.ts`
-  (Rsbuild), rows of `client-only-reach-app.ts`: "a server fn only $position of a $where imports runs when clicked"
-  (`<ClientOnly>` child, `createClientOnlyFn` body, `<Hydrate>` fallback; route file and component file); Rsbuild warm
-  builds, rows of `rsc-reach-app.ts`: `rsc-reach-warm-build-rsbuild.test.ts`: "a warm build: a server fn only $position
-  of a $where imports answers", `rsc-reach-warm-edit-rsbuild.test.ts`: "a warm build after an edit: … with the edited
-  value". The dev servers answer them (Vite; Rsbuild on a first start: see the next entry). Fix: every server fn the
-  client references is callable by id, with no production dependency on modules only development code reaches.
-- **Rsbuild dev with RSC: a server fn only client code calls is not registered after a restart** (as `main`; RSC
-  investigation, Astra 11-19): a first dev start answers every server fn the client calls (its route tree is generated
-  and the compile after it registers them; the mechanism is not traced), but a restart whose route tree is up to date
-  answers `Server function info not found` (500) for the six client-only positions above, with or without the
-  persistent cache, and without the cache for the public #7943 counter too (a server fn whose only importer is a client
-  component a server component renders; the cache restores its registration). An edit of the server fn's
-  module registers it again: whether a button works depends on the start history, and the two graphs' outcomes go
-  opposite ways. Rsbuild compiles no reach of the provider (the build entries above). SPEC J4.2.
-  `react-start-rsc/tests/integration/rsc-reach-dev-rsbuild.test.ts` and `rsc-reach-dev-rsbuild-no-cache.test.ts`, rows
-  of `rsc-reach-app.ts`: "…, after a restart > a server fn only $position of a $where imports answers"; without the
-  cache also "a server fn only a 'use client' component of a server component imports answers (#7943)". Fix: every
-  server fn the client references is callable by id, whatever the start history.
 - **Rsbuild checks importers by file extension** (JS/TS only): a custom module type's denied specifier is never
   checked (a denied file it imports is: it is its own violation in the client). SPEC J6.1, §2.1.
   `start-plugin-core/tests/integration/importProtection/dev-outcomes.test.ts`: "a module of a custom type importing
@@ -429,14 +402,31 @@ retained.py head base`). No test (the outcome is the limit). A fix grounds the r
   (RSC phase 1, design-rsc-phase1-settlement.md amendment 3; stated limit, no fixture). The compilation holds such a
   module through a module with no file (container entry, provide-shared module, `DllModule`), not by itself, so
   import protection's settlement does not count its imports: an exempt import of a denied file made only from it is
-  served the mock, and `allowImport` on the file itself is not asked for it. Nothing denied ships. A fix would admit
-  the file-less holder by the dependency type of its connection with no origin (`container entry`,
-  `provide shared module`), never by its shape (a client reference's SSR module has the same one). No test.
-- **Rsbuild: a file that is a module of the compilation and of a child compilation in one environment** (RSC phase 1,
-  design-rsc-phase1-settlement.md §5; stated limit, no fixture reaches it). The settlement decides the compilation's
-  own module from the edges arriving at both (one node, `(environment, id)`); the child's module, finished before
-  the settlement and never built again, keeps what its compile decided, which may differ from the parent's final
-  verdict. No test.
+  served the mock, cold, from the persistent cache, in watch rebuilds and in dev (a provide-shared module is added
+  after the settlement's first run, which its last run judges), and `allowImport` on the file itself is not asked for
+  it. Nothing denied ships. No report names the mock (build or dev; as `main`): it shows at run time through the mock.
+  A fix would admit the file-less holder by the dependency type of its connection with no origin (`container entry`,
+  `provide shared module`), never by its shape (a client reference's SSR module has the same one).
+  `start-plugin-core/tests/integration/importProtection/settlement-each-compilation-rsbuild.test.ts`: "a module a
+  file-less holder adds after the settlement first ran" (the outcome of the limit, as `main`).
+- **Rsbuild with RSC: what the settlement's last run builds after the client handoff has no client references in the
+  build** (RSC phase 1, design-rsc-phase1-settlement.md amendment 4; the nested-reach limit). The server compiler's closure runs again at the last `finishMake` stage, after the RSC
+  plugin's client handoff at stage 0: a module a plugin adds late, built there as its real module, or the resolver built
+  again there, can bring client references the finished client build does not have: a nested chain, a server fn whose
+  handler renders a client component nothing else renders, which calls another server fn. The module is settled,
+  nothing fails. No test.
+- **Rsbuild: import protection's settlement does not judge what another plugin's `finishMake` tap at the last stage
+  adds or builds** (RSC phase 1, design-rsc-phase1-settlement.md amendment 4; stated limit, no plugin known to tap
+  there). Every compilation settles its modules at stage −10 and again at the last stage (`0x7fffffff`); a tap
+  registered there after Start's runs after the settlement. No test.
+- **Rsbuild: two child compilations holding one denied file with different verdicts** (sibling children, or a child
+  a loader starts while its parent builds modules again; RSC phase 1, design-rsc-phase1-settlement.md amendment 4;
+  stated limit, no fixture). Each compilation settles its own module of the file, but they write one prediction in
+  the environment's ledger: one can be served the other's and asked for as its real module a second time, which ends
+  that compilation's settlement with its "could not settle" error, not with a guess. No test.
+- **Rsbuild dev: an edit of a file only a failed child compilation read starts no compilation** (seen on
+  0a261a0259 and db260cf3a3 while writing the amendment 4 rows; cause not isolated: Start or Rspack). A worker
+  plugin's child whose build failed (a denied import) is built again by the next edit of a file of the parent. No test.
 - **webpack watch: a module whose loader declares the route tree as an input fails one compilation after a route
   file is deleted** (astra-r4-factcheck-router.md B4). The route-delete fix builds again the modules whose resource is
   a file the generator wrote (`needBuild`); a loader of another resource (`catalog.txt`) that calls
@@ -913,6 +903,19 @@ Paths under `router-plugin/tests/` unless given.
 
 Paths under `start-plugin-core/tests/` unless noted.
 
+- **Rsbuild with RSC: a server fn only client code reaches is not registered** (as `main`, #7943; RSC phase 1,
+  design-rsc-phase1-settlement.md amendment 4). A server fn whose only importer is a `'use client'` component of a
+  server component, or whose module only client-only code imports (a `<ClientOnly>` child, a `createClientOnlyFn`
+  body, a `<Hydrate>` fallback), answered `Server function info not found` in a cold build, from the persistent cache
+  for the client-only positions, and in a dev server restarted on an up-to-date route tree. The server compilation's
+  closure runs again at the last `finishMake` stage, after the RSC plugin's client handoff: the resolver is built again
+  from what the finished client build calls. A nested chain stays a limit (Accepted limits: "what the settlement's last
+  run builds after the client handoff"). SPEC J4.2. `react-start-rsc/tests/integration/`
+  `rsc-start-rsbuild-build.test.ts`: "a server fn only a 'use client' component of a server component imports runs
+  when clicked", "a server fn only $position of a $where imports runs when clicked"; `rsc-reach-warm-build-rsbuild.test.ts`,
+  `rsc-reach-warm-edit-rsbuild.test.ts`: "a warm build: a server fn only $position of a $where imports answers", "…
+  with the edited value"; `rsc-reach-dev-rsbuild.test.ts`, `rsc-reach-dev-rsbuild-no-cache.test.ts`: "…, after a
+  restart > a server fn only $position of a $where imports answers", without the cache also the #7943 counter.
 - **A `.validator()` link on a stored builder, or wrapped in `as`/`satisfies`, is not stripped from the client**
   (the chain walk stops at the identifier). SPEC J4.1, J4.8, J4.12. `createServerFn/caller-dead-code.test.ts`: "when
   the validator link is wrapped in a $name expression"; "when the validator link is on a builder stored in a variable
