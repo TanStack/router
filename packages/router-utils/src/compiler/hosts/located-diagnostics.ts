@@ -129,6 +129,27 @@ export function locateDiagnostics(
   }
 }
 
+/**
+ * Whether `reported` (a compilation's error or warning of `severity`) is one
+ * its module's loader recorded (`options.field`), as the loader reported it
+ * or located (`locateDiagnostics`).
+ */
+export function isRecordedDiagnostic(
+  reported: unknown,
+  severity: LocatedDiagnostic['severity'],
+  options: Pick<LocatedDiagnosticsOptions, 'field'>,
+): boolean {
+  const { message, module } = reported as ReportedLike
+  const records = (module as LocatedModuleLike | undefined)?.buildInfo?.[
+    options.field
+  ] as Array<LocatedDiagnostic> | undefined
+  return (
+    records?.some(
+      (d) => d.severity === severity && message.includes(firstLine(d.message)),
+    ) ?? false
+  )
+}
+
 /** A compile diagnostic of `module` as a bundler error or warning at its position. */
 export function locatedError(
   WebpackError: ErrorClass,

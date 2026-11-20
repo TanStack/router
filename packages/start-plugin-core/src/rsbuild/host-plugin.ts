@@ -17,6 +17,7 @@ import {
   emittedMapTexts,
   invariantDiagnostic,
   invariantViolated,
+  isRecordedDiagnostic,
   locateDiagnostics,
   locatedError,
   normalizePath,
@@ -116,14 +117,15 @@ interface ModuleLike {
 /**
  * Development: the warnings a compilation reports for the one before it,
  * which Rsbuild never printed (`before`: what that one reported, by module:
- * `layerKey` of resource and layer). Rspack reports a module's warnings only
- * in the compilation that built it, and the session reports a warning once
- * per dev session (the warning ledger), so a module the compilation kept, or
- * built again, reports none of them: each recorded warning of one of its
- * modules that it does not report itself (`built`: it built the module, by
- * its key) is handed over. Also returns what the compilation reports, by
- * module (its built modules' warnings and the handed ones), for the
- * compilation after it.
+ * `layerKey` of resource and layer). Rspack before 2.3.3 reports a module's
+ * warnings only in the compilation that built it (2.3.3 reports a kept
+ * module's again, which `reportHandedOver` drops), and the session
+ * reports a warning once per dev session (the warning ledger), so a module
+ * the compilation kept, or built again, reports none of them: each recorded
+ * warning of one of its modules that it does not report itself (`built`: it
+ * built the module, by its key) is handed over. Also returns what the
+ * compilation reports, by module (its built modules' warnings and the handed
+ * ones), for the compilation after it.
  */
 export function handOverWarnings(
   before: ReadonlyMap<string, ReadonlyArray<LocatedDiagnostic>> | null,
@@ -355,9 +357,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
        * prints the last compilation of each environment once every
        * environment is done, so one a newer compilation replaced before that
        * is never printed (a cold start's client compile, when the generator
-       * writes the route tree), and Rspack reports a module's warnings only
-       * in the compilation that built it: the next compilation reports them
-       * (`handOverWarnings`).
+       * writes the route tree), and Rspack before 2.3.3 reports a module's
+       * warnings only in the compilation that built it: the next compilation
+       * reports them (`handOverWarnings`).
        */
       let unprinted: {
         compilation: Rspack.Compilation
@@ -370,6 +372,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         string,
         ReadonlyArray<LocatedDiagnostic>
       > = new Map()
+      /** Development: the warnings this compilation reports for the one before it (`reportHandedOver`). */
+      let handedOver: ReturnType<typeof handOverWarnings>['handed'] = []
       opts.onDevCompileDone?.(({ stats }) => {
         const printed = 'stats' in stats ? stats.stats : [stats]
         if (printed.some((one) => one.compilation === unprinted?.compilation)) {
@@ -520,9 +524,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         env.compiled.clear()
         reports = []
         warned = new Map()
-        compilation.hooks.afterSeal.tap(PLUGIN_NAME, () =>
-          locateDiagnostics(compilation, WebpackError, LOCATED_DIAGNOSTICS),
-        )
+        handedOver = []
+        compilation.hooks.afterSeal.tap(PLUGIN_NAME, () => {
+          reportHandedOver(compilation)
+          locateDiagnostics(compilation, WebpackError, LOCATED_DIAGNOSTICS)
+        })
         if (compiler.watchMode) {
           // Rspack watches the files the plans of the compilation's modules read (no
           // module depends on them: whether a change makes a module stale is the
@@ -692,12 +698,37 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           modules,
           (key) => env.compiled.has(key),
         )
-        for (const { module, warning } of handed) {
-          compilation.warnings.push(
+        handedOver = handed
+        warned = reported
+      }
+
+      /**
+       * What `compilation` reports of its modules' recorded warnings: those of
+       * the modules it built and the ones handed over to it
+       * (`handOverWarnings`), once per file per run (J2.19). Rspack 2.3.3
+       * reports a kept module's warnings again in every compilation, as
+       * webpack does (before: only in the one that built it), when sealing:
+       * those are dropped here, after the seal.
+       */
+      function reportHandedOver(compilation: Rspack.Compilation): void {
+        const list = compilation.warnings
+        for (let i = list.length - 1; i >= 0; i--) {
+          const module = (list[i] as { module?: ModuleLike | null }).module
+          if (
+            module?.resource &&
+            !env.compiled.has(
+              layerKey(module.resource, module.layer ?? undefined),
+            ) &&
+            isRecordedDiagnostic(list[i], 'warning', LOCATED_DIAGNOSTICS)
+          ) {
+            list.splice(i, 1)
+          }
+        }
+        for (const { module, warning } of handedOver) {
+          list.push(
             locatedError(WebpackError, module, warning, LOCATED_DIAGNOSTICS),
           )
         }
-        warned = reported
       }
 
       /**

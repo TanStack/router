@@ -169,6 +169,7 @@ export type {
 } from './hosts/emitted-maps'
 export { compilerCacheKey } from './hosts/compiler-version'
 export {
+  isRecordedDiagnostic,
   locatedDiagnostic,
   locatedError,
   locateDiagnostics,
