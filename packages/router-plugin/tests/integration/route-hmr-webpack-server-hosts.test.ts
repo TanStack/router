@@ -88,16 +88,19 @@ export const Route = createRootRoute({
   },
 ]
 
-/** Adds the bundler's own `HotModuleReplacementPlugin`, as the app's configuration does. */
-async function withHotModuleReplacement(bundler: 'webpack' | 'rspack') {
-  const { HotModuleReplacementPlugin } =
-    bundler === 'webpack'
-      ? (await import('webpack')).default
-      : // (Rspack as Rsbuild ships it)
-        (await import('@rsbuild/core')).rspack
-  return (options: Record<string, unknown>) => {
-    ;(options.plugins as Array<unknown>).push(new HotModuleReplacementPlugin())
-  }
+/**
+ * Adds the bundler's own `HotModuleReplacementPlugin`, as the app's
+ * configuration does. The plugin comes from the compiler it is applied to
+ * (`compiler.webpack`, webpack's and Rspack's): this package's `webpack` can
+ * be another copy than the harness's (pnpm peer variants), and a plugin of
+ * another copy fails the build ("No template for dependency").
+ */
+function addHotModuleReplacement(options: Record<string, unknown>) {
+  ;(options.plugins as Array<unknown>).push({
+    apply(compiler: any) {
+      new compiler.webpack.HotModuleReplacementPlugin().apply(compiler)
+    },
+  })
 }
 
 describe.each(routes)('$name', ({ files, html }) => {
@@ -113,7 +116,7 @@ describe.each(routes)('$name', ({ files, html }) => {
         pluginOptions: {
           codeSplittingOptions: { addHmr: true },
         },
-        configure: await withHotModuleReplacement(bundler),
+        configure: addHotModuleReplacement,
       })
       try {
         expect((await app.run('return await entry.check()')).result).toEqual({
