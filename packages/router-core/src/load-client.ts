@@ -1700,7 +1700,15 @@ export function commitMatches(
       handoff[1 /* finish */]()
     }
   }
-  runRouteLifecycle(router, previous, matches, previousEnd, nextEnd, tx)
+  runRouteLifecycle(
+    router,
+    previous,
+    matches,
+    previousEnd,
+    nextEnd,
+    router.stores.location.get(),
+    tx,
+  )
 }
 
 /**
