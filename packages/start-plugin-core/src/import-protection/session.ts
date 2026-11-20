@@ -127,7 +127,7 @@ interface EdgeModuleLoad {
   moduleSideEffects: false | null
 }
 
-type EdgeModuleListener = (
+export type EdgeModuleListener = (
   specifier: string,
   load: EdgeModuleLoad,
   ref: EdgeModuleRef,

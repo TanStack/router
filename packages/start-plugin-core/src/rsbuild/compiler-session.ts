@@ -53,7 +53,10 @@ import type {
   StartCompilerSessionOptions,
 } from '../compiler/session'
 import type { LoaderChainLike } from './vue'
-import type { CompiledOutputLike } from '../import-protection/session'
+import type {
+  CompiledOutputLike,
+  EdgeModuleListener,
+} from '../import-protection/session'
 import type { DevViolationError } from '../import-protection/report'
 import type { ImportRewrite } from '../planners/edges'
 import type { ServerFnFact } from '../server-fns/registry'
@@ -197,10 +200,18 @@ export interface EnvState extends StartCompilerEnvironment {
   compiled: Set<string>
 }
 
-/** The session every compiler of one Rsbuild plugin shares. */
+/**
+ * The session the environment compilers of one Rspack compiler share (a
+ * `build()` of the Rsbuild instance, its dev server, or the compiler of its
+ * `createCompiler()`), and the owner of its production runs (`beginRun`).
+ */
 export class StartRsbuildCompilerSession {
-  /** The bundler-free Start session (caches, import protection, registry, warnings, compiles). */
-  readonly start: StartCompilerSession
+  /**
+   * The bundler-free Start session (caches, import protection, registry,
+   * warnings, compiles): the current production run's (`beginRun`), or the
+   * watch session's.
+   */
+  start!: StartCompilerSession
   /** The compilers, by Rsbuild environment. */
   readonly compilers = new Map<string, CompilerState>()
   /** The compile environments, by key. */
@@ -225,12 +236,23 @@ export class StartRsbuildCompilerSession {
       options: Rspack.RuleSetRule['resolve'],
     ) => Promise<string | null>
   >()
-  /** The compilers' side of the stale sets: each takes its environments' at `finishMake`. */
-  readonly drain: StaleSetDrain
+  /** The compilers' side of the stale sets: each takes its environments' at `finishMake` (`start`'s). */
+  drain!: StaleSetDrain
   /** RSC on: the server compiler's RSC layer is the `rsc` environment. */
   private readonly rscEnabled: boolean
   /** Whether the constructor created the Start session and the drain. */
   private started = false
+  /** The Start session's options (`begin`): every run's are the same. */
+  private readonly startOptions: StartRsbuildSessionOptions
+  /** The compilers of the drain (`registerCompiler`), registered again with each run's. */
+  private readonly drainCompilers = new Map<string, IdleCompilerLike>()
+  /** What is told of an import-protection edge module each run defines (`onEdgeModule`). */
+  private readonly edgeModuleListeners: Array<EdgeModuleListener> = []
+  /**
+   * The production run in progress (`beginRun`): the compilers that started
+   * it, and its preparation.
+   */
+  private run: { compilers: Set<string>; ready: Promise<void> } | null = null
   /**
    * The HTTP-callable server fns of the last client build (J4.2, R182):
    * those its emitted code calls (`publishClientOutput`); null before the
@@ -240,7 +262,7 @@ export class StartRsbuildCompilerSession {
 
   constructor(opts: StartRsbuildSessionOptions) {
     this.rscEnabled = opts.rsc !== undefined
-    const environments: Array<StartCompilerEnvironment> = []
+    this.startOptions = opts
     for (const { name, type } of opts.environments) {
       const compiler: CompilerState = {
         name,
@@ -251,25 +273,46 @@ export class StartRsbuildCompilerSession {
         envs: new Map(),
       }
       this.compilers.set(name, compiler)
-      environments.push(this.addEnv({ name, type }, compiler, undefined))
+      this.addEnv({ name, type }, compiler, undefined)
       if (this.rscEnabled && name === RSBUILD_ENVIRONMENT_NAMES.server) {
-        environments.push(
-          this.addEnv(
-            {
-              name: RSBUILD_RSC_ENVIRONMENT,
-              type,
-              // (the RSC plugin adds the SSR layer's module of a client
-              // reference the RSC layer imports)
-              clientReferencesInto: name,
-            },
-            compiler,
-            RSBUILD_RSC_LAYER_RESOLVE,
-          ),
+        this.addEnv(
+          {
+            name: RSBUILD_RSC_ENVIRONMENT,
+            type,
+            // (the RSC plugin adds the SSR layer's module of a client
+            // reference the RSC layer imports)
+            clientReferencesInto: name,
+          },
+          compiler,
+          RSBUILD_RSC_LAYER_RESOLVE,
         )
       }
     }
+    this.begin()
+    this.started = true
+    registerCompilerStats(
+      'start:rsbuild:host',
+      this,
+      StartRsbuildCompilerSession.readStats,
+    )
+  }
+
+  /**
+   * A new bundler-free session and what is built on it: knows nothing a
+   * compile read, as in a new process (the compile environments found so
+   * far, a user layer's included, and the compilers stay).
+   */
+  private begin(): void {
+    const environments: Array<StartCompilerEnvironment> = [
+      ...this.envs.values(),
+    ].map(({ name, type, publicName, clientReferencesInto }) => ({
+      name,
+      type,
+      publicName,
+      clientReferencesInto,
+    }))
     this.start = new StartCompilerSession({
-      ...opts,
+      ...this.startOptions,
       environments,
       // the SSR environment provides the server functions; under RSC, the
       // RSC layer's
@@ -278,7 +321,7 @@ export class StartRsbuildCompilerSession {
         : RSBUILD_ENVIRONMENT_NAMES.server,
       hmrStyle: 'webpack',
       edgeModuleIds: rspackEdgeModuleIds(
-        `${normalizePath(opts.root)}/node_modules/.virtual/tanstack-start/import-protection`,
+        `${normalizePath(this.startOptions.root)}/node_modules/.virtual/tanstack-start/import-protection`,
       ),
       // (the host plugin's `finishMake` closure; dev reports at `finishModules`)
       settlesImportVerdicts: true,
@@ -290,16 +333,50 @@ export class StartRsbuildCompilerSession {
     // the environment compilers build their stale paths again at
     // `finishMake`: a stale importer explains a marked module (ruling B)
     this.start.ip?.useStaleImporters(this.start.caches.stale)
+    for (const listener of this.edgeModuleListeners) {
+      this.start.ip?.onEdgeModule(listener)
+    }
     this.drain = new StaleSetDrain(this.start.caches, {
       tag: '[tanstack-start]',
-      root: opts.root,
+      root: this.startOptions.root,
     })
-    this.started = true
-    registerCompilerStats(
-      'start:rsbuild:host',
-      this,
-      StartRsbuildCompilerSession.readStats,
-    )
+    for (const [name, compiler] of this.drainCompilers) {
+      this.registerDrain(name, compiler)
+    }
+    this.hosts.clear()
+    this.missing.clear()
+    this.callableIds = null
+    for (const env of this.envs.values()) {
+      env.compiled = new Set()
+    }
+  }
+
+  /**
+   * A production run's start in one of its environment compilers (their
+   * `run`, whoever runs the compiler: Rsbuild's `build()`, or a program
+   * running the compiler of `createCompiler()`, maybe again): the first
+   * compiler to start a run begins it, which `prepare`s it once (the route
+   * generation); the others wait for that. Rspack reports no file events
+   * between two runs of a compiler, so a run after another begins as a new
+   * process does (`begin`): nothing an earlier run read or released
+   * decides anything (an `allowImport` grant of a released environment, a
+   * module's facts).
+   */
+  beginRun(compiler: string, prepare: () => Promise<void>): Promise<void> {
+    if (!this.run || this.run.compilers.has(compiler)) {
+      if (this.run) {
+        this.begin()
+      }
+      this.run = { compilers: new Set(), ready: prepare() }
+    }
+    this.run.compilers.add(compiler)
+    return this.run.ready
+  }
+
+  /** Tells `listener` of each import-protection edge module a compile defines, in every run. */
+  onEdgeModule(listener: EdgeModuleListener): void {
+    this.edgeModuleListeners.push(listener)
+    this.start.ip?.onEdgeModule(listener)
   }
 
   private static readStats(o: StartRsbuildCompilerSession) {
@@ -315,7 +392,7 @@ export class StartRsbuildCompilerSession {
     const state: EnvState = { ...env, compiler, resolve, compiled: new Set() }
     this.envs.set(env.name, state)
     compiler.envs.set(env.name, state)
-    // (the constructor's are in the options of the sessions it creates)
+    // (the constructor's are in the options of the session it begins)
     if (this.started) {
       this.start.addEnvironment(env)
       this.drain.addEnvironment(compiler.name, env.name)
@@ -647,6 +724,11 @@ export class StartRsbuildCompilerSession {
    * compilation.
    */
   registerCompiler(name: string, compiler: IdleCompilerLike): void {
+    this.drainCompilers.set(name, compiler)
+    this.registerDrain(name, compiler)
+  }
+
+  private registerDrain(name: string, compiler: IdleCompilerLike): void {
     this.drain.register(
       name,
       compiler,

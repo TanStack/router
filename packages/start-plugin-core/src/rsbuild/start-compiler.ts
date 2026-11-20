@@ -61,10 +61,11 @@ export function registerStartCompiler(
   const dev = api.context.action === 'dev'
   /**
    * The session of the compiler being configured, or of the last one
-   * created: one per Rspack compiler of this Rsbuild instance (a `build()`
-   * or a dev server; `build()` again configures a new compiler), whose
-   * environments' configs it is built into. What a compiler compiled and
-   * learned dies with it.
+   * created: one per Rspack compiler of this Rsbuild instance (a `build()`,
+   * a dev server, a `createCompiler()`; `build()` again configures a new
+   * compiler), whose environments' configs it is built into. What a
+   * compiler compiled and learned dies with it, and a production run of a
+   * compiler that ran before starts it over (`beginRun`).
    */
   let session: StartRsbuildCompilerSession | null = null
   /** Whether the compiler of `session` was created: the next configs are another compiler's. */
@@ -99,18 +100,6 @@ export function registerStartCompiler(
     })
     return session
   }
-
-  // a production build generates once for all its environments: Rsbuild
-  // runs `onBeforeBuild` once per build run, and each environment's compiler
-  // waits for it before it compiles. A program that runs the compiler of
-  // `createCompiler()` itself gets no `onBeforeBuild`: each environment's
-  // compiler generates in its `run` (the host plugin). A watch build
-  // generates in its compilations' `watchRun` (the host plugin)
-  let buildHooks = false
-  api.onBeforeBuild(({ isWatch }) => {
-    buildHooks = true
-    return isWatch ? undefined : generator.build()
-  })
 
   // the client's route tree without its server-only routes (J2.15); it
   // depends on the files of the routes it left out, which no client module
@@ -224,7 +213,6 @@ export function registerStartCompiler(
         writeVirtualModule: (file, content) =>
           opts.writeVirtualModule(environment.name, file, content),
         generator,
-        generatesInRun: () => !buildHooks,
         clientRouteTree:
           environment.type === 'client' ? generator.clientRouteTree : undefined,
         onServerFnsReplayed: opts.onServerFnsChange,

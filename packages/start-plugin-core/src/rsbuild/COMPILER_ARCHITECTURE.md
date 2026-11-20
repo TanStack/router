@@ -6,7 +6,9 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
 ## Files
 
 - `start-compiler.ts` registers everything on the Rsbuild plugin API: the session (one per Rspack compiler the
-  instance creates: a second `build()` of the instance configures a new compiler and starts from nothing), one `pre`
+  instance creates: a second `build()` of the instance configures a new compiler and starts from nothing; a second
+  production run of one compiler, a program's `run()` of the compiler of `createCompiler()` again, starts its
+  bundler-free session over: `beginRun`), one `pre`
   loader rule per Start environment, the late `post` pass for other module types, the rule of import-protection edge
   modules (in development, the loader's `edge` pass), the `sideEffects` rules, the host plugin of each environment
   compiler, the client route tree transform.
@@ -14,7 +16,11 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
   (`../compiler/session.ts`, also Vite's: compiler caches, raw facts, import protection, the server-function registry
   and id allocator, the planners and configuration per compile environment, the reporting policy): the compile
   environments of each compiler (`envOf`, the one reader of a module's Rspack layer), the loader implementation, the
-  invalidation operation, the resolver module content.
+  invalidation operation, the resolver module content. It owns a compiler's production runs (`beginRun`, from each
+  environment compiler's `run`, whoever runs it: Rsbuild dispatches its build hooks only in `build()`): the first
+  compiler to start a run generates the routes once for all; a run after another begins with a new bundler-free
+  session, as a new process does (no file events come between two runs: an earlier run's facts, plans and released
+  `allowImport` grants are not this run's).
 - `vue.ts` holds the Vue rules: the late pass over an SFC's script block under vue-loader's inline match resource
   (`x.vue.js?vue&type=script…`, which neither the `pre` rule, before vue-loader, nor the `.vue` late rule reads), a
   rule registered next to the late rule in every configuration (only vue-loader requests such a module, however it is
@@ -38,9 +44,8 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
 - `host-plugin.ts` holds the Rspack hooks of one environment compiler (below).
 - `router-generator.ts` runs the route generator and serves the client route tree without its server-only routes; the
   tree transform depends on the files of the routes it left out, which no client module imports (an edit that makes
-  one a page compiles the client again). A production build generates once for its environments, in Rsbuild's
-  `onBeforeBuild`; a program that runs the compiler of `createCompiler()` itself gets no `onBeforeBuild`, and each
-  environment's compiler generates in its `run` (after Rsbuild's own `run` tap, which awaits `onBeforeBuild`); a watch
+  one a page compiles the client again). A production run generates once for its environments, in the run's start
+  (`beginRun`, at the environment compilers' `run`, after Rsbuild's own tap, which awaits `onBeforeBuild`); a watch
   compilation generates in its `watchRun`.
 - `virtual-modules.ts` owns the pure virtual modules (manifest, server-fn resolver, adapters, RSC runtime and HMR)
   and the import-protection edge module files, under `<root>/node_modules/.virtual/`.

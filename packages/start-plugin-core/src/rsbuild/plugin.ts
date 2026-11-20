@@ -265,16 +265,26 @@ export function tanStackStartRsbuild(
       //    manifest before the server compiles it (build: step 8's
       //    ordering), so Rspack's persistent cache keys the module on the
       //    client build and never restores an earlier build's manifest.
+      //    The client compiler's own `done`: Rsbuild dispatches its
+      //    environment hooks only in `build()` and a dev server, not to a
+      //    program running the compiler of `createCompiler()`.
       // ---------------------------------------------------------------
-      api.onAfterEnvironmentCompile(({ environment }) => {
-        if (environment.name !== RSBUILD_ENVIRONMENT_NAMES.client) return
-
-        virtualModuleState.updateServerFnResolver()
-
-        const clientBuild = getClientBuild()
-        if (clientBuild) {
-          virtualModuleState.updateManifest(clientBuild)
+      api.modifyRspackConfig((config, utils) => {
+        if (utils.environment.name !== RSBUILD_ENVIRONMENT_NAMES.client) {
+          return
         }
+        config.plugins.push({
+          apply(compiler: RspackCompiler) {
+            compiler.hooks.done.tap('TanStackStartClientManifest', () => {
+              virtualModuleState.updateServerFnResolver()
+
+              const clientBuild = getClientBuild()
+              if (clientBuild) {
+                virtualModuleState.updateManifest(clientBuild)
+              }
+            })
+          },
+        })
       })
 
       if (api.context.action === 'build') {

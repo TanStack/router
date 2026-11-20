@@ -2,8 +2,8 @@
  * The Rspack plugin of one Start compiler (an Rsbuild environment, with the
  * compile environments of its layers: `StartRsbuildCompilerSession.envOf`):
  * installs the loader implementation on the compiler, the generator as a precondition of a
- * watch compilation (`watchRun`) and of a run Rsbuild dispatched no
- * `onBeforeBuild` for (`run`: `createCompiler().run()`), the intake of the file events into
+ * watch compilation (`watchRun`) and of a production run (`run`: the session's
+ * `beginRun`, whoever runs the compiler), the intake of the file events into
  * the one invalidation operation (`watchRun`, `make`), the `finishMake`
  * drain of the environment's stale set and replay of plan, server-fn and import-protection
  * `buildInfo` (persistent cache), the import-protection build reports
@@ -71,8 +71,6 @@ interface StartHostPluginOptions {
   /** Writes a virtual module file of this environment (import-protection edge modules). */
   writeVirtualModule: (file: string, content: string) => void
   generator: RsbuildRouteGenerator
-  /** Whether a run generates in the compiler's `run`: Rsbuild dispatched no `onBeforeBuild` (`createCompiler().run()`). */
-  generatesInRun: () => boolean
   /** The client route tree module (client environment only): rebuilt when it is stale. */
   clientRouteTree?: {
     path: () => string
@@ -386,10 +384,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // persistent cache, an importer restored in a new process requests a module nothing
       // defined: the request carries its content, which defines it before it resolves, in
       // the environment its id names (a user layer's is found here, before any module of
-      // the layer is: `envOfKey`)
+      // the layer is: `envOfKey`). Each run's import protection tells the session's
+      // listener (`onEdgeModule`: a run may begin a new one, `beginRun`)
       if (session.start.ip) {
-        const ip = session.start.ip
-        ip.onEdgeModule((file, load, ref) => {
+        session.onEdgeModule((file, load, ref) => {
           if (session.compilerOf(ref.env) === environment.name) {
             opts.writeVirtualModule(file, load.code)
           }
@@ -397,6 +395,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         if (own.persistsModules) {
           compiler.hooks.normalModuleFactory.tap(PLUGIN_NAME, (factory) => {
             factory.hooks.beforeResolve.tap(PLUGIN_NAME, (data) => {
+              const ip = session.start.ip!
               const ref = ip.ids.parse(data.request)
               if (ref) {
                 session.envOfKey(ref.env)
@@ -500,22 +499,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         }
       })
 
-      compiler.hooks.beforeRun.tap(PLUGIN_NAME, () => {
-        // one warning per file per run (J2.19): the session's ledger is
-        // shared by every environment's compiler; the client's run starts it
-        if (environment.type === 'client') {
-          session.start.warnings.reset()
-        }
-      })
-      // a production build's generation: `onBeforeBuild` (`start-compiler.ts`), which
-      // Rsbuild's own `run` tap awaits; a run without it generates here, after that tap
-      compiler.hooks.run.tapPromise(
-        { name: PLUGIN_NAME, stage: 1 },
-        async () => {
-          if (opts.generatesInRun()) {
-            await opts.generator.build()
-          }
-        },
+      // a production run (`build()`, or a program's `run()` of the compiler of
+      // `createCompiler()`, maybe again), which generates the routes once for all its
+      // compilers: after Rsbuild's own `run` tap (its `onBeforeBuild`)
+      compiler.hooks.run.tapPromise({ name: PLUGIN_NAME, stage: 1 }, () =>
+        session.beginRun(environment.name, () => opts.generator.build()),
       )
 
       /** A modified file's event (`CompilationFiles.eventOf`): edited, created, or a watched directory. */
