@@ -200,19 +200,19 @@ interface Flip {
 
 /**
  * The flip rule of a compilation's closure (design-rsc-phase1-settlement.md
- * §2.4): whether a denied module may be built again with `flip`'s verdict,
- * after `before` in the same closure. To its mock only in the closure's
- * first round (served as it is by an earlier compilation, and nothing makes
- * it real any more), and as it is once: after its first round the
- * settlement only raises (the imports it reads are those of modules served
- * as they are, and lowering one nothing makes real removes nothing a real
- * verdict rests on). Anything else is a module whose imports differ
- * between two builds of one source.
+ * §2.4 and its amendment): whether a denied module may be built again with
+ * `flip`'s verdict, after `before`, its own builds in the same closure.
+ * Its first correction goes either way, in whatever round: the verdict its
+ * compile guessed (or an earlier compilation settled) can be wrong in both
+ * directions, and a module a round brings is first judged in the next one.
+ * After it, only to its real module, once: the settlement's real verdicts
+ * only grow (they rest on imports of modules served as they are, and
+ * lowering one nothing makes real removes nothing a real verdict rests
+ * on). Anything else is a module whose imports differ between two builds
+ * of one source.
  */
 function flipped(before: ReadonlyArray<Flip>, flip: Flip): boolean {
-  return flip.real
-    ? !before.some((f) => f.real)
-    : flip.round === 1 && before.length === 0
+  return flip.real ? !before.some((f) => f.real) : before.length === 0
 }
 
 /** What a closure that cannot settle says of its cause (`reportUnsettled`). */

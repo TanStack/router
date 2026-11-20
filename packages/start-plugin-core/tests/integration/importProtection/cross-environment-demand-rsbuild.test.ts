@@ -318,3 +318,66 @@ describe('Rsbuild build, a denied target the real module of another brings throu
     timeout,
   )
 })
+
+/**
+ * `feature.ts` (exempt) imports `upper.client.ts` (in the user's layer
+ * `upper`), whose real module imports `ghost.ts` (exempt): it reads
+ * `lower.client.ts` through `pattern.ts` (checked, a context), and names it
+ * in an import the bundler drops (`if (false)`). Only the context reaches
+ * the lower file, so it is its mock: the route renders `UP(<mock>)`.
+ */
+const lateGuess = {
+  ...files,
+  'src/feature.ts': `import { value } from './upper.client'
+export const read = () => value()
+`,
+  'src/upper.client.ts': `import { read } from './ghost'
+export const value = () => 'UP(' + String(read()) + ')'
+`,
+  'src/ghost.ts': `import { read as viaPattern } from './pattern'
+if (false) import('./lower.client')
+export const read = () => String(viaPattern())
+`,
+  'src/pattern.ts': `const files = import.meta.webpackContext('./', {
+  recursive: false,
+  regExp: /^\\.\\/lower\\.client\\.ts$/,
+})
+export const read = () => files('./lower.client.ts').value()
+`,
+  'src/lower.client.ts': `export const value = () => 'LOW_REAL'\n`,
+}
+
+// the lower file is first built with the real module (an exempt file names
+// it), in the settlement's round that builds the upper file real, and first
+// corrected in the next round.
+// Source: the RSC phase 1 re-check 4 (/var/tmp/rsc-p1-recheck4/report.md §1,
+// `late-guess.py`, `repeat-late.py`: 012645978b failed the build, "could not
+// settle", db260cf3a3 failed it with R147)
+describe('Rsbuild build, a denied file a round of the settlement brings, which only a checked context reaches', () => {
+  test.each([false, true])(
+    'RSC %s: the build serves its mock and reports the context import',
+    async (rsc) => {
+      const built = await build(
+        lateGuess,
+        [{ test: /upper\.client\.ts$/, layer: 'upper' }],
+        { behavior: 'mock', exclude: ['**/feature.ts', '**/ghost.ts'] },
+        rsc,
+      )
+      const { url } = await built.preview()
+      const html = await (await fetch(new URL('/', url))).text()
+      expect({
+        label: texts(html, 'label'),
+        violations: violationsOf(built).map(({ importer, specifier }) => ({
+          importer: importer.replace(/:.*/, ''),
+          specifier,
+        })),
+      }).toEqual({
+        label: ['UP([import-protection mock])'],
+        violations: [
+          { importer: 'src/pattern.ts', specifier: 'src/lower.client.ts' },
+        ],
+      })
+    },
+    timeout,
+  )
+})

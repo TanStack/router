@@ -16,11 +16,17 @@
  *   importing `bridge.ts`.
  * - A cycle: exempt barrel `kit/index.ts` re-exports `kit/a.client.ts`,
  *   which imports the barrel; the route switches from the barrel to a
- *   pattern import of `a.client.ts`.
+ *   pattern import of `a.client.ts`. The same with a checked barrel whose
+ *   import of `a.client.ts` `allowImport` allows.
+ * - A late first correction: the real module of `upper.client.ts` imports
+ *   exempt `ghost.ts`, which reads `lower.client.ts` through a pattern
+ *   import and names it in an import the bundler drops (`if (false)`).
  * Source: the RSC phase 1 re-check 3 (/var/tmp/rsc-p1-recheck3/report.md
  * §1, §2 and "Resolver removal, watch and other limits": `restorecycle.py`,
  * `twice.py`), design-rsc-phase1-settlement.md facts 6 and 9 (`reenter.py`,
- * `selfsupport.py`), S1d, S2, S6, S7.
+ * `selfsupport.py`), S1d, S2, S6, S7; re-check 4
+ * (/var/tmp/rsc-p1-recheck4/report.md §1 `late-guess.py`, §2
+ * `newprobes.py cycle`).
  */
 import { describe, expect, test } from 'vitest'
 import { startRscRsbuildDevServer } from './rsc-app'
@@ -325,6 +331,49 @@ export const read = () => value()
         })
       }
       expect(violations).toHaveLength(1)
+    },
+    timeout,
+  )
+})
+
+describe('Rsbuild dev with RSC, a denied file a round of the settlement brings, which only a pattern import reaches', () => {
+  test(
+    'it is served as its mock, no internal error, no conflict',
+    async () => {
+      const { server, violations } = await start(
+        {
+          'src/feature.ts': nested['src/feature.ts'],
+          'src/upper.client.ts': `import { read } from './ghost'
+export const value = () => 'UP(' + String(read()) + ')'
+`,
+          'src/ghost.ts': `import { read as viaPattern } from './lowPattern'
+if (false) import('./lower.client')
+export const read = () => String(viaPattern())
+`,
+          'src/lowPattern.ts': pattern('lower'),
+          'src/lower.client.ts': nested['src/lower.client.ts'],
+          'src/routes/index.tsx': route('feature', 'INITIAL'),
+        },
+        ['**/feature.ts', '**/ghost.ts'],
+        [layers[0]!],
+      )
+      for (const tag of ['INITIAL', 'TOUCH']) {
+        const since = server.diagnostics.length
+        if (tag !== 'INITIAL') {
+          await server.edit({ 'src/routes/index.tsx': route('feature', tag) })
+        }
+        expect({
+          page: await page(server, tag),
+          conflict: conflict(server, tag === 'INITIAL' ? 0 : since),
+          unsettled: unsettled(server, 0),
+          reported: summary(violations),
+        }).toEqual({
+          page: { tag: true, label: `UP(${mock})` },
+          conflict: false,
+          unsettled: false,
+          reported: ['ssr server file lower.client.ts -> src/lower.client.ts'],
+        })
+      }
     },
     timeout,
   )
