@@ -251,6 +251,7 @@ describe('Rsbuild dev with RSC, one edit that flips two denied files', () => {
       })
       const since = server.diagnostics.length
       for (const tag of ['flip', 'touch']) {
+        const before = server.diagnostics.length
         await server.edit({
           ...(tag === 'flip' && {
             'src/upper.client.ts': nested['src/upper.client.ts'],
@@ -260,13 +261,18 @@ describe('Rsbuild dev with RSC, one edit that flips two denied files', () => {
             '../lowerPattern',
           ),
         })
+        // (the watcher may split the flip's two writes into two
+        // compilations, and the first state, the bridge real with the
+        // pattern import of the lower file, has importers that disagree: the
+        // final state's R147, if any, is reported again by the touch's
+        // compilation, as by every compilation holding it)
         expect({
           page: await page(server, tag),
-          conflict: conflict(server, since),
+          ...(tag === 'touch' && { conflict: conflict(server, before) }),
           unsettled: unsettled(server, since),
         }).toEqual({
           page: { tag: true, label: `${mock} / ${mock}` },
-          conflict: false,
+          ...(tag === 'touch' && { conflict: false }),
           unsettled: false,
         })
       }
