@@ -1,4 +1,3 @@
-import { Readable } from 'node:stream'
 import {
   DOCUMENT_CLOSE_ANCHOR_INDEX,
   DOCUMENT_CLOSE_BYTES,
@@ -48,20 +47,6 @@ type AppStream =
   | ReadableStream<string>
   | ReadableStream<AppStreamValue>
   | NodeReadableStream<AppStreamValue>
-
-export function transformPipeableStreamWithRouter(
-  router: AnyRouter,
-  routerStream: Readable,
-  opts?: TransformStreamWithRouterOptions,
-) {
-  return Readable.fromWeb(
-    transformReadableStreamWithRouter(
-      router,
-      Readable.toWeb(routerStream) as AppStream,
-      opts,
-    ) as NodeReadableStream<Uint8Array>,
-  )
-}
 
 export async function transformHtmlStringWithRouter(
   router: AnyRouter,
