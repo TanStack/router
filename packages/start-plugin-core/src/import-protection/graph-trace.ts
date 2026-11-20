@@ -41,6 +41,8 @@ export interface NodeGraph {
   walkImporters?: (node: GraphNode) => Iterable<GraphNode> | null
   /** Whether `node` is an entry of the graph (a file can be an entry in one environment only). */
   isEntry: (node: GraphNode) => boolean
+  /** A view's (`groundedGraph`): the bundler's graph it reads, with every importer. */
+  built?: NodeGraph
 }
 
 /** A node's key, for sets. */
@@ -455,6 +457,7 @@ export function groundedGraph(
       return known && [...known].filter(counts)
     },
     isEntry: graph.isEntry,
+    built: graph.built ?? graph,
     supported,
     counts,
   }

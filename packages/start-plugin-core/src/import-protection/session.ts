@@ -1288,6 +1288,22 @@ class ImportProtectionEnv {
   }
 
   /**
+   * Whether anything imports the module that is its own violation `self`
+   * in the bundler's `graph` (`NodeGraph.built`: an importer outside the
+   * app included, one a file-less module holds: a provide-shared module's,
+   * a container's, whose mock nothing reports, as in dev), else, where the
+   * graph cannot read the environment, in its records. Not the records
+   * where the graph reads it: they keep an import the bundler dropped.
+   */
+  private imported(self: EdgeViolation, graph: NodeGraph): boolean {
+    const known = graph.importers({ env: this.name, id: self.importerId })
+    for (const _ of known ?? this.edges.importers(self.resolved!)) {
+      return true
+    }
+    return false
+  }
+
+  /**
    * The edges that arrive at a module that is its own violation, each
    * classified with the records of its own environment: the connections
    * of `graph` into this environment's module of the file (null: the
@@ -2406,9 +2422,10 @@ class ImportProtectionEnv {
     }
     // the mocked modules that are their own violation whose every importer is not checked (R89), with those importers
     const unchecked = new Map<string, [EdgeViolation, Array<string>]>()
-    // those nothing imports: no supported configuration has one (one entry
-    // per environment; a dev server reports the file when it compiles it), so
-    // no report accounts for it (design 4, I5)
+    // those nothing imports in the build's graph (`imported`): no supported
+    // configuration has one (one entry per environment; a dev server reports
+    // the file when it compiles it), so no report accounts for it (design 4,
+    // I5)
     const unaccounted: Array<EdgeViolation> = []
     /** The violations to report, each with the environment it is of. */
     const live = new Map<
@@ -2448,11 +2465,8 @@ class ImportProtectionEnv {
           unchecked.set(v.edgeKey, [v, [...others]])
         } else if (
           incoming.checked.length === 0 &&
-          [...this.edges.importers(v.resolved!)].length === 0
+          !this.imported(v, graph.built ?? graph)
         ) {
-          // (an importer the compiler read that the graph has outside the
-          // app, held through a module with no file: a provide-shared
-          // module's, a container's, reports nothing, as in dev)
           unaccounted.push(v)
         }
       }
