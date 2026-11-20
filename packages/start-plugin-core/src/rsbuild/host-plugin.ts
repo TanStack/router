@@ -290,16 +290,50 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       /** A failed `watchRun` of ours, reported by the compilation it started. */
       const failedBeforeCompilation: Array<Error> = []
       /**
-       * The reports of the import-protection requests each child compilation
-       * made (`childCompilerViolations`), made by its closure (`close`) with
-       * its graph: Rspack's module graph is not readable while modules build,
-       * and the trace is the graph's (an import the records hold may be one
-       * the bundler dropped).
+       * The import-protection requests each child compilation made
+       * (`childCompilerViolations`) and not yet reported, each reported once
+       * by `reportChildRequests`: by the child's closure (`close`), with the
+       * trace in the child's graph (Rspack's module graph is not readable
+       * while modules build, and an import the records hold may be one the
+       * bundler dropped); for a child that ends without its closure (a tap of
+       * its `finishMake` before ours failed), by the next closure of this
+       * compiler's compilation (before `hold` forgets the child's records),
+       * else when the compilation ends (`done`, `failed`):
+       * `reportEndedChildren`.
        */
-      const childReports = new WeakMap<
+      const childRequests = new Map<
         Rspack.Compilation,
-        Array<(graph: NodeGraph) => Promise<Array<string>>>
+        Array<(graph: NodeGraph | null) => Promise<Array<string>>>
       >()
+      /** Reports what `child` requested and nothing reported yet (`childRequests`), as errors of this compiler's compilation. */
+      const reportChildRequests = async (
+        child: Rspack.Compilation,
+        graph: NodeGraph | null,
+      ) => {
+        const requested = childRequests.get(child) ?? []
+        childRequests.delete(child)
+        for (const report of requested) {
+          for (const message of await report(graph)) {
+            ;(currentCompilation ?? child).errors.push(
+              new WebpackError(message),
+            )
+          }
+        }
+      }
+      /** Reports the requests of every child with some left (`childRequests`): with its graph when Rspack can still read it, else the recorded trace. */
+      const reportEndedChildren = async () => {
+        for (const child of [...childRequests.keys()]) {
+          const graph = nodeGraph(child)
+          let readable = true
+          try {
+            graph.holds({ env: environment.name, id: '' })
+          } catch {
+            // (a read throws once Rspack dropped the child's compilation)
+            readable = false
+          }
+          await reportChildRequests(child, readable ? graph : null)
+        }
+      }
       /** Runs a hook of ours whose failure goes to `errors` (`reportingFailure`: in watch mode it never rejects). */
       const reporting = (
         errors: Array<Error>,
@@ -419,9 +453,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         // a child compiler of this one (a worker or service-worker plugin's) takes
         // these taps but not the virtual files: its requests of them fail the build
         // with the violations they stand for (in this compiler's compilation,
-        // which Rsbuild prints, reported by the child's closure: `childReports`),
-        // and resolve to nothing. The request is of the environment of the
-        // issuer's layer
+        // which Rsbuild prints: `childRequests`), and resolve to nothing. The
+        // request is of the environment of the issuer's layer
         compiler.hooks.compilation.tap(PLUGIN_NAME, (compilation, params) => {
           if (compilation.compiler === compiler) {
             return
@@ -439,10 +472,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               if (!violations) {
                 return undefined
               }
-              let pending = childReports.get(compilation)
+              let pending = childRequests.get(compilation)
               if (!pending) {
                 pending = []
-                childReports.set(compilation, pending)
+                childRequests.set(compilation, pending)
               }
               pending.push((graph) =>
                 ip!.childCompilerReports(violations, graph),
@@ -450,6 +483,15 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               return false
             },
           )
+        })
+        // (the children that ended after this compilation's last closure, or
+        // in a compilation that fails: no error is reported then, `onViolation`
+        // is told)
+        compiler.hooks.done.tapPromise(PLUGIN_NAME, async () => {
+          await reportEndedChildren()
+        })
+        compiler.hooks.failed.tap(PLUGIN_NAME, () => {
+          void reportEndedChildren()
         })
       }
 
@@ -940,20 +982,20 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         // nothing (the first one holds every module it restored or built;
         // the last run follows the first, which held)
         let unheld = !child && !last && session.files.compiled(environment.name)
+        if (!child) {
+          // (a child that ended without its closure: before `hold` forgets
+          // its records)
+          await reportEndedChildren()
+        }
         for (;;) {
           const round = ++history.round
           // (what the child's requests stood for since its last round: its
           // `make`, the round's builds)
-          const requested = child ? childReports.get(compilation) : undefined
-          if (requested && requested.length > 0) {
-            const g = (graph ??= nodeGraph(compilation))
-            for (const report of requested.splice(0)) {
-              for (const message of await report(g)) {
-                ;(currentCompilation ?? compilation).errors.push(
-                  new WebpackError(message),
-                )
-              }
-            }
+          if (child && childRequests.has(compilation)) {
+            await reportChildRequests(
+              compilation,
+              (graph ??= nodeGraph(compilation)),
+            )
           }
           const content = child ? null : (fnResolver?.pending() ?? null)
           if (content !== null) {

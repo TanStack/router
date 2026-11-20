@@ -3,13 +3,16 @@
  * settles the modules it builds, a child compilation's included, with the
  * modules that enter it late (SPEC J6.7: a denied file is served as it is
  * only when an exempt or allowed import the app reaches arrives at it).
- * - A child compiler of the server's (a worker plugin's, run in `make` or
- *   in `finishMake`) builds `r.ts` (exempt), which reads `w.client.ts`
+ * - A child compiler of the server's (a worker plugin's, run in `make`, in
+ *   `finishMake` or in `processAssets`) builds `r.ts` (exempt), which reads `w.client.ts`
  *   (denied) through `pattern.ts` (checked, a context) and names it in an
  *   import the bundler drops (`if (false)`): guessed real on its compile.
  *   No other import arrives at it, so it is its mock, which a child
  *   compiler cannot load: the build fails with the context's violation,
  *   traced through the child's graph (`r.ts` → `pattern.ts` → the file).
+ *   A child that fails before its settlement (another plugin's tap) still
+ *   reports what it requested, whether the plugin running it goes on or
+ *   fails with it.
  * - `ProvideSharedPlugin` provides `r.ts` (exempt), which imports
  *   `d.client.ts` (denied); the route renders the shared module's value.
  *   The provide-shared module (no file) holds `r.ts`, which the
@@ -22,7 +25,9 @@
  * `HOLDER_REAL` cold), design-rsc-phase1-settlement.md amendment 4, C0 to
  * C4, L1 to L4; re-check 7 (/var/tmp/rsc-p1-recheck7/report.md finding 3,
  * `small-child.py`: 86b46c235e traced the violation to the dropped import,
- * `r.ts` → `w.client.ts`).
+ * `r.ts` → `w.client.ts`); re-check 8 (/var/tmp/rsc-p1-recheck8/report.md,
+ * a child that fails before its closure, `clean8.py`: 99cc175358 reported
+ * nothing and built when the plugin went on).
  */
 import { describe, expect, test } from 'vitest'
 import { StartBuildError, buildStart } from '../../build-harness'
@@ -127,10 +132,15 @@ export const read = () => files('./w.client.ts').value()
   })
 
   /** When the server compilation runs the child compiler. */
-  type When = 'make' | 'finishMake'
+  type When = 'make' | 'finishMake' | 'processAssets'
 
-  /** The server environment's config: a plugin running a child compiler of `r.ts` at `when`. */
-  const environments = (when: When) => ({
+  /**
+   * The server environment's config: a plugin running a child compiler of
+   * `r.ts` at `when`. `aborted`: another tap of the child's `finishMake`
+   * fails before the settlement's (stage −100), and the plugin goes on
+   * (`recover`) or fails with the child's error (`propagate`).
+   */
+  const environments = (when: When, aborted?: 'recover' | 'propagate') => ({
     ssr: {
       tools: {
         rspack: (config: any) => {
@@ -151,14 +161,32 @@ export const read = () => files('./w.client.ts').value()
                     ),
                   ],
                 )
+                if (aborted) {
+                  child.hooks.finishMake.tap(
+                    { name: 'test:sidecar', stage: -100 },
+                    () => {
+                      throw new Error('SIDECAR_FAILED')
+                    },
+                  )
+                }
                 return new Promise<void>((resolve, reject) => {
                   child.runAsChild((error: unknown) =>
-                    error ? reject(error) : resolve(),
+                    error && aborted !== 'recover' ? reject(error) : resolve(),
                   )
                 })
               }
               if (when === 'make') {
                 compiler.hooks.make.tapPromise('test:child', run)
+              } else if (when === 'processAssets') {
+                compiler.hooks.thisCompilation.tap(
+                  'test:child',
+                  (compilation: any) => {
+                    compilation.hooks.processAssets.tapPromise(
+                      'test:child',
+                      () => run(compilation),
+                    )
+                  },
+                )
               } else {
                 compiler.hooks.finishMake.tapPromise(
                   { name: 'test:child', stage: -60 },
@@ -214,6 +242,44 @@ export const read = () => files('./w.client.ts').value()
           }),
         ),
       ).toEqual(expected)
+    },
+    timeout,
+  )
+
+  test.each<{ when: When }>([{ when: 'make' }, { when: 'processAssets' }])(
+    'Rsbuild build, the child run in $when failing before its settlement, the plugin going on: the build fails with the context',
+    async ({ when }) => {
+      expect(
+        await failure(
+          buildStart({
+            bundler: 'rsbuild',
+            files: childFiles(false),
+            entry: 'src/entry.ts',
+            rsbuildConfig: {
+              environments: environments(when, 'recover'),
+            } as never,
+            start: { importProtection } as never,
+          }),
+        ),
+      ).toEqual(expected)
+    },
+    timeout,
+  )
+
+  test(
+    'Rsbuild build, the child failing before its settlement, the plugin failing with it: the violation is reported',
+    async () => {
+      const error = await buildStart({
+        bundler: 'rsbuild',
+        files: childFiles(false),
+        entry: 'src/entry.ts',
+        rsbuildConfig: {
+          environments: environments('make', 'propagate'),
+        } as never,
+        start: { importProtection } as never,
+      }).catch((e: unknown) => e)
+      expect(error, 'the build fails').toBeInstanceOf(StartBuildError)
+      expect(mocked(error as StartBuildError)).toEqual(['src/w.client.ts'])
     },
     timeout,
   )

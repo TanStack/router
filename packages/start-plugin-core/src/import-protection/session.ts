@@ -2049,11 +2049,11 @@ class ImportProtectionEnv {
   /**
    * The reports of a child compiler's violations (`childCompilerViolations`),
    * each told to `onViolation` with its trace in the child compilation's
-   * `graph`: errors, whatever the behavior.
+   * `graph` (null: the records' trace): errors, whatever the behavior.
    */
   async childCompilerReports(
     violations: ReadonlyArray<EdgeViolation>,
-    graph: NodeGraph,
+    graph: NodeGraph | null,
   ): Promise<Array<string>> {
     const reports: Array<string> = []
     for (const v of violations) {
