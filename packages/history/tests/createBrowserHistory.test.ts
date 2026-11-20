@@ -305,3 +305,75 @@ describe('createBrowserHistory', () => {
     history.destroy()
   })
 })
+
+describe('createBrowserHistory initialization', () => {
+  function createUnkeyedWindow(state: unknown, navigationState?: unknown) {
+    const nativeHistory = {
+      state,
+      length: 1,
+      pushState: vi.fn(),
+      replaceState: vi.fn((nextState: unknown) => {
+        nativeHistory.state = nextState
+        // Like browsers, replaceState resets the Navigation API entry state
+        navigation.currentState = undefined
+      }),
+      back: vi.fn(),
+      forward: vi.fn(),
+      go: vi.fn(),
+    }
+    const navigation = {
+      currentState: navigationState,
+      currentEntry: {
+        getState: () => navigation.currentState,
+      },
+      updateCurrentEntry: vi.fn(({ state }: { state: unknown }) => {
+        navigation.currentState = state
+      }),
+    }
+    return {
+      location: { pathname: '/', search: '', hash: '' },
+      history: nativeHistory,
+      navigation,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }
+  }
+
+  test('keeps existing history state fields and index when adding a key', () => {
+    const window = createUnkeyedWindow({ color: 'blue', __TSR_index: 7 })
+    const history = createBrowserHistory({ window })
+
+    expect(window.history.state).toEqual({
+      color: 'blue',
+      __TSR_index: 7,
+      key: expect.any(String),
+      __TSR_key: expect.any(String),
+    })
+    expect(history.location.state.__TSR_index).toBe(7)
+    history.destroy()
+  })
+
+  test.each([null, false, { color: 'blue' }])(
+    'restores Navigation API entry state %j after adding a key',
+    (navigationState) => {
+      const window = createUnkeyedWindow(null, navigationState)
+      const history = createBrowserHistory({ window })
+
+      expect(window.navigation.currentEntry.getState()).toEqual(navigationState)
+      expect(window.history.state).toEqual({
+        __TSR_index: 0,
+        key: expect.any(String),
+        __TSR_key: expect.any(String),
+      })
+      history.destroy()
+    },
+  )
+
+  test('does not touch Navigation API state that was never set', () => {
+    const window = createUnkeyedWindow(null)
+    const history = createBrowserHistory({ window })
+
+    expect(window.navigation.updateCurrentEntry).not.toHaveBeenCalled()
+    history.destroy()
+  })
+})
