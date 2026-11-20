@@ -109,6 +109,49 @@ export { old } from './old'
     timeout,
   )
 
+  // The rebuilt module of an edit that removes its only server fn names no
+  // Start API any more: the rebuilt server provides nothing of it, as a
+  // fresh build of the edited app does (its custom id is in no output).
+  test(
+    'a server fn an edit removes from its module leaves the rebuilt server',
+    async () => {
+      const fns = (withFn: boolean) =>
+        withFn
+          ? `import { createServerFn } from '@tanstack/react-start'
+export const old = createServerFn().handler(async () => 'MARK_OLD')
+`
+          : `export const old = async () => 'MARK_PLAIN'
+`
+      const { client, ssr } = await buildStart({
+        bundler,
+        start: {
+          serverFns: {
+            generateFunctionId: ({ functionName }: { functionName: string }) =>
+              functionName.startsWith('old_') ? 'MARK_OLD_ID' : undefined,
+          },
+        },
+        files: {
+          ...files,
+          'old.ts': fns(true),
+          'client-entry.ts': `export { greet } from './fns'
+export { old } from './old'
+`,
+          'ssr-entry.ts': `export { greet } from './fns'
+export { old } from './old'
+${callByIdExports}`,
+        },
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+        watchEdits: { 'old.ts': fns(false) },
+      })
+      expect({
+        client: client.where('MARK_OLD_ID'),
+        ssr: ssr.where('MARK_OLD_ID'),
+        plain: (await ssr.run(`return await entry.old()`)).result,
+      }).toEqual({ client: 'nowhere', ssr: 'nowhere', plain: 'MARK_PLAIN' })
+    },
+    timeout,
+  )
+
   test(
     'a server fn a module of both environments stops importing is refused over HTTP by the rebuilt server',
     async () => {

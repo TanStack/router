@@ -111,6 +111,29 @@ export interface ServerFnBuildInfo {
   facts: Array<ServerFnFact>
 }
 
+/**
+ * Records the server fns a module's compile reported in its `buildInfo`
+ * (the registry's snapshots read it, `facts` null: none, the field removed).
+ */
+function recordServerFns(
+  buildInfo: Record<string, unknown> | undefined,
+  canonicalId: string,
+  facts: Array<ServerFnFact> | null,
+): void {
+  if (!buildInfo) {
+    return
+  }
+  if (facts) {
+    buildInfo[SERVER_FN_BUILD_INFO_FIELD] = {
+      version: 4,
+      canonicalId,
+      facts,
+    } satisfies ServerFnBuildInfo
+  } else {
+    delete buildInfo[SERVER_FN_BUILD_INFO_FIELD]
+  }
+}
+
 /** Rsbuild `source.transformImport` entries (the array form) the host predicts, so the file and
  * marker rules judge the rewritten import's target. */
 export interface TransformImportRule {
@@ -903,8 +926,13 @@ export class StartRsbuildCompilerSession {
     ) {
       return passthrough
     }
+    // From here on every exit is this module's compile: its record of server
+    // fns follows it, also when it reports none (Rspack keeps a custom
+    // `buildInfo` field of the module's previous build in a rebuild)
+    const buildInfo = ctx._module?.buildInfo
     const source = loaderText(bytes)
     if (!late && !this.start.compiles(identity.path, source)) {
+      recordServerFns(buildInfo, identity.canonicalId, null)
       return passthrough
     }
     let parsedInputMap: InputSourceMap | null | undefined
@@ -931,6 +959,7 @@ export class StartRsbuildCompilerSession {
       this.hostFor(env),
     )
     if (!out) {
+      recordServerFns(buildInfo, identity.canonicalId, null)
       return passthrough
     }
     this.reportDiagnostics(
@@ -942,19 +971,11 @@ export class StartRsbuildCompilerSession {
       late || isVueSfc(identity.path) ? readInputMap : undefined,
     )
     const mock = await this.protect(ctx, env, id, out)
-    const buildInfo = ctx._module?.buildInfo
     if (env.compiler.persistsModules && out.persisted && buildInfo) {
       // one string: Rspack converts a structured field value by value
       buildInfo[PLAN_BUILD_INFO_FIELD] = JSON.stringify(out.persisted)
     }
-    const serverFns = serverFnFactsOf(out)
-    if (serverFns && buildInfo) {
-      buildInfo[SERVER_FN_BUILD_INFO_FIELD] = {
-        version: 4,
-        canonicalId: identity.canonicalId,
-        facts: serverFns,
-      } satisfies ServerFnBuildInfo
-    }
+    recordServerFns(buildInfo, identity.canonicalId, serverFnFactsOf(out))
     if (mock) {
       return mock
     }

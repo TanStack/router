@@ -27,7 +27,10 @@ import rsc from '@vitejs/plugin-rsc'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
-import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
+import {
+  createRsbuildDevServer,
+  trackCompiles,
+} from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import {
   createApp,
   pluginNames,
@@ -257,13 +260,18 @@ export async function startRscPreviewServer(options: {
   return { root: app.root, url, messages }
 }
 
+/** The bound of a watch mode build's first build, and of an edit's rebuild. */
+const watchTimeout = 60_000
+
 /** What `startRscRsbuildPreviewServer` uses of Rsbuild's JavaScript API. */
 interface RsbuildApi {
   createRsbuild: (options: {
     cwd: string
     rsbuildConfig: Record<string, unknown>
   }) => Promise<{
-    build: () => Promise<{ close: () => Promise<void> }>
+    build: (options?: {
+      watch?: boolean
+    }) => Promise<{ close: () => Promise<void> }>
     preview: (options?: { getPortSilently?: boolean }) => Promise<{
       urls: Array<string>
       server: { close: () => Promise<void> }
@@ -309,6 +317,12 @@ export async function startRscRsbuildPreviewServer(options: {
    */
   rebuildWith?: Record<string, string>
   /**
+   * Builds in watch mode (`rsbuild build --watch`) and writes these files
+   * once the first build is done: the build served is the rebuild of the
+   * edit (its errors reject).
+   */
+  watchWith?: Record<string, string>
+  /**
    * Files written after a first build, then `rsbuild build` runs again (a
    * new Rsbuild instance and new plugins, what the first build left in the
    * directory kept, e.g. its persistent cache): the build served is the
@@ -337,9 +351,15 @@ export async function startRscRsbuildPreviewServer(options: {
   /** The compilations' errors and warnings (a silent Rsbuild prints none). */
   const compileErrors: Array<string> = []
   const compileWarnings: Array<string> = []
+  /** The compiles of a watch mode build (`watchWith`). */
+  const compiles = trackCompiles()
   const compileErrorsPlugin = {
     name: 'rsc-preview-harness:compile-errors',
     setup(api: {
+      onAfterCreateCompiler: (
+        callback: (params: { compiler: Parameters<typeof compiles.track>[0] }) => void,
+      ) => void
+      onAfterBuild: (callback: () => void) => void
       onAfterEnvironmentCompile: (
         callback: (params: {
           stats?: {
@@ -360,6 +380,8 @@ export async function startRscRsbuildPreviewServer(options: {
           compileWarnings.push(warning.message)
         }
       })
+      api.onAfterCreateCompiler(({ compiler }) => compiles.track(compiler))
+      api.onAfterBuild(() => compiles.done())
     },
   }
   const cwd = process.cwd()
@@ -394,6 +416,22 @@ export async function startRscRsbuildPreviewServer(options: {
       })
     await withBuildEnvironment('production', reported, async () => {
       const instance = await rsbuild()
+      if (options.watchWith) {
+        const watching = await instance.build({ watch: true })
+        try {
+          await compiles.first(watchTimeout)
+          // (what the rebuild of the edit reports)
+          compileErrors.length = 0
+          compileWarnings.length = 0
+          await compiles.edit(app.root, options.watchWith, watchTimeout)
+          if (compileErrors.length > 0) {
+            throw new Error('the rebuild failed')
+          }
+        } finally {
+          await watching.close()
+        }
+        return
+      }
       const built = await instance.build()
       await built.close()
       if (options.rebuildWith) {
