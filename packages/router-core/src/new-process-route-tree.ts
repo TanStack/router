@@ -282,8 +282,12 @@ export function parseSegments<TRouteLike extends RouteLike>(
     node = indexNode
   }
 
-  node.parse = parseParams ?? null
-  node.priority = options?.params?.priority ?? 0
+  // A route without params.parse can end on a node it shares with an ancestor
+  // (e.g. a pathless layout child), so it must not clear the ancestor's parser.
+  if (parseParams) {
+    node.parse = parseParams
+    node.priority = options?.params?.priority ?? 0
+  }
   // A shared candidate keeps the original names of its first terminal route.
   if (!node.route) {
     node.data = segmentData
