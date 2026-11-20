@@ -377,6 +377,14 @@ setTheme(t) { theme = t }`, `export function getTheme()`), children calling the 
   `detect()` runs once, `main` runs it again in its copy). With `let cfg` assigned in the children, the boundary is
   refused (`hydrate-module-write`), where `main`'s chunk assigns its copy; the PR's base refuses it too. Rare (a
   top-level statement declaring a `var` and reading module state the children use). No test.
+- **Vite: a second `buildApp()` in one process prerenders with the first build's server** (re-check 6 finding 2, the
+  Vite half; seen on 0a261a0259 with `/var/tmp/rsc-p1-r10/vite-prerender/app/run.mjs`, `main` not run). A program that
+  calls `createBuilder()` and `buildApp()` again after an edit writes the first build's page to
+  `dist/client/index.html`; a new process writes the edited one. Start's preview plugin imports `dist/server/server.js`
+  by its file URL (`vite/preview-server-plugin/plugin.ts`), which Node keeps for the process's life. Rsbuild's
+  prerender runs each build's server in a worker thread of its own; on Vite the prerender goes through
+  `vite.preview()` (the platform plugins answer there), and a query on the entry would leave the RSC build's unhashed
+  imports (`__vite_rsc_assets_manifest.js`, `rsc/index.js`) of the first build. No test.
 - **Rsbuild with a persistent cache: a child compiler's own modules restored from the cache are not checked**
   (Astra round 4, Rsbuild host; known limit). A worker or service-worker plugin's child compiler of the client
   (`createChildCompiler`) that imported `fns.ts` in the build the cache came from keeps its cached module of it after
