@@ -22,7 +22,9 @@ export function lazyRouteComponent<
 ): T[TKey] extends (props: infer TProps) => any
   ? AsyncRouteComponent<TProps>
   : never {
-  let loadPromise: Promise<any> | undefined
+  // We'd prefer `React.ReactPromise<void>`, but `@types/react` 18 doesn't
+  // define it and React 18 is still in our peer range.
+  let loadPromise: (Promise<void> & { status?: 'fulfilled' }) | undefined
   let comp: T[TKey] | T['default']
   let error: any
 
@@ -33,10 +35,18 @@ export function lazyRouteComponent<
         .then((res) => {
           // Resolved clients have no preload work; SSR can reuse the import.
           if (!(isServer ?? typeof window === 'undefined')) {
-            loadPromise = undefined
             ;(lazyComp as any).preload = undefined
           }
           comp = res[exportName ?? 'default']
+          // React's docs tell libraries to set `status`/`value` on a promise so
+          // `use()` can read it synchronously ("How to implement a promise
+          // cache", https://react.dev/reference/react/use#caching-promises-for-client-components).
+          // An already loaded chunk then renders without suspending. Mark it in
+          // the same tick that sets `comp`, so `use()` never sees a loaded chunk
+          // as pending. `loadPromise` (this chain) is assigned before this runs
+          // and settles a few microtasks later, with `undefined`, which `Lazy`
+          // ignores.
+          loadPromise!.status = 'fulfilled'
         })
         .catch((err) => {
           loadPromise = undefined
@@ -70,12 +80,15 @@ export function lazyRouteComponent<
       throw error
     }
 
-    if (!comp) {
-      if (reactUse) {
-        reactUse(load())
-      } else {
-        throw load()
-      }
+    // Call `use()` on every render, even once loaded, as React's pitfall
+    // "Don't skip calling `use` based on whether a Promise is already settled"
+    // requires (https://react.dev/reference/react/use#conditional-use). React
+    // 19.3+ warns in development when a render that suspended in `use()`
+    // finishes without calling it.
+    if (reactUse) {
+      reactUse(load())
+    } else if (!comp) {
+      throw load()
     }
 
     return React.createElement(comp, props)
