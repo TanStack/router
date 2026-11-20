@@ -41,6 +41,8 @@ import {
   resourcePath,
 } from './compiler-session'
 import { LOADER_REGISTRY } from './loader-registry'
+import { serverFnResolverRebuild } from './server-fn-resolver-rebuild'
+import type { ServerFnResolverModule } from './server-fn-resolver-rebuild'
 import type { LoaderImpl } from './compiler-loader'
 import type {
   EnvState,
@@ -80,6 +82,8 @@ interface StartHostPluginOptions {
   }
   /** After the `finishMake` replay rebuilt the registry (the resolver virtual module is rewritten). */
   onServerFnsReplayed: () => void
+  /** The server environment's server-fn resolver: rebuilt in the compilation's closure (`finishMake`). */
+  serverFnResolver?: ServerFnResolverModule
   /**
    * Development: Rsbuild's `onDevCompileDone`, which tells the compilations
    * Rsbuild printed (`handOverWarnings`).
@@ -818,14 +822,17 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
        * ask for (design 4: an exempt importer compiled or restored after the
        * denied file, an exempt import gone, a restored module's `allowImport`
        * answer), until none differs. A module built real brings its own
-       * imports, which may ask for another one. A module flipped twice is an
-       * internal error (R116: thrown in our test runs, a warning otherwise).
+       * imports, which may ask for another one. A module flipped twice in the
+       * compilation (`flipped`, across the closure's rounds) is an internal
+       * error (R116: thrown in our test runs, a warning otherwise). Whether
+       * it built anything.
        */
       async function serveAsDemanded(
         envs: ReturnType<typeof ipEnvs>,
         compilation: Rspack.Compilation,
-      ): Promise<void> {
-        const flipped = new Set<string>()
+        flipped: Set<string>,
+      ): Promise<boolean> {
+        let built = false
         for (;;) {
           // (each environment's mismatches, of the modules it holds: one the compilation
           // no longer holds is judged when it comes back)
@@ -860,7 +867,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             }
           }
           if (stale.length === 0) {
-            return
+            return built
           }
           const again = stale.find((s) =>
             flipped.has(`${s.env}\0${s.path}`),
@@ -876,8 +883,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 invariantDiagnostic('[tanstack-start] ', file, v).message,
               ),
             )
-            return
+            return false
           }
+          built = true
           for (const s of stale) {
             flipped.add(`${s.env}\0${s.path}`)
             session.start.caches.stale.add(s.env, s.path)
@@ -1145,22 +1153,46 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           ),
       )
 
-      // the modules served otherwise than the edges arriving at them in the compilation's
-      // graph ask for, built again (`serveAsDemanded`): once every module is in, after the
-      // server-fn resolver's rebuilds (stage -10), which bring the provider modules and what
-      // they import, and before the RSC plugin's client handoff (stage 0). A server fn only a
-      // module built real here brings is not in this compilation's resolver (a build; the
-      // next dev compilation's has it)
+      // the compilation's closure, once every module is in (after the replay and the
+      // registry's refresh, stage -20) and before the RSC plugin's client handoff (stage
+      // 0: the native ServerPlugin starts the client's make there and hands off once, and
+      // a module built real in `rsc` can bring client references). Each step can add
+      // modules the other must see: the server-fn resolver's rebuilds (the server
+      // compiler's) bring the provider modules and what they import, so new denied modules
+      // and new edges arriving at them; a module served otherwise than the edges arriving
+      // at it in the compilation's graph ask for is built again (`serveAsDemanded`), and
+      // one built real brings its imports, so possibly server fns the resolver must have
+      // (a build has no next compilation). The resolver until its content settles, the
+      // settlement until nothing differs, again while the settlement built something and
+      // the resolver changed
+      const fnResolver = opts.serverFnResolver
+        ? serverFnResolverRebuild(opts.serverFnResolver)
+        : null
       compiler.hooks.finishMake.tapPromise(
-        { name: `${PLUGIN_NAME}:serve-as-demanded`, stage: -5 },
+        { name: `${PLUGIN_NAME}:close`, stage: -10 },
         (compilation) =>
           reporting(
             compilation.errors,
             'Building the out-of-date modules again',
             async () => {
-              const envs = ipEnvs()
-              if (compilation.compiler === compiler && envs.length > 0) {
-                await serveAsDemanded(envs, compilation)
+              if (compilation.compiler !== compiler) {
+                await fnResolver?.child(compilation)
+                return
+              }
+              const flipped = new Set<string>()
+              for (let round = 0; ; round++) {
+                const rebuilt = (await fnResolver?.close(compilation)) ?? false
+                if (round > 0 && !rebuilt) {
+                  return
+                }
+                // (a user layer's environment may be found while modules build)
+                const envs = ipEnvs()
+                if (
+                  envs.length === 0 ||
+                  !(await serveAsDemanded(envs, compilation, flipped))
+                ) {
+                  return
+                }
               }
             },
           ),

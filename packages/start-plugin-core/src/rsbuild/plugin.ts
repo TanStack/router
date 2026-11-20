@@ -2,7 +2,6 @@ import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { joinURL } from 'ufo'
-import { rebuildModules } from '@tanstack/router-utils/compiler'
 import { createStartConfigContext } from '../config-context'
 import { normalizePath } from '../utils'
 import { addWorkspaceWatchIgnored } from './watch-ignored'
@@ -14,7 +13,6 @@ import {
 import { registerStartCompiler } from './start-compiler'
 import { registerVirtualModules } from './virtual-modules'
 import { registerClientBuildCapture } from './normalized-client-build'
-import { tapServerFnResolverRebuild } from './server-fn-resolver-rebuild'
 import { tapManifestRebuild } from './manifest-rebuild'
 import { postBuildWithRsbuild } from './post-build'
 import { modifyStartRsbuildConfig } from './rsbuild-config'
@@ -120,6 +118,11 @@ export function tanStackStartRsbuild(
         onServerFnsChange: () => {
           updateServerFnResolver?.()
         },
+        serverFnResolver: {
+          path: () => virtualModuleState.serverFnResolverPath,
+          update: () => virtualModuleState.updateServerFnResolver(),
+          writeCount: () => virtualModuleState.getServerFnResolverWriteCount(),
+        },
         isEntry: (file) => entryPaths().has(normalizePath(file)),
       })
 
@@ -147,20 +150,6 @@ export function tanStackStartRsbuild(
 
           config.plugins.push({
             apply(compiler: RspackCompiler) {
-              tapServerFnResolverRebuild(compiler, {
-                name: 'TanStackStartServerFnResolverRebuild',
-                updateResolver: () => {
-                  virtualModuleState.updateServerFnResolver()
-                },
-                getResolverWriteCount: () =>
-                  virtualModuleState.getServerFnResolverWriteCount(),
-                rebuildResolver: (compilation) =>
-                  rebuildModules(
-                    compilation,
-                    new Set([virtualModuleState.serverFnResolverPath]),
-                    (r) => r,
-                  ),
-              })
               // Dev: each client compilation writes the manifest (step 9)
               // before this compiler compiles again (step 8's ordering), but
               // the write alone never builds the module again. A build

@@ -1,73 +1,68 @@
-import { reportingFailure } from '@tanstack/router-utils/compiler'
+import { rebuildModules } from '@tanstack/router-utils/compiler'
 import type { Rspack } from '@rsbuild/core'
 
-export interface ServerFnResolverRebuildOptions {
-  /** Name of the finishMake tap. */
-  name: string
-  /** Writes the current resolver content to its virtual module. */
-  updateResolver: () => void
-  /** Returns how many times this environment's resolver has been written. */
-  getResolverWriteCount: () => number
-  /** Rebuilds the resolver module in the given compilation. */
-  rebuildResolver: (compilation: Rspack.Compilation) => Promise<void>
+/** The server environment's server-fn resolver virtual module. */
+export interface ServerFnResolverModule {
+  /** Its path. */
+  path: () => string
+  /** Writes the current resolver content to it. */
+  update: () => void
+  /** How many times it has been written. */
+  writeCount: () => number
 }
 
-/** Rebuilds of the resolver within one `finishMake` (each may register the functions of modules it reaches). */
+/** Rebuilds of the resolver within one closure step (each may register the functions of modules it reaches). */
 const MAX_REBUILDS = 8
 
 /**
- * Rebuilds the server function resolver module at finishMake stage -10,
- * after stage -20 has refreshed the server function registry, until its
- * content settles: a rebuild builds the provider modules the manifest
- * imports and what they import, which may define server functions the
- * registry did not know yet (a function only another handler calls, with a
- * separate provider: J4.2 "in any module processing order"), so the
- * resolver is regenerated and rebuilt again while its content changes
- * (bounded).
+ * The resolver step of a server compiler's `finishMake` closure (the host
+ * plugin's, after the registry's refresh from the compilation's modules):
+ * rebuilds the server function resolver module until its content settles.
+ * A rebuild builds the provider modules the manifest imports and what they
+ * import, which may define server functions the registry did not know yet
+ * (a function only another handler calls, with a separate provider: J4.2
+ * "in any module processing order"), so the resolver is regenerated and
+ * rebuilt again while its content changes (bounded).
  *
  * Skips the rebuild when the resolver content has not changed since this
  * compiler last rebuilt it. Rebuilding an unchanged resolver can make Rspack
  * rebuild the whole chunk graph.
  */
-export function tapServerFnResolverRebuild(
-  compiler: Rspack.Compiler,
-  options: ServerFnResolverRebuildOptions,
-): void {
+export function serverFnResolverRebuild(resolver: ServerFnResolverModule): {
+  /** Rebuilds the resolver of the compiler's own compilation until its content settles; whether it rebuilt it. */
+  close: (compilation: Rspack.Compilation) => Promise<boolean>
+  /**
+   * Rebuilds it in a child compilation: child compilers copy `finishMake`
+   * taps from their parent. Child compilations always rebuild and do not
+   * change this compiler's state.
+   */
+  child: (compilation: Rspack.Compilation) => Promise<void>
+} {
   // Write count of the resolver content this compiler last rebuilt from.
   let rebuiltAtWriteCount: number | undefined
-
-  compiler.hooks.finishMake.tapPromise(
-    { name: options.name, stage: -10 },
-    (compilation) =>
-      reportingFailure(
-        compiler,
-        compilation.errors,
-        {
-          tag: '[tanstack-start]',
-          what: 'Building the server function resolver again',
-        },
-        async () => {
-          options.updateResolver()
-
-          // Child compilers copy finishMake taps from their parent. Child
-          // compilations always rebuild and do not change this compiler's state.
-          if (compilation.compiler !== compiler) {
-            await options.rebuildResolver(compilation)
-            return
-          }
-
-          for (let round = 0; round < MAX_REBUILDS; round++) {
-            // Read the count before the rebuild reads the resolver, so a write
-            // that lands during the rebuild causes another rebuild.
-            const writeCount = options.getResolverWriteCount()
-            if (writeCount === rebuiltAtWriteCount) {
-              return
-            }
-            await options.rebuildResolver(compilation)
-            rebuiltAtWriteCount = writeCount
-            options.updateResolver()
-          }
-        },
-      ),
-  )
+  const rebuild = (compilation: Rspack.Compilation) =>
+    rebuildModules(compilation, new Set([resolver.path()]), (r) => r)
+  return {
+    async close(compilation) {
+      resolver.update()
+      let rebuilt = false
+      for (let round = 0; round < MAX_REBUILDS; round++) {
+        // Read the count before the rebuild reads the resolver, so a write
+        // that lands during the rebuild causes another rebuild.
+        const writeCount = resolver.writeCount()
+        if (writeCount === rebuiltAtWriteCount) {
+          break
+        }
+        await rebuild(compilation)
+        rebuilt = true
+        rebuiltAtWriteCount = writeCount
+        resolver.update()
+      }
+      return rebuilt
+    },
+    async child(compilation) {
+      resolver.update()
+      await rebuild(compilation)
+    },
+  }
 }

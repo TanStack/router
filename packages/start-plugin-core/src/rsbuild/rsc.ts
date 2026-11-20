@@ -3,7 +3,6 @@
  * native RSC plugins (step 7), and the RSC build's manifest placeholder
  * replacement in the server assets (step 8b).
  */
-import { rebuildModules } from '@tanstack/router-utils/compiler'
 import { CALLABLE_IDS_PLACEHOLDER } from '../server-fns/resolver'
 import { isJsAsset } from './compiler-session'
 import {
@@ -12,7 +11,6 @@ import {
   RSBUILD_RSC_LAYER_RESOLVE,
 } from './planning'
 import { START_MANIFEST_PLACEHOLDER } from './virtual-modules'
-import { tapServerFnResolverRebuild } from './server-fn-resolver-rebuild'
 import { tapManifestRebuild } from './manifest-rebuild'
 import { enableSwcReactServerComponents } from './swc-rsc'
 import type { registerClientBuildCapture } from './normalized-client-build'
@@ -133,25 +131,6 @@ export function registerRsc(
           },
         }),
       )
-
-      config.plugins.push({
-        apply(compiler: RspackCompiler) {
-          tapServerFnResolverRebuild(compiler, {
-            name: 'TanStackStartRscServerFnResolverRebuild',
-            updateResolver: () => {
-              virtualModuleState.updateServerFnResolver()
-            },
-            getResolverWriteCount: () =>
-              virtualModuleState.getServerFnResolverWriteCount(),
-            rebuildResolver: (compilation) =>
-              rebuildModules(
-                compilation,
-                new Set([virtualModuleState.serverFnResolverPath]),
-                (r) => r,
-              ),
-          })
-        },
-      })
 
       config.plugins.push({
         apply(compiler: RspackCompiler) {

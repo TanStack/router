@@ -135,6 +135,53 @@ describe('Rsbuild build, a denied target in a layer of the user', () => {
     timeout,
   )
 
+  // the target the settlement builds real calls a server fn of a file
+  // nothing else imports: the build's server-fn resolver has it.
+  // Source: the RSC phase 1 re-check 2 (/var/tmp/rsc-p1-recheck2/report.md
+  // §1, `isolated.py simple`: 2f8afeccc0 answered 500 "Server function info
+  // not found", db260cf3a3 rendered `LATE_FN_VALUE`)
+  test(
+    "RSC: the exempt importer's real module calls a server fn only it imports: the page renders its value",
+    async () => {
+      const built = await build(
+        {
+          ...files,
+          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createIsomorphicFn } from '@tanstack/react-start'
+import { read } from '../feature'
+const label = createIsomorphicFn()
+  .server(() => read())
+  .client(() => 'client control')
+export const Route = createFileRoute('/')({
+  loader: async () => ({ value: await label() }),
+  component: Home,
+})
+function Home() {
+  return <main data-testid="label">{Route.useLoaderData().value}</main>
+}
+`,
+          'src/onlyFn.ts': `import { createServerFn } from '@tanstack/react-start'
+export const onlyFn = createServerFn().handler(() => 'LATE_FN_VALUE')
+`,
+          'src/private.client.ts': `import { onlyFn } from './onlyFn'
+export const denied = () => onlyFn()
+`,
+        },
+        layouts[0]!.rules,
+        { exclude: ['**/feature.ts'] },
+        true,
+      )
+      expect(violationsOf(built)).toEqual([])
+      const { url } = await built.preview()
+      const response = await fetch(new URL('/', url))
+      expect({
+        status: response.status,
+        label: texts(await response.text(), 'label'),
+      }).toEqual({ status: 200, label: ['LATE_FN_VALUE'] })
+    },
+    timeout,
+  )
+
   // the RSC analogue: the exempt server component's marked module, moved to
   // the user's layer, renders its value
   test(

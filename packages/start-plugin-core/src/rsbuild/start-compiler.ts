@@ -17,6 +17,7 @@ import { createRsbuildRouteGenerator } from './router-generator'
 import { vueScriptBlockRule } from './vue'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { TransformImportRule } from './compiler-session'
+import type { ServerFnResolverModule } from './server-fn-resolver-rebuild'
 import type { StartCompilerEnvironment } from '../compiler/session'
 import type { TanStackStartRsbuildInputConfig } from './schema'
 import type { TanStackStartRsbuildPluginCoreOptions } from './types'
@@ -41,6 +42,8 @@ interface RegisterStartCompilerOptions {
   writeVirtualModule: (envName: string, file: string, content: string) => void
   /** The resolver virtual module content changed (after a `finishMake` replay). */
   onServerFnsChange: () => void
+  /** The server environment's server-fn resolver module, rebuilt in its compiler's `finishMake` closure. */
+  serverFnResolver: ServerFnResolverModule
   /** Whether a path is an app entry (import protection: a marked entry is its own violation). */
   isEntry: (path: string) => boolean
 }
@@ -225,6 +228,10 @@ export function registerStartCompiler(
         clientRouteTree:
           environment.type === 'client' ? generator.clientRouteTree : undefined,
         onServerFnsReplayed: opts.onServerFnsChange,
+        serverFnResolver:
+          environment.name === RSBUILD_ENVIRONMENT_NAMES.server
+            ? opts.serverFnResolver
+            : undefined,
         onDevCompileDone: dev ? api.onDevCompileDone : undefined,
         fillMapTexts:
           environment.type === 'client' ||

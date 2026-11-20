@@ -29,8 +29,9 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
   extension, imported as an asset, stays intact); it decodes only to compile.
 - `asset-query-loader.ts` is a pitch-only loader on ids with an asset query (`x.server.ts?raw`): a denied file's mock
   replaces it before it is read; any other file is left untouched, its bytes never decoded.
-- `server-fn-resolver-rebuild.ts` rebuilds the server-function resolver within `finishMake` while its content still
-  changes (each rebuild may register the functions of the provider modules it reaches; bounded).
+- `server-fn-resolver-rebuild.ts` rebuilds the server-function resolver while its content still changes (each rebuild
+  may register the functions of the provider modules it reaches; bounded): the resolver step of the host plugin's
+  `finishMake` closure.
 - `manifest-rebuild.ts` rebuilds the Start manifest module within the server compiler's `finishMake` once a client
   compilation wrote it (dev; RSC builds too): Rspack's watcher ignores `node_modules`, so the write alone never builds
   it again.
@@ -99,7 +100,11 @@ Rspack persists with the module. At `finishMake` (stage −20) the host plugin r
 the registry with those of every module of the compilation (built now or restored from the persistent cache) and of
 its child compilations (done during `make`), and the
 resolver virtual module is rewritten;
-at stage −10 the resolver module itself is rebuilt while its content changes (`server-fn-resolver-rebuild.ts`). The resolver is a manifest importing each provider module; production builds
+at stage −10 the host plugin closes the compilation (on the server compiler, before the RSC plugin's client handoff at
+stage 0): the resolver module itself is rebuilt while its content changes (`server-fn-resolver-rebuild.ts`), then
+import protection's settlement (below) builds again the modules served otherwise than their importers ask for, and the
+two steps repeat while the settlement built something and the resolver's content changed: each can add modules the
+other must see (a provider's imports; a module built real defines server functions). The resolver is a manifest importing each provider module; production builds
 whose SSR environment is the provider list only client-referenced functions (the client compiles first:
 `MultiCompiler.setDependencies`). When the SSR environment is the provider, every module defining server functions
 has a `?tss-serverfn-handler` derived module (its lazy module), which the resolver imports and which re-exports each
