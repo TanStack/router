@@ -276,12 +276,6 @@ export class StartRsbuildCompilerSession {
    * it, and its preparation.
    */
   private run: { compilers: Set<string>; ready: Promise<void> } | null = null
-  /**
-   * The HTTP-callable server fns of the last client build (J4.2, R182):
-   * those its emitted code calls (`publishClientOutput`); null before the
-   * client's first build.
-   */
-  private callableIds: ReadonlySet<string> | null = null
 
   constructor(opts: StartRsbuildSessionOptions) {
     this.rscEnabled = opts.rsc !== undefined
@@ -368,7 +362,7 @@ export class StartRsbuildCompilerSession {
     }
     this.hosts.clear()
     this.missing.clear()
-    this.callableIds = null
+    this.start.forgetClientOutput()
     for (const env of this.envs.values()) {
       env.compiled = new Set()
     }
@@ -1083,11 +1077,6 @@ export class StartRsbuildCompilerSession {
     }
   }
 
-  /** A production client build emitted `codes` (its JS assets, minified and with final ids): the callable set. */
-  publishClientOutput(codes: ReadonlyArray<string>): void {
-    this.callableIds = this.start.clientCallableIds(codes)
-  }
-
   /**
    * The resolver module of an environment: the registry's manifest, of the
    * client-referenced entries in production builds whose SSR environment is
@@ -1105,10 +1094,11 @@ export class StartRsbuildCompilerSession {
   resolverModule(): string {
     const { opts } = this.start
     const entries = this.start.registry.entries()
+    const callable = this.start.clientPublication()?.callable ?? null
     return manifestResolverModule({
       entries:
         opts.mode === 'build' && opts.rsc !== undefined
-          ? providedEntries(entries, this.callableIds)
+          ? providedEntries(entries, callable)
           : entries,
       providerModuleId,
       clientReferencedOnly: opts.mode === 'build' && opts.rsc === undefined,
@@ -1124,7 +1114,7 @@ export class StartRsbuildCompilerSession {
           ? undefined
           : opts.rsc !== undefined
             ? JSON.stringify(CALLABLE_IDS_PLACEHOLDER)
-            : JSON.stringify([...(this.callableIds ?? [])].sort()),
+            : JSON.stringify([...(callable ?? [])].sort()),
     })
   }
 
@@ -1134,7 +1124,8 @@ export class StartRsbuildCompilerSession {
    * filled in after the ids were patched, so its placeholders resolve here).
    */
   callableIdsLiteral(): string {
-    if (!this.callableIds) {
+    const callable = this.start.clientPublication()?.callable
+    if (!callable) {
       throw new Error(
         'TanStack Start could not gate the server functions of the rsbuild RSC server because the client build was unavailable',
       )
@@ -1142,7 +1133,7 @@ export class StartRsbuildCompilerSession {
     const allocator =
       this.start.allocator && this.start.allocateIds('client').allocator
     return JSON.stringify(
-      [...this.callableIds]
+      [...callable]
         .map((id) => (allocator ? allocator.patch(id).code : id))
         .sort(),
     )

@@ -357,7 +357,9 @@ export async function startRscRsbuildPreviewServer(options: {
     name: 'rsc-preview-harness:compile-errors',
     setup(api: {
       onAfterCreateCompiler: (
-        callback: (params: { compiler: Parameters<typeof compiles.track>[0] }) => void,
+        callback: (params: {
+          compiler: Parameters<typeof compiles.track>[0]
+        }) => void,
       ) => void
       onAfterBuild: (callback: () => void) => void
       onAfterEnvironmentCompile: (

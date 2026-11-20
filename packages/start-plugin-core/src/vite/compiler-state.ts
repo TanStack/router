@@ -37,7 +37,10 @@ import { resolveImportProtectionConfig } from '../import-protection/config'
 import { escapeRegExp, resolveViteId } from '../utils'
 import { invalidateRegistry, reloadMismatched } from './invalidation'
 import { createVirtualWaits } from './virtual-waits'
-import type { StartCompilerEnvironment } from '../compiler/session'
+import type {
+  ClientPublication,
+  StartCompilerEnvironment,
+} from '../compiler/session'
 import type {
   CompileOutcome,
   CompiledOutputLike,
@@ -257,6 +260,11 @@ export function watchesSentinel(
   return { build: { watch: { include: [SENTINEL_RE] } } }
 }
 
+/** The publication of a client build that is no production build. */
+const NOTHING_CALLABLE: ClientPublication = Object.freeze({
+  callable: new Set<string>(),
+})
+
 /** What the server embeds of a client build, as a digest (the manifest's maps by their entries). */
 function clientBuildDigest(
   manifest: ClientManifest,
@@ -272,7 +280,7 @@ function clientBuildDigest(
         [...(clientBuild.cssContentByFileName ?? [])],
         cssCodeSplitDisabledFileName ?? null,
         functionIds,
-        callableIds,
+        [...callableIds].sort(),
       ]),
     )
     .digest('base64url')
@@ -296,8 +304,8 @@ export interface ClientBuildRecord {
   manifest: ClientManifest
   /** The server fns the client's compiles stubbed (the resolver's manifest: server code calls them by id too). */
   functionIds: ReadonlySet<string>
-  /** Those whose client call survives in the client's emitted code: the HTTP-callable ones (R182). */
-  callableIds: ReadonlySet<string>
+  /** What the client's emitted code calls: the HTTP-callable ones (R182). */
+  publication: ClientPublication
 }
 
 /** The client build as the server's modules embed it (`ViteCompilerState.embedClientBuild`). */
@@ -306,7 +314,7 @@ export interface ClientBuilds {
   publishClientBuild: (
     environment: Environment,
     manifest: ClientManifest,
-    /** The code of the client's emitted chunks (`ClientBuildRecord.callableIds`). */
+    /** The code of the client's emitted chunks (`ClientBuildRecord.publication`). */
     codes: ReadonlyArray<string>,
   ) => void
   /** A module of a server environment's build embeds the run's client build (null: none built in this run). */
@@ -662,16 +670,18 @@ export class ViteCompilerState implements ClientBuilds {
       .map((e) => e.id)
       .sort()
     // (a production build's: a bundled dev client builds too)
-    const callableIds =
+    const publication =
       environment.mode === 'build'
-        ? [...s.start.clientCallableIds(codes)].sort()
-        : []
-    const digest = clientBuildDigest(manifest, functionIds, callableIds)
+        ? s.start.publishClientOutput(codes)
+        : NOTHING_CALLABLE
+    const digest = clientBuildDigest(manifest, functionIds, [
+      ...publication.callable,
+    ])
     s.clientBuild = {
       digest,
       manifest,
       functionIds: new Set(functionIds),
-      callableIds: new Set(callableIds),
+      publication,
     }
     this.followClientBuild(s, environment)
   }

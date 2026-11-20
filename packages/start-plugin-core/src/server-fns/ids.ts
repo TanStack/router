@@ -160,7 +160,7 @@ export const ID_QUOTES = ['"', "'", '`'] as const
 /**
  * The string literals a module can print `id` as, in each quote (a
  * minifier picks the quote): what a client build's code holds of a server
- * fn it calls (`StartCompilerSession.clientCallableIds`).
+ * fn it calls (`StartCompilerSession.publishClientOutput`).
  */
 export function idLiterals(id: string): Array<string> {
   return ID_QUOTES.map((quote) => quote + escapeFor(quote, id) + quote)

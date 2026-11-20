@@ -203,7 +203,7 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
           ...e,
           clientReferenced: clientBuild?.functionIds.has(e.id) ?? false,
         }))
-      const callableIds = [...(clientBuild?.callableIds ?? [])]
+      const callableIds = [...(clientBuild?.publication.callable ?? [])].sort()
       if (this.environment.name !== state.opts.providerEnvName) {
         const mod = state.envOf(this.environment.name)?.getServerFnById
         if (mod) {

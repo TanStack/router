@@ -170,6 +170,8 @@ export class StartCompilerSession {
   /** The custom-id allocator (with a custom `generateFunctionId`). */
   readonly allocator: FunctionIdAllocator | null
   readonly warnings = new WarningLedger()
+  /** The last production client build's publication (`publishClientOutput`); null before the run's first. */
+  private published: ClientPublication | null = null
   private readonly routerConfigs = new Map<
     'client' | 'server',
     RouterPlannerConfig
@@ -569,6 +571,26 @@ export class StartCompilerSession {
   }
 
   /**
+   * A production client build emitted `codes` (its JS assets or chunks,
+   * minified, with final ids): what it calls, held as the run's
+   * publication until the next client build or run (`forgetClientOutput`).
+   */
+  publishClientOutput(codes: ReadonlyArray<string>): ClientPublication {
+    this.published = Object.freeze({ callable: this.clientCallableIds(codes) })
+    return this.published
+  }
+
+  /** The last client build's publication of the run (null: none yet). */
+  clientPublication(): ClientPublication | null {
+    return this.published
+  }
+
+  /** A new production run: no client build published yet. */
+  forgetClientOutput(): void {
+    this.published = null
+  }
+
+  /**
    * The HTTP-callable server fns of a production build (J4.2, R182): the
    * client-referenced entries whose id still occurs as a string literal in
    * the client build's emitted code (`codes`, tree-shaken, custom ids
@@ -582,7 +604,7 @@ export class StartCompilerSession {
    * the literals by their first `k` characters (the shortest literal's
    * length, at most 12), so a quote looks up the few that can start there.
    */
-  clientCallableIds(codes: ReadonlyArray<string>): Set<string> {
+  private clientCallableIds(codes: ReadonlyArray<string>): Set<string> {
     const allocator = this.allocator && this.allocateIds('client').allocator
     const literals: Array<{ literal: string; id: string }> = []
     let k = 12
@@ -638,6 +660,16 @@ export class StartCompilerSession {
     releaseEnvironment(this.caches, envName)
     this.ip?.release(envName)
   }
+}
+
+/**
+ * What a production client build's emitted code calls (J4.2, R182): the
+ * registry ids of the server fns whose client call survives in it, the
+ * HTTP-callable ones. One value per client build; a later build publishes
+ * another.
+ */
+export interface ClientPublication {
+  readonly callable: ReadonlySet<string>
 }
 
 /**

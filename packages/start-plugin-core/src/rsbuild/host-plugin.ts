@@ -972,13 +972,14 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               name: PLUGIN_NAME,
               stage: Compilation.PROCESS_ASSETS_STAGE_REPORT,
             },
-            () =>
-              session.publishClientOutput(
+            () => {
+              session.start.publishClientOutput(
                 compilation
                   .getAssets()
                   .filter((asset) => isJsAsset(asset.name))
                   .map((asset) => asset.source.source().toString()),
-              ),
+              )
+            },
           )
         }
       })

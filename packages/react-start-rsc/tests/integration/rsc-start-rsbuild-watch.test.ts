@@ -65,9 +65,7 @@ function Page() {
     await page.page.click('[data-testid=call]')
     expect(
       await answeredText(page, '[data-testid=call]', (text) => text !== 'none'),
-    ).toBe(
-      'MARK_PLAIN',
-    )
+    ).toBe('MARK_PLAIN')
     const dist = path.join(server.root, 'dist')
     const holding: Array<string> = []
     for (const entry of await readdir(dist, {
