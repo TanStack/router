@@ -12,6 +12,8 @@ import {
 import { START_MANIFEST_PLACEHOLDER } from './virtual-modules'
 import { tapManifestRebuild } from './manifest-rebuild'
 import { enableSwcReactServerComponents } from './swc-rsc'
+import type { RscManifestLike } from './flight-check'
+import type { registerStartCompiler } from './start-compiler'
 import type { registerClientBuildCapture } from './normalized-client-build'
 import type {
   ModifyRspackConfigFn,
@@ -50,9 +52,11 @@ export function registerRsc(
     getClientBuild: ReturnType<
       typeof registerClientBuildCapture
     >['getClientBuild']
+    startCompiler: ReturnType<typeof registerStartCompiler>
   },
 ): void {
   const { resolvedStartConfig, virtualModuleState, getClientBuild } = opts
+  const { startCompiler } = opts
   // ---------------------------------------------------------------
   // 7. RSC: rspack layer rules + native RSC plugins
   //    When RSC is enabled, we add:
@@ -127,6 +131,19 @@ export function registerRsc(
               event: 'rsc:update',
             })
           },
+          // the Flight check's delivered side (`flight-check.ts`), in
+          // builds only: in development the whole manifest would cross the
+          // binding at every compilation (RSC decision E1)
+          onManifest:
+            api.context.action === 'build'
+              ? (manifest: RscManifestLike) => {
+                  // (a throw in the native callback ends the process)
+                  const session = startCompiler.session()
+                  if (session) {
+                    session.flightManifest = manifest
+                  }
+                }
+              : undefined,
         }),
       )
 

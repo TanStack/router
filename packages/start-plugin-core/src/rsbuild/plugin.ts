@@ -215,6 +215,7 @@ export function tanStackStartRsbuild(
           resolvedStartConfig,
           virtualModuleState,
           getClientBuild,
+          startCompiler: compiler,
         })
       }
 

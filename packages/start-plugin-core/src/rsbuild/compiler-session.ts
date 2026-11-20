@@ -35,6 +35,7 @@ import {
 } from '@tanstack/router-utils/compiler'
 import { StartCompilerSession, serverFnFactsOf } from '../compiler/session'
 import { isVueSfc } from '../compiler/vue'
+import type { RscManifestLike } from './flight-check'
 import { providedEntries, providerModuleId } from '../server-fns/registry'
 import { manifestResolverModule } from '../server-fns/resolver'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
@@ -273,6 +274,14 @@ export class StartRsbuildCompilerSession {
    * it, and its preparation.
    */
   private run: { compilers: Set<string>; ready: Promise<void> } | null = null
+
+  /**
+   * RSC production builds: the manifest Rspack's RSC ServerPlugin reported
+   * for the server's current compilation (`onManifest`, after its emit;
+   * null from the compilation's start): the Flight check's delivered side
+   * (`flight-check.ts`).
+   */
+  flightManifest: RscManifestLike | null = null
 
   constructor(opts: StartRsbuildSessionOptions) {
     this.rscEnabled = opts.rsc !== undefined

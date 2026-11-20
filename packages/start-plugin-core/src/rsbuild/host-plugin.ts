@@ -16,6 +16,7 @@ import path from 'node:path'
 import {
   compilerCacheKey,
   emittedMapTexts,
+  identify,
   invariantViolated,
   isRecordedDiagnostic,
   locateDiagnostics,
@@ -37,12 +38,18 @@ import { manifestFunctionsDiffering } from '../server-fns/resolver'
 import {
   LOCATED_DIAGNOSTICS,
   PLAN_BUILD_INFO_FIELD,
+  RSBUILD_RSC_ENVIRONMENT,
   SERVER_FN_BUILD_INFO_FIELD,
   canonicalResource,
   isJsAsset,
   resourcePath,
 } from './compiler-session'
 import { LOADER_REGISTRY } from './loader-registry'
+import {
+  liveClientReferences,
+  undeliveredReferences,
+  undeliveredWarning,
+} from './flight-check'
 import { serverFnResolverRebuild } from './server-fn-resolver-rebuild'
 import type { ServerFnResolverModule } from './server-fn-resolver-rebuild'
 import type { LoaderImpl } from './compiler-loader'
@@ -292,6 +299,20 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       const { Compilation, WebpackError } = rspack
       /** A failed `watchRun` of ours, reported by the compilation it started. */
       const failedBeforeCompilation: Array<Error> = []
+      /**
+       * The Flight check of an RSC production build's server compiler
+       * (`flight-check.ts`): the live client references of each compilation
+       * whose last settlement run built something, read at its report
+       * stage and compared at `done` with Rspack's manifest.
+       */
+      const flightCheck =
+        opts.serverFnResolver !== undefined &&
+        session.start.opts.rsc !== undefined &&
+        session.start.opts.mode === 'build'
+      const flightRequired = new WeakMap<
+        Rspack.Compilation,
+        Awaited<ReturnType<typeof liveClientReferences>>
+      >()
       /**
        * The import-protection requests each child compilation made
        * (`childCompilerViolations`) and not yet reported, by the compilation
@@ -808,6 +829,41 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
         compilation.errors.push(...failedBeforeCompilation.splice(0))
         currentCompilation = compilation
+        if (flightCheck) {
+          // (Rspack's manifest of this compilation comes after its emit)
+          session.flightManifest = null
+          compilation.hooks.processAssets.tapPromise(
+            {
+              name: PLUGIN_NAME,
+              stage: Compilation.PROCESS_ASSETS_STAGE_REPORT,
+            },
+            async () => {
+              if (histories.get(compilation)?.lateBuilt) {
+                flightRequired.set(
+                  compilation,
+                  await liveClientReferences(
+                    compilation as never,
+                    (module, holder) =>
+                      envKeyOfModule(module, holder) ===
+                      RSBUILD_RSC_ENVIRONMENT,
+                    async (resource) => {
+                      const id = canonicalResource(resource)
+                      return (
+                        identify(id).lang !== null &&
+                        (
+                          await session.start.rawFacts.get(
+                            id,
+                            RSBUILD_RSC_ENVIRONMENT,
+                          )
+                        ).targetFacts.useClient
+                      )
+                    },
+                  ),
+                )
+              }
+            },
+          )
+        }
         // (until its end: `childRequests`)
         childRequests.set(compilation, new Map())
         for (const env of session.envsOf(environment.name)) {
@@ -1053,6 +1109,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           flips: Map<string, Array<Flip>>
           contents: Array<string>
           round: number
+          /** The last run built a module (`flightCheck`). */
+          lateBuilt?: true
         }
       >()
 
@@ -1148,6 +1206,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               return
             }
             contents.push(content)
+            if (last) {
+              history.lateBuilt = true
+            }
             await fnResolver!.rebuild(compilation, content)
             graph = null
             unheld = true
@@ -1226,6 +1287,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           } else {
             for (const s of stale) {
               session.start.caches.stale.add(s.env.name, resourcePath(s.id))
+            }
+            if (last) {
+              history.lateBuilt = true
             }
             await session.drain.rebuild(
               environment.name,
@@ -1527,6 +1591,22 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             },
           ),
       )
+      // the Flight check's report (`flightCheck`), before the release of a
+      // production build's environment (the `done` tap above)
+      compiler.hooks.done.tap({ name: PLUGIN_NAME, stage: -1 }, (stats) => {
+        const required = flightRequired.get(stats.compilation)
+        const manifest = session.flightManifest
+        if (!required || !manifest) {
+          return
+        }
+        for (const missing of undeliveredReferences(required, manifest)) {
+          stats.compilation.warnings.push(
+            new WebpackError(
+              undeliveredWarning(missing, session.start.opts.root),
+            ),
+          )
+        }
+      })
       compiler.hooks.finishMake.tapPromise(
         { name: `${PLUGIN_NAME}:close-last`, stage: 0x7fffffff },
         (compilation) =>
