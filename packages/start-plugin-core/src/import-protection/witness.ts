@@ -279,18 +279,25 @@ export function rspackNodeGraph(
     }
     return out
   }
+  /** A node's modules holding its connections, and whether one is a module of the compilation itself. */
+  interface Entry {
+    held: Array<Held>
+    own: boolean
+  }
   // a production module can also be an inner module of a ConcatenatedModule (scope hoisting),
   // which holds the connections from outside the concatenation
-  let byNode: Map<string, Array<Held>> | null = null
-  /** The nodes of the compilation's own modules. */
-  const own = new Set<string>()
-  /** The environment of each module of the index (an inner module's, from its holder). */
+  /**
+   * The nodes, by environment and id: no key string per module (every
+   * later compilation's `hold` builds the index, of every module).
+   */
+  let byEnv: Map<string, Map<string, Entry>> | null = null
+  /** The environment of each concatenated inner module of the index (from its holder). */
   const envs = new Map<RspackModuleLike, string>()
   let entries: Set<string> | null = null
   const key = (env: string, id: string) => `${env}\0${id}`
-  const index = (): Map<string, Array<Held>> => {
-    if (!byNode) {
-      byNode = new Map()
+  const entryOf = (node: GraphNode): Entry | undefined => {
+    if (!byEnv) {
+      byEnv = new Map()
       for (const c of compilations()) {
         for (const m of c.modules) {
           for (const inner of [m, ...(m.modules ?? [])]) {
@@ -298,26 +305,33 @@ export function rspackNodeGraph(
               continue
             }
             const env = envOf(inner, m)
-            envs.set(inner, env)
-            const k = key(env, idOf(inner.resource))
-            if (c === compilation) {
-              own.add(k)
+            if (inner !== m) {
+              envs.set(inner, env)
             }
-            let list = byNode.get(k)
-            if (!list) {
-              list = []
-              byNode.set(k, list)
+            const id = idOf(inner.resource)
+            let ids = byEnv.get(env)
+            if (!ids) {
+              ids = new Map()
+              byEnv.set(env, ids)
+            }
+            let entry = ids.get(id)
+            if (!entry) {
+              entry = { held: [], own: false }
+              ids.set(id, entry)
+            }
+            if (c === compilation) {
+              entry.own = true
             }
             for (const holder of inner === m ? [m] : [inner, m]) {
-              if (!list.some((h) => h.module === holder)) {
-                list.push({ module: holder, moduleGraph: c.moduleGraph })
+              if (!entry.held.some((h) => h.module === holder)) {
+                entry.held.push({ module: holder, moduleGraph: c.moduleGraph })
               }
             }
           }
         }
       }
     }
-    return byNode
+    return byEnv.get(node.env)?.get(node.id)
   }
   return {
     importers(node) {
@@ -360,9 +374,7 @@ export function rspackNodeGraph(
           }
         }
       }
-      for (const { module, moduleGraph } of index().get(
-        key(node.env, node.id),
-      ) ?? []) {
+      for (const { module, moduleGraph } of entryOf(node)?.held ?? []) {
         visit(module, moduleGraph, false)
       }
       return out
@@ -385,10 +397,7 @@ export function rspackNodeGraph(
       }
       return entries.has(key(node.env, node.id))
     },
-    holds: (node) => index().has(key(node.env, node.id)),
-    builds(node) {
-      index()
-      return own.has(key(node.env, node.id))
-    },
+    holds: (node) => entryOf(node) !== undefined,
+    builds: (node) => entryOf(node)?.own === true,
   }
 }
