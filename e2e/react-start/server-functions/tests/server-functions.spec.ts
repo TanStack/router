@@ -314,6 +314,14 @@ test('CSRF middleware rejects cross-site Server function requests', async ({
   await expect(response.text()).resolves.toBe('Forbidden')
 })
 
+test('an unknown server function id responds with 404', async ({ request }) => {
+  const response = await request.post('/_serverFn/does-not-exist', {
+    headers: { 'x-tsr-serverFn': 'true', 'Sec-Fetch-Site': 'same-origin' },
+  })
+
+  expect(response.status()).toBe(404)
+})
+
 test("server function's dead code is preserved if already there", async ({
   page,
 }) => {

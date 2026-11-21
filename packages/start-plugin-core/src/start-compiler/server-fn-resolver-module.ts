@@ -42,7 +42,10 @@ export function generateServerFnResolverModule(
   const clientReferencedCheck = opts.includeClientReferencedCheck
     ? `
   if (access.origin === 'client' && !serverFnInfo.isClientReferenced) {
-    throw new Error('Server function not accessible from client: ' + id)
+    throw Object.assign(
+      new Error('Server function not accessible from client: ' + id),
+      { status: 404 },
+    )
   }
 `
     : ''
@@ -61,7 +64,9 @@ const manifest = {
 export async function getServerFnById(id, access) {
   const serverFnInfo = manifest[id]
   if (!serverFnInfo) {
-    throw new Error('Server function info not found for ' + id)
+    throw Object.assign(new Error('Server function info not found for ' + id), {
+      status: 404,
+    })
   }
 ${clientReferencedCheck}
   const fnModule = ${resolveModule}
