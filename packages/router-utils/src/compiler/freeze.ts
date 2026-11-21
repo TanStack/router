@@ -1412,7 +1412,8 @@ class Renderer {
   /**
    * Closes a boundary: V, G and L (`expression.ts`) on the shape that
    * rendered, the opening text in the reserved segment (mapped to the first
-   * token it wraps), the closing text after. `end`: the source offset the
+   * token it wraps), the closing text after (a `)` joins generated text it
+   * closes that is mapped). `end`: the source offset the
    * boundary ends at in place (-1: a recipe's position).
    */
   private closeExpr(
@@ -1484,6 +1485,21 @@ class Renderer {
         }
       }
     }
+    // (a closing parenthesis after generated text mapped to the source is
+    // that text's: it maps with the text it closes, as a callee's `(0, x)`)
+    if (suffix.charCodeAt(0) === 41 /* ) */) {
+      const i = this.lastRendered(out, from)
+      const seg = i === -1 ? undefined : out[i]!
+      if (
+        seg?.k === 'text' &&
+        seg.mapTo !== undefined &&
+        seg.edgeKey === undefined &&
+        seg.gen === undefined
+      ) {
+        out[i] = { k: 'text', text: seg.text + ')', mapTo: seg.mapTo }
+        suffix = suffix.slice(1)
+      }
+    }
     // (a new segment, not the reserved one written: every text segment of
     // a recipe has one of the shapes the emitter reads)
     if (opening !== '') {
@@ -1551,6 +1567,17 @@ class Renderer {
       }
     }
     return ''
+  }
+
+  /** The index of the last segment from `from` on that renders text (-1: none). */
+  private lastRendered(out: ReadonlyArray<Segment>, from: number): number {
+    for (let i = out.length - 1; i >= from; i--) {
+      const seg = out[i]!
+      if (seg.k === 'slice' ? seg.end > seg.start : seg.text !== '') {
+        return i
+      }
+    }
+    return -1
   }
 
   /** The source position the first text rendered from segment `from` on maps to, if it is mapped. */
