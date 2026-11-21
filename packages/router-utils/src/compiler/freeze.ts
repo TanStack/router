@@ -13,7 +13,7 @@ import { sameFileSpecifier } from './identity'
 import { dedupeEdges, sourceEdges } from './edges'
 import { specifierLiteral, specifierName } from './strings'
 import { isTypeOnlyExport, statementRecipe } from './units'
-import { namespaceName, opensNonExpressionStatement } from './source'
+import { namespaceName } from './source'
 import { extendOverTrailingLine, isLineTerminator, pragmasOf } from './header'
 import { erases } from './rewrite'
 import {
@@ -27,9 +27,11 @@ import {
   ROLE_VALUE,
   SHAPE_UNKNOWN,
   atStatementEdge,
+  edgeOpens,
   needsGroup,
-  needsSpace,
   needsValue,
+  spaceAfter,
+  spaceBefore,
   tokensMeet,
   withRef,
 } from './expression'
@@ -133,7 +135,7 @@ export function freezePlan(plan: AnalysisPlan, revision: string): FrozenPlan {
     const recipeEdges: Array<EdgeRecord> = []
     const importerId = decl.derivedId ?? plan.identity.canonicalId
     renderer.begin(importerId, recipeEdges)
-    const segments: Array<Segment> =
+    const segments: Array<Segment> = renderer.withoutReserved(
       id === 'env'
         ? renderEnv(
             plan,
@@ -143,7 +145,15 @@ export function freezePlan(plan: AnalysisPlan, revision: string): FrozenPlan {
             exportNameOf,
             glueExports,
           )
-        : renderDerived(plan, renderer, decl, placement, included, exportNameOf)
+        : renderDerived(
+            plan,
+            renderer,
+            decl,
+            placement,
+            included,
+            exportNameOf,
+          ),
+    )
     recipeEdges.push(
       ...sourceEdges(
         plan.analysis,
@@ -942,6 +952,22 @@ class Renderer {
     this.importerId = importerId
     this.edges = edges
     this.boundaryEnd = -1
+    this.reserved = false
+  }
+
+  /** The output's segments without the reserved texts its boundaries left empty (the recipe a plan cache keeps). */
+  withoutReserved(segments: Array<Segment>): Array<Segment> {
+    if (this.reserved) {
+      // (in place: the array the cache keeps is the one rendered)
+      let w = 0
+      for (const s of segments) {
+        if (s.k !== 'text' || s.text !== '' || s.edgeKey !== undefined) {
+          segments[w++] = s
+        }
+      }
+      segments.length = w
+    }
+    return segments
   }
 
   /** What the output renders, and whether an original byte renders in no text of it (`sourceEdges`). */
@@ -991,9 +1017,11 @@ class Renderer {
   private coreShape = -1
   /** The reference what rendered on the core reported (-1: none): a substituted or renamed reference. */
   private coreRef = -1
-  /** Where the last in-place boundary ended, and its last two characters: an edit or an insert rendering there meets them (rule L). */
+  /** Where the last in-place boundary ended, and its last character: an edit or an insert rendering there meets it (rule L). */
   private boundaryEnd = -1
   private boundaryLast = ''
+  /** Whether the output reserved a segment (a boundary's opening, a meeting space): some may have stayed empty. */
+  private reserved = false
 
   /** The segment visitor of the walk, one per renderer (its state is the span's). */
   private readonly spanVisitor: WalkVisitor = {
@@ -1041,14 +1069,19 @@ class Renderer {
       const out = this.spanOut
       const at = out.length
       const meet = this.meetsBoundary(n.start, out)
-      const place = this.view.placeOf(n)
+      const last = this.boundaryLast
+      const place = this.view.placeholderOf(n)
       if (place !== null) {
-        this.renderFrags(place, this.spanOwner, this.spanEnv, out, {
-          level: n,
-          skipAt: null,
-        })
+        const claimed = 'owner' in place
+        this.renderFrags(
+          claimed ? place.placeholder : place.body,
+          this.spanOwner,
+          this.spanEnv,
+          out,
+          { level: n, skipAt: null },
+        )
         if (n.start === this.coreStart && n.end === this.coreEnd) {
-          this.coreShape = SHAPE_UNKNOWN
+          this.coreShape = (!claimed && place.shape) || SHAPE_UNKNOWN
         }
       } else {
         this.renderEdit(
@@ -1059,7 +1092,7 @@ class Renderer {
           out,
         )
       }
-      this.meetBoundary(meet, out)
+      this.meetBoundary(meet, last, out)
       this.guardStatementStart(n.start, out, at)
     },
     insert: (e) => {
@@ -1067,8 +1100,9 @@ class Renderer {
       const out = this.spanOut
       const at = out.length
       const meet = this.meetsBoundary(e.range.start, out)
+      const last = this.boundaryLast
       this.renderFrags(e.body, this.spanOwner, this.spanEnv, out)
-      this.meetBoundary(meet, out)
+      this.meetBoundary(meet, last, out)
       this.guardStatementStart(e.range.start, out, at)
     },
   }
@@ -1209,9 +1243,11 @@ class Renderer {
               `conflict: region ${f.id} renders in its owner and at its place in ${this.view.output}`,
             )
           }
-          // (its text is out of the module's order: no boundary before it meets it)
+          // (its text is out of the module's order: no boundary outside it
+          // meets it, none inside it meets what follows)
           this.boundaryEnd = -1
           const expr = f.expr
+          const at = out.length
           const open = expr === undefined ? null : this.openExpr(node, out)
           if (expr?.head !== undefined) {
             out.push({ k: 'text', text: expr.head })
@@ -1220,13 +1256,15 @@ class Renderer {
           if (edit === null) {
             this.renderSpan(node, node.start, node.end, owner, mergedEnv, out)
           } else {
-            const at = out.length
             this.renderEdit(node, edit, owner, mergedEnv, out)
-            this.guardStatementStart(node.start, out, at)
           }
           if (open !== null) {
             this.closeExpr(open, expr!.dest, ROLE_MOVED, expr!.shape, -1, out)
           }
+          if (edit !== null) {
+            this.guardStatementStart(node.start, out, at)
+          }
+          this.boundaryEnd = -1
           break
         }
         case 'text': {
@@ -1299,13 +1337,26 @@ class Renderer {
     out: Array<Segment>,
   ): void {
     const slices: SliceLevel = { level: n, skipAt: null }
-    const atCore = n.start === this.coreStart && n.end === this.coreEnd
     const b = edit.expr
-    if (b === undefined || atCore) {
-      this.renderFrags(edit.body, owner, env, out, slices)
-      if (atCore && this.coreRef === -1) {
-        this.coreShape = SHAPE_UNKNOWN
+    if (n.start === this.coreStart && n.end === this.coreEnd) {
+      // (a boundary rendering bare hands its own kept node on: what renders
+      // there is all of the open boundary's text too)
+      if (b?.core) {
+        this.coreStart = b.core.start
+        this.coreEnd = b.core.end
       }
+      this.renderFrags(edit.body, owner, env, out, slices)
+      this.coreStart = n.start
+      this.coreEnd = n.end
+      if (b !== undefined) {
+        this.coreShape = SHAPE_UNKNOWN
+      } else if (this.coreRef === -1) {
+        this.coreShape = edit.shape ?? SHAPE_UNKNOWN
+      }
+      return
+    }
+    if (b === undefined) {
+      this.renderFrags(edit.body, owner, env, out, slices)
       return
     }
     const open = this.openExpr(b.core, out)
@@ -1327,6 +1378,7 @@ class Renderer {
       outerCoreRef: this.coreRef,
     }
     out.push(open.opening)
+    this.reserved = true
     this.coreStart = core?.start ?? -1
     this.coreEnd = core?.end ?? -1
     this.coreShape = -1
@@ -1368,7 +1420,7 @@ class Renderer {
       const group = needsGroup(
         dest,
         shape,
-        atStatementEdge(dest) && this.opensStatement(out, from),
+        atStatementEdge(dest) && edgeOpens(dest, this.renderedText(out, from)),
       )
       if (group === GROUP_PARENS) {
         prefix = '('
@@ -1385,26 +1437,27 @@ class Renderer {
       }
     }
     if (tokensMeet(dest)) {
-      const [beforeA, a] = this.lastChars(out, open.at)
+      const a = this.charBefore(out, open.at, 0)
       if (
-        needsSpace(beforeA, a, prefix.charAt(0) || this.firstChar(out, from))
+        spaceBefore(
+          a === '/' ? this.charBefore(out, open.at, 1) : '',
+          a,
+          prefix.charAt(0) || this.firstChar(out, from),
+        )
       ) {
         open.opening.text = ' ' + prefix
         open.opening.mapTo = undefined
       }
       if (end >= 0) {
-        const [beforeLast, last] =
+        const last =
           suffix === ''
-            ? this.lastChars(out, out.length)
-            : [
-                suffix.charAt(suffix.length - 2),
-                suffix.charAt(suffix.length - 1),
-              ]
-        if (needsSpace(beforeLast, last, this.code.charAt(end))) {
+            ? this.charBefore(out, out.length, 0)
+            : suffix.charAt(suffix.length - 1)
+        if (spaceAfter(last, this.code.charAt(end))) {
           suffix += ' '
         } else {
           this.boundaryEnd = end
-          this.boundaryLast = beforeLast + last
+          this.boundaryLast = last
         }
       }
     }
@@ -1419,38 +1472,29 @@ class Renderer {
       return -1
     }
     this.boundaryEnd = -1
+    this.reserved = true
     out.push({ k: 'text', text: '' })
     return out.length - 1
   }
 
   /** Rule L where an edit or an insert renders right after a boundary: a space when their characters would merge. */
-  private meetBoundary(at: number, out: Array<Segment>): void {
+  private meetBoundary(at: number, last: string, out: Array<Segment>): void {
     if (at === -1) {
       return
     }
-    const last = this.boundaryLast
-    if (
-      needsSpace(
-        last.charAt(last.length - 2),
-        last.charAt(last.length - 1),
-        this.firstChar(out, at + 1),
-      )
-    ) {
+    if (spaceAfter(last, this.firstChar(out, at + 1))) {
       out[at] = { k: 'text', text: ' ' }
     }
   }
 
-  /** Whether the text rendered from segment `from` on opens a block or a declaration written as a statement. */
-  private opensStatement(out: ReadonlyArray<Segment>, from: number): boolean {
+  /** The text rendered from segment `from` on. */
+  private renderedText(out: ReadonlyArray<Segment>, from: number): string {
     let text = ''
     for (let i = from; i < out.length; i++) {
       const seg = out[i]!
       text += seg.k === 'slice' ? this.code.slice(seg.start, seg.end) : seg.text
     }
-    return opensNonExpressionStatement(
-      text,
-      LEADING_TRIVIA.exec(text)![0].length,
-    )
+    return text
   }
 
   /** The first character rendered from segment `from` on ('' when none). */
@@ -1482,22 +1526,25 @@ class Renderer {
     return undefined
   }
 
-  /** The last two characters rendered before segment `before` (within the last segment holding text). */
-  private lastChars(
+  /** The last character rendered before segment `before` (`back` 1: the one before it, within that segment; '' when none). */
+  private charBefore(
     out: ReadonlyArray<Segment>,
     before: number,
-  ): [string, string] {
+    back: 0 | 1,
+  ): string {
     for (let i = before - 1; i >= 0; i--) {
       const seg = out[i]!
-      const text =
-        seg.k === 'slice'
-          ? this.code.slice(Math.max(seg.start, seg.end - 2), seg.end)
-          : seg.text
-      if (text !== '') {
-        return [text.charAt(text.length - 2), text.charAt(text.length - 1)]
+      if (seg.k === 'slice') {
+        if (seg.end > seg.start) {
+          return seg.end - 1 - back >= seg.start
+            ? this.code.charAt(seg.end - 1 - back)
+            : ''
+        }
+      } else if (seg.text !== '') {
+        return seg.text.charAt(seg.text.length - 1 - back)
       }
     }
-    return ['', '']
+    return ''
   }
 
   /**

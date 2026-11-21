@@ -20,7 +20,7 @@
  * grouping (`needsGroup`: the text would parse differently there); L, tokens
  * (`needsSpace`: the edge characters would merge with their neighbours).
  */
-import { isExpressionWrapper, unwrapExpression } from './source'
+import { isExpressionWrapper, nextToken, unwrapExpression } from './source'
 import type { Node } from 'yuku'
 
 type File = { parentOf: (node: Node) => Node | null }
@@ -64,7 +64,11 @@ const USE_TYPEOF = 5 << USE_SHIFT
 const D_CONTINUES = 1 << 5
 /** The follower is `.name` (a number's `.` would be its decimal point). */
 const D_DOT = 1 << 6
-/** Callee, tag, member object, heritage or decorator, directly. */
+/**
+ * Callee, tag, member object, heritage or decorator, directly; or the
+ * operand of `!`, the left of `<`: where JSX cannot stand (TypeScript and Oxc
+ * read what follows its closing `>` as more of it).
+ */
 const D_LHS = 1 << 7
 /** The expression's first token is the first token of a statement, an `export default` or an arrow's body. */
 const D_EDGE = 1 << 8
@@ -108,6 +112,8 @@ const REF_FREE = 2 << REF_SHIFT
 const REF_EVAL = 3 << REF_SHIFT
 /** A member (computed, private and optional ones too): called as itself, it gets a receiver. */
 export const REF_MEMBER = 4 << REF_SHIFT
+/** Not known (a nested call's implementation, a planner's text): any of the above, valued in every use. */
+const REF_UNKNOWN = 5 << REF_SHIFT
 
 /** The outer node is an optional chain (through `!`): something following would extend it. */
 const S_CHAIN = 1 << 5
@@ -116,7 +122,6 @@ const S_NEW_BARE = 1 << 6
 /** A number literal written with digits only: a `.` after it is its decimal point. */
 const S_DIGITS = 1 << 7
 const S_JSX = 1 << 8
-const S_STRING = 1 << 9
 /** Valid as a decorator as it is: a name, a dotted name, a call of one, a group. */
 const S_DECORATOR = 1 << 10
 /** Generated text that holds no `in` (a stub). */
@@ -125,9 +130,12 @@ const S_NO_IN = 1 << 11
 /**
  * What nothing else is known of: one complete expression, no bare sequence,
  * of any reference (a planner's edit that declares no shape, a nested
- * boundary): parentheses in operand positions, `(0, …)` where called.
+ * boundary): parentheses in operand positions, `(0, …)` where called,
+ * deleted, decorated or under `typeof`.
  */
-export const SHAPE_UNKNOWN: Shape = SHAPE_OPEN | REF_MEMBER
+export const SHAPE_UNKNOWN: Shape = SHAPE_OPEN | REF_UNKNOWN
+/** A planner's call (a server fn's stub, an RPC): grouped like one, no reference. */
+export const SHAPE_CALL: Shape = SHAPE_TIGHT
 /** A generated arrow without `in` (`() => {}`, a throwing stub). */
 export const SHAPE_ARROW: Shape = SHAPE_OPEN | S_NO_IN
 /** A method's function completed by its keyword (`function` + the region from its parameters on). */
@@ -138,9 +146,15 @@ export const SHAPE_FUNCTION: Shape = SHAPE_OPEN
 /**
  * The destination of the expression `node` replaces, read from the source
  * around it. `shape` is what goes there (the `for` initialiser is looked
- * for only when it could hold an `in` that matters).
+ * for only when it may hold an `in`); `forInit` memoises that climb for one
+ * plan, null when the module writes no `for`.
  */
-export function destOf(file: File, node: Node, shape: Shape): Dest {
+export function destOf(
+  file: File,
+  node: Node,
+  shape: Shape,
+  forInit: Map<Node, boolean> | null,
+): Dest {
   const parent = file.parentOf(node)
   if (parent === null) {
     return LEVEL_ANY
@@ -174,16 +188,20 @@ export function destOf(file: File, node: Node, shape: Shape): Dest {
   ) {
     d |= D_CONTINUES
   }
-  if (atEdge(file, node)) {
+  if (atEdge(file, node, parent)) {
     d |= D_EDGE
     if (parent.type === 'ExpressionStatement' && inPrologue(file, parent)) {
       d |= D_PROLOGUE
     }
   }
-  if ((shape & LEVEL_MASK) < SHAPE_TIGHT && !(shape & S_NO_IN)) {
-    if (inForInit(file, node)) {
-      d |= D_NO_IN
-    }
+  // (a kept node may render as something looser than its source, a nested
+  // call's implementation: only generated text that holds no `in` is spared)
+  if (
+    forInit !== null &&
+    !(shape & S_NO_IN) &&
+    inForInit(file, node, parent, forInit)
+  ) {
+    d |= D_NO_IN
   }
   return d
 }
@@ -208,13 +226,17 @@ function slotOf(parent: Node, node: Node): Dest {
       return parent.superClass === node ? LEVEL_OPERAND | D_LHS : LEVEL_NO_COMMA
     case 'Decorator':
       return LEVEL_OPERAND | D_LHS | D_DECORATOR
-    case 'UnaryExpression':
+    case 'TSNonNullExpression':
+      return LEVEL_OPERAND | D_LHS
     case 'BinaryExpression':
+      return parent.operator === '<' && parent.left === node
+        ? LEVEL_OPERAND | D_LHS
+        : LEVEL_OPERAND
+    case 'UnaryExpression':
     case 'LogicalExpression':
     case 'AwaitExpression':
     case 'TSAsExpression':
     case 'TSSatisfiesExpression':
-    case 'TSNonNullExpression':
     case 'TSTypeAssertion':
     case 'TSInstantiationExpression':
       return LEVEL_OPERAND
@@ -255,9 +277,9 @@ function useOf(p: Node, n: Node): Dest {
  * expression or of an arrow's expression body: every node between starts
  * where it does (`node.bind(x)()`, `node as T`, `node, b`).
  */
-function atEdge(file: File, node: Node): boolean {
+function atEdge(file: File, node: Node, parent: Node): boolean {
   let n = node
-  for (let p = file.parentOf(n); p; n = p, p = file.parentOf(p)) {
+  for (let p: Node | null = parent; p; n = p, p = file.parentOf(p)) {
     if (
       p.type === 'ExpressionStatement' ||
       p.type === 'ExportDefaultDeclaration'
@@ -309,16 +331,43 @@ function inPrologue(file: File, statement: Node): boolean {
 }
 
 /** Whether `node` is in the initialiser of a classic `for`, outside any block. */
-function inForInit(file: File, node: Node): boolean {
-  for (let n = node, p = file.parentOf(n); p; n = p, p = file.parentOf(p)) {
-    if (p.type === 'ForStatement') {
-      return p.init === n
-    }
-    if (p.type === 'BlockStatement') {
-      return false
-    }
+function inForInit(
+  file: File,
+  node: Node,
+  parent: Node,
+  memo: Map<Node, boolean>,
+): boolean {
+  if (parent.type === 'ForStatement') {
+    return parent.init === node
   }
-  return false
+  if (parent.type === 'BlockStatement') {
+    return false
+  }
+  // (memoised on the ancestors climbed: nested and sibling kept nodes share
+  // them, and each level is a parent query)
+  const path: Array<Node> = []
+  let result = false
+  for (let n = parent; ; ) {
+    const known = memo.get(n)
+    if (known !== undefined) {
+      result = known
+      break
+    }
+    path.push(n)
+    const p = file.parentOf(n)
+    if (p === null || p.type === 'BlockStatement') {
+      break
+    }
+    if (p.type === 'ForStatement') {
+      result = p.init === n
+      break
+    }
+    n = p
+  }
+  for (const n of path) {
+    memo.set(n, result)
+  }
+  return result
 }
 
 const TIGHT = new Set([
@@ -373,9 +422,7 @@ export function shapeOf(
       }
       break
     case 'Literal':
-      if (typeof node.value === 'string') {
-        s |= S_STRING
-      } else if (/^\d[\d_]*$/.test(code.slice(node.start, node.end))) {
+      if (/^\d[\d_]*$/.test(code.slice(node.start, node.end))) {
         s |= S_DIGITS
       }
       break
@@ -418,13 +465,17 @@ export function needsValue(dest: Dest, role: Role, shape: Shape): boolean {
   switch (dest & USE_MASK) {
     case USE_CALL:
     case USE_TAG:
-      return ref === REF_MEMBER || (role === ROLE_VALUE && ref === REF_EVAL)
+      return (
+        ref === REF_MEMBER ||
+        ref === REF_UNKNOWN ||
+        (role === ROLE_VALUE && ref === REF_EVAL)
+      )
     case USE_DECORATOR:
-      return ref === REF_MEMBER
+      return ref === REF_MEMBER || ref === REF_UNKNOWN
     case USE_DELETE:
       return role === ROLE_VALUE
     case USE_TYPEOF:
-      return role === ROLE_VALUE && ref === REF_FREE
+      return role === ROLE_VALUE && (ref === REF_FREE || ref === REF_UNKNOWN)
     default:
       return false
   }
@@ -441,13 +492,13 @@ export const GROUP_ARGUMENTS = 2
  * G: whether the text would parse differently where it stands. Three levels
  * of precedence, no operator table (an `OPEN` expression is grouped in every
  * operand position), then the cases precedence does not describe.
- * `opensStatement`: the first rendered token opens a declaration or a block
- * written as a statement (`opensNonExpressionStatement`).
+ * `opensAtEdge`: what rendered at a statement's, an `export default`'s or
+ * an arrow body's first token would be read otherwise there (`edgeOpens`).
  */
 export function needsGroup(
   dest: Dest,
   shape: Shape,
-  opensStatement: boolean,
+  opensAtEdge: boolean,
 ): number {
   const level = shape & LEVEL_MASK
   if (
@@ -456,15 +507,16 @@ export function needsGroup(
   ) {
     // (SWC 1.15.33 prints `(new Factory)()` as `new Factory()`, dropping the
     // call: https://github.com/swc-project/swc/issues/12810; `new Factory()`
-    // is the same value)
-    return shape & S_NEW_BARE ? GROUP_ARGUMENTS : GROUP_PARENS
+    // is the same value, but no decorator)
+    return shape & S_NEW_BARE && !(dest & D_DECORATOR)
+      ? GROUP_ARGUMENTS
+      : GROUP_PARENS
   }
   return (dest & D_CONTINUES && shape & S_CHAIN) ||
     (dest & D_LHS && dest & D_DOT && shape & S_DIGITS) ||
     (dest & D_LHS && shape & S_JSX) ||
     (dest & D_DECORATOR && !(shape & S_DECORATOR)) ||
-    (dest & D_EDGE && opensStatement) ||
-    (dest & D_PROLOGUE && shape & S_STRING)
+    (dest & D_EDGE && opensAtEdge)
     ? GROUP_PARENS
     : GROUP_NONE
 }
@@ -488,34 +540,98 @@ export function withRef(shape: Shape, ref: Shape): Shape {
 }
 
 /**
- * L: whether a space goes between the characters `a` and `b` where a
- * boundary's edge meets its neighbour: two identifier characters would be
- * one name, `+ +` and `- -` one operator, `/ /` a comment, `/` then `*` a
- * comment, a regular expression's `/` then letters its flags, `!` then `=`
- * an inequality (`n!` then `==`). `beforeA`: the character before `a` (a `/`
- * after `*` ends a comment, not a regular expression).
+ * G's edge rules on `text`, what a boundary rendered at `dest`'s edge:
+ * written as a statement it would open a block or a declaration (G7), or,
+ * a string alone in a directive prologue, be a directive (G8).
  */
-export function needsSpace(beforeA: string, a: string, b: string): boolean {
+export function edgeOpens(dest: Dest, text: string): boolean {
+  return (
+    opensNonExpressionStatement(text, nextToken(text, 0)) ||
+    ((dest & D_PROLOGUE) !== 0 && STRING_ALONE.test(text))
+  )
+}
+
+/** One string literal, the whole text. */
+const STRING_ALONE =
+  /^\s*(?:"(?:[^"\\\n\r]|\\[\s\S])*"|'(?:[^'\\\n\r]|\\[\s\S])*')\s*$/
+
+/**
+ * Whether code whose first token is at `start` would, written as a
+ * statement, start a block, a declaration or a `let` declaration instead of
+ * an expression (`{ a: f() };`, `function () {}();`, a decorated class
+ * `@dec class {}.f();`): an expression put there needs parentheses.
+ * Whitespace and comments may separate `async` from `function` and `let`
+ * from `[`.
+ */
+function opensNonExpressionStatement(code: string, start: number): boolean {
+  const first = /[{@]|function\b|class\b|async\b|let\b/y
+  first.lastIndex = start
+  const token = first.exec(code)?.[0]
+  if (token === 'async') {
+    const second = /function\b/y
+    second.lastIndex = nextToken(code, first.lastIndex)
+    return second.test(code)
+  }
+  if (token === 'let') {
+    return code[nextToken(code, first.lastIndex)] === '['
+  }
+  return token !== undefined
+}
+
+/**
+ * L at a boundary's start: whether a space goes between `a`, the last
+ * character rendered before it (`beforeA` the one before that), and `b`, its
+ * first character. Two identifier characters would be one name, `+ +` and
+ * `- -` one operator (`n+F(+n)`), a division then `/` or `*` a comment
+ * (`n/F(/re/g)`), `<` then `/` a closing tag to TypeScript's JSX scanner
+ * (`x<F(/re/)`). What precedes a call in valid source is never a regular
+ * expression's closing `/` (its letters would be flags), and the end of a
+ * comment merges with nothing.
+ */
+export function spaceBefore(beforeA: string, a: string, b: string): boolean {
+  return (
+    meets(a, b) ||
+    (a === '/' && beforeA !== '*' && (b === '/' || b === '*')) ||
+    (a === '<' && b === '/')
+  )
+}
+
+/**
+ * L at a boundary's end: whether a space goes between `a`, its last
+ * character, and `b`, the next one. As at the start, and: a regular
+ * expression's `/` then letters would take them as flags (`F(/re/)in o`),
+ * a number's last `.` then letters would be read as one token (`F(1.)in o`),
+ * `!` then `=` an inequality (`F(n!)==5`).
+ */
+export function spaceAfter(a: string, b: string): boolean {
+  return (
+    meets(a, b) ||
+    (a === '/' && (b === '/' || b === '*' || isIdentifierChar(b))) ||
+    (a === '.' && isIdentifierChar(b)) ||
+    (a === '!' && b === '=')
+  )
+}
+
+/** Two identifier characters, or the same one of `+`, `-`, `<`. */
+function meets(a: string, b: string): boolean {
   if (a === '' || b === '') {
     return false
   }
-  if (isIdentifierChar(a)) {
-    return isIdentifierChar(b)
-  }
-  switch (a) {
-    case '+':
-    case '-':
-    case '<':
-      return b === a
-    case '/':
-      return b === '/' || b === '*' || (beforeA !== '*' && isIdentifierChar(b))
-    case '!':
-      return b === '='
-    default:
-      return false
-  }
+  return isIdentifierChar(a)
+    ? isIdentifierChar(b)
+    : a === b && (a === '+' || a === '-' || a === '<')
 }
 
+/** A letter, a digit, `$`, `_`, `\` (an escape) or any character above ASCII. */
 function isIdentifierChar(c: string): boolean {
-  return /[\w$\\]/.test(c) || c.charCodeAt(0) > 127
+  const n = c.charCodeAt(0)
+  return (
+    (n >= 97 && n <= 122) || // a-z
+    (n >= 65 && n <= 90) || // A-Z
+    (n >= 48 && n <= 57) || // 0-9
+    n === 36 || // $
+    n === 95 || // _
+    n === 92 || // \
+    n > 127
+  )
 }

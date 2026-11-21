@@ -17,12 +17,13 @@
  * function-local declarators and destructured bindings.
  */
 import {
+  DEST_INITIALIZER,
+  SHAPE_ARROW,
+  SHAPE_CALL,
   cacheDisabled,
   derivedIdOf,
-  DEST_INITIALIZER,
   identifierBase,
   isExpressionWrapper,
-  opensNonExpressionStatement,
   patternIdentifiers,
   revision,
   sameFileSpecifier,
@@ -142,177 +143,6 @@ const text = (
 })
 const slice = (range: Range): Frag => ({ k: 'slice', range })
 const rangeOf = (n: Node): Range => ({ start: n.start, end: n.end })
-
-/**
- * Whether `node` is the left edge of a statement, of an `export default`
- * expression or of an arrow's expression body: every node between starts
- * where it does (`node.bind(x)()`, `node as T`, `node, b`). There, text that
- * opens a block or a declaration (`function`, `class`, `{`) would be read as
- * one.
- */
-function atStatementStart(
-  file: PlanContext['analysis']['file'],
-  node: Node,
-): boolean {
-  let n = node
-  for (let p = file.parentOf(n); p; n = p, p = file.parentOf(p)) {
-    if (
-      p.type === 'ExpressionStatement' ||
-      p.type === 'ExportDefaultDeclaration'
-    ) {
-      return true
-    }
-    if (p.type === 'ArrowFunctionExpression') {
-      return p.body === n
-    }
-    if (p.start !== n.start) {
-      return false
-    }
-  }
-  return false
-}
-
-/**
- * Whether the text of `kept` (or a generated arrow) needs parentheses when it
- * replaces the expression `original`. Decided on the node whose text is kept,
- * wrappers included: `impl as any` is no callee, `function f() {} as any`
- * opens a declaration. An `opaque` kept node is rewritten itself (a factory
- * call this planner replaces), so its text may have any shape.
- */
-function needsParens(
-  code: string,
-  kept: Node | 'arrow',
-  original: Node,
-  file: PlanContext['analysis']['file'],
-  opaque = false,
-): boolean {
-  if (
-    kept !== 'arrow' &&
-    opensNonExpressionStatement(code, kept.start) &&
-    atStatementStart(file, original)
-  ) {
-    return true
-  }
-  const parent = file.parentOf(original)
-  if (!parent) {
-    return false
-  }
-  const kind = opaque
-    ? 'opaque'
-    : kept === 'arrow'
-      ? 'ArrowFunctionExpression'
-      : kept.type
-  const loose = new Set([
-    'Identifier',
-    'Literal',
-    'CallExpression',
-    'MemberExpression',
-    'ArrayExpression',
-    'TemplateLiteral',
-    'ParenthesizedExpression',
-    'ThisExpression',
-    'JSXElement',
-    'JSXFragment',
-    'TaggedTemplateExpression',
-    'ChainExpression',
-  ])
-  if (loose.has(kind)) {
-    return false
-  }
-  // in a classic `for` initialiser an `in` the factory call's parentheses
-  // delimited would start a `for…in` (`for (let cb = 'a' in o ? f : g; ;)`)
-  if (kept !== 'arrow' && inForInit(file, original)) {
-    return true
-  }
-  switch (parent.type) {
-    case 'CallExpression':
-    case 'NewExpression':
-      return parent.callee === original
-    case 'MemberExpression':
-      return parent.object === original
-    case 'TaggedTemplateExpression':
-      return parent.tag === original
-    case 'ClassDeclaration':
-    case 'ClassExpression':
-      return parent.superClass === original
-    case 'UnaryExpression':
-    case 'BinaryExpression':
-    case 'LogicalExpression':
-    case 'AwaitExpression':
-    case 'TSAsExpression':
-    case 'TSSatisfiesExpression':
-    case 'TSNonNullExpression':
-    case 'TSTypeAssertion':
-    case 'ConditionalExpression':
-      return parent.type !== 'ConditionalExpression' || parent.test === original
-    default:
-      return false
-  }
-}
-
-/**
- * Whether `node` is in the initialiser of a classic `for`, outside any
- * block (a function body's statements are not the initialiser's grammar).
- */
-function inForInit(file: PlanContext['analysis']['file'], node: Node): boolean {
-  for (let n = node, p = file.parentOf(n); p; n = p, p = file.parentOf(p)) {
-    if (p.type === 'ForStatement') {
-      return p.init === n
-    }
-    if (p.type === 'BlockStatement') {
-      return false
-    }
-  }
-  return false
-}
-
-/**
- * The text of `kept` in place of the expression `original`: `(0, kept)`
- * where the value of `original` is called or tagged at once (through the
- * wrappers of `isExpressionWrapper`) and `kept` is a member or `eval`, which
- * called there would get a receiver or evaluate in place (the function a
- * factory returns calls its implementation with none); else `kept`, in
- * parentheses when `needsParens` says. A `new` without an argument list
- * takes an empty one there instead (`new Factory()`, same value): SWC 1.15.33
- * prints `(new Factory)()` (and `(new Factory<T>)()`) as `new Factory()`,
- * dropping the call (https://github.com/swc-project/swc/issues/12810). A
- * `kept` call in `replaced` (a factory call passed to another) renders as
- * its own rewrite, of any shape: it is treated as one of unknown shape.
- */
-function keptText(
-  code: string,
-  kept: Node,
-  original: Node,
-  file: PlanContext['analysis']['file'],
-  replaced: ReadonlySet<Node>,
-): Array<Frag> {
-  let n = original
-  let p = file.parentOf(n)
-  while (p && isExpressionWrapper(p) && p.expression === n) {
-    n = p
-    p = file.parentOf(p)
-  }
-  const value = unwrapExpression(kept)
-  const opaque = replaced.has(value)
-  if (
-    ((p?.type === 'CallExpression' && p.callee === n) ||
-      (p?.type === 'TaggedTemplateExpression' && p.tag === n)) &&
-    (opaque ||
-      value.type === 'MemberExpression' ||
-      (value.type === 'Identifier' && value.name === 'eval'))
-  ) {
-    return [text('(0, '), slice(rangeOf(kept)), text(')')]
-  }
-  if (!needsParens(code, kept, original, file, opaque)) {
-    return [slice(rangeOf(kept))]
-  }
-  // no argument list: the node ends at its callee or its type arguments
-  // (`new Factory<T>`, which SWC prints without them)
-  return kept.type === 'NewExpression' &&
-    (kept.typeArguments ?? kept.callee).end === kept.end
-    ? [slice(rangeOf(kept)), text('()')]
-    : [text('('), slice(rangeOf(kept)), text(')')]
-}
 
 /**
  * Whether a call continues the expression `node` once its wrappers and
@@ -906,18 +736,6 @@ function planStartEnv(
       }
     }
   }
-  /** An environment rewrite: the text of the call, wherever it renders (a stubbed handler's place hides it). */
-  const envEdit = (range: Range, body: Array<Frag>) => {
-    rewrites.edit({ range, body, by })
-  }
-
-  // the calls steps 3-4 replace: one kept as another's implementation renders as its rewrite
-  const replaced = new Set<Node>(analysis.envOnlyCalls.map((c) => c.call))
-  for (const chain of analysis.chains) {
-    if (compilesIsoFn(chain)) {
-      replaced.add(chain.terminal)
-    }
-  }
   // the implementations this environment keeps, each rendering in place of its factory call
   const wantLink = isServer ? 'server' : 'client'
   const keptBy = new Map<Node, Node>()
@@ -931,7 +749,7 @@ function planStartEnv(
     }
   }
   for (const chain of analysis.chains) {
-    const link = replaced.has(chain.terminal)
+    const link = compilesIsoFn(chain)
       ? chain.links.find((l) => l.method === wantLink)
       : undefined
     if (link?.arg && !link.argIsSpread) {
@@ -963,30 +781,34 @@ function planStartEnv(
         continue
       }
       // (the edit replaces the terminal inside its wrappers: `x as T` keeps its `as`)
-      envEdit(
-        rangeOf(X),
-        keptText(ctx.analysis.source.code, link.arg, X, file, replaced),
-      )
+      ctx.replaceExpression({
+        node: X,
+        with: { k: 'kept', node: link.arg },
+        by,
+      })
       continue
     }
     if (chain.headIsFactoryCall) {
-      const parens = needsParens(ctx.analysis.source.code, 'arrow', X, file)
-      envEdit(rangeOf(X), [text(parens ? '(() => {})' : '() => {}')])
+      ctx.replaceExpression({
+        node: X,
+        with: { k: 'generated', body: [text('() => {}')], shape: SHAPE_ARROW },
+        by,
+      })
       continue
     }
     if (chain.links.length > 0) {
       // the implementation lives on the stored receiver (this module or another): strip this segment's links
-      envEdit(
-        rangeOf(X),
-        keptText(ctx.analysis.source.code, chain.head, X, file, replaced),
-      )
+      ctx.replaceExpression({
+        node: X,
+        with: { k: 'kept', node: chain.head },
+        by,
+      })
     }
   }
 
   // ---- 4. env-only fns
   for (const c of analysis.envOnlyCalls) {
     const own = (c.kind === 'server') === isServer
-    const wrapped = c.call
     if (own) {
       if (c.arg === null || c.arg.type === 'SpreadElement') {
         diag(
@@ -995,24 +817,28 @@ function planStartEnv(
         )
         continue
       }
-      envEdit(
-        rangeOf(c.call),
-        keptText(ctx.analysis.source.code, c.arg, wrapped, file, replaced),
-      )
+      ctx.replaceExpression({
+        node: c.call,
+        with: { k: 'kept', node: c.arg },
+        by,
+      })
     } else {
       if (c.arg !== null && c.kind === 'server') {
         // (the stub below is the call's text)
         erased.push(rangeOf(c.arg))
       }
       const message = `create${c.kind === 'server' ? 'Server' : 'Client'}OnlyFn() functions can only be called on the ${c.kind}!`
-      const parens = needsParens(
-        ctx.analysis.source.code,
-        'arrow',
-        wrapped,
-        file,
-      )
-      const stub = `() => { throw new Error(${stringLiteral(message, '"')}) }`
-      envEdit(rangeOf(c.call), [text(parens ? `(${stub})` : stub)])
+      ctx.replaceExpression({
+        node: c.call,
+        with: {
+          k: 'generated',
+          body: [
+            text(`() => { throw new Error(${stringLiteral(message, '"')}) }`),
+          ],
+          shape: SHAPE_ARROW,
+        },
+        by,
+      })
     }
   }
 
@@ -1134,6 +960,7 @@ function planStartEnv(
           text(`${lastArg})`),
         ],
         by,
+        shape: SHAPE_CALL,
       })
       facts.serverFns.push(
         serverFnFact(site, id, name, exportName, provider, rootRel),
@@ -1149,6 +976,7 @@ function planStartEnv(
         body: [text({ sym: rpc, ctx: 'callee' }, `(${moduleLiteral(id)})`)],
         scope: role === 'ssr-caller' ? 'all-outputs' : envScope,
         by,
+        shape: SHAPE_CALL,
       })
       if (role === 'ssr-caller') {
         facts.serverFns.push(

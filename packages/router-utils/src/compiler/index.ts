@@ -31,13 +31,17 @@ export type { PlanKey } from './identity'
 export {
   forEachChild,
   isExpressionWrapper,
-  opensNonExpressionStatement,
   parseModule,
   patternIdentifiers,
   unwrapExpression,
 } from './source'
 export { OutputBuilder, SourceText } from './output-builder'
-export { DEST_INITIALIZER, SHAPE_ARROW, SHAPE_FUNCTION } from './expression'
+export {
+  DEST_INITIALIZER,
+  SHAPE_ARROW,
+  SHAPE_CALL,
+  SHAPE_FUNCTION,
+} from './expression'
 export type { Dest, Shape } from './expression'
 export {
   identifierBase,

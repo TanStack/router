@@ -147,4 +147,83 @@ export function nestedArrow() {
     },
     timeout,
   )
+
+  // a kept optional chain continued by what follows the call: unparenthesised,
+  // `cfg?.impl.name` would read `undefined` where the source throws, and
+  // `box?.f.tag = 1` does not parse. Source: Astra review of the splicing
+  // design (class A1)
+  test(
+    'a server-only fn kept as an optional chain the call site continues: a failed read throws, an assignment builds',
+    async () => {
+      const { ssr } = await buildStart({
+        bundler,
+        files: {
+          'entry.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+const cfg: any = undefined
+export function read() {
+  try { return createServerOnlyFn(cfg?.impl).name } catch { return 'threw' }
+}
+export function readNonNull() {
+  try { return createServerOnlyFn(cfg?.impl)!.name } catch { return 'threw' }
+}
+const box: any = { f() {} }
+createServerOnlyFn(box?.f).tag = 1
+export const tag = box.f.tag
+`,
+        },
+      })
+      expect(
+        (await ssr.run(`return [entry.read(), entry.readNonNull(), entry.tag]`))
+          .result,
+      ).toEqual(['threw', 'threw', 1])
+    },
+    timeout,
+  )
+
+  // a factory call kept as another's implementation renders as its own
+  // rewrite, whose text may open a block or a declaration where the outer
+  // call stood: `() => {}` returns nothing, `function () {}` at a
+  // statement's start is a declaration without a name. Source: Astra
+  // review of the splicing design (class A3)
+  test(
+    'nested env-only and isomorphic fns kept in an arrow body and at a statement start: the server runs them',
+    async () => {
+      const { ssr } = await buildStart({
+        bundler,
+        files: {
+          'entry.ts': `import { createIsomorphicFn, createServerOnlyFn } from '@tanstack/react-start'
+export const value = (() => createServerOnlyFn(createIsomorphicFn().server({} as any)))()
+export const log: Array<number> = []
+createServerOnlyFn(createServerOnlyFn(function () { log.push(1) }))
+createServerOnlyFn(createServerOnlyFn(function () { log.push(2) }))()
+`,
+        },
+      })
+      expect((await ssr.run(`return [entry.value, entry.log]`)).result).toEqual(
+        [{}, [2]],
+      )
+    },
+    timeout,
+  )
+
+  // the kept text's last character beside the source's next token: `impl`
+  // then `in` would be one identifier. Source: Astra review of the
+  // splicing design (class A2)
+  test(
+    'a server-only fn followed by an operator written without a space: the server evaluates the operator',
+    async () => {
+      const { ssr } = await buildStart({
+        bundler,
+        files: {
+          'entry.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+const impl = () => 1
+const o = { x: 1 }
+export const r = createServerOnlyFn(impl)in o
+`,
+        },
+      })
+      expect((await ssr.run(`return entry.r`)).result).toBe(false)
+    },
+    timeout,
+  )
 })

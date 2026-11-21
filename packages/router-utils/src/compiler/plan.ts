@@ -273,6 +273,8 @@ export class AnalysisPlan implements PlanContext {
   /** Module-wide renames (`renameRefs`): the symbol glue and generated text name instead. */
   readonly renames = new Map<SymbolId, SymbolId>()
   config: unknown = undefined
+  /** `destOf`'s climb to a classic `for` initialiser, per node, while planners run (null: the module writes no `for`). */
+  private forInitMemo: Map<Node, boolean> | null | undefined = undefined
 
   constructor(
     readonly analysis: ModuleAnalysis,
@@ -343,11 +345,21 @@ export class AnalysisPlan implements PlanContext {
           : w.body,
       by: r.by,
       expr: {
-        dest: destOf(this.analysis.file, r.node, shape),
+        dest: destOf(this.analysis.file, r.node, shape, this.forInit()),
         shape,
         core: core === null ? null : { start: core.start, end: core.end },
       },
     })
+  }
+
+  /** `destOf`'s memo, created with the first boundary (a module without the word `for` has no `for` statement). */
+  private forInit(): Map<Node, boolean> | null {
+    if (this.forInitMemo === undefined) {
+      this.forInitMemo = /\bfor\b/.test(this.analysis.source.code)
+        ? new Map()
+        : null
+    }
+    return this.forInitMemo
   }
 
   shapeOf(node: Node): Shape {
@@ -534,6 +546,8 @@ export class AnalysisPlan implements PlanContext {
 
   /** The core phase after all planners: placement over the live rewrite tree. */
   resolve(): Placement {
+    // (planning is over: no boundary is added after it)
+    this.forInitMemo = undefined
     // function-scope declarations only erased code read go once every
     // planner erased what it erases (placement decides the module level)
     if (this.rewrites.view('env').erasedParts().length > 0) {

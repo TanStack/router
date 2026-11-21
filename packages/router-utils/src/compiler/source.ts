@@ -117,32 +117,6 @@ export function unwrapExpression(node: Node): Node {
   return n
 }
 
-/**
- * Whether code whose first token is at `start` would, written as a
- * statement, start a block, a declaration or a `let` declaration instead of
- * an expression (`{ a: f() };`, `function () {}();`, a decorated class
- * `@dec class {}.f();`): an expression put there needs parentheses.
- * Whitespace and comments may separate `async` from `function` and `let`
- * from `[`.
- */
-export function opensNonExpressionStatement(
-  code: string,
-  start: number,
-): boolean {
-  const first = /[{@]|function\b|class\b|async\b|let\b/y
-  first.lastIndex = start
-  const token = first.exec(code)?.[0]
-  if (token === 'async') {
-    const second = /function\b/y
-    second.lastIndex = nextToken(code, first.lastIndex)
-    return second.test(code)
-  }
-  if (token === 'let') {
-    return code[nextToken(code, first.lastIndex)] === '['
-  }
-  return token !== undefined
-}
-
 /** The identifiers a binding pattern declares, in source order. */
 export function patternIdentifiers(
   p: Node,

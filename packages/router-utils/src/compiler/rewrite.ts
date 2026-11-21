@@ -117,6 +117,11 @@ export interface Edit {
   by: string
   /** The body is one complete expression in place of the range's (`AnalysisPlan.replaceExpression`). */
   expr?: ExprBoundary
+  /**
+   * What the body is as an expression, when it renders on the kept node of
+   * an expression boundary (`expression.ts`; default: unknown).
+   */
+  shape?: Shape
 }
 
 /** An expression boundary in place (`expression.ts`): where the expression stands, and what renders there. */
@@ -720,6 +725,7 @@ export class RewriteSet {
     body: ReadonlyArray<Frag>
     by: string
     expr?: ExprBoundary
+    shape?: Shape
   }): void {
     this.add({ ...edit, scope: 'all-outputs' })
   }
@@ -766,6 +772,7 @@ export class RewriteSet {
     body: ReadonlyArray<PlaceFrag>
     scope: EditScope
     by: string
+    shape?: Shape
   }): void {
     const p: Placeholder = { ...place }
     const node = this.regions.node(place.range, place.by)
@@ -1668,7 +1675,8 @@ function same<T extends Edit>(found: T | null, e: T, n: RangeNode): T {
   if (
     !fragsEqual(found.body, e.body) ||
     found.expr?.dest !== e.expr?.dest ||
-    found.expr?.shape !== e.expr?.shape
+    found.expr?.shape !== e.expr?.shape ||
+    found.shape !== e.shape
   ) {
     throw new Error(
       `conflict: ${found.by} and ${e.by} both rewrite [${n.start}, ${n.end}) with different bodies`,
