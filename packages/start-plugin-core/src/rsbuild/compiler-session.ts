@@ -927,11 +927,17 @@ export class StartRsbuildCompilerSession {
     }
     // From here on every exit is this module's compile: its record of server
     // fns follows it, also when it reports none (Rspack keeps a custom
-    // `buildInfo` field of the module's previous build in a rebuild)
-    const buildInfo = ctx._module?.buildInfo
+    // `buildInfo` field of the module's previous build in a rebuild). A
+    // module that reports none had a record only if the registry, whose
+    // snapshots read the records, knows it (reading `buildInfo` creates it)
+    const forgetServerFns = () => {
+      if (this.start.registry.definedIn(identity.canonicalId)) {
+        recordServerFns(ctx._module?.buildInfo, identity.canonicalId, null)
+      }
+    }
     const source = loaderText(bytes)
     if (!late && !this.start.compiles(identity.path, source)) {
-      recordServerFns(buildInfo, identity.canonicalId, null)
+      forgetServerFns()
       return passthrough
     }
     let parsedInputMap: InputSourceMap | null | undefined
@@ -958,7 +964,7 @@ export class StartRsbuildCompilerSession {
       this.hostFor(env),
     )
     if (!out) {
-      recordServerFns(buildInfo, identity.canonicalId, null)
+      forgetServerFns()
       return passthrough
     }
     this.reportDiagnostics(
@@ -970,6 +976,7 @@ export class StartRsbuildCompilerSession {
       late || isVueSfc(identity.path) ? readInputMap : undefined,
     )
     const mock = await this.protect(ctx, env, id, out)
+    const buildInfo = ctx._module?.buildInfo
     if (env.compiler.persistsModules && out.persisted && buildInfo) {
       // one string: Rspack converts a structured field value by value
       buildInfo[PLAN_BUILD_INFO_FIELD] = JSON.stringify(out.persisted)
