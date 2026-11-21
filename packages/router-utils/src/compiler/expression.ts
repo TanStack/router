@@ -73,9 +73,10 @@ const D_LHS = 1 << 7
 /** The expression's first token is the first token of a statement, an `export default` or an arrow's body. */
 const D_EDGE = 1 << 8
 /**
- * A statement of a list with a directive prologue (a module, a function
- * body): what precedes it may render as nothing (a removed import, a
- * declaration only erased code read, a type the lowering erases), and a
+ * All of a statement once TypeScript's wrappers around it are erased (`x`,
+ * `x as T`, `<T>x`, `x!`), in a list with a directive prologue (a module, a
+ * function body): what precedes it may render as nothing (a removed import,
+ * a declaration only erased code read, a type the lowering erases), and a
  * string statement first in the list is a directive.
  */
 const D_PROLOGUE = 1 << 9
@@ -195,12 +196,17 @@ export function destOf(
   }
   if (atEdge(file, node, parent)) {
     d |= D_EDGE
-    if (
-      parent.type === 'ExpressionStatement' &&
-      inDirectiveList(file, parent)
-    ) {
-      d |= D_PROLOGUE
-    }
+  }
+  // (the statement it is all of once the lowering erases the wrappers
+  // around it: `<T>` stands before it, so the edge is no condition)
+  n = node
+  p = parent
+  while (p !== null && isErased(p) && p.expression === n) {
+    n = p
+    p = file.parentOf(p)
+  }
+  if (p?.type === 'ExpressionStatement' && inDirectiveList(file, p)) {
+    d |= D_PROLOGUE
   }
   // (a kept node may render as something looser than its source, a nested
   // call's implementation: only generated text that holds no `in` is spared)
@@ -302,6 +308,30 @@ function atEdge(file: File, node: Node, parent: Node): boolean {
     }
   }
   return false
+}
+
+/** A TypeScript wrapper a lowering erases, leaving its operand where it stood (a group stays). */
+function isErased(node: Node): node is Extract<
+  Node,
+  {
+    type:
+      | 'TSAsExpression'
+      | 'TSSatisfiesExpression'
+      | 'TSNonNullExpression'
+      | 'TSTypeAssertion'
+      | 'TSInstantiationExpression'
+  }
+> {
+  switch (node.type) {
+    case 'TSAsExpression':
+    case 'TSSatisfiesExpression':
+    case 'TSNonNullExpression':
+    case 'TSTypeAssertion':
+    case 'TSInstantiationExpression':
+      return true
+    default:
+      return false
+  }
 }
 
 /** Whether `statement` is in a list that starts with a directive prologue: a module or a function body. */
@@ -508,14 +538,18 @@ export function needsGroup(
     (dest & D_LHS && dest & D_DOT && shape & S_DIGITS) ||
     (dest & D_LHS && shape & S_JSX) ||
     (dest & D_DECORATOR && !(shape & S_DECORATOR)) ||
-    (dest & D_EDGE && opensAtEdge)
+    opensAtEdge
     ? GROUP_PARENS
     : GROUP_NONE
 }
 
-/** Whether G's `opensStatement` is asked: the destination is a statement's, an `export default`'s or an arrow body's first token. */
+/**
+ * Whether G's edge rules are asked (`edgeOpens`): the destination is a
+ * statement's, an `export default`'s or an arrow body's first token, or all
+ * of a statement of a module or a function body once erased.
+ */
 export function atStatementEdge(dest: Dest): boolean {
-  return (dest & D_EDGE) !== 0
+  return (dest & (D_EDGE | D_PROLOGUE)) !== 0
 }
 
 /** Whether L is asked at the boundary's edges (a recipe's position is delimited by the recipe). */
@@ -534,19 +568,74 @@ export function withRef(shape: Shape, ref: Shape): Shape {
 /**
  * G's edge rules on `text`, what a boundary rendered at `dest`'s edge:
  * written as a statement it would open a block or a declaration (G7), or,
- * a string alone in a module or a function body, be a directive once what
- * precedes it renders as nothing (G8).
+ * a string alone in a module or a function body once TypeScript's wrappers
+ * are erased, be a directive once what precedes it renders as nothing (G8).
  */
 export function edgeOpens(dest: Dest, text: string): boolean {
   return (
-    opensNonExpressionStatement(text, nextToken(text, 0)) ||
-    ((dest & D_PROLOGUE) !== 0 && STRING_ALONE.test(text))
+    ((dest & D_EDGE) !== 0 &&
+      opensNonExpressionStatement(text, nextToken(text, 0))) ||
+    ((dest & D_PROLOGUE) !== 0 && stringOnceErased(text))
   )
 }
 
-/** One string literal, the whole text. */
-const STRING_ALONE =
-  /^\s*(?:"(?:[^"\\\n\r]|\\[\s\S])*"|'(?:[^'\\\n\r]|\\[\s\S])*')\s*$/
+/** A string literal. */
+const STRING = /"(?:[^"\\\n\r]|\\[\s\S])*"|'(?:[^'\\\n\r]|\\[\s\S])*'/y
+/** The keyword of a wrapper whose type follows. */
+const TYPE_AFTER = /(?:as|satisfies)(?![\w$\u0080-\uffff])/y
+
+/**
+ * Whether `text`, one expression, is a string literal alone once
+ * TypeScript's wrappers are erased: `'s'`, `'s' as T`, `'s' satisfies T`,
+ * `'s'!`, `<T>'s'`, and chains of these. A type after `as` or `satisfies`
+ * is taken to run to the end, as it does on a wrapper of the string:
+ * `'s' as T || x` is grouped too, which changes nothing but its bytes.
+ */
+function stringOnceErased(text: string): boolean {
+  let i = nextToken(text, 0)
+  while (text.charCodeAt(i) === 60 /* < */) {
+    i = nextToken(text, typeArgumentsEnd(text, i))
+  }
+  STRING.lastIndex = i
+  if (!STRING.test(text)) {
+    return false
+  }
+  for (i = nextToken(text, STRING.lastIndex); i < text.length; ) {
+    if (text[i] === '!' && text[i + 1] !== '=') {
+      i = nextToken(text, i + 1)
+      continue
+    }
+    TYPE_AFTER.lastIndex = i
+    return TYPE_AFTER.test(text)
+  }
+  return true
+}
+
+/**
+ * The offset after the `>` closing the `<` at `start` (a type assertion's
+ * type), or the text's length: brackets of other kinds may nest, an arrow
+ * type's `=>` closes nothing, strings are skipped.
+ */
+function typeArgumentsEnd(text: string, start: number): number {
+  let depth = 0
+  for (let i = start; i < text.length; i++) {
+    const c = text[i]!
+    if (c === '<') {
+      depth++
+    } else if (c === '>' && text[i - 1] !== '=') {
+      if (--depth === 0) {
+        return i + 1
+      }
+    } else if (c === '"' || c === "'" || c === '`') {
+      const close = text.indexOf(c, i + 1)
+      if (close === -1) {
+        return text.length
+      }
+      i = close
+    }
+  }
+  return text.length
+}
 
 /**
  * Whether code whose first token is at `start` would, written as a

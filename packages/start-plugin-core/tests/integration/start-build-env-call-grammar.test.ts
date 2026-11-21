@@ -5,11 +5,79 @@
  * source's values are the expectation. Split from
  * start-build-top-level-env-calls.test.ts (per-file budget).
  */
+import { parseSync } from 'vite'
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../build-harness'
 import { nestedUnderWrappers } from '../compiler-inputs'
+import type { ESTree } from 'vite'
 
 const timeout = 60_000
+
+/** The TypeScript wrappers a lowering erases, leaving their operand (a group stays). */
+const erasedWrappers = new Set([
+  'TSAsExpression',
+  'TSSatisfiesExpression',
+  'TSNonNullExpression',
+  'TSTypeAssertion',
+  'TSInstantiationExpression',
+])
+
+/**
+ * The string statements of a module's or a function body's statement list
+ * once TypeScript's wrappers are erased (`'use strict' as any;` is
+ * `'use strict';`): directives, or strings the erasure makes ones. An
+ * independent parse of a TypeScript module.
+ */
+function directivesOnceErased(code: string): Array<string> {
+  const { program } = parseSync('module.ts', code, {
+    lang: 'ts',
+    sourceType: 'module',
+  })
+  const found: Array<string> = []
+  const list = (statements: ReadonlyArray<ESTree.Node>) => {
+    for (const statement of statements) {
+      if (statement.type !== 'ExpressionStatement') {
+        continue
+      }
+      let expression = statement.expression as ESTree.Node
+      while (erasedWrappers.has(expression.type)) {
+        expression = (expression as { expression: ESTree.Node }).expression
+      }
+      if (
+        expression.type === 'Literal' &&
+        typeof expression.value === 'string'
+      ) {
+        found.push(expression.value)
+      }
+    }
+  }
+  const visit = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      node.forEach(visit)
+      return
+    }
+    if (node === null || typeof node !== 'object') {
+      return
+    }
+    const n = node as ESTree.Node & Record<string, unknown>
+    if (
+      (n.type === 'FunctionDeclaration' ||
+        n.type === 'FunctionExpression' ||
+        n.type === 'ArrowFunctionExpression') &&
+      (n.body as ESTree.Node | null)?.type === 'BlockStatement'
+    ) {
+      list((n.body as ESTree.BlockStatement).body)
+    }
+    for (const [key, value] of Object.entries(n)) {
+      if (key !== 'parent') {
+        visit(value)
+      }
+    }
+  }
+  list(program.body)
+  visit(program.body)
+  return found
+}
 
 describe.each(startBundlers)('%s build', (bundler) => {
   // a replacement starting with `(` at the start of a statement of a
@@ -287,6 +355,90 @@ export const value = 2
         client: [],
         ssr: [],
       })
+    },
+    timeout,
+  )
+
+  // the same string under TypeScript wrappers only (`as`, `satisfies`, `!`,
+  // `<T>`), inside the call or around it: once the lowering erases them the
+  // statement is the string alone, a directive (`'use strict'` is a syntax
+  // error in a function with a default, rest or destructured parameter;
+  // Rsbuild's SWC erases the wrappers after the compiler ran). Vite's Oxc
+  // parenthesises such a string itself, so on Vite the compiler's own output
+  // is checked too, as the next `pre` plugin receives it. Source: Astra
+  // re-check of the splicing implementation (§2)
+  test(
+    'a string kept under TypeScript wrappers as a statement of a function or a module: no directive once they are erased',
+    async () => {
+      const compiled: Array<string> = []
+      const { ssr } = await buildStart({
+        bundler,
+        entry: { client: 'client.ts', ssr: 'ssr.ts' },
+        files: {
+          'src/strict.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+createServerOnlyFn('use client' as const)
+export function asserted(x = 1) {
+  type T = number
+  createServerOnlyFn('use strict' as any)
+  return x
+}
+export function satisfying(...xs: Array<number>) {
+  createServerOnlyFn('use strict' satisfies string)
+  return xs.length
+}
+export function nonNull({ x } = { x: 3 }) {
+  createServerOnlyFn('use strict'!)
+  return x
+}
+export function angle(x = 4) {
+  createServerOnlyFn(<any>'use strict')
+  return x
+}
+export const arrow = (x = 5) => {
+  createServerOnlyFn('use strict' as unknown as string)
+  return x
+}
+export function around(x = 6) {
+  createServerOnlyFn('use strict') as any
+  return x
+}
+export function angleAround(x = 7) {
+  <any>createServerOnlyFn('use strict')
+  return x
+}
+export function nonNullAround(x = 8) {
+  createServerOnlyFn('use strict')!
+  return x
+}
+`,
+          'client.ts': `export * from './src/strict'\n`,
+          'ssr.ts': `export * from './src/strict'\n`,
+        },
+        viteConfig: {
+          plugins: [
+            {
+              name: 'test:compiled-strict',
+              enforce: 'pre',
+              applyToEnvironment: (environment) => environment.name === 'ssr',
+              transform(code, id) {
+                if (id.endsWith('/src/strict.ts')) {
+                  compiled.push(code)
+                }
+              },
+            },
+          ],
+        },
+      })
+      expect(
+        (
+          await ssr.run(
+            `return [entry.asserted(), entry.satisfying(1, 2), entry.nonNull(), entry.angle(), entry.arrow(), entry.around(), entry.angleAround(), entry.nonNullAround()]`,
+          )
+        ).result,
+      ).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
+      if (bundler === 'vite') {
+        expect(compiled.map(directivesOnceErased)).toEqual([[]])
+      }
     },
     timeout,
   )
