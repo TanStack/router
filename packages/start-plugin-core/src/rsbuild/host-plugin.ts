@@ -1602,6 +1602,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       compiler.hooks.done.tap({ name: PLUGIN_NAME, stage: -1 }, (stats) => {
         const required = flightRequired.get(stats.compilation)
         const manifest = session.flightManifest
+        flightRequired.delete(stats.compilation)
+        session.flightManifest = null
         if (!required || !manifest) {
           return
         }

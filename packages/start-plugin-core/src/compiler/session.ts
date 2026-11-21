@@ -578,7 +578,8 @@ export class StartCompilerSession {
   /**
    * A production client build emitted `codes` (its JS assets or chunks,
    * minified, with final ids): what it calls, held as the run's
-   * publication until the next client build or run (`forgetClientOutput`).
+   * publication until the next client build (a run has a session of its
+   * own).
    */
   publishClientOutput(codes: ReadonlyArray<string>): ClientPublication {
     this.published = Object.freeze({ callable: this.clientCallableIds(codes) })
@@ -588,11 +589,6 @@ export class StartCompilerSession {
   /** The last client build's publication of the run (null: none yet). */
   clientPublication(): ClientPublication | null {
     return this.published
-  }
-
-  /** A new production run: no client build published yet. */
-  forgetClientOutput(): void {
-    this.published = null
   }
 
   /**

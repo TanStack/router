@@ -84,3 +84,79 @@ function Page() {
   },
   timeout,
 )
+
+const calls = (
+  fn: 'callA' | 'callB',
+) => `import { createFileRoute } from '@tanstack/react-router'
+import { createServerOnlyFn } from '@tanstack/react-start'
+import { createClientRpc } from '@tanstack/react-start/client-rpc'
+import { useState } from 'react'
+import { callA } from '../moved/a'
+import { callB } from '../moved/b'
+const urls = createServerOnlyFn(() => ({ a: callA.url, b: callB.url }))
+export const Route = createFileRoute('/moved')({ loader: () => urls(), component: Page })
+if (typeof window !== 'undefined') {
+  // Start's own client RPC of an id: the request a stub would send
+  ;(window as any).callId = async (id: string) => {
+    try {
+      const reply = await createClientRpc(id)({})
+      return 'error' in reply ? 'refused' : 'answered ' + String(reply.result)
+    } catch {
+      return 'refused'
+    }
+  }
+}
+function Page() {
+  const data = Route.useLoaderData()
+  const [text, setText] = useState('none')
+  return (
+    <main>
+      <p data-testid="urls">{JSON.stringify(data)}</p>
+      <button data-testid="call" onClick={async () => setText(await ${fn}())}>{text}</button>
+    </main>
+  )
+}
+`
+
+// SPEC J4.2 (R182) in a watch rebuild: the edit moves the page's call from
+// one server fn to another; the rebuilt server answers the browser for the
+// one the rebuilt client calls and refuses the other (the resolver's gate
+// follows the client build of the rebuild).
+test(
+  "an edit that moves the client's call to another server fn moves what the rebuilt server answers",
+  async () => {
+    const server = await startRscRsbuildPreviewServer({
+      files: {
+        'src/moved/a.ts': `import { createServerFn } from '@tanstack/react-start'
+export const callA = createServerFn().handler(() => 'MARK_A')
+`,
+        'src/moved/b.ts': `import { createServerFn } from '@tanstack/react-start'
+export const callB = createServerFn().handler(() => 'MARK_B')
+`,
+        'src/routes/moved.tsx': calls('callA'),
+      },
+      watchWith: { 'src/routes/moved.tsx': calls('callB') },
+    })
+    expect(server.errors).toEqual([])
+    const page = await openRscPage(server, '/moved')
+    await waitForHydration(page)
+    await page.page.click('[data-testid=call]')
+    expect(
+      await answeredText(page, '[data-testid=call]', (text) => text !== 'none'),
+    ).toBe('MARK_B')
+    const urls = JSON.parse(await page.text('[data-testid=urls]')) as {
+      a: string
+      b: string
+    }
+    const callId = (url: string) =>
+      page.page.evaluate(
+        (id) => (window as any).callId(id),
+        url.slice(url.lastIndexOf('/') + 1),
+      )
+    expect({ a: await callId(urls.a), b: await callId(urls.b) }).toEqual({
+      a: 'refused',
+      b: 'answered MARK_B',
+    })
+  },
+  timeout,
+)

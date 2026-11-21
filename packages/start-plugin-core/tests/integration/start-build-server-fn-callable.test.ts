@@ -623,6 +623,56 @@ ${callByIdExports}`,
     timeout,
   )
 
+  // The same with a custom generator: the stub of the unchanged module
+  // Rsbuild restores from its persistent cache keeps its gate token.
+  test(
+    'SSR: with custom ids, a rebuild follows the importer edits that stop and resume using an exported server fn',
+    async () => {
+      const clientEntry = (exports: string) =>
+        `export { ${exports} } from './fns'\n`
+      const overHttp = (build: Awaited<ReturnType<typeof buildStart>>) =>
+        build.ssr.run(`${callByIdPrelude}try {
+  return await callById('other-fn')
+} catch {
+  return 'rejected'
+}`)
+      const cold = await buildStart({
+        bundler,
+        rsbuildConfig: { performance: { buildCache: true } },
+        start: {
+          serverFns: {
+            generateFunctionId: ({ functionName }: { functionName: string }) =>
+              functionName.startsWith('otherFn_') ? 'other-fn' : undefined,
+          },
+        },
+        files: {
+          'fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const usedFn = createServerFn().handler(async () => 'used fn')
+export const otherFn = createServerFn().handler(async () => 'other fn')
+`,
+          'client-entry.ts': clientEntry('usedFn, otherFn'),
+          'ssr-entry.ts': `export { usedFn, otherFn } from './fns'
+${callByIdExports}`,
+        },
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+      })
+      const coldCall = (await overHttp(cold)).result
+      const unused = await cold.rebuild({
+        'client-entry.ts': clientEntry('usedFn'),
+      })
+      const unusedCall = (await overHttp(unused)).result
+      const used = await unused.rebuild({
+        'client-entry.ts': clientEntry('usedFn, otherFn'),
+      })
+      expect({
+        cold: coldCall,
+        unused: unusedCall,
+        used: (await overHttp(used)).result,
+      }).toEqual({ cold: 'other fn', unused: 'rejected', used: 'other fn' })
+    },
+    timeout,
+  )
+
   // SPEC J4.2 (R182), each build deciding: a rebuild after an edit that
   // removes the last client call of a server fn refuses it over HTTP, and
   // one that calls it again answers it (Rsbuild from its persistent cache).

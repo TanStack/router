@@ -368,7 +368,6 @@ export class StartRsbuildCompilerSession {
     }
     this.hosts.clear()
     this.missing.clear()
-    this.start.forgetClientOutput()
     for (const env of this.envs.values()) {
       env.compiled = new Set()
     }
@@ -1084,20 +1083,6 @@ export class StartRsbuildCompilerSession {
   }
 
   /**
-   * The resolver module of an environment: the registry's manifest, of the
-   * client-referenced entries in production builds whose SSR environment is
-   * the provider, and their client-origin calls gated to the functions the
-   * client's emitted code calls (J4.2, R182; the resolver is written again
-   * once the client compiled, before the server compiles); in development every entry, with a
-   * warning for a client call of a function no client module references
-   * (the client compilation's replay rewrites the resolver, so the flags
-   * follow the client graph). The RSC provider lists every entry in
-   * development, and in a build the functions server code declares or the
-   * client's emitted code calls (`providedEntries`), gated likewise: the
-   * server compilation's last settlement run builds it again from what the
-   * finished client build calls (`clientOutputMissing` before it).
-   */
-  /**
    * The error of an RSC build's server compilation whose last settlement
    * run finds no client publication (the client compilation it runs beside
    * did not build): its resolver would refuse every client call. Null
@@ -1114,6 +1099,20 @@ export class StartRsbuildCompilerSession {
       : null
   }
 
+  /**
+   * The resolver module of an environment: the registry's manifest, of the
+   * client-referenced entries in production builds whose SSR environment is
+   * the provider, and their client-origin calls gated to the functions the
+   * client's emitted code calls (J4.2, R182; the resolver is written again
+   * once the client compiled, before the server compiles); in development every entry, with a
+   * warning for a client call of a function no client module references
+   * (the client compilation's replay rewrites the resolver, so the flags
+   * follow the client graph). The RSC provider lists every entry in
+   * development, and in a build the functions server code declares or the
+   * client's emitted code calls (`providedEntries`), gated likewise: the
+   * server compilation's last settlement run builds it again from what the
+   * finished client build calls (`clientOutputMissing` before it).
+   */
   resolverModule(): string {
     const { opts } = this.start
     const entries = this.start.registry.entries()
