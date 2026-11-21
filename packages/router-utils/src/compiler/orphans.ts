@@ -61,8 +61,9 @@ const prune = (
 
 /**
  * Function-local declarators (and `var`/block declarators of the module
- * level the core's units do not model), the declarations of a namespace
- * body (its non-exported members) and destructuring leaves all of
+ * level the core's units do not model), the function and class
+ * declarations of a nested statement list (a namespace body's non-exported
+ * members included) and destructuring leaves all of
  * whose references are erased in the env output: the initialiser goes with
  * the declarator whatever it does, a hook call included (J4.12, documented
  * removal, as main). Iterates to a fixpoint.
@@ -73,7 +74,6 @@ export function cleanOrphanedDeclarations(
 ): void {
   const { t1, symbols, rewrites } = ctx
   const file = ctx.analysis.file
-  const code = ctx.analysis.source.code
   const handled = new Set<number>()
   // each round handles at least one more binding: a chain of declarations
   // each only the next one reads is cleaned however long it is
@@ -216,29 +216,17 @@ export function cleanOrphanedDeclarations(
           parent.type === 'ClassDeclaration') &&
         parent.id === decl
       ) {
-        // a function's block, or a namespace body (its own scope, not the
-        // module's: placement does not decide its members)
-        const stmtParent = file.parentOf(parent)
+        // a nested statement list (a block, a `switch` case, a static
+        // block, a namespace body) is its own scope, not the module's:
+        // placement does not decide its declarations
         if (
-          !(
-            stmtParent?.type === 'TSModuleBlock' ||
-            (stmtParent?.type === 'BlockStatement' &&
-              t1.inFunctionAt(parent.start))
-          )
+          file.parentOf(parent)?.type === 'Program' ||
+          !removeDeclaration(ctx, parent, scopeOf(refs))
         ) {
           continue
         }
         handled.add(b.id)
         changed = true
-        rewrites.scopedEdit({
-          range: {
-            start: parent.start,
-            end: extendOverTrailingLine(code, parent.end),
-          },
-          body: [],
-          scope: scopeOf(refs),
-          by: BY,
-        })
       }
     }
     for (const [pattern, props] of prunedProps) {
@@ -373,9 +361,9 @@ function removeDeclarator(
 }
 
 /**
- * Removes a declaration all of whose declarators go, by the grammar slot
- * holding it: in a statement list it goes with its line; a classic `for`
- * initialiser is optional (`for (; c; )`); a body a statement requires
+ * Removes a declaration all of whose declarators go (or a function or class
+ * declaration), by the grammar slot holding it: in a statement list it goes
+ * with its line; a classic `for` initialiser is optional (`for (; c; )`); a body a statement requires
  * (`if (c) var x = …`, `label: var x = …`) keeps the empty statement.
  * False for a slot that needs it (`for (var x of …)`).
  */

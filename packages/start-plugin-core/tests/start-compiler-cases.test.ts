@@ -1188,6 +1188,40 @@ namespace Repo {
 export const read = Repo.read`,
       check: { expression: 'module.read()', expected: throwsError },
     },
+    // The same in the other nested statement lists.
+    // Source: splicing gate (removal matrix).
+    {
+      name: 'a function in a switch case only a createServerOnlyFn reads',
+      code: `import { createServerOnlyFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export function pick(kind: string) {
+  switch (kind) {
+    case 'server':
+      function run(s: string) { return db.users(s) }
+      return createServerOnlyFn(() => run('get'))
+    default:
+      return 'client'
+  }
+}`,
+      check: { expression: "module.pick('client')", expected: 'client' },
+    },
+    {
+      name: 'a function in a class static block only a createServerOnlyFn reads',
+      code: `import { createServerOnlyFn } from '@tanstack/react-start'
+import { db } from './db.server'
+export class Repo {
+  static read: () => string
+  static label = 'client'
+  static {
+    function run(s: string) { return db.users(s) }
+    Repo.read = createServerOnlyFn(() => run('get'))
+  }
+}`,
+      check: {
+        expression: '[module.Repo.label, typeof module.Repo.read]',
+        expected: ['client', 'function'],
+      },
+    },
     {
       name: 'an overloaded function used by a server fn handler',
       code: `import { createServerFn } from '@tanstack/react-start'

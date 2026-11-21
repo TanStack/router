@@ -238,8 +238,6 @@ export interface Tier1 {
     at: number,
     live?: (ref: ClassifiedRef) => boolean,
   ) => boolean
-  /** Whether `offset` sits inside a function's scope (a declaration there is local to it, whenever it runs). */
-  inFunctionAt: (offset: number) => boolean
   parentOf: (node: Node) => Node | null
   nodeAt: (offset: number) => Node | null
   /** The unit whose range holds `range` (a unit is the outermost region of what it holds: `RegionTable`). */
@@ -974,30 +972,12 @@ export class ModuleAnalysis {
       this.importIndexOfStatement(s),
     )
 
-    // Function ranges from the scope table: every function's scope (a
-    // declaration inside is local to it), reduced to its outermost ranges
-    // and searched by offset.
-    const fnRanges: Array<Range> = []
     // the type names decorator metadata reads, by offset (see `metadataNames`)
     const metadataReads = new Map<number, Scope>()
     for (const scope of file.scopes) {
-      const n = scope.node
       if (scope.kind === 'class' && scope.parent !== null) {
-        metadataNames(n, scope.parent, metadataReads)
+        metadataNames(scope.node, scope.parent, metadataReads)
       }
-      if (scope.kind !== 'function') {
-        continue
-      }
-      fnRanges.push({ start: n.start, end: n.end })
-    }
-    // the scope question is asked for function-local orphans only
-    let inFunction: ((offset: number) => boolean) | null = null
-    const inFunctionAt = (offset: number): boolean => {
-      if (inFunction === null) {
-        fnRanges.sort((a, b) => a.start - b.start || b.end - a.end)
-        inFunction = offsetTest(outermost(fnRanges))
-      }
-      return inFunction(offset)
     }
 
     const refs: Array<ClassifiedRef> = []
@@ -1146,7 +1126,6 @@ export class ModuleAnalysis {
           )
         })
       },
-      inFunctionAt,
       parentOf: (node) => file.parentOf(node),
       nodeAt: (offset) => file.nodeAt(offset),
       unitAt: ({ start, end }) => {
@@ -1187,42 +1166,6 @@ export class ModuleAnalysis {
     }
     this.tier1 = tier1
     return tier1
-  }
-}
-
-/** The ranges of `ranges` (sorted by start, longest first) not nested in another one. */
-function outermost<TRange extends Range>(
-  ranges: ReadonlyArray<TRange>,
-): Array<TRange> {
-  const outer: Array<TRange> = []
-  for (const r of ranges) {
-    const last = outer[outer.length - 1]
-    if (last && r.start >= last.start && r.end <= last.end) {
-      continue
-    }
-    outer.push(r)
-  }
-  return outer
-}
-
-/** Whether an offset lies in one of `outer` (disjoint, sorted). */
-function offsetTest(outer: ReadonlyArray<Range>): (offset: number) => boolean {
-  return (offset) => {
-    let lo = 0
-    let hi = outer.length - 1
-    while (lo <= hi) {
-      const mid = (lo + hi) >> 1
-      const r = outer[mid]!
-      if (r.start <= offset) {
-        if (offset < r.end) {
-          return true
-        }
-        lo = mid + 1
-      } else {
-        hi = mid - 1
-      }
-    }
-    return false
   }
 }
 
