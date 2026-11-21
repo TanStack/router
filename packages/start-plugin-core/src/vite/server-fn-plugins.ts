@@ -175,6 +175,8 @@ export function forwardPlugin(state: ViteCompilerState): Plugin {
  * provider builds before the client, from the server fns its own graph and
  * the early compile of their reach found (J4.2; KNOWN-BUGS: server fns only
  * client-only code or a lazy import below a `'use client'` module imports).
+ * The warning states that comparison; why the provider missed a function
+ * is not known here, so it gives causes as possible ones.
  */
 function callableNotProvided(
   entries: ReadonlyArray<ServerFnEntry>,
@@ -189,7 +191,7 @@ function callableNotProvided(
 }
 
 function callableNotProvidedWarning(e: ServerFnEntry): string {
-  return `[tanstack-start] The client build calls the server function ${e.name} of ${e.rootRel}, which the RSC server build does not provide: a call answers "Server function info not found". The RSC environment builds before the client and finds the server functions from server code, and no server code it built imports ${e.rootRel} (only client-only code, or a lazy import below a 'use client' module, does). Import ${e.rootRel} from server code as well, e.g. a module a server component or a server function's handler imports.`
+  return `[tanstack-start] The client build calls the server function ${e.name} of ${e.rootRel}, which the RSC server build's server function resolver does not list: a call answers "Server function info not found". The RSC environment builds before the client and lists the server functions of the server code it compiled. Possible causes: only client-only code, or a lazy import below a 'use client' module, imports ${e.rootRel}; or the RSC build did not compile ${e.rootRel} for server functions (e.g. a file of an installed package). If no server code imports ${e.rootRel}, import it from server code as well, e.g. a module a server component or a server function's handler imports.`
 }
 
 /** Each resolver environment's `getServerFnById` module (`VIRTUAL_MODULES.serverFnResolver`). */
