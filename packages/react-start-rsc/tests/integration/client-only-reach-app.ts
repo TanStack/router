@@ -4,8 +4,10 @@
  * code imports is not registered"): each server fn's module is
  * imported only from its row's position, a `<ClientOnly>` child, a
  * `createClientOnlyFn` body or a `<Hydrate>` `fallback`, in a route file
- * or in a component file a route renders. Used by the Vite and Rsbuild
- * build files, in the app they already build.
+ * or in a component file a route renders. Used by the Rsbuild build file,
+ * in the app it already builds, and by the Vite build that fails on them
+ * (`rsc-start-build-not-provided.test.ts`). Also: an installed package
+ * defining a server fn (`installedServerFnFiles`).
  */
 import { expect } from 'vitest'
 import { answeredText, openRscPage, waitForHydration } from './rsc-app'
@@ -122,6 +124,28 @@ function Page() {
   )
 }
 `,
+}
+
+/**
+ * An installed Start library (Start as its peer dependency, the app's
+ * dependency, so Start bundles it as it does a real one) defining the
+ * server fn `pkgPing`, which answers `MARK_PKGPING`.
+ */
+export const installedServerFnFiles = {
+  'package.json': JSON.stringify({
+    name: 'app',
+    private: true,
+    type: 'module',
+    dependencies: { 'pkg-fns': '1.0.0' },
+  }),
+  'node_modules/pkg-fns/package.json': JSON.stringify({
+    name: 'pkg-fns',
+    version: '1.0.0',
+    type: 'module',
+    exports: { '.': './index.js' },
+    peerDependencies: { '@tanstack/react-start': '*' },
+  }),
+  'node_modules/pkg-fns/index.js': serverFn('pkgPing'),
 }
 
 /** The positions, by the test id of their button. */

@@ -6,8 +6,9 @@
 import { realpath } from 'node:fs/promises'
 import path from 'node:path'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
-import { normalizePath } from '@tanstack/router-utils/compiler'
+import { identify, normalizePath } from '@tanstack/router-utils/compiler'
 import { isFileLoadingAllowed } from 'vite'
+import { NODE_MODULES_RE } from '../compiler/scope'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { decodeDevFunctionId } from '../server-fns/ids'
 import { providerModuleId } from '../server-fns/registry'
@@ -174,9 +175,10 @@ export function forwardPlugin(state: ViteCompilerState): Plugin {
  * build wrote one): a click answers "Server function info not found". The
  * provider builds before the client, from the server fns its own graph and
  * the early compile of their reach found (J4.2; KNOWN-BUGS: server fns only
- * client-only code or a lazy import below a `'use client'` module imports).
- * The warning states that comparison; why the provider missed a function
- * is not known here, so it gives causes as possible ones.
+ * client-only code or a lazy import below a `'use client'` module imports,
+ * and those of an installed package). The build fails naming them: the
+ * comparison is a fact of the emitted output; why the provider missed a
+ * function is not known here, so the causes are given as possible ones.
  */
 function callableNotProvided(
   entries: ReadonlyArray<ServerFnEntry>,
@@ -190,8 +192,32 @@ function callableNotProvided(
   return entries.filter((e) => called.has(e.id) && !listed.has(e.id))
 }
 
-function callableNotProvidedWarning(e: ServerFnEntry): string {
-  return `[tanstack-start] The client build calls the server function ${e.name} of ${e.rootRel}, which the RSC server build's server function resolver does not list: a call answers "Server function info not found". The RSC environment builds before the client and lists the server functions of the server code it compiled. Possible causes: only client-only code, or a lazy import below a 'use client' module, imports ${e.rootRel}; or the RSC build did not compile ${e.rootRel} for server functions (e.g. a file of an installed package). If no server code imports ${e.rootRel}, import it from server code as well, e.g. a module a server component or a server function's handler imports.`
+/**
+ * The build error for `missing` (`callableNotProvided`), with the ways out
+ * that apply to its files: a module of the app is registered when a server
+ * fn's handler uses it (its raw reach is compiled early); a module of an
+ * installed package is not (that walk skips `node_modules`), and is when a
+ * route's loader calls it (the SSR scan compiles routes).
+ */
+function callableNotProvidedError(missing: Array<ServerFnEntry>): string {
+  const installed = (e: ServerFnEntry) =>
+    NODE_MODULES_RE.test(identify(e.definingCanonicalId).path)
+  const lines = [
+    `[tanstack-start] The client build calls server functions that the RSC environment's server function resolver does not list: each call would answer "Server function info not found".`,
+    ...missing.map((e) => `  - ${e.name} of ${e.rootRel}`),
+    `The RSC environment builds before the client and lists the server functions of the server code it compiled. Possible causes: only client-only code (a <ClientOnly> child, a createClientOnlyFn body, a <Hydrate> fallback) or a lazy import() in or below a 'use client' module imports the file; or the file is in an installed package that only client code or server function handlers import.`,
+  ]
+  if (missing.some((e) => !installed(e))) {
+    lines.push(
+      `For a file of the app: import the server function in a server function's module as well, and use it in that function's handler.`,
+    )
+  }
+  if (missing.some(installed)) {
+    lines.push(
+      `For a file of an installed package: import the server function in a route file as well, and call it from that route's loader.`,
+    )
+  }
+  return lines.join('\n')
 }
 
 /** Each resolver environment's `getServerFnById` module (`VIRTUAL_MODULES.serverFnResolver`). */
@@ -238,12 +264,13 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
             // the client, so its manifest lists every function; this
             // environment builds last (plugin-rsc: rsc, client, ssr) and
             // gates client-origin calls on the functions the client calls
-            for (const e of callableNotProvided(
+            const missing = callableNotProvided(
               s.start.registry.entries(),
               callableIds,
               s.providerListed,
-            )) {
-              this.warn(callableNotProvidedWarning(e))
+            )
+            if (missing.length > 0) {
+              this.error(callableNotProvidedError(missing))
             }
             return callerGateModule(SERVER_FN_FORWARD_VIRTUAL_ID, callableIds)
           }

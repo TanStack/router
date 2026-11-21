@@ -361,8 +361,8 @@ export interface Session {
   /**
    * A build with a separate provider (RSC): the ids its resolver listed, as
    * the provider's last written build produced it (null: none yet). The
-   * caller environment, built after the client, warns of a function the
-   * client calls that is not among them (`callableNotProvided`).
+   * caller environment, built after the client, fails the build for a
+   * function the client calls that is not among them (`callableNotProvided`).
    */
   providerListed: ReadonlySet<string> | null
   /**

@@ -136,7 +136,9 @@ rank (client first) and patched at `processAssets` before minification. The HTTP
 client build's publication (`StartCompilerSession.publishClientOutput`, at the client's report stage, on the emitted
 JS): the functions whose default id, or with a generator whose gate token (`gateToken`, which the client stub passes and
 the runtime stores on the RPC), is in the minified code. The resolver prints its gate from it; an RSC build's first
-resolver precedes the client, and the server's last settlement run builds it again from the publication. What that
+resolver precedes the client, and the server's last settlement run builds it again from the publication (on Vite the
+provider builds once, before the client: the caller environment, built after it, fails the build for a function the
+publication calls that the provider's resolver did not list, `callableNotProvided`). What that
 last run builds comes after the RSC plugin's client handoff: a client component only a server fn it builds renders is
 missing from the client manifest Rspack delivers, and the build does not say so (KNOWN-BUGS, the nested chain;
 rspack#16786).

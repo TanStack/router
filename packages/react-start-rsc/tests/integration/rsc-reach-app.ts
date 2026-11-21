@@ -13,8 +13,9 @@
  * served build) and records the server fn's response and the value the
  * page shows; `editedReach` is a real edit of every server fn. Used by the
  * rsc-reach-* files (Vite dev, Rsbuild dev, Rsbuild warm builds); the
- * fresh production builds of the same graphs are rsc-start-build.test.ts,
- * rsc-start-build-client-reach.test.ts and rsc-start-rsbuild-build.test.ts.
+ * fresh production builds of the same graphs are rsc-start-build.test.ts
+ * and rsc-start-rsbuild-build.test.ts (a Vite production build fails on
+ * the client-only positions: rsc-start-build-not-provided.test.ts).
  */
 import { expect } from 'vitest'
 import {

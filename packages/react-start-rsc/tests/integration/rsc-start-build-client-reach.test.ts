@@ -13,16 +13,12 @@
  * directive prologue). A server handler's lazy import is followed, also
  * when a comment of its module quotes the directive. The first case of
  * each kind is in rsc-start-build.test.ts ("a server fn only a 'use client' component …").
- * Pinned in the same build: server fns only client-only code imports
- * (`client-only-reach-app.ts`).
+ * Also in this build: the ways out the build error for a server fn the
+ * provider does not list gives (rsc-start-build-not-provided.test.ts),
+ * applied, for a file of the app and for one of an installed package.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
-import {
-  clientOnlyPositions,
-  clientOnlyReachFiles,
-  expectClientOnlyCallAnswers,
-} from './client-only-reach-app'
+import { installedServerFnFiles } from './client-only-reach-app'
 import {
   answeredText,
   openRscPage,
@@ -55,7 +51,6 @@ export const nonNull = createServerFn({ method: 'GET' }).handler!(() => 'MARK_NO
 }
 
 const files = {
-  ...clientOnlyReachFiles,
   // Type-only uses of a value import keep the import (the `boot` case)
   'tsconfig.json': JSON.stringify({
     compilerOptions: {
@@ -186,27 +181,11 @@ export function NotedPing() {
   return <button data-testid="noted" onClick={() => ping().then(setResult)}>noted {result}</button>
 }
 `,
-  // A `'use client'` component that imports a server fn's module lazily.
-  'src/guarded/lazy.ts': `import { createServerFn } from '@tanstack/react-start'
-export const lazyPing = createServerFn({ method: 'GET' }).handler(() => 'MARK_LAZY')
-`,
-  'src/guarded/LazyPing.tsx': `'use client'
-import { useState } from 'react'
-export function LazyPing() {
-  const [result, setResult] = useState('')
-  return (
-    <button data-testid="lazy" onClick={() => import('./lazy').then((m) => m.lazyPing()).then(setResult, (error) => setResult('error ' + error))}>
-      lazy {result}
-    </button>
-  )
-}
-`,
   'src/guarded/card.tsx': `import { createServerFn } from '@tanstack/react-start'
 import { renderServerComponent } from '@tanstack/react-start/rsc'
-import { LazyPing } from './LazyPing'
 import { NotedPing } from './NotedPing'
 import { Ping } from './Ping'
-export const getCard = createServerFn().handler(() => renderServerComponent(<div>card <Ping /><NotedPing /><LazyPing /></div>))
+export const getCard = createServerFn().handler(() => renderServerComponent(<div>card <Ping /><NotedPing /></div>))
 `,
   // A server fn whose handler imports a server component lazily, which
   // renders a `'use client'` component calling another server fn; a comment
@@ -257,6 +236,75 @@ export const Route = createFileRoute('/guarded')({
 })
 function Page() {
   return <main>{Route.useLoaderData().tree}</main>
+}
+`,
+  // The build error's way out for a file of the app: a server fn only a
+  // \`<ClientOnly>\` child imports, which a server fn's handler also uses.
+  'src/way-out/onlyClient.ts': `import { createServerFn } from '@tanstack/react-start'
+export const onlyClient = createServerFn({ method: 'GET' }).handler(() => 'MARK_ONLYCLIENT')
+`,
+  'src/way-out/uses.ts': `import { createServerFn } from '@tanstack/react-start'
+import { onlyClient } from './onlyClient'
+export const usesOnlyClient = createServerFn().handler(async () => 'USES ' + (await onlyClient()))
+`,
+  'src/routes/way-out-app.tsx': `import { ClientOnly, createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { onlyClient } from '../way-out/onlyClient'
+import { usesOnlyClient } from '../way-out/uses'
+export const Route = createFileRoute('/way-out-app')({
+  loader: () => usesOnlyClient(),
+  component: Page,
+})
+function Page() {
+  const [result, setResult] = useState('')
+  return (
+    <main>
+      <p data-testid="uses">{Route.useLoaderData()}</p>
+      <ClientOnly fallback={<span>loading</span>}>
+        <button data-testid="onlyClient" onClick={() => onlyClient().then(setResult, (error) => setResult('error ' + error))}>
+          onlyClient {result}
+        </button>
+      </ClientOnly>
+    </main>
+  )
+}
+`,
+  // The way out for a file of an installed package: its server fn, which a
+  // \`'use client'\` component and a server fn's handler call, called from a
+  // route's loader as well.
+  ...installedServerFnFiles,
+  'src/way-out/PkgCall.tsx': `'use client'
+import { useState } from 'react'
+import { pkgPing } from 'pkg-fns'
+export function PkgCall() {
+  const [result, setResult] = useState('')
+  return (
+    <button data-testid="pkgPing" onClick={() => pkgPing().then(setResult, (error) => setResult('error ' + error))}>
+      pkgPing {result}
+    </button>
+  )
+}
+`,
+  'src/way-out/page.tsx': `import { createServerFn } from '@tanstack/react-start'
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+import { PkgCall } from './PkgCall'
+export const getPkgPage = createServerFn().handler(() => renderServerComponent(<div>pkg <PkgCall /></div>))
+`,
+  'src/way-out/usesPkg.ts': `import { createServerFn } from '@tanstack/react-start'
+import { pkgPing } from 'pkg-fns'
+export const usesPkg = createServerFn().handler(async () => 'USES ' + (await pkgPing()))
+`,
+  'src/routes/way-out-package.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { pkgPing } from 'pkg-fns'
+import { getPkgPage } from '../way-out/page'
+import { usesPkg } from '../way-out/usesPkg'
+export const Route = createFileRoute('/way-out-package')({
+  loader: async () => ({ tree: await getPkgPage(), ping: (await pkgPing()) + ' ' + (await usesPkg()) }),
+  component: Page,
+})
+function Page() {
+  const data = Route.useLoaderData()
+  return <main><p data-testid="loaderPing">{data.ping}</p>{data.tree}</main>
 }
 `,
   'src/greet.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -382,77 +430,45 @@ describe("Vite production build with RSC: server fns only 'use client' component
     ).toBe('inner MARK_INNER')
   })
 
-  // The two known bugs below: the build warns of each server fn the
-  // client's emitted code calls that the RSC environment's build does not
-  // provide, naming its file (design-rsc-phase2.md §5.2: a warning until
-  // decision 5's evidence rule). A server fn only development code imports
-  // is not called by the production client: no warning names it.
-  test('the build warns of each server fn the client calls that the server build does not provide', () => {
-    const naming = (file: string) =>
-      findDiagnostics(server.messages, { file, root: server.root }).length
-    expect({
-      notProvided: Object.fromEntries(
-        [
-          ...clientOnlyPositions.map(
-            ({ name }) => `src/client-only/${name}.ts`,
-          ),
-          'src/guarded/lazy.ts',
-        ].map((file) => [file, naming(file) > 0]),
-      ),
-      developmentOnly: [naming('src/debug.ts'), naming('src/guarded/debug.ts')],
-    }).toEqual({
-      notProvided: Object.fromEntries(
-        [
-          ...clientOnlyPositions.map(
-            ({ name }) => `src/client-only/${name}.ts`,
-          ),
-          'src/guarded/lazy.ts',
-        ].map((file) => [file, true]),
-      ),
-      developmentOnly: [0, 0],
-    })
-  })
-
-  // Known bug (KNOWN-BUGS, "Vite RSC build: a server fn a `'use client'`
-  // component imports lazily is not registered"; as `main`, #7943). SPEC
-  // J4.2: a server fn the client calls is callable by id. Bug: the early
-  // compile follows no lazy import at or below a `'use client'` module (so a
-  // development-only one adds no production dependency), and nothing else
-  // compiles the lazily imported module in the provider before its manifest
-  // is written. Impact: the click answers "Server function info not found".
-  // Fix: every server fn the client references is callable by id, with no
-  // production dependency on modules only development code reaches.
-  test.fails(
-    "a server fn a 'use client' component imports lazily runs when clicked",
-    async () => {
-      const page = await open('/guarded')
-      const button = '[data-testid=lazy]'
+  // The build error's ways out (rsc-start-build-not-provided.test.ts),
+  // applied: the build succeeds, and the browser's call of the server fn
+  // answers, as does the server's (the loader's, and a server fn handler's
+  // call of the installed package's function, which answered "Server
+  // function info not found" without the loader's: KNOWN-BUGS).
+  test.for([
+    {
+      kind: 'a file of the app',
+      pathname: '/way-out-app',
+      name: 'onlyClient',
+      server: { selector: '[data-testid=uses]', text: 'USES MARK_ONLYCLIENT' },
+    },
+    {
+      kind: 'a file of an installed package',
+      pathname: '/way-out-package',
+      name: 'pkgPing',
+      server: {
+        selector: '[data-testid=loaderPing]',
+        text: 'MARK_PKGPING USES MARK_PKGPING',
+      },
+    },
+  ])(
+    "the build error's way out for $kind makes its server fn answer",
+    async ({ pathname, name, server: answered }) => {
+      const page = await open(pathname)
+      await page.waitForText(answered.text, { selector: answered.selector })
+      const button = `[data-testid=${name}]`
+      const response = page.page.waitForResponse((r) =>
+        r.url().includes('/_serverFn/'),
+      )
       await page.page.locator(button).click()
+      expect((await response).status()).toBe(200)
       expect(
         await answeredText(
           page,
           button,
           (text) => text.includes('MARK_') || text.includes('error'),
         ),
-      ).toBe('lazy MARK_LAZY')
-    },
-  )
-
-  // Known bug (KNOWN-BUGS, "RSC builds: a server fn only client-only code
-  // imports is not registered"; as `main`). SPEC J4.2: a server fn the
-  // client calls is callable by id. Bug: the SSR scan erases client-only
-  // code (`<ClientOnly>` children, `createClientOnlyFn` bodies, `<Hydrate>`
-  // fallbacks) and the imports only it reads, and the early compile of the
-  // provider's reach starts only from server fn modules, which none of these
-  // route or component files is, so the provider's manifest is written
-  // without these server fns. Impact: the click answers "Server function
-  // info not found". Fix: every server fn the client references is callable
-  // by id, with no production dependency on modules only development code
-  // reaches.
-  test.fails.for(clientOnlyPositions)(
-    'a server fn only $position of a $where imports runs when clicked',
-    async ({ name }) => {
-      await expectClientOnlyCallAnswers(server, name)
+      ).toBe(`${name} MARK_${name.toUpperCase()}`)
     },
   )
 })

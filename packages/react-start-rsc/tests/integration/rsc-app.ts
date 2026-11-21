@@ -34,6 +34,7 @@ import {
 import {
   createApp,
   pluginNames,
+  stripAnsi,
   withBuildEnvironment,
 } from '@tanstack/compiler-test-utils/build-harness'
 import { createBuilder, mergeConfig, preview } from 'vite'
@@ -192,22 +193,21 @@ export interface RscPreviewServer {
   messages: Array<string>
 }
 
-/**
- * Builds a React Start app with RSC enabled, of `files` over `rscAppFiles`,
- * for production as `vite build` does (the `client`, `ssr` and `rsc`
- * environments, `buildApp()`), and serves the build with `vite preview`
- * (Start's own preview server runs the built server entry). The test
- * process runs with `NODE_ENV=production` until the cleanup, as `vite
- * preview` does, so the server's React matches the client's. No `vite
- * build --watch` counterpart: `@vitejs/plugin-rsc`'s watch build exits
- * before its server output exists (KNOWN-BUGS, "Upstream issues").
- */
-export async function startRscPreviewServer(options: {
+/** What `buildRscApp` and its callers take. */
+interface RscBuildOptions {
   files: Record<string, string>
   start?: Record<string, unknown>
   config?: Record<string, unknown>
   registerCleanup?: (cleanup: () => Promise<void>) => void
-}): Promise<RscPreviewServer> {
+}
+
+/**
+ * Builds a React Start app with RSC enabled, of `files` over `rscAppFiles`,
+ * for production as `vite build` does (the `client`, `ssr` and `rsc`
+ * environments, `buildApp()`). `built`: the build's rejection, if it
+ * failed (null: it built).
+ */
+async function buildRscApp(options: RscBuildOptions) {
   const registerCleanup = options.registerCleanup ?? onTestFinished
   const tanstackStart = await tanstackStartPlugin('vite')
   const app = await createApp({
@@ -235,11 +235,34 @@ export async function startRscPreviewServer(options: {
       options.config ?? {},
     )
   const reported: Array<ChannelDiagnostic> = []
-  await withBuildEnvironment('production', reported, async () => {
+  const built = await withBuildEnvironment('production', reported, async () => {
     const builder = await createBuilder(config())
     await builder.buildApp()
-  })
+  }).then(
+    () => null,
+    (error: unknown) => error,
+  )
   const messages = reported.map(({ text }) => text)
+  return { root: app.root, config, messages, built, registerCleanup }
+}
+
+/**
+ * Builds a React Start app with RSC enabled for production (`buildRscApp`)
+ * and serves the build with `vite preview` (Start's own preview server
+ * runs the built server entry). The test process runs with
+ * `NODE_ENV=production` until the cleanup, as `vite preview` does, so the
+ * server's React matches the client's. No `vite build --watch`
+ * counterpart: `@vitejs/plugin-rsc`'s watch build exits before its server
+ * output exists (KNOWN-BUGS, "Upstream issues").
+ */
+export async function startRscPreviewServer(
+  options: RscBuildOptions,
+): Promise<RscPreviewServer> {
+  const { root, config, messages, built, registerCleanup } =
+    await buildRscApp(options)
+  if (built !== null) {
+    throw built
+  }
   const nodeEnv = process.env.NODE_ENV
   process.env.NODE_ENV = 'production'
   const server = await preview({
@@ -257,7 +280,26 @@ export async function startRscPreviewServer(options: {
   if (!url) {
     throw new Error('the preview server does not listen')
   }
-  return { root: app.root, url, messages }
+  return { root, url, messages }
+}
+
+/**
+ * Builds a React Start app with RSC enabled for production (`buildRscApp`)
+ * that must fail: the message of the build's rejection, without colours
+ * (throws if it built).
+ */
+export async function failedRscBuild(options: RscBuildOptions): Promise<{
+  root: string
+  error: string
+}> {
+  const { root, built } = await buildRscApp(options)
+  if (built === null) {
+    throw new Error('the build succeeded')
+  }
+  return {
+    root,
+    error: stripAnsi(built instanceof Error ? built.message : String(built)),
+  }
 }
 
 /** The bound of a watch mode build's first build, and of an edit's rebuild. */
