@@ -136,6 +136,7 @@ export function startRecognizer(): RecognizerTable {
 export function runtimeSpecifiers(framework: CompileStartFrameworkOptions) {
   return {
     clientRpc: `@tanstack/${framework}-start/client-rpc`,
+    clientRpcGated: `@tanstack/${framework}-start/client-rpc-gated`,
     ssrRpc: `@tanstack/${framework}-start/ssr-rpc`,
     serverRpc: `@tanstack/${framework}-start/server-rpc`,
   }

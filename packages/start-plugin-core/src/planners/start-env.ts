@@ -1095,7 +1095,7 @@ function planStartEnv(
       const gated = config.idMode === 'placeholder'
       const rpc = gated
         ? glueImport(
-            specs.clientRpc,
+            specs.clientRpcGated,
             'createGatedClientServerFn',
             'tsrGatedClientServerFn',
           )

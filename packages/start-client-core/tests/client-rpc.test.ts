@@ -5,10 +5,8 @@
 // calls: the builds of start-plugin-core's
 // integration/start-build-server-fn-callable.test.ts call gated stubs.)
 import { expect, test } from 'vitest'
-import {
-  createClientServerFn,
-  createGatedClientServerFn,
-} from '../src/client-rpc'
+import { createClientServerFn } from '../src/client-rpc'
+import { createGatedClientServerFn } from '../src/client-rpc/gated'
 import { createServerFn } from '../src/createServerFn'
 
 const token = '#0123456789abcdef'

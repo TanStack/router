@@ -57,6 +57,12 @@
         "default": "./dist/esm/client-rpc.js"
       }
     },
+    "./client-rpc-gated": {
+      "import": {
+        "types": "./dist/esm/client-rpc-gated.d.ts",
+        "default": "./dist/esm/client-rpc-gated.js"
+      }
+    },
     "./server-rpc": {
       "import": {
         "types": "./dist/esm/server-rpc.d.ts",
