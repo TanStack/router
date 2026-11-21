@@ -8,7 +8,11 @@
  * Vite's.
  */
 import { describe, expect, test } from 'vitest'
-import { startRscDevServer, startRscRsbuildDevServer } from './rsc-app'
+import {
+  rscStreams,
+  startRscDevServer,
+  startRscRsbuildDevServer,
+} from './rsc-app'
 import { clientHelperApp, recorder, summary } from './rsc-use-client-app'
 
 const timeout = 60_000
@@ -43,7 +47,21 @@ describe.each(Object.keys(devHosts) as Array<keyof typeof devHosts>)(
         const { violations, start } = recorder(behavior)
         const page = await devHosts[host](start)
         expect(page.status).toBe(200)
-        expect(page.body).toContain('SERVER_ROOT')
+        if (behavior === 'mock') {
+          // SSR rendered the server component, `Comp` with the helper's mock
+          expect(page.body).toContain('<div data-testid="root">SERVER_ROOT')
+        } else {
+          // SSR failed on the denied helper and left the page to the
+          // client, which renders the server component from the stream
+          const fallback = /<template data-msg="([^"]*)"/.exec(page.body)?.[1]
+          expect(fallback).toMatch(
+            /^Switched to client rendering because the server rendering errored:/,
+          )
+          expect(fallback).toContain('Import: &quot;./store.client&quot;')
+          expect(rscStreams(page.body)).toContainEqual(
+            expect.stringContaining('SERVER_ROOT'),
+          )
+        }
         expect(summary(violations)).toEqual([
           'ssr file Comp.tsx -> ./store.client',
         ])

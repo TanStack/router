@@ -733,6 +733,50 @@ export function waitForHydration(page: BrowserPage): Promise<void> {
   return page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
 }
 
+/** What Seroval's string literals escape, by the text after the backslash. */
+const stringEscapes: Record<string, string | undefined> = {
+  n: '\n',
+  r: '\r',
+  b: '\b',
+  t: '\t',
+  f: '\f',
+  x3C: '<',
+  u2028: ' ',
+  u2029: ' ',
+}
+
+/**
+ * The text of each RSC stream a server-rendered page carries, decoded as
+ * the client decodes it. Start serializes a stream as Seroval records
+ * `$R[id].next("…")`, one per chunk React Flight wrote (4096 bytes at
+ * most), each a string literal of `'t' + text` or `'b' + base64`
+ * (router-core's `rawStreamCodec.ts`). A word of the stream can straddle
+ * two records, where its offset depends on the checkout's path (React's
+ * development stacks name it): search the decoded text, not the HTML.
+ */
+export function rscStreams(html: string): Array<string> {
+  const streams = new Map<string, Array<Buffer>>()
+  for (const [, id, literal] of html.matchAll(
+    /\$R\[(\d+)\]\.next\("((?:[^"\\]|\\.)*)"\)/g,
+  )) {
+    const value = literal!.replace(
+      /\\(x3C|u2028|u2029|[\s\S])/g,
+      (_, escaped: string) => stringEscapes[escaped] ?? escaped,
+    )
+    if (value[0] !== 't' && value[0] !== 'b') {
+      throw new Error(`$R[${id}]: not an encoded chunk: ${value.slice(0, 40)}`)
+    }
+    const chunk = Buffer.from(
+      value.slice(1),
+      value[0] === 't' ? 'utf8' : 'base64',
+    )
+    streams.set(id!, [...(streams.get(id!) ?? []), chunk])
+  }
+  return [...streams.values()].map((chunks) =>
+    Buffer.concat(chunks).toString('utf8'),
+  )
+}
+
 /**
  * Waits until Start's development-only stylesheet of the server-rendered
  * page (`/@tanstack-start/styles.css`, which prevents a flash of unstyled
