@@ -10,9 +10,10 @@
  * compares the client references Rspack compiled in the `rsc` environment's
  * chunks (`clientReferenceId`) with the client manifest Rspack reports for
  * each entry of the same compilation (`onManifest`): an entry is named when
- * its manifest lacks a reference its own graph reaches; it runs only in a
- * compilation whose last run built something (the graph can gain a module
- * after the handoff only there), and in builds only (decision E1).
+ * its manifest lacks a reference its own graph reaches (what the entry's
+ * runtime can load); it runs only in a compilation whose last run built
+ * something (the graph can gain a module after the handoff only there), and
+ * in builds only (decision E1).
  */
 import path from 'node:path'
 import { parseModule } from '@tanstack/router-utils/compiler'
@@ -50,18 +51,39 @@ interface ProxyModuleLike extends RspackModuleLike {
   originalSource?: () => { source: () => string | Buffer } | null
 }
 
-/** A chunk group of an Rspack compilation (an entrypoint, an `import()`'s). */
-interface ChunkGroupLike {
-  childrenIterable: Iterable<ChunkGroupLike>
-  /** A number for a module the group's own graph reaches (its blocks'), else none. */
-  getModulePreOrderIndex: (
-    module: RspackModuleLike,
-  ) => number | null | undefined
+/** An `import()`'s (or a worker's) block of a module. */
+interface BlockLike {
+  dependencies: Iterable<unknown>
+  blocks: Iterable<BlockLike>
 }
 
-/** What `undeliveredReferences` reads of a compilation: its entries. */
+/** What `undeliveredReferences` walks of a module. */
+interface GraphModuleLike extends RspackModuleLike {
+  dependencies?: Iterable<unknown>
+  blocks?: Iterable<BlockLike>
+}
+
+/** What `undeliveredReferences` reads of a compilation: its entries and graphs. */
 interface EntriesLike {
-  entrypoints: ReadonlyMap<string, ChunkGroupLike>
+  entries: ReadonlyMap<string, { dependencies: Iterable<unknown> }>
+  entrypoints: ReadonlyMap<
+    string,
+    { getEntrypointChunk: () => { runtime: Iterable<string> } }
+  >
+  moduleGraph: {
+    getModule: (dependency: unknown) => GraphModuleLike | null
+    getConnection: (dependency: unknown) => {
+      module: GraphModuleLike | null
+      resolvedModule: GraphModuleLike | null
+      /** `false` for a connection the runtime does not need (an unused re-export of a side-effect-free barrel). */
+      getActiveState: (runtime: Array<string>) => unknown
+    } | null
+  }
+  chunkGraph: {
+    getBlockChunkGroup: (
+      block: BlockLike,
+    ) => { chunks: Iterable<{ hasRuntime: () => boolean }> } | null
+  }
 }
 
 const REGISTRAR = 'react-server-dom-rspack/server'
@@ -204,11 +226,21 @@ export function liveClientReferences(
 
 /**
  * The references (`liveClientReferences`) an entry's client manifest lacks
- * although the entry's graph reaches them (`reaches`), each with those
- * entries. Rspack's manifest of an entry holds the references of the
- * entry's own graph: an entry's module of a chunk it shares with another
- * entry (a vendor chunk) is no reference of the other's. The graph is read
- * only for a reference a manifest lacks.
+ * although the entry's graph reaches them, each with those entries. What an
+ * entry reaches (`reachedBy`) is what its runtime can load: the modules the
+ * walk from the entry's dependencies finds over the finished graph, through
+ * the connections active in the entry's runtime (not an unused re-export of
+ * a side-effect-free barrel another entry uses), into the blocks whose chunk
+ * group the entry loads (an `import()`'s; not a worker's, whose group runs a
+ * runtime of its own, nor a block in no group), a ConcatenatedModule through
+ * its inner modules. So a module of a chunk or chunk group the entry shares
+ * with another entry (a vendor chunk, an `import()` chunk name both use) is
+ * no reference of the entry unless its own graph imports it. (Rspack's
+ * plugin finds an entry's client components walking every connection from
+ * the entry's dependencies at its handoff,
+ * `collect_component_info_from_entry_dependencies`: its manifest holds at
+ * least what the entry's runtime loads of the graph it had.) The graph is
+ * walked only for a reference a manifest lacks, once per entry.
  */
 export function undeliveredReferences(
   compilation: EntriesLike,
@@ -216,26 +248,69 @@ export function undeliveredReferences(
   manifest: RscManifestLike,
 ): Array<{ reference: FlightReference; entries: Array<string> }> {
   const entries = Object.keys(manifest).sort()
-  /** Each entry's chunk groups: its entrypoint and the groups it loads. */
-  const groups = new Map<string, Array<ChunkGroupLike>>()
-  const reaches = (entry: string, modules: Array<RspackModuleLike>) => {
-    let own = groups.get(entry)
-    if (!own) {
-      const entrypoint = compilation.entrypoints.get(entry)
-      const found = new Set(entrypoint ? [entrypoint] : [])
-      for (const group of found) {
-        for (const child of group.childrenIterable) {
-          found.add(child)
-        }
-      }
-      own = [...found]
-      groups.set(entry, own)
+  const { moduleGraph, chunkGraph } = compilation
+  /** Each entry's modules: what its runtime can load. */
+  const reached = new Map<string, Set<RspackModuleLike>>()
+  const reachedBy = (entry: string) => {
+    const own = new Set<RspackModuleLike>()
+    const entrypoint = compilation.entrypoints.get(entry)
+    if (!entrypoint) {
+      return own
     }
-    return own.some((group) =>
-      modules.some(
-        (module) => typeof group.getModulePreOrderIndex(module) === 'number',
-      ),
-    )
+    const runtime = [...entrypoint.getEntrypointChunk().runtime]
+    const stack: Array<GraphModuleLike> = []
+    const add = (module: GraphModuleLike | null) => {
+      if (module && !own.has(module)) {
+        own.add(module)
+        stack.push(module)
+      }
+    }
+    const follow = (dependency: unknown) => {
+      const connection = moduleGraph.getConnection(dependency)
+      if (connection && connection.getActiveState(runtime) !== false) {
+        add(connection.module)
+        add(connection.resolvedModule)
+      }
+    }
+    const enter = (block: BlockLike) => {
+      const group = chunkGraph.getBlockChunkGroup(block)
+      if (!group || [...group.chunks].some((chunk) => chunk.hasRuntime())) {
+        return
+      }
+      for (const dependency of block.dependencies) {
+        follow(dependency)
+      }
+      for (const nested of block.blocks) {
+        enter(nested)
+      }
+    }
+    for (const dependency of compilation.entries.get(entry)?.dependencies ??
+      []) {
+      add(moduleGraph.getModule(dependency))
+    }
+    for (let module = stack.pop(); module; module = stack.pop()) {
+      if (module.modules) {
+        for (const inner of module.modules) {
+          add(inner)
+        }
+        continue
+      }
+      for (const dependency of module.dependencies ?? []) {
+        follow(dependency)
+      }
+      for (const block of module.blocks ?? []) {
+        enter(block)
+      }
+    }
+    return own
+  }
+  const reaches = (entry: string, modules: Array<RspackModuleLike>) => {
+    let own = reached.get(entry)
+    if (!own) {
+      own = reachedBy(entry)
+      reached.set(entry, own)
+    }
+    return modules.some((module) => own.has(module))
   }
   const out: Array<{ reference: FlightReference; entries: Array<string> }> = []
   for (const reference of required) {

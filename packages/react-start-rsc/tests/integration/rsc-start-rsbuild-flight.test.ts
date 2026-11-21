@@ -15,7 +15,10 @@
  * package's component, a loader's directive; an asset of the file, an
  * adapter registering another file, are none) by its Flight id (an accented
  * directory, a quoted query, a fragment), and the manifest of its own server
- * compilation (a plugin's asynchronous `done` on both compilers).
+ * compilation (a plugin's asynchronous `done` on both compilers), for each
+ * entry whose runtime loads the component (a vendor chunk or an `import()`
+ * chunk name two entries share, a worker, a barrel's re-export only another
+ * entry uses, is no load).
  */
 import path from 'node:path'
 import { expect, onTestFinished, test } from 'vitest'
@@ -746,6 +749,153 @@ export const Route = createFileRoute('/nested')({
         message.includes('is a client reference of the RSC build'),
       ),
     }).toEqual({ errors: [], warned: false })
+  },
+  timeout,
+)
+
+// Two entries load their components through one `import()` chunk name: the
+// late-reached server fn of `index` imports `Inner` as `panel`, the second
+// entry imports `Other` as `panel`, so both entries' chunk groups hold one
+// `panel` group with both. Each entry's manifest has what its own graph
+// imports. With `index`'s server fn also called by a route's loader (its
+// manifest has `Inner`), nothing warns and the click renders `Inner`, cold
+// and from the persistent cache; without, `Inner` is named for `index`
+// only. (Astra re-check of aabc2282da: `Inner` was also named for
+// `second`, and `Other` for `index`.)
+const sharedChunkName = (loader: boolean) => ({
+  ...secondEntry,
+  files: {
+    'src/nested/Inner.tsx': answer('Inner'),
+    'src/nested/Other.tsx': answer('Other'),
+    'src/nested/outer.tsx': `import { createServerFn } from '@tanstack/react-start'
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+export const outer = createServerFn().handler(async () => {
+  const { Inner } = await import(/* webpackChunkName: 'panel' */ './Inner')
+  return renderServerComponent(<section><Inner /></section>)
+})
+`,
+    'src/nested/late.ts': lateFn,
+    'src/routes/nested.tsx': lateRoute(
+      loader
+        ? { loader: 'loader: async () => ({ tree: await outer() }),' }
+        : {},
+    ),
+    'src/second.ts': `export const two = () => import(/* webpackChunkName: 'panel' */ './nested/Other').then((m) => m.Other)
+`,
+    'src/empty.ts': secondEntry.files['src/empty.ts'],
+  },
+})
+test.for(builds)(
+  'a $build build: no warning for components two entries load through one import() chunk name',
+  { timeout },
+  async ({ options }) => {
+    const server = await startRscRsbuildPreviewServer({
+      ...sharedChunkName(true),
+      ...options,
+    })
+    expect({
+      errors: server.errors,
+      warned: flightWarnings(server),
+    }).toEqual({ errors: [], warned: [] })
+    expect(await clickOuter(server)).toBe('ANSWER_1')
+  },
+)
+test(
+  'the warning names only the entry whose graph imports the component through a shared chunk name',
+  async () => {
+    const server = await startRscRsbuildPreviewServer(sharedChunkName(false))
+    expect({
+      errors: server.errors,
+      warned: flightWarnings(server),
+    }).toEqual({ errors: [], warned: ['src/nested/Inner.tsx (Inner): index'] })
+  },
+  timeout,
+)
+
+// The late server fn starts a worker whose module imports `Inner`: the
+// worker's chunk group runs a runtime of its own, which `index` does not
+// load, so `Inner` is no reference of `index`'s. Nothing warns, the server
+// fn answers. (Astra re-check of aabc2282da: quiet; a walk into the
+// worker's block warned.)
+test(
+  'no warning for a component only a worker the late server fn starts imports',
+  async () => {
+    const server = await startRscRsbuildPreviewServer({
+      files: {
+        'src/nested/Inner.tsx': answer('Inner'),
+        'src/nested/worker-only.ts': `import { Inner } from './Inner'
+self.onmessage = () => self.postMessage(String(Inner))
+`,
+        'src/nested/outer.tsx': `import { createServerFn } from '@tanstack/react-start'
+export const outer = createServerFn().handler(() => {
+  const start = () => new Worker(new URL(/* webpackChunkName: 'isolated-worker' */ './worker-only.ts', import.meta.url))
+  return String(start).length > 0 ? 'WORKER_FACTORY' : 'NO'
+})
+`,
+        'src/nested/late.ts': lateFn,
+        'src/routes/nested.tsx': lateRoute(),
+      },
+    })
+    expect({
+      errors: server.errors,
+      warned: flightWarnings(server),
+    }).toEqual({ errors: [], warned: [] })
+    expect(await clickOuter(server)).toBe('WORKER_FACTORY')
+  },
+  timeout,
+)
+
+// An installed package's side-effect-free barrel re-exports two client
+// components: the late server fn of `index` renders `Button` through it,
+// the second entry `Dialog`. The barrel's re-export of each is used in one
+// entry's runtime only: `Button` is named for `index`, nothing else.
+test(
+  "the warning names only the entry whose runtime uses a barrel's component",
+  async () => {
+    const server = await startRscRsbuildPreviewServer({
+      ...secondEntry,
+      files: {
+        'node_modules/ui-kit/package.json': JSON.stringify({
+          name: 'ui-kit',
+          type: 'module',
+          sideEffects: false,
+          exports: './index.js',
+        }),
+        'node_modules/ui-kit/index.js': `export { Button } from './Button.js'
+export { Dialog } from './Dialog.js'
+`,
+        'node_modules/ui-kit/Button.js': `'use client'
+import { createElement } from 'react'
+export function Button() {
+  return createElement('b', null, 'BUTTON')
+}
+`,
+        'node_modules/ui-kit/Dialog.js': `'use client'
+import { createElement } from 'react'
+export function Dialog() {
+  return createElement('b', null, 'DIALOG')
+}
+`,
+        'src/nested/outer.tsx': `import { createServerFn } from '@tanstack/react-start'
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+import { Button } from 'ui-kit'
+export const outer = createServerFn().handler(() => renderServerComponent(<section><Button /></section>))
+`,
+        'src/nested/late.ts': lateFn,
+        'src/routes/nested.tsx': lateRoute(),
+        'src/second.ts': `import { Dialog } from 'ui-kit'
+export const two = () => Dialog
+`,
+        'src/empty.ts': secondEntry.files['src/empty.ts'],
+      },
+    })
+    expect({
+      errors: server.errors,
+      warned: flightWarnings(server),
+    }).toEqual({
+      errors: [],
+      warned: ['node_modules/ui-kit/Button.js (Button): index'],
+    })
   },
   timeout,
 )
