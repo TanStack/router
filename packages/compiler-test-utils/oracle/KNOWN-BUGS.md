@@ -1065,7 +1065,12 @@ Paths under `start-plugin-core/tests/` unless noted.
 - **A chain method called through a computed member, or a call whose result is member-called, is never visited.**
   SPEC J4.5, J4.12. `start-compiler-cases.test.ts`: "$name: the client holds no server code, or the module is
   rejected at the call"; `integration/start-build-call-shapes.test.ts`: "$name: the client bundle holds no server code
-  and the shape works, or the build fails at the call". (Same cause in J7: "renderServerComponent styles the server
+  and the shape works, or the build fails at the call". The server runs an isomorphic fn's client implementation
+  called through a member of its chain (`.client(fn)['call'](null)`; J4.9, J4.11):
+  `createIsomorphicFn/createIsomorphicFn.test.ts`: "read through a computed member: the server neither holds nor loads
+  the client implementation, the client rejects the read"; `integration/start-build-builder-escapes.test.ts`: "an
+  isomorphic fn read through a computed member in a module only the server imports: the server neither holds nor runs
+  the client implementation". (Same cause in J7: "renderServerComponent styles the server
   component when its result is chained".)
 - **Server fns outside a top-level variable declaration are left untransformed, broken or rejected without a
   position.** SPEC J4.6. `createServerFn/declaration-sites.test.ts`: "a server fn created through an optional call

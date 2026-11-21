@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
-import { inPage, serveCase, useStartHost } from '../regression-helpers'
+import {
+  compileError,
+  expectCompileError,
+  inPage,
+  serveCase,
+  useStartHost,
+} from '../regression-helpers'
 import type { ServedCase } from '../regression-helpers'
 
 const host = useStartHost()
@@ -266,6 +272,34 @@ export const fn = iso.server(() => db.x()).client(() => 'client')`
     })
     expectNotLoaded(await served.loads(), ['./db.server'])
     expect(await inPage(served, 'return module.fn()')).toBe('client')
+  })
+
+  // SPEC J4.5, J4.9, J4.11. A member read off the isomorphic fn reads the
+  // compiled value, with a dot (`.client(fn).name`) or a computed key; the
+  // client rejects both reads. On main, a call through the member
+  // (`['call'](null)`) keeps the chain on the server and runs the client
+  // implementation there.
+  test('read through a computed member: the server neither holds nor loads the client implementation, the client rejects the read', async () => {
+    const code = `import { createIsomorphicFn } from '@tanstack/react-start'
+import { client } from './x.client'
+export const name = createIsomorphicFn().client(() => client('MARK_CLIENT_NAME'))['name']
+export const optional = createIsomorphicFn().client(() => client('MARK_CLIENT_OPTIONAL'))?.['name']
+export const called = () => createIsomorphicFn().client(() => client('MARK_CLIENT_CALL'))['call'](null)`
+    const startCase = await (
+      await host()
+    ).case({
+      'module.tsx': code,
+      'x.client.ts': `export const client = (value: string) => value\n`,
+    })
+    expect(await startCase.served('module.tsx', 'ssr')).not.toContain(
+      'MARK_CLIENT',
+    )
+    expect((await startCase.ssr()).called()).toBeUndefined()
+    expectNotLoaded(await startCase.serverLoads(), ['./x.client'])
+    expectCompileError(await compileError(startCase), {
+      source: code,
+      at: "['name']",
+    })
   })
 
   test('a .client() call on a global object is left alone', async () => {

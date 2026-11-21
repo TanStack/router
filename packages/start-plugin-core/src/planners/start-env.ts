@@ -913,11 +913,7 @@ function planStartEnv(
   // the calls steps 3-4 replace: one kept as another's implementation renders as its rewrite
   const replaced = new Set<Node>(analysis.envOnlyCalls.map((c) => c.call))
   for (const chain of analysis.chains) {
-    const v = chain.terminalValue
-    if (
-      !chain.unsupported &&
-      (v.t === 'isoFn' || (v.t === 'builder' && v.kind === 'isoFn'))
-    ) {
+    if (compilesIsoFn(chain)) {
       replaced.add(chain.terminal)
     }
   }
@@ -944,9 +940,7 @@ function planStartEnv(
 
   // ---- 3. isomorphic fns
   for (const chain of analysis.chains) {
-    const v = chain.terminalValue
-    const isIso = v.t === 'isoFn' || (v.t === 'builder' && v.kind === 'isoFn')
-    if (!isIso || chain.unsupported) {
+    if (!compilesIsoFn(chain)) {
       continue
     }
     const X = chain.terminal
@@ -1851,6 +1845,22 @@ function serverFnFact(
     name,
     provider,
   }
+}
+
+/**
+ * Whether the compile replaces an isomorphic fn chain. One its computed
+ * member ends after links (`.client(fn)['name']`) is compiled, and the member
+ * reads the compiled value, as a dot member does; one ending at a computed
+ * member right after its factory call or stored value
+ * (`createIsomorphicFn()['server'](…)`) is left to the runtime. The client
+ * reports both uses (`start-escape:computed`).
+ */
+function compilesIsoFn(chain: Chain): boolean {
+  const v = chain.terminalValue
+  return (
+    (v.t === 'isoFn' || (v.t === 'builder' && v.kind === 'isoFn')) &&
+    (!chain.unsupported || chain.links.length > 0)
+  )
 }
 
 /** The chain a terminal stands for: the last operand of a sequence, inside the wrappers a value passes unchanged (`isExpressionWrapper`). */

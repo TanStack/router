@@ -126,6 +126,41 @@ export const Route = createFileRoute('/')({
     timeout,
   )
 
+  // SPEC J4.9, J4.11. The client build refuses such a read (the computed key
+  // may attach server code), so only a module the client never builds shows
+  // the server's output. On main, a call through the member
+  // (`['call'](null)`) keeps the chain on the server and runs the client
+  // implementation there.
+  test(
+    'an isomorphic fn read through a computed member in a module only the server imports: the server neither holds nor runs the client implementation',
+    async () => {
+      const build = await buildStart({
+        bundler,
+        files: {
+          'src/chart.client.ts': `export const draw = (mark: string) => 'MARK_CLIENT_IMPL:' + mark\n`,
+          'src/iso.ts': `import { createIsomorphicFn } from '@tanstack/react-start'
+import { draw } from './chart.client'
+export const name = createIsomorphicFn().client(() => draw('name'))['name']
+export const optional = createIsomorphicFn().client(() => draw('optional'))?.['name']
+export const called = () => createIsomorphicFn().client(() => draw('call'))['call'](null)
+`,
+          'src/entry.ts': `export const page = 'MARK_PAGE'\n`,
+          'src/ssr-entry.ts': `export * from './iso'\n`,
+        },
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+      })
+      const { result } = await build.ssr.run(
+        `return { called: entry.called() ?? null }`,
+      )
+      expect({
+        held: build.ssr.where('MARK_CLIENT_IMPL'),
+        result,
+        violations: build.violations,
+      }).toEqual({ held: 'nowhere', result: { called: null }, violations: [] })
+    },
+    timeout,
+  )
+
   test(
     "a builder's options read by name build, and no server code reaches the client",
     async () => {
