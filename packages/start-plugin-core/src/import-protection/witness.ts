@@ -132,7 +132,7 @@ interface RspackConnectionLike {
   dependency?: unknown
 }
 
-export interface RspackCompilationLike {
+interface RspackCompilationLike {
   chunks: Iterable<RspackChunkLike>
   modules: Iterable<RspackModuleLike>
   chunkGraph: {
@@ -153,49 +153,7 @@ export interface RspackCompilationLike {
   children?: Iterable<RspackCompilationLike>
 }
 
-/**
- * Each module in a chunk of an Rspack compilation, a concatenated module's
- * inner modules in its place, with its `holder` (the ConcatenatedModule, else
- * the module itself), in chunk order: a module of several chunks is visited
- * once per chunk.
- */
-export function forEachChunkModule(
-  compilation: RspackCompilationLike,
-  visit: (module: RspackModuleLike, holder: RspackModuleLike) => void,
-): void {
-  for (const chunk of compilation.chunks) {
-    for (const m of compilation.chunkGraph.getChunkModules(chunk)) {
-      for (const inner of m.modules ?? [m]) {
-        visit(inner, m)
-      }
-    }
-  }
-}
-
-/**
- * The used exports of a module in a chunk (`forEachChunkModule`) over the
- * compilation's runtimes (`runtimesOf`): `true` all or unknown, `null`
- * usedExports off, an empty list none.
- */
-export function usedExportsOf(
-  compilation: RspackCompilationLike,
-  module: RspackModuleLike,
-  runtimes: Array<string>,
-): ReadonlyArray<string> | boolean | null {
-  return compilation.moduleGraph.getUsedExports(module, runtimes)
-}
-
-/** Whether a module's used exports (`usedExportsOf`) may hold one. */
-export function mayUseExports(
-  used: ReadonlyArray<string> | boolean | null,
-): boolean {
-  return (
-    used === true || used === null || (Array.isArray(used) && used.length > 0)
-  )
-}
-
-/** The runtimes of an Rspack compilation's chunks. */
-export function runtimesOf(compilation: RspackCompilationLike): Array<string> {
+function runtimesOf(compilation: RspackCompilationLike): Array<string> {
   const out = new Set<string>()
   for (const chunk of compilation.chunks) {
     const r = chunk.runtime
@@ -239,27 +197,34 @@ export function readRspackWitness(
     string,
     { env: string; module: RspackModuleLike; edge: WitnessModule }
   >()
-  forEachChunkModule(compilation, (inner, holder) => {
-    const res = inner.resource
-    if (!res) {
-      return
+  for (const chunk of compilation.chunks) {
+    for (const m of compilation.chunkGraph.getChunkModules(chunk)) {
+      for (const inner of m.modules ?? [m]) {
+        const res = inner.resource
+        if (!res) {
+          continue
+        }
+        const env = envOf(inner, m)
+        const key = `${env}\0${res}`
+        const lookup = lookups.get(env)
+        if (!lookup || inChunk.has(key)) {
+          continue
+        }
+        const edge = lookup(idOf(res))
+        if (edge) {
+          inChunk.set(key, { env, module: inner, edge })
+        }
+      }
     }
-    const env = envOf(inner, holder)
-    const key = `${env}\0${res}`
-    const lookup = lookups.get(env)
-    if (!lookup || inChunk.has(key)) {
-      return
-    }
-    const edge = lookup(idOf(res))
-    if (edge) {
-      inChunk.set(key, { env, module: inner, edge })
-    }
-  })
+  }
   const runtimes = runtimesOf(compilation)
   const live = new Map<string, Set<string>>()
   for (const { env, module, edge } of inChunk.values()) {
+    const used = compilation.moduleGraph.getUsedExports(module, runtimes)
     if (
-      mayUseExports(usedExportsOf(compilation, module, runtimes)) ||
+      used === true ||
+      used === null ||
+      (Array.isArray(used) && used.length > 0) ||
       edge.effectful
     ) {
       let keys = live.get(env)

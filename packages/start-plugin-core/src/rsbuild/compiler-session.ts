@@ -45,7 +45,6 @@ import {
   RSBUILD_RSC_LAYER_RESOLVE,
 } from './planning'
 import { runsAgainLater } from './vue'
-import type { RscManifestLike } from './flight-check'
 import type {
   StartCompilerEnvironment,
   StartCompilerSessionOptions,
@@ -274,14 +273,6 @@ export class StartRsbuildCompilerSession {
    * it, and its preparation.
    */
   private run: { compilers: Set<string>; ready: Promise<void> } | null = null
-
-  /**
-   * RSC production builds: the manifest Rspack's RSC ServerPlugin reported
-   * for a compilation of the server compiler (`onManifest`, after its
-   * emit), by that compilation: the delivered side of its Flight check
-   * (`flight-check.ts`), which only that compilation's `done` reads.
-   */
-  readonly flightManifests = new WeakMap<object, RscManifestLike>()
 
   constructor(opts: StartRsbuildSessionOptions) {
     this.rscEnabled = opts.rsc !== undefined
