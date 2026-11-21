@@ -916,9 +916,8 @@ const NO_SPAN_OPTIONS: SpanOptions = {}
 
 /** An expression boundary being rendered (`Renderer.openExpr`): its reserved opening text and the boundary it is nested in. */
 interface OpenExpr {
-  /** Where its text starts in the segments (the opening). */
+  /** The reserved segment of its opening text (empty until it closes). */
   at: number
-  opening: Extract<Segment, { k: 'text' }>
   outerCoreStart: number
   outerCoreEnd: number
   outerCoreShape: number
@@ -1394,14 +1393,13 @@ class Renderer {
   ): OpenExpr {
     const open: OpenExpr = {
       at: out.length,
-      opening: { k: 'text', text: '' },
       outerCoreStart: this.coreStart,
       outerCoreEnd: this.coreEnd,
       outerCoreShape: this.coreShape,
       outerCoreRef: this.coreRef,
       outerCoreWrapped: this.coreWrapped,
     }
-    out.push(open.opening)
+    out.push({ k: 'text', text: '' })
     this.reserved = true
     this.coreStart = core?.start ?? -1
     this.coreEnd = core?.end ?? -1
@@ -1459,13 +1457,8 @@ class Renderer {
         suffix = '()'
       }
     }
-    if (prefix !== '') {
-      open.opening.text = prefix
-      const mapTo = this.firstMapped(out, from)
-      if (mapTo !== undefined) {
-        open.opening.mapTo = mapTo
-      }
-    }
+    let opening = prefix
+    let mapTo = prefix === '' ? undefined : this.firstMapped(out, from)
     if (tokensMeet(dest)) {
       const a = this.charBefore(out, open.at, 0)
       if (
@@ -1475,8 +1468,8 @@ class Renderer {
           prefix.charAt(0) || this.firstChar(out, from),
         )
       ) {
-        open.opening.text = ' ' + prefix
-        open.opening.mapTo = undefined
+        opening = ' ' + prefix
+        mapTo = undefined
       }
       if (end >= 0) {
         const last =
@@ -1489,6 +1482,28 @@ class Renderer {
           this.boundaryEnd = end
           this.boundaryLast = last
         }
+      }
+    }
+    // (a new segment, not the reserved one written: every text segment of
+    // a recipe has one of the shapes the emitter reads)
+    if (opening !== '') {
+      const next = out[open.at + 1]
+      if (
+        mapTo !== undefined &&
+        next?.k === 'text' &&
+        next.mapTo === mapTo &&
+        next.edgeKey === undefined &&
+        next.gen === undefined
+      ) {
+        // (the text it maps to follows: one segment, which every position
+        // of either resolves to as before; the emptied one is dropped)
+        out[open.at] = { k: 'text', text: opening + next.text, mapTo }
+        out[open.at + 1] = { k: 'text', text: '' }
+      } else {
+        out[open.at] =
+          mapTo === undefined
+            ? { k: 'text', text: opening }
+            : { k: 'text', text: opening, mapTo }
       }
     }
     if (suffix !== '') {
