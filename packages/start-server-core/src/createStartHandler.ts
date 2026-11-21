@@ -11,7 +11,6 @@ import {
 } from '@tanstack/start-client-core'
 import {
   _getRenderedMatches,
-  deepEqual,
   isDangerousProtocol,
   isPromise,
   isRedirect,
@@ -905,13 +904,6 @@ export function createStartHandler<TRegister = Register>(
           )
       }
 
-      // Global request middleware validators gate every request, server
-      // function calls included, after all global middleware has run.
-      terminal = withValidatedData(
-        terminal,
-        flattenedRequestMiddlewares.flatMap((m) => m.options.validator ?? []),
-      )
-
       const middlewareCtx: PipelineContext = {
         request,
         pathname: url.pathname,
@@ -1141,57 +1133,34 @@ function withParsedParams(
 const requestSlots = ['path', 'query', 'headers', 'body'] as const
 
 /**
- * Validate request slots before the handler runs and pass the result as
- * `ctx.data`. Runs after middleware, so auth rejects before validation does.
- * Each schema in a slot must pass; object outputs are shallow-merged and
- * must agree on shared keys.
+ * Validate the method's request slots before its handler runs and pass the
+ * result as `ctx.data`. Runs after middleware, so auth rejects before
+ * validation does.
  */
 function withValidatedData(
   handler: TODO,
-  validators: Array<RequestValidatorSlots>,
+  validator: RequestValidatorSlots | undefined,
 ): TODO {
-  if (!validators.length) return handler
+  if (!validator) {
+    return handler
+  }
 
   return async (ctx: TODO) => {
     const data: Record<string, unknown> = {}
     const issues: Array<{ slot: string; issues: ReadonlyArray<unknown> }> = []
 
     for (const slot of requestSlots) {
-      const schemas = validators.flatMap((v) => v[slot] ?? [])
-      if (!schemas.length) continue
-      const raw = await readRequestSlot(slot, ctx)
-      for (const schema of schemas) {
-        const result = await schema['~standard'].validate(raw)
-        if (result.issues) {
-          issues.push({ slot, issues: result.issues })
-          continue
-        }
-        const prev = data[slot]
-        const value = result.value
-        if (prev === undefined) {
-          data[slot] = value
-          continue
-        }
-        const merge = isPlainObject(prev) && isPlainObject(value)
-        // Validators of one slot must agree on every key they share. Any
-        // precedence order would let a schema that passes raw input through
-        // replace a value another schema transformed or rejected, so a
-        // disagreement is a configuration error, not something to resolve.
-        const conflict = merge
-          ? Object.keys(value).find(
-              (key) => key in prev && !deepEqual(prev[key], value[key]),
-            )
-          : !deepEqual(prev, value) && slot
-        if (conflict) {
-          throw new Error(
-            process.env.NODE_ENV !== 'production'
-              ? `Request validators disagree on "${slot}" output${merge ? ` key "${conflict}"` : ''}. Every validator for a slot must produce the same value for keys they share.`
-              : 'Request validator conflict',
-          )
-        }
-        if (merge) {
-          data[slot] = { ...prev, ...value }
-        }
+      const schema = validator[slot]
+      if (!schema) {
+        continue
+      }
+      const result = await schema['~standard'].validate(
+        await readRequestSlot(slot, ctx),
+      )
+      if (result.issues) {
+        issues.push({ slot, issues: result.issues })
+      } else {
+        data[slot] = result.value
       }
     }
 
@@ -1226,7 +1195,9 @@ async function readRequestSlot(
     case 'body': {
       // Clone so the handler can still read the body itself.
       const text = await ctx.request.clone().text()
-      if (!text) return undefined
+      if (!text) {
+        return undefined
+      }
       try {
         return JSON.parse(text)
       } catch {
@@ -1234,10 +1205,6 @@ async function readRequestSlot(
       }
     }
   }
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 async function handleServerRoutes({
@@ -1276,10 +1243,6 @@ async function handleServerRoutes({
   let terminalHandler: TODO = (ctx: TODO) =>
     executeRouter(ctx.context, matchedRoutes, router)
   let terminalNext: TODO
-  let validatorsEnforced = false
-  // Slot validators from every request middleware in the route chain, then
-  // the method's own. All of them must pass (intersection).
-  const validators: Array<RequestValidatorSlots> = []
 
   // Collect middleware from matched routes, filtering out those already executed
   // in the request phase
@@ -1293,7 +1256,6 @@ async function handleServerRoutes({
         if (!executedRequestMiddlewares?.has(m)) {
           routeMiddlewares.push(m.options.server)
         }
-        if (m.options.validator) validators.push(m.options.validator)
       }
     }
   }
@@ -1321,19 +1283,19 @@ async function handleServerRoutes({
           const handlerMiddlewares = flattenMiddlewares(handler.middleware)
           for (const m of handlerMiddlewares) {
             routeMiddlewares.push(m.options.server)
-            if (m.options.validator) validators.push(m.options.validator)
           }
         }
-        if (handler.validator) validators.push(handler.validator)
       }
       const routeHandler =
         typeof handler === 'function' ? handler : handler.handler
       if (routeHandler) {
         const parsedHandler = withParsedParams(
-          withValidatedData(routeHandler, validators),
+          withValidatedData(
+            routeHandler,
+            typeof handler === 'function' ? undefined : handler.validator,
+          ),
           matchedRoutes,
         )
-        validatorsEnforced = true
         if (!mayDefer) {
           terminalHandler = parsedHandler
           terminalNext = throwIfMayNotDefer
@@ -1342,12 +1304,6 @@ async function handleServerRoutes({
         }
       }
     }
-  }
-
-  // Without a method handler (page render, unmatched method) the route's
-  // middleware validators still gate the request before rendering.
-  if (!validatorsEnforced) {
-    terminalHandler = withValidatedData(terminalHandler, validators)
   }
 
   const response = await executeMiddleware(

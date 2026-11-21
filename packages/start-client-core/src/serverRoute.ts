@@ -5,16 +5,13 @@ import type {
   Assign,
   Constrain,
   Expand,
-  IntersectAssign,
   ResolveAllParamsFromParent,
+  ResolveValidatorOutput,
   UnionToIntersection,
 } from '@tanstack/router-core'
 import type {
   AnyRequestMiddleware,
   AssignAllServerRequestContext,
-  IntersectAllMiddleware,
-  RequestValidatorSlots,
-  ResolveRequestData,
 } from './createMiddleware'
 
 declare module '@tanstack/router-core' {
@@ -467,6 +464,26 @@ export interface RouteMethodBuilderOptions<
   >
 }
 
+/**
+ * Slot-shaped request validator. Each slot maps to an HTTP (and OpenAPI)
+ * location, which the single-schema server function validator cannot express.
+ */
+export interface RequestValidatorSlots {
+  body?: AnyStandardSchemaValidator
+  query?: AnyStandardSchemaValidator
+  path?: AnyStandardSchemaValidator
+  headers?: AnyStandardSchemaValidator
+}
+
+/** The validated `data` a slot validator produces, keyed by slot. */
+export type ResolveRequestData<TValidator> = unknown extends TValidator
+  ? TValidator
+  : TValidator extends RequestValidatorSlots
+    ? {
+        [TSlot in keyof TValidator]: ResolveValidatorOutput<TValidator[TSlot]>
+      }
+    : undefined
+
 export type RouteResponseMap = Partial<
   Record<
     number | 'default',
@@ -543,16 +560,8 @@ export interface RouteMethodHandlerCtx<
   in out TMethodMiddlewares,
   in out TMethodValidator = undefined,
 > {
-  /** Validated request slots from the middleware chain and method `validator`. */
-  data: Expand<
-    IntersectAssign<
-      IntersectAllMiddleware<
-        MergeMethodMiddlewares<TServerMiddlewares, TMethodMiddlewares>,
-        'allData'
-      >,
-      ResolveRequestData<TMethodValidator>
-    >
-  >
+  /** Validated request slots from the method `validator`. */
+  data: Expand<ResolveRequestData<TMethodValidator>>
   context: Expand<
     AssignAllMethodContext<
       TRegister,

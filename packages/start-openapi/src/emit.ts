@@ -114,19 +114,16 @@ async function buildOperation(
 
   if (parameters.length) operation.parameters = parameters
 
-  // Request body. Several schemas (middleware + method) must all hold.
-  const bodySchemas = await Promise.all(
-    (op.request?.body ?? []).map(async (schema) =>
-      hoist(await toJSONSchema(schema, 'input'), components),
-    ),
-  )
-  if (bodySchemas.length) {
+  // Request body.
+  if (op.request?.body) {
     operation.requestBody = {
       required: true,
       content: {
         'application/json': {
-          schema:
-            bodySchemas.length === 1 ? bodySchemas[0] : { allOf: bodySchemas },
+          schema: hoist(
+            await toJSONSchema(op.request.body, 'input'),
+            components,
+          ),
         },
       },
     }
@@ -144,45 +141,34 @@ async function buildOperation(
 }
 
 /**
- * Expand slot schemas (object schemas) into one OpenAPI parameter per
+ * Expand a slot schema (an object schema) into one OpenAPI parameter per
  * top-level property. This is how a `query`/`path`/`headers` Zod object
- * becomes individual `parameters[]` entries. When several schemas declare the
- * same property, the request must satisfy all of them: the parameter schema
- * becomes an `allOf` and it is required if any of them requires it.
+ * becomes individual `parameters[]` entries.
  */
 async function slotToParameters(
-  schemas: Array<StandardSchemaV1> | undefined,
+  schema: StandardSchemaV1 | undefined,
   location: 'query' | 'path' | 'header',
   components: { schemas: Record<string, JSONSchema> },
   toJSONSchema: ToJSONSchema,
 ): Promise<Array<Record<string, unknown>>> {
-  const params = new Map<string, Record<string, any>>()
-  for (const schema of schemas ?? []) {
-    const resolved = hoist(await toJSONSchema(schema, 'input'), components)
-    // Parameters need the concrete object schema, not a $ref, to read properties.
-    const objectSchema = resolved.$ref
-      ? components.schemas[refName(resolved.$ref)]
-      : resolved
-
-    const props: Record<string, JSONSchema> = objectSchema?.properties ?? {}
-    const required: Array<string> = objectSchema?.required ?? []
-
-    for (const [name, propSchema] of Object.entries(props)) {
-      const isRequired = location === 'path' || required.includes(name)
-      const prev = params.get(name)
-      params.set(
-        name,
-        prev
-          ? {
-              ...prev,
-              required: prev.required || isRequired,
-              schema: { allOf: [prev.schema, propSchema] },
-            }
-          : { name, in: location, required: isRequired, schema: propSchema },
-      )
-    }
+  if (!schema) {
+    return []
   }
-  return [...params.values()]
+  const resolved = hoist(await toJSONSchema(schema, 'input'), components)
+  // Parameters need the concrete object schema, not a $ref, to read properties.
+  const objectSchema = resolved.$ref
+    ? components.schemas[refName(resolved.$ref)]
+    : resolved
+
+  const props: Record<string, JSONSchema> = objectSchema?.properties ?? {}
+  const required: Array<string> = objectSchema?.required ?? []
+
+  return Object.entries(props).map(([name, propSchema]) => ({
+    name,
+    in: location,
+    required: location === 'path' || required.includes(name),
+    schema: propSchema,
+  }))
 }
 
 async function buildResponses(

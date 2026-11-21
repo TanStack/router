@@ -51,31 +51,32 @@ This package is the OpenAPI emitter for the same manifest.
 
 ## The API surface (additive, declarative)
 
-### 1. `validator` on request middleware and the method builder (slot-shaped)
+### 1. `validator` on the method builder (slot-shaped)
 
 Matches the `inputValidator` → `validator` rename on server functions (#7566).
 HTTP has locations the server function model lacks, so the validator is keyed
 by slot, and each slot maps 1:1 to an OpenAPI location:
 
 ```ts
-const paginated = createMiddleware({ type: 'request' })
-  .validator({ query: PaginationSchema })
-  .server(({ next }) => next())
-
 POST: {
-  validator: { body: CreateSequenceSchema },
+  validator: { body: CreateSequenceSchema, query: PaginationSchema },
   handler: ({ data }) => { /* data.body, data.query */ },
 }
 ```
 
 Slots are `body`, `query`, `path` and `headers`, each a Standard Schema.
 
+Request middleware carries no validator: a slot validator has nothing to check
+in a server function's chain, and that is a middleware design question for its
+own change. Shared schemas are plain values, so share them by spreading
+(`validator: { ...paginated, body }`).
+
 **Runtime.** Start validates every slot after the middleware chain and before
 the handler, so auth rejects before validation does. The result is passed as
 `ctx.data`. A failure returns `400` with `{ message, issues: [{ slot, issues }] }`.
 
-**Types.** `ctx.data` is inferred from the route's middleware chain plus the
-method's `validator` when using `createHandlers`. The plain `handlers: { GET: {...} }`
+**Types.** `ctx.data` is inferred from the method's `validator` when using
+`createHandlers`. The plain `handlers: { GET: {...} }`
 record cannot infer per-method generics, so `data` is loose there, the same as
 `context` is today.
 
@@ -120,15 +121,8 @@ telling the model when to call the tool.
   from method and path: `GET /api/v1/sequences/$id` → `getApiV1SequencesById`
   (`defaultOperationId`). The result only uses `[A-Za-z0-9]`, so it is a valid
   MCP tool name as-is.
-- **Validators across a middleware chain intersect.** Every schema in the
-  chain (parent routes, the route, method middleware, the method) must pass for
-  its slot. Last-writer-wins would let a route silently drop a header an auth
-  middleware requires. At runtime object outputs are shallow-merged into
-  `data[slot]`; in the types they intersect. The emitter uses `allOf` for a body
-  declared more than once, and for a parameter declared by more than one schema
-  (required if any schema requires it).
-- **Ancestor middleware applies.** The collector walks the route tree carrying
-  parent routes' `server.middleware`, matching the order Start runs it in.
+- **Ancestor middleware applies to security.** The collector walks the route
+  tree carrying parent routes' `server.middleware` to resolve `securitySchemes`.
 
 ---
 
@@ -159,5 +153,3 @@ dialect; other vendors pass `toJSONSchema`.
   correct by construction.
 - **`validateSearch` → query parameters**, and precedence against an explicit
   `query` slot.
-- **Parent-route validators in `ctx.data` types.** They run and are emitted, but
-  the handler's `data` type only covers the route's own and method middleware.

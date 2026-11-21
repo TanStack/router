@@ -3781,7 +3781,6 @@ describe('createStartHandler direct server routes', () => {
     const limitQuery = schema((v) =>
       v?.limit ? { limit: Number(v.limit) } : undefined,
     )
-    const pageQuery = schema((v) => ({ page: Number(v?.page ?? 1) }))
     const nameBody = schema((v) =>
       typeof v?.name === 'string' ? v : undefined,
     )
@@ -3795,12 +3794,8 @@ describe('createStartHandler direct server routes', () => {
       return createStartHandler(vi.fn(() => new Response('must not render')))
     }
 
-    it('passes validated slots as ctx.data, merging middleware and method validators', async () => {
-      const pagination = createMiddleware({ type: 'request' })
-        .validator({ query: pageQuery })
-        .server(({ next }) => next())
+    it('passes validated slots as ctx.data', async () => {
       const handler = setup({
-        middleware: [pagination],
         handlers: {
           POST: {
             validator: { path: idPath, query: limitQuery, body: nameBody },
@@ -3811,7 +3806,7 @@ describe('createStartHandler direct server routes', () => {
       })
 
       const response = await handler(
-        new Request('http://localhost/items/42?limit=5&page=2', {
+        new Request('http://localhost/items/42?limit=5', {
           method: 'POST',
           body: JSON.stringify({ name: 'x' }),
         }),
@@ -3822,14 +3817,14 @@ describe('createStartHandler direct server routes', () => {
       await expect(response.json()).resolves.toEqual({
         data: {
           path: { itemId: 42 },
-          query: { page: 2, limit: 5 },
+          query: { limit: 5 },
           body: { name: 'x' },
         },
         body: { name: 'x' },
       })
     })
 
-    it('returns 400 with issues when any validator in the chain fails', async () => {
+    it('returns 400 with issues when a slot fails validation', async () => {
       const routeHandler = vi.fn(() => new Response('must not run'))
       const handler = setup({
         handlers: {
@@ -3847,108 +3842,6 @@ describe('createStartHandler direct server routes', () => {
         issues: [{ slot: 'query' }],
       })
       expect(routeHandler).not.toHaveBeenCalled()
-    })
-
-    it.each([
-      { clampIn: 'middleware', passthroughIn: 'handler' },
-      { clampIn: 'handler', passthroughIn: 'middleware' },
-    ])(
-      'rejects a $passthroughIn passthrough schema that disagrees with a $clampIn transform',
-      async ({ clampIn }) => {
-        const clamp = {
-          query: schema((v) => ({ limit: Math.min(Number(v?.limit), 10) })),
-        }
-        const passthrough = { query: schema((v) => v) }
-        const routeHandler = vi.fn(() => new Response('must not run'))
-        const handler = setup({
-          middleware: [
-            createMiddleware({ type: 'request' })
-              .validator(clampIn === 'middleware' ? clamp : passthrough)
-              .server(({ next }) => next()),
-          ],
-          handlers: {
-            GET: {
-              validator: clampIn === 'handler' ? clamp : passthrough,
-              handler: routeHandler,
-            },
-          },
-        })
-
-        await expect(
-          handler(new Request('http://localhost/items/42?limit=999'), {}),
-        ).rejects.toThrow(
-          'Request validators disagree on "query" output key "limit"',
-        )
-        expect(routeHandler).not.toHaveBeenCalled()
-      },
-    )
-
-    it('merges validators that agree on shared keys', async () => {
-      const limit = schema((v) => ({ limit: Number(v?.limit) }))
-      const handler = setup({
-        middleware: [
-          createMiddleware({ type: 'request' })
-            .validator({ query: limit })
-            .server(({ next }) => next()),
-        ],
-        handlers: {
-          GET: {
-            validator: { query: limit },
-            handler: ({ data }: any) => Response.json(data),
-          },
-        },
-      })
-
-      const response = await handler(
-        new Request('http://localhost/items/42?limit=5'),
-        {},
-      )
-
-      await expect(response.json()).resolves.toEqual({ query: { limit: 5 } })
-    })
-
-    it('enforces route middleware validators when the route only renders', async () => {
-      const requireLimit = createMiddleware({ type: 'request' })
-        .validator({ query: limitQuery })
-        .server(({ next }) => next())
-      startMocks.router = makeRouter({
-        path: '/items/$itemId',
-        component: () => null,
-        server: { middleware: [requireLimit] },
-      })
-      const render = vi.fn(() => new Response('rendered'))
-      const handler = createStartHandler(render)
-
-      const response = await handler(
-        new Request('http://localhost/items/42'),
-        {},
-      )
-
-      expect(response.status).toBe(400)
-      expect(render).not.toHaveBeenCalled()
-    })
-
-    it('enforces global request middleware validators', async () => {
-      startMocks.requestMiddleware = [
-        createMiddleware({ type: 'request' })
-          .validator({ query: limitQuery })
-          .server(({ next }) => next()),
-      ]
-      const routeHandler = vi.fn(() => new Response('must not run'))
-      const handler = setup({ handlers: { GET: routeHandler } })
-
-      const rejected = await handler(
-        new Request('http://localhost/items/42'),
-        {},
-      )
-      expect(rejected.status).toBe(400)
-      expect(routeHandler).not.toHaveBeenCalled()
-
-      const accepted = await handler(
-        new Request('http://localhost/items/42?limit=1'),
-        {},
-      )
-      expect(accepted.status).toBe(200)
     })
   })
 
