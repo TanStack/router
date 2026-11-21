@@ -918,6 +918,7 @@ const NO_SPAN_OPTIONS: SpanOptions = {}
 interface OpenExpr {
   /** The reserved segment of its opening text (empty until it closes). */
   at: number
+  outerAt: number
   outerCoreStart: number
   outerCoreEnd: number
   outerCoreShape: number
@@ -1019,6 +1020,8 @@ class Renderer {
   private coreShape = -1
   /** The reference what rendered on the core reported (-1: none): a substituted or renamed reference. */
   private coreRef = -1
+  /** The open boundary's reserved opening (-1: none): one that opens right after it leaves L at its start to it. */
+  private openAt = -1
   /** Where the last in-place boundary ended, and its last character: an edit or an insert rendering there meets it (rule L). */
   private boundaryEnd = -1
   private boundaryLast = ''
@@ -1393,12 +1396,14 @@ class Renderer {
   ): OpenExpr {
     const open: OpenExpr = {
       at: out.length,
+      outerAt: this.openAt,
       outerCoreStart: this.coreStart,
       outerCoreEnd: this.coreEnd,
       outerCoreShape: this.coreShape,
       outerCoreRef: this.coreRef,
       outerCoreWrapped: this.coreWrapped,
     }
+    this.openAt = out.length
     out.push({ k: 'text', text: '' })
     this.reserved = true
     this.coreStart = core?.start ?? -1
@@ -1439,6 +1444,7 @@ class Renderer {
     this.coreShape = open.outerCoreShape
     this.coreRef = open.outerCoreRef
     this.coreWrapped = open.outerCoreWrapped
+    this.openAt = open.outerAt
     const from = open.at + 1
     let prefix = ''
     let suffix = ''
@@ -1461,10 +1467,12 @@ class Renderer {
     let opening = prefix
     let mapTo = prefix === '' ? undefined : this.firstMapped(out, from)
     if (tokensMeet(dest)) {
-      const a = this.charBefore(out, open.at, 0)
+      // (what renders before it inside the boundary it opens in: at that
+      // one's start, the opening still to be written decides, `(` or a space)
+      const a = this.charBefore(out, open.at, 0, this.openAt)
       if (
         spaceBefore(
-          a === '/' ? this.charBefore(out, open.at, 1) : '',
+          a === '/' ? this.charBefore(out, open.at, 1, this.openAt) : '',
           a,
           prefix.charAt(0) || this.firstChar(out, from),
         )
@@ -1598,13 +1606,14 @@ class Renderer {
     return undefined
   }
 
-  /** The last character rendered before segment `before` (`back` 1: the one before it, within that segment; '' when none). */
+  /** The last character rendered before segment `before`, after segment `after` (`back` 1: the one before it, within that segment; '' when none). */
   private charBefore(
     out: ReadonlyArray<Segment>,
     before: number,
     back: 0 | 1,
+    after = -1,
   ): string {
-    for (let i = before - 1; i >= 0; i--) {
+    for (let i = before - 1; i > after; i--) {
       const seg = out[i]!
       if (seg.k === 'slice') {
         if (seg.end > seg.start) {
