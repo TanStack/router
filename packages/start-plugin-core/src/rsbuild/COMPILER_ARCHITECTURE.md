@@ -138,7 +138,8 @@ JS): the functions whose default id, or with a generator whose gate token (`gate
 and the runtime stores on the RPC), is in the minified code. The resolver prints its gate from it; an RSC build's
 first resolver precedes the client, and the server's last settlement run builds it again from the publication. An
 RSC production build also compares, when that last run built something, the client references Rspack compiled in its
-`rsc` chunks (the `registerClientReference` proxies of its RSC transform, each registering its own resource) with
+`rsc` chunks (the `registerClientReference` proxies of its RSC transform: calls of the imported function registering the
+module's own Flight id, its path and query) with
 the client manifest Rspack's ServerPlugin reports for each entry of the same compilation (`onManifest`), and warns at
 that compilation's `done` of one an entry's manifest lacks while the entry's chunk groups reach its module
 (`flight-check.ts`: a client component only a late server fn renders).

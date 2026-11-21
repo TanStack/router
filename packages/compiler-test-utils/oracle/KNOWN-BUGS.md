@@ -465,16 +465,19 @@ retained.py head base`). The same with RSC for a server fn whose last client cal
   the browser cannot decode the outer server fn's result (the Flight client manifest Rspack delivers has no entry of
   the component). The build warns, naming the component's file, its exports and the entry (RSC phase 2: Rspack's
   per-entry client manifest, `onManifest`, of the same server compilation, compared with the client references Rspack
-  compiled in the `rsc` chunks, its RSC transform's `registerClientReference` proxies, each registering its own
-  resource, whatever made the module a client one; an entry is named when its manifest lacks a reference its own
+  compiled in the `rsc` chunks, its RSC transform's `registerClientReference` proxies, each a call of the function it
+  imports registering the module's own Flight id (its path and query, read from the parsed source), whatever made the
+  module a client one; an entry is named when its manifest lacks a reference its own
   graph reaches, by its chunk groups' module order; only when the last run built something; builds only, RSC
   decision E1; a warning until decision 4's evidence runs). Dev has no warning: the next compilation has the reference.
   `react-start-rsc/tests/integration/rsc-start-rsbuild-flight.test.ts`: the nested pair, a route that also renders the
   component from client code, a client plugin watching its file, an installed package's component, a component a
   loader gives the directive, a plugin's asynchronous `done` on both compilers (all warn), a `'use client'` file a
   server fn has only the URL of (an asset: no warning), the way out (a server fn a route's loader calls renders it
-  too: both clicks answer, no warning), a server adapter that imports `registerClientReference` to register a
-  component by id (no warning, the page renders), a second server entry that holds the component while the late
+  too: both clicks answer, no warning), components whose Flight id the proxy spells unlike their file (an accented
+  directory, a quoted query, a fragment: each named), a late fragment of a file whose id the manifest has (no warning,
+  the tree renders), a server adapter that imports `registerClientReference` to register a component by its caller's
+  id or that passes its own file to an unrelated call (no warning, the page renders), a second server entry that holds the component while the late
   server fn renders it for `index` (cold and from the persistent cache: `index` is named), and a package component
   a second entry has only in a shared chunk (no warning). The warning does not name the server fn whose handler
   renders the component (its provider's record makes every function one a server compile declares).

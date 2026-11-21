@@ -12,9 +12,10 @@
  * `Inner` from client code or a client plugin watches its file; and does
  * not when a server fn the build reaches first renders it (the way out).
  * The check reads what Rspack compiled as a client reference (an installed
- * package's component, a loader's directive; an asset of the file is none)
- * and the manifest of its own server compilation (a plugin's asynchronous
- * `done` on both compilers).
+ * package's component, a loader's directive; an asset of the file, an
+ * adapter registering another file, are none) by its Flight id (an accented
+ * directory, a quoted query, a fragment), and the manifest of its own server
+ * compilation (a plugin's asynchronous `done` on both compilers).
  */
 import path from 'node:path'
 import { expect, onTestFinished, test } from 'vitest'
@@ -77,6 +78,87 @@ const namesInner = (server: { messages: Array<string>; root: string }) =>
     file: 'src/nested/Inner.tsx',
     root: server.root,
   }).length > 0
+
+/** Each Flight warning of the build: `<file> (<exports>): <entries>`. */
+const flightWarnings = (server: { messages: Array<string> }) =>
+  [
+    ...new Set(
+      server.messages.flatMap((message) =>
+        [
+          ...message.matchAll(
+            /The client component (\S+) \(([^)]*)\) is a client reference of the RSC build, and the Flight client manifest Rspack delivered \(entry ([^)]*)\)/g,
+          ),
+        ].map(
+          ([, file, exports, entries]) => `${file} (${exports}): ${entries}`,
+        ),
+      ),
+    ),
+  ].sort()
+
+/** A `'use client'` component showing `ANSWER_1` once it hydrated. */
+const answer = (name: string) => `'use client'
+import { useState } from 'react'
+export function ${name}() {
+  const [n] = useState(1)
+  return <strong data-testid="${name.toLowerCase()}">ANSWER_{n}</strong>
+}
+`
+
+/** A server fn only client code calls: the last settlement run builds it (the check runs). */
+const lateFn = `import { createServerFn } from '@tanstack/react-start'
+export const late = createServerFn().handler(() => 'LATE')
+`
+
+/**
+ * A route at `/nested` whose button calls `outer` (`src/nested/outer.tsx`)
+ * and shows its tree in `[data-testid=late]`, a button calling `late`
+ * (`lateFn`, at `src/nested/late.ts`), and `head` before the route's
+ * options (imports, a `loader`).
+ */
+const lateRoute = (head: { imports?: string; loader?: string } = {}) =>
+  `import { ClientOnly, createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import type { ReactNode } from 'react'
+import { outer } from '../nested/outer'
+import { late } from '../nested/late'
+${head.imports ?? ''}
+export const Route = createFileRoute('/nested')({
+  ${head.loader ?? ''}
+  component: Page,
+})
+function Page() {
+  const [node, setNode] = useState<ReactNode>(null)
+  const [state, setState] = useState('none')
+  return (
+    <main>
+      <ClientOnly fallback={<span>loading</span>}>
+        <button data-testid="outer" onClick={() => outer().then((n) => { setNode(n as ReactNode); setState('answered') }, (error) => setState('error ' + error))}>
+          outer {state}
+        </button>
+        <button onClick={() => late()}>late</button>
+      </ClientOnly>
+      <div data-testid="late">{node}</div>
+    </main>
+  )
+}
+`
+
+/** Clicks `lateRoute`'s `outer` button and returns the tree's text. */
+async function clickOuter(
+  server: Parameters<typeof openRscPage>[0],
+): Promise<string> {
+  const page = await openRscPage(server, '/nested', {
+    registerCleanup: onTestFinished,
+  })
+  await waitForHydration(page)
+  await page.page.locator('[data-testid=outer]').click()
+  await answeredText(
+    page,
+    '[data-testid=outer]',
+    (text) => text.includes('answered') || text.includes('error'),
+  )
+  return page.text('[data-testid=late]')
+}
 
 // F4 (G6)
 test(
@@ -225,6 +307,82 @@ test(
   timeout,
 )
 
+// The Flight id Rspack registers a proxy under, and keys the manifest by,
+// is the module's path and query, which the proxy's literal spells its own
+// way: a directory with an accented name (escaped, `\xe9`), a query with a
+// double quote (a single-quoted literal), a fragment (no part of the id).
+// Each component only the late server fn renders is named, by its id.
+// (Astra re-check of aabc2282da: none warned, the click failed.)
+test(
+  'the warning for components whose Flight id the proxy spells unlike their file',
+  async () => {
+    const server = await startRscRsbuildPreviewServer({
+      files: {
+        'src/café/Inner.tsx': answer('Inner'),
+        'src/nested/Quoted.tsx': answer('Quoted'),
+        'src/nested/Part.tsx': answer('Part'),
+        'src/nested/outer.tsx': `import { createServerFn } from '@tanstack/react-start'
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+import { Inner } from '../café/Inner'
+import { Quoted } from './Quoted.tsx?title="blue"'
+import { Part } from './Part.tsx?flavour=blue#one'
+export const outer = createServerFn().handler(() => renderServerComponent(<section><Inner /><Quoted /><Part /></section>))
+`,
+        'src/nested/late.ts': lateFn,
+        'src/routes/nested.tsx': lateRoute(),
+      },
+    })
+    expect({
+      errors: server.errors,
+      warned: flightWarnings(server),
+    }).toEqual({
+      errors: [],
+      warned: [
+        'src/café/Inner.tsx (Inner): index',
+        'src/nested/Part.tsx?flavour=blue (Part): index',
+        'src/nested/Quoted.tsx?title="blue" (Quoted): index',
+      ],
+    })
+  },
+  timeout,
+)
+
+// Two fragments of one file are two modules with one Flight id: a server
+// fn a route's loader calls renders `./Inner.tsx#two`, the late one
+// `./Inner.tsx#one`. The manifest has the id: nothing warns and the late
+// tree renders.
+test(
+  'no warning for a late fragment of a file whose Flight id the manifest has',
+  async () => {
+    const server = await startRscRsbuildPreviewServer({
+      files: {
+        'src/nested/Inner.tsx': answer('Inner'),
+        'src/nested/early.tsx': `import { createServerFn } from '@tanstack/react-start'
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+import { Inner } from './Inner.tsx#two'
+export const early = createServerFn().handler(() => renderServerComponent(<div><Inner /></div>))
+`,
+        'src/nested/outer.tsx': `import { createServerFn } from '@tanstack/react-start'
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+import { Inner } from './Inner.tsx#one'
+export const outer = createServerFn().handler(() => renderServerComponent(<section><Inner /></section>))
+`,
+        'src/nested/late.ts': lateFn,
+        'src/routes/nested.tsx': lateRoute({
+          imports: `import { early } from '../nested/early'`,
+          loader: 'loader: async () => ({ tree: await early() }),',
+        }),
+      },
+    })
+    expect({
+      errors: server.errors,
+      warned: flightWarnings(server),
+    }).toEqual({ errors: [], warned: [] })
+    expect(await clickOuter(server)).toBe('ANSWER_1')
+  },
+  timeout,
+)
+
 // A `'use client'` file the server code reaches as an asset (a URL of the
 // file, not a module) is no client reference: the late server fn renders no
 // component, nothing warns.
@@ -346,28 +504,79 @@ export const Route = createFileRoute('/early')({
 // `Inner` too, so the manifest has it, and a server fn only client code
 // calls makes the last run build something (the check runs). The adapter
 // is no client reference Rspack compiled (it registers what its caller
-// names, not itself): nothing warns, the page shows both trees.
-// (Astra re-check of 2f32f533ee: the adapter was reported.)
-test(
-  'no warning for a server adapter that registers a client reference itself',
-  async () => {
-    const server = await startRscRsbuildPreviewServer({
-      files: {
-        'src/nested/Inner.tsx': `'use client'
-import { useState } from 'react'
-export function Inner() {
-  const [n] = useState(1)
-  return <strong data-testid="inner">ANSWER_{n}</strong>
-}
-`,
-        'src/nested/wireAdapter.ts': `import { registerClientReference } from 'react-server-dom-rspack/server'
+// names, or another file, not itself): nothing warns, the page shows both
+// trees. Its registration's id is its caller's, or a literal a loader
+// writes beside one of the adapter's own file, in another call (generated
+// instrumentation tracing where it runs).
+// (Astra re-checks: of 2f32f533ee, the caller's id; of aabc2282da, the
+// tracing call. The adapter was reported.)
+const adapters = [
+  {
+    adapter: 'registers the id its caller passes',
+    source: `import { registerClientReference } from 'react-server-dom-rspack/server'
 export const ref = (id: string, name: string) => registerClientReference(function () {}, id, name)
 `,
+    use: `declare const INNER_ID: string
+const Inner = ref(INNER_ID, 'Inner') as unknown as () => null`,
+    tools: {
+      rspack: (
+        config: { context: string; plugins: Array<unknown> },
+        {
+          rspack,
+        }: { rspack: { DefinePlugin: new (values: object) => unknown } },
+      ) => {
+        config.plugins.push(
+          new rspack.DefinePlugin({
+            INNER_ID: JSON.stringify(
+              path.join(config.context, 'src/nested/Inner.tsx'),
+            ),
+          }),
+        )
+      },
+    },
+  },
+  {
+    adapter: 'passes its own file to an unrelated call',
+    source: `import { registerClientReference as register } from 'react-server-dom-rspack/server'
+function trace(make: () => unknown, file: string, name: string) {
+  return make()
+}
+export const ref = () => trace(function () { return register(function () {}, __INNER_FILE__, "Inner") }, __FILE__, "ref")
+`,
+    use: `const Inner = ref() as unknown as () => null`,
+    files: {
+      'trace-files.cjs': `const path = require('node:path')
+module.exports = function (source) {
+  return source
+    .replaceAll('__INNER_FILE__', JSON.stringify(path.join(this.context, 'Inner.tsx')))
+    .replaceAll('__FILE__', JSON.stringify(this.resourcePath))
+}
+`,
+    },
+    tools: {
+      rspack: (config: { module: { rules: Array<unknown> } }) => {
+        config.module.rules.unshift({
+          test: /wireAdapter\.ts$/,
+          enforce: 'pre',
+          use: [path.join(process.cwd(), 'trace-files.cjs')],
+        })
+      },
+    },
+  },
+]
+test.for(adapters)(
+  'no warning for a server adapter that $adapter',
+  { timeout },
+  async ({ source, use, files: extra, tools }) => {
+    const server = await startRscRsbuildPreviewServer({
+      files: {
+        ...extra,
+        'src/nested/Inner.tsx': answer('Inner'),
+        'src/nested/wireAdapter.ts': source,
         'src/nested/outer.tsx': `import { createServerFn } from '@tanstack/react-start'
 import { renderServerComponent } from '@tanstack/react-start/rsc'
 import { ref } from './wireAdapter'
-declare const INNER_ID: string
-const Inner = ref(INNER_ID, 'Inner') as unknown as () => null
+${use}
 export const outer = createServerFn().handler(() => renderServerComponent(<section>outer <Inner /></section>))
 `,
         'src/nested/normal.tsx': `import { createServerFn } from '@tanstack/react-start'
@@ -375,9 +584,7 @@ import { renderServerComponent } from '@tanstack/react-start/rsc'
 import { Inner } from './Inner'
 export const normal = createServerFn().handler(() => renderServerComponent(<section>normal <Inner /></section>))
 `,
-        'src/nested/late.ts': `import { createServerFn } from '@tanstack/react-start'
-export const late = createServerFn().handler(() => 'LATE')
-`,
+        'src/nested/late.ts': lateFn,
         'src/routes/nested.tsx': `import { ClientOnly, createFileRoute } from '@tanstack/react-router'
 import { normal } from '../nested/normal'
 import { outer } from '../nested/outer'
@@ -399,31 +606,12 @@ export const Route = createFileRoute('/nested')({
 })
 `,
       },
-      tools: {
-        rspack: (
-          config: { context: string; plugins: Array<unknown> },
-          {
-            rspack,
-          }: { rspack: { DefinePlugin: new (values: object) => unknown } },
-        ) => {
-          config.plugins.push(
-            new rspack.DefinePlugin({
-              INNER_ID: JSON.stringify(
-                path.join(config.context, 'src/nested/Inner.tsx'),
-              ),
-            }),
-          )
-        },
-      },
+      tools,
     })
     expect({
       errors: server.errors,
-      warned:
-        findDiagnostics(server.messages, {
-          file: 'src/nested/wireAdapter.ts',
-          root: server.root,
-        }).length > 0 || namesInner(server),
-    }).toEqual({ errors: [], warned: false })
+      warned: flightWarnings(server),
+    }).toEqual({ errors: [], warned: [] })
     const page = await openRscPage(server, '/nested', {
       registerCleanup: onTestFinished,
     })
@@ -432,7 +620,6 @@ export const Route = createFileRoute('/nested')({
       await page.page.locator('[data-testid=inner]').allTextContents(),
     ).toEqual(['ANSWER_1', 'ANSWER_1'])
   },
-  timeout,
 )
 
 // A second server entry (in the RSC layer) and its client entry: the second

@@ -8,13 +8,14 @@
  * for: the Flight client manifest Rspack delivers has no entry of it, and
  * the browser cannot decode a server fn result that renders it. The check
  * compares the client references Rspack compiled in the `rsc` environment's
- * chunks (`isClientReference`) with the client manifest Rspack reports for
+ * chunks (`clientReferenceId`) with the client manifest Rspack reports for
  * each entry of the same compilation (`onManifest`): an entry is named when
  * its manifest lacks a reference its own graph reaches; it runs only in a
  * compilation whose last run built something (the graph can gain a module
  * after the handoff only there), and in builds only (decision E1).
  */
 import path from 'node:path'
+import { parseModule } from '@tanstack/router-utils/compiler'
 import {
   forEachChunkModule,
   mayUseExports,
@@ -26,7 +27,7 @@ import type {
   RspackModuleLike,
 } from '../import-protection/witness'
 
-/** What Start reads of Rspack's RSC manifest (`RscServerPluginOptions.onManifest`): each entry's client manifest, keyed by module resource. */
+/** What Start reads of Rspack's RSC manifest (`RscServerPluginOptions.onManifest`): each entry's client manifest, keyed by Flight id. */
 export type RscManifestLike = Record<
   string,
   { clientManifest: Record<string, unknown> }
@@ -34,16 +35,18 @@ export type RscManifestLike = Record<
 
 /** A client reference the `rsc` environment's chunks hold, with a used export. */
 export interface FlightReference {
-  resource: string
+  /** Its Flight id, the key of a client manifest (`flightIdOf`). */
+  id: string
   /** Its used exports (`true`: all or unknown). */
   exports: ReadonlyArray<string> | true
-  /** Its module (`reaches`). */
-  module: RspackModuleLike
+  /** Its modules with a used export: one per resource of the id (`./X.tsx#a`, `./X.tsx#b`). */
+  modules: Array<RspackModuleLike>
 }
 
-/** What `isClientReference` reads of a module. */
+/** What `clientReferenceId` reads of a module. */
 interface ProxyModuleLike extends RspackModuleLike {
   dependencies?: Iterable<{ request?: string; ids?: ReadonlyArray<string> }>
+  resourceResolveData?: { path?: string; query?: string }
   originalSource?: () => { source: () => string | Buffer } | null
 }
 
@@ -61,90 +64,142 @@ interface EntriesLike {
   entrypoints: ReadonlyMap<string, ChunkGroupLike>
 }
 
-/**
- * The id argument of a proxy's registration, a string literal:
- * `registerClientReference(function () { throw … }, "<id>", "<export>")`.
- */
-const registration =
-  /\}\s*,\s*("(?:[^"\\\r\n]|\\.)*")\s*,\s*"(?:[^"\\\r\n]|\\.)*"\s*\)/g
+const REGISTRAR = 'react-server-dom-rspack/server'
 
 /**
- * Whether Rspack compiled a module of the `rsc` layer as a client reference:
- * its RSC transform (SWC `reactServerComponents`, in `builtin:swc-loader`)
- * replaces a client module, whatever made it one (its own directive, a
- * package's entry, a loader), by proxies registered with
- * `registerClientReference` of `react-server-dom-rspack/server` under the
- * module's own resource, a string literal; the ServerPlugin's own mark of
- * it (`buildInfo.rsc`) stays native. A server module of the app that
- * imports the function to register what its callers name (an adapter) is
- * none, nor a module of another type (an asset of the file: `new
- * URL('./Inner.tsx', import.meta.url)`, which has no import). The source is
- * read only of a module that imports the function. (Relies on the
- * transform's output: Rspack 2.x.)
+ * The id Rspack registers a client reference of a module under and keys
+ * the client manifest by: the module's resolved path and query, without
+ * its fragment (`get_module_resource` of rspack_plugin_rsc; its swc-loader
+ * gives the transform the same), `null` for a module with no resolved
+ * path.
  */
-function isClientReference(module: ProxyModuleLike, resource: string): boolean {
+function flightIdOf(module: ProxyModuleLike): string | null {
+  const data = module.resourceResolveData
+  return data?.path === undefined ? null : data.path + (data.query ?? '')
+}
+
+/**
+ * The Flight id of a module of the `rsc` layer Rspack compiled as a client
+ * reference, else `null`. Its RSC transform (SWC `reactServerComponents`,
+ * in `builtin:swc-loader`) replaces a client module, whatever made it one
+ * (its own directive, a package's entry, a loader), by proxies: calls of
+ * `registerClientReference`, imported from `react-server-dom-rspack/server`,
+ * with the module's Flight id (`flightIdOf`) as their second argument, a
+ * string literal; the ServerPlugin's own mark of it (`buildInfo.rsc`) stays
+ * native. The module's source after its loaders is parsed, only for a
+ * module that imports the function: a call of the imported binding
+ * registering the module's own id makes it one. A server module of the app
+ * registering what its callers name, or another file (an adapter), is none,
+ * whatever its other calls pass; nor is a module of another type (an asset
+ * of the file: `new URL('./Inner.tsx', import.meta.url)`, which has no
+ * import). (Relies on the transform's output: Rspack 2.x.)
+ */
+function clientReferenceId(module: ProxyModuleLike): string | null {
   let imports = false
   for (const dependency of module.dependencies ?? []) {
     if (
-      dependency.request === 'react-server-dom-rspack/server' &&
+      dependency.request === REGISTRAR &&
       dependency.ids?.includes('registerClientReference')
     ) {
       imports = true
       break
     }
   }
-  if (!imports) {
-    return false
+  const id = imports ? flightIdOf(module) : null
+  if (id === null) {
+    return null
   }
-  const source = String(module.originalSource?.()?.source() ?? '')
-  for (const [, id] of source.matchAll(registration)) {
-    try {
-      if (JSON.parse(id!) === resource) {
-        return true
+  const parsed = parseModule(
+    String(module.originalSource?.()?.source() ?? ''),
+    { lang: 'js', sourceType: 'module' },
+  )
+  if (!parsed.ok) {
+    return null
+  }
+  for (const record of parsed.file.imports) {
+    if (
+      record.kind !== 'named' ||
+      record.typeOnly ||
+      record.specifier !== REGISTRAR ||
+      record.name !== 'registerClientReference'
+    ) {
+      continue
+    }
+    for (const use of record.local?.references ?? []) {
+      if (use.inTypePosition || use.isWrite) {
+        continue
       }
-    } catch {
-      // (an escape JSON does not have: not a resource Rspack wrote)
+      const call = parsed.file.parentOf(use.node)
+      if (call?.type !== 'CallExpression' || call.callee !== use.node) {
+        continue
+      }
+      const registered = call.arguments[1]
+      if (registered?.type === 'Literal' && registered.value === id) {
+        return id
+      }
     }
   }
-  return false
+  return null
 }
 
 /**
  * The live client references of an RSC server compilation's `rsc`
  * environment: its chunks' modules Rspack compiled as client references
- * (`isClientReference`) that have a used export.
+ * (`clientReferenceId`) that have a used export, by Flight id.
  */
 export function liveClientReferences(
   compilation: RspackCompilationLike,
   isRscModule: (module: RspackModuleLike, holder: RspackModuleLike) => boolean,
 ): Array<FlightReference> {
-  const candidates = new Map<string, RspackModuleLike>()
+  const checked = new Set<RspackModuleLike>()
+  const candidates = new Map<string, Array<RspackModuleLike>>()
   forEachChunkModule(compilation, (module, holder) => {
-    const resource = module.resource
     if (
-      resource &&
-      !candidates.has(resource) &&
-      isRscModule(module, holder) &&
-      isClientReference(module, resource)
+      checked.has(module) ||
+      !module.resource ||
+      !isRscModule(module, holder)
     ) {
-      candidates.set(resource, module)
+      return
+    }
+    checked.add(module)
+    const id = clientReferenceId(module)
+    if (id !== null) {
+      const modules = candidates.get(id)
+      if (modules) {
+        modules.push(module)
+      } else {
+        candidates.set(id, [module])
+      }
     }
   })
   const runtimes = runtimesOf(compilation)
   const out: Array<FlightReference> = []
-  for (const [resource, module] of candidates) {
-    const used = usedExportsOf(compilation, module, runtimes)
-    if (mayUseExports(used)) {
+  for (const [id, modules] of candidates) {
+    const live: Array<RspackModuleLike> = []
+    let names: Set<string> | true = new Set()
+    for (const module of modules) {
+      const used = usedExportsOf(compilation, module, runtimes)
+      if (!mayUseExports(used)) {
+        continue
+      }
+      live.push(module)
+      if (!Array.isArray(used)) {
+        names = true
+      } else if (names !== true) {
+        for (const name of used) {
+          names.add(name)
+        }
+      }
+    }
+    if (live.length > 0) {
       out.push({
-        resource,
-        exports: Array.isArray(used) ? [...used].sort() : true,
-        module,
+        id,
+        exports: names === true ? true : [...names].sort(),
+        modules: live,
       })
     }
   }
-  return out.sort((a, b) =>
-    a.resource < b.resource ? -1 : a.resource > b.resource ? 1 : 0,
-  )
+  return out.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
 }
 
 /**
@@ -163,7 +218,7 @@ export function undeliveredReferences(
   const entries = Object.keys(manifest).sort()
   /** Each entry's chunk groups: its entrypoint and the groups it loads. */
   const groups = new Map<string, Array<ChunkGroupLike>>()
-  const reaches = (entry: string, module: RspackModuleLike) => {
+  const reaches = (entry: string, modules: Array<RspackModuleLike>) => {
     let own = groups.get(entry)
     if (!own) {
       const entrypoint = compilation.entrypoints.get(entry)
@@ -176,16 +231,18 @@ export function undeliveredReferences(
       own = [...found]
       groups.set(entry, own)
     }
-    return own.some(
-      (group) => typeof group.getModulePreOrderIndex(module) === 'number',
+    return own.some((group) =>
+      modules.some(
+        (module) => typeof group.getModulePreOrderIndex(module) === 'number',
+      ),
     )
   }
   const out: Array<{ reference: FlightReference; entries: Array<string> }> = []
   for (const reference of required) {
     const lacking = entries.filter(
       (entry) =>
-        !Object.hasOwn(manifest[entry]!.clientManifest, reference.resource) &&
-        reaches(entry, reference.module),
+        !Object.hasOwn(manifest[entry]!.clientManifest, reference.id) &&
+        reaches(entry, reference.modules),
     )
     if (lacking.length > 0) {
       out.push({ reference, entries: lacking })
@@ -199,7 +256,7 @@ export function undeliveredWarning(
   missing: { reference: FlightReference; entries: Array<string> },
   root: string,
 ): string {
-  const file = path.relative(root, missing.reference.resource)
+  const file = path.relative(root, missing.reference.id)
   const exports =
     missing.reference.exports === true
       ? ''
