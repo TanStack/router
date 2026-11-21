@@ -23,6 +23,7 @@ import type { OutputKind } from './placement'
 import type { ClassifiedRef, RefContext } from './analysis'
 import type { SymbolId } from './symbols'
 import type { RegionId, UnitId } from './units'
+import type { Dest, Shape } from './expression'
 
 export type OutputId = 'env' | `derived:${string}`
 
@@ -86,8 +87,21 @@ export type TextFrag = {
  */
 export type PlaceFrag = Exclude<Frag, { k: 'slice' } | { k: 'ref' }>
 
-/** A claimed region, whole: its text, rendered by its owner. */
-export type RegionFrag = { k: 'region'; id: RegionId }
+/**
+ * A claimed region, whole: its text, rendered by its owner. With `expr`, it
+ * is one complete expression in a generated position (an initialiser): an
+ * expression boundary (`expression.ts`) around `head` and the region.
+ */
+export type RegionFrag = {
+  k: 'region'
+  id: RegionId
+  expr?: {
+    dest: Dest
+    shape: Shape
+    /** Text the expression starts with before the region (a method's `function`: the region starts at its parameters). */
+    head?: string
+  }
+}
 
 /**
  * A fragment of a generated unit. It names source text only as a region it
@@ -101,6 +115,16 @@ export interface Edit {
   body: ReadonlyArray<Frag>
   scope: EditScope
   by: string
+  /** The body is one complete expression in place of the range's (`AnalysisPlan.replaceExpression`). */
+  expr?: ExprBoundary
+}
+
+/** An expression boundary in place (`expression.ts`): where the expression stands, and what renders there. */
+export interface ExprBoundary {
+  dest: Dest
+  shape: Shape
+  /** The kept node inside its groups and wrappers (its render may report another shape), or null: generated text. */
+  core: Range | null
 }
 
 export type GenUnitId = number
@@ -691,7 +715,12 @@ export class RewriteSet {
    * The text of `range` in every output where it renders: `body` in place
    * of its source (an empty range: an insert in every output).
    */
-  edit(edit: { range: Range; body: ReadonlyArray<Frag>; by: string }): void {
+  edit(edit: {
+    range: Range
+    body: ReadonlyArray<Frag>
+    by: string
+    expr?: ExprBoundary
+  }): void {
     this.add({ ...edit, scope: 'all-outputs' })
   }
 
@@ -1636,7 +1665,11 @@ function same<T extends Edit>(found: T | null, e: T, n: RangeNode): T {
   if (found === null) {
     return e
   }
-  if (!fragsEqual(found.body, e.body)) {
+  if (
+    !fragsEqual(found.body, e.body) ||
+    found.expr?.dest !== e.expr?.dest ||
+    found.expr?.shape !== e.expr?.shape
+  ) {
     throw new Error(
       `conflict: ${found.by} and ${e.by} both rewrite [${n.start}, ${n.end}) with different bodies`,
     )

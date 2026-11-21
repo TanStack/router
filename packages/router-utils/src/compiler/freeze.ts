@@ -13,9 +13,27 @@ import { sameFileSpecifier } from './identity'
 import { dedupeEdges, sourceEdges } from './edges'
 import { specifierLiteral, specifierName } from './strings'
 import { isTypeOnlyExport, statementRecipe } from './units'
-import { namespaceName } from './source'
+import { namespaceName, opensNonExpressionStatement } from './source'
 import { extendOverTrailingLine, isLineTerminator, pragmasOf } from './header'
 import { erases } from './rewrite'
+import {
+  DEST_CALLEE,
+  GROUP_ARGUMENTS,
+  GROUP_PARENS,
+  REF_BINDING,
+  REF_MEMBER,
+  ROLE_MOVED,
+  ROLE_REFERENCE,
+  ROLE_VALUE,
+  SHAPE_UNKNOWN,
+  atStatementEdge,
+  needsGroup,
+  needsSpace,
+  needsValue,
+  tokensMeet,
+  withRef,
+} from './expression'
+import type { Dest, Role, Shape } from './expression'
 import type { ClassifiedRef, RefContext } from './analysis'
 import type { EdgeView } from './edges'
 import type {
@@ -30,6 +48,7 @@ import type { OutputDecl, Placement } from './placement'
 import type { SymbolId } from './symbols'
 import type { TopLevelItem, Unit, UnitId } from './units'
 import type {
+  Edit,
   Frag,
   GenFrag,
   GeneratedUnit,
@@ -885,6 +904,17 @@ interface SpanOptions extends WalkOptions {
 
 const NO_SPAN_OPTIONS: SpanOptions = {}
 
+/** An expression boundary being rendered (`Renderer.openExpr`): its reserved opening text and the boundary it is nested in. */
+interface OpenExpr {
+  /** Where its text starts in the segments (the opening). */
+  at: number
+  opening: Extract<Segment, { k: 'text' }>
+  outerCoreStart: number
+  outerCoreEnd: number
+  outerCoreShape: number
+  outerCoreRef: number
+}
+
 /** Where an edit's body names source text: slices of `level` (the node it rewrites, the module for the core's statement recipes). */
 interface SliceLevel {
   level: RangeNode
@@ -911,6 +941,7 @@ class Renderer {
   begin(importerId: string, edges: Array<EdgeRecord>): void {
     this.importerId = importerId
     this.edges = edges
+    this.boundaryEnd = -1
   }
 
   /** What the output renders, and whether an original byte renders in no text of it (`sourceEdges`). */
@@ -952,6 +983,18 @@ class Renderer {
    * the edit left (a removed `const local = 1;` before `(mk)()`).
    */
   private spanAfterEdit = false
+  // ---- the expression boundary being rendered (`expression.ts`; saved around a nested one) ----
+  /** The range of the open boundary's kept node inside its wrappers (-1: none, or generated text). */
+  private coreStart = -1
+  private coreEnd = -1
+  /** The shape what rendered on the core reported in place of the boundary's (-1: none): an edit's or a placeholder's text. */
+  private coreShape = -1
+  /** The reference what rendered on the core reported (-1: none): a substituted or renamed reference. */
+  private coreRef = -1
+  /** Where the last in-place boundary ended, and its last two characters: an edit or an insert rendering there meets them (rule L). */
+  private boundaryEnd = -1
+  private boundaryLast = ''
+
   /** The segment visitor of the walk, one per renderer (its state is the span's). */
   private readonly spanVisitor: WalkVisitor = {
     source: (s, e) => {
@@ -976,17 +1019,14 @@ class Renderer {
           }
           this.spanAfterEdit = false
           const at = out.length
-          out.push({
-            k: 'text',
-            text: this.renderRefText(
-              ref.ctx,
-              env.get(ref.sym)!,
-              env,
-              ref.exportShorthand,
-              this.code.slice(ref.range.start, ref.range.end),
-            ),
-            mapTo: ref.range.start,
-          })
+          const text = this.renderRefText(
+            ref.ctx,
+            env.get(ref.sym)!,
+            env,
+            ref.exportShorthand,
+            this.code.slice(ref.range.start, ref.range.end),
+          )
+          out.push({ k: 'text', text, mapTo: ref.range.start })
           // a callee at a statement's start renders `(0, props.x)`: as an edit
           this.guardStatementStart(ref.range.start, out, at)
           pos = Math.max(pos, ref.range.end)
@@ -1000,20 +1040,35 @@ class Renderer {
       this.spanAfterEdit = true
       const out = this.spanOut
       const at = out.length
-      this.renderFrags(
-        (this.view.placeOf(n) ?? this.view.textOf(n))!,
-        this.spanOwner,
-        this.spanEnv,
-        out,
-        { level: n, skipAt: null },
-      )
+      const meet = this.meetsBoundary(n.start, out)
+      const place = this.view.placeOf(n)
+      if (place !== null) {
+        this.renderFrags(place, this.spanOwner, this.spanEnv, out, {
+          level: n,
+          skipAt: null,
+        })
+        if (n.start === this.coreStart && n.end === this.coreEnd) {
+          this.coreShape = SHAPE_UNKNOWN
+        }
+      } else {
+        this.renderEdit(
+          n,
+          this.view.editOf(n)!,
+          this.spanOwner,
+          this.spanEnv,
+          out,
+        )
+      }
+      this.meetBoundary(meet, out)
       this.guardStatementStart(n.start, out, at)
     },
     insert: (e) => {
       this.spanAfterEdit = true
       const out = this.spanOut
       const at = out.length
+      const meet = this.meetsBoundary(e.range.start, out)
       this.renderFrags(e.body, this.spanOwner, this.spanEnv, out)
+      this.meetBoundary(meet, out)
       this.guardStatementStart(e.range.start, out, at)
     },
   }
@@ -1154,16 +1209,23 @@ class Renderer {
               `conflict: region ${f.id} renders in its owner and at its place in ${this.view.output}`,
             )
           }
-          const text = this.view.textOf(node)
-          if (text === null) {
+          // (its text is out of the module's order: no boundary before it meets it)
+          this.boundaryEnd = -1
+          const expr = f.expr
+          const open = expr === undefined ? null : this.openExpr(node, out)
+          if (expr?.head !== undefined) {
+            out.push({ k: 'text', text: expr.head })
+          }
+          const edit = this.view.editOf(node)
+          if (edit === null) {
             this.renderSpan(node, node.start, node.end, owner, mergedEnv, out)
           } else {
             const at = out.length
-            this.renderFrags(text, owner, mergedEnv, out, {
-              level: node,
-              skipAt: null,
-            })
+            this.renderEdit(node, edit, owner, mergedEnv, out)
             this.guardStatementStart(node.start, out, at)
+          }
+          if (open !== null) {
+            this.closeExpr(open, expr!.dest, ROLE_MOVED, expr!.shape, -1, out)
           }
           break
         }
@@ -1206,21 +1268,236 @@ class Renderer {
           break
         }
         case 'ref': {
-          out.push({
-            k: 'text',
-            text: this.renderRefText(
-              f.ctx,
-              f.to,
-              mergedEnv,
-              f.exportShorthand,
-              this.code.slice(f.range.start, f.range.end),
-            ),
-            mapTo: f.range.start,
-          })
+          const text = this.renderRefText(
+            f.ctx,
+            f.to,
+            mergedEnv,
+            f.exportShorthand,
+            this.code.slice(f.range.start, f.range.end),
+          )
+          out.push({ k: 'text', text, mapTo: f.range.start })
           break
         }
       }
     }
+  }
+
+  // ---- expression boundaries (`expression.ts`) ----
+
+  /**
+   * Renders node `n`'s edit. A boundary's body renders as one expression,
+   * wrapped where it stands; bare when it is all of the open boundary's kept
+   * node, which wraps it once (it has no position of its own). What renders
+   * on the open boundary's kept node reports its shape: unknown, unless a
+   * reference reported its own.
+   */
+  private renderEdit(
+    n: RangeNode,
+    edit: Edit,
+    owner: GeneratedUnit | null,
+    env: SubstEnv | null,
+    out: Array<Segment>,
+  ): void {
+    const slices: SliceLevel = { level: n, skipAt: null }
+    const atCore = n.start === this.coreStart && n.end === this.coreEnd
+    const b = edit.expr
+    if (b === undefined || atCore) {
+      this.renderFrags(edit.body, owner, env, out, slices)
+      if (atCore && this.coreRef === -1) {
+        this.coreShape = SHAPE_UNKNOWN
+      }
+      return
+    }
+    const open = this.openExpr(b.core, out)
+    this.renderFrags(edit.body, owner, env, out, slices)
+    this.closeExpr(open, b.dest, ROLE_VALUE, b.shape, n.end, out)
+  }
+
+  /** Opens a boundary around what renders next: its opening text is reserved (written when it closes, `closeExpr`). */
+  private openExpr(
+    core: { start: number; end: number } | null,
+    out: Array<Segment>,
+  ): OpenExpr {
+    const open: OpenExpr = {
+      at: out.length,
+      opening: { k: 'text', text: '' },
+      outerCoreStart: this.coreStart,
+      outerCoreEnd: this.coreEnd,
+      outerCoreShape: this.coreShape,
+      outerCoreRef: this.coreRef,
+    }
+    out.push(open.opening)
+    this.coreStart = core?.start ?? -1
+    this.coreEnd = core?.end ?? -1
+    this.coreShape = -1
+    this.coreRef = -1
+    return open
+  }
+
+  /**
+   * Closes a boundary: V, G and L (`expression.ts`) on the shape that
+   * rendered, the opening text in the reserved segment (mapped to the first
+   * token it wraps), the closing text after. `end`: the source offset the
+   * boundary ends at in place (-1: a recipe's position).
+   */
+  private closeExpr(
+    open: OpenExpr,
+    dest: Dest,
+    role: Role,
+    planned: Shape,
+    end: number,
+    out: Array<Segment>,
+  ): void {
+    const shape =
+      this.coreShape !== -1
+        ? this.coreShape
+        : this.coreRef !== -1
+          ? withRef(planned, this.coreRef)
+          : planned
+    this.coreStart = open.outerCoreStart
+    this.coreEnd = open.outerCoreEnd
+    this.coreShape = open.outerCoreShape
+    this.coreRef = open.outerCoreRef
+    const from = open.at + 1
+    let prefix = ''
+    let suffix = ''
+    if (needsValue(dest, role, shape)) {
+      prefix = '(0, '
+      suffix = ')'
+    } else {
+      const group = needsGroup(
+        dest,
+        shape,
+        atStatementEdge(dest) && this.opensStatement(out, from),
+      )
+      if (group === GROUP_PARENS) {
+        prefix = '('
+        suffix = ')'
+      } else if (group === GROUP_ARGUMENTS) {
+        suffix = '()'
+      }
+    }
+    if (prefix !== '') {
+      open.opening.text = prefix
+      const mapTo = this.firstMapped(out, from)
+      if (mapTo !== undefined) {
+        open.opening.mapTo = mapTo
+      }
+    }
+    if (tokensMeet(dest)) {
+      const [beforeA, a] = this.lastChars(out, open.at)
+      if (
+        needsSpace(beforeA, a, prefix.charAt(0) || this.firstChar(out, from))
+      ) {
+        open.opening.text = ' ' + prefix
+        open.opening.mapTo = undefined
+      }
+      if (end >= 0) {
+        const [beforeLast, last] =
+          suffix === ''
+            ? this.lastChars(out, out.length)
+            : [
+                suffix.charAt(suffix.length - 2),
+                suffix.charAt(suffix.length - 1),
+              ]
+        if (needsSpace(beforeLast, last, this.code.charAt(end))) {
+          suffix += ' '
+        } else {
+          this.boundaryEnd = end
+          this.boundaryLast = beforeLast + last
+        }
+      }
+    }
+    if (suffix !== '') {
+      out.push({ k: 'text', text: suffix })
+    }
+  }
+
+  /** Before rendering at `offset`: the index of a reserved segment when the last boundary ended there (`meetBoundary`), else -1. */
+  private meetsBoundary(offset: number, out: Array<Segment>): number {
+    if (offset !== this.boundaryEnd) {
+      return -1
+    }
+    this.boundaryEnd = -1
+    out.push({ k: 'text', text: '' })
+    return out.length - 1
+  }
+
+  /** Rule L where an edit or an insert renders right after a boundary: a space when their characters would merge. */
+  private meetBoundary(at: number, out: Array<Segment>): void {
+    if (at === -1) {
+      return
+    }
+    const last = this.boundaryLast
+    if (
+      needsSpace(
+        last.charAt(last.length - 2),
+        last.charAt(last.length - 1),
+        this.firstChar(out, at + 1),
+      )
+    ) {
+      out[at] = { k: 'text', text: ' ' }
+    }
+  }
+
+  /** Whether the text rendered from segment `from` on opens a block or a declaration written as a statement. */
+  private opensStatement(out: ReadonlyArray<Segment>, from: number): boolean {
+    let text = ''
+    for (let i = from; i < out.length; i++) {
+      const seg = out[i]!
+      text += seg.k === 'slice' ? this.code.slice(seg.start, seg.end) : seg.text
+    }
+    return opensNonExpressionStatement(
+      text,
+      LEADING_TRIVIA.exec(text)![0].length,
+    )
+  }
+
+  /** The first character rendered from segment `from` on ('' when none). */
+  private firstChar(out: ReadonlyArray<Segment>, from: number): string {
+    for (let i = from; i < out.length; i++) {
+      const seg = out[i]!
+      if (seg.k === 'slice' ? seg.end > seg.start : seg.text !== '') {
+        return seg.k === 'slice' ? this.code.charAt(seg.start) : seg.text[0]!
+      }
+    }
+    return ''
+  }
+
+  /** The source position the first text rendered from segment `from` on maps to, if it is mapped. */
+  private firstMapped(
+    out: ReadonlyArray<Segment>,
+    from: number,
+  ): number | undefined {
+    for (let i = from; i < out.length; i++) {
+      const seg = out[i]!
+      if (seg.k === 'slice' ? seg.end > seg.start : seg.text !== '') {
+        return seg.k === 'slice'
+          ? seg.start
+          : seg.gen === true
+            ? undefined
+            : seg.mapTo
+      }
+    }
+    return undefined
+  }
+
+  /** The last two characters rendered before segment `before` (within the last segment holding text). */
+  private lastChars(
+    out: ReadonlyArray<Segment>,
+    before: number,
+  ): [string, string] {
+    for (let i = before - 1; i >= 0; i--) {
+      const seg = out[i]!
+      const text =
+        seg.k === 'slice'
+          ? this.code.slice(Math.max(seg.start, seg.end - 2), seg.end)
+          : seg.text
+      if (text !== '') {
+        return [text.charAt(text.length - 2), text.charAt(text.length - 1)]
+      }
+    }
+    return ['', '']
   }
 
   /**
@@ -1328,10 +1605,7 @@ class Renderer {
     env: SubstEnv | null,
   ): string {
     const t = this.targetText({ sym }, env)
-    if (ctx === 'callee' && t.includes('.')) {
-      return `(0, ${t})`
-    }
-    return t
+    return ctx === 'callee' ? calleeText(t) : t
   }
 
   private renderRefText(
@@ -1345,7 +1619,7 @@ class Renderer {
     const isMember = t.includes('.')
     switch (ctx) {
       case 'callee':
-        return isMember ? `(0, ${t})` : t
+        return calleeText(t)
       case 'shorthandProp':
       case 'shorthandPattern':
         return `${original}: ${t}`
@@ -1367,6 +1641,17 @@ class Renderer {
         return t
     }
   }
+}
+
+/** The text of a reference rendered as `t` where it is called or tagged (rule V of `expression.ts`, role reference). */
+function calleeText(t: string): string {
+  return needsValue(
+    DEST_CALLEE,
+    ROLE_REFERENCE,
+    t.includes('.') ? REF_MEMBER : REF_BINDING,
+  )
+    ? `(0, ${t})`
+    : t
 }
 
 /** Whitespace and comments at a text's start (its first token follows them). */

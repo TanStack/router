@@ -37,6 +37,8 @@ export {
   unwrapExpression,
 } from './source'
 export { OutputBuilder, SourceText } from './output-builder'
+export { DEST_INITIALIZER, SHAPE_ARROW, SHAPE_FUNCTION } from './expression'
+export type { Dest, Shape } from './expression'
 export {
   identifierBase,
   isValidIdentifier,

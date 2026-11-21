@@ -13,6 +13,10 @@ import { computePlacement } from './placement'
 import { freezePlan } from './freeze'
 import { cleanOrphanedDeclarations } from './orphans'
 import { RegionTable, RewriteSet } from './rewrite'
+import { destOf, shapeOf } from './expression'
+import { unwrapExpression } from './source'
+import type { Shape } from './expression'
+import type { Node } from 'yuku'
 import type {
   HeaderPolicy,
   OutputDecl,
@@ -30,6 +34,7 @@ import type { SymbolId, SymbolTable } from './symbols'
 import type { RegionId } from './units'
 import type {
   EdgeProvenance,
+  Frag,
   GlueImport,
   LivenessView,
   OutputId,
@@ -161,6 +166,22 @@ export interface PlanContext<TName extends string = string> {
   /** The core's fallback of a previous round on exactly `range` (of `kind`, when given). */
   fallbackAt: (range: Range, kind?: RegionKind) => FallbackRecord | undefined
   region: (range: Range, kind: Exclude<RegionKind, 'unit'>) => RegionId
+  /**
+   * Replaces the expression `node` (a factory call) with the expression it
+   * keeps, or with generated text of a declared shape, in every output: an
+   * expression boundary (`expression.ts`). The renderer writes the
+   * parentheses, the `(0, …)` and the spaces where it stands; the planner
+   * writes none.
+   */
+  replaceExpression: (r: {
+    node: Node
+    with:
+      | { k: 'kept'; node: Node }
+      | { k: 'generated'; body: ReadonlyArray<Frag>; shape: Shape }
+    by: string
+  }) => void
+  /** The shape of a source expression (`expression.ts`), for a region a generated unit renders as one expression (`RegionFrag.expr`). */
+  shapeOf: (node: Node) => Shape
   declareOutput: (spec: OutputSpec) => OutputId
   addRoot: (output: OutputId, root: RootRef) => void
   /**
@@ -302,6 +323,39 @@ export class AnalysisPlan implements PlanContext {
 
   region(range: Range, kind: Exclude<RegionKind, 'unit'>): RegionId {
     return this.regions.register(range, kind)
+  }
+
+  replaceExpression(r: {
+    node: Node
+    with:
+      | { k: 'kept'; node: Node }
+      | { k: 'generated'; body: ReadonlyArray<Frag>; shape: Shape }
+    by: string
+  }): void {
+    const w = r.with
+    const shape = w.k === 'kept' ? this.shapeOf(w.node) : w.shape
+    const core = w.k === 'kept' ? unwrapExpression(w.node) : null
+    this.rewrites.edit({
+      range: { start: r.node.start, end: r.node.end },
+      body:
+        w.k === 'kept'
+          ? [{ k: 'slice', range: { start: w.node.start, end: w.node.end } }]
+          : w.body,
+      by: r.by,
+      expr: {
+        dest: destOf(this.analysis.file, r.node, shape),
+        shape,
+        core: core === null ? null : { start: core.start, end: core.end },
+      },
+    })
+  }
+
+  shapeOf(node: Node): Shape {
+    return shapeOf(node, this.analysis.source.code, (id) =>
+      this.t1.refs
+        .refsIn({ start: id.start, end: id.end })
+        .some((ref) => ref.range.start === id.start),
+    )
   }
 
   declareOutput(spec: OutputSpec): OutputId {

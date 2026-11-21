@@ -839,6 +839,8 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     prefetched: plan.prefetched,
     fallbackAt: (range, kind) => plan.fallbackAt(range, kind),
     region: (range, kind) => plan.region(range, kind),
+    replaceExpression: (r) => plan.replaceExpression(r),
+    shapeOf: (node) => plan.shapeOf(node),
     declareOutput: (spec) => plan.declareOutput(spec),
     addRoot: (output, root) => plan.addRoot(output, root),
     setRouteModule: (route) => plan.setRouteModule(route),
