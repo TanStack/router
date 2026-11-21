@@ -1,9 +1,8 @@
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { generateSerializationAdaptersModule } from '../serialization-adapters-module'
-import { generateServerFnResolverModule } from '../start-compiler/server-fn-resolver-module'
 import { buildStartManifest } from '../start-manifest-plugin/manifestBuilder'
 import { escapeRegExp } from '../utils'
-import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
+import { RSBUILD_ENVIRONMENT_NAMES, virtualPath } from './planning'
 import type {
   RsbuildPluginAPI,
   rspack as rspackNamespaceType,
@@ -14,7 +13,6 @@ import type {
   SerializationAdapterConfig,
 } from '../types'
 import type { InlineCssOptions } from '../start-manifest-plugin/manifestBuilder'
-import type { ServerFn } from '../start-compiler/types'
 import type { ScriptFormat } from '@tanstack/router-core'
 
 type RspackNamespace = typeof rspackNamespaceType
@@ -32,35 +30,29 @@ export const START_MANIFEST_PLACEHOLDER = '__TSS_START_MANIFEST_PLACEHOLDER__'
  * VirtualModulesPlugin resolves module paths relative to compiler.context.
  * Prefix them under the app root so they are unique and watcher-friendly.
  */
-function virtualPath(root: string, moduleId: string): string {
-  // VirtualModulesPlugin resolves paths relative to compiler.context (root).
-  // Use a recognizable prefix to avoid collisions with real files.
-  const sanitized = moduleId.replace(/[:#]/g, '_')
-  return `${root}/node_modules/.virtual/${sanitized}.js`
-}
-
 export interface VirtualModuleState {
-  /** Call to update manifest content after client build completes */
+  /**
+   * Writes the manifest module of the server environment from a completed
+   * client build (dev and build: the module's source is the manifest, so
+   * Rspack's persistent cache keys the module on it)
+   */
   updateManifest: (clientBuild: NormalizedClientBuild) => void
-  /** Number of times the dev manifest module was written */
-  getDevManifestWriteCount: () => number
-  /** Call to update server fn resolver content after compilation discovers fns */
-  updateServerFnResolver: () => void
-  /** Write explicit server resolver content; queues if env not ready */
-  tryUpdateServerFnResolver: (content: string) => void
-  /** Number of times the server fn resolver was written for an environment */
-  getServerFnResolverWriteCount: (environmentName: string) => number
+  /** Number of times the manifest module was written (the server environment's) */
+  getManifestWriteCount: () => number
+  /** Call to update server fn resolver content after compilation discovers fns; the content */
+  updateServerFnResolver: () => string
   /** Get the virtual path for a given module ID */
   getVirtualPath: (moduleId: string) => string
-  /** Generate resolver module content from current serverFnsById state.
-   *  When forProvider=true, generates without isClientReferenced checks (RSC layer). */
-  generateCurrentResolverContent: (forProvider?: boolean) => string
+  /** Writes a virtual module file of an environment (queued until its compiler is ready). */
+  writeModule: (
+    environmentName: string,
+    filePath: string,
+    content: string,
+  ) => void
   /** The absolute virtual path of the server fn resolver module */
   serverFnResolverPath: string
   /** The absolute virtual path of the manifest module */
   manifestPath: string
-  /** Generate manifest module content from a given client build */
-  generateManifestContent: (clientBuild: NormalizedClientBuild) => string
   /** Generate the serialized manifest value literal for asset patching */
   generateManifestValueLiteral: (clientBuild: NormalizedClientBuild) => string
   /** VirtualModulesPlugin instances keyed by environment name */
@@ -85,9 +77,10 @@ function getEntryScriptAttrs(
 }
 
 /**
- * Dev manifest used until the first client build completes. The server bundle
+ * The dev manifest until the first client build completes. The server bundle
  * may run outside the build process (e.g. in workerd), so the real manifest is
- * written into this module rather than shared through build-process globals.
+ * written into this module (`updateManifest`), not shared through a global of
+ * the build process.
  */
 function generateFallbackManifestModuleDev(
   devClientEntryUrl: string,
@@ -104,6 +97,22 @@ ${scriptFormatProperty}  routes: {
 })`
 }
 
+function buildStartManifestData(
+  clientBuild: NormalizedClientBuild,
+  publicBase: string,
+  inlineCss: InlineCssOptions,
+  scriptFormat: ScriptFormat,
+) {
+  const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
+  return buildStartManifest({
+    clientBuild,
+    routeTreeRoutes,
+    basePath: publicBase,
+    inlineCss,
+    scriptFormat,
+  })
+}
+
 function serializeStartManifestData(
   clientBuild: NormalizedClientBuild,
   publicBase: string,
@@ -111,20 +120,13 @@ function serializeStartManifestData(
   scriptFormat: ScriptFormat,
 ): string {
   return JSON.stringify(
-    buildStartManifest({
-      clientBuild,
-      routeTreeRoutes: globalThis.TSS_ROUTES_MANIFEST,
-      basePath: publicBase,
-      inlineCss,
-      scriptFormat,
-    }),
+    buildStartManifestData(clientBuild, publicBase, inlineCss, scriptFormat),
   )
 }
 
 function generateManifestModuleBuild(
   clientBuild: NormalizedClientBuild | undefined,
   publicBase: string,
-  _devClientEntryUrl: string,
   inlineCss: InlineCssOptions,
   scriptFormat: ScriptFormat,
 ): string {
@@ -221,9 +223,8 @@ export interface RegisterVirtualModulesOptions {
   /** The resolved project root (read when the first Rspack config is built, after `modifyRsbuildConfig`). */
   getRoot: () => string
   getConfig: GetConfigFn
-  serverFnsById: Record<string, ServerFn>
-  providerEnvName: string
-  ssrIsProvider: boolean
+  /** The server fn resolver module content of the current registry. */
+  resolverModule: () => string
   serializationAdapters: Array<SerializationAdapterConfig> | undefined
   /**
    * Get the URL at which the rsbuild dev server serves the client entry JS.
@@ -247,7 +248,7 @@ export function registerVirtualModules(
   opts: RegisterVirtualModulesOptions,
 ): VirtualModuleState {
   const isDev = api.context.action === 'dev'
-  // Virtual module paths keyed by module ID, under the resolved root (never `process.cwd()`)
+  // Virtual module paths keyed by module ID, under the resolved root (J4.16: never `process.cwd()`)
   let resolvedPaths:
     | {
         manifest: string
@@ -290,46 +291,23 @@ export function registerVirtualModules(
   const pendingWrites = new Map<string, Map<string, string>>()
 
   let clientBuild: NormalizedClientBuild | undefined
-  let lastDevManifestContent: string | undefined
-  let devManifestWriteCount = 0
-  const lastResolverContentByEnvironment: Record<string, string | undefined> =
-    {}
-  const resolverWriteCountByEnvironment: Record<string, number> = {}
-  const hasSeparateProviderEnvironment =
-    !opts.rscEnabled &&
-    opts.providerEnvName !== RSBUILD_ENVIRONMENT_NAMES.server
+  let lastManifestContent: string | undefined
+  let manifestWriteCount = 0
+  // the server fn resolver module lives in the server environment only
+  let lastResolverContent: string | undefined
   const hasSerializationAdapters = Boolean(opts.serializationAdapters?.length)
 
-  function isProviderEnvironment(environmentName: string): boolean {
-    return environmentName === opts.providerEnvName
-  }
-
-  function needsServerFnResolver(environmentName: string): boolean {
-    return (
-      environmentName === RSBUILD_ENVIRONMENT_NAMES.server ||
-      (hasSeparateProviderEnvironment && isProviderEnvironment(environmentName))
-    )
-  }
-
-  function generateResolverContent(environmentName: string): string {
-    return generateServerFnResolverModule({
-      serverFnsById: opts.serverFnsById,
-      includeClientReferencedCheck: !isProviderEnvironment(environmentName),
-      useStaticImports: Boolean(opts.rscEnabled && isDev),
-      memoizeModules: !isDev,
-    })
-  }
-
-  function writeResolverContent(environmentName: string, content: string) {
-    if (
-      !isDev ||
-      content !== lastResolverContentByEnvironment[environmentName]
-    ) {
-      lastResolverContentByEnvironment[environmentName] = content
-      resolverWriteCountByEnvironment[environmentName] =
-        (resolverWriteCountByEnvironment[environmentName] ?? 0) + 1
-      tryWriteModule(environmentName, pathsOf().serverFnResolver, content)
+  function writeResolverContent(content: string): string {
+    const changed = content !== lastResolverContent
+    lastResolverContent = content
+    if (!isDev || changed) {
+      tryWriteModule(
+        RSBUILD_ENVIRONMENT_NAMES.server,
+        pathsOf().serverFnResolver,
+        content,
+      )
     }
+    return content
   }
 
   function queuePendingWrite(
@@ -410,7 +388,6 @@ export function registerVirtualModules(
         : generateManifestModuleBuild(
             clientBuild,
             resolvedStartConfig.basePaths.publicBase,
-            devClientEntryUrl,
             startConfig.server.build.inlineCss,
             opts.scriptFormat,
           )
@@ -418,9 +395,9 @@ export function registerVirtualModules(
       content[paths.manifest] = 'export default {}'
     }
 
-    // Server fn resolver — SSR and provider environments
-    if (needsServerFnResolver(environmentName)) {
-      content[paths.serverFnResolver] = generateResolverContent(environmentName)
+    // Server fn resolver (the server environment provides the server fns)
+    if (isServerEnv) {
+      content[paths.serverFnResolver] = opts.resolverModule()
     } else {
       // Client doesn't need the resolver but needs a valid module
       content[paths.serverFnResolver] = 'export {}'
@@ -543,26 +520,8 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
     },
     vmPlugins,
 
-    generateCurrentResolverContent(forProvider?: boolean): string {
-      return generateResolverContent(
-        forProvider ? opts.providerEnvName : RSBUILD_ENVIRONMENT_NAMES.server,
-      )
-    },
-
-    generateManifestContent(newClientBuild: NormalizedClientBuild): string {
-      const { resolvedStartConfig, startConfig } = opts.getConfig()
-      const devClientEntryUrl = opts.getDevClientEntryUrl(
-        resolvedStartConfig.basePaths.publicBase,
-      )
-      return generateManifestModuleBuild(
-        newClientBuild,
-        resolvedStartConfig.basePaths.publicBase,
-        devClientEntryUrl,
-        !isDev
-          ? startConfig.server.build.inlineCss
-          : { enabled: false, transformAssets: false },
-        opts.scriptFormat,
-      )
+    writeModule(environmentName, filePath, content) {
+      tryWriteModule(environmentName, filePath, content)
     },
 
     generateManifestValueLiteral(
@@ -581,22 +540,20 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
 
     updateManifest(newClientBuild: NormalizedClientBuild) {
       clientBuild = newClientBuild
-      if (!isDev) {
-        return
-      }
-
       // Safe to call getConfig() here — runs after client build
-      const { resolvedStartConfig } = opts.getConfig()
-      const content = `export const tsrStartManifest = () => (${serializeStartManifestData(
+      const { resolvedStartConfig, startConfig } = opts.getConfig()
+      const content = generateManifestModuleBuild(
         clientBuild,
         resolvedStartConfig.basePaths.publicBase,
-        { enabled: false, transformAssets: false },
+        !isDev
+          ? startConfig.server.build.inlineCss
+          : { enabled: false, transformAssets: false },
         opts.scriptFormat,
-      )})`
-      // Only rewrite on change: each write rebuilds the server environment.
-      if (content !== lastDevManifestContent) {
-        lastDevManifestContent = content
-        devManifestWriteCount++
+      )
+      // only on a change: each write recompiles the server environment
+      if (content !== lastManifestContent) {
+        lastManifestContent = content
+        manifestWriteCount++
         tryWriteModule(
           RSBUILD_ENVIRONMENT_NAMES.server,
           pathsOf().manifest,
@@ -605,34 +562,12 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
       }
     },
 
+    getManifestWriteCount(): number {
+      return manifestWriteCount
+    },
+
     updateServerFnResolver() {
-      const updateEnvironment = (environmentName: string) => {
-        if (!needsServerFnResolver(environmentName)) {
-          return
-        }
-
-        writeResolverContent(
-          environmentName,
-          generateResolverContent(environmentName),
-        )
-      }
-
-      updateEnvironment(RSBUILD_ENVIRONMENT_NAMES.server)
-      if (hasSeparateProviderEnvironment) {
-        updateEnvironment(opts.providerEnvName)
-      }
-    },
-
-    tryUpdateServerFnResolver(content: string) {
-      writeResolverContent(RSBUILD_ENVIRONMENT_NAMES.server, content)
-    },
-
-    getDevManifestWriteCount(): number {
-      return devManifestWriteCount
-    },
-
-    getServerFnResolverWriteCount(environmentName: string): number {
-      return resolverWriteCountByEnvironment[environmentName] ?? 0
+      return writeResolverContent(opts.resolverModule())
     },
 
     getVirtualPath(moduleId: string): string {

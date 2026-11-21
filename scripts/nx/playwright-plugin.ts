@@ -89,15 +89,19 @@ function createNodesInternal(
 
 const CI_TARGET_NAME = 'test:e2e'
 const MODE_TARGET_SEPARATOR = '--'
+// `compilerSelfChecks` (nx.json): CI compiles the e2e apps with the
+// compiler's self-checks on, so a result from a run without them is not reused
 const TEST_INPUTS: TargetConfiguration['inputs'] = [
   'default',
   'dependentTaskOutputs',
   '^buildProduction',
+  'compilerSelfChecks',
 ]
 const BUILD_INPUTS: TargetConfiguration['inputs'] = [
   'buildProduction',
   'dependentTaskOutputs',
   '^buildProduction',
+  'compilerSelfChecks',
 ]
 
 const PLAYWRIGHT_TOOLCHAINS = ['vite', 'rsbuild'] as const

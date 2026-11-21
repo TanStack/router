@@ -3,6 +3,7 @@ import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { DEV_CLIENT_ENTRY, START_ENVIRONMENT_NAMES } from '../src/constants'
 import { startManifestPlugin } from '../src/vite/start-manifest-plugin/plugin'
+import type { ClientBuilds, ClientManifest } from '../src/vite/compiler-state'
 
 vi.mock('@tanstack/start-server-core/virtual-modules', () => ({
   VIRTUAL_MODULES: {
@@ -10,12 +11,26 @@ vi.mock('@tanstack/start-server-core/virtual-modules', () => ({
   },
 }))
 
+/** The client build of one run, as the compiler's sessions keep it. */
+function clientBuilds() {
+  let manifest: ClientManifest | null = null
+  return {
+    publishClientBuild: (_environment: unknown, published: ClientManifest) => {
+      manifest = published
+    },
+    embedClientBuild: () =>
+      Promise.resolve(
+        manifest && { digest: '', manifest, functionIds: new Set<string>() },
+      ),
+  } as unknown as ClientBuilds
+}
+
 describe('startManifestPlugin', () => {
   afterEach(() => vi.unstubAllGlobals())
 
   test.each([false, true])(
     'captures inline CSS according to the resolved config (%s)',
-    (enabled) => {
+    async (enabled) => {
       vi.stubGlobal('TSS_ROUTES_MANIFEST', { __root__: {} })
       const plugins = startManifestPlugin({
         getConfig: () =>
@@ -23,6 +38,7 @@ describe('startManifestPlugin', () => {
             resolvedStartConfig: { basePaths: { publicBase: '/assets' } },
             startConfig: { server: { build: { inlineCss: { enabled } } } },
           }) as any,
+        clientBuilds: clientBuilds(),
       }) as Array<any>
       const capture = plugins.find(
         (item) =>
@@ -53,7 +69,7 @@ describe('startManifestPlugin', () => {
         (item) => item.name === 'tanstack-start:start-manifest-plugin',
       )!
       const resolvedId = plugin.resolveId.handler(VIRTUAL_MODULES.startManifest)
-      const manifest = plugin.load.handler.call(
+      const manifest = await plugin.load.handler.call(
         {
           environment: {
             name: START_ENVIRONMENT_NAMES.server,
@@ -109,6 +125,7 @@ function loadDevManifest(opts: { bundledDev: boolean; basePath?: string }) {
           },
         },
       }) as any,
+    clientBuilds: clientBuilds(),
   }) as Array<any>
   const capture = plugins.find(
     (item) =>

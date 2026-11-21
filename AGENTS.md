@@ -24,7 +24,7 @@ CI=1 NX_DAEMON=false pnpm nx run-many -p <project> -t <target> --skipRemoteCache
 ```
 
 - Run one Nx command at a time. For a ~20-second startup/graph stall, stop, run `pnpm nx reset`, and retry once, then escalate. Do not apply that timeout to running tests.
-- For code changes, run affected packages' `test:unit`, `test:types`, and `test:eslint` where available, including affected consumers; use `test:e2e` for browser/app behavior and `test:build` for exports/build changes. Root `pnpm test` includes the full e2e suite. Published-code changes require `pnpm changeset`.
+- For code changes, run affected packages' `test:unit`, `test:integration`, `test:noncompiler`, `test:types`, and `test:eslint` where available, including affected consumers; use `test:e2e` for browser/app behavior and `test:build` for exports/build changes. Root `pnpm test` includes the full e2e suite. Published-code changes require `pnpm changeset`.
 
 ## Runtime rules
 

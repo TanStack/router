@@ -60,6 +60,12 @@
         "default": "./dist/esm/client-rpc/index.js"
       }
     },
+    "./client-rpc-gated": {
+      "import": {
+        "types": "./dist/esm/client-rpc/gated.d.ts",
+        "default": "./dist/esm/client-rpc/gated.js"
+      }
+    },
     "./hydration": {
       "import": {
         "types": "./dist/esm/hydration.d.ts",

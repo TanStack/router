@@ -1,130 +1,225 @@
 /**
- * The client puts a server function's id in its URL unencoded, as one path
- * segment, and the server reads that segment back. An id a custom
- * `serverFns.generateFunctionId` returns with an ASCII character outside
- * RFC 3986's unreserved set and `$` (`'`, `:`, `%`…) reaches its handler,
- * but proxies and servers may encode or normalise it: it builds, with a
- * deprecation warning naming the file. An id of unreserved characters and
- * `$` builds without one. (Ids that never reached their handler fail the
- * build: `tests/createServerFn/createServerFn.test.ts`.)
+ * A server fn's id is one path segment of its URL (SPEC J4.4): the client
+ * puts it after the server fn base unencoded and the server reads the
+ * segment back. An id a custom `generateFunctionId` returns that the URL
+ * never carried whole (a `/` or `#` that splits or ends it, `?`, `"`, `\`,
+ * whitespace, a control or non-ASCII character a client percent-encodes,
+ * a dot segment, a percent-encoding the server reads as another id or
+ * rejects) fails the build with an error naming the defining file,
+ * instead of a client that calls another function or none. An id with
+ * other ASCII characters outside the unreserved set and `$` (`%`, `:`,
+ * `'`, `+`, `@`, `|`, `[`…) builds and reaches its handler, as it did, with
+ * a deprecation warning naming the file. An id of unreserved characters
+ * and `$` builds without one. An id embedding `filename` (which holds `/`)
+ * fails; hashed, as the error suggests, it builds and reaches its handler.
  */
-import { execFile } from 'node:child_process'
-import { readdir } from 'node:fs/promises'
-import path from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { promisify } from 'node:util'
+import { createHash } from 'node:crypto'
 import { describe, expect, test } from 'vitest'
-import { appFiles, buildStartApp, createStartApp } from './start-app'
+import {
+  expectDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  StartBuildError,
+  buildStart,
+  callByIdExports,
+  callByIdPrelude,
+  startBundlers,
+} from '../build-harness'
 
 const timeout = 60_000
 
-const execFileAsync = promisify(execFile)
+/** Ids the URL never carried whole, by file. */
+const refused: Record<string, string> = {
+  'src/slash.ts': 'users/get',
+  'src/hash.ts': 'users#get',
+  'src/query.ts': 'users?get',
+  'src/quote.ts': 'users"get',
+  'src/backslash.ts': 'users\\get',
+  'src/space.ts': 'users get',
+  'src/control.ts': 'users\u0007get',
+  'src/non-ascii.ts': 'utilisateurs-é',
+  'src/dot.ts': '..',
+  // a percent-encoding the server decodes to another id, or rejects
+  'src/decoded.ts': 'users%41get',
+  'src/lowercase.ts': 'x%c3%a9',
+  'src/encoded-dot.ts': '%2E',
+  'src/malformed.ts': 'users%zz',
+}
 
 /** Ids that reach their handler, deprecated, by file. */
 const deprecated: Record<string, string> = {
-  'src/fns/apostrophe.ts': "users'get",
-  'src/fns/colon.ts': 'users:get',
-  'src/fns/percent.ts': 'users%2Fget',
-  'src/fns/brackets.ts': 'users[get]',
+  'src/percent.ts': 'users%2Fget',
+  'src/encoded-space.ts': 'users%20get',
+  'src/colon.ts': 'users:get',
+  'src/apostrophe.ts': "users'get",
+  'src/plus.ts': 'users+get',
+  'src/at.ts': 'users@get',
+  'src/pipe.ts': 'users|get',
+  'src/brackets.ts': 'users[get]',
 }
 
-const fine: Record<string, string> = { 'src/fns/fine.ts': 'Users-get.v1_~$' }
+const fine = { 'src/fine.ts': 'Users-get.v1_~$' }
 
-const ids = { ...deprecated, ...fine }
-
-/** A route whose component references a server function of each file, which returns the file's name. */
-function app() {
-  const files: Record<string, string> = {}
-  const imports: Array<string> = []
-  Object.keys(ids).forEach((file, index) => {
-    files[file] = `import { createServerFn } from '@tanstack/react-start'
-export const fn = createServerFn().handler(async () => new Response(${JSON.stringify(file)}))
+const fnModule = (file: string) =>
+  `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => ${JSON.stringify(file)})
 `
-    imports.push(
-      `import { fn as fn${index} } from '${file.replace(/^src\/(.*)\.ts$/, '../$1')}'`,
-    )
-  })
-  files['src/routes/index.tsx'] =
-    `import { createFileRoute } from '@tanstack/react-router'
-${imports.join('\n')}
-export const Route = createFileRoute('/')({
-  component: () => <button onClick={() => [${Object.keys(ids).map((_, index) => `fn${index}()`)}]}>call</button>,
-})
-`
-  return appFiles(files)
-}
 
 /**
- * Sends a request for each id (`/_serverFn/<id>`, as a page of the same
- * origin does) to the server build's entry, in a Node process of its own,
- * and gives each response's text.
+ * The app of `ids`: a server fn per file, each exported by the entries as
+ * `fn<index>`; the SSR entry also calls by id (`callByIdPrelude`).
  */
-async function callServer(root: string, ids: Array<string>) {
-  const dir = path.join(root, 'dist/server')
-  const entry = (await readdir(dir)).find((file) =>
-    /^(server|index)\.m?js$/.test(file),
-  )
-  if (entry === undefined) {
-    throw new Error(`no server entry in ${dir}`)
-  }
-  const script = `const { default: server } = await import(${JSON.stringify(pathToFileURL(path.join(dir, entry)).href)})
-const texts = []
-for (const id of ${JSON.stringify(ids)}) {
-  const response = await server.fetch(
-    new Request(new URL('/_serverFn/' + id, 'http://localhost'), {
-      headers: { 'sec-fetch-site': 'same-origin' },
-    }),
-  )
-  texts.push(await response.text())
-}
-process.stdout.write(JSON.stringify(texts))
-`
-  const { stdout } = await execFileAsync(
-    process.execPath,
-    ['--input-type=module', '-e', script],
-    { cwd: root, env: { ...process.env, NODE_ENV: 'production' } },
-  )
-  return JSON.parse(stdout) as Array<string>
-}
-
-const options = {
-  serverFns: {
-    generateFunctionId: ({ filename }: { filename: string }) => ids[filename],
-  },
-}
-
-describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
-  // `'` broke the server bundle: the resolver's manifest key was quoted with it
-  test(
-    'a custom id with characters outside the unreserved set builds and reaches its handler',
-    async () => {
-      const start = await createStartApp(app())
-      await buildStartApp(start, bundler, options)
-      expect(await callServer(start.root, Object.values(ids))).toEqual(
-        Object.keys(ids),
-      )
+function app(ids: Record<string, string>) {
+  const files: Record<string, string> = {}
+  const entry: Array<string> = []
+  Object.keys(ids).forEach((file, index) => {
+    files[file] = fnModule(file)
+    entry.push(
+      `export { fn as fn${index} } from './${file.slice('src/'.length, -'.ts'.length)}'`,
+    )
+  })
+  files['src/client-entry.ts'] = `${entry.join('\n')}\n`
+  files['src/ssr-entry.ts'] = `${entry.join('\n')}\n${callByIdExports}`
+  return {
+    files,
+    entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+    start: {
+      serverFns: {
+        generateFunctionId: ({ filename }: { filename: string }) =>
+          ids[Object.keys(ids).find((file) => filename.endsWith(file)) ?? ''],
+      },
     },
-    timeout,
-  )
-})
+  }
+}
 
-// (Rsbuild's transform context has no channel for the compiler's warnings)
-describe('vite build', () => {
+describe.each(startBundlers)('%s build', (bundler) => {
   test(
-    'a custom id with characters outside the unreserved set warns, naming the file and the id',
+    'an id the URL never carried whole fails the build, naming the file',
     async () => {
-      const start = await createStartApp(app())
-      const build = await buildStartApp(start, 'vite', options)
-      for (const [file, id] of Object.entries(ids)) {
-        expect(
-          build.warnings.some(
-            (warning) =>
-              warning.includes(file) && warning.includes(JSON.stringify(id)),
-          ),
-          `a warning naming ${file}`,
-        ).toBe(file in deprecated)
+      const ids = { ...refused, ...deprecated, ...fine }
+      const outcome = await buildStart({ bundler, ...app(ids) }).then(
+        () => ({ built: true as const }),
+        (error: unknown) => {
+          if (!(error instanceof StartBuildError)) {
+            throw error
+          }
+          return { built: false as const, error }
+        },
+      )
+      if (outcome.built) {
+        expect.fail('the build succeeded')
+      }
+      const { diagnostics, root } = outcome.error
+      for (const file of Object.keys(ids)) {
+        if (file in refused) {
+          expectDiagnostic(diagnostics, { severity: 'error', file, root })
+        } else {
+          expect(
+            findDiagnostics(diagnostics, { severity: 'error', file, root }),
+            `errors naming ${file}`,
+          ).toEqual([])
+        }
       }
     },
     timeout,
   )
+
+  test(
+    'a deprecated id builds with a warning naming the file, and reaches its handler',
+    async () => {
+      const ids = { ...deprecated, ...fine }
+      const { client, ssr, diagnostics, root } = await buildStart({
+        bundler,
+        ...app(ids),
+      })
+      for (const file of Object.keys(ids)) {
+        const warnings = findDiagnostics(diagnostics, {
+          severity: 'warning',
+          file,
+          root,
+        })
+        expect(warnings.length > 0, `a warning naming ${file}`).toBe(
+          file in deprecated,
+        )
+      }
+      const urls = (
+        await client.run(
+          `return [${Object.keys(ids).map((_, index) => `entry.fn${index}.url`)}]`,
+        )
+      ).result as Array<string>
+      expect(
+        (
+          await ssr.run(
+            `${callByIdPrelude}const called = []
+for (const url of ${JSON.stringify(urls)}) {
+  const id = serverFnId(url)
+  called.push([id, await callById(id)])
+}
+return called`,
+          )
+        ).result,
+      ).toEqual(Object.entries(ids).map(([file, id]) => [id, file]))
+    },
+    timeout,
+  )
+
+  test.each([
+    {
+      name: 'an id embedding filename fails the build, naming the file',
+      id: ({ filename, functionName }: IdInput) =>
+        `${filename}--${functionName}`,
+      builds: false,
+    },
+    {
+      name: 'that id hashed builds and reaches its handler',
+      id: ({ filename, functionName }: IdInput) =>
+        createHash('sha1').update(`${filename}--${functionName}`).digest('hex'),
+      builds: true,
+    },
+  ])(
+    '$name',
+    async ({ id, builds }) => {
+      const files = app({ 'src/named.ts': 'unused' })
+      const built = await buildStart({
+        bundler,
+        ...files,
+        start: { serverFns: { generateFunctionId: id } },
+      }).then(
+        (build) => build,
+        (error: unknown) => {
+          if (!(error instanceof StartBuildError)) {
+            throw error
+          }
+          return error
+        },
+      )
+      if (!builds) {
+        expect(built).toBeInstanceOf(StartBuildError)
+        expectDiagnostic((built as StartBuildError).diagnostics, {
+          severity: 'error',
+          file: 'src/named.ts',
+          root: (built as StartBuildError).root,
+        })
+        return
+      }
+      if (built instanceof StartBuildError) {
+        throw built
+      }
+      const url = (await built.client.run(`return entry.fn0.url`)).result
+      expect(
+        (
+          await built.ssr.run(
+            `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+          )
+        ).result,
+      ).toBe('src/named.ts')
+    },
+    timeout,
+  )
 })
+
+interface IdInput {
+  filename: string
+  functionName: string
+}

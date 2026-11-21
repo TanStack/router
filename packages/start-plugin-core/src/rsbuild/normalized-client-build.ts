@@ -1,6 +1,6 @@
-import { tsrSplit } from '@tanstack/router-plugin'
 import { tssHydrate } from '../hydration-constants'
 import { getCssAssetSource } from '../start-manifest-plugin/inlineCss'
+import { isRouteSplitQuery } from '../start-manifest-plugin/routeChunks'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
 import type {
@@ -29,7 +29,7 @@ function toPosixPath(filePath: string): string {
  * Extract route file paths from rspack module identifiers.
  *
  * In rspack, module identifiers contain query params similar to Vite's moduleIds.
- * We look for the `tsr-split` query to identify route-split chunks.
+ * A route's chunks hold one of its split groups (`isRouteSplitQuery`).
  */
 function getRouteFilePathsFromModules(
   modules: Array<RspackModule>,
@@ -50,9 +50,9 @@ function getRouteFilePathsFromModules(
     const queryIndex = resourcePart.indexOf('?')
     if (queryIndex < 0) continue
 
-    const query = resourcePart.slice(queryIndex + 1)
-    if (!query.includes(tsrSplit)) continue
-    if (!new URLSearchParams(query).has(tsrSplit)) continue
+    if (!isRouteSplitQuery(resourcePart.slice(queryIndex + 1))) {
+      continue
+    }
 
     const nameForCondition = mod.nameForCondition()
 
@@ -183,21 +183,30 @@ function getModulesIncludingConcatenated(
 }
 
 /**
- * Compute dynamicImports for a chunk by traversing its chunk groups'
- * childrenIterable (async/dynamic import edges).
+ * Compute dynamicImports for a chunk (analogous to Rollup's
+ * `OutputChunk.dynamicImports`): the JS files of the chunk groups that the
+ * async blocks (`import()` points) of the chunk's own modules load.
  *
- * In rspack, a chunk belongs to one or more ChunkGroups. Each ChunkGroup
- * has childrenIterable — child ChunkGroups representing dynamic import()
- * points. The JS files from those child groups' chunks are the
- * dynamicImports (analogous to Rollup's OutputChunk.dynamicImports).
+ * Not the children of the chunk's groups: a shared chunk is in the group of
+ * every route that uses it, and those groups' children are every route's
+ * `import()` targets, not the shared chunk's.
  */
-function computeDynamicImports(chunk: RspackCompilationChunk): Array<string> {
+function computeDynamicImports(
+  compilation: RspackCompilation,
+  modules: Array<RspackModule>,
+): Array<string> {
   const dynamicImportFiles: Array<string> = []
   const seen = new Set<string>()
 
-  for (const group of chunk.groupsIterable) {
-    for (const childGroup of group.childrenIterable) {
-      for (const childChunk of childGroup.chunks) {
+  for (const module of modules) {
+    const blocks = [...module.blocks]
+    for (const block of blocks) {
+      blocks.push(...block.blocks)
+      const group = compilation.chunkGraph.getBlockChunkGroup(block)
+      if (!group) {
+        continue
+      }
+      for (const childChunk of group.chunks) {
         for (const file of childChunk.files) {
           if (isManifestJsAsset(file) && !seen.has(file)) {
             seen.add(file)
@@ -214,20 +223,13 @@ function computeDynamicImports(chunk: RspackCompilationChunk): Array<string> {
 /**
  * Compute the emitted chunks reached by active static module dependencies.
  * Dependencies nested in async blocks are deliberately excluded: those are
- * represented by chunk-group children in `dynamicImports` instead.
+ * the chunk's `dynamicImports` instead.
  */
 function computeStaticDependencyChunks(
   compilation: RspackCompilation,
   chunk: RspackCompilationChunk,
-  chunksOfModule: (module: RspackModule) => Array<RspackCompilationChunk>,
+  graph: CompilationGraph,
 ): Array<RspackCompilationChunk> {
-  const importedChunks: Array<RspackCompilationChunk> = []
-  const seen = new Set<RspackCompilationChunk>([chunk])
-  const modules = getModulesIncludingConcatenated(
-    compilation.chunkGraph.getChunkModules(chunk),
-  )
-  const localModules = new Set(modules)
-  const runtime = Array.from(chunk.runtime)
   // A shared chunk can belong to several route groups. Group membership
   // limits where dependencies can be loaded from; it does not establish
   // an import from the shared chunk back to every route in those groups.
@@ -259,31 +261,47 @@ function computeStaticDependencyChunks(
   }
   availableChunks ??= new Set()
 
+  const importedChunks: Array<RspackCompilationChunk> = []
+  // Only the available chunks other than this one can be found: once all of
+  // them are, the module walk has nothing left to add. An entry chunk alone
+  // in its group never walks.
+  let unfound = availableChunks.size - (availableChunks.has(chunk) ? 1 : 0)
+  if (unfound === 0) {
+    return importedChunks
+  }
+
+  const seen = new Set<RspackCompilationChunk>([chunk])
+  const modules = getModulesIncludingConcatenated(
+    compilation.chunkGraph.getChunkModules(chunk),
+  )
+  const localModules = new Set(modules)
+  const runtime = Array.from(chunk.runtime)
   // Every connection to a module adds the same chunks, so a module counts
   // once, from its first active connection (an inactive one adds nothing and
   // leaves the module to a later active one).
   const counted = new Set<RspackModule>()
   for (const module of modules) {
-    for (const dependency of module.dependencies) {
-      const connection = compilation.moduleGraph.getConnection(dependency)
-      const importedModule = connection?.module
+    for (const dependency of graph.dependenciesOf(module)) {
+      const imported = graph.importOf(dependency)
       if (
-        !connection ||
-        !importedModule ||
-        localModules.has(importedModule) ||
-        counted.has(importedModule)
+        !imported ||
+        localModules.has(imported.module) ||
+        counted.has(imported.module)
       ) {
         continue
       }
-      if (connection.getActiveState(runtime) === false) {
+      if (imported.connection.getActiveState(runtime) === false) {
         continue
       }
-      counted.add(importedModule)
+      counted.add(imported.module)
 
-      for (const importedChunk of chunksOfModule(importedModule)) {
+      for (const importedChunk of graph.chunksOf(imported.module)) {
         if (availableChunks.has(importedChunk) && !seen.has(importedChunk)) {
           seen.add(importedChunk)
           importedChunks.push(importedChunk)
+          if (--unfound === 0) {
+            return importedChunks
+          }
         }
       }
     }
@@ -297,40 +315,59 @@ type GetStaticDependencyChunks = (
 ) => Array<RspackCompilationChunk>
 
 /**
+ * What the static dependency resolution reads from Rspack's graphs, read once
+ * per module or dependency, and only when the walk gets to it: a module is in
+ * several chunks and imported from many, and most walks stop early.
+ */
+interface CompilationGraph {
+  /** The module's static dependencies, in order. */
+  dependenciesOf: (module: RspackModule) => Array<Rspack.Dependency>
+  /** The module a dependency resolved to, if any. */
+  importOf: (dependency: Rspack.Dependency) => {
+    module: RspackModule
+    connection: Rspack.ModuleGraphConnection
+  } | null
+  chunksOf: (module: RspackModule) => Array<RspackCompilationChunk>
+}
+
+function memoize<TKey, TValue>(
+  read: (key: TKey) => TValue,
+): (key: TKey) => TValue {
+  const values = new Map<TKey, TValue>()
+  return (key) => {
+    let value = values.get(key)
+    if (value === undefined) {
+      value = read(key)
+      values.set(key, value)
+    }
+    return value
+  }
+}
+
+/**
  * Memoize static dependency resolution per chunk. Every chunk is resolved once
  * for its own `imports`, and CSS-only chunks are resolved again from each
- * importer that reaches them. A module's chunks are read once, for every chunk
- * that imports it. Both memos live as long as the resolver, which is created
- * per normalized compilation.
+ * importer that reaches them. The memos live as long as the resolver, which is
+ * created per normalized compilation.
  */
 function createStaticDependencyChunkResolver(
   compilation: RspackCompilation,
 ): GetStaticDependencyChunks {
-  const cache = new Map<RspackCompilationChunk, Array<RspackCompilationChunk>>()
-  const moduleChunks = new Map<RspackModule, Array<RspackCompilationChunk>>()
-  const chunksOfModule = (module: RspackModule) => {
-    let chunks = moduleChunks.get(module)
-    if (!chunks) {
-      chunks = Array.from(
-        compilation.chunkGraph.getModuleChunksIterable(module),
-      )
-      moduleChunks.set(module, chunks)
-    }
-    return chunks
+  const graph: CompilationGraph = {
+    dependenciesOf: memoize((module) => module.dependencies),
+    importOf: memoize((dependency) => {
+      const connection = compilation.moduleGraph.getConnection(dependency)
+      const module = connection?.module
+      return connection && module ? { module, connection } : null
+    }),
+    chunksOf: memoize((module) =>
+      Array.from(compilation.chunkGraph.getModuleChunksIterable(module)),
+    ),
   }
 
-  return (chunk) => {
-    let importedChunks = cache.get(chunk)
-    if (!importedChunks) {
-      importedChunks = computeStaticDependencyChunks(
-        compilation,
-        chunk,
-        chunksOfModule,
-      )
-      cache.set(chunk, importedChunks)
-    }
-    return importedChunks
-  }
+  return memoize((chunk) =>
+    computeStaticDependencyChunks(compilation, chunk, graph),
+  )
 }
 
 /**
@@ -418,8 +455,7 @@ export function normalizeRspackClientBuild(
     const jsFiles = getChunkJsFiles(chunk)
     if (jsFiles.length === 0) continue
 
-    // Compute dynamicImports from chunk group children
-    const dynamicImports = computeDynamicImports(chunk)
+    const dynamicImports = computeDynamicImports(compilation, modules)
     const staticDependencyChunks = getStaticDependencyChunks(chunk)
     const dependencyCssFiles = computeCssOnlyDependencyFiles(
       getStaticDependencyChunks,

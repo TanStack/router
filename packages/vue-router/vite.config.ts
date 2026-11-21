@@ -37,6 +37,7 @@ export default mergeConfig(
       './src/index.dev.tsx',
       './src/ssr/client.ts',
       './src/ssr/server.ts',
+      './src/hmr.ts',
     ],
     srcDir: './src',
     cjs: false,

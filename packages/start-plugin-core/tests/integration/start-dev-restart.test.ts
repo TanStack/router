@@ -1,12 +1,14 @@
 /**
- * A Vite dev server restart (`r` in the terminal, or an edit of the Vite
- * config) loads the app's Vite config again, with new Start plugin
- * instances: they see the app's files as they are now.
+ * A dev server restart (`rsbuild dev` or `vite dev` run again in the same
+ * process, as on a config edit: new Start plugin instances) sees the app's
+ * files as they are now. Start's entry lookup is shared by both hosts
+ * (`resolveStartEntryPlan`); Rsbuild's harness restarts with new plugin
+ * instances.
  */
-import path from 'node:path'
-import { createServer } from 'vite'
-import { expect, onTestFinished, test } from 'vitest'
-import { appFiles, createStartApp } from './start-app'
+import { pluginReact } from '@rsbuild/plugin-react'
+import { expect, test } from 'vitest'
+import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
+import { rootDocument, routerFile, startPageEntries } from './start-compose-app'
 
 const timeout = 60_000
 
@@ -17,28 +19,28 @@ const timeout = 60_000
 test(
   'after a dev server restart, a start entry created since is used',
   async () => {
-    const app = await createStartApp(
-      appFiles({
-        'vite.config.ts': `import { tanstackStart } from '@tanstack/react-start/plugin/vite'
-export default { plugins: [tanstackStart()] }
+    const server = await startRsbuildStartDevServer({
+      browser: true,
+      hmr: false,
+      config: { plugins: [pluginReact()] },
+      files: {
+        ...startPageEntries,
+        'src/ssr-entry.ts': `export {}\n`,
+        'src/client-entry.ts': `export {}\n`,
+        'src/router.ts': routerFile,
+        'src/routes/__root.tsx': rootDocument(),
+        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: () => <p>index</p> })
 `,
-      }),
-    )
-    // (listening, as `vite dev`: Start leaves its request handler out in
-    // middleware mode)
-    const server = await createServer({
-      root: app.root,
-      configFile: path.join(app.root, 'vite.config.ts'),
-      logLevel: 'error',
-      server: { port: 0 },
+      },
     })
-    onTestFinished(() => server.close())
-    await server.listen()
-    const page = () => fetch(server.resolvedUrls!.local[0]!)
-    expect((await page()).headers.get('x-start')).toBeNull()
+    const header = async (url: string) =>
+      (await fetch(new URL('/', url))).headers.get('x-start')
+    expect(await header(server.url!)).toBeNull()
 
-    await app.write({
-      'src/start.ts': `import { createMiddleware, createStart } from '@tanstack/react-start'
+    await server.edit(
+      {
+        'src/start.ts': `import { createMiddleware, createStart } from '@tanstack/react-start'
 import { setResponseHeader } from '@tanstack/react-start/server'
 const mark = createMiddleware().server(({ next }) => {
   setResponseHeader('x-start', 'MARK_START')
@@ -46,9 +48,12 @@ const mark = createMiddleware().server(({ next }) => {
 })
 export const startInstance = createStart(() => ({ requestMiddleware: [mark] }))
 `,
-    })
-    await server.restart()
-    expect((await page()).headers.get('x-start')).toBe('MARK_START')
+      },
+      // (nothing imports it before the restart)
+      { accept: (file) => file === 'src/start.ts' },
+    )
+    const restarted = await server.restart()
+    expect(await header(restarted.url!)).toBe('MARK_START')
   },
   timeout,
 )

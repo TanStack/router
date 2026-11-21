@@ -16,7 +16,6 @@ export function tanstackStart(
     framework: 'vue',
     defaultEntryPaths: vueStartDefaultEntryPaths,
     providerEnvironmentName: START_ENVIRONMENT_NAMES.server,
-    ssrIsProvider: true,
     ssrResolverStrategy: {
       type: 'default',
     },

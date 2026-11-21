@@ -2,16 +2,62 @@
 ref: docs/start/framework/react/guide/deferred-hydration.md
 replace:
   '@tanstack/react-start': '@tanstack/solid-start'
-  'React handlers': 'Solid handlers'
   'one React tree': 'one Solid tree'
+  "existing DOM to\nReact\\.": "existing DOM to\nSolid."
+  '`Reviews` React': '`Reviews` Solid'
   'Comparison To React Selective Hydration': 'Comparison To Solid Streaming Hydration'
-  "React's selective hydration controls the order in which server-rendered boundaries hydrate. Deferred hydration controls whether and when each boundary hydrates at all.": "Solid's streaming hydration controls the order in which server-rendered boundaries hydrate. Deferred hydration controls whether and when each boundary hydrates at all."
-  'When React hydrates a streaming SSR page, every server-rendered `<Suspense>` boundary will eventually hydrate. Selective hydration just decides the order: each boundary hydrates as soon as its code arrives, and React jumps a boundary to the front of the queue if the user clicks inside it. The work is fixed by what the server rendered; React schedules it to feel responsive.': 'When Solid hydrates a streaming SSR page, every server-rendered `<Suspense>` boundary will eventually hydrate. Streaming hydration just decides the order: each boundary hydrates as its resources resolve and stream from the server. The work is fixed by what the server rendered; Solid streams it to feel responsive.'
-  "The two compose. A `Hydrate` boundary decides whether and when React starts hydrating a subtree; once it opens, anything inside it (including `<Suspense>` boundaries) flows back into React's normal hydration scheduler. Use `<Suspense>` when hydration must happen and you want React to prioritize it well. Use `Hydrate` when hydration might not need to happen at all.": "The two compose. A `Hydrate` boundary decides whether and when Solid starts hydrating a subtree; once it opens, anything inside it (including `<Suspense>` boundaries) flows back into Solid's normal hydration scheduler. Use `<Suspense>` when hydration must happen and you want Solid to prioritize it well. Use `Hydrate` when hydration might not need to happen at all."
   'ReactNode': 'JSX.Element'
-  "Deferred hydration is a performance hint for React's initial hydration work. React may hydrate a deferred boundary earlier than its strategy would normally allow if state, props, context, or store updates outside the boundary require React to reconcile inside it before the gate opens. This preserves correctness and avoids showing stale server HTML after the surrounding app has changed.": "Deferred hydration is a performance hint for Solid's initial hydration work. Once a boundary gate opens, TanStack Start clears the preserved server DOM inside the marker and mounts the live Solid subtree in its place."
-  'Hook calls directly inside extracted JSX': 'Render-time `use*` calls directly inside extracted JSX'
-  'Moving that JSX would move where the hook executes.': 'Moving that JSX would move where the call executes.'
-  'Move the hook call into a component inside the boundary, then render that component.': 'Move the call into a component inside the boundary, then render that component.'
-  'Move the hook into a component instead:': 'Move the call into a component instead:'
 ---
+
+[//]: # 'SelectiveHydration'
+
+Solid's streaming hydration controls the order in which server-rendered
+boundaries hydrate. Deferred hydration controls whether and when each
+boundary hydrates at all.
+
+When Solid hydrates a streaming SSR page, every server-rendered
+`<Suspense>` boundary will eventually hydrate. Streaming hydration just
+decides the order: each boundary hydrates as its resources resolve and
+stream from the server. The work is fixed by what the server rendered;
+Solid streams it to feel responsive.
+
+[//]: # 'SelectiveHydration'
+[//]: # 'HydrationCompose'
+
+The two compose. A `Hydrate` boundary decides whether and when Solid
+starts hydrating a subtree; once it opens, anything inside it (including
+`<Suspense>` boundaries) flows back into Solid's normal hydration
+scheduler. Use `<Suspense>` when hydration must happen and you want Solid
+to prioritize it well. Use `Hydrate` when hydration might not need to
+happen at all.
+
+[//]: # 'HydrationCompose'
+[//]: # 'InlineCallbacks'
+
+Inline `when` and `prefetch` functions are supported. A Solid component runs
+once: the boundary reads `when` when it is created. To change the strategy of a
+mounted boundary, render a new boundary, for example inside a keyed `<Show>`.
+
+[//]: # 'InlineCallbacks'
+[//]: # 'EarlyHydration'
+
+Deferred hydration is a performance hint for Solid's initial hydration work.
+Once a boundary gate opens, TanStack Start clears the preserved server DOM
+inside the marker and mounts the live Solid subtree in its place.
+
+[//]: # 'EarlyHydration'
+[//]: # 'SplitLimits'
+
+These patterns cannot be split:
+
+| Pattern                                                                                | Why it is rejected                                                                          | What to do instead                                                                                                  |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Function-as-children                                                                   | The compiler cannot move a render function and preserve the expected call pattern.          | Use `split={false}` or move the rendered UI into a child component.                                                 |
+| Assigning a local of the component inside the boundary (`count++`)                     | The extracted children receive the local's value, not the variable.                         | Move the variable and the code that assigns it into a component inside the boundary, or use `split={false}`.        |
+| A nested boundary assigning, through `ref`, a local declared outside both boundaries   | The inner boundary's chunk would assign its own copy.                                       | Use `split={false}` on one of them.                                                                                 |
+| Children, or a component only they render, assigning a module variable other code uses | The chunk would assign its own copy of the variable, while the module reads the original.   | Use `split={false}`, or move the variable to a module of its own, with a function that assigns it, and import them. |
+| `await` or `yield` directly inside the boundary                                        | The extracted children render in a synchronous component.                                   | Compute the value before the boundary, or use `split={false}`.                                                      |
+| `this` or `new.target` captures                                                        | Extracted function components cannot safely preserve class instance or constructor context. | Wrap the UI in a function component or use `split={false}`.                                                         |
+| `super` captures                                                                       | Extracted function components cannot preserve superclass access.                            | Wrap the UI in a function component or use `split={false}`.                                                         |
+
+[//]: # 'SplitLimits'

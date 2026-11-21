@@ -30,6 +30,7 @@ export default mergeConfig(
       './src/index.ts',
       './src/client.tsx',
       './src/client-rpc.ts',
+      './src/client-rpc-gated.ts',
       './src/ssr-rpc.ts',
       './src/server-rpc.ts',
       './src/server.tsx',

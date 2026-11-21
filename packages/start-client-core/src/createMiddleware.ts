@@ -115,14 +115,26 @@ export interface FunctionMiddlewareWithTypes<
     TClientContext,
     TClientSendContext
   >
-  options: FunctionMiddlewareOptions<
-    TRegister,
-    TMiddlewares,
-    TInputValidator,
-    TServerContext,
-    TClientContext
+  readonly options: ReadonlyBuilderOptions<
+    FunctionMiddlewareOptions<
+      TRegister,
+      TMiddlewares,
+      TInputValidator,
+      TServerContext,
+      TClientContext
+    >
   >
 }
+
+/**
+ * The public view of a builder's `.options`: its fields and lists are
+ * read-only, so writing to them is a type error. Reads keep their types.
+ */
+export type ReadonlyBuilderOptions<TOptions> = {
+  readonly [K in keyof TOptions]: ReadonlyList<TOptions[K]>
+}
+
+type ReadonlyList<T> = T extends ReadonlyArray<unknown> ? Readonly<T> : T
 
 export interface FunctionMiddlewareTypes<
   in out TRegister,
@@ -709,7 +721,9 @@ export interface RequestMiddlewareWithTypes<
   TServerContext,
 > {
   '~types': RequestMiddlewareTypes<TRegister, TMiddlewares, TServerContext>
-  options: RequestMiddlewareOptions<TRegister, TMiddlewares, TServerContext>
+  readonly options: ReadonlyBuilderOptions<
+    RequestMiddlewareOptions<TRegister, TMiddlewares, TServerContext>
+  >
 }
 
 export interface RequestMiddlewareOptions<

@@ -111,6 +111,10 @@ const MatchesInner = Vue.defineComponent({
         onCatch:
           process.env.NODE_ENV !== 'production'
             ? (error: unknown) => {
+                // Any error, a loader's too: Vue cannot render the document a
+                // root route's shell renders again once this boundary
+                // replaced it, so route hot updates reload the page
+                ;(router as { _hmrReload?: true })._hmrReload = true
                 console.warn(
                   `Warning: The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
                 )

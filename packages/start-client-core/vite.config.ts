@@ -25,6 +25,7 @@ export default defineConfig(({ command }) =>
         './src/index.tsx',
         './src/client/index.ts',
         './src/client-rpc/index.ts',
+        './src/client-rpc/gated.ts',
         './src/hydration/constants.ts',
         './src/hydration.ts',
         './src/hydration/runtime.ts',

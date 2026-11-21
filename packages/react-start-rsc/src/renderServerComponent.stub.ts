@@ -20,7 +20,8 @@ export function renderServerComponent<TNode>(
   }
 
   throw new Error(
-    'renderServerComponent cannot be called on the client. ' +
-      'This function should only be called inside a server function or route loader.',
+    process.env.NODE_ENV !== 'production'
+      ? "renderServerComponent cannot be called on the client. Call it inside a server function's `.handler()`, and call that server function where you need the result (e.g. in the route's loader)."
+      : 'renderServerComponent cannot be called on the client',
   )
 }

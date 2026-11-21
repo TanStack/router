@@ -8,6 +8,12 @@ const config = defineConfig({
     dir: './tests',
     watch: false,
     typecheck: { enabled: true },
+    // The retained-heap gate forces GC; the workers get the flag.
+    pool: 'forks',
+    execArgv: ['--expose-gc'],
+    // the compiler's self-checks (`src/compiler/self-checks.ts`) are on for
+    // every compile of the tests: outputs verified, invariants throw
+    env: { TSR_COMPILER_VERIFY: process.env.TSR_COMPILER_VERIFY ?? '1' },
   },
 })
 
@@ -15,7 +21,7 @@ export default mergeConfig(
   config,
   tanstackViteConfig({
     tsconfigPath: './tsconfig.build.json',
-    entry: './src/index.ts',
+    entry: ['./src/index.ts', './src/compiler/index.ts'],
     srcDir: './src',
   }),
 )

@@ -1,6 +1,6 @@
-import { tsrSplit } from '@tanstack/router-plugin'
 import { tssHydrate } from '../../hydration-constants'
 import { getCssAssetSource } from '../../start-manifest-plugin/inlineCss'
+import { isRouteSplitQuery } from '../../start-manifest-plugin/routeChunks'
 import type { Rollup } from 'vite'
 import type { NormalizedClientBuild, NormalizedClientChunk } from '../../types'
 
@@ -96,13 +96,7 @@ export function getRouteFilePathsFromModuleIds(moduleIds: Array<string>) {
       continue
     }
 
-    const query = moduleId.slice(queryIndex + 1)
-
-    if (!query.includes(tsrSplit)) {
-      continue
-    }
-
-    if (!new URLSearchParams(query).has(tsrSplit)) {
+    if (!isRouteSplitQuery(moduleId.slice(queryIndex + 1))) {
       continue
     }
 

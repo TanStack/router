@@ -1,12 +1,17 @@
 import { createWebpackPlugin } from 'unplugin'
 
-import { configSchema } from './core/config'
-import { createRouterCodeSplitterPlugin } from './core/router-code-splitter-plugin'
+import { configSchema, splitterOptions } from './core/config'
 import { createRouterGeneratorPlugin } from './core/router-generator-plugin'
-import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
-import { createRouterPluginContext } from './core/router-plugin-context'
+import {
+  contextInternals,
+  createRouterPluginContext,
+} from './core/router-plugin-context'
+import { createRouterCompilerWebpackPlugin } from './hosts/webpack'
+import { INLINE_CSS_DEFAULT_DEFINES } from './core/inline-css-defaults'
+import type { CompilerLike } from './hosts/webpack'
 import type { CodeSplittingOptions, Config } from './core/config'
 import type { RouterPluginContext } from './core/router-plugin-context'
+import type { WebpackPluginInstance } from 'webpack'
 
 const defaultRouterPluginContext = createRouterPluginContext()
 
@@ -24,13 +29,17 @@ const TanStackRouterGeneratorWebpack = (
   routerPluginContext?: RouterPluginContext,
 ) => {
   const pluginContext = routerPluginContext ?? defaultRouterPluginContext
+  // A context this copy didn't make fails now: unplugin calls the factory
+  // when the bundler applies the plugin
+  contextInternals(pluginContext)
   return createWebpackPlugin((pluginOptions: Partial<Config> | undefined) =>
     createRouterGeneratorPlugin(pluginOptions, pluginContext),
   )(options)
 }
 
 /**
- * Route HMR in development goes through `import.meta.webpackHot`.
+ * The route compiler alone (route splitting, and route HMR in development
+ * through `import.meta.webpackHot`).
  *
  * @example
  * ```ts
@@ -43,11 +52,13 @@ const TanStackRouterGeneratorWebpack = (
 const TanStackRouterCodeSplitterWebpack = (
   options?: Partial<Config>,
   routerPluginContext?: RouterPluginContext,
-) => {
+): WebpackPluginInstance => {
   const pluginContext = routerPluginContext ?? defaultRouterPluginContext
-  return createWebpackPlugin((pluginOptions: Partial<Config> | undefined) =>
-    createRouterCodeSplitterPlugin(pluginOptions, pluginContext, 'webpack'),
-  )(options)
+  return createRouterCompilerWebpackPlugin(
+    splitterOptions(options),
+    pluginContext,
+    'webpack',
+  ) as WebpackPluginInstance
 }
 
 /**
@@ -59,9 +70,26 @@ const TanStackRouterCodeSplitterWebpack = (
  * }
  * ```
  */
-const TanStackRouterWebpack = /* #__PURE__ */ createWebpackPlugin(
-  unpluginRouterComposedFactory,
-)
+const TanStackRouterWebpack = (
+  options?: Partial<Config>,
+): WebpackPluginInstance => {
+  const routerPluginContext = createRouterPluginContext()
+  const generator = TanStackRouterGeneratorWebpack(options, routerPluginContext)
+  const compiler = createRouterCompilerWebpackPlugin(
+    options,
+    routerPluginContext,
+    'webpack',
+  )
+  return {
+    apply(webpackCompiler) {
+      new webpackCompiler.webpack.DefinePlugin(
+        INLINE_CSS_DEFAULT_DEFINES,
+      ).apply(webpackCompiler)
+      generator.apply(webpackCompiler)
+      compiler.apply(webpackCompiler as unknown as CompilerLike)
+    },
+  }
+}
 
 const tanstackRouter = TanStackRouterWebpack
 export default TanStackRouterWebpack

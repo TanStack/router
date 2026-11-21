@@ -368,6 +368,14 @@ function RootComponent() {
           >
             Param
           </Link>
+          <Link
+            to="/rsc-client-only"
+            className="nav-link"
+            activeProps={{ className: 'nav-link active' }}
+            data-testid="nav-client-only"
+          >
+            ClientOnly
+          </Link>
 
           {/* Legend */}
           <div

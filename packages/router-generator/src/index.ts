@@ -8,6 +8,8 @@ export type { Config, BaseConfig } from './config'
 
 export { Generator } from './generator'
 export type { FileEventType, FileEvent, GeneratorEvent } from './generator'
+export { logging } from './logger'
+export type { Logger } from './logger'
 
 export type { GeneratorPlugin } from './plugin/types'
 
@@ -23,21 +25,25 @@ export {
   removeUnderscores,
   resetRegex,
   multiSortBy,
-  writeIfDifferent,
-  format,
   removeExt,
-  checkRouteFullPathUniqueness,
-  inferFullPath,
 } from './utils'
 
+export { routeCallOf, propertyKeyName } from './analyze/route-call'
+export type {
+  ForeignRoute,
+  RouteCall,
+  RouteConstructorName,
+  RouteFileKind,
+} from './analyze/route-call'
+
+export { routeOptionPieces } from './types'
 export type {
   RouteNode,
+  ModelRoute,
+  TreeModel,
   GetRouteNodesResult,
   GetRoutesByFileMapResult,
   GetRoutesByFileMapResultValue,
-  ImportDeclaration,
-  ImportSpecifier,
-  HandleNodeAccumulator,
 } from './types'
 
 export { getRouteNodes as physicalGetRouteNodes } from './filesystem/physical/getRouteNodes'
@@ -45,4 +51,5 @@ export { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getR
 
 export { rootPathId } from './filesystem/physical/rootPathId'
 
-export type { TransformContext, TransformOptions } from './transform/types'
+export { createGeneratorSession } from './watch/session'
+export type { GeneratorSession } from './watch/session'

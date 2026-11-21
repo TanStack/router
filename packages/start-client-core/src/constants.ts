@@ -55,7 +55,12 @@ export interface ClientFnMeta {
  * This information is embedded at compile time by the TanStack Start compiler.
  */
 export interface ServerFnMeta extends ClientFnMeta {
-  /** The original variable name of the server function (e.g., "myServerFn") */
+  /**
+   * The name of the variable the server function is assigned to (e.g.,
+   * "myServerFn"), also when it is exported under another name; the
+   * property name for an object property or class field, `default` for
+   * `export default createServerFn()…`
+   */
   name: string
   /** The source file path relative to the project root (e.g., "src/routes/api.ts") */
   filename: string

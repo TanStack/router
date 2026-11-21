@@ -1,295 +1,284 @@
-import { readFile, readdir } from 'node:fs/promises'
-import path from 'node:path'
-import { describe, expect, test, vi } from 'vitest'
-import { StartCompiler } from '../../src/start-compiler/compiler'
-import { formatSnapshot } from '../format-snapshot'
+import { describe, expect, test } from 'vitest'
+import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import {
+  callFromClient,
+  callOnServer,
+  compileError,
+  expectCompileError,
+  inPage,
+  serveCase,
+  useStartHost,
+} from '../regression-helpers'
+import { clientMiddleware, clientMiddlewareOf } from '../page-values'
 
-// Default test options for StartCompiler
-function getDefaultTestOptions(env: 'client' | 'server') {
-  const envName = env === 'client' ? 'client' : 'ssr'
-  return {
-    envName,
-    root: '/test',
-    framework: 'react' as const,
-    providerEnvName: 'ssr',
+/** A third-party library the middlewares below import (a real package). */
+const someLib = {
+  'node_modules/@some/lib/package.json': JSON.stringify({
+    name: '@some/lib',
+    type: 'module',
+    main: './index.js',
+  }),
+  'node_modules/@some/lib/index.js': `export const foo = () => 'foo'\n`,
+}
+
+const host = useStartHost({ files: someLib })
+
+describe('createMiddleware compiles correctly', () => {
+  // Malformed-input diagnostic control (SPEC §8, G5): `.validator()`
+  // without a validator is a type error (tsc against the real declarations:
+  // TS2554 "Expected 1 arguments, but got 0"). It only has to fail.
+  test('requires an argument for validator()', async () => {
+    const source = `import { createMiddleware } from '@tanstack/react-start'
+const myMiddleware = createMiddleware({ type: 'function' })
+  .validator()
+  .server(async ({ next }) => next())`
+    const startCase = await (await host()).case({ 'module.tsx': source })
+    const error = await compileError(startCase)
+    expectCompileError(error, { source, at: undefined })
+  })
+
+  test('keeps a middleware without a server function on the client', async () => {
+    const code = `import { createMiddleware } from '@tanstack/react-start'
+export const logger = createMiddleware({ type: 'function' }).client(
+  async ({ next }) => next(),
+)`
+    const served = await serveCase(await host(), { 'module.tsx': code })
+    expect(
+      await inPage(served, 'return typeof module.logger.options.client'),
+    ).toBe('function')
+  })
+})
+
+// The client keeps what a middleware runs in the browser (`.client()`, the
+// chain itself) and drops its server part: `.server()`, `.validator()` (the
+// validator only runs on the server) and the code and imports only they
+// read.
+// Replaces the former snapshot fixtures of this directory.
+describe('the client keeps the browser part of a middleware', () => {
+  /** A case of `code` (and `files`), which every environment serves. */
+  async function evaluateClient(
+    code: string,
+    files: Record<string, string> = {},
+  ) {
+    return serveCase(await host(), { 'module.tsx': code, ...files })
   }
-}
 
-async function getFilenames() {
-  return await readdir(path.resolve(import.meta.dirname, './test-files'))
-}
-
-async function compile(opts: {
-  env: 'client' | 'server'
-  code: string
-  id: string
-}) {
-  const compiler = new StartCompiler({
-    ...opts,
-    ...getDefaultTestOptions(opts.env),
-    loadModule: async () => {
-      // do nothing in test
-    },
-    lookupKinds: new Set(['Middleware']),
-    lookupConfigurations: [
-      {
-        libName: `@tanstack/react-start`,
-        rootExport: 'createMiddleware',
-        kind: 'Root',
-      },
-      {
-        libName: `@tanstack/react-start`,
-        rootExport: 'createStart',
-        kind: 'Root',
-      },
-    ],
-    getKnownServerFns: () => ({}),
-    resolveId: async (id) => {
-      return id
-    },
+  // Source: snapshot fixture create-function-middleware.ts
+  test('a function middleware keeps .client() and drops .server() and its imports', async () => {
+    const served =
+      await evaluateClient(`import { createMiddleware } from '@tanstack/react-start'
+import { foo } from '@some/lib'
+export const fnMw = createMiddleware({ type: 'function' })
+  .client(() => 'client')
+  .server(({ next }) => {
+    foo()
+    return next()
+  })`)
+    expectNotLoaded(await served.loads(), ['@some/lib'])
+    expect(
+      await inPage(
+        served,
+        `return [module.fnMw.options.type, module.fnMw.options.client(), module.fnMw.options.server === undefined]`,
+      ),
+    ).toEqual(['function', 'client', true])
   })
-  const result = await compiler.compile({
-    code: opts.code,
-    id: opts.id,
+
+  // Source: snapshot fixtures createMiddlewareDestructured.tsx,
+  // createMiddlewareDestructuredRename.tsx, createMiddlewareStarImport.tsx
+  test('.server() given a function expression, an arrow, an identifier or a wrapper call leaves no server code or import in the client', async () => {
+    const served =
+      await evaluateClient(`import { createMiddleware } from '@tanstack/react-start'
+import { z } from 'zod'
+export const withFunction = createMiddleware({ type: 'function' })
+  .client(() => 'function')
+  .server(async function () {
+    return z.number()
   })
-  return result
+export const withArrow = createMiddleware({ type: 'function' })
+  .client(() => 'arrow')
+  .server(async () => z.number())
+export const withVariable = createMiddleware({ type: 'function' })
+  .client(() => 'variable')
+  .server(abstractedFunction)
+async function abstractedFunction() {
+  return z.number()
 }
+function zodValidator(schema: unknown, fn: (input: unknown) => unknown) {
+  return async (input: unknown) => fn([schema, input])
+}
+export const withWrapper = createMiddleware({ type: 'function' })
+  .client(() => 'wrapper')
+  .server(zodValidator(z.number(), (input) => ({ 'you gave': input })))`)
+    // What the dead helpers are called is free (SPEC §5.9): the client
+    // loading no server-only module is the check.
+    expectNotLoaded(await served.loads(), ['zod'])
+    expect(
+      await inPage(
+        served,
+        `return ['withFunction', 'withArrow', 'withVariable', 'withWrapper'].map((name) => [
+  module[name].options.client(),
+  module[name].options.server === undefined,
+])`,
+      ),
+    ).toEqual([
+      ['function', true],
+      ['arrow', true],
+      ['variable', true],
+      ['wrapper', true],
+    ])
+  })
 
-describe('createMiddleware compiles correctly', async () => {
-  const filenames = await getFilenames()
+  // Source: snapshot fixture createMiddlewareValidator.tsx, inline snapshot
+  // "should compile validator method"
+  test('the validator and its module leave the client', async () => {
+    const served =
+      await evaluateClient(`import { createMiddleware } from '@tanstack/react-start'
+import { z } from 'zod'
+export const withValidator = createMiddleware({ type: 'function' })
+  .validator(z.number())
+  .client(() => 'client')
+  .server(({ data, next }) => next({ context: { value: data + 1 } }))`)
+    expectNotLoaded(await served.loads(), ['zod'])
+    expect(
+      await inPage(
+        served,
+        `const { options } = module.withValidator
+return [options.validator === undefined, options.server === undefined, options.client()]`,
+      ),
+    ).toEqual([true, true, 'client'])
+  })
 
-  describe.each(filenames)('should handle "%s"', async (filename) => {
-    const file = await readFile(
-      path.resolve(import.meta.dirname, `./test-files/${filename}`),
+  // Source: snapshot fixture middleware-factory.ts
+  test('a middleware built inside a function drops .server() and what it reads', async () => {
+    const served = await evaluateClient(
+      `import { createMiddleware } from '@tanstack/react-start'
+import { rateLimit, getUser } from './auth.server'
+export function createPublicRateLimitMiddleware(keySuffix) {
+  return createMiddleware({ type: 'function' }).server(async ({ next }) => {
+    await rateLimit({ key: keySuffix })
+    return next()
+  })
+}
+export const createAuthMiddleware = (requiredRole) => {
+  return createMiddleware({ type: 'function' }).server(async ({ next }) => {
+    const user = await getUser()
+    if (user.role !== requiredRole) {
+      throw new Error('Forbidden')
+    }
+    return next()
+  })
+}
+export const topLevelMiddleware = createMiddleware({ type: 'function' })
+  .client(() => 'topLevel')
+  .server(async ({ next }) => next())`,
+      {
+        'auth.server.ts': `export const rateLimit = async (options: unknown) => options
+export const getUser = async () => ({ role: 'admin' })
+`,
+      },
     )
-    const code = file.toString()
-
-    // Note: Middleware compilation only happens on the client
-    test(`should compile for ${filename} client`, async () => {
-      const result = await compile({ env: 'client', code, id: filename })
-
-      await expect(
-        await formatSnapshot(result!.code, filename),
-      ).toMatchFileSnapshot(`./snapshots/client/${filename}`)
-    })
+    expectNotLoaded(await served.loads(), ['./auth.server'])
+    expect(
+      await inPage(
+        served,
+        `return [
+  ${clientMiddlewareOf(`module.createPublicRateLimitMiddleware('ip')`)},
+  ${clientMiddlewareOf(`module.createAuthMiddleware('admin')`)},
+  module.topLevelMiddleware.options.client(),
+  module.topLevelMiddleware.options.server === undefined,
+]`,
+      ),
+    ).toEqual([
+      clientMiddleware('function'),
+      clientMiddleware('function'),
+      'topLevel',
+      true,
+    ])
   })
 
-  test('should compile validator method', async () => {
-    const code = `
-      import { createMiddleware } from '@tanstack/react-start'
-      const myMiddleware = createMiddleware({ type: 'function' })
-        .validator((input: string) => input)
-        .server(async ({ next }) => {
-          return next()
-        })`
-
-    const result = await compile({
-      env: 'client',
-      code,
-      id: 'test.ts',
-    })
-
-    expect(await formatSnapshot(result!.code, 'test.ts'))
-      .toMatchInlineSnapshot(`
-      "import { createMiddleware } from '@tanstack/react-start'
-      const myMiddleware = createMiddleware({ type: 'function' })
-      "
-    `)
+  // Source: snapshot fixture createStart.tsx
+  test('middleware of a createStart instance keeps .client() and drops .server()', async () => {
+    const served = await evaluateClient(
+      `import { createStart } from '@tanstack/react-start'
+import { audit } from './audit.server'
+export const startInstance = createStart(() => ({}))
+export const serverFnMw = startInstance
+  .createMiddleware({ type: 'function' })
+  .client(({ next }) => next())
+  .server(({ next }) => {
+    audit('function')
+    return next({ context: { admin: 'admin' } })
   })
-
-  test('should use fast path for direct imports from known library (no extra resolveId calls)', async () => {
-    const code = `
-      import { createMiddleware } from '@tanstack/react-start'
-      const myMiddleware = createMiddleware().server(async ({ next }) => {
-        return next()
-      })`
-
-    const resolveIdMock = vi.fn(async (id: string) => id)
-
-    const compiler = new StartCompiler({
-      env: 'client',
-      ...getDefaultTestOptions('client'),
-      loadModule: async () => {},
-      lookupKinds: new Set(['Middleware']),
-      lookupConfigurations: [
-        {
-          libName: '@tanstack/react-start',
-          rootExport: 'createMiddleware',
-          kind: 'Root',
-        },
-      ],
-      getKnownServerFns: () => ({}),
-      resolveId: resolveIdMock,
-    })
-
-    await compiler.compile({
-      code,
-      id: 'test.ts',
-    })
-
-    // Direct known-library imports use the knownRootImports fast path, so they
-    // do not need resolveId.
-    expect(resolveIdMock).not.toHaveBeenCalled()
+export const requestMw = startInstance
+  .createMiddleware({ type: 'request' })
+  .server(({ next }) => {
+    audit('request')
+    return next({ context: { requestMw: 'yes' } })
+  })`,
+      { 'audit.server.ts': `export const audit = (kind: string) => kind\n` },
+    )
+    expectNotLoaded(await served.loads(), ['./audit.server'])
+    expect(
+      await inPage(
+        served,
+        `return [
+  typeof module.serverFnMw.options.client,
+  module.serverFnMw.options.server === undefined,
+  ${clientMiddlewareOf('module.requestMw')},
+]`,
+      ),
+    ).toEqual(['function', true, clientMiddleware('request')])
   })
+})
 
-  test('should use slow path for factory pattern (resolveId called for import resolution)', async () => {
-    // This simulates a factory pattern where createMiddleware is re-exported from a local file
-    const factoryCode = `
-      import { createFooMiddleware } from './factory'
-      const myMiddleware = createFooMiddleware().server(async ({ next }) => {
-        return next()
-      })`
-
-    const resolveIdMock = vi.fn(async (id: string) => id)
-
-    const compiler = new StartCompiler({
-      env: 'client',
-      ...getDefaultTestOptions('client'),
-      loadModule: async (id) => {
-        // Simulate the factory module being loaded
-        if (id === './factory') {
-          compiler.ingestModule({
-            code: `
-              import { createMiddleware } from '@tanstack/react-start'
-              export const createFooMiddleware = createMiddleware
-            `,
-            id: './factory',
-          })
-        }
-      },
-      lookupKinds: new Set(['Middleware']),
-      lookupConfigurations: [
-        {
-          libName: '@tanstack/react-start',
-          rootExport: 'createMiddleware',
-          kind: 'Root',
-        },
-      ],
-      getKnownServerFns: () => ({}),
-      resolveId: resolveIdMock,
-    })
-
-    await compiler.compile({
-      code: factoryCode,
-      id: 'test.ts',
-    })
-
-    // resolveId should only be called for './factory'. Direct known-library
-    // imports use the knownRootImports fast path.
-    //
-    // Note: The factory module's import from '@tanstack/react-start' ALSO uses
-    // the fast path (knownRootImports), so no additional resolveId call is needed there.
-    expect(resolveIdMock).toHaveBeenCalledTimes(1)
-    expect(resolveIdMock).toHaveBeenNthCalledWith(1, './factory', 'test.ts')
+// Start's own CSRF middleware factory is an isomorphic fn whose server
+// implementation builds a middleware (`createMiddleware().server()` in
+// Start's built package): an app's client gets the no-op of an isomorphic
+// fn without a client implementation, its server a request middleware.
+test("Start's createCsrfMiddleware is a no-op in the client and a request middleware on the server", async () => {
+  const served = await serveCase(await host(), {
+    'module.tsx': `import { createCsrfMiddleware } from '@tanstack/react-start'
+export const csrf = createCsrfMiddleware()`,
   })
+  expect(await inPage(served, 'return module.csrf === undefined')).toBe(true)
+  const { csrf } = await served.ssr()
+  expect([csrf.options.type, typeof csrf.options.server]).toEqual([
+    'request',
+    'function',
+  ])
+})
 
-  test('should resolve createMiddleware from start-client-core implementation file', async () => {
-    const virtualModules: Record<string, string> = {
-      '@tanstack/start-client-core': `
-        export { createMiddleware } from './createMiddleware'
-        export { createIsomorphicFn } from '@tanstack/start-fn-stubs'
-      `,
-      '/virtual/compiler-known/middleware-factory.ts': `
-        export const createMiddleware = () => ({
-          server: () => createMiddleware(),
-        })
-      `,
-    }
-
-    const compiler = new StartCompiler({
-      env: 'client',
-      ...getDefaultTestOptions('client'),
-      loadModule: async (id) => {
-        const code = virtualModules[id]
-        if (code) {
-          compiler.ingestModule({ code, id })
-        }
-      },
-      lookupKinds: new Set(['Middleware', 'IsomorphicFn']),
-      lookupConfigurations: [],
-      getKnownServerFns: () => ({}),
-      resolveId: async (source) => {
-        if (source === '@tanstack/start-client-core') {
-          return '@tanstack/start-client-core'
-        }
-
-        if (source === './createMiddleware') {
-          return '/virtual/compiler-known/middleware-factory.ts'
-        }
-
-        return null
-      },
-    })
-
-    const result = await compiler.compile({
-      id: '/repo/packages/start-client-core/src/createCsrfMiddleware.ts',
-      code: `
-        import { createIsomorphicFn } from '@tanstack/start-fn-stubs'
-        import { createMiddleware } from './createMiddleware'
-
-        const innerCreateCsrfMiddleware = () => {
-          return createMiddleware().server(() => 'server-only-middleware')
-        }
-
-        export const createCsrfMiddleware = createIsomorphicFn()
-          .server(innerCreateCsrfMiddleware)
-      `,
-    })
-
-    expect(result).not.toBeNull()
-    expect(result!.code).not.toContain('server-only-middleware')
-    expect(result!.code).not.toContain('createIsomorphicFn')
+// A valid full chain (`.middleware().validator().client().server()`) of a
+// middleware a server fn uses, run through Start's runtime: the client runs
+// `.client()` (its send context reaches the server) and ships no server
+// code; on the server, a call from server code and a client call by id run
+// the validator, `.server()` and the handler, with the context `.server()`
+// adds.
+test('a full middleware chain runs its client part on the client and its server part on the server', async () => {
+  const served = await serveCase(await host(), {
+    'module.tsx': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+import { db } from './db.server'
+import { check } from './check.server'
+const base = createMiddleware({ type: 'function' }).client(({ next }) =>
+  next({ sendContext: { base: 'base' } }),
+)
+export const auth = createMiddleware({ type: 'function' })
+  .middleware([base])
+  .validator((data: string) => check(data))
+  .client(({ next }) => next({ sendContext: { from: 'client' } }))
+  .server(async ({ next, context }) =>
+    next({ context: { user: db.user(context.from) } }),
+  )
+export const fn = createServerFn({ method: 'POST' })
+  .middleware([auth])
+  .handler(async ({ data, context }) => [data, context.user, context.base])`,
+    'db.server.ts': `export const db = { user: (from: string) => \`user(\${from})\` }\n`,
+    'check.server.ts': `export const check = (data: string) => \`checked(\${data})\`\n`,
   })
-
-  test('should resolve namespace createMiddleware from start-client-core implementation file', async () => {
-    const virtualModules: Record<string, string> = {
-      '@tanstack/start-client-core': `
-        export { createMiddleware } from './createMiddleware'
-      `,
-      '/virtual/compiler-known/middleware-factory.ts': `
-        export const createMiddleware = () => ({
-          server: () => createMiddleware(),
-        })
-      `,
-    }
-
-    const compiler = new StartCompiler({
-      env: 'client',
-      ...getDefaultTestOptions('client'),
-      loadModule: async (id) => {
-        const code = virtualModules[id]
-        if (code) {
-          compiler.ingestModule({ code, id })
-        }
-      },
-      lookupKinds: new Set(['Middleware']),
-      lookupConfigurations: [],
-      getKnownServerFns: () => ({}),
-      resolveId: async (source) => {
-        if (source === '@tanstack/start-client-core') {
-          return '@tanstack/start-client-core'
-        }
-
-        if (source === './createMiddleware') {
-          return '/virtual/compiler-known/middleware-factory.ts'
-        }
-
-        return null
-      },
-    })
-
-    const result = await compiler.compile({
-      id: '/repo/packages/start-client-core/src/internal.ts',
-      code: `
-        import * as middlewareModule from './createMiddleware'
-
-        export const middleware = middlewareModule.createMiddleware().server(() => {
-          return 'server-only-middleware'
-        })
-      `,
-    })
-
-    expect(result).not.toBeNull()
-    expect(result!.code).not.toContain('server-only-middleware')
-  })
+  expectNotLoaded(await served.loads(), ['./db.server', './check.server'])
+  expect(served.code.client).not.toMatch(/db\.user|check\(/)
+  const expected = ['checked(input)', 'user(client)', 'base']
+  expect(await callFromClient(served, 'module.fn', 'input')).toEqual(expected)
+  // Server code calling the server fn gets the same result.
+  expect(await callOnServer(served, 'module.fn', 'input')).toEqual(expected)
 })

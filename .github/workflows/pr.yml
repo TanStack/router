@@ -27,6 +27,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TSR_TMP_DIR: ./tmp
+      # The compiler's self-checks (output verifier, internal asserts and
+      # placement invariants) throw instead of warning in every compile the
+      # e2e apps run, so a compiler bug they reach fails the run. Forwarded to
+      # the Nx Cloud workers by .nx/ci-config.yaml; a cache input of the e2e
+      # tasks and the app builds (`compilerSelfChecks` in nx.json).
+      TSR_COMPILER_VERIFY: '1'
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

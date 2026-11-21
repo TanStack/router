@@ -132,6 +132,7 @@ function makeWindowsCompilation(readCss: () => string | Uint8Array) {
           ? [
               {
                 dependencies: [],
+                blocks: [],
                 identifier: () =>
                   'builtin:swc-loader??ruleSet[0]!C:\\app\\src\\routes\\posts.tsx?tsr-split=component',
                 nameForCondition: () => 'C:\\app\\src\\routes\\posts.tsx',
@@ -145,6 +146,86 @@ function makeWindowsCompilation(readCss: () => string | Uint8Array) {
 }
 
 describe('normalizeRspackClientBuild', () => {
+  // The query rules the route-split and Hydrate derived ids rely on: literal
+  // keys only, the first value, `+`/`%` decoding. Source: upstream #8799.
+  test.each([
+    {
+      query: 'tsr-split=component&tss-hydrate=first&tss-hydrate=second',
+      route: true,
+      hydrationIds: ['first'],
+    },
+    {
+      query: 'tsr-split=component&tss-hydrate=&tss-hydrate=second',
+      route: true,
+      hydrationIds: [],
+    },
+    {
+      query: 'tsr-split=component&tss-hydrate=one+two%2Bthree',
+      route: true,
+      hydrationIds: ['one two+three'],
+    },
+    {
+      query: '%74sr-split=component&tss-hydrate=first',
+      route: false,
+      hydrationIds: ['first'],
+    },
+    {
+      query: 'tsr-split=component&%74ss-hydrate=first',
+      route: true,
+      hydrationIds: [],
+    },
+    {
+      query: 'not-tsr-split=component&not-tss-hydrate=first',
+      route: false,
+      hydrationIds: [],
+    },
+  ])(
+    'preserves literal query filtering and first values for $query',
+    async ({ query, route, hydrationIds }) => {
+      const { clientBuild, directory } = await buildClientFixture({
+        'index.js': `globalThis.route = () => import(/* webpackChunkName: "alpha" */ './alpha.js?${query}')`,
+        'alpha.js': `export const render = () => globalThis.render()`,
+      })
+      const chunk = clientBuild.chunksByFileName.get('alpha.js')!
+      expect(chunk.routeFilePaths).toEqual(
+        route ? [join(directory, 'alpha.js')] : [],
+      )
+      expect(chunk.hydrationIds).toEqual(hydrationIds)
+    },
+  )
+
+  test.each([false, true])(
+    'preserves route and hydration metadata with concatenateModules=%s',
+    async (concatenateModules) => {
+      const { clientBuild, directory } = await buildClientFixture(
+        {
+          'index.js': `globalThis.route = () => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component&tss-hydrate=route%2Falpha')`,
+          'alpha.js': `
+            import { first } from './first.js?tss-hydrate=shared';
+            import { second } from './second.js?tss-hydrate=shared';
+            import { empty } from './empty.js?tss-hydrate=';
+            import { lookalike } from './lookalike.js?not-tsr-split=component&not-tss-hydrate=ignored';
+            export const render = () => first() + second() + empty() + lookalike();
+          `,
+          'first.js': `export const first = () => globalThis.first`,
+          'second.js': `export const second = () => globalThis.second`,
+          'empty.js': `export const empty = () => globalThis.empty`,
+          'lookalike.js': `export const lookalike = () => globalThis.lookalike`,
+        },
+        { optimization: { concatenateModules } },
+      )
+
+      const chunk = clientBuild.chunksByFileName.get('alpha.js')!
+      expect(chunk.routeFilePaths).toEqual([join(directory, 'alpha.js')])
+      expect(chunk.hydrationIds).toEqual(
+        expect.arrayContaining(['route/alpha', 'shared']),
+      )
+      expect(chunk.hydrationIds.filter((id) => id === 'shared')).toHaveLength(1)
+      expect(chunk.hydrationIds).not.toContain('')
+      expect(chunk.hydrationIds).not.toContain('ignored')
+    },
+  )
+
   test.each(
     ['shared', 'none', 'css-module', 'css-only'].flatMap((extraction) =>
       [false, true].flatMap((concatenateModules) =>
@@ -353,6 +434,105 @@ describe('normalizeRspackClientBuild', () => {
         '/format.js',
       ])
     }
+  })
+
+  test('imports every chunk available to a route chunk that it uses, in import order', async () => {
+    const { clientBuild, directory } = await buildClientFixture(
+      {
+        'index.js': `
+          import { util } from './util.js'
+          globalThis.util = util
+          globalThis.routes = [
+            () => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component'),
+          ]
+        `,
+        'alpha.js': `
+          import { util } from './util.js'
+          import { one } from './one.js'
+          import { two } from './two.js'
+          export const render = () => util() + one() + two()
+        `,
+        'util.js': `export const util = () => 'util'`,
+        'one.js': `export const one = () => 'one'`,
+        'two.js': `export const two = () => 'two'`,
+      },
+      {
+        optimization: {
+          splitChunks: {
+            minSize: 0,
+            cacheGroups: {
+              default: false,
+              defaultVendors: false,
+              one: {
+                name: 'one',
+                test: /one\.js$/,
+                chunks: 'async',
+                enforce: true,
+              },
+              two: {
+                name: 'two',
+                test: /two\.js$/,
+                chunks: 'async',
+                enforce: true,
+              },
+            },
+          },
+        },
+      },
+    )
+
+    // the chunks of its group and the entry's, the last one included
+    expect(clientBuild.chunksByFileName.get('alpha.js')?.imports).toEqual([
+      'index.js',
+      'one.js',
+      'two.js',
+    ])
+    const manifest = buildStartManifest({
+      clientBuild,
+      basePath: '/',
+      routeTreeRoutes: {
+        __root__: { children: ['/alpha'] },
+        '/alpha': { filePath: join(directory, 'alpha.js') },
+      },
+    })
+    expect(manifest.routes['/alpha']?.preloads).toEqual([
+      '/alpha.js',
+      '/one.js',
+      '/two.js',
+    ])
+  })
+
+  test('gives the root the css of a css-only chunk of the entry', async () => {
+    const { clientBuild } = await buildClientFixture(
+      {
+        'index.js': `import './theme.css'`,
+        'theme.css': '.theme { color: red; }',
+      },
+      {
+        optimization: {
+          splitChunks: {
+            minSize: 0,
+            cacheGroups: {
+              default: false,
+              defaultVendors: false,
+              theme: {
+                name: 'theme',
+                test: /theme\.css$/,
+                chunks: 'initial',
+                enforce: true,
+              },
+            },
+          },
+        },
+      },
+    )
+
+    const manifest = buildStartManifest({
+      clientBuild,
+      basePath: '/',
+      routeTreeRoutes: { __root__: {} },
+    })
+    expect(manifest.routes.__root__?.css).toEqual(['/theme.css'])
   })
 
   test('keeps route css off the root when an initial vendor chunk is shared with route groups', async () => {

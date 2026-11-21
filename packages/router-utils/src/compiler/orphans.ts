@@ -1,0 +1,648 @@
+/**
+ * Declarations only erased code read, below the units placement decides
+ * (SPEC G16 "destructuring", J4.12): function-local declarators and
+ * destructuring leaves of kept declarations. The core runs it once, after
+ * every planner erased what it erases (`AnalysisPlan.resolve`), on the env
+ * module's liveness. Module-level declarations, imports and their
+ * provenance are placement's (`placement.ts`).
+ */
+import { extendOverTrailingLine } from './header'
+import { nextToken, patternIdentifiers } from './source'
+import type { Binding, Node } from 'yuku'
+import type { ClassifiedRef } from './analysis'
+import type { Range } from './header'
+import type { PlanContext } from './plan'
+import type { OutputDecl } from './placement'
+import type { SymbolId } from './symbols'
+import type {
+  EditScope,
+  Frag,
+  LivenessView,
+  OutputId,
+  RewriteSet,
+} from './rewrite'
+
+/** The core's context: its scoped edits (`RewriteSet.scopedEdit`) are not the planners'. */
+type CoreContext = PlanContext & { readonly rewrites: RewriteSet }
+
+const text = (part: string): Frag => ({ k: 'text', parts: [part] })
+const rangeOf = (n: Node): Range => ({ start: n.start, end: n.end })
+
+const BY = 'core:orphans'
+/** An output no planner addresses: its tree holds the edits addressed to every output. */
+const EVERY_OUTPUT: OutputId = 'derived:\0every-output'
+
+/** A removal's scope (`scopeOf`) from what orphans it and what it encloses that went before. */
+type ScopeOf = (
+  refs: ReadonlyArray<ClassifiedRef>,
+  gone?: ReadonlyArray<Range>,
+) => EditScope
+
+/** The items of one list pruned in a round, with the references of the bindings they declare. */
+interface Pruned {
+  items: Set<Node>
+  refs: Array<ClassifiedRef>
+}
+
+const prune = (
+  map: Map<Node, Pruned>,
+  list: Node,
+  item: Node,
+  refs: ReadonlyArray<ClassifiedRef>,
+) => {
+  let p = map.get(list)
+  if (!p) {
+    p = { items: new Set(), refs: [] }
+    map.set(list, p)
+  }
+  p.items.add(item)
+  p.refs.push(...refs)
+}
+
+/**
+ * Function-local declarators (and `var`/block declarators of the module
+ * level the core's units do not model), the function and class
+ * declarations of a nested statement list (a namespace body's non-exported
+ * members included) and destructuring leaves all of
+ * whose references are erased in the env output: the initialiser goes with
+ * the declarator whatever it does, a hook call included (J4.12, documented
+ * removal, as main). Iterates to a fixpoint.
+ */
+export function cleanOrphanedDeclarations(
+  ctx: CoreContext,
+  outputs: ReadonlyMap<OutputId, OutputDecl>,
+): void {
+  const { t1, symbols, rewrites } = ctx
+  const file = ctx.analysis.file
+  const handled = new Set<number>()
+  // each round handles at least one more binding: a chain of declarations
+  // each only the next one reads is cleaned however long it is
+  for (;;) {
+    const live = ctx.liveness('env')
+    const placed = placeholderReads(rewrites)
+    let shared: LivenessView | null = null
+    const everyOutput = () => (shared ??= ctx.liveness(EVERY_OUTPUT))
+    /**
+     * Where a removal applies: in every output when edits addressed to every
+     * output alone erased what orphans it (the references of what it
+     * removes) and what it encloses that went before (`gone`), else in the
+     * env module, whose liveness decides every orphan (an erasure in the env
+     * module only leaves the code live where another output renders it: a
+     * server-function provider, a split chunk).
+     */
+    const scopeOf: ScopeOf = (refs, gone = []) =>
+      refs.every((r) => !everyOutput().live(r)) &&
+      gone.every((r) => everyOutput().isErased(r))
+        ? 'all-outputs'
+        : ['env']
+    let changed = false
+    // object pattern properties pruned this round, removed together per pattern
+    const prunedProps = new Map<Node, Pruned>()
+    // declarators of multi-declarator statements pruned this round, removed
+    // together per statement (one edit per statement from the final set)
+    const prunedDecls = new Map<Node, Pruned>()
+    // declarators removed whole this round (every binding of a pattern)
+    const removedDeclarators = new Set<Node>()
+    // pattern properties a live rest element keeps, by the range of their
+    // default: once nothing else goes (the rest element may go first, and
+    // its siblings with it), only the defaults go, with what only they read
+    // (`{ a = server(), ...rest }` → `{ a, ...rest }`)
+    const restKept: Array<{
+      binding: number
+      range: Range
+      refs: ReadonlyArray<ClassifiedRef>
+    }> = []
+    for (const b of file.bindings) {
+      if (handled.has(b.id) || b.import) {
+        continue
+      }
+      const sym = symbols.ofBinding(b)
+      if (symbols.kind(sym) !== 'source') {
+        continue
+      }
+      // orphaned: used, and only by erased code (most bindings fail here);
+      // a placeholder naming it reads it where the placeholder stands
+      const refs = t1.refs.refsOf(sym)
+      if (!orphaned(b, refs, live) || placed.has(sym)) {
+        continue
+      }
+      const decl = b.declarations[0]
+      const declParent = decl ? file.parentOf(decl) : null
+      // placement decides the declarator of a top-level declaration unit; a
+      // `var` hoisted out of a nested block is declared by the effect unit
+      // (statement) holding it: its declarator is cleaned here, as a
+      // function-level one
+      const declaring = t1.declaringUnits.get(sym)
+      const placements =
+        symbols.isModuleLevel(sym) &&
+        declaring !== undefined &&
+        declaring.some((u) => t1.units[u]!.kind !== 'effect')
+      if (
+        placements &&
+        declParent?.type !== 'AssignmentPattern' &&
+        declParent?.type !== 'Property' &&
+        declParent?.type !== 'ArrayPattern' &&
+        declParent?.type !== 'RestElement'
+      ) {
+        continue // the core's placement decides top-level units (destructuring leaves are pruned here)
+      }
+      // a module-level destructuring leaf stays while something else may
+      // read it: an importer, or another output (placement keeps the
+      // declaration here and that output imports it, or moves it there)
+      if (
+        placements &&
+        (declaring.some((u) => t1.units[u]!.exported.length > 0) ||
+          takenElsewhere(ctx, outputs, sym, refs, everyOutput))
+      ) {
+        handled.add(b.id)
+        continue
+      }
+      if (!decl || b.declarations.length !== 1) {
+        continue
+      }
+      const parent = file.parentOf(decl)
+      if (!parent) {
+        continue
+      }
+      if (live.isErased(rangeOf(decl))) {
+        handled.add(b.id)
+        continue
+      }
+      const inPattern =
+        parent.type === 'AssignmentPattern' ||
+        parent.type === 'Property' ||
+        parent.type === 'ArrayPattern' ||
+        parent.type === 'RestElement'
+      // a declarator goes whole when every binding it declares is orphaned
+      // (a pattern too: `var {} = serverConfig` would keep reading its
+      // import); the declarators of declaration units are placement's
+      const declarator =
+        parent.type === 'VariableDeclarator' && parent.id === decl
+          ? parent
+          : inPattern && !placements
+            ? orphanedPatternDeclarator(ctx, decl, live)
+            : null
+      if (declarator) {
+        if (removedDeclarators.has(declarator)) {
+          handled.add(b.id)
+          continue
+        }
+        if (removeDeclarator(ctx, declarator, scopeOf, prunedDecls)) {
+          removedDeclarators.add(declarator)
+          handled.add(b.id)
+          changed = true
+          continue
+        }
+      }
+      if (inPattern) {
+        const pruned = prunePatternElement(
+          ctx,
+          decl,
+          refs,
+          scopeOf,
+          prunedProps,
+          live,
+        )
+        if (pruned === true) {
+          handled.add(b.id)
+          changed = true
+        } else if (pruned !== false) {
+          restKept.push({ binding: b.id, range: pruned, refs })
+        }
+        continue
+      }
+      if (
+        (parent.type === 'FunctionDeclaration' ||
+          parent.type === 'ClassDeclaration') &&
+        parent.id === decl
+      ) {
+        // a nested statement list (a block, a `switch` case, a static
+        // block, a namespace body) is its own scope, not the module's:
+        // placement does not decide its declarations
+        if (
+          file.parentOf(parent)?.type === 'Program' ||
+          !removeDeclaration(ctx, parent, scopeOf(refs))
+        ) {
+          continue
+        }
+        handled.add(b.id)
+        changed = true
+      }
+    }
+    for (const [pattern, props] of prunedProps) {
+      removePatternProperties(ctx, pattern, props, live, scopeOf)
+    }
+    for (const [statement, decls] of prunedDecls) {
+      removeDeclarators(ctx, statement, decls, live, scopeOf)
+    }
+    if (!changed) {
+      for (const { binding, range, refs } of restKept) {
+        handled.add(binding)
+        changed = true
+        rewrites.scopedEdit({ range, body: [], scope: scopeOf(refs), by: BY })
+      }
+    }
+    if (!changed) {
+      break
+    }
+  }
+}
+
+/**
+ * Whether erasure orphans a binding, by the one removal rule (R153, as
+ * placement's `readFromRemoved`): the source used it, by value or in a type
+ * (`typeof cfg`), in text the env module no longer holds, and nothing left
+ * reads it by value (`refs`, its value references).
+ */
+function orphaned(
+  b: Binding,
+  refs: ReadonlyArray<ClassifiedRef>,
+  live: LivenessView,
+): boolean {
+  if (refs.some((r) => live.live(r))) {
+    return false
+  }
+  return (
+    refs.length > 0 ||
+    b.references.some((r) => r.inTypePosition && live.isErased(rangeOf(r.node)))
+  )
+}
+
+/**
+ * The symbols the placeholders of claims standing in the env module name
+ * (e.g. a Solid ref setter assigning a local whose only source reference it
+ * replaced): read there, as placement reads a claim's place
+ * (`reads.ts`). A claim not in scope or whose occurrence is erased places
+ * nothing. Planner placeholders outside claims are left out: they name only
+ * generated symbols (split's helpers and importers, Start's RPC imports).
+ */
+function placeholderReads(rewrites: RewriteSet): ReadonlySet<SymbolId> {
+  const env = rewrites.view('env')
+  const named = new Set<SymbolId>()
+  for (const claim of rewrites.claims.values()) {
+    const { range } = rewrites.regions.get(claim.region)
+    if (env.placeholderAt(range) !== claim || env.isErasedAround(range)) {
+      continue
+    }
+    for (const f of claim.placeholder) {
+      if (f.k !== 'text') {
+        continue
+      }
+      for (const p of f.parts) {
+        if (typeof p !== 'string') {
+          named.add(p.sym)
+        }
+      }
+    }
+  }
+  return named
+}
+
+/**
+ * Whether an output other than the env module takes a binding: one of its
+ * roots names it (an identifier option value), or a claimed region reads
+ * it where no edit addressed to every output erased the read (its owner's
+ * output renders the region).
+ */
+function takenElsewhere(
+  ctx: CoreContext,
+  outputs: ReadonlyMap<OutputId, OutputDecl>,
+  sym: SymbolId,
+  refs: ReadonlyArray<ClassifiedRef>,
+  everyOutput: () => LivenessView,
+): boolean {
+  for (const [id, decl] of outputs) {
+    if (id !== 'env' && decl.roots.some((r) => r.t === 'sym' && r.id === sym)) {
+      return true
+    }
+  }
+  for (const claim of ctx.rewrites.claims.values()) {
+    const { start, end } = ctx.rewrites.regions.get(claim.region).range
+    if (
+      refs.some(
+        (r) =>
+          r.range.start >= start && r.range.end <= end && everyOutput().live(r),
+      )
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * Removes a declarator all of whose bindings are orphaned, or reports that
+ * it cannot: a single declarator's statement goes; a declarator of several
+ * is pruned with its neighbours (`prunedDecls`).
+ */
+function removeDeclarator(
+  ctx: CoreContext,
+  declarator: Node,
+  scopeOf: ScopeOf,
+  prunedDecls: Map<Node, Pruned>,
+): boolean {
+  if (declarator.type !== 'VariableDeclarator') {
+    return false
+  }
+  // the references of every binding it declares
+  const refs = patternIdentifiers(declarator.id).flatMap((id) => {
+    const b = ctx.analysis.file.bindingOf(id)
+    return b ? ctx.t1.refs.refsOf(ctx.symbols.ofBinding(b)) : []
+  })
+  const statement = ctx.analysis.file.parentOf(declarator)
+  if (!statement || statement.type !== 'VariableDeclaration') {
+    return false
+  }
+  if (statement.declarations.length === 1) {
+    return removeDeclaration(ctx, statement, scopeOf(refs))
+  }
+  prune(prunedDecls, statement, declarator, refs)
+  return true
+}
+
+/**
+ * Removes a declaration all of whose declarators go (or a function or class
+ * declaration), by the grammar slot holding it: in a statement list it goes
+ * with its line; a classic `for` initialiser is optional (`for (; c; )`); a body a statement requires
+ * (`if (c) var x = …`, `label: var x = …`) keeps the empty statement.
+ * False for a slot that needs it (`for (var x of …)`).
+ */
+function removeDeclaration(
+  ctx: CoreContext,
+  statement: Node,
+  scope: EditScope,
+): boolean {
+  const code = ctx.analysis.source.code
+  const parent = ctx.analysis.file.parentOf(statement)
+  const remove = (end: number, body: Array<Frag>) =>
+    ctx.rewrites.scopedEdit({
+      range: { start: statement.start, end },
+      body,
+      scope,
+      by: BY,
+    })
+  switch (parent?.type) {
+    case 'BlockStatement':
+    case 'Program':
+    case 'SwitchCase':
+    case 'StaticBlock':
+    case 'TSModuleBlock':
+      remove(extendOverTrailingLine(code, statement.end), [])
+      return true
+    case 'ForStatement':
+      remove(statement.end, parent.init === statement ? [] : [text(';')])
+      return true
+    case 'IfStatement':
+    case 'LabeledStatement':
+    case 'WhileStatement':
+    case 'DoWhileStatement':
+      remove(statement.end, [text(';')])
+      return true
+    case 'ForInStatement':
+    case 'ForOfStatement':
+      if (parent.body === statement) {
+        remove(statement.end, [text(';')])
+        return true
+      }
+      return false
+    default:
+      return false
+  }
+}
+
+/**
+ * The declarator whose pattern holds `decl`, when every binding it declares
+ * has references and none is live.
+ */
+function orphanedPatternDeclarator(
+  ctx: CoreContext,
+  decl: Node,
+  live: LivenessView,
+): Node | null {
+  const file = ctx.analysis.file
+  let node: Node | null = file.parentOf(decl)
+  while (
+    node &&
+    (node.type === 'AssignmentPattern' ||
+      node.type === 'Property' ||
+      node.type === 'ArrayPattern' ||
+      node.type === 'ObjectPattern' ||
+      node.type === 'RestElement')
+  ) {
+    node = file.parentOf(node)
+  }
+  if (!node || node.type !== 'VariableDeclarator') {
+    return null
+  }
+  for (const id of patternIdentifiers(node.id)) {
+    const b = file.bindingOf(id)
+    if (!b) {
+      return null
+    }
+    if (!orphaned(b, ctx.t1.refs.refsOf(ctx.symbols.ofBinding(b)), live)) {
+      return null
+    }
+  }
+  return node
+}
+
+/**
+ * Removes the declarators `pruned` of a multi-declarator statement: when
+ * every declarator is gone (pruned now, or erased by an earlier round) the
+ * declaration goes (`removeDeclaration`); otherwise the gone runs go
+ * (`removeListItems`).
+ */
+function removeDeclarators(
+  ctx: CoreContext,
+  statement: Node,
+  { items: pruned, refs }: Pruned,
+  live: LivenessView,
+  scopeOf: ScopeOf,
+): void {
+  if (statement.type !== 'VariableDeclaration') {
+    return
+  }
+  const decls = statement.declarations as ReadonlyArray<Node>
+  const gone = (d: Node) => pruned.has(d) || live.isErased(rangeOf(d))
+  const scope = scopeOf(refs, goneBefore(decls, pruned, live))
+  if (decls.every(gone)) {
+    removeDeclaration(ctx, statement, scope)
+    return
+  }
+  removeItems(decls, gone, pruned, null, (range) =>
+    ctx.rewrites.scopedEdit({ range, body: [], scope, by: BY }),
+  )
+}
+
+/** The ranges of the items of a list an earlier erasure removed (what a removal of their run encloses). */
+function goneBefore(
+  items: ReadonlyArray<Node>,
+  pruned: ReadonlySet<Node>,
+  live: LivenessView,
+): Array<Range> {
+  return items
+    .filter((item) => !pruned.has(item) && live.isErased(rangeOf(item)))
+    .map(rangeOf)
+}
+
+/**
+ * Removes the properties `pruned` of an object pattern (`removeListItems`;
+ * a pattern losing every property becomes `{}`).
+ */
+function removePatternProperties(
+  ctx: CoreContext,
+  pattern: Node,
+  { items: pruned, refs }: Pruned,
+  live: LivenessView,
+  scopeOf: ScopeOf,
+): void {
+  if (pattern.type !== 'ObjectPattern') {
+    return
+  }
+  const props = pattern.properties as ReadonlyArray<Node>
+  const gone = (p: Node) => pruned.has(p) || live.isErased(rangeOf(p))
+  // the pattern's own `}` (its range covers a type annotation): past the
+  // last property, a trailing comma and the comments
+  const code = ctx.analysis.source.code
+  let closing = nextToken(code, props[props.length - 1]!.end)
+  if (code[closing] === ',') {
+    closing = nextToken(code, closing + 1)
+  }
+  const scope = scopeOf(refs, goneBefore(props, pruned, live))
+  removeItems(props, gone, pruned, closing, (range) =>
+    ctx.rewrites.scopedEdit({ range, body: [], scope, by: BY }),
+  )
+}
+
+/**
+ * Removes the gone items of a comma-separated list (declarators, pattern or
+ * object properties), computed from the list's final kept set: each run of
+ * gone items (pruned now, or erased by an earlier round) holding one pruned
+ * now is one range with the separator to its next kept item (or from its
+ * previous one), so removals of neighbours never partially overlap and a
+ * later round's run encloses the earlier one it grew from. When every item
+ * is gone the range runs from the first item to `closing` (the list's
+ * closing bracket, or `listEnd`), so a trailing comma goes too; a list
+ * without a closing bracket never loses every item (its caller keeps one).
+ * A planner removing items passes them as both `gone` and `pruned`.
+ */
+export function removeListItems(
+  ctx: PlanContext,
+  items: ReadonlyArray<Node>,
+  gone: (item: Node) => boolean,
+  pruned: ReadonlySet<Node>,
+  closing: number | null,
+  by: string,
+): void {
+  removeItems(items, gone, pruned, closing, (range) =>
+    ctx.rewrites.edit({ range, body: [], by }),
+  )
+}
+
+/** `removeListItems`, each removal by `remove`. */
+function removeItems(
+  items: ReadonlyArray<Node>,
+  gone: (item: Node) => boolean,
+  pruned: ReadonlySet<Node>,
+  closing: number | null,
+  remove: (range: Range) => void,
+): void {
+  const prunedNow = (from: number, to: number) =>
+    items.slice(from, to + 1).some((item) => pruned.has(item))
+  if (closing !== null && items.every(gone)) {
+    if (prunedNow(0, items.length - 1)) {
+      remove({ start: items[0]!.start, end: closing })
+    }
+    return
+  }
+  for (let i = 0; i < items.length; i++) {
+    if (!gone(items[i]!)) {
+      continue
+    }
+    let j = i
+    while (j + 1 < items.length && gone(items[j + 1]!)) {
+      j++
+    }
+    if (prunedNow(i, j)) {
+      const next = items[j + 1]
+      const prev = items[i - 1]
+      remove(
+        next
+          ? { start: items[i]!.start, end: next.start }
+          : { start: prev!.end, end: items[j]!.end },
+      )
+    }
+    i = j
+  }
+}
+
+/**
+ * Removes a destructuring element whose binding only removed code read (its
+ * default value or computed key may read server-only imports): an object
+ * pattern property goes with its comma (never while the pattern keeps a
+ * rest element, which would then receive the key: the range of its default
+ * is returned instead, for `cleanOrphanedDeclarations`); an object rest element
+ * goes too, after which its siblings may; an array pattern element becomes
+ * a hole (the iterator is stepped as often as before), and an array rest
+ * element stays (it exhausts the iterator).
+ */
+function prunePatternElement(
+  ctx: CoreContext,
+  decl: Node,
+  refs: ReadonlyArray<ClassifiedRef>,
+  scopeOf: ScopeOf,
+  prunedProps: Map<Node, Pruned>,
+  live: LivenessView,
+): boolean | Range {
+  const file = ctx.analysis.file
+  let node: Node = decl
+  let parent = file.parentOf(node)
+  if (parent?.type === 'AssignmentPattern' && parent.left === node) {
+    node = parent
+    parent = file.parentOf(node)
+  }
+  if (!parent) {
+    return false
+  }
+  if (parent.type === 'Property' || parent.type === 'RestElement') {
+    const pattern = file.parentOf(parent)
+    if (!pattern || pattern.type !== 'ObjectPattern') {
+      return false
+    }
+    if (
+      parent.type === 'Property' &&
+      pattern.properties.some(
+        (p) => p.type === 'RestElement' && !live.isErased(rangeOf(p)),
+      )
+    ) {
+      // the key stays out of the rest: its default may go instead
+      return node.type === 'AssignmentPattern'
+        ? { start: node.left.end, end: node.end }
+        : false
+    }
+    prune(prunedProps, pattern, parent, refs)
+    return true
+  }
+  if (parent.type === 'ArrayPattern') {
+    ctx.rewrites.scopedEdit({
+      range: { start: node.start, end: node.end },
+      body: commaFollows(ctx.analysis.source.code, node.end) ? [] : [text(',')],
+      scope: scopeOf(refs),
+      by: BY,
+    })
+    return true
+  }
+  return false
+}
+
+/** Where a list ends: after its last item and the comma that may follow it (`closing` of `removeListItems`; `{ , }` is no syntax). */
+export function listEnd(code: string, items: ReadonlyArray<Node>): number {
+  const last = items[items.length - 1]!
+  const next = nextToken(code, last.end)
+  return code[next] === ',' ? next + 1 : last.end
+}
+
+/** Whether the next token after `pos` (past whitespace and comments) is a comma. */
+function commaFollows(code: string, pos: number): boolean {
+  return code[nextToken(code, pos)] === ','
+}

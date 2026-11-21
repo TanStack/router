@@ -113,7 +113,9 @@ function RootComponent() {
   const routeMatchResult = matchRoute({ to: '/' })
   const SvgLink = createLink('svg')
 
-  const startSurface = [createMiddleware, createServerFn, useServerFn]
+  // (createMiddleware and createServerFn stay imported through the middleware and the
+  // server fn above: a factory stored as a value is a use the client build refuses)
+  const startSurface = [useServerFn]
   const hooksAndComponents = [
     useAwaited,
     useHydrated,

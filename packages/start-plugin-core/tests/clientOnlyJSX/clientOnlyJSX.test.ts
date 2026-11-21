@@ -1,105 +1,249 @@
-import { readFile, readdir } from 'node:fs/promises'
-import path from 'node:path'
 import { describe, expect, test } from 'vitest'
+import { renderServer, renderSource, useHydrateHost } from '../render'
 
-import {
-  detectKindsInCode,
-  StartCompiler,
-} from '../../src/start-compiler/compiler'
-import { formatSnapshot } from '../format-snapshot'
+const hosts = useHydrateHost()
 
-// Default test options for StartCompiler
-function getDefaultTestOptions(env: 'client' | 'server') {
-  const envName = env === 'client' ? 'client' : 'ssr'
-  return {
-    envName,
-    root: '/test',
-    framework: 'react' as const,
-    providerEnvName: 'ssr',
+// On the server, `<ClientOnly>` (of a TanStack router package) renders its
+// fallback: the server output drops its children and the imports only they
+// use, whatever the imported module is (packages and neutral project
+// modules here), so the server never loads them (SPEC J4.11, G16): in the
+// Start app, the libraries the children use throw when they load.
+// Rendered by the SSR environment of the public Start plugin with React's
+// server renderer and the real `ClientOnly` of `@tanstack/react-router`
+// (which renders its fallback whenever it renders on a server), the server
+// output renders what the uncompiled source renders there (a plain Vite
+// host, `render.ts`). The client keeps the children: it renders them once
+// the page hydrated (integration/clientOnlyJSX.test.ts). Other components
+// named ClientOnly are left alone.
+// Replaces the former snapshot fixtures of this directory.
+describe('<ClientOnly> children', () => {
+  /**
+   * The libraries the fixtures import (plain text components): the source
+   * of each export, by module (packages of the app, or project modules).
+   */
+  const libraries: Record<string, Record<string, string>> = {
+    'heavy-chart-library': { Chart: `() => 'chart'` },
+    './utils': { formatData: `() => 'data'` },
+    'video-player-lib': { VideoPlayer: `() => 'video'` },
+    'audio-viz-lib': { AudioVisualizer: `() => 'audio'` },
+    'animation-library': { HeavyAnimation: `() => 'animation'` },
+    './WindowSize': { WindowSize: `() => 'size'` },
+    'outer-lib': { OuterWidget: `() => 'outer'` },
+    'inner-lib': { InnerWidget: `() => 'inner'` },
+    './state': { readState: `() => ({ isLoading: false, status: 'idle' })` },
+    'some-other-package': { ClientOnly: `(props) => props.children ?? null` },
   }
-}
-
-async function compile(opts: {
-  env: 'client' | 'server'
-  code: string
-  id: string
-}) {
-  const compiler = new StartCompiler({
-    ...opts,
-    ...getDefaultTestOptions(opts.env),
-    loadModule: async () => {
-      // do nothing in test
-    },
-    lookupKinds: new Set(['ClientOnlyJSX']),
-    lookupConfigurations: [
-      // ClientOnly JSX component from TanStack router packages
-      {
-        libName: '@tanstack/react-router',
-        rootExport: 'ClientOnly',
-        kind: 'ClientOnlyJSX',
-      },
-    ],
-    getKnownServerFns: () => ({}),
-    resolveId: async (id) => {
-      return id
-    },
-  })
-  const result = await compiler.compile({
-    code: opts.code,
-    id: opts.id,
-  })
-  return result
-}
-
-async function getFilenames() {
-  return await readdir(path.resolve(import.meta.dirname, './test-files'))
-}
-
-describe('ClientOnlyJSX compiles correctly', async () => {
-  const filenames = await getFilenames()
-
-  describe.each(filenames)('should handle "%s"', async (filename) => {
-    const file = await readFile(
-      path.resolve(import.meta.dirname, `./test-files/${filename}`),
+  /**
+   * The app files of the libraries: a package of the case's own
+   * `node_modules` for a bare specifier, a project module otherwise. The
+   * libraries of `childModules` throw when they load, as the server must
+   * never load them.
+   */
+  const libraryFiles = (childModules: Array<string> = []) =>
+    Object.fromEntries(
+      Object.entries(libraries).flatMap(([specifier, exports]) => {
+        const exported = Object.entries(exports)
+          .map(([name, value]) => `export const ${name} = ${value}\n`)
+          .join('')
+        const source = childModules.includes(specifier)
+          ? `throw new Error('client-only module loaded during SSR: ${specifier}')\n${exported}`
+          : exported
+        if (specifier.startsWith('./')) {
+          return [[`${specifier}.ts`, source]]
+        }
+        return [
+          [
+            `node_modules/${specifier}/package.json`,
+            JSON.stringify({
+              name: specifier,
+              type: 'module',
+              exports: './index.js',
+            }),
+          ],
+          [`node_modules/${specifier}/index.js`, source],
+        ]
+      }),
     )
-    const code = file.toString()
+  const render = 'h(m.MyComponent)'
 
-    // ClientOnlyJSX is only transformed on server
-    test(`should compile for ${filename} server`, async () => {
-      const compiledResult = await compile({
-        env: 'server',
-        code,
-        id: filename,
+  test.each([
+    {
+      // Source: snapshot fixture clientOnlyBasic.tsx
+      name: 'a fallback',
+      code: `import { ClientOnly } from '@tanstack/react-router'
+import { Chart } from 'heavy-chart-library'
+import { formatData } from './utils'
+export function MyComponent() {
+  return (
+    <div>
+      <ClientOnly fallback={<div>Loading...</div>}>
+        <Chart data={formatData()} />
+      </ClientOnly>
+    </div>
+  )
+}`,
+      childModules: ['./utils', 'heavy-chart-library'],
+      ssr: '<div><div>Loading...</div></div>',
+    },
+    {
+      // Source: snapshot fixture clientOnlyMultiple.tsx
+      name: 'two boundaries',
+      code: `import { ClientOnly } from '@tanstack/react-router'
+import { VideoPlayer } from 'video-player-lib'
+import { AudioVisualizer } from 'audio-viz-lib'
+export function MyComponent() {
+  return (
+    <div>
+      <ClientOnly fallback={<span>Loading video...</span>}>
+        <VideoPlayer src="/video.mp4" />
+      </ClientOnly>
+      <p>Some server content</p>
+      <ClientOnly fallback={<span>Loading audio...</span>}>
+        <AudioVisualizer frequency={440} />
+      </ClientOnly>
+    </div>
+  )
+}`,
+      childModules: ['audio-viz-lib', 'video-player-lib'],
+      ssr: '<div><span>Loading video...</span><p>Some server content</p><span>Loading audio...</span></div>',
+    },
+    {
+      // Source: snapshot fixture clientOnlyNested.tsx
+      name: 'a nested boundary',
+      code: `import { ClientOnly } from '@tanstack/react-router'
+import { OuterWidget } from 'outer-lib'
+import { InnerWidget } from 'inner-lib'
+export function MyComponent() {
+  return (
+    <div>
+      <ClientOnly fallback={<div>Outer loading</div>}>
+        <div>
+          Outer content
+          <OuterWidget />
+          <ClientOnly fallback={<span>Inner loading</span>}>
+            <InnerWidget />
+          </ClientOnly>
+        </div>
+      </ClientOnly>
+    </div>
+  )
+}`,
+      childModules: ['inner-lib', 'outer-lib'],
+      ssr: '<div><div>Outer loading</div></div>',
+    },
+    {
+      // Source: snapshot fixture clientOnlyNoFallback.tsx
+      name: 'no fallback',
+      code: `import { ClientOnly } from '@tanstack/react-router'
+import { HeavyAnimation } from 'animation-library'
+export function MyComponent() {
+  return (
+    <div>
+      <ClientOnly>
+        <HeavyAnimation type="fade" />
+      </ClientOnly>
+    </div>
+  )
+}`,
+      childModules: ['animation-library'],
+      ssr: '<div></div>',
+    },
+    {
+      // Source: the react-start/basic e2e app (its root route: two
+      // destructured locals only the children read)
+      name: 'locals of one pattern only its children read',
+      code: `import { ClientOnly } from '@tanstack/react-router'
+import { readState } from './state'
+export function MyComponent() {
+  const { isLoading, status } = readState()
+  return (
+    <div>
+      <ClientOnly fallback={<div>Loading...</div>}>
+        <b>{isLoading ? 'true' : 'false'}</b>
+        <b>{status}</b>
+      </ClientOnly>
+    </div>
+  )
+}`,
+      childModules: [],
+      ssr: '<div><div>Loading...</div></div>',
+    },
+    {
+      // Source: snapshot fixture clientOnlyRenamed.tsx
+      name: 'a renamed import',
+      code: `import { ClientOnly as CO } from '@tanstack/react-router'
+import { WindowSize } from './WindowSize'
+export function MyComponent() {
+  return (
+    <div>
+      <CO fallback={<div>Loading...</div>}>
+        <WindowSize />
+      </CO>
+    </div>
+  )
+}`,
+      childModules: ['./WindowSize'],
+      ssr: '<div><div>Loading...</div></div>',
+    },
+  ])(
+    'a boundary with $name renders its fallback on the server without loading its children',
+    async ({ code, childModules, ssr }) => {
+      const started = await hosts()
+      const source = await renderSource(started, code, {
+        render,
+        files: libraryFiles(),
       })
+      const server = await renderServer(started, code, {
+        render,
+        files: libraryFiles(childModules),
+      })
+      expect(server.html).toBe(source.html)
+      expect(server.html).toBe(ssr)
+    },
+  )
 
-      if (compiledResult) {
-        await expect(
-          await formatSnapshot(compiledResult.code, filename),
-        ).toMatchFileSnapshot(`./snapshots/server/${filename}`)
-      } else {
-        // No transformation - for files where ClientOnly is not from TanStack
-        await expect('no-transform').toMatchFileSnapshot(
-          `./snapshots/server/${filename}`,
-        )
-      }
+  test.each([
+    {
+      // Source: snapshot fixture clientOnlyNotFromTanstack.tsx
+      name: 'a ClientOnly of another package',
+      code: `import { ClientOnly } from 'some-other-package'
+export function MyComponent() {
+  return (
+    <div>
+      <ClientOnly fallback={<div>Loading...</div>}>
+        <div>This should remain as-is</div>
+      </ClientOnly>
+    </div>
+  )
+}`,
+      html: '<div><div>This should remain as-is</div></div>',
+    },
+    {
+      // Source: snapshot fixture clientOnlyWrongImportName.tsx, with
+      // `CatchBoundary` instead of `Link`: the real `Link` needs a router
+      // around it, `CatchBoundary` renders its children anywhere.
+      name: 'another router component imported as ClientOnly',
+      code: `import { CatchBoundary as ClientOnly } from '@tanstack/react-router'
+export function MyComponent() {
+  return (
+    <div>
+      <ClientOnly getResetKey={() => 'about'}>Go to About</ClientOnly>
+    </div>
+  )
+}`,
+      html: '<div>Go to About</div>',
+    },
+  ])('the server renders the children of $name', async ({ code, html }) => {
+    const started = await hosts()
+    const source = await renderSource(started, code, {
+      render,
+      files: libraryFiles(),
     })
-  })
-
-  test('ClientOnlyJSX should not be detected on client', () => {
-    const code = `
-      import { ClientOnly } from '@tanstack/react-router'
-      <ClientOnly>test</ClientOnly>
-    `
-    const detectedKinds = detectKindsInCode(code, 'client')
-    expect(detectedKinds.has('ClientOnlyJSX')).toBe(false)
-  })
-
-  test('ClientOnlyJSX should be detected on server', () => {
-    const code = `
-      import { ClientOnly } from '@tanstack/react-router'
-      <ClientOnly>test</ClientOnly>
-    `
-    const detectedKinds = detectKindsInCode(code, 'server')
-    expect(detectedKinds.has('ClientOnlyJSX')).toBe(true)
+    const server = await renderServer(started, code, {
+      render,
+      files: libraryFiles(),
+    })
+    expect(server.html).toBe(source.html)
+    expect(server.html).toBe(html)
   })
 })
