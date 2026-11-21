@@ -60,6 +60,27 @@ emits its own output. Nothing depends on transform order.
   decides; an output), or `env-readers`: placement copies it into every derived output importing a binding of the
   env module other than the ones it names, once inclusion is decided (route HMR registers the chunks reading what
   the route module keeps); it declares nothing, owns no claim and reads only its own imports.
+- **Expression boundaries** (`expression.ts`): where one complete expression renders where a different one (or
+  none) stood, planners name what goes where and write no grouping. Two entry points: `replaceExpression` (an
+  edit replacing a factory call by the expression it keeps, or by generated text of a declared shape: Start's
+  env-only and isomorphic fns) and `RegionFrag.expr` (a claimed region rendered as one expression in a generated
+  position, an initialiser: the router's split and HMR consts, Start's lazy handler and hoisted chain; a method's
+  `function` keyword is the boundary's head). Each boundary has three records, plain integers computed at plan time:
+  the **role** (`value`: a call's value, never a reference; `reference`: a reference rendered as another one, as a
+  captured `cb` reads `props.cb`; `moved`: the expression it was), the **destination** (the precedence level the
+  position takes, how the value is used, read through groups and TypeScript wrappers: called, tagged, a decorator,
+  `delete`, `typeof`; what follows; a statement's or an arrow body's first token; a `for` initialiser) and the
+  **shape** of what renders there. The renderer asks three questions on what rendered, never merged: **V**
+  (`(0, x)` where the value would become a reference: a receiver, a direct `eval`, a deletion, an unresolvable
+  name's `typeof`), **G** (parentheses: three levels, sequence < open < tight, no operator table, then the cases
+  precedence does not describe: an optional chain continued, a number before `.`, JSX as a left-hand side, a
+  decorator, a rendered first token that opens a declaration or a block, a rendered string alone in a directive prologue) and **L** (a space where the
+  edge characters would merge with their neighbours, `impl` + `in`). What renders on a boundary's kept node
+  reports its shape: a substituted or renamed reference its own (Solid's `props.cb` is a member), a nested boundary
+  or a planner's text the shape its edit or placeholder declares (a server fn's stub is a call), else an unknown one (grouped as an operand, valued where called, deleted, decorated or under `typeof`); a nested boundary that is all
+  of the kept node renders bare and the outer one wraps it once. The opening text is a segment reserved before the
+  body and written after it (no splice), mapped to the first token it wraps; closing text and spaces are unmapped.
+  `guardStatementStart` stays apart: it decides whether two statements join, after the wrapping.
 - **One region tree per plan** (`RegionTable`, `rewrite.ts`): the module, every sub-region (one per range) and the
   range of every edit, placeholder and claim, shared by every output and checked against the units, so two ranges
   nest or are disjoint whatever outputs they apply in; a range that partly overlaps another is a conflict as it is
