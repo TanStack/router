@@ -416,6 +416,14 @@ setTheme(t) { theme = t }`, `export function getTheme()`), children calling the 
   cache (`performance.buildCache`) after such a change. A module the worker newly imports is compiled: the client's
   restored module of the same file is still checked
   (`start-plugin-core/tests/integration/rsbuild/child-compiler-build-cache.test.ts`).
+- **Vite production build: a server fn only a worker calls is not HTTP-callable** (RSC phase 2, design-rsc-phase2.md
+  G10; known limit, Astra review of 36bfa61d07; as c9701e2fc1). With Start in `worker.plugins`, Vite builds the worker
+  apart and the client bundle gets it as an asset: its stub (the id and, with a generator, the gate token) is in the
+  emitted worker file, but the client publication reads the bundle's `chunk` outputs only
+  (`vite/start-manifest-plugin/plugin.ts`), so the server's gate does not list the function and refuses its calls.
+  Without Start in `worker.plugins` the worker's code has no stub. Rsbuild reads a child compiler's assets: a worker
+  child's call is in the gate. No test (the outcome is the limit). A fix adds the code of Vite's worker bundles to the
+  publication.
 - **Rsbuild `build --watch`: a server function whose only caller an edit removed stays in the resolver** (RSC phase 1,
   design-rsc-phase1-settlement.md §9 fact 14; known limit, labelled while the grounding of the server-fn registry is
   open, option B there). A chain of server fns where `fn1`'s handler calls `fn2` through other modules: an edit turns
