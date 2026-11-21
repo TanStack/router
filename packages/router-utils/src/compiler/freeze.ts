@@ -923,6 +923,7 @@ interface OpenExpr {
   outerCoreEnd: number
   outerCoreShape: number
   outerCoreRef: number
+  outerCoreWrapped: boolean
 }
 
 /** Where an edit's body names source text: slices of `level` (the node it rewrites, the module for the core's statement recipes). */
@@ -1013,6 +1014,8 @@ class Renderer {
   /** The range of the open boundary's kept node inside its wrappers (-1: none, or generated text). */
   private coreStart = -1
   private coreEnd = -1
+  /** A group or a TypeScript wrapper renders around the core (`ExprBoundary.wrapped`): what renders on it reports its reference only. */
+  private coreWrapped = false
   /** The shape what rendered on the core reported in place of the boundary's (-1: none): an edit's or a placeholder's text. */
   private coreShape = -1
   /** The reference what rendered on the core reported (-1: none): a substituted or renamed reference. */
@@ -1249,7 +1252,8 @@ class Renderer {
           this.boundaryEnd = -1
           const expr = f.expr
           const at = out.length
-          const open = expr === undefined ? null : this.openExpr(node, out)
+          const open =
+            expr === undefined ? null : this.openExpr(node, false, out)
           if (expr?.head !== undefined) {
             out.push({ k: 'text', text: expr.head })
           }
@@ -1327,9 +1331,11 @@ class Renderer {
   /**
    * Renders node `n`'s edit. A boundary's body renders as one expression,
    * wrapped where it stands; bare when it is all of the open boundary's kept
-   * node, which wraps it once (it has no position of its own). What renders
-   * on the open boundary's kept node reports its shape: unknown, unless a
-   * reference reported its own.
+   * node, which wraps it once (it has no position of its own). Under a
+   * wrapper of the open boundary (`inner() as Fn`) it has one, the
+   * wrapper's operand: it is wrapped there. What renders on the open
+   * boundary's kept node reports its shape: unknown, unless a reference
+   * reported its own.
    */
   private renderEdit(
     n: RangeNode,
@@ -1340,16 +1346,20 @@ class Renderer {
   ): void {
     const slices: SliceLevel = { level: n, skipAt: null }
     const b = edit.expr
-    if (n.start === this.coreStart && n.end === this.coreEnd) {
+    const atCore = n.start === this.coreStart && n.end === this.coreEnd
+    if (atCore && (b === undefined || !this.coreWrapped)) {
       // (a boundary rendering bare hands its own kept node on: what renders
       // there is all of the open boundary's text too)
+      const wrapped = this.coreWrapped
       if (b?.core) {
         this.coreStart = b.core.start
         this.coreEnd = b.core.end
+        this.coreWrapped = b.wrapped
       }
       this.renderFrags(edit.body, owner, env, out, slices)
       this.coreStart = n.start
       this.coreEnd = n.end
+      this.coreWrapped = wrapped
       if (b !== undefined) {
         this.coreShape = SHAPE_UNKNOWN
       } else if (this.coreRef === -1) {
@@ -1361,9 +1371,12 @@ class Renderer {
       this.renderFrags(edit.body, owner, env, out, slices)
       return
     }
-    const open = this.openExpr(b.core, out)
+    const open = this.openExpr(b.core, b.wrapped, out)
     this.renderFrags(edit.body, owner, env, out, slices)
     this.closeExpr(open, b.dest, ROLE_VALUE, b.shape, n.end, out)
+    if (atCore) {
+      this.coreShape = SHAPE_UNKNOWN
+    }
   }
 
   /** A reference rendered as `text` on `[start, end)`: on the open boundary's kept node, it is what renders there. */
@@ -1376,6 +1389,7 @@ class Renderer {
   /** Opens a boundary around what renders next: its opening text is reserved (written when it closes, `closeExpr`). */
   private openExpr(
     core: { start: number; end: number } | null,
+    wrapped: boolean,
     out: Array<Segment>,
   ): OpenExpr {
     const open: OpenExpr = {
@@ -1385,11 +1399,13 @@ class Renderer {
       outerCoreEnd: this.coreEnd,
       outerCoreShape: this.coreShape,
       outerCoreRef: this.coreRef,
+      outerCoreWrapped: this.coreWrapped,
     }
     out.push(open.opening)
     this.reserved = true
     this.coreStart = core?.start ?? -1
     this.coreEnd = core?.end ?? -1
+    this.coreWrapped = wrapped
     this.coreShape = -1
     this.coreRef = -1
     return open
@@ -1409,9 +1425,13 @@ class Renderer {
     end: number,
     out: Array<Segment>,
   ): void {
+    // (under a wrapper, what rendered on the core is the wrapper's operand:
+    // the wrapper's shape, with the reference the core reported)
     const shape =
       this.coreShape !== -1
-        ? this.coreShape
+        ? this.coreWrapped
+          ? withRef(planned, this.coreShape)
+          : this.coreShape
         : this.coreRef !== -1
           ? withRef(planned, this.coreRef)
           : planned
@@ -1419,6 +1439,7 @@ class Renderer {
     this.coreEnd = open.outerCoreEnd
     this.coreShape = open.outerCoreShape
     this.coreRef = open.outerCoreRef
+    this.coreWrapped = open.outerCoreWrapped
     const from = open.at + 1
     let prefix = ''
     let suffix = ''

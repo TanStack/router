@@ -130,6 +130,12 @@ export interface ExprBoundary {
   shape: Shape
   /** The kept node inside its groups and wrappers (its render may report another shape), or null: generated text. */
   core: Range | null
+  /**
+   * A group or a TypeScript wrapper stands between the kept node and `core`
+   * (`(inner() as Fn)`): it renders too, so what renders on `core` is its
+   * operand, not all of the boundary's text.
+   */
+  wrapped: boolean
 }
 
 export type GenUnitId = number

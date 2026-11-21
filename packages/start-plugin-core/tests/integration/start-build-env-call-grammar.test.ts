@@ -7,6 +7,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../build-harness'
+import { nestedUnderWrappers } from '../compiler-inputs'
 
 const timeout = 60_000
 
@@ -202,6 +203,52 @@ createServerOnlyFn(createServerOnlyFn(function () { log.push(2) }))()
       expect((await ssr.run(`return [entry.value, entry.log]`)).result).toEqual(
         [{}, [2]],
       )
+    },
+    timeout,
+  )
+
+  // a factory call under `as`, `satisfies` or `!` as another's
+  // implementation (`nestedUnderWrappers`): the wrapper renders between the
+  // two, around the inner implementation, also where that is the generated
+  // stub of the other environment. Source: Astra review of the splicing
+  // implementation (§1)
+  test(
+    'nested env-only and isomorphic fns under a TypeScript wrapper: each build runs what it keeps',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        entry: { client: 'client.ts', ssr: 'ssr.ts' },
+        files: {
+          'src/nested.ts': nestedUnderWrappers('@tanstack/react-start'),
+          'client.ts': `export * from './src/nested'\n`,
+          'ssr.ts': `export * from './src/nested'\n`,
+        },
+      })
+      const thrown = (call: string) =>
+        `try { ${call}; return 'returned' } catch (error) { return error.message }`
+      expect(
+        (
+          await ssr.run(
+            `return [entry.asserted(), entry.satisfying(), entry.nonNull(), await entry.generic(), (() => { ${thrown('entry.clientOnly()')} })()]`,
+          )
+        ).result,
+      ).toEqual([
+        7,
+        7,
+        7,
+        7,
+        'createClientOnlyFn() functions can only be called on the client!',
+      ])
+      expect(
+        (
+          await client.run(
+            `return [(() => { ${thrown('entry.clientOnly()')} })(), (() => { ${thrown('entry.asserted()')} })()]`,
+          )
+        ).result,
+      ).toEqual([
+        'createServerOnlyFn() functions can only be called on the server!',
+        'createServerOnlyFn() functions can only be called on the server!',
+      ])
     },
     timeout,
   )

@@ -27,6 +27,7 @@ import {
   forms,
   moduleFiles,
   moduleImports,
+  nestedUnderWrappers,
   serverFnConstruct,
 } from '../../compiler-inputs'
 import { clientMiddleware, clientMiddlewareOf } from '../../page-values'
@@ -217,6 +218,25 @@ ${construct.code(form.callee(construct.name), form.wrap)}`
       })
       await construct.check(served)
     })
+  })
+
+  // A factory call under `as`, `satisfies` or `!` as another factory's
+  // implementation (`nestedUnderWrappers`): the wrapper stays around the
+  // inner implementation, and each environment runs what it keeps.
+  test('a factory call under a TypeScript wrapper as another factory’s implementation', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': nestedUnderWrappers(pkg),
+    })
+    const ssr = await served.ssr()
+    expect([
+      ssr.asserted(),
+      ssr.satisfying(),
+      ssr.nonNull(),
+      await ssr.generic(),
+    ]).toEqual([7, 7, 7, 7])
+    expect(settle(ssr.clientOnly)).toEqual(throwsError)
+    expect(await settleInPage(served, 'module.clientOnly')).toEqual(throwsError)
+    expect(await settleInPage(served, 'module.asserted')).toEqual(throwsError)
   })
 
   // A factory a project module re-exports under a new name, called as a

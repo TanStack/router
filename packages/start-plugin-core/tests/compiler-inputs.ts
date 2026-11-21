@@ -577,6 +577,44 @@ export const forms: Record<string, Form> = {
   },
 }
 
+/**
+ * Env-only and isomorphic fns whose implementation is another factory call
+ * under a TypeScript wrapper (`as`, `satisfies`, `!`): the wrapper stays
+ * between the two calls, so the inner implementation is its operand
+ * (`() => { return 7 } as () => number` does not parse). On the server,
+ * `asserted`, `satisfying`, `nonNull` and `generic` give 7 and
+ * `clientOnly` throws; on the client `clientOnly` is the server-only stub,
+ * which throws too. The dev servers of each framework
+ * (integration/pages/start-compiler-import-forms.test.ts) and the
+ * production builds (integration/start-build-env-call-grammar.test.ts)
+ * compile it. Source: Astra review of the splicing implementation (§1).
+ */
+export const nestedUnderWrappers = (
+  pkg: string,
+) => `import { createClientOnlyFn, createIsomorphicFn, createServerOnlyFn } from '${pkg}'
+export function asserted() {
+  return createServerOnlyFn(
+    createIsomorphicFn().server(() => { return 7 }) as () => number,
+  )()
+}
+export function satisfying() {
+  return createServerOnlyFn(
+    createServerOnlyFn(() => { return 7 }) satisfies () => number,
+  )()
+}
+export function nonNull() {
+  return createServerOnlyFn(createServerOnlyFn((): number => { return 7 })!)()
+}
+export function generic() {
+  return createServerOnlyFn(
+    createServerOnlyFn(async <T,>(x: T) => { return x }) as <T>(x: T) => Promise<T>,
+  )(7)
+}
+export const clientOnly = createClientOnlyFn(
+  createServerOnlyFn(() => { return 8 }) as () => number,
+)
+`
+
 /** The imports a construct's code reads, besides the factory. */
 export const moduleImports = `import { db } from './db.server'
 import { chart } from './chart.client'`

@@ -78,7 +78,8 @@ emits its own output. Nothing depends on transform order.
   edge characters would merge with their neighbours, `impl` + `in`). What renders on a boundary's kept node
   reports its shape: a substituted or renamed reference its own (Solid's `props.cb` is a member), a nested boundary
   or a planner's text the shape its edit or placeholder declares (a server fn's stub is a call), else an unknown one (grouped as an operand, valued where called, deleted, decorated or under `typeof`); a nested boundary that is all
-  of the kept node renders bare and the outer one wraps it once. The opening text is a segment reserved before the
+  of the kept node renders bare and the outer one wraps it once; under a group or a TypeScript wrapper of the kept
+  node (`inner() as Fn`) it is that wrapper's operand, wrapped there, and the outer one sees an unknown reference. The opening text is a segment reserved before the
   body and written after it (no splice), mapped to the first token it wraps; closing text and spaces are unmapped.
   `guardStatementStart` stays apart: it decides whether two statements join, after the wrapping.
 - **One region tree per plan** (`RegionTable`, `rewrite.ts`): the module, every sub-region (one per range) and the

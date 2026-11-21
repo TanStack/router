@@ -348,6 +348,7 @@ export class AnalysisPlan implements PlanContext {
         dest: destOf(this.analysis.file, r.node, shape, this.forInit()),
         shape,
         core: core === null ? null : { start: core.start, end: core.end },
+        wrapped: w.k === 'kept' && core !== w.node,
       },
     })
   }
