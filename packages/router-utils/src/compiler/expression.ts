@@ -72,7 +72,12 @@ const D_DOT = 1 << 6
 const D_LHS = 1 << 7
 /** The expression's first token is the first token of a statement, an `export default` or an arrow's body. */
 const D_EDGE = 1 << 8
-/** A statement of a directive prologue: a string there is a directive. */
+/**
+ * A statement of a list with a directive prologue (a module, a function
+ * body): what precedes it may render as nothing (a removed import, a
+ * declaration only erased code read, a type the lowering erases), and a
+ * string statement first in the list is a directive.
+ */
 const D_PROLOGUE = 1 << 9
 /** In a classic `for` initialiser, outside any block: an `in` would start a `for…in`. */
 const D_NO_IN = 1 << 10
@@ -190,7 +195,10 @@ export function destOf(
   }
   if (atEdge(file, node, parent)) {
     d |= D_EDGE
-    if (parent.type === 'ExpressionStatement' && inPrologue(file, parent)) {
+    if (
+      parent.type === 'ExpressionStatement' &&
+      inDirectiveList(file, parent)
+    ) {
       d |= D_PROLOGUE
     }
   }
@@ -296,38 +304,22 @@ function atEdge(file: File, node: Node, parent: Node): boolean {
   return false
 }
 
-/** Whether `statement` stands where a string statement is a directive: only directives before it, in a module or a function body. */
-function inPrologue(file: File, statement: Node): boolean {
+/** Whether `statement` is in a list that starts with a directive prologue: a module or a function body. */
+function inDirectiveList(file: File, statement: Node): boolean {
   const list = file.parentOf(statement)
-  if (list === null) {
+  if (list === null || list.type === 'Program') {
+    return list !== null
+  }
+  if (list.type !== 'BlockStatement') {
     return false
   }
-  if (list.type === 'BlockStatement') {
-    const fn = file.parentOf(list)
-    if (
-      fn === null ||
-      (fn.type !== 'FunctionDeclaration' &&
-        fn.type !== 'FunctionExpression' &&
-        fn.type !== 'ArrowFunctionExpression')
-    ) {
-      return false
-    }
-  } else if (list.type !== 'Program') {
-    return false
-  }
-  for (const s of list.body as ReadonlyArray<Node>) {
-    if (s === statement) {
-      return true
-    }
-    if (
-      s.type !== 'ExpressionStatement' ||
-      s.expression.type !== 'Literal' ||
-      typeof s.expression.value !== 'string'
-    ) {
-      return false
-    }
-  }
-  return false
+  const fn = file.parentOf(list)
+  return (
+    fn !== null &&
+    (fn.type === 'FunctionDeclaration' ||
+      fn.type === 'FunctionExpression' ||
+      fn.type === 'ArrowFunctionExpression')
+  )
 }
 
 /** Whether `node` is in the initialiser of a classic `for`, outside any block. */
@@ -542,7 +534,8 @@ export function withRef(shape: Shape, ref: Shape): Shape {
 /**
  * G's edge rules on `text`, what a boundary rendered at `dest`'s edge:
  * written as a statement it would open a block or a declaration (G7), or,
- * a string alone in a directive prologue, be a directive (G8).
+ * a string alone in a module or a function body, be a directive once what
+ * precedes it renders as nothing (G8).
  */
 export function edgeOpens(dest: Dest, text: string): boolean {
   return (

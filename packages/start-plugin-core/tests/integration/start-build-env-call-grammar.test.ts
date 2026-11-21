@@ -253,6 +253,44 @@ createServerOnlyFn(createServerOnlyFn(function () { log.push(2) }))()
     timeout,
   )
 
+  // a string kept as a statement where the removed factory import stood
+  // before it: as the module's first statement it would be the module's
+  // directive, which Rolldown reports (and a directive-aware plugin reads:
+  // `'use client'` marks a client module). React's plugin filters these
+  // reports: a Solid app shows them. Source: Astra review of the splicing
+  // implementation (G8)
+  test(
+    'a string kept as the first statement after the removed factory import: no directive in either build',
+    async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        framework: 'solid',
+        entry: { client: 'client.ts', ssr: 'ssr.ts' },
+        files: {
+          'src/server.ts': `import { createServerOnlyFn } from '@tanstack/solid-start'
+createServerOnlyFn('use client')
+export const value = 1
+`,
+          'src/client.ts': `import { createClientOnlyFn } from '@tanstack/solid-start'
+createClientOnlyFn('use client')
+export const value = 2
+`,
+          'client.ts': `export { value } from './src/client'\n`,
+          'ssr.ts': `export { value } from './src/server'\n`,
+        },
+      })
+      const directives = (build: typeof client) =>
+        [...build.warnings, ...build.consoleMessages]
+          .map((diagnostic) => JSON.stringify(diagnostic))
+          .filter((reported) => reported.includes('use client'))
+      expect({ client: directives(client), ssr: directives(ssr) }).toEqual({
+        client: [],
+        ssr: [],
+      })
+    },
+    timeout,
+  )
+
   // the kept text's last character beside the source's next token: `impl`
   // then `in` would be one identifier. Source: Astra review of the
   // splicing design (class A2)

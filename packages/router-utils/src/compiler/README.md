@@ -74,7 +74,7 @@ emits its own output. Nothing depends on transform order.
   (`(0, x)` where the value would become a reference: a receiver, a direct `eval`, a deletion, an unresolvable
   name's `typeof`), **G** (parentheses: three levels, sequence < open < tight, no operator table, then the cases
   precedence does not describe: an optional chain continued, a number before `.`, JSX as a left-hand side, a
-  decorator, a rendered first token that opens a declaration or a block, a rendered string alone in a directive prologue) and **L** (a space where the
+  decorator, a rendered first token that opens a declaration or a block, a rendered string statement alone in a module or a function body, where what precedes it may vanish) and **L** (a space where the
   edge characters would merge with their neighbours, `impl` + `in`). What renders on a boundary's kept node
   reports its shape: a substituted or renamed reference its own (Solid's `props.cb` is a member), a nested boundary
   or a planner's text the shape its edit or placeholder declares (a server fn's stub is a call), else an unknown one (grouped as an operand, valued where called, deleted, decorated or under `typeof`); a nested boundary that is all
