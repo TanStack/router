@@ -1205,10 +1205,16 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               )
               return
             }
-            contents.push(content)
-            if (last) {
+            // (a content that differs only in its gate imports no module)
+            if (
+              last &&
+              (contents.length === 0 ||
+                manifestFunctionsDiffering(contents.at(-1)!, content).length >
+                  0)
+            ) {
               history.lateBuilt = true
             }
+            contents.push(content)
             await fnResolver!.rebuild(compilation, content)
             graph = null
             unheld = true
