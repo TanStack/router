@@ -38,31 +38,55 @@ export interface FlightReference {
   exports: ReadonlyArray<string> | true
 }
 
-/** What `isClientReference` reads of a module's dependencies. */
-interface DependencyLike {
-  request?: string
-  ids?: ReadonlyArray<string>
+/** What `isClientReference` reads of a module. */
+interface ProxyModuleLike extends RspackModuleLike {
+  dependencies?: Iterable<{ request?: string; ids?: ReadonlyArray<string> }>
+  originalSource?: () => { source: () => string | Buffer } | null
 }
 
 /**
- * Whether Rspack compiled a module of the `rsc` layer as a client reference:
- * its RSC transform (SWC `reactServerComponents`) replaces a client module,
- * whatever made it one (its own directive, a package's entry, a loader), by
- * proxies registered with `registerClientReference` of
- * `react-server-dom-rspack/server`; the ServerPlugin's own mark of it
- * (`buildInfo.rsc`) stays native. A module of another type (an asset of the
- * file: `new URL('./Inner.tsx', import.meta.url)`) has no such import.
- * (Relies on the transform's output: Rspack 2.x.)
+ * The id argument of a proxy's registration, a string literal:
+ * `registerClientReference(function () { throw … }, "<id>", "<export>")`.
  */
-function isClientReference(module: RspackModuleLike): boolean {
-  const dependencies = (module as { dependencies?: Iterable<DependencyLike> })
-    .dependencies
-  for (const dependency of dependencies ?? []) {
+const registration =
+  /\}\s*,\s*("(?:[^"\\\r\n]|\\.)*")\s*,\s*"(?:[^"\\\r\n]|\\.)*"\s*\)/g
+
+/**
+ * Whether Rspack compiled a module of the `rsc` layer as a client reference:
+ * its RSC transform (SWC `reactServerComponents`, in `builtin:swc-loader`)
+ * replaces a client module, whatever made it one (its own directive, a
+ * package's entry, a loader), by proxies registered with
+ * `registerClientReference` of `react-server-dom-rspack/server` under the
+ * module's own resource, a string literal; the ServerPlugin's own mark of
+ * it (`buildInfo.rsc`) stays native. A server module of the app that
+ * imports the function to register what its callers name (an adapter) is
+ * none, nor a module of another type (an asset of the file: `new
+ * URL('./Inner.tsx', import.meta.url)`, which has no import). The source is
+ * read only of a module that imports the function. (Relies on the
+ * transform's output: Rspack 2.x.)
+ */
+function isClientReference(module: ProxyModuleLike, resource: string): boolean {
+  let imports = false
+  for (const dependency of module.dependencies ?? []) {
     if (
       dependency.request === 'react-server-dom-rspack/server' &&
       dependency.ids?.includes('registerClientReference')
     ) {
-      return true
+      imports = true
+      break
+    }
+  }
+  if (!imports) {
+    return false
+  }
+  const source = String(module.originalSource?.()?.source() ?? '')
+  for (const [, id] of source.matchAll(registration)) {
+    try {
+      if (JSON.parse(id!) === resource) {
+        return true
+      }
+    } catch {
+      // (an escape JSON does not have: not a resource Rspack wrote)
     }
   }
   return false
@@ -84,7 +108,7 @@ export function liveClientReferences(
       resource &&
       !candidates.has(resource) &&
       isRscModule(module, holder) &&
-      isClientReference(module)
+      isClientReference(module, resource)
     ) {
       candidates.set(resource, module)
     }
