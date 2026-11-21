@@ -1,33 +1,33 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
-import { clsx as cx } from 'clsx'
-import * as goober from 'goober'
-import { createMemo, createSignal, useContext } from 'solid-js'
-import { tokens } from './tokens'
+import { createMemo, createSignal } from 'solid-js'
 import {
   displayValue,
   getServerComponentSlotUsageSummary,
   getServerComponentSlots,
   getServerComponentType,
 } from './utils'
-import { ShadowDomTargetContext } from './context'
-import type { Accessor, JSX } from 'solid-js'
+import type { Accessor } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 type ExpanderProps = {
   expanded: boolean
   style?: JSX.CSSProperties
 }
 
-export const Expander = ({ expanded, style: _style = {} }: ExpanderProps) => {
-  const styles = useStyles()
+export const Expander = (props: ExpanderProps) => {
   return (
-    <span class={styles().expander}>
+    <span class="tsrd-explorer-expander">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="12"
         height="12"
         fill="none"
         viewBox="0 0 24 24"
-        class={cx(styles().expanderIcon(expanded))}
+        class={
+          props.expanded
+            ? 'tsrd-explorer-expander-icon tsrd-explorer-expander-icon-expanded'
+            : 'tsrd-explorer-expander-icon'
+        }
       >
         <path
           stroke="currentColor"
@@ -180,7 +180,6 @@ export function Explorer({
 
   const [expandedPages, setExpandedPages] = createSignal<Array<number>>([])
   const [valueSnapshot, setValueSnapshot] = createSignal(undefined)
-  const styles = useStyles()
 
   const refreshValueSnapshot = () => {
     setValueSnapshot((value() as () => any)())
@@ -210,24 +209,24 @@ export function Explorer({
   )
 
   return (
-    <div class={styles().entry}>
+    <div class="tsrd-explorer-entry">
       {serverComponentType() !== null ? (
         isCompositeWithSlots() ? (
           <>
             <button
-              class={styles().expandButton}
+              class="tsrd-explorer-expand-button"
               onClick={() => toggleExpanded()}
             >
               <Expander expanded={expanded() ?? false} />
               <span>{rest.label}:</span>
-              <span class={styles().compositeComponent}>
+              <span class="tsrd-explorer-composite-component">
                 {displayValue(value())}
               </span>
             </button>
             {(expanded() ?? false) ? (
-              <div class={styles().rscMetaRow}>
-                <span class={styles().rscMetaLabel}>slots</span>
-                <div class={styles().subEntries}>
+              <div class="tsrd-explorer-rsc-meta-row">
+                <span class="tsrd-explorer-rsc-meta-label">slots</span>
+                <div class="tsrd-explorer-sub-entries">
                   {serverComponentSlots().map((name) => {
                     const usage = serverComponentSlotUsageSummary()[name]
                     if (!usage) return null
@@ -252,8 +251,8 @@ export function Explorer({
             <span
               class={
                 serverComponentType() === 'compositeSource'
-                  ? styles().compositeComponent
-                  : styles().renderableComponent
+                  ? 'tsrd-explorer-composite-component'
+                  : 'tsrd-explorer-renderable-component'
               }
             >
               {displayValue(value())}
@@ -263,29 +262,29 @@ export function Explorer({
       ) : subEntryPages().length ? (
         <>
           <button
-            class={styles().expandButton}
+            class="tsrd-explorer-expand-button"
             onClick={() => toggleExpanded()}
           >
             <Expander expanded={expanded() ?? false} />
             {rest.label}
-            <span class={styles().info}>
+            <span class="tsrd-explorer-info">
               {String(type).toLowerCase() === 'iterable' ? '(Iterable) ' : ''}
               {subEntries().length} {subEntries().length > 1 ? `items` : `item`}
             </span>
           </button>
           {(expanded() ?? false) ? (
             subEntryPages().length === 1 ? (
-              <div class={styles().subEntries}>
+              <div class="tsrd-explorer-sub-entries">
                 {subEntries().map((entry, index) => handleEntry(entry))}
               </div>
             ) : (
-              <div class={styles().subEntries}>
+              <div class="tsrd-explorer-sub-entries">
                 {subEntryPages().map((entries, index) => {
                   return (
                     <div>
-                      <div class={styles().entry}>
+                      <div class="tsrd-explorer-entry">
                         <button
-                          class={cx(styles().labelButton, 'labelButton')}
+                          class={`${'tsrd-explorer-label-button'} labelButton`}
                           onClick={() =>
                             setExpandedPages((old) =>
                               old.includes(index)
@@ -301,7 +300,7 @@ export function Explorer({
                           {index * pageSize + pageSize - 1}]
                         </button>
                         {expandedPages().includes(index) ? (
-                          <div class={styles().subEntries}>
+                          <div class="tsrd-explorer-sub-entries">
                             {entries.map((entry) => handleEntry(entry))}
                           </div>
                         ) : null}
@@ -319,7 +318,7 @@ export function Explorer({
             label={
               <button
                 onClick={refreshValueSnapshot}
-                class={styles().refreshValueBtn}
+                class="tsrd-explorer-refresh-value-btn"
               >
                 <span>{rest.label}</span> 🔄{' '}
               </button>
@@ -331,159 +330,9 @@ export function Explorer({
       ) : (
         <>
           <span>{rest.label}:</span>{' '}
-          <span class={styles().value}>{displayValue(value())}</span>
+          <span class="tsrd-explorer-value">{displayValue(value())}</span>
         </>
       )}
     </div>
   )
-}
-
-const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
-  const { colors, font, size, border } = tokens
-  const { fontFamily, lineHeight, size: fontSize } = font
-  const css = shadowDOMTarget
-    ? goober.css.bind({ target: shadowDOMTarget })
-    : goober.css
-
-  return {
-    entry: css`
-      font-family: ${fontFamily.mono};
-      font-size: ${fontSize.xs};
-      line-height: ${lineHeight.sm};
-      outline: none;
-      word-break: break-word;
-    `,
-    labelButton: css`
-      cursor: pointer;
-      color: inherit;
-      font: inherit;
-      outline: inherit;
-      background: transparent;
-      border: none;
-      padding: 0;
-    `,
-    expander: css`
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: ${size[3]};
-      height: ${size[3]};
-      padding-left: 3px;
-      box-sizing: content-box;
-    `,
-    expanderIcon: (expanded: boolean) => {
-      if (expanded) {
-        return css`
-          transform: rotate(90deg);
-          transition: transform 0.1s ease;
-        `
-      }
-      return css`
-        transform: rotate(0deg);
-        transition: transform 0.1s ease;
-      `
-    },
-    expandButton: css`
-      display: flex;
-      gap: ${size[1]};
-      align-items: center;
-      cursor: pointer;
-      color: inherit;
-      font: inherit;
-      outline: inherit;
-      background: transparent;
-      border: none;
-      padding: 0;
-    `,
-    value: css`
-      color: ${colors.purple[400]};
-    `,
-    compositeComponent: css`
-      display: inline-flex;
-      align-items: center;
-      padding: 1px ${size[1]};
-      border-radius: ${border.radius.full};
-      border: 1px solid ${colors.darkGray[500]};
-      background: ${colors.darkGray[700]};
-      color: ${colors.cyan[300]};
-      font-style: normal;
-      font-weight: ${font.weight.medium};
-    `,
-    renderableComponent: css`
-      display: inline-flex;
-      align-items: center;
-      padding: 1px ${size[1]};
-      border-radius: ${border.radius.full};
-      border: 1px solid ${colors.darkGray[500]};
-      background: ${colors.darkGray[700]};
-      color: ${colors.teal[300]};
-      font-style: normal;
-      font-weight: ${font.weight.medium};
-    `,
-    rscMetaRow: css`
-      display: flex;
-      gap: ${size[1]};
-      align-items: flex-start;
-      margin-left: calc(${size[3]} + ${size[1]});
-      margin-top: ${size[0.5]};
-      flex-wrap: wrap;
-    `,
-    rscMetaLabel: css`
-      color: ${colors.gray[500]};
-      font-size: ${fontSize['2xs']};
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      padding-top: 2px;
-    `,
-    rscChipRow: css`
-      display: flex;
-      gap: ${size[1]};
-      flex-wrap: wrap;
-    `,
-    rscChip: css`
-      display: inline-flex;
-      align-items: center;
-      gap: ${size[0.5]};
-      padding: 1px ${size[1]};
-      border-radius: ${border.radius.full};
-      border: 1px solid ${colors.darkGray[500]};
-      background: ${colors.darkGray[800]};
-      color: ${colors.gray[200]};
-      font-size: ${fontSize['2xs']};
-      line-height: ${lineHeight.xs};
-    `,
-    rscChipName: css`
-      color: ${colors.gray[100]};
-    `,
-    rscChipMeta: css`
-      color: ${colors.gray[400]};
-      font-size: ${fontSize['2xs']};
-    `,
-    subEntries: css`
-      margin-left: ${size[2]};
-      padding-left: ${size[2]};
-      border-left: 2px solid ${colors.darkGray[400]};
-    `,
-    info: css`
-      color: ${colors.gray[500]};
-      font-size: ${fontSize['2xs']};
-      padding-left: ${size[1]};
-    `,
-    refreshValueBtn: css`
-      appearance: none;
-      border: 0;
-      cursor: pointer;
-      background: transparent;
-      color: inherit;
-      padding: 0;
-      font-family: ${fontFamily.mono};
-      font-size: ${fontSize.xs};
-    `,
-  }
-}
-
-function useStyles() {
-  const shadowDomTarget = useContext(ShadowDomTargetContext)
-  const [_styles] = createSignal(stylesFactory(shadowDomTarget))
-  return _styles
 }

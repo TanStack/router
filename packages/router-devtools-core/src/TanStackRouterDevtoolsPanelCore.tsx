@@ -1,7 +1,7 @@
-import { render } from 'solid-js/web'
-import { createSignal, lazy } from 'solid-js'
-import { DevtoolsOnCloseContext, ShadowDomTargetContext } from './context'
-import type { JSX } from 'solid-js'
+import { render, setTrustedTypesPolicy } from '@solidjs/web'
+import { Loading, createSignal, lazy } from 'solid-js'
+import { DevtoolsOnCloseContext } from './context'
+import type { JSX } from '@solidjs/web'
 import type { AnyRouter } from '@tanstack/router-core'
 
 export interface TanStackRouterDevtoolsPanelCoreOptions {
@@ -35,6 +35,12 @@ export interface TanStackRouterDevtoolsPanelCoreOptions {
    * Use this to attach the devtool's styles to specific element in the DOM.
    */
   shadowDOMTarget?: ShadowRoot
+  /**
+   * The Trusted Types policy the devtools use to create their HTML templates.
+   * Pass one when your page enforces `require-trusted-types-for 'script'`.
+   * The devtools only pass it their own markup.
+   */
+  trustedTypesPolicy?: { createHTML: (html: string) => unknown }
 }
 
 export class TanStackRouterDevtoolsPanelCore {
@@ -43,6 +49,7 @@ export class TanStackRouterDevtoolsPanelCore {
   #style: any
   #className: any
   #shadowDOMTarget?: ShadowRoot
+  #trustedTypesPolicy?: { createHTML: (html: string) => unknown }
   #isMounted = false
   #setIsOpen?: (isOpen: boolean) => void
   #dispose?: () => void
@@ -63,6 +70,7 @@ export class TanStackRouterDevtoolsPanelCore {
     this.#style = createSignal(style)
     this.#className = createSignal(className)
     this.#shadowDOMTarget = shadowDOMTarget
+    this.#trustedTypesPolicy = config.trustedTypesPolicy
     this.#setIsOpen = setIsOpen
   }
 
@@ -71,6 +79,11 @@ export class TanStackRouterDevtoolsPanelCore {
       throw new Error('Devtools is already mounted')
     }
 
+    // Solid creates each template once, so set the policy before rendering.
+    // It is shared by every devtools instance, so never reset it.
+    if (this.#trustedTypesPolicy) {
+      setTrustedTypesPolicy(this.#trustedTypesPolicy)
+    }
     const dispose = render(() => {
       const [router] = this.#router
       const [routerState] = this.#routerState
@@ -91,22 +104,23 @@ export class TanStackRouterDevtoolsPanelCore {
       }
 
       return (
-        <ShadowDomTargetContext.Provider value={shadowDOMTarget}>
-          <DevtoolsOnCloseContext.Provider
-            value={{
-              onCloseClick: () => {},
-            }}
-          >
+        <DevtoolsOnCloseContext
+          value={{
+            onCloseClick: () => {},
+          }}
+        >
+          <Loading>
             <BaseTanStackRouterDevtoolsPanel
               router={router}
               routerState={routerState}
+              mountElement={el}
               shadowDOMTarget={shadowDOMTarget}
               setIsOpen={setIsOpen}
               style={style}
               className={className}
             />
-          </DevtoolsOnCloseContext.Provider>
-        </ShadowDomTargetContext.Provider>
+          </Loading>
+        </DevtoolsOnCloseContext>
       )
     }, el)
 
