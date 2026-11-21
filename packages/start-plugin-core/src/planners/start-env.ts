@@ -19,6 +19,7 @@
 import {
   cacheDisabled,
   derivedIdOf,
+  DEST_INITIALIZER,
   identifierBase,
   isExpressionWrapper,
   opensNonExpressionStatement,
@@ -1200,7 +1201,11 @@ function planStartEnv(
       const owner = rewrites.addGenerated({
         body: [
           text('const ', { sym: local.sym }, ' = '),
-          { k: 'region', id: region },
+          {
+            k: 'region',
+            id: region,
+            expr: { dest: DEST_INITIALIZER, shape: ctx.shapeOf(h) },
+          },
           text('\nexport { ', { sym: local.sym }, ' }\n'),
         ],
         declares: [local.sym],
@@ -2330,7 +2335,11 @@ function hoist(
     const owner: GenUnitId = rewrites.addGenerated({
       body: [
         text('const ', { sym: hoisted.sym }, ' = '),
-        { k: 'region', id: region },
+        {
+          k: 'region',
+          id: region,
+          expr: { dest: DEST_INITIALIZER, shape: ctx.shapeOf(X) },
+        },
         text('\n'),
       ],
       declares: [hoisted.sym],

@@ -465,7 +465,7 @@ function withoutParens(value: Node): Node {
  * which the chunk's `const X = 0, a.b` would declare a second binding instead
  * of evaluating the sequence. A sequence under a wrapper always has them.
  */
-function claimedValueOf(value: Node): Node {
+export function claimedValueOf(value: Node): Node {
   let parens: Node | null = null
   let n = value
   while (isExpressionWrapper(n)) {

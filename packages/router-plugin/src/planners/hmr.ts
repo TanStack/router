@@ -23,6 +23,8 @@
  * the chunk blocks (`chunkHmr`, `keptReaderHmr`).
  */
 import {
+  DEST_INITIALIZER,
+  SHAPE_FUNCTION,
   isExpressionWrapper,
   stringLiteral,
   unwrapExpression,
@@ -155,13 +157,18 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
     const region = ctx.region(range, 'option-value')
     const owner = ctx.rewrites.addGenerated({
       body: [
+        { k: 'text', parts: [`const ${hoisted.name} = `] },
         {
-          k: 'text',
-          parts: [
-            `const ${hoisted.name} = ${method ? methodPrefixOf(value) : ''}`,
-          ],
+          k: 'region',
+          id: region,
+          expr: method
+            ? {
+                dest: DEST_INITIALIZER,
+                shape: SHAPE_FUNCTION,
+                head: methodPrefixOf(value),
+              }
+            : { dest: DEST_INITIALIZER, shape: ctx.shapeOf(inner) },
         },
-        { k: 'region', id: region },
         { k: 'text', parts: ['\n'] },
       ],
       declares: [hoisted.sym],

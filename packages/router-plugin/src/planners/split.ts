@@ -11,6 +11,8 @@
  * properties in every output.
  */
 import {
+  DEST_INITIALIZER,
+  SHAPE_FUNCTION,
   derivedIdOf,
   listEnd,
   removeListItems,
@@ -18,7 +20,7 @@ import {
   stringLiteral,
 } from '@tanstack/router-utils/compiler'
 import { identifierSymbol, pascal, routerRouteId } from './route'
-import { COMPONENT_KEYS, methodPrefixOf } from './decisions'
+import { COMPONENT_KEYS, claimedValueOf, methodPrefixOf } from './decisions'
 import { ROUTER_PLANNER } from './config'
 import type { SplitDecision } from './decisions'
 import type { RouterRound } from './router'
@@ -229,12 +231,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
       // function, from its parameters on, as a function expression, and
       // the route module's property gets a key before the placeholder
       region = ctx.region(d.region, 'option-value')
-      body.push({
-        k: 'text',
-        parts: [
-          `const ${split.name} = ${d.shape === 'method' ? methodPrefixOf(d.valueNode) : ''}`,
-        ],
-      })
+      body.push({ k: 'text', parts: [`const ${split.name} = `] })
       if (d.shape === 'method') {
         ctx.rewrites.edit({
           range: d.property,
@@ -245,7 +242,21 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
           by: ROUTER_PLANNER,
         })
       }
-      body.push({ k: 'region', id: region })
+      body.push({
+        k: 'region',
+        id: region,
+        expr:
+          d.shape === 'method'
+            ? {
+                dest: DEST_INITIALIZER,
+                shape: SHAPE_FUNCTION,
+                head: methodPrefixOf(d.valueNode),
+              }
+            : {
+                dest: DEST_INITIALIZER,
+                shape: ctx.shapeOf(claimedValueOf(d.valueNode)),
+              },
+      })
       body.push({ k: 'text', parts: ['\n'] })
     }
     body.push({
