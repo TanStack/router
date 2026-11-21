@@ -3,8 +3,6 @@ import type {
   OpenApiManifest,
   OpenApiMethod,
   OperationInput,
-  RequestSlot,
-  RequestSlotSchemas,
   RequestValidatorSlots,
   ResponseMap,
   SecurityScheme,
@@ -64,8 +62,6 @@ export interface RuntimeMethodBuilderOptions {
 export interface RuntimeMiddleware {
   options?: {
     middleware?: Array<RuntimeMiddleware>
-    /** Slot-shaped validator on request middleware. */
-    validator?: RequestValidatorSlots
   }
 }
 
@@ -99,8 +95,6 @@ const DEFAULT_METHODS: Array<OpenApiMethod> = [
   'patch',
   'delete',
 ]
-
-const SLOTS: Array<RequestSlot> = ['body', 'query', 'path', 'headers']
 
 /**
  * Walk a live route tree and collect a normalized {@link OpenApiManifest}.
@@ -153,15 +147,10 @@ export function collectFromRouteTree(
         options.securitySchemes,
         securitySchemes,
       )
-      const request = collectSlots([
-        ...chain.map((m) => m.options?.validator),
-        builder?.validator,
-      ])
-
       operations.push({
         method,
         path: openApiPath,
-        request,
+        request: builder?.validator,
         responses: builder?.response,
         security: security.length ? security : undefined,
         operationId:
@@ -244,23 +233,6 @@ function collectSecurity(
     names.add(s.name)
   }
   return [...names]
-}
-
-/**
- * Gather every schema per slot. Start validates the request against all of
- * them (intersection), so none may be dropped.
- */
-function collectSlots(
-  sources: Array<RequestValidatorSlots | undefined>,
-): RequestSlotSchemas | undefined {
-  const out: RequestSlotSchemas = {}
-  for (const src of sources) {
-    for (const slot of SLOTS) {
-      const schema = src?.[slot]
-      if (schema) (out[slot] ??= []).push(schema)
-    }
-  }
-  return Object.keys(out).length ? out : undefined
 }
 
 /** `/api/v1/sequences/$id` → `/api/v1/sequences/{id}` (TanStack `$param` → OpenAPI). */

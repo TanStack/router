@@ -40,21 +40,17 @@ describe('buildOpenApiDocument (emitter)', () => {
           summary: 'Create a sequence',
           tags: ['sequences'],
           request: {
-            body: [
-              fake({
-                $id: 'CreateSequence',
-                type: 'object',
-                properties: { name: { type: 'string' } },
-                required: ['name'],
-              }),
-            ],
-            query: [
-              fake({
-                type: 'object',
-                properties: { page: { type: 'integer' } },
-                required: [],
-              }),
-            ],
+            body: fake({
+              $id: 'CreateSequence',
+              type: 'object',
+              properties: { name: { type: 'string' } },
+              required: ['name'],
+            }),
+            query: fake({
+              type: 'object',
+              properties: { page: { type: 'integer' } },
+              required: [],
+            }),
           },
           responses: {
             202: fake({
@@ -149,18 +145,16 @@ describe('buildOpenApiDocument (emitter)', () => {
             method: 'post',
             path: '/things',
             request: {
-              body: [
-                fake({
-                  type: 'object',
-                  properties: { inner: { $ref: '#/$defs/Inner' } },
-                  $defs: {
-                    Inner: {
-                      type: 'object',
-                      properties: { x: { type: 'number' } },
-                    },
+              body: fake({
+                type: 'object',
+                properties: { inner: { $ref: '#/$defs/Inner' } },
+                $defs: {
+                  Inner: {
+                    type: 'object',
+                    properties: { x: { type: 'number' } },
                   },
-                }),
-              ],
+                },
+              }),
             },
           },
         ],
@@ -190,8 +184,8 @@ describe('buildOpenApiDocument (emitter)', () => {
       buildOpenApiDocument(
         {
           operations: [
-            { method: 'post', path: '/a', request: { body: [withInner(a)] } },
-            { method: 'post', path: '/b', request: { body: [withInner(b)] } },
+            { method: 'post', path: '/a', request: { body: withInner(a) } },
+            { method: 'post', path: '/b', request: { body: withInner(b) } },
           ],
           securitySchemes: [],
         },
@@ -263,8 +257,8 @@ describe('collectFromRouteTree (collector)', () => {
     expect(manifest.operations).toHaveLength(2) // POST + GET on the api route
     const post = manifest.operations.find((o) => o.method === 'post')!
     expect(post.path).toBe('/api/v1/sequences/{id}')
-    expect(post.request?.body).toEqual([CreateSequence])
-    expect(post.request?.query).toEqual([Pagination])
+    expect(post.request?.body).toBe(CreateSequence)
+    expect(post.request?.query).toBe(Pagination)
     expect(post.responses).toEqual({ 202: SequenceResult })
     expect(post.security).toEqual(['bearerAuth'])
 
@@ -384,11 +378,7 @@ describe('defaultOperationId', () => {
 })
 
 describe('middleware chain', () => {
-  const tenantHeader = z.object({ 'x-tenant': z.string() })
-  const pageQuery = z.object({ page: z.number().optional() })
-  const limitQuery = z.object({ limit: z.number(), page: z.number() })
-
-  const auth = { options: { validator: { headers: tenantHeader } } }
+  const auth = { options: {} }
   const securitySchemes = new Map([
     [
       auth,
@@ -398,9 +388,7 @@ describe('middleware chain', () => {
       },
     ],
   ])
-  const paginated = {
-    options: { middleware: [auth], validator: { query: pageQuery } },
-  }
+  const nested = { options: { middleware: [auth] } }
 
   const tree = {
     fullPath: '/',
@@ -416,8 +404,7 @@ describe('middleware chain', () => {
                 handlers: {
                   GET: {
                     description: 'List items',
-                    middleware: [paginated],
-                    validator: { query: limitQuery },
+                    middleware: [nested],
                     handler: () => new Response(),
                   },
                 },
@@ -429,27 +416,11 @@ describe('middleware chain', () => {
     ],
   }
 
-  it('inherits parent route middleware and intersects every validator', () => {
+  it('inherits security from parent route and nested middleware', () => {
     const [op] = collectFromRouteTree(tree, { securitySchemes }).operations
-    expect(op!.security).toEqual(['bearerAuth'])
     // `auth` appears twice in the chain but is deduped.
-    expect(op!.request).toEqual({
-      headers: [tenantHeader],
-      query: [pageQuery, limitQuery],
-    })
+    expect(op!.security).toEqual(['bearerAuth'])
     expect(op!.description).toBe('List items')
     expect(op!.operationId).toBe('getApiItems')
-  })
-
-  it('emits allOf for a parameter declared by more than one schema', async () => {
-    const doc = await generateOpenApiDocument(tree, { info })
-    const params = doc.paths['/api/items'].get.parameters
-    const page = params.find((p: any) => p.name === 'page')
-    expect(page.required).toBe(true)
-    expect(page.schema.allOf).toHaveLength(2)
-    expect(params.find((p: any) => p.name === 'x-tenant')).toMatchObject({
-      in: 'header',
-      required: true,
-    })
   })
 })

@@ -15,8 +15,7 @@ import type { StandardSchemaV1 } from './standard-schema'
 export type RequestSlot = 'body' | 'query' | 'path' | 'headers'
 
 /**
- * Slot-shaped validator, as declared via `validator` on request middleware or a
- * method builder. HTTP requests have locations (body, query string, path
+ * Slot-shaped validator, as declared via `validator` on a method builder. HTTP requests have locations (body, query string, path
  * params, headers) that the server-function validator model does not, so it is
  * keyed by slot rather than being a single schema.
  */
@@ -25,15 +24,6 @@ export interface RequestValidatorSlots {
   query?: StandardSchemaV1
   path?: StandardSchemaV1
   headers?: StandardSchemaV1
-}
-
-/**
- * Every schema that applies to each slot across the middleware chain, parents
- * first. The request must satisfy all of them (intersection), so emitters
- * combine them with `allOf`.
- */
-export type RequestSlotSchemas = {
-  [TSlot in RequestSlot]?: Array<StandardSchemaV1>
 }
 
 /**
@@ -122,7 +112,7 @@ export interface OperationInput {
   description?: string
   tags?: Array<string>
   deprecated?: boolean
-  request?: RequestSlotSchemas
+  request?: RequestValidatorSlots
   responses?: ResponseMap
   /**
    * Names of security schemes that apply to this operation. Each must be
