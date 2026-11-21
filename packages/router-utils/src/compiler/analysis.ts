@@ -1311,6 +1311,8 @@ function valueUse(
       return p.callee === child ? 'callee' : null
     case 'TaggedTemplateExpression':
       return p.tag === child ? 'callee' : null
+    case 'Decorator':
+      return 'callee'
     default:
       return null
   }
@@ -1444,6 +1446,9 @@ function classify(
       return { kind: 'value', ctx: parent.callee === node ? 'callee' : 'plain' }
     case 'TaggedTemplateExpression':
       return { kind: 'value', ctx: parent.tag === node ? 'callee' : 'plain' }
+    case 'Decorator':
+      // (a decorator is called: as a member it would get a receiver)
+      return { kind: 'value', ctx: 'callee' }
     case 'AssignmentExpression':
       // `n += 1`, `n ||= x` read `n` too, as `n++` does
       return { kind: parent.left === node ? 'write' : 'value', ctx: 'plain' }

@@ -307,6 +307,44 @@ export function Page() {
   letRefNonNull: letRefPage('', 'input!'),
   letRefCast: letRefPage('', 'input as HTMLInputElement'),
   letRefParens: letRefPage('', '(input)'),
+  // A local of the component holding a function (a method read off an
+  // object), called in the children directly and through client-only and
+  // isomorphic fns kept in place (in a group, under a cast, nested, as a
+  // tag): in the client's children it is a prop of the split component, and
+  // no call may bind the props as its receiver.
+  receivers: `${head}import { createClientOnlyFn, createIsomorphicFn } from '@tanstack/solid-start'
+import { createSignal } from 'solid-js'
+const input = {
+  cb(this: unknown) {
+    return this === undefined ? 'unbound' : 'bound'
+  },
+}
+export function Page() {
+  const cb = input.cb
+  const [shown, setShown] = createSignal('none')
+  return (
+    <Hydrate when={idle()}>
+      <button
+        data-label="receivers"
+        onClick={() =>
+          setShown(
+            [
+              cb(),
+              createClientOnlyFn(cb)(),
+              createClientOnlyFn((cb))(),
+              createClientOnlyFn(cb as any)(),
+              createClientOnlyFn(createClientOnlyFn(cb))(),
+              createIsomorphicFn().client(cb)(),
+              createClientOnlyFn(cb)\`x\`,
+            ].join(':'),
+          )
+        }
+      >
+        {shown()}
+      </button>
+    </Hydrate>
+  )
+}`,
   // A handler of several statements without semicolons, calling locals of
   // the component at each statement's start.
   statements: `${head}import { createSignal } from 'solid-js'
@@ -471,6 +509,23 @@ export function solidPageSuite(bundler: StartBundler) {
     // never ran.
     test('a handler of statements without semicolons runs each of them', async () => {
       await expectChildrenHydrate('statements', ['statements'])
+    })
+
+    // Source: Astra review of the splicing design (Solid capture receiver:
+    // the client-only fn's call rendered `props.cb()`).
+    test('a captured function called in the children, directly and through client-only and isomorphic fns, gets no receiver', async () => {
+      const page = await app.hydrate('receivers', {
+        script: `const button = () => root.querySelector('button[data-label="receivers"]')
+await clickUntil(button, () => button().textContent !== 'none')
+return button().textContent`,
+      })
+      expect({
+        shown: page.result,
+        consoleErrors: page.consoleErrors,
+      }).toEqual({
+        shown: Array(7).fill('unbound').join(':'),
+        consoleErrors: [],
+      })
     })
 
     // Source: Astra review of #8817, round 3, hydrate B1 (main builds it).

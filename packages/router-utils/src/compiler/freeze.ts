@@ -1054,6 +1054,7 @@ class Renderer {
             ref.exportShorthand,
             this.code.slice(ref.range.start, ref.range.end),
           )
+          this.reportRef(ref.range.start, ref.range.end, text)
           out.push({ k: 'text', text, mapTo: ref.range.start })
           // a callee at a statement's start renders `(0, props.x)`: as an edit
           this.guardStatementStart(ref.range.start, out, at)
@@ -1313,6 +1314,7 @@ class Renderer {
             f.exportShorthand,
             this.code.slice(f.range.start, f.range.end),
           )
+          this.reportRef(f.range.start, f.range.end, text)
           out.push({ k: 'text', text, mapTo: f.range.start })
           break
         }
@@ -1362,6 +1364,13 @@ class Renderer {
     const open = this.openExpr(b.core, out)
     this.renderFrags(edit.body, owner, env, out, slices)
     this.closeExpr(open, b.dest, ROLE_VALUE, b.shape, n.end, out)
+  }
+
+  /** A reference rendered as `text` on `[start, end)`: on the open boundary's kept node, it is what renders there. */
+  private reportRef(start: number, end: number, text: string): void {
+    if (start === this.coreStart && end === this.coreEnd) {
+      this.coreRef = text.includes('.') ? REF_MEMBER : REF_BINDING
+    }
   }
 
   /** Opens a boundary around what renders next: its opening text is reserved (written when it closes, `closeExpr`). */
