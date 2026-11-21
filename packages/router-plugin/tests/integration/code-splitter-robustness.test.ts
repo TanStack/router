@@ -1,8 +1,8 @@
 /**
  * Unusual but valid route files split like any other: route files with
  * non-ASCII names or a `'` in their name and JavaScript route files, an import of a package named
- * like a member of `Object.prototype`, a BOM and a source map comment, in
- * real builds.
+ * like a member of `Object.prototype`, a BOM and a source map comment, and
+ * option values written as a sequence under a cast, in real builds.
  */
 import { expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
@@ -70,8 +70,20 @@ export const Route = createFileRoute('/')({
   component: Page,
 })
 `,
+      // option values main splits (a cast) around a sequence: the chunk
+      // evaluates the sequence, it does not declare its operands
+      'routes/sequence.tsx': `${head}const box = { Page: () => <p>MARK_SEQUENCE_COMPONENT</p> }
+function Fallback() {
+  return <p>MARK_SEQUENCE_ERROR</p>
+}
+export const Route = createFileRoute('/sequence')({
+  component: (0, box.Page) as any,
+  errorComponent: (0, Fallback) as any,
+})
+`,
       'entry.ts': `${clientMountEntry}export { Route as CafeRoute } from './routes/café.日本語'
 export { Route as QuoteRoute } from "./routes/what's-new"
+export { Route as SequenceRoute } from './routes/sequence'
 `,
     },
   })
@@ -81,6 +93,12 @@ export { Route as QuoteRoute } from "./routes/what's-new"
     )
     const quote = await app.run(
       `await entry.mount(entry.QuoteRoute.options.component)`,
+    )
+    const sequence = await app.run(
+      `await entry.mount(entry.SequenceRoute.options.component)`,
+    )
+    const sequenceError = await app.run(
+      `await entry.mount(entry.SequenceRoute.options.errorComponent)`,
     )
     const jsx = await app.run(
       `await entry.mount(entry.Route.options.component)
@@ -95,6 +113,11 @@ return entry.Route.options.loader().label`,
       quote: {
         component: app.where('MARK_QUOTE_COMPONENT'),
         html: quote.html,
+      },
+      sequence: {
+        component: app.where('MARK_SEQUENCE_COMPONENT'),
+        errorComponent: app.where('MARK_SEQUENCE_ERROR'),
+        html: [sequence.html, sequenceError.html],
       },
       jsx: {
         component: app.where('MARK_COMPONENT'),
@@ -125,6 +148,22 @@ test.each(['vite', 'rspack', 'webpack'] as const)(
     expect((await appOf(bundler)).quote).toEqual({
       component: 'lazy',
       html: '<div id="root"><p>MARK_QUOTE_COMPONENT</p></div>',
+    })
+  },
+  120_000,
+)
+
+// Source: splicing gate (B1), a regression of 4ef7358870.
+test.each(['vite', 'rspack', 'webpack'] as const)(
+  'a sequence under a cast is split and rendered (%s)',
+  async (bundler) => {
+    expect((await appOf(bundler)).sequence).toEqual({
+      component: 'lazy',
+      errorComponent: 'lazy',
+      html: [
+        '<div id="root"><p>MARK_SEQUENCE_COMPONENT</p></div>',
+        '<div id="root"><p>MARK_SEQUENCE_ERROR</p></div>',
+      ],
     })
   },
   120_000,

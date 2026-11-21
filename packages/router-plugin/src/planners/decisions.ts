@@ -5,6 +5,7 @@
  * split part applies them, its HMR part hoists only what stays.
  */
 import {
+  isExpressionWrapper,
   patternIdentifiers,
   unwrapExpression,
   walk,
@@ -336,7 +337,7 @@ export function splitPlanOf(
       // the chunk claims and declares the bare value (so React Refresh
       // registers a function); a cast around it stays in the route module,
       // around the placeholder (`lazyFn(…) as any`)
-      const inner = unwrapExpression(value)
+      const inner = claimedValueOf(value)
       const own = ownThisOf(ctx, inner)
       if (own !== null) {
         warnings.push({
@@ -456,6 +457,24 @@ function withoutParens(value: Node): Node {
     v = v.expression
   }
   return v
+}
+
+/**
+ * The node a chunk claims for a split value: the value inside its wrappers,
+ * or, for a sequence (`(0, a.b) as any`), its innermost parentheses, without
+ * which the chunk's `const X = 0, a.b` would declare a second binding instead
+ * of evaluating the sequence. A sequence under a wrapper always has them.
+ */
+function claimedValueOf(value: Node): Node {
+  let parens: Node | null = null
+  let n = value
+  while (isExpressionWrapper(n)) {
+    if (n.type === 'ParenthesizedExpression') {
+      parens = n
+    }
+    n = n.expression
+  }
+  return n.type === 'SequenceExpression' && parens !== null ? parens : n
 }
 
 /**
@@ -842,7 +861,7 @@ function assignsWhatItImports(
   value: Node,
   valueSym: SymbolId | null,
 ): boolean {
-  const inner = unwrapExpression(value)
+  const inner = claimedValueOf(value)
   if (ctx.fallbackAt({ start: inner.start, end: inner.end }) !== undefined) {
     return true
   }
