@@ -137,9 +137,10 @@ client build's publication (`StartCompilerSession.publishClientOutput`, at the c
 JS): the functions whose default id, or with a generator whose gate token (`gateToken`, which the client stub passes
 and the runtime stores on the RPC), is in the minified code. The resolver prints its gate from it; an RSC build's
 first resolver precedes the client, and the server's last settlement run builds it again from the publication. An
-RSC production build also compares, when that last run built something, the live client references of its `rsc`
-chunks with the client manifests Rspack's ServerPlugin reports (`onManifest`) and warns at `done` of one missing
-(`flight-check.ts`: a client component only a late server fn renders).
+RSC production build also compares, when that last run built something, the client references Rspack compiled in its
+`rsc` chunks (the `registerClientReference` proxies of its RSC transform) with the client manifests Rspack's
+ServerPlugin reports for the same compilation (`onManifest`), and warns at that compilation's `done` of one the
+manifests lack (`flight-check.ts`: a client component only a late server fn renders).
 
 ## Import protection
 

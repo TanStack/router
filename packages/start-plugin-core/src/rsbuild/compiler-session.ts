@@ -277,11 +277,11 @@ export class StartRsbuildCompilerSession {
 
   /**
    * RSC production builds: the manifest Rspack's RSC ServerPlugin reported
-   * for the server's current compilation (`onManifest`, after its emit;
-   * null from the compilation's start): the Flight check's delivered side
-   * (`flight-check.ts`).
+   * for a compilation of the server compiler (`onManifest`, after its
+   * emit), by that compilation: the delivered side of its Flight check
+   * (`flight-check.ts`), which only that compilation's `done` reads.
    */
-  flightManifest: RscManifestLike | null = null
+  readonly flightManifests = new WeakMap<object, RscManifestLike>()
 
   constructor(opts: StartRsbuildSessionOptions) {
     this.rscEnabled = opts.rsc !== undefined

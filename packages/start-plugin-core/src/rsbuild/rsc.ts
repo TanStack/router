@@ -116,6 +116,8 @@ export function registerRsc(
       // app root explicitly, without package-manager-specific heuristics.
       seedResolveModules(config, [`${root}/node_modules`, 'node_modules'])
 
+      /** The server compiler's compilation in progress, whose manifest `onManifest` reports. */
+      let manifestOwner: object | null = null
       // Add ServerPlugin with HMR callback
       config.plugins.push(
         new state.plugins.ServerPlugin({
@@ -131,16 +133,17 @@ export function registerRsc(
               event: 'rsc:update',
             })
           },
-          // the Flight check's delivered side (`flight-check.ts`), in
-          // builds only: in development the whole manifest would cross the
-          // binding at every compilation (RSC decision E1)
+          // the delivered side of the Flight check of the compilation it
+          // was made for (`flight-check.ts`), in builds only: in development
+          // the whole manifest would cross the binding at every compilation
+          // (RSC decision E1)
           onManifest:
             api.context.action === 'build'
               ? (manifest: RscManifestLike) => {
                   // (a throw in the native callback ends the process)
                   const session = startCompiler.session()
-                  if (session) {
-                    session.flightManifest = manifest
+                  if (session && manifestOwner) {
+                    session.flightManifests.set(manifestOwner, manifest)
                   }
                 }
               : undefined,
@@ -149,6 +152,14 @@ export function registerRsc(
 
       config.plugins.push({
         apply(compiler: RspackCompiler) {
+          if (api.context.action === 'build') {
+            compiler.hooks.thisCompilation.tap(
+              'TanStackStartRscManifestOwner',
+              (compilation) => {
+                manifestOwner = compilation
+              },
+            )
+          }
           // The native RSC ServerPlugin completes the client-entry handoff
           // during its finishMake hook; the manifest is rebuilt after it, from
           // the client build, also when that completed while this compilation

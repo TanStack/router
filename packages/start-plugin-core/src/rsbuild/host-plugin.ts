@@ -16,7 +16,6 @@ import path from 'node:path'
 import {
   compilerCacheKey,
   emittedMapTexts,
-  identify,
   invariantViolated,
   isRecordedDiagnostic,
   locateDiagnostics,
@@ -311,7 +310,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         session.start.opts.mode === 'build'
       const flightRequired = new WeakMap<
         Rspack.Compilation,
-        Awaited<ReturnType<typeof liveClientReferences>>
+        ReturnType<typeof liveClientReferences>
       >()
       /**
        * The import-protection requests each child compilation made
@@ -830,34 +829,20 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         compilation.errors.push(...failedBeforeCompilation.splice(0))
         currentCompilation = compilation
         if (flightCheck) {
-          // (Rspack's manifest of this compilation comes after its emit)
-          session.flightManifest = null
-          compilation.hooks.processAssets.tapPromise(
+          compilation.hooks.processAssets.tap(
             {
               name: PLUGIN_NAME,
               stage: Compilation.PROCESS_ASSETS_STAGE_REPORT,
             },
-            async () => {
+            () => {
               if (histories.get(compilation)?.lateBuilt) {
                 flightRequired.set(
                   compilation,
-                  await liveClientReferences(
+                  liveClientReferences(
                     compilation as never,
                     (module, holder) =>
                       envKeyOfModule(module, holder) ===
                       RSBUILD_RSC_ENVIRONMENT,
-                    async (resource) => {
-                      const id = canonicalResource(resource)
-                      return (
-                        identify(id).lang !== null &&
-                        (
-                          await session.start.rawFacts.get(
-                            id,
-                            RSBUILD_RSC_ENVIRONMENT,
-                          )
-                        ).targetFacts.useClient
-                      )
-                    },
                   ),
                 )
               }
@@ -1597,24 +1582,25 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             },
           ),
       )
-      // the Flight check's report (`flightCheck`), before the release of a
-      // production build's environment (the `done` tap above)
-      compiler.hooks.done.tap({ name: PLUGIN_NAME, stage: -1 }, (stats) => {
-        const required = flightRequired.get(stats.compilation)
-        const manifest = session.flightManifest
-        flightRequired.delete(stats.compilation)
-        session.flightManifest = null
-        if (!required || !manifest) {
-          return
-        }
-        for (const missing of undeliveredReferences(required, manifest)) {
-          stats.compilation.warnings.push(
-            new WebpackError(
-              undeliveredWarning(missing, session.start.opts.root),
-            ),
-          )
-        }
-      })
+      // the Flight check's report (`flightCheck`), with the manifest Rspack
+      // reported for this compilation, before the release of a production
+      // build's environment (the `done` tap above)
+      if (flightCheck) {
+        compiler.hooks.done.tap({ name: PLUGIN_NAME, stage: -1 }, (stats) => {
+          const required = flightRequired.get(stats.compilation)
+          const manifest = session.flightManifests.get(stats.compilation)
+          if (!required || !manifest) {
+            return
+          }
+          for (const missing of undeliveredReferences(required, manifest)) {
+            stats.compilation.warnings.push(
+              new WebpackError(
+                undeliveredWarning(missing, session.start.opts.root),
+              ),
+            )
+          }
+        })
+      }
       compiler.hooks.finishMake.tapPromise(
         { name: `${PLUGIN_NAME}:close-last`, stage: 0x7fffffff },
         (compilation) =>

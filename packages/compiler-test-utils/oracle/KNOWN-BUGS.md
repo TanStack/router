@@ -454,13 +454,17 @@ retained.py head base`). The same with RSC for a server fn whose last client cal
   plugin's client handoff at stage 0: a module a plugin adds late, built there as its real module, or the resolver built
   again there, can bring client references the finished client build does not have: a nested chain, a server fn whose
   handler renders a client component nothing else renders, which calls another server fn. The module is settled, and
-  the browser cannot decode the outer server fn's result (the client build has no module of the component). The build
-  warns, naming the component's file, its exports and the entry (RSC phase 2: Rspack's per-entry client manifest,
-  `onManifest`, compared with the live client references of the `rsc` chunks, only when the last run built something;
-  builds only, RSC decision E1; a warning until decision 4's evidence runs). Dev has no warning: the next compilation
-  has the reference. `react-start-rsc/tests/integration/rsc-start-rsbuild-flight.test.ts`: the nested pair, a route
-  that also renders the component from client code, a client plugin watching its file (all warn), and the way out
-  (a server fn a route's loader calls renders it too: both clicks answer, no warning). The warning does not name the
+  the browser cannot decode the outer server fn's result (the Flight client manifest Rspack delivers has no entry of
+  the component). The build warns, naming the component's file, its exports and the entry (RSC phase 2: Rspack's
+  per-entry client manifest, `onManifest`, of the same server compilation, compared with the client references Rspack
+  compiled in the `rsc` chunks, its RSC transform's `registerClientReference` proxies, whatever made the module a
+  client one; only when the last run built something; builds only, RSC decision E1; a warning until decision 4's
+  evidence runs). Dev has no warning: the next compilation has the reference.
+  `react-start-rsc/tests/integration/rsc-start-rsbuild-flight.test.ts`: the nested pair, a route that also renders the
+  component from client code, a client plugin watching its file, an installed package's component, a component a
+  loader gives the directive, a plugin's asynchronous `done` on both compilers (all warn), a `'use client'` file a
+  server fn has only the URL of (an asset: no warning), and the way out (a server fn a route's loader calls renders it
+  too: both clicks answer, no warning). The warning does not name the
   server fn whose handler renders the component (its provider's record makes every function one a server compile
   declares), and with several server entries it reports a component no entry's manifest holds (one entry lacking a
   component another holds is not reported).
