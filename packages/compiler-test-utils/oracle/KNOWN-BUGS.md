@@ -462,32 +462,13 @@ retained.py head base`). The same with RSC for a server fn whose last client cal
   closure runs again at the last `finishMake` stage, after the RSC plugin's client handoff at stage 0: a module a plugin
   adds late, built there as its real module, or the resolver built again there, can bring client references the finished
   client build does not have: a nested chain, a server fn whose handler renders a client component nothing else renders,
-  which calls another server fn. The module is settled, and the browser cannot decode the outer server fn's result (the
-  Flight client manifest Rspack delivers has no entry of the component). The build warns, naming the component's file,
-  its exports and the entry (RSC phase 2: Rspack's per-entry client manifest, `onManifest`, of the same server
-  compilation, compared with the client references Rspack compiled in the `rsc` chunks, its RSC transform's
-  `registerClientReference` proxies, each a call of the function it imports registering the module's own Flight id (its
-  path and query, read from the parsed source), whatever made the module a client one; an entry is named when its
-  manifest lacks a reference its own graph reaches, by what the entry's runtime loads of the module graph (from its
-  dependencies, through the connections active in its runtime and the `import()` blocks it loads; a chunk or chunk group
-  it shares with another entry, a worker it starts, a barrel's re-export only another entry uses, is no reach); only
-  when the last run built something; builds only, RSC decision E1; a warning until decision 4's evidence runs). Dev has
-  no warning: the next compilation has the reference.
-  `react-start-rsc/tests/integration/rsc-start-rsbuild-flight.test.ts`: the nested pair, a route that also renders the
-  component from client code, a client plugin watching its file, an installed package's component, a component a loader
-  gives the directive, a plugin's asynchronous `done` on both compilers (all warn), a `'use client'` file a server fn
-  has only the URL of (an asset: no warning), the way out (a server fn a route's loader calls renders it too: both
-  clicks answer, no warning), components whose Flight id the proxy spells unlike their file (an accented directory, a
-  quoted query, a fragment: each named), a late fragment of a file whose id the manifest has (no warning, the tree
-  renders), a server adapter that imports `registerClientReference` to register a component by its caller's id or that
-  passes its own file to an unrelated call (no warning, the page renders), a second server entry that holds the
-  component while the late server fn renders it for `index` (cold and from the persistent cache: `index` is named), a
-  package component a second entry has only in a shared chunk (no warning), two entries loading their components through
-  one `import()` chunk name (no warning, cold and from the persistent cache, the click renders; without the route's
-  loader only `index` is named, for its component), a component only a worker the late server fn starts imports (no
-  warning, the server fn answers), and a package barrel's two components each entry's runtime uses one of (only `index`
-  is named, for its own). The warning does not name the server fn whose handler renders the component (its provider's
-  record makes every function one a server compile declares).
+  which calls another server fn. In a production build the module is settled and the build exits 0, but the component
+  is missing from the client manifest: at runtime the outer server fn's result fails with React's `Could not find the
+module "…" in the React Client Manifest`. Dev is not affected (the next compilation has the reference). Workaround:
+  render the component from server code the app reaches before the client is built (a server component of a route, a
+  server fn a route's loader calls). Upstream: https://github.com/web-infra-dev/rspack/issues/16786.
+  `react-start-rsc/tests/integration/rsc-start-rsbuild-nested-chain.test.ts`: "a component a server fn the build
+  reaches first renders: both clicks answer" (the workaround; the outcome of the limit has no test).
 - **Rsbuild: import protection's settlement does not judge what another plugin's `finishMake` tap at the last stage
   adds or builds** (RSC phase 1, design-rsc-phase1-settlement.md amendment 4; stated limit, no plugin known to tap
   there). Every compilation settles its modules at stage −10 and again at the last stage (`0x7fffffff`); a tap

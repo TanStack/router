@@ -136,13 +136,10 @@ rank (client first) and patched at `processAssets` before minification. The HTTP
 client build's publication (`StartCompilerSession.publishClientOutput`, at the client's report stage, on the emitted
 JS): the functions whose default id, or with a generator whose gate token (`gateToken`, which the client stub passes and
 the runtime stores on the RPC), is in the minified code. The resolver prints its gate from it; an RSC build's first
-resolver precedes the client, and the server's last settlement run builds it again from the publication. An RSC
-production build also compares, when that last run built something, the client references Rspack compiled in its `rsc`
-chunks (the `registerClientReference` proxies of its RSC transform: calls of the imported function registering the
-module's own Flight id, its path and query) with the client manifest Rspack's ServerPlugin reports for each entry of the
-same compilation (`onManifest`), and warns at that compilation's `done` of one an entry's manifest lacks while the
-entry's runtime can load it: the module graph from the entry's dependencies, through the connections active in its
-runtime and the `import()` blocks it loads (`flight-check.ts`: a client component only a late server fn renders).
+resolver precedes the client, and the server's last settlement run builds it again from the publication. What that
+last run builds comes after the RSC plugin's client handoff: a client component only a server fn it builds renders is
+missing from the client manifest Rspack delivers, and the build does not say so (KNOWN-BUGS, the nested chain;
+rspack#16786).
 
 ## Import protection
 
