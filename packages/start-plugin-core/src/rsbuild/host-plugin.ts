@@ -1592,7 +1592,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           if (!required || !manifest) {
             return
           }
-          for (const missing of undeliveredReferences(required, manifest)) {
+          for (const missing of undeliveredReferences(
+            stats.compilation as never,
+            required,
+            manifest,
+          )) {
             stats.compilation.warnings.push(
               new WebpackError(
                 undeliveredWarning(missing, session.start.opts.root),

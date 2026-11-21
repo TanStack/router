@@ -326,7 +326,7 @@ export async function startRscRsbuildPreviewServer(options: {
    * Files written after a first build, then `rsbuild build` runs again (a
    * new Rsbuild instance and new plugins, what the first build left in the
    * directory kept, e.g. its persistent cache): the build served is the
-   * second.
+   * second, its compilations' errors and warnings the ones reported.
    */
   buildAgainWith?: Record<string, string>
   /** Rsbuild's `performance` (e.g. `{ buildCache: true }`). */
@@ -447,6 +447,9 @@ export async function startRscRsbuildPreviewServer(options: {
         for (const [file, content] of Object.entries(options.buildAgainWith)) {
           await writeFile(path.join(app.root, file), content)
         }
+        // (what the second build reports)
+        compileErrors.length = 0
+        compileWarnings.length = 0
         const again = await (await rsbuild()).build()
         await again.close()
       }

@@ -7,11 +7,12 @@
  * client code calls) can bring a client component no reference was handed
  * for: the Flight client manifest Rspack delivers has no entry of it, and
  * the browser cannot decode a server fn result that renders it. The check
- * compares the client references Rspack compiled in the `rsc`
- * environment's chunks (`isClientReference`) with the per-entry client
- * manifests Rspack reports for the same compilation (`onManifest`); it runs
- * only in a compilation whose last run built something (the graph can gain
- * a module after the handoff only there), and in builds only (decision E1).
+ * compares the client references Rspack compiled in the `rsc` environment's
+ * chunks (`isClientReference`) with the client manifest Rspack reports for
+ * each entry of the same compilation (`onManifest`): an entry is named when
+ * its manifest lacks a reference its own graph reaches; it runs only in a
+ * compilation whose last run built something (the graph can gain a module
+ * after the handoff only there), and in builds only (decision E1).
  */
 import path from 'node:path'
 import {
@@ -36,12 +37,28 @@ export interface FlightReference {
   resource: string
   /** Its used exports (`true`: all or unknown). */
   exports: ReadonlyArray<string> | true
+  /** Its module (`reaches`). */
+  module: RspackModuleLike
 }
 
 /** What `isClientReference` reads of a module. */
 interface ProxyModuleLike extends RspackModuleLike {
   dependencies?: Iterable<{ request?: string; ids?: ReadonlyArray<string> }>
   originalSource?: () => { source: () => string | Buffer } | null
+}
+
+/** A chunk group of an Rspack compilation (an entrypoint, an `import()`'s). */
+interface ChunkGroupLike {
+  childrenIterable: Iterable<ChunkGroupLike>
+  /** A number for a module the group's own graph reaches (its blocks'), else none. */
+  getModulePreOrderIndex: (
+    module: RspackModuleLike,
+  ) => number | null | undefined
+}
+
+/** What `undeliveredReferences` reads of a compilation: its entries. */
+interface EntriesLike {
+  entrypoints: ReadonlyMap<string, ChunkGroupLike>
 }
 
 /**
@@ -121,6 +138,7 @@ export function liveClientReferences(
       out.push({
         resource,
         exports: Array.isArray(used) ? [...used].sort() : true,
+        module,
       })
     }
   }
@@ -130,23 +148,50 @@ export function liveClientReferences(
 }
 
 /**
- * The references (`liveClientReferences`) no entry's client manifest holds,
- * with the entries. (Per entry needs each entry's own required side: a
- * component one entry lacks while another holds it is not reported.)
+ * The references (`liveClientReferences`) an entry's client manifest lacks
+ * although the entry's graph reaches them (`reaches`), each with those
+ * entries. Rspack's manifest of an entry holds the references of the
+ * entry's own graph: an entry's module of a chunk it shares with another
+ * entry (a vendor chunk) is no reference of the other's. The graph is read
+ * only for a reference a manifest lacks.
  */
 export function undeliveredReferences(
+  compilation: EntriesLike,
   required: ReadonlyArray<FlightReference>,
   manifest: RscManifestLike,
 ): Array<{ reference: FlightReference; entries: Array<string> }> {
   const entries = Object.keys(manifest).sort()
-  return required
-    .filter(
-      (reference) =>
-        !entries.some((entry) =>
-          Object.hasOwn(manifest[entry]!.clientManifest, reference.resource),
-        ),
+  /** Each entry's chunk groups: its entrypoint and the groups it loads. */
+  const groups = new Map<string, Array<ChunkGroupLike>>()
+  const reaches = (entry: string, module: RspackModuleLike) => {
+    let own = groups.get(entry)
+    if (!own) {
+      const entrypoint = compilation.entrypoints.get(entry)
+      const found = new Set(entrypoint ? [entrypoint] : [])
+      for (const group of found) {
+        for (const child of group.childrenIterable) {
+          found.add(child)
+        }
+      }
+      own = [...found]
+      groups.set(entry, own)
+    }
+    return own.some(
+      (group) => typeof group.getModulePreOrderIndex(module) === 'number',
     )
-    .map((reference) => ({ reference, entries }))
+  }
+  const out: Array<{ reference: FlightReference; entries: Array<string> }> = []
+  for (const reference of required) {
+    const lacking = entries.filter(
+      (entry) =>
+        !Object.hasOwn(manifest[entry]!.clientManifest, reference.resource) &&
+        reaches(entry, reference.module),
+    )
+    if (lacking.length > 0) {
+      out.push({ reference, entries: lacking })
+    }
+  }
+  return out
 }
 
 /** The warning of a client reference the delivered Flight manifest lacks. */

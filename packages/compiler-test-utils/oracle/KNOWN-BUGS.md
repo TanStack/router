@@ -465,17 +465,19 @@ retained.py head base`). The same with RSC for a server fn whose last client cal
   the browser cannot decode the outer server fn's result (the Flight client manifest Rspack delivers has no entry of
   the component). The build warns, naming the component's file, its exports and the entry (RSC phase 2: Rspack's
   per-entry client manifest, `onManifest`, of the same server compilation, compared with the client references Rspack
-  compiled in the `rsc` chunks, its RSC transform's `registerClientReference` proxies, whatever made the module a
-  client one; only when the last run built something; builds only, RSC decision E1; a warning until decision 4's
-  evidence runs). Dev has no warning: the next compilation has the reference.
+  compiled in the `rsc` chunks, its RSC transform's `registerClientReference` proxies, each registering its own
+  resource, whatever made the module a client one; an entry is named when its manifest lacks a reference its own
+  graph reaches, by its chunk groups' module order; only when the last run built something; builds only, RSC
+  decision E1; a warning until decision 4's evidence runs). Dev has no warning: the next compilation has the reference.
   `react-start-rsc/tests/integration/rsc-start-rsbuild-flight.test.ts`: the nested pair, a route that also renders the
   component from client code, a client plugin watching its file, an installed package's component, a component a
   loader gives the directive, a plugin's asynchronous `done` on both compilers (all warn), a `'use client'` file a
-  server fn has only the URL of (an asset: no warning), and the way out (a server fn a route's loader calls renders it
-  too: both clicks answer, no warning). The warning does not name the
-  server fn whose handler renders the component (its provider's record makes every function one a server compile
-  declares), and with several server entries it reports a component no entry's manifest holds (one entry lacking a
-  component another holds is not reported).
+  server fn has only the URL of (an asset: no warning), the way out (a server fn a route's loader calls renders it
+  too: both clicks answer, no warning), a server adapter that imports `registerClientReference` to register a
+  component by id (no warning, the page renders), a second server entry that holds the component while the late
+  server fn renders it for `index` (cold and from the persistent cache: `index` is named), and a package component
+  a second entry has only in a shared chunk (no warning). The warning does not name the server fn whose handler
+  renders the component (its provider's record makes every function one a server compile declares).
 - **Rsbuild: import protection's settlement does not judge what another plugin's `finishMake` tap at the last stage
   adds or builds** (RSC phase 1, design-rsc-phase1-settlement.md amendment 4; stated limit, no plugin known to tap
   there). Every compilation settles its modules at stage −10 and again at the last stage (`0x7fffffff`); a tap

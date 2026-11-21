@@ -434,3 +434,131 @@ export const Route = createFileRoute('/nested')({
   },
   timeout,
 )
+
+// A second server entry (in the RSC layer) and its client entry: the second
+// entry imports `Inner`, so its manifest has it; the late server fn renders
+// it for `index`, whose manifest lacks it. Each entry's manifest is checked
+// against what that entry's server graph references: `index` is named. Cold,
+// and a second `rsbuild build` restored from the persistent cache.
+// (Astra re-check of 2f32f533ee: no warning, the click fails.)
+const secondEntry = {
+  files: {
+    ...files,
+    'src/second.ts': `import { Inner } from './nested/Inner'
+export function renderSecond() {
+  return Inner
+}
+`,
+    'src/empty.ts': `export const empty = 1
+`,
+  },
+  tools: {
+    rspack: (config: { name?: string; entry: Record<string, unknown> }) => {
+      if (config.name === 'ssr') {
+        config.entry.second = {
+          import: ['./src/second.ts'],
+          layer: 'react-server-components',
+        }
+      }
+      if (config.name === 'client') {
+        config.entry.second = { import: ['./src/empty.ts'] }
+      }
+    },
+  },
+}
+/** Whether a report names `Inner` as missing from `index`'s manifest only. */
+const namesInnerForIndex = (server: {
+  messages: Array<string>
+  root: string
+}) =>
+  findDiagnostics(server.messages, {
+    file: 'src/nested/Inner.tsx',
+    root: server.root,
+  }).some((diagnostic) => diagnostic.text.includes('(entry index)'))
+
+const builds: Array<{
+  build: string
+  options: Partial<Parameters<typeof startRscRsbuildPreviewServer>[0]>
+}> = [
+  { build: 'cold', options: {} },
+  {
+    build: 'warm',
+    options: { performance: { buildCache: true }, buildAgainWith: {} },
+  },
+]
+test.for(builds)(
+  'a $build build warns of a component the late server fn renders for an entry whose manifest lacks it',
+  { timeout },
+  async ({ options }) => {
+    const server = await startRscRsbuildPreviewServer({
+      ...secondEntry,
+      ...options,
+    })
+    expect({
+      errors: server.errors,
+      warned: namesInnerForIndex(server),
+    }).toEqual({ errors: [], warned: true })
+  },
+)
+
+// The other direction: a route's loader renders an installed package's
+// component for `index` (its manifest has it), and the second entry
+// renders a component of the app; Rsbuild puts both entries' packages in
+// one chunk, so the second entry's chunks hold the package's component,
+// which its graph does not import and its manifest lacks. Nothing warns.
+test(
+  'no warning for a component an entry has only in a chunk it shares with another entry',
+  async () => {
+    const server = await startRscRsbuildPreviewServer({
+      ...secondEntry,
+      files: {
+        'node_modules/review-ui/package.json': JSON.stringify({
+          name: 'review-ui',
+          type: 'module',
+          exports: './index.js',
+        }),
+        'node_modules/review-ui/index.js': `'use client'
+import { createElement, useState } from 'react'
+export function Badge() {
+  const [n] = useState(1)
+  return createElement('strong', null, 'BADGE_' + n)
+}
+`,
+        'src/nested/Inner.tsx': files['src/nested/Inner.tsx'],
+        'src/nested/deep.ts': files['src/nested/deep.ts'],
+        'src/nested/early.tsx': `import { createServerFn } from '@tanstack/react-start'
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+import { Badge } from 'review-ui'
+export const early = createServerFn().handler(() => renderServerComponent(<div>early <Badge /></div>))
+`,
+        'src/nested/late.ts': `import { createServerFn } from '@tanstack/react-start'
+export const late = createServerFn().handler(() => 'LATE')
+`,
+        'src/routes/nested.tsx': `import { ClientOnly, createFileRoute } from '@tanstack/react-router'
+import { early } from '../nested/early'
+import { late } from '../nested/late'
+export const Route = createFileRoute('/nested')({
+  loader: async () => ({ tree: await early() }),
+  component: () => (
+    <main>
+      {Route.useLoaderData().tree}
+      <ClientOnly fallback={null}>
+        <button onClick={() => late()}>late</button>
+      </ClientOnly>
+    </main>
+  ),
+})
+`,
+        'src/second.ts': secondEntry.files['src/second.ts'],
+        'src/empty.ts': secondEntry.files['src/empty.ts'],
+      },
+    })
+    expect({
+      errors: server.errors,
+      warned: server.messages.some((message) =>
+        message.includes('is a client reference of the RSC build'),
+      ),
+    }).toEqual({ errors: [], warned: false })
+  },
+  timeout,
+)
