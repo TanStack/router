@@ -263,9 +263,12 @@ export const Route = createFileRoute('/')({ component: Page })
 // every edit. Vite 8's `@vitejs/plugin-react` gives it no observable effect;
 // on Rsbuild (`@rsbuild/plugin-react`), the split route resets the count the
 // click set as the unsplit route does.
+// React Refresh reads the comment anywhere in the module, a JSDoc one too.
 describe('a React /* @refresh reset */ comment, on Rsbuild', () => {
-  const reactCounter = (version: string) => `/* @refresh reset */
-import { createFileRoute } from '@tanstack/react-router'
+  const reactCounter = (
+    { header = '', aboveRoute = '' }: { header?: string; aboveRoute?: string },
+    version: string,
+  ) => `${header}import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 function Page() {
   const [count, setCount] = useState(0)
@@ -275,30 +278,37 @@ function Page() {
     </button>
   )
 }
-export const Route = createFileRoute('/')({ component: Page })
+${aboveRoute}export const Route = createFileRoute('/')({ component: Page })
 `
-  async function counterAfterEdit(autoCodeSplitting: boolean) {
+  async function counterAfterEdit(
+    autoCodeSplitting: boolean,
+    comments: { header?: string; aboveRoute?: string },
+  ) {
     const app = await openRouteHmrPage({
       bundler: 'rsbuild',
       pluginOptions: { autoCodeSplitting },
-      files: { 'routes/index.tsx': reactCounter('v1') },
+      files: { 'routes/index.tsx': reactCounter(comments, 'v1') },
       ready: 'Counter v1 count 0',
     })
     await app.click('button')
     await app.page.waitForText('Counter v1 count 1')
     await app.edit(
-      { 'routes/index.tsx': reactCounter('v2') },
+      { 'routes/index.tsx': reactCounter(comments, 'v2') },
       /Counter v2 count \d/,
     )
     return /Counter v2 count \d/.exec(await app.page.text())?.[0]
   }
 
-  test(
-    'an edit of the split route shows what it shows unsplit',
-    async () => {
+  test.each([
+    { name: 'a file header', header: '/* @refresh reset */\n' },
+    { name: 'a JSDoc file header', header: '/** @refresh reset */\n' },
+    { name: 'above the Route export', aboveRoute: '/* @refresh reset */\n' },
+  ])(
+    'with the comment as $name, an edit of the split route shows what it shows unsplit',
+    async (comments) => {
       const [unsplit, split] = await Promise.all([
-        counterAfterEdit(false),
-        counterAfterEdit(true),
+        counterAfterEdit(false, comments),
+        counterAfterEdit(true, comments),
       ])
       expect(unsplit).toBe('Counter v2 count 0')
       expect(split).toBe(unsplit)
