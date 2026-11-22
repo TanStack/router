@@ -374,8 +374,9 @@ dir)` is not a conflict by itself.
   there. Copy-then-unlink is not acceptable (a reader can see partial content); demanding the same device is not the
   chosen behaviour.
 - **J1.17 `.lazy.vue` is a lazily loaded component piece.** `x.lazy.vue` next to `x.vue`/`x.tsx` supplies route `x`'s
-  `component` lazily from the SFC default export; it is not a lazy route module, and an empty `.lazy.vue` is not
-  scaffolded with TypeScript route code. J1.8 and G5 hold throughout.
+  `component` lazily from the SFC default export; it is not a lazy route module, except next to an `x.component.vue`
+  piece, which is then the component, the `.lazy.vue` file (`x.lazy.vue`, `x/lazy.vue`) being the route's lazy route
+  (its default export). An empty `.lazy.vue` is not scaffolded with TypeScript route code. J1.8 and G5 hold throughout.
 
 ### J2 Route code splitting (router-plugin)
 
@@ -499,8 +500,10 @@ dir)` is not a conflict by itself.
   only; Babel any) must not become effective in a chunk. Warning and leaving the file unsplit is also acceptable
   (J2.8). Tests assert the rendered outcome only, compiling the untouched and the compiled module with the project's
   real JSX transform and defaults, never comment placement or the runtime import's spelling. In development, a chunk
-  holding components carries the file's leading `@refresh` pragmas (solid-refresh's `granular`, `skip`, `reload`;
-  React Refresh's `reset`), which the refresh plugins read per module: its components refresh as the file asks.
+  holding components carries the file's `@refresh` pragmas, wherever the file has them (solid-refresh's `granular`,
+  `skip`, `reload`; React Refresh's `reset`), which the refresh plugins read per module: its components refresh as the
+  file asks. Only the pragma: the rest of its comment (a `@jsxImportSource` after the imports) means what it means in
+  the file.
 - **J2.17 Deprecated `assert` attributes.** An import written with `assert` in a route module (`import data from
 './data.json' assert { type: 'json' }`) keeps working wherever it lands, and its attribute keeps its meaning where
   the bundler honours attributes. The printed keyword (`assert` or `with`) is free: no public host observes it.
@@ -664,7 +667,8 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   statements that cannot return, `createServerFn.call(thisArg, options)`, a `let` builder reassigned with a builder of
   the same kind, a project namespace read by member, also after an export (`export * as`, `export { ns }`, `export
   default ns`) and through another namespace, a name's first declaration holding a value (a type, an overload or a `declare` before it is no value),
-  and the JavaScript of a late-pass module (`.mdx`, `.vue`, …), though no open builder may leave one: its importers read
+  and the JavaScript of a late-pass module (`.mdx`, `.vue`, …; TypeScript or TSX when the bundler parses it so, a
+  plugin's `moduleType`), though no open builder may leave one: its importers read
   the file, so an export of one fails the client build.
   Static analyzability is expected (R92): `import()`, `require()` and `import.meta.glob` of Start values, and modules
   other plugins generate or rewrite, are neither followed nor refused. Any other use of a builder, a factory, a start
