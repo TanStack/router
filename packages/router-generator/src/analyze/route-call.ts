@@ -94,7 +94,7 @@ export type ForeignRoute =
   | { kind: 'wrapped' }
 
 export type RouteCall =
-  /** The file has no value export named `Route`, or one declared as a function or class. */
+  /** The file has no value export named `Route`, or one declared as a function, class, enum or namespace. */
   | { kind: 'none' }
   /** The file's `Route` is not a call of the router package's route constructor. */
   | { kind: 'foreign'; reason: ForeignRoute }
@@ -366,12 +366,20 @@ export function routeCallOf(
   // the declarators of the binding, a destructuring pattern's included (a
   // type, interface or type namespace of the same name declares no value)
   const declarators: Array<VariableDeclarator> = []
+  let enumOrNamespace = false
   for (const name of routeExport.kind === 'named'
     ? (routeExport.local?.declarations ?? [])
     : []) {
-    if (functionOrClass.has(file.parentOf(name)?.type ?? '')) {
+    const declaration = file.parentOf(name)?.type ?? ''
+    if (functionOrClass.has(declaration)) {
       // a function or class is never a route (the tree calls a route's `update`)
       return { kind: 'none' }
+    }
+    if (
+      declaration === 'TSEnumDeclaration' ||
+      declaration === 'TSModuleDeclaration'
+    ) {
+      enumOrNamespace = true
     }
     let parent = file.parentOf(name)
     while (parent && patternParts.has(parent.type)) {
@@ -380,6 +388,11 @@ export function routeCallOf(
     if (parent?.type === 'VariableDeclarator') {
       declarators.push(parent)
     }
+  }
+  if (enumOrNamespace && declarators.length === 0) {
+    // nor is an enum or a namespace (one of types beside a const is the
+    // const's)
+    return { kind: 'none' }
   }
   const foreign = (reason: ForeignRoute): RouteCall => ({
     kind: 'foreign',

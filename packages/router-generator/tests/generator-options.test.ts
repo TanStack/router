@@ -911,6 +911,8 @@ export function Route() {
 `,
     'function Route() {}\nexport { Route }\n',
     'export class Route {}\n',
+    'export enum Route {\n  A = 1,\n}\n',
+    'export namespace Route {\n  export const a = 1\n}\n',
   ])(
     'with logging on, a route file without a Route export is left out with a warning naming it: %j',
     async (helpers) => {
@@ -931,6 +933,25 @@ export function Route() {
       })
     },
   )
+
+  // (a namespace of types beside the route, legal TypeScript, declares no
+  // value: the route is the const)
+  test('a Route with a namespace of types of the same name is in the route tree', async () => {
+    const root = await createApp(
+      app(`import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/helpers')({})
+export namespace Route {
+  export type Search = { page: number }
+}
+`),
+    )
+    const { generatedRouteTree } = await generate(root)
+    expect(await routesOf(generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/': 'routes/index.tsx',
+      '/helpers': 'routes/helpers.tsx',
+    })
+  })
 
   // `disableLogging` silences the route generation logging (SPEC J1.12) on
   // every console channel, whatever its severity; actionable diagnostics
