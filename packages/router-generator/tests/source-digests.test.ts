@@ -76,6 +76,29 @@ describe('sourceDigest', () => {
     expect(generator.sourceDigest(replaceBackslash(real))).toBe(digest)
   })
 
+  // Source: review of the route-set work (Gemini L3: the real path answered
+  // the first scanned file linked to it, which the tree does not import).
+  test('a real path two scanned files link to answers the one the route tree imports', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/index.tsx': fileRoute('/'),
+      'src/shared/target.tsx': fileRoute('/z'),
+    })
+    const real = path.join(root, 'src/shared/target.tsx')
+    // (`__root.lazy.tsx` is scanned before `z.tsx`, and the tree imports no root lazy file)
+    await symlink(real, path.join(root, 'src/routes/__root.lazy.tsx'))
+    await symlink(real, path.join(root, 'src/routes/z.tsx'))
+    const generator = new Generator({ config: configOf(root), root })
+    await generator.run()
+    const digest = contentDigest(await readFile(real, 'utf8'))
+    expect(
+      generator.sourceDigest(
+        replaceBackslash(path.join(root, 'src/routes/z.tsx')),
+      ),
+    ).toBe(digest)
+    expect(generator.sourceDigest(replaceBackslash(real))).toBe(digest)
+  })
+
   test('a scanned file the route tree does not import, and a file of no route, answer nothing', async () => {
     const { generator, file } = await generated({
       ...app,

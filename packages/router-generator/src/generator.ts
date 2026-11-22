@@ -244,7 +244,7 @@ export class Generator {
   /**
    * Derived from the published model and the files' real paths, once when
    * first asked after they changed (`sourceDigest`): the files the tree
-   * imports, and each linked scanned file by its real path.
+   * imports, and each linked one of them by its real path.
    */
   private lookups:
     | { imported: Set<string>; byRealPath: Map<string, string> }
@@ -401,16 +401,15 @@ export class Generator {
   }
 
   private deriveLookups() {
+    const imported = this.model ? importedFiles(this.model) : new Set<string>()
     const byRealPath = new Map<string, string>()
-    for (const [file, state] of this.files) {
-      if (state.realPath !== undefined && !byRealPath.has(state.realPath)) {
-        byRealPath.set(state.realPath, file)
+    for (const file of imported) {
+      const realPath = this.files.get(file)?.realPath
+      if (realPath !== undefined && !byRealPath.has(realPath)) {
+        byRealPath.set(realPath, file)
       }
     }
-    return {
-      imported: this.model ? importedFiles(this.model) : new Set<string>(),
-      byRealPath,
-    }
+    return { imported, byRealPath }
   }
 
   /** Whether a run has generated the route tree (and its registry) yet. */
