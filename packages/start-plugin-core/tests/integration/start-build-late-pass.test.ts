@@ -270,50 +270,86 @@ export const fn = createServerFn().handler(async (): Promise<string> => label)
     timeout,
   )
 
-  // A namespace's exported statement declaring several names or a pattern
-  // loses the members only erased code reads (the dead-code elimination's
-  // namespace gap, as in an app's `.ts` module): until that is fixed, a
-  // late TypeScript module holding one fails the client build when the
-  // compile erased code, instead of shipping `Config.b` undefined.
+  // A namespace's exported members keep their values though only erased
+  // code reads them (several names in one statement, a pattern), whatever
+  // the declaration's spelling.
   test.each([
     { name: 'Config', declaration: 'namespace Config' },
     { name: 'Config', declaration: 'namespace /* units */ Config' },
     { name: 'Δ', declaration: 'namespace Δ' },
   ])(
-    'fails the client build when it declares $declaration with exported declarators that erased code reads',
+    'keeps the exported members of $declaration that only erased code reads',
     async ({ name, declaration }) => {
-      const source = `import { createServerOnlyFn } from '@tanstack/react-start'
+      const build = await buildStart({
+        bundler: 'vite',
+        files: {
+          'src/math.foo': `import { createServerOnlyFn } from '@tanstack/react-start'
 export ${declaration} {
   export const a = 1, b = Number('2')
   export const { c, d } = { c: 3, d: 4 }
   export const sum = createServerOnlyFn(() => b + d)
 }
-`
-      const error: unknown = await buildStart({
-        bundler: 'vite',
-        files: {
-          'src/math.foo': source,
+`,
           'src/entry.ts': `import { ${name} as C } from './math.foo'
 export const result = [C.a, C.b, C.c, C.d]
 `,
         },
         entry: 'src/entry.ts',
         ...asTypeScript,
-      }).then(
-        async (build) =>
-          expect.fail(
-            `the build succeeded; the client reads ${JSON.stringify((await build.client.run('return entry.result')).result)}`,
-          ),
-        (e: unknown) => e,
-      )
-      if (!(error instanceof StartBuildError)) {
-        throw error
-      }
-      expectDiagnostic(error.diagnostics, {
-        severity: 'error',
-        file: 'src/math.foo',
-        root: error.root,
       })
+      expect((await build.client.run('return entry.result')).result).toEqual([
+        1, 2, 3, 4,
+      ])
+    },
+    timeout,
+  )
+
+  // (a namespace, or a module augmentation declaring no value, beside a
+  // client-only fn the compile rewrites)
+  test.each([
+    {
+      name: 'a namespace',
+      declaration: `export namespace /* prices */ Prices {
+  export const low = 1, high = 2
+}
+`,
+      values: 'Prices.low, Prices.high',
+    },
+    {
+      name: 'a module augmentation',
+      declaration: `declare module 'x' {
+  export const low: number, high: number
+}
+`,
+      values: '1, 2',
+    },
+  ])(
+    'builds $name beside a client-only fn',
+    async ({ declaration, values }) => {
+      const build = await buildStart({
+        bundler: 'vite',
+        files: {
+          'src/prices.foo': `import { createClientOnlyFn } from '@tanstack/react-start'
+${declaration}const getLimit = createClientOnlyFn(() => 10)
+export function read() {
+  return [${values}, getLimit()]
+}
+`,
+          'src/entry.ts': `export { read } from './prices.foo'\n`,
+          'node_modules/x/package.json': JSON.stringify({
+            name: 'x',
+            main: 'index.js',
+            types: 'index.d.ts',
+          }),
+          'node_modules/x/index.js': 'exports.unit = 1\n',
+          'node_modules/x/index.d.ts': 'export const unit: number\n',
+        },
+        entry: 'src/entry.ts',
+        ...asTypeScript,
+      })
+      expect((await build.client.run('return entry.read()')).result).toEqual([
+        1, 2, 10,
+      ])
     },
     timeout,
   )

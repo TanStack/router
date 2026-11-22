@@ -659,6 +659,33 @@ export const secretKeyName = 'apiKey'
   )
 })
 
+describe('namespace members only erased code reads', () => {
+  // A namespace's exported members are its public values: one that only
+  // erased code reads keeps its value on the client, whatever its statement
+  // declares (several names, a pattern; in a nested namespace too).
+  test('keep their exported values on the client', async () => {
+    const served = await serveCase(await host(), {
+      'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
+export namespace Config {
+  export const a = 1, b = Number('2')
+  export const { c, d } = { c: 3, d: 4 }
+  export const [e] = [Number('5')]
+  export namespace Inner {
+    export const f = 6, g = Number('7')
+  }
+  export const sum = createServerOnlyFn(() => b + d + e + Inner.g)
+}
+`,
+    })
+    expect(
+      await inPage(
+        served,
+        'const C = module.Config; return [C.a, C.b, C.c, C.d, C.e, C.Inner.f, C.Inner.g]',
+      ),
+    ).toEqual([1, 2, 3, 4, 5, 6, 7])
+  })
+})
+
 describe('declarations only the handler needs', () => {
   // On main, the client loads the server-only module.
   // Source: React Compiler fixture context-variable-as-jsx-element-tag.js;

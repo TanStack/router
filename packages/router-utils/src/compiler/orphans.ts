@@ -164,6 +164,12 @@ export function cleanOrphanedDeclarations(
       if (!parent) {
         continue
       }
+      if (namespaceMember(ctx, decl)) {
+        // a namespace's exported member is public: it stays (as one alone in
+        // its statement does, `removeDeclaration`)
+        handled.add(b.id)
+        continue
+      }
       if (live.isErased(rangeOf(decl))) {
         handled.add(b.id)
         continue
@@ -358,6 +364,37 @@ function removeDeclarator(
   }
   prune(prunedDecls, statement, declarator, refs)
   return true
+}
+
+/** The nodes between a declared name and its variable declaration. */
+const declaratorParts: ReadonlySet<string> = new Set([
+  'VariableDeclarator',
+  'ObjectPattern',
+  'ArrayPattern',
+  'Property',
+  'AssignmentPattern',
+  'RestElement',
+])
+
+/**
+ * Whether `decl` is declared by an exported variable statement of a
+ * namespace body (`export const a = 1, b = 2`, `export const { c } = …`):
+ * a member of the namespace object, which any importer may read.
+ */
+function namespaceMember(ctx: CoreContext, decl: Node): boolean {
+  const file = ctx.analysis.file
+  let node = file.parentOf(decl)
+  while (node && declaratorParts.has(node.type)) {
+    node = file.parentOf(node)
+  }
+  if (node?.type !== 'VariableDeclaration') {
+    return false
+  }
+  const exported = file.parentOf(node)
+  return (
+    exported?.type === 'ExportNamedDeclaration' &&
+    file.parentOf(exported)?.type === 'TSModuleBlock'
+  )
 }
 
 /**
