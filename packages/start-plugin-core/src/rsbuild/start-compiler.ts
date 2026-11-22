@@ -128,7 +128,9 @@ export function registerStartCompiler(
       for (const file of tree.dependencies) {
         addDependency(file)
       }
-      generator.evidence.clientServed(tree.code)
+      if (dev) {
+        generator.evidence.clientServed(tree.code)
+      }
       // Dev: the tree module accepts its own hot update, which changes
       // nothing in the page (its router keeps the tree it hydrated with):
       // Rsbuild's client does not reload for an update nothing accepted,
@@ -336,6 +338,7 @@ function reloadOnRouteSetChange(
     send = undefined
     sent = undefined
     other = false
+    evidence.reset()
   })
   api.onAfterEnvironmentCompile(({ stats, environment }) => {
     if (environment.name !== client || !stats || stats.hasErrors()) {

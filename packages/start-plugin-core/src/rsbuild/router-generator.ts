@@ -57,6 +57,8 @@ export interface RouteSetEvidence {
   failed: (compiler: string, client: boolean) => void
   /** `compiler` finished a compilation, with errors or not. */
   done: (compiler: string, hasErrors: boolean) => void
+  /** The dev server closed: what its compilers built is forgotten. */
+  reset: () => void
   /** The digest of the client's tree for the current publication (awaited before anything is compared). */
   current: () => Promise<string>
   /** Whether the last finished compilation of `compiler` had no errors (none finished: false). */
@@ -276,6 +278,13 @@ function createRouteSetEvidence(opts: {
     },
     done(compiler, hasErrors) {
       errored.set(compiler, hasErrors)
+    },
+    reset() {
+      pending.clear()
+      committed.clear()
+      errored.clear()
+      clientPending = undefined
+      clientCommitted = undefined
     },
     current() {
       const state = publication()
