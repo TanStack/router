@@ -132,10 +132,12 @@ export const getRouter = () => createRouter({ routeTree })
       'src/routes/__root.lazy.tsx': rootLazy('ROOT_LAZY_2'),
     })
     await reload.server.settle()
+    await tab.settled()
+    const loads = tab.loads()
     await reload.server.edit({
       'src/routes/new.tsx': pageRoute('/new', 'MARK_NEW'),
     })
-    await tab.loaded(tab.loads() + 1)
+    await tab.loaded(loads + 1)
     await tab.visit('to-new', 'MARK_NEW')
   },
   timeout,
@@ -155,9 +157,9 @@ test(
       'src/routes/index.tsx': pageRoute('/', 'MARK_INDEX_FIXED'),
     })
     await tab.loaded(2, { app: false })
-    expect(await documentAfter(tab, tab.documents.length - 1)).toBe(
-      'HANDLER_NEW',
-    )
+    expect(await documentAfter(tab, 1)).toBe('HANDLER_NEW')
+    await reload.server.settle()
+    expect(tab.documents).toHaveLength(2)
   },
   timeout,
 )
