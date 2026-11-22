@@ -198,8 +198,8 @@ catalogs:
       specifier: ^5.0.4
       version: 5.0.4
     chokidar:
-      specifier: ^5.0.0
-      version: 5.0.0
+      specifier: ^6.0.0
+      version: 6.0.0
     combinate:
       specifier: ^1.1.11
       version: 1.1.11
@@ -14820,7 +14820,7 @@ importers:
         version: 7.1.0
       chokidar:
         specifier: 'catalog:'
-        version: 5.0.0
+        version: 6.0.0
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -14998,7 +14998,7 @@ importers:
         version: link:../virtual-file-routes
       chokidar:
         specifier: 'catalog:'
-        version: 5.0.0
+        version: 6.0.0
       jiti:
         specifier: ^2.7.0
         version: 2.7.0
@@ -24395,6 +24395,10 @@ packages:
     resolution: {integrity: sha512-TQMmc3w+5AxjpL8iIiwebF73dRDF4fBIieAqGn9RGCWaEVwQ6Fb2cGe31Yns0RRIzii5goJ1Y7xbMwo1TxMplw==}
     engines: {node: '>= 20.19.0'}
 
+  chokidar@6.0.0:
+    resolution: {integrity: sha512-Ec2Z7wpcKBiMpR7DxteoqS/sq5G5d2A4fpxzPv6+fD7xNNdrTghn7L11YwV5EN1B3i72Erc3XVT5FkWIDx90+A==}
+    engines: {node: '>= 22.22'}
+
   chownr@3.0.0:
     resolution: {integrity: sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==}
     engines: {node: '>=18'}
@@ -28474,6 +28478,10 @@ packages:
 
   readdirp@5.0.0:
     resolution: {integrity: sha512-9u/XQ1pvrQtYyMpZe7DXKv2p5CNvyVwzUB6uhLAnQwHMSgKMBR62lc7AHljaeteeHXn11XTAaLLUVZYVZyuRBQ==}
+    engines: {node: '>= 20.19.0'}
+
+  readdirp@5.1.1:
+    resolution: {integrity: sha512-Kko+Y5XQ6fM+Ce3dq3m9YGxnacYZYl9cA1wZjaF3Vbry2L3i1qVg8+CAgNPsXRArPMUMCaOR7oa9Nqntc43JKA==}
     engines: {node: '>= 20.19.0'}
 
   real-require@0.2.0:
@@ -39488,6 +39496,10 @@ snapshots:
     dependencies:
       readdirp: 5.0.0
 
+  chokidar@6.0.0:
+    dependencies:
+      readdirp: 5.1.1
+
   chownr@3.0.0: {}
 
   chrome-trace-event@1.0.4: {}
@@ -44381,6 +44393,8 @@ snapshots:
   readdirp@4.1.1: {}
 
   readdirp@5.0.0: {}
+
+  readdirp@5.1.1: {}
 
   real-require@0.2.0: {}
 
