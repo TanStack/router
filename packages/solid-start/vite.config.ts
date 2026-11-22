@@ -1,13 +1,25 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
 import { copyFilesPlugin } from '@tanstack/router-utils'
+import { fileURLToPath } from 'node:url'
 import packageJson from './package.json'
+
+const testVirtualModules = Object.fromEntries(
+  Object.entries({
+    '#tanstack-router-entry': '../start-client-core/src/fake-entries/router.ts',
+    '#tanstack-start-entry': './src/empty-start-entry.ts',
+    '#tanstack-start-plugin-adapters': './src/empty-plugin-adapters.ts',
+    '#tanstack-start-server-fn-resolver':
+      '../start-server-core/src/fake-start-server-fn-resolver.ts',
+  }).map(([id, path]) => [id, fileURLToPath(new URL(path, import.meta.url))]),
+)
 
 const config = defineConfig({
   test: {
     name: packageJson.name,
     watch: false,
     environment: 'jsdom',
+    alias: testVirtualModules,
   },
   plugins: [
     copyFilesPlugin({

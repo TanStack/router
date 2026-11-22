@@ -7,9 +7,9 @@ import {
 import { createStartHandler } from '@tanstack/solid-start-server'
 import { createMemoryHistory } from '@tanstack/solid-router'
 import {
-  finalizeResponse,
-  withStartRequest,
-} from '@tanstack/start-server-core/request-scope'
+  createServerEntry,
+  handleStartError,
+} from '@tanstack/start-server-core/request-response'
 import { handleSolidServerFunctionRequest } from './server-functions-handler'
 import type { RequestHandler } from '@tanstack/solid-start-server'
 import type { AnyRouter, Register } from '@tanstack/solid-router'
@@ -29,32 +29,56 @@ export function createSolidStartHandler<TRegister = Register>(
   cbOrOptions: Parameters<typeof createStartHandler>[0],
 ): RequestHandler<TRegister> {
   const startHandler = createStartHandler<TRegister>(cbOrOptions)
-  const solidServerFnHandler = withStartRequest(
-    async (request, requestOptions, event) => {
-      const getRouter = createRequestRouterGetter(request)
-      const startOptions = await getRequestStartOptions(getRouter)
-      const requestMiddlewares = flattenMiddlewares(
-        (startOptions.requestMiddleware ?? []) as Array<AnyRequestMiddleware>,
-      )
-      const response = await executeRequestMiddleware(
-        request,
-        requestMiddlewares,
-        requestOptions?.context,
-        async (context) => {
-          return await handleSolidServerFunctionRequest(request, {
-            startContext: {
-              contextAfterGlobalMiddlewares: context,
-              executedRequestMiddlewares: new Set(requestMiddlewares),
-              getRouter,
-              request,
-              startOptions,
-            },
-          })
-        },
-      )
-      return finalizeResponse(response, event)
-    },
-  )
+  const handleServerFn = async (
+    request: Request,
+    requestOptions?: { context?: object },
+  ) => {
+    const getRouter = createRequestRouterGetter(request)
+    const startOptions = await getRequestStartOptions(getRouter)
+    const requestMiddlewares = flattenMiddlewares(
+      (startOptions.requestMiddleware ?? []) as Array<AnyRequestMiddleware>,
+    )
+    const response = await executeRequestMiddleware(
+      request,
+      requestMiddlewares,
+      requestOptions?.context,
+      async (context) => {
+        return await handleSolidServerFunctionRequest(request, {
+          startContext: {
+            contextAfterGlobalMiddlewares: context,
+            executedRequestMiddlewares: new Set(requestMiddlewares),
+            getRouter,
+            request,
+            startOptions,
+          },
+        })
+      },
+    )
+    // The only published API that applies response helper writes to a Response.
+    return handleStartError(response)
+  }
+
+  const solidServerFnHandler = async (
+    request: Request,
+    requestOptions?: { context?: object },
+  ) => {
+    let failure: { error: unknown } | undefined
+    const response = await createServerEntry<TRegister>({
+      fetch: (async (scopedRequest: Request) => {
+        try {
+          return await handleServerFn(scopedRequest, requestOptions)
+        } catch (error) {
+          // createServerEntry would answer here; the caller's entry handles it.
+          failure = { error }
+          return new Response(null)
+        }
+      }) as RequestHandler<TRegister>,
+    }).fetch(request, requestOptions as never)
+    if (failure) {
+      throw failure.error
+    }
+    return response
+  }
 
   return (async (request: Request, requestOptions?: unknown) => {
     return await provideRequestEvent({ request, locals: {} }, async () => {

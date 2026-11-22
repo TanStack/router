@@ -42,7 +42,6 @@ export default mergeConfig(
         './src/createServerRpc.ts',
         './src/createSsrRpc.ts',
         './src/request-response.ts',
-        './src/request-scope.ts',
         './src/constants.ts',
         './src/virtual-modules.ts',
         './src/fake-start-server-fn-resolver.ts',
