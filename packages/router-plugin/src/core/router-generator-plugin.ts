@@ -1,4 +1,4 @@
-import { realpath } from 'node:fs'
+import { realpath, realpathSync } from 'node:fs'
 import { isAbsolute, normalize, relative } from 'node:path'
 import { promisify } from 'node:util'
 import {
@@ -20,6 +20,7 @@ import {
 } from './router-plugin-context'
 
 import type { UnpluginFactory } from 'unplugin'
+import type { ViteDevServer } from 'vite'
 import type { Config } from './config'
 import type { RouterPluginContext } from './router-plugin-context'
 
@@ -59,6 +60,38 @@ async function existingFiles(written: Iterable<string>) {
   return files
 }
 
+/**
+ * Vite dev: the modules of the files a generator run replaced, in every
+ * environment, under the path as named and under its real path, are
+ * invalidated when the run is published: the next request transforms them
+ * from the disk, whether or not Vite's watcher reports the write (it drops a
+ * second change of a file within 50 ms, a plugin may hold or filter the
+ * event, the module may be keyed by the real path). Nothing is sent and
+ * nothing waits.
+ */
+function invalidateReplacedFiles(
+  server: ViteDevServer,
+  replaced: Iterable<string>,
+) {
+  const paths = new Set<string>()
+  for (const file of replaced) {
+    paths.add(normalizePath(file))
+    try {
+      paths.add(normalizePath(realpathSync(file)))
+    } catch {
+      // (gone: its modules are under the path as named)
+    }
+  }
+  for (const environment of Object.values(server.environments)) {
+    const { moduleGraph } = environment
+    for (const file of paths) {
+      for (const mod of moduleGraph.getModulesByFile(file) ?? []) {
+        moduleGraph.invalidateModule(mod)
+      }
+    }
+  }
+}
+
 export function createRouterGeneratorPlugin(
   options: Partial<Config | (() => Config)> | undefined = {},
   routerPluginContext: RouterPluginContext,
@@ -89,12 +122,25 @@ export function createRouterGeneratorPlugin(
    * takes it).
    */
   let unbuilt = new Set<string>()
+  /** Vite dev: the dev server, and the files the generator replaced since the last publication. */
+  let devServer: ViteDevServer | undefined
+  let replaced = new Set<string>()
   const session = createGeneratorSession({
     generator: () => generator,
     publish: (routesByFile, failure) => {
       publishRoutes(routerPluginContext, routesByFile, failure)
+      if (devServer && replaced.size > 0) {
+        const files = replaced
+        replaced = new Set()
+        invalidateReplacedFiles(devServer, files)
+      }
     },
   })
+  /** A new config resolution, or the end of the dev server's environments: no dev server (yet). */
+  const forgetDevServer = () => {
+    devServer = undefined
+    replaced = new Set()
+  }
 
   const initConfigAndGenerator = (opts?: { root?: string }) => {
     if (opts?.root) {
@@ -113,6 +159,10 @@ export function createRouterGeneratorPlugin(
         if (watching) {
           unbuilt.add(destination)
           unbuilt.add(file)
+        }
+        if (devServer) {
+          replaced.add(destination)
+          replaced.add(file)
         }
       },
       logger: {
@@ -197,6 +247,7 @@ export function createRouterGeneratorPlugin(
           return
         }
         submitted = false
+        forgetDevServer()
         if (config.command === 'build') {
           printed ??= new Set()
         }
@@ -226,7 +277,12 @@ export function createRouterGeneratorPlugin(
       closeWatcher() {
         void session.close()
       },
+      // (Vite dev calls it when the dev server's environments close)
+      closeBundle() {
+        forgetDevServer()
+      },
       configureServer(server) {
+        devServer = server
         // Vite's watcher reports the files under its root (watchChange);
         // the routes may also come from outside it (`physical()` mounts,
         // the virtual route config): those are watched too (SPEC J1.10).
