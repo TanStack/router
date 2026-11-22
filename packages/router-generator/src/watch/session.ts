@@ -17,7 +17,8 @@ export interface GeneratorSession {
    * Watches the route files with the generator's own watcher (every route
    * file event, the bundle's or not: created files, `physical()` mounts,
    * the virtual route config), then, once it is ready, runs: an event of
-   * the meantime is not lost. Concurrent calls share the first.
+   * the meantime is not lost. Concurrent calls share the first; one that
+   * `close` ends before the watcher is ready ends without a run.
    */
   watch: () => Promise<void>
   /**
@@ -95,14 +96,15 @@ export function createGeneratorSession(opts: {
     },
     watch() {
       watching ??= (async () => {
-        watcher = watchRouteFiles(
+        const started = watchRouteFiles(
           opts.generator(),
           (run) => void settle(run),
           report,
         )
-        await (
-          await watcher
-        ).ready
+        watcher = started
+        if (!(await (await started).ready)) {
+          return
+        }
         await session.run()
       })()
       return watching

@@ -1,8 +1,11 @@
 import type { FileEventType, Generator } from '../generator'
 
 export interface RouteFileWatcher {
-  /** Resolves once the watcher has scanned its targets. */
-  ready: Promise<void>
+  /**
+   * Resolves `true` once the watcher has scanned its targets, or `false`
+   * when it was closed first (a closed watcher never scans).
+   */
+  ready: Promise<boolean>
   /**
    * Watches the targets the generator's last run added (the `physical()`
    * mounts of the scan and the config it read): after every run, the first
@@ -44,7 +47,11 @@ export async function watchRouteFiles(
   initial.forEach((target) => watched.add(target))
   const watcher = chokidar.watch(initial, { ignoreInitial: true })
   watcher.on('error', onError)
-  const ready = new Promise<void>((resolve) => watcher.once('ready', resolve))
+  let closedFirst = () => {}
+  const ready = new Promise<boolean>((resolve) => {
+    watcher.once('ready', () => resolve(true))
+    closedFirst = () => resolve(false)
+  })
 
   watcher.on('all', (event, file) => {
     const type = eventTypes[event]
@@ -63,6 +70,9 @@ export async function watchRouteFiles(
         watcher.add(added)
       }
     },
-    close: () => watcher.close(),
+    close: () => {
+      closedFirst()
+      return watcher.close()
+    },
   }
 }

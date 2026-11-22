@@ -427,3 +427,46 @@ test.runIf(process.platform === 'linux' && process.getuid?.() !== 0)(
     })
   },
 )
+
+// Bug: a session closed before its watcher finished its initial scan left
+// `watch()` pending for ever: it waited for the watcher's `ready` event,
+// which a closed watcher never emits.
+// Impact: a host that closes the session early (a dev server stopped while
+// it starts, a config change) never sees its `watch()` end.
+// Source: external review of #8817 (design-routeset-v5.md §2.4).
+test('a session closed before its watcher is ready ends its watch() without a run, and watches again on the next', async () => {
+  const root = await createApp(app)
+  const config = configOf(root)
+  const generator = new Generator({ config, root })
+  let published = 0
+  const session = createGeneratorSession({
+    generator: () => generator,
+    publish: () => {
+      published++
+    },
+  })
+  onTestFinished(() => session.close())
+  const watching = session.watch()
+  await session.close()
+  const ended = await Promise.race([
+    watching.then(() => 'ended'),
+    new Promise((resolve) => setTimeout(() => resolve('pending'), 5_000)),
+  ])
+  expect(ended).toBe('ended')
+  expect(published).toBe(0)
+
+  await session.watch()
+  expect(published).toBe(1)
+  expect(await routesOf(config.generatedRouteTree)).toEqual(appRoutes)
+  await save(root, 'src/routes/b.tsx', fileRoute('/b'))
+  await waitForOutcome({
+    applied: () => published > 1,
+    timeout: 10_000,
+    describe: () => 'the session did not follow the route created',
+  })
+  expect(await routesOf(config.generatedRouteTree)).toEqual({
+    ...appRoutes,
+    '/b': 'routes/b.tsx',
+  })
+  await session.close()
+})
