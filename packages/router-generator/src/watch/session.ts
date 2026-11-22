@@ -39,12 +39,13 @@ export interface GeneratorSession {
 
 /**
  * One generator session of a bundler plugin or the CLI: when the generator
- * runs and what it hands over. A run's failure is reported (`report`,
- * default `console.error`); `publish` gets the registry after every run (its
- * routes change only when a batch published its route tree: a failed one
- * leaves the previous routes, with the constructor facts it read), and,
- * while no run has generated the routes, the last run's error: the empty
- * registry then lists no route because none is known yet.
+ * runs and what it hands over. A run's failure and an error of the watcher
+ * are reported (`report`, default `console.error`); `publish` gets the
+ * registry after every run (its routes change only when a batch published
+ * its route tree: a failed one leaves the previous routes, with the
+ * constructor facts it read), and, while no run has generated the routes,
+ * the last run's error: the empty registry then lists no route because none
+ * is known yet.
  */
 export function createGeneratorSession(opts: {
   /** The current generator (a host replaces it when its config file changes). */
@@ -94,7 +95,11 @@ export function createGeneratorSession(opts: {
     },
     watch() {
       watching ??= (async () => {
-        watcher = watchRouteFiles(opts.generator(), (run) => void settle(run))
+        watcher = watchRouteFiles(
+          opts.generator(),
+          (run) => void settle(run),
+          report,
+        )
         await (
           await watcher
         ).ready

@@ -25,11 +25,14 @@ const eventTypes: Record<string, FileEventType | undefined> = {
  * the route tree and the virtual route config file for created, changed and
  * deleted files, and follows the mounts as the config changes (SPEC J1.10):
  * the owner of the runs calls `refresh` after each one. `onRun` gets the run
- * of each event.
+ * of each event; `onError` each error of the watcher (a path it cannot watch:
+ * the watcher keeps the others, and watches again what it can), which would
+ * otherwise end the process.
  */
 export async function watchRouteFiles(
   generator: Generator,
   onRun: (run: Promise<void>) => void,
+  onError: (error: unknown) => void,
 ): Promise<RouteFileWatcher> {
   const chokidar = await import('chokidar')
   const watched = new Set<string>()
@@ -40,6 +43,7 @@ export async function watchRouteFiles(
   const initial = targets()
   initial.forEach((target) => watched.add(target))
   const watcher = chokidar.watch(initial, { ignoreInitial: true })
+  watcher.on('error', onError)
   const ready = new Promise<void>((resolve) => watcher.once('ready', resolve))
 
   watcher.on('all', (event, file) => {

@@ -6,7 +6,7 @@
  * real router, and the routes the session hands over.
  */
 import { readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { readFile, rm, writeFile } from 'node:fs/promises'
+import { chmod, open, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { expect, onTestFinished, test, vi } from 'vitest'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
@@ -187,43 +187,71 @@ test('an edit of a route file the virtual route config names outside the routes 
   })
 })
 
+/**
+ * Saves an app file in place, as an editor that writes the file itself does:
+ * its content never empty in between (an empty route file is one the
+ * generator scaffolds).
+ */
+async function saveInPlace(file: string, content: string) {
+  const handle = await open(file, 'r+')
+  try {
+    await handle.write(content, 0)
+    await handle.truncate(Buffer.byteLength(content))
+  } finally {
+    await handle.close()
+  }
+}
+
 // Bug: a save of a route file right after the generator handled the
 // previous one, within 50 ms of it (a tool or a script writing the file
-// twice, a format-on-save after the save), never reached the generator: it
-// kept the content of the first save.
+// twice, a format-on-save after the save), could never reach the generator:
+// it kept the content of the first save.
 // Source: chokidar 5 dropped a change within 50 ms of the previous one of
-// the file (fixed in chokidar 6, which reports it at the end of the window).
+// the file (fixed in chokidar 6, which reports it at the end of the window,
+// or as a change of its own after it).
 // Impact: under `tsr watch`, Rspack and webpack watch mode, Rsbuild dev and
 // `vite build --watch`, the route stays as the first save left it until the
 // file is saved again or the session restarts.
+// (With chokidar 5 the second save lands in the window only when the run of
+// the first one and the event loop take less than 50 ms: the test fails on
+// it on a quick machine, not on every one.)
 test('a save of a route file right after the generator handled the previous one is handled', async () => {
   const root = await createApp({ ...app, 'src/routes/b.tsx': 'export {}\n' })
   const config = configOf(root)
   const generator = new Generator({ config, root })
   const b = path.join(root, 'src/routes/b.tsx')
-  // The second save, as soon as the run of the first one's event ended
-  // (the generator read the first save)
+  // The second save, as soon as the run of the first one's event ended (the
+  // generator read the first save)
   const run = generator.run.bind(generator)
-  let saves = 0
+  const saveFailures: Array<string> = []
+  let secondSave: Promise<void> | undefined
   vi.spyOn(generator, 'run').mockImplementation((event) => {
     const started = run(event)
-    if (event && 'path' in event && path.basename(event.path) === 'b.tsx') {
-      if (saves++ === 0) {
-        void started.then(() => writeFile(b, fileRoute('/b')))
-      }
+    if (
+      !secondSave &&
+      event &&
+      'path' in event &&
+      path.basename(event.path) === 'b.tsx'
+    ) {
+      secondSave = started
+        .then(() => saveInPlace(b, fileRoute('/b')))
+        .catch((error: unknown) => {
+          saveFailures.push(String(error))
+        })
     }
     return started
   })
   const session = await watchApp(root, config, generator)
 
-  await writeFile(b, 'export const draft = true\n')
+  await saveInPlace(b, 'export const draft = true\n')
 
   await waitForOutcome({
     applied: () => session.routeFiles().includes('src/routes/b.tsx'),
-    problems: () => session.reported,
+    problems: () => [...session.reported, ...saveFailures],
     timeout: 10_000,
     describe: () => `routes handed over: ${session.routeFiles().join(', ')}`,
   })
+  await secondSave
   expect(await routesOf(config.generatedRouteTree)).toEqual({
     ...appRoutes,
     '/b': 'routes/b.tsx',
@@ -250,24 +278,25 @@ test('after the routes directory is deleted and created again, its routes reach 
     force: true,
     maxRetries: 5,
   })
-  // The generator's next run fails: it cannot scan the routes directory
+  // The generator notices the lost route files: its run fails (no root
+  // route, no routes directory)
   await waitForOutcome({
-    applied: () => session.reported.some((error) => error.includes('ENOENT')),
+    applied: () => session.reported.length > 0,
     timeout: 10_000,
-    describe: () => `reported: ${session.reported.join(', ')}`,
+    describe: () => `routes handed over: ${session.routeFiles().join(', ')}`,
   })
 
-  session.reported.length = 0
   for (const [file, content] of Object.entries(app)) {
     await save(root, file, content)
   }
   await save(root, 'src/routes/b.tsx', fileRoute('/b'))
 
+  // (runs of the deletion's events may still fail meanwhile)
   await waitForOutcome({
     applied: () => session.routeFiles().includes('src/routes/b.tsx'),
-    problems: () => session.reported,
     timeout: 10_000,
-    describe: () => `routes handed over: ${session.routeFiles().join(', ')}`,
+    describe: () =>
+      `routes handed over: ${session.routeFiles().join(', ')}\nreported: ${session.reported.join('\n')}`,
   })
   expect(await routesOf(config.generatedRouteTree)).toEqual({
     ...appRoutes,
@@ -308,18 +337,34 @@ export const routes = rootRoute('__root.tsx', [route('/a', 'a.tsx')${mounts}])
       path.relative(root, file).split(path.sep).join('/'),
     )
 
-  // The run of the config edit's event, once the watcher reports it
+  // The runs from the config edit's event on, as the session gets them: they
+  // end once the session is closed (`release`), so none refreshes the
+  // watcher before
   const run = generator.run.bind(generator)
-  let configRunStarted = (_started: { run: Promise<void> }) => {}
-  const configRun = new Promise<{ run: Promise<void> }>((resolve) => {
-    configRunStarted = resolve
+  let release = () => {}
+  const closed = new Promise<void>((resolve) => {
+    release = resolve
   })
+  let observed = (_run: { run: Promise<void> }) => {}
+  const configRun = new Promise<{ run: Promise<void> }>((resolve) => {
+    observed = resolve
+  })
+  let holding = false
   vi.spyOn(generator, 'run').mockImplementation((event) => {
     const started = run(event)
-    if (event && 'path' in event && path.basename(event.path) === 'routes.ts') {
-      configRunStarted({ run: started })
+    const configEvent =
+      event !== undefined &&
+      'path' in event &&
+      path.basename(event.path) === 'routes.ts'
+    if (!holding && !configEvent) {
+      return started
     }
-    return started
+    const held = Promise.all([started, closed]).then(() => undefined)
+    if (!holding) {
+      holding = true
+      observed({ run: held })
+    }
+    return held
   })
   await save(
     root,
@@ -328,6 +373,7 @@ export const routes = rootRoute('__root.tsx', [route('/a', 'a.tsx')${mounts}])
   )
   const inFlight = (await configRun).run
   await session.close()
+  release()
 
   await inFlight
   // The session hands over the routes of the run (after it refreshed the
@@ -343,3 +389,41 @@ export const routes = rootRoute('__root.tsx', [route('/a', 'a.tsx')${mounts}])
     '/legacy/b': 'legacy/b.tsx',
   })
 })
+
+// Bug: an error of the watcher (a path it cannot watch) ended the process
+// of `tsr watch`, Rspack and webpack watch mode, Rsbuild dev and
+// `vite build --watch`.
+// Source: src/watch/chokidar.ts had no `error` listener.
+// Case: a route file linked to a file in a directory that can be searched
+// but not read, which chokidar 6 cannot watch (Linux, not as root: root
+// reads every directory).
+// Impact: the dev server or `tsr watch` exits at start.
+test.runIf(process.platform === 'linux' && process.getuid?.() !== 0)(
+  'a path the watcher cannot watch is reported, and the session keeps watching the others',
+  async () => {
+    const root = await createApp({ ...app, 'outside/b.tsx': fileRoute('/b') })
+    const config = configOf(root)
+    const outside = path.join(root, 'outside')
+    await symlink(
+      path.join(outside, 'b.tsx'),
+      path.join(root, 'src/routes/b.tsx'),
+    )
+    await chmod(outside, 0o111)
+    onTestFinished(() => chmod(outside, 0o755))
+    const session = await watchApp(root, config)
+    expect(session.reported).not.toEqual([])
+
+    await save(root, 'src/routes/c.tsx', fileRoute('/c'))
+    await waitForOutcome({
+      applied: () => session.routeFiles().includes('src/routes/c.tsx'),
+      timeout: 10_000,
+      describe: () => `routes handed over: ${session.routeFiles().join(', ')}`,
+    })
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
+      ...appRoutes,
+      // (the module loaded from the link's target)
+      '/b': '../outside/b.tsx',
+      '/c': 'routes/c.tsx',
+    })
+  },
+)
