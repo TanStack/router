@@ -103,6 +103,8 @@ export async function startRsbuildRscApp(
     tools?: Record<string, unknown>
     /** The app's Rsbuild `dev` options. */
     dev?: RsbuildConfig['dev']
+    /** The app's Rsbuild `environments` options. */
+    environments?: RsbuildConfig['environments']
     /** More Rsbuild plugins of the app, after Start's. */
     plugins?: Array<RsbuildPlugin>
     /** The app's React plugin (default `pluginReact()`). */
@@ -128,6 +130,7 @@ export async function startRsbuildRscApp(
           ...options.tools,
         },
         ...(options.dev && { dev: options.dev }),
+        ...(options.environments && { environments: options.environments }),
       },
       plugins: [
         options.react ?? pluginReact(),

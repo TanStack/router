@@ -27,7 +27,7 @@ import type { StartCompilerEnvironment } from '../compiler/session'
 import type { TanStackStartRsbuildInputConfig } from './schema'
 import type { TanStackStartRsbuildPluginCoreOptions } from './types'
 import type { GetConfigFn } from '../types'
-import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
+import type { RsbuildConfig, RsbuildPluginAPI, Rspack } from '@rsbuild/core'
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const loaderPath = path.resolve(currentDir, 'compiler-loader.js')
@@ -273,6 +273,16 @@ function transformImportRules(value: unknown): Array<TransformImportRule> {
   )
 }
 
+/** The app's own `dev.liveReload` for the client environment (its own, else the top level's). */
+function clientLiveReload(
+  config: RsbuildConfig,
+): NonNullable<RsbuildConfig['dev']>['liveReload'] {
+  return (
+    config.environments?.[RSBUILD_ENVIRONMENT_NAMES.client]?.dev?.liveReload ??
+    config.dev?.liveReload
+  )
+}
+
 /**
  * Development: reloads the open tabs once the client's route tree changed
  * (a route added, deleted or renamed, a page turned into a server handler
@@ -312,10 +322,11 @@ function reloadOnRouteSetChange(
       send = hot
         ? () => hot.send('full-reload')
         : () => devServer.sockWrite('full-reload')
-    } else if (api.getRsbuildConfig('original').dev?.liveReload !== false) {
+    } else if (clientLiveReload(api.getRsbuildConfig('original')) !== false) {
       // With RSC, Start turns Rsbuild's live reload off (its client then
       // drops a reload): the RSC client's own channel, unless the app's own
-      // config turned live reload off
+      // config turned live reload off (for the client environment, or for
+      // all)
       send = () => {
         devServer.sockWrite('custom', { event: 'tanstack-start:routes' })
       }

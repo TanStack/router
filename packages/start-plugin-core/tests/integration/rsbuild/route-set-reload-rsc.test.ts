@@ -21,12 +21,18 @@ import type { RsbuildConfig } from '@rsbuild/core'
 const timeout = 60_000
 
 /** The reload app as an RSC app: its router module is `src/router.tsx`. */
-async function startRscReloadServer(dev?: RsbuildConfig['dev']) {
+async function startRscReloadServer(
+  config: Pick<RsbuildConfig, 'dev' | 'environments'> = {},
+) {
   const { 'src/router.ts': router, ...files } = reloadApp
   const server = await startRsbuildRscApp(
     { ...files, 'src/router.tsx': router! },
     // (React Refresh as in an installed app)
-    { dev: { ...dev, client: { logLevel: 'error' } }, react: installedReact() },
+    {
+      dev: { ...config.dev, client: { logLevel: 'error' } },
+      environments: config.environments,
+      react: installedReact(),
+    },
   )
   return { server, url: server.url!, clientHash: () => undefined, sent: [] }
 }
@@ -49,10 +55,16 @@ test(
   timeout,
 )
 
-test(
-  "RSC with the app's dev.liveReload false: a page turned into a handler keeps the tab's document",
-  async () => {
-    const reload = await startRscReloadServer({ liveReload: false })
+test.each([
+  { where: 'dev.liveReload', config: { dev: { liveReload: false } } },
+  {
+    where: 'client environment dev.liveReload',
+    config: { environments: { client: { dev: { liveReload: false } } } },
+  },
+] as const)(
+  "RSC with the app's $where false: a page turned into a handler keeps the tab's document",
+  async ({ config }) => {
+    const reload = await startRscReloadServer(config)
     const tab = await openTab(reload, '/about')
     await tab.browser.waitForText('MARK_ABOUT', { selector: '#app' })
     await tab.browser.page.evaluate(() => {
