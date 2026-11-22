@@ -155,7 +155,7 @@ export function createRouterGeneratorPlugin(
     const logger = logging({ disabled: userConfig.disableLogging })
     // (a run of the generator this one replaces may still be in flight)
     ;(generator as Generator | undefined)?.retire()
-    generator = new Generator({
+    const created: Generator = new Generator({
       config: userConfig,
       root: ROOT,
       onWrite: ({ destination, file }) => {
@@ -172,7 +172,8 @@ export function createRouterGeneratorPlugin(
         ...logger,
         warn: (...args) => {
           const text = args.join(' ')
-          if (printed?.has(text)) {
+          // (a retired generator's late run warns no one)
+          if (created !== generator || printed?.has(text)) {
             return
           }
           printed?.add(text)
@@ -180,6 +181,7 @@ export function createRouterGeneratorPlugin(
         },
       },
     })
+    generator = created
   }
 
   const isConfigFile = (file: string) =>
