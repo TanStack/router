@@ -439,12 +439,16 @@ test('a session closed before its watcher is ready ends its watch() without a ru
   const config = configOf(root)
   const generator = new Generator({ config, root })
   let published = 0
+  let routes: GetRoutesByFileMapResult = new Map()
   const session = createGeneratorSession({
     generator: () => generator,
-    publish: () => {
+    publish: (routesByFile) => {
       published++
+      routes = routesByFile
     },
   })
+  const handedOver = (file: string) =>
+    routes.has(replaceBackslash(path.join(root, file)))
   onTestFinished(() => session.close())
   const watching = session.watch()
   await session.close()
@@ -455,12 +459,15 @@ test('a session closed before its watcher is ready ends its watch() without a ru
   expect(ended).toBe('ended')
   expect(published).toBe(0)
 
+  // (by what it hands over, not by how often: the platform's watcher may
+  // report the app's earlier writes after it is ready, macOS's FSEvents
+  // backend among them, and every event is a run)
   await session.watch()
-  expect(published).toBe(1)
+  expect(handedOver('src/routes/a.tsx')).toBe(true)
   expect(await routesOf(config.generatedRouteTree)).toEqual(appRoutes)
   await save(root, 'src/routes/b.tsx', fileRoute('/b'))
   await waitForOutcome({
-    applied: () => published > 1,
+    applied: () => handedOver('src/routes/b.tsx'),
     timeout: 10_000,
     describe: () => 'the session did not follow the route created',
   })

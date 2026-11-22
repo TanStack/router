@@ -202,10 +202,14 @@ test('a closed dev server is not kept alive by the plugin object', async () => {
     await server.close()
     return new WeakRef(server)
   })()
+  // (within a time bound, not a count of collections: a closed watcher's
+  // handles are released by callbacks of later event loop turns, and
+  // Windows' file watching handles close asynchronously)
   setFlagsFromString('--expose-gc')
   const gc = runInNewContext('gc') as () => void
-  for (let i = 0; i < 16 && closed.deref(); i++) {
-    await new Promise((resolve) => setTimeout(resolve, 25))
+  const deadline = Date.now() + 10_000
+  while (closed.deref() && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 50))
     gc()
   }
   expect(closed.deref()).toBeUndefined()
