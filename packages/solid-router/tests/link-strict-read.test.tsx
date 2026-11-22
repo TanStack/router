@@ -11,6 +11,7 @@ import {
   createRoute,
   createRouter,
 } from '../src'
+import type { ComponentProps } from '@solidjs/web'
 
 const disposers: Array<() => void> = []
 afterEach(() => {
@@ -80,12 +81,12 @@ test('a Link spreading options from a For item reads no props untracked', async 
 })
 
 test('a createLink component spreading options from a For item reads no props untracked', async () => {
-  const Button = createLink((props: Solid.ComponentProps<'a'>) => (
+  const Button = createLink((props: ComponentProps<'a'>) => (
     <a data-custom {...props} />
   ))
   const strictReads = renderLinks(() => (
     <Solid.For each={items}>
-      {(item) => <Button {...(item.linkOptions as {})}>{item.label}</Button>}
+      {(item) => <Button {...item.linkOptions}>{item.label}</Button>}
     </Solid.For>
   ))
 
