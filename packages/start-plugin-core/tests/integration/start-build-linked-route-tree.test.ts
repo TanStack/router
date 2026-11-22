@@ -14,13 +14,26 @@ const timeout = 60_000
 const RP = '@tanstack/react-router'
 
 describe.each(startBundlers)('a %s build', (bundler) => {
-  test(
-    'with the route tree in a linked directory leaves a server-only route out of the client',
-    async () => {
+  // The tree's directory under the link, created by the generator when it
+  // writes the tree (a clean checkout), or there before. Vite builds from the
+  // app's config file, as `vite build` does (its client environment's config
+  // is resolved before the first generation).
+  // Source: review of the route-set work (Astra, Gemini: the tree's real
+  // path was read from its parent directory only).
+  test.each([
+    { name: 'the linked directory', tree: 'alias' },
+    {
+      name: 'a directory not created yet under the link',
+      tree: 'alias/generated',
+    },
+  ])(
+    'with the route tree in $name leaves a server-only route out of the client',
+    async ({ tree }) => {
       const build = await buildStart({
         bundler,
+        viteConfigFile: bundler === 'vite',
         // (relative to `srcDirectory`)
-        start: { router: { generatedRouteTree: 'alias/routeTree.gen.ts' } },
+        start: { router: { generatedRouteTree: `${tree}/routeTree.gen.ts` } },
         symlinks: { 'src/alias': 'src/actual' },
         files: {
           'src/actual/.keep': '',
@@ -38,10 +51,10 @@ export const Route = createFileRoute('/api')({
 })
 `,
           'src/router.ts': `import { createRouter } from '${RP}'
-import { routeTree } from './alias/routeTree.gen'
+import { routeTree } from './${tree}/routeTree.gen'
 export const getRouter = () => createRouter({ routeTree })
 `,
-          'src/entry.ts': `export { routeTree } from './alias/routeTree.gen'\n`,
+          'src/entry.ts': `export { routeTree } from './${tree}/routeTree.gen'\n`,
         },
         entry: 'src/entry.ts',
       })
