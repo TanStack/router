@@ -438,7 +438,7 @@ export function useLinkProps<
   // One ref callback per element. The selected state props' ref, else the
   // Link's own, receives the element once; a state change does not re-call it.
   const linkRef = mergeRefs(setRef, (el: Element) => {
-    mergeRefs(resolved?.ref ?? local.ref)(el)
+    mergeRefs(Solid.untrack(() => resolved?.ref ?? local.ref))(el)
   })
 
   return Solid.merge(propsSafeToSpread, resolvedProps, {
@@ -677,7 +677,10 @@ export const Link: LinkComponent<'a'> = (props) => {
     return ch
   }
 
-  if (local._asChild === 'svg') {
+  // `createLink` sets the component once; a spread props source makes the read reactive.
+  const asChild = Solid.untrack(() => local._asChild)
+
+  if (asChild === 'svg') {
     const [_, svgLinkProps] = splitProps(linkProps as any, ['class'])
     return (
       <svg>
@@ -686,12 +689,12 @@ export const Link: LinkComponent<'a'> = (props) => {
     )
   }
 
-  if (!local._asChild) {
+  if (!asChild) {
     return <a {...linkProps}>{children()}</a>
   }
 
   return (
-    <Dynamic component={local._asChild as ValidComponent} {...linkProps}>
+    <Dynamic component={asChild as ValidComponent} {...linkProps}>
       {children()}
     </Dynamic>
   )
