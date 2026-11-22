@@ -571,29 +571,51 @@ module "…" in the React Client Manifest`. Dev is not affected (the next compil
   built from the current tree file (or built through a loader that reads it before Start's); and every route file
   for which two readings exist was built by the server from the bytes the generator has. Two readings exist for a
   file when the published tree imports it and Start's loader was the first to read it for the server in this
-  process. Nothing else about the first document is guaranteed. `main` sends no reload on Start + Rsbuild and does
-  not prune the client's tree; this PR prunes it, so against `main` there are four situations
+  process. Nothing else about the first document is guaranteed. In dev the client's tree module accepts its own hot
+  update, so this is the only reload. How `main` (and this PR before the reload) compares depends on where the app
+  has Start. In an app that installed it, nothing accepted the tree's hot update and Rsbuild's client reloaded the tab
+  at the client's compile, whatever the server served then, with an `HMR update failed` line in the console; in a
+  monorepo that links Start, React Refresh instruments Start's client, which accepted the update, and the tab stayed
+  on the old route set. `main` does not prune the client's tree; this PR does. Four situations
   (`start-plugin-core/tests/integration/rsbuild/route-set-reload*.test.ts` hold the first and the options):
-  1. The reload comes with the evidence above: the tab follows the route set (`main`'s stays on the old route set).
-  2. No reload: the app's `dev.liveReload: false`; RSC with `dev.hmr: false` (no socket client); a server emit
-     another plugin vetoes (until a compilation emits); a fatal failure (the bundler stops watching; a restart may be
-     needed); a third environment still compiling (until it ends). The tab is no worse than `main`'s except for one
-     transition: a route that was server-only when the tab loaded and then became a page. `main`'s tab reaches it by
-     its own navigation (its client tree lists every route); this PR's shows the not-found page until reloaded.
+  1. The reload comes with the evidence above: the tab follows the route set, once, without the console line, in
+     both layouts.
+  2. No reload from Start: the app's `dev.liveReload: false` (nobody reloads, on any side); RSC with `dev.hmr: false`
+     (no socket client, as `main`); a server emit another plugin vetoes (until a compilation emits); a fatal failure
+     (the bundler stops watching; a restart may be needed); a third environment still compiling (until it ends); a
+     server compilation with errors. In the last three, an installed `main` would reload at once into what the
+     server has (read, not run). With the client's `dev.hmr: false` and live reload on (no RSC), Rsbuild's client
+     reloads the tab at every client compile, as on `main`, and Start sends nothing: that reload does not wait for the
+     server. With RSC and live reload on, `main` reloads nothing (Start turns Rsbuild's live reload off). One
+     transition is behind `main` where Start does not reload: a route that was server-only when the tab loaded and
+     then became a page; `main`'s tab reaches it by its own navigation (its client tree lists every route), this PR's
+     shows the not-found page until reloaded.
   3. A reload without a second reading of a file: a route file another loader reads first, a Vue route piece (Start's
      raw loader never sees it), a module restored from the persistent cache, at its first edit in the process. The
      reload does not wait for the server's build of that file, so the document can be the old one for that route while
-     the client already has the new tree. `main`'s tab shows the old page without a reload. Both need a manual
-     reload.
+     the client already has the new tree; an installed `main` never waits for any file.
   4. A module that is neither the tree nor a route file, saved in the same moment: the reloaded document can carry
-     its older value, and the tab is not reloaded again for a server-only module. `main`'s tab shows the old document.
+     its older value, and the tab is not reloaded again for a server-only module.
 - **Router plugin on Vite dev: an open tab can miss a route tree change** (hotspot 2 T; user, 11-22: decision A).
-  Whether the tab hears of a tree change is Vite's watcher's doing, and Vite's bundled chokidar gives no event for a
-  second change of a file within 50 ms: a route file deleted and created again within about 150 ms leaves the tab on
-  the app without the route until the next route change or a manual reload. The dev server serves the current tree
-  (its modules are invalidated when the generator publishes, `vite-dev-publication.test.ts`), so a fresh load is
-  right. Start is not affected (it reloads on a client route set change). A fix announces every tree write itself,
-  which doubles the client's `full-reload` payloads on every route change. No test (the outcome is the limit).
+  An open tab can stay on the previous route set when two changes of the route tree are written less than 50 ms
+  apart and the tab, reloading for the first, has already fetched the tree when the second is written: Vite's watcher
+  reports no second event inside its 50 ms window. With a route file deleted and created again, that is a
+  re-creation close to 150 ms after the delete (Vite's watcher holds a delete 100 ms; measured: behind at 140 and
+  150 ms, right at 120 and 170): earlier, the tab's own reload picks up the second tree; later, Vite reports both. A
+  fresh load is always right: the dev server's tree modules are invalidated when the generator publishes
+  (`vite-dev-publication.test.ts`). Start is not affected (it reloads on a client route set change). A fix announces
+  every tree write itself, which doubles the client's `full-reload` payloads on every route change. No test (the
+  outcome is the limit).
+- **Start on Vite dev: a route file renamed twice within tens of milliseconds can leave the open tab blank**
+  (hotspot 2, design-routeset-v5.2.md §7; follow-up D4). When a route file is renamed (or deleted) and renamed back
+  (or re-created) about 30 ms later, the tab's reload for the first change can be rendering on the server at the
+  moment the second lands: the route tree being evaluated imports a file that no longer exists, the document is a
+  500, and a 500 page has no dev client to receive the next reload. The tab stays blank until it is reloaded by
+  hand; the dev server is right, and a fresh load shows the app. Seen in apps that install Start (5 of 6 runs at a
+  30 ms gap; none at 15, 45 or 60 ms) and not in the monorepo's linked layout at that gap. `main` has the same
+  window at another gap (45 ms: 4 of 4 runs), where it leaves the server on the old route set. Needs two changes of
+  one route file inside one page reload: a tool that renames in two steps, not a person. No test (the outcome is the
+  limit).
 - **Vite dev: a load of a file that began before the generator replaced it keeps the old text** (hotspot 2 L2; user,
   11-22: decision A). Vite registers a module after its `load` returns: a request that read the route tree (or a
   route file the generator rewrote) before the generator wrote it creates the module afterwards from the old text,
@@ -622,7 +644,8 @@ module "…" in the React Client Manifest`. Dev is not affected (the next compil
   never comes. Rolldown's watcher keeps no state Start could ask (a `close` listener attached after the close hears
   nothing) and calls no `closeWatcher` plugin hook for a watcher closed before its first build started (Rolldown
   1.2.19, checked). A watcher closed after Start has it ends `buildApp` (`start-build-watch-close.test.ts`). `main`
-  settles. A fix needs a closed state or the hook from Rolldown. No test (the outcome is the limit).
+  settles. Rollup behaves the same (no closed state, no `closeWatcher` before the first build), so no upstream fix
+  is expected. No test (the outcome is the limit).
 
 ## Fixed, kept as regression tests
 
@@ -999,14 +1022,11 @@ Paths under `start-plugin-core/tests/integration/`.
   does not take `/` from the index route". Fix: order each pruned sibling list as the generator does (`ownersLast`,
   recursive on pathless layouts).
 - **Start + Rsbuild dev: the open tab keeps the route set it hydrated with** (a route added, a handler turned into a
-  page). SPEC J3.10. `rsbuild/route-set-reload.test.ts`, `rsbuild/route-set-reload-*.test.ts` (the options, the
-  evidence, other plugins and environments, RSC). Fix: reload the tab once both compilers serve the new route set
-  (the accepted limit "what the route-set reload guarantees").
-
-### J3 Route HMR
-
-Paths under `router-plugin/tests/` unless given.
-
+  page) in a monorepo that links Start; in an app that installed it, Rsbuild's client reloads the tab at the client's
+  compile, before the server is known to serve the change, with an `HMR update failed` line. SPEC J3.10.
+  `rsbuild/route-set-reload.test.ts`, `rsbuild/route-set-reload-*.test.ts` (the options, the evidence, other plugins
+  and environments, RSC). Fix: reload the tab once both compilers serve the new route set (the accepted limit "what
+  the route-set reload guarantees"). ### J3 Route HMR Paths under `router-plugin/tests/` unless given.
 - **Inline components that are not plain functions** (`memo`, `forwardRef`, method shorthand, `as`/`satisfies`), and
   components inside a route helper function, **are not registered for React Refresh**, so edits do not show. SPEC J3.2,
   J3.3. `integration/route-hmr-browser-options.test.ts`: "written inline as $name: an edit shows in place
