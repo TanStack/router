@@ -58,8 +58,11 @@ const emotionStyled = (html: string) => /class="css-/.test(html)
  * its JSX (SPEC J2.16). A component left unsplit is accepted with a warning
  * naming the file and the option (SPEC J2.16, J2.8). Returns the rendering.
  */
-async function expectRendersLikeUntouched(code: string) {
-  const route = await loadWithUntouched(code)
+async function expectRendersLikeUntouched(
+  code: string,
+  options: RouteAppOptions = {},
+) {
+  const route = await loadWithUntouched(code, options)
   const [rendered, expected] = await route.run<[string, string]>(
     `return [await render('component'), await renderComponent(${untouched}.component)]`,
   )
@@ -114,6 +117,18 @@ describe('split modules keep file-level JSX pragmas', () => {
   it('keeps a @jsxImportSource written after the imports as ineffective as in the untouched file (leading-pragma project)', async () => {
     const rendered = await expectRendersLikeUntouched(
       styledRoute(`${head}/** @jsxImportSource @emotion/react */\n`),
+    )
+    expect(emotionStyled(rendered)).toBe(false)
+  })
+  // A split chunk with HMR carries the file's `@refresh` pragmas (SPEC
+  // J2.16), the pragma alone: a comment holding it and a JSX pragma written
+  // after the imports keeps that JSX pragma ineffective in the chunk.
+  it('keeps a @jsxImportSource written after the imports in a @refresh comment as ineffective, with HMR', async () => {
+    const rendered = await expectRendersLikeUntouched(
+      styledRoute(
+        `${head}/**\n * @refresh reset\n * @jsxImportSource @emotion/react\n */\n`,
+      ),
+      { hmr: true },
     )
     expect(emotionStyled(rendered)).toBe(false)
   })

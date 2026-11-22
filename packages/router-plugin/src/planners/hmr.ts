@@ -515,20 +515,25 @@ function splitGroups(round: RouterRound): SplitGroups {
 }
 
 /**
- * A comment a refresh plugin reads, wherever it is in the module:
- * solid-refresh's `@refresh granular|skip|reload` (a whole comment), React
- * Refresh's `@refresh reset` (in any comment, a JSDoc one too).
+ * The directive a refresh plugin reads in a comment, wherever it is in the
+ * module, as a comment of its own: solid-refresh's `@refresh
+ * granular|skip|reload` (a whole comment), React Refresh's `@refresh reset`
+ * (in any comment, a JSDoc one too); null for a comment holding none.
  */
-function isRefreshPragma(comment: string) {
-  return (
-    /^\s*@refresh\s+\S+\s*$/.test(comment) || comment.includes('@refresh reset')
-  )
+function refreshDirective(comment: string): string | null {
+  const whole = /^\s*@refresh\s+(\S+)\s*$/.exec(comment)
+  if (whole) {
+    return `// @refresh ${whole[1]}\n`
+  }
+  return comment.includes('@refresh reset') ? '/* @refresh reset */\n' : null
 }
 
 /**
  * The refresh plugins read a `@refresh` pragma per module, in any of its
- * comments: a split chunk holding components carries the route file's, as
- * written (SPEC J2.16), so its components refresh as the file asks.
+ * comments: a split chunk holding components carries the route file's
+ * pragmas, in their order (SPEC J2.16), so its components refresh as the
+ * file asks. Only the pragma: the rest of its comment (another pragma, a
+ * `@jsxImportSource` written after the imports) stays where it was.
  */
 function refreshPragmas(ctx: PlanContext, groups: SplitGroups): void {
   const { file } = ctx.analysis
@@ -536,9 +541,7 @@ function refreshPragmas(ctx: PlanContext, groups: SplitGroups): void {
   if (!file.source.includes('@refresh')) {
     return
   }
-  const pragmas = file.comments
-    .filter((c) => isRefreshPragma(c.value))
-    .map((c) => `${file.source.slice(c.start, c.end)}\n`)
+  const pragmas = file.comments.flatMap((c) => refreshDirective(c.value) ?? [])
   if (pragmas.length === 0) {
     return
   }
