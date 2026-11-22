@@ -147,8 +147,12 @@ export function printTree(model: TreeModel, options: PrintTreeOptions) {
       chain.push(`  ${components}`)
     }
     if (route.pieces.lazy) {
+      // (a `.lazy.vue` file's lazy route is its default export)
+      const exportName = route.pieces.lazy.endsWith('.vue')
+        ? 'default'
+        : 'Route'
       chain.push(
-        `  .lazy(() => ${dynamicImport(route.pieces.lazy)}.then((d) => d.Route))`,
+        `  .lazy(() => ${dynamicImport(route.pieces.lazy)}.then((d) => d.${exportName}))`,
       )
     }
     updates.push(

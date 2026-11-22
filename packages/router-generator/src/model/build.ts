@@ -102,6 +102,11 @@ function anchorKind(node: RouteNode): FsRouteType {
     : 'static'
 }
 
+/** A `.lazy.vue` file (scanned as its route's `component` piece). */
+function isLazyVue(node: RouteNode) {
+  return node.filePath.endsWith('.lazy.vue')
+}
+
 function handleNode(
   node: RouteNode,
   acc: Accumulator,
@@ -201,7 +206,22 @@ function handleNode(
 
   if (!node.isVirtual && pieceTypes.includes(node._fsRouteType)) {
     const pieces = (acc.routePiecesByPath[node.routePath!] ??= {})
-    pieces[node._fsRouteType as RoutePieceName] = node
+    const piece = node._fsRouteType as RoutePieceName
+    const other = pieces[piece]
+    if (
+      piece === 'component' &&
+      other &&
+      isLazyVue(other) !== isLazyVue(node)
+    ) {
+      // A `.lazy.vue` file is the route's component (SPEC J1.17), except
+      // next to a `.component.vue` piece: that one is, and the `.lazy.vue`
+      // file is the route's lazy route (its default export), as earlier
+      // versions wired it
+      pieces.component = isLazyVue(node) ? other : node
+      pieces.lazy = isLazyVue(node) ? node : other
+    } else {
+      pieces[piece] = node
+    }
 
     const anchorRoute = acc.routeNodesByPath.get(node.routePath!)
 
