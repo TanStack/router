@@ -20,6 +20,11 @@
 import { describe, expect, test } from 'vitest'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import {
+  diagnosticPosition,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  StartBuildError,
   buildStart,
   callByIdExports,
   callByIdPrelude,
@@ -267,10 +272,16 @@ export const base = createServerFn({ method: 'GET' })
   'node_modules/lib-kit/auth.js': `import { createMiddleware } from '@tanstack/react-start'
 export const auth = createMiddleware({ type: 'function' }).server(({ next }) => next())
 `,
-  'node_modules/lib-kit/index.js': `import { base } from './base.js'
-import { auth } from './auth.js'
+  // (one builder method per module: each must be read on its own)
+  'node_modules/lib-kit/validated.js': `import { base } from './base.js'
 export const validated = base.validator((data) => data)
+`,
+  'node_modules/lib-kit/authed.js': `import { base } from './base.js'
+import { auth } from './auth.js'
 export const authed = base.middleware([auth])
+`,
+  'node_modules/lib-kit/index.js': `export { validated } from './validated.js'
+export { authed } from './authed.js'
 `,
   'node_modules/lib-kit/typed.ts': `import { base } from './base.js'
 export const typed = base.validator<(data: unknown) => unknown>((data) => data)
@@ -332,6 +343,55 @@ return called`)
             ]),
           ),
         )
+      },
+      timeout,
+    )
+
+    // `.inputValidator()` was renamed `.validator()`: a kit module still
+    // calling it is read, and the client build fails at its call, naming
+    // the dependency to update (the app's handler shipped otherwise).
+    test(
+      'a kit module calling the removed .inputValidator() fails the client build at the call',
+      async () => {
+        const legacy = `import { base } from './base.js'
+export const legacy = base.inputValidator((data) => data)
+`
+        const error: unknown = await buildStart({
+          bundler,
+          files: {
+            'node_modules/lib-kit/package.json':
+              kitFiles['node_modules/lib-kit/package.json'],
+            'node_modules/lib-kit/base.js':
+              kitFiles['node_modules/lib-kit/base.js'],
+            'node_modules/lib-kit/index.js': legacy,
+            'src/app.ts': `import { legacy } from 'lib-kit'
+export const fn = legacy.handler(async () => 'MARK_KIT_LEGACY_SECRET')
+`,
+            'src/client-entry.ts': `export { fn } from './app'\n`,
+          },
+          entry: 'src/client-entry.ts',
+          packageJson: {
+            name: 'app',
+            private: true,
+            type: 'module',
+            dependencies: { 'lib-kit': '*' },
+          },
+        }).then(
+          (build) =>
+            expect.fail(
+              `the build succeeded; the handler's text is ${build.client.where('MARK_KIT_LEGACY_SECRET')} in the client bundle`,
+            ),
+          (e: unknown) => e,
+        )
+        if (!(error instanceof StartBuildError)) {
+          throw error
+        }
+        expectDiagnostic(error.diagnostics, {
+          severity: 'error',
+          file: 'node_modules/lib-kit/index.js',
+          root: error.root,
+          position: diagnosticPosition(legacy, 'inputValidator'),
+        })
       },
       timeout,
     )
