@@ -300,17 +300,42 @@ ${aboveRoute}export const Route = createFileRoute('/')({ component: Page })
   }
 
   test.each([
-    { name: 'a file header', header: '/* @refresh reset */\n' },
-    { name: 'a JSDoc file header', header: '/** @refresh reset */\n' },
-    { name: 'above the Route export', aboveRoute: '/* @refresh reset */\n' },
+    { name: 'a file header', header: '/* @refresh reset */\n', count: 0 },
+    {
+      name: 'a JSDoc file header',
+      header: '/** @refresh reset */\n',
+      count: 0,
+    },
+    {
+      name: 'above the Route export',
+      aboveRoute: '/* @refresh reset */\n',
+      count: 0,
+    },
+    // (React Refresh reads `@refresh reset` with one space: these keep the
+    // count, split too)
+    {
+      name: 'a header with two spaces',
+      header: '/* @refresh  reset */\n',
+      count: 1,
+    },
+    {
+      name: 'a header with a tab',
+      header: '/* @refresh\treset */\n',
+      count: 1,
+    },
+    {
+      name: 'a header with a line break',
+      header: '/* @refresh\nreset */\n',
+      count: 1,
+    },
   ])(
     'with the comment as $name, an edit of the split route shows what it shows unsplit',
-    async (comments) => {
+    async ({ count, ...comments }) => {
       const [unsplit, split] = await Promise.all([
         counterAfterEdit(false, comments),
         counterAfterEdit(true, comments),
       ])
-      expect(unsplit).toBe('Counter v2 count 0')
+      expect(unsplit).toBe(`Counter v2 count ${count}`)
       expect(split).toBe(unsplit)
     },
     timeout,
