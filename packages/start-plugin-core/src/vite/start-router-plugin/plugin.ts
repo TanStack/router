@@ -5,6 +5,7 @@ import { watchDependencies } from '@tanstack/router-utils/compiler'
 import { VITE_ENVIRONMENT_NAMES } from '../../constants'
 import { startGeneratorConfig } from '../../start-router-plugin/generator-config'
 import { createClientRouteTree } from '../../start-router-plugin/client-route-tree'
+import { createTreePaths } from '../../start-router-plugin/tree-paths'
 import { escapeRegExp } from '../../utils'
 import type { GetConfigFn } from '../../types'
 import type { RouterPluginContext } from '@tanstack/router-plugin/context'
@@ -28,17 +29,20 @@ export function tanStackStartRouter(
     return path.resolve(startConfig.router.generatedRouteTree)
   }
 
+  /** The tree module's ids: its configured and its real path (Vite resolves links). */
+  const treePaths = createTreePaths(getGeneratedRouteTreePath)
+
   let clientEnvironment: DevEnvironment | null = null
   function invalidate() {
     if (!clientEnvironment) {
       return
     }
 
-    const mod = clientEnvironment.moduleGraph.getModuleById(
-      getGeneratedRouteTreePath(),
-    )
-    if (mod) {
-      clientEnvironment.moduleGraph.invalidateModule(mod)
+    for (const id of treePaths()) {
+      const mod = clientEnvironment.moduleGraph.getModuleById(id)
+      if (mod) {
+        clientEnvironment.moduleGraph.invalidateModule(mod)
+      }
     }
     clientEnvironment.hot.send({ type: 'full-reload', path: '*' })
   }
@@ -50,7 +54,7 @@ export function tanStackStartRouter(
     onClientRoutesChange: invalidate,
   })
 
-  let resolvedGeneratedRouteTreePath: string | null = null
+  let resolvedGeneratedRouteTreePaths: ReadonlyArray<string> = []
   const clientTreePlugin: Plugin = {
     name: 'tanstack-start:route-tree-client-plugin',
     enforce: 'pre',
@@ -63,14 +67,12 @@ export function tanStackStartRouter(
         typeof clientTreePlugin.load,
         { filter?: unknown }
       >
-      resolvedGeneratedRouteTreePath = normalizePath(
-        getGeneratedRouteTreePath(),
-      )
+      resolvedGeneratedRouteTreePaths = treePaths()
       // The route tree module itself, by its exact id (a query aside)
       ;(clientTreePlugin.load as LoadObjectHook).filter = {
         id: {
           include: new RegExp(
-            `^${escapeRegExp(resolvedGeneratedRouteTreePath)}(?:\\?.*)?$`,
+            `^(?:${resolvedGeneratedRouteTreePaths.map(escapeRegExp).join('|')})(?:\\?.*)?$`,
           ),
         },
       }
@@ -82,7 +84,7 @@ export function tanStackStartRouter(
       },
       async handler(id) {
         const file = normalizePath(id.replace(/\?.*$/, ''))
-        if (file !== resolvedGeneratedRouteTreePath) {
+        if (!resolvedGeneratedRouteTreePaths.includes(file)) {
           return null
         }
         const tree = await clientRouteTree.code()

@@ -9,7 +9,6 @@
  * route registry the router planner reads and serves the client's route
  * tree without its server-only routes.
  */
-import { realpathSync } from 'node:fs'
 import path from 'node:path'
 import {
   Generator,
@@ -26,6 +25,7 @@ import { RouteRegistryView } from '@tanstack/router-plugin/planners'
 import { normalizePath } from '@tanstack/router-utils/compiler'
 import { startGeneratorConfig } from '../start-router-plugin/generator-config'
 import { createClientRouteTree } from '../start-router-plugin/client-route-tree'
+import { createTreePaths } from '../start-router-plugin/tree-paths'
 import type { ClientRouteTreeCode } from '../start-router-plugin/client-route-tree'
 import type { GetConfigFn, TanStackStartCoreOptions } from '../types'
 import type { TanStackStartRsbuildInputConfig } from './schema'
@@ -89,7 +89,8 @@ export interface RsbuildRouteGenerator {
   onRoutesChanged: (listener: (files: Array<string>) => void) => () => void
   /** The client's route tree module. */
   clientRouteTree: {
-    path: () => string
+    /** The paths of the tree module (`createTreePaths`: configured, and real). */
+    paths: () => ReadonlyArray<string>
     code: () => Promise<ClientRouteTreeCode>
     /**
      * Whether the tree module of the compilation may hold another pruned route
@@ -119,6 +120,7 @@ export function createRsbuildRouteGenerator(opts: {
 
   const treePath = () =>
     path.resolve(opts.getConfig().startConfig.router.generatedRouteTree)
+  const treePaths = createTreePaths(treePath)
 
   const clientRouteTree = createClientRouteTree({
     onClientRoutesChange: () => {
@@ -144,7 +146,7 @@ export function createRsbuildRouteGenerator(opts: {
 
   const evidence = createRouteSetEvidence({
     generator: () => generator,
-    treePath,
+    treePaths,
     clientTreeCode: async () => (await clientRouteTree.code()).code,
   })
 
@@ -171,7 +173,7 @@ export function createRsbuildRouteGenerator(opts: {
       })
     },
     clientRouteTree: {
-      path: treePath,
+      paths: treePaths,
       code: async () => {
         const serving = version
         const code = await clientRouteTree.code()
@@ -190,7 +192,7 @@ type FileRecord = string | typeof UNREAD
 
 function createRouteSetEvidence(opts: {
   generator: () => Generator | undefined
-  treePath: () => string
+  treePaths: () => ReadonlyArray<string>
   clientTreeCode: () => Promise<string>
 }): RouteSetEvidence & { published: () => void } {
   /** compiler name → file → the digest of what its loader was handed: `pending` until that compiler emits. */
@@ -204,22 +206,10 @@ function createRouteSetEvidence(opts: {
   let treeAtStart: string | undefined
   /** Derived from the current publication, once when first asked. */
   let derived:
-    | { trees: Array<string>; pruned: Promise<string> | undefined }
+    | { trees: ReadonlyArray<string>; pruned: Promise<string> | undefined }
     | undefined
   const publication = () => {
-    if (!derived) {
-      const file = normalizePath(opts.treePath())
-      let real = file
-      try {
-        real = normalizePath(realpathSync(file))
-      } catch {
-        // (no tree on disk yet)
-      }
-      derived = {
-        trees: real === file ? [file] : [file, real],
-        pruned: undefined,
-      }
-    }
+    derived ??= { trees: opts.treePaths(), pruned: undefined }
     return derived
   }
   return {

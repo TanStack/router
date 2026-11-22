@@ -79,7 +79,7 @@ interface StartHostPluginOptions {
   generator: RsbuildRouteGenerator
   /** The client route tree module (client environment only): rebuilt when it is stale. */
   clientRouteTree?: {
-    path: () => string
+    paths: () => ReadonlyArray<string>
     stale: () => boolean
     version: () => number
   }
@@ -1387,21 +1387,17 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                   return
                 }
                 const version = tree.version()
-                const id = normalizePath(tree.path())
+                const ids = new Set(tree.paths())
                 const builtHere = () =>
                   [...compilation.builtModules].some((m) => {
                     const { resource } = m as unknown as ModuleLike
-                    return !!resource && canonicalResource(resource) === id
+                    return !!resource && ids.has(canonicalResource(resource))
                   })
                 if (!tree.stale() && (builtAt === version || builtHere())) {
                   builtAt = version
                   return
                 }
-                await rebuildModules(
-                  compilation,
-                  new Set([id]),
-                  canonicalResource,
-                )
+                await rebuildModules(compilation, ids, canonicalResource)
                 builtAt = version
               },
             ),

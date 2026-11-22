@@ -9,7 +9,11 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ASSET_QUERY_RE, identify } from '@tanstack/router-utils/compiler'
+import {
+  ASSET_QUERY_RE,
+  identify,
+  normalizePath,
+} from '@tanstack/router-utils/compiler'
 import { ownFileRule } from '../import-protection/rules'
 import { StartRsbuildCompilerSession } from './compiler-session'
 import { createStartHostPlugin } from './host-plugin'
@@ -108,7 +112,7 @@ export function registerStartCompiler(
   api.transform(
     {
       test: (resource: string) =>
-        path.normalize(resource) === generator.clientRouteTree.path(),
+        generator.clientRouteTree.paths().includes(normalizePath(resource)),
       environments: [RSBUILD_ENVIRONMENT_NAMES.client],
       order: 'pre',
     },
