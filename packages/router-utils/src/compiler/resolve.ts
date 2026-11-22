@@ -2,7 +2,8 @@
  * Cross-module export resolution over summaries: DFS
  * with a lookup path; explicit exports beat stars; two stars resolving to
  * different origins are ambiguous; results computed across a cut cycle edge
- * are tainted and not memoised; untainted results are memoised per resolver.
+ * are tainted and not memoised; untainted results are memoised per resolver,
+ * and every result is reused within its top-level lookup.
  */
 import { ownEntry } from './strings'
 import type { ModuleSummary } from './summary'
@@ -21,23 +22,38 @@ export class LookupPath {
   private constructor(
     private readonly key: string | null,
     private readonly parent: LookupPath | null,
+    /**
+     * The results the top-level lookup settled, tainted ones too (as
+     * ECMAScript's ResolveExport visits a module and name once per query):
+     * without them, a dense `export *` graph with a cycle is walked once
+     * per path through it.
+     */
+    readonly settled: Map<
+      string,
+      { outcome: ResolveOutcome; tainted: boolean }
+    >,
   ) {}
 
   static start(): LookupPath {
-    return new LookupPath(null, null)
+    return new LookupPath(null, null, new Map())
   }
 
   /** This path extended by `key`, or null when `key` is on it already: a cycle, cut here, which taints every lookup on the path. */
   enter(key: string): LookupPath | null {
     for (let p: LookupPath | null = this; p; p = p.parent) {
       if (p.key === key) {
-        for (let q: LookupPath | null = this; q; q = q.parent) {
-          q.tainted = true
-        }
+        this.taint()
         return null
       }
     }
-    return new LookupPath(key, this)
+    return new LookupPath(key, this, this.settled)
+  }
+
+  /** Taints every lookup on the path (its result depends on a cut cycle). */
+  taint(): void {
+    for (let q: LookupPath | null = this; q; q = q.parent) {
+      q.tainted = true
+    }
   }
 }
 
@@ -122,6 +138,13 @@ export class ExportResolver {
     const hit = this.memo.get(key)
     if (hit) {
       return hit
+    }
+    const settled = path.settled.get(key)
+    if (settled) {
+      if (settled.tainted) {
+        path.taint()
+      }
+      return settled.outcome
     }
     // (the module and the name, as the spec's ResolveExport: a star cycle may
     // pass a module again for another name)
@@ -216,6 +239,7 @@ export class ExportResolver {
     if (!path.tainted) {
       this.memo.set(key, outcome)
     }
+    path.settled.set(key, { outcome, tainted: path.tainted })
     return outcome
   }
 }

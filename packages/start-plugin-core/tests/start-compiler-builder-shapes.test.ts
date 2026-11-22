@@ -991,6 +991,47 @@ describe('builder shapes the client compiles', () => {
   })
 })
 
+/**
+ * `n` modules, each starring the next two, the last starring the first (a
+ * cycle) and the module that exports the factory, which only the end of
+ * the cycle reaches.
+ */
+const starCycle = (n: number) =>
+  Object.fromEntries(
+    Array.from({ length: n }, (_, i) => [
+      `m${i}.ts`,
+      `export const v${i} = ${i}\n${[i + 1, i + 2]
+        .filter((next) => next < n)
+        .map((next) => `export * from './m${next}'\n`)
+        .join(
+          '',
+        )}${i === n - 1 ? `export * from './m0'\nexport * from './factory'\n` : ''}`,
+    ]),
+  )
+
+// A lookup through a dense `export *` graph with a cycle took every path
+// through it: exponential in the modules (seconds at 32, half a minute at
+// 36). A lookup visits each module once.
+test('createServerFn through a cyclic `export *` graph of 32 modules compiles in well under a second', async () => {
+  const startCase = await (
+    await host()
+  ).case(
+    caseFiles({
+      name: 'star cycle',
+      files: {
+        ...starCycle(32),
+        'factory.ts': `export { createServerFn } from '@tanstack/react-start'\n`,
+      },
+      code: `import { createServerFn } from './m0'\nimport { db } from './db.server'\nexport const fn = createServerFn().handler(async () => db.x())`,
+    }),
+  )
+  const started = performance.now()
+  const client = await startCase.served('module.tsx', 'client')
+  expect(performance.now() - started).toBeLessThan(1000)
+  expect(client).not.toContain('db.x()')
+  expect(await callFromClient(startCase, 'module.fn')).toBe('from the server')
+})
+
 describe('builder shapes the client refuses at the use', () => {
   test.each(refused)('$name', async (shape) => {
     const startCase = await (await host()).case(caseFiles(shape))
