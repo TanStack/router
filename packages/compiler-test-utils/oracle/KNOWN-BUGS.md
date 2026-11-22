@@ -1026,7 +1026,12 @@ Paths under `start-plugin-core/tests/integration/`.
   compile, before the server is known to serve the change, with an `HMR update failed` line. SPEC J3.10.
   `rsbuild/route-set-reload.test.ts`, `rsbuild/route-set-reload-*.test.ts` (the options, the evidence, other plugins
   and environments, RSC). Fix: reload the tab once both compilers serve the new route set (the accepted limit "what
-  the route-set reload guarantees"). ### J3 Route HMR Paths under `router-plugin/tests/` unless given.
+  the route-set reload guarantees").
+
+### J3 Route HMR
+
+Paths under `router-plugin/tests/` unless given.
+
 - **Inline components that are not plain functions** (`memo`, `forwardRef`, method shorthand, `as`/`satisfies`), and
   components inside a route helper function, **are not registered for React Refresh**, so edits do not show. SPEC J3.2,
   J3.3. `integration/route-hmr-browser-options.test.ts`: "written inline as $name: an edit shows in place
