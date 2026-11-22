@@ -12,6 +12,7 @@ import { startRsbuildRscApp } from '../rsc-warning-app'
 import {
   documentAfter,
   handlerRoute,
+  installedReact,
   openTab,
   reloadApp,
 } from './route-set-reload-app'
@@ -24,9 +25,10 @@ async function startRscReloadServer(dev?: RsbuildConfig['dev']) {
   const { 'src/router.ts': router, ...files } = reloadApp
   const server = await startRsbuildRscApp(
     { ...files, 'src/router.tsx': router! },
-    { dev },
+    // (React Refresh as in an installed app)
+    { dev: { ...dev, client: { logLevel: 'error' } }, react: installedReact() },
   )
-  return { server, url: server.url!, clientHash: () => undefined }
+  return { server, url: server.url!, clientHash: () => undefined, sent: [] }
 }
 
 test(
@@ -40,6 +42,9 @@ test(
     })
     await tab.loaded(2, { app: false })
     expect(await documentAfter(tab, 1)).toBe('HANDLER_NEW')
+    await reload.server.settle()
+    expect(tab.documents).toHaveLength(2)
+    expect(tab.failedUpdates()).toEqual([])
   },
   timeout,
 )

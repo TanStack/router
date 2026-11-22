@@ -7,11 +7,8 @@
  * start-router-dev-server.test.ts). Its own file so that each bundler's dev
  * servers run in a worker of their own.
  */
-import path from 'node:path'
 import { describe, expect, onTestFinished, test } from 'vitest'
-import { pluginReact } from '@rsbuild/plugin-react'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
-import { workspacePackage } from '@tanstack/compiler-test-utils/workspace-packages'
 import {
   reportedErrors,
   startRsbuildStartDevServer,
@@ -21,6 +18,9 @@ import {
   serverOnlySwitchApp,
   switchBetweenServerOnlyAndPage,
 } from '../start-router-server-only-switch'
+// (React Refresh as in an installed app: the tab gets a new route set by
+// Start's reload, not by Rsbuild's for an update nothing accepts)
+import { installedReact } from './route-set-reload-app'
 import type { ServerOnlySwitchServer } from '../start-router-server-only-switch'
 import type { RsbuildPlugin } from '@rsbuild/core'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
@@ -37,24 +37,6 @@ if (typeof window !== 'undefined') {
   ;(window as any).__harnessHash = () => __webpack_hash__
 }
 `
-
-/**
- * React Refresh as in an installed app: Start's packages are installed
- * under `node_modules`, which React Refresh leaves out by default; the
- * harness links them from the workspace instead. Instrumented, Start's
- * client component module would accept the route tree's hot update, and
- * the page would keep the router it hydrated with (an installed app's page
- * reloads, as Vite's does for a changed client route tree, SPEC J3.10).
- */
-const installedReact = () =>
-  pluginReact({
-    reactRefreshOptions: {
-      exclude: [
-        /[\\/]node_modules[\\/]/,
-        path.dirname(workspacePackage('@tanstack/react-start')) + path.sep,
-      ],
-    },
-  })
 
 /**
  * Start's Rsbuild dev server on the scenarios' app. A page took in what the

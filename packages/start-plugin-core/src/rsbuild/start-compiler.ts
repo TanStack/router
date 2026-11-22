@@ -33,6 +33,13 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const loaderPath = path.resolve(currentDir, 'compiler-loader.js')
 const assetLoaderPath = path.resolve(currentDir, 'asset-query-loader.js')
 
+/** Dev: appended to the client's route tree module (see its transform). */
+const acceptOwnUpdate = `
+if (import.meta.webpackHot) {
+  import.meta.webpackHot.accept()
+}
+`
+
 /** JS/TS module paths (the query is not part of a rule's `test`). */
 const JS_FILE_RE = /\.[cm]?[jt]sx?$/
 /** Module types whose JavaScript output other loaders produce (the late pass). */
@@ -122,7 +129,13 @@ export function registerStartCompiler(
         addDependency(file)
       }
       generator.evidence.clientServed(tree.code)
-      return tree.code
+      // Dev: the tree module accepts its own hot update, which changes
+      // nothing in the page (its router keeps the tree it hydrated with):
+      // Rsbuild's client does not reload for an update nothing accepted,
+      // at the client's compile, and Start's reload is the one reload, once
+      // the server serves the change too (`reloadOnRouteSetChange`). The
+      // evidence is of the tree's own text
+      return dev ? `${tree.code}${acceptOwnUpdate}` : tree.code
     },
   )
 
@@ -269,9 +282,11 @@ function transformImportRules(value: unknown): Array<TransformImportRule> {
  * client tree, and the server emitted a tree module and route files built
  * from the generator's bytes, where it has two readings of them
  * (`RouteSetEvidence`). Every other dev compile of an unchanged route set
- * reloads nothing. The tabs hear it through Rsbuild's dev client, which
- * applies the app's `dev.liveReload` itself (with RSC, through the RSC
- * client's channel, when the app's own config leaves live reload on).
+ * reloads nothing. The tabs took the new tree as a hot update that changes
+ * nothing (the tree module accepts its own update); they hear the reload
+ * through Rsbuild's dev client, which applies the app's `dev.liveReload`
+ * itself (with RSC, through the RSC client's channel, when the app's own
+ * config leaves live reload on).
  */
 function reloadOnRouteSetChange(
   api: RsbuildPluginAPI,

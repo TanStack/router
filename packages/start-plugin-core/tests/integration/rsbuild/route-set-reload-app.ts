@@ -8,9 +8,12 @@
  * dev middleware; what it shows, its page loads and the documents the
  * server answered it are what the tests read.
  */
+import path from 'node:path'
+import { pluginReact } from '@rsbuild/plugin-react'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { trackRequests } from '@tanstack/compiler-test-utils/hmr-sync'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
+import { workspacePackage } from '@tanstack/compiler-test-utils/workspace-packages'
 import { onTestFinished } from 'vitest'
 import { startServerEntryFiles } from '../../dev-server'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
@@ -83,19 +86,50 @@ function Root() {
   'src/routes/about.tsx': pageRoute('/about', 'MARK_ABOUT'),
 }
 
+/**
+ * React Refresh as in an installed app: Start's packages are installed
+ * under `node_modules`, which React Refresh leaves out by default; the
+ * harness links them from the workspace instead, where it would instrument
+ * Start's client module (whose React Refresh boundary then accepts the route
+ * tree's hot update, as in a monorepo that links Start). Either way the tab
+ * gets a new route set by a reload, which Start sends once the client and
+ * the server serve it (the tree module accepts its own update in dev).
+ */
+export const installedReact = () =>
+  pluginReact({
+    reactRefreshOptions: {
+      exclude: [
+        /[\\/]node_modules[\\/]/,
+        path.dirname(workspacePackage('@tanstack/react-start')) + path.sep,
+      ],
+    },
+  })
+
+/**
+ * Where the app has Start: `installed` (under `node_modules`, as an app that
+ * installed it: React Refresh leaves Start's client out) or `linked` (from
+ * the workspace, as in a monorepo: React Refresh instruments it).
+ */
+export type StartLayout = 'installed' | 'linked'
+
+export const startLayouts: ReadonlyArray<StartLayout> = ['installed', 'linked']
+
 export interface ReloadServer {
   server: RsbuildDevServer
   url: string
   /** The hash of the client's last compile. */
   clientHash: () => string | undefined
+  /**
+   * What the dev server sent its clients through Rsbuild's API
+   * (`environments.client.hot.send`, `sockWrite`): message types, and a
+   * custom message's event.
+   */
+  sent: Array<string>
 }
 
 /**
- * Start's Rsbuild dev server on `reloadApp` (with `files` over it), HMR on
- * and React Refresh as the app's plugin gives it (Start's packages are
- * linked from the workspace: React Refresh instruments its client module,
- * which accepts the route tree's hot update, so only a reload gives the
- * tab another route set).
+ * Start's Rsbuild dev server on `reloadApp` (with `files` over it), HMR on,
+ * React Refresh as in the `layout` (default `installed`: `installedReact`).
  */
 export async function startReloadServer(
   options: {
@@ -106,6 +140,7 @@ export async function startReloadServer(
     plugins?: Array<RsbuildPlugin>
     start?: TanStackStartRsbuildInputConfig
     hmr?: boolean
+    layout?: StartLayout
   } = {},
 ): Promise<ReloadServer> {
   let clientHash: string | undefined
@@ -127,8 +162,21 @@ export async function startReloadServer(
     // Start serves the pages, not an HTML template.
     config: {
       ...options.config,
+      // (Rsbuild's client reports a hot update it fell back to a reload for
+      // in the tab's console, `HMR update failed`: `Tab.failedUpdates`)
+      dev: {
+        ...options.config?.dev,
+        client: { logLevel: 'error', ...options.config?.dev?.client },
+      },
       tools: { htmlPlugin: false, ...options.config?.tools },
-      plugins: [recordClientHash, ...(options.plugins ?? [])],
+      plugins: [
+        // (linked: the harness's default `pluginReact()`)
+        ...((options.layout ?? 'installed') === 'installed'
+          ? [installedReact()]
+          : []),
+        recordClientHash,
+        ...(options.plugins ?? []),
+      ],
     },
     files: Object.fromEntries(
       Object.entries({ ...reloadApp, ...options.files }).filter(
@@ -136,7 +184,28 @@ export async function startReloadServer(
       ),
     ),
   })
-  return { server, url: server.url!, clientHash: () => clientHash }
+  const sent: Array<string> = []
+  const record = (type: string, data: unknown) =>
+    sent.push(
+      type === 'custom'
+        ? `custom:${String((data as { event?: unknown } | undefined)?.event)}`
+        : type,
+    )
+  const { devServer } = server
+  const hot = devServer.environments.client?.hot
+  if (hot) {
+    const send = hot.send.bind(hot)
+    hot.send = ((type: string, data?: unknown) => {
+      record(type, data)
+      send(type as never, data as never)
+    }) as typeof hot.send
+  }
+  const sockWrite = devServer.sockWrite.bind(devServer)
+  devServer.sockWrite = ((type: string, data?: unknown) => {
+    record(type, data)
+    sockWrite(type as never, data as never)
+  }) as typeof devServer.sockWrite
+  return { server, url: server.url!, clientHash: () => clientHash, sent }
 }
 
 /** A document the server answered the tab: its status and body. */
@@ -162,6 +231,8 @@ export interface Tab {
   loaded: (count: number, options?: { app?: boolean }) => Promise<void>
   /** Waits until the tab runs the client's last compile with nothing in flight (no reload under way). */
   settled: () => Promise<void>
+  /** What Rsbuild's client logged of hot updates it fell back to a reload for. */
+  failedUpdates: () => Array<string>
 }
 
 /** Opens `path` in a tab of `reload`'s server and waits for its hydration. */
@@ -205,6 +276,8 @@ export async function openTab(reload: ReloadServer, path: string) {
   await browser.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
   const tab: Tab = {
     browser,
+    failedUpdates: () =>
+      browser.console.filter((line) => line.includes('HMR update failed')),
     documents,
     loads: () => browser.loads(),
     shows: () => browser.text('#app').catch(() => ''),

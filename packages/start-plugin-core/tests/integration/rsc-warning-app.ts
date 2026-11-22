@@ -105,6 +105,8 @@ export async function startRsbuildRscApp(
     dev?: RsbuildConfig['dev']
     /** More Rsbuild plugins of the app, after Start's. */
     plugins?: Array<RsbuildPlugin>
+    /** The app's React plugin (default `pluginReact()`). */
+    react?: RsbuildPlugin
   } = {},
 ): Promise<RsbuildDevServer> {
   const start = await startRsbuildPluginFactory('react')
@@ -128,7 +130,7 @@ export async function startRsbuildRscApp(
         ...(options.dev && { dev: options.dev }),
       },
       plugins: [
-        pluginReact(),
+        options.react ?? pluginReact(),
         {
           name: 'rsc-warning-app:working-directory',
           setup(api) {
