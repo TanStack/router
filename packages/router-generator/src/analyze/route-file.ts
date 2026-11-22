@@ -1,7 +1,7 @@
 import { parse } from 'yuku'
 import { unwrap } from 'yuku/utils'
 import { lit } from '../print/style'
-import { propertyKeyName, routeCallOf, stringLiteralOf } from './route-call'
+import { propertyKeyName, routeCallOf, routeIdLiteralOf } from './route-call'
 import type {
   ForeignRoute,
   RouteCall,
@@ -287,7 +287,7 @@ export function analyzeRouteFile(
   ) {
     // (parentheses and TypeScript assertions around the id stay as written)
     const idArg = unwrap(idCall.arguments[0])
-    const literal = stringLiteralOf(idArg)
+    const literal = routeIdLiteralOf(idArg)
     if (!idArg) {
       // `createFileRoute()`: the id goes between the parentheses
       splices.push({
@@ -296,26 +296,12 @@ export function analyzeRouteFile(
         text: lit(expected.routeId, expected.style.quote),
       })
     } else if (literal) {
+      // (a template literal gets the quote style's quotes)
       if (literal.value !== expected.routeId) {
         splices.push({
-          start: literal.start,
-          end: literal.end,
-          text: lit(expected.routeId, quoteOf(literal)),
-        })
-      }
-    } else if (
-      idArg.type === 'TemplateLiteral' &&
-      (idArg as unknown as { expressions: Array<Node> }).expressions.length ===
-        0
-    ) {
-      const quasis = (
-        idArg as unknown as { quasis: Array<{ value: { cooked: string } }> }
-      ).quasis
-      if (quasis[0]?.value.cooked !== expected.routeId) {
-        splices.push({
-          start: idArg.start,
-          end: idArg.end,
-          text: lit(expected.routeId, expected.style.quote),
+          start: literal.node.start,
+          end: literal.node.end,
+          text: lit(expected.routeId, quoteOf(literal.node)),
         })
       }
     } else {
@@ -412,7 +398,7 @@ function foreignCallDiagnostics(
   if (reason.kind !== 'no-options' && reason.kind !== 'type-only') {
     return []
   }
-  const idArg = stringLiteralOf(reason.idCall?.arguments[0])
+  const idArg = routeIdLiteralOf(reason.idCall?.arguments[0])
   if (!idArg || idArg.value === expected.routeId) {
     return []
   }
@@ -424,7 +410,7 @@ function foreignCallDiagnostics(
   return [
     diagnosticAt(
       file,
-      idArg.start,
+      idArg.node.start,
       `The \`Route\` export ${problem}: its route id ${JSON.stringify(idArg.value)} is not updated to ${JSON.stringify(expected.routeId)}.`,
     ),
   ]

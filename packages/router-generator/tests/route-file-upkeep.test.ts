@@ -1113,6 +1113,30 @@ export const Route = createFileRoute(('/old'))
     ).toContain('without route options')
   })
 
+  // A template literal id is an id like a string literal: a call without the
+  // options call (a save while the route is being written) is reported by
+  // name and kept as written, not taken for `createFileRoute(options)` and
+  // curried into ``createFileRoute('/new')(`/old`)``.
+  test('a template literal id of a call without the options call is reported by name and kept', async () => {
+    const source = `import { createFileRoute } from ${router}
+export const Route = createFileRoute(\`/old\`)
+`
+    const { root, file, written, diagnostics, error } = await upkeep(
+      'new.tsx',
+      source,
+    )
+    expect(written).toBe(source)
+    const problems = [...diagnosticsOf(error), ...diagnostics]
+    expectDiagnostic(problems, {
+      severity: ['warning', 'error'],
+      file,
+      root,
+    })
+    expect(problems.map((d) => d.text).join('\n')).toContain(
+      'without route options',
+    )
+  })
+
   // Never-fail-silently controls: a Route that is not a route (the options
   // call forgotten) or whose constructor is imported as a type only (the
   // type checker rejects both) is reported by name.

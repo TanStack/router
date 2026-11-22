@@ -196,6 +196,26 @@ export function stringLiteralOf(
     : null
 }
 
+/**
+ * A route id as written, through parentheses and TypeScript assertions: a
+ * string literal or a template literal without substitutions (`` `/x` ``),
+ * with its value; or null.
+ */
+export function routeIdLiteralOf(
+  node: Node | undefined,
+): { node: Node; value: string } | null {
+  const literal = stringLiteralOf(node)
+  if (literal) {
+    return { node: literal, value: literal.value }
+  }
+  const inner = node ? unwrap(node) : null
+  if (inner?.type !== 'TemplateLiteral' || inner.expressions.length !== 0) {
+    return null
+  }
+  const cooked = inner.quasis[0]?.value.cooked
+  return typeof cooked === 'string' ? { node: inner, value: cooked } : null
+}
+
 /** The nodes of a destructuring pattern between a name it declares and its declarator. */
 const patternParts: ReadonlySet<string> = new Set([
   'ObjectPattern',
@@ -381,7 +401,7 @@ export function routeCallOf(
     return foreign({ kind: 'code-based' })
   }
   // (a string as the only call's argument is an id: no options call)
-  const idOnly = !curried && stringLiteralOf(outer.arguments[0]) !== null
+  const idOnly = !curried && routeIdLiteralOf(outer.arguments[0]) !== null
   if (found.typeOnly) {
     return foreign({
       kind: 'type-only',
