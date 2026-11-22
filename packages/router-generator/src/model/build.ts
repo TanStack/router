@@ -497,14 +497,19 @@ export function buildTreeModel(input: TreeModelInput): TreeModel {
 }
 
 /**
- * Siblings with routes that own no URL first: a pathless layout without
- * children yet matches its parent's path, like an index route there, and of
+ * Siblings with routes that own no URL first: a pathless layout that
+ * nothing below it gives a URL (no children, or only such layouts, all the
+ * way down) matches its parent's path, like an index route there, and of
  * two such leaves the router matches the one declared last (SPEC J1.15:
- * the index route is the page).
+ * the index route is the page). Also the order of a tree a consumer
+ * pruned (Start's client route tree), whose layouts may have lost the
+ * children that owned a URL.
  */
-function ownersLast(routes: Array<ModelRoute>) {
-  const ownsNoUrl = (route: ModelRoute) =>
-    route.isNonPath && route.children.length === 0
+export function ownersLast(
+  routes: ReadonlyArray<ModelRoute>,
+): Array<ModelRoute> {
+  const ownsNoUrl = (route: ModelRoute): boolean =>
+    route.isNonPath && route.children.every(ownsNoUrl)
   return [
     ...routes.filter(ownsNoUrl),
     ...routes.filter((route) => !ownsNoUrl(route)),

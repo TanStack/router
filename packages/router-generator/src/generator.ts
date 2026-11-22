@@ -70,10 +70,16 @@ interface FileStamp {
   readonly size: number
 }
 
-/** A file's content, to tell it unchanged without keeping its text. */
-function digestOf(content: string) {
+/**
+ * A text's digest, to tell it unchanged without keeping it: the form of
+ * `Generator.sourceDigest` and `treeDigest` (a bundler plugin digests the
+ * bytes its compiler was handed with it to compare them).
+ */
+export function contentDigest(content: string): string {
   return crypto.hash('sha1', content, 'base64')
 }
+
+const digestOf = contentDigest
 
 interface FileState {
   /** The digest of the content last read (or written by the generator); `''` when the file was missing. */
@@ -227,7 +233,21 @@ export class Generator {
    * (`printed`: the text Prettier formatted into `content`, when it did).
    */
   private published:
-    | { content: string; mtimeMs: number; size: number; printed?: string }
+    | {
+        content: string
+        digest: string
+        mtimeMs: number
+        size: number
+        printed?: string
+      }
+    | undefined
+  /**
+   * Derived from the published model and the files' real paths, once when
+   * first asked after they changed (`sourceDigest`): the files the tree
+   * imports, and each linked scanned file by its real path.
+   */
+  private lookups:
+    | { imported: Set<string>; byRealPath: Map<string, string> }
     | undefined
   /** A batch failed: the next one scans again and rebuilds the tree. */
   private stale = false
@@ -338,6 +358,44 @@ export class Generator {
    */
   public realPathOf(file: string): string | undefined {
     return this.files.get(file)?.realPath
+  }
+
+  /**
+   * The digest (`contentDigest`) of what the generator last read or wrote of
+   * a file the published route tree imports, asked by the file's scanned
+   * path or by its real path; undefined for any other file (one the tree
+   * does not import, such as a `__root.lazy.tsx`, or no route file).
+   */
+  public sourceDigest(file: string): string | undefined {
+    const key = normalize(file)
+    this.lookups ??= this.deriveLookups()
+    const scanned = this.files.has(key) ? key : this.lookups.byRealPath.get(key)
+    if (scanned === undefined || !this.lookups.imported.has(scanned)) {
+      return undefined
+    }
+    const state = this.files.get(scanned)
+    if (!state || (scanned !== key && state.realPath !== key)) {
+      return undefined
+    }
+    return state.digest === '' ? undefined : state.digest
+  }
+
+  /** The digest (`contentDigest`) of the route tree the generator published last; undefined before the first. */
+  public treeDigest(): string | undefined {
+    return this.published?.digest
+  }
+
+  private deriveLookups() {
+    const byRealPath = new Map<string, string>()
+    for (const [file, state] of this.files) {
+      if (state.realPath !== undefined && !byRealPath.has(state.realPath)) {
+        byRealPath.set(state.realPath, file)
+      }
+    }
+    return {
+      imported: this.model ? importedFiles(this.model) : new Set<string>(),
+      byRealPath,
+    }
   }
 
   /** Whether a run has generated the route tree (and its registry) yet. */
@@ -643,11 +701,13 @@ export class Generator {
     if (!changes.routes) {
       if (changes.props) {
         this.model = this.buildModel()
+        this.lookups = undefined
         this.notifyPlugins()
       }
       if (changes.registry) {
         // the tree is as before, but what the registry says of a file is not
         this.routesByFile = this.computeRoutesByFile()
+        this.lookups = undefined
       }
       await this.writePending(this.model!)
       return
@@ -659,6 +719,7 @@ export class Generator {
     await this.publishTree(model)
     this.model = model
     this.routesByFile = this.computeRoutesByFile()
+    this.lookups = undefined
     this.stale = false
     this.notifyPlugins()
   }
@@ -811,6 +872,7 @@ export class Generator {
     const stat = await fsp.stat(this.treeFile)
     this.published = {
       content,
+      digest: digestOf(content),
       mtimeMs: stat.mtimeMs,
       size: stat.size,
       printed: formatting ? printed : undefined,

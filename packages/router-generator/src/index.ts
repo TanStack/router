@@ -6,7 +6,8 @@ export {
 } from './config'
 export type { Config, BaseConfig } from './config'
 
-export { Generator } from './generator'
+export { Generator, contentDigest } from './generator'
+export { ownersLast } from './model/build'
 export type { FileEventType, FileEvent, GeneratorEvent } from './generator'
 export { logging } from './logger'
 export type { Logger } from './logger'
