@@ -57,7 +57,11 @@ export interface RouteSetEvidence {
   failed: (compiler: string, client: boolean) => void
   /** `compiler` finished a compilation, with errors or not. */
   done: (compiler: string, hasErrors: boolean) => void
-  /** The dev server closed: what its compilers built is forgotten. */
+  /**
+   * The dev server closed: everything recorded is forgotten (the evidence
+   * is of one dev server's compilers; the next one starts empty, with its
+   * own first published tree).
+   */
   reset: () => void
   /** The digest of the client's tree for the current publication (awaited before anything is compared). */
   current: () => Promise<string>
@@ -285,6 +289,9 @@ function createRouteSetEvidence(opts: {
       errored.clear()
       clientPending = undefined
       clientCommitted = undefined
+      // (the next dev server's first tree, from its own first publication)
+      treeAtStart = undefined
+      derived = undefined
     },
     current() {
       const state = publication()
