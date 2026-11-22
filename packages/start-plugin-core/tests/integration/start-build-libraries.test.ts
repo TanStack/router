@@ -248,3 +248,92 @@ return report`)
     timeout,
   )
 })
+
+// A Start kit as `tsc` emits it, unbundled: its builder in one module, the
+// module the app imports adding a validator or middleware to it, which
+// names no Start API (`base.validator(…)`, `base.middleware([auth])`, with
+// TypeScript's type arguments too). The app finishes the builder: its
+// handler stays on the server and the client calls it by its id.
+const kitFiles = {
+  'node_modules/lib-kit/package.json': JSON.stringify({
+    name: 'lib-kit',
+    type: 'module',
+    peerDependencies: { '@tanstack/react-start': '*' },
+    exports: { '.': './index.js', './typed': './typed.ts' },
+  }),
+  'node_modules/lib-kit/base.js': `import { createServerFn } from '@tanstack/react-start'
+export const base = createServerFn({ method: 'GET' })
+`,
+  'node_modules/lib-kit/auth.js': `import { createMiddleware } from '@tanstack/react-start'
+export const auth = createMiddleware({ type: 'function' }).server(({ next }) => next())
+`,
+  'node_modules/lib-kit/index.js': `import { base } from './base.js'
+import { auth } from './auth.js'
+export const validated = base.validator((data) => data)
+export const authed = base.middleware([auth])
+`,
+  'node_modules/lib-kit/typed.ts': `import { base } from './base.js'
+export const typed = base.validator<(data: unknown) => unknown>((data) => data)
+`,
+  'src/app.ts': `import { authed, validated } from 'lib-kit'
+import { typed } from 'lib-kit/typed'
+export const fns = {
+  validated: validated.handler(async () => 'MARK_KIT_VALIDATED_SECRET'),
+  authed: authed.handler(async () => 'MARK_KIT_AUTHED_SECRET'),
+  typed: typed.handler(async () => 'MARK_KIT_TYPED_SECRET'),
+}
+`,
+  'src/client-entry.ts': `export { fns } from './app'\n`,
+  'src/ssr-entry.ts': `export { fns } from './app'
+${callByIdExports}`,
+}
+
+describe.each(startBundlers)(
+  '%s build of a two-module Start kit',
+  (bundler) => {
+    test(
+      "the app's handlers on the kit's builders stay on the server, and the client calls them by id",
+      async () => {
+        const { client, ssr } = await buildStart({
+          bundler,
+          files: kitFiles,
+          entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+          packageJson: {
+            name: 'app',
+            private: true,
+            type: 'module',
+            dependencies: { 'lib-kit': '*' },
+          },
+        })
+        const names = ['validated', 'authed', 'typed']
+        for (const name of names) {
+          expect(
+            client.where(`MARK_KIT_${name.toUpperCase()}_SECRET`),
+            name,
+          ).toBe('nowhere')
+        }
+        const urls = (
+          await client.run(
+            `return Object.fromEntries(Object.entries(entry.fns).map(([name, fn]) => [name, fn.url]))`,
+          )
+        ).result as Record<string, unknown>
+        const called = (
+          await ssr.run(`${callByIdPrelude}const called = {}
+for (const [name, url] of Object.entries(${JSON.stringify(urls)})) {
+  called[name] = await callById(serverFnId(url))
+}
+return called`)
+        ).result
+        expect(called).toEqual(
+          Object.fromEntries(
+            names.map((name) => [
+              name,
+              `MARK_KIT_${name.toUpperCase()}_SECRET`,
+            ]),
+          ),
+        )
+      },
+      timeout,
+    )
+  },
+)

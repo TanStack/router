@@ -16,11 +16,11 @@ export const NODE_MODULES_RE = /[\\/]node_modules[\\/]/
  * protection judges the edges of every module it checks. A dependency
  * (`node_modules`) is compiled when import protection checks it, or when its
  * text names what the planners recognise: an export of the recognizer table
- * (`createServerFn`, `ClientOnly`, …), a builder's terminal call (`.handler(`,
- * `.server(`, `.client(`), the `Hydrate` boundary, or an import-protection
- * marker. A library that renames a factory and calls the rename without
- * naming any of these is not compiled (the Start libraries an app depends on
- * name them). The text test is cheap: it runs before any parse or read.
+ * (`createServerFn`, `ClientOnly`, …), a builder method's call (`.handler(`,
+ * `.server(`, `.client(`, `.validator(`, `.middleware(`, with type arguments
+ * too), the `Hydrate` boundary, or an import-protection marker. A library
+ * that renames a factory and calls the rename without naming any of these is
+ * not compiled (the Start libraries an app depends on name them). The text test is cheap: it runs before any parse or read.
  */
 export function startCompileScope(
   ip: ImportProtection | null,
@@ -63,7 +63,11 @@ function startTextTest(config: ImportProtectionConfig | null): RegExp {
   return new RegExp(
     [
       ...names,
-      String.raw`\.\s*(?:handler|server|client)\s*\(`,
+      // (a builder's methods: a module of an unbundled Start library may
+      // only add a validator or middleware to another module's builder;
+      // `inputValidator` fails the build, naming the dependency; `<`: a
+      // TypeScript type argument list before the call)
+      String.raw`\.\s*(?:handler|server|client|validator|inputValidator|middleware)\s*[(<]`,
       ...Object.keys(config?.markerSpecifiers ?? {}).map(escapeRegExp),
     ].join('|'),
   )
