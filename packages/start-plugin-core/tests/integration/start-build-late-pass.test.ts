@@ -270,6 +270,48 @@ export const fn = createServerFn().handler(async (): Promise<string> => label)
     timeout,
   )
 
+  // A `namespace` whose members only erased code reads loses them (the
+  // dead-code elimination's namespace gap, as in an app's `.ts` module):
+  // until that is fixed, a late TypeScript module declaring one fails the
+  // client build as before, instead of shipping `Config.b` undefined.
+  test(
+    'fails the client build when it declares a namespace and names a Start package',
+    async () => {
+      const error: unknown = await buildStart({
+        bundler: 'vite',
+        files: {
+          'src/math.foo': `import { createServerOnlyFn } from '@tanstack/react-start'
+export namespace Config {
+  export const a = 1, b = Number('2')
+  export const { c, d } = { c: 3, d: 4 }
+  export const sum = createServerOnlyFn(() => b + d)
+}
+`,
+          'src/entry.ts': `import { Config } from './math.foo'
+export const result = [Config.a, Config.b, Config.c, Config.d]
+`,
+        },
+        entry: 'src/entry.ts',
+        ...asTypeScript,
+      }).then(
+        async (build) =>
+          expect.fail(
+            `the build succeeded; the client reads ${JSON.stringify((await build.client.run('return entry.result')).result)}`,
+          ),
+        (e: unknown) => e,
+      )
+      if (!(error instanceof StartBuildError)) {
+        throw error
+      }
+      expectDiagnostic(error.diagnostics, {
+        severity: 'error',
+        file: 'src/math.foo',
+        root: error.root,
+      })
+    },
+    timeout,
+  )
+
   test(
     'builds one that names a router package',
     async () => {

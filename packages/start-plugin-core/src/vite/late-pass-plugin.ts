@@ -62,7 +62,7 @@ export function latePassPlugin(state: ViteCompilerState): Plugin {
             inputMap: readInputMap,
             wantMap: true,
             late: true,
-            lang: lateLang(options?.moduleType),
+            lang: lateLang(options?.moduleType, code),
           },
           state.hostFor(
             s,
@@ -113,14 +113,26 @@ export function latePassPlugin(state: ViteCompilerState): Plugin {
   }
 }
 
+/** A TypeScript namespace declaration (`namespace A {`, `module A.B {`). */
+const TS_NAMESPACE_RE =
+  /\b(?:namespace|module)\s+[A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*\s*\{/
+
 /**
  * The language the late pass reads a module's code as: the module type the
  * bundler parses it as (`ts` from a plugin compiling another language to
  * TypeScript), JSX for JavaScript or a module type that is no script (the
  * compile then fails to parse it, and `bundlerParses` decides).
+ * TODO(dead-code namespaces): TypeScript declaring a namespace is read as JSX,
+ * as before TypeScript was read: the dead-code elimination deletes a
+ * namespace's exported members that only erased code reads (in any module),
+ * and the parse refusal keeps such a module from shipping without them.
+ * Drop this when namespaces are fixed.
  */
-function lateLang(moduleType: string | undefined) {
-  return moduleType === 'ts' || moduleType === 'tsx' ? moduleType : 'jsx'
+function lateLang(moduleType: string | undefined, code: string) {
+  return (moduleType === 'ts' || moduleType === 'tsx') &&
+    !TS_NAMESPACE_RE.test(code)
+    ? moduleType
+    : 'jsx'
 }
 
 /**
