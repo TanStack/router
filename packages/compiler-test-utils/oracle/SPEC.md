@@ -500,7 +500,7 @@ dir)` is not a conflict by itself.
   only; Babel any) must not become effective in a chunk. Warning and leaving the file unsplit is also acceptable
   (J2.8). Tests assert the rendered outcome only, compiling the untouched and the compiled module with the project's
   real JSX transform and defaults, never comment placement or the runtime import's spelling. In development, a chunk
-  holding components carries the file's `@refresh` pragmas, wherever the file has them (solid-refresh's `granular`,
+  holding components carries the file's `@refresh` pragmas that its refresh plugin reads (solid-refresh's `granular`,
   `skip`, `reload`; React Refresh's `reset`), which the refresh plugins read per module: its components refresh as the
   file asks. Only the pragma: the rest of its comment (a `@jsxImportSource` after the imports) means what it means in
   the file.

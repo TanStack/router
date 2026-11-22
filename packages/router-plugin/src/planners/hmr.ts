@@ -48,7 +48,13 @@ import type {
   SymRef,
   SymbolId,
 } from '@tanstack/router-utils/compiler'
-import type { CallExpression, Node, VariableDeclarator } from 'yuku'
+import type {
+  CallExpression,
+  Comment,
+  Node,
+  SourceFile,
+  VariableDeclarator,
+} from 'yuku'
 
 /** The component options route HMR keeps: the splittable ones and `shellComponent`. */
 const HMR_COMPONENT_KEYS: ReadonlyArray<string> = [
@@ -515,19 +521,122 @@ function splitGroups(round: RouterRound): SplitGroups {
 }
 
 /**
- * The directive a refresh plugin reads in a comment, wherever it is in the
- * module, as a comment of its own, by that plugin's own rule:
- * solid-refresh's whole comment `@refresh granular|skip|reload` (one
- * space; the first one it finds wins), React Refresh's `@refresh reset` (one
- * space) anywhere in a comment, a JSDoc one too (the Babel plugin and SWC;
- * Oxc reads none); null for a comment no plugin acts on.
+ * The directive a refresh plugin reads in a comment of the module, as a
+ * comment of its own, by that plugin's own rule: solid-refresh's whole
+ * comment `@refresh granular|skip|reload` (one space; the first one it finds
+ * wins; it reads every comment), React Refresh's `@refresh reset` (one space)
+ * in a comment it reads (`reactReadsComment`); null for a comment no plugin
+ * acts on.
  */
-function refreshDirective(comment: string): string | null {
-  const solid = /^\s*@refresh (granular|skip|reload)\s*$/.exec(comment)
+function refreshDirective(
+  file: SourceFile,
+  comment: Comment,
+  bounds: CommentBounds,
+): string | null {
+  const solid = /^\s*@refresh (granular|skip|reload)\s*$/.exec(comment.value)
   if (solid) {
     return `// @refresh ${solid[1]}\n`
   }
-  return comment.includes('@refresh reset') ? '/* @refresh reset */\n' : null
+  return comment.value.includes('@refresh reset') &&
+    reactReadsComment(file, comment, bounds)
+    ? '/* @refresh reset */\n'
+    : null
+}
+
+/** The comments of a module by their end and by their start offsets. */
+interface CommentBounds {
+  byEnd: Map<number, number>
+  byStart: Map<number, number>
+}
+
+/** Whitespace other than line terminators. */
+const INLINE_SPACE = /[^\S\n\r\u2028\u2029]/
+
+/** TypeScript syntax the TypeScript transform removes, with its comments. */
+const TYPE_ONLY: ReadonlySet<string> = new Set([
+  'TSTypeAnnotation',
+  'TSTypeAliasDeclaration',
+  'TSInterfaceDeclaration',
+  'TSTypeParameterDeclaration',
+  'TSTypeParameterInstantiation',
+  'TSDeclareFunction',
+])
+
+/**
+ * Whether React Refresh's transform reads a comment, as measured where it
+ * acts: SWC (Rsbuild) reads one that leads its line (only whitespace and
+ * comments before it on the line) or follows the module's last token, and
+ * none in TypeScript syntax the TypeScript transform removed first; Oxc
+ * (Vite 8) reads none, so carrying one changes nothing there. (Babel's
+ * plugin reads every comment, a superset of SWC's.)
+ */
+function reactReadsComment(
+  file: SourceFile,
+  comment: Comment,
+  { byEnd, byStart }: CommentBounds,
+): boolean {
+  const source = file.source
+  let leading: boolean
+  for (let p = comment.start; ; ) {
+    while (p > 0 && INLINE_SPACE.test(source[p - 1]!)) {
+      p--
+    }
+    if (p === 0 || /[\n\r\u2028\u2029]/.test(source[p - 1]!)) {
+      leading = true
+      break
+    }
+    const before = byEnd.get(p)
+    if (before === undefined) {
+      leading = false
+      break
+    }
+    p = before
+  }
+  if (!leading) {
+    // after the module's last token
+    for (let p = comment.end; ; ) {
+      while (p < source.length && /\s/.test(source[p]!)) {
+        p++
+      }
+      if (p === source.length) {
+        break
+      }
+      const after = byStart.get(p)
+      if (after === undefined) {
+        return false
+      }
+      p = after
+    }
+  }
+  let child: Node | null = null
+  for (
+    let node = file.nodeAt(comment.start);
+    node;
+    node = file.parentOf(node)
+  ) {
+    const typed = node as Node & {
+      declare?: boolean
+      importKind?: string
+      exportKind?: string
+      typeAnnotation?: Node | null
+    }
+    if (
+      TYPE_ONLY.has(node.type) ||
+      typed.declare === true ||
+      typed.importKind === 'type' ||
+      typed.exportKind === 'type' ||
+      ((node.type === 'TSAsExpression' ||
+        node.type === 'TSSatisfiesExpression' ||
+        node.type === 'TSTypeAssertion') &&
+        child !== null &&
+        typed.typeAnnotation?.start === child.start &&
+        typed.typeAnnotation.end === child.end)
+    ) {
+      return false
+    }
+    child = node
+  }
+  return true
 }
 
 /**
@@ -543,7 +652,14 @@ function refreshPragmas(ctx: PlanContext, groups: SplitGroups): void {
   if (!file.source.includes('@refresh')) {
     return
   }
-  const pragmas = file.comments.flatMap((c) => refreshDirective(c.value) ?? [])
+  const bounds: CommentBounds = { byEnd: new Map(), byStart: new Map() }
+  for (const c of file.comments) {
+    bounds.byEnd.set(c.end, c.start)
+    bounds.byStart.set(c.start, c.end)
+  }
+  const pragmas = file.comments.flatMap(
+    (c) => refreshDirective(file, c, bounds) ?? [],
+  )
   if (pragmas.length === 0) {
     return
   }

@@ -264,25 +264,40 @@ export const Route = createFileRoute('/')({ component: Page })
 // on Rsbuild (`@rsbuild/plugin-react`), the split route resets the count the
 // click set as the unsplit route does.
 // React Refresh reads the comment anywhere in the module, a JSDoc one too.
+/** Where the React route file has its comment. */
+interface Comments {
+  header?: string
+  inBody?: string
+  inJsx?: string
+  aboveRoute?: string
+  eof?: string
+}
+
 describe('a React /* @refresh reset */ comment, on Rsbuild', () => {
   const reactCounter = (
-    { header = '', aboveRoute = '' }: { header?: string; aboveRoute?: string },
+    {
+      header = '',
+      inBody = '',
+      inJsx = '',
+      aboveRoute = '',
+      eof = '',
+    }: Comments,
     version: string,
   ) => `${header}import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 function Page() {
-  const [count, setCount] = useState(0)
+${inBody}  const [count, setCount] = useState(0)
   return (
     <button onClick={() => setCount(count + 1)}>
-      Counter {'${version}'} count {count}
+      ${inJsx}Counter {'${version}'} count {count}
     </button>
   )
 }
-${aboveRoute}export const Route = createFileRoute('/')({ component: Page })
+${aboveRoute}export const Route = createFileRoute('/')({ component: Page })${eof}
 `
   async function counterAfterEdit(
     autoCodeSplitting: boolean,
-    comments: { header?: string; aboveRoute?: string },
+    comments: Comments,
   ) {
     const app = await openRouteHmrPage({
       bundler: 'rsbuild',
@@ -326,6 +341,26 @@ ${aboveRoute}export const Route = createFileRoute('/')({ component: Page })
     {
       name: 'a header with a line break',
       header: '/* @refresh\nreset */\n',
+      count: 1,
+    },
+    // (Rsbuild's SWC reads a comment leading its line, or after the file's
+    // last token, outside TypeScript types: on a line of the component's
+    // body and at the end of the file it resets, inside JSX after a token
+    // or in a type it doesn't)
+    {
+      name: 'a line of the component body',
+      inBody: '  /* @refresh reset */\n',
+      count: 0,
+    },
+    { name: 'the end of the file', eof: ' /* @refresh reset */', count: 0 },
+    {
+      name: 'JSX children after a token',
+      inJsx: '{/* @refresh reset */}',
+      count: 1,
+    },
+    {
+      name: 'a type member',
+      aboveRoute: 'type T = { /* @refresh reset */ m: number }\n',
       count: 1,
     },
   ])(
