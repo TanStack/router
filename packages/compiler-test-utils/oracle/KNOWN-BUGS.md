@@ -564,6 +564,65 @@ module "…" in the React Client Manifest`. Dev is not affected (the next compil
   (Rolldown 1.2.x); fixed by Rolldown 1.3.0 and later, which Vite 8.4.0-beta.1 depends on. A route deleted during a
   watch build is one way to fail a build: `main` then happens to run a second build that repairs the output, this
   PR does not. Remove this entry when the repo moves to Vite 8.4. No test (upstream).
+- **Start + Rsbuild dev: what the route-set reload guarantees** (hotspot 2 L1; user, 11-22: decision A). After the
+  client's route tree changed (a route added, deleted or renamed, a page turned into a server handler or back, a
+  lazy file added), the open tab is reloaded once, when: the last finished compilations of Start's client and server
+  have no errors; the client has emitted the generator's current client tree; the server has emitted a tree module
+  built from the current tree file (or built through a loader that reads it before Start's); and every route file
+  for which two readings exist was built by the server from the bytes the generator has. Two readings exist for a
+  file when the published tree imports it and Start's loader was the first to read it for the server in this
+  process. Nothing else about the first document is guaranteed. `main` sends no reload on Start + Rsbuild and does
+  not prune the client's tree; this PR prunes it, so against `main` there are four situations
+  (`start-plugin-core/tests/integration/rsbuild/route-set-reload*.test.ts` hold the first and the options):
+  1. The reload comes with the evidence above: the tab follows the route set (`main`'s stays on the old route set).
+  2. No reload: the app's `dev.liveReload: false`; RSC with `dev.hmr: false` (no socket client); a server emit
+     another plugin vetoes (until a compilation emits); a fatal failure (the bundler stops watching; a restart may be
+     needed); a third environment still compiling (until it ends). The tab is no worse than `main`'s except for one
+     transition: a route that was server-only when the tab loaded and then became a page. `main`'s tab reaches it by
+     its own navigation (its client tree lists every route); this PR's shows the not-found page until reloaded.
+  3. A reload without a second reading of a file: a route file another loader reads first, a Vue route piece (Start's
+     raw loader never sees it), a module restored from the persistent cache, at its first edit in the process. The
+     reload does not wait for the server's build of that file, so the document can be the old one for that route while
+     the client already has the new tree. `main`'s tab shows the old page without a reload. Both need a manual
+     reload.
+  4. A module that is neither the tree nor a route file, saved in the same moment: the reloaded document can carry
+     its older value, and the tab is not reloaded again for a server-only module. `main`'s tab shows the old document.
+- **Router plugin on Vite dev: an open tab can miss a route tree change** (hotspot 2 T; user, 11-22: decision A).
+  Whether the tab hears of a tree change is Vite's watcher's doing, and Vite's bundled chokidar gives no event for a
+  second change of a file within 50 ms: a route file deleted and created again within about 150 ms leaves the tab on
+  the app without the route until the next route change or a manual reload. The dev server serves the current tree
+  (its modules are invalidated when the generator publishes, `vite-dev-publication.test.ts`), so a fresh load is
+  right. Start is not affected (it reloads on a client route set change). A fix announces every tree write itself,
+  which doubles the client's `full-reload` payloads on every route change. No test (the outcome is the limit).
+- **Vite dev: a load of a file that began before the generator replaced it keeps the old text** (hotspot 2 L2; user,
+  11-22: decision A). Vite registers a module after its `load` returns: a request that read the route tree (or a
+  route file the generator rewrote) before the generator wrote it creates the module afterwards from the old text,
+  which the invalidation at publication cannot see. Vite's own event for the file repairs it, unless its watcher
+  drops the event (a second change within 50 ms). Also a second spelling of a replaced file's path (a second alias
+  under `resolve.preserveSymlinks`), whether or not its module was loaded (F13). As `main`, which also keeps the old
+  text for modules already loaded. No test (the outcome is the limit).
+- **`vite build --watch`: a new route file edited during the build that first imports it waits for the next save**
+  (hotspot 2 N2; user, 11-22: decision A). A file first imported by a build and saved while that build runs is not
+  rebuilt until the next save; the mechanism reproduces on plain Vite with no router plugin (Rolldown's watcher,
+  related to rolldown#10935). `main` passes the gate's row; why was not traced. No test (upstream).
+- **A compilation that took a route tree importing a route file deleted during an event storm can fail once**
+  (hotspot 2 D2; user, 11-22: decision A). A git checkout, a rename chain or a delete right after a create: a
+  compilation (or a watch build) that read the tree before the delete's generation reports the deleted file as not
+  found; the delete's own generation writes the tree without it and a clean compilation follows, and an open tab
+  recovers by reload, as on Vite. No error is filtered. No test (the outcome is the limit).
+- **Vite dev: two saves of one route file within 50 ms reach the generator as one** (hotspot 2 D5; user, 11-22:
+  decision A). On Vite dev the generator reads route files on Vite's watcher's events, and Vite's bundled chokidar
+  (3.x) drops a second `change` of a file within 50 ms (chokidar 6, the generator's own watcher on the other hosts,
+  replays it). A page turned into a server handler and back within that window (`page-server-page-fast`) keeps the
+  route set of the first save until the next event. No Vite issue (known upstream). No test (the outcome is the
+  limit).
+- **Start + Vite `build --watch`: a client watcher closed before the builder delegate hands it to Start leaves
+  `buildApp` pending** (hotspot 2 F12, review A of design-routeset-v5). A program whose own delegate of
+  `builder.build` closes the client's watcher before returning it: Start waits for the end of a first build that
+  never comes. Rolldown's watcher keeps no state Start could ask (a `close` listener attached after the close hears
+  nothing) and calls no `closeWatcher` plugin hook for a watcher closed before its first build started (Rolldown
+  1.2.19, checked). A watcher closed after Start has it ends `buildApp` (`start-build-watch-close.test.ts`). `main`
+  settles. A fix needs a closed state or the hook from Rolldown. No test (the outcome is the limit).
 
 ## Fixed, kept as regression tests
 
@@ -683,6 +742,10 @@ removal:
 
 ### J1 Route file upkeep
 
+- **Vite dev serves an older route tree when Vite's watcher drops or holds the tree's own event** (a second change
+  within 50 ms, another plugin's `hotUpdate`, a tree behind a linked directory). SPEC J1.10.
+  `router-plugin/tests/vite-dev-publication.test.ts`. Fix: invalidate the modules of the files a generator run
+  replaced when it is published.
 - **A `(group).tsx` route file is reported relative to the routes directory** (neither absolute nor project-relative).
   SPEC §2.2, §5.7. `router-generator/tests/deny-route-group-config.test.ts`: "a (group).tsx route file is reported by
   name or routes correctly: $name". Fix: name the file unambiguously, or route it.
@@ -928,6 +991,17 @@ Paths under `start-plugin-core/tests/integration/`.
 - **The client route tree module is matched by `new RegExp(<path>)`, unescaped.** SPEC J2.15, G11.
   `start-compose-project-path.test.ts`: "the client route tree leaves out the server-only route"; "the client gets the
   file, not the client route tree".
+- **A pathless layout whose only route below it is server-only takes `/` from the index route in the client.** SPEC
+  J1.15, J2.15. The client router matched the layout where the server rendered the index route (a hydration
+  error). `rsbuild/client-route-tree-order.test.ts`: "a built app: `/` is the index route"; "dev: `/` is the index
+  route, after the server-only route is deleted and after it is created again" (one level, nested);
+  `router-generator/tests/source-digests.test.ts`: "a pathless layout whose children are childless pathless layouts
+  does not take `/` from the index route". Fix: order each pruned sibling list as the generator does (`ownersLast`,
+  recursive on pathless layouts).
+- **Start + Rsbuild dev: the open tab keeps the route set it hydrated with** (a route added, a handler turned into a
+  page). SPEC J3.10. `rsbuild/route-set-reload.test.ts`, `rsbuild/route-set-reload-*.test.ts` (the options, the
+  evidence, other plugins and environments, RSC). Fix: reload the tab once both compilers serve the new route set
+  (the accepted limit "what the route-set reload guarantees").
 
 ### J3 Route HMR
 
