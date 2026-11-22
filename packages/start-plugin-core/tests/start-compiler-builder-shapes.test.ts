@@ -992,22 +992,45 @@ describe('builder shapes the client compiles', () => {
 })
 
 /**
- * `n` modules, each starring the next two, the last starring the first (a
+ * 32 modules, each starring the next two, the last starring the first (a
  * cycle) and the module that exports the factory, which only the end of
  * the cycle reaches.
  */
-const starCycle = (n: number) =>
-  Object.fromEntries(
-    Array.from({ length: n }, (_, i) => [
-      `m${i}.ts`,
-      `export const v${i} = ${i}\n${[i + 1, i + 2]
-        .filter((next) => next < n)
-        .map((next) => `export * from './m${next}'\n`)
-        .join(
-          '',
-        )}${i === n - 1 ? `export * from './m0'\nexport * from './factory'\n` : ''}`,
-    ]),
-  )
+const starCycle = {
+  'm0.ts': `export const v0 = 0\nexport * from './m1'\nexport * from './m2'\n`,
+  'm1.ts': `export const v1 = 1\nexport * from './m2'\nexport * from './m3'\n`,
+  'm2.ts': `export const v2 = 2\nexport * from './m3'\nexport * from './m4'\n`,
+  'm3.ts': `export const v3 = 3\nexport * from './m4'\nexport * from './m5'\n`,
+  'm4.ts': `export const v4 = 4\nexport * from './m5'\nexport * from './m6'\n`,
+  'm5.ts': `export const v5 = 5\nexport * from './m6'\nexport * from './m7'\n`,
+  'm6.ts': `export const v6 = 6\nexport * from './m7'\nexport * from './m8'\n`,
+  'm7.ts': `export const v7 = 7\nexport * from './m8'\nexport * from './m9'\n`,
+  'm8.ts': `export const v8 = 8\nexport * from './m9'\nexport * from './m10'\n`,
+  'm9.ts': `export const v9 = 9\nexport * from './m10'\nexport * from './m11'\n`,
+  'm10.ts': `export const v10 = 10\nexport * from './m11'\nexport * from './m12'\n`,
+  'm11.ts': `export const v11 = 11\nexport * from './m12'\nexport * from './m13'\n`,
+  'm12.ts': `export const v12 = 12\nexport * from './m13'\nexport * from './m14'\n`,
+  'm13.ts': `export const v13 = 13\nexport * from './m14'\nexport * from './m15'\n`,
+  'm14.ts': `export const v14 = 14\nexport * from './m15'\nexport * from './m16'\n`,
+  'm15.ts': `export const v15 = 15\nexport * from './m16'\nexport * from './m17'\n`,
+  'm16.ts': `export const v16 = 16\nexport * from './m17'\nexport * from './m18'\n`,
+  'm17.ts': `export const v17 = 17\nexport * from './m18'\nexport * from './m19'\n`,
+  'm18.ts': `export const v18 = 18\nexport * from './m19'\nexport * from './m20'\n`,
+  'm19.ts': `export const v19 = 19\nexport * from './m20'\nexport * from './m21'\n`,
+  'm20.ts': `export const v20 = 20\nexport * from './m21'\nexport * from './m22'\n`,
+  'm21.ts': `export const v21 = 21\nexport * from './m22'\nexport * from './m23'\n`,
+  'm22.ts': `export const v22 = 22\nexport * from './m23'\nexport * from './m24'\n`,
+  'm23.ts': `export const v23 = 23\nexport * from './m24'\nexport * from './m25'\n`,
+  'm24.ts': `export const v24 = 24\nexport * from './m25'\nexport * from './m26'\n`,
+  'm25.ts': `export const v25 = 25\nexport * from './m26'\nexport * from './m27'\n`,
+  'm26.ts': `export const v26 = 26\nexport * from './m27'\nexport * from './m28'\n`,
+  'm27.ts': `export const v27 = 27\nexport * from './m28'\nexport * from './m29'\n`,
+  'm28.ts': `export const v28 = 28\nexport * from './m29'\nexport * from './m30'\n`,
+  'm29.ts': `export const v29 = 29\nexport * from './m30'\nexport * from './m31'\n`,
+  'm30.ts': `export const v30 = 30\nexport * from './m31'\n`,
+  'm31.ts': `export const v31 = 31\nexport * from './m0'\nexport * from './factory'\n`,
+  'factory.ts': `export { createServerFn } from '@tanstack/react-start'\n`,
+}
 
 // A lookup through a dense `export *` graph with a cycle took every path
 // through it: exponential in the modules (seconds at 32, half a minute at
@@ -1018,10 +1041,7 @@ test('createServerFn through a cyclic `export *` graph of 32 modules compiles in
   ).case(
     caseFiles({
       name: 'star cycle',
-      files: {
-        ...starCycle(32),
-        'factory.ts': `export { createServerFn } from '@tanstack/react-start'\n`,
-      },
+      files: starCycle,
       code: `import { createServerFn } from './m0'\nimport { db } from './db.server'\nexport const fn = createServerFn().handler(async () => db.x())`,
     }),
   )
