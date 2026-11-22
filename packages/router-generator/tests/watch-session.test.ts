@@ -8,7 +8,7 @@
 import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { expect, onTestFinished, test } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import {
   rootRoute as virtualRootRoute,
@@ -20,10 +20,13 @@ import { routesOf } from './route-tree'
 import type { Config, GetRoutesByFileMapResult } from '../src'
 
 /** A watch session on the app at `root`, once it watches and ran. */
-async function watchApp(root: string, config: Config) {
+async function watchApp(
+  root: string,
+  config: Config,
+  generator = new Generator({ config, root }),
+) {
   const reported: Array<string> = []
   let routes: GetRoutesByFileMapResult = new Map()
-  const generator = new Generator({ config, root })
   const session = createGeneratorSession({
     generator: () => generator,
     publish: (routesByFile) => {
@@ -181,5 +184,162 @@ test('an edit of a route file the virtual route config names outside the routes 
     problems: () => session.reported,
     timeout: 10_000,
     describe: () => readFileSync(item, 'utf8'),
+  })
+})
+
+// Bug: a save of a route file right after the generator handled the
+// previous one, within 50 ms of it (a tool or a script writing the file
+// twice, a format-on-save after the save), never reached the generator: it
+// kept the content of the first save.
+// Source: chokidar 5 dropped a change within 50 ms of the previous one of
+// the file (fixed in chokidar 6, which reports it at the end of the window).
+// Impact: under `tsr watch`, Rspack and webpack watch mode, Rsbuild dev and
+// `vite build --watch`, the route stays as the first save left it until the
+// file is saved again or the session restarts.
+test('a save of a route file right after the generator handled the previous one is handled', async () => {
+  const root = await createApp({ ...app, 'src/routes/b.tsx': 'export {}\n' })
+  const config = configOf(root)
+  const generator = new Generator({ config, root })
+  const b = path.join(root, 'src/routes/b.tsx')
+  // The second save, as soon as the run of the first one's event ended
+  // (the generator read the first save)
+  const run = generator.run.bind(generator)
+  let saves = 0
+  vi.spyOn(generator, 'run').mockImplementation((event) => {
+    const started = run(event)
+    if (event && 'path' in event && path.basename(event.path) === 'b.tsx') {
+      if (saves++ === 0) {
+        void started.then(() => writeFile(b, fileRoute('/b')))
+      }
+    }
+    return started
+  })
+  const session = await watchApp(root, config, generator)
+
+  await writeFile(b, 'export const draft = true\n')
+
+  await waitForOutcome({
+    applied: () => session.routeFiles().includes('src/routes/b.tsx'),
+    problems: () => session.reported,
+    timeout: 10_000,
+    describe: () => `routes handed over: ${session.routeFiles().join(', ')}`,
+  })
+  expect(await routesOf(config.generatedRouteTree)).toEqual({
+    ...appRoutes,
+    '/b': 'routes/b.tsx',
+  })
+})
+
+// Bug: once the routes directory was deleted and created again (a branch
+// switch or `git stash -u` that removes it, a scaffolding tool that rewrites
+// it), no event of its files reached the generator.
+// Source: chokidar 5 stopped watching a deleted directory it was given
+// (fixed in chokidar 6, which watches it again once it exists).
+// Impact: under `tsr watch`, Rspack and webpack watch mode, Rsbuild dev and
+// `vite build --watch`, added, edited and deleted routes never reach the
+// route tree until the session restarts.
+test('after the routes directory is deleted and created again, its routes reach the route tree', async () => {
+  const root = await createApp(app)
+  const config = configOf(root)
+  // (an app whose route tree was generated before)
+  await new Generator({ config, root }).run()
+  const session = await watchApp(root, config)
+
+  await rm(path.join(root, 'src/routes'), {
+    recursive: true,
+    force: true,
+    maxRetries: 5,
+  })
+  // The generator's next run fails: it cannot scan the routes directory
+  await waitForOutcome({
+    applied: () => session.reported.some((error) => error.includes('ENOENT')),
+    timeout: 10_000,
+    describe: () => `reported: ${session.reported.join(', ')}`,
+  })
+
+  session.reported.length = 0
+  for (const [file, content] of Object.entries(app)) {
+    await save(root, file, content)
+  }
+  await save(root, 'src/routes/b.tsx', fileRoute('/b'))
+
+  await waitForOutcome({
+    applied: () => session.routeFiles().includes('src/routes/b.tsx'),
+    problems: () => session.reported,
+    timeout: 10_000,
+    describe: () => `routes handed over: ${session.routeFiles().join(', ')}`,
+  })
+  expect(await routesOf(config.generatedRouteTree)).toEqual({
+    ...appRoutes,
+    '/b': 'routes/b.tsx',
+  })
+})
+
+// A session closed while a run of its watcher is in flight, a run that
+// finds a `physical()` mount to watch (`tsr watch` closes its session when
+// `tsr.config.json` changes, the bundler plugins when their config does):
+// the run ends and hands over its routes, and nothing is added to the
+// closed watcher (chokidar 6 throws then).
+test('a session closed while a run that adds a physical() mount is in flight lets the run end', async () => {
+  const routeConfig = (mounts: string) =>
+    `import { physical, rootRoute, route } from '@tanstack/virtual-file-routes'
+
+export const routes = rootRoute('__root.tsx', [route('/a', 'a.tsx')${mounts}])
+`
+  const root = await createApp({
+    'routes.ts': routeConfig(''),
+    'src/routes/__root.tsx': rootRoute(),
+    'src/routes/a.tsx': fileRoute('/a'),
+    'src/legacy/b.tsx': fileRoute('/legacy/b'),
+  })
+  const config = configOf(root, { virtualRouteConfig: './routes.ts' })
+  const generator = new Generator({ config, root })
+  let routes: GetRoutesByFileMapResult = new Map()
+  const session = createGeneratorSession({
+    generator: () => generator,
+    publish: (routesByFile) => {
+      routes = routesByFile
+    },
+  })
+  onTestFinished(() => session.close())
+  await session.watch()
+  const routeFiles = () =>
+    [...routes.keys()].map((file) =>
+      path.relative(root, file).split(path.sep).join('/'),
+    )
+
+  // The run of the config edit's event, once the watcher reports it
+  const run = generator.run.bind(generator)
+  let configRunStarted = (_started: { run: Promise<void> }) => {}
+  const configRun = new Promise<{ run: Promise<void> }>((resolve) => {
+    configRunStarted = resolve
+  })
+  vi.spyOn(generator, 'run').mockImplementation((event) => {
+    const started = run(event)
+    if (event && 'path' in event && path.basename(event.path) === 'routes.ts') {
+      configRunStarted({ run: started })
+    }
+    return started
+  })
+  await save(
+    root,
+    'routes.ts',
+    routeConfig(`, physical('/legacy', '../legacy')`),
+  )
+  const inFlight = (await configRun).run
+  await session.close()
+
+  await inFlight
+  // The session hands over the routes of the run (after it refreshed the
+  // watcher's targets, which a closed session does not)
+  await waitForOutcome({
+    applied: () => routeFiles().includes('src/legacy/b.tsx'),
+    timeout: 10_000,
+    describe: () => `routes handed over: ${routeFiles().join(', ')}`,
+  })
+  expect(await routesOf(config.generatedRouteTree)).toEqual({
+    __root__: 'routes/__root.tsx',
+    '/a': 'routes/a.tsx',
+    '/legacy/b': 'legacy/b.tsx',
   })
 })
