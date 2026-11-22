@@ -1,3 +1,4 @@
+import { ownersLast } from '@tanstack/router-generator'
 import { SERVER_PROP } from './constants'
 import type {
   Generator,
@@ -27,14 +28,19 @@ function isServerOnly(route: ModelRoute) {
 /**
  * The client's route tree: without the routes that are server-only and
  * have only server-only descendants (SPEC J2.15). Every other route stays,
- * with the ancestors a surviving route needs.
+ * with the ancestors a surviving route needs, each sibling list in the
+ * generator's order of what is left (`ownersLast`: a pathless layout whose
+ * routes below were all pruned owns no URL now, and goes before the index
+ * route beside it; children are pruned before their parent is ordered).
  */
 function pruneServerOnlyRoutes(model: TreeModel): TreeModel {
   const kept = new Map<ModelRoute, ModelRoute>()
   const prune = (route: ModelRoute): ModelRoute | null => {
-    const children = route.children
-      .map(prune)
-      .filter((child): child is ModelRoute => child !== null)
+    const children = ownersLast(
+      route.children
+        .map(prune)
+        .filter((child): child is ModelRoute => child !== null),
+    )
     if (children.length === 0 && isServerOnly(route)) {
       return null
     }
@@ -42,9 +48,11 @@ function pruneServerOnlyRoutes(model: TreeModel): TreeModel {
     kept.set(route, copy)
     return copy
   }
-  const children = model.children
-    .map(prune)
-    .filter((child): child is ModelRoute => child !== null)
+  const children = ownersLast(
+    model.children
+      .map(prune)
+      .filter((child): child is ModelRoute => child !== null),
+  )
   const keep = (routes: ReadonlyArray<ModelRoute>) =>
     routes.flatMap((route) => {
       const copy = kept.get(route)
