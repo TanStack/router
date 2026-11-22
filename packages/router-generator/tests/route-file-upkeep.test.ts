@@ -1117,7 +1117,7 @@ export const Route = createFileRoute(('/old'))
   // options call (a save while the route is being written) is reported by
   // name and kept as written, not taken for `createFileRoute(options)` and
   // curried into ``createFileRoute('/new')(`/old`)``.
-  test('a template literal id of a call without the options call is reported by name and kept', async () => {
+  test('a template literal id of a call without the options call is reported at the id and kept', async () => {
     const source = `import { createFileRoute } from ${router}
 export const Route = createFileRoute(\`/old\`)
 `
@@ -1126,15 +1126,12 @@ export const Route = createFileRoute(\`/old\`)
       source,
     )
     expect(written).toBe(source)
-    const problems = [...diagnosticsOf(error), ...diagnostics]
-    expectDiagnostic(problems, {
+    expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
       severity: ['warning', 'error'],
       file,
       root,
+      position: diagnosticPosition(source, '`/old`'),
     })
-    expect(problems.map((d) => d.text).join('\n')).toContain(
-      'without route options',
-    )
   })
 
   // Never-fail-silently controls: a Route that is not a route (the options
