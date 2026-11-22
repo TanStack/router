@@ -353,8 +353,9 @@ export class Generator {
 
   /**
    * Another generator writes this one's files from now on (a host replaced
-   * it, e.g. for a changed config): a run in flight or queued writes
-   * nothing more, and later runs do nothing.
+   * it, e.g. for a changed config): a run in flight or queued writes,
+   * publishes to the plugins and fails nothing more, and later runs do
+   * nothing.
    */
   public retire(): void {
     this.retired = true
@@ -545,7 +546,7 @@ export class Generator {
       // Events reported together (a rename's delete and create) join one batch
       await Promise.resolve()
       let failure: { error: unknown } | undefined
-      while (this.queue.length) {
+      while (this.queue.length && !this.retired) {
         const batch = this.queue.splice(0)
         try {
           await this.processBatch(
@@ -559,6 +560,12 @@ export class Generator {
           this.stale = true
           this.keepRegistryFactsCurrent()
         }
+      }
+      if (this.retired) {
+        // (another generator answers for these files: a failure of this
+        // one's last run is no one's, and what is queued is dropped)
+        this.queue.length = 0
+        failure = undefined
       }
       const waiters = this.waiters.splice(0)
       this.draining = undefined
@@ -792,6 +799,9 @@ export class Generator {
   }
 
   private notifyPlugins() {
+    if (this.retired) {
+      return
+    }
     for (const plugin of this.plugins) {
       plugin.onRouteTreeChanged?.({ model: this.model!, generator: this })
     }
