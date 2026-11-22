@@ -16,6 +16,7 @@ import { createStartHostPlugin } from './host-plugin'
 import { createRsbuildRouteGenerator } from './router-generator'
 import { vueScriptBlockRule } from './vue'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
+import type { RouteSetEvidence } from './router-generator'
 import type { TransformImportRule } from './compiler-session'
 import type { ServerFnResolverModule } from './server-fn-resolver-rebuild'
 import type { StartCompilerEnvironment } from '../compiler/session'
@@ -116,9 +117,16 @@ export function registerStartCompiler(
       for (const file of tree.dependencies) {
         addDependency(file)
       }
+      generator.evidence.clientServed(tree.code)
       return tree.code
     },
   )
+
+  if (dev) {
+    reloadOnRouteSetChange(api, generator.evidence, {
+      rsc: opts.corePluginOpts.rsc !== undefined,
+    })
+  }
 
   api.modifyRspackConfig((config, utils) => {
     const environment = opts.environments.find(
@@ -246,4 +254,79 @@ function transformImportRules(value: unknown): Array<TransformImportRule> {
       typeof rule === 'object' &&
       typeof rule.libraryName === 'string',
   )
+}
+
+/**
+ * Development: reloads the open tabs once the client's route tree changed
+ * (a route added, deleted or renamed, a page turned into a server handler
+ * or back, a lazy file added; SPEC J3.10, as Start on Vite does), when the
+ * client and the server serve what the generator has: the last finished
+ * compilations of both have no errors, the client emitted the current
+ * client tree, and the server emitted a tree module and route files built
+ * from the generator's bytes, where it has two readings of them
+ * (`RouteSetEvidence`). Every other dev compile of an unchanged route set
+ * reloads nothing. The tabs hear it through Rsbuild's dev client, which
+ * applies the app's `dev.liveReload` itself.
+ */
+function reloadOnRouteSetChange(
+  api: RsbuildPluginAPI,
+  evidence: RouteSetEvidence,
+  opts: { rsc: boolean },
+) {
+  const client = RSBUILD_ENVIRONMENT_NAMES.client
+  const server = RSBUILD_ENVIRONMENT_NAMES.server
+  let send: (() => void) | undefined
+  /** The client tree the tabs were last told to load (none yet: undefined). */
+  let sent: string | undefined
+  /** A client compile served since then had another tree (and the tabs took it as a hot update). */
+  let other = false
+  api.onBeforeStartDevServer(({ server: devServer }) => {
+    // (with RSC, Start turns Rsbuild's live reload off: its client ignores a reload)
+    if (!opts.rsc) {
+      const hot = devServer.environments[client]?.hot
+      send = hot
+        ? () => hot.send('full-reload')
+        : () => devServer.sockWrite('full-reload')
+    }
+  })
+  api.onCloseDevServer(() => {
+    send = undefined
+    sent = undefined
+    other = false
+  })
+  api.onAfterEnvironmentCompile(({ stats, environment }) => {
+    if (environment.name !== client || !stats || stats.hasErrors()) {
+      return
+    }
+    const built = evidence.clientTree()
+    if (sent !== undefined && built !== undefined && built !== sent) {
+      other = true
+    }
+  })
+  // (Rsbuild's callback is only the trigger: nothing below reads its stats,
+  // and nothing is awaited after the current tree)
+  api.onAfterDevCompile(async () => {
+    let current: string
+    try {
+      current = await evidence.current()
+    } catch {
+      // (no route tree generated yet)
+      return
+    }
+    if (!evidence.clean(client) || !evidence.clean(server)) {
+      return
+    }
+    const built = evidence.clientTree()
+    if (built === undefined || built !== current) {
+      return
+    }
+    if (!evidence.serverAgrees(server)) {
+      return
+    }
+    if (sent !== undefined && (built !== sent || other)) {
+      send?.()
+    }
+    sent = built
+    other = false
+  })
 }

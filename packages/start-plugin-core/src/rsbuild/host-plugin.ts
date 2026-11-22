@@ -43,6 +43,7 @@ import {
   resourcePath,
 } from './compiler-session'
 import { LOADER_REGISTRY } from './loader-registry'
+import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import { serverFnResolverRebuild } from './server-fn-resolver-rebuild'
 import type { ServerFnResolverModule } from './server-fn-resolver-rebuild'
 import type { LoaderImpl } from './compiler-loader'
@@ -438,12 +439,58 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         )
         persistent.version = `${persistent.version ?? ''}-${key}`
       }
+      // Development: the route-set reload's evidence (SPEC J3.10). The server
+      // records the bytes of the tree and the route files its own loader is
+      // handed in their first raw pass (a child compiler's, a query's or a
+      // later pass's are other modules); the records of the client's tree
+      // and the server's files count from their compiler's emit (a vetoed
+      // emit serves the older output), and a compilation that fails fatally
+      // drops them
+      const evidence = opts.onDevCompileDone ? opts.generator.evidence : null
+      const recordsSources =
+        evidence !== null &&
+        environment.name === RSBUILD_ENVIRONMENT_NAMES.server
       ;(compiler as unknown as Record<string, unknown>)[LOADER_REGISTRY] = ((
         ctx,
         source,
         inputMap,
         options,
-      ) => session.compile(ctx, source, inputMap, options)) satisfies LoaderImpl
+      ) => {
+        if (
+          recordsSources &&
+          ctx._compiler === compiler &&
+          !options.pass &&
+          !ctx.resourceQuery
+        ) {
+          evidence.built(
+            environment.name,
+            ctx.resourcePath,
+            source,
+            ctx.loaderIndex === ctx.loaders.length - 1,
+          )
+        }
+        return session.compile(ctx, source, inputMap, options)
+      }) satisfies LoaderImpl
+      if (
+        evidence !== null &&
+        (recordsSources ||
+          environment.name === RSBUILD_ENVIRONMENT_NAMES.client)
+      ) {
+        const client = environment.name === RSBUILD_ENVIRONMENT_NAMES.client
+        compiler.hooks.afterEmit.tap(PLUGIN_NAME, () => {
+          evidence.emitted(environment.name, client)
+        })
+        compiler.hooks.failed.tap(PLUGIN_NAME, () => {
+          evidence.failed(environment.name, client)
+        })
+        // (before Rsbuild's own `done` tap, which ends with its dev-compile callback)
+        compiler.hooks.done.tap(
+          { name: PLUGIN_NAME, stage: -1000 },
+          (stats) => {
+            evidence.done(environment.name, stats.hasErrors())
+          },
+        )
+      }
 
       // the session reads files through the compiler's input file system (virtual modules included)
       const inputFs = compiler.inputFileSystem
