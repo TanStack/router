@@ -270,25 +270,31 @@ export const fn = createServerFn().handler(async (): Promise<string> => label)
     timeout,
   )
 
-  // A `namespace` whose members only erased code reads loses them (the
-  // dead-code elimination's namespace gap, as in an app's `.ts` module):
-  // until that is fixed, a late TypeScript module declaring one fails the
-  // client build as before, instead of shipping `Config.b` undefined.
-  test(
-    'fails the client build when it declares a namespace and names a Start package',
-    async () => {
-      const error: unknown = await buildStart({
-        bundler: 'vite',
-        files: {
-          'src/math.foo': `import { createServerOnlyFn } from '@tanstack/react-start'
-export namespace Config {
+  // A namespace's exported statement declaring several names or a pattern
+  // loses the members only erased code reads (the dead-code elimination's
+  // namespace gap, as in an app's `.ts` module): until that is fixed, a
+  // late TypeScript module holding one fails the client build when the
+  // compile erased code, instead of shipping `Config.b` undefined.
+  test.each([
+    { name: 'Config', declaration: 'namespace Config' },
+    { name: 'Config', declaration: 'namespace /* units */ Config' },
+    { name: 'Δ', declaration: 'namespace Δ' },
+  ])(
+    'fails the client build when it declares $declaration with exported declarators that erased code reads',
+    async ({ name, declaration }) => {
+      const source = `import { createServerOnlyFn } from '@tanstack/react-start'
+export ${declaration} {
   export const a = 1, b = Number('2')
   export const { c, d } = { c: 3, d: 4 }
   export const sum = createServerOnlyFn(() => b + d)
 }
-`,
-          'src/entry.ts': `import { Config } from './math.foo'
-export const result = [Config.a, Config.b, Config.c, Config.d]
+`
+      const error: unknown = await buildStart({
+        bundler: 'vite',
+        files: {
+          'src/math.foo': source,
+          'src/entry.ts': `import { ${name} as C } from './math.foo'
+export const result = [C.a, C.b, C.c, C.d]
 `,
         },
         entry: 'src/entry.ts',
@@ -308,6 +314,48 @@ export const result = [Config.a, Config.b, Config.c, Config.d]
         file: 'src/math.foo',
         root: error.root,
       })
+    },
+    timeout,
+  )
+
+  // (a namespace exporting one name per statement keeps them; `namespace`
+  // in a comment or a string declares none)
+  test.each([
+    {
+      name: 'a namespace exporting one name per statement',
+      declaration: `export namespace Values {
+  export const label: string = 'ok'
+}
+`,
+      expression: 'Values.label',
+    },
+    {
+      name: 'a comment naming a namespace',
+      declaration: '// namespace Example {\n',
+      expression: "'ok' as string",
+    },
+    {
+      name: 'a string naming a namespace',
+      declaration: "const example = 'namespace Example {'\n",
+      expression: "'ok' as string",
+    },
+  ])(
+    'builds one that names a router package with $name',
+    async ({ declaration, expression }) => {
+      const build = await buildStart({
+        bundler: 'vite',
+        files: {
+          'src/thing.foo': `import { createMemoryHistory } from '@tanstack/react-router'
+${declaration}export const value: string = createMemoryHistory({
+  initialEntries: ['/' + (${expression})],
+}).location.pathname
+`,
+          'src/entry.ts': `export { value } from './thing.foo'\n`,
+        },
+        entry: 'src/entry.ts',
+        ...asTypeScript,
+      })
+      expect((await build.client.run('return entry.value')).result).toBe('/ok')
     },
     timeout,
   )

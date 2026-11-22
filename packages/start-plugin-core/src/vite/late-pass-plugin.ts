@@ -1,6 +1,7 @@
 import {
   ASSET_QUERY_RE,
   identify,
+  parseModule,
   watchDependencies,
 } from '@tanstack/router-utils/compiler'
 import { TRANSFORM_ID_REGEX } from '../constants'
@@ -46,6 +47,7 @@ export function latePassPlugin(state: ViteCompilerState): Plugin {
       async handler(code, id, options) {
         const s = state.sessionOf(this.environment)
         const env = state.envOf(this.environment.name)
+        const lang = lateLang(options?.moduleType)
         if (!env || identify(id).lang !== null) {
           return null
         }
@@ -62,7 +64,7 @@ export function latePassPlugin(state: ViteCompilerState): Plugin {
             inputMap: readInputMap,
             wantMap: true,
             late: true,
-            lang: lateLang(options?.moduleType, code),
+            lang,
           },
           state.hostFor(
             s,
@@ -79,6 +81,20 @@ export function latePassPlugin(state: ViteCompilerState): Plugin {
           // not JavaScript the bundler takes as it is: another plugin's
           // input (Markdown a later plugin compiles), nothing to judge
           return null
+        }
+        // TODO(dead-code namespaces): see `namespaceMemberAtRisk`
+        if (lang !== 'jsx' && out.code !== code) {
+          const at = namespaceMemberAtRisk(code, lang)
+          if (at !== null) {
+            if (env.type === 'server') {
+              // (as before TypeScript was read: the server keeps its code)
+              return null
+            }
+            this.error(
+              `[tanstack-start] ${identify(id).path}: a namespace exports several names in one statement (or a destructuring pattern), and the compiler cannot yet keep such members that only code removed for the client reads. Declare each exported member of the namespace in a statement of its own (\`export const a = …\`).`,
+              at,
+            )
+          }
         }
         // (a watch build rebuilds the module when a file its plan read
         // changes: the module graph misses an import the compile erased)
@@ -113,26 +129,82 @@ export function latePassPlugin(state: ViteCompilerState): Plugin {
   }
 }
 
-/** A TypeScript namespace declaration (`namespace A {`, `module A.B {`). */
-const TS_NAMESPACE_RE =
-  /\b(?:namespace|module)\s+[A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*\s*\{/
-
 /**
  * The language the late pass reads a module's code as: the module type the
  * bundler parses it as (`ts` from a plugin compiling another language to
  * TypeScript), JSX for JavaScript or a module type that is no script (the
  * compile then fails to parse it, and `bundlerParses` decides).
- * TODO(dead-code namespaces): TypeScript declaring a namespace is read as JSX,
- * as before TypeScript was read: the dead-code elimination deletes a
- * namespace's exported members that only erased code reads (in any module),
- * and the parse refusal keeps such a module from shipping without them.
- * Drop this when namespaces are fixed.
  */
-function lateLang(moduleType: string | undefined, code: string) {
-  return (moduleType === 'ts' || moduleType === 'tsx') &&
-    !TS_NAMESPACE_RE.test(code)
-    ? moduleType
-    : 'jsx'
+function lateLang(moduleType: string | undefined) {
+  return moduleType === 'ts' || moduleType === 'tsx' ? moduleType : 'jsx'
+}
+
+/**
+ * TODO(dead-code namespaces): the dead-code elimination removes a
+ * namespace's exported declarator or pattern leaf that only erased code
+ * reads when its statement declares several (`export const a = 1, b = 2`,
+ * `export const { c, d } = …`; one alone is kept), in any module: the
+ * namespace's member is then undefined. A late-pass module read as
+ * TypeScript was refused at its parse before; one holding such a statement
+ * still fails the client build when its compile changed it. The offset of
+ * the first such statement, or null. Drop this when namespaces are fixed.
+ */
+function namespaceMemberAtRisk(
+  code: string,
+  lang: 'ts' | 'tsx',
+): number | null {
+  // (a namespace declaration is written with its keyword)
+  if (!/\b(?:namespace|module)\b/.test(code)) {
+    return null
+  }
+  const parsed = parseModule(code, {
+    lang,
+    sourceType: 'module',
+    semantic: false,
+  })
+  if (!parsed.ok) {
+    return null
+  }
+  type Statement = {
+    type: string
+    start: number
+    declaration?: Statement | null
+    declarations?: Array<{ id: { type: string } }>
+    body?: { type: string; body?: Array<Statement> }
+  }
+  const visit = (statements: ReadonlyArray<Statement>): number | null => {
+    for (const statement of statements) {
+      const namespace =
+        statement.type === 'ExportNamedDeclaration'
+          ? statement.declaration
+          : statement
+      if (
+        namespace?.type !== 'TSModuleDeclaration' ||
+        namespace.body?.type !== 'TSModuleBlock'
+      ) {
+        continue
+      }
+      for (const member of namespace.body.body ?? []) {
+        const declarators =
+          member.type === 'ExportNamedDeclaration' &&
+          member.declaration?.type === 'VariableDeclaration'
+            ? (member.declaration.declarations ?? [])
+            : []
+        if (
+          declarators.length > 1 ||
+          declarators.some((d) => d.id.type !== 'Identifier')
+        ) {
+          return member.start
+        }
+      }
+      const nested = visit(namespace.body.body ?? [])
+      if (nested !== null) {
+        return nested
+      }
+    }
+    return null
+  }
+  return visit(parsed.file.program.body as unknown as Array<Statement>)
 }
 
 /**
