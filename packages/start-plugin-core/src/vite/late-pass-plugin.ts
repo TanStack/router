@@ -62,6 +62,7 @@ export function latePassPlugin(state: ViteCompilerState): Plugin {
             inputMap: readInputMap,
             wantMap: true,
             late: true,
+            lang: lateLang(options?.moduleType),
           },
           state.hostFor(
             s,
@@ -110,6 +111,16 @@ export function latePassPlugin(state: ViteCompilerState): Plugin {
       },
     },
   }
+}
+
+/**
+ * The language the late pass reads a module's code as: the module type the
+ * bundler parses it as (`ts` from a plugin compiling another language to
+ * TypeScript), JSX for JavaScript or a module type that is no script (the
+ * compile then fails to parse it, and `bundlerParses` decides).
+ */
+function lateLang(moduleType: string | undefined) {
+  return moduleType === 'ts' || moduleType === 'tsx' ? moduleType : 'jsx'
 }
 
 /**

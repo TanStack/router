@@ -224,10 +224,9 @@ export const page = Page
 })
 
 // Vite only: a plugin may hand another language's output to the bundler as
-// TypeScript (`moduleType: 'ts'`), which Rolldown compiles and the late pass
-// cannot parse (it reads JavaScript). One naming a Start package fails the
-// client build at its file; one naming none is left to the bundler (SPEC
-// J4.12, J4.16).
+// TypeScript (`moduleType: 'ts'`), which Rolldown compiles: the late pass
+// reads it as TypeScript too, and compiles it like any module of the app
+// (SPEC J4.12, J4.16). One naming no Start package is left to the bundler.
 describe('vite build of a module another plugin hands over as TypeScript', () => {
   const asTypeScript = {
     viteConfig: {
@@ -243,36 +242,59 @@ describe('vite build of a module another plugin hands over as TypeScript', () =>
     },
   } satisfies Pick<StartBuildOptions, 'viteConfig'>
 
+  // (the late pass read it as JSX and failed the client build at the type
+  // annotation; without the late pass, the handler ships to the client)
   test(
-    'fails the client build when it names a Start package',
+    'compiles its server fn: the client calls it by its id, without its handler',
     async () => {
-      const source = `import { createServerFn } from '@tanstack/react-start'
-const label: string = 'MARK_FOO_HANDLER'
-export const fn = createServerFn().handler(async () => label)
-`
-      const error: unknown = await buildStart({
+      const build = await buildStart({
         bundler: 'vite',
         files: {
-          'src/page.foo': source,
+          'src/page.foo': `import { createServerFn } from '@tanstack/react-start'
+const label: string = 'MARK_FOO_HANDLER'
+export const fn = createServerFn().handler(async (): Promise<string> => label)
+`,
           'src/entry.ts': `export { fn } from './page.foo'\n`,
+          'src/ssr-entry.ts': `export { fn } from './page.foo'\n${callByIdExports}`,
+        },
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+        ...asTypeScript,
+      })
+      expect(build.client.where('MARK_FOO_HANDLER')).toBe('nowhere')
+      const url = (await build.client.run(`return entry.fn.url`)).result
+      const { result } = await build.ssr.run(
+        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+      )
+      expect(result).toBe('MARK_FOO_HANDLER')
+    },
+    timeout,
+  )
+
+  test(
+    'builds one that names a router package',
+    async () => {
+      const build = await buildStart({
+        bundler: 'vite',
+        files: {
+          'src/page.foo': `import { createMemoryHistory } from '@tanstack/react-router'
+export const value: string = createMemoryHistory({
+  initialEntries: ['/MARK_FOO_TYPED'],
+}).location.pathname
+`,
+          'src/entry.ts': `export { value } from './page.foo'\n`,
         },
         entry: 'src/entry.ts',
         ...asTypeScript,
-      }).then(
-        (build) =>
-          expect.fail(
-            `the build succeeded; the handler's text is ${build.client.where('MARK_FOO_HANDLER')} in the client bundle`,
-          ),
-        (e: unknown) => e,
-      )
-      if (!(error instanceof StartBuildError)) {
-        throw error
-      }
-      expectDiagnostic(error.diagnostics, {
-        severity: 'error',
-        file: 'src/page.foo',
-        root: error.root,
       })
+      expect(
+        findDiagnostics(build.diagnostics, {
+          file: 'src/page.foo',
+          root: build.root,
+        }),
+      ).toEqual([])
+      expect((await build.client.run('return entry.value')).result).toBe(
+        '/MARK_FOO_TYPED',
+      )
     },
     timeout,
   )

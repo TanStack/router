@@ -65,6 +65,7 @@ import type { Config as RouterConfig } from '@tanstack/router-plugin'
 import type { RouterPlannerConfig } from '@tanstack/router-plugin/planners'
 import type {
   CompileConfig,
+  CompileInput,
   CompileOutput,
   CompilerCaches,
   Diagnostic,
@@ -160,6 +161,11 @@ export interface StartCompileInput {
    * JS/TS (`.vue`, `.mdx`), judged by the `import-edges` planner alone.
    */
   late?: boolean
+  /**
+   * The language of a late pass's code (default `jsx`): the module type the
+   * bundler parses it as (a plugin's `moduleType: 'ts'`).
+   */
+  lang?: CompileInput['lang']
 }
 
 const NO_OUTCOME: CompileOutcome = { error: null }
@@ -419,7 +425,7 @@ export class StartCompilerSession {
         inputMap: input.inputMap,
         wantMap: input.wantMap,
         lines: input.lines,
-        ...(late ? { lang: 'jsx' as const, inPlace: true } : {}),
+        ...(late ? { lang: input.lang ?? 'jsx', inPlace: true } : {}),
       },
       host,
       this.caches,
