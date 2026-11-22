@@ -152,6 +152,8 @@ export function createRouterGeneratorPlugin(
       userConfig = getConfig(options, ROOT)
     }
     const logger = logging({ disabled: userConfig.disableLogging })
+    // (a run of the generator this one replaces may still be in flight)
+    ;(generator as Generator | undefined)?.retire()
     generator = new Generator({
       config: userConfig,
       root: ROOT,

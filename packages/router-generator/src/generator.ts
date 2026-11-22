@@ -261,6 +261,8 @@ export class Generator {
     build: boolean
   }> = []
   private draining: Promise<void> | undefined
+  /** `retire()`: another generator writes these files now. */
+  private retired = false
 
   constructor(opts: {
     config: Config
@@ -330,6 +332,9 @@ export class Generator {
    * hands it the route a broken file kept.
    */
   public run(event?: GeneratorEvent): Promise<void> {
+    if (this.retired) {
+      return Promise.resolve()
+    }
     if (event && event.type !== 'rerun' && event.type !== 'build') {
       const file = normalize(event.path)
       if (this.classify(file) === null) {
@@ -344,6 +349,15 @@ export class Generator {
     })
     this.drain()
     return done
+  }
+
+  /**
+   * Another generator writes this one's files from now on (a host replaced
+   * it, e.g. for a changed config): a run in flight or queued writes
+   * nothing more, and later runs do nothing.
+   */
+  public retire(): void {
+    this.retired = true
   }
 
   /** The route files of the tree and their route ids (`GetRoutesByFileMapResult`: a new snapshot per publishing batch; the plugin context dedupes an unchanged one). */
@@ -819,6 +833,9 @@ export class Generator {
         const ownFile =
           state.realPath !== undefined &&
           routesByRealPath.get(state.realPath)! > 1
+        if (this.retired) {
+          return
+        }
         try {
           await this.publisher.write(
             file,
@@ -864,6 +881,9 @@ export class Generator {
     const onDisk = (await this.treeOnDiskIsPublished())
       ? this.published!.content
       : await readIfExists(this.treeFile)
+    if (this.retired) {
+      return
+    }
     if (onDisk !== content) {
       // A file of its own, as on main: its imports are relative to where it
       // is configured, and a link elsewhere would resolve them from there
