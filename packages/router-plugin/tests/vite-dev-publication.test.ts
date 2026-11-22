@@ -14,6 +14,8 @@
 import { symlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { setFlagsFromString } from 'node:v8'
+import { runInNewContext } from 'node:vm'
 import { expect, test } from 'vitest'
 import { build, createServer } from 'vite'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
@@ -177,4 +179,35 @@ test('one plugin object: a dev server, closed, then a build with it', async () =
     build: { write: false },
   })
   expect(JSON.stringify(output)).toContain('/other')
+})
+
+// The plugin object outlives the dev server it served (a program that keeps
+// its config, Vite 8 keeping finished servers' plugins): the closed server
+// must not stay reachable through it.
+// Source: review of the route-set work (Astra 4, Gemini M1: the callback
+// that watches routes outside the root kept the server).
+test('a closed dev server is not kept alive by the plugin object', async () => {
+  const root = await routeApp()
+  const plugin = tanstackRouterGenerator(options(root))
+  // (a server of its own: the helper's cleanup would hold it)
+  const closed = await (async () => {
+    const server = await createServer({
+      root,
+      configFile: false,
+      logLevel: 'silent',
+      server: { middlewareMode: true, ws: false },
+      optimizeDeps: { noDiscovery: true },
+      plugins: [plugin],
+    })
+    await server.close()
+    return new WeakRef(server)
+  })()
+  setFlagsFromString('--expose-gc')
+  const gc = runInNewContext('gc') as () => void
+  for (let i = 0; i < 16 && closed.deref(); i++) {
+    await new Promise((resolve) => setTimeout(resolve, 25))
+    gc()
+  }
+  expect(closed.deref()).toBeUndefined()
+  expect(plugin).toBeDefined()
 })

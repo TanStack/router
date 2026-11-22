@@ -139,6 +139,7 @@ export function createRouterGeneratorPlugin(
   /** A new config resolution, or the end of the dev server's environments: no dev server (yet). */
   const forgetDevServer = () => {
     devServer = undefined
+    watchOutsideRoot = undefined
     replaced = new Set()
   }
 
