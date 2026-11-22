@@ -65,7 +65,11 @@ export type RoutePieceName = (typeof routePieces)[number]
 
 /** A scanned file's kind; the pieces other than `lazy` are deprecated. */
 export type FsRouteType =
-  '__root' | 'static' | 'layout' | 'pathless_layout' | RoutePieceName
+  | '__root'
+  | 'static'
+  | 'layout'
+  | 'pathless_layout'
+  | RoutePieceName
 
 /**
  * The option keys of a route file's `createFileRoute(...)({...})` call
