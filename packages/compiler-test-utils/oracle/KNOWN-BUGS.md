@@ -557,6 +557,13 @@ module "…" in the React Client Manifest`. Dev is not affected (the next compil
   that save through a temporary file and a rename are not affected. Not fixable by a delay or another read: nothing
   tells an open writer from a closed one. A fix scaffolds only files the generator has never read with content.
   No test (the outcome is the limit).
+- **`vite build --watch` on Vite 8.3: the build after a failed build can emit no app** (hotspot 2 N1; user, 11-22:
+  known bug until Vite 8.4). With an HTML entry and `"sideEffects": false` in the app's `package.json` (as in
+  `quickstart-file-based`), the first successful watch build after a failed one reports success and emits only
+  the module-preload helper; the app is back at the next change. Reproduces with no plugin on Vite 8.3.4 and 8.3.8
+  (Rolldown 1.2.x); fixed by Rolldown 1.3.0 and later, which Vite 8.4.0-beta.1 depends on. A route deleted during a
+  watch build is one way to fail a build: `main` then happens to run a second build that repairs the output, this
+  PR does not. Remove this entry when the repo moves to Vite 8.4. No test (upstream).
 
 ## Fixed, kept as regression tests
 
