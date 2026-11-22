@@ -547,6 +547,16 @@ module "…" in the React Client Manifest`. Dev is not affected (the next compil
   generated tree as a declared dependency). A fix reads each cached module's snapshot file list in `needBuild`
   (webpack clears `buildInfo.fileDependencies` after a build; the snapshot is private shape). No test (the outcome is
   the limit).
+- **A save the generator reads between the editor's truncate and its write can be replaced by the scaffold**
+  (review-routeset-astra.md §1; user, 11-22: known bug). An editor that saves in place truncates the file, then
+  writes it. A generator run that reads the file in between sees an empty route file and scaffolds it: the scaffold
+  is written to a new file renamed over the path, so the editor's write lands in the unlinked file and the path keeps
+  `Hello "/about"!`. The window is the editor's own (usually microseconds; the generator reads milliseconds after the
+  watcher event). Seen once in the route-set gate's seeded run under heavy load, not in 20 repeats on either side;
+  holding a save open 350 ms between truncate and write loses it 20 of 20 times here and 3 of 20 on `main`. Editors
+  that save through a temporary file and a rename are not affected. Not fixable by a delay or another read: nothing
+  tells an open writer from a closed one. A fix scaffolds only files the generator has never read with content.
+  No test (the outcome is the limit).
 
 ## Fixed, kept as regression tests
 
