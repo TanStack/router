@@ -32,6 +32,7 @@ import {
 } from '../start-plugins'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
+import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
 
 /** The temporary apps stand in for apps in `tests/`, like the other harnesses'. */
 const appsDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
@@ -100,6 +101,10 @@ export async function startRsbuildRscApp(
     registerCleanup?: (cleanup: () => Promise<void>) => void
     /** The app's Rsbuild `tools` (Start's pages need no `htmlPlugin`). */
     tools?: Record<string, unknown>
+    /** The app's Rsbuild `dev` options. */
+    dev?: RsbuildConfig['dev']
+    /** More Rsbuild plugins of the app, after Start's. */
+    plugins?: Array<RsbuildPlugin>
   } = {},
 ): Promise<RsbuildDevServer> {
   const start = await startRsbuildPluginFactory('react')
@@ -120,6 +125,7 @@ export async function startRsbuildRscApp(
           htmlPlugin: false,
           ...options.tools,
         },
+        ...(options.dev && { dev: options.dev }),
       },
       plugins: [
         pluginReact(),
@@ -131,6 +137,7 @@ export async function startRsbuildRscApp(
           },
         },
         start({ rsc: { enabled: true } }),
+        ...(options.plugins ?? []),
       ],
     })
   } finally {

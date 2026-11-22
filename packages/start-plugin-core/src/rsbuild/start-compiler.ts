@@ -266,7 +266,8 @@ function transformImportRules(value: unknown): Array<TransformImportRule> {
  * from the generator's bytes, where it has two readings of them
  * (`RouteSetEvidence`). Every other dev compile of an unchanged route set
  * reloads nothing. The tabs hear it through Rsbuild's dev client, which
- * applies the app's `dev.liveReload` itself.
+ * applies the app's `dev.liveReload` itself (with RSC, through the RSC
+ * client's channel, when the app's own config leaves live reload on).
  */
 function reloadOnRouteSetChange(
   api: RsbuildPluginAPI,
@@ -281,12 +282,18 @@ function reloadOnRouteSetChange(
   /** A client compile served since then had another tree (and the tabs took it as a hot update). */
   let other = false
   api.onBeforeStartDevServer(({ server: devServer }) => {
-    // (with RSC, Start turns Rsbuild's live reload off: its client ignores a reload)
     if (!opts.rsc) {
       const hot = devServer.environments[client]?.hot
       send = hot
         ? () => hot.send('full-reload')
         : () => devServer.sockWrite('full-reload')
+    } else if (api.getRsbuildConfig('original').dev?.liveReload !== false) {
+      // With RSC, Start turns Rsbuild's live reload off (its client then
+      // drops a reload): the RSC client's own channel, unless the app's own
+      // config turned live reload off
+      send = () => {
+        devServer.sockWrite('custom', { event: 'tanstack-start:routes' })
+      }
     }
   })
   api.onCloseDevServer(() => {

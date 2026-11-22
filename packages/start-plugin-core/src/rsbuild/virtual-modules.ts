@@ -210,6 +210,10 @@ export function setupRscHmr() {
     import.meta.webpackHot.on('rsc:update', () => {
       __queueInvalidate()
     })
+    // the client's route set changed (Rsbuild's own reloads are off with RSC)
+    import.meta.webpackHot.on('tanstack-start:routes', () => {
+      location.reload()
+    })
   }
 }
 `
