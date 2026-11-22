@@ -5,7 +5,13 @@
  * splits a listed file only when it is `ours` with nothing to repair.
  */
 import { unwrap } from 'yuku/utils'
-import type { CallExpression, Node, SourceFile, VariableDeclarator } from 'yuku'
+import type {
+  CallExpression,
+  Expression,
+  Node,
+  SourceFile,
+  VariableDeclarator,
+} from 'yuku'
 
 /** A route file's kind, from its place in the route tree (the generator's scan). */
 export type RouteFileKind = 'root' | 'file' | 'lazy'
@@ -411,8 +417,14 @@ export function routeCallOf(
   if (name === 'createRoute') {
     return foreign({ kind: 'code-based' })
   }
-  // (a string as the only call's argument is an id: no options call)
-  const idOnly = !curried && routeIdLiteralOf(outer.arguments[0]) !== null
+  // (a string or template literal, interpolated too, as the only call's
+  // argument is an id: no options call)
+  const first = outer.arguments[0]
+  const idOnly =
+    !curried &&
+    first !== undefined &&
+    (routeIdLiteralOf(first) !== null ||
+      unwrap(first as Expression).type === 'TemplateLiteral')
   if (found.typeOnly) {
     return foreign({
       kind: 'type-only',

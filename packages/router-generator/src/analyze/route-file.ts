@@ -398,11 +398,25 @@ function foreignCallDiagnostics(
   if (reason.kind !== 'no-options' && reason.kind !== 'type-only') {
     return []
   }
-  const idArg = routeIdLiteralOf(reason.idCall?.arguments[0])
-  if (!idArg || idArg.value === expected.routeId) {
+  const written = reason.idCall?.arguments[0]
+  const idArg = routeIdLiteralOf(written)
+  const name = calleeName(reason.callee)
+  if (!idArg) {
+    // an id computed at runtime (an interpolated template literal) called
+    // without the options call: reported at the id
+    return reason.kind === 'no-options' && written
+      ? [
+          diagnosticAt(
+            file,
+            written.start,
+            `The \`Route\` export calls ${name}(…) without route options (\`${name}(${JSON.stringify(expected.routeId)})({ ... })\`).`,
+          ),
+        ]
+      : []
+  }
+  if (idArg.value === expected.routeId) {
     return []
   }
-  const name = calleeName(reason.callee)
   const problem =
     reason.kind === 'no-options'
       ? `calls ${name}(${JSON.stringify(idArg.value)}) without route options (\`${name}(${JSON.stringify(expected.routeId)})({ ... })\`)`

@@ -1117,22 +1117,30 @@ export const Route = createFileRoute(('/old'))
   // options call (a save while the route is being written) is reported by
   // name and kept as written, not taken for `createFileRoute(options)` and
   // curried into ``createFileRoute('/new')(`/old`)``.
-  test('a template literal id of a call without the options call is reported at the id and kept', async () => {
-    const source = `import { createFileRoute } from ${router}
-export const Route = createFileRoute(\`/old\`)
+  // (a template literal is never the options, interpolated or not)
+  test.each([
+    { name: 'a template literal id', id: '`/old`' },
+    { name: 'an interpolated template literal id', id: '`/${segment}`' },
+  ])(
+    '$name of a call without the options call is reported at the id and kept',
+    async ({ id }) => {
+      const source = `import { createFileRoute } from ${router}
+const segment = 'old'
+export const Route = createFileRoute(${id})
 `
-    const { root, file, written, diagnostics, error } = await upkeep(
-      'new.tsx',
-      source,
-    )
-    expect(written).toBe(source)
-    expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
-      severity: ['warning', 'error'],
-      file,
-      root,
-      position: diagnosticPosition(source, '`/old`'),
-    })
-  })
+      const { root, file, written, diagnostics, error } = await upkeep(
+        'new.tsx',
+        source,
+      )
+      expect(written).toBe(source)
+      expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
+        severity: ['warning', 'error'],
+        file,
+        root,
+        position: diagnosticPosition(source, id),
+      })
+    },
+  )
 
   // Never-fail-silently controls: a Route that is not a route (the options
   // call forgotten) or whose constructor is imported as a type only (the
