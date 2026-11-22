@@ -235,7 +235,8 @@ export async function getRouteNodes(
           // component of its route (its default export), not a lazy route
           // module (SPEC J1.17).
           const isVueFile = filePath.endsWith('.vue')
-          if (isVueFile && routeType === 'lazy') {
+          const lazyVue = isVueFile && routeType === 'lazy'
+          if (lazyVue) {
             routeType = 'component'
           }
 
@@ -366,6 +367,7 @@ export async function getRouteNodes(
               routePath,
               variableName,
               _fsRouteType: routeType,
+              ...(lazyVue && { _lazyVue: true as const }),
               originalRoutePath,
               _routePathSegmentMetadata: createRoutePathSegmentMetadata(
                 routePath,

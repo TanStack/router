@@ -250,14 +250,20 @@ export const Route = createLazyFileRoute('/about')({
   })
 
   // Two files for the component would be one too many: next to a
-  // `.component.vue` piece, a `.lazy.vue` file is the route's lazy route
+  // `.component.vue` piece, a lazy `.vue` file is the route's lazy route
   // (its default export, a lazy route object), as main wires it, and the
   // piece is the component (the page rendered nothing instead).
-  test('a .lazy.vue lazy route next to a .component.vue piece: the piece is the component, the lazy route adds its options', async () => {
-    const root = await createApp({
-      'src/routes/__root.ts': rootRoute('vue'),
-      'src/routes/about.ts': fileRoute('/about', '{}', 'vue'),
-      'src/routes/about.lazy.vue': `<script lang="ts">
+  // (in flat files and in a directory: `about/lazy.vue`, `about/component.vue`)
+  test.each([
+    { lazy: 'about.lazy.vue', component: 'about.component.vue' },
+    { lazy: 'about/lazy.vue', component: 'about/component.vue' },
+  ])(
+    'a lazy route in $lazy next to $component: the piece is the component, the lazy route adds its options',
+    async ({ lazy, component }) => {
+      const root = await createApp({
+        'src/routes/__root.ts': rootRoute('vue'),
+        'src/routes/about.ts': fileRoute('/about', '{}', 'vue'),
+        [`src/routes/${lazy}`]: `<script lang="ts">
 import { h } from 'vue'
 import { createLazyFileRoute } from '@tanstack/vue-router'
 
@@ -266,18 +272,19 @@ export default createLazyFileRoute('/about')({
 })
 </script>
 `,
-      'src/routes/about.component.vue': sfc('about'),
-    })
-    const { generatedRouteTree } = await generate(root, { target: 'vue' })
+        [`src/routes/${component}`]: sfc('about'),
+      })
+      const { generatedRouteTree } = await generate(root, { target: 'vue' })
 
-    expect((await piecesOf(generatedRouteTree))['/about']).toEqual({
-      component: 'about',
-      pendingComponent: 'about pending',
-    })
-    await withRouteTree(generatedRouteTree, async (tree) => {
-      expect(textOf(await tree.renderAt('/about'))).toBe('about')
-    })
-  })
+      expect((await piecesOf(generatedRouteTree))['/about']).toEqual({
+        component: 'about',
+        pendingComponent: 'about pending',
+      })
+      await withRouteTree(generatedRouteTree, async (tree) => {
+        expect(textOf(await tree.renderAt('/about'))).toBe('about')
+      })
+    },
+  )
 
   // Bug: when only the root route has piece files, the route tree calls
   // `lazyRouteComponent` without importing it, and fails to load with

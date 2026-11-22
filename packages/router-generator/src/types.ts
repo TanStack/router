@@ -31,6 +31,8 @@ export type RouteNode = {
   _virtualParentRoutePath?: string
   /** The route file is named by a virtual route config (`virtualRouteConfig`, `__virtual.ts`), not found by a directory listing: it must exist. */
   _namedByConfig?: true
+  /** A lazy `.vue` file (`about.lazy.vue`, `about/lazy.vue`), scanned as its route's `component` piece (SPEC J1.17). */
+  _lazyVue?: true
   /** Internal routePath segment metadata for escaped or explicit literal syntax. */
   _routePathSegmentMetadata?: Array<RoutePathSegmentMetadata | undefined>
 }
@@ -63,11 +65,7 @@ export type RoutePieceName = (typeof routePieces)[number]
 
 /** A scanned file's kind; the pieces other than `lazy` are deprecated. */
 export type FsRouteType =
-  | '__root'
-  | 'static'
-  | 'layout'
-  | 'pathless_layout'
-  | RoutePieceName
+  '__root' | 'static' | 'layout' | 'pathless_layout' | RoutePieceName
 
 /**
  * The option keys of a route file's `createFileRoute(...)({...})` call

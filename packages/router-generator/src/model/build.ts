@@ -102,11 +102,6 @@ function anchorKind(node: RouteNode): FsRouteType {
     : 'static'
 }
 
-/** A `.lazy.vue` file (scanned as its route's `component` piece). */
-function isLazyVue(node: RouteNode) {
-  return node.filePath.endsWith('.lazy.vue')
-}
-
 function handleNode(
   node: RouteNode,
   acc: Accumulator,
@@ -211,14 +206,14 @@ function handleNode(
     if (
       piece === 'component' &&
       other &&
-      isLazyVue(other) !== isLazyVue(node)
+      (other._lazyVue === true) !== (node._lazyVue === true)
     ) {
-      // A `.lazy.vue` file is the route's component (SPEC J1.17), except
-      // next to a `.component.vue` piece: that one is, and the `.lazy.vue`
+      // A lazy `.vue` file is the route's component (SPEC J1.17), except
+      // next to a `.component.vue` piece: that one is, and the lazy `.vue`
       // file is the route's lazy route (its default export), as earlier
       // versions wired it
-      pieces.component = isLazyVue(node) ? other : node
-      pieces.lazy = isLazyVue(node) ? node : other
+      pieces.component = node._lazyVue ? other : node
+      pieces.lazy = node._lazyVue ? node : other
     } else {
       pieces[piece] = node
     }
