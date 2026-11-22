@@ -56,6 +56,7 @@ import {
   rewriteBasepath,
 } from './rewrite'
 import { createRouterStores } from './stores'
+import { formatValidationError } from './validationError'
 import type { SieveCache } from './sieve-cache'
 import type { RouteInterpolation } from './path'
 import type {
@@ -116,7 +117,6 @@ import type {
   NavigateFn,
 } from './RouterProvider'
 import type { Manifest, ManifestRouteAssets } from './manifest'
-import { formatValidationError } from './validationError'
 import type { AnySchema, AnyValidator } from './validators'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type {
