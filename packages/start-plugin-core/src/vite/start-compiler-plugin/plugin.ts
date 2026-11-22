@@ -592,7 +592,10 @@ export function startCompilerPlugin(
         async handler(id) {
           const parsed = parseIdQuery(id)
           const fnId = parsed.query.id
-          if (fnId && serverFnsById[fnId]) {
+          if (
+            fnId &&
+            Object.prototype.hasOwnProperty.call(serverFnsById, fnId)
+          ) {
             return `export {}`
           }
 
@@ -633,7 +636,9 @@ export function startCompilerPlugin(
                   )
 
                   // Re-check after lazy compilation
-                  if (serverFnsById[fnId]) {
+                  if (
+                    Object.prototype.hasOwnProperty.call(serverFnsById, fnId)
+                  ) {
                     return `export {}`
                   }
                 }

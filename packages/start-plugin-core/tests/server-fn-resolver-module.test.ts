@@ -47,6 +47,26 @@ describe('generateServerFnResolverModule', () => {
     },
   )
 
+  test.each([false, true])(
+    'treats ids naming Object.prototype members as unknown (client check: %s)',
+    async (includeClientReferencedCheck) => {
+      const source = generateServerFnResolverModule({
+        serverFnsById,
+        includeClientReferencedCheck,
+      })
+      const { getServerFnById } = await import(
+        /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(source)}`
+      )
+      for (const id of ['constructor', '__proto__', 'toString']) {
+        for (const origin of ['client', 'server']) {
+          await expect(getServerFnById(id, { origin })).rejects.toThrow(
+            'Server function info not found for ' + id,
+          )
+        }
+      }
+    },
+  )
+
   test('imports on every call by default', () => {
     const source = generateServerFnResolverModule({
       serverFnsById,
