@@ -76,7 +76,7 @@ function digestOf(content: string) {
 }
 
 interface FileState {
-  /** The digest of the content last read (or written by the generator). */
+  /** The digest of the content last read (or written by the generator); `''` when the file was missing. */
   readonly digest: string
   readonly stamp?: FileStamp
   /**
@@ -869,8 +869,9 @@ export class Generator {
           `The route file ${displayFile(file, this.root)} named by the virtual route config does not exist: create it, or fix its path in the config.`,
         )
       }
+      // (no content's digest: an empty file read next is no unchanged one)
       this.files.set(key, {
-        digest: digestOf(''),
+        digest: '',
         facts: { included: false },
         role,
       })

@@ -137,6 +137,30 @@ describe('route edits', () => {
     })
   })
 
+  // An update event read after the file vanished (a save through delete and
+  // re-create), then an empty file at that path: it is scaffolded and in the
+  // tree, as an empty route file always is.
+  test('an empty route file re-created after an update read it missing is scaffolded', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/about.tsx': fileRoute('/about'),
+    })
+    const { config, generator } = await startGenerator(root)
+
+    const about = await remove(root, 'src/routes/about.tsx')
+    await generator.run({ type: 'update', path: about })
+    await save(root, 'src/routes/about.tsx', '')
+    await generator.run({ type: 'update', path: about })
+
+    expect(await routeIdOf(await read(root, 'src/routes/about.tsx'))).toBe(
+      '/about',
+    )
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
+      __root__: 'routes/__root.tsx',
+      '/about': 'routes/about.tsx',
+    })
+  })
+
   // A failed run and a warning (keeping the last good tree) are both fine,
   // if the diagnostic names the file and the place of the problem (SPEC G5,
   // §5.7).
