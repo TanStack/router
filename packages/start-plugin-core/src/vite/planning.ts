@@ -222,7 +222,10 @@ export async function buildStartViteEnvironments(opts: {
     if ('on' in output) {
       opts.followWatcher(client, output)
     }
-    await firstBuildEnd(output)
+    if (!(await firstBuildEnd(output))) {
+      // the watcher was closed before its first build ended: nothing else builds
+      return
+    }
   }
 
   if (!server.isBuilt) {
@@ -251,21 +254,31 @@ export async function buildStartViteEnvironments(opts: {
   }
 }
 
-/** Resolves once a watch mode build's first build ended (an output: at once). */
+/**
+ * Resolves `true` once a watch mode build's first build ended (an output: at
+ * once), `false` when its watcher was closed first (a closed watcher reports
+ * no end of the build it ran).
+ */
 function firstBuildEnd(
   output: Awaited<ReturnType<vite.ViteBuilder['build']>>,
-): Promise<void> {
+): Promise<boolean> {
   if (!('on' in output)) {
-    return Promise.resolve()
+    return Promise.resolve(true)
   }
   return new Promise((resolve) => {
+    const settle = (built: boolean) => {
+      output.off('event', ended)
+      output.off('close', closed)
+      resolve(built)
+    }
     const ended = (event: vite.Rolldown.RolldownWatcherEvent) => {
       if (event.code === 'END' || event.code === 'ERROR') {
-        output.off('event', ended)
-        resolve()
+        settle(true)
       }
     }
+    const closed = () => settle(false)
     output.on('event', ended)
+    output.on('close', closed)
   })
 }
 

@@ -724,6 +724,13 @@ export class ViteCompilerState implements ClientBuilds {
   ): void {
     const s = this.sessionOf(environment)
     const client = this.envOf(environment.name)?.type === 'client'
+    if (client) {
+      // (a watcher closed while it builds reports no end of that build)
+      watcher.on('close', () => {
+        s.clientBuilding?.end()
+        s.clientBuilding = null
+      })
+    }
     watcher.on('event', (event) => {
       if (!client) {
         if (event.code === 'END') {
