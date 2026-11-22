@@ -88,7 +88,7 @@ export type ForeignRoute =
   | { kind: 'wrapped' }
 
 export type RouteCall =
-  /** The file has no value export named `Route`. */
+  /** The file has no value export named `Route`, or one declared as a function or class. */
   | { kind: 'none' }
   /** The file's `Route` is not a call of the router package's route constructor. */
   | { kind: 'foreign'; reason: ForeignRoute }
@@ -225,6 +225,13 @@ const patternParts: ReadonlySet<string> = new Set([
   'RestElement',
 ])
 
+/** The declarations whose value is a function: a `Route` they declare is no route. */
+const functionOrClass: ReadonlySet<string> = new Set([
+  'FunctionDeclaration',
+  'TSDeclareFunction',
+  'ClassDeclaration',
+])
+
 const wrappers: ReadonlySet<string> = new Set([
   'ParenthesizedExpression',
   'TSAsExpression',
@@ -356,6 +363,10 @@ export function routeCallOf(
   for (const name of routeExport.kind === 'named'
     ? (routeExport.local?.declarations ?? [])
     : []) {
+    if (functionOrClass.has(file.parentOf(name)?.type ?? '')) {
+      // a function or class is never a route (the tree calls a route's `update`)
+      return { kind: 'none' }
+    }
     let parent = file.parentOf(name)
     while (parent && patternParts.has(parent.type)) {
       parent = file.parentOf(parent)
@@ -377,7 +388,7 @@ export function routeCallOf(
     })
   const declarator = declarators.length === 1 ? declarators[0]! : null
   if (!declarator || declarator.id.type !== 'Identifier') {
-    // re-exported, imported, destructured, a function, declared twice...
+    // re-exported, imported, destructured, declared twice...
     return notTheCall()
   }
   const init = declarator.init ? unwrap(declarator.init) : null

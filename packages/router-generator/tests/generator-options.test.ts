@@ -898,10 +898,19 @@ export const Route = createFileRoute('/')({})
   })
 
   // A route file without a Route export is left out with a warning naming it
-  // (SPEC J1.12, G5); what else the run logs is free.
+  // (SPEC J1.12, G5); what else the run logs is free. A function or class
+  // declared as `Route` is no route either (the tree calls a route's
+  // `update`), even one returning a route.
   test.each([
     'export const helper = 1\n',
     'const helper = 1\nexport { helper }\n',
+    `import { createFileRoute } from '@tanstack/react-router'
+export function Route() {
+  return createFileRoute('/helpers')({})
+}
+`,
+    'function Route() {}\nexport { Route }\n',
+    'export class Route {}\n',
   ])(
     'with logging on, a route file without a Route export is left out with a warning naming it: %j',
     async (helpers) => {
