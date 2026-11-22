@@ -910,7 +910,7 @@ export interface ViewTransitionOptions {
 }
 
 /**
- * @internal Development-only: a router catch boundary of the framework
+ * @private Development-only: a router catch boundary of the framework
  * adapters caught `error`. A render error makes route hot updates reload the
  * page (`_hmrReload`); an error the router holds on a current match (its
  * loader's or `beforeLoad`'s) is the router's state, not a render error: the
@@ -1142,7 +1142,7 @@ export interface RouterCore<
     | ((route: AnyRoute, lazyFn: AnyRoute['lazyFn']) => void)
     | undefined
   /**
-   * @internal Development-only: a router catch boundary caught a render
+   * @private Development-only: a router catch boundary caught a render
    * error that route HMR cannot recover from in place, so route hot updates
    * reload the page (`hmrReloadAfterCatch`, called by the framework
    * adapters).
