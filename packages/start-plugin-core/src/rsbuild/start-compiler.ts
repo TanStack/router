@@ -286,7 +286,9 @@ function transformImportRules(value: unknown): Array<TransformImportRule> {
  * nothing (the tree module accepts its own update); they hear the reload
  * through Rsbuild's dev client, which applies the app's `dev.liveReload`
  * itself (with RSC, through the RSC client's channel, when the app's own
- * config leaves live reload on).
+ * config leaves live reload on). With the client's HMR off and no RSC,
+ * Rsbuild's client reloads the tab at every client compile, and nothing is
+ * sent.
  */
 function reloadOnRouteSetChange(
   api: RsbuildPluginAPI,
@@ -300,8 +302,12 @@ function reloadOnRouteSetChange(
   let sent: string | undefined
   /** A client compile served since then had another tree (and the tabs took it as a hot update). */
   let other = false
-  api.onBeforeStartDevServer(({ server: devServer }) => {
+  api.onBeforeStartDevServer(({ server: devServer, environments }) => {
     if (!opts.rsc) {
+      if (environments[client]?.config.dev.hmr === false) {
+        // (Rsbuild's client reloads at every client compile already)
+        return
+      }
       const hot = devServer.environments[client]?.hot
       send = hot
         ? () => hot.send('full-reload')
