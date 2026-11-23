@@ -158,7 +158,7 @@ export async function expectProductionClientBundle(
   expect(output(app)).toEqual(output(control))
   for (const [file, code] of Object.entries(output(app))) {
     expect(code, file).not.toMatch(
-      /__tsrHot|__tsrRouteHmr|keepPatched|MissingFactoryError|addStatusHandler/,
+      /__tsrHot|__tsrRouteHmr|__TSR_ROUTERS__|vite:afterUpdate|MissingFactoryError|addStatusHandler/,
     )
   }
 }

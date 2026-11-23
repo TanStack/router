@@ -1,99 +1,79 @@
 /**
- * The route HMR runtime's updates of a lazy route component
- * (`updateLazyRouteComponent`, `takeLazyRouteComponent`), over a wrapper's
+ * The route HMR runtime's updates of a lazy route component: a route
+ * module's evaluation points the route's live wrapper at the new
+ * evaluation's importer, and the wrapper imports again. Over a wrapper's
  * state as the hot slot every framework's `lazyRouteComponent` builds in
- * development on the client exposes it. That a hot update reaches a real
+ * development on the client exposes it, through the runtime's entry points
+ * (`applyRouteHmr`, `applyRouteChunkHmr`). That a hot update reaches a real
  * page through a framework's wrapper: router-plugin's
  * `route-hmr-browser*.test.ts`.
  */
 import { describe, expect, test, vi } from 'vitest'
 import { createControlledPromise } from '../src/utils'
-import {
-  applyRouteChunkHmr,
-  takeLazyRouteComponent,
-  updateLazyRouteComponent,
-} from '../src/hmr'
-import type { LazyRouteComponentHot, RouteHmrAdapter } from '../src/hmr'
+import { applyRouteChunkHmr, applyRouteHmr } from '../src/hmr'
+import { fakeRouter, fakeWrapper } from './route-hmr-fakes'
+import type { RouteHmrAdapter } from '../src/hmr'
 
 type Module = Record<string, unknown>
 
-/** A lazy wrapper's state behind the port its framework builds. */
+let files = 0
+
+/**
+ * A route whose `component` is a lazy wrapper, held by a router, and its
+ * route file: `update` is one more evaluation of the route module, whose
+ * wrapper has `importer` and `exportName`.
+ */
 function wrapper(
   held?: unknown,
   error?: unknown,
-  /** `null`: none (the default export) */
   exportName: string | null = 'component',
 ) {
-  const state = {
-    importer: (() => Promise.resolve({})) as () => Promise<Module>,
-    exportName: (exportName ?? undefined) as string | undefined,
-    comp: held,
-    error,
-    pending: undefined as Promise<unknown> | undefined,
-    renders: 0,
-  }
-  const slot: LazyRouteComponentHot = {
-    importer: state.importer,
-    exportName: state.exportName,
-    retarget: (importer, exportName) => {
-      state.importer = importer
-      state.exportName = exportName
-      return (
-        state.comp !== undefined || state.pending !== undefined || !!state.error
-      )
-    },
-    pending: () => state.pending,
-    setPending: (promise) => {
-      state.pending = promise
-    },
-    held: () => state.comp,
-    settle: (comp, err) => {
-      state.comp = comp
-      state.error = err
-      state.renders++
-    },
-  }
-  const hot = {
-    update: (
-      importer: () => Promise<Module>,
-      exportName: string | undefined,
-      adapter: RouteHmrAdapter,
-    ) => updateLazyRouteComponent(slot, importer, exportName, adapter),
-    take: (module: Module, adapter: RouteHmrAdapter) =>
-      takeLazyRouteComponent(slot, module, adapter),
-  }
-  return { state, hot }
+  const file = `/src/routes/hot${files++}.tsx`
+  const id = `/hot${files}`
+  const { state, wrapper: live } = fakeWrapper(held, error, exportName)
+  const route = { options: { component: live } as Record<string, any> }
+  const router = fakeRouter(() => ({ [id]: route }))
+  applyRouteHmr(id, route as any, { file }, {})
+  const update = (
+    importer: () => Promise<Module>,
+    name: string | undefined,
+    adapter: RouteHmrAdapter,
+  ) =>
+    applyRouteHmr(
+      id,
+      {
+        options: {
+          component: { __tsrHot: { importer, exportName: name } },
+        },
+      } as any,
+      { file },
+      adapter,
+    )
+  /** The route file's split chunk evaluated (webpack-style hosts). */
+  const chunk = (adapter: RouteHmrAdapter, refresh?: boolean) =>
+    applyRouteChunkHmr(file, 'component', adapter, refresh)
+  return { state, live, router, hot: { update, chunk } }
 }
 
 /** An adapter that keeps nothing: the loaded export is taken. */
 const swap: RouteHmrAdapter = {}
 const v = (label: string) => ({ label })
 
-/** `module`, handed over by an evaluation of its split chunk (`applyRouteChunkHmr`). */
-function handOver<T extends Module>(module: T): T {
-  applyRouteChunkHmr('/handed', 'component', {
-    exports: module,
-    refresh: false,
-    adapter: swap,
-  })
-  return module
-}
-
 describe('lazy route component hot updates', () => {
-  test('a wrapper that never loaded only takes the new importer for its first load', () => {
+  test('a wrapper that never loaded only takes the new importer for its first load', async () => {
     const { state, hot } = wrapper()
     const next = vi.fn(() => Promise.resolve({ component: v('v2') }))
     hot.update(next, 'component', swap)
     expect(next).not.toHaveBeenCalled()
-    expect(state.importer).toBe(next)
     expect(state.renders).toBe(0)
+    await state.importer()
+    expect(next).toHaveBeenCalledOnce()
   })
 
   test('a loaded wrapper re-imports, swaps to the loaded export and re-renders', async () => {
     const { state, hot } = wrapper(v('v1'))
     const next = vi.fn(() => Promise.resolve({ page: v('v2') }))
     hot.update(next, 'page', swap)
-    expect(state.importer).toBe(next)
     expect(state.exportName).toBe('page')
     expect(await state.pending).toEqual(v('v2'))
     expect(state).toMatchObject({ comp: v('v2'), renders: 1 })
@@ -183,56 +163,51 @@ describe('lazy route component hot updates', () => {
     expect(state).toMatchObject({ comp: v('v2'), error: undefined })
   })
 
-  test('recovered: the first import that succeeds after a failed one of a wrapper holding a component calls it, then the wrapper settles as usual', async () => {
+  // (that the page reloads then: start-plugin-core
+  // `start-dev-removed-import.test.ts`, a real page)
+  test('reloadOnRecover: the first import that succeeds after a failed one of a wrapper holding a component settles nothing (the page reloads)', async () => {
+    // jsdom reports the navigation it does not implement
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     const held = v('v1')
     const { state, hot } = wrapper(held)
-    const recovered = vi.fn()
-    const adapter: RouteHmrAdapter = { keep: () => true, recovered }
+    const adapter: RouteHmrAdapter = { reloadOnRecover: true }
     const ok = () => Promise.resolve({ component: v('v2') })
     hot.update(ok, 'component', adapter)
     await state.pending
-    expect(recovered).not.toHaveBeenCalled()
-    for (let i = 0; i < 2; i++) {
-      hot.update(
-        () => Promise.reject(new Error('missing')),
-        'component',
-        adapter,
-      )
-      await state.pending
-    }
-    expect(recovered).not.toHaveBeenCalled()
-    hot.update(ok, 'component', adapter)
+    expect(state).toMatchObject({ comp: v('v2'), renders: 1 })
+    hot.update(() => Promise.reject(new Error('missing')), 'component', adapter)
     await state.pending
-    expect(recovered).toHaveBeenCalledOnce()
-    expect(state).toMatchObject({ comp: held, error: undefined, renders: 2 })
-    hot.update(ok, 'component', adapter)
+    hot.update(
+      () => Promise.resolve({ component: v('v3') }),
+      'component',
+      adapter,
+    )
     await state.pending
-    expect(recovered).toHaveBeenCalledOnce()
+    expect(state).toMatchObject({ comp: v('v2'), renders: 1 })
+    vi.restoreAllMocks()
   })
 
-  test('recovered: not called for a wrapper whose first load failed, or for a failure an adapter without it saw', async () => {
-    const recovered = vi.fn()
+  test('a recovered import of an adapter without reloadOnRecover, or of a wrapper whose first load failed, is taken', async () => {
     const failedFirst = wrapper(undefined, new Error('offline'))
     failedFirst.hot.update(
       () => Promise.reject(new Error('missing')),
       'component',
-      { recovered },
+      { reloadOnRecover: true },
     )
     await failedFirst.state.pending
     failedFirst.hot.update(
       () => Promise.resolve({ component: v('v2') }),
       'component',
-      { recovered },
+      { reloadOnRecover: true },
     )
     await failedFirst.state.pending
+    expect(failedFirst.state.comp).toEqual(v('v2'))
+
     const { state, hot } = wrapper(v('v1'))
     hot.update(() => Promise.reject(new Error('missing')), 'component', swap)
     await state.pending
-    hot.update(() => Promise.resolve({ component: v('v2') }), 'component', {
-      recovered,
-    })
+    hot.update(() => Promise.resolve({ component: v('v2') }), 'component', swap)
     await state.pending
-    expect(recovered).not.toHaveBeenCalled()
     expect(state.comp).toEqual(v('v2'))
   })
 
@@ -367,78 +342,75 @@ describe('lazy route component hot updates', () => {
     expect(state).toMatchObject({ comp: v('v3'), error: undefined, renders: 1 })
   })
 
-  test('take: a module its chunk handed over is kept or taken by keepPatched; the importer stays', async () => {
-    const held = v('v1')
-    const { state, hot } = wrapper(held)
-    const importer = state.importer
-    const keepPatched = vi.fn(() => true)
-    const keep = vi.fn(() => false)
-    const handed = v('v2')
-    const module = handOver({ component: handed })
-    hot.take(module, { keep, keepPatched })
-    expect(await state.pending).toBe(held)
-    expect(keepPatched).toHaveBeenCalledWith(handed, held)
-    expect(keep).not.toHaveBeenCalled()
-    expect(state).toMatchObject({ comp: held, renders: 1, importer })
+  test('without a refresh to wait for, the route load waits for the hot import through the wrapper (preload), until it settled', async () => {
+    const { state, live, hot } = wrapper(v('v1'))
+    const next = createControlledPromise<Module>()
+    hot.update(() => next, 'component', swap)
+    const preload: Promise<unknown> = live.preload()
+    expect(preload).toBe(state.pending)
+    next.resolve({ component: v('v2') })
+    expect(await preload).toEqual(v('v2'))
+    expect(live.preload).toBeUndefined()
 
-    hot.take(module, swap)
-    expect(await state.pending).toBe(handed)
-    expect(state).toMatchObject({ comp: handed, renders: 2, importer })
+    // a framework whose refresh settles later: the load does not wait for it
+    const refreshed = wrapper(v('v1'))
+    refreshed.hot.update(
+      () => Promise.resolve({ component: v('v2') }),
+      'component',
+      { settled: () => {} },
+    )
+    expect(refreshed.live.preload).toBeUndefined()
   })
 
-  test('an import answering a module its chunk handed over is kept or taken by keepPatched, any other by keep', async () => {
-    const held = v('v1')
-    const { state, hot } = wrapper(held)
-    const keepPatched = vi.fn(() => true)
-    const keep = vi.fn(() => false)
-    const handed = v('v2')
-    const module = handOver({ component: handed })
-    hot.update(() => Promise.resolve(module), 'component', {
-      keep,
-      keepPatched,
+  test('new code in a wrapper publishes the matches of the router that holds the route again', async () => {
+    const { state, router, hot } = wrapper(v('v1'))
+    hot.update(() => Promise.resolve({ component: v('v2') }), 'component', swap)
+    await state.pending
+    expect(router.stores.setMatches).toHaveBeenCalledOnce()
+    // kept, and patched by the framework: new code too
+    hot.update(() => Promise.resolve({ component: v('v3') }), 'component', {
+      keep: () => true,
     })
-    expect(await state.pending).toBe(held)
-    expect(keepPatched).toHaveBeenCalledWith(handed, held)
-    expect(keep).not.toHaveBeenCalled()
-
-    const imported = v('v3')
-    hot.update(() => Promise.resolve({ component: imported }), 'component', {
-      keep,
-      keepPatched,
-    })
-    expect(await state.pending).toBe(imported)
-    expect(keep).toHaveBeenCalledWith(imported, held)
-    expect(keepPatched).toHaveBeenCalledOnce()
-  })
-
-  test('take: the default export of a wrapper created without an export name, or updated to none', async () => {
-    const unnamed = wrapper(v('v1'), undefined, null)
-    unnamed.hot.take({ default: v('d'), component: v('c') }, swap)
-    expect(await unnamed.state.pending).toEqual(v('d'))
-
-    const named = wrapper(v('v1'))
-    named.hot.update(
-      () => Promise.resolve({ default: v('d2') }),
-      undefined,
+    await state.pending
+    expect(router.stores.setMatches).toHaveBeenCalledTimes(2)
+    // the component it holds: nothing new
+    hot.update(
+      () => Promise.resolve({ component: state.comp }),
+      'component',
       swap,
     )
-    await named.state.pending
-    named.hot.take({ default: v('d3'), component: v('c3') }, swap)
-    expect(await named.state.pending).toEqual(v('d3'))
+    await state.pending
+    expect(router.stores.setMatches).toHaveBeenCalledTimes(2)
   })
 
-  test('take: a wrapper that holds nothing, or a module without its export, is left alone', async () => {
-    const { state, hot } = wrapper()
-    hot.take({ component: v('v2') }, swap)
-    expect(state).toMatchObject({ pending: undefined, renders: 0 })
+  test('a chunk that evaluated on its own: the wrapper imports again through the importer it reads now, and the route loads only for a non-component option', async () => {
+    const { state, router, hot } = wrapper(v('v1'))
+    let exported = v('v2')
+    const importer = vi.fn(() => Promise.resolve({ page: exported }))
+    hot.update(importer, 'page', swap)
+    await state.pending
+    expect(state.comp).toEqual(v('v2'))
+    router._refreshRoute.mockClear()
 
-    const loaded = wrapper(v('v1'))
-    loaded.hot.take({ pendingComponent: v('v2') }, swap)
-    expect(loaded.state).toMatchObject({ pending: undefined, renders: 0 })
-    // the export the wrapper reads since a route update
-    loaded.hot.update(() => Promise.resolve({ page: v('v2') }), 'page', swap)
-    await loaded.state.pending
-    loaded.hot.take({ page: v('v3') }, swap)
-    expect(await loaded.state.pending).toEqual(v('v3'))
+    // its first evaluation since the route module's is that evaluation's own
+    hot.chunk(swap, false)
+    expect(state.pending).toBeUndefined()
+    exported = v('v3')
+    hot.chunk(swap, false)
+    expect(await state.pending).toEqual(v('v3'))
+    expect(importer).toHaveBeenCalledTimes(2)
+    expect(router._refreshRoute).not.toHaveBeenCalled()
+
+    exported = v('v4')
+    hot.chunk(swap, true)
+    expect(await state.pending).toEqual(v('v4'))
+    expect(router._refreshRoute).toHaveBeenCalledOnce()
+  })
+
+  test('a chunk that evaluated on its own leaves a wrapper that holds nothing alone', () => {
+    const { state, hot } = wrapper()
+    hot.chunk(swap, false)
+    hot.chunk(swap, false)
+    expect(state).toMatchObject({ pending: undefined, renders: 0 })
   })
 })

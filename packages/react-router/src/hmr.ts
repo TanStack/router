@@ -30,10 +30,8 @@ type RefreshWindow = Window & {
   __reactRefreshInjected?: boolean
 }
 
-// Per module id: the route it defines and the exports plugin-react ignores.
-let ignoredExportsById:
-  | Map<string, { routeId: string; ignored: Array<string> }>
-  | undefined
+// Per module id: the exports plugin-react ignores.
+let ignoredExportsById: Map<string, Array<string>> | undefined
 
 function refreshActive() {
   const w = window as RefreshWindow
@@ -111,12 +109,8 @@ function whenRefreshed(apply: () => void): void {
 
 const adapter: RouteHmrAdapter = {
   settled: whenRefreshed,
-  retire: (routeId) => {
-    ignoredExportsById?.forEach((entry, id, byId) => {
-      if (entry.routeId === routeId) {
-        byId.delete(id)
-      }
-    })
+  retire: (file) => {
+    ignoredExportsById?.delete(file)
   },
 }
 
@@ -148,15 +142,13 @@ export function __tsrRouteHmr(
         w.__getReactRefreshIgnoredExports = (ctx) => {
           const ignored = previous?.(ctx) ?? []
           const own = ids.get(ctx.id)
-          return own ? [...ignored, ...own.ignored] : ignored
+          return own ? [...ignored, ...own] : ignored
         }
       }
-      byId.set(refreshExports.id, {
-        routeId,
-        ignored: refreshExports.exports.filter(
-          (name) => name !== refreshExports.anchor,
-        ),
-      })
+      byId.set(
+        meta.file,
+        refreshExports.exports.filter((name) => name !== refreshExports.anchor),
+      )
     }
     applyRouteHmr(routeId, Route, meta, adapter)
   }
@@ -169,9 +161,9 @@ export function __tsrRouteHmr(
  *
  * Called only by compiler output; not a public API.
  */
-export function __tsrRouteChunkHmr(routeId: string, chunk: string): void {
+export function __tsrRouteChunkHmr(file: string, chunk: string): void {
   if (process.env.NODE_ENV !== 'production') {
-    applyRouteChunkHmr(routeId, chunk)
+    applyRouteChunkHmr(file, chunk, adapter)
   }
 }
 
@@ -182,8 +174,8 @@ export function __tsrRouteChunkHmr(routeId: string, chunk: string): void {
  *
  * Called only by compiler output; not a public API.
  */
-export function __tsrKeptReaderHmr(routeId: string, hot: KeptReaderHot): void {
+export function __tsrKeptReaderHmr(file: string, hot: KeptReaderHot): void {
   if (process.env.NODE_ENV !== 'production') {
-    applyKeptReaderHmr(routeId, hot)
+    applyKeptReaderHmr(file, hot)
   }
 }

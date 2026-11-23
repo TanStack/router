@@ -1,11 +1,10 @@
 /**
  * Route HMR after a render error the page recovered from without a route
- * edit. A router catch boundary that shows a render error makes route edits
- * reload the page (R70: the framework cannot recover in place), and the
- * reload discards that state. A page can also recover without a reload: a
- * navigation resets the boundary.
- *
- * Pin (R3-G9-2, open: the state is never cleared, see oracle/KNOWN-BUGS.md).
+ * edit (a navigation resets the boundary): a later route edit updates in
+ * place. Only the global boundary of a hydrated root, which loses the
+ * document it renders, makes route edits reload the page (R70); a
+ * client-only root's boundaries recover in place (oracle/KNOWN-BUGS.md,
+ * "Fixed": R3-G9-2).
  */
 import { test } from 'vitest'
 import { openRouteHmrPage } from '../route-hmr-page'
@@ -26,12 +25,7 @@ export const Route = createFileRoute('/other')({
 })
 `
 
-// Bug: the global boundary's catch marks the router for a reload on the next
-// route edit, and nothing clears the mark once the page recovered (here by
-// navigating away: the boundary resets).
-// Impact: one render error earlier in a session costs a full reload (and the
-// page's state) on a later, unrelated route edit.
-test.fails(
+test(
   'react, vite: a route edit after a render error the page navigated away from updates in place',
   { timeout: 60_000 },
   async ({ expect, onTestFinished }: TestContext) => {

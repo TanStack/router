@@ -92,6 +92,10 @@ export function loadRouteChunk(
         const { id: _id, ...options } = lazyRoute.options
         Object.assign(route.options, options)
         route._lazy = true
+        if (process.env.NODE_ENV !== 'production') {
+          // route HMR: which lazy route this route loaded
+          route._lazyRoute = lazyRoute
+        }
       }
     },
     (error) => {

@@ -3,94 +3,74 @@ import type { AnyRoute } from './route'
 import type { AnyRouter } from './router'
 
 /**
- * Static facts the compiler's dev-only route HMR block passes for one
- * evaluation of a route module.
+ * The dev-only route HMR runtime (SPEC J3). Called only by compiler output
+ * through the framework packages' `/hmr` entries; not a public API.
  *
- * Called only by compiler output; not a public API.
+ * The model: one record per route file (the route module, or the lazy route
+ * file) holds the newest evaluation of that file and what the host reported
+ * of its other modules (webpack-style hosts: a split chunk that evaluated on
+ * its own, the readers of a kept binding). An evaluation only records itself
+ * and schedules the record's commit; the commit is the one place that
+ * changes a router, and it reads the record when it runs: whatever
+ * evaluated meanwhile is what it applies, and only the newest scheduled
+ * commit of a record runs (`turn`).
+ *
+ * A commit applies to every router on the page that holds a route this file
+ * evaluated to (`owners`): never to a route found by its id alone, so
+ * neither another router's route of that id nor another file's is touched.
+ * The route takes its new options and each owning router loads it again
+ * (once): at once, or after the framework's refresh when the route would
+ * take a component the refresh may patch in place. A split component
+ * follows when its chunk loaded (`load`).
  */
+
+/** Static facts the compiler passes for one evaluation of a route module. */
 export interface RouteHmrMeta {
+  /** The route file, as the compiler names it: the record's key. */
+  file: string
   /** The module is a lazy route file: its `Route` holds the options the route of its id loads with its chunk. */
   lazy?: true
   /**
-   * The module holds none of the route's component options (each is split
-   * into a lazy chunk, or absent): an update of it holds nothing the
-   * framework's refresh patches, so it applies without waiting for the
-   * refresh (`RouteHmrAdapter.settled`). The lazy wrappers still wait for
-   * it when their chunk evaluated again.
+   * Vite, where the framework patches components in the update's accept
+   * callbacks (Solid, Vue): the module's hot context. The commit runs once
+   * Vite applied the update (`vite:afterUpdate`), as it runs on a
+   * webpack-style host once the update is applied (`HotRecord.applied`).
    */
-  noComponents?: true
-  /**
-   * Solid: the module of each component option the route module declares
-   * (`<option>:<chunk>`, sorted, comma-separated; an empty chunk: the route
-   * module). solid-refresh patches per module, from the first proxy a
-   * module registered under a name, and stops patching a module that lost a
-   * component (https://github.com/solidjs/solid-refresh/issues/88): a
-   * component that moved to another module (a `codeSplitGroupings` edit),
-   * or that left a split chunk another component stays in, cannot be
-   * updated in place, so the page reloads (`applyRouteHmr`). Another
-   * component added or removed changes nothing in place.
-   */
+  hot?: {
+    on: (event: string, listener: () => void) => void
+    off: (event: string, listener: () => void) => void
+  }
+  /** Solid (the adapter's `reload`): the module of each component option, `<option>:<chunk>`, sorted, comma-separated. */
   chunks?: string
-  /**
-   * Solid + Vite: solid-refresh's Vite mode patches a module only in its own
-   * accept callback (solid-router's `restoredImportReload`).
-   */
-  vite?: true
-  /** React + Vite: the module id plugin-react uses and the export names it ignores (the route, the anchor, the glue name of every module-level binding, and its own name when the user does not export it and the module has no `export *`). */
-  refreshExports?: { id: string; anchor: string; exports: Array<string> }
+  /** React + Vite: the export names plugin-react ignores for this module (`file` is the id it asks by). */
+  refreshExports?: { anchor: string; exports: Array<string> }
 }
 
-/**
- * What the route HMR runtime asks the framework: whether a held component is
- * kept because the framework's refresh runtime patches it in place (absent:
- * the new one is taken), or when the new one can be taken. Not a public API.
- */
+/** What the runtime asks the framework. */
 export interface RouteHmrAdapter {
   /**
-   * Split component: decided when the chunk re-imported after a route update
-   * resolves, from the loaded export (a module the chunk handed over:
-   * `keepPatched`).
+   * `held` and `next` are the same component option before and after an
+   * update: whether the framework's refresh renders `next`'s code through
+   * `held` (the route keeps `held`). Absent: the route takes `next`.
    */
   keep?: (next: any, held: any) => boolean
   /**
-   * `held` and `next` are the same option of two evaluations of one module
-   * (a route module, a lazy route file, a split chunk that evaluated on its
-   * own), and the framework's refresh patches that module in the same
-   * update: whether it renders `next`'s code through `held`.
-   */
-  keepPatched?: (next: any, held: any) => boolean
-  /**
-   * Runs `apply` once the framework's refresh runtime processed the modules
-   * evaluated so far (absent: at once): a component update applied before
-   * would remount what the refresh patches in place.
+   * Runs `apply` once the framework's refresh processed the modules
+   * evaluated so far (absent: at once): a component taken before would
+   * remount what the refresh patches in place.
    */
   settled?: (apply: () => void) => void
-  /**
-   * Called when a lazy wrapper that holds a component sees its import
-   * succeed after its previous one failed (a deleted file its chunk reads,
-   * restored), before the wrapper settles as usual. Absent: such a failure
-   * is not recorded.
-   */
-  recovered?: () => void
-  /** Forgets what the framework records for a route id the router no longer holds. */
-  retire?: (routeId: string) => void
-}
-
-/** Runs `apply` when the adapter's refresh settled (`RouteHmrAdapter.settled`). */
-function whenSettled(adapter: RouteHmrAdapter, apply: () => void): void {
-  if (adapter.settled) {
-    adapter.settled(apply)
-  } else {
-    apply()
-  }
+  /** Whether the step from one evaluation of the route module to the next is one the framework cannot patch in place: the page reloads. */
+  reload?: (before: RouteHmrMeta, next: RouteHmrMeta) => boolean
+  /** The framework cannot patch a chunk whose import failed and then succeeded: the page reloads. */
+  reloadOnRecover?: true
+  /** Forgets what the framework keeps for a route file no router holds a route of any more. */
+  retire?: (file: string) => void
 }
 
 /**
- * Dev-only hot slot of a lazy route component (`lazyRouteComponent(...).__tsrHot`):
- * what the route HMR runtime reads and changes in its framework's wrapper,
- * with the framework's own fields. The wrapper builds it in its dev-only
- * block, on the client only, without importing this module: production and
- * server code never load the runtime. Not a public API.
+ * Dev-only hot slot of a lazy route component (`lazyRouteComponent(...).__tsrHot`),
+ * built by the framework's wrapper on the client.
  */
 export interface LazyRouteComponentHot {
   /** The importer and export name the wrapper was created with. */
@@ -108,130 +88,19 @@ export interface LazyRouteComponentHot {
   held: () => any
   /** Holds `component` and `error` (none: `undefined`), and re-renders the wrapper. */
   settle: (component: any, error: unknown) => void
+  /** The runtime's: the importer and export the wrapper reads now, the wrapper it was last pointed at, whether its latest import failed. */
+  now?: [importer: () => Promise<any>, exportName: string]
+  source?: LazyRouteComponentHot
+  failed?: true
 }
 
-// Per hot slot, the export its wrapper reads since a route update pointed
-// it at another one (`updateLazyRouteComponent`); else the one it was
-// created with.
-const currentExports = new WeakMap<LazyRouteComponentHot, string>()
-
-// The hot slots whose latest import failed while their wrapper held a
-// component, for an adapter with `recovered`.
-const failedImports = new WeakSet<LazyRouteComponentHot>()
-
-function currentExportOf(hot: LazyRouteComponentHot): string {
-  return currentExports.get(hot) ?? hot.exportName ?? 'default'
-}
-
-/**
- * Settles the wrapper of `hot` with the export `name` of what `loading`
- * resolves to (see `updateLazyRouteComponent`).
- */
-function settleWith(
-  hot: LazyRouteComponentHot,
-  loading: Promise<any>,
-  name: string,
-  adapter: RouteHmrAdapter,
-): void {
-  const promise: Promise<any> = loading.then(
-    (res) => {
-      if (hot.pending() !== promise) {
-        return hot.pending()
-      }
-      if (failedImports.delete(hot)) {
-        adapter.recovered?.()
-      }
-      const next = res[name]
-      const keep = handedOver.has(res) ? adapter.keepPatched : adapter.keep
-      const take = () => {
-        if (hot.pending() !== promise) {
-          return hot.pending()
-        }
-        hot.setPending(undefined)
-        const held = hot.held()
-        // a kept component stays (its refresh runtime patches it); either
-        // way a failure the wrapper held is over
-        hot.settle(held != null && keep?.(next, held) ? held : next, undefined)
-        return hot.held()
-      }
-      const held = hot.held()
-      if (held == null || next === held) {
-        // nothing the refresh could patch
-        return take()
-      }
-      return new Promise((resolve) => {
-        whenSettled(adapter, () => resolve(take()))
-      })
-    },
-    (err) => {
-      if (hot.pending() !== promise) {
-        return hot.pending()
-      }
-      hot.setPending(undefined)
-      // A component the wrapper holds keeps rendering, as on main: the
-      // bundler's HMR client reports the chunk's failure, and the edit
-      // that fixes it patches the component in place. A wrapper holding
-      // none (its first load failed) holds the new failure.
-      const held = hot.held()
-      if (held == null) {
-        hot.settle(held, err)
-      } else if (adapter.recovered) {
-        failedImports.add(hot)
-      }
-      return undefined
-    },
-  )
-  hot.setPending(promise)
-}
-
-/**
- * Points the lazy wrapper of `hot` at a new importer. It re-imports
- * through it when the wrapper has loaded (or is loading), then, once the
- * adapter's refresh settled (`settled`), keeps the held component if
- * `keep(loaded, held)` says so (the framework's refresh runtime patches it
- * in place) or swaps to the loaded one, and re-renders the wrapper either
- * way (a failure it held is over); a failed import leaves a wrapper holding
- * a component as it is. A module its chunk handed over
- * (`applyRouteChunkHmr`) evaluated again on its own: its framework's
- * refresh patched it as it patches a route module, so `keepPatched` decides
- * instead. The newest import is the only one whose completion counts: an
- * older one that completes while a newer one is pending settles with the
- * newer one. A wrapper that never loaded only takes the new importer for
- * its first load.
- *
- * Dev-only, client-only; not a public API.
- */
-export function updateLazyRouteComponent(
-  hot: LazyRouteComponentHot,
-  importer: () => Promise<any>,
-  exportName: string | undefined,
-  adapter: RouteHmrAdapter,
-): void {
-  const name = exportName ?? 'default'
-  currentExports.set(hot, name)
-  if (!hot.retarget(importer, exportName)) {
-    return
-  }
-  settleWith(hot, importer(), name, adapter)
-}
-
-/**
- * Settles the lazy wrapper of `hot` as `updateLazyRouteComponent` does,
- * with a module its chunk handed over, keeping the importer; a wrapper that
- * holds nothing, or a module without its export, is left alone.
- *
- * Dev-only, client-only; not a public API.
- */
-export function takeLazyRouteComponent(
-  hot: LazyRouteComponentHot,
-  module: Record<string, any>,
-  adapter: RouteHmrAdapter,
-): void {
-  const name = currentExportOf(hot)
-  if (hot.held() == null || !(name in module)) {
-    return
-  }
-  settleWith(hot, Promise.resolve(module), name, adapter)
+/** What the runtime uses of a webpack-style module's hot handle (`import.meta.webpackHot`). */
+export interface KeptReaderHot {
+  invalidate: () => void
+  dispose: (callback: () => void) => void
+  status: () => string
+  addStatusHandler: (handler: (status: string) => void) => void
+  removeStatusHandler?: (handler: (status: string) => void) => void
 }
 
 type HotRoute = AnyRoute & {
@@ -241,6 +110,139 @@ type HotRoute = AnyRoute & {
   _id: string
   _fullPath: string
   _to: string
+  _lazyRoute?: object
+}
+
+/** What a route file evaluates to: a `Route`, or a lazy route (`createLazyFileRoute(id)(options)`). */
+interface Evaluation {
+  options: Record<string, any>
+}
+
+/** One route file. */
+interface HotRecord {
+  file: string
+  /** The id its route has in a router. */
+  id: string
+  meta: RouteHmrMeta
+  /** The newest scheduled commit. */
+  turn: number
+  /**
+   * Every `Route` or lazy route the file evaluated to: a router whose route
+   * is one of them (a route module), or loaded one of them (a lazy route
+   * file), holds this file's route. For a route module, each with the
+   * option keys of the module's own, read when it evaluates, before the
+   * route tree updates it.
+   */
+  evaluations: WeakMap<object, ReadonlyArray<string>>
+  /** The newest evaluation. */
+  newest?: Evaluation
+  /** A lazy route file evaluated since the last commit. */
+  dirty?: boolean
+  /** Webpack-style hosts: the split chunks that evaluated since the route module last did. */
+  chunks: Set<string>
+  /** A split chunk evaluated on its own since the last commit: the wrappers import again; `refresh`: it holds a non-component option. */
+  again?: boolean
+  refresh?: boolean
+  /** Webpack-style hosts: the hot handles of the modules reading a binding the route module keeps. */
+  readers: Set<KeptReaderHot>
+  /** The readers were invalidated in the update being applied: settles when it is applied. */
+  applied?: Promise<void>
+}
+
+// Per route file; a record goes when no router holds a route of its id any
+// more (`setRoutes`).
+const records = new Map<string, HotRecord>()
+
+function recordOf(file: string): HotRecord {
+  let record = records.get(file)
+  if (!record) {
+    record = {
+      file,
+      id: '',
+      meta: { file },
+      turn: 0,
+      evaluations: new WeakMap(),
+      chunks: new Set(),
+      readers: new Set(),
+    }
+    records.set(file, record)
+  }
+  return record
+}
+
+/** The routers of the page (each registers itself when created, in development). */
+function routers(): Array<AnyRouter> {
+  const refs = window.__TSR_ROUTERS__ ?? []
+  const live: Array<AnyRouter> = []
+  for (let i = refs.length - 1; i >= 0; i--) {
+    const router = refs[i]!.deref()
+    if (router) {
+      live.push(router)
+    } else {
+      refs.splice(i, 1)
+    }
+  }
+  return live
+}
+
+/**
+ * The routers that hold the record's route, each with that route: the one
+ * of the record's id that the route module evaluated to, or that loaded its
+ * lazy options from the lazy route file.
+ */
+function owners(record: HotRecord): Array<[AnyRouter, HotRoute]> {
+  const found: Array<[AnyRouter, HotRoute]> = []
+  for (const router of routers()) {
+    const live = router.routesById[record.id] as HotRoute | undefined
+    if (
+      live &&
+      (record.meta.lazy
+        ? live._lazy === true &&
+          live._lazyRoute !== undefined &&
+          record.evaluations.has(live._lazyRoute)
+        : record.evaluations.has(live))
+    ) {
+      found.push([router, live])
+    }
+  }
+  return found
+}
+
+let reloading = false
+
+/**
+ * The one way out of an update that cannot apply in place: the document
+ * loads again, once.
+ */
+function reload(): void {
+  if (!reloading) {
+    reloading = true
+    window.location.reload()
+  }
+}
+
+/**
+ * Has the router read its route tree again, then forgets the files of the
+ * route ids it held before that no router holds any more (a route removed
+ * or renamed).
+ */
+function setRoutes(router: AnyRouter, adapter: RouteHmrAdapter): void {
+  const before = router.routesById as Record<string, AnyRoute>
+  router.setRoutes(router.buildRouteTree())
+  let others: Array<AnyRouter> | undefined
+  for (const routeId in before) {
+    if (
+      !(routeId in router.routesById) &&
+      !(others ??= routers()).some((other) => routeId in other.routesById)
+    ) {
+      for (const [file, record] of records) {
+        if (record.id === routeId) {
+          records.delete(file)
+          adapter.retire?.(file)
+        }
+      }
+    }
+  }
 }
 
 const componentKeys = [
@@ -251,86 +253,394 @@ const componentKeys = [
   'notFoundComponent',
 ]
 
-/**
- * Every `Route` a route id evaluated to (a route tree rebuilt after an edit
- * imports the module's current export, so any evaluation can be the
- * router's live route), each with the option keys of its route module (read
- * when it evaluates, before the route tree updates it), and the latest
- * evaluation: the only one that refreshes the live route (an older one's
- * refresh can wait for the framework's refresh past a newer one's).
- */
-interface HotRouteRecord {
-  routes: WeakMap<AnyRoute, ReadonlyArray<string>>
-  latest: AnyRoute
-  /** The latest evaluation's `RouteHmrMeta.chunks`. */
-  chunks: string | undefined
+/** Whether a route's components keep their places (a `shellComponent` added or removed renders another tree). */
+function sameShape(live: object, next: object): boolean {
+  return 'shellComponent' in live === 'shellComponent' in next
 }
 
-// Per route id. Bounded by the number of routes (`setRoutes` forgets the ids
-// a rebuilt tree drops); the evaluations are held weakly.
-const hotRoutes = new Map<string, HotRouteRecord>()
-
-// Per route id, the split chunks that evaluated since its route module last
-// did (`applyRouteChunkHmr`). Bounded by the number of split chunks.
-const hotChunks = new Map<string, Set<string>>()
-
-// The exports of every evaluation a split chunk handed over
-// (`applyRouteChunkHmr`): the framework's refresh patched each of them.
-const handedOver = new WeakSet<object>()
-
 /**
- * What the route HMR runtime uses of a webpack-style module's hot handle
- * (`import.meta.webpackHot`). Not a public API.
+ * Imports through the wrapper's importer and settles the wrapper with the
+ * export `name`: once the adapter's refresh settled when the component
+ * changed, the wrapper keeps the held component if the framework patches it
+ * (`keep`) or takes the loaded one. A failed import leaves a wrapper holding
+ * a component as it is (the bundler's HMR client reports the failure; the
+ * edit that fixes it patches the component in place); a wrapper holding none
+ * holds the failure. The newest import is the only one whose completion
+ * counts: an older one settles with it (the wrapper's own `load()` follows
+ * the same rule).
+ *
+ * Where the framework has no refresh to wait for, the route's load waits for
+ * this import as it waits for a wrapper's first load (`preload`): the
+ * component that renders the route's new data is the one that reads it.
  */
-export interface KeptReaderHot {
-  invalidate: () => void
-  dispose: (callback: () => void) => void
-  status: () => string
-  addStatusHandler: (handler: (status: string) => void) => void
+function load(
+  wrapper: any,
+  loading: Promise<any>,
+  name: string,
+  record: HotRecord,
+  adapter: RouteHmrAdapter,
+): void {
+  const hot: LazyRouteComponentHot = wrapper.__tsrHot
+  const promise: Promise<any> = loading.then(
+    (module) => {
+      if (hot.pending() !== promise) {
+        return hot.pending()
+      }
+      if (hot.failed) {
+        hot.failed = undefined
+        if (adapter.reloadOnRecover) {
+          reload()
+          return undefined
+        }
+      }
+      const next = module[name]
+      const take = () => {
+        if (hot.pending() !== promise) {
+          return hot.pending()
+        }
+        hot.setPending(undefined)
+        wrapper.preload = undefined
+        const held = hot.held()
+        const taken = held != null && adapter.keep?.(next, held) ? held : next
+        hot.settle(taken, undefined)
+        if (held != null && next !== held) {
+          arrived(record, adapter)
+        }
+        return taken
+      }
+      const held = hot.held()
+      if (held == null || next === held || !adapter.settled) {
+        return take()
+      }
+      return new Promise((resolve) => {
+        adapter.settled!(() => resolve(take()))
+      })
+    },
+    (error) => {
+      if (hot.pending() !== promise) {
+        return hot.pending()
+      }
+      hot.setPending(undefined)
+      wrapper.preload = undefined
+      const held = hot.held()
+      if (held == null) {
+        hot.settle(held, error)
+      } else {
+        hot.failed = true
+      }
+      return undefined
+    },
+  )
+  hot.setPending(promise)
+  if (!adapter.settled) {
+    wrapper.preload = () => hot.pending()
+  }
 }
 
-// Per route id, the hot handles of the evaluated modules of its file that
-// read a binding its route module keeps (`applyKeptReaderHmr`); a module
-// leaves when it is disposed. Bounded by the number of derived modules.
-const keptReaders = new Map<string, Set<KeptReaderHot>>()
-
-// Per route id, the latest evaluation of a route module that invalidated its
-// kept readers: the route is refreshed with it once the update is applied
-// (`deferUntilApplied`).
-const deferred = new Map<
-  string,
-  { route: AnyRoute; meta: RouteHmrMeta; adapter: RouteHmrAdapter }
->()
-let statusHandled = false
-
 /**
- * Has the router read its route tree again, then forgets the route ids it
- * held before and no longer holds (a route removed or renamed). An id the
- * router never held stays: a module evaluates before the route tree module
- * that adds its route runs.
+ * A wrapper of the record's route holds new code (another component, or
+ * the one it held, patched by the framework), maybe after the route loaded
+ * again: a catch boundary may hold what the previous code threw, on its
+ * own or rendering the route's new data. A boundary resets when its match
+ * changes, so each owning router's matches are published again, as they
+ * are.
  */
-function setRoutes(router: AnyRouter, adapter: RouteHmrAdapter): void {
-  const before = router.routesById as Record<string, AnyRoute>
-  router.setRoutes(router.buildRouteTree())
-  for (const routeId in before) {
-    if (!(routeId in router.routesById)) {
-      hotRoutes.delete(routeId)
-      hotLazyRoutes.delete(routeId)
-      hotChunks.delete(routeId)
-      keptReaders.delete(routeId)
-      adapter.retire?.(routeId)
+function arrived(record: HotRecord, adapter: RouteHmrAdapter): void {
+  for (const [router] of owners(record)) {
+    if (!lost(router, adapter)) {
+      router.stores.setMatches(
+        router.stores.matches.get().map((match) => ({ ...match })),
+      )
     }
   }
 }
 
 /**
- * Applies one evaluation of a route module to the live route of
- * `window.__TSR_ROUTER__`. The first evaluation only records the route.
- * Later evaluations update the live route when the router on the page holds
- * a route this module evaluated to under `routeId` (the first one, or a
- * later one a rebuilt route tree imported), and do nothing otherwise. An
- * evaluation that moves a component of the previous one to another module
- * reloads the page (`RouteHmrMeta.chunks`, Solid).
+ * Whether the router's document is lost: `router._hmrReload` marks a
+ * hydrated root whose global boundary caught a render error (the framework
+ * cannot render the document again in place, so nothing is published to
+ * such a router). Marked before an update, the update reloads the page when
+ * it begins (`evaluated`). Marked during one, the page reloads once the
+ * framework's refresh pass is through (`settled`): what threw is a
+ * component of one version rendering the data of the other, and the
+ * reloaded page has both of one version. A framework without such a pass
+ * patches as the update applies, where the error may as well be the new
+ * code's own: the boundary keeps showing it, and the next update reloads.
+ */
+function lost(router: AnyRouter, adapter: RouteHmrAdapter): boolean {
+  if (router._hmrReload && adapter.settled) {
+    reload()
+  }
+  return !!router._hmrReload
+}
+
+/**
+ * Keeps the live lazy wrapper `held` of a component option, pointed at the
+ * importer of the evaluation's wrapper `value` (once per pair): a wrapper
+ * that has loaded imports again. Whether both are wrappers.
+ */
+function point(
+  held: any,
+  value: any,
+  record: HotRecord,
+  adapter: RouteHmrAdapter,
+): boolean {
+  const heldHot: LazyRouteComponentHot | undefined = held?.__tsrHot
+  const valueHot: LazyRouteComponentHot | undefined = value?.__tsrHot
+  if (!heldHot || !valueHot || held === value) {
+    return false
+  }
+  if (heldHot.source !== valueHot) {
+    heldHot.source = valueHot
+    // Vite bundled dev without lazy compilation (Rolldown) turns a patch's
+    // `import()` of a chunk the page never loaded into a lookup that throws
+    // `MissingFactoryError`; only the held wrapper's own (first) importer
+    // loads that chunk.
+    const first = heldHot.importer
+    const onError = (error: unknown) => {
+      if (
+        error instanceof Error &&
+        error.constructor.name === 'MissingFactoryError'
+      ) {
+        return first()
+      }
+      throw error
+    }
+    const importer = () => {
+      try {
+        return valueHot.importer().catch(onError)
+      } catch (error) {
+        return onError(error)
+      }
+    }
+    const name = valueHot.exportName ?? 'default'
+    heldHot.now = [importer, name]
+    if (heldHot.retarget(importer, valueHot.exportName)) {
+      load(held, importer(), name, record, adapter)
+    }
+  }
+  return true
+}
+
+/** Whether a route that holds `held` would take `value` in its place, a component the framework's refresh may patch. */
+function takes(held: any, value: any, adapter: RouteHmrAdapter): boolean {
+  return (
+    held != null &&
+    value != null &&
+    held !== value &&
+    !held.__tsrHot &&
+    !value.__tsrHot &&
+    !adapter.keep?.(value, held)
+  )
+}
+
+/**
+ * Schedules the record's commit: now, or after the framework's refresh when
+ * an owning route would take a component the refresh may patch in place (a
+ * component the route module or the lazy route file itself declares). The
+ * routes' lazy wrappers import again now: an import started after the
+ * refresh would wait for a pass that isn't coming. Only the newest
+ * scheduled commit of a record runs.
+ */
+function schedule(record: HotRecord, adapter: RouteHmrAdapter): void {
+  const turn = ++record.turn
+  const next = record.newest!
+  const again = record.again
+  record.again = false
+  let settle = false
+  for (const [, live] of owners(record)) {
+    const paired =
+      record.meta.lazy ||
+      (live !== next &&
+        live.options !== next.options &&
+        sameShape(live.options, next.options))
+    for (const key of componentKeys) {
+      const held = live.options[key]
+      const value = paired ? next.options[key] : undefined
+      if (!record.meta.lazy && point(held, value, record, adapter)) {
+        continue
+      }
+      settle ||= takes(held, value, adapter)
+      if (again && held?.__tsrHot?.held() != null) {
+        // a chunk evaluated on its own: what the wrapper imports may be new
+        const hot: LazyRouteComponentHot = held.__tsrHot
+        const [importer, name] = hot.now ?? [
+          hot.importer,
+          hot.exportName ?? 'default',
+        ]
+        load(held, importer(), name, record, adapter)
+      }
+    }
+  }
+  const run = () => {
+    if (record.turn === turn) {
+      commit(record, adapter)
+    }
+  }
+  if (settle && adapter.settled) {
+    adapter.settled(run)
+  } else {
+    run()
+  }
+}
+
+/**
+ * Applies the record to every router that holds its route, then has each
+ * load the route again, once. A route two routers share takes the update
+ * once; each of the routers loads. A router whose document is lost is left
+ * as it is (`lost`).
+ */
+function commit(record: HotRecord, adapter: RouteHmrAdapter): void {
+  const { dirty, refresh } = record
+  record.dirty = record.refresh = false
+  const updated = new Set<AnyRoute>()
+  for (const [router, live] of owners(record)) {
+    if (lost(router, adapter)) {
+      continue
+    }
+    let changed = !!refresh
+    if (record.meta.lazy) {
+      if (dirty) {
+        applyLazy(live, record.newest!.options, adapter)
+        changed = true
+      }
+    } else if (updated.has(live)) {
+      // another router updated the route they share
+      setRoutes(router, adapter)
+      changed = true
+    } else {
+      const route = applyRoute(router, live, record, adapter)
+      if (route) {
+        updated.add(route)
+        changed = true
+      }
+    }
+    if (changed) {
+      void router._refreshRoute?.()
+    }
+  }
+}
+
+/** Updates a router's route from the newest evaluation of its route module: the route it updated, if any. */
+function applyRoute(
+  router: AnyRouter,
+  current: HotRoute,
+  record: HotRecord,
+  adapter: RouteHmrAdapter,
+): HotRoute | undefined {
+  const next = record.newest as HotRoute
+  // A route tree module that re-executed since the router last read it (a
+  // route added or renamed) holds this module's current export where the
+  // router still holds an older evaluation: its parent's children no longer
+  // include the router's route. Read the tree again first, so the tree's
+  // route is the one updated.
+  const siblings = (current.parentRoute as { children?: unknown } | undefined)
+    ?.children
+  if (siblings && !Object.values(siblings).includes(current)) {
+    setRoutes(router, adapter)
+  }
+  const live = router.routesById[record.id] as HotRoute | undefined
+  const own = live && record.evaluations.get(live)
+  if (!live || !own || live === next || live.options === next.options) {
+    return undefined
+  }
+  const liveOptions = live.options
+  const nextOptions: HotRoute['options'] = { ...next.options }
+  if (sameShape(liveOptions, nextOptions)) {
+    for (const key of componentKeys) {
+      const held = liveOptions[key]
+      const value = nextOptions[key]
+      if (held == null || value == null || held === value) {
+        continue
+      }
+      if (
+        // the live wrapper stays: it imports again and keeps or takes
+        point(held, value, record, adapter) ||
+        (!held.__tsrHot && !value.__tsrHot && adapter.keep?.(value, held))
+      ) {
+        nextOptions[key] = held
+      }
+    }
+  }
+  // The options the route tree gave the live route (`id`, `path`,
+  // `getParentRoute`, a Vue single-file component's `component`) and the
+  // ones its lazy route file did stay; an option of the module's own that
+  // the edit removed goes.
+  for (const key in liveOptions) {
+    if (!(key in nextOptions) && !own.includes(key)) {
+      nextOptions[key] = liveOptions[key]
+    }
+  }
+  live.options = nextOptions
+  router._replaceRouteChunk?.(live, next.lazyFn)
+  setRoutes(router, adapter)
+  // routeTree.gen.ts mutates the original export with generated routing
+  // state; mirror it so the fresh export keeps working when imported directly.
+  next.options = live.options
+  next.parentRoute = live.parentRoute
+  next._path = live._path
+  next._id = live._id
+  next._fullPath = live._fullPath
+  next._to = live._to
+  // the live route's own options are the new evaluation's from now on
+  record.evaluations.set(live, record.evaluations.get(next)!)
+  return live
+}
+
+/** Gives a route that loaded its lazy route file the file's newest options. */
+function applyLazy(
+  live: HotRoute,
+  lazy: Record<string, any>,
+  adapter: RouteHmrAdapter,
+): void {
+  const { id: _id, ...next } = lazy
+  for (const key of componentKeys) {
+    const held = live.options[key]
+    const value = next[key]
+    if (
+      held != null &&
+      value != null &&
+      held !== value &&
+      adapter.keep?.(value, held)
+    ) {
+      next[key] = held
+    }
+  }
+  Object.assign(live.options, next)
+}
+
+/**
+ * Schedules the record's commit: once the host applied the update being
+ * applied, where what the commit loads or renders is not there before (a
+ * webpack-style host that invalidated the record's readers; Vite, for a
+ * framework that patches in the update's accept callbacks), else now.
+ */
+function evaluated(record: HotRecord, adapter: RouteHmrAdapter): void {
+  // A router whose catch boundary holds a render error the framework cannot
+  // recover from in place reloads the page (as a route edit without route
+  // HMR does): this update is the first after the error.
+  if (owners(record).some(([router]) => router._hmrReload)) {
+    reload()
+    return
+  }
+  const go = () => schedule(record, adapter)
+  const hot = record.meta.hot
+  if (record.applied) {
+    void record.applied.then(go)
+  } else if (hot) {
+    const applied = () => {
+      hot.off('vite:afterUpdate', applied)
+      go()
+    }
+    hot.on('vite:afterUpdate', applied)
+  } else {
+    go()
+  }
+}
+
+/**
+ * One evaluation of a route module or lazy route file (`meta.lazy`). The
+ * first one only records itself.
  *
  * Not a public API: called by the framework packages' `__tsrRouteHmr`.
  */
@@ -344,481 +654,129 @@ export function applyRouteHmr(
     if (isServer ?? typeof window === 'undefined') {
       return
     }
+    const record = recordOf(meta.file)
+    const before = record.newest && record.meta
+    const previous = record.newest
+    const evaluation = route as unknown as Evaluation
+    record.id = routeId
+    record.meta = meta
+    record.newest = evaluation
     if (meta.lazy) {
-      applyLazyRouteHmr(
-        routeId,
-        route as unknown as LazyRouteEvaluation,
-        adapter,
-      )
-      return
-    }
-    // this evaluation owns the refresh: the route's chunks the refresh
-    // re-imports evaluate as new (`applyRouteChunkHmr`)
-    hotChunks.delete(routeId)
-    const own = Object.keys(route.options)
-    const known = hotRoutes.get(routeId)
-    if (!known) {
-      hotRoutes.set(routeId, {
-        routes: new WeakMap([[route, own]]),
-        latest: route,
-        chunks: meta.chunks,
-      })
-      return
-    }
-    if (known.chunks !== meta.chunks) {
-      if (regrouped(known.chunks, meta.chunks)) {
-        window.location.reload()
+      record.evaluations.set(route, [])
+      if (!previous) {
         return
       }
-      known.chunks = meta.chunks
-    }
-    known.routes.set(route, own)
-    known.latest = route
-    const waiting = deferred.get(routeId)
-    if (waiting) {
-      // evaluated again within the same update (an invalidated reader's
-      // update bubbles up to it): the refresh takes the latest evaluation
-      waiting.route = route
-      waiting.meta = meta
+      const removed = Object.keys(previous.options).some(
+        (key) => !(key in evaluation.options),
+      )
+      // Every evaluation answers the newest options: the route tree's
+      // `import()` of the file keeps answering the module it first loaded,
+      // so a route that loads its lazy options later loads these.
+      for (const key in previous.options) {
+        delete previous.options[key]
+      }
+      evaluation.options = Object.assign(previous.options, evaluation.options)
+      // A loaded route's options are the merge of its route module's and
+      // these: the route module's value of an option this edit removed is
+      // gone. Reload, as every lazy file edit without route HMR does.
+      if (removed && owners(record).length > 0) {
+        reload()
+        return
+      }
+      record.dirty = true
+      evaluated(record, adapter)
       return
     }
-    const readers = keptReaders.get(routeId)
-    const hot: KeptReaderHot | undefined = readers?.values().next().value
-    // the modules reading what this module kept read its earlier
-    // evaluation; invalidated while the update applies, they leave the
-    // module cache in the same update, and the refresh re-imports them
-    if (hot && hot.status() === 'apply') {
-      for (const reader of readers!) {
+    // the chunks this evaluation's refresh imports evaluate as its own
+    record.chunks.clear()
+    record.evaluations.set(route, Object.keys(route.options))
+    if (!before) {
+      return
+    }
+    if (adapter.reload?.(before, meta) && owners(record).length > 0) {
+      reload()
+      return
+    }
+    // Webpack-style hosts: the modules reading what this module kept read
+    // its earlier evaluation. Invalidated while the update applies, they
+    // leave the module cache in the same update (which may evaluate this
+    // module again), and the commit, once the update is applied, imports
+    // them again.
+    const hot: KeptReaderHot | undefined = record.readers.values().next().value
+    if (hot && !record.applied && hot.status() === 'apply') {
+      for (const reader of record.readers) {
         reader.invalidate()
       }
-      deferred.set(routeId, { route, meta, adapter })
-      if (!statusHandled) {
-        // one handler for the page's lifetime: status handlers are the
-        // runtime's, whatever module registered them
-        statusHandled = true
-        hot.addStatusHandler(onStatus)
-      }
-      return
-    }
-    scheduleRefresh(routeId, route, meta, adapter, known)
-  }
-}
-
-/**
- * Whether `next` puts a component option of `before` in another module, or
- * leaves the split chunk of one it removed holding another
- * (`RouteHmrMeta.chunks`).
- */
-function regrouped(before = '', next = ''): boolean {
-  const chunkOf = (layout: string) =>
-    new Map(
-      layout.split(',').map((entry) => entry.split(':') as [string, string]),
-    )
-  const was = chunkOf(before)
-  const is = chunkOf(next)
-  const kept = new Set(is.values())
-  for (const [key, chunk] of was) {
-    // moved, or removed from a split chunk another component stays in
-    if (is.has(key) ? is.get(key) !== chunk : chunk !== '' && kept.has(chunk)) {
-      return true
-    }
-  }
-  return false
-}
-
-/** A lazy route file's `Route` (`createLazyFileRoute(id)(options)`). */
-interface LazyRouteEvaluation {
-  options: { id: string } & Record<string, any>
-}
-
-// Per route id, the last evaluation of its lazy route file. Bounded by the
-// number of lazy route files.
-const hotLazyRoutes = new Map<string, LazyRouteEvaluation>()
-
-/**
- * Applies one evaluation of a lazy route file to the live route of its id.
- * The route loads its lazy options from this evaluation from now on (the
- * route tree's `import()` of the file keeps answering the module it first
- * loaded); a route that loaded the earlier evaluation's options takes the
- * new ones in place once the adapter's refresh settled, when this is still
- * the file's latest evaluation (as for a route module): a component keeps
- * its held value when the framework patches it (`keepPatched`, as for a
- * route module). The first evaluation only records itself. The page
- * reloads, as on every lazy file edit without route HMR, when the live
- * route of `window.__TSR_ROUTER__` (the last router created) doesn't load a
- * lazy file (another router's route of the same id), or when a loaded
- * route's edit removes an option (the route's options are the merge: the
- * route file's value of that option is gone).
- */
-function applyLazyRouteHmr(
-  routeId: string,
-  lazy: LazyRouteEvaluation,
-  adapter: RouteHmrAdapter,
-): void {
-  if (process.env.NODE_ENV !== 'production') {
-    const known = hotLazyRoutes.get(routeId)
-    hotLazyRoutes.set(routeId, lazy)
-    const router = window.__TSR_ROUTER__
-    const live = router?.routesById?.[routeId] as HotRoute | undefined
-    if (!known) {
-      return
-    }
-    const { id: _id, ...next } = lazy.options
-    const state = live?._lazy
-    if (
-      !router ||
-      !live?.lazyFn ||
-      router._hmrReload ||
-      (state === true &&
-        Object.keys(known.options).some((key) => !(key in lazy.options)))
-    ) {
-      window.location.reload()
-      return
-    }
-    const importer = () => Promise.resolve(lazy as any)
-    if (state !== true) {
-      router._replaceRouteChunk?.(live, importer)
-      // not loaded: its first load takes this evaluation; loading the
-      // earlier one, which the router now drops: the refresh loads this one
-      if (state !== undefined) {
-        void router._refreshRoute?.()
-      }
-      return
-    }
-    // the route stays loaded until the latest evaluation commits: a newer
-    // one evaluated while this one waits commits instead
-    whenSettled(adapter, () => {
-      if (hotLazyRoutes.get(routeId) !== lazy) {
-        return
-      }
-      router._replaceRouteChunk?.(live, importer)
-      for (const key of componentKeys) {
-        const held = live.options[key]
-        const value = next[key]
-        if (
-          held !== undefined &&
-          value !== undefined &&
-          held !== value &&
-          adapter.keepPatched?.(value, held)
-        ) {
-          next[key] = held
+      record.applied = new Promise((resolve) => {
+        const handler = (status: string) => {
+          if (status === 'idle' || status === 'fail' || status === 'abort') {
+            hot.removeStatusHandler?.(handler)
+            record.applied = undefined
+            if (status === 'idle') {
+              resolve()
+            }
+          }
         }
-      }
-      live.update(next)
-      live._lazy = true
-      void router._refreshRoute?.()
-    })
-  }
-}
-
-/** Refreshes the routes deferred during an update once it is applied; drops them when it failed (the page reloads). */
-function onStatus(status: string): void {
-  if (status !== 'idle' && status !== 'fail' && status !== 'abort') {
-    return
-  }
-  const entries = [...deferred]
-  deferred.clear()
-  if (status !== 'idle') {
-    return
-  }
-  for (const [routeId, { route, meta, adapter }] of entries) {
-    const known = hotRoutes.get(routeId)
-    if (known) {
-      scheduleRefresh(routeId, route, meta, adapter, known)
+        hot.addStatusHandler(handler)
+      })
     }
+    evaluated(record, adapter)
   }
 }
 
 /**
- * Refreshes the live route from one evaluation of its route module once the
- * adapter's refresh settled (`refreshRoute`), or at once when the module
- * holds no component (`RouteHmrMeta.noComponents`). The live route's lazy
- * wrappers re-import now: a chunk import started after the refresh pass
- * would wait for a pass that isn't coming.
- */
-function scheduleRefresh(
-  routeId: string,
-  route: AnyRoute,
-  meta: RouteHmrMeta,
-  adapter: RouteHmrAdapter,
-  known: HotRouteRecord,
-): void {
-  const live = window.__TSR_ROUTER__?.routesById?.[routeId] as
-    | HotRoute
-    | undefined
-  const next = route as HotRoute
-  if (
-    live &&
-    known.routes.has(live) &&
-    live !== route &&
-    sameShape(live.options, next.options)
-  ) {
-    for (const key of componentKeys) {
-      retargetWrapper(live.options[key], next.options[key], adapter)
-    }
-  }
-  if (meta.noComponents) {
-    refreshRoute(routeId, route, adapter, known)
-    return
-  }
-  whenSettled(adapter, () => {
-    refreshRoute(routeId, route, adapter, known)
-  })
-}
-
-/** Whether a route's components keep their places (a `shellComponent` added or removed renders another tree). */
-function sameShape(live: object, next: object): boolean {
-  return 'shellComponent' in live === 'shellComponent' in next
-}
-
-// Per lazy wrapper of an evaluation, the live wrapper it retargeted.
-const retargeted = new WeakMap<LazyRouteComponentHot, LazyRouteComponentHot>()
-
-/**
- * Keeps the live lazy wrapper `held` of a component option, pointed at the
- * importer of the evaluation's wrapper `value`: it re-imports and decides
- * keep or swap. Whether both are wrappers; once per pair.
- */
-function retargetWrapper(
-  held: any,
-  value: any,
-  adapter: RouteHmrAdapter,
-): boolean {
-  const heldHot: LazyRouteComponentHot | undefined = held?.__tsrHot
-  const valueHot: LazyRouteComponentHot | undefined = value?.__tsrHot
-  if (!heldHot || !valueHot || held === value) {
-    return false
-  }
-  if (retargeted.get(valueHot) === heldHot) {
-    return true
-  }
-  retargeted.set(valueHot, heldHot)
-  // Vite bundled dev without lazy compilation (Rolldown) turns a patch's
-  // `import()` of a chunk the page never loaded into a lookup that throws
-  // `MissingFactoryError`; only the held wrapper's own (first) importer
-  // loads that chunk.
-  const firstImporter = heldHot.importer
-  const importer = valueHot.importer
-  const onError = (err: unknown) => {
-    if (
-      err instanceof Error &&
-      err.constructor.name === 'MissingFactoryError'
-    ) {
-      return firstImporter()
-    }
-    throw err
-  }
-  updateLazyRouteComponent(
-    heldHot,
-    () => {
-      try {
-        return importer().catch(onError)
-      } catch (err) {
-        return onError(err)
-      }
-    },
-    valueHot.exportName,
-    adapter,
-  )
-  return true
-}
-
-/**
- * Updates the live route of `window.__TSR_ROUTER__` from one evaluation of
- * its route module (see `applyRouteHmr`), when it is still the module's
- * latest.
- */
-function refreshRoute(
-  routeId: string,
-  route: AnyRoute,
-  adapter: RouteHmrAdapter,
-  known: HotRouteRecord,
-): void {
-  if (process.env.NODE_ENV !== 'production') {
-    // An older evaluation whose refresh waited (for the framework's
-    // refresh) past a newer one's: the newer one holds the options.
-    if (known.latest !== route) {
-      return
-    }
-    const router = window.__TSR_ROUTER__
-    const current = router?.routesById?.[routeId] as HotRoute | undefined
-    // Another router, or a router without this route: leave it alone.
-    if (!router || !current) {
-      return
-    }
-    // A router catch boundary holds a render error the framework cannot
-    // recover from in place: the global boundary's reset re-renders the
-    // document a root route renders (Solid cannot client-render a hydratable
-    // `<html>`; React and Vue lose the root after an error during
-    // hydration), and Solid's and Vue's route boundaries do not reset when
-    // the fixed component swaps in. Reload, as a route edit without route
-    // HMR does.
-    if (router._hmrReload) {
-      window.location.reload()
-      return
-    }
-    // A route tree module that re-executed since the router last read it (a
-    // route added or renamed) holds this module's current export where the
-    // router still holds an older evaluation: its parent's children no
-    // longer include the router's route. Read the tree again first, so the
-    // tree's route is the one updated. The root route has no parent, and a
-    // read starts from the router's own root, so a root is never re-read.
-    const siblings = (current.parentRoute as { children?: unknown } | undefined)
-      ?.children
-    if (siblings && !Object.values(siblings).includes(current)) {
-      setRoutes(router, adapter)
-    }
-    const live = router.routesById[routeId] as HotRoute | undefined
-    const own = live && known.routes.get(live)
-    if (!live || !own || live === route) {
-      return
-    }
-    const next = route as HotRoute
-
-    const liveOptions = live.options
-    const nextOptions: HotRoute['options'] = { ...next.options }
-    if (sameShape(liveOptions, nextOptions)) {
-      for (const key of componentKeys) {
-        const held = liveOptions[key]
-        const value = nextOptions[key]
-        if (held == null || value == null || held === value) {
-          continue
-        }
-        if (retargetWrapper(held, value, adapter)) {
-          // the live wrapper stays; it re-imports and decides keep or swap
-          nextOptions[key] = held
-        } else if (
-          !held.__tsrHot &&
-          !value.__tsrHot &&
-          adapter.keepPatched?.(value, held)
-        ) {
-          nextOptions[key] = held
-        }
-      }
-    }
-    // The options the route tree gave the live route (`id`, `path`,
-    // `getParentRoute`, a Vue single-file component's `component`) and the
-    // ones its lazy route file did stay; an option of the module's own that
-    // the edit removed goes.
-    for (const key in liveOptions) {
-      if (!(key in nextOptions) && !own.includes(key)) {
-        nextOptions[key] = liveOptions[key]
-      }
-    }
-
-    live.options = nextOptions
-    router._replaceRouteChunk?.(live, next.lazyFn)
-    setRoutes(router, adapter)
-
-    // routeTree.gen.ts mutates the original export with generated routing
-    // state; mirror it so the fresh export keeps working when imported directly.
-    next.options = live.options
-    next.parentRoute = live.parentRoute
-    next._path = live._path
-    next._id = live._id
-    next._fullPath = live._fullPath
-    next._to = live._to
-
-    // the live route's own options are the new evaluation's from now on
-    known.routes.set(live, known.routes.get(next)!)
-    void router._refreshRoute?.()
-  }
-}
-
-/**
- * Records one evaluation of a module of a route file that reads a binding
- * the route module keeps (webpack-style hosts): the route module's next
- * evaluation invalidates it (`applyRouteHmr`). The module leaves the record
- * when it is disposed (replaced by an update or invalidated).
+ * Webpack-style hosts: one evaluation of a module of the route file `file`
+ * that reads a binding the route module keeps. The route module's next
+ * evaluation invalidates it (`applyRouteHmr`); it leaves the record when it
+ * is disposed.
  *
  * Not a public API: called by the framework packages' `__tsrKeptReaderHmr`.
  */
-export function applyKeptReaderHmr(routeId: string, hot: KeptReaderHot): void {
+export function applyKeptReaderHmr(file: string, hot: KeptReaderHot): void {
   if (process.env.NODE_ENV !== 'production') {
     if (isServer ?? typeof window === 'undefined') {
       return
     }
-    let readers = keptReaders.get(routeId)
-    if (!readers) {
-      readers = new Set()
-      keptReaders.set(routeId, readers)
-    }
-    const own = readers
-    own.add(hot)
+    const { readers } = recordOf(file)
+    readers.add(hot)
     hot.dispose(() => {
-      own.delete(hot)
+      readers.delete(hot)
     })
   }
 }
 
 /**
- * What a split chunk hands over when it evaluates (Solid): its exports, and
- * whether it holds a non-component option. Not a public API.
- */
-export interface RouteChunkHandOver {
-  exports: Record<string, any>
-  refresh: boolean
-  adapter: RouteHmrAdapter
-}
-
-/**
- * Applies one evaluation of a split chunk of a route module (webpack-style
- * hosts). When its update bubbles to the route module, the route module's
- * evaluation refreshes the route (`applyRouteHmr`), and the chunk evaluating
- * again (the refreshed loader re-imports it) is only recorded. When it does
- * not (Rspack's lazy-compilation proxy re-resolves a chunk alone; a chunk
- * accepting its own updates, as solid-refresh makes one holding
- * components), the chunk evaluates again before its route module does: then
- * the live route's lazy wrappers take the components it hands over
- * (`handOver`, `takeLazyRouteComponent`), and a chunk holding a
- * non-component option (or handing nothing over) refreshes the live route,
- * whose non-component options reload through their lazy wrappers.
+ * Webpack-style hosts: one evaluation of a split chunk of the route file
+ * `file`. Its first one since the route module evaluated is that
+ * evaluation's own (its refresh imported the chunk). A later one is the
+ * chunk evaluating on its own (Rspack's lazy-compilation proxy re-resolves a
+ * chunk alone; a chunk accepts its own updates, as solid-refresh makes one
+ * holding components): the route's lazy wrappers import again, and the
+ * route loads again when the chunk holds a non-component option
+ * (`refresh`).
  *
  * Not a public API: called by the framework packages' `__tsrRouteChunkHmr`.
  */
 export function applyRouteChunkHmr(
-  routeId: string,
+  file: string,
   chunk: string,
-  handOver?: RouteChunkHandOver,
+  adapter: RouteHmrAdapter,
+  refresh = true,
 ): void {
   if (process.env.NODE_ENV !== 'production') {
     if (isServer ?? typeof window === 'undefined') {
       return
     }
-    if (handOver) {
-      handedOver.add(handOver.exports)
-    }
-    let chunks = hotChunks.get(routeId)
-    if (!chunks) {
-      chunks = new Set()
-      hotChunks.set(routeId, chunks)
-    }
-    if (!chunks.has(chunk)) {
-      chunks.add(chunk)
+    const record = recordOf(file)
+    if (!record.chunks.has(chunk)) {
+      record.chunks.add(chunk)
       return
     }
-    const router = window.__TSR_ROUTER__
-    const live = router?.routesById?.[routeId] as HotRoute | undefined
-    if (!router || !live) {
+    if (!record.newest) {
       return
     }
-    // See `applyRouteHmr`.
-    if (router._hmrReload) {
-      window.location.reload()
-      return
-    }
-    if (handOver) {
-      for (const key of componentKeys) {
-        const hot: LazyRouteComponentHot | undefined =
-          live.options[key]?.__tsrHot
-        if (hot) {
-          takeLazyRouteComponent(hot, handOver.exports, handOver.adapter)
-        }
-      }
-      if (!handOver.refresh) {
-        return
-      }
-    }
-    void router._refreshRoute?.()
+    record.again = true
+    record.refresh ||= refresh
+    evaluated(record, adapter)
   }
 }

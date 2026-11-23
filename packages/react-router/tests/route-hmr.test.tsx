@@ -57,17 +57,21 @@ function makeComponent(label: string) {
  */
 function setup(
   firstOptions: () => Record<string, any>,
-  firstMeta: RouteHmrMeta = {},
+  firstMeta: Partial<RouteHmrMeta> = {},
 ) {
   const path = `/page${nextRouteId++}`
   const rootRoute = createRootRoute()
-  const evaluate = (options: Record<string, any>, meta: RouteHmrMeta = {}) => {
+  const evaluate = (
+    options: Record<string, any>,
+    meta: Partial<RouteHmrMeta> = {},
+  ) => {
     const Route = createRoute({
       getParentRoute: () => rootRoute,
       path,
       ...options,
     } as any)
-    __tsrRouteHmr(path, Route, meta)
+    // (the route file is the runtime's key: one per test)
+    __tsrRouteHmr(path, Route, { file: `/src/routes${path}.tsx`, ...meta })
     return Route
   }
   const route = evaluate(firstOptions(), firstMeta)
@@ -198,7 +202,7 @@ describe('route HMR (React)', () => {
     expect(evaluation.deref()).toBeUndefined()
   })
 
-  test('an update for a route another router holds leaves both routers alone', () => {
+  test('an update reaches the router that holds the route, whichever router was created last', () => {
     const firstLoader = () => 'v1'
     const { router, evaluate, path } = setup(() => ({ loader: firstLoader }))
     // A second router created later becomes `window.__TSR_ROUTER__`.
@@ -210,22 +214,38 @@ describe('route HMR (React)', () => {
     })
     expect(window.__TSR_ROUTER__).toBe(other)
 
-    expect(() => evaluate({ loader: () => 'v2' })).not.toThrow()
+    const secondLoader = () => 'v2'
+    evaluate({ loader: secondLoader })
     expect(
       (router.routesById as Record<string, AnyRoute>)[path]!.options.loader,
-    ).toBe(firstLoader)
+    ).toBe(secondLoader)
+    // another router's route of the same id is not this file's
     expect(
       (other.routesById as Record<string, AnyRoute>)[path]!.options.loader,
     ).toBeUndefined()
   })
 
-  test('an update for a route id the router does not have does nothing', () => {
-    const { evaluate, router } = setup(() => ({}))
+  test('an update of a route file no router holds a route of does nothing', () => {
+    const { router, path } = setup(() => ({}))
     const before = router.routesById
-    window.__TSR_ROUTER__ = undefined
-    expect(() => evaluate({ loader: () => 'v2' })).not.toThrow()
-    window.__TSR_ROUTER__ = router
+    // another file's route of the same id: the router's route is not one
+    // this file evaluated to
+    const otherRoot = createRootRoute()
+    for (const token of ['v1', 'v2']) {
+      __tsrRouteHmr(
+        path,
+        createRoute({
+          getParentRoute: () => otherRoot,
+          path,
+          loader: () => token,
+        }),
+        { file: '/src/widget/routes/page.tsx' },
+      )
+    }
     expect(router.routesById).toBe(before)
+    expect(
+      (router.routesById as Record<string, AnyRoute>)[path]!.options.loader,
+    ).toBeUndefined()
   })
 
   test('on the server the helper does nothing and wrappers have no hot slot', () => {
@@ -247,14 +267,18 @@ describe('route HMR (React)', () => {
     const previous = vi.fn(() => ['fromPrevious'])
     ;(window as any).__getReactRefreshIgnoredExports = previous
     const meta = {
+      file: '/src/routes/ignored.tsx',
       refreshExports: {
-        id: '/src/routes/ignored.tsx',
         anchor: 'TsrFastRefreshAnchor',
         exports: ['Route', 'helper', 'TsrFastRefreshAnchor'],
       },
     }
     const rootRoute = createRootRoute()
-    const evaluate = (path: string, token: string, routeMeta = {}) => {
+    const evaluate = (
+      path: string,
+      token: string,
+      routeMeta: RouteHmrMeta = { file: `/src/routes${path}.tsx` },
+    ) => {
       const Route = createRoute({
         getParentRoute: () => rootRoute,
         path,

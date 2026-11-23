@@ -12,7 +12,7 @@
  * lowercase module-level components are renamed module-wide (the runtime
  * takes the new component after React Refresh's pass; a family is what
  * keeps its state). Solid and Vue need nothing: their refresh runtimes'
- * values say what they patch (the runtime's `keepPatched`).
+ * values say what they patch (the adapters' `keep`).
  * A lazy route file (`createLazyFileRoute`, never split) gets both; its
  * options are the ones the route loads with its chunk (`lazy: true` in the
  * block's meta).
@@ -344,13 +344,16 @@ export function planHmrBlock(
   const anchor = reactVite ? names.alloc('TsrFastRefreshAnchor') : null
   // a lazy route file's `Route` holds the options the route loads with its
   // chunk: the runtime applies them to the route of its id
-  const metaParts: Array<string> = route.kind === 'lazy' ? ['lazy: true'] : []
-  if (
-    cfg.framework === 'react' &&
-    route.kind !== 'lazy' &&
-    holdsNoComponent(round)
-  ) {
-    metaParts.push('noComponents: true')
+  // the route file is the runtime's key for what it holds of this module
+  const file = stringLiteral(ctx.identity.canonicalId, '"')
+  const metaParts: Array<string> = [`file: ${file}`]
+  if (route.kind === 'lazy') {
+    metaParts.push('lazy: true')
+  }
+  if (vite && cfg.framework !== 'react') {
+    // Solid's and Vue's refresh patch components in the update's accept
+    // callbacks: the runtime waits for Vite to have run them
+    metaParts.push('hot: import.meta.hot')
   }
   if (cfg.framework === 'solid' && route.kind !== 'lazy') {
     // the module each component option lives in (its split chunk, or the
@@ -365,11 +368,6 @@ export function planHmrBlock(
       .sort()
       .join(',')
     metaParts.push(`chunks: ${stringLiteral(chunks, '"')}`)
-    if (vite) {
-      // a restored import reloads the page on Vite only (solid-router's
-      // `restoredImportReload`)
-      metaParts.push('vite: true')
-    }
   }
   const hot = vite ? 'import.meta.hot' : 'import.meta.webpackHot'
   // the dev-only runtime lives on its own subpath: production never loads it
@@ -426,7 +424,7 @@ export function planHmrBlock(
     }
     exportNames.add(anchor.name)
     call.push(
-      `${metaParts.length > 0 ? ', ' : ''}refreshExports: { id: ${stringLiteral(ctx.identity.canonicalId, '"')}, anchor: ${stringLiteral(anchor.name, '"')}, exports: [${[...exportNames].map((n) => stringLiteral(n, '"')).join(', ')}`,
+      `, refreshExports: { anchor: ${stringLiteral(anchor.name, '"')}, exports: [${[...exportNames].map((n) => stringLiteral(n, '"')).join(', ')}`,
     )
     body.push({
       k: 'text',
@@ -460,44 +458,8 @@ export function planHmrBlock(
   refreshPragmas(ctx, groups)
   if (!vite) {
     chunkHmr(ctx, round, groups)
-    keptReaderHmr(ctx, round, route.routeId)
+    keptReaderHmr(ctx, round)
   }
-}
-
-/**
- * Whether the route module's output holds none of the route's component
- * options: each one the options object has is split (its value is a lazy
- * wrapper the route keeps across updates), deleted, or a literal that is no
- * component. Options the compiler cannot read (a spread, a computed key, an
- * accessor) may hold one. React: an update of such a module is nothing
- * React Refresh patches, so the runtime applies it without waiting for the
- * refresh pass (`RouteHmrMeta.noComponents`).
- */
-function holdsNoComponent(round: RouterRound): boolean {
-  const { route, plan } = round
-  if (route.options.kind !== 'object') {
-    return false
-  }
-  return route.props.every((option) => {
-    if (
-      option.kind === 'spread' ||
-      option.kind === 'computed' ||
-      option.kind === 'accessor' ||
-      option.key === null
-    ) {
-      return false
-    }
-    if (!HMR_COMPONENT_KEYS.includes(option.key)) {
-      return true
-    }
-    return (
-      plan.deleted.includes(option) ||
-      plan.decisions.some((d) => d.property.start === option.prop.start) ||
-      (option.kind !== 'method' &&
-        option.value !== null &&
-        isFallbackLiteral(unwrapExpression(option.value)))
-    )
-  })
 }
 
 /** Per split group (its key): whether it holds a component option, and a non-component one. */
@@ -701,7 +663,6 @@ function chunkHmr(
   round: RouterRound,
   groups: SplitGroups,
 ): void {
-  const routeId = round.route.routeId
   const solid = round.cfg.framework === 'solid'
   for (const [groupKey, { nonComponent }] of groups) {
     if (!nonComponent && !solid) {
@@ -721,7 +682,7 @@ function chunkHmr(
           parts: [
             'if (import.meta.webpackHot) {\n  ',
             { sym: helper.sym, ctx: 'callee' },
-            `(${stringLiteral(routerRouteId(routeId), '"')}, ${stringLiteral(groupKey, '"')}${solid ? `, __webpack_module__.exports, ${nonComponent}` : ''})\n}\n`,
+            `(${stringLiteral(ctx.identity.canonicalId, '"')}, ${stringLiteral(groupKey, '"')}${solid ? `, __webpack_module__.exports, ${nonComponent}` : ''})\n}\n`,
           ],
         },
       ],
@@ -754,11 +715,7 @@ function chunkHmr(
  * invalidates them and refreshes the route once the update is applied
  * (`applyRouteHmr`). Vite's update holds every module of the edited file.
  */
-function keptReaderHmr(
-  ctx: PlanContext,
-  round: RouterRound,
-  routeId: string,
-): void {
+function keptReaderHmr(ctx: PlanContext, round: RouterRound): void {
   const helper = ctx.names.alloc('tsrKeptReaderHmr')
   const hmrSpecifier = `${round.route.routerPackage}/hmr`
   ctx.rewrites.addGenerated({
@@ -768,7 +725,7 @@ function keptReaderHmr(
         parts: [
           'if (import.meta.webpackHot) {\n  ',
           { sym: helper.sym, ctx: 'callee' },
-          `(${stringLiteral(routerRouteId(routeId), '"')}, import.meta.webpackHot)\n}\n`,
+          `(${stringLiteral(ctx.identity.canonicalId, '"')}, import.meta.webpackHot)\n}\n`,
         ],
       },
     ],

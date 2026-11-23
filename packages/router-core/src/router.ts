@@ -918,6 +918,12 @@ export interface ViewTransitionOptions {
  * thrown value that is no `Error` wrapped in one, as its `cause`.)
  */
 export function hmrReloadAfterCatch(router: AnyRouter, error: unknown) {
+  // Only a hydrated root renders the document, which a framework cannot
+  // render again in place once a boundary replaced it. A client-only root's
+  // boundaries reset when the route loads again.
+  if ((isServer ?? router.isServer) || !router.ssr) {
+    return
+  }
   const cause = error instanceof Error ? error.cause : undefined
   if (
     !router.stores.matches
@@ -1264,6 +1270,10 @@ export class RouterCore<
 
     if (!(isServer ?? typeof document === 'undefined')) {
       self.__TSR_ROUTER__ = this
+      if (process.env.NODE_ENV !== 'production') {
+        // route HMR updates the routers that hold a route, not the last one created
+        ;(self.__TSR_ROUTERS__ ??= []).push(new WeakRef(this as AnyRouter))
+      }
     }
   }
 

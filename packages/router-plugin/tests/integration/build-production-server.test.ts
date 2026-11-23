@@ -34,7 +34,7 @@ export const Route = createFileRoute('/')({
  * framework's `src/hmr.ts`): properties and strings, which minifiers keep.
  */
 const hmrMarkers =
-  /keepPatched|__tsrRouteHmr|MissingFactoryError|addStatusHandler/
+  /__TSR_ROUTERS__|vite:afterUpdate|__tsrRouteHmr|MissingFactoryError|addStatusHandler/
 
 /** A module file of the route HMR runtime (`@tanstack/*-router/hmr`, `@tanstack/router-core/hmr`, Solid's `hmr-chunk-importer`). */
 const hmrModule = /\/dist\/(?:esm|cjs|source)\/hmr[.-][\w.-]*$/

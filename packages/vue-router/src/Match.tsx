@@ -1,9 +1,5 @@
 import * as Vue from 'vue'
-import {
-  hmrReloadAfterCatch,
-  isNotFound,
-  rootRouteId,
-} from '@tanstack/router-core'
+import { isNotFound, rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useSelector } from '@tanstack/vue-store'
 import { CatchBoundary } from './CatchBoundary'
@@ -124,7 +120,6 @@ export const Match = Vue.defineComponent({
                 throw error
               }
               if (process.env.NODE_ENV !== 'production') {
-                hmrReloadAfterCatch(router, error)
                 console.warn(`Warning: Error in route match: ${match?.id}`)
               }
               routeOnCatch?.(error)

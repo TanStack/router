@@ -51,17 +51,21 @@ function makeComponent(label: string, hmrId?: string) {
 
 function setup(
   firstOptions: () => Record<string, any>,
-  firstMeta: RouteHmrMeta = {},
+  firstMeta: Partial<RouteHmrMeta> = {},
 ) {
   const path = `/page${nextRouteId++}`
   const rootRoute = createRootRoute()
-  const evaluate = (options: Record<string, any>, meta: RouteHmrMeta = {}) => {
+  const evaluate = (
+    options: Record<string, any>,
+    meta: Partial<RouteHmrMeta> = {},
+  ) => {
     const Route = createRoute({
       getParentRoute: () => rootRoute,
       path,
       ...options,
     } as any)
-    __tsrRouteHmr(path, Route, meta)
+    // (the route file is the runtime's key: one per test)
+    __tsrRouteHmr(path, Route, { file: `/src/routes${path}.tsx`, ...meta })
     return Route
   }
   const route = evaluate(firstOptions(), firstMeta)
@@ -154,7 +158,7 @@ describe('route HMR (Vue)', () => {
     ).toBeInTheDocument()
   })
 
-  test('an update for a route another router holds leaves both routers alone', () => {
+  test('an update reaches the router that holds the route, whichever router was created last', () => {
     const firstLoader = () => 'v1'
     const { router, evaluate, path } = setup(() => ({ loader: firstLoader }))
     const otherRoot = createRootRoute()
@@ -166,10 +170,12 @@ describe('route HMR (Vue)', () => {
     })
     expect(window.__TSR_ROUTER__).toBe(other)
 
-    expect(() => evaluate({ loader: () => 'v2' })).not.toThrow()
+    const secondLoader = () => 'v2'
+    evaluate({ loader: secondLoader })
     expect(
       (router.routesById as Record<string, AnyRoute>)[path]!.options.loader,
-    ).toBe(firstLoader)
+    ).toBe(secondLoader)
+    // another router's route of the same id is not this file's
     expect(
       (other.routesById as Record<string, AnyRoute>)[path]!.options.loader,
     ).toBeUndefined()

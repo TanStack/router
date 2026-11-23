@@ -18,7 +18,7 @@ import type {
 const keep = (next: any, held: any) =>
   next?.__hmrId !== undefined && next.__hmrId === held?.__hmrId
 
-const adapter: RouteHmrAdapter = { keep, keepPatched: keep }
+const adapter: RouteHmrAdapter = { keep }
 
 /**
  * Dev-only route HMR entry point called by the router plugin's output at the
@@ -43,9 +43,9 @@ export function __tsrRouteHmr(
  *
  * Called only by compiler output; not a public API.
  */
-export function __tsrRouteChunkHmr(routeId: string, chunk: string): void {
+export function __tsrRouteChunkHmr(file: string, chunk: string): void {
   if (process.env.NODE_ENV !== 'production') {
-    applyRouteChunkHmr(routeId, chunk)
+    applyRouteChunkHmr(file, chunk, adapter)
   }
 }
 
@@ -56,8 +56,8 @@ export function __tsrRouteChunkHmr(routeId: string, chunk: string): void {
  *
  * Called only by compiler output; not a public API.
  */
-export function __tsrKeptReaderHmr(routeId: string, hot: KeptReaderHot): void {
+export function __tsrKeptReaderHmr(file: string, hot: KeptReaderHot): void {
   if (process.env.NODE_ENV !== 'production') {
-    applyKeptReaderHmr(routeId, hot)
+    applyKeptReaderHmr(file, hot)
   }
 }

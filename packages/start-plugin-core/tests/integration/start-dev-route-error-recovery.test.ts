@@ -7,8 +7,8 @@
  * that fixes the component shows without a manual reload (SPEC J3.3), both
  * when the component threw during hydration and when an earlier edit made
  * it throw; and with a route error component, which catches it instead.
- * Where the framework cannot recover in place, route HMR reloads the page
- * (`router._hmrReload`). After a loader failed: start-dev-route-loader-error.
+ * Where the framework cannot recover in place (the global boundary of the
+ * hydrated root replaced the document), route HMR reloads the page. After a loader failed: start-dev-route-loader-error.
  */
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
@@ -94,6 +94,18 @@ describe('Vite dev, Start with a document shell: a route edit after a component 
         'src/routes/index.tsx': index(framework, 'home-v2', true),
       })
       await waitForThrow(browser)
+      if (framework === 'react') {
+        // The global boundary replaced the document during the update: the
+        // page reloads once, in this save, and the reloaded document throws
+        // again while hydrating. The fixing edit waits for that document
+        // (a save during its hydration is a known limit, KNOWN-BUGS.md)
+        await expect.poll(() => browser.loads()).toBe(2)
+        await browser.page.waitForFunction(
+          () =>
+            (window as any).__TSR_ROUTER__ !== undefined &&
+            document.body.innerText.includes('Something went wrong'),
+        )
+      }
       await server.idle()
 
       await server.edit({
@@ -144,13 +156,8 @@ describe('Vite dev, Start with a document shell: a route edit after a component 
         selector: '[data-probe=home]',
         timeout: 20_000,
       })
-      // React Refresh retries the failed route boundary in place; Solid's and
-      // Vue's route boundaries do not reset when the fixed component swaps
-      // in, so the page reloads (the server's HTML of the reload can show
-      // before its load event)
-      await expect
-        .poll(() => browser.loads())
-        .toBe(framework === 'react' ? 1 : 2)
+      // the route's boundary resets in place when the route loads again
+      await expect.poll(() => browser.loads()).toBe(1)
     },
     timeout,
   )

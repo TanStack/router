@@ -22,14 +22,14 @@
  */
 import { isServer } from '@tanstack/router-core/isServer'
 
-// Per route id and split chunk, the exports of the chunk's newest
-// evaluation. Bounded by the number of split chunks; a route id the router
-// no longer holds is forgotten (`forgetChunkExports`).
+// Per route file and split chunk, the exports of the chunk's newest
+// evaluation. Bounded by the number of split chunks; a route file no
+// router holds a route of is forgotten (`forgetChunkExports`).
 const newest = new Map<string, Map<string, Record<string, any>>>()
 
 /** Records one evaluation of a split chunk (its exports). */
 export function recordChunkExports(
-  routeId: string,
+  file: string,
   chunk: string,
   exports: Record<string, any>,
 ): void {
@@ -37,18 +37,18 @@ export function recordChunkExports(
     if (isServer ?? typeof window === 'undefined') {
       return
     }
-    let chunks = newest.get(routeId)
+    let chunks = newest.get(file)
     if (!chunks) {
       chunks = new Map()
-      newest.set(routeId, chunks)
+      newest.set(file, chunks)
     }
     chunks.set(chunk, exports)
   }
 }
 
 /** Forgets the chunks of a route id the router no longer holds. */
-export function forgetChunkExports(routeId: string): void {
-  newest.delete(routeId)
+export function forgetChunkExports(file: string): void {
+  newest.delete(file)
 }
 
 /**
@@ -59,10 +59,10 @@ export function forgetChunkExports(routeId: string): void {
  * Called only by compiler output; not a public API.
  */
 export function __tsrChunkImporter(
-  routeId: string,
+  file: string,
   chunk: string,
   importer: () => Promise<any>,
 ): () => Promise<any> {
   return () =>
-    importer().then((module) => newest.get(routeId)?.get(chunk) ?? module)
+    importer().then((module) => newest.get(file)?.get(chunk) ?? module)
 }

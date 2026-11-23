@@ -14,8 +14,8 @@
  * export, the lazy options the route tree gave a route,
  * removed loaders and callbacks, loader races with an older refresh or an
  * inactive preload, route context, and descendants of an edited parent;
- * and an edit of a route the router the HMR code finds on the page does not
- * have (a second router created after the app's; SPEC J3.11).
+ * and an edit while the page has a second router, created after the app's,
+ * that has no such route (SPEC J3.11).
  */
 import { describe, test } from 'vitest'
 import { openRouteHmrPage } from '../route-hmr-page'
@@ -566,9 +566,9 @@ describe.concurrent.each(['vite', 'rsbuild'] as const)(
       },
     )
 
-    // The route HMR code updates the router it finds on the page: with a
-    // second router created after the app's, the hot update is for a route
-    // that router does not have. The app keeps working.
+    // The route HMR code updates the routers that hold the edited file's
+    // route: a second router created after the app's has none. The app's
+    // router takes the edit and keeps working.
     test(
       "an edit while the page has a second router created after the app's keeps the app working",
       { timeout },

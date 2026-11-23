@@ -19,7 +19,7 @@ import {
   sameFileSpecifier,
   stringLiteral,
 } from '@tanstack/router-utils/compiler'
-import { identifierSymbol, pascal, routerRouteId } from './route'
+import { identifierSymbol, pascal } from './route'
 import { COMPONENT_KEYS, claimedValueOf, methodPrefixOf } from './decisions'
 import { ROUTER_PLANNER } from './config'
 import type { SplitDecision } from './decisions'
@@ -353,7 +353,7 @@ function chunkImporterCall(
     return [
       [
         { sym, ctx: 'callee' },
-        `(${stringLiteral(routerRouteId(route.routeId), '"')}, ${stringLiteral(groupKey, '"')}, `,
+        `(${stringLiteral(ctx.identity.canonicalId, '"')}, ${stringLiteral(groupKey, '"')}, `,
       ],
       ')',
     ]

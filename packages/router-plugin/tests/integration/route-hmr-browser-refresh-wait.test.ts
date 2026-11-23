@@ -44,12 +44,12 @@ function Page() {
  * component lives in its own file; `version` 3 holds no component.
  */
 const tsRoute = (version: number) =>
-  `import { createFileRoute } from '@tanstack/react-router'
-import { Card } from '../card'
+  `import { createElement } from 'react'
+import { createFileRoute } from '@tanstack/react-router'
 import { evaluated } from '../evaluations'
 evaluated(${version})
 export const Route = createFileRoute('/')({
-  loader: () => 'L${version}',${version === 3 ? '' : '\n  component: Card,'}
+  loader: () => 'L${version}',${version === 3 ? '' : `\n  component: () => createElement('p', null, 'card'),`}
 })
 `
 

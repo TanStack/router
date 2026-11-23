@@ -13,8 +13,8 @@
  * module alone, so solid-refresh never patches the split chunk the route
  * module imports again (it patches in the chunk's own accept callback): the
  * page reloads once there, when the route's lazy wrapper imports its chunk
- * again after the import failed (solid-router's `restoredImportReload`;
- * main reloads too). Sources: Fable's review of the missing-import
+ * again after the import failed (solid-router's `reloadOnRecover`, on
+ * every host; main reloads too). Sources: Fable's review of the missing-import
  * experiment (a Solid delete, restore, edit row); Astra's round-4 route HMR
  * fact check (B3: Solid kept the old label until the next edit); Fable's
  * review of the restored-import fix (the edit of the restored file, the
@@ -106,7 +106,7 @@ const plainDep = (label: string) => `export const label = '${label}'\n`
 /**
  * The page loads the return takes when the route's lazy wrapper imported
  * its chunk while the file was missing (solid-router's
- * `restoredImportReload`).
+ * `reloadOnRecover`).
  */
 const restoreReloads = { react: 0, solid: 1 }
 

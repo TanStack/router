@@ -51,50 +51,50 @@ const samePatched = (next: any, held: any) =>
   refreshSource(held) !== undefined &&
   refreshSource(held) === refreshSource(next)
 
-const adapter: RouteHmrAdapter = {
-  keep: samePatched,
-  keepPatched: samePatched,
-  retire: forgetChunkExports,
+/**
+ * Whether `next` puts a component option of `before` in another module, or
+ * leaves the split chunk of one it removed holding another
+ * (`RouteHmrMeta.chunks`): solid-refresh cannot follow either.
+ */
+function regrouped(before = '', next = ''): boolean {
+  if (before === next) {
+    return false
+  }
+  const chunkOf = (layout: string) =>
+    new Map(
+      layout.split(',').map((entry) => entry.split(':') as [string, string]),
+    )
+  const was = chunkOf(before)
+  const is = chunkOf(next)
+  const kept = new Set(is.values())
+  for (const [key, chunk] of was) {
+    // moved, or removed from a split chunk another component stays in
+    if (is.has(key) ? is.get(key) !== chunk : chunk !== '' && kept.has(chunk)) {
+      return true
+    }
+  }
+  return false
 }
-
-// Set once this document reloads: two routes that recover in one update
-// reload it once.
-let reloading = false
 
 /**
- * TEMPORARY WORKAROUND: on Vite, a split component whose import failed
- * reloads the page when that import succeeds again (`RouteHmrAdapter.recovered`).
- * TODO: remove (with `RouteHmrMeta.vite` and its planner line) once
- * solid-refresh patches a module when it evaluates in its ESM (Vite) mode:
- * <solid-refresh issue, to be filed> (oracle KNOWN-BUGS, "Upstream issues")
- *
- * Why: solid-refresh 0.6.3 patches a module's proxies on Vite only inside
- * that module's own accept callback (its webpack mode patches when the module
- * evaluates). When a file a split chunk reads is deleted, the route module's
- * re-import of the chunk fails, and after that failed import analysis Vite
- * sends the file's return to the route module alone: the route module
- * imports the chunk again, the chunk evaluates outside its own update, and
- * its new component is never patched into the proxy the wrapper holds.
- * Keeping that proxy (`samePatched`) shows the old code until the next edit;
- * taking the new one leaves the wrapper on a proxy solid-refresh never
- * patches, so the next edit of the restored file would not show.
- *
- * Cost: the page loses its local state at that recovery (also when the
- * recovering route is not the one shown). main reaches the same end result
- * by reloading. Not covered: a component whose own module reads the deleted
- * file (the route's import never fails), which shows the restored file at
- * the next edit.
+ * `reloadOnRecover`: a split component whose import failed reloads the page
+ * when that import succeeds again (a deleted file its chunk reads, restored).
+ * solid-refresh 0.6.3 patches a module's proxies on Vite only inside that
+ * module's own accept callback; after the failed import, the file's return
+ * updates the route module alone, which imports the chunk again outside the
+ * chunk's own update, so its new component is never patched into the proxy
+ * the wrapper holds (keeping that proxy shows the old code until the next
+ * edit; taking the new one leaves the wrapper on a proxy solid-refresh never
+ * patches). On the webpack-style hosts the dev server's client reloads the
+ * page after the failed compile anyway. Remove once solid-refresh patches a
+ * module when it evaluates in its ESM mode (oracle KNOWN-BUGS, "Upstream
+ * issues").
  */
-const restoredImportReload = () => {
-  if (!reloading) {
-    reloading = true
-    window.location.reload()
-  }
-}
-
-const viteAdapter: RouteHmrAdapter = {
-  ...adapter,
-  recovered: restoredImportReload,
+const adapter: RouteHmrAdapter = {
+  keep: samePatched,
+  reload: (before, next) => regrouped(before.chunks, next.chunks),
+  reloadOnRecover: true,
+  retire: forgetChunkExports,
 }
 
 /**
@@ -109,7 +109,7 @@ export function __tsrRouteHmr(
   meta: RouteHmrMeta,
 ): void {
   if (process.env.NODE_ENV !== 'production') {
-    applyRouteHmr(routeId, Route, meta, meta.vite ? viteAdapter : adapter)
+    applyRouteHmr(routeId, Route, meta, adapter)
   }
 }
 
@@ -124,14 +124,14 @@ export function __tsrRouteHmr(
  * Called only by compiler output; not a public API.
  */
 export function __tsrRouteChunkHmr(
-  routeId: string,
+  file: string,
   chunk: string,
   exports: Record<string, any>,
   refresh: boolean,
 ): void {
   if (process.env.NODE_ENV !== 'production') {
-    recordChunkExports(routeId, chunk, exports)
-    applyRouteChunkHmr(routeId, chunk, { exports, refresh, adapter })
+    recordChunkExports(file, chunk, exports)
+    applyRouteChunkHmr(file, chunk, adapter, refresh)
   }
 }
 
@@ -142,9 +142,9 @@ export function __tsrRouteChunkHmr(
  *
  * Called only by compiler output; not a public API.
  */
-export function __tsrKeptReaderHmr(routeId: string, hot: KeptReaderHot): void {
+export function __tsrKeptReaderHmr(file: string, hot: KeptReaderHot): void {
   if (process.env.NODE_ENV !== 'production') {
-    applyKeptReaderHmr(routeId, hot)
+    applyKeptReaderHmr(file, hot)
   }
 }
 
