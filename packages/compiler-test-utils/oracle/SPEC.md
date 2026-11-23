@@ -290,6 +290,21 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
   neutral module whose export only removed code uses is the user's (J4.12). A leftover import of a server-only or
   unresolvable module on the client, or of a client-only module on the server, is not dead code that may dangle
   (G8): it never reaches the bundler, so no browser stub, externalization warning or polyfill stands in for it.
+  The contract, at every level (a function's locals, a pattern's leaves, a namespace's members, the module's top
+  level), for code the environment keeps:
+  - a removed definition takes its own evaluation with it and nothing else: an initialiser's call, a removed name's
+    property read, a removed default's effect, a removed class's decorators and static blocks;
+  - a declaration that reads its own binding before the binding has its value (`const x = x`, a default of the
+    pattern around the binding, a function called on the spot) throws in the source: it stays, with what it reads;
+  - a rest element is code of its own (it copies or drains): it keeps its declarator; a plain name nobody reads leaves
+    with the declarator whose other names only removed code read;
+  - a pattern that stays loses its dead positions; one that cannot leave (beside a rest element that stays, a
+    parameter) is emptied to `{}` or holes, and a default it had becomes `{}` or `[]`; a parameter that is a name keeps
+    its place, and a default of it that reads or calls anything becomes `void 0` (`length` is unchanged);
+  - along text no output holds (erased text, a type export) a type declaration is a name: what an alias, an
+    interface, a namespace of types or a `declare` of a value names was used. A reference names the declarations of
+    its own space (TypeScript's value, type and namespace spaces), so a value and a type of one name are two uses.
+    No output holds more declarators that bind nothing than the source (`var {} = f()`).
 
 ---
 

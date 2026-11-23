@@ -55,7 +55,7 @@ emits its own output. Nothing depends on transform order.
   `deleteNodes`), whatever the planner did with it; a slice of any output over one, or text mapped into one, fails
   the module (an error in users' runs, a throw under the self-checks). A compile already holding an error is not
   checked. It catches a planner skipping a recognised site; not recognition failures, declarations only server code
-  reads, imports of server-only modules or unreadable route options. The core's orphan cleanup is the
+  reads, imports of server-only modules or unreadable route options. The core's removal (`removal/render.ts`) is the
   only edit with a scope (`scopedEdit`, not on `PlanContext`). A generated unit has a home (`auto`: placement
   decides; an output), or `env-readers`: placement copies it into every derived output importing a binding of the
   env module other than the ones it names, once inclusion is decided (route HMR registers the chunks reading what
@@ -132,12 +132,12 @@ chunk imports and none main shares. It reads names, references and assignments o
   assign a binding it imports (or a `<Hydrate>` chunk its copy).
 - **reads** (`reads.ts` `readIndex`): what a cluster reads in an output is what the walk of its members' text there
   renders (`OutputView.walk`): the references of the source it renders and the symbols generated text names; its
-  successors are the clusters those lead to. `readFromRemoved` (the removal rule's first half, below) walks the
-  source's text, rendered or not.
+  successors are the clusters those lead to. The removal's closure (below) reads the source's text, rendered or
+  not, through the same index (`clusterReads(c, o, false)`).
 
 The rules, per output:
 
-- **the env module** loses only what the split made unused (the R153 amendment, `readFromRemoved`, the rule erasure
+- **the env module** loses only what the split made unused (the R153 amendment, `removal/`, the rule erasure
   uses): a declaration or import specifier the source used from text the module no longer holds (a claimed option
   value, erased text, the type export statements main strips first; a use in a type counts) goes with its
   initialiser when nothing that stays reads it by value.
@@ -203,31 +203,48 @@ set(cfg)`): it runs at load, as in the source; a declaration that is exactly a f
 A chunk's copies are main's: state is one instance where main has one, and a statement runs again in a chunk only
 where main's chunk runs it again (never a declaration already unused: better than main).
 
-### Removal (`reads.ts` `readFromRemoved`, `orphans.ts`)
+### Removal (`removal/`, `declarations.ts`)
 
-- **by provenance**: a declaration or import specifier is removed only if _our_ edits orphaned it: the source used it
-  (by value or in a type) from text an output no longer holds (a claimed option value, erased text, the type export
-  statements main strips first: `strippedTypeExportRanges`), and nothing left reads it by value. An exported type
-  declaration (`export type X = typeof helper`, `export interface X`) is such text for provenance and still renders
-  in the env module: `helper` goes when nothing else reads it, the declaration stays. A top-level statement that is no
-  declaration (`x.p = v`, `x.push(v)`, `x = v`) is never removed with what only erased code read (R154), and code
-  already unreferenced in the source keeps running: an import nothing reads stays (one removed code read only in a type
-  leaves, as TypeScript's elision would). Type units stay in the env module as written whatever their cluster, never in
-  a derived output unless a planner roots one there (route HMR copies a type statement holding a `@refresh` comment
-  into a component chunk), under the same two rules; only the TypeScript-only specifiers (an inline `type` specifier, an `export { X }` of a type-only
-  binding) follow their statement's value specifiers (`droppedTypeUnits`). Type-only export syntax (`export type { X }`,
-  `export type * from`, `export { type X }`, …) is in no output (`isTypeOnlyExport`), as main's `stripTypeExports`
-  removed it. A read the core synthesises from a name (a Solid `use:` directive) binds only to a declaration with a
-  runtime value (`valueBinding`). A type name TypeScript's decorator metadata serializes (the type of a decorated
-  member, a decorated method's parameter and return types, a decorated class's constructor parameter types) is a read
-  by value where the class is defined (`metadataNames` in `analysis.ts`), whatever the tsconfig says. JSX is no read of
-  the classic runtime's factory: the classic runtime is not supported with splitting.
-- **below the units** (`orphans.ts` `cleanOrphanedDeclarations`): function-local declarators, destructuring leaves,
-  function and class declarations only erased code used go by the same rule (a use in a type in the erased text
-  counts, R170), with their initialisers whatever they do (a hook call too, R166), as main's dead-code elimination
-  did. The core runs that cleanup once after every planner, in every output when edits addressed to every output
-  orphaned it, else in the env module only. A module-level destructuring leaf stays while it is exported or another
-  output takes it; a property a live rest element keeps loses only its default value.
+One algorithm for every level (SPEC G16, R153 amendment, R170): a definition the source used from text an output no
+longer holds leaves that output when nothing that stays reads it by value. Placement calls it once per plan, before it
+reads the tree (`Removal` in `removal/index.ts`):
+
+| Module                         | Job                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `declarations.ts`              | the one table of what a declaration is: per declaration its spaces (value, type, namespace) and whether it is a `definition` (runs only to give its names a value), a `statement` (`using`) or `erased` (types, a `declare`, a type-only import); `resolve(binding, reference)` picks what a reference names, by its space. Units, placement's removal rule, the definitions below the units and the closure read only it         |
+| `removal/closure.ts`           | provenance: one worklist over bindings at every level, seeded by the references inside removed text (erased text, text another output claims, the type export statements `main` strips). Causes `USED` (a candidate), `ERASED` (no output holds the text: a type declaration is a name along it), `NAMED` (R163: what erasure may take from a route module). A binding declared inside the text being read is not reached from it |
+| `removal/build.ts`             | the definitions below the units (a function's locals, pattern leaves, a namespace's members, a hoisted `var`), each in its grammar slot; built when the closure first reaches such a binding. `readsItself`: a declaration that reads its binding before it has its value is a statement                                                                                                                                          |
+| `removal/mark.ts`              | what stays, in one view: reachability by value from what stays whatever reads it, over clusters and definitions together (no order between the levels; a cycle of candidates keeps nothing)                                                                                                                                                                                                                                       |
+| `removal/render.ts`            | how a definition that does not stay gives up its text, by its slot                                                                                                                                                                                                                                                                                                                                                                |
+| `removal/named.ts`, `lists.ts` | what generated text names, by position; the comma-list helper planners share                                                                                                                                                                                                                                                                                                                                                      |
+
+- **by provenance**: only what is reached can leave: code the source never used from removed text stays as written (an
+  unused `const`, an import nothing reads, a declaration whose own text only reads it). A top-level statement that is
+  no declaration (`x.p = v`, `x = v`) is never removed (R154). Type units stay in the env module as written whatever
+  their cluster, never in a derived output unless a planner roots one there (route HMR copies a type statement
+  holding a `@refresh` comment into a component chunk), under the same two rules; only the TypeScript-only specifiers follow their statement's value
+  specifiers (`droppedTypeUnits`). Type-only export syntax is in no output (`isTypeOnlyExport`). A read the core
+  synthesises from a name (a Solid `use:` directive) binds only to a declaration with a runtime value. A type name
+  decorator metadata serializes is a read by value where the class is defined (`metadataNames`). JSX is no read of
+  the classic runtime's factory.
+- **types**: along `ERASED` text a type declaration is a name: what an alias, an interface, a namespace of types or a
+  `declare` of a value names was used. A reference names the declarations of its space only (D1): `x: Shape` the
+  alias, `typeof Shape` and reads the value; `N.T` of a namespace of types the member `T`, never a value declared
+  beside `N`; `import A = N.M` names what the whole path selects, and an alias named only for a type leaves unread.
+  Moved text (a split chunk, a provider copy) names its types for itself: no type declaration is followed from it.
+- **the contract** (D2 to D8, user decisions of 2026-11-22): a removed definition takes its own evaluation with it
+  (D7); a rest element is code of its own, a plain never-read name leaves with its declarator (D2); a pattern that
+  stays drops its dead positions, what cannot leave is emptied (`{}`, holes) and an emptied pattern's default becomes
+  `{}` or `[]` (D8, D8d); a plain parameter keeps its place and a default that reads or calls anything becomes
+  `void 0` (D4); static references only (D6: an `eval` reads nothing).
+- **slots** (`build.ts` `Slot`): `list` (a statement with its line), `init` (a `for` initialiser), `body` (`;` stays),
+  `item` (one of a comma list, with one separator), `hole` (an array element: the iterator steps as before), `tied`
+  (with its holder: the only declarator, an array rest element, a computed key), `fixed` (never: a parameter, a `catch`
+  binding, a `for…in/of` head). What cannot leave is contracted in place.
+- **views**: the mark runs on the edits addressed to every output, and again on the env module's alone when its view
+  differs (its own erasures, a claim that applies in one view only, an output that copies the module): what only the
+  env module's erasures orphan stays in the outputs that still render the readers. Invariant (h) (`verify.ts`): no
+  output holds more declarators binding nothing than the source.
 - **planning rounds**: a derived output that would assign a binding it imports reports a _fallback_
   (`ctx.fallbackAt(range)` on the next round), and `compileModule` re-runs the planners with that region kept in
   place, until no new region is reported (a kept region can free the next one). Every planner answers a fallback by
@@ -293,12 +310,12 @@ directives, never license comments.
 
 ## Pipeline (`pipeline.ts` `compileModule`)
 
-| phase | what                                                                                                                                                                                                                                                                                                                   |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A     | identify (canonical id = host id minus compiler-owned query keys), validated plan-cache lookup, parse, Tier 0 analysis (imports/exports/edges/effects), each planner's `gate`, async `prefetch` (resolutions, summaries, target facts; may withdraw the planner)                                                       |
-| B     | synchronous `plan` of every planner in order on an `AnalysisPlan`, `resolve()` (function-scope orphans, claims, clusters, roots, homes, glue), `freeze()` (`freeze.ts`) into a plain-data `EmitPlan`, beside the per-output edges the policies read (`edges.ts`, one builder for both tiers; not cached with the plan) |
-| C     | per-output edge `policy` (import protection substitutes specifiers), snapshot validation of every dependency, publication to the cache                                                                                                                                                                                 |
-| D     | emission of the requested output, on demand                                                                                                                                                                                                                                                                            |
+| phase | what                                                                                                                                                                                                                                                                                                        |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A     | identify (canonical id = host id minus compiler-owned query keys), validated plan-cache lookup, parse, Tier 0 analysis (imports/exports/edges/effects), each planner's `gate`, async `prefetch` (resolutions, summaries, target facts; may withdraw the planner)                                            |
+| B     | synchronous `plan` of every planner in order on an `AnalysisPlan`, `resolve()` (claims, clusters, roots, homes, glue, the removal), `freeze()` (`freeze.ts`) into a plain-data `EmitPlan`, beside the per-output edges the policies read (`edges.ts`, one builder for both tiers; not cached with the plan) |
+| C     | per-output edge `policy` (import protection substitutes specifiers), snapshot validation of every dependency, publication to the cache                                                                                                                                                                      |
+| D     | emission of the requested output, on demand                                                                                                                                                                                                                                                                 |
 
 Tier 1 (units, symbols, classified references) is built only when a planner needs it. Phase C restarts the compile
 (up to 3 attempts) when a dependency changed underneath it; a compile overtaken by a newer revision of its own file, or

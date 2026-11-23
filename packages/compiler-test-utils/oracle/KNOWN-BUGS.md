@@ -307,7 +307,7 @@ static made = … }` off the client also when the kept loader, the split compone
   review-a1-classes-stay-round2 5, `q4`; accepted): `const defaults = (routes.push('home'), { a: 1 })` named only by
   `loader: (): keyof typeof defaults => 'a'`, with a split component reading `Route`, leaves the route module and its
   initialiser never runs. The same when the split component's own annotation names it, when a `const` the chunk
-  takes names it in a type, and when erased text names it (through a `type` alias it stays). `main` never removes a
+  takes names it in a type, and when erased text names it, directly or through a `type` alias. `main` never removes a
   declaration the source reads only in types (its "read in the original" counts values), but removes one a split
   option read by value even when a kept annotation still names it;
   ours counts type uses in "the source used it" (R153 amendment) so that a value import a split component names only
@@ -361,6 +361,86 @@ static made = … }` off the client also when the kept loader, the split compone
   `const label = useLabel()` (calling `useId`) with `<ClientOnly>{label}</ClientOnly>` and a later `useId()`.
   Workaround: call the hook in a component inside the boundary and render that component (the docs' fix for a hook
   call in `<Hydrate>` children, deferred-hydration.md). No test (the outcome is the limit).
+
+The removal rule's limits (SPEC G16; the merged DCE design, user decisions D1 to D8 of 2026-11-22 and the v4
+declaration table of 11-23). Rows: `start-plugin-core/tests/start-compiler-removal-definitions.test.ts`,
+`start-compiler-removal-types.test.ts`, `start-compiler-removal-routes.test.ts`.
+
+- **A name only a direct `eval` reads can leave** (D6 B; as `main`): references are static. `const s = secret()` with
+  erased code reading `s` and kept code running `eval('s')` loses `s` on the client (`ReferenceError` there).
+  Workaround: name the binding in kept code (`eval` aside, pass it: `run(s)`). No test (the outcome is the limit).
+
+- **A removed definition takes its own evaluation with it** (D7 A): its initialiser's call, a removed name's property or
+  getter read (`const { unused, secret } = getters()` no longer reads `unused`), a computed key, a removed default's
+  effect or error, a removed class's decorators and static blocks. A dead parameter default takes its call too,
+  `super()` included: a derived constructor whose only `super()` call is such a default throws on the client.
+  Workaround: put the effect in a statement of its own (`register(); const x = …`). Rows: "a never-read sibling leaves
+  with its declarator", "a local function and a class with a static initialiser".
+
+- **A pattern that stays loses its dead positions, and a `null` below one no longer throws on the client** (D8 B, D8d
+  A): `const { session: { user }, theme } = props` with `user` only in a handler is `const { theme } = props` there, so
+  `session: null` throws on the server only. Beside a rest element that stays the position is emptied (`n: {}`), and a
+  default of an emptied pattern becomes `{}` or `[]`: a default the source could not destructure threw there and not
+  here. Workaround: validate the value in code that stays. Rows: "a server default beside a rest element: missing,
+  present and null values", "an emptied position beside a rest element keeps the rest's keys".
+
+- **A plain parameter whose every read is removed gets `void 0` for its default** (D4): `make(db = getServerDb())`
+  becomes `make(db = void 0)`; a literal default stays, `length` does not change. A parameter the body declares again
+  (`var db`, `function db() {}`) and a TypeScript parameter property keep their default. A parameter emptied in place
+  keeps its type annotation, which may name an import that left (`g(db: ReturnType<typeof getServerDb> = void 0)`):
+  TypeScript text only, which every bundler strips. Rows: "a plain parameter".
+
+- **A statement that only assigns stays, with what it reads** (D3 A, R154): `let db; db = connect()` read only by a
+  handler keeps the assignment and its import on the client; import protection reports the import. Workaround:
+  `const db = connect()`. Row: `start-compiler-erasure.test.ts` "a `let` a top-level statement assigns stays with
+  the statement, which runs at load".
+
+- **Self-reads are followed through code that runs on the spot only** (1.4 of the design): a function counts only as
+  the callee of a call or `new` written there. A getter read on the spot (`const x = ({ get data() { return x } }).data`),
+  a generator advanced with `.next()`, a method called through a member (`(function () { return x }).call(null)`,
+  `({ m() { return x } }).m()`), a class expression's constructor or instance field run by `new (class { y = x })()`
+  and an async call awaited in the initialiser (`await (async () => x)()`) are not followed: such a declarator leaves
+  where the source throws (or rejects) at once. A self-read in a branch that cannot run still keeps its declarator, and a
+  declarator that reads itself stays whole, with what its other names hold. Rows: "self-reads".
+
+- **A binding nothing reads is not ours, also beside a type of its name that removed code used** (D1 A): with `const
+db = connect(); type Foo = typeof db; const Foo = register()` and erased code naming `Foo` as a type, `db` leaves
+  and the unused `const Foo` stays (as on `main`), so `register()` still runs. Workaround: remove the unused
+  declaration. Row: "a binding nothing reads stays beside a type of its name erased code names".
+
+- **The annotation of a `declare` pattern is read whole.** With `declare const { server, client }: { server: typeof
+db; client: typeof registered }` and erased code reading `server` only, `registered` (which only `client`'s part
+  names) leaves too: the client registers 0 times where the source registers once. The same with a tuple pattern and
+  with an annotation behind a type alias. Workaround: one declarator per name (`declare const server: typeof db,
+client: typeof registered`), which is exact. No test (the outcome is the limit).
+
+- **A namespace with runtime content is read whole, an ambient one that exports an alias included.** With `declare
+namespace API { export import Settings = Kit.Options; export type Tracking = typeof reg }`, erased code naming only
+  `API.Settings` also takes what `Tracking` names (TypeScript counts the `export import` as runtime content). The same
+  for any namespace holding a value: a registration only another of its type members names leaves with it. Through a
+  qualified path that does not resolve, a namespace of types is followed whole the same way. Workaround: `export type
+Settings = Kit.Options`. No test (the outcome is the limit).
+
+- **A `declare` of a value beside a definition of the same name is read at the top level only**: inside a namespace
+  body (`namespace Outer { declare var x: typeof db; var x = … }`) the server value its type names stays in the
+  client, as on `main`. Workaround: declare the type with the definition (`var x: … = …`). No test (the outcome is
+  the limit).
+
+- **A type a reopened namespace's other block declares, named there without a qualifier, is not followed**: with
+  `namespace NS { const db = getServerDb(); export type T = typeof db }` and a second `namespace NS { … (x: T) => x }`
+  read only by erased code, `db` and its import stay on the client (as on `main`). The closure looks a type reference
+  up in the scopes around the erased text, and the first block is not one of them. Workaround: `(x: NS.T)`, or declare
+  the type in the block that uses it. No test (the outcome is the limit).
+
+- **What a `<Hydrate>` boundary inside a removed definition names in a type is not followed**: `function Dead() { return
+<Hydrate><span>{String(null as unknown as T)}</span></Hydrate> }` with `type T = typeof db`, `Dead` read only by
+  erased code: `Dead` leaves, `db` and its import stay (as on `main`). Text the boundary's chunk claims names its types
+  for itself. A value read (`{String(db)}`) is followed. Workaround: drop the type mention from the boundary. No test.
+
+- **Oxc rejects two TypeScript spellings, so they never reach the compiler on Vite**: a `declare var App` (or `declare
+namespace App`) before a `function App` of the same name ("Identifier `App` has already been declared"), and a
+  parameter the body declares again as a function. `import A = N` of a namespace that holds only types is emitted by
+  Oxc as `var A = N`, which throws in the source already. No test (Vite's own toolchain).
 
 - **Root routes are not split** (R60, SPEC J2.7): their components render on every page, or on error and not-found
   responses, where a lazy chunk only adds a round trip. `router-plugin/tests/integration/known-bugs-code-splitter-page-
@@ -453,7 +533,9 @@ setTheme(t) { theme = t }`, `export function getTheme()`), children calling the 
   itself.
 
 - **A `<Hydrate>` chunk copies a destructuring declarator whole** (`const { a, b } = make()` with children reading
-  `a`): `main`'s copy keeps `{ a }` only. Lazy bytes only (+4 B on the probe); the chunk evaluates `make()` once on
+  `a`): `main`'s copy keeps `{ a }` only. When a sibling the children don't read has a default with an effect
+  (`const { a = record('a'), b = record('b') } = cfg`, children reading `b`), the module keeps the declarator for that
+  effect and the chunk copies it: both defaults run twice, as items 4 and 5 of the entry above. Lazy bytes only (+4 B on the probe); the chunk evaluates `make()` once on
   both; pruning a pattern changes which getters run. No test (the outcome is the limit).
 - **React on Vite: an edit that only changes `codeSplitGroupings` resets the component's state** (coverage review A,
   finding 2; recorded, not ruled). The edit moves the component into another chunk (or back into the route module),
