@@ -50,6 +50,14 @@ describe('generateServerFnResolverModule', () => {
       await expect(
         getServerFnById('missing', { origin: 'client' }),
       ).rejects.toMatchObject({ status: 404 })
+      for (const inheritedKey of ['constructor', '__proto__', 'toString']) {
+        await expect(
+          getServerFnById(inheritedKey, { origin: 'server' }),
+        ).rejects.toThrow('Server function info not found')
+        await expect(
+          getServerFnById(inheritedKey, { origin: 'client' }),
+        ).rejects.toMatchObject({ status: 404 })
+      }
     },
   )
 
