@@ -300,3 +300,58 @@ describe.each(startBundlers)('%s build, a package in the scope', (bundler) => {
     timeout,
   )
 })
+
+// An exemption's pattern matches a package hoisted above the app's root
+// (a monorepo's `node_modules`) as the public matcher does, by its
+// absolute path: the exempt barrel is compiled, so its marked module is
+// the real one, with nothing reported.
+// On main, Vite fails on the marker and Rsbuild gives the real module;
+// before the policy, the PR gave the real module on both hosts.
+// Source: reviews of the node_modules policy implementation (Astra 2
+// `head-vite-grant-outer`, Gemini F2).
+describe.each(startBundlers)('%s build, a hoisted package', (bundler) => {
+  test.each<[string, ImportProtectionOptions]>([
+    ['ignoreImporters', { ignoreImporters: ['**/ui-kit/index.js'] }],
+    ['exclude', { exclude: ['**/ui-kit/index.js'] }],
+  ])(
+    'the barrel listed in %s gets the real module, nothing reported',
+    async (_, importProtection) => {
+      const build = await buildStart({
+        bundler,
+        workspace: {
+          app: 'repo/apps/web',
+          files: {
+            'repo/package.json': JSON.stringify({
+              name: 'monorepo',
+              private: true,
+            }),
+            'repo/node_modules/ui-kit/package.json': JSON.stringify({
+              name: 'ui-kit',
+              type: 'module',
+              exports: { '.': './index.js' },
+            }),
+            'repo/node_modules/ui-kit/index.js': `export { secret } from './secret.js'\n`,
+            'repo/node_modules/ui-kit/secret.js': `import '@tanstack/react-start/server-only'\nexport const secret = () => 'MARK_SECRET'\n`,
+          },
+        },
+        packageJson: {
+          name: 'web',
+          private: true,
+          type: 'module',
+          dependencies: { 'ui-kit': '*' },
+        },
+        files: {
+          'src/entry.ts': `import { secret } from 'ui-kit'\nexport const read = () => secret()\n`,
+        },
+        entry: 'src/entry.ts',
+        start: { importProtection },
+      })
+      expect(
+        (await build.client.run(`return String(entry.read())`)).result,
+      ).toBe('MARK_SECRET')
+      expect(reportedViolations(build)).toEqual([])
+      expect(problems(build.diagnostics).map(({ text }) => text)).toEqual([])
+    },
+    timeout,
+  )
+})

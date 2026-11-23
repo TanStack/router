@@ -92,15 +92,25 @@ export function untestedDependencyIds(
       `^${escapeRegExp(src)}/(?:[^?]*/)?node_modules/[^?]*\\.[cm]?[tj]sx?(?:$|\\?)`,
     ),
   ]
+  /** An id filter of the paths `glob` matches (anchored at the end of the path: an id may carry a query). */
+  const idsOf = (glob: string) =>
+    new RegExp(
+      `${picomatch.makeRe(glob, { dot: true }).source.replace(/\$$/, '')}(?:\\?|$)`,
+    )
   for (const { pattern } of [...config.exclude, ...config.ignoreImporters]) {
     if (pattern instanceof RegExp) {
       return [DEPENDENCY_SCRIPT_RE]
     }
-    // (the root's own glob characters are escaped: a literal part of the pattern)
-    const absolute = `${root.replace(/[*?!+@[\](){}|]/g, '\\$&')}/${pattern.replace(/^\.\//, '')}`
-    const { source } = picomatch.makeRe(absolute, { dot: true })
-    // (anchored at the end of the path: an id may carry a query)
-    ids.push(new RegExp(`${source.replace(/\$$/, '')}(?:\\?|$)`))
+    // the public matcher is given a file's path relative to the root, or its
+    // absolute path outside the root (`relativizePath`): a package hoisted
+    // above it (the root's own glob characters are escaped: a literal part
+    // of the pattern)
+    ids.push(
+      idsOf(
+        `${root.replace(/[*?!+@[\](){}|]/g, '\\$&')}/${pattern.replace(/^\.\//, '')}`,
+      ),
+      idsOf(pattern),
+    )
   }
   return ids
 }
