@@ -255,3 +255,45 @@ describe.each(startBundlers)(
     )
   },
 )
+
+// A package under the source directory (`src/node_modules`) is in the
+// scope: its imports are checked by the specifier rules on Vite as on
+// Rsbuild (Vite's dependency filter let only Start text through).
+// Source: node_modules policy, step 4.
+describe.each(startBundlers)('%s build, a package in the scope', (bundler) => {
+  test(
+    'a specifier rule denies the import of a package under src/node_modules',
+    async () => {
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files: {
+            'node_modules/secret-sdk/package.json': JSON.stringify({
+              name: 'secret-sdk',
+              type: 'module',
+              exports: { '.': './index.js' },
+            }),
+            'node_modules/secret-sdk/index.js': `export const sdk = () => 'MARK_SDK'\n`,
+            'src/node_modules/vendored/package.json': JSON.stringify({
+              name: 'vendored',
+              type: 'module',
+              exports: { '.': './index.js' },
+            }),
+            'src/node_modules/vendored/index.js': `import { sdk } from 'secret-sdk'\nexport const read = () => sdk()\n`,
+            'src/entry.ts': `import { read } from 'vendored'\nexport { read }\n`,
+          },
+          entry: 'src/entry.ts',
+          start: {
+            importProtection: { client: { specifiers: ['secret-sdk'] } },
+          },
+        }),
+      )
+      expect(
+        reportedViolations(error).map(({ importer }) => importer),
+      ).toContainEqual(
+        expect.stringMatching(/^src\/node_modules\/vendored\/index\.js:1:/),
+      )
+    },
+    timeout,
+  )
+})

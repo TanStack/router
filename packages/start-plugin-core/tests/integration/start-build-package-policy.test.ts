@@ -15,7 +15,10 @@
  */
 import { describe, expect, test } from 'vitest'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  expectDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, callByIdExports, startBundlers } from '../build-harness'
 import { appManifest, installPackage } from '../package-layouts'
 import { probeRoute } from '../request-probe'
@@ -166,6 +169,68 @@ export const getRouter = () => createRouter({ routeTree })
         `return await (await entry.startServerEntry.fetch(new Request('http://localhost/api'))).text()`,
       )
       expect(result).toBe('MARK_SERVER_GET')
+    },
+    timeout,
+  )
+
+  // A Start package's module is read like the app's: its namespace handed
+  // to code the compiler cannot follow carries its builder there, which is
+  // refused as for an app module (an ordinary package's is not read).
+  // Source: node_modules policy, decision 7 (A, S4).
+  test(
+    "a Start package's namespace passed to unknown code fails the build at the use",
+    async () => {
+      const lib = installPackage('npm', forwardingLib('peer'))
+      const error = await buildStart({
+        bundler,
+        files: {
+          ...lib.files,
+          'src/entry.ts': `import * as lib from 'fwd-lib'\nexport const keys = () => Object.keys(lib)\n`,
+        },
+        symlinks: lib.symlinks,
+        packageJson: appManifest([lib]),
+        entry: 'src/entry.ts',
+      }).then(
+        () => null,
+        (e: unknown) => e as { diagnostics?: Array<unknown> },
+      )
+      expect(error).not.toBeNull()
+      expectDiagnostic(error!.diagnostics, {
+        severity: 'error',
+        file: 'src/entry.ts',
+        root: (error as { root?: string }).root,
+      })
+    },
+    timeout,
+  )
+})
+
+// Rsbuild's persistent cache keeps a plan made under one manifest: a
+// manifest-only edit that makes the package declare Start (or stop) gives
+// the output of a fresh build, in both directions.
+// Source: node_modules policy, section 5.3 (the class is an input of the
+// importer's plan, revalidated by its target facts).
+describe('rsbuild build on the persistent cache', () => {
+  test.each<[StartDeclaration, StartDeclaration, string]>([
+    ['none', 'peer', 'nowhere'],
+    ['peer', 'none', 'eager'],
+  ])(
+    'a manifest edit from %s to %s: the rebuild is the fresh build',
+    async (from, to, handler) => {
+      const { lib, options } = app('npm', from)
+      const first = await buildStart({
+        bundler: 'rsbuild',
+        ...options,
+        rsbuildConfig: { performance: { buildCache: true } },
+      })
+      const edited = installPackage('npm', forwardingLib(to)).files[
+        `${lib.directory}/package.json`
+      ]!
+      const second = await first.rebuild({
+        [`${lib.directory}/package.json`]: edited,
+      })
+      const where = second.client.where('MARK_HANDLER_BODY')
+      expect(where === 'nowhere' ? 'nowhere' : 'eager').toBe(handler)
     },
     timeout,
   )
