@@ -26,6 +26,8 @@ import {
   rebuildModulesWhere,
   reportingFailure,
 } from '@tanstack/router-utils/compiler'
+import { NODE_MODULES_RE } from '../compiler/scope'
+import { groundedGraph } from '../import-protection/graph-trace'
 import {
   RSPACK_BUILD_INFO_KEY,
   dedupeKey,
@@ -38,10 +40,10 @@ import { manifestFunctionsDiffering } from '../server-fns/resolver'
 import {
   FOUND_WARNINGS_FIELD,
   LOCATED_DIAGNOSTICS,
-  PACKAGE_USE_FIELD,
   PLAN_BUILD_INFO_FIELD,
   SERVER_FN_BUILD_INFO_FIELD,
   canonicalResource,
+  holdsDiagnostics,
   isJsAsset,
   resourcePath,
 } from './compiler-session'
@@ -1012,21 +1014,40 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) =>
             reportUnprinted(compilation, modules as Iterable<ModuleLike>),
           )
-        } else if (own.persistsModules) {
-          // a build restored from the persistent cache: the modules it kept
-          // without compiling them report the warnings their latest compile
-          // found (Rspack replays no loader warning of a restored module)
+        }
+        if (
+          own.persistsModules &&
+          (!opts.onDevCompileDone || !session.files.compiled(environment.name))
+        ) {
+          // a compilation on the persistent cache (development: a compiler's
+          // first, the one that restores; the next hands over what Rsbuild
+          // did not print): the modules it kept without compiling them report
+          // the warnings their latest compile found (Rspack replays no loader
+          // warning of a restored module)
           compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) => {
-            handedOver = keptWarnings(modules as Iterable<ModuleLike>)
+            const kept = keptWarnings(
+              compilation,
+              modules as Iterable<ModuleLike>,
+            )
+            if (!opts.onDevCompileDone) {
+              handedOver = kept
+              return
+            }
+            handedOver = [...handedOver, ...kept]
+            const reported = new Map(warned)
+            for (const { module, warning } of kept) {
+              const key = keyOf(module as ModuleLike & { resource: string })
+              reported.set(key, [...(reported.get(key) ?? []), warning])
+            }
+            warned = reported
           })
         }
         // the "does not declare Start" warning, from the compilation's modules,
         // compiled or restored (decision 6): once per package and run
         compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) => {
-          if (session.packageUses.size === 0 && !own.persistsModules) {
-            return
+          if (session.packageUses.size > 0) {
+            reportPackageUses(compilation, modules as Iterable<ModuleLike>)
           }
-          reportPackageUses(compilation, modules as Iterable<ModuleLike>)
         })
         if (session.start.allocator && session.start.opts.mode === 'build') {
           compilation.hooks.processAssets.tap(
@@ -1061,18 +1082,18 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       })
 
       /**
-       * A production compilation's modules that it kept without compiling
-       * them, each with the warnings their latest compile found
-       * (`FOUND_WARNINGS_FIELD`) that the run's warning ledger lets through
-       * (a compiled module of another environment may have reported one),
-       * for `reportHandedOver`. Each such record is noted so that a compile
-       * of the module in this process that finds none clears it.
+       * A compilation's modules that it kept without compiling them, each
+       * with the warnings their latest compile found (`FOUND_WARNINGS_FIELD`)
+       * that the run's warning ledger lets through (a compiled module of
+       * another environment may have reported one), for `reportHandedOver`.
        */
       function keptWarnings(
+        compilation: Rspack.Compilation,
         modules: Iterable<ModuleLike>,
       ): Array<{ module: ModuleLike; warning: LocatedDiagnostic }> {
         const out: Array<{ module: ModuleLike; warning: LocatedDiagnostic }> =
           []
+        const held = heldIn(compilation)
         for (const module of modules) {
           if (
             !module.resource ||
@@ -1083,11 +1104,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           const found = module.buildInfo?.[FOUND_WARNINGS_FIELD] as
             | Array<FoundWarning>
             | undefined
-          if (!found) {
+          if (!found || !held(module as ModuleLike & { resource: string })) {
             continue
           }
-          session.noteRecord(envOf(module).name, module.resource)
-          const file = identify(module.resource).path
+          const file = resourcePath(module.resource)
           for (const w of found) {
             if (
               session.start.warnings.once(file, {
@@ -1114,9 +1134,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
 
       /**
        * The "does not declare Start" warning of each package instance whose
-       * modules in `compilation` recognised a Start use, compiled here
-       * (`packageUses`) or restored from the persistent cache with that record
-       * (`PACKAGE_USE_FIELD`), decided against the package's current manifest
+       * modules in `compilation` recognised a Start use at their latest
+       * compile, in this process or restored from the persistent cache
+       * (`packageUses`), decided against the package's current manifest
        * through the run's warning ledger (`packageUseWarning`), at the first of
        * its modules by resource.
        */
@@ -1126,25 +1146,25 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       ): void {
         const uses: Array<ModuleLike & { resource: string }> = []
         for (const module of modules) {
-          if (!module.resource?.includes('/node_modules/')) {
-            continue
-          }
-          const one = module as ModuleLike & { resource: string }
           if (
-            session.packageUses.has(keyOf(one)) ||
-            (own.persistsModules &&
-              !compiledHere(one) &&
-              one.buildInfo?.[PACKAGE_USE_FIELD] === true)
+            module.resource &&
+            NODE_MODULES_RE.test(module.resource) &&
+            session.packageUses.has(
+              keyOf(module as ModuleLike & { resource: string }),
+            )
           ) {
-            uses.push(one)
+            uses.push(module as ModuleLike & { resource: string })
           }
         }
         uses.sort((a, b) =>
           a.resource < b.resource ? -1 : a.resource > b.resource ? 1 : 0,
         )
+        const held = heldIn(compilation)
         for (const module of uses) {
           const warning = session.start.packageUseWarning(
-            identify(module.resource).path,
+            resourcePath(module.resource),
+            undefined,
+            () => held(module),
           )
           if (warning) {
             compilation.warnings.push(
@@ -1161,6 +1181,32 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               reports.push(warning.message)
             }
           }
+        }
+      }
+
+      /**
+       * Whether `compilation` holds a module: an entry, or reached from one
+       * (`groundedGraph`, read backward from the module asked about). A
+       * compilation keeps a module that a rebuild at its `finishMake` left
+       * unreachable (a server fn's handler module, once the resolver no
+       * longer lists the function), and the persistent cache restores it:
+       * it is in no output, and reports nothing.
+       */
+      function heldIn(
+        compilation: Rspack.Compilation,
+      ): (module: ModuleLike & { resource: string }) => boolean {
+        let grounded: ReturnType<typeof groundedGraph> | null = null
+        return (module) => {
+          const ip = session.start.ip
+          grounded ??= groundedGraph(
+            nodeGraph(compilation),
+            () => false,
+            (n, g) => ip?.handoffImporters(n, g) ?? [],
+          )
+          return grounded.supported({
+            env: envOf(module).name,
+            id: canonicalResource(module.resource),
+          })
         }
       }
 
@@ -1564,15 +1610,25 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                   []
                 for (const m of compilation.modules) {
                   const module = m as unknown as ModuleLike
-                  const plan = module.buildInfo?.[PLAN_BUILD_INFO_FIELD]
+                  const buildInfo = module.buildInfo
+                  const plan = buildInfo?.[PLAN_BUILD_INFO_FIELD]
+                  const records = !!buildInfo && holdsDiagnostics(buildInfo)
                   if (
-                    typeof plan === 'string' &&
-                    module.resource &&
-                    !compiledHere(module as ModuleLike & { resource: string })
+                    (typeof plan !== 'string' && !records) ||
+                    !module.resource ||
+                    compiledHere(module as ModuleLike & { resource: string })
                   ) {
+                    continue
+                  }
+                  const env = envOf(module)
+                  if (records) {
+                    // (a compile in this process replaces them)
+                    session.noteRestored(env.name, module.resource, buildInfo)
+                  }
+                  if (typeof plan === 'string') {
                     restored.push({
                       plan: JSON.parse(plan) as PersistedPlan,
-                      env: envOf(module),
+                      env,
                     })
                   }
                 }

@@ -620,10 +620,13 @@ export class StartCompilerSession {
    * not declare Start, which the server keeps external. Nothing for Start's
    * own packages, or a manifest that names Start in `peerDependenciesMeta`
    * only (an optional integration the package chose not to declare).
+   * `held`: whether the build holds the module (asked last; Rsbuild's seal
+   * pass, whose compilation may keep a module nothing reaches any more).
    */
   packageUseWarning(
     file: string,
     reach?: StartPackageReach,
+    held?: () => boolean,
   ): Diagnostic | null {
     const cls = this.classes.classOf(file)
     if (cls !== 'package' && (cls !== 'start-package' || !reach)) {
@@ -636,7 +639,8 @@ export class StartCompilerSession {
       isStartPackage(manifest?.['name']) ||
       (cls === 'package' &&
         namesStart(manifest, 'peerDependenciesMeta', this.opts.framework)) ||
-      (cls === 'start-package' && reach!.roots.has(root))
+      (cls === 'start-package' && reach!.roots.has(root)) ||
+      (held && !held())
     ) {
       return null
     }

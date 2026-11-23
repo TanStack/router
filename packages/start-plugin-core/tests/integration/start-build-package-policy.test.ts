@@ -83,6 +83,31 @@ describe.each(startBundlers)('%s build', (bundler: StartBundler) => {
     timeout,
   )
 
+  // Under an app directory whose name has a `#` (which Rspack escapes in a
+  // module's resource), the package's manifest is the one the warning reads.
+  // Source: round-3 re-checks of the node_modules policy implementation
+  // (Fable N1 `probes/p14.test.ts`, Astra 3 `hash#project`, Gemini 2a).
+  test(
+    'a Start package under a project path with a `#`: the handler leaves the client, no warning',
+    async () => {
+      const { options } = app('npm', 'peer')
+      const build = await buildStart({
+        bundler,
+        ...options,
+        prefix: `.start-build-harness-${bundler} C# project #2-`,
+      })
+      expect(build.root).toMatch(/C# project #2/)
+      expect(build.client.where('MARK_HANDLER_BODY')).toBe('nowhere')
+      expect(
+        problems(build.diagnostics)
+          .map(({ text }) => text)
+          // (Vite's own warning of the root's `#`)
+          .filter((text) => !text.includes('contains the "#" character')),
+      ).toEqual([])
+    },
+    timeout,
+  )
+
   // A package that does not declare Start is not read on demand: the
   // forwarded builder is not followed (decision 11), and the compile of a
   // module of it that uses Start warns that it must declare Start: once for

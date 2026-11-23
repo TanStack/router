@@ -583,24 +583,35 @@ export class StartRsbuildCompilerSession {
   }
 
   /**
-   * The resources whose module holds a diagnostics record of this process
-   * (`recordDiagnostics`): a compile that finds none clears it. A restored
-   * module's record is cleared by its next compile in this process when the
-   * host notes it (`noteRecord`).
+   * The modules (`<env>\0<resource>`) that hold a diagnostics record
+   * (`recordDiagnostics`), written by their compile in this process or
+   * restored (`noteRestored`): a compile that finds none clears it.
    */
   private readonly recordsDiagnostics = new Set<string>()
 
   /**
-   * The modules (`<env>\0<resource>`) whose compile in this process
-   * recognised a Start use in a package (`PACKAGE_USE_FIELD`): the host's
-   * package warning reads the restored modules' records only with a
-   * persistent cache.
+   * The modules (`<env>\0<resource>`) whose latest compile recognised a
+   * Start use in a package (`PACKAGE_USE_FIELD`), in this process or
+   * restored (`noteRestored`): those the host's package warning decides.
    */
   readonly packageUses = new Set<string>()
 
-  /** A module of compile environment `env` restored with a diagnostics record (`recordsDiagnostics`). */
-  noteRecord(env: string, resource: string): void {
-    this.recordsDiagnostics.add(`${env}\0${resource}`)
+  /**
+   * A module of compile environment `env` restored from the persistent cache
+   * with the records of its latest compile (`buildInfo`, `holdsDiagnostics`):
+   * its Start use in a package counts, and its next compile in this process
+   * replaces them.
+   */
+  noteRestored(
+    env: string,
+    resource: string,
+    buildInfo: Record<string, unknown>,
+  ): void {
+    const key = `${env}\0${resource}`
+    this.recordsDiagnostics.add(key)
+    if (buildInfo[PACKAGE_USE_FIELD] === true) {
+      this.packageUses.add(key)
+    }
   }
 
   /** Paths a read found missing (their raw facts say so until an event or `forgetMisses`). */
@@ -968,7 +979,9 @@ export class StartRsbuildCompilerSession {
         recordServerFns(ctx._module?.buildInfo, identity.canonicalId, null)
       }
       // (and its diagnostics: none, of a module known to hold a record)
-      if (this.recordsDiagnostics.delete(`${env.name}\0${ctx.resource}`)) {
+      const key = `${env.name}\0${ctx.resource}`
+      this.packageUses.delete(key)
+      if (this.recordsDiagnostics.delete(key)) {
         recordDiagnostics(ctx._module?.buildInfo, [], [], false)
       }
     }
@@ -1399,6 +1412,15 @@ function rewrittenSpecifier(rule: TransformImportRule, member: string): string {
   }
   const dir = rule.libraryDirectory ?? 'lib'
   return `${rule.libraryName}/${dir}/${transformed}`
+}
+
+/** Whether a module's `buildInfo` holds a diagnostics record (`recordDiagnostics`). */
+export function holdsDiagnostics(buildInfo: Record<string, unknown>): boolean {
+  return (
+    LOCATED_DIAGNOSTICS.field in buildInfo ||
+    FOUND_WARNINGS_FIELD in buildInfo ||
+    PACKAGE_USE_FIELD in buildInfo
+  )
 }
 
 /**

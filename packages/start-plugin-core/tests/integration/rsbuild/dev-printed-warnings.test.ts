@@ -121,3 +121,37 @@ export const Route = createFileRoute('/')({
   },
   timeout,
 )
+
+// A dev server restarted on Rspack's persistent cache restores the module
+// without compiling it: its first report prints the warning the module's
+// latest compile found, as a production build on the cache does.
+// Source: round-3 re-checks of the node_modules policy implementation
+// (Astra 4 `dev-simple`, Fable N2).
+test(
+  'a dev server restarted on the persistent cache prints the warnings of the modules it restored',
+  async () => {
+    const { plugin, printed } = recordPrinted()
+    const first = await startRsbuildStartDevServer({
+      config: { plugins: [plugin], performance: { buildCache: true } },
+      files: {
+        'src/role.ts': serverParam,
+        'src/entry.ts': `import { requireRole } from './role'\nexport const role = requireRole\n`,
+      },
+    })
+    await first.settle()
+    const role = (report: Array<Diagnostic>) =>
+      findDiagnostics(report, {
+        severity: 'warning',
+        file: 'src/role.ts',
+        root: first.root,
+      }).length
+    expect(role(printed.at(-1) ?? [])).toBe(1)
+    await first.stop()
+    const before = printed.length
+    const server = await first.restart()
+    await server.settle()
+    expect(printed.length).toBeGreaterThan(before)
+    expect(role(printed.at(-1) ?? [])).toBe(1)
+  },
+  timeout,
+)

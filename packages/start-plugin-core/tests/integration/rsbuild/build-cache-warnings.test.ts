@@ -14,8 +14,11 @@
  * `cache-mixed`; Gemini 1 to 3).
  */
 import { describe, expect, test } from 'vitest'
+import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, callByIdExports } from '../../build-harness'
 import { appManifest, installPackage } from '../../package-layouts'
+import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { RsbuildPlugin } from '@rsbuild/core'
 
 const timeout = 120_000
@@ -192,6 +195,85 @@ describe('rsbuild build on the persistent cache, a package that does not declare
       expect(packageWarnings(counter)).toBe(1)
       await second.rebuild({})
       expect(packageWarnings(counter)).toBe(1)
+    },
+    timeout,
+  )
+
+  // A package module's compile that no longer finds a Start use (the loader
+  // takes it as it is) leaves no use behind: neither the process's nor the
+  // module's record, also for a module restored from the cache with that
+  // record only. Rspack's watcher sees an edit of the installed package once
+  // its directory is neither ignored nor managed.
+  // Source: round-3 re-checks of the node_modules policy implementation
+  // (Astra 2 `plain-memory`, `stable-restored`; Gemini 2b, 2c; Fable N5).
+  const watchedPackages = {
+    tools: {
+      rspack: (config: { watchOptions?: object; snapshot?: object }) => {
+        config.watchOptions = {
+          ...config.watchOptions,
+          ignored: /[\\/](?:\.git|node_modules[\\/](?!fwd-lib[\\/]))/,
+        }
+        config.snapshot = { ...config.snapshot, managedPaths: [] }
+      },
+    },
+  }
+  const plainA = `export const a = 'MARK_A_PLAIN'\n`
+  const warnsOf = (diagnostics: Array<ChannelDiagnostic>, root: string) =>
+    findDiagnostics(problems(diagnostics), {
+      severity: 'warning',
+      file: `${lib.directory}/a.js`,
+      root,
+    }).length
+
+  test.each([false, true])(
+    'build --watch (persistent cache: %s): the module stops using Start, the rebuild does not warn',
+    async (buildCache) => {
+      const watched = await buildStart({
+        bundler: 'rsbuild',
+        files: { ...lib.files, ...appFiles(['a']) },
+        packageJson: appManifest([lib]),
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+        rsbuildConfig: { ...watchedPackages, performance: { buildCache } },
+        watchEdits: [{ edits: { [`${lib.directory}/a.js`]: plainA } }],
+      })
+      expect(warnsOf(watched.firstBuild, watched.root)).toBeGreaterThan(0)
+      expect(warnsOf(watched.diagnostics, watched.root)).toBe(0)
+    },
+    timeout,
+  )
+
+  test(
+    'build --watch restored from the cache: the module stops using Start, neither the rebuild nor the next build warns',
+    async () => {
+      const steps = [
+        { edits: { 'src/entry.ts': `export { none } from './fns'\n// 1\n` } },
+      ] as Array<{ edits: Record<string, string | null> }>
+      const options = {
+        bundler: 'rsbuild' as const,
+        files: { ...lib.files, ...appFiles(['a']) },
+        packageJson: appManifest([lib]),
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+        rsbuildConfig: {
+          ...watchedPackages,
+          performance: { buildCache: true },
+        },
+        watchEdits: steps,
+      }
+      const first = await buildStart(options)
+      expect(warnsOf(first.firstBuild, first.root)).toBeGreaterThan(0)
+      // (a new process's watch build, restored from the cache, then the edit)
+      steps.splice(0, Infinity, {
+        edits: { [`${lib.directory}/a.js`]: plainA },
+      })
+      const restored = await first.rebuild({})
+      expect(warnsOf(restored.firstBuild, restored.root)).toBeGreaterThan(0)
+      expect(warnsOf(restored.diagnostics, restored.root)).toBe(0)
+      steps.splice(0, Infinity, {
+        edits: { 'src/entry.ts': `export { none } from './fns'\n// 2\n` },
+      })
+      const next = await restored.rebuild({})
+      expect(warnsOf(next.firstBuild, next.root)).toBe(0)
+      expect(warnsOf(next.diagnostics, next.root)).toBe(0)
     },
     timeout,
   )
