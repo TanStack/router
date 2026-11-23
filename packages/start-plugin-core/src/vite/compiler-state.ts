@@ -445,11 +445,11 @@ export class ViteCompilerState implements ClientBuilds {
     id: { include: [MATCHES_NO_ID], exclude: [SCRIPT_ASSET_QUERY_RE] },
   }
   /**
-   * The dependency names the crawl found (`crawlStartPackages`): the
+   * The package instances the crawl found (`crawlStartPackages`): the
    * packages that declare Start which Vite bundles for the server. Set by
    * the config hook, before any compile.
    */
-  startPackageNames: ReadonlySet<string> | null = null
+  startPackageRoots: ReadonlySet<string> | null = null
   /** What the main transform leaves to `dependencyFilter` (the optimizer's bundles are added from the resolved config). */
   readonly ownExclude: Array<RegExp> = [SCRIPT_ASSET_QUERY_RE, DEPENDENCY_ID_RE]
   /** The environment whose plugin runs `watchChange` (bundled dev): one invalidation per change, applied to every environment. */
@@ -863,7 +863,7 @@ export class ViteCompilerState implements ClientBuilds {
         warn: (d, at, generated) => ctx.warn(log(d, at, generated)),
       },
       inputMap,
-      this.startPackageNames ? { names: this.startPackageNames } : undefined,
+      this.startPackageRoots ? { roots: this.startPackageRoots } : undefined,
     )
   }
 

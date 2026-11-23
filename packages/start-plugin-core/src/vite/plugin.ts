@@ -161,7 +161,7 @@ export function tanStackStartVite(
           corePluginOpts.framework,
           { preserveSymlinks: viteConfig.resolve?.preserveSymlinks === true },
         )
-        compiler.startPackageNames = new Set(startPackages)
+        compiler.startPackageRoots = startPackages.roots
 
         const viteConfigPlan = createViteConfigPlan({
           viteConfig,
@@ -171,8 +171,8 @@ export function tanStackStartVite(
           clientOutputDirectory: resolvedStartConfig.outputDirectories.client,
           serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
           serverFnProviderEnv,
-          optimizeDepsExclude: startPackages,
-          noExternal: startPackages,
+          optimizeDepsExclude: startPackages.names,
+          noExternal: startPackages.names,
         })
 
         return {

@@ -97,6 +97,37 @@ describe('vite build', () => {
     timeout,
   )
 
+  // pnpm installs an alias as a link to the package's own directory in its
+  // store: the module's directory is named after the package, the
+  // dependency after the alias. The package Start found is that instance,
+  // whatever its directory is called: no "not found" warning.
+  // Source: reviews of the node_modules policy implementation (Astra 4
+  // `head-vite-alias`, Gemini F3).
+  test(
+    'a pnpm alias of a Start package is bundled for the server, its server fn answers, nothing is reported',
+    async () => {
+      const store = 'node_modules/.pnpm/lib-p@1.0.0/node_modules/lib-p'
+      const lib = {
+        files: Object.fromEntries(
+          Object.entries(
+            installPackage('npm', startPackage('lib-p', 'P')).files,
+          ).map(([file, code]) => [
+            file.replace('node_modules/lib-p', store),
+            code,
+          ]),
+        ),
+        symlinks: { 'node_modules/lib-p-alias': store },
+        dependency: { 'lib-p-alias': 'npm:lib-p@1.0.0' },
+        importAs: 'lib-p-alias',
+        directory: store,
+      }
+      const build = await serverOf([lib], { p: 'lib-p-alias' })
+      expect((await build.ssr.run(answers)).result).toEqual({ p: 'MARK_P' })
+      expect(problems(build.diagnostics).map(({ text }) => text)).toEqual([])
+    },
+    timeout,
+  )
+
   // Source: Astra's and Gemini's reviews of the policy, A-M1 and G-M1
   // (`optional-edge`), and Gemini's monorepo case (a Start package behind a
   // workspace package, external in SSR before).

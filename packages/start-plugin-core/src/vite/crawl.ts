@@ -29,6 +29,7 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { findClosestPkgJsonPath, findDepPkgJsonPath } from 'vitefu'
 import { declaresStart } from '../compiler/package-class'
+import { normalizePath } from '../utils'
 import type { CompileStartFrameworkOptions } from '../types'
 
 const IN_PACKAGES = /[\\/]node_modules[\\/]/
@@ -46,12 +47,22 @@ async function readManifest(file: string): Promise<Manifest | null> {
   }
 }
 
-/** The names of the dependencies that declare Start, reached from `root` (sorted). */
+/**
+ * What the walk found from `root`: the names of the dependencies that
+ * declare Start (sorted: Vite's configuration), and the directories of the
+ * package instances they name (as the bundler names their modules: what a
+ * diagnostic compares a module's package with).
+ */
+export interface StartPackages {
+  names: Array<string>
+  roots: Set<string>
+}
+
 export async function crawlStartPackages(
   root: string,
   framework: CompileStartFrameworkOptions,
   opts: { preserveSymlinks?: boolean } = {},
-): Promise<Array<string>> {
+): Promise<StartPackages> {
   const resolveManifest = async (
     key: string,
     dir: string,
@@ -80,6 +91,7 @@ export async function crawlStartPackages(
   }
 
   const names = new Set<string>()
+  const roots = new Set<string>()
   /** By manifest path, whether it declares Start (each read and classified once). */
   const checked = new Map<string, Promise<boolean>>()
   const visits: Array<Promise<void>> = []
@@ -100,6 +112,7 @@ export async function crawlStartPackages(
         const found = await resolveManifest(key, path.dirname(file))
         if (found !== null && (await check(found))) {
           names.add(key)
+          roots.add(normalizePath(path.dirname(found)))
         }
       }),
     )
@@ -136,5 +149,5 @@ export async function crawlStartPackages(
   while (visits.length > 0) {
     await Promise.all(visits.splice(0))
   }
-  return [...names].sort()
+  return { names: [...names].sort(), roots }
 }

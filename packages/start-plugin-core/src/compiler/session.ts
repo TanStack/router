@@ -602,7 +602,8 @@ export class StartCompilerSession {
     if (cls !== 'package' && (cls !== 'start-package' || !reach)) {
       return
     }
-    const root = packageRootOf(normalizePath(file))!
+    // (a module's path: an id's query cut off)
+    const root = packageRootOf(normalizePath(file.split('?')[0]!))!
     const manifest = this.classes.manifest(`${root}/package.json`)
     if (
       isStartPackage(manifest?.['name']) ||
@@ -611,7 +612,7 @@ export class StartCompilerSession {
       return
     }
     const key = root.slice(root.lastIndexOf('/node_modules/') + 14)
-    if (cls === 'start-package' && reach!.names.has(key)) {
+    if (cls === 'start-package' && reach!.roots.has(root)) {
       return
     }
     const message =
@@ -718,12 +719,13 @@ export interface ClientPublication {
  */
 /**
  * What a host that bundles only the packages it found knows of them
- * (Vite's crawl, `crawlStartPackages`): their dependency names. (A
- * build's graph does not know a module's importers when it compiles it,
- * so the parent that brings a package Start did not find is not named.)
+ * (Vite's crawl, `crawlStartPackages`): the directories of the package
+ * instances, as the bundler names their modules. (A build's graph does
+ * not know a module's importers when it compiles it, so the parent that
+ * brings a package Start did not find is not named.)
  */
 export interface StartPackageReach {
-  names: ReadonlySet<string>
+  roots: ReadonlySet<string>
 }
 
 /** Whether a manifest names a Start package in `peerDependenciesMeta`. */
