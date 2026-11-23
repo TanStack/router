@@ -242,9 +242,18 @@ export function verifyPlan(
   }
 }
 
-/** The declarators of a module binding nothing (`var {} = f()`), but in a `for…in/of` head. */
+/**
+ * The declarators of a module whose pattern is empty (`var {} = f()`, `var
+ * [, ,] = f()`), but in a `for…in/of` head. A pattern that binds nothing
+ * and holds a pattern, a default or a computed key (`var { must: {} } =
+ * cfg`) is code the source wrote for its effect: removal keeps it as
+ * written (`removal/`, the sibling rule).
+ */
 function emptyDeclarators(program: Node): number {
   let n = 0
+  const empty = (id: Node) =>
+    (id.type === 'ObjectPattern' && id.properties.length === 0) ||
+    (id.type === 'ArrayPattern' && id.elements.every((e) => e === null))
   const visit = (node: Node, parent: Node | null) => {
     if (
       node.type === 'VariableDeclaration' &&
@@ -252,7 +261,7 @@ function emptyDeclarators(program: Node): number {
       parent?.type !== 'ForOfStatement'
     ) {
       for (const d of node.declarations) {
-        if (patternIdentifiers(d.id).length === 0) {
+        if (empty(d.id)) {
           n++
         }
       }

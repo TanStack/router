@@ -10,7 +10,7 @@
  * - The env module (the route file) only loses what the split made unused
  *   (`main`'s rule, the R153 amendment): a declaration or import specifier
  *   the source used, by value or in a type, from text the env module no
- *   longer holds (a claimed option value, erased text: `readFromRemoved`)
+ *   longer holds (a claimed option value, erased text: `removal/`)
  *   leaves it, with its initialiser, when nothing that stays reads it by
  *   value; enums and namespaces are declarations like any other (R155),
  *   but in a route module splitting removes no class, `enum` or
@@ -65,8 +65,11 @@
  */
 import { deriveId } from './identity'
 import { buildClusters } from './clusters'
-import { readFromRemoved, readIndex } from './reads'
-import type { ClusterId } from './clusters'
+import { readIndex } from './reads'
+import { NAMESPACE, TYPE } from './declarations'
+import { Removal, sourceUses } from './removal/index'
+import type { SourceFile } from 'yuku'
+import type { Cluster, ClusterId } from './clusters'
 import type { Tier1 } from './analysis'
 import type { SymbolId } from './symbols'
 import type { RegionId, UnitId } from './units'
@@ -131,6 +134,8 @@ export interface PlacementInput {
   canonicalId: string
   /** The module's text. */
   code: string
+  /** The module's file (ephemeral: the definitions below the units, `removal/`). */
+  file: SourceFile
   /** A route file (`PlanContext.setRouteModule`): placed as route splitting on `main` places it. */
   routeModule: RouteModule | null
 }
@@ -188,15 +193,19 @@ export function computePlacement(input: PlacementInput): Placement {
    * client), our changes made it unused: no root, no home, not rendered.
    */
   const unused = new Set<GenUnitId>()
-  for (const claim of rewrites.claims.values()) {
-    const h = gens[claim.owner]!.home
-    if (
-      typeof h === 'string' &&
-      !graph.viewOf(h === 'auto' ? 'env' : h).hasClaim(claim.region)
-    ) {
-      unused.add(claim.owner)
+  const findUnused = () => {
+    unused.clear()
+    for (const claim of rewrites.claims.values()) {
+      const h = gens[claim.owner]!.home
+      if (
+        typeof h === 'string' &&
+        !graph.viewOf(h === 'auto' ? 'env' : h).hasClaim(claim.region)
+      ) {
+        unused.add(claim.owner)
+      }
     }
   }
+  findUnused()
   const liveRoots = (o: OutputDecl): ReadonlyArray<RootRef> =>
     o.roots.filter((r) => r.t !== 'gen' || !unused.has(r.id))
   /** The roots of a derived output: what its planners rooted there, and the generated units homed there. */
@@ -218,17 +227,25 @@ export function computePlacement(input: PlacementInput): Placement {
   const fixedHome = new Map<ClusterId, OutputId>()
   /** Generated units with `env-readers` homes (decided last). */
   const envReaders: Array<ClusterId> = []
-  for (const g of gens) {
-    const c = graph.clusterOfGen.get(g.id)!
-    if (unused.has(g.id)) {
-      continue
-    }
-    if (typeof g.home === 'string' && g.home !== 'auto') {
-      fixedHome.set(c, g.home)
-    } else if (typeof g.home === 'object') {
-      envReaders.push(c)
+  /** `removable`, per cluster, for the homes as they are. */
+  let removables: Array<boolean | undefined> = []
+  const findHomes = () => {
+    fixedHome.clear()
+    envReaders.length = 0
+    removables = []
+    for (const g of gens) {
+      const c = graph.clusterOfGen.get(g.id)!
+      if (unused.has(g.id)) {
+        continue
+      }
+      if (typeof g.home === 'string' && g.home !== 'auto') {
+        fixedHome.set(c, g.home)
+      } else if (typeof g.home === 'object') {
+        envReaders.push(c)
+      }
     }
   }
+  findHomes()
   /**
    * `main`'s removal rule applies to it: import specifiers, declarators,
    * function, class, `enum` and `namespace` declarations (R155; a `declare`
@@ -237,6 +254,13 @@ export function computePlacement(input: PlacementInput): Placement {
    * they are read (a planner's `auto` home).
    */
   const removable = (c: ClusterId): boolean => {
+    let known = removables[c]
+    if (known === undefined) {
+      known = removables[c] = isRemovable(c)
+    }
+    return known
+  }
+  const isRemovable = (c: ClusterId): boolean => {
     const cl = clusters[c]!
     if (fixedHome.has(c) || envReaders.includes(c)) {
       return false
@@ -250,36 +274,28 @@ export function computePlacement(input: PlacementInput): Placement {
           (gens[g]!.declares.length > 0 || (gens[g]!.imports ?? []).length > 0),
       )
     }
-    // (a type merged with the binding, `import { type X }` beside
-    // `function X`, and a function's overload signatures are TypeScript's:
-    // they decide nothing)
-    const values = cl.units.filter(
-      (u) =>
-        units[u]!.kind !== 'type' &&
-        units[u]!.node.type !== 'TSDeclareFunction',
-    )
-    return values.every((u) => {
+    // (a type merged with the binding and `import { type X }` beside
+    // `function X` are TypeScript's: they decide nothing)
+    return cl.units.every((u) => {
       const unit = units[u]!
-      return (
-        unit.kind === 'import-specifier' ||
-        (unit.kind === 'declaration' &&
-          (unit.node.type === 'VariableDeclarator' ||
-            unit.node.type === 'FunctionDeclaration' ||
-            unit.node.type === 'ClassDeclaration' ||
-            unit.node.type === 'TSEnumDeclaration' ||
-            unit.node.type === 'TSModuleDeclaration'))
-      )
+      if (unit.kind === 'type' || unit.kind === 'import-specifier') {
+        return true
+      }
+      if (unit.kind !== 'declaration') {
+        return false
+      }
+      // a definition, by the one table (`declarations.ts`; `using`
+      // disposes what it declares: a statement)
+      return unit.definition
     })
   }
   const isType = (c: ClusterId) => clusters[c]!.kind === 'type'
-  /** A class, `enum` or `namespace` declaration (R163; a type-only namespace is a type unit). */
+  /** A class, `enum` or `namespace` declaration: a value that is a type or a namespace too (R163; a type-only namespace is a type unit). */
   const isClassLike = (c: ClusterId) =>
     clusters[c]!.units.some(
       (u) =>
         units[u]!.kind === 'declaration' &&
-        (units[u]!.node.type === 'ClassDeclaration' ||
-          units[u]!.node.type === 'TSEnumDeclaration' ||
-          units[u]!.node.type === 'TSModuleDeclaration'),
+        (units[u]!.spaces & (TYPE | NAMESPACE)) !== 0,
     )
   /** Copied where it is read: an import specifier, a planner's generated import. */
   const isImport = (c: ClusterId) => clusters[c]!.kind === 'import'
@@ -294,11 +310,86 @@ export function computePlacement(input: PlacementInput): Placement {
   // ---- the env module --------------------------------------------------------
   const derived = [...outputs.values()].filter((o) => o.id !== 'env')
   const rootedElsewhere = new Set<ClusterId>()
-  for (const o of derived) {
-    for (const r of liveRoots(o)) {
-      if (r.t === 'gen') {
-        rootedElsewhere.add(graph.clusterOfGen.get(r.id)!)
+  const findRooted = () => {
+    rootedElsewhere.clear()
+    for (const o of derived) {
+      for (const r of liveRoots(o)) {
+        if (r.t === 'gen') {
+          rootedElsewhere.add(graph.clusterOfGen.get(r.id)!)
+        }
       }
+    }
+  }
+  findRooted()
+  /**
+   * The removal rule's first half, once: what the source used from text the
+   * env module no longer holds (`fromRemoved`), and what erased text names
+   * (`erasedUse`, R163). Read from the source and the planners' edits alone,
+   * so it comes before anything reads the tree.
+   */
+  const removal = new Removal(input, graph, reads, removable)
+  /**
+   * Whether the env module keeps a cluster whatever reads it: a statement or
+   * an export stays (R154), and so does what the source did not read from
+   * text the env module no longer holds (code already unused stays); the
+   * rest stays when something that stays reaches it. `classStays` is R163's
+   * clause: before placement has read the tree (`removal.decide`), a class
+   * erased text does not name; after, also one a split chunk reads.
+   */
+  const envKeeps = (
+    cl: Cluster,
+    used: ReadonlySet<ClusterId>,
+    classStays: (c: ClusterId) => boolean,
+  ): boolean => {
+    const c = cl.id
+    if (
+      envReaders.includes(c) ||
+      isType(c) ||
+      cl.gens.some((g) => unused.has(g))
+    ) {
+      return false
+    }
+    if (fixedHome.get(c) === 'env') {
+      return true
+    }
+    if (fixedHome.has(c)) {
+      return false
+    }
+    if (cl.units.length > 0) {
+      // (an exported shared declaration: the env module re-exports it
+      // from the shared module)
+      return (
+        !removable(c) ||
+        cl.units.some((u) => units[u]!.exported.length > 0) ||
+        !used.has(c) ||
+        removal.keep.has(c) ||
+        classStays(c)
+      )
+    }
+    // a planner's generated effect no output roots
+    return !removable(c) && !rootedElsewhere.has(c) && cl.gens.length > 0
+  }
+  // the definitions below the units, decided with the clusters in one mark
+  // from these roots; what it removes changes which claims an output keeps
+  if (removal.pending) {
+    const classRoot = (c: ClusterId) =>
+      input.routeModule !== null && isClassLike(c) && !removal.erasedUse.has(c)
+    const changed = removal.decide({
+      keeps: (cl) => envKeeps(cl, removal.fromRemoved, classRoot),
+      every: () => [...outputs.get('env')!.roots, ...derived.flatMap(rootsOf)],
+      env: () => [
+        ...outputs.get('env')!.roots,
+        ...derived.filter((o) => o.kind !== 'provider').flatMap(rootsOf),
+      ],
+      clusterOfRoot,
+      copies: derived.some((o) => o.kind === 'provider'),
+    })
+    if (changed) {
+      // what the tree now holds: the claims an output keeps, and its text
+      findUnused()
+      findHomes()
+      findRooted()
+      reads.treeChanged()
     }
   }
   /**
@@ -418,12 +509,7 @@ export function computePlacement(input: PlacementInput): Placement {
     }
   }
   /** What the source reads from text the env module no longer holds: erased, or claimed by a chunk. */
-  const fromRemoved = readFromRemoved(input, graph, reads, [
-    ...graph.viewOf('env').erasedParts(),
-    ...[...rewrites.claims.values()].map(
-      (claim) => rewrites.regions.get(claim.region).range,
-    ),
-  ])
+  const { fromRemoved, erasedUse } = removal
   /**
    * R163: `main`'s removal rule never removes a class, an enum or a
    * namespace, so its body runs when the route module loads. In a route
@@ -437,29 +523,6 @@ export function computePlacement(input: PlacementInput): Placement {
    * leaks block whatever `main` does (round-2 (b), round-3 rulings).
    */
   const keptBySplit = new Set<ClusterId>()
-  const erasedUse =
-    input.routeModule === null
-      ? new Set<ClusterId>()
-      : readFromRemoved(
-          input,
-          graph,
-          reads,
-          [
-            ...envView.erasedParts(),
-            ...[...rewrites.claims.values()]
-              .filter((claim) => {
-                const h = gens[claim.owner]!.home
-                return (
-                  typeof h === 'string' &&
-                  h !== 'auto' &&
-                  h !== 'env' &&
-                  outputs.get(h)?.kind !== 'split'
-                )
-              })
-              .map((claim) => rewrites.regions.get(claim.region).range),
-          ],
-          envView.erasedParts(),
-        )
   /** A class, enum or namespace the env module of a route module keeps (R163). */
   const classStays = (c: ClusterId) =>
     input.routeModule !== null &&
@@ -526,36 +589,8 @@ export function computePlacement(input: PlacementInput): Placement {
     }
   }
   for (const cl of clusters) {
-    const c = cl.id
-    if (
-      envReaders.includes(c) ||
-      isType(c) ||
-      cl.gens.some((g) => unused.has(g))
-    ) {
-      continue
-    }
-    if (fixedHome.get(c) === 'env') {
-      keepInEnv(c)
-    } else if (fixedHome.has(c)) {
-      continue
-    } else if (cl.units.length > 0) {
-      // a statement or an export stays (R154), and so does what the
-      // source did not read from text the env module no longer holds (code
-      // already unused stays, `readFromRemoved`); the rest stays when
-      // something that stays reaches it
-      // (an exported shared declaration: the env module re-exports it
-      // from the shared module)
-      if (
-        !removable(c) ||
-        cl.units.some((u) => units[u]!.exported.length > 0) ||
-        !fromRemoved.has(c) ||
-        classStays(c)
-      ) {
-        keepInEnv(c)
-      }
-    } else if (!removable(c) && !rootedElsewhere.has(c) && cl.gens.length > 0) {
-      // a planner's generated effect no output roots
-      keepInEnv(c)
+    if (envKeeps(cl, fromRemoved, classStays)) {
+      keepInEnv(cl.id)
     }
   }
   for (const r of outputs.get('env')!.roots) {
@@ -990,15 +1025,14 @@ export function computePlacement(input: PlacementInput): Placement {
    */
   const unusedImports: Array<ClusterId> = []
   if (shared !== null) {
-    const sourceUsed = readFromRemoved(input, graph, reads, [
-      { start: 0, end: input.code.length },
-    ])
+    const used = (cl: Cluster) =>
+      [...cl.declares].some((s) => sourceUses(input, s))
     for (const cl of clusters) {
       if (
         cl.units.length > 0 &&
         (cl.kind === 'import-effect' ||
           (cl.kind === 'import' &&
-            !sourceUsed.has(cl.id) &&
+            !used(cl) &&
             removable(cl.id) &&
             !cl.units.some((u) => units[u]!.exported.length > 0)))
       ) {

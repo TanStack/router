@@ -10,11 +10,7 @@
  */
 import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
-import {
-  isExpressionWrapper,
-  namespaceName,
-  patternIdentifiers,
-} from './source'
+import { declaredNames, isExpressionWrapper } from './source'
 import { SymbolTable, valueBinding } from './symbols'
 import { buildItems, buildUnits } from './units'
 import { MutationModel } from './mutation'
@@ -1073,7 +1069,7 @@ export class ModuleAnalysis {
             return
           }
           const b = valueBinding(file.scopeOf(n), name.name.name)
-          if (!b || b.has(BindingFlags.Ambient)) {
+          if (!b || symbols.kind(symbols.ofBinding(b)) === 'ambient') {
             return
           }
           refs.push({
@@ -1204,37 +1200,6 @@ function moduleExportNameOf(n: Node): string {
   return n.type === 'Identifier'
     ? n.name
     : String((n as { value: unknown }).value)
-}
-
-function declaredNames(
-  decl: Node,
-): Array<Extract<Node, { type: 'Identifier' }>> {
-  switch (decl.type) {
-    case 'VariableDeclaration': {
-      const out: Array<Extract<Node, { type: 'Identifier' }>> = []
-      for (const d of decl.declarations) {
-        for (const id of patternIdentifiers(d.id)) {
-          out.push(id)
-        }
-      }
-      return out
-    }
-    case 'FunctionDeclaration':
-    case 'TSDeclareFunction':
-    case 'ClassDeclaration':
-    case 'TSEnumDeclaration':
-    case 'TSTypeAliasDeclaration':
-    case 'TSInterfaceDeclaration':
-      return decl.id ? [decl.id] : []
-    case 'TSImportEqualsDeclaration':
-      return [decl.id]
-    case 'TSModuleDeclaration': {
-      const id = namespaceName(decl)
-      return id === null ? [] : [id]
-    }
-    default:
-      return []
-  }
 }
 
 function isTypeDeclaration(decl: Node): boolean {

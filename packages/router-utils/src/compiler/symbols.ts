@@ -5,31 +5,13 @@
  * by anything that stores a `SymbolId`.
  */
 import { BindingFlags } from 'yuku'
+import { hasRuntimeValue, isAmbient } from './declarations'
 import { SELF_CHECKS } from './self-checks'
 import type { Binding, Scope, SourceFile } from 'yuku'
 
+export { hasRuntimeValue }
+
 export type SymbolId = number & { __sym: true }
-
-/** Binding flags of declarations with a runtime value. */
-const VALUE_BINDING_FLAGS =
-  BindingFlags.FunctionScopedVariable |
-  BindingFlags.BlockScopedVariable |
-  BindingFlags.Function |
-  BindingFlags.Class |
-  BindingFlags.RegularEnum |
-  BindingFlags.ConstEnum |
-  BindingFlags.ValueModule |
-  BindingFlags.ValueImport
-
-/**
- * Whether a binding has a runtime value: a type-only import (`import type
- * * as React`, `import { type X }`), an interface, a type alias or a
- * type-only namespace has none, so no value read ever binds to it (a
- * reference TypeScript erases keeps nothing alive and crosses no output).
- */
-export function hasRuntimeValue(b: Binding): boolean {
-  return b.has(VALUE_BINDING_FLAGS)
-}
 
 /**
  * The binding a value read of `name` written in `scope` would resolve to, or
@@ -84,19 +66,38 @@ interface SymbolInfo {
 export class SymbolTable {
   private readonly infos: Array<SymbolInfo> = []
   private readonly sourceCount: number
+  /**
+   * The ranges of the scopes below the module's that declare a binding (one
+   * scope may be listed more than once): what a text is asked about to know
+   * which local bindings are visible in it (`removal/closure.ts`).
+   */
+  readonly localScopes: Array<{ start: number; end: number }> = []
 
   constructor(private readonly file: SourceFile) {
     const root = file.rootScope
+    let last: { start: number; end: number } | null = null
     for (const b of file.bindings) {
       const moduleLevel = b.scope === root
+      let scopeRange: { start: number; end: number } | null = null
+      if (!moduleLevel) {
+        const node = b.scope.node
+        if (
+          last !== null &&
+          last.start === node.start &&
+          last.end === node.end
+        ) {
+          scopeRange = last
+        } else {
+          scopeRange = last = { start: node.start, end: node.end }
+          this.localScopes.push(scopeRange)
+        }
+      }
       this.infos.push({
         name: b.name,
-        kind: b.has(BindingFlags.Ambient) ? 'ambient' : 'source',
+        kind: isAmbient(file, b) ? 'ambient' : 'source',
         moduleLevel,
         isImport: b.has(BindingFlags.Import),
-        scopeRange: moduleLevel
-          ? null
-          : { start: b.scope.node.start, end: b.scope.node.end },
+        scopeRange,
         reassignable:
           !b.has(BindingFlags.Const) &&
           !b.has(BindingFlags.Function) &&

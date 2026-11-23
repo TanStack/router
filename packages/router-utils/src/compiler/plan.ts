@@ -11,7 +11,6 @@ import { deriveId, edgeKeyOf } from './identity'
 import { NameAllocator } from './names'
 import { computePlacement } from './placement'
 import { freezePlan } from './freeze'
-import { cleanOrphanedDeclarations } from './orphans'
 import { RegionTable, RewriteSet } from './rewrite'
 import { destOf, shapeOf } from './expression'
 import { unwrapExpression } from './source'
@@ -549,17 +548,13 @@ export class AnalysisPlan implements PlanContext {
   resolve(): Placement {
     // (planning is over: no boundary is added after it)
     this.forInitMemo = undefined
-    // function-scope declarations only erased code read go once every
-    // planner erased what it erases (placement decides the module level)
-    if (this.rewrites.view('env').erasedParts().length > 0) {
-      cleanOrphanedDeclarations(this, this.outputs)
-    }
     const placement = computePlacement({
       t1: this.t1,
       rewrites: this.rewrites,
       outputs: this.outputs,
       canonicalId: this.identity.canonicalId,
       code: this.analysis.source.code,
+      file: this.analysis.file,
       routeModule: this.routeModule,
     })
     if (placement.shared !== null) {

@@ -8,6 +8,7 @@
  * (`RegionTable`, rewrite.ts).
  */
 import { BindingFlags } from 'yuku'
+import { classify } from './declarations'
 import { hasRuntimeValue } from './symbols'
 import { extendOverTrailingLine, isLicenseComment } from './header'
 import {
@@ -75,6 +76,10 @@ export interface Unit {
   range: Range
   region: RegionId
   declares: Array<SymbolId>
+  /** For a declaration: the spaces it declares its name in (`declarations.ts`; 0: an import, or no declaration). */
+  spaces: number
+  /** For a declaration: it runs only to give its names a value (the removal rule applies to it). */
+  definition: boolean
   /** Export names this unit provides directly (`export const a`, `export { a as b }`, `default`). */
   exported: Array<string>
   /** Import entries (Tier 0 index) for import units. */
@@ -164,7 +169,10 @@ export function buildItems(
         decl = d
       }
     }
-    if (decl.type === 'VariableDeclaration' && !decl.declare) {
+    if (
+      decl.type === 'VariableDeclaration' &&
+      classify(file, decl)!.kind !== 'erased'
+    ) {
       shape = 'declarators'
     } else if (
       node.type === 'ImportDeclaration' &&
@@ -247,6 +255,8 @@ export function buildUnits(
     kind,
     range,
     declares: [],
+    spaces: 0,
+    definition: false,
     exported: [],
     importIndex: null,
     declNameRanges: [],
@@ -270,10 +280,10 @@ export function buildUnits(
           break
         }
         for (const spec of node.specifiers) {
-          const typeOnly =
-            node.importKind === 'type' ||
-            (spec.type === 'ImportSpecifier' && spec.importKind === 'type')
-          const u = base(spec, typeOnly ? 'type' : 'import-specifier', {
+          // (a type-only import is TypeScript's: the table says which)
+          const erased =
+            classify(file, spec, undefined, node)!.kind === 'erased'
+          const u = base(spec, erased ? 'type' : 'import-specifier', {
             start: spec.start,
             end: spec.end,
           })
@@ -368,10 +378,10 @@ export function buildUnits(
         break
       }
       case 'TSNamespaceExportDeclaration':
-      case 'TSTypeAliasDeclaration':
-      case 'TSInterfaceDeclaration':
         add(item, base(node, 'type', itemRange))
         break
+      case 'TSTypeAliasDeclaration':
+      case 'TSInterfaceDeclaration':
       case 'VariableDeclaration':
       case 'FunctionDeclaration':
       case 'TSDeclareFunction':
@@ -411,14 +421,27 @@ export function buildUnits(
   ): Array<Unit> {
     const out: Array<Unit> = []
     const itemRange = item.range
+    // what the declaration is, from the one table: what TypeScript erases is
+    // a type unit, the rest a declaration
+    const row = classify(file, decl)
+    const declared = (node: Node, range: Range) => {
+      const u = base(
+        node,
+        row!.kind === 'erased' ? 'type' : 'declaration',
+        range,
+      )
+      u.spaces = row!.spaces
+      u.definition = row!.kind === 'definition'
+      return u
+    }
     switch (decl.type) {
       case 'VariableDeclaration': {
-        if (decl.declare) {
-          out.push(add(item, base(decl, 'type', itemRange)))
+        if (row!.kind === 'erased') {
+          out.push(add(item, declared(decl, itemRange)))
           break
         }
         for (const d of decl.declarations) {
-          const u = base(d, 'declaration', { start: d.start, end: d.end })
+          const u = declared(d, { start: d.start, end: d.end })
           const ids = patternIdentifiers(d.id)
           for (const id of ids) {
             const s = symOf(id)
@@ -436,7 +459,7 @@ export function buildUnits(
       }
       case 'FunctionDeclaration':
       case 'TSDeclareFunction': {
-        const u = base(decl, decl.declare ? 'type' : 'declaration', itemRange)
+        const u = declared(decl, itemRange)
         if (decl.id) {
           const s = symOf(decl.id)
           if (s !== null) {
@@ -451,7 +474,7 @@ export function buildUnits(
         break
       }
       case 'ClassDeclaration': {
-        const u = base(decl, decl.declare ? 'type' : 'declaration', itemRange)
+        const u = declared(decl, itemRange)
         if (decl.id) {
           const s = symOf(decl.id)
           if (s !== null) {
@@ -466,7 +489,7 @@ export function buildUnits(
         break
       }
       case 'TSEnumDeclaration': {
-        const u = base(decl, decl.declare ? 'type' : 'declaration', itemRange)
+        const u = declared(decl, itemRange)
         const s = symOf(decl.id)
         if (s !== null) {
           u.declares.push(s)
@@ -481,12 +504,10 @@ export function buildUnits(
       case 'TSModuleDeclaration': {
         const id = namespaceName(decl)
         const b = id === null ? null : file.bindingOf(id)
-        const runtime =
-          b !== null && b.has(BindingFlags.ValueModule) && !decl.declare
-        const u = base(decl, runtime ? 'declaration' : 'type', itemRange)
+        const u = declared(decl, itemRange)
         if (b) {
           u.declares.push(symbols.ofBinding(b))
-          if (exported && runtime) {
+          if (exported && u.kind === 'declaration') {
             u.exported.push(b.name)
           }
           u.declNameRanges.push({ start: id!.start, end: id!.end })
@@ -495,11 +516,7 @@ export function buildUnits(
         break
       }
       case 'TSImportEqualsDeclaration': {
-        const u = base(
-          decl,
-          decl.importKind === 'type' ? 'type' : 'declaration',
-          itemRange,
-        )
+        const u = declared(decl, itemRange)
         const s = symOf(decl.id)
         if (s !== null) {
           u.declares.push(s)
@@ -513,7 +530,7 @@ export function buildUnits(
       }
       case 'TSTypeAliasDeclaration':
       case 'TSInterfaceDeclaration':
-        out.push(add(item, base(decl, 'type', itemRange)))
+        out.push(add(item, declared(decl, itemRange)))
         break
       default: {
         const u = base(decl, 'effect', itemRange)
@@ -526,11 +543,13 @@ export function buildUnits(
   // `var`s hoisted out of nested blocks (`for (var x …)`, `if (…) { var y }`)
   // are module bindings declared by the statement that holds them
   for (const b of file.rootScope.bindings) {
-    if (b.has(BindingFlags.Import) || b.has(BindingFlags.Ambient)) {
-      continue
-    }
     const sym = symbols.ofBinding(b)
-    if (declaringUnits.has(sym) || !b.has(BindingFlags.ValueSpace)) {
+    if (
+      b.has(BindingFlags.Import) ||
+      symbols.kind(sym) === 'ambient' ||
+      declaringUnits.has(sym) ||
+      !b.has(BindingFlags.ValueSpace)
+    ) {
       continue
     }
     for (const d of b.declarations) {

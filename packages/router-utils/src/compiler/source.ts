@@ -191,3 +191,35 @@ export function nextToken(code: string, pos: number): number {
   }
   return i
 }
+
+/** The names a declaration statement declares. */
+export function declaredNames(
+  decl: Node,
+): Array<Extract<Node, { type: 'Identifier' }>> {
+  switch (decl.type) {
+    case 'VariableDeclaration': {
+      const out: Array<Extract<Node, { type: 'Identifier' }>> = []
+      for (const d of decl.declarations) {
+        for (const id of patternIdentifiers(d.id)) {
+          out.push(id)
+        }
+      }
+      return out
+    }
+    case 'FunctionDeclaration':
+    case 'TSDeclareFunction':
+    case 'ClassDeclaration':
+    case 'TSEnumDeclaration':
+    case 'TSTypeAliasDeclaration':
+    case 'TSInterfaceDeclaration':
+      return decl.id ? [decl.id] : []
+    case 'TSImportEqualsDeclaration':
+      return [decl.id]
+    case 'TSModuleDeclaration': {
+      const id = namespaceName(decl)
+      return id === null ? [] : [id]
+    }
+    default:
+      return []
+  }
+}

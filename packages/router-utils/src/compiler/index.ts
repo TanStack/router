@@ -88,7 +88,7 @@ export type {
   PlanEdges,
   PlanFacts,
 } from './plan'
-export { listEnd, removeListItems } from './orphans'
+export { listEnd, removeListItems } from './removal/index'
 export {
   applyCall,
   applyMember,
