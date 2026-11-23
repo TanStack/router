@@ -128,6 +128,23 @@ export function resolveViteEdgeModuleId(specifier: string): string | null {
 const CONTENT_QUERY = 'tss-ip='
 
 /**
+ * The query flag of an Rspack edge module that stands for a bare import of
+ * a marked module: it has effects whatever the `sideEffects` of the
+ * package its virtual file is under (the app's) declares, so the bundler
+ * keeps it where the importer keeps the import (D-c). The host's rule for
+ * it is `RUNS_MARKED_EDGE_QUERY`.
+ */
+const RUNS_MARKED_FLAG = 'tss-ip-runs'
+
+/** Rspack's resource query condition of an edge module `RUNS_MARKED_FLAG` flags. */
+export const RUNS_MARKED_EDGE_QUERY = new RegExp(`^\\?${RUNS_MARKED_FLAG}&`)
+
+/** Whether an edge module stands for a bare import of a marked module (`RUNS_MARKED_FLAG`). */
+export function runsMarked(content: EdgeModuleContent): boolean {
+  return content.bare && content.rule.type === 'marker'
+}
+
+/**
  * Rspack ids: virtual files under `dir` (e.g.
  * `<root>/node_modules/.virtual/tanstack-start/import-protection`), one
  * directory per environment; the host writes their content
@@ -145,10 +162,13 @@ export function rspackEdgeModuleIds(dir: string): EdgeModuleIds {
   const ids: EdgeModuleIds = {
     specifier: (ref) => `${prefix}${edgeModuleName(ref)}.mjs`,
     request: (key, content) =>
-      `${ids.specifier({ env: content.env, kind: 'edge', key })}?${CONTENT_QUERY}${Buffer.from(canonicalJson(content)).toString('base64url')}`,
+      `${ids.specifier({ env: content.env, kind: 'edge', key })}?${runsMarked(content) ? `${RUNS_MARKED_FLAG}&` : ''}${CONTENT_QUERY}${Buffer.from(canonicalJson(content)).toString('base64url')}`,
     content(request) {
       const ref = ids.parse(request)
-      const q = request.indexOf(`?${CONTENT_QUERY}`)
+      const q = Math.max(
+        request.indexOf(`?${CONTENT_QUERY}`),
+        request.indexOf(`&${CONTENT_QUERY}`),
+      )
       if (ref?.kind !== 'edge' || q === -1) {
         return null
       }

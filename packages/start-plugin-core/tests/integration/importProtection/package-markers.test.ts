@@ -223,3 +223,35 @@ describe.each(startBundlers)('%s build', (bundler: StartBundler) => {
     timeout,
   )
 })
+
+// A bare import of a marked module is a statement that its code runs: it is
+// a violation even where the app declares `"sideEffects": false` (the
+// bundler would drop the import, and the marked module with it). A barrel
+// that is itself marked and only re-exports stays as before (D-c).
+// On main, Vite fails this build; Rsbuild builds.
+// Source: node_modules policy, D-c (A); Astra's `barefalse`.
+describe.each(startBundlers)(
+  '%s build, the app free of side effects',
+  (bundler) => {
+    test(
+      'a bare import of a server-only-marked module fails the build at the import',
+      async () => {
+        const error = await rejection(
+          buildStart({
+            bundler,
+            files: {
+              'src/secret.ts': `import '@tanstack/react-start/server-only'\n;(globalThis as any).secret = 'MARK_SECRET'\n`,
+              'src/entry.ts': `import './secret'\nexport const read = () => 'MARK_READ'\n`,
+            },
+            entry: 'src/entry.ts',
+            sideEffects: false,
+          }),
+        )
+        expect(
+          reportedViolations(error).map(({ importer }) => importer),
+        ).toContainEqual(expect.stringMatching(/^src\/entry\.ts:1:/))
+      },
+      timeout,
+    )
+  },
+)

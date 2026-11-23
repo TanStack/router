@@ -687,8 +687,12 @@ export function importEdgesPlanner(
     // survive with the module (its witness tells whether the marked module is
     // in the bundle), so the mock keeps the effect witness
     const ownMarker = ownEntry(ip.markerSpecifiers, j.raw) !== undefined
+    // a bare import of a marked module says its code runs: a violation
+    // wherever the import survives, whatever `sideEffects` declares of the
+    // module (D-c); its effects are not read
+    const runsMarked = j.edge.form === 'bare' && j.rule?.type === 'marker'
     const target =
-      j.resolved !== null && !ownMarker
+      j.resolved !== null && !ownMarker && !runsMarked
         ? await describeTarget(j.resolved, ctx)
         : null
     const names = new Set<string>(target?.names ?? [])
@@ -715,7 +719,7 @@ export function importEdgesPlanner(
           ? relativeTargetPath(config, j.resolved)
           : null,
       names: [...names].sort(),
-      effectful: ownMarker || (target?.effectful ?? true),
+      effectful: ownMarker || runsMarked || (target?.effectful ?? true),
       resolved: j.resolved,
       hasDefault: importsDefault || (target?.hasDefault ?? true),
       bare: j.edge.form === 'bare',

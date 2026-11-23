@@ -14,6 +14,7 @@ import {
   identify,
   normalizePath,
 } from '@tanstack/router-utils/compiler'
+import { RUNS_MARKED_EDGE_QUERY } from '../import-protection/edge-modules'
 import { ownFileRule } from '../import-protection/rules'
 import { StartRsbuildCompilerSession } from './compiler-session'
 import { createStartHostPlugin } from './host-plugin'
@@ -31,6 +32,10 @@ import type { RsbuildConfig, RsbuildPluginAPI, Rspack } from '@rsbuild/core'
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const loaderPath = path.resolve(currentDir, 'compiler-loader.js')
+
+/** An import-protection edge module's virtual file (`rspackEdgeModuleIds`). */
+const EDGE_MODULE_FILE_RE =
+  /[\\/]import-protection[\\/][^\\/]+[\\/]edge\.[^\\/]+\.mjs$/
 const assetLoaderPath = path.resolve(currentDir, 'asset-query-loader.js')
 
 /** Dev: appended to the client's route tree module (see its transform). */
@@ -188,7 +193,7 @@ export function registerStartCompiler(
         // an edge module is JavaScript whatever the importer's import attributes say of the
         // module it stands in for (`with { type: 'json' }` would make Rspack parse it as JSON)
         {
-          test: /[\\/]import-protection[\\/][^\\/]+[\\/]edge\.[^\\/]+\.mjs$/,
+          test: EDGE_MODULE_FILE_RE,
           type: 'javascript/esm',
           // Rspack builds an edge module only for an import its importer kept
           // after SWC: `allowImport` decides, and a pending violation is confirmed
@@ -201,6 +206,13 @@ export function registerStartCompiler(
                   },
                 ]
               : [],
+        },
+        // the edge module of a bare import of a marked module keeps its
+        // effect witness under the app's `sideEffects: false` (D-c)
+        {
+          test: EDGE_MODULE_FILE_RE,
+          resourceQuery: RUNS_MARKED_EDGE_QUERY,
+          sideEffects: true,
         },
       )
     }
