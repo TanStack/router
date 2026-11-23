@@ -154,7 +154,7 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
 | Unknown `%%tag%%` in a custom scaffolding template                                                                                                                    | becomes an empty string; no test                                                                                                        |
 | Big-endian or `--jitless` hosts for a native parser                                                                                                                   | not a compiler requirement                                                                                                              |
 | `.inputValidator()` on server functions and middleware (release-candidate name, removed in 1.169)                                                                     | type-invalid input (§8); no requirement, no test (OQ15)                                                                                 |
-| A dependency that contains Start API calls but is not discoverable (no peer dependency on `@tanstack/<fw>-start` / `start-client-core`) and not included              | no automatic compilation requirement (J4.16)                                                                                            |
+| A dependency that contains Start API calls but does not declare Start (J4.16) and is not included                                                                     | compiled where its text names a Start API, not read on demand; warned once per package (J4.16)                                          |
 | A Start factory imported from an implementation module of a Start package (a deep path its `exports` do not expose)                                                   | not reachable; no requirement                                                                                                           |
 | A CommonJS dependency using sloppy-mode forms that break the app without Start too (a legacy octal escape, a `with` statement)                                        | no requirement                                                                                                                          |
 | A route made by an app's own helper (`createAppRoute = createFileRoute` in another module), a `Route` re-exported into a route file, `Route.update({ server })`       | out of scope (R130, R92): not split, `server` not removed, no diagnostic; no test                                                       |
@@ -164,7 +164,7 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
 | A second `.handler()` or `.validator()` on a finished server function, a second `.server()` on a finished middleware, a second argument to `.handler()` (type errors) | out of scope (R105, R131): no refusal, its code can ship to the client; no test                                                         |
 | A Start API call or an import-protection marker in a virtual module                                                                                                   | unsupported (R36); self-marked or mutually importing virtual modules fail a Vite build naming them (R117)                               |
 | A binary file with a JS extension inside the app                                                                                                                      | unsupported (R141): the parse error, no hint; our loaders never alter it                                                                |
-| Route files under `node_modules`                                                                                                                                      | unsupported (R141): not split; webpack-family builds warn once per file                                                                 |
+| Route files under `node_modules`, standalone router plugin (no Start)                                                                                                 | unsupported (R141): not split; webpack-family builds warn once per file; under Start they are compiled (J4.16)                          |
 | A dev server under a `NODE_ENV` other than `development`                                                                                                              | unsupported, not handled; no test                                                                                                       |
 | The router plugin on Rsbuild 1.x                                                                                                                                      | no fallback for the dev freshness mechanisms that need Rspack 2 (idle wake, rebuild callbacks, `experiments.cache`); no test            |
 
@@ -775,9 +775,17 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   Separate environments have separate module instances.
 - **J4.15 Dev/build.** Provider modules may carry an HMR accept in dev, none in build (G7). The dev server serves the
   handler by id after edits (J3.6).
-- **J4.16 Libraries.** A dependency written with Start APIs (uncompiled source) that Start's discovery selects (a
-  package with `@tanstack/<fw>-start` or `@tanstack/start-client-core` in `peerDependencies`), or that the user
-  includes for bundling, is compiled like app code in every env it takes part in. Discovery uses the app's configured
+- **J4.16 Libraries.** A dependency written with Start APIs (uncompiled source) that declares Start (one of
+  `@tanstack/<fw>-start`, `start-client-core`, `start-server-core`, `start-fn-stubs`, `@tanstack/<fw>-start-rsc` in
+  `peerDependencies`, or in `dependencies` / `optionalDependencies` unless it is one of Start's own packages;
+  `peerDependenciesMeta` alone declares nothing), or that the user includes for bundling, is compiled like app code in
+  every env it takes part in, and its modules are read on demand like the app's (a builder one module hands to another
+  under a new name is followed). Vite discovery reaches such a package from the app's manifest through workspace
+  packages, packages that declare Start and installed optional dependencies, by the dependency name the importer wrote
+  (npm aliases kept); one behind an ordinary installed parent stays behind it, and its compile warns. A dependency that
+  uses Start without declaring it is compiled where its text names a Start API, not read on demand, and its compile
+  warns once per package instance. A route file the generator registered from a package is compiled like the app's.
+  Discovery uses the app's configured
   root, never an unrelated process cwd (`vite build <app>` from a monorepo root works). A CommonJS dependency the
   bundler hands to the Start compiler (for example because its text matches a detection pattern such as `.handler(`)
   keeps its meaning and builds, as it would without Start (a top-level `return` in a script). Other dependencies
@@ -844,9 +852,14 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
 - **J6.1 Rules.** Deny by resolved-file pattern (client default `**/*.server.*`, server default `**/*.client.*`), by
   raw specifier (client default `@tanstack/{react,solid,vue}-start/server`; server default none), and by marker
   (`@tanstack/<fw>-start/server-only` / `client-only` side-effect import in the target file; both in one file is an
-  error). `excludeFiles` (default `**/node_modules/**`) skips resolved-target checks. Option semantics follow the docs
+  error). `@tanstack/{react,solid,vue}-start/server` is itself a server-only-marked module. `excludeFiles` (default
+  `**/node_modules/**`) skips the file rule of a resolved target, never its marker. Option semantics follow the docs
   table (`client.specifiers` adds; `files`, `excludeFiles`, `server.specifiers` replace). Importers checked: those
-  under `srcDirectory` (or `include`) minus `exclude`/`ignoreImporters`. Vite and Rsbuild; every Start env
+  under `srcDirectory` (or `include`) minus `exclude`/`ignoreImporters`. A marker denies its file to every importer
+  that is not exempt or allowed, wherever the importer is (outside the scope, a package's module the compiler does
+  not compile: reported at its import of the file; `allowImport` is asked about the file itself for an importer the
+  compiler does not compile), and a bare import of a marked file is a violation where it survives whatever
+  `sideEffects` declares. Vite and Rsbuild; every Start env
   (client-type and server-type). A specifier rule matches the specifier **the user wrote**: a bundler rewrite of the
   import (e.g. Rsbuild `source.transformImport` turning `ui-lib` into `ui-lib/button`) does not bypass a denial of the
   original; file and marker checks apply to the rewritten edge's resolved target. A resolved id whose path holds a `#` is
@@ -910,8 +923,10 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   to load in dev.
 - **J6.9 Every entry counts.** Edges reachable from any entry of the env (router entry, start entry, client entry, a
   custom `src/server.ts`) are reported.
-- **J6.10 Dependencies.** Files under `node_modules` skip file-pattern and marker checks by default, including a
-  dependency marking itself server-only; `excludeFiles: []` turns them on again.
+- **J6.10 Dependencies.** Files under `node_modules` skip file-pattern checks by default (`excludeFiles: []` turns
+  them on again); a dependency's marker is honoured like the app's, in every package, whether or not it declares
+  Start. A file name is a convention of the app's scope: an unmarked `.server` file imported inside a package or a
+  workspace package is no violation.
 - **J6.11 Determinism.** The set of reported violations for a source tree and config does not depend on request
   order, caching, or which env transformed a module first (G4). A denied file whose importers disagree (one needs it
   as it is: an exempt plain importer or an import `allowImport` allows; a checked one reaches the file itself: a

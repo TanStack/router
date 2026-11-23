@@ -37,7 +37,9 @@ Import protection is enabled out of the box with these defaults:
 - Files matching `**/*.client.*`
 - Excluded from file checks: `**/node_modules/**`
 
-By default, files inside `node_modules` are excluded from resolved-target deny checks via the `excludeFiles` option. This prevents false positives from third-party packages whose resolved filenames contain `.client.` or `.server.`. If you need to check third-party files, set `excludeFiles: []` on the relevant environment — see [Configuring Deny Rules](#configuring-deny-rules).
+By default, files inside `node_modules` are excluded from the file-name checks via the `excludeFiles` option. This prevents false positives from third-party packages whose resolved filenames contain `.client.` or `.server.`. If you need to check third-party file names, set `excludeFiles: []` on the relevant environment — see [Configuring Deny Rules](#configuring-deny-rules). [File markers](#file-markers) are not file names: a marker is honoured in every file, a package's included, whatever `excludeFiles` says.
+
+`@tanstack/react-start/server` is also a server-only-marked module (see [The server entry](#the-server-entry)): the specifier rule reports an import of it in your own files, and the marker denies it to every other module the client keeps, a package's or a workspace package's included.
 
 These defaults mean you can use the `.server.ts` / `.client.ts` naming convention to restrict files to a single environment without any configuration. To also deny entire directories (e.g. `server/` or `client/`), add them via `files` in your [deny rules configuration](#configuring-deny-rules) — for example `files: ['**/*.server.*', '**/server/**']` for the client environment.
 
@@ -115,6 +117,25 @@ export function savePreferences(prefs: Record<string, string>) {
 When the plugin sees a marker import, it records the file as restricted. If that file is later imported from the wrong environment, the import is denied. Both markers in the same file is always an error.
 
 Markers are useful when a file doesn't follow the `.server.*` / `.client.*` naming convention but still contains environment-specific code.
+
+A marker is a statement of its file, so it holds wherever the file is and whoever imports it:
+
+- It is honoured in every package: your app, a workspace package, an installed package (`excludeFiles` skips file-name rules only).
+- It denies the file to every importer that `exclude` or `ignoreImporters` does not exempt and [`allowImport`](#the-allowimport-callback) does not allow, including a module outside `srcDirectory` and a module of an installed package. A package module the compiler does not compile (a barrel that re-exports the marked file, say) is reported at its import of the file, and a build with the `error` behavior fails. File names (`*.server.*`) keep their scope: see [Limitations](#limitations).
+- A bare import of a marked file (`import './secrets'`) says that its code runs: it is a violation where the import survives, even in a package that declares `"sideEffects": false`. A marked barrel that only re-exports is judged by what the client uses of it.
+- A `?raw` import of a marked file is denied like any other import of it.
+
+To take a marked file of a package as it is, list the package's module that imports it in `ignoreImporters`, or allow the file in `allowImport` (asked about the file itself, see [The `allowImport` Callback](#the-allowimport-callback)). In dev, a package barrel that re-exports a marked file is served with the file's mock and one warning, even when a build would drop the re-export: the dev server does not tree-shake, as for your own barrels ([Mixed Barrels](#mixed-barrels-and-split-entry-points)).
+
+### The server entry
+
+`@tanstack/react-start/server` (Start's request helpers: `getRequest`, `getRequestHeaders`, `setResponseHeader`, …) imports `@tanstack/react-start/server-only`. A client import of it is a violation wherever it is written, when the client keeps the import after the compiler's removals and tree-shaking. What builds:
+
+- a use inside `createServerFn().handler()`, `createMiddleware().server()`, `createServerOnlyFn()` or `createIsomorphicFn().server()`: the client compile removes it;
+- a dynamic `import()` inside `if (import.meta.env.SSR)`;
+- an import of a module the client never uses (an unused export of a package barrel), and an `import type`.
+
+What fails the build, at the import of the module that keeps it: any value of the entry the client keeps, a constant such as `HEADERS.TSS_SHELL` included (the entry is server-only as a module, not per export), and on Vite a dynamic `import()` guarded by a runtime test the build does not remove, such as `typeof window === 'undefined'` or `isServer` from `@tanstack/router-core/isServer` (Vite keeps the server chunk). Guard it with `import.meta.env.SSR`, or move the use into one of the functions above. To take the entry as it is in a package's module, list that module in `ignoreImporters`, or allow the entry in `allowImport`. `@tanstack/react-start-server` and `@tanstack/start-server-core`, which the entry re-exports, are not marked: import the public entry.
 
 With React Server Components, server components render in the `rsc` environment: Vite's environment of that name, and on Rsbuild the server compiler's RSC layer, which `onViolation` and `allowImport` also call `rsc` (`info.env`). It is a server environment: the server rules apply, and `info.envType === 'server'` matches it and `ssr`. A `'use client'` module that a server component imports is a client reference there: none of its code runs there, and its own imports are not checked there (they are where it runs, in SSR and on the client). The server component's import of it is how SSR, which renders the component for the page's HTML, gets the module, and it is checked like any import of the `rsc` environment: when a server rule denies the file (`**/*.client.*`, a `client-only` marker), `allowImport` and `onViolation` get `info.env === 'rsc'`, the server component as `importer`, the specifier as written and its position (`importerLoc`). An import `allowImport` allows gives SSR the real component; otherwise SSR gets its mock and the import is reported (an `'error'` build fails), and an importer that `exclude` or `ignoreImporters` exempts gives SSR the real component. When nothing else gives the file to SSR yet, `allowImport` may also be asked about the file itself (`importer` is the file), as for a file that only a pattern import loads.
 
@@ -261,7 +282,7 @@ export default defineConfig({
 
 ### Checking third-party packages
 
-By default, resolved files inside `node_modules` are excluded from resolved-target deny checks (file-pattern and marker checks). This avoids false positives from packages that happen to use `.client.` or `.server.` in their distribution filenames. If you want to re-enable checking for a specific environment, set `excludeFiles` to an empty array:
+By default, resolved files inside `node_modules` are excluded from the file-pattern checks. This avoids false positives from packages that happen to use `.client.` or `.server.` in their distribution filenames. A package's [file markers](#file-markers) are always checked. If you want to check file names in `node_modules` too for a specific environment, set `excludeFiles` to an empty array:
 
 ```ts
 importProtection: {
@@ -348,7 +369,7 @@ To write safe code:
 
 ## Limitations
 
-A denied file is judged from the plain imports of it that import protection reads. Some importers are not honored there, so the file is replaced by its mock even though its importer is not checked. Both err on the safe side: server code never reaches the client. A dev server warns about the denied file. A build prints one warning per denied file whose every importer is unchecked, naming the file, its importers and the fix below. These warnings are not violations: `onViolation` is not called, and the `error` behavior does not fail the build.
+A file denied by its name (`*.server.*`, a `files` pattern) is judged from the plain imports of it that import protection reads. Some importers are not honored there, so the file is replaced by its mock even though its importer is not checked. (A [marked](#file-markers) file is denied to these importers too, as a violation.) Both err on the safe side: server code never reaches the client. A dev server warns about the denied file. A build prints one warning per denied file whose every importer is unchecked, naming the file, its importers and the fix below. These warnings are not violations: `onViolation` is not called, and the `error` behavior does not fail the build.
 
 An exempt importer that reaches a denied file only through a pattern import:
 
@@ -695,7 +716,7 @@ It is called once per denied import for a build or a dev session, and the answer
 
 Its answers must be stable: the same answer for the same import, whatever the order of the calls or the environment build it runs in.
 
-A denied file that no import the compiler can read brings into an environment (a [pattern import](#pattern-imports)) is asked about itself: `info.importer` is the file, as `info.resolved` is. A file you allow also comes along where nothing checked imports it, in every environment of the same kind.
+A denied file that no import the compiler can read brings into an environment (a [pattern import](#pattern-imports)) is asked about itself: `info.importer` is the file, as `info.resolved` is. So is a [marked](#file-markers) file a module the compiler does not compile imports (a package's barrel that names no Start API): a build decides the marked file's fate when it loads it, before it knows who imports it, so `allowImport` cannot be asked per importer there. Allow the file (`info.resolved`) to take it as it is, or list the importer in `ignoreImporters`. A file you allow also comes along where nothing checked imports it, in every environment of the same kind.
 
 ## Disabling Import Protection
 
@@ -752,10 +773,10 @@ interface ImportProtectionOptions {
 | `client`              | `object`                     | See defaults above                | Additional deny rules for the client environment                                                                                                                      |
 | `client.specifiers`   | `Pattern[]`                  | Framework server specifiers       | Specifier patterns denied in the client environment (additive with defaults)                                                                                          |
 | `client.files`        | `Pattern[]`                  | `['**/*.server.*']`               | File patterns denied in the client environment (replaces defaults)                                                                                                    |
-| `client.excludeFiles` | `Pattern[]`                  | `['**/node_modules/**']`          | Resolved files matching these patterns skip resolved-target checks (file-pattern + marker) (replaces defaults)                                                        |
+| `client.excludeFiles` | `Pattern[]`                  | `['**/node_modules/**']`          | Resolved files matching these patterns skip the file-pattern checks; markers are always checked (replaces defaults)                                                   |
 | `server`              | `object`                     | See defaults above                | Additional deny rules for the server environment                                                                                                                      |
 | `server.specifiers`   | `Pattern[]`                  | `[]`                              | Specifier patterns denied in the server environment (replaces defaults; defaults for `server.specifiers` are `[]`, so unlike `client.specifiers` this isn't additive) |
 | `server.files`        | `Pattern[]`                  | `['**/*.client.*']`               | File patterns denied in the server environment (replaces defaults)                                                                                                    |
-| `server.excludeFiles` | `Pattern[]`                  | `['**/node_modules/**']`          | Resolved files matching these patterns skip resolved-target checks (file-pattern + marker) (replaces defaults)                                                        |
+| `server.excludeFiles` | `Pattern[]`                  | `['**/node_modules/**']`          | Resolved files matching these patterns skip the file-pattern checks; markers are always checked (replaces defaults)                                                   |
 | `onViolation`         | `function`                   | `undefined`                       | Told about each violation that stays (after tree-shaking in a build); reports only                                                                                    |
 | `allowImport`         | `function`                   | `undefined`                       | Decides, before the mock, that a denied import gets the real module (`true`)                                                                                          |

@@ -162,7 +162,8 @@ function info not found` when one of them calls it, and the build says nothing, 
 ## Known incorrect rejections (accepted, R89)
 
 - **An importer outside the scope (`srcDirectory`/`include`) gets the mock of an in-scope denied file it imports.**
-  SPEC J6.7, J6.1. A denied file is judged from the plain imports of it the compiler indexed (at its own compile, and
+  SPEC J6.7, J6.1. File-name denials only (`*.server.*`, `files`): a marked file is a violation for such an importer,
+  reported at its import (node_modules policy, decision 7). A denied file is judged from the plain imports of it the compiler indexed (at its own compile, and
   again when they change: design 4), and an importer outside the scope is never compiled by import protection. A dev
   server serves the mock and reports the denied file; a build serves the mock and prints one warning per denied file
   whose every importer is exempt or outside the scope, naming the file, its importers and the fix (not a violation: no
@@ -549,10 +550,33 @@ setTheme(t) { theme = t }`, `export function getTheme()`), children calling the 
   lose state on both. No test.
 - **Vite: a server fn of a `node_modules` library the app does not list in its `package.json`, called during SSR,
   throws** (coverage review B, F3; `main` is broken there too). Start's library discovery does not bundle such a
-  library (a transitive or hoisted dependency) for SSR, so its `.handler(fn)` is not compiled, and the SSR call reads
-  the missing `serverFnMeta`: `TypeError: Cannot read properties of undefined (reading 'id')`, page 500 (build and
-  dev). `main` resolves `undefined` and renders the page without the value. The browser's HTTP call works on both, and
-  so does everything once the library is declared. Rsbuild bundles and compiles it. No test.
+  library (a transitive or hoisted dependency behind an installed package that does not declare Start) for SSR, so
+  its `.handler(fn)` is not compiled, and the SSR call reads the missing `serverFnMeta`: `TypeError: Cannot read
+properties of undefined (reading 'id')`, page 500 (build and dev). `main` resolves `undefined` and renders the page
+  without the value. The browser's HTTP call works on both, and so does everything once the library is declared.
+  Rsbuild bundles and compiles it. Discovery goes through workspace packages and packages that declare Start (node_modules
+  policy, decision 5), not through an ordinary installed package: Vite keeps that package external on the server,
+  and listing the library would not change how it loads it. The client build warns at the library's module, with
+  both ways out (decision 6, case ii; it does not name the parent: a build does not know a module's importers when
+  it compiles it). `start-plugin-core/tests/integration/start-build-vite-crawl.test.ts`: "a Start package behind an
+  ordinary installed parent: the client build warns at its module".
+- **A package that does not declare Start and forwards a builder under a new name with no builder call ships the
+  app's handler built on it** (node_modules policy, decision 11, A; `main` strips it). `export const chain = base` in
+  a module that names no Start API: Start does not read an undeclared package's modules on demand, so `chain` is not
+  followed. The compile of the module that makes the builder warns once that the package must declare Start
+  (decision 6, case i). `start-plugin-core/tests/integration/start-build-package-policy.test.ts`: "a package that
+  does not declare Start: one warning, naming one of its modules". Fix: the package declares Start as a peer.
+- **Vite RSC: a server function defined in a different file per export condition fails the production build, and
+  development answers each caller with its own file** (node_modules policy, decision 13, A). The RSC environment
+  builds before the client and lists the functions of the files it resolves; the browser's call names the browser's
+  file. Contract: conditional entries re-export one defining module.
+  `react-start-rsc/tests/integration/rsc-start-build-conditional-package.test.ts`. Making development fail the same
+  way needs the provider to resolve every client-registered definer with its own conditions (option B's walk); not
+  done.
+- **`@tanstack/<fw>-start-server` and `@tanstack/start-server-core` imported directly are not server-only-marked**
+  (node_modules policy, decision 12, B, narrow shape). Only the public `@tanstack/<fw>-start/server` entry carries the
+  marker. A module that keeps a client use of the internal packages ships Start's server runtime on Vite (Rsbuild
+  fails on `node:async_hooks`). Both are implementation packages, not documented entry points; no test.
 - **A `<Hydrate>` chunk imports a declaration that a `var`-declaring top-level statement reads** (the rule split
   chunks follow, `main`'s router splitter deletes such a declarator; `main`'s Hydrate transform copies it;
   review-phase2-final 3.2, 4.2). `const cfg = { n: detect() }; if (typeof window !== 'undefined') { var extra = cfg.n }`
