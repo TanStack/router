@@ -180,6 +180,16 @@ export interface RouteHmrPageOptions {
   /** Text the app shows once it rendered. */
   ready: string | RegExp
   /**
+   * More route trees in the app, each compiled by a router plugin instance
+   * of its own (an app with one plugin per route tree, TanStack/router#7174):
+   * its routes directory and generated route tree, relative to the app's
+   * root. The instance takes `pluginOptions` too.
+   */
+  moreRouteTrees?: Array<{
+    routesDirectory: string
+    generatedRouteTree: string
+  }>
+  /**
    * Registers the cleanup (closing the page and the dev server) to run when
    * the test ends. Default: vitest's `onTestFinished`; a concurrent test
    * passes the one of its test context.
@@ -504,19 +514,27 @@ export const Route = createRootRoute({})
   }
 }
 
-/** The router plugin's options for an app at `root`. */
+/** The options of each router plugin instance of an app at `root` (one per route tree). */
 function routerPluginOptions(
   target: TargetFramework,
   root: string,
   options: RouteHmrPageOptions,
-): Partial<Config> {
-  return {
+): Array<Partial<Config>> {
+  const app: Partial<Config> = {
     target,
     routesDirectory: path.join(root, 'routes'),
     generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
     autoCodeSplitting: true,
     ...options.pluginOptions,
   }
+  return [
+    app,
+    ...(options.moreRouteTrees ?? []).map((tree) => ({
+      ...app,
+      routesDirectory: path.join(root, tree.routesDirectory),
+      generatedRouteTree: path.join(root, tree.generatedRouteTree),
+    })),
+  ]
 }
 
 async function viteServer(
@@ -543,23 +561,26 @@ async function viteServer(
     },
     config: { optimizeDeps: { include: prebundled[target] } },
     plugins: ({ root }) => {
-      const router = observeEmitted(
-        options.pluginOptions === null
-          ? tanstackRouter()
-          : options.pluginOptionsAsFunction
-            ? tanstackRouter(() =>
-                getConfig(routerPluginOptions(target, root, options), root),
-              )
-            : tanstackRouter(routerPluginOptions(target, root, options)),
-        emitted,
+      if (options.pluginOptions === null && options.moreRouteTrees) {
+        throw new Error('moreRouteTrees: the plugins take options')
+      }
+      const routers = routerPluginOptions(target, root, options).map((config) =>
+        observeEmitted(
+          options.pluginOptions === null
+            ? tanstackRouter()
+            : options.pluginOptionsAsFunction
+              ? tanstackRouter(() => getConfig(config, root))
+              : tanstackRouter(config),
+          emitted,
+        ),
       )
       const framework =
         options.frameworkPlugin === false
           ? []
           : [frameworkVitePlugins[target]()]
       return options.frameworkPluginFirst
-        ? [...framework, router]
-        : [router, ...framework]
+        ? [...framework, ...routers]
+        : [...routers, ...framework]
     },
   })
   const fullReloads = () =>
@@ -610,10 +631,10 @@ async function rsbuildServer(
       {
         name: 'route-hmr-page',
         setup(api) {
-          api.modifyRspackConfig((config) => {
-            config.plugins.push(
-              tanstackRouterRspack(routerPluginOptions(target, root, options)),
-            )
+          api.modifyRspackConfig((rspackConfig) => {
+            for (const config of routerPluginOptions(target, root, options)) {
+              rspackConfig.plugins.push(tanstackRouterRspack(config))
+            }
           })
         },
       } satisfies RsbuildPlugin,
