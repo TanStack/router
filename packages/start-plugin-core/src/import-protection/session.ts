@@ -33,7 +33,11 @@ import {
   traceOf,
 } from './graph-trace'
 import { Locator } from './locate'
-import { findPatternImport, literalNaming } from './pattern-imports'
+import {
+  findPatternImport,
+  literalNaming,
+  stringLiterals,
+} from './pattern-imports'
 import { matchesAny } from './matchers'
 import { DevReporter, devViolationError } from './report'
 import { fileOrMarkerRule, importerInScope } from './rules'
@@ -2383,6 +2387,13 @@ class ImportProtectionEnv {
     holds?: (id: string) => boolean,
     /** Vite: whether the output kept any code of a module (a denied file served as it is). */
     rendered?: (id: string) => boolean,
+    /**
+     * The environment's resolver (a specifier from an importer to the id it
+     * resolves to, or null): where an importer the compiler does not compile
+     * imports a marked file by a name that is not the file's (a package's
+     * name, an export map).
+     */
+    resolve?: (specifier: string, importer: string) => Promise<string | null>,
   ): Promise<
     Array<{
       severity: 'error' | 'warning'
@@ -2469,7 +2480,7 @@ class ImportProtectionEnv {
         const incoming = this.incoming(v, graph)
         for (const c of incoming.checked) {
           const owner = this.ip.liveEnv(c.env) ?? this
-          add(c.handoff ?? owner.importOf(v, c), owner)
+          add(c.handoff ?? (await owner.importOf(v, c, resolve)), owner)
         }
         const others = new Set([...incoming.exempt, ...incoming.unread])
         if (incoming.checked.length === 0 && others.size > 0) {
@@ -2557,7 +2568,11 @@ class ImportProtectionEnv {
    * file, by the literal that names the file (a package module the compiler
    * does not compile).
    */
-  private importOf(self: EdgeViolation, c: CheckedEdge): EdgeViolation {
+  private async importOf(
+    self: EdgeViolation,
+    c: CheckedEdge,
+    resolve?: (specifier: string, importer: string) => Promise<string | null>,
+  ): Promise<EdgeViolation> {
     const { self: _self, ...violation } = self
     const found = this.patternImportOf(c.importer, self.resolved!)
     return {
@@ -2570,7 +2585,7 @@ class ImportProtectionEnv {
       ...found,
       ...(found.pattern === null &&
         self.rule.type === 'marker' &&
-        this.literalImportOf(c.importer, self.resolved!)),
+        (await this.literalImportOf(c.importer, self.resolved!, resolve))),
     }
   }
 
@@ -2579,16 +2594,28 @@ class ImportProtectionEnv {
    * the first string literal of its raw text naming the file, its position
    * and code frame. Read once the violation survived (a report).
    */
-  private literalImportOf(
+  private async literalImportOf(
     importer: string,
     resolved: string,
-  ): Pick<EdgeViolation, 'loc' | 'snippet' | 'specifier'> | null {
+    resolve?: (specifier: string, importer: string) => Promise<string | null>,
+  ): Promise<Pick<EdgeViolation, 'loc' | 'snippet' | 'specifier'> | null> {
     const text = this.ip.readSource(importer)
-    const found =
-      text === null
-        ? null
-        : literalNaming(text, importer, identify(resolved).path)
-    if (text === null || found === null) {
+    if (text === null) {
+      return null
+    }
+    const file = normalizePath(identify(resolved).path)
+    let found = literalNaming(text, importer, file)
+    // (a name that is not the file's: the one the resolver takes to it)
+    for (const literal of resolve && !found ? stringLiterals(text) : []) {
+      const id = /^[^\s]+$/.test(literal.specifier)
+        ? await resolve!(literal.specifier, importer)
+        : null
+      if (id !== null && normalizePath(identify(id).path) === file) {
+        found = literal
+        break
+      }
+    }
+    if (found === null) {
       return null
     }
     const locator = new Locator(text, importer, () => null)

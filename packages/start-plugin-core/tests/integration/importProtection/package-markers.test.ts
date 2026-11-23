@@ -17,6 +17,7 @@ import { appManifest, installPackage } from '../../package-layouts'
 import {
   rejection,
   reportedViolations,
+  violationsOf,
 } from '../../importProtection/start-apps'
 import type { PackageLayout, StartDeclaration } from '../../package-layouts'
 import type { StartBundler } from '../../build-harness'
@@ -355,3 +356,52 @@ describe.each(startBundlers)('%s build, a hoisted package', (bundler) => {
     timeout,
   )
 })
+
+// A package module the compiler does not compile, importing a marked
+// package by its bare or scoped name (the other package's export map
+// points at the marked file): the report locates the import on its line,
+// with the specifier as written.
+// Source: reviews of the node_modules policy implementation (Astra 6
+// `head-vite-bare-location`, Gemini F5).
+describe.each(startBundlers)(
+  '%s build, a package importing a marked package',
+  (bundler) => {
+    test.each(['secret-lib', '@acme/secret-lib'])(
+      'by %s: the report is at the import, with its specifier',
+      async (name) => {
+        const marked = {
+          [`node_modules/${name}/package.json`]: JSON.stringify({
+            name,
+            type: 'module',
+            exports: { '.': './entry.js' },
+          }),
+          [`node_modules/${name}/entry.js`]: `import '@tanstack/react-start/server-only'\nexport const secret = () => 'MARK_SECRET'\n`,
+        }
+        const error = await rejection(
+          buildStart({
+            bundler,
+            files: {
+              ...marked,
+              'node_modules/wrapper-lib/package.json': JSON.stringify({
+                name: 'wrapper-lib',
+                type: 'module',
+                exports: { '.': './index.js' },
+              }),
+              // (a comment naming the package is no import)
+              'node_modules/wrapper-lib/index.js': `// re-exports '${name}'\nexport const VERSION = '1'\nexport { secret } from '${name}'\n`,
+              'src/entry.ts': `import { secret } from 'wrapper-lib'\nexport const read = () => secret()\n`,
+            },
+            entry: 'src/entry.ts',
+          }),
+        )
+        const reported = violationsOf(error)
+        expect(reported).not.toEqual([])
+        for (const v of reported) {
+          expect(v.importer).toMatch(/^node_modules\/wrapper-lib\/index\.js:3:/)
+          expect(v.specifier).toBe(name)
+        }
+      },
+      timeout,
+    )
+  },
+)

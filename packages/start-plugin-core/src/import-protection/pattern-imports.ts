@@ -366,13 +366,30 @@ export function literalNaming(
   importer: string,
   file: string,
 ): { offset: number; specifier: string } | null {
-  for (const m of text.matchAll(new RegExp(LITERAL, 'g'))) {
-    const specifier = m[1] ?? m[2]!
+  for (const { offset, specifier } of stringLiterals(text)) {
     if (specifier.includes('/') && mayRequire(specifier, importer, file)) {
-      return { offset: m.index, specifier }
+      return { offset, specifier }
     }
   }
   return null
+}
+
+/**
+ * The quoted string literals of `text` (`'…'`, `"…"`) outside its comments
+ * and template literals, by offset: the specifiers an importer may have
+ * written (a resolver tells which one names a file).
+ */
+export function stringLiterals(
+  text: string,
+): Array<{ offset: number; specifier: string }> {
+  const out: Array<{ offset: number; specifier: string }> = []
+  for (const [start, end] of inertRanges(text)) {
+    const quote = text[start]
+    if ((quote === "'" || quote === '"') && text[end - 1] === quote) {
+      out.push({ offset: start, specifier: text.slice(start + 1, end - 1) })
+    }
+  }
+  return out
 }
 
 /** `file` as a specifier relative to `importer` (`./x.ts`, `../lib/x.ts`). */

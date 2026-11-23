@@ -16,6 +16,7 @@ import path from 'node:path'
 import {
   compilerCacheKey,
   emittedMapTexts,
+  identify,
   invariantViolated,
   isRecordedDiagnostic,
   locateDiagnostics,
@@ -977,9 +978,19 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                       nodeGraph(compilation),
                     )
                     for (const { env, ip } of envs) {
+                      const resolve = session.resolvers.get(env.compiler.name)
                       const reports = await ip.surviving(
                         live.get(env.name) ?? [],
                         graph,
+                        undefined,
+                        undefined,
+                        resolve &&
+                          ((specifier, importer) =>
+                            resolve(
+                              path.dirname(identify(importer).path),
+                              specifier,
+                              undefined,
+                            )),
                       )
                       for (const report of reports) {
                         ;(report.severity === 'error'

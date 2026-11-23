@@ -536,6 +536,11 @@ function envCompilerPlugins(
         // build compiles it once)
         (id) => this.getModuleInfo(id) !== null,
         (id) => renderedIn(bundle, id),
+        (specifier, importer) =>
+          this.resolve(specifier, importer).then(
+            (r) => (r && !r.external ? r.id : null),
+            () => null,
+          ),
       )
       // every report first: the build fails once, with all of its errors
       const errors: Array<string> = []
