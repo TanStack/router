@@ -87,15 +87,16 @@ export function loadRouteChunk(
 
   const promise = route.lazyFn().then(
     (lazyRoute) => {
-      // HMR clears the owner before an obsolete import can settle.
-      if (process.env.NODE_ENV === 'production' || route._lazy === promise) {
+      // HMR clears the owner before an obsolete import can settle, and
+      // records which lazy route this route loaded (`_lazyRoute`), inside
+      // the condition production folds away
+      if (
+        process.env.NODE_ENV === 'production' ||
+        (route._lazy === promise && (route._lazyRoute = lazyRoute))
+      ) {
         const { id: _id, ...options } = lazyRoute.options
         Object.assign(route.options, options)
         route._lazy = true
-        if (process.env.NODE_ENV !== 'production') {
-          // route HMR: which lazy route this route loaded
-          route._lazyRoute = lazyRoute
-        }
       }
     },
     (error) => {

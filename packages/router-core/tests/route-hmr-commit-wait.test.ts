@@ -77,12 +77,14 @@ describe('applyRouteHmr: when the route takes an evaluation', () => {
     expect(vite.listeners.get('vite:afterUpdate')?.size).toBe(0)
   })
 
-  it('a router whose document was lost during the update is left as it is without a refresh pass, and reloads after one', () => {
+  it('a hydrated router whose document was lost during the update is left as it is without a refresh pass, and reloads after one; a client-only one updates', () => {
     const reload = vi.fn()
     vi.stubGlobal('location', { ...window.location, reload })
     const vite = viteHot()
     const meta = { file: '/src/routes/wait-lost.tsx', hot: vite.hot }
     const { router, first } = held(meta, {})
+    // a hydrated router (`hydrate()` sets `ssr`)
+    ;(router as any).ssr = {}
     applyRouteHmr('/wait', evaluate('v1'), meta, {})
     ;(router as any)._hmrReload = true
     vite.afterUpdate()
@@ -99,6 +101,14 @@ describe('applyRouteHmr: when the route takes an evaluation', () => {
         apply()
       },
     }
+    const clientOnly: RouteHmrAdapter = {
+      // a client-only root's boundary: it recovers in place
+      settled: (apply) => {
+        ;(react as any)._hmrReload = true
+        ;(react as any).ssr = undefined
+        apply()
+      },
+    }
     const other = { file: '/src/routes/wait-lost-react.tsx' }
     const second = evaluate('w0')
     second.options.component = () => null
@@ -107,10 +117,17 @@ describe('applyRouteHmr: when the route takes an evaluation', () => {
     react = fakeRouter(() => ({ '/wait': second }))
     applyRouteHmr('/wait', second, other, adapter)
     // (a component the refresh pass may patch: the route waits for it)
-    const next = evaluate('w1')
+    const unmarked = evaluate('w1')
+    unmarked.options.component = () => null
+    applyRouteHmr('/wait', unmarked, other, clientOnly)
+    expect(reload).not.toHaveBeenCalled()
+    expect(react._refreshRoute).toHaveBeenCalledTimes(1)
+    ;(react as any)._hmrReload = undefined
+    ;(react as any).ssr = {}
+    const next = evaluate('w2')
     next.options.component = () => null
     applyRouteHmr('/wait', next, other, adapter)
     expect(reload).toHaveBeenCalledTimes(1)
-    expect(react._refreshRoute).not.toHaveBeenCalled()
+    expect(react._refreshRoute).toHaveBeenCalledTimes(1)
   })
 })

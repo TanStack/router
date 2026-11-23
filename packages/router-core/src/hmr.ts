@@ -363,9 +363,18 @@ function arrived(record: HotRecord, adapter: RouteHmrAdapter): void {
 }
 
 /**
- * Whether the router's document is lost: `router._hmrReload` marks a
- * hydrated root whose global boundary caught a render error (the framework
- * cannot render the document again in place, so nothing is published to
+ * Whether a router's catch boundary replaced the document it renders: its
+ * global boundary (or a Solid root route's without a shell) caught a render
+ * error (`router._hmrReload`) and the router hydrated (`router.ssr`), so the
+ * framework cannot render the document again in place. A client-only root's
+ * boundaries reset when the route loads again: its mark counts for nothing.
+ */
+function marked(router: AnyRouter): boolean {
+  return !!router._hmrReload && !!router.ssr
+}
+
+/**
+ * Whether the router's document is lost (`marked`; nothing is published to
  * such a router). Marked before an update, the update reloads the page when
  * it begins (`evaluated`). Marked during one, the page reloads once the
  * framework's refresh pass is through (`settled`): what threw is a
@@ -375,10 +384,11 @@ function arrived(record: HotRecord, adapter: RouteHmrAdapter): void {
  * code's own: the boundary keeps showing it, and the next update reloads.
  */
 function lost(router: AnyRouter, adapter: RouteHmrAdapter): boolean {
-  if (router._hmrReload && adapter.settled) {
+  const isLost = marked(router)
+  if (isLost && adapter.settled) {
     reload()
   }
-  return !!router._hmrReload
+  return isLost
 }
 
 /**
@@ -626,7 +636,7 @@ function evaluated(record: HotRecord, adapter: RouteHmrAdapter): void {
   // A router whose catch boundary holds a render error the framework cannot
   // recover from in place reloads the page (as a route edit without route
   // HMR does): this update is the first after the error.
-  if (owners(record).some(([router]) => router._hmrReload)) {
+  if (owners(record).some(([router]) => marked(router))) {
     reload()
     return
   }
