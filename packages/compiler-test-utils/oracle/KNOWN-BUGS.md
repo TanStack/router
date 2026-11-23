@@ -229,8 +229,36 @@ function info not found` when one of them calls it, and the build says nothing, 
   - two `@refresh` comments in one file, one of them on a type-only statement: the chunk can hold them in the other
     order (solid-refresh takes the first it finds: `granular` on a type, then `skip` on an export, skips the split
     component), and a copy directly above a type statement that follows the imports is erased with it by SWC;
-  - a comment that also holds a JSX pragma is not copied alone.
+  - a comment that also holds a JSX pragma is not copied alone;
+  - a comment on type-only export syntax (`export type { X }`, `export type * from`) is in neither output. That is
+    what the unsplit file gives where TypeScript erases the statement before the refresh plugin reads it (SWC on
+    Rsbuild, solid-refresh on Vite); a refresh plugin that reads comments before erasure (Babel's) reads it in the
+    unsplit file only (Gemini F4, review of the implementation).
     SPEC J2.16. No test (the outcome is the limit).
+- **Solid on Rsbuild: with the component and the loader in one split chunk, the first loader edit after an edit of
+  the route module alone is missed** (review of the implementation, 11-23: Astra, Fable, Gemini; the same on the base,
+  and `main` misses both). The route module's evaluation forgets which chunks evaluated, so the chunk's next
+  evaluation, solid-refresh accepting its own update, reads as the chunk's first since the route module ran: the
+  route does not load again, and the page keeps the old loader's data until the next edit of the chunk, which shows.
+  Telling the two apart needs a signal the host does not give. Seen on Rsbuild (`codeSplitGroupings:
+[['component', 'loader']]`, then a `beforeLoad` or `staleTime` edit, then a loader edit); standalone webpack showed
+  both edits. No test (the outcome is the limit).
+- **React Start on Rsbuild: a root route that renders the document keeps its error component after the edit that
+  fixes the route it caught** (review of the implementation, Astra; the same on the base and on `main`). With a root
+  route whose component renders `<html>` and an error component of its own catching a child's hydration throw, the
+  fixing save leaves the root's error component in the original document on Rsbuild; on Vite the fix shows
+  (`start-plugin-core/tests/integration/start-dev-route-error-recovery.test.ts`, "%s: a root route rendering the
+  document with its own error component: …", Vite only). No test (the outcome is the limit).
+- **A lazy route component of the app inside a split chunk is not imported again after its import failed**
+  (review of the implementation, Astra P2; production too). With `autoCodeSplitting`, the route's component option
+  (the app's `lazyRouteComponent(…)`) lives in the chunk the compiler's own lazy wrapper loads; the router's load
+  preloads only that outer wrapper, so once the app's wrapper failed (its importer fetches a service that is down) a
+  navigation back or `router.invalidate()` renders its failure again, with or without an edit. A save while the
+  service is down renders the new code at once (a component's arrival resets the boundary), which spends the new
+  wrapper's first attempt too; the base happened to show the view at the next navigation, as its save left the new
+  wrapper untried. React and Solid; a Vue page shows nothing for that failure, before any edit too. Unsplit, the
+  router imports the app's wrapper again: `integration/route-hmr-browser-lazy-retry-cases.ts`. No test for the
+  split case (the outcome is the limit).
 - **React on Vite: a split chunk that is no React Refresh boundary shows its new component after a 200 ms bound**
   (unchanged by the route HMR design, 11-23): the route waits for React Refresh's pass before it takes a component the
   pass may patch, and a chunk Refresh does not instrument never reports one. No test (the outcome is the limit).
@@ -1202,12 +1230,15 @@ Paths under `router-plugin/tests/` unless given.
   the mark, so a recovery without a reload (a navigation, the edit that fixes the component) still cost the next
   route edit a full reload. The mark is now set only by the global boundary of a hydrated router, which loses the
   document it renders (route HMR decision 4); a client-only root and every route boundary recover in place when the
-  route loads again. SPEC J3.1, J3.3, G10. `integration/known-bugs-route-hmr-recovered-error.test.ts`: "react, vite: a
+  route loads again, except a hydrated Solid root route without `shellComponent`, whose component renders the
+  document and whose own boundary therefore replaced it (it marks, as the global boundary does; a Vue root renders
+  `<Html>` into the app's container and recovers in place). SPEC J3.1, J3.3, G10. `integration/known-bugs-route-hmr-recovered-error.test.ts`: "react, vite: a
   route edit after a render error the page navigated away from updates in place";
   `integration/route-hmr-browser-throw-then-fix-cases.ts`: "the fix shows in place (autoCodeSplitting:
   $autoCodeSplitting, route error component: $errorComponent)" (Vite and Rsbuild);
   `start-plugin-core/tests/integration/start-dev-route-error-recovery.test.ts`: "%s: with a route error component, an
-  edit that makes a component throw, then one that fixes it, shows the fix".
+  edit that makes a component throw, then one that fixes it, shows the fix", "%s: a root route rendering the document
+  with its own error component: an edit that fixes a component that threw during hydration shows" (Vite).
 - **Two routers on a page: an edit reached the router created last, or the other router's route of the same id**
   (main: the router `window.__TSR_ROUTER__` names): an edit of an eager route file left the app stale when another
   router was created after the app's; two routers of one route tree (React StrictMode's state initializer) left one

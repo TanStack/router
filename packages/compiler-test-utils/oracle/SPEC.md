@@ -561,7 +561,9 @@ dir)` is not a conflict by itself.
   that changes a loader's data shape and the component reading it shows. After a render error, the edit that fixes it
   shows in place where a route boundary or a client-only root's boundary caught it; where the global boundary of a
   hydrated root replaced the document the framework cannot render again in place, the page reloads once (React: in
-  the save; Solid and Vue: at the next route save, an accepted limit in oracle KNOWN-BUGS.md).
+  the save; Solid and Vue: at the next route save, an accepted limit in oracle KNOWN-BUGS.md). So does a hydrated
+  Solid root route without `shellComponent`, whose component renders the document: its own boundary (its
+  `errorComponent`, or the router's `defaultErrorComponent`) replaced it.
 - **J3.4 Correct target.** The update applies to the route whose id the current tree assigns, not to a stale id kept
   in hot data.
 - **J3.5 Root route.** Root route edits, including adding, editing or removing `shellComponent`, hot-update.
