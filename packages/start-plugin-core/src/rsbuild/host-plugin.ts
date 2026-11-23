@@ -176,6 +176,33 @@ export function handOverWarnings(
   return { handed, reported }
 }
 
+/**
+ * A production compilation's modules that it kept without compiling them
+ * (`built`: it compiled the module), each with the warnings its compile
+ * recorded (`LOCATED_DIAGNOSTICS`), for `reportHandedOver`.
+ */
+export function keptWarnings(
+  modules: Iterable<ModuleLike>,
+  built: (module: ModuleLike & { resource: string }) => boolean,
+): Array<{ module: ModuleLike; warning: LocatedDiagnostic }> {
+  const out: Array<{ module: ModuleLike; warning: LocatedDiagnostic }> = []
+  for (const module of modules) {
+    if (
+      !module.resource ||
+      built(module as ModuleLike & { resource: string })
+    ) {
+      continue
+    }
+    for (const warning of (module.buildInfo?.[LOCATED_DIAGNOSTICS.field] ??
+      []) as Array<LocatedDiagnostic>) {
+      if (warning.severity === 'warning') {
+        out.push({ module, warning })
+      }
+    }
+  }
+  return out
+}
+
 /** Adds the server fns a module's `buildInfo` records to a snapshot of the registry. */
 function addServerFns(
   snapshot: Map<string, ReadonlyArray<ServerFnFact>>,
@@ -1009,6 +1036,16 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) =>
             reportUnprinted(compilation, modules as Iterable<ModuleLike>),
           )
+        } else {
+          // a build restored from the persistent cache: the modules it kept
+          // without compiling them report the warnings their compile
+          // recorded (Rspack replays no loader warning of a restored module)
+          compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) => {
+            handedOver = keptWarnings(
+              modules as Iterable<ModuleLike>,
+              compiledHere,
+            )
+          })
         }
         if (session.start.allocator && session.start.opts.mode === 'build') {
           compilation.hooks.processAssets.tap(

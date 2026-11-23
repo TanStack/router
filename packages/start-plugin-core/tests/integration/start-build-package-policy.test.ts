@@ -225,6 +225,36 @@ export const getRouter = () => createRouter({ routeTree })
   )
 })
 
+// Rsbuild's persistent cache restores a module without compiling it: the
+// warning its compile recorded is reported again, so a warm build of a
+// package that does not declare Start still warns (decision 11 A rests on
+// the warning).
+// Source: Fable's review of the node_modules policy implementation,
+// finding 2 (`probes/p3.test.ts`, W1).
+describe('rsbuild build on the persistent cache, a package that does not declare Start', () => {
+  test(
+    'the warm build warns as the cold one',
+    async () => {
+      const { lib, options } = app('npm', 'none')
+      const warns = (build: { diagnostics: unknown; root: string }) =>
+        findDiagnostics(problems(build.diagnostics as never), {
+          severity: 'warning',
+          file: `${lib.directory}/base.js`,
+          root: build.root,
+        }).length > 0
+      const first = await buildStart({
+        bundler: 'rsbuild',
+        ...options,
+        rsbuildConfig: { performance: { buildCache: true } },
+      })
+      expect(warns(first)).toBe(true)
+      const second = await first.rebuild({})
+      expect(warns(second)).toBe(true)
+    },
+    timeout,
+  )
+})
+
 // Rsbuild's persistent cache keeps a plan made under one manifest: a
 // manifest-only edit that makes the package declare Start (or stop) gives
 // the output of a fresh build, in both directions.
