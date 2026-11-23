@@ -1,6 +1,5 @@
 import { realpathSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { crawlFrameworkPkgs } from 'vitefu'
 import { createRouterPluginContext } from '@tanstack/router-plugin/context'
 import {
   applyResolvedBaseAndOutput,
@@ -20,7 +19,6 @@ import {
   createViteConfigPlan,
   createViteDefineConfig,
   createViteResolvedEntryAliases,
-  isStartPackage,
 } from './planning'
 import { devServerPlugin } from './dev-server-plugin/plugin'
 import { previewServerPlugin } from './preview-server-plugin/plugin'
@@ -39,6 +37,7 @@ import {
 import { postServerBuild } from './post-server-build'
 import { serializationAdaptersPlugin } from './serialization-adapters-plugin'
 import { ViteCompilerState } from './compiler-state'
+import { crawlStartPackages } from './crawl'
 import type { ViteStartEnvironment } from './compiler-state'
 import type {
   TanStackStartVitePluginCoreOptions,
@@ -149,38 +148,20 @@ export function tanStackStartVite(
           entryPaths: resolvedEntryPlan.entryPaths,
         })
 
-        const startPackageName =
-          `@tanstack/${corePluginOpts.framework}-start` as const
-
-        // crawl packages that use Start: Start in "peerDependencies", or in
-        // "dependencies" (Start's own packages aside: `resolve.noExternal`
-        // bundles them already). The server bundles them (`ssr.noExternal`):
-        // the compiler must transform their Start APIs, which Node would
-        // load uncompiled.
-        // see https://github.com/svitejs/vitefu/blob/d8d82fa121e3b2215ba437107093c77bde51b63b/src/index.js#L95-L101
-
-        // this is currently uncached; could be implemented similarly as vite handles lock file changes
-        // see https://github.com/vitejs/vite/blob/557f797d29422027e8c451ca50dd84bf8c41b5f0/packages/vite/src/node/optimizer/index.ts#L1282
-
-        const namesStart = (deps: unknown) =>
-          typeof deps === 'object' &&
-          deps !== null &&
-          (startPackageName in deps || '@tanstack/start-client-core' in deps)
-        const crawlFrameworkPkgsResult = await crawlFrameworkPkgs({
+        // the packages that declare Start, which the server bundles
+        // (`ssr.noExternal`) and the optimizer leaves to Vite: the compiler
+        // must transform their Start APIs (`crawlStartPackages`). Per config
+        // resolution: a manifest edit or an install needs a restart.
+        const startPackages = await crawlStartPackages(
           // (the configured root, which can be relative: resolved as Vite does,
           // then physical, as Vite resolves the app's imports from there)
-          root: realpathSync(
+          realpathSync(
             viteConfig.root ? resolve(viteConfig.root) : process.cwd(),
           ),
-          isBuild: command === 'build',
-          isFrameworkPkgByJson(pkgJson) {
-            return (
-              namesStart(pkgJson['peerDependencies']) ||
-              (namesStart(pkgJson['dependencies']) &&
-                !isStartPackage(pkgJson['name']))
-            )
-          },
-        })
+          corePluginOpts.framework,
+          { preserveSymlinks: viteConfig.resolve?.preserveSymlinks === true },
+        )
+        compiler.startPackageNames = new Set(startPackages)
 
         const viteConfigPlan = createViteConfigPlan({
           viteConfig,
@@ -190,8 +171,8 @@ export function tanStackStartVite(
           clientOutputDirectory: resolvedStartConfig.outputDirectories.client,
           serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
           serverFnProviderEnv,
-          optimizeDepsExclude: crawlFrameworkPkgsResult.optimizeDeps.exclude,
-          noExternal: crawlFrameworkPkgsResult.ssr.noExternal.sort(),
+          optimizeDepsExclude: startPackages,
+          noExternal: startPackages,
         })
 
         return {
