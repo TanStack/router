@@ -142,7 +142,8 @@
     "vitest": "catalog:",
     "@arethetypeswrong/cli": "catalog:",
     "publint": "catalog:",
-    "rimraf": "catalog:"
+    "rimraf": "catalog:",
+    "selfsigned": "^5.5.0"
   },
   "peerDependencies": {
     "@rsbuild/core": "^2.0.5",

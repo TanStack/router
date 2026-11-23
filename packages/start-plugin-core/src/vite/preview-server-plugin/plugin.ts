@@ -55,13 +55,30 @@ export function previewServerPlugin(): Plugin {
                 res.setHeader('content-encoding', 'identity')
               }
 
-              // Temporary workaround
-              // Vite preview's compression middleware doesn't support flattened array headers that srvx sets
-              // Call writeHead() before srvx to avoid corruption
-              res.setHeaders(webRes.headers)
+              // Vite preview's compression middleware wraps writeHead() and reads its headers as an object,
+              // so the [name, value, ...] array srvx sends them as would become headers named "0", "1", ...
+              // Set the headers here and give srvx only the body.
+              // setHeader(), not setHeaders(): Vite's HTTPS server is HTTP/2, whose responses have no setHeaders().
+              for (const [name, value] of webRes.headers) {
+                if (name !== 'set-cookie') {
+                  res.setHeader(name, value)
+                }
+              }
+              // (all at once: Headers gives each cookie as its own entry, and setHeader() replaces)
+              const cookies = webRes.headers.getSetCookie()
+              if (cookies.length > 0) {
+                res.setHeader('set-cookie', cookies)
+              }
               res.writeHead(webRes.status, webRes.statusText)
 
-              return sendNodeResponse(res, webRes)
+              return sendNodeResponse(
+                res,
+                // (the status too: with compression, srvx's writeHead() is the one that sends it)
+                new Response(webRes.body, {
+                  status: webRes.status,
+                  statusText: webRes.statusText,
+                }),
+              )
             } catch (error) {
               next(error)
             }
