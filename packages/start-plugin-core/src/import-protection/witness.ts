@@ -258,6 +258,68 @@ export function readRspackWitness(
   return out
 }
 
+/**
+ * Whether an Rspack compilation holds a module for its output, for its
+ * diagnostics: a connection from no module (an entry, an include) arrives
+ * at it, or at a module importing it, through any module, one of no file
+ * included (a Module Federation container entry, a context module). A
+ * module that a rebuild at `finishMake` left unreachable (a server fn's
+ * handler module once the resolver drops the function) stays in the
+ * compilation, and in the persistent cache: it is not held. Not the
+ * graph's `isEntry` and `importers`, which a module of no file does not
+ * ground (import protection's grants). Read once the compilation's modules
+ * are final (`finishModules`); each answer is remembered.
+ */
+export function rspackHolds(compilation: {
+  moduleGraph: {
+    getIncomingConnections: (module: never) => Iterable<RspackConnectionLike>
+  }
+}): (module: { identifier: () => string }) => boolean {
+  type Module = { identifier: () => string }
+  const incoming = (m: Module) =>
+    compilation.moduleGraph.getIncomingConnections(m as never)
+  const held = new Set<string>()
+  const unheld = new Set<string>()
+  return (start) => {
+    const startKey = start.identifier()
+    if (held.has(startKey)) {
+      return true
+    }
+    if (unheld.has(startKey)) {
+      return false
+    }
+    const seen = new Set([startKey])
+    let queue: Array<Module> = [start]
+    while (queue.length > 0) {
+      const next: Array<Module> = []
+      for (const m of queue) {
+        for (const c of incoming(m)) {
+          const origin = c.originModule as Module | null
+          if (origin === null || isClientReference(c)) {
+            held.add(startKey)
+            return true
+          }
+          const k = origin.identifier()
+          if (held.has(k)) {
+            held.add(startKey)
+            return true
+          }
+          if (!seen.has(k) && !unheld.has(k)) {
+            seen.add(k)
+            next.push(origin)
+          }
+        }
+      }
+      queue = next
+    }
+    // (every module seen reaches no entry either: its importers were seen)
+    for (const k of seen) {
+      unheld.add(k)
+    }
+    return false
+  }
+}
+
 /** An Rspack compilation's graph (`rspackNodeGraph`). */
 export interface RspackNodeGraph extends NodeGraph {
   /** Whether `node` is a module of the compilation or of one of its child compilations (what `hold` keeps). */

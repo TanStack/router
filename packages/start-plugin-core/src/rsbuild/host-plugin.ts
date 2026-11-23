@@ -27,13 +27,13 @@ import {
   reportingFailure,
 } from '@tanstack/router-utils/compiler'
 import { NODE_MODULES_RE } from '../compiler/scope'
-import { groundedGraph } from '../import-protection/graph-trace'
 import {
   RSPACK_BUILD_INFO_KEY,
   dedupeKey,
 } from '../import-protection/violations'
 import {
   readRspackWitness,
+  rspackHolds,
   rspackNodeGraph,
 } from '../import-protection/witness'
 import { manifestFunctionsDiffering } from '../server-fns/resolver'
@@ -1093,7 +1093,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       ): Array<{ module: ModuleLike; warning: LocatedDiagnostic }> {
         const out: Array<{ module: ModuleLike; warning: LocatedDiagnostic }> =
           []
-        const held = heldIn(compilation)
+        const held = rspackHolds(compilation as never)
         for (const module of modules) {
           if (
             !module.resource ||
@@ -1159,7 +1159,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         uses.sort((a, b) =>
           a.resource < b.resource ? -1 : a.resource > b.resource ? 1 : 0,
         )
-        const held = heldIn(compilation)
+        const held = rspackHolds(compilation as never)
         for (const module of uses) {
           const warning = session.start.packageUseWarning(
             resourcePath(module.resource),
@@ -1181,32 +1181,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               reports.push(warning.message)
             }
           }
-        }
-      }
-
-      /**
-       * Whether `compilation` holds a module: an entry, or reached from one
-       * (`groundedGraph`, read backward from the module asked about). A
-       * compilation keeps a module that a rebuild at its `finishMake` left
-       * unreachable (a server fn's handler module, once the resolver no
-       * longer lists the function), and the persistent cache restores it:
-       * it is in no output, and reports nothing.
-       */
-      function heldIn(
-        compilation: Rspack.Compilation,
-      ): (module: ModuleLike & { resource: string }) => boolean {
-        let grounded: ReturnType<typeof groundedGraph> | null = null
-        return (module) => {
-          const ip = session.start.ip
-          grounded ??= groundedGraph(
-            nodeGraph(compilation),
-            () => false,
-            (n, g) => ip?.handoffImporters(n, g) ?? [],
-          )
-          return grounded.supported({
-            env: envOf(module).name,
-            id: canonicalResource(module.resource),
-          })
         }
       }
 

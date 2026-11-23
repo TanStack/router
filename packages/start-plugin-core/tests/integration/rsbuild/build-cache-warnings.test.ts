@@ -304,3 +304,68 @@ describe('rsbuild build on the persistent cache, a package that does not declare
     timeout,
   )
 })
+
+/** `exposed-lib`, a package that does not declare Start, whose module makes a client-only fn. */
+const exposedLib = installPackage('npm', {
+  name: 'exposed-lib',
+  files: {
+    'b.js': `import { createClientOnlyFn } from '@tanstack/react-start'\nexport const b = createClientOnlyFn(() => 'MARK_EXPOSED')\n`,
+  },
+})
+
+// A module only a Module Federation container exposes (Rspack's
+// `ContainerPlugin`: the container entry is a module of no file) is in the
+// build: a consumer loads it. Its warnings, and its package's, are reported
+// as for a module an entry imports, by a cold build and by a warm one.
+// Source: round-4 confirmation of the node_modules policy implementation
+// (Astra, `remote-esm`).
+describe('rsbuild build on the persistent cache, a module only a federation container exposes', () => {
+  test(
+    "its package's warning and its own, cold and warm",
+    async () => {
+      const counter = warningCounter([
+        `${exposedLib.directory}/b.js`,
+        'src/role.ts',
+      ])
+      const first = await buildStart({
+        bundler: 'rsbuild',
+        files: {
+          ...exposedLib.files,
+          'src/role.ts': serverParam,
+          'src/widget.ts': `export { b } from 'exposed-lib/b.js'\nexport { requireRole } from './role'\n`,
+          'src/entry.ts': `export const none = 1\n`,
+          'src/ssr-entry.ts': `export const none = 1\n${callByIdExports}`,
+        },
+        packageJson: appManifest([exposedLib]),
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+        rsbuildConfig: {
+          plugins: [counter.plugin],
+          performance: { buildCache: true },
+          environments: {
+            client: {
+              tools: {
+                rspack: (config, { rspack }) => {
+                  config.plugins.push(
+                    new rspack.container.ContainerPlugin({
+                      name: 'remote',
+                      filename: 'remote.js',
+                      exposes: { './widget': './src/widget.ts' },
+                    }),
+                  )
+                },
+              },
+            },
+          },
+        },
+      })
+      const cold = counter.take()
+      expect(cold[`${exposedLib.directory}/b.js`]).toBe(1)
+      expect(cold['src/role.ts']).toBeGreaterThan(0)
+      await first.rebuild({})
+      const warm = counter.take()
+      expect(warm[`${exposedLib.directory}/b.js`]).toBe(1)
+      expect(warm['src/role.ts']).toBeGreaterThan(0)
+    },
+    timeout,
+  )
+})
