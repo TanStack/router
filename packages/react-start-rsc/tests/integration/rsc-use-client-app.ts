@@ -122,6 +122,34 @@ export const getC = createServerFn().handler(() =>
   'src/routes/c.tsx': appWithComp({ imports: '' })['src/routes/c.tsx'],
 }
 
+/**
+ * `packageWidgetApp`, the route's component also reading the marked
+ * module's value through the package's barrel `title.js`: two importers
+ * of one mock, the widget held only by the RSC client reference.
+ */
+export const packageWidgetMixedApp = {
+  ...packageWidgetApp,
+  'node_modules/audit-lib/package.json': JSON.stringify({
+    name: 'audit-lib',
+    version: '1.0.0',
+    type: 'module',
+    peerDependencies: { '@tanstack/react-start': '*' },
+    exports: { './widget': './widget.jsx', './title': './title.js' },
+  }),
+  'node_modules/audit-lib/title.js': `export { secret as title } from './secret.js'\n`,
+  'src/routes/c.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { title } from 'audit-lib/title'
+import { getC } from '../c/page'
+export const Route = createFileRoute('/c')({
+  loader: async () => ({ tree: await getC() }),
+  component: Page,
+})
+function Page() {
+  return <main data-testid="main">{String(title())}{Route.useLoaderData().tree}</main>
+}
+`,
+}
+
 /** `Comp` is a `.client.tsx` file. */
 export const clientFileApp = appWithComp({ name: 'Comp.client', imports: '' })
 

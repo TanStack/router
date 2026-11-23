@@ -125,6 +125,22 @@ interface RspackChunkLike {
   runtime?: Iterable<string> | string
 }
 
+/**
+ * Whether a connection is Rspack's RSC client reference: the module that
+ * lists a server component's `'use client'` imports for the client (no file
+ * of its own) imports each of them through one. A component it holds is in
+ * the app as an entry's module is: the server component that renders it
+ * is. Other file-less holders (a container's exposes, a shared provide)
+ * stay outside the app on purpose (design-rsc-phase1-settlement.md,
+ * amendment 3): the dependency's type tells them apart, not their shape.
+ */
+function isClientReference(c: RspackConnectionLike): boolean {
+  return (
+    (c.dependency as { type?: unknown } | undefined)?.type ===
+    'rsc client reference'
+  )
+}
+
 interface RspackConnectionLike {
   originModule: RspackModuleLike | null
   /** The imported module as resolved (an inner module, when the connection moved to its ConcatenatedModule). */
@@ -435,7 +451,7 @@ export function rspackNodeGraph(
           return false
         }
         for (const c of moduleGraph.getIncomingConnections(module)) {
-          if (c.originModule === null) {
+          if (c.originModule === null || isClientReference(c)) {
             return true
           }
         }
