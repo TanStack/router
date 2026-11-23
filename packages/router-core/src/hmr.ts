@@ -176,10 +176,12 @@ function routers(): Array<AnyRouter> {
   const live: Array<AnyRouter> = []
   for (let i = refs.length - 1; i >= 0; i--) {
     const router = refs[i]!.deref()
-    if (router) {
-      live.push(router)
-    } else {
+    if (!router) {
       refs.splice(i, 1)
+    } else if (router.routesById) {
+      // (a router registers in its first update, before it read its route
+      // tree: one whose constructor threw never did)
+      live.push(router)
     }
   }
   return live
