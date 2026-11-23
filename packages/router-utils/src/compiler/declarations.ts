@@ -257,6 +257,7 @@ const NOTHING: Named = {
   path: null,
 }
 const NONE: ReadonlyArray<Declaration> = []
+const NO_ALIASES: ReadonlyArray<Binding> = []
 
 export class Declarations {
   private readonly rows: Array<ReadonlyArray<Declaration> | undefined> = []
@@ -335,8 +336,8 @@ export class Declarations {
     b: Binding,
     asked: number,
     path: ReadonlyArray<string> | null = null,
-    /** (aliases followed so far: a cycle of them is not valid TypeScript) */
-    depth = 0,
+    /** The aliases followed to get here (a cycle of them, not valid TypeScript, names the value). */
+    chain: ReadonlyArray<Binding> = NO_ALIASES,
   ): Named {
     if (!b.has(SEVERAL)) {
       // one meaning: a type-only import (a type from elsewhere: nothing of
@@ -350,12 +351,12 @@ export class Declarations {
         // declaration and no value, the alias is named for a type only: a
         // value declared beside `N`'s namespace was not used
         const alias = this.alias(b)
-        if (alias !== null && depth < 8) {
+        if (alias !== null && !chain.includes(b)) {
           const through = this.at(
             alias.target,
             NAMESPACE,
             [...alias.names, ...(path ?? [])],
-            depth + 1,
+            [...chain, b],
           )
           return through.types === null
             ? THE_VALUE

@@ -72,10 +72,17 @@ export class SymbolTable {
    * which local bindings are visible in it (`removal/closure.ts`).
    */
   readonly localScopes: Array<{ start: number; end: number }> = []
+  /**
+   * Whether a binding is declared in a namespace's block: it is visible in
+   * the namespace's other blocks too (a reopened namespace), outside its
+   * scope's range (`removal/closure.ts`).
+   */
+  readonly namespaceBlocks: boolean
 
   constructor(private readonly file: SourceFile) {
     const root = file.rootScope
     let last: { start: number; end: number } | null = null
+    let namespaceBlocks = false
     for (const b of file.bindings) {
       const moduleLevel = b.scope === root
       let scopeRange: { start: number; end: number } | null = null
@@ -90,6 +97,7 @@ export class SymbolTable {
         } else {
           scopeRange = last = { start: node.start, end: node.end }
           this.localScopes.push(scopeRange)
+          namespaceBlocks ||= node.type === 'TSModuleBlock'
         }
       }
       this.infos.push({
@@ -107,6 +115,7 @@ export class SymbolTable {
       })
     }
     this.sourceCount = this.infos.length
+    this.namespaceBlocks = namespaceBlocks
   }
 
   ofBinding(b: Binding): SymbolId {

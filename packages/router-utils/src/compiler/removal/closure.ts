@@ -112,7 +112,12 @@ class TypeRefs {
     private readonly table: Declarations,
   ) {}
 
-  private collect(b: Binding, into: Array<TypeRef>): void {
+  private collect(
+    b: Binding,
+    into: Array<TypeRef>,
+    /** Only the references outside this range. */
+    outside?: Range,
+  ): void {
     if (b.has(BindingFlags.TypeParameter)) {
       return
     }
@@ -130,8 +135,12 @@ class TypeRefs {
       ) {
         continue
       }
+      const at = ref.node.start
+      if (outside !== undefined && at >= outside.start && at < outside.end) {
+        continue
+      }
       into.push({
-        at: ref.node.start,
+        at,
         sym: b.id as SymbolId,
         named: this.table.resolve(b, ref),
       })
@@ -143,6 +152,17 @@ class TypeRefs {
       const list: Array<TypeRef> = []
       for (const b of this.file.rootScope.bindings) {
         this.collect(b, list)
+      }
+      // a namespace's member is visible in the namespace's other blocks (a
+      // reopened namespace), where no scope around the text declares it:
+      // those references are looked up with the module's
+      if (this.symbols.namespaceBlocks) {
+        for (const b of this.file.bindings) {
+          const block = b.scope.node
+          if (block.type === 'TSModuleBlock') {
+            this.collect(b, list, block)
+          }
+        }
       }
       this.module = list.sort(byOffset)
     }

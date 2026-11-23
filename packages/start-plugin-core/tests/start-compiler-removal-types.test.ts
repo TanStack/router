@@ -1291,3 +1291,129 @@ export function run() {
     },
   ])('$name', check)
 })
+
+// Review round 1 (2026-11-23): an alias chain of any length (Astra: nine hops
+// fell back to the value), and a type a reopened namespace's other block
+// declares (Astra, Gemini).
+describe('review round 1', () => {
+  test.each<Row>([
+    {
+      // Astra, qualified_depth_reg_9 (twelve hops here)
+      name: 'a chain of twelve import aliases named for a type',
+      code: `${SO}import { getServerDb } from './db.server'
+const seen: Array<string> = []
+const db = getServerDb()
+const Kit = seen.push('ready')
+namespace Kit { export type Options = typeof db }
+import A0 = Kit
+import A1 = A0
+import A2 = A1
+import A3 = A2
+import A4 = A3
+import A5 = A4
+import A6 = A5
+import A7 = A6
+import A8 = A7
+import A9 = A8
+import A10 = A9
+import A11 = A10
+export const fn = createServerOnlyFn((x: A11.Options) => x)
+export const run = () => seen.length
+`,
+      expected: { value: 1 },
+      gone: true,
+    },
+    {
+      // Astra, qualified_depth_live_alias_9 (control: live code reads an
+      // intermediate alias by value, so the value it names stays)
+      name: 'a chain of twelve import aliases, one read by value',
+      code: `${SO}import { getServerDb } from './db.server'
+const db = getServerDb()
+const Kit = db
+namespace Kit { export type Options = number }
+import A0 = Kit
+import A1 = A0
+import A2 = A1
+import A3 = A2
+import A4 = A3
+import A5 = A4
+import A6 = A5
+import A7 = A6
+import A8 = A7
+import A9 = A8
+import A10 = A9
+import A11 = A10
+export const fn = createServerOnlyFn((x: A11.Options) => x)
+export const run = () => A0 === db
+`,
+      expected: { value: true },
+    },
+    {
+      // Astra ns_original, Gemini leak 1
+      name: 'a type the first block of a reopened namespace declares, named in the second',
+      code: `${SO}import { getServerDb } from './db.server'
+namespace NS {
+  const db = getServerDb()
+  export type T = typeof db
+}
+namespace NS {
+  export const fn = createServerOnlyFn((x: T) => x)
+}
+export const run = () => typeof NS.fn
+`,
+      expected: { value: 'function' },
+      gone: true,
+    },
+    {
+      // Gemini leak 1, the type-only variant
+      name: 'a type alias of a reopened namespace naming the other block’s type',
+      code: `${SO}import { getServerDb } from './db.server'
+const db = getServerDb()
+namespace NS {
+  export type T = typeof db
+}
+namespace NS {
+  export type U = T
+}
+export const fn = createServerOnlyFn((x: NS.U) => x)
+export const run = () => typeof fn
+`,
+      expected: { value: 'function' },
+      gone: true,
+    },
+    {
+      // Astra ns_live (control: live code reads the value)
+      name: 'a reopened namespace whose live member reads the value',
+      code: `${SO}import { getServerDb } from './db.server'
+namespace NS {
+  const db = getServerDb()
+  export type T = typeof db
+  export const kept = () => db
+}
+namespace NS {
+  export const fn = createServerOnlyFn((x: T) => x)
+}
+export const run = () => typeof NS.kept()
+`,
+      expected: { value: 'object' },
+    },
+    {
+      // control: a local type of the second block shadows the first block's
+      name: 'a reopened namespace whose second block shadows the type',
+      code: `${SO}const seen: Array<string> = []
+namespace NS {
+  const reg = seen.push('reg')
+  export type T = typeof reg
+}
+namespace NS {
+  export function make() {
+    type T = number
+    return createServerOnlyFn((x: T) => x)
+  }
+}
+export const run = () => [seen.length, typeof NS.make()]
+`,
+      expected: { value: [1, 'function'] },
+    },
+  ])('$name', check)
+})
