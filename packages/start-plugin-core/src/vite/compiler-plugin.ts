@@ -42,6 +42,7 @@ import { TRANSFORM_ID_REGEX } from '../constants'
 import { resolveRegistrySpecifier } from '../server-fns/resolver'
 import { resolveViteId } from '../utils'
 import { isVueSfc } from '../compiler/vue'
+import { NODE_MODULES_RE } from '../compiler/scope'
 import { resolveViteEdgeModuleId } from '../import-protection/edge-modules'
 import { viteDevNodeGraph } from '../import-protection/graph-trace'
 import { heldIn } from '../import-protection/session'
@@ -573,7 +574,13 @@ function envCompilerPlugins(
       },
       transform: {
         filter: state.untestedDependencyFilter,
-        handler: compileTransform,
+        // (an exemption's pattern may match the app's own files too: the
+        // main transform compiles those)
+        handler(code, id, options) {
+          return NODE_MODULES_RE.test(identify(id).path)
+            ? compileTransform.call(this, code, id, options)
+            : null
+        },
       },
     },
   ]
