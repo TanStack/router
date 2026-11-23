@@ -616,6 +616,12 @@ module "…" in the React Client Manifest`. Dev is not affected (the next compil
   window at another gap (45 ms: 4 of 4 runs), where it leaves the server on the old route set. Needs two changes of
   one route file inside one page reload: a tool that renames in two steps, not a person. No test (the outcome is the
   limit).
+- **Start dev: a save right after a route-set reload can log one hydration mismatch** (hotspot 2; seen on CI in
+  `react-start-rsc/tests/integration/rsc-start-hmr-rsbuild.test.ts`, 570daaa791). When another file is saved within
+  about a tenth of a second of the reload Start sends for a route-set change, the reloading document can be rendered
+  on the server before it rebuilt the saved file while the client it loads has the edit already: React logs one
+  hydration mismatch (the server rendered the previous version), rebuilds the page on the client and recovers. Rare
+  when a person saves. No test (the outcome is the limit).
 - **Vite dev: a load of a file that began before the generator replaced it keeps the old text** (hotspot 2 L2; user,
   11-22: decision A). Vite registers a module after its `load` returns: a request that read the route tree (or a
   route file the generator rewrote) before the generator wrote it creates the module afterwards from the old text,
