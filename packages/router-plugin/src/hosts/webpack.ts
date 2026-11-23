@@ -215,6 +215,8 @@ export function createRouterCompilerWebpackPlugin(
         context: routerPluginContext,
         config: userConfig,
         root: compiler.context,
+        // (as the generator resolves it: from the working directory)
+        routesDirectory: path.resolve(userConfig.routesDirectory),
         bundler,
         mode,
       })

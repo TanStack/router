@@ -17,6 +17,7 @@ import {
   fileModifiedAt,
   identify,
   invalidate,
+  normalizePath,
   registerCompilerStats,
   reportCompileDiagnostics,
 } from '@tanstack/router-utils/compiler'
@@ -52,6 +53,12 @@ interface RouterCompilerOptions {
   config: Config
   /** The project root: messages name files relative to it. */
   root: string
+  /**
+   * The routes directory, absolute, as the instance's generator resolves
+   * it: a derived id of a file there that is no route (any more) is this
+   * instance's (`owns`).
+   */
+  routesDirectory: string
   bundler: Bundler
   mode: 'dev' | 'build'
 }
@@ -102,9 +109,11 @@ export class RouterCompiler {
   readonly mode: 'dev' | 'build'
   private readonly configs: Record<'client' | 'server', EnvConfig>
   private readonly registry: RouteRegistryView
+  private readonly routesDirectory: string
 
   constructor(opts: RouterCompilerOptions) {
     this.mode = opts.mode
+    this.routesDirectory = normalizePath(opts.routesDirectory)
     const configFor = (envType: 'client' | 'server'): EnvConfig => {
       const planner = routerPlannerConfigFrom(
         opts.config.codeSplittingOptions,
@@ -167,6 +176,20 @@ export class RouterCompiler {
   /** The registry entry of a file (the scanned path or the real path of a symlink). */
   routeEntry(path: string): RouteEntryFacts | null {
     return this.registry.lookup(path)
+  }
+
+  /**
+   * Whether a file is this instance's: a route of its registry, or a file
+   * under its routes directory (a derived id of one that is no route any
+   * more gets an empty module here). Another instance's route is not: an
+   * app may run one plugin instance per route tree, and each instance
+   * leaves the others' modules as they are.
+   */
+  owns(path: string): boolean {
+    return (
+      this.registry.lookup(path) !== null ||
+      path.startsWith(this.routesDirectory + '/')
+    )
   }
 
   /** Whether the host should transform an id at all. */

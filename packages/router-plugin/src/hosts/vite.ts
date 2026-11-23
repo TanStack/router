@@ -166,6 +166,11 @@ export function createRouterCompilerVitePlugin(
           context: routerPluginContext,
           config: userConfig,
           root: config.root,
+          // (the generator's root is Vite's)
+          routesDirectory: path.resolve(
+            config.root,
+            userConfig.routesDirectory,
+          ),
           bundler: 'vite',
           mode: config.command === 'build' ? 'build' : 'dev',
         }),
@@ -356,8 +361,9 @@ export function createRouterCompilerVitePlugin(
         const file = normalizePath(identity.path)
         const entry = compiler.routeEntry(file)
         if (!entry) {
-          // a derived id of a file that is no longer a route module (J2.13)
-          return identity.derived
+          // a derived id of a file of ours that is no longer a route module
+          // (J2.13); another instance's route is that instance's to compile
+          return identity.derived && compiler.owns(file)
             ? { code: 'export {}\n', map: { mappings: '' } }
             : null
         }

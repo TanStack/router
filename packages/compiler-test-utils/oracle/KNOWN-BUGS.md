@@ -646,6 +646,18 @@ module "…" in the React Client Manifest`. Dev is not affected (the next compil
   1.2.19, checked). A watcher closed after Start has it ends `buildApp` (`start-build-watch-close.test.ts`). `main`
   settles. Rollup behaves the same (no closed state, no `closeWatcher` before the first build), so no upstream fix
   is expected. No test (the outcome is the limit).
+- **A split id of a former route file outside the routes directory is served as the file itself** (two-instance
+  review, 11-23). An app may run one router plugin instance per route tree (TanStack/router#7174), so an instance
+  compiles a `?tsr-split=` id only for a file it owns: a route of its registry, or a file under its
+  `routesDirectory`, whose former routes get an empty module (SPEC J2.13). A file that was a route through
+  `virtualRouteConfig` or a `physical()` mount outside `routesDirectory`, and is no route any more, is no
+  instance's: a request of its old split id (a stale lazy import of a page that kept the old tree) gets the file's
+  own source instead of the empty module. Both lack the split export, so the component is `undefined` either way;
+  the file's top level runs once more. The same rule, read, not run: two instances whose routes directories nest
+  (one tree's directory inside the other's, ignored there by `routeFileIgnorePattern`) both claim the inner tree's
+  split ids, and the outer one's empty module replaces the inner one's chunk. No test (the outcome is the limit;
+  `vite-two-router-plugins.test.ts`: "one instance: a split id of a file of its routes directory that is no route
+  serves an empty module" covers the owned case).
 
 ## Fixed, kept as regression tests
 

@@ -100,7 +100,9 @@ export function createLoaderImpl(
     }
     const file = normalizePath(identity.path)
     if (!compiler.routeEntry(file)) {
-      return identity.derived
+      // a derived id of a file of ours that is no longer a route module
+      // (J2.13); another instance's route is that instance's to compile
+      return identity.derived && compiler.owns(file)
         ? { code: 'export {}\n', map: undefined }
         : { code: bytes, map: inputMap }
     }
