@@ -29,6 +29,7 @@ import {
   routerPlannerConfigFrom,
 } from '../planners'
 import { RouteRegistryView } from '../planners/registry'
+import { DEPENDENCY_ID_RE } from '../planners/dependency-id'
 import { contextInternals } from '../core/router-plugin-context'
 import type { RouterPluginContext } from '../core/router-plugin-context'
 import type { Config } from '../core/config'
@@ -76,12 +77,7 @@ interface CompileRequest {
 /** JS module ids the compiler may transform (query allowed). */
 export const JS_ID_RE = /\.[cm]?[jt]sx?(\?|$)/
 
-/**
- * A dependency module: `node_modules` in its path (not its query). The hosts
- * never compile one (each bundler filters them out natively); a route file
- * there is reported with `dependencyRouteFileWarning`.
- */
-export const DEPENDENCY_ID_RE = /^[^?]*[\\/]node_modules[\\/]/
+export { DEPENDENCY_ID_RE }
 
 /**
  * The warning, once per file per run, for a route file the hosts leave out

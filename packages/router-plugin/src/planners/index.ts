@@ -14,3 +14,4 @@ export {
 } from './config'
 export type { RouterPlannerConfig } from './config'
 export { RouteRegistryView } from './registry'
+export { DEPENDENCY_ID_RE } from './dependency-id'

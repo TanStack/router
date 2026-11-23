@@ -25,7 +25,10 @@ import {
   registerCompilerStats,
   viteLog,
 } from '@tanstack/router-utils/compiler'
-import { RouteRegistryView } from '@tanstack/router-plugin/planners'
+import {
+  DEPENDENCY_ID_RE,
+  RouteRegistryView,
+} from '@tanstack/router-plugin/planners'
 import {
   changedRoutePaths,
   onRoutesChanged,
@@ -98,9 +101,6 @@ export interface StartCompilerPluginOptions {
     }
   }
 }
-
-/** A dependency module: `node_modules` in its path (not its query). */
-const DEPENDENCY_ID_RE = /^[^?]*[\\/]node_modules[\\/]/
 
 /** An id filter no module id matches (a filter's `include` must not be empty). */
 const MATCHES_NO_ID = /^\0no-module$/
