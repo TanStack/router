@@ -4,7 +4,10 @@
     "jsx": "preserve",
     "jsxImportSource": "vue",
     "module": "esnext",
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@tanstack/vue-start/server-only": ["./src/server-only.ts"]
+    }
   },
   "include": ["src", "vite.config.ts", "vite.config.server-entry.ts"]
 }

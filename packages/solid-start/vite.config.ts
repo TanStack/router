@@ -41,6 +41,8 @@ export default mergeConfig(
     externalDeps: [
       '@tanstack/solid-start-client',
       '@tanstack/solid-start-server',
+      // (the server entry's marker: kept as an import, `src/server.tsx`)
+      '@tanstack/solid-start/server-only',
     ],
     cjs: false,
   }),
