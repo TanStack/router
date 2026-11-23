@@ -46,7 +46,12 @@ import { normalizePath } from '../utils'
 import { IMPORT_EDGES_PLANNER } from '../import-protection/violations'
 import { namesStartSpecifier, startRecognizer } from './recognizer'
 import { opaquePackageModule, startCompileScope } from './scope'
-import { PackageClasses, isStartPackage, packageRootOf } from './package-class'
+import {
+  PackageClasses,
+  isStartPackage,
+  namesStart,
+  packageRootOf,
+} from './package-class'
 import { isVueSfc, vueReport } from './vue'
 import { originalPositions } from './reprinted'
 import type {
@@ -607,7 +612,8 @@ export class StartCompilerSession {
     const manifest = this.classes.manifest(`${root}/package.json`)
     if (
       isStartPackage(manifest?.['name']) ||
-      (cls === 'package' && namesStartInMeta(manifest, this.opts.framework))
+      (cls === 'package' &&
+        namesStart(manifest, 'peerDependenciesMeta', this.opts.framework))
     ) {
       return
     }
@@ -726,23 +732,6 @@ export interface ClientPublication {
  */
 export interface StartPackageReach {
   roots: ReadonlySet<string>
-}
-
-/** Whether a manifest names a Start package in `peerDependenciesMeta`. */
-function namesStartInMeta(
-  manifest: Record<string, unknown> | null,
-  framework: CompileStartFrameworkOptions,
-): boolean {
-  const meta = manifest?.['peerDependenciesMeta']
-  return (
-    typeof meta === 'object' &&
-    meta !== null &&
-    Object.keys(meta).some(
-      (name) =>
-        name === `@tanstack/${framework}-start` ||
-        name.startsWith('@tanstack/start-'),
-    )
-  )
 }
 
 function undeclaredPackageMessage(

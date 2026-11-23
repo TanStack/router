@@ -50,25 +50,34 @@ export function declaresStart(
   manifest: Record<string, unknown>,
   framework: CompileStartFrameworkOptions,
 ): boolean {
-  const names = [
-    `@tanstack/${framework}-start`,
-    '@tanstack/start-client-core',
-    '@tanstack/start-server-core',
-    '@tanstack/start-fn-stubs',
-    `@tanstack/${framework}-start-rsc`,
-  ]
-  const lists = (field: string) => {
-    const deps = manifest[field]
-    return (
-      typeof deps === 'object' &&
-      deps !== null &&
-      names.some((name) => name in deps)
-    )
-  }
   return (
-    lists('peerDependencies') ||
+    namesStart(manifest, 'peerDependencies', framework) ||
     (!isStartPackage(manifest['name']) &&
-      (lists('dependencies') || lists('optionalDependencies')))
+      (namesStart(manifest, 'dependencies', framework) ||
+        namesStart(manifest, 'optionalDependencies', framework)))
+  )
+}
+
+/**
+ * Whether a manifest's `field` (a map of package names) names one of the
+ * packages a Start value can be imported from (`declaresStart`'s names).
+ */
+export function namesStart(
+  manifest: Record<string, unknown> | null,
+  field: string,
+  framework: CompileStartFrameworkOptions,
+): boolean {
+  const deps = manifest?.[field]
+  return (
+    typeof deps === 'object' &&
+    deps !== null &&
+    [
+      `@tanstack/${framework}-start`,
+      '@tanstack/start-client-core',
+      '@tanstack/start-server-core',
+      '@tanstack/start-fn-stubs',
+      `@tanstack/${framework}-start-rsc`,
+    ].some((name) => name in deps)
   )
 }
 

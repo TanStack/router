@@ -115,14 +115,34 @@ describe.each(startBundlers)('%s build', (bundler: StartBundler) => {
   )
 
   // `@tanstack/react-form` 1.33.5's shape: Start named in
-  // `peerDependenciesMeta` only, an integration the package left optional.
-  // Source: node_modules policy, decision 6 (A, case iii).
-  test(
-    'a package naming Start in peerDependenciesMeta only: no warning',
-    async () => {
-      const { options } = app('npm', 'peer-meta-only')
-      const build = await buildStart({ bundler, ...options })
-      expect(problems(build.diagnostics).map(({ text }) => text)).toEqual([])
+  // `peerDependenciesMeta` only, an integration the package left optional,
+  // by any name that declares Start (decision 9's set); a name outside it
+  // declares nothing and is no exception.
+  // Source: node_modules policy, decision 6 (A, case iii); reviews of the
+  // implementation (Astra 5 `head-vite-meta-rsc`, Gemini F6.3).
+  test.each<[string, boolean]>([
+    ['@tanstack/react-start', false],
+    ['@tanstack/react-start-rsc', false],
+    ['@tanstack/start-plugin-core', true],
+  ])(
+    'a package naming %s in peerDependenciesMeta only: warned %s',
+    async (name, warned) => {
+      const { lib, options } = app('npm', 'none')
+      const manifest = JSON.parse(
+        lib.files[`${lib.directory}/package.json`]!,
+      ) as Record<string, unknown>
+      const build = await buildStart({
+        bundler,
+        ...options,
+        files: {
+          ...options.files,
+          [`${lib.directory}/package.json`]: JSON.stringify({
+            ...manifest,
+            peerDependenciesMeta: { [name]: { optional: true } },
+          }),
+        },
+      })
+      expect(problems(build.diagnostics).length > 0).toBe(warned)
     },
     timeout,
   )
