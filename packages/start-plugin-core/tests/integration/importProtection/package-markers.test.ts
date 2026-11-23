@@ -411,7 +411,8 @@ describe.each(startBundlers)(
 // filter (a whole-pattern negation) lets every dependency script through,
 // and an empty pattern, which matches no path, is no error.
 // Source: round-2 re-checks of the node_modules policy implementation
-// (Astra 2 `glob-negation`, Gemini 4).
+// (Astra 2 `glob-negation`, Gemini 4); round 3 (Astra 1 `prefix-negation`,
+// `prefix-positive`).
 describe.each(startBundlers)('%s build, exemption patterns', (bundler) => {
   const app = (ignoreImporters: Array<string>) =>
     buildStart({
@@ -445,10 +446,16 @@ describe.each(startBundlers)('%s build, exemption patterns', (bundler) => {
       start: { importProtection: { ignoreImporters } },
     })
 
-  test(
-    "a negated glob that exempts the package's barrel gives it the real module, nothing reported",
-    async () => {
-      const build = await app(['!**/apps/web/**'])
+  // (`./` before the negation, and twice: picomatch reads both as their
+  // root-relative pattern; round-3 re-checks, Astra 1, Fable N4, Gemini 4)
+  test.each([
+    '!**/apps/web/**',
+    './!**/apps/web/**',
+    '././node_modules/ui-kit/**',
+  ])(
+    "%s exempts the package's barrel: the real module, nothing reported",
+    async (pattern) => {
+      const build = await app([pattern])
       expect(
         (await build.client.run(`return String(entry.read())`)).result,
       ).toBe('MARK_SECRET')

@@ -68,6 +68,9 @@ export function dependencyTextFilter(
 export const DEPENDENCY_SCRIPT_RE =
   /^[^?]*[\\/]node_modules[\\/][^?]*\.[cm]?[tj]sx?(?:$|\?)/
 
+/** A pattern's start that the root-relative glob would not say as picomatch reads it (`untestedDependencyIds`). */
+const AMBIGUOUS_PREFIX_RE = /^(?:\.\/)*!|^\.\/\.\//
+
 /**
  * The ids of the dependency scripts the compile scope takes by their path,
  * which a host's text filter must not leave out (`dependencyTextFilter`):
@@ -80,9 +83,10 @@ export const DEPENDENCY_SCRIPT_RE =
  * root-relative and of the absolute paths it matches, each with the pattern
  * as a literal too (the matcher takes a path equal to the pattern before
  * the glob). A pattern no id filter says faithfully (a `RegExp`, matched
- * against a path no id is; a whole-pattern negation; one picomatch refuses)
- * lets every dependency script through: the compile scope decides. An
- * empty pattern matches no path. Ids are normalized (`/`).
+ * against a path no id is; a whole-pattern negation, also behind `./`; a
+ * pattern with more than one leading `./`; one picomatch refuses) lets every
+ * dependency script through: the compile scope decides. An empty pattern
+ * matches no path. Ids are normalized (`/`).
  */
 export function untestedDependencyIds(
   config: ImportProtectionConfig | null,
@@ -108,7 +112,7 @@ export function untestedDependencyIds(
     if (pattern === '') {
       continue
     }
-    if (pattern instanceof RegExp || pattern.startsWith('!')) {
+    if (pattern instanceof RegExp || AMBIGUOUS_PREFIX_RE.test(pattern)) {
       return [DEPENDENCY_SCRIPT_RE]
     }
     const relative = pattern.replace(/^\.\//, '')
