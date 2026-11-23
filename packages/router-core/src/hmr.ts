@@ -197,7 +197,8 @@ function owners(record: HotRecord): Array<[AnyRouter, HotRoute]> {
     if (
       live &&
       (record.meta.lazy
-        ? live._lazy === true &&
+        ? // (set once the route merged the lazy route's options; a route
+          // module's edit that reset `_lazy` leaves those options in place)
           live._lazyRoute !== undefined &&
           record.evaluations.has(live._lazyRoute)
         : record.evaluations.has(live))

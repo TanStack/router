@@ -199,3 +199,57 @@ export const Route = createFileRoute('/')({ component: () => <p>Home</p> })
     )
   },
 )
+
+describe.concurrent.each(['vite', 'rsbuild'] as const)(
+  '%s: a react app whose lazy route is not on screen, its route file without a component',
+  (bundler) => {
+    it(
+      "no longer shows the lazy file's component once an edit removes it, after an edit of the route module",
+      { timeout },
+      async ({ expect, onTestFinished }: TestContext) => {
+        // (review of the implementation, Gemini F3: the route module sets no
+        // component, so only the lazy file's ever reached the route)
+        const other = (loader: string) =>
+          `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/other')({ loader: () => '${loader}' })
+`
+        const otherLazy = (options: string) =>
+          `import { createLazyFileRoute } from '@tanstack/react-router'
+export const Route = createLazyFileRoute('/other')({ ${options} })
+`
+        const app = await openRouteHmrPage({
+          bundler,
+          onTestFinished,
+          files: {
+            'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: () => <p>Home</p> })
+`,
+            'routes/other.tsx': other('v1'),
+            'routes/other.lazy.tsx': otherLazy(
+              'component: () => <p>Lazy other</p>',
+            ),
+          },
+          ready: 'Home',
+        })
+        const visit = (to: string) =>
+          app.evaluate(
+            `window.__APP_ROUTER__.navigate({ to: ${JSON.stringify(to)} }).then(() => document.querySelector('#app').innerText)`,
+          )
+        await visit('/other')
+        await app.page.waitForText('Lazy other', { selector: '#app' })
+        await visit('/')
+        await app.page.waitForText('Home', { selector: '#app' })
+        await app.edit({ 'routes/other.tsx': other('v2') }, 'Home')
+        await app.edit(
+          {
+            'routes/other.lazy.tsx': otherLazy(
+              'notFoundComponent: () => <p>Missing</p>',
+            ),
+          },
+          'Home',
+        )
+        expect(await visit('/other')).toBe('')
+      },
+    )
+  },
+)
