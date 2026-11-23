@@ -584,8 +584,8 @@ export class StartCompilerSession {
    * run): (i) its manifest does not declare Start (`declaresStart`): a
    * Start value it forwards under another name is not followed; (ii) a
    * host that bundles only the packages it found (`reach`, Vite) did not
-   * find it: it sits behind an installed package that does not declare
-   * Start, which the server keeps external. Nothing for Start's own
+   * find it: the app does not list it, or reaches it through an installed
+   * package that does not declare Start, which the server keeps external. Nothing for Start's own
    * packages, or a manifest that names Start in `peerDependenciesMeta`
    * only (an optional integration the package chose not to declare).
    */
@@ -617,7 +617,7 @@ export class StartCompilerSession {
     const message =
       cls === 'package'
         ? undeclaredPackageMessage(this.opts, root, file)
-        : unreachedPackageMessage(this.opts, root, key, reach!.importers())
+        : unreachedPackageMessage(this.opts, root, key, file)
     if (this.warnings.once(root, { code: 'start-package', message: root })) {
       sink.warn(
         { severity: 'warning', message, by: START_ENV, code: 'start-package' },
@@ -718,13 +718,12 @@ export interface ClientPublication {
  */
 /**
  * What a host that bundles only the packages it found knows of them
- * (Vite's crawl, `crawlStartPackages`): their dependency names, and the
- * importers of the module compiling (the bundler's graph, as far as it
- * knows them).
+ * (Vite's crawl, `crawlStartPackages`): their dependency names. (A
+ * build's graph does not know a module's importers when it compiles it,
+ * so the parent that brings a package Start did not find is not named.)
  */
 export interface StartPackageReach {
   names: ReadonlySet<string>
-  importers: () => ReadonlyArray<string>
 }
 
 /** Whether a manifest names a Start package in `peerDependenciesMeta`. */
@@ -757,17 +756,9 @@ function unreachedPackageMessage(
   opts: StartCompilerSessionOptions,
   root: string,
   key: string,
-  importers: ReadonlyArray<string>,
+  file: string,
 ): string {
-  const parentRoot = importers
-    .map((i) => packageRootOf(normalizePath(i)))
-    .find((r) => r !== null && r !== root)
-  const parent = parentRoot?.slice(
-    parentRoot.lastIndexOf('/node_modules/') + 14,
-  )
-  return parent
-    ? `[tanstack-start] ${displayPath(root, opts.root)} declares TanStack Start, but the app reaches it through ${parent}, an installed package that does not: Vite keeps ${parent} external on the server and pre-bundles it in development, so ${key}'s Start APIs are not compiled there. Add ${parent} to ssr.noExternal and optimizeDeps.exclude (listing ${key} alone is not enough).`
-    : `[tanstack-start] ${displayPath(root, opts.root)} declares TanStack Start, but it is no dependency Start found from the app's package.json (through workspace packages and packages that declare Start), so Vite keeps it external on the server and pre-bundles it in development: its Start APIs are not compiled there. List ${key} in the app's dependencies.`
+  return `[tanstack-start] ${displayPath(file, opts.root)} uses TanStack Start, and its package (${displayPath(root, opts.root)}) declares it, but Start did not find ${key} among the app's dependencies (from the app's package.json, through workspace packages and packages that declare Start). Vite keeps it external on the server and pre-bundles it in development, so its Start APIs are not compiled there. List ${key} in the app's dependencies; if the app reaches it through an installed package that does not declare Start, add that package to ssr.noExternal and optimizeDeps.exclude (listing ${key} alone does not change how Vite loads that package).`
 }
 
 export interface StartDiagnosticSink {

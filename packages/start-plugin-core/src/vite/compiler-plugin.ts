@@ -172,7 +172,6 @@ function envCompilerPlugins(
       env.type,
       // a Vue SFC's script block, Vue's output
       isVueSfc(identity.path) ? readInputMap : undefined,
-      () => this.getModuleInfo(id)?.importers ?? [],
     )
     let mock = state.afterCompile(s, env, id, out, (error) => this.error(error))
     if (mock instanceof Promise) {

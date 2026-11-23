@@ -837,7 +837,6 @@ export class ViteCompilerState implements ClientBuilds {
     code: string,
     envType: 'client' | 'server',
     inputMap?: () => InputSourceMap | null,
-    importers?: () => ReadonlyArray<string>,
   ): void {
     // a Vue SFC's refusals are positioned in the SFC (`at`), not in `code`
     const frameOf = inputMap ? null : code
@@ -864,9 +863,7 @@ export class ViteCompilerState implements ClientBuilds {
         warn: (d, at, generated) => ctx.warn(log(d, at, generated)),
       },
       inputMap,
-      this.startPackageNames && importers
-        ? { names: this.startPackageNames, importers }
-        : undefined,
+      this.startPackageNames ? { names: this.startPackageNames } : undefined,
     )
   }
 
