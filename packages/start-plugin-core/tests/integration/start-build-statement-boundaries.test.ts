@@ -1,7 +1,7 @@
 /**
  * A removal inside a function keeps the statement boundary the source had:
  * with the declaration only removed code read gone (SPEC J4.12, the core's
- * orphan cleanup), the statement after it must not continue the one before
+ * removal), the statement after it must not continue the one before
  * it when that one has no `;` and the next starts with a token that could
  * continue it (`(`, `[`, a template, `+`, `-`, a regular expression).
  * `let y = foo`, `const local = 1;`, `(mk)()` must not become `foo(mk)()`.

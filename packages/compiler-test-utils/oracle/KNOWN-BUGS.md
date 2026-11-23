@@ -398,7 +398,7 @@ declaration table of 11-23). Rows: `start-plugin-core/tests/start-compiler-remov
 - **Self-reads are followed through code that runs on the spot only** (1.4 of the design): a function counts only as
   the callee of a call or `new` written there. A getter read on the spot (`const x = ({ get data() { return x } }).data`),
   a generator advanced with `.next()`, a method called through a member (`(function () { return x }).call(null)`,
-  `({ m() { return x } }).m()`), a class expression's constructor or instance field run by `new (class { y = x })()`
+  `({ m() { return x } }).m()`), a class expression's constructor or instance field run by `new (class { y = x })()`,
   an async call awaited in the initialiser (`await (async () => x)()`) and a function called as a template tag are not
   followed: such a declarator leaves where the source throws (or rejects) at once. Base kept these declarators below
   the top level. The difference is observable where the code catches the error itself: a method that catches the
