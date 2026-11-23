@@ -46,7 +46,7 @@ import type {
   PlanEdges,
   Segment,
 } from './plan'
-import type { OutputDecl, Placement } from './placement'
+import type { OutputDecl, Placement, RootRef } from './placement'
 import type { SymbolId } from './symbols'
 import type { TopLevelItem, Unit, UnitId } from './units'
 import type {
@@ -196,8 +196,10 @@ function includedUnitsOf(
   item: TopLevelItem,
   included: ReadonlySet<number>,
   placement: Placement,
-  derived: boolean,
+  /** A derived output's roots; `null`: the env module. */
+  roots: ReadonlyArray<RootRef> | null,
 ): Set<UnitId> {
+  const derived = roots !== null
   const set = new Set<UnitId>()
   for (const uid of item.units) {
     const u = plan.t1.units[uid]!
@@ -208,10 +210,12 @@ function includedUnitsOf(
       // placement dropped (`droppedTypeUnits`); ambient value declarations
       // (`declare enum`, `declare var`, …) are copied: erased by
       // TypeScript, but a TS transform resolves the names through them (Oxc
-      // inlines `declare enum` members)
+      // inlines `declare enum` members), and so is a type unit a planner
+      // rooted in the output (its text is what the planner wants there)
       if (
         derived
-          ? isAmbientValueDeclaration(u.node)
+          ? isAmbientValueDeclaration(u.node) ||
+            roots.some((r) => r.t === 'unit' && r.id === uid)
           : !isTypeOnlyExport(u.node) && !placement.droppedTypeUnits.has(uid)
       ) {
         set.add(uid)
@@ -305,7 +309,7 @@ function renderEnv(
       continue // (its text is a planner's)
     }
     endLine(item.nodeRange.end, item.range.end)
-    const retained = includedUnitsOf(plan, item, included, placement, false)
+    const retained = includedUnitsOf(plan, item, included, placement, null)
     let keepExport = true
     for (const uid of item.units) {
       const u = units[uid]!
@@ -734,7 +738,7 @@ function renderDerived(
   // in derived outputs, after-header units follow the included import statements
   let importsEnd = -1
   for (const item of items) {
-    const inc = includedUnitsOf(plan, item, included, placement, true)
+    const inc = includedUnitsOf(plan, item, included, placement, decl.roots)
     if (inc.size === 0) {
       continue
     }

@@ -47,6 +47,7 @@ import type {
   PlanContext,
   SymRef,
   SymbolId,
+  Unit,
 } from '@tanstack/router-utils/compiler'
 import type {
   CallExpression,
@@ -455,7 +456,7 @@ export function planHmrBlock(
     ],
   })
   const groups = splitGroups(round)
-  refreshPragmas(ctx, groups)
+  refreshStatements(ctx, round, groups)
   if (!vite) {
     chunkHmr(ctx, round, groups)
     keptReaderHmr(ctx, round)
@@ -483,165 +484,125 @@ function splitGroups(round: RouterRound): SplitGroups {
 }
 
 /**
- * The directive a refresh plugin reads in a comment of the module, as a
- * comment of its own, by that plugin's own rule: solid-refresh's whole
- * comment `@refresh granular|skip|reload` (one space; the first one it finds
- * wins; it reads every comment), React Refresh's `@refresh reset` (one space)
- * in a comment it reads (`reactReadsComment`); null for a comment no plugin
- * acts on.
+ * The refresh plugins (React Refresh, solid-refresh) read `@refresh` in a
+ * module's comments, each by a rule of its own (any comment, a comment
+ * leading its line, none in syntax TypeScript erases). In development, a
+ * split chunk holding components therefore holds the file's `@refresh`
+ * comments (SPEC J2.16), without a statement running twice or a binding
+ * becoming two:
+ *
+ * - a statement TypeScript erases is in the chunk too, as written, in its
+ *   place (it runs nowhere);
+ * - any other statement is where the core puts it, and its comments are
+ *   also copied alone, as written, after the chunk's imports: on a line of
+ *   their own when they lead their line in the file or end it, after a `;`
+ *   otherwise (which of the two is the one distinction a refresh plugin
+ *   makes that a copy can change);
+ * - but not the comments inside a statement no chunk can hold a copy of
+ *   (an import, the route, a statement that is only an expression), nor a
+ *   comment that also holds a JSX pragma: those stay where they mean what
+ *   they mean in the file.
  */
-function refreshDirective(
-  file: SourceFile,
-  comment: Comment,
-  bounds: CommentBounds,
-): string | null {
-  const solid = /^\s*@refresh (granular|skip|reload)\s*$/.exec(comment.value)
-  if (solid) {
-    return `// @refresh ${solid[1]}\n`
-  }
-  return comment.value.includes('@refresh reset') &&
-    reactReadsComment(file, comment, bounds)
-    ? '/* @refresh reset */\n'
-    : null
-}
-
-/** The comments of a module by their end and by their start offsets. */
-interface CommentBounds {
-  byEnd: Map<number, number>
-  byStart: Map<number, number>
-}
-
-/** Whitespace other than line terminators. */
-const INLINE_SPACE = /[^\S\n\r\u2028\u2029]/
-
-/** TypeScript syntax the TypeScript transform removes, with its comments. */
-const TYPE_ONLY: ReadonlySet<string> = new Set([
-  'TSTypeAnnotation',
-  'TSTypeAliasDeclaration',
-  'TSInterfaceDeclaration',
-  'TSTypeParameterDeclaration',
-  'TSTypeParameterInstantiation',
-  'TSDeclareFunction',
-])
-
-/**
- * Whether React Refresh's transform reads a comment, as measured where it
- * acts: SWC (Rsbuild) reads one that leads its line (only whitespace and
- * comments before it on the line) or follows the module's last token, and
- * none in TypeScript syntax the TypeScript transform removed first; Oxc
- * (Vite 8) reads none, so carrying one changes nothing there. (Babel's
- * plugin reads every comment, a superset of SWC's.)
- */
-function reactReadsComment(
-  file: SourceFile,
-  comment: Comment,
-  { byEnd, byStart }: CommentBounds,
-): boolean {
-  const source = file.source
-  let leading: boolean
-  for (let p = comment.start; ; ) {
-    while (p > 0 && INLINE_SPACE.test(source[p - 1]!)) {
-      p--
-    }
-    if (p === 0 || /[\n\r\u2028\u2029]/.test(source[p - 1]!)) {
-      leading = true
-      break
-    }
-    const before = byEnd.get(p)
-    if (before === undefined) {
-      leading = false
-      break
-    }
-    p = before
-  }
-  if (!leading) {
-    // after the module's last token
-    for (let p = comment.end; ; ) {
-      while (p < source.length && /\s/.test(source[p]!)) {
-        p++
-      }
-      if (p === source.length) {
-        break
-      }
-      const after = byStart.get(p)
-      if (after === undefined) {
-        return false
-      }
-      p = after
-    }
-  }
-  let child: Node | null = null
-  for (
-    let node = file.nodeAt(comment.start);
-    node;
-    node = file.parentOf(node)
-  ) {
-    const typed = node as Node & {
-      declare?: boolean
-      importKind?: string
-      exportKind?: string
-      typeAnnotation?: Node | null
-    }
-    if (
-      TYPE_ONLY.has(node.type) ||
-      typed.declare === true ||
-      typed.importKind === 'type' ||
-      typed.exportKind === 'type' ||
-      ((node.type === 'TSAsExpression' ||
-        node.type === 'TSSatisfiesExpression' ||
-        node.type === 'TSTypeAssertion') &&
-        child !== null &&
-        typed.typeAnnotation?.start === child.start &&
-        typed.typeAnnotation.end === child.end)
-    ) {
-      return false
-    }
-    child = node
-  }
-  return true
-}
-
-/**
- * The refresh plugins read a `@refresh` pragma per module, in any of its
- * comments: a split chunk holding components carries the route file's
- * pragmas, in their order (SPEC J2.16), so its components refresh as the
- * file asks. Only the pragma: the rest of its comment (another pragma, a
- * `@jsxImportSource` written after the imports) stays where it was.
- */
-function refreshPragmas(ctx: PlanContext, groups: SplitGroups): void {
+function refreshStatements(
+  ctx: PlanContext,
+  round: RouterRound,
+  groups: SplitGroups,
+): void {
   const { file } = ctx.analysis
-  // (most route files have no pragma: no comment list is read for them)
+  // (most route files have none: no comment list is read for them)
   if (!file.source.includes('@refresh')) {
     return
   }
-  const bounds: CommentBounds = { byEnd: new Map(), byStart: new Map() }
-  for (const c of file.comments) {
-    bounds.byEnd.set(c.end, c.start)
-    bounds.byStart.set(c.start, c.end)
-  }
-  const pragmas = file.comments.flatMap(
-    (c) => refreshDirective(file, c, bounds) ?? [],
+  const { items, units } = ctx.t1
+  const routeUnits = new Set(
+    ctx.t1.declaringUnits.get(round.route.routeSym) ?? [],
   )
-  if (pragmas.length === 0) {
-    return
+  routeUnits.add(round.route.optionsUnit.id)
+  const erased = new Set<Unit['id']>()
+  const copies: Array<string> = []
+  for (const comment of file.comments) {
+    if (!comment.value.includes('@refresh')) {
+      continue
+    }
+    const item = items.find(
+      (i) => i.range.start <= comment.start && comment.end <= i.range.end,
+    )
+    if (
+      item &&
+      item.units.length > 0 &&
+      item.units.every((id) => units[id]!.kind === 'type')
+    ) {
+      for (const unit of item.units) {
+        erased.add(unit)
+      }
+      continue
+    }
+    const inside =
+      item !== undefined &&
+      comment.start >= item.nodeRange.start &&
+      comment.end <= item.nodeRange.end
+    if (
+      comment.value.includes('@jsx') ||
+      (inside &&
+        (item.kind === 'ImportDeclaration' ||
+          item.kind === 'ExpressionStatement' ||
+          item.units.some((unit) => routeUnits.has(unit))))
+    ) {
+      continue
+    }
+    const text = file.source.slice(comment.start, comment.end)
+    copies.push(leadsItsLine(file, comment) ? `${text}\n` : `;${text}\n`)
   }
   for (const [groupKey, g] of groups) {
     if (!g.component) {
       continue
     }
-    ctx.rewrites.addGenerated({
-      body: [{ k: 'text', parts: pragmas }],
-      declares: [],
-      effectful: false,
-      anchor: { k: 'after-header' },
-      home: ctx.declareOutput({
-        kind: 'split',
-        key: groupKey,
-        derived: { kind: 'split', value: groupKey },
-      }),
-      by: ROUTER_PLANNER,
+    const output = ctx.declareOutput({
+      kind: 'split',
+      key: groupKey,
+      derived: { kind: 'split', value: groupKey },
     })
+    for (const unit of erased) {
+      ctx.addRoot(output, { t: 'unit', id: unit })
+    }
+    if (copies.length > 0) {
+      ctx.rewrites.addGenerated({
+        body: [{ k: 'text', parts: copies }],
+        declares: [],
+        effectful: false,
+        anchor: { k: 'after-header' },
+        home: output,
+        by: ROUTER_PLANNER,
+      })
+    }
   }
+}
+
+/**
+ * Whether only whitespace and comments precede `comment` on its line, or
+ * follow it in the module (the two places a refresh plugin that does not
+ * read every comment reads one).
+ */
+function leadsItsLine(file: SourceFile, comment: Comment): boolean {
+  const { source, comments } = file
+  const blank = (p: number) =>
+    /\s/.test(source[p]!) || comments.some((c) => c.start <= p && p < c.end)
+  let last = true
+  for (let p = comment.end; last && p < source.length; p++) {
+    last = blank(p)
+  }
+  if (last) {
+    return true
+  }
+  for (let p = comment.start - 1; p >= 0; p--) {
+    if (/[\n\r\u2028\u2029]/.test(source[p]!)) {
+      break
+    }
+    if (!blank(p)) {
+      return false
+    }
+  }
+  return true
 }
 
 /**
