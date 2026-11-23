@@ -98,3 +98,106 @@ export function lazyRetrySuite(bundler: 'vite' | 'rsbuild') {
     },
   )
 }
+
+/** A loaded route `/item` whose lazy component fetches its configuration (`v=<version>`) first. */
+const item = (target: TargetFramework, version: number) =>
+  `import { createFileRoute, lazyRouteComponent } from '@tanstack/${target}-router'
+export const Route = createFileRoute('/item')({
+  component: lazyRouteComponent(async () => {
+    await (await fetch('/page-config.json?v=${version}')).json()
+    return import('../view')
+  }),
+  pendingMs: 0,
+  pendingMinMs: 800,
+  pendingComponent: () => <p>loading item</p>,
+})
+`
+
+const home = (target: TargetFramework) =>
+  `import { createFileRoute } from '@tanstack/${target}-router'
+export const Route = createFileRoute('/')({ component: () => <p>home</p> })
+`
+
+export function overlappingFailuresSuite(bundler: 'vite' | 'rsbuild') {
+  describe.concurrent.each(['react', 'solid', 'vue'] as const)(
+    `${bundler} %s: a loaded lazy route component, two saves whose imports both fail`,
+    (target) => {
+      it(
+        'shows the component again without its pending component (review of the implementation, Astra re-check P2)',
+        { timeout },
+        async ({ expect, onTestFinished }: TestContext) => {
+          const app = await openRouteHmrPage({
+            bundler,
+            target,
+            onTestFinished,
+            pluginOptions: { autoCodeSplitting: false },
+            files: {
+              'routes/index.tsx': home(target),
+              'routes/item.tsx': item(target, 1),
+              'view.tsx': view[target],
+            },
+            ready: 'home',
+          })
+          // the service answers the first version; it is slow, then down, for
+          // the two saves': each answers when released
+          const releases = new Map<string, () => void>()
+          const released = (version: string) =>
+            new Promise<void>((resolve) => releases.set(version, resolve))
+          const waits = { '2': released('2'), '3': released('3') }
+          await app.page.page.route('**/page-config.json*', async (request) => {
+            const version = new URL(request.request().url()).searchParams.get(
+              'v',
+            )!
+            if (version === '1') {
+              return request.fulfill({ status: 200, body: '{}' })
+            }
+            await waits[version as '2' | '3']
+            return request.fulfill({ status: 503, body: 'Service Unavailable' })
+          })
+          const navigate = (to: string) =>
+            app.evaluate(`void window.__APP_ROUTER__.navigate({ to: '${to}' })`)
+          await navigate('/item')
+          await app.page.waitForText('the view', { selector: '#app' })
+          await navigate('/')
+          await app.page.waitForText('home', { selector: '#app' })
+          // two saves, each importing again while the service is slow (each
+          // edit's outcome waits for its request)
+          const edits: Array<Promise<unknown>> = []
+          for (const version of [2, 3]) {
+            const requested = app.page.page.waitForRequest((request) =>
+              request.url().includes(`page-config.json?v=${version}`),
+            )
+            edits.push(
+              app.edit({ 'routes/item.tsx': item(target, version) }, 'home'),
+            )
+            await requested
+          }
+          // the newest fails first, then the older one
+          for (const version of ['3', '2']) {
+            const answered = app.page.page.waitForResponse((response) =>
+              response.url().includes(`page-config.json?v=${version}`),
+            )
+            releases.get(version)!()
+            await answered
+          }
+          await Promise.all(edits)
+          const shown = await app.evaluate<Array<string>>(`(async () => {
+  const root = document.querySelector('#app')
+  const texts = [root.textContent]
+  const observer = new MutationObserver(() => {
+    if (texts.at(-1) !== root.textContent) texts.push(root.textContent)
+  })
+  observer.observe(root, { subtree: true, childList: true, characterData: true })
+  await window.__APP_ROUTER__.navigate({ to: '/item' })
+  await new Promise((resolve) => setTimeout(resolve, 50))
+  observer.disconnect()
+  return texts
+})()`)
+          expect(shown).not.toContain('loading item')
+          expect(shown.at(-1)).toBe('the view')
+          expect(app.loads()).toBe(1)
+        },
+      )
+    },
+  )
+}

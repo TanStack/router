@@ -81,7 +81,7 @@ export interface LazyRouteComponentHot {
     importer: () => Promise<any>,
     exportName: string | undefined,
   ) => boolean
-  /** The wrapper's load in flight (what its `preload()` returns), if any. */
+  /** The wrapper's load in flight (what its `preload()` returns), if any; a function of the slot, called unbound. */
   pending: () => Promise<any> | undefined
   setPending: (promise: Promise<any> | undefined) => void
   /** The component the wrapper holds (`undefined` or `null`: none). */
@@ -286,7 +286,9 @@ function load(
   adapter: RouteHmrAdapter,
 ): void {
   const hot: LazyRouteComponentHot = wrapper.__tsrHot
-  const waiting = () => hot.pending()
+  // (the slot's own function: the same one for every import of the wrapper,
+  // so whichever import settles last removes it)
+  const waiting = hot.pending
   const promise: Promise<any> = loading.then(
     (module) => {
       if (hot.pending() !== promise) {
