@@ -500,10 +500,11 @@ dir)` is not a conflict by itself.
   only; Babel any) must not become effective in a chunk. Warning and leaving the file unsplit is also acceptable
   (J2.8). Tests assert the rendered outcome only, compiling the untouched and the compiled module with the project's
   real JSX transform and defaults, never comment placement or the runtime import's spelling. In development, a chunk
-  holding components carries the file's `@refresh` pragmas that its refresh plugin reads (solid-refresh's `granular`,
-  `skip`, `reload`; React Refresh's `reset`), which the refresh plugins read per module: its components refresh as the
-  file asks. Only the pragma: the rest of its comment (a `@jsxImportSource` after the imports) means what it means in
-  the file.
+  holding components carries the file's `@refresh` comments (solid-refresh's `granular`, `skip`, `reload`; React
+  Refresh's `reset`), which the refresh plugins read per module, each by a rule of its own: its components refresh as
+  the file asks. The comment does nothing else: its statement runs as often as without it, and a binding stays one
+  (R153). A comment that also holds another pragma (a `@jsxImportSource` after the imports) means what it means in the
+  file. Placements where the chunk differs are accepted limits (oracle KNOWN-BUGS.md).
 - **J2.17 Deprecated `assert` attributes.** An import written with `assert` in a route module (`import data from
 './data.json' assert { type: 'json' }`) keeps working wherever it lands, and its attribute keeps its meaning where
   the bundler honours attributes. The printed keyword (`assert` or `with`) is free: no public host observes it.
@@ -529,9 +530,8 @@ dir)` is not a conflict by itself.
   least once and the page shows its new data; an obsolete loader the edit replaced or removed does not run again.
   Vite and Rsbuild/Rspack (webpack lower priority); React, Solid, Vue. A lazy route file (`createLazyFileRoute`,
   `.lazy.tsx`) is a file route module too: an edit of it reaches the live route's lazy options, also of a route that
-  has not loaded them yet. An edit that removes a lazy option of a loaded route, or whose route on the router the
-  route HMR code finds doesn't load a lazy file (another router's route of the same id, J3.11), reloads the page, as
-  `main` does on every lazy file edit.
+  has not loaded them yet. An edit that removes a lazy option of a loaded route reloads the page, as `main` does on
+  every lazy file edit. Which routers take an edit: J3.11.
 - **J3.2 Component identity is kept for compatible edits.** For compatible hot updates, the router keeps its
   lazy-wrapper identity and lets the framework's refresh decide the component's (React; Solid and Vue keep a
   component their refresh patches in place), and shows the new code. Where
@@ -555,10 +555,13 @@ dir)` is not a conflict by itself.
   reload is acceptable only for factory-built options (§2.2), and on Solid for a rename or a removed component in an
   unsplit route file (solid-refresh invalidates a module that lost a component), for a component that moves to
   another module (a `codeSplitGroupings` edit), and for one removed from a split chunk another component stays in
-  (solid-refresh stops patching that chunk), and on Solid + Vite for the return of a deleted file a split component
-  reads after its chunk failed to import (solid-refresh patches a module only in its own update there): one reload,
-  later edits in place. A component added or removed next to
-  components that stay where they are shows in place.
+  (solid-refresh stops patching that chunk), and on Solid for the return of a deleted file a split component reads
+  after its chunk failed to import (solid-refresh patches a module only in its own update on Vite): one reload, later
+  edits in place. A component added or removed next to components that stay where they are shows in place. One save
+  that changes a loader's data shape and the component reading it shows. After a render error, the edit that fixes it
+  shows in place where a route boundary or a client-only root's boundary caught it; where the global boundary of a
+  hydrated root replaced the document the framework cannot render again in place, the page reloads once (React: in
+  the save; Solid and Vue: at the next route save, an accepted limit in oracle KNOWN-BUGS.md).
 - **J3.4 Correct target.** The update applies to the route whose id the current tree assigns, not to a stale id kept
   in hot data.
 - **J3.5 Root route.** Root route edits, including adding, editing or removing `shellComponent`, hot-update.
@@ -576,9 +579,12 @@ dir)` is not a conflict by itself.
   J3.1–J3.4.
 - **J3.10 Route tree edits in dev** (a new route file, a route kind change) reach the client tree and the page (reload
   allowed, J1.10).
-- **J3.11 An update the router on the page does not have.** With a second router created after the app's (the route
-  HMR code finds that one), an edit of a route file leaves the app working: the edit's component shows, the app's
-  router still navigates, no error. Whether the edit also reaches the app's router is not required.
+- **J3.11 Several routers on a page.** An edit of a route file reaches every router of the page that holds that
+  file's route (a route the file evaluated to, or one that loaded the lazy route file's options), whichever router
+  was created last: two routers of one route tree (React StrictMode's state initializer creating it twice) both show
+  it. A router whose route of the same id comes from another file (a code router of a widget, a second route tree
+  compiled by a router plugin instance of its own) keeps its route as it is. The app keeps working: it still
+  navigates, no error.
 
 ### J4 Start environment separation (start-compiler)
 

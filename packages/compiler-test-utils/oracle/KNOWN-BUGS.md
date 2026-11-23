@@ -47,12 +47,6 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
   two body edits: every edit", "a helper component after the route component removed, then two body edits: every
   edit"; Rsbuild also "a helper component removed, then two body edits: every edit" (autoCodeSplitting: true; the
   rows' edits before the pin run as ordinary tests). Fix: upstream; every edit shows.
-- **A route edit reloads the page after a render error the page already recovered from** (React: the global
-  boundary; Solid and Vue: any router boundary): the boundary's catch marks the router for a reload (R70) and nothing
-  clears the mark, so a recovery without a reload (a navigation resets the boundary) still costs the next route edit a
-  full reload. Open: R70 keeps the mark on purpose (review round 3, G9-2). SPEC J3.1, G10.
-  `router-plugin/tests/integration/known-bugs-route-hmr-recovered-error.test.ts`: "react, vite: a route edit after a
-  render error the page navigated away from updates in place". Fix: the edit updates in place.
 - **Vite full-bundle dev: an edit that turns what another module imports into a server fn builder does not recompile
   the importer**, whose client output keeps the handler. SPEC J4.5, G10.
   `start-plugin-core/tests/integration/start-compiler-dev-server.test.ts`: "a module whose factory becomes a server fn
@@ -179,6 +173,62 @@ function info not found` when one of them calls it, and the build says nothing, 
   Workaround: import the file from a module inside the scope.
 
 ## Accepted limits
+
+- **A hydrated Solid or Vue Start app with only the global error boundary: one save that changes a loader's data
+  shape and the component reading it can leave the page blank or on the error** (route HMR decision 2, 11-23). In a
+  hydrated Solid or Vue Start app with only the global error boundary, an edit that changes a loader's data shape and
+  the component reading it can leave the page blank (Solid on both hosts, Vue on Rsbuild) or showing the error (Vue on
+  Vite). The next route save reloads and recovers. Configure a route `errorComponent` or router
+  `defaultErrorComponent` for in-place recovery. Why: the old component renders the new data once and throws, and the
+  global boundary replaces the document the root route renders, which Solid and Vue cannot render again in place;
+  they patch components as the update applies, with no pass after which a reload is known to load a page of one
+  version, and a reload in the same save landed on a document whose hydration failed, after which the fixing edit
+  never recovered (three Solid Start rows). React reloads in the same save (decision 1). `main` does not recover in
+  four saves. SPEC J3.3. `start-plugin-core/tests/integration/start-dev-route-shape-change.test.ts`: "%s: four saves
+  that change the loader data shape and the component reading it" (Solid and Vue, route error component: false)
+  holds the recovery at the next save.
+- **React Start: a save that lands while route HMR's reload of the page is still hydrating can end on the error
+  screen** (route HMR decision 1, 11-23). In a hydrated React root with only the global boundary, a save whose old
+  component threw rendering the new data reloads the page once, in that save. A second save written before the
+  reloaded document hydrated can reach it half way: the page shows both versions' text or the error, with a
+  hydration mismatch. The next save recovers. Needs two saves within the reload (test fixtures do; a person does not).
+  No test (the outcome is the limit; `start-plugin-core/tests/integration/start-dev-route-error-recovery.test.ts`
+  waits for the reload before the fixing edit).
+- **Vite, Solid and Vue: a route module evaluated outside a hot update applies at the next update** (route HMR
+  decision 6, 11-23). The route takes an evaluation of its module once Vite reports the update applied
+  (`vite:afterUpdate`), after the accept callbacks where Solid's and Vue's refresh patch the components: before that,
+  the route could load its new data into the old component. A route module that evaluates without an update of its
+  own (imported again by another module's update) waits for the next update. No test (the outcome is the limit).
+- **Route HMR: what a record of a route file costs** (route HMR design, 11-23). A second router of the same route tree
+  that is never mounted (created and dropped) loads the edited route on every edit until the garbage collector frees
+  it (the routers of the page are held weakly). A route module and its lazy route file saved together load the route
+  twice (one record per file). The record of a removed route file stays while another router holds a route of the
+  same id; the owner check keeps it from being applied. No test (the outcome is the limit).
+- **Solid: the return of a deleted file a split component reads reloads the page, also with Rsbuild's
+  `dev.liveReload: false`** (route HMR decision 3, 11-23). When the import of a split chunk failed (a stash or a
+  branch switch removed a file it reads) and later succeeds, the runtime reloads the page once on every host
+  (`reloadOnRecover`; solid-refresh 0.6.3 patches a module on Vite only in its own accept callback, see "Upstream
+  issues"). On Rsbuild the dev server's client reloads at that moment anyway with live reload on; with
+  `dev.liveReload: false` the page reloads where it used to stay on the old code. SPEC J3.3.
+  `start-plugin-core/tests/integration/start-dev-removed-import.test.ts`.
+- **`@refresh` comments in split route files: four contrived placements differ from the unsplit file** (route HMR
+  decision 5, 11-23). A chunk holding components holds a copy of each `@refresh` comment alone (a statement TypeScript
+  erases is copied whole), where the refresh plugin reads it as in the file, without a statement running twice
+  (`code-splitter-refresh-placements.test.ts`, `route-hmr-browser-refresh-comments.test.ts`). Where it differs:
+  - a comment inside syntax TypeScript erases within a value statement (`const sample = null as⏎/* @refresh reset
+*/⏎unknown`, or `satisfies`): SWC (Rsbuild) drops it with the erased type in the file; the copy stands alone and
+    is read, so the split route resets the state the unsplit one keeps. Matching it means replaying the statement,
+    which runs its initializer twice;
+  - a comment trailing an expression statement (`console.log('init') /* @refresh reset */`) is read by SWC in the
+    file and not in the chunk, and one inside an expression statement is not copied (both as `main`);
+  - two `@refresh` comments in one file, one of them on a type-only statement: the chunk can hold them in the other
+    order (solid-refresh takes the first it finds: `granular` on a type, then `skip` on an export, skips the split
+    component), and a copy directly above a type statement that follows the imports is erased with it by SWC;
+  - a comment that also holds a JSX pragma is not copied alone.
+    SPEC J2.16. No test (the outcome is the limit).
+- **React on Vite: a split chunk that is no React Refresh boundary shows its new component after a 200 ms bound**
+  (unchanged by the route HMR design, 11-23): the route waits for React Refresh's pass before it takes a component the
+  pass may patch, and a chunk Refresh does not instrument never reports one. No test (the outcome is the limit).
 
 - **The server namespace of a module with a lazy handler module has extra keys** (R164, coverage-review-B F2;
   accepted: "people shouldn't be inspecting the modules of something we compile"). The handler module imports what
@@ -1142,6 +1192,37 @@ Paths under `router-plugin/tests/` unless given.
   `integration/route-hmr-browser-kept-binding.test.ts`: "rsbuild $fw: $row.name";
   `integration/route-hmr-browser-kept-binding-webpack-maps.test.ts`: "webpack with source maps $fw: $row.name"; `start-plugin-core/tests/integration/rsbuild/route-hmr-kept-binding.test.ts`: "$fw:
   $row.name".
+- **A route edit reloaded the page after a render error the page had recovered from** (React: the global boundary;
+  Solid and Vue: any router boundary): the boundary's catch marked the router for a reload (R70) and nothing cleared
+  the mark, so a recovery without a reload (a navigation, the edit that fixes the component) still cost the next
+  route edit a full reload. The mark is now set only by the global boundary of a hydrated router, which loses the
+  document it renders (route HMR decision 4); a client-only root and every route boundary recover in place when the
+  route loads again. SPEC J3.1, J3.3, G10. `integration/known-bugs-route-hmr-recovered-error.test.ts`: "react, vite: a
+  route edit after a render error the page navigated away from updates in place";
+  `integration/route-hmr-browser-throw-then-fix-cases.ts`: "the fix shows in place (autoCodeSplitting:
+  $autoCodeSplitting, route error component: $errorComponent)" (Vite and Rsbuild);
+  `start-plugin-core/tests/integration/start-dev-route-error-recovery.test.ts`: "%s: with a route error component, an
+  edit that makes a component throw, then one that fixes it, shows the fix".
+- **Two routers on a page: an edit reached the router created last, or the other router's route of the same id**
+  (main: the router `window.__TSR_ROUTER__` names): an edit of an eager route file left the app stale when another
+  router was created after the app's; two routers of one route tree (React StrictMode's state initializer) left one
+  stale; with two route trees compiled by two plugin instances, the other tree's route took the edit. The runtime
+  keeps one record per route file and updates every router holding a route that file evaluated to (or that loaded
+  its lazy options). SPEC J3.11. `integration/route-hmr-browser-two-routers.test.ts`: "an eager route file's loader
+  edits show in the app's route ($order, autoCodeSplitting: $autoCodeSplitting)";
+  `integration/route-hmr-browser-two-routers-lazy.test.ts`: "a lazy route file's edits show in the app's route and
+  leave the other router's alone (%s)"; `integration/route-hmr-browser-shared-tree.test.ts`: "a loader edit shows in
+  every router of the tree (%s)", "an edit of the app tree's route `/` shows in the app's router; the other tree's
+  `/` keeps its code", "an edit of the app tree's lazy route file shows in the app's router; the other tree's keeps
+  its code".
+- **One save that changes a loader's data shape and the component reading it failed** (main, React: the first such
+  save): the route published the new data to the old component, which threw. The route's load now waits for its split
+  component's new import where the framework has no refresh pass (Solid, Vue), on Vite after Vite applied the update
+  (`vite:afterUpdate`), and a component's arrival publishes the matches again, which resets the boundaries. SPEC
+  J3.3. `integration/route-hmr-browser-shape-change-cases.ts`: "shows each save in place ($loader loader,
+  autoCodeSplitting: $autoCodeSplitting)", "shows each save in place (autoCodeSplitting: $autoCodeSplitting, route
+  error component: $errorComponent)" (Vite and Rsbuild); `start-plugin-core/tests/integration/`
+  `start-dev-route-shape-change.test.ts` and `rsbuild/start-dev-route-shape-change.test.ts`.
 
 ### J4 Start environment separation
 
@@ -1506,7 +1587,7 @@ Paths under `react-start-rsc/tests/integration/`.
 | Vite 8.3.4 dependency optimizer                              | keeps writing `node_modules/.vite/deps_temp_*` after `close()` resolved: removing the app fails with `ENOTEMPTY`, or a write into the removed app is an unhandled rejection                                                                                                                                                                                           | before `close()` the Vite dev harnesses wait until each environment's optimizer has scanned and no `deps*_temp_*` directory is left (`closeViteServer` in `compiler-test-utils/src/dev-server.ts`). Remove when Vite awaits its optimizer on close.                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | Vite 8.3.4 dependency optimizer                              | a late-discovered dependency changes a pre-bundled chunk's exports without changing its hash; the page fails with "does not provide an export named '<letter>'"                                                                                                                                                                                                       | not seen since the harness apps use `tanstackStart()` (whose framework plugins pre-bundle React at start). No workaround. If seen, re-run the file alone.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | solid-refresh 0.6.3                                          | a removed or renamed component's name stays in the `hot.data` registry: patches stop at it and every later evaluation calls `hot.invalidate()` (solidjs/solid-refresh#88); Rspack, outside an update (`import()`): status stays `ready` (same pinned outcomes on Rspack 2.3.1 and 2.3.3); Vite: a kept proxy is stale                                                 | pinned (J3.3): `router-plugin/tests/integration/route-hmr-browser-solid-identity.test.ts` and `-rsbuild.test.ts`. Remove when solid-refresh forgets a removed name once it invalidated the module.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| solid-refresh 0.6.3 (Vite mode)                              | a module is patched only in its own accept callback (webpack mode: on evaluation): after a split chunk's import failed, a deleted file's return updates the route module alone, which imports the chunk again unpatched (issue to be filed)                                                                                                                           | worked around, temporarily (J3.3): `solid-router/src/hmr.ts` (`restoredImportReload`; `RouteHmrMeta.vite` and its planner line) reloads the page once when the lazy wrapper's import succeeds again (`start-plugin-core/tests/integration/start-dev-removed-import.test.ts`). Remove when solid-refresh patches on evaluation in ESM mode.                                                                                                                                                                                                                                                                                                                                                                          |
+| solid-refresh 0.6.3 (Vite mode)                              | a module is patched only in its own accept callback (webpack mode: on evaluation): after a split chunk's import failed, a deleted file's return updates the route module alone, which imports the chunk again unpatched (issue to be filed)                                                                                                                           | worked around, temporarily (J3.3): `solid-router/src/hmr.ts` (`reloadOnRecover`) reloads the page once, on every host, when the lazy wrapper's import succeeds again (`start-plugin-core/tests/integration/start-dev-removed-import.test.ts`). Remove when solid-refresh patches on evaluation in ESM mode.                                                                                                                                                                                                                                                                                                                                                                                                         |
 | Rolldown 1.2.13                                              | `var x = 1; for (var x of [2]) {}; export { x }` (also a for-in head or `var { x } = o`): an importer of `x` gets the constant `1`                                                                                                                                                                                                                                    | not pinned (the compiler's output is valid: the route module holds both declarations and exports the binding; webpack and Rspack read the last value). The suite no longer reaches it: the statement declaring `x` again follows `x` into the chunk when only the chunk reads it (`router-plugin/tests/integration/code-splitter-module-state.test.ts`, "… in a head or a pattern (Rolldown)")                                                                                                                                                                                                                                                                                                                      |
 | Rspack before 2.3.3 lazy compilation (Rsbuild's dev default) | a module that accepts its own updates and is loaded with `import()` evaluates again on each edit, but every later `import()` of it answers its first namespace (web-infra-dev/rspack#16594, fixed in 2.3.3 by rspack#16595)                                                                                                                                           | worked around, temporarily (J3.3): `solid-router/src/hmr-chunk-importer.ts` and the router plugin's `chunkImporterCall` (`router-plugin/src/planners/split.ts`) make a Solid split chunk's importer answer its newest evaluation. With the wrapper off, the four rows the entry "Rsbuild: a Solid split chunk imported again answered its first evaluation" names fail on Rspack 2.3.1 and pass on 2.3.3 (2026-11-20). Remove when the supported range starts at 2.3.3 (the Start packages' peer is `@rsbuild/core ^2.2.13`): delete the module, the planner branch and their tests (`solid-router/tests/hmr-chunk-importer.test.ts`); the browser rows of `route-hmr-browser-solid-identity-rsbuild.test.ts` stay. |
 | webpack 5.110                                                | `export { K as "" } from './x'` (an empty export name) is read as `export *`: importers get `K`, not `""`                                                                                                                                                                                                                                                             | not pinned (the compiler's output is valid). Rows in `router-plugin/tests/integration/extracted-export-string-names.test.ts` skip webpack for that name.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
