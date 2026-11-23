@@ -139,9 +139,9 @@ const RUNS_MARKED_FLAG = 'tss-ip-runs'
 /** Rspack's resource query condition of an edge module `RUNS_MARKED_FLAG` flags. */
 export const RUNS_MARKED_EDGE_QUERY = new RegExp(`^\\?${RUNS_MARKED_FLAG}&`)
 
-/** Whether an edge module stands for a bare import of a marked module (`RUNS_MARKED_FLAG`). */
+/** Whether an edge module stands for a bare import of a marked module that runs it (`RUNS_MARKED_FLAG`). */
 export function runsMarked(content: EdgeModuleContent): boolean {
-  return content.bare && content.rule.type === 'marker'
+  return content.bare && content.effectful && content.rule.type === 'marker'
 }
 
 /**

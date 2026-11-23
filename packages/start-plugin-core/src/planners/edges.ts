@@ -689,8 +689,13 @@ export function importEdgesPlanner(
     const ownMarker = ownEntry(ip.markerSpecifiers, j.raw) !== undefined
     // a bare import of a marked module says its code runs: a violation
     // wherever the import survives, whatever `sideEffects` declares of the
-    // module (D-c); its effects are not read
-    const runsMarked = j.edge.form === 'bare' && j.rule?.type === 'marker'
+    // module (D-c); its effects are not read (an asset query of it, its text
+    // or URL, runs nothing)
+    const runsMarked =
+      j.edge.form === 'bare' &&
+      j.rule?.type === 'marker' &&
+      j.resolved !== null &&
+      !isAssetId(j.resolved)
     const target =
       j.resolved !== null && !ownMarker && !runsMarked
         ? await describeTarget(j.resolved, ctx)

@@ -388,7 +388,7 @@ const patternImports: Array<[StartBundler, string, string, Files]> = [
 
 describe.each(patternImports)(
   '%s build verdicts, %s',
-  (bundler, _rule, entry, denied) => {
+  (bundler, rule, entry, denied) => {
     const file = Object.keys(denied)[0]!
     test(
       'the error behaviour fails the build naming the importer',
@@ -413,18 +413,21 @@ describe.each(patternImports)(
       timeout,
     )
 
-    test(
-      '`excludeFiles` gives the real text, unreported',
-      async () => {
-        const result = await buildApp(bundler, entry, denied, {
-          ...importProtection,
-          client: { excludeFiles: [`**/${path.basename(file)}`] },
-        })
-        expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
-        expect(clientViolations(result)).toBe(0)
-      },
-      timeout,
-    )
+    // (a file name only: `excludeFiles` never hides a marker, SPEC J6.1)
+    if (rule === 'a file rule') {
+      test(
+        '`excludeFiles` gives the real text, unreported',
+        async () => {
+          const result = await buildApp(bundler, entry, denied, {
+            ...importProtection,
+            client: { excludeFiles: [`**/${path.basename(file)}`] },
+          })
+          expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
+          expect(clientViolations(result)).toBe(0)
+        },
+        timeout,
+      )
+    }
 
     test(
       'a file that is not denied keeps its text, unreported',
