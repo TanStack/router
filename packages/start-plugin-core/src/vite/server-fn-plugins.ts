@@ -194,10 +194,11 @@ function callableNotProvided(
 
 /**
  * The build error for `missing` (`callableNotProvided`), with the ways out
- * that apply to its files: a module of the app is registered when a server
- * fn's handler uses it (its raw reach is compiled early); a module of an
- * installed package is not (that walk skips `node_modules`), and is when a
- * route's loader calls it (the SSR scan compiles routes).
+ * that apply to its files: a module of the app, or of a package that
+ * declares Start, is registered when a server fn's handler uses it (its raw
+ * reach is compiled early); a module of another installed package is not
+ * (that walk does not enter it, and Vite keeps the package external on the
+ * server): the package must declare Start.
  */
 function callableNotProvidedError(missing: Array<ServerFnEntry>): string {
   const installed = (e: ServerFnEntry) =>
@@ -205,7 +206,7 @@ function callableNotProvidedError(missing: Array<ServerFnEntry>): string {
   const lines = [
     `[tanstack-start] The client build calls server functions that the RSC environment's server function resolver does not list: each call would answer "Server function info not found".`,
     ...missing.map((e) => `  - ${e.name} of ${e.rootRel}`),
-    `The RSC environment builds before the client and lists the server functions of the server code it compiled. Possible causes: only client-only code (a <ClientOnly> child, a createClientOnlyFn body, a <Hydrate> fallback) or a lazy import() in or below a 'use client' module imports the file; or the file is in an installed package that only client code or server function handlers import.`,
+    `The RSC environment builds before the client and lists the server functions of the server code it compiled. Possible causes: only client-only code (a <ClientOnly> child, a createClientOnlyFn body, a <Hydrate> fallback) or a lazy import() in or below a 'use client' module imports the file; or the file is in an installed package that does not declare Start, which only client code or server function handlers import.`,
   ]
   if (missing.some((e) => !installed(e))) {
     lines.push(
@@ -214,7 +215,7 @@ function callableNotProvidedError(missing: Array<ServerFnEntry>): string {
   }
   if (missing.some(installed)) {
     lines.push(
-      `For a file of an installed package: import the server function in a route file as well, and call it from that route's loader.`,
+      `For a file of an installed package: the package must declare TanStack Start (@tanstack/react-start in its peerDependencies), so that Start bundles its modules for the server and reads them.`,
     )
   }
   return lines.join('\n')

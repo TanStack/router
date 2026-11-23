@@ -75,20 +75,24 @@ Four parts, one entry per root cause: the bug, the SPEC clause, its tests (`file
 found`). SPEC J4.2. `react-start-rsc/tests/integration/rsc-start-build-not-provided.test.ts`: "a server fn a 'use
   client' component imports lazily fails the build, naming it". Fix: every server fn the client references is
   callable by id, with no production dependency on modules only development code reaches.
-- **Vite RSC build: a server fn a `'use client'` component imports from an installed package, or through an import
-  the provider resolves to another file, is not registered** (as `main`, #7943): the early compile of the provider's
-  reach walks project modules only (a workspace package resolved to its real path is one) and resolves in the provider
-  environment, so it skips a module under `node_modules` and, where a `react-server` condition of the app's `imports`
+- **Vite RSC build: a server fn a `'use client'` component imports from an installed package that does not declare
+  Start, or through an import the provider resolves to another file, is not registered** (as `main`, #7943): the early
+  compile of the provider's reach walks project modules and the modules of packages that declare Start (node_modules
+  policy, decision 2: `rsc-start-build-client-reach.test.ts`, "… a file of an installed package that declares Start,
+  with no loader calling it") and resolves in the provider environment, so it skips a module of another package
+  and, where a `react-server` condition of the app's `imports`
   points the specifier at another file, visits that file instead of the client's. A server fn's handler that uses an
   installed package's function does not register it either (the walk skips it there too), and the SSR scan has deleted
   that handler's imports: so a server fn of an installed package that only server fn handlers call answers `Server
 function info not found` when one of them calls it, and the build says nothing, as on `main` (run on ed5577593a:
   the page answers 500). For a function the client calls, the build fails, naming it and its file (decision 5; it built
-  and the click answered 500), with the way out that works: a route's loader that calls it (the SSR scan compiles
-  route files and registers it). SPEC J4.2. `react-start-rsc/tests/integration/rsc-start-build-not-provided.test.ts`:
-  "an installed package's server fn a 'use client' component and a server fn's handler import fails the build, naming
-  it"; the way out applied: `rsc-start-build-client-reach.test.ts`, "the build error's way out for $kind makes its
-  server fn answer" (a file of an installed package). The `react-server` case and the server-only call have no test.
+  and the click answered 500), with the way out: the package declares Start (Vite then also bundles it for the
+  server; a route loader's call does not help an undeclared package, which Vite keeps external there). SPEC J4.2.
+  `react-start-rsc/tests/integration/rsc-start-build-not-provided.test.ts`: "an installed package's server fn a 'use
+  client' component and a server fn's handler import fails the build, naming it"; the way out applied:
+  `rsc-start-build-client-reach.test.ts`, "the build error's way out for $kind makes its server fn answer" (an
+  installed package that declares Start, with and without a loader calling it). The `react-server` case and the
+  server-only call have no test.
   Fix: every server fn the client references is callable by id, with no production dependency on modules only
   development code reaches; a server fn of an installed package that server code imports is registered.
 - **Rsbuild checks importers by file extension** (JS/TS only): a custom module type's denied specifier is never

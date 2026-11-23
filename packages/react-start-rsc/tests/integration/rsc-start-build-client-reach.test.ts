@@ -271,7 +271,8 @@ function Page() {
 `,
   // The way out for a file of an installed package: its server fn, which a
   // \`'use client'\` component and a server fn's handler call, called from a
-  // route's loader as well.
+  // route's loader as well (no longer needed for a package that declares
+  // Start: the reach walk enters it, see /declared-package).
   ...installedServerFnFiles,
   'src/way-out/PkgCall.tsx': `'use client'
 import { useState } from 'react'
@@ -305,6 +306,58 @@ export const Route = createFileRoute('/way-out-package')({
 function Page() {
   const data = Route.useLoaderData()
   return <main><p data-testid="loaderPing">{data.ping}</p>{data.tree}</main>
+}
+`,
+  // An installed package that declares Start: its server fn, which a
+  // \`'use client'\` component and a server fn's handler call, with no
+  // loader of a route calling it (node_modules policy, decision 2).
+  'package.json': JSON.stringify({
+    name: 'app',
+    private: true,
+    type: 'module',
+    dependencies: { 'pkg-fns': '1.0.0', 'pkg-declared': '1.0.0' },
+  }),
+  'node_modules/pkg-declared/package.json': JSON.stringify({
+    name: 'pkg-declared',
+    version: '1.0.0',
+    type: 'module',
+    exports: { '.': './index.js' },
+    peerDependencies: { '@tanstack/react-start': '*' },
+  }),
+  'node_modules/pkg-declared/index.js': `import { createServerFn } from '@tanstack/react-start'
+export const declPing = createServerFn({ method: 'GET' }).handler(() => 'MARK_DECLPING')
+`,
+  'src/declared/DeclCall.tsx': `'use client'
+import { useState } from 'react'
+import { declPing } from 'pkg-declared'
+export function DeclCall() {
+  const [result, setResult] = useState('')
+  return (
+    <button data-testid="declPing" onClick={() => declPing().then(setResult, (error) => setResult('error ' + error))}>
+      declPing {result}
+    </button>
+  )
+}
+`,
+  'src/declared/page.tsx': `import { createServerFn } from '@tanstack/react-start'
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+import { DeclCall } from './DeclCall'
+export const getDeclPage = createServerFn().handler(() => renderServerComponent(<div>decl <DeclCall /></div>))
+`,
+  'src/declared/usesDecl.ts': `import { createServerFn } from '@tanstack/react-start'
+import { declPing } from 'pkg-declared'
+export const usesDecl = createServerFn().handler(async () => 'USES ' + (await declPing()))
+`,
+  'src/routes/declared-package.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { getDeclPage } from '../declared/page'
+import { usesDecl } from '../declared/usesDecl'
+export const Route = createFileRoute('/declared-package')({
+  loader: async () => ({ tree: await getDeclPage(), uses: await usesDecl() }),
+  component: Page,
+})
+function Page() {
+  const data = Route.useLoaderData()
+  return <main><p data-testid="declUses">{data.uses}</p>{data.tree}</main>
 }
 `,
   'src/greet.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -449,6 +502,17 @@ describe("Vite production build with RSC: server fns only 'use client' component
       server: {
         selector: '[data-testid=loaderPing]',
         text: 'MARK_PKGPING USES MARK_PKGPING',
+      },
+    },
+    // (no way out needed: the reach walk enters a package that declares
+    // Start; it was the known bug of the installed package)
+    {
+      kind: 'a file of an installed package that declares Start, with no loader calling it',
+      pathname: '/declared-package',
+      name: 'declPing',
+      server: {
+        selector: '[data-testid=declUses]',
+        text: 'USES MARK_DECLPING',
       },
     },
   ])(

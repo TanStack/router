@@ -51,8 +51,15 @@ function Page() {
 `,
   // A `'use client'` component calling an installed package's server fn,
   // which a server fn's handler also uses (the way out for a file of the
-  // app, which does not apply to it).
+  // app, which does not apply to it). The package does not declare Start:
+  // the reach walk enters only packages that do.
   ...installedServerFnFiles,
+  'node_modules/pkg-fns/package.json': JSON.stringify({
+    name: 'pkg-fns',
+    version: '1.0.0',
+    type: 'module',
+    exports: { '.': './index.js' },
+  }),
   'src/pkg/PkgCall.tsx': `'use client'
 import { useState } from 'react'
 import { pkgPing } from 'pkg-fns'
@@ -89,7 +96,7 @@ const named = (name: string, file: string) => `  - ${name} of ${file}`
 const wayOut = {
   app: "For a file of the app: import the server function in a server function's module as well, and use it in that function's handler.",
   installed:
-    "For a file of an installed package: import the server function in a route file as well, and call it from that route's loader.",
+    'For a file of an installed package: the package must declare TanStack Start (@tanstack/react-start in its peerDependencies), so that Start bundles its modules for the server and reads them.',
 }
 
 describe('Vite production build with RSC: server fns the client calls that the RSC build does not provide', () => {
@@ -145,10 +152,11 @@ describe('Vite production build with RSC: server fns the client calls that the R
   })
 
   // Known bug (KNOWN-BUGS, "Vite RSC build: a server fn a `'use client'`
-  // component imports from an installed package … is not registered"; as
-  // `main`, #7943). SPEC J4.2. Bug: the early compile of the provider's
-  // reach skips modules under `node_modules`, also below a server fn's
-  // handler that uses the function. Impact: the build fails. Fix: as above.
+  // component imports from an installed package that does not declare
+  // Start … is not registered"; as `main`, #7943). SPEC J4.2. Bug: the early
+  // compile of the provider's reach skips the modules of a package that
+  // does not declare Start, also below a server fn's handler that uses the
+  // function. Impact: the build fails. Fix: as above.
   test("an installed package's server fn a 'use client' component and a server fn's handler import fails the build, naming it", () => {
     expect(error.split('\n')).toContain(
       named('pkgPing', 'node_modules/pkg-fns/index.js'),
