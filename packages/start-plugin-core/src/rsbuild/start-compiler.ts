@@ -207,13 +207,6 @@ export function registerStartCompiler(
                 ]
               : [],
         },
-        // the edge module of a bare import of a marked module keeps its
-        // effect witness under the app's `sideEffects: false` (D-c)
-        {
-          test: EDGE_MODULE_FILE_RE,
-          resourceQuery: RUNS_MARKED_EDGE_QUERY,
-          sideEffects: true,
-        },
       )
     }
     rules.unshift(...loaderRules)
@@ -243,6 +236,16 @@ export function registerStartCompiler(
           use,
         },
       )
+    }
+    if (ip) {
+      // the edge module of a bare import of a marked module keeps its effect
+      // witness under the app's `sideEffects: false` (D-c). Last too: no
+      // other rule's index moves
+      rules.push({
+        test: EDGE_MODULE_FILE_RE,
+        resourceQuery: RUNS_MARKED_EDGE_QUERY,
+        sideEffects: true,
+      })
     }
     config.plugins.push(
       createStartHostPlugin({
