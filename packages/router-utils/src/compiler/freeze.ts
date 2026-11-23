@@ -211,12 +211,15 @@ function includedUnitsOf(
       // (`declare enum`, `declare var`, …) are copied: erased by
       // TypeScript, but a TS transform resolves the names through them (Oxc
       // inlines `declare enum` members), and so is a type unit a planner
-      // rooted in the output (its text is what the planner wants there)
+      // rooted in the output that the env module would keep (its text is
+      // what the planner wants there)
+      const kept =
+        !isTypeOnlyExport(u.node) && !placement.droppedTypeUnits.has(uid)
       if (
         derived
           ? isAmbientValueDeclaration(u.node) ||
-            roots.some((r) => r.t === 'unit' && r.id === uid)
-          : !isTypeOnlyExport(u.node) && !placement.droppedTypeUnits.has(uid)
+            (kept && roots.some((r) => r.t === 'unit' && r.id === uid))
+          : kept
       ) {
         set.add(uid)
       }

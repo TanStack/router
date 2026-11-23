@@ -213,7 +213,8 @@ where main's chunk runs it again (never a declaration already unused: better tha
   declaration (`x.p = v`, `x.push(v)`, `x = v`) is never removed with what only erased code read (R154), and code
   already unreferenced in the source keeps running: an import nothing reads stays (one removed code read only in a type
   leaves, as TypeScript's elision would). Type units stay in the env module as written whatever their cluster, never in
-  a derived output; only the TypeScript-only specifiers (an inline `type` specifier, an `export { X }` of a type-only
+  a derived output unless a planner roots one there (route HMR copies a type statement holding a `@refresh` comment
+  into a component chunk), under the same two rules; only the TypeScript-only specifiers (an inline `type` specifier, an `export { X }` of a type-only
   binding) follow their statement's value specifiers (`droppedTypeUnits`). Type-only export syntax (`export type { X }`,
   `export type * from`, `export { type X }`, …) is in no output (`isTypeOnlyExport`), as main's `stripTypeExports`
   removed it. A read the core synthesises from a name (a Solid `use:` directive) binds only to a declaration with a

@@ -18,10 +18,12 @@ interface Comments {
   header?: string
   aboveRoute?: string
   jsx?: string
+  /** Inside the route's options, before `component`. */
+  inOptions?: string
 }
 
 const counter = (
-  { header = '', aboveRoute = '', jsx = '' }: Comments,
+  { header = '', aboveRoute = '', jsx = '', inOptions = '' }: Comments,
   version: string,
 ) => `${header}import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -33,7 +35,9 @@ function Page() {
     </button>
   )
 }
-${aboveRoute}export const Route = createFileRoute('/')({ component: Page })
+${aboveRoute}export const Route = createFileRoute('/')({
+${inOptions}  component: Page,
+})
 `
 
 /** Opens the app, clicks the counter once, edits the route and returns what the counter shows then. */
@@ -57,6 +61,10 @@ async function counterAfterEdit(
 }
 
 const rows: Array<Comments> = [
+  {
+    name: 'leading its line inside the route options',
+    inOptions: '  /* @refresh reset */\n',
+  },
   {
     name: 'a file header above an expression statement (block comment)',
     header: "/* @refresh reset */\nconsole.log('init')\n",

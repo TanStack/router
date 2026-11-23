@@ -49,13 +49,7 @@ import type {
   SymbolId,
   Unit,
 } from '@tanstack/router-utils/compiler'
-import type {
-  CallExpression,
-  Comment,
-  Node,
-  SourceFile,
-  VariableDeclarator,
-} from 'yuku'
+import type { CallExpression, Comment, Node, VariableDeclarator } from 'yuku'
 
 /** The component options route HMR keeps: the splittable ones and `shellComponent`. */
 const HMR_COMPONENT_KEYS: ReadonlyArray<string> = [
@@ -343,11 +337,11 @@ export function planHmrBlock(
   const vite = style === 'vite'
   const reactVite = vite && cfg.framework === 'react'
   const anchor = reactVite ? names.alloc('TsrFastRefreshAnchor') : null
-  // a lazy route file's `Route` holds the options the route loads with its
-  // chunk: the runtime applies them to the route of its id
   // the route file is the runtime's key for what it holds of this module
   const file = stringLiteral(ctx.identity.canonicalId, '"')
   const metaParts: Array<string> = [`file: ${file}`]
+  // a lazy route file's `Route` holds the options the route loads with its
+  // chunk: the runtime applies them to the route of its id
   if (route.kind === 'lazy') {
     metaParts.push('lazy: true')
   }
@@ -456,7 +450,7 @@ export function planHmrBlock(
     ],
   })
   const groups = splitGroups(round)
-  refreshStatements(ctx, round, groups)
+  refreshStatements(ctx, groups)
   if (!vite) {
     chunkHmr(ctx, round, groups)
     keptReaderHmr(ctx, round)
@@ -495,29 +489,25 @@ function splitGroups(round: RouterRound): SplitGroups {
  *   place (it runs nowhere);
  * - any other statement is where the core puts it, and its comments are
  *   also copied alone, as written, after the chunk's imports: on a line of
- *   their own when they lead their line in the file or end it, after a `;`
- *   otherwise (which of the two is the one distinction a refresh plugin
- *   makes that a copy can change);
- * - but not the comments inside a statement no chunk can hold a copy of
- *   (an import, the route, a statement that is only an expression), nor a
- *   comment that also holds a JSX pragma: those stay where they mean what
- *   they mean in the file.
+ *   their own when they lead their line in the file or only comments follow
+ *   them, after a `;` otherwise (which of the two is the one distinction a
+ *   refresh plugin makes that a copy can change);
+ * - but not the comments inside an import or a statement that is only an
+ *   expression, nor a comment that also holds a JSX pragma: those stay
+ *   where they mean what they mean in the file.
  */
-function refreshStatements(
-  ctx: PlanContext,
-  round: RouterRound,
-  groups: SplitGroups,
-): void {
+function refreshStatements(ctx: PlanContext, groups: SplitGroups): void {
   const { file } = ctx.analysis
   // (most route files have none: no comment list is read for them)
   if (!file.source.includes('@refresh')) {
     return
   }
   const { items, units } = ctx.t1
-  const routeUnits = new Set(
-    ctx.t1.declaringUnits.get(round.route.routeSym) ?? [],
-  )
-  routeUnits.add(round.route.optionsUnit.id)
+  const bounds: CommentBounds = { byEnd: new Map(), byStart: new Map() }
+  for (const c of file.comments) {
+    bounds.byEnd.set(c.end, c.start)
+    bounds.byStart.set(c.start, c.end)
+  }
   const erased = new Set<Unit['id']>()
   const copies: Array<string> = []
   for (const comment of file.comments) {
@@ -529,6 +519,7 @@ function refreshStatements(
     )
     if (
       item &&
+      item.kind !== 'ImportDeclaration' &&
       item.units.length > 0 &&
       item.units.every((id) => units[id]!.kind === 'type')
     ) {
@@ -545,13 +536,14 @@ function refreshStatements(
       comment.value.includes('@jsx') ||
       (inside &&
         (item.kind === 'ImportDeclaration' ||
-          item.kind === 'ExpressionStatement' ||
-          item.units.some((unit) => routeUnits.has(unit))))
+          item.kind === 'ExpressionStatement'))
     ) {
       continue
     }
     const text = file.source.slice(comment.start, comment.end)
-    copies.push(leadsItsLine(file, comment) ? `${text}\n` : `;${text}\n`)
+    copies.push(
+      leadsItsLine(file.source, comment, bounds) ? `${text}\n` : `;${text}\n`,
+    )
   }
   for (const [groupKey, g] of groups) {
     if (!g.component) {
@@ -578,31 +570,52 @@ function refreshStatements(
   }
 }
 
+/** The comments of a module by their end and by their start offsets. */
+interface CommentBounds {
+  byEnd: Map<number, number>
+  byStart: Map<number, number>
+}
+
 /**
  * Whether only whitespace and comments precede `comment` on its line, or
  * follow it in the module (the two places a refresh plugin that does not
  * read every comment reads one).
  */
-function leadsItsLine(file: SourceFile, comment: Comment): boolean {
-  const { source, comments } = file
-  const blank = (p: number) =>
-    /\s/.test(source[p]!) || comments.some((c) => c.start <= p && p < c.end)
-  let last = true
-  for (let p = comment.end; last && p < source.length; p++) {
-    last = blank(p)
-  }
-  if (last) {
-    return true
-  }
-  for (let p = comment.start - 1; p >= 0; p--) {
-    if (/[\n\r\u2028\u2029]/.test(source[p]!)) {
+function leadsItsLine(
+  source: string,
+  comment: Comment,
+  { byEnd, byStart }: CommentBounds,
+): boolean {
+  for (let p = comment.end; ; ) {
+    while (p < source.length && /\s/.test(source[p]!)) {
+      p++
+    }
+    if (p === source.length) {
+      return true
+    }
+    const next = byStart.get(p)
+    if (next === undefined) {
       break
     }
-    if (!blank(p)) {
+    p = next
+  }
+  for (let p = comment.start; ; ) {
+    while (p > 0 && /[^\S\n\r\u2028\u2029]/.test(source[p - 1]!)) {
+      p--
+    }
+    if (p === 0 || /[\n\r\u2028\u2029]/.test(source[p - 1]!)) {
+      return true
+    }
+    const previous = byEnd.get(p)
+    if (previous === undefined) {
       return false
     }
+    // (the line begins inside a comment that spans lines)
+    if (/[\n\r\u2028\u2029]/.test(source.slice(previous, p))) {
+      return true
+    }
+    p = previous
   }
-  return true
 }
 
 /**

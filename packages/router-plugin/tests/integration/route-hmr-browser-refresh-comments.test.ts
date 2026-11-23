@@ -127,3 +127,44 @@ describe.concurrent.each([
     )
   },
 )
+
+// Review of the route HMR implementation (11-23): a type-only specifier
+// under `verbatimModuleSyntax` leaves the route module with its statement;
+// with a comment on the statement, the chunk must not import the module
+// either
+describe('vite react, verbatimModuleSyntax: an import of a type only, with a @refresh comment', () => {
+  it(
+    'evaluates the imported module as often as without the comment',
+    { timeout },
+    async ({ expect, onTestFinished }: TestContext) => {
+      const evaluations = async (comment: string) => {
+        const app = await openRouteHmrPage({
+          onTestFinished,
+          files: {
+            'tsconfig.json': JSON.stringify({
+              compilerOptions: { verbatimModuleSyntax: true, jsx: 'react-jsx' },
+            }),
+            'kinds.ts': `;(globalThis as any).__kinds = ((globalThis as any).__kinds ?? 0) + 1
+export type Kind = 'page'
+`,
+            'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+${comment}import { type Kind } from '../kinds'
+const kind: Kind = 'page'
+export const Route = createFileRoute('/')({ component: Page })
+function Page() {
+  return <p>shown {kind}</p>
+}
+`,
+          },
+          ready: 'shown page',
+        })
+        return app.evaluate<number | null>('globalThis.__kinds ?? null')
+      }
+      const [plain, commented] = await Promise.all([
+        evaluations(''),
+        evaluations('/* @refresh reset */\n'),
+      ])
+      expect(commented).toBe(plain)
+    },
+  )
+})
