@@ -18,7 +18,6 @@ export const ASSET_FILE_RE =
 const LATE_PASS_EXCLUDE: Array<RegExp> = [
   ...TRANSFORM_ID_REGEX,
   /^\0/,
-  NODE_MODULES_RE,
   ASSET_FILE_RE,
   ASSET_QUERY_RE,
 ]
@@ -47,6 +46,10 @@ export function latePassPlugin(state: ViteCompilerState): Plugin {
         const s = state.sessionOf(this.environment)
         const env = state.envOf(this.environment.name)
         if (!env || identify(id).lang !== null) {
+          return null
+        }
+        // (a dependency's generated JS: only a Start package's)
+        if (NODE_MODULES_RE.test(id) && !s.start.classes.startPackage(id)) {
           return null
         }
         let inputMap: InputSourceMap | null | undefined

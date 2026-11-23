@@ -341,13 +341,23 @@ export function importEdgesPlanner(
     plan: EmitPlan,
   ): Promise<EdgeViolation | null> => {
     const id = ctx.identity.canonicalId
+    const path = ctx.identity.path
     // an entry's own marker is judged at its marker import (located there)
-    const entry = ip.isEntry(ctx.identity.path)
+    const entry = ip.isEntry(path)
+    // (a file name denies only in the scope, and an app file on a client;
+    // a marker is a statement of the file wherever it is, and the reason
+    // when both deny)
     const rule = await fileOrMarkerRule(
       config,
       ctx.env.type,
-      ctx.identity.path,
+      path,
       () => (entry ? null : plan.facts.marker),
+      {
+        markerFirst: true,
+        files:
+          ip.inScope(path) ||
+          (ctx.env.type === 'client' && isSourceModule(path)),
+      },
     )
     if (!rule) {
       return null
@@ -385,7 +395,10 @@ export function importEdgesPlanner(
       return (
         ip.inScope(path) ||
         ip.exempt(path) ||
-        (envType === 'client' && isSourceModule(path))
+        (envType === 'client' && isSourceModule(path)) ||
+        // a marked module is its own violation where its marker denies it,
+        // in whatever package
+        t0.markers !== null
       )
     },
     plan() {},
@@ -414,9 +427,12 @@ export function importEdgesPlanner(
       // imports is allowed (`ImportProtectionEnv.allowsSelf`)
       const exempt = !ip.inScope(ctx.identity.path)
       // the scope is about importers: on a client an app file outside it is
-      // indexed like an exempt importer, and judged itself as a denied file
+      // indexed like an exempt importer, and judged itself as a denied file;
+      // a marked module is judged itself wherever it is
       const judgedOwn =
-        exempt && ctx.env.type === 'client' && isSourceModule(ctx.identity.path)
+        exempt &&
+        ((ctx.env.type === 'client' && isSourceModule(ctx.identity.path)) ||
+          plan.facts.marker !== null)
       if (exempt && !judgedOwn && !ip.exempt(ctx.identity.path)) {
         return
       }
@@ -757,10 +773,16 @@ export function importEdgesPlanner(
       }
       visited.add(id)
       const path = identify(id).path
-      if (await ip.packageSideEffectFree(path)) {
+      if (ip.packageSideEffectFree(path)) {
         return false
       }
-      if (NODE_MODULES_RE.test(path)) {
+      // the denied module itself and a Start package's modules are analysed
+      // like the app's; an ordinary package's imports are not read
+      if (
+        NODE_MODULES_RE.test(path) &&
+        id !== resolved &&
+        !ip.classes.startPackage(path)
+      ) {
         return true
       }
       const facts = id === resolved ? top : await ctx.targetFacts(id)

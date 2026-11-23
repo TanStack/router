@@ -167,16 +167,19 @@ import '@tanstack/vue-start/client-only'
 </script>
 <template><b id="chart">VISIBLE CHART</b></template>
 `
-      const error = await buildFailure(bundler, {
-        'src/Chart.vue': chart,
-        'src/Page.vue': `<script setup>
+      const page = `<script setup>
 import Chart from './Chart.vue'
 </script>
 <template><main><Chart /></main></template>
-`,
+`
+      const error = await buildFailure(bundler, {
+        'src/Chart.vue': chart,
+        'src/Page.vue': page,
       })
+      // (located at the import that names the marked file)
+      const { line, column } = diagnosticPosition(page, "'./Chart.vue'")
       expectViolationsAt(error, [
-        { environment: 'server', use: 'src/Page.vue' },
+        { environment: 'server', use: `src/Page.vue:${line}:${column}` },
       ])
       const browser = await openFixedApp(bundler, {
         'src/Chart.vue': chart,

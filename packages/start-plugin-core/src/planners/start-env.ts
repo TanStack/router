@@ -49,6 +49,7 @@ import {
   providerExportBase,
 } from '../server-fns/format'
 import { startServerCode } from './server-code'
+import type { PackageClasses } from '../compiler/package-class'
 import type {
   LateExport,
   NamespaceEscape,
@@ -100,6 +101,13 @@ export interface StartEnvConfig {
 
 export interface StartEnvFacts {
   serverFns: Array<ServerFnFact>
+  /**
+   * The compile recognised a Start primitive in the module (a builder or
+   * factory chain, an environment-only call, a `<ClientOnly>`, an RSC
+   * call): a package's module that uses Start (the warning of a package
+   * that does not declare it).
+   */
+  recognises?: true
   /**
    * The late pass (`config.late`): the binding each refused escape of a
    * binding hands on, by the escape's offset (another plugin's generated
@@ -392,8 +400,10 @@ declare module '@tanstack/router-utils/compiler' {
   }
 }
 
-export function startEnvPlanner(opts?: {
-  late: true
+export function startEnvPlanner(opts: {
+  late?: true
+  /** Whose modules' exports are followed (`PackageClasses.readsOnDemand`). */
+  classes: Pick<PackageClasses, 'readsOnDemand'>
 }): Planner<typeof START_ENV> {
   const table = startRecognizer()
   const answerFromRegistry = !cacheDisabled('registry')
@@ -404,8 +414,9 @@ export function startEnvPlanner(opts?: {
     async prefetch(t0, ctx) {
       const result = await prefetchStartValues(t0, ctx, {
         table,
-        late: opts?.late,
+        late: opts.late,
         answerFromRegistry,
+        classes: opts.classes,
       })
       ctx.set(result)
       return result.relevant
@@ -449,6 +460,14 @@ function planStartEnv(
   let fileTag: string | undefined
   const tagOfFile = () => (fileTag ??= fileTagOf(rootRel))
   const facts: StartEnvFacts = { serverFns: [] }
+  if (
+    analysis.chains.length > 0 ||
+    analysis.envOnlyCalls.length > 0 ||
+    analysis.clientOnlyElements.length > 0 ||
+    analysis.rscCalls.length > 0
+  ) {
+    facts.recognises = true
+  }
   /** The server-only text the client compile erases (step 6's parameter check reads it). */
   const erased: Array<Range> = []
 

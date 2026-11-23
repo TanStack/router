@@ -10,6 +10,7 @@
 import { rscCssPlanner } from './rsc-css'
 import { startEnvPlanner } from './start-env'
 import type { Planner } from '@tanstack/router-utils/compiler'
+import type { PackageClasses } from '../compiler/package-class'
 
 export { START_ENV, startEnvPlanner } from './start-env'
 export type {
@@ -21,6 +22,8 @@ export type {
 export type { RscCssConfig } from './rsc-css'
 
 interface StartPlannerSlots {
+  /** Whose modules' exports are followed (`PackageClasses.readsOnDemand`). */
+  classes: Pick<PackageClasses, 'readsOnDemand'>
   /** The Hydrate planner (J5), when the env extracts boundaries. */
   hydrate?: Planner | null
   /** Whether the env runs the RSC render (the `rsc-css` planner applies). */
@@ -32,8 +35,8 @@ interface StartPlannerSlots {
 }
 
 /** The planner array of one Start env. */
-export function startPlanners(slots: StartPlannerSlots = {}): Array<Planner> {
-  const planners: Array<Planner> = [startEnvPlanner()]
+export function startPlanners(slots: StartPlannerSlots): Array<Planner> {
+  const planners: Array<Planner> = [startEnvPlanner({ classes: slots.classes })]
   if (slots.hydrate) {
     planners.push(slots.hydrate)
   }

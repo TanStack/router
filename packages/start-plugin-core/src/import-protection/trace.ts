@@ -7,6 +7,7 @@ import {
 import { Locator } from './locate'
 import {
   findPatternImport,
+  literalNaming,
   mayHavePatternImport,
   namesFile,
   relativeSpecifier,
@@ -523,9 +524,14 @@ function causeOf(
   denied: string,
   found: PatternImport | null,
   direct: boolean,
+  /** The file is denied by its marker: to every importer, checked or not. */
+  byMarker: boolean,
 ): PatternSite['cause'] {
   if (found !== null) {
     return 'pattern'
+  }
+  if (byMarker && direct) {
+    return 'imported'
   }
   if (!importerInScope(ctx.config, importer)) {
     return 'unchecked'
@@ -561,17 +567,21 @@ function patternSiteOf(
         identify(info.resolved ?? info.importer).path,
         v.pattern,
         true,
+        v.rule.type === 'marker',
       ),
       loc: v.loc,
       frame: v.snippet,
     }
   }
   const denied = info.resolved ?? info.importer
+  // (a marked file's importer is the module that imports it, a package's
+  // too; a file name's, the last app file before it)
+  const byMarker = v.rule.type === 'marker'
   let at = trace.steps.length - 1
   while (
     at >= 0 &&
     (identify(trace.steps[at]!.file).path === denied ||
-      !isAppFile(trace.steps[at]!.file, ctx.config.root))
+      (!byMarker && !isAppFile(trace.steps[at]!.file, ctx.config.root)))
   ) {
     at--
   }
@@ -587,12 +597,19 @@ function patternSiteOf(
     return found && { offset: found.offset, value: found }
   })
   const found = site?.value ?? null
+  const named =
+    byMarker && found === null
+      ? locateIn(ctx.readSource, importer, (text) => {
+          const literal = literalNaming(text, importer, denied)
+          return literal && { offset: literal.offset, value: literal }
+        })
+      : null
   return {
     importer,
     found,
-    cause: causeOf(ctx, importer, denied, found, direct),
-    loc: site?.loc ?? null,
-    frame: site?.frame ?? null,
+    cause: causeOf(ctx, importer, denied, found, direct, byMarker),
+    loc: site?.loc ?? named?.loc ?? null,
+    frame: site?.frame ?? named?.frame ?? null,
   }
 }
 
@@ -743,6 +760,18 @@ function suggestionsOf(
   if (clientComponent) {
     return clientComponentSuggestions(info, ctx)
   }
+  // (a package's module imports a marked file: the app cannot edit it)
+  if (
+    site?.cause === 'imported' &&
+    v.rule.type === 'marker' &&
+    /[\\/]node_modules[\\/]/.test(site.importer)
+  ) {
+    const where = relativizePath(site.importer, ctx.config.root)
+    return [
+      `${where} is a module of a package: import an entry of the package the ${info.envType} may load, or keep your use of it inside ${info.envType === 'client' ? 'createServerFn().handler() or createServerOnlyFn()' : 'createClientOnlyFn() or <ClientOnly>'}`,
+      `To take the file as it is: list ${where} in ignoreImporters, or allow the file in allowImport (asked with the marked file as importer and resolved, as the compiler does not read the package module)`,
+    ]
+  }
   // (the import of a file the compiler reads the marker of only when it
   // compiles it: a plain import's fixes, its use unknown; a Vue SFC's
   // template keeps its components imported inside <ClientOnly>)
@@ -872,7 +901,7 @@ export function formatViolation(
               : site?.cause === 'added'
                 ? `  Imported by: ${rel(site.importer)}, through an import its source does not have (another plugin's transform added it)`
                 : site?.cause === 'imported'
-                  ? `  Imported by: ${rel(site.importer)}`
+                  ? `  Imported by: ${at(site.importer, site.loc)}`
                   : site
                     ? `  Matched by: a pattern import in ${rel(site.importer)} (import.meta.glob, an import() with a variable path, import.meta.webpackContext)`
                     : `  Loaded by an import the compiler does not read: a pattern import (import.meta.glob, an import() with a variable path, import.meta.webpackContext), an import another plugin added, or a request of the file itself (a server.warmup glob)`,

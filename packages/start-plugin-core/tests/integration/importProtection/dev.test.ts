@@ -1251,11 +1251,11 @@ export const read = () => widget()
   timeout,
 )
 
-// Dependencies (SPEC J6.10): files under `node_modules` skip the file and
-// marker checks by default, a dependency marking itself server-only
-// included; `excludeFiles: []` checks them. The build rows are in
-// build-options.test.ts ("excludeFiles").
-// Source: review (SPEC J6.10 had no dev row).
+// Dependencies (SPEC J6.10): a dependency's marker is honoured like the
+// app's, whatever `excludeFiles` says (it skips file-name rules only). The
+// build rows are in build-options.test.ts ("excludeFiles").
+// Source: review (SPEC J6.10 had no dev row); node_modules policy,
+// decision 1 (A).
 describe('a client import of a dependency that marks itself server-only', () => {
   const app = {
     'node_modules/db-lib/package.json': JSON.stringify({
@@ -1283,25 +1283,15 @@ export const read = () => query()
   // server-only and is not pre-bundled (`optimizeDeps.exclude`) fails to load
   // with an internal error, by default and with `excludeFiles: []` alike.
   // Source: review (the dev row of SPEC J6.10 was missing).
-  test(
-    'by default, is not logged, and the client gets the real module',
-    async () => {
-      const server = await startBrowserProtectedDevServer(app, {}, options)
-      expect(
-        (await runViteClient(server, '/src/entry.ts', 'return entry.read()'))
-          .result,
-      ).toBe('MARK_LIB')
-      expectNothingReportedAbout(server, ['src/a.ts'])
-    },
-    timeout,
-  )
-
-  test(
-    'with excludeFiles: [], is logged, and the client gets a safe mock',
-    async () => {
+  test.each<[string, Record<string, unknown>]>([
+    ['by default', {}],
+    ['with excludeFiles: []', { client: { excludeFiles: [] } }],
+  ])(
+    '%s, is logged, and the client gets a safe mock',
+    async (_, rules) => {
       const server = await startBrowserProtectedDevServer(
         app,
-        { client: { excludeFiles: [] }, mockAccess: 'off' },
+        { ...rules, mockAccess: 'off' },
         options,
       )
       const { result } = await runViteClient(

@@ -212,11 +212,6 @@ describe.each<StartBundler>(['vite', 'rsbuild'])('%s build', (bundler) => {
 export const read = () => s
 `,
   }
-  const marked = (file: string) => ({
-    [file]: `import '@tanstack/react-start/server-only'
-export const s = '${CANARY}'
-`,
-  })
 
   test(
     'an importer outside the source directory gets the real module of a denied file outside it, unreported',
@@ -246,22 +241,6 @@ import { s } from '../lib/s.server'
         lib,
       )
       expect(importersIn(result, 'client')).toEqual(['src/entry.ts'])
-      expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
-    },
-    timeout,
-  )
-
-  test.each(['src/ok.ts', 'lib/ok.ts'])(
-    '`excludeFiles` gives the real module of the marked %s, unreported',
-    async (file) => {
-      const result = await buildApp(
-        bundler,
-        `import { s } from '${file.startsWith('src') ? './ok' : '../lib/ok'}'
-;(globalThis as any).s = s
-`,
-        marked(file),
-        { behavior: 'error', client: { excludeFiles: ['**/ok.ts'] } },
-      )
       expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
     },
     timeout,

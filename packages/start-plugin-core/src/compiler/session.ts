@@ -42,9 +42,11 @@ import {
 } from '../server-fns/ids'
 import { ServerFnRegistry } from '../server-fns/registry'
 import { createImportProtection } from '../import-protection/session'
+import { normalizePath } from '../utils'
 import { IMPORT_EDGES_PLANNER } from '../import-protection/violations'
 import { namesStartSpecifier, startRecognizer } from './recognizer'
 import { opaquePackageModule, startCompileScope } from './scope'
+import { PackageClasses, isStartPackage, packageRootOf } from './package-class'
 import { isVueSfc, vueReport } from './vue'
 import { originalPositions } from './reprinted'
 import type {
@@ -175,6 +177,8 @@ export class StartCompilerSession {
   readonly ip: ImportProtection | null
   /** Whether a module is compiled (`startCompileScope`). */
   readonly compiles: (path: string, code: string) => boolean
+  /** The class of a module by its owning package (`PackageClasses`). */
+  readonly classes: PackageClasses
   readonly rawFacts: RawFactsCache
   readonly caches: CompilerCaches
   readonly registry = new ServerFnRegistry()
@@ -194,14 +198,18 @@ export class StartCompilerSession {
     this.allocator = opts.generateFunctionId
       ? new FunctionIdAllocator(opts.generateFunctionId)
       : null
+    this.classes = new PackageClasses({
+      framework: opts.framework,
+      srcDirectory: opts.srcDirectory,
+    })
     this.ip = createImportProtection({
+      classes: this.classes,
       options: opts.importProtection,
       root: opts.root,
       srcDirectory: opts.srcDirectory,
       mode: opts.mode,
       ids: opts.edgeModuleIds,
       settles: opts.settlesImportVerdicts,
-      readFile: opts.readFile,
       isEntry: opts.isEntry,
       framework: opts.framework,
       rsc: opts.rsc !== undefined,
@@ -209,8 +217,13 @@ export class StartCompilerSession {
     for (const env of opts.environments) {
       this.addEnvironment(env)
     }
-    this.compiles = startCompileScope(this.ip)
-    const packageModule = opaquePackageModule(this.ip)
+    this.compiles = startCompileScope(
+      this.ip,
+      (path) => opts.routes.lookup(path) !== null,
+    )
+    const packageModule = opaquePackageModule(this.ip, (path) =>
+      this.classes.startPackage(path),
+    )
     this.rawFacts = new RawFactsCache({
       readFile: opts.readFile,
       modifiedAt: fileModifiedAt,
@@ -300,7 +313,8 @@ export class StartCompilerSession {
     if (!planners) {
       const rsc = this.rendersServerComponents(env.name)
       planners = startPlanners({
-        hydrate: createHydratePlanner(),
+        classes: this.classes,
+        hydrate: createHydratePlanner(this.classes),
         rscCss: rsc,
         router: rsc ? null : routerPlanner(),
         importEdges: this.ip?.planner ?? null,
@@ -316,7 +330,10 @@ export class StartCompilerSession {
     let planners = this.planners.get(key)
     if (!planners) {
       planners = [
-        startEnvPlanner({ late: true }),
+        startEnvPlanner({
+          late: true,
+          classes: this.classes,
+        }),
         ...(this.ip ? [this.ip.planner] : []),
       ]
       this.planners.set(key, planners)
@@ -509,7 +526,9 @@ export class StartCompilerSession {
     envType: 'client' | 'server',
     sink: StartDiagnosticSink,
     inputMap?: () => InputSourceMap | null,
+    reach?: StartPackageReach,
   ): void {
+    this.reportPackageUse(out, file, sink, reach)
     if (out.diagnostics.length === 0) {
       return
     }
@@ -557,6 +576,54 @@ export class StartCompilerSession {
         return null
       },
     )
+  }
+
+  /**
+   * A package's module whose compile recognised a Start primitive, in a
+   * package Start does not read as one (once per package instance and
+   * run): (i) its manifest does not declare Start (`declaresStart`): a
+   * Start value it forwards under another name is not followed; (ii) a
+   * host that bundles only the packages it found (`reach`, Vite) did not
+   * find it: it sits behind an installed package that does not declare
+   * Start, which the server keeps external. Nothing for Start's own
+   * packages, or a manifest that names Start in `peerDependenciesMeta`
+   * only (an optional integration the package chose not to declare).
+   */
+  private reportPackageUse(
+    out: CompileOutput,
+    file: string,
+    sink: StartDiagnosticSink,
+    reach: StartPackageReach | undefined,
+  ): void {
+    if (!out.facts.planners[START_ENV]?.recognises) {
+      return
+    }
+    const cls = this.classes.classOf(file)
+    if (cls !== 'package' && (cls !== 'start-package' || !reach)) {
+      return
+    }
+    const root = packageRootOf(normalizePath(file))!
+    const manifest = this.classes.manifest(`${root}/package.json`)
+    if (
+      isStartPackage(manifest?.['name']) ||
+      (cls === 'package' && namesStartInMeta(manifest, this.opts.framework))
+    ) {
+      return
+    }
+    const key = root.slice(root.lastIndexOf('/node_modules/') + 14)
+    if (cls === 'start-package' && reach!.names.has(key)) {
+      return
+    }
+    const message =
+      cls === 'package'
+        ? undeclaredPackageMessage(this.opts, root, file)
+        : unreachedPackageMessage(this.opts, root, key, reach!.importers())
+    if (this.warnings.once(root, { code: 'start-package', message: root })) {
+      sink.warn(
+        { severity: 'warning', message, by: START_ENV, code: 'start-package' },
+        undefined,
+      )
+    }
   }
 
   /**
@@ -649,6 +716,60 @@ export interface ClientPublication {
  * compile of another plugin's output, is the position in that output (a
  * host whose bundler maps positions itself reports that one).
  */
+/**
+ * What a host that bundles only the packages it found knows of them
+ * (Vite's crawl, `crawlStartPackages`): their dependency names, and the
+ * importers of the module compiling (the bundler's graph, as far as it
+ * knows them).
+ */
+export interface StartPackageReach {
+  names: ReadonlySet<string>
+  importers: () => ReadonlyArray<string>
+}
+
+/** Whether a manifest names a Start package in `peerDependenciesMeta`. */
+function namesStartInMeta(
+  manifest: Record<string, unknown> | null,
+  framework: CompileStartFrameworkOptions,
+): boolean {
+  const meta = manifest?.['peerDependenciesMeta']
+  return (
+    typeof meta === 'object' &&
+    meta !== null &&
+    Object.keys(meta).some(
+      (name) =>
+        name === `@tanstack/${framework}-start` ||
+        name.startsWith('@tanstack/start-'),
+    )
+  )
+}
+
+function undeclaredPackageMessage(
+  opts: StartCompilerSessionOptions,
+  root: string,
+  file: string,
+): string {
+  const start = `@tanstack/${opts.framework}-start`
+  return `[tanstack-start] ${displayPath(file, opts.root)} uses TanStack Start, but its package (${displayPath(root, opts.root)}/package.json) does not declare it. Start reads the modules of a package that lists ${start} in peerDependencies (or dependencies) on demand; it does not read this one's, so a Start value one of its modules hands to another under a new name is not followed, and the server code of the app's functions built on it can ship to the client. Ask the package to declare ${start} as a peer dependency.`
+}
+
+function unreachedPackageMessage(
+  opts: StartCompilerSessionOptions,
+  root: string,
+  key: string,
+  importers: ReadonlyArray<string>,
+): string {
+  const parentRoot = importers
+    .map((i) => packageRootOf(normalizePath(i)))
+    .find((r) => r !== null && r !== root)
+  const parent = parentRoot?.slice(
+    parentRoot.lastIndexOf('/node_modules/') + 14,
+  )
+  return parent
+    ? `[tanstack-start] ${displayPath(root, opts.root)} declares TanStack Start, but the app reaches it through ${parent}, an installed package that does not: Vite keeps ${parent} external on the server and pre-bundles it in development, so ${key}'s Start APIs are not compiled there. Add ${parent} to ssr.noExternal and optimizeDeps.exclude (listing ${key} alone is not enough).`
+    : `[tanstack-start] ${displayPath(root, opts.root)} declares TanStack Start, but it is no dependency Start found from the app's package.json (through workspace packages and packages that declare Start), so Vite keeps it external on the server and pre-bundles it in development: its Start APIs are not compiled there. List ${key} in the app's dependencies.`
+}
+
 export interface StartDiagnosticSink {
   error: (
     d: Diagnostic,

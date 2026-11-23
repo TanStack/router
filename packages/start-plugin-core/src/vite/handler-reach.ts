@@ -3,7 +3,6 @@ import {
   identify,
   isAnalyzableSpecifier,
 } from '@tanstack/router-utils/compiler'
-import { NODE_MODULES_RE } from '../compiler/scope'
 import type { HostServices } from '@tanstack/router-utils/compiler'
 import type { Session, ViteStartEnvironment } from './compiler-state'
 
@@ -26,7 +25,8 @@ const SERVER_FN_TEXT_RE = /createServerFn|\bhandler\b/
  * imports are seen by no environment before the client builds: their
  * functions were missing from the manifest (J4.2, #7943). Before the
  * provider's real build, the raw reach of every registered server-fn
- * module (static and lazy imports, project modules only, what the deleted
+ * module (static and lazy imports, the modules of the project and of
+ * packages that declare Start, what the deleted
  * handlers read included) is walked, and each module that may define a
  * server function is compiled in the provider environment, outside any
  * transform, so the manifest lists its functions; the build then imports
@@ -62,7 +62,8 @@ export async function compileHandlerReach(
     }
     seen.set(id, reachedClient)
     const identity = identify(id)
-    if (NODE_MODULES_RE.test(identity.path)) {
+    // (an ordinary package defines no server function)
+    if (!s.start.classes.readsOnDemand(identity.path)) {
       continue
     }
     const facts = await rawFacts.get(identity.canonicalId, env.name)

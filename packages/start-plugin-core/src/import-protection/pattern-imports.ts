@@ -353,13 +353,26 @@ export function namesFile(
   importer: string,
   file: string,
 ): boolean {
+  return literalNaming(text, importer, file) !== null
+}
+
+/**
+ * The first string literal of `text` that names `file` as `importer` would
+ * import it (`namesFile`), and its offset: where an importer the compiler
+ * does not compile imports a marked file.
+ */
+export function literalNaming(
+  text: string,
+  importer: string,
+  file: string,
+): { offset: number; specifier: string } | null {
   for (const m of text.matchAll(new RegExp(LITERAL, 'g'))) {
     const specifier = m[1] ?? m[2]!
     if (specifier.includes('/') && mayRequire(specifier, importer, file)) {
-      return true
+      return { offset: m.index, specifier }
     }
   }
-  return false
+  return null
 }
 
 /** `file` as a specifier relative to `importer` (`./x.ts`, `../lib/x.ts`). */

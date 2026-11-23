@@ -1,9 +1,9 @@
 /**
  * Edge rules (J6.1, J6.7, J6.10): importer scope on the
  * importer's path, the specifier rule on the raw specifier as written, then
- * on the resolved target `excludeFiles`, the file rule (root-relative
- * resolved path) and the target's marker. Pure functions of the config and
- * their inputs (J6.11).
+ * on the resolved target the file rule (root-relative resolved path, unless
+ * `excludeFiles` matches it) and the target's marker (always). Pure
+ * functions of the config and their inputs (J6.11).
  */
 import { identify } from '@tanstack/router-utils/compiler'
 import { shouldCheckImportProtectionImporter } from './adapterUtils'
@@ -63,7 +63,7 @@ export function relativeTargetPath(
   return relativizePath(normalizeFilePath(identify(resolved).path), config.root)
 }
 
-/** Whether the resolved target skips the file and marker rules (`excludeFiles`). */
+/** Whether the resolved target skips the file rules (`excludeFiles`). */
 function targetExcluded(
   rules: ImportProtectionEnvRules,
   relativePath: string,
@@ -127,26 +127,39 @@ type MarkerReader = (
 ) => MarkerKind | 'conflict' | null | Promise<MarkerKind | 'conflict' | null>
 
 /**
- * The file rule on a file's root-relative path, else its marker (`excludeFiles` skips both), for the id and
- * the id `cutAtHash` gives (`marker` reads the marker of the one it is given).
+ * The file rule on a file's root-relative path (`excludeFiles` skips it),
+ * and its marker (a statement of the file: honoured whatever `excludeFiles`
+ * says, in every package), for the id and the id `cutAtHash` gives
+ * (`marker` reads the marker of the one it is given). The file rule first,
+ * unless `own.markerFirst` (a module's own violation: when both deny, the
+ * marker is the reason, and its importers are judged by it). `own.files`
+ * false: the marker only (a module outside the scope that is not the app's
+ * source on a client: file names are a convention of the app's scope).
  */
 export async function fileOrMarkerRule(
   config: ImportProtectionConfig,
   envType: EnvType,
   file: string,
   marker: MarkerReader,
+  own: { markerFirst: boolean; files: boolean } = {
+    markerFirst: false,
+    files: true,
+  },
 ): Promise<RuleRef | null> {
   const rules = rulesFor(config, envType)
   let id: string | null = file
   while (id !== null) {
     const rel = relativeTargetPath(config, id)
-    if (!targetExcluded(rules, rel)) {
-      const rule =
-        matchFile(rules, rel) ??
-        (markerViolates(envType, await marker(id)) ? { type: 'marker' } : null)
-      if (rule) {
-        return rule
-      }
+    const byFile =
+      own.files && !targetExcluded(rules, rel) ? matchFile(rules, rel) : null
+    if (byFile !== null && !own.markerFirst) {
+      return byFile
+    }
+    if (markerViolates(envType, await marker(id))) {
+      return { type: 'marker' }
+    }
+    if (byFile !== null) {
+      return byFile
     }
     id = id === file ? cutAtHash(file) : null
   }

@@ -172,6 +172,7 @@ function envCompilerPlugins(
       env.type,
       // a Vue SFC's script block, Vue's output
       isVueSfc(identity.path) ? readInputMap : undefined,
+      () => this.getModuleInfo(id)?.importers ?? [],
     )
     let mock = state.afterCompile(s, env, id, out, (error) => this.error(error))
     if (mock instanceof Promise) {
@@ -562,6 +563,19 @@ function envCompilerPlugins(
         return e.name === env.name
       },
       transform: { filter: state.dependencyFilter, handler: compileTransform },
+    },
+    {
+      // the dependency scripts the compile scope takes by their path (under
+      // the source directory, or an importer the user exempts): no text test
+      name: `tanstack-start:compiler:${env.name}:untested-dependencies`,
+      enforce: 'pre',
+      applyToEnvironment(e) {
+        return e.name === env.name
+      },
+      transform: {
+        filter: state.untestedDependencyFilter,
+        handler: compileTransform,
+      },
     },
   ]
 }

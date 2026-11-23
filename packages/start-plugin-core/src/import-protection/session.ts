@@ -33,7 +33,7 @@ import {
   traceOf,
 } from './graph-trace'
 import { Locator } from './locate'
-import { findPatternImport } from './pattern-imports'
+import { findPatternImport, literalNaming } from './pattern-imports'
 import { matchesAny } from './matchers'
 import { DevReporter, devViolationError } from './report'
 import { fileOrMarkerRule, importerInScope } from './rules'
@@ -86,6 +86,7 @@ import type { WitnessLookup } from './witness'
 import type { ReportContext, ViolationInfo } from './trace'
 import type { ImportProtectionOptions } from '../schema'
 import type { CompileStartFrameworkOptions } from '../types'
+import type { PackageClasses } from '../compiler/package-class'
 
 export interface CreateImportProtectionOptions {
   /** The user's `importProtection` option. */
@@ -96,8 +97,8 @@ export interface CreateImportProtectionOptions {
   mode: ImportProtectionMode
   /** How the host names edge modules (default: Vite ids). */
   ids?: EdgeModuleIds
-  /** Reads a file (a package's `package.json` for `sideEffects`); null when it can't be read. */
-  readFile: (file: string) => Promise<string | null>
+  /** The session's package classes and manifests (`sideEffects`, a denied module's effects). */
+  classes: PackageClasses
   /** Reads a source file's raw text, synchronously (trace positions, `EdgeIndex`); default `node:fs`. */
   readSource?: SourceReader
   /**
@@ -146,7 +147,7 @@ export function createImportProtection(
     ? new ImportProtection(
         config,
         opts.ids ?? viteEdgeModuleIds,
-        opts.readFile,
+        opts.classes,
         opts.isEntry ?? (() => false),
         opts.readSource,
         opts.framework,
@@ -192,10 +193,10 @@ export class ImportProtection {
   private readonly envs = new Map<string, ImportProtectionEnv>()
   private readonly listeners = new Set<EdgeModuleListener>()
   private readonly scopeCache = new Map<string, boolean>()
-  private readonly packageDirs = new Map<string, Promise<string | null>>()
+  /** By package directory, its `sideEffects` declaration (`packageSideEffectFree`). */
   private readonly packageSideEffects = new Map<
     string,
-    Promise<boolean | Array<string>>
+    boolean | Array<string>
   >()
   /**
    * Per environment type, the modules the allowed imports of a released
@@ -237,7 +238,8 @@ export class ImportProtection {
   constructor(
     readonly config: ImportProtectionConfig,
     readonly ids: EdgeModuleIds,
-    private readonly readFile: (file: string) => Promise<string | null>,
+    /** The session's package classes and manifests (`PackageClasses`). */
+    readonly classes: PackageClasses,
     /** Whether a path is an app entry (`CreateImportProtectionOptions.isEntry`). */
     readonly isEntry: (path: string) => boolean,
     /** Raw source text for trace positions (`CreateImportProtectionOptions.readSource`). */
@@ -715,29 +717,24 @@ export class ImportProtection {
    * No `package.json` or no field: it has effects. Cached per package for
    * the session.
    */
-  async packageSideEffectFree(file: string): Promise<boolean> {
-    const dir = await this.packageDirOf(path.dirname(file))
+  packageSideEffectFree(file: string): boolean {
+    const dir = this.classes.packageDirOf(path.dirname(file))
     if (dir === null) {
       return false
     }
-    let decl = this.packageSideEffects.get(dir)
-    if (!decl) {
-      decl = this.readFile(path.join(dir, 'package.json')).then((text) => {
-        try {
-          const value = (JSON.parse(text ?? '{}') as { sideEffects?: unknown })
-            .sideEffects
-          return value === false
-            ? false
-            : Array.isArray(value)
-              ? value.filter((p): p is string => typeof p === 'string')
-              : true
-        } catch {
-          return true
-        }
-      })
-      this.packageSideEffects.set(dir, decl)
+    let value = this.packageSideEffects.get(dir)
+    if (value === undefined) {
+      const declared = this.classes.manifest(
+        path.join(dir, 'package.json'),
+      )?.sideEffects
+      value =
+        declared === false
+          ? false
+          : Array.isArray(declared)
+            ? declared.filter((p): p is string => typeof p === 'string')
+            : true
+      this.packageSideEffects.set(dir, value)
     }
-    const value = await decl
     if (value === false) {
       return true
     }
@@ -751,23 +748,6 @@ export class ImportProtection {
         ? picomatch.isMatch(rel, p, { dot: true })
         : picomatch.isMatch(path.posix.basename(rel), p, { dot: true })
     })
-  }
-
-  private packageDirOf(dir: string): Promise<string | null> {
-    let found = this.packageDirs.get(dir)
-    if (!found) {
-      found = this.readFile(path.join(dir, 'package.json')).then((text) => {
-        if (text !== null) {
-          return dir
-        }
-        const parent = path.dirname(dir)
-        return parent === dir || path.basename(dir) === 'node_modules'
-          ? null
-          : this.packageDirOf(parent)
-      })
-      this.packageDirs.set(dir, found)
-    }
-    return found
   }
 }
 
@@ -1066,22 +1046,30 @@ class ImportProtectionEnv {
   ): Promise<CompiledOutputLike | null> {
     const { path } = identify(id)
     const { config } = this.ip
-    if (
-      this.type !== 'client' ||
-      id.startsWith('\0') ||
-      (NODE_MODULES_RE.test(path) &&
-        !this.ip.inScope(path) &&
-        !this.ip.exempt(path))
-    ) {
+    if (this.type !== 'client' || id.startsWith('\0')) {
       return null
     }
-    const rule = await fileOrMarkerRule(config, this.type, path, async (id) => {
-      if (identify(id).lang === null) {
-        return null
-      }
-      const m = await marker(id)
-      return m === 'conflict' ? 'server-only' : m
-    })
+    // (a dependency's file name is judged when the scope reaches it; its
+    // marker, wherever it is)
+    const rule = await fileOrMarkerRule(
+      config,
+      this.type,
+      path,
+      async (id) => {
+        if (identify(id).lang === null) {
+          return null
+        }
+        const m = await marker(id)
+        return m === 'conflict' ? 'server-only' : m
+      },
+      {
+        markerFirst: true,
+        files:
+          !NODE_MODULES_RE.test(path) ||
+          this.ip.inScope(path) ||
+          this.ip.exempt(path),
+      },
+    )
     return {
       output: id,
       facts: {
@@ -1330,6 +1318,9 @@ class ImportProtectionEnv {
     }
     // (an importer merely outside the scope: only of a file outside it too, R89)
     const inside = this.ip.inScope(traceFile(target))
+    // a marker denies the file to every importer the user does not exempt,
+    // whether the compiler reads it or not (a package's barrel)
+    const byMarker = self.rule.type === 'marker'
     const sources = this.ip.handoffSources(this.name, target)
     const classify = (from: GraphNode, read: boolean) => {
       const ref = this.ip.ids.parse(from.id)
@@ -1344,7 +1335,13 @@ class ImportProtectionEnv {
         return
       }
       const importer = traceFile(from.id)
-      if (
+      if (byMarker) {
+        if (this.ip.exempt(importer)) {
+          out.exempt.add(importer)
+        } else {
+          out.checked.push({ importer, importerId: from.id, env: from.env })
+        }
+      } else if (
         read &&
         !this.ip.inScope(importer) &&
         (!inside || this.ip.exempt(importer))
@@ -2556,10 +2553,13 @@ class ImportProtectionEnv {
   /**
    * Build: the violation a module's own violation stands for at a checked
    * importer of this environment whose import the compiler does not read
-   * (`incoming`), found by the pattern import in its text.
+   * (`incoming`), found by the pattern import in its text, or, for a marked
+   * file, by the literal that names the file (a package module the compiler
+   * does not compile).
    */
   private importOf(self: EdgeViolation, c: CheckedEdge): EdgeViolation {
     const { self: _self, ...violation } = self
+    const found = this.patternImportOf(c.importer, self.resolved!)
     return {
       ...violation,
       env: this.name,
@@ -2567,7 +2567,36 @@ class ImportProtectionEnv {
       edgeKey: `${self.edgeKey}\u0000${c.importerId}`,
       importer: c.importer,
       importerId: c.importerId,
-      ...this.patternImportOf(c.importer, self.resolved!),
+      ...found,
+      ...(found.pattern === null &&
+        self.rule.type === 'marker' &&
+        this.literalImportOf(c.importer, self.resolved!)),
+    }
+  }
+
+  /**
+   * Where an importer the compiler did not compile imports a marked file:
+   * the first string literal of its raw text naming the file, its position
+   * and code frame. Read once the violation survived (a report).
+   */
+  private literalImportOf(
+    importer: string,
+    resolved: string,
+  ): Pick<EdgeViolation, 'loc' | 'snippet' | 'specifier'> | null {
+    const text = this.ip.readSource(importer)
+    const found =
+      text === null
+        ? null
+        : literalNaming(text, importer, identify(resolved).path)
+    if (text === null || found === null) {
+      return null
+    }
+    const locator = new Locator(text, importer, () => null)
+    const loc = locator.at(found.offset)
+    return {
+      loc,
+      snippet: loc && locator.frame(loc),
+      specifier: found.specifier,
     }
   }
 

@@ -24,7 +24,7 @@ import {
   unwrapExpression,
 } from '@tanstack/router-utils/compiler'
 import { HYDRATE_KINDS } from './recognizer'
-import { NODE_MODULES_RE } from './scope'
+import type { PackageClasses } from './package-class'
 import type {
   AbstractValue,
   ModuleAnalysis,
@@ -380,6 +380,8 @@ interface PrefetchOptions {
   late?: boolean
   /** `TSR_COMPILER_NO_CACHE=registry` turns it off: the route file's summary answers. */
   answerFromRegistry: boolean
+  /** Whose modules' exports are followed (`PackageClasses.readsOnDemand`). */
+  classes: Pick<PackageClasses, 'readsOnDemand'>
 }
 
 /**
@@ -403,12 +405,12 @@ export async function prefetchStartValues(
     answerFromRegistry: opts.answerFromRegistry,
   })
 
-  /** An export of `id` (or of a namespace it exports) that server code can still be attached to. A dependency's are not followed. */
+  /** An export of `id` (or of a namespace it exports) that server code can still be attached to. An ordinary package's are not followed. */
   const openExport = async (
     id: string,
     seen: Set<string>,
   ): Promise<string | null> => {
-    if (seen.has(id) || NODE_MODULES_RE.test(id)) {
+    if (seen.has(id) || !opts.classes.readsOnDemand(id)) {
       return null
     }
     seen.add(id)

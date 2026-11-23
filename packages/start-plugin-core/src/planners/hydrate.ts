@@ -47,7 +47,7 @@ import {
   HYDRATE_KINDS,
   startRecognizer,
 } from '../compiler/recognizer'
-import { NODE_MODULES_RE } from '../compiler/scope'
+import type { PackageClasses } from '../compiler/package-class'
 import type {
   AbstractValue,
   ClassifiedRef,
@@ -98,12 +98,15 @@ declare module '@tanstack/router-utils/compiler' {
  * Creates the planner. Its config comes from `config.perPlanner.hydrate`
  * (`HydratePlannerConfig`), which the host folds into the config key.
  */
-export function createHydratePlanner(): Planner<typeof HYDRATE_PLANNER> {
+export function createHydratePlanner(
+  /** Whose modules' exports are followed (`PackageClasses.readsOnDemand`). */
+  classes: Pick<PackageClasses, 'readsOnDemand'>,
+): Planner<typeof HYDRATE_PLANNER> {
   return {
     name: HYDRATE_PLANNER,
     tier: 1,
     gate: (t0) => gate(t0),
-    prefetch: (t0, ctx) => prefetch(t0, ctx),
+    prefetch: (t0, ctx) => prefetch(t0, ctx, classes),
     plan: (ctx) => plan(ctx),
   }
 }
@@ -163,6 +166,7 @@ interface HydratePrefetch {
 async function prefetch(
   t0: ModuleAnalysis,
   ctx: PrefetchContext,
+  classes: Pick<PackageClasses, 'readsOnDemand'>,
 ): Promise<boolean> {
   const table = startRecognizer()
   const self = ctx.identity.canonicalId
@@ -189,7 +193,7 @@ async function prefetch(
       reader ??= startValueReader(ctx, {
         table,
         answerFromRegistry: false,
-        enters: (id) => !NODE_MODULES_RE.test(id),
+        enters: (id) => classes.readsOnDemand(id),
       })
       const read = reader
       work.push(

@@ -32,7 +32,11 @@ import {
 } from '@tanstack/router-plugin/context'
 import { DEV_CLIENT_ENTRY, VITE_ENVIRONMENT_NAMES } from '../constants'
 import { StartCompilerSession } from '../compiler/session'
-import { dependencyTextFilter } from '../compiler/scope'
+import {
+  DEPENDENCY_SCRIPT_RE,
+  dependencyTextFilter,
+  untestedDependencyIds,
+} from '../compiler/scope'
 import { resolveImportProtectionConfig } from '../import-protection/config'
 import { escapeRegExp, resolveViteId } from '../utils'
 import { invalidateRegistry, reloadMismatched } from './invalidation'
@@ -98,9 +102,8 @@ export interface StartCompilerPluginOptions {
 /** A dependency module: `node_modules` in its path (not its query). */
 const DEPENDENCY_ID_RE = /^[^?]*[\\/]node_modules[\\/]/
 
-/** A dependency's script module (the `TRANSFORM_ID_REGEX` of `DEPENDENCY_ID_RE`). */
-const DEPENDENCY_SCRIPT_RE =
-  /^[^?]*[\\/]node_modules[\\/].*\.[cm]?[tj]sx?(?:$|\?)/
+/** An id filter no module id matches (a filter's `include` must not be empty). */
+const MATCHES_NO_ID = /^\0no-module$/
 
 /**
  * The optimizer's bundles of an app: files of Vite's resolved `cacheDir`
@@ -431,6 +434,22 @@ export class ViteCompilerState implements ClientBuilds {
   } = {
     id: { include: [DEPENDENCY_SCRIPT_RE], exclude: [SCRIPT_ASSET_QUERY_RE] },
   }
+  /**
+   * The transform filter of the dependency scripts the compile scope takes
+   * by their path (`untestedDependencyIds`: under the source directory, or
+   * exempt as importers): no text test. `dependencyFilter` leaves them out.
+   */
+  readonly untestedDependencyFilter: {
+    id: { include: Array<RegExp>; exclude: Array<RegExp> }
+  } = {
+    id: { include: [MATCHES_NO_ID], exclude: [SCRIPT_ASSET_QUERY_RE] },
+  }
+  /**
+   * The dependency names the crawl found (`crawlStartPackages`): the
+   * packages that declare Start which Vite bundles for the server. Set by
+   * the config hook, before any compile.
+   */
+  startPackageNames: ReadonlySet<string> | null = null
   /** What the main transform leaves to `dependencyFilter` (the optimizer's bundles are added from the resolved config). */
   readonly ownExclude: Array<RegExp> = [SCRIPT_ASSET_QUERY_RE, DEPENDENCY_ID_RE]
   /** The environment whose plugin runs `watchChange` (bundled dev): one invalidation per change, applied to every environment. */
@@ -471,13 +490,20 @@ export class ViteCompilerState implements ClientBuilds {
     )
     this.ownExclude.splice(2, Infinity, cacheDirRe(config.cacheDir))
     const { startConfig, resolvedStartConfig } = this.opts.getConfig()
-    const text = dependencyTextFilter(
-      resolveImportProtectionConfig(startConfig.importProtection, {
-        root: config.root,
-        srcDirectory: resolvedStartConfig.srcDirectory,
-        mode: config.command === 'build' ? 'build' : 'dev',
-      }),
+    const ip = resolveImportProtectionConfig(startConfig.importProtection, {
+      root: config.root,
+      srcDirectory: resolvedStartConfig.srcDirectory,
+      mode: config.command === 'build' ? 'build' : 'dev',
+    })
+    const untested = untestedDependencyIds(ip)
+    // (an empty `include` would match every id)
+    this.untestedDependencyFilter.id.include.splice(
+      0,
+      Infinity,
+      ...(untested.length > 0 ? untested : [MATCHES_NO_ID]),
     )
+    this.dependencyFilter.id.exclude.splice(1, Infinity, ...untested)
+    const text = dependencyTextFilter(ip)
     if (text) {
       this.dependencyFilter.code = text
     } else {
@@ -811,6 +837,7 @@ export class ViteCompilerState implements ClientBuilds {
     code: string,
     envType: 'client' | 'server',
     inputMap?: () => InputSourceMap | null,
+    importers?: () => ReadonlyArray<string>,
   ): void {
     // a Vue SFC's refusals are positioned in the SFC (`at`), not in `code`
     const frameOf = inputMap ? null : code
@@ -837,6 +864,9 @@ export class ViteCompilerState implements ClientBuilds {
         warn: (d, at, generated) => ctx.warn(log(d, at, generated)),
       },
       inputMap,
+      this.startPackageNames && importers
+        ? { names: this.startPackageNames, importers }
+        : undefined,
     )
   }
 

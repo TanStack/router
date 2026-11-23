@@ -5,11 +5,7 @@
  * Source: review (options that were parsed but never exercised for
  * effect).
  */
-import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import {
-  expectDiagnostic,
-  findDiagnostics,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
@@ -121,29 +117,29 @@ describe.each(startBundlers)('%s build', (bundler) => {
 
   // Scope: which importers are checked.
   describe('include, exclude and ignoreImporters', () => {
-    // A module outside srcDirectory is never checked: the marked module is
-    // mocked for it, and the build warns, saying what denies the module.
+    // A module outside srcDirectory is not checked, but a marker denies its
+    // file to every importer the user does not exempt: the build fails at
+    // the outside importer's import (a `.server` file name still gives it the
+    // mock with a warning, R89: unchecked-importers.test.ts).
     // Source: review of 2026-11-09, round 2 (the warning said "Denied by
-    // marker pattern: undefined").
+    // marker pattern: undefined"); node_modules policy, decision 7 (S5).
     test(
-      'srcDirectory: an importer outside it gets a mock of a server-only-marked module, with a warning naming it',
+      'srcDirectory: an importer outside it of a server-only-marked module fails the build at its import',
       async () => {
-        const built = await buildStart({
-          bundler,
-          files: {
-            'src/secret.ts': `import '@tanstack/react-start/server-only'\nexport const secret = () => 'MARK_SECRET'\n`,
-            'lib/outside.ts': userOf('../src/secret'),
-            'src/entry.ts': `export { read } from '../lib/outside'\n`,
-          },
-          entry: 'src/entry.ts',
-        })
-        expectDiagnostic(problems(built.diagnostics), {
-          severity: 'warning',
-          file: 'src/secret.ts',
-          root: built.root,
-          times: 1,
-        })
-        expect(built.client.where('MARK_SECRET')).toBe('nowhere')
+        const error = await rejection(
+          buildStart({
+            bundler,
+            files: {
+              'src/secret.ts': `import '@tanstack/react-start/server-only'\nexport const secret = () => 'MARK_SECRET'\n`,
+              'lib/outside.ts': userOf('../src/secret'),
+              'src/entry.ts': `export { read } from '../lib/outside'\n`,
+            },
+            entry: 'src/entry.ts',
+          }),
+        )
+        expect(
+          reportedViolations(error).map(({ importer }) => importer),
+        ).toContainEqual(expect.stringMatching(/^lib\/outside\.ts:1:/))
       },
       timeout,
     )
@@ -370,42 +366,26 @@ export const secret = () => 'MARK_SECRET'
       'src/entry.ts': userOf('db-lib'),
     }
 
-    // Replaces the Rsbuild unit test of getRsbuildResolvedImportProtectionCheck
-    // ("skips file and marker checks for excluded resolved files").
-    // NEW bug (Vite): the Vite adapter checks a server-only marker when it
-    // resolves the marker import, for any importer, and never applies
-    // `excludeFiles` to the marked module (main's vite/import-protection-plugin/
-    // plugin.ts, marker handling in `resolveId`), so the build fails with a
-    // marker violation of `node_modules/db-lib/index.js`. The docs: "By
-    // default, resolved files inside `node_modules` are excluded from
-    // resolved-target deny checks (file-pattern and marker checks)"
-    // (guide/import-protection.md). Rsbuild follows them.
-    // Impact: on Vite, a client import of a dependency that marks itself
-    // server-only fails the build although the defaults exclude it (and
-    // `excludeFiles` cannot exempt it).
-    // Source: review (replaces a row of rsbuild/import-protection.test.ts).
-    // (Was a Vite pin: main's Vite adapter never applied `excludeFiles` to a
-    // marked module.)
-    test(
-      'by default, the server-only marker of a dependency is not checked',
-      async () => {
-        expect(await outcome(markedDependency, {})).toBe('built')
-      },
-      timeout,
-    )
-
-    // On main, on Rsbuild, a project cannot opt in to checking the server-only
-    // markers of its dependencies.
-    // Source: review (this row ran on Vite only; the docs decide).
-    test(
-      '[] checks the markers of dependencies: a server-only-marked dependency fails the build',
-      async () => {
+    // A marker is a statement of the file, honoured in every package
+    // whatever `excludeFiles` says (it skips file-name rules only).
+    // On main, Vite fails this build and Rsbuild ships the marked module;
+    // before the node_modules policy, the PR followed the docs of the time
+    // ("resolved files inside node_modules are excluded from ... marker
+    // checks") and shipped it on both hosts.
+    // Source: review (replaces a row of rsbuild/import-protection.test.ts);
+    // node_modules policy, decision 1 (A) and D-b (SPEC J6.10).
+    test.each<[string, Record<string, unknown>]>([
+      ['by default', {}],
+      ['with excludeFiles: []', { client: { excludeFiles: [] } }],
+    ])(
+      "%s, a server-only-marked dependency fails the build at the app's import",
+      async (_, importProtection) => {
         const error = await rejection(
           buildStart({
             bundler,
             files: markedDependency,
             entry: 'src/entry.ts',
-            start: { importProtection: { client: { excludeFiles: [] } } },
+            start: { importProtection },
           }),
         )
         const [report, ...others] = violationsOf(error)
