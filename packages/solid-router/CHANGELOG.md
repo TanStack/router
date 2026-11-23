@@ -1,5 +1,11 @@
 # @tanstack/solid-router
 
+## 2.0.0-rc.12
+
+### Patch Changes
+
+- [#8972](https://github.com/TanStack/router/pull/8972) [`850c460`](https://github.com/TanStack/router/commit/850c460e4b5ea9013c64bf7971dff19bd9941230) - Stop `<Link>` from logging Solid's `STRICT_READ_UNTRACKED` dev warning when its options are spread from a reactive expression such as a `<For>` item (`<Link {...item.linkOptions}>`). `Link` read `_asChild` in its component body and `ref` in its ref callback; both are now read with `untrack`.
+
 ## 2.0.0-rc.11
 
 ### Patch Changes

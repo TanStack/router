@@ -1,5 +1,16 @@
 # @tanstack/solid-start
 
+## 2.0.0-rc.12
+
+### Patch Changes
+
+- [#8973](https://github.com/TanStack/router/pull/8973) [`db63251`](https://github.com/TanStack/router/commit/db632514f52d6e78c966c4a633d3a87dbbccb8e8) - Stop importing `@tanstack/start-server-core/request-scope`, which no published `@tanstack/start-server-core` exports. The server-function handler now uses `createServerEntry` and `handleStartError` from `@tanstack/start-server-core/request-response`.
+
+- Updated dependencies [[`850c460`](https://github.com/TanStack/router/commit/850c460e4b5ea9013c64bf7971dff19bd9941230)]:
+  - @tanstack/solid-router@2.0.0-rc.12
+  - @tanstack/solid-start-client@2.0.0-rc.12
+  - @tanstack/solid-start-server@2.0.0-rc.12
+
 ## 2.0.0-rc.11
 
 ### Patch Changes
