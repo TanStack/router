@@ -203,7 +203,12 @@ function info not found` when one of them calls it, and the build says nothing, 
   that is never mounted (created and dropped) loads the edited route on every edit until the garbage collector frees
   it (the routers of the page are held weakly). A route module and its lazy route file saved together load the route
   twice (one record per file). The record of a removed route file stays while another router holds a route of the
-  same id; the owner check keeps it from being applied. No test (the outcome is the limit).
+  same id; the owner check keeps it from being applied. Where the route tree module evaluates again in place (Start on
+  Rsbuild, until its route-set reload; with `dev.liveReload: false`, until a reload), three edits can miss (review of
+  the implementation, router-core probes, 11-23): a second router of the same tree is not loaded again; a React
+  route whose commit waited for React Refresh's pass while the tree took the new evaluation is not loaded again; and a
+  route file deleted and created again, whose new module evaluates before the tree, is forgotten, so its later edits
+  do not show. No test (the outcome is the limit).
 - **Solid: the return of a deleted file a split component reads reloads the page, also with Rsbuild's
   `dev.liveReload: false`** (route HMR decision 3, 11-23). When the import of a split chunk failed (a stash or a
   branch switch removed a file it reads) and later succeeds, the runtime reloads the page once on every host

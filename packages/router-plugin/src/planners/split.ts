@@ -323,7 +323,7 @@ export function planSplit(ctx: PlanContext, round: RouterRound): void {
  * `src/hmr-chunk-importer.ts`; remove with it once the supported Rsbuild
  * range starts at a release with that Rspack). Solid, development on the
  * client, webpack-style hosts: each group's importer is wrapped,
- * `__tsrChunkImporter(<route id>, <group>, () => import(…))`, to answer the
+ * `__tsrChunkImporter(<route file>, <group>, () => import(…))`, to answer the
  * chunk's newest evaluation. Otherwise the importer stays as it is.
  * Returns what opens and closes the wrap around a group's importer.
  */

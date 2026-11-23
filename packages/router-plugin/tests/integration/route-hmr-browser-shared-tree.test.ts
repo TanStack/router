@@ -102,14 +102,22 @@ const root = (target: string) =>
 export const Route = createRootRoute({})
 `
 
-describe.concurrent.each(['react', 'solid', 'vue'] as const)(
-  'vite %s: two route trees, each compiled by a router plugin of its own',
-  (target) => {
+describe.concurrent.each([
+  { bundler: 'vite', target: 'react' },
+  { bundler: 'vite', target: 'solid' },
+  { bundler: 'vite', target: 'vue' },
+  // (the split chunk and kept-reader reports of webpack-style hosts)
+  { bundler: 'rsbuild', target: 'react' },
+  { bundler: 'rsbuild', target: 'solid' },
+] as const)(
+  '$bundler $target: two route trees, each compiled by a router plugin of its own',
+  ({ bundler, target }) => {
     it(
       "an edit of the app tree's route `/` shows in the app's router; the other tree's `/` keeps its code",
       { timeout },
       async ({ expect, onTestFinished }: TestContext) => {
         const app = await openRouteHmrPage({
+          bundler,
           target,
           onTestFinished,
           moreRouteTrees: [widgetTree],
@@ -149,6 +157,7 @@ describe.concurrent.each(['react', 'solid', 'vue'] as const)(
       { timeout },
       async ({ expect, onTestFinished }: TestContext) => {
         const app = await openRouteHmrPage({
+          bundler,
           target,
           onTestFinished,
           moreRouteTrees: [widgetTree],

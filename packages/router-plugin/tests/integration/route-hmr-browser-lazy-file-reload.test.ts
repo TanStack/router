@@ -4,11 +4,14 @@
  * the edit. A real dev server serves the app to a real browser page, and the
  * test edits the lazy file on disk (`route-hmr-page.ts`).
  *
- * - Another router on the page, created after the app's (a widget with a
- *   route of the same id): the edit reaches the app's route and leaves the
- *   widget alone (Astra R3).
  * - An edit removing an option the route file sets too: the route shows the
- *   route file's option again (Astra R4).
+ *   route file's option again (Astra R4), also when the route module was
+ *   edited after the route loaded its lazy file and before it was shown
+ *   again (review of the route HMR implementation, 11-23).
+ *
+ * And one an edit applies in place now: another router on the page, created
+ * after the app's (a widget with a route of the same id): the edit reaches
+ * the app's route and leaves the widget alone (Astra R3).
  */
 import { describe, it } from 'vitest'
 import { openRouteHmrPage } from '../route-hmr-page'
@@ -140,3 +143,59 @@ describe.concurrent.each([
     },
   )
 })
+
+describe.concurrent.each(['vite', 'rsbuild'] as const)(
+  '%s: a react app whose lazy route is not on screen',
+  (bundler) => {
+    it(
+      "shows the route file's component once an edit removes the lazy file's, after an edit of the route module",
+      { timeout },
+      async ({ expect, onTestFinished }: TestContext) => {
+        const other = (loader: string) =>
+          `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/other')({
+  loader: () => '${loader}',
+  component: () => <p>Eager other</p>,
+})
+`
+        const otherLazy = (options: string) =>
+          `import { createLazyFileRoute } from '@tanstack/react-router'
+export const Route = createLazyFileRoute('/other')({ ${options} })
+`
+        const app = await openRouteHmrPage({
+          bundler,
+          onTestFinished,
+          files: {
+            'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({ component: () => <p>Home</p> })
+`,
+            'routes/other.tsx': other('v1'),
+            'routes/other.lazy.tsx': otherLazy(
+              'component: () => <p>Lazy other</p>',
+            ),
+          },
+          ready: 'Home',
+        })
+        const visit = async (to: string, shows: string) => {
+          await app.evaluate(
+            `void window.__APP_ROUTER__.navigate({ to: ${JSON.stringify(to)} })`,
+          )
+          await app.page.waitForText(shows, { selector: '#app' })
+        }
+        await visit('/other', 'Lazy other')
+        await visit('/', 'Home')
+        await app.edit({ 'routes/other.tsx': other('v2') }, 'Home')
+        await app.edit(
+          {
+            'routes/other.lazy.tsx': otherLazy(
+              'notFoundComponent: () => <p>Missing</p>',
+            ),
+          },
+          'Home',
+        )
+        await visit('/other', 'other')
+        expect(await app.page.text('#app')).toBe('Eager other')
+      },
+    )
+  },
+)

@@ -116,4 +116,35 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
       expect(fixed.reloaded).toBe(false)
     },
   )
+
+  // Review of the route HMR implementation (11-23): the wrapper's own first
+  // load failed, so it holds no component; an edit that leaves the chunk
+  // broken fails its hot import too
+  test.for([false, true])(
+    'a component chunk that failed on the first load and after an edit shows the fixing edit (error component: %s)',
+    { timeout },
+    async (errorComponent, { onTestFinished }) => {
+      const shape = { loader: false, errorComponent }
+      const failure = errorComponent
+        ? 'failed SyntaxError'
+        : /Something went wrong/
+      const app = await openRouteHmrPage({
+        bundler,
+        onTestFinished,
+        files: { 'routes/index.tsx': broken(shape) },
+        ready: failure,
+      })
+      await app.edit(
+        {
+          'routes/index.tsx': route('{"label": ', shape),
+        },
+        failure,
+      )
+      const fixed = await app.edit(
+        { 'routes/index.tsx': healthy('page v3', shape) },
+        'page v3 0',
+      )
+      expect(fixed.reloaded).toBe(false)
+    },
+  )
 })
