@@ -5,7 +5,7 @@
 ## Router bindings
 
 - Navigation/render identity is more than href or route membership: same-href navigations can have different history keys, and suspended renders must acknowledge only their own match publication. Preserve those identity checks when optimizing stores or render notifications.
-- In navigation params/search, an explicit `undefined` can clear an inherited value; an absent key can inherit it. Preserve that distinction when comparing or memoizing options; React's `useValueStable` uses `deepEqual` with `ignoreUndefined: false`.
+- In navigation params/search, an explicit `undefined` can clear an inherited value; an absent key can inherit it. Preserve that distinction when comparing or memoizing options.
 
 ## Tests
 
