@@ -151,3 +151,74 @@ export const Route = createRootRoute({ shellComponent: Shell })
     },
   },
 }
+
+/**
+ * A root route that renders the document in its `component` (no
+ * `shellComponent`), with an error component of its own, as many Start apps
+ * have: its boundary catches what a route under it without an error
+ * component throws, and replaces the document.
+ */
+export const rootRendersDocument: Record<Framework, string> = {
+  react: `import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute({
+  component: Root,
+  errorComponent: () => <p data-probe="root-error">root-error</p>,
+})
+function Root() {
+  return (
+    <html>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <Outlet />
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+`,
+  solid: `import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/solid-router'
+import { HydrationScript } from 'solid-js/web'
+export const Route = createRootRoute({
+  component: Root,
+  errorComponent: () => <p data-probe="root-error">root-error</p>,
+})
+function Root() {
+  return (
+    <html>
+      <head>
+        <HydrationScript />
+        <HeadContent />
+      </head>
+      <body>
+        <Outlet />
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+`,
+  vue: `import { defineComponent } from 'vue'
+import { Body, HeadContent, Html, Outlet, Scripts, createRootRoute } from '@tanstack/vue-router'
+const Root = defineComponent({
+  setup() {
+    return () => (
+      <Html>
+        <head>
+          <HeadContent />
+        </head>
+        <Body>
+          <Outlet />
+          <Scripts />
+        </Body>
+      </Html>
+    )
+  },
+})
+export const Route = createRootRoute({
+  component: Root,
+  errorComponent: () => <p data-probe="root-error">root-error</p>,
+})
+`,
+}

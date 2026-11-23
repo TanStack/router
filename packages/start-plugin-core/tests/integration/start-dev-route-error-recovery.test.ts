@@ -13,7 +13,7 @@
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { startDevServer } from '../dev-server'
-import { apps, index } from './route-error-apps'
+import { apps, index, rootRendersDocument } from './route-error-apps'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 
 const timeout = 90_000
@@ -158,6 +158,51 @@ describe('Vite dev, Start with a document shell: a route edit after a component 
       })
       // the route's boundary resets in place when the route loads again
       await expect.poll(() => browser.loads()).toBe(1)
+    },
+    timeout,
+  )
+
+  // Review of the route HMR implementation (11-23): a root route whose
+  // component renders the document, with its own error component, catches
+  // the throw of a route under it: that boundary replaces the document as
+  // the global one does
+  test.each(['react', 'solid', 'vue'] as const)(
+    '%s: a root route rendering the document with its own error component: an edit that fixes a component that threw during hydration shows',
+    async (framework) => {
+      const app = apps[framework]
+      const server = await startDevServer({
+        ...app,
+        start: {},
+        browser: true,
+        files: {
+          ...app.files,
+          'src/routes/__root.tsx': rootRendersDocument[framework],
+          'src/routes/index.tsx': index(framework, 'home-v1', true),
+        },
+      })
+      const browser = await openPage(server.url!, {
+        registerCleanup: onTestFinished,
+      })
+      // the root route's boundary caught the throw (Solid's blanks the
+      // document it replaced)
+      await expect
+        .poll(
+          () =>
+            browser.console.some((line) =>
+              line.includes('Error in route match: __root__'),
+            ),
+          { timeout: 15_000 },
+        )
+        .toBe(true)
+      await server.idle()
+
+      await server.edit({
+        'src/routes/index.tsx': index(framework, 'home-v2', false),
+      })
+      await browser.waitForText('home-v2', {
+        selector: '[data-probe=home]',
+        timeout: 20_000,
+      })
     },
     timeout,
   )

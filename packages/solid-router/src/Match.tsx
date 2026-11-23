@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import { rootRouteId } from '@tanstack/router-core'
+import { hmrReloadAfterCatch, rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
@@ -125,6 +125,12 @@ export const Match = (props: { routeId: string }) => {
                 throw notFoundError
               }
               if (process.env.NODE_ENV !== 'production') {
+                // A root route without a shell renders the document in its
+                // component: this boundary replaced it, as the global one
+                // does
+                if (ShellComponent === SafeFragment && route.isRoot) {
+                  hmrReloadAfterCatch(router, error)
+                }
                 console.warn(
                   `Warning: Error in route match: ${currentMatch().routeId}`,
                 )
