@@ -11,6 +11,7 @@
  * F1 `case6a`, `rsbuild-rsc-dev`; Astra 3 `head-rsbuild-rsc-mixed`).
  */
 import { describe, expect, test } from 'vitest'
+import { diagnosticPosition } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   openRscPage,
   startRscRsbuildDevServer,
@@ -89,6 +90,61 @@ describe('Rsbuild build with RSC', () => {
         'client marker title.js -> ./secret.js',
         'client marker widget.jsx -> ./secret.js',
       ])
+    },
+    timeout,
+  )
+})
+
+// An exempt app module needs the marked file as it is, and the widget, a
+// checked importer the compiler does not compile, reaches it too: the
+// build fails (R147), naming the widget at its import of the file.
+// Source: reviews of the node_modules policy implementation (Gemini F6.2,
+// case 6b: the widget was named as an import another plugin added).
+describe('Rsbuild build with RSC, importers that disagree', () => {
+  test(
+    'the conflict names the widget at its import of the marked file',
+    async () => {
+      const { start } = protection({
+        behavior: 'error',
+        exclude: ['src/admin.ts'],
+      })
+      const built = await startRscRsbuildPreviewServer({
+        start,
+        files: {
+          ...packageWidgetApp,
+          'node_modules/audit-lib/package.json': JSON.stringify({
+            name: 'audit-lib',
+            version: '1.0.0',
+            type: 'module',
+            peerDependencies: { '@tanstack/react-start': '*' },
+            exports: { './widget': './widget.jsx', './secret': './secret.js' },
+          }),
+          'src/admin.ts': `import { secret } from 'audit-lib/secret'\nexport const admin = () => secret()\n`,
+          'src/routes/c.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { admin } from '../admin'
+import { getC } from '../c/page'
+export const Route = createFileRoute('/c')({
+  loader: async () => ({ tree: await getC() }),
+  component: Page,
+})
+function Page() {
+  return <main data-testid="main">{String(admin())}{Route.useLoaderData().tree}</main>
+}
+`,
+        },
+      }).then(
+        () => null,
+        (error: unknown) => error,
+      )
+      expect(built).toBeInstanceOf(AggregateError)
+      const text = (built as AggregateError).errors.map(String).join('\n')
+      const { line, column } = diagnosticPosition(
+        packageWidgetApp['node_modules/audit-lib/widget.jsx'],
+        "'./secret.js'",
+      )
+      expect(text).toContain(
+        `node_modules/audit-lib/widget.jsx:${line}:${column}`,
+      )
     },
     timeout,
   )

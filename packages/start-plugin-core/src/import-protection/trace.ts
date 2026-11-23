@@ -307,7 +307,9 @@ export function formatServedMismatch(
     return lines.join('\n')
   }
   // how each importer that is not a needer reaches the file
-  const sites = others.map((o) => reachOf(ctx, o, denied))
+  const sites = others.map((o) =>
+    reachOf(ctx, o, denied, info.type === 'marker'),
+  )
   const unread =
     sites[0]?.cause === 'added'
       ? 'one another plugin added'
@@ -382,7 +384,7 @@ export function formatServedConflict(
   const denied = identify(info.resolved ?? info.importer).path
   const handoffs = checked.flatMap((c) => (c.handoff ? [c.handoff] : []))
   const sites = checked.flatMap((c) =>
-    c.handoff ? [] : [reachOf(ctx, c.importer, denied)],
+    c.handoff ? [] : [reachOf(ctx, c.importer, denied, info.type === 'marker')],
   )
   const exempt = demand.needers.filter((f) => !demand.allowed.includes(f))
   const lines = [
@@ -454,7 +456,24 @@ function reachOf(
   ctx: ReportContext,
   importer: string,
   denied: string,
+  /** The file is denied by its marker: a plain import of it is checked, from a module the compiler does not compile too. */
+  byMarker = false,
 ): PatternSite {
+  const plain = byMarker
+    ? locateIn(ctx.readSource, importer, (text) => {
+        const literal = literalNaming(text, importer, denied)
+        return literal && { offset: literal.offset, value: literal }
+      })
+    : null
+  if (plain) {
+    return {
+      importer,
+      found: null,
+      cause: 'imported',
+      loc: plain.loc,
+      frame: plain.frame,
+    }
+  }
   const hit = locateIn(ctx.readSource, importer, (text) => {
     const found = findPatternImport(text, importer, denied, ctx.config.root)
     return found && { offset: found.offset, value: found }
@@ -491,6 +510,10 @@ function reachLine(site: PatternSite, ctx: ReportContext): string {
         ? 'an import() with a variable path'
         : site.found.kind
     return `${at}, through ${kind}: a pattern import, which import protection does not read`
+  }
+  if (site.cause === 'imported') {
+    const at = site.loc ? `${rel}:${site.loc.line}:${site.loc.column}` : rel
+    return `${at}, through its import of the file (a module the compiler does not compile: its import of a marked file is checked)`
   }
   return site.cause === 'added'
     ? `${rel}, through an import its source does not have (another plugin's transform added it)`
@@ -626,6 +649,16 @@ function patternSuggestions(
       `If ${relativizePath(site.importer, root)} should be checked, move it inside srcDirectory/include (or out of exclude/ignoreImporters)`,
       `If it needs the real module, import the file statically from a module that exclude/ignoreImporters exempts inside the scope: the file then ships to the ${envType}`,
     ]
+  }
+  // (a plain import of a marked file, from a module the compiler does not compile)
+  if (site?.cause === 'imported') {
+    return /[\\/]node_modules[\\/]/.test(site.importer)
+      ? [
+          `${relativizePath(site.importer, root)} is a module of a package: import an entry of the package the ${envType} may load`,
+        ]
+      : envType === 'client'
+        ? [...CLIENT_ENV_SUGGESTIONS]
+        : [...SERVER_FN_SUGGESTIONS]
   }
   if (site?.cause === 'added') {
     return [
