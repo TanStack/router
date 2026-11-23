@@ -405,3 +405,69 @@ describe.each(startBundlers)(
     )
   },
 )
+
+// The id filter Vite's hook runs before the compile scope must let through
+// every module the public matcher exempts: a pattern it cannot say as an id
+// filter (a whole-pattern negation) lets every dependency script through,
+// and an empty pattern, which matches no path, is no error.
+// Source: round-2 re-checks of the node_modules policy implementation
+// (Astra 2 `glob-negation`, Gemini 4).
+describe.each(startBundlers)('%s build, exemption patterns', (bundler) => {
+  const app = (ignoreImporters: Array<string>) =>
+    buildStart({
+      bundler,
+      workspace: {
+        app: 'repo/apps/web',
+        files: {
+          'repo/package.json': JSON.stringify({
+            name: 'monorepo',
+            private: true,
+          }),
+        },
+      },
+      files: {
+        'node_modules/ui-kit/package.json': JSON.stringify({
+          name: 'ui-kit',
+          type: 'module',
+          exports: { '.': './index.js' },
+        }),
+        'node_modules/ui-kit/index.js': `export { secret } from './secret.js'\n`,
+        'node_modules/ui-kit/secret.js': `import '@tanstack/react-start/server-only'\nexport const secret = () => 'MARK_SECRET'\n`,
+        'src/entry.ts': `import { secret } from 'ui-kit'\nexport const read = () => secret()\n`,
+      },
+      packageJson: {
+        name: 'web',
+        private: true,
+        type: 'module',
+        dependencies: { 'ui-kit': '*' },
+      },
+      entry: 'src/entry.ts',
+      start: { importProtection: { ignoreImporters } },
+    })
+
+  test(
+    "a negated glob that exempts the package's barrel gives it the real module, nothing reported",
+    async () => {
+      const build = await app(['!**/apps/web/**'])
+      expect(
+        (await build.client.run(`return String(entry.read())`)).result,
+      ).toBe('MARK_SECRET')
+      expect(reportedViolations(build)).toEqual([])
+      expect(problems(build.diagnostics).map(({ text }) => text)).toEqual([])
+    },
+    timeout,
+  )
+
+  test(
+    'an empty pattern exempts nothing: the build fails at the barrel',
+    async () => {
+      const error = await rejection(app(['']))
+      const reported = reportedViolations(error)
+      expect(reported).not.toEqual([])
+      for (const { importer } of reported) {
+        expect(importer).toMatch(/^node_modules\/ui-kit\/index\.js:1:/)
+      }
+    },
+    timeout,
+  )
+})

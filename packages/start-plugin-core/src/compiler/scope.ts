@@ -74,10 +74,15 @@ export const DEPENDENCY_SCRIPT_RE =
  * those under the source directory (the scope checks them; with the source
  * directory at the root, every dependency of the root), and those an
  * `exclude` or `ignoreImporters` pattern exempts (compiled, so that their
- * imports are read). A glob or a literal pattern is turned into the id
- * filter of the root-relative paths it matches; a `RegExp` pattern, matched
- * against a root-relative path no id filter sees, lets every dependency
- * script through (the compile scope decides). Ids are normalized (`/`).
+ * imports are read). It must let through every path the public matcher
+ * exempts (`ImportProtection.exempt`: the path relative to the root, or the
+ * absolute path outside it). A glob is turned into the id filters of the
+ * root-relative and of the absolute paths it matches, each with the pattern
+ * as a literal too (the matcher takes a path equal to the pattern before
+ * the glob). A pattern no id filter says faithfully (a `RegExp`, matched
+ * against a path no id is; a whole-pattern negation; one picomatch refuses)
+ * lets every dependency script through: the compile scope decides. An
+ * empty pattern matches no path. Ids are normalized (`/`).
  */
 export function untestedDependencyIds(
   config: ImportProtectionConfig | null,
@@ -92,25 +97,33 @@ export function untestedDependencyIds(
       `^${escapeRegExp(src)}/(?:[^?]*/)?node_modules/[^?]*\\.[cm]?[tj]sx?(?:$|\\?)`,
     ),
   ]
-  /** An id filter of the paths `glob` matches (anchored at the end of the path: an id may carry a query). */
-  const idsOf = (glob: string) =>
+  /** The id filters of the paths `glob` matches, and of the path equal to it (an id may carry a query). */
+  const idsOf = (glob: string, literal: string) => [
     new RegExp(
       `${picomatch.makeRe(glob, { dot: true }).source.replace(/\$$/, '')}(?:\\?|$)`,
-    )
+    ),
+    new RegExp(`^${escapeRegExp(literal)}(?:\\?|$)`),
+  ]
   for (const { pattern } of [...config.exclude, ...config.ignoreImporters]) {
-    if (pattern instanceof RegExp) {
+    if (pattern === '') {
+      continue
+    }
+    if (pattern instanceof RegExp || pattern.startsWith('!')) {
       return [DEPENDENCY_SCRIPT_RE]
     }
-    // the public matcher is given a file's path relative to the root, or its
-    // absolute path outside the root (`relativizePath`): a package hoisted
-    // above it (the root's own glob characters are escaped: a literal part
-    // of the pattern)
-    ids.push(
-      idsOf(
-        `${root.replace(/[*?!+@[\](){}|]/g, '\\$&')}/${pattern.replace(/^\.\//, '')}`,
-      ),
-      idsOf(pattern),
-    )
+    const relative = pattern.replace(/^\.\//, '')
+    try {
+      // (the root's own glob characters are escaped: a literal part of the pattern)
+      ids.push(
+        ...idsOf(
+          `${root.replace(/[*?!+@[\](){}|]/g, '\\$&')}/${relative}`,
+          `${root}/${relative}`,
+        ),
+        ...idsOf(pattern, pattern),
+      )
+    } catch {
+      return [DEPENDENCY_SCRIPT_RE]
+    }
   }
   return ids
 }
