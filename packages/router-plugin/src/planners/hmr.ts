@@ -486,7 +486,8 @@ function splitGroups(round: RouterRound): SplitGroups {
  * becoming two:
  *
  * - a statement TypeScript erases is in the chunk too, as written, in its
- *   place (it runs nowhere);
+ *   place (it runs nowhere), an `import type` included (not an import with
+ *   inline `type` specifiers, which `verbatimModuleSyntax` keeps);
  * - any other statement is where the core puts it, and its comments are
  *   also copied alone, as written, after the chunk's imports: on a line of
  *   their own when they lead their line in the file or only comments follow
@@ -519,7 +520,10 @@ function refreshStatements(ctx: PlanContext, groups: SplitGroups): void {
     )
     if (
       item &&
-      item.kind !== 'ImportDeclaration' &&
+      // (an import of types only is erased under every setting; one with
+      // inline `type` specifiers is kept under `verbatimModuleSyntax`)
+      (item.kind !== 'ImportDeclaration' ||
+        (item.node as { importKind?: string }).importKind === 'type') &&
       item.units.length > 0 &&
       item.units.every((id) => units[id]!.kind === 'type')
     ) {

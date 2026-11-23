@@ -61,6 +61,16 @@ async function counterAfterEdit(
 }
 
 const rows: Array<Comments> = [
+  // (review of the implementation, Fable 4: SWC drops the comment with the
+  // erased import in the file)
+  {
+    name: 'a file header above a type-only import (block comment)',
+    header: "/* @refresh reset */\nimport type { ReactNode } from 'react'\n",
+  },
+  {
+    name: 'a file header above a type-only import (line comment)',
+    header: "// @refresh reset\nimport type { ReactNode } from 'react'\n",
+  },
   {
     name: 'leading its line inside the route options',
     inOptions: '  /* @refresh reset */\n',
