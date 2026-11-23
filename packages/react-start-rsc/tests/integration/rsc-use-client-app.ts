@@ -90,6 +90,38 @@ export const markedApp = appWithComp({
   imports: `import '@tanstack/react-start/client-only'`,
 })
 
+/**
+ * `audit-lib`'s `'use client'` widget renders what its server-only-marked
+ * `secret.js` gives; the server fn of `/c` renders the widget in a server
+ * component, the only importer of the widget.
+ */
+export const packageWidgetApp = {
+  'node_modules/audit-lib/package.json': JSON.stringify({
+    name: 'audit-lib',
+    version: '1.0.0',
+    type: 'module',
+    peerDependencies: { '@tanstack/react-start': '*' },
+    exports: { './widget': './widget.jsx' },
+  }),
+  'node_modules/audit-lib/secret.js': `import '@tanstack/react-start/server-only'
+export const secret = () => 'MARK_SECRET'
+`,
+  'node_modules/audit-lib/widget.jsx': `'use client'
+import { secret } from './secret.js'
+export function Widget() {
+  return <b data-testid="widget">{secret()}</b>
+}
+`,
+  'src/c/page.tsx': `import { createServerFn } from '@tanstack/react-start'
+import { renderServerComponent } from '@tanstack/react-start/rsc'
+import { Widget } from 'audit-lib/widget'
+export const getC = createServerFn().handler(() =>
+  renderServerComponent(<div data-testid="root">SERVER_ROOT <Widget /></div>),
+)
+`,
+  'src/routes/c.tsx': appWithComp({ imports: '' })['src/routes/c.tsx'],
+}
+
 /** `Comp` is a `.client.tsx` file. */
 export const clientFileApp = appWithComp({ name: 'Comp.client', imports: '' })
 

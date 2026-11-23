@@ -13,6 +13,7 @@ import { openRscPage, startRscRsbuildPreviewServer } from './rsc-app'
 import {
   expectCompClicks,
   markedApp,
+  packageWidgetApp,
   recorder,
   summary,
 } from './rsc-use-client-app'
@@ -48,6 +49,33 @@ describe('Rsbuild build with RSC', () => {
       )
       expect(built).toBeInstanceOf(AggregateError)
       expect(summary(violations)).toEqual(['rsc marker page.tsx -> ./Comp'])
+    },
+    timeout,
+  )
+
+  // A package's `'use client'` widget that only a server component renders
+  // reaches the client through the RSC client reference alone (a module of
+  // Rspack's own, with no resource, that no module imports). The client
+  // keeps the widget's use of a server-only-marked module: the build must
+  // fail at the widget's import, as on Vite. It exited 0 with the mock in
+  // the page's chunk (the widget's importers were not known).
+  // Source: Astra's and Gemini's reviews of node_modules policy decision 12
+  // (`route-rsc-rsbuild-actual`).
+  test(
+    "a package 'use client' widget a server component renders, using a server-only module, fails the build at the widget (error)",
+    async () => {
+      const { violations, start } = recorder('error')
+      const built = await startRscRsbuildPreviewServer({
+        start,
+        files: packageWidgetApp,
+      }).then(
+        () => null,
+        (error: unknown) => error,
+      )
+      expect(built).toBeInstanceOf(AggregateError)
+      expect(summary(violations)).toEqual([
+        'client marker widget.jsx -> ./secret.js',
+      ])
     },
     timeout,
   )

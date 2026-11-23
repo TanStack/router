@@ -364,6 +364,28 @@ export function rspackNodeGraph(
         (envs.get(target) ?? envOf(target, target)) === node.env)
     )
   }
+  /**
+   * A module of Rspack's own (no resource, not a ConcatenatedModule) that
+   * no module imports: its imports are reached by themselves, as an
+   * entry's are (Rspack's RSC client references: the only importer of a
+   * `'use client'` module a server component renders). A context module
+   * (`import.meta.webpackContext`) has no resource either, but modules
+   * import it.
+   */
+  const rootOfItsOwn = (
+    m: RspackModuleLike,
+    moduleGraph: Held['moduleGraph'],
+  ): boolean => {
+    if (m.resource !== undefined || m.rootModule !== undefined) {
+      return false
+    }
+    for (const c of moduleGraph.getIncomingConnections(m)) {
+      if (c.originModule !== null) {
+        return false
+      }
+    }
+    return true
+  }
   /** The module `c` comes from: the importing module itself, inside a ConcatenatedModule origin. */
   const originOf = (
     c: RspackConnectionLike,
@@ -435,7 +457,10 @@ export function rspackNodeGraph(
           return false
         }
         for (const c of moduleGraph.getIncomingConnections(module)) {
-          if (c.originModule === null) {
+          if (
+            c.originModule === null ||
+            rootOfItsOwn(c.originModule, moduleGraph)
+          ) {
             return true
           }
         }
