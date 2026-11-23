@@ -140,11 +140,24 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
         },
         failure,
       )
-      const fixed = await app.edit(
+      // The fixed chunk arrives after the route loaded again, as a chunk
+      // with a few imports does (a local one is too fast to tell: review of
+      // the route HMR implementation, Fable 2): the route's load must wait
+      // for it, or the wrapper must import again at the route's next load
+      await app.page.page.route(
+        (url) => url.pathname !== '/',
+        async (request) => {
+          if (request.request().resourceType() === 'script') {
+            await new Promise((resolve) => setTimeout(resolve, 50))
+          }
+          await request.fallback()
+        },
+      )
+      await app.edit(
         { 'routes/index.tsx': healthy('page v3', shape) },
         'page v3 0',
       )
-      expect(fixed.reloaded).toBe(false)
+      expect(app.loads()).toBe(1)
     },
   )
 })

@@ -271,7 +271,11 @@ function sameShape(live: object, next: object): boolean {
  *
  * Where the framework has no refresh to wait for, the route's load waits for
  * this import as it waits for a wrapper's first load (`preload`): the
- * component that renders the route's new data is the one that reads it.
+ * component that renders the route's new data is the one that reads it. A
+ * wrapper that has not loaded keeps its own `preload`, which answers this
+ * import too (it reads the same pending load) and imports again once it
+ * failed; the runtime gives one only to a wrapper that has loaded, until the
+ * import settles.
  */
 function load(
   wrapper: any,
@@ -281,6 +285,7 @@ function load(
   adapter: RouteHmrAdapter,
 ): void {
   const hot: LazyRouteComponentHot = wrapper.__tsrHot
+  const waiting = () => hot.pending()
   const promise: Promise<any> = loading.then(
     (module) => {
       if (hot.pending() !== promise) {
@@ -321,7 +326,9 @@ function load(
         return hot.pending()
       }
       hot.setPending(undefined)
-      wrapper.preload = undefined
+      if (wrapper.preload === waiting) {
+        wrapper.preload = undefined
+      }
       const held = hot.held()
       if (held == null) {
         hot.settle(held, error)
@@ -332,8 +339,8 @@ function load(
     },
   )
   hot.setPending(promise)
-  if (!adapter.settled) {
-    wrapper.preload = () => hot.pending()
+  if (!adapter.settled && !wrapper.preload) {
+    wrapper.preload = waiting
   }
 }
 
