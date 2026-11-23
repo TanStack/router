@@ -2466,7 +2466,7 @@ class ImportProtectionEnv {
         }
         // one report per checked import that reaches it: a denied handoff
         // as recorded, an import the compiler does not read by its importer
-        const incoming = this.incoming(v, graph)
+        const incoming = this.reportedIncoming(v, graph)
         for (const c of incoming.checked) {
           const owner = this.ip.liveEnv(c.env) ?? this
           add(c.handoff ?? owner.importOf(v, c), owner)
@@ -2548,6 +2548,31 @@ class ImportProtectionEnv {
       })
     }
     return reports
+  }
+
+  /**
+   * The edges a build reports a served mock at (`incoming` of the grounded
+   * graph). When the grounded graph reaches none, but importers of the
+   * bundler's graph brought the mock into the output (an importer held only
+   * by a module of the bundler's own, as Rsbuild's RSC client references
+   * hold a package's `'use client'` component), their checked imports are
+   * reported: a report needs no grounding. Their exemptions grant nothing
+   * (a grant needs an importer the app reaches by itself).
+   */
+  private reportedIncoming(self: EdgeViolation, graph: NodeGraph): Incoming {
+    const incoming = this.incoming(self, graph)
+    if (
+      incoming.checked.length > 0 ||
+      incoming.exempt.size > 0 ||
+      incoming.allowed.size > 0 ||
+      incoming.unread.size > 0 ||
+      graph.built === undefined ||
+      graph.built === graph
+    ) {
+      return incoming
+    }
+    const built = this.incoming(self, graph.built)
+    return { ...incoming, checked: built.checked, unread: built.unread }
   }
 
   /**
