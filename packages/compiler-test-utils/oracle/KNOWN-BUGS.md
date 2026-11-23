@@ -399,9 +399,12 @@ declaration table of 11-23). Rows: `start-plugin-core/tests/start-compiler-remov
   the callee of a call or `new` written there. A getter read on the spot (`const x = ({ get data() { return x } }).data`),
   a generator advanced with `.next()`, a method called through a member (`(function () { return x }).call(null)`,
   `({ m() { return x } }).m()`), a class expression's constructor or instance field run by `new (class { y = x })()`
-  and an async call awaited in the initialiser (`await (async () => x)()`) are not followed: such a declarator leaves
-  where the source throws (or rejects) at once. A self-read in a branch that cannot run still keeps its declarator, and a
-  declarator that reads itself stays whole, with what its other names hold. Rows: "self-reads".
+  an async call awaited in the initialiser (`await (async () => x)()`) and a function called as a template tag are not
+  followed: such a declarator leaves where the source throws (or rejects) at once. Base kept these declarators below
+  the top level. The difference is observable where the code catches the error itself: a method that catches the
+  `ReferenceError`, records it and returns normally records it on the server and not on the client. A self-read in a
+  branch that cannot run still keeps its declarator, and a declarator that reads itself stays whole, with what its
+  other names hold. Rows: "self-reads".
 
 - **A binding nothing reads is not ours, also beside a type of its name that removed code used** (D1 A): with `const
 db = connect(); type Foo = typeof db; const Foo = register()` and erased code naming `Foo` as a type, `db` leaves
@@ -419,28 +422,29 @@ namespace API { export import Settings = Kit.Options; export type Tracking = typ
   `API.Settings` also takes what `Tracking` names (TypeScript counts the `export import` as runtime content). The same
   for any namespace holding a value: a registration only another of its type members names leaves with it. Through a
   qualified path that does not resolve, a namespace of types is followed whole the same way. Workaround: `export type
-Settings = Kit.Options`. No test (the outcome is the limit).
+Settings = Kit.Options`. The same rule also leaks, as on base and `main`: with `namespace NS { const db =
+getServerDb(); export type T = typeof db; export const live = 1 }`, erased code naming `NS.T` and live code reading
+  `NS.live`, `db` and its import stay on the client, since the namespace is kept and read as one value. Workaround:
+  declare `db` outside the namespace. No test (the outcome is the limit).
 
 - **A `declare` of a value beside a definition of the same name is read at the top level only**: inside a namespace
   body (`namespace Outer { declare var x: typeof db; var x = … }`) the server value its type names stays in the
   client, as on `main`. Workaround: declare the type with the definition (`var x: … = …`). No test (the outcome is
   the limit).
 
-- **A type a reopened namespace's other block declares, named there without a qualifier, is not followed**: with
-  `namespace NS { const db = getServerDb(); export type T = typeof db }` and a second `namespace NS { … (x: T) => x }`
-  read only by erased code, `db` and its import stay on the client (as on `main`). The closure looks a type reference
-  up in the scopes around the erased text, and the first block is not one of them. Workaround: `(x: NS.T)`, or declare
-  the type in the block that uses it. No test (the outcome is the limit).
-
 - **What a `<Hydrate>` boundary inside a removed definition names in a type is not followed**: `function Dead() { return
 <Hydrate><span>{String(null as unknown as T)}</span></Hydrate> }` with `type T = typeof db`, `Dead` read only by
   erased code: `Dead` leaves, `db` and its import stay (as on `main`). Text the boundary's chunk claims names its types
-  for itself. A value read (`{String(db)}`) is followed. Workaround: drop the type mention from the boundary. No test.
+  for itself. A value read (`{String(db)}`) is followed. Workaround: write the type directly in the boundary
+  (`null as unknown as typeof db`); then `db` leaves. Dropping the type mention alone does not help: `db = getServerDb()`
+  is then code nothing used, and stays (D1). No test.
 
-- **Oxc rejects two TypeScript spellings, so they never reach the compiler on Vite**: a `declare var App` (or `declare
-namespace App`) before a `function App` of the same name ("Identifier `App` has already been declared"), and a
-  parameter the body declares again as a function. `import A = N` of a namespace that holds only types is emitted by
-  Oxc as `var A = N`, which throws in the source already. No test (Vite's own toolchain).
+- **Vite 8's Oxc rejects some TypeScript spellings, so they never reach the compiler there**: `declare var App` before
+  `function App`, `declare namespace App` before `const App` or a hoisted `var App` ("Identifier `App` has already been
+  declared"), and a parameter the body declares again as a function. Oxc accepts `declare namespace App` before
+  `function App`. Rsbuild (SWC) and Vite 7 (esbuild) accept all of them; `integration/start-build-removal-declare-first
+.test.ts` holds two of them on Rsbuild. In the Vite test host, `import A = N` of a namespace that holds only types is
+  emitted as `var A = N`, which throws in the source already. No test on Vite (its own toolchain).
 
 - **Root routes are not split** (R60, SPEC J2.7): their components render on every page, or on error and not-found
   responses, where a lazy chunk only adds a round trip. `router-plugin/tests/integration/known-bugs-code-splitter-page-

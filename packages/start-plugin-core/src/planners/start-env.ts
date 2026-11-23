@@ -13,7 +13,7 @@
  * server fns are hoisted on the server when that is safe, else refused at
  * the capture. Everything the removed code alone referenced is dropped by
  * the core: its removal rule at the module level (`placement.ts`:
- * statements stay with what they name, R154), its orphan cleanup for
+ * statements stay with what they name, R154), and below it (`removal/`)
  * function-local declarators and destructured bindings.
  */
 import {

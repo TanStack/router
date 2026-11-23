@@ -237,7 +237,7 @@ export interface RangeNode {
   children: Array<RangeNode>
   /** What first addressed the range (a conflict names it). */
   readonly by: string
-  /** The edits of this range's text (a planner's address every output, the core's orphan cleanup some), in call order. */
+  /** The edits of this range's text (a planner's address every output, the core's removal some), in call order. */
   edits: Array<Edit> | null
   /** The placeholders standing at this range's place in some outputs, in call order. */
   places: Array<Placeholder> | null
@@ -737,8 +737,8 @@ export class RewriteSet {
   }
 
   /**
-   * The core's orphan cleanup only (not on `PlanContext`): an edit of the
-   * text in some outputs, where the code it removes is orphaned.
+   * The core's removal only (`removal/render.ts`, not on `PlanContext`): an
+   * edit of the text in some outputs, where the code it removes is unused.
    */
   scopedEdit(edit: Edit): void {
     this.add(edit)

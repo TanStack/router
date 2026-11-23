@@ -295,7 +295,9 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
   - a removed definition takes its own evaluation with it and nothing else: an initialiser's call, a removed name's
     property read, a removed default's effect, a removed class's decorators and static blocks;
   - a declaration that reads its own binding before the binding has its value (`const x = x`, a default of the
-    pattern around the binding, a function called on the spot) throws in the source: it stays, with what it reads;
+    pattern around the binding, a function written as the callee of a call or `new` there) throws in the source: it
+    stays, with what it reads (implicit calls are not followed: KNOWN-BUGS, "Self-reads are followed through code
+    that runs on the spot only");
   - a rest element is code of its own (it copies or drains): it keeps its declarator; a plain name nobody reads leaves
     with the declarator whose other names only removed code read;
   - a pattern that stays loses its dead positions; one that cannot leave (beside a rest element that stays, a

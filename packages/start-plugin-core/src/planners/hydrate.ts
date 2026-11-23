@@ -1475,7 +1475,7 @@ function addLazyConst(
 // fallback (server envs)
 // ---------------------------------------------------------------------------
 
-/** Erases a statically visible `fallback` (what only it read goes with it: the core's orphan cleanup). */
+/** Erases a statically visible `fallback` (what only it read goes with it: the core's removal). */
 function stripFallback(ctx: PlanContext, b: Boundary): void {
   const erase = (range: Range) => {
     ctx.rewrites.edit({
