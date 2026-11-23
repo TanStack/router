@@ -691,11 +691,17 @@ export function importEdgesPlanner(
     // wherever the import survives, whatever `sideEffects` declares of the
     // module (D-c); its effects are not read (an asset query of it, its text
     // or URL, runs nothing)
+    // (a file its name denies too: its marker still says so)
     const runsMarked =
       j.edge.form === 'bare' &&
-      j.rule?.type === 'marker' &&
       j.resolved !== null &&
-      !isAssetId(j.resolved)
+      !isAssetId(j.resolved) &&
+      (j.rule?.type === 'marker' ||
+        (j.rule?.type === 'file' &&
+          markerViolates(
+            ctx.env.type,
+            await ctx.targetMarker(markerIdOf(ctx.env.type, j.resolved)),
+          )))
     const target =
       j.resolved !== null && !ownMarker && !runsMarked
         ? await describeTarget(j.resolved, ctx)
@@ -728,6 +734,7 @@ export function importEdgesPlanner(
       resolved: j.resolved,
       hasDefault: importsDefault || (target?.hasDefault ?? true),
       bare: j.edge.form === 'bare',
+      ...(runsMarked && { runs: true }),
       rule: j.rule!,
     }
   }

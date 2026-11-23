@@ -139,9 +139,9 @@ const RUNS_MARKED_FLAG = 'tss-ip-runs'
 /** Rspack's resource query condition of an edge module `RUNS_MARKED_FLAG` flags. */
 export const RUNS_MARKED_EDGE_QUERY = new RegExp(`^\\?${RUNS_MARKED_FLAG}&`)
 
-/** Whether an edge module stands for a bare import of a marked module that runs it (`RUNS_MARKED_FLAG`). */
+/** Whether an edge module stands for a bare import of a marked module (`EdgeModuleContent.runs`, `RUNS_MARKED_FLAG`). */
 export function runsMarked(content: EdgeModuleContent): boolean {
-  return content.bare && content.effectful && content.rule.type === 'marker'
+  return content.runs === true
 }
 
 /**
@@ -219,6 +219,11 @@ export interface EdgeModuleContent {
   hasDefault: boolean
   /** The edge only evaluates the module (bare import): the allowed state imports it for its effects. */
   bare: boolean
+  /**
+   * A bare import of a marked module: it runs the module, so its edge module
+   * keeps the effect witness whatever `sideEffects` declares (D-c).
+   */
+  runs?: true
   /** The rule that denied it: `allowImport` is told, even for an importer a persistent cache restored whose record is not read yet. */
   rule: RuleRef
 }
