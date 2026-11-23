@@ -111,6 +111,14 @@ export interface StartCompilerEnvironment {
 }
 
 export interface StartCompilerSessionOptions {
+  /**
+   * The host decides the "does not declare Start" warning itself, from the
+   * modules of each compilation (`usesStartInPackage` of each compile,
+   * recorded with the module, then `packageUseWarning`): Rsbuild, whose
+   * persistent cache restores modules without compiling them. Default: the
+   * compile that recognises the use reports it.
+   */
+  packageUseAtSeal?: boolean
   framework: CompileStartFrameworkOptions
   /** From the bundler's command or action, never `process.env.NODE_ENV`. */
   mode: 'dev' | 'build'
@@ -533,7 +541,13 @@ export class StartCompilerSession {
     inputMap?: () => InputSourceMap | null,
     reach?: StartPackageReach,
   ): void {
-    this.reportPackageUse(out, file, sink, reach)
+    // (a host that restores modules decides it from them all: `packageUseAtSeal`)
+    if (!this.opts.packageUseAtSeal && this.usesStartInPackage(out, file)) {
+      const warning = this.packageUseWarning(file, reach)
+      if (warning) {
+        sink.warn(warning, undefined)
+      }
+    }
     if (out.diagnostics.length === 0) {
       return
     }
@@ -584,28 +598,36 @@ export class StartCompilerSession {
   }
 
   /**
-   * A package's module whose compile recognised a Start primitive, in a
-   * package Start does not read as one (once per package instance and
-   * run): (i) its manifest does not declare Start (`declaresStart`): a
-   * Start value it forwards under another name is not followed; (ii) a
-   * host that bundles only the packages it found (`reach`, Vite) did not
-   * find it: the app does not list it, or reaches it through an installed
-   * package that does not declare Start, which the server keeps external. Nothing for Start's own
-   * packages, or a manifest that names Start in `peerDependenciesMeta`
+   * Whether a compile recognised a Start primitive in a package's module (a
+   * module of `node_modules`): the input of `packageUseWarning`, which a host
+   * that restores modules without compiling them records with the module.
+   */
+  usesStartInPackage(out: CompileOutput, file: string): boolean {
+    return (
+      out.facts.planners[START_ENV]?.recognises === true &&
+      packageRootOf(normalizePath(file.split('?')[0]!)) !== null
+    )
+  }
+
+  /**
+   * The warning of a package module whose compile recognised a Start use
+   * (`usesStartInPackage`), in a package Start does not read as one, once
+   * per package instance and run (the warning ledger), or null: (i) its
+   * manifest does not declare Start (`declaresStart`): a Start value it
+   * forwards under another name is not followed; (ii) a host that bundles
+   * only the packages it found (`reach`, Vite) did not find it: the app
+   * does not list it, or reaches it through an installed package that does
+   * not declare Start, which the server keeps external. Nothing for Start's
+   * own packages, or a manifest that names Start in `peerDependenciesMeta`
    * only (an optional integration the package chose not to declare).
    */
-  private reportPackageUse(
-    out: CompileOutput,
+  packageUseWarning(
     file: string,
-    sink: StartDiagnosticSink,
-    reach: StartPackageReach | undefined,
-  ): void {
-    if (!out.facts.planners[START_ENV]?.recognises) {
-      return
-    }
+    reach?: StartPackageReach,
+  ): Diagnostic | null {
     const cls = this.classes.classOf(file)
     if (cls !== 'package' && (cls !== 'start-package' || !reach)) {
-      return
+      return null
     }
     // (a module's path: an id's query cut off)
     const root = packageRootOf(normalizePath(file.split('?')[0]!))!
@@ -613,23 +635,23 @@ export class StartCompilerSession {
     if (
       isStartPackage(manifest?.['name']) ||
       (cls === 'package' &&
-        namesStart(manifest, 'peerDependenciesMeta', this.opts.framework))
+        namesStart(manifest, 'peerDependenciesMeta', this.opts.framework)) ||
+      (cls === 'start-package' && reach!.roots.has(root))
     ) {
-      return
+      return null
+    }
+    if (!this.warnings.once(root, { code: 'start-package', message: root })) {
+      return null
     }
     const key = root.slice(root.lastIndexOf('/node_modules/') + 14)
-    if (cls === 'start-package' && reach!.roots.has(root)) {
-      return
-    }
-    const message =
-      cls === 'package'
-        ? undeclaredPackageMessage(this.opts, root, file)
-        : unreachedPackageMessage(this.opts, root, key, file)
-    if (this.warnings.once(root, { code: 'start-package', message: root })) {
-      sink.warn(
-        { severity: 'warning', message, by: START_ENV, code: 'start-package' },
-        undefined,
-      )
+    return {
+      severity: 'warning',
+      message:
+        cls === 'package'
+          ? undeclaredPackageMessage(this.opts, root, file)
+          : unreachedPackageMessage(this.opts, root, key, file),
+      by: START_ENV,
+      code: 'start-package',
     }
   }
 
@@ -763,6 +785,12 @@ export interface StartDiagnosticSink {
     at: DiagnosticPosition | undefined,
     generated?: DiagnosticPosition,
   ) => void
+  /** Every warning the compile found, before the once-per-run rule (`DiagnosticSink.found`). */
+  found?: (
+    d: Diagnostic,
+    at: DiagnosticPosition | undefined,
+    generated?: DiagnosticPosition,
+  ) => void
 }
 
 /**
@@ -796,9 +824,13 @@ function originalSink(
       }
       to(d, { line: original.line, column: original.column - 1 }, generated)
     }
+  const found = sink.found
   return {
     error: report((d, at, generated) => sink.error(d, at, generated)),
     warn: report((d, at, generated) => sink.warn(d, at, generated)),
+    ...(found && {
+      found: report((d, at, generated) => found(d, at, generated)),
+    }),
   }
 }
 

@@ -36,7 +36,9 @@ import {
 } from '../import-protection/witness'
 import { manifestFunctionsDiffering } from '../server-fns/resolver'
 import {
+  FOUND_WARNINGS_FIELD,
   LOCATED_DIAGNOSTICS,
+  PACKAGE_USE_FIELD,
   PLAN_BUILD_INFO_FIELD,
   SERVER_FN_BUILD_INFO_FIELD,
   canonicalResource,
@@ -50,6 +52,7 @@ import type { ServerFnResolverModule } from './server-fn-resolver-rebuild'
 import type { LoaderImpl } from './compiler-loader'
 import type {
   EnvState,
+  FoundWarning,
   ServerFnBuildInfo,
   StartRsbuildCompilerSession,
 } from './compiler-session'
@@ -174,33 +177,6 @@ export function handOverWarnings(
     }
   }
   return { handed, reported }
-}
-
-/**
- * A production compilation's modules that it kept without compiling them
- * (`built`: it compiled the module), each with the warnings its compile
- * recorded (`LOCATED_DIAGNOSTICS`), for `reportHandedOver`.
- */
-export function keptWarnings(
-  modules: Iterable<ModuleLike>,
-  built: (module: ModuleLike & { resource: string }) => boolean,
-): Array<{ module: ModuleLike; warning: LocatedDiagnostic }> {
-  const out: Array<{ module: ModuleLike; warning: LocatedDiagnostic }> = []
-  for (const module of modules) {
-    if (
-      !module.resource ||
-      built(module as ModuleLike & { resource: string })
-    ) {
-      continue
-    }
-    for (const warning of (module.buildInfo?.[LOCATED_DIAGNOSTICS.field] ??
-      []) as Array<LocatedDiagnostic>) {
-      if (warning.severity === 'warning') {
-        out.push({ module, warning })
-      }
-    }
-  }
-  return out
 }
 
 /** Adds the server fns a module's `buildInfo` records to a snapshot of the registry. */
@@ -1036,17 +1012,22 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) =>
             reportUnprinted(compilation, modules as Iterable<ModuleLike>),
           )
-        } else {
+        } else if (own.persistsModules) {
           // a build restored from the persistent cache: the modules it kept
-          // without compiling them report the warnings their compile
-          // recorded (Rspack replays no loader warning of a restored module)
+          // without compiling them report the warnings their latest compile
+          // found (Rspack replays no loader warning of a restored module)
           compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) => {
-            handedOver = keptWarnings(
-              modules as Iterable<ModuleLike>,
-              compiledHere,
-            )
+            handedOver = keptWarnings(modules as Iterable<ModuleLike>)
           })
         }
+        // the "does not declare Start" warning, from the compilation's modules,
+        // compiled or restored (decision 6): once per package and run
+        compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) => {
+          if (session.packageUses.size === 0 && !own.persistsModules) {
+            return
+          }
+          reportPackageUses(compilation, modules as Iterable<ModuleLike>)
+        })
         if (session.start.allocator && session.start.opts.mode === 'build') {
           compilation.hooks.processAssets.tap(
             {
@@ -1078,6 +1059,110 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           )
         }
       })
+
+      /**
+       * A production compilation's modules that it kept without compiling
+       * them, each with the warnings their latest compile found
+       * (`FOUND_WARNINGS_FIELD`) that the run's warning ledger lets through
+       * (a compiled module of another environment may have reported one),
+       * for `reportHandedOver`. Each such record is noted so that a compile
+       * of the module in this process that finds none clears it.
+       */
+      function keptWarnings(
+        modules: Iterable<ModuleLike>,
+      ): Array<{ module: ModuleLike; warning: LocatedDiagnostic }> {
+        const out: Array<{ module: ModuleLike; warning: LocatedDiagnostic }> =
+          []
+        for (const module of modules) {
+          if (
+            !module.resource ||
+            compiledHere(module as ModuleLike & { resource: string })
+          ) {
+            continue
+          }
+          const found = module.buildInfo?.[FOUND_WARNINGS_FIELD] as
+            | Array<FoundWarning>
+            | undefined
+          if (!found) {
+            continue
+          }
+          session.noteRecord(envOf(module).name, module.resource)
+          const file = identify(module.resource).path
+          for (const w of found) {
+            if (
+              session.start.warnings.once(file, {
+                ...(w.code !== undefined && { code: w.code }),
+                message: w.message,
+              })
+            ) {
+              out.push({
+                module,
+                warning: {
+                  severity: 'warning',
+                  message: w.message,
+                  ...(w.line !== undefined && {
+                    line: w.line,
+                    column: w.column,
+                  }),
+                },
+              })
+            }
+          }
+        }
+        return out
+      }
+
+      /**
+       * The "does not declare Start" warning of each package instance whose
+       * modules in `compilation` recognised a Start use, compiled here
+       * (`packageUses`) or restored from the persistent cache with that record
+       * (`PACKAGE_USE_FIELD`), decided against the package's current manifest
+       * through the run's warning ledger (`packageUseWarning`), at the first of
+       * its modules by resource.
+       */
+      function reportPackageUses(
+        compilation: Rspack.Compilation,
+        modules: Iterable<ModuleLike>,
+      ): void {
+        const uses: Array<ModuleLike & { resource: string }> = []
+        for (const module of modules) {
+          if (!module.resource?.includes('/node_modules/')) {
+            continue
+          }
+          const one = module as ModuleLike & { resource: string }
+          if (
+            session.packageUses.has(keyOf(one)) ||
+            (own.persistsModules &&
+              !compiledHere(one) &&
+              one.buildInfo?.[PACKAGE_USE_FIELD] === true)
+          ) {
+            uses.push(one)
+          }
+        }
+        uses.sort((a, b) =>
+          a.resource < b.resource ? -1 : a.resource > b.resource ? 1 : 0,
+        )
+        for (const module of uses) {
+          const warning = session.start.packageUseWarning(
+            identify(module.resource).path,
+          )
+          if (warning) {
+            compilation.warnings.push(
+              locatedError(
+                WebpackError,
+                module,
+                { severity: 'warning', message: warning.message },
+                LOCATED_DIAGNOSTICS,
+              ) as never,
+            )
+            // (development: the next compilation reports it if Rsbuild never
+            // prints this one, as import protection's reports: `reportUnprinted`)
+            if (opts.onDevCompileDone) {
+              reports.push(warning.message)
+            }
+          }
+        }
+      }
 
       /**
        * The warnings of the compilation before `compilation`, which Rsbuild

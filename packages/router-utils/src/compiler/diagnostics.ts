@@ -70,6 +70,12 @@ export function positionSuffix(file: string, at: DiagnosticPosition): string {
 export interface DiagnosticSink {
   error: (d: Diagnostic, at: DiagnosticPosition | undefined) => void
   warn: (d: Diagnostic, at: DiagnosticPosition | undefined) => void
+  /**
+   * Every warning the compile found, before the once-per-run rule: what a
+   * host that restores modules without compiling them records (a module's
+   * record is its latest compile's).
+   */
+  found?: (d: Diagnostic, at: DiagnosticPosition | undefined) => void
 }
 
 /**
@@ -112,7 +118,11 @@ export function reportCompileDiagnostics(
     }
   }
   for (const d of reported) {
-    if (d.severity !== 'error' && ledger.once(file, d)) {
+    if (d.severity === 'error') {
+      continue
+    }
+    sink.found?.(d, at(d))
+    if (ledger.once(file, d)) {
       sink.warn(d, at(d))
     }
   }

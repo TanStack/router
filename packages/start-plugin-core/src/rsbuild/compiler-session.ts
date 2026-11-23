@@ -88,6 +88,25 @@ export const SERVER_FN_BUILD_INFO_FIELD = 'tanstack.start.serverFns'
 export const PLAN_BUILD_INFO_FIELD = 'tanstack.start.plan'
 
 /**
+ * The `buildInfo` field holding the warnings a module's latest compile
+ * found, before the once-per-run rule (`FoundWarning`): what a production
+ * build reports for a module its persistent cache restored without
+ * compiling it, through the run's warning ledger.
+ */
+export const FOUND_WARNINGS_FIELD = 'tanstack.start.warnings'
+
+/** The `buildInfo` field set when a module's latest compile recognised a Start use in a package (`StartCompilerSession.usesStartInPackage`). */
+export const PACKAGE_USE_FIELD = 'tanstack.start.packageUse'
+
+/** A warning a module's compile found: the ledger's key (`code`, `message`) and its position. */
+export interface FoundWarning {
+  message: string
+  code?: string
+  line?: number
+  column?: number
+}
+
+/**
  * How the loader reports a compile's diagnostics, and the `buildInfo` field
  * holding them with their positions (`LocatedDiagnostic`), in the order they
  * were reported: Rspack keeps no location of a loader's warning or error, so
@@ -339,6 +358,8 @@ export class StartRsbuildCompilerSession {
       ),
       // (the host plugin's `finishMake` closure; dev reports at `finishModules`)
       settlesImportVerdicts: true,
+      // (from each compilation's modules, restored ones included: `host-plugin.ts`)
+      packageUseAtSeal: true,
       readFile: (file) => this.readFile(file),
       // our virtual modules go through `readFile`
       loadVirtual: () => Promise.resolve(null),
@@ -559,6 +580,27 @@ export class StartRsbuildCompilerSession {
       this.missing.add(file)
       return null
     }
+  }
+
+  /**
+   * The resources whose module holds a diagnostics record of this process
+   * (`recordDiagnostics`): a compile that finds none clears it. A restored
+   * module's record is cleared by its next compile in this process when the
+   * host notes it (`noteRecord`).
+   */
+  private readonly recordsDiagnostics = new Set<string>()
+
+  /**
+   * The modules (`<env>\0<resource>`) whose compile in this process
+   * recognised a Start use in a package (`PACKAGE_USE_FIELD`): the host's
+   * package warning reads the restored modules' records only with a
+   * persistent cache.
+   */
+  readonly packageUses = new Set<string>()
+
+  /** A module of compile environment `env` restored with a diagnostics record (`recordsDiagnostics`). */
+  noteRecord(env: string, resource: string): void {
+    this.recordsDiagnostics.add(`${env}\0${resource}`)
   }
 
   /** Paths a read found missing (their raw facts say so until an event or `forgetMisses`). */
@@ -925,6 +967,10 @@ export class StartRsbuildCompilerSession {
       if (this.start.registry.definedIn(identity.canonicalId)) {
         recordServerFns(ctx._module?.buildInfo, identity.canonicalId, null)
       }
+      // (and its diagnostics: none, of a module known to hold a record)
+      if (this.recordsDiagnostics.delete(`${env.name}\0${ctx.resource}`)) {
+        recordDiagnostics(ctx._module?.buildInfo, [], [], false)
+      }
     }
     const source = loaderText(bytes)
     if (!late && !this.start.compiles(identity.path, source)) {
@@ -960,6 +1006,7 @@ export class StartRsbuildCompilerSession {
     }
     this.reportDiagnostics(
       ctx,
+      env.name,
       out,
       identity.path,
       source,
@@ -1037,6 +1084,7 @@ export class StartRsbuildCompilerSession {
    */
   private reportDiagnostics(
     ctx: LoaderContextLike,
+    envName: string,
     out: CompileOutput,
     file: string,
     code: string,
@@ -1044,6 +1092,7 @@ export class StartRsbuildCompilerSession {
     inputMap?: () => InputSourceMap | null,
   ): void {
     const located: Array<LocatedDiagnostic> = []
+    const found: Array<FoundWarning> = []
     const locate = (
       severity: LocatedDiagnostic['severity'],
       message: string,
@@ -1066,12 +1115,31 @@ export class StartRsbuildCompilerSession {
           warning.name = LOCATED_DIAGNOSTICS.warningName
           ctx.emitWarning(warning)
         },
+        found: (d, at) => {
+          const { line, column } = locatedDiagnostic('warning', d.message, at)
+          found.push({
+            message: d.message,
+            ...(d.code !== undefined && { code: d.code }),
+            ...(line !== undefined && { line, column }),
+          })
+        },
       },
       inputMap,
     )
-    const buildInfo = ctx._module?.buildInfo
-    if (located.length > 0 && buildInfo) {
-      buildInfo[LOCATED_DIAGNOSTICS.field] = located
+    // (each record is the latest compile's: Rspack keeps a module's custom
+    // `buildInfo` fields of its previous build in a rebuild)
+    const packageUse = this.start.usesStartInPackage(out, file)
+    const key = `${envName}\0${ctx.resource}`
+    if (packageUse) {
+      this.packageUses.add(key)
+    } else {
+      this.packageUses.delete(key)
+    }
+    if (located.length > 0 || found.length > 0 || packageUse) {
+      this.recordsDiagnostics.add(key)
+      recordDiagnostics(ctx._module?.buildInfo, located, found, packageUse)
+    } else if (this.recordsDiagnostics.delete(key)) {
+      recordDiagnostics(ctx._module?.buildInfo, [], [], false)
     }
     if (errors.length > 0) {
       const error = new Error(errors.join('\n'))
@@ -1331,4 +1399,36 @@ function rewrittenSpecifier(rule: TransformImportRule, member: string): string {
   }
   const dir = rule.libraryDirectory ?? 'lib'
   return `${rule.libraryName}/${dir}/${transformed}`
+}
+
+/**
+ * A module's diagnostics records of its latest compile (`buildInfo`): what
+ * it reported (`LOCATED_DIAGNOSTICS`), what it found (`FOUND_WARNINGS_FIELD`)
+ * and its Start use in a package (`PACKAGE_USE_FIELD`), each removed when
+ * empty.
+ */
+function recordDiagnostics(
+  buildInfo: Record<string, unknown> | undefined,
+  located: Array<LocatedDiagnostic>,
+  found: Array<FoundWarning>,
+  packageUse: boolean,
+): void {
+  if (!buildInfo) {
+    return
+  }
+  if (located.length > 0) {
+    buildInfo[LOCATED_DIAGNOSTICS.field] = located
+  } else {
+    delete buildInfo[LOCATED_DIAGNOSTICS.field]
+  }
+  if (found.length > 0) {
+    buildInfo[FOUND_WARNINGS_FIELD] = found
+  } else {
+    delete buildInfo[FOUND_WARNINGS_FIELD]
+  }
+  if (packageUse) {
+    buildInfo[PACKAGE_USE_FIELD] = true
+  } else {
+    delete buildInfo[PACKAGE_USE_FIELD]
+  }
 }
