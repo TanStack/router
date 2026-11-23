@@ -9,9 +9,9 @@ import { describe, it } from 'vitest'
 import { openRouteHmrPage } from '../route-hmr-page'
 import {
   hosts,
-  loaderRoute as shownRoute,
   mount,
   read,
+  loaderRoute as shownRoute,
   twoRouters,
 } from './route-hmr-two-routers-cases'
 import type { TargetFramework } from '../route-app'
