@@ -787,11 +787,7 @@ export function importEdgesPlanner(
       }
       // the denied module itself and a Start package's modules are analysed
       // like the app's; an ordinary package's imports are not read
-      if (
-        NODE_MODULES_RE.test(path) &&
-        id !== resolved &&
-        !ip.classes.startPackage(path)
-      ) {
+      if (id !== resolved && ip.classes.classOf(path) === 'package') {
         return true
       }
       const facts = id === resolved ? top : await ctx.targetFacts(id)

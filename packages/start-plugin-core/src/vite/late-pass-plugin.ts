@@ -4,7 +4,6 @@ import {
   watchDependencies,
 } from '@tanstack/router-utils/compiler'
 import { TRANSFORM_ID_REGEX } from '../constants'
-import { NODE_MODULES_RE } from '../compiler/scope'
 import { inputMapOf } from './compiler-state'
 import type { InputSourceMap } from '@tanstack/router-utils/compiler'
 import type { Plugin } from 'vite'
@@ -49,7 +48,7 @@ export function latePassPlugin(state: ViteCompilerState): Plugin {
           return null
         }
         // (a dependency's generated JS: only a Start package's)
-        if (NODE_MODULES_RE.test(id) && !s.start.classes.startPackage(id)) {
+        if (s.start.classes.classOf(id) === 'package') {
           return null
         }
         let inputMap: InputSourceMap | null | undefined
