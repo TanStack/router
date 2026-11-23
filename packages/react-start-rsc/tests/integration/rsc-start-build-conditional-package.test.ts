@@ -67,6 +67,10 @@ function Page() {
   }
 }
 
+/** The build error's way out for a package that declares Start. */
+const conditionalWayOut =
+  "For a file of an installed package that declares TanStack Start: the package's export conditions may give the browser another file than the server; each server function must be defined in one module that every condition re-exports."
+
 const serverFn = (mark: string) =>
   `import { createServerFn } from '@tanstack/react-start'
 export const pkgPing = createServerFn({ method: 'GET' }).handler(() => '${mark}')
@@ -106,9 +110,13 @@ describe('Vite production build with RSC: a package whose export conditions give
           'server.js': serverFn('MARK_SERVER'),
         }),
       })
-      expect(error.split('\n')).toContain(
-        '  - pkgPing of node_modules/pkg-cond/browser.js',
-      )
+      const lines = error.split('\n')
+      expect(lines).toContain('  - pkgPing of node_modules/pkg-cond/browser.js')
+      // the way out for a package that declares Start: its conditions
+      // (Gemini's review of the implementation, F6.1: the error told the
+      // package to declare Start)
+      expect(lines).toContain(conditionalWayOut)
+      expect(lines.some((line) => line.includes('must declare'))).toBe(false)
     },
     timeout,
   )

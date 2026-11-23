@@ -8,7 +8,6 @@ import path from 'node:path'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { identify, normalizePath } from '@tanstack/router-utils/compiler'
 import { isFileLoadingAllowed } from 'vite'
-import { NODE_MODULES_RE } from '../compiler/scope'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { decodeDevFunctionId } from '../server-fns/ids'
 import { providerModuleId } from '../server-fns/registry'
@@ -21,6 +20,7 @@ import {
   unreferencedWarning,
 } from '../server-fns/resolver'
 import { createVirtualModule } from './createVirtualModule'
+import type { PackageClasses } from '../compiler/package-class'
 import type { Plugin, ResolvedConfig } from 'vite'
 import type { ViteCompilerState } from './compiler-state'
 import type { ServerFnEntry } from '../server-fns/registry'
@@ -198,17 +198,24 @@ function callableNotProvided(
  * declares Start, is registered when a server fn's handler uses it (its raw
  * reach is compiled early); a module of another installed package is not
  * (that walk does not enter it, and Vite keeps the package external on the
- * server): the package must declare Start.
+ * server): the package must declare Start. A package that declares Start
+ * is missing when its export conditions give the browser another file
+ * than the server, each defining the function (node_modules policy,
+ * decision 13).
  */
-function callableNotProvidedError(missing: Array<ServerFnEntry>): string {
-  const installed = (e: ServerFnEntry) =>
-    NODE_MODULES_RE.test(identify(e.definingCanonicalId).path)
+function callableNotProvidedError(
+  missing: Array<ServerFnEntry>,
+  classes: Pick<PackageClasses, 'classOf'>,
+): string {
+  const classOf = (e: ServerFnEntry) =>
+    classes.classOf(identify(e.definingCanonicalId).path)
+  const installed = (e: ServerFnEntry) => classOf(e) === 'package'
   const lines = [
     `[tanstack-start] The client build calls server functions that the RSC environment's server function resolver does not list: each call would answer "Server function info not found".`,
     ...missing.map((e) => `  - ${e.name} of ${e.rootRel}`),
-    `The RSC environment builds before the client and lists the server functions of the server code it compiled. Possible causes: only client-only code (a <ClientOnly> child, a createClientOnlyFn body, a <Hydrate> fallback) or a lazy import() in or below a 'use client' module imports the file; or the file is in an installed package that does not declare Start, which only client code or server function handlers import.`,
+    `The RSC environment builds before the client and lists the server functions of the server code it compiled. Possible causes: only client-only code (a <ClientOnly> child, a createClientOnlyFn body, a <Hydrate> fallback) or a lazy import() in or below a 'use client' module imports the file; or the file is in an installed package that does not declare Start, which only client code or server function handlers import; or a package's export conditions give the browser a file of its own that defines the function.`,
   ]
-  if (missing.some((e) => !installed(e))) {
+  if (missing.some((e) => classOf(e) === 'app' || classOf(e) === 'workspace')) {
     lines.push(
       `For a file of the app: import the server function in a server function's module as well, and use it in that function's handler.`,
     )
@@ -216,6 +223,11 @@ function callableNotProvidedError(missing: Array<ServerFnEntry>): string {
   if (missing.some(installed)) {
     lines.push(
       `For a file of an installed package: the package must declare TanStack Start (@tanstack/react-start in its peerDependencies), so that Start bundles its modules for the server and reads them.`,
+    )
+  }
+  if (missing.some((e) => classOf(e) === 'start-package')) {
+    lines.push(
+      `For a file of an installed package that declares TanStack Start: the package's export conditions may give the browser another file than the server; each server function must be defined in one module that every condition re-exports.`,
     )
   }
   return lines.join('\n')
@@ -271,7 +283,7 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
               s.providerListed,
             )
             if (missing.length > 0) {
-              this.error(callableNotProvidedError(missing))
+              this.error(callableNotProvidedError(missing, s.start.classes))
             }
             return callerGateModule(SERVER_FN_FORWARD_VIRTUAL_ID, callableIds)
           }
