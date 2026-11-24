@@ -487,6 +487,16 @@ export interface RouteTypes<
   allSsr: ResolveAllSSR<TParentRoute, TSSR>
 }
 
+/**
+ * The type of `route.children`. Children passed as an object are stored as an
+ * array of the object's values, while `types.children` keeps the object.
+ */
+export type ResolveRouteChildren<TChildren> = unknown extends TChildren
+  ? TChildren
+  : TChildren extends ReadonlyArray<any>
+    ? TChildren
+    : Array<TChildren[keyof TChildren]>
+
 export type ResolveSSR<TSSR> = TSSR extends (...args: ReadonlyArray<any>) => any
   ? LooseReturnType<TSSR>
   : TSSR
@@ -661,7 +671,7 @@ export interface Route<
 > extends RouteExtensions<TId, TFullPath> {
   path: TPath
   parentRoute: TParentRoute
-  children?: TChildren
+  children?: ResolveRouteChildren<TChildren>
   types: RouteTypes<
     TRegister,
     TParentRoute,
@@ -1689,7 +1699,7 @@ export class BaseRoute<
   }
 
   // Optional
-  children?: TChildren
+  children?: ResolveRouteChildren<TChildren>
   originalIndex?: number
   rank!: number
   lazyFn?: () => Promise<
@@ -1890,11 +1900,11 @@ export class BaseRoute<
     THandlers
   > = (children) => {
     if (Array.isArray(children)) {
-      this.children = children as TChildren
+      this.children = children as ResolveRouteChildren<TChildren>
     }
 
     if (typeof children === 'object' && children !== null) {
-      this.children = Object.values(children) as TChildren
+      this.children = Object.values(children) as ResolveRouteChildren<TChildren>
     }
 
     return this as any
