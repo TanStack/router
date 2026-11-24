@@ -38,7 +38,6 @@ import { isVueSfc } from '../compiler/vue'
 import { providedEntries, providerModuleId } from '../server-fns/registry'
 import { manifestResolverModule } from '../server-fns/resolver'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
-import { RSPACK_BUILD_INFO_KEY } from '../import-protection/violations'
 import {
   RSBUILD_ENVIRONMENT_NAMES,
   RSBUILD_RSC_LAYERS,
@@ -46,6 +45,16 @@ import {
 } from './planning'
 import { runsAgainLater } from './vue'
 import { GeneratedIndex } from './generated-module'
+import {
+  FOUND_WARNINGS_PART,
+  IMPORT_PROTECTION_PART,
+  PACKAGE_USE_PART,
+  PLAN_PART,
+  SERVER_FNS_PART,
+  holdsParts,
+  partOf,
+  putParts,
+} from './module-record'
 import type {
   StartCompilerEnvironment,
   StartCompilerSessionOptions,
@@ -61,7 +70,6 @@ import type { ServerFnFact } from '../server-fns/registry'
 import type { Rspack } from '@rsbuild/core'
 import type {
   CompileOutput,
-  DiagnosticPosition,
   HostServices,
   IdleCompilerLike,
   InputSourceMap,
@@ -81,23 +89,6 @@ import type {
 export function isJsAsset(name: string): boolean {
   return /\.[cm]?js$/.test(name)
 }
-
-/** The `buildInfo` field holding a module's server-fn facts (persisted by Rspack's cache; replayed at `finishMake`). */
-export const SERVER_FN_BUILD_INFO_FIELD = 'tanstack.start.serverFns'
-
-/** The `buildInfo` field holding the key and dependencies of a module's plan, as JSON (persisted by Rspack's cache; checked at a compiler's first `finishMake`). */
-export const PLAN_BUILD_INFO_FIELD = 'tanstack.start.plan'
-
-/**
- * The `buildInfo` field holding the warnings a module's latest compile
- * found, before the once-per-run rule (`FoundWarning`): what a production
- * build reports for a module its persistent cache restored without
- * compiling it, through the run's warning ledger.
- */
-export const FOUND_WARNINGS_FIELD = 'tanstack.start.warnings'
-
-/** The `buildInfo` field set when a module's latest compile recognised a Start use in a package (`StartCompilerSession.usesStartInPackage`). */
-export const PACKAGE_USE_FIELD = 'tanstack.start.packageUse'
 
 /** A warning a module's compile found: the ledger's key (`code`, `message`) and its position. */
 export interface FoundWarning {
@@ -129,26 +120,42 @@ export interface ServerFnBuildInfo {
 }
 
 /**
- * Records the server fns a module's compile reported in its `buildInfo`
- * (the registry's snapshots read it, `facts` null: none, the field removed).
+ * What a module's compile leaves on the module (`buildInfo`, which Rspack
+ * persists and restores with it): one outcome per run of the loader,
+ * written at its one exit (`StartRsbuildCompilerSession.record`). Each part
+ * is a field of its own (Rspack converts a field value by value: a reader
+ * of one part reads that part).
  */
-function recordServerFns(
-  buildInfo: Record<string, unknown> | undefined,
-  canonicalId: string,
-  facts: Array<ServerFnFact> | null,
-): void {
-  if (!buildInfo) {
-    return
-  }
-  if (facts) {
-    buildInfo[SERVER_FN_BUILD_INFO_FIELD] = {
-      version: 4,
-      canonicalId,
-      facts,
-    } satisfies ServerFnBuildInfo
-  } else {
-    delete buildInfo[SERVER_FN_BUILD_INFO_FIELD]
-  }
+interface ModuleOutcome {
+  /** The plan's key and dependencies (`PLAN_PART`). */
+  plan?: PersistedPlan
+  /** The server functions the module declares as it is served (`SERVER_FNS_PART`); a provider module's always, also none. */
+  fns?: ServerFnBuildInfo
+  /** The errors that fail the module, located (`LOCATED_DIAGNOSTICS`). */
+  errors?: Array<LocatedDiagnostic>
+  /** The warnings the compile found (`FOUND_WARNINGS_PART`). */
+  found?: Array<FoundWarning>
+  /** A Start use in a package (`PACKAGE_USE_PART`). */
+  packageUse?: boolean
+  /** Import protection's record of the module (`ImportProtectionEnv.buildInfo`). */
+  ip?: { key: string; value: unknown } | null
+  /**
+   * The compile was overtaken by a newer one of the same id (the module is
+   * stale and built again): it may finish after the newer one, so it takes
+   * nothing out of the session's index of records.
+   */
+  superseded?: boolean
+}
+
+/** What a module that is not compiled gives import protection: no edge, no violation (its earlier records are retired). */
+const NOT_COMPILED: CompiledOutputLike = {
+  output: 'env',
+  facts: { planners: {} },
+}
+
+/** Whether a module's `buildInfo` holds a record of Start's (`StartRsbuildCompilerSession.record`). */
+export function holdsRecord(buildInfo: Record<string, unknown>): boolean {
+  return LOCATED_DIAGNOSTICS.field in buildInfo || holdsParts(buildInfo)
 }
 
 /** Rsbuild `source.transformImport` entries (the array form) the host predicts, so the file and
@@ -361,6 +368,8 @@ export class StartRsbuildCompilerSession {
       settlesImportVerdicts: true,
       // (from each compilation's modules, restored ones included: `host-plugin.ts`)
       packageUseAtSeal: true,
+      // (the host plugin's fold at `finishMake`, the one writer of the registry)
+      serverFnsAtSettlement: true,
       readFile: (file) => this.readFile(file),
       // our virtual modules go through `readFile`
       loadVirtual: () => Promise.resolve(null),
@@ -381,6 +390,8 @@ export class StartRsbuildCompilerSession {
     }
     this.hosts.clear()
     this.missing.clear()
+    this.reportedWarnings.clear()
+    this.sealed.clear()
     for (const env of this.envs.values()) {
       env.compiled = new Set()
     }
@@ -584,24 +595,32 @@ export class StartRsbuildCompilerSession {
   }
 
   /**
-   * The modules (`<env>\0<resource>`) that hold a diagnostics record
-   * (`recordDiagnostics`), written by their compile in this process or
-   * restored (`noteRestored`): a compile that finds none clears it.
+   * The modules (`<env>\0<resource>`) that hold a record of Start's
+   * (`record`), written by their compile in this process or restored
+   * (`noteRestored`): the one index of the records. A loader exit touches
+   * the `buildInfo` of a module with nothing to record only when the module
+   * is in it (reading `buildInfo` creates it, for every module of the app
+   * otherwise), and the readers below are its parts.
    */
-  private readonly recordsDiagnostics = new Set<string>()
+  private readonly recorded = new Set<string>()
+
+  /** Of `recorded`: the compiler's own modules whose record holds server functions (the registry's fold reads those). */
+  readonly fnModules = new Set<string>()
+
+  /** Of `recorded`: the modules whose latest compile found warnings (the seal pass reads those). */
+  readonly warned = new Set<string>()
 
   /**
-   * The modules (`<env>\0<resource>`) whose latest compile recognised a
-   * Start use in a package (`PACKAGE_USE_FIELD`), in this process or
-   * restored (`noteRestored`): those the host's package warning decides.
+   * Of `recorded`: the modules whose latest compile recognised a Start use
+   * in a package (`PACKAGE_USE_PART`): those the host's package warning
+   * decides.
    */
   readonly packageUses = new Set<string>()
 
   /**
    * A module of compile environment `env` restored from the persistent cache
-   * with the records of its latest compile (`buildInfo`, `holdsDiagnostics`):
-   * its Start use in a package counts, and its next compile in this process
-   * replaces them.
+   * with the record of its latest compile (`buildInfo`, `holdsRecord`): the
+   * index learns it, and its next compile in this process replaces it.
    */
   noteRestored(
     env: string,
@@ -609,11 +628,189 @@ export class StartRsbuildCompilerSession {
     buildInfo: Record<string, unknown>,
   ): void {
     const key = `${env}\0${resource}`
-    this.recordsDiagnostics.add(key)
-    if (buildInfo[PACKAGE_USE_FIELD] === true) {
+    this.recorded.add(key)
+    if (partOf(buildInfo, SERVER_FNS_PART) !== undefined) {
+      this.fnModules.add(key)
+    }
+    if (partOf(buildInfo, FOUND_WARNINGS_PART) !== undefined) {
+      this.warned.add(key)
+    }
+    if (partOf(buildInfo, PACKAGE_USE_PART) === true) {
       this.packageUses.add(key)
     }
   }
+
+  /**
+   * The one writer of a module's record: replaces what the module's
+   * previous compile left with `outcome`, every part of it (a part the
+   * outcome lacks is removed: Rspack keeps a custom `buildInfo` field of the
+   * module's previous build in a rebuild). `child`: a child compiler's
+   * module (a worker's), which is another module than the compiler's of the
+   * same resource.
+   */
+  private record(
+    ctx: LoaderContextLike,
+    key: string,
+    child: boolean,
+    outcome: ModuleOutcome,
+  ): void {
+    const errors = outcome.errors ?? []
+    const found = outcome.found ?? []
+    const any =
+      outcome.plan !== undefined ||
+      outcome.fns !== undefined ||
+      errors.length > 0 ||
+      found.length > 0 ||
+      outcome.packageUse === true ||
+      !!outcome.ip
+    const index = (set: Set<string>, holds: boolean) => {
+      if (holds) {
+        set.add(key)
+      } else if (!outcome.superseded) {
+        set.delete(key)
+      }
+    }
+    index(this.warned, found.length > 0)
+    index(this.packageUses, outcome.packageUse === true)
+    if (!child) {
+      index(this.fnModules, outcome.fns !== undefined)
+    }
+    if (!any && !this.recorded.has(key)) {
+      // (nothing to record, nothing recorded: `buildInfo` is not read)
+      return
+    }
+    const buildInfo = ctx._module?.buildInfo
+    if (!buildInfo) {
+      return
+    }
+    index(this.recorded, any)
+    if (errors.length > 0) {
+      buildInfo[LOCATED_DIAGNOSTICS.field] = errors
+    } else {
+      delete buildInfo[LOCATED_DIAGNOSTICS.field]
+    }
+    putParts(buildInfo, {
+      [PLAN_PART]: outcome.plan,
+      [SERVER_FNS_PART]: outcome.fns,
+      [FOUND_WARNINGS_PART]: found.length > 0 ? found : undefined,
+      [PACKAGE_USE_PART]: outcome.packageUse === true ? true : undefined,
+      [IMPORT_PROTECTION_PART]: outcome.ip?.value,
+    })
+  }
+
+  /** The warnings this run reported: in a build, as compilations claim them (`claimWarning`); in development, those of the compilations Rsbuild printed (`printed`). */
+  private readonly reportedWarnings = new Set<string>()
+  /**
+   * Development: each compiler's current compilation, with the warnings it
+   * could report (`offerWarning`: what its held modules' records say, each
+   * with the way to add it to the compilation) and those it carries. Which
+   * compilation carries a warning is decided when a compiler finishes
+   * (`assignWarnings`), from what every current compilation could report
+   * then: Rsbuild prints the last compilation of each compiler once all of
+   * them are done, never one a newer compilation replaced, so a warning one
+   * compilation claimed at its seal would be lost with it while another
+   * compilation in the same report still holds the module.
+   */
+  private readonly sealed = new Map<
+    string,
+    {
+      compilation: object
+      eligible: Map<string, () => void>
+      carried: Set<string>
+    }
+  >()
+
+  /** Development: a compiler's compilation starts; what the one before it could report or carried is not this one's. */
+  beginWarnings(compiler: string, compilation: object): void {
+    this.sealed.set(compiler, {
+      compilation,
+      eligible: new Map(),
+      carried: new Set(),
+    })
+  }
+
+  /** A build: whether a compilation reports the warning `key` (a compiler warning of a file, a package's): the first to ask in the run. */
+  claimWarning(key: string): boolean {
+    if (this.reportedWarnings.has(key)) {
+      return false
+    }
+    this.reportedWarnings.add(key)
+    return true
+  }
+
+  /** Development: `compiler`'s current compilation could report the warning `key`; `report` adds it to the compilation. */
+  offerWarning(compiler: string, key: string, report: () => void): void {
+    const eligible = this.sealed.get(compiler)?.eligible
+    // (every module of a file, and the file's module in each layer, records the file's warnings)
+    if (eligible && !eligible.has(key)) {
+      eligible.set(key, report)
+    }
+  }
+
+  /**
+   * Development: whether a compilation that reports as it seals, a child
+   * compiler's (a worker's, whose owner takes its warnings when it ends),
+   * reports `key` on behalf of `compiler`'s current compilation.
+   */
+  carryWarning(compiler: string, key: string): boolean {
+    if (this.reportedWarnings.has(key) || this.carried(key)) {
+      return false
+    }
+    this.sealed.get(compiler)?.carried.add(key)
+    return true
+  }
+
+  private carried(key: string): boolean {
+    for (const one of this.sealed.values()) {
+      if (one.carried.has(key)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /**
+   * Development, as a compiler finishes a compilation (before Rsbuild
+   * formats a report): every warning a current compilation could report and
+   * none carries is added to one that could, `compiler`'s first.
+   */
+  assignWarnings(compiler: string): void {
+    const first = this.sealed.get(compiler)
+    const others = [...this.sealed.values()].filter((one) => one !== first)
+    for (const one of first ? [first, ...others] : others) {
+      for (const [key, report] of one.eligible) {
+        if (!this.reportedWarnings.has(key) && !this.carried(key)) {
+          one.carried.add(key)
+          report()
+        }
+      }
+    }
+  }
+
+  /** Development: Rsbuild printed these compilations: the warnings they carry are reported. */
+  printed(compilations: ReadonlySet<object>): void {
+    for (const one of this.sealed.values()) {
+      if (compilations.has(one.compilation)) {
+        for (const key of one.carried) {
+          this.reportedWarnings.add(key)
+        }
+      }
+    }
+  }
+
+  /** A new run's warnings (a `build --watch` rebuild; `begin`). */
+  resetWarnings(): void {
+    this.reportedWarnings.clear()
+    this.sealed.clear()
+    this.start.warnings.reset()
+  }
+
+  /**
+   * How many times the loader ran, for any module of any compiler: what a
+   * compilation's registry was derived at (the host's `deriveServerFns`). A
+   * module built since then may have another record or other imports.
+   */
+  loaderRuns = 0
 
   /**
    * The files of the modules Start generates for its compilers (the client's
@@ -758,6 +955,24 @@ export class StartRsbuildCompilerSession {
         }
       }
     }
+    // the index of the records of modules the compilation no longer depends on
+    const envs = new Set([...this.envsOf(compiler)].map((env) => env.name))
+    for (const set of [
+      this.recorded,
+      this.fnModules,
+      this.warned,
+      this.packageUses,
+    ]) {
+      for (const key of set) {
+        const at = key.indexOf('\0')
+        if (
+          envs.has(key.slice(0, at)) &&
+          !keepEnv(resourcePath(key.slice(at + 1).replace(/^\0/, '')))
+        ) {
+          set.delete(key)
+        }
+      }
+    }
     // (counted in compilers: the files are theirs)
     if (this.files.size === this.compilers.size) {
       // shared state: kept while any compiler depends on the file
@@ -891,7 +1106,7 @@ export class StartRsbuildCompilerSession {
 
   /**
    * The plans an earlier process persisted with a compiler's modules
-   * (`PLAN_BUILD_INFO_FIELD`), which Rspack's persistent cache restored
+   * (`PLAN_PART`), which Rspack's persistent cache restored
    * without a compile, each with its module's environment (`envOf`): each
    * one of that environment, compiled with this session's configuration,
    * and whose dependencies are all current joins the session's plans
@@ -947,6 +1162,7 @@ export class StartRsbuildCompilerSession {
       layer: ctx._module?.layer,
     })
     const passthrough: LoaderResult = { code: bytes, map: inputMap }
+    this.loaderRuns++
     if (options.pass === undefined && this.generated.has(ctx.resourcePath)) {
       this.generatedIndex.built(
         options.environment,
@@ -961,21 +1177,20 @@ export class StartRsbuildCompilerSession {
       // the bundler requested this edge module from the importer's post-SWC
       // code: `allowImport` decides between the real module and the mock
       const ipEnv = ip?.env(env.name)
-      if (!ctx._compiler?.isChild()) {
+      const key = this.recordKey(env, ctx)
+      if (!key.child) {
         env.compiled.add(ctx.resource)
       }
       const error = await ipEnv?.confirm(ctx.resource)
       if (error) {
         // (it fails the edge module: Rspack reports it there, not at the importer)
-        throwLocated(ctx, error as DevViolationError)
+        throw this.fail(ctx, key, error as DevViolationError)
       }
       const code = ip?.load(ctx.resource)?.code ?? bytes
       // (after the load: the state it served, for a restore to compare)
-      const info = ipEnv?.edgeBuildInfo(ctx.resource)
-      const buildInfo = ctx._module?.buildInfo
-      if (info && buildInfo) {
-        buildInfo[info.key] = info.value
-      }
+      this.record(ctx, key.key, key.child, {
+        ip: ipEnv?.edgeBuildInfo(ctx.resource) ?? null,
+      })
       return { code, map: null }
     }
     const id = canonicalResource(ctx.resource)
@@ -987,12 +1202,14 @@ export class StartRsbuildCompilerSession {
       // never compiled, and an import the compiler does not read may have
       // brought it here: a denied file's text is served as its mock
       const asset = await this.start.assetOutput(env, id)
-      return (
-        (asset && (await this.protect(ctx, env, id, asset))) ?? {
-          code: '',
-          map: null,
-        }
-      )
+      const key = this.recordKey(env, ctx)
+      if (!asset) {
+        this.record(ctx, key.key, key.child, {})
+        return { code: '', map: null }
+      }
+      const served = await this.protect(ctx, env, id, asset, key)
+      this.record(ctx, key.key, key.child, { ip: served.ip })
+      return served.mock ?? { code: '', map: null }
     }
     const identity = identify(id)
     const late = options.pass === 'late'
@@ -1003,26 +1220,35 @@ export class StartRsbuildCompilerSession {
     ) {
       return passthrough
     }
-    // From here on every exit is this module's compile: its record of server
-    // fns follows it, also when it reports none (Rspack keeps a custom
-    // `buildInfo` field of the module's previous build in a rebuild). A
-    // module that reports none had a record only if the registry, whose
-    // snapshots read the records, knows it (reading `buildInfo` creates it)
-    const forgetServerFns = () => {
-      if (this.start.registry.definedIn(identity.canonicalId)) {
-        recordServerFns(ctx._module?.buildInfo, identity.canonicalId, null)
+    // From here on every exit is this module's outcome, recorded once
+    // (`record`): compiled and served as it is, compiled and served as its
+    // mock, not compiled (served as its bytes), or failed
+    const key = this.recordKey(env, ctx)
+    // a provider module (the derived module the resolver imports the
+    // wrappers from) always says what it provides, also nothing: its
+    // defining module's record is of another module
+    const provides =
+      identity.derived?.kind === 'provider' ||
+      identity.derived?.kind === 'handler'
+    const none: ServerFnBuildInfo | undefined = provides
+      ? { version: 4, canonicalId: identity.canonicalId, facts: [] }
+      : undefined
+    /** The module is served as its bytes: what its previous compile left is retired, on the module and in the session. */
+    const notCompiled = async (): Promise<LoaderResult> => {
+      const had = this.recorded.has(key.key)
+      this.record(ctx, key.key, key.child, { fns: none })
+      if (had) {
+        // (import protection's edges, violations and served state of it)
+        if (!key.child) {
+          env.compiled.add(ctx.resource)
+        }
+        await this.start.afterCompile(env, id, NOT_COMPILED)
       }
-      // (and its diagnostics: none, of a module known to hold a record)
-      const key = `${env.name}\0${ctx.resource}`
-      this.packageUses.delete(key)
-      if (this.recordsDiagnostics.delete(key)) {
-        recordDiagnostics(ctx._module?.buildInfo, [], [], false)
-      }
+      return passthrough
     }
     const source = loaderText(bytes)
     if (!late && !this.start.compiles(identity.path, source)) {
-      forgetServerFns()
-      return passthrough
+      return notCompiled()
     }
     let parsedInputMap: InputSourceMap | null | undefined
     const readInputMap = (): InputSourceMap | null => {
@@ -1048,27 +1274,40 @@ export class StartRsbuildCompilerSession {
       this.hostFor(env),
     )
     if (!out) {
-      forgetServerFns()
-      return passthrough
+      return notCompiled()
     }
-    this.reportDiagnostics(
-      ctx,
-      env.name,
+    const diagnosed = this.diagnose(
       out,
       identity.path,
       source,
       env.type,
       late || isVueSfc(identity.path) ? readInputMap : undefined,
     )
-    const mock = await this.protect(ctx, env, id, out)
-    const buildInfo = ctx._module?.buildInfo
-    if (env.compiler.persistsModules && out.persisted && buildInfo) {
-      // one string: Rspack converts a structured field value by value
-      buildInfo[PLAN_BUILD_INFO_FIELD] = JSON.stringify(out.persisted)
+    if (diagnosed.errors.length > 0) {
+      // the module fails: its errors, and nothing its previous build left
+      this.record(ctx, key.key, key.child, { errors: diagnosed.errors })
+      const error = new Error(diagnosed.errors.map((e) => e.message).join('\n'))
+      error.name = LOCATED_DIAGNOSTICS.errorName
+      throw error
     }
-    recordServerFns(buildInfo, identity.canonicalId, serverFnFactsOf(out))
-    if (mock) {
-      return mock
+    const served = await this.protect(ctx, env, id, out, key)
+    // (a module served as its mock declares nothing in this environment)
+    const facts = served.mock ? null : serverFnFactsOf(out)
+    this.record(ctx, key.key, key.child, {
+      plan:
+        env.compiler.persistsModules && out.persisted
+          ? out.persisted
+          : undefined,
+      fns: facts
+        ? { version: 4, canonicalId: identity.canonicalId, facts }
+        : none,
+      found: diagnosed.found,
+      packageUse: diagnosed.packageUse,
+      ip: served.ip,
+      superseded: out.superseded === true,
+    })
+    if (served.mock) {
+      return served.mock
     }
     if (identity.derived === null && out.code === source) {
       return passthrough
@@ -1085,83 +1324,104 @@ export class StartRsbuildCompilerSession {
     }
   }
 
+  /** The key of a module's record: its compile environment and resource; a child compiler's module apart. */
+  private recordKey(
+    env: EnvState,
+    ctx: LoaderContextLike,
+  ): { key: string; child: boolean } {
+    const child = ctx._compiler?.isChild() === true
+    return { key: `${env.name}\0${child ? '\0' : ''}${ctx.resource}`, child }
+  }
+
   /**
-   * What follows a compile: the registry, and import protection's edges and,
-   * in development, the violations of this compile (with `log: 'always'`,
-   * decided at every compile), recorded in the module's `buildInfo`. The
-   * module that is its own violation is served as its mock (returned), whose
-   * virtual file a verdict rewrites (so the module is built again as it is).
+   * What follows a compile: import protection's edges and, in development,
+   * the violations of this compile (with `log: 'always'`, decided at every
+   * compile). Gives the mock the module is served as when it is its own
+   * violation (a virtual file a verdict rewrites, so the module is built
+   * again as it is), and import protection's record of the module, for the
+   * module's outcome (`record`). A dev `error` violation fails the module:
+   * its reports are the module's outcome.
    */
   private async protect(
     ctx: LoaderContextLike,
     env: EnvState,
     id: string,
     out: CompiledOutputLike,
-  ): Promise<LoaderResult | null> {
-    if (!ctx._compiler?.isChild()) {
+    key: { key: string; child: boolean },
+  ): Promise<{
+    mock: LoaderResult | null
+    ip: { key: string; value: unknown } | null
+  }> {
+    if (!key.child) {
       env.compiled.add(ctx.resource)
     }
     const outcome = this.start.afterCompile(env, id, out)
     const { error, mock } = outcome instanceof Promise ? await outcome : outcome
     if (error) {
-      throwLocated(ctx, error as DevViolationError)
+      throw this.fail(ctx, key, error as DevViolationError)
     }
-    const buildInfo = ctx._module?.buildInfo
-    const ipEnv = this.start.ip?.env(env.name)
-    if (ipEnv && buildInfo) {
-      const info = ipEnv.buildInfo(id, out)
-      if (info) {
-        buildInfo[info.key] = info.value
-      } else {
-        // a rebuild of a module that was its own violation
-        delete buildInfo[RSPACK_BUILD_INFO_KEY]
-      }
-    }
+    const ip = this.start.ip?.env(env.name).buildInfo(id, out) ?? null
     if (!mock) {
-      return null
+      return { mock: null, ip }
     }
     ctx.addDependency(mock.id)
-    return { code: mock.code, map: null }
+    return { mock: { code: mock.code, map: null }, ip }
   }
 
   /**
-   * Reports a compile's diagnostics: warnings to the loader context, the
-   * errors thrown together (the module fails), and all of them with their
-   * positions in the module's `buildInfo` (`LOCATED_DIAGNOSTICS`).
+   * The outcome of a module that dev `error` violations fail (its own
+   * compile's, or an edge module's that confirms one): their reports,
+   * located like compile errors, and nothing its previous build left. Gives
+   * the failure to throw, which the host replaces with the located records
+   * (no loader wrapper, no stack frames).
    */
-  private reportDiagnostics(
+  private fail(
     ctx: LoaderContextLike,
-    envName: string,
+    key: { key: string; child: boolean },
+    error: DevViolationError,
+  ): Error {
+    this.record(ctx, key.key, key.child, {
+      errors: error.reports.map((report) => ({
+        severity: 'error' as const,
+        message: report.message,
+        ...report.at,
+      })),
+    })
+    const failure = new Error(error.message)
+    failure.name = LOCATED_DIAGNOSTICS.errorName
+    failure.stack = `${failure.name}: ${error.message}`
+    return failure
+  }
+
+  /**
+   * A compile's diagnostics, for the module's outcome: the errors that fail
+   * the module, located (`LOCATED_DIAGNOSTICS`: Rspack keeps no location of a
+   * loader's error, the host gives it one after the seal); every warning
+   * the compile found (the compilation reports the warnings of the modules
+   * it holds when it seals: the loader emits none); and whether it
+   * recognised a Start use in a package.
+   */
+  private diagnose(
     out: CompileOutput,
     file: string,
     code: string,
     envType: 'client' | 'server',
     inputMap?: () => InputSourceMap | null,
-  ): void {
-    const located: Array<LocatedDiagnostic> = []
+  ): {
+    errors: Array<LocatedDiagnostic>
+    found: Array<FoundWarning>
+    packageUse: boolean
+  } {
+    const errors: Array<LocatedDiagnostic> = []
     const found: Array<FoundWarning> = []
-    const locate = (
-      severity: LocatedDiagnostic['severity'],
-      message: string,
-      at: DiagnosticPosition | undefined,
-    ) => {
-      const d = locatedDiagnostic(severity, message, at)
-      located.push(d)
-      return d.message
-    }
-    const errors: Array<string> = []
     this.start.report(
       out,
       file,
       code,
       envType,
       {
-        error: (d, at) => errors.push(locate('error', d.message, at)),
-        warn: (d, at) => {
-          const warning = new Error(locate('warning', d.message, at))
-          warning.name = LOCATED_DIAGNOSTICS.warningName
-          ctx.emitWarning(warning)
-        },
+        error: (d, at) =>
+          errors.push(locatedDiagnostic('error', d.message, at)),
         found: (d, at) => {
           const { line, column } = locatedDiagnostic('warning', d.message, at)
           found.push({
@@ -1173,25 +1433,10 @@ export class StartRsbuildCompilerSession {
       },
       inputMap,
     )
-    // (each record is the latest compile's: Rspack keeps a module's custom
-    // `buildInfo` fields of its previous build in a rebuild)
-    const packageUse = this.start.usesStartInPackage(out, file)
-    const key = `${envName}\0${ctx.resource}`
-    if (packageUse) {
-      this.packageUses.add(key)
-    } else {
-      this.packageUses.delete(key)
-    }
-    if (located.length > 0 || found.length > 0 || packageUse) {
-      this.recordsDiagnostics.add(key)
-      recordDiagnostics(ctx._module?.buildInfo, located, found, packageUse)
-    } else if (this.recordsDiagnostics.delete(key)) {
-      recordDiagnostics(ctx._module?.buildInfo, [], [], false)
-    }
-    if (errors.length > 0) {
-      const error = new Error(errors.join('\n'))
-      error.name = LOCATED_DIAGNOSTICS.errorName
-      throw error
+    return {
+      errors,
+      found,
+      packageUse: this.start.usesStartInPackage(out, file),
     }
   }
 
@@ -1250,27 +1495,6 @@ export class StartRsbuildCompilerSession {
           : undefined,
     })
   }
-}
-
-/**
- * Fails the module with dev `error` violations, located like compile
- * errors: a record per report in the module's `buildInfo`, and the failure
- * the host replaces with them (no loader wrapper, no stack frames).
- */
-function throwLocated(ctx: LoaderContextLike, error: DevViolationError): never {
-  const buildInfo = ctx._module?.buildInfo
-  if (buildInfo) {
-    const records = (buildInfo[LOCATED_DIAGNOSTICS.field] ??
-      []) as Array<LocatedDiagnostic>
-    for (const report of error.reports) {
-      records.push({ severity: 'error', message: report.message, ...report.at })
-    }
-    buildInfo[LOCATED_DIAGNOSTICS.field] = records
-  }
-  const failure = new Error(error.message)
-  failure.name = LOCATED_DIAGNOSTICS.errorName
-  failure.stack = `${failure.name}: ${error.message}`
-  throw failure
 }
 
 /**
@@ -1446,45 +1670,4 @@ function rewrittenSpecifier(rule: TransformImportRule, member: string): string {
   }
   const dir = rule.libraryDirectory ?? 'lib'
   return `${rule.libraryName}/${dir}/${transformed}`
-}
-
-/** Whether a module's `buildInfo` holds a diagnostics record (`recordDiagnostics`). */
-export function holdsDiagnostics(buildInfo: Record<string, unknown>): boolean {
-  return (
-    LOCATED_DIAGNOSTICS.field in buildInfo ||
-    FOUND_WARNINGS_FIELD in buildInfo ||
-    PACKAGE_USE_FIELD in buildInfo
-  )
-}
-
-/**
- * A module's diagnostics records of its latest compile (`buildInfo`): what
- * it reported (`LOCATED_DIAGNOSTICS`), what it found (`FOUND_WARNINGS_FIELD`)
- * and its Start use in a package (`PACKAGE_USE_FIELD`), each removed when
- * empty.
- */
-function recordDiagnostics(
-  buildInfo: Record<string, unknown> | undefined,
-  located: Array<LocatedDiagnostic>,
-  found: Array<FoundWarning>,
-  packageUse: boolean,
-): void {
-  if (!buildInfo) {
-    return
-  }
-  if (located.length > 0) {
-    buildInfo[LOCATED_DIAGNOSTICS.field] = located
-  } else {
-    delete buildInfo[LOCATED_DIAGNOSTICS.field]
-  }
-  if (found.length > 0) {
-    buildInfo[FOUND_WARNINGS_FIELD] = found
-  } else {
-    delete buildInfo[FOUND_WARNINGS_FIELD]
-  }
-  if (packageUse) {
-    buildInfo[PACKAGE_USE_FIELD] = true
-  } else {
-    delete buildInfo[PACKAGE_USE_FIELD]
-  }
 }

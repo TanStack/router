@@ -8,7 +8,7 @@
  * Structural types only: the readers take what Vite's `generateBundle` and
  * Rspack's `processAssets` hand the host.
  */
-import { RSPACK_BUILD_INFO_KEY } from './violations'
+import { IMPORT_PROTECTION_PART, partOf } from '../rsbuild/module-record'
 import type { EdgeModuleIds } from './edge-modules'
 import type { GraphNode, NodeGraph } from './graph-trace'
 import type { RspackImportProtectionBuildInfo } from './violations'
@@ -268,13 +268,32 @@ export function readRspackWitness(
  * compilation, and in the persistent cache: it is not held. Not the
  * graph's `isEntry` and `importers`, which a module of no file does not
  * ground (import protection's grants). Read once the compilation's modules
- * are final (`finishModules`); each answer is remembered.
+ * are final (`finishModules`), or between two rounds of builds at
+ * `finishMake`; each answer is remembered.
+ * `through`: narrows the walk for a reader that asks who really asks for a
+ * module: `stop`, a module whose imports explain nothing (Start's own
+ * server-function resolver imports every provider it lists: that import is
+ * not a caller); `grounds`, modules that count as held (the providers
+ * already admitted, whose imports are real).
  */
-export function rspackHolds(compilation: {
-  moduleGraph: {
-    getIncomingConnections: (module: never) => Iterable<RspackConnectionLike>
-  }
-}): (module: { identifier: () => string }) => boolean {
+export function rspackHolds(
+  compilation: {
+    moduleGraph: {
+      getIncomingConnections: (module: never) => Iterable<RspackConnectionLike>
+    }
+  },
+  through?: {
+    /** By `identifier()`. */
+    stop?: ReadonlySet<string>
+    grounds?: ReadonlySet<string>
+    /**
+     * Whether the build has RSC client references (default: it may).
+     * Without RSC no connection is one, and reading a connection's
+     * dependency to tell costs a call into the bundler per connection.
+     */
+    clientReferences?: boolean
+  },
+): (module: { identifier: () => string }) => boolean {
   type Module = { identifier: () => string }
   const incoming = (m: Module) =>
     compilation.moduleGraph.getIncomingConnections(m as never)
@@ -288,32 +307,45 @@ export function rspackHolds(compilation: {
     if (unheld.has(startKey)) {
       return false
     }
-    const seen = new Set([startKey])
-    let queue: Array<Module> = [start]
+    // each module seen, with the module it was reached from (toward `start`)
+    const from = new Map<string, string | null>([[startKey, null]])
+    /** `key` is held, and so is every module between it and `start` (each imports the next). */
+    const holds = (key: string): true => {
+      for (let k: string | null | undefined = key; k != null; k = from.get(k)) {
+        held.add(k)
+      }
+      return true
+    }
+    let queue: Array<[Module, string]> = [[start, startKey]]
     while (queue.length > 0) {
-      const next: Array<Module> = []
-      for (const m of queue) {
+      const next: Array<[Module, string]> = []
+      for (const [m, key] of queue) {
         for (const c of incoming(m)) {
           const origin = c.originModule as Module | null
-          if (origin === null || isClientReference(c)) {
-            held.add(startKey)
-            return true
+          if (origin === null) {
+            return holds(key)
           }
           const k = origin.identifier()
-          if (held.has(k)) {
-            held.add(startKey)
-            return true
+          if (held.has(k) || through?.grounds?.has(k)) {
+            return holds(key)
           }
-          if (!seen.has(k) && !unheld.has(k)) {
-            seen.add(k)
-            next.push(origin)
+          // (asked last: it reads the connection's dependency)
+          if (through?.clientReferences !== false && isClientReference(c)) {
+            return holds(key)
+          }
+          if (through?.stop?.has(k)) {
+            continue
+          }
+          if (!from.has(k) && !unheld.has(k)) {
+            from.set(k, key)
+            next.push([origin, k])
           }
         }
       }
       queue = next
     }
     // (every module seen reaches no entry either: its importers were seen)
-    for (const k of seen) {
+    for (const k of from.keys()) {
       unheld.add(k)
     }
     return false
@@ -525,7 +557,7 @@ export function rspackNodeGraph(
     builds: (node) => (entryOf(node)?.own.length ?? 0) > 0,
     served(node) {
       for (const module of entryOf(node)?.own ?? []) {
-        const record = module.buildInfo?.[RSPACK_BUILD_INFO_KEY] as
+        const record = partOf(module.buildInfo, IMPORT_PROTECTION_PART) as
           | RspackImportProtectionBuildInfo
           | undefined
         if (record?.served) {

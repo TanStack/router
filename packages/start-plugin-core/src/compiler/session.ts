@@ -119,6 +119,15 @@ export interface StartCompilerSessionOptions {
    * compile that recognises the use reports it.
    */
   packageUseAtSeal?: boolean
+  /**
+   * The host derives the server-function registry from the modules each of
+   * its compilations holds, as its one writer (`ServerFnRegistry.replace`):
+   * a compile registers nothing. Rsbuild, whose compilations keep, restore
+   * and drop modules on their own schedule, and whose loader may serve a
+   * module otherwise than it compiled (an import-protection mock). Default:
+   * each compile replaces its module's snapshot.
+   */
+  serverFnsAtSettlement?: boolean
   framework: CompileStartFrameworkOptions
   /** From the bundler's command or action, never `process.env.NODE_ENV`. */
   mode: 'dev' | 'build'
@@ -460,7 +469,7 @@ export class StartCompilerSession {
       host,
       this.caches,
     )
-    if (!out?.superseded) {
+    if (!out?.superseded && !this.opts.serverFnsAtSettlement) {
       this.registry.set(
         env,
         identify(input.id).canonicalId,
@@ -545,7 +554,7 @@ export class StartCompilerSession {
     if (!this.opts.packageUseAtSeal && this.usesStartInPackage(out, file)) {
       const warning = this.packageUseWarning(file, reach)
       if (warning) {
-        sink.warn(warning, undefined)
+        sink.warn?.(warning, undefined)
       }
     }
     if (out.diagnostics.length === 0) {
@@ -622,11 +631,15 @@ export class StartCompilerSession {
    * only (an optional integration the package chose not to declare).
    * `held`: whether the build holds the module (asked last; Rsbuild's seal
    * pass, whose compilation may keep a module nothing reaches any more).
+   * `claim`: the once-per-package rule of a host with a ledger of its own
+   * (Rsbuild's, committed when a compilation is printed), given the package
+   * root; default: the run's warning ledger.
    */
   packageUseWarning(
     file: string,
     reach?: StartPackageReach,
     held?: () => boolean,
+    claim?: (root: string) => boolean,
   ): Diagnostic | null {
     const cls = this.classes.classOf(file)
     if (cls !== 'package' && (cls !== 'start-package' || !reach)) {
@@ -644,7 +657,11 @@ export class StartCompilerSession {
     ) {
       return null
     }
-    if (!this.warnings.once(root, { code: 'start-package', message: root })) {
+    if (
+      claim
+        ? !claim(root)
+        : !this.warnings.once(root, { code: 'start-package', message: root })
+    ) {
       return null
     }
     const key = root.slice(root.lastIndexOf('/node_modules/') + 14)
@@ -784,7 +801,8 @@ export interface StartDiagnosticSink {
     at: DiagnosticPosition | undefined,
     generated?: DiagnosticPosition,
   ) => void
-  warn: (
+  /** Absent for a host that decides its builds' warnings itself, from `found` (`DiagnosticSink.warn`). */
+  warn?: (
     d: Diagnostic,
     at: DiagnosticPosition | undefined,
     generated?: DiagnosticPosition,
@@ -829,9 +847,12 @@ function originalSink(
       to(d, { line: original.line, column: original.column - 1 }, generated)
     }
   const found = sink.found
+  const warn = sink.warn
   return {
     error: report((d, at, generated) => sink.error(d, at, generated)),
-    warn: report((d, at, generated) => sink.warn(d, at, generated)),
+    ...(warn && {
+      warn: report((d, at, generated) => warn(d, at, generated)),
+    }),
     ...(found && {
       found: report((d, at, generated) => found(d, at, generated)),
     }),

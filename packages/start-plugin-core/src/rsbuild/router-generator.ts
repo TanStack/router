@@ -114,8 +114,12 @@ export function createRsbuildRouteGenerator(opts: {
     path.resolve(opts.getConfig().startConfig.router.generatedRouteTree)
   const treePaths = createTreePaths(treePath)
 
+  /** Counts the changes of the client's route set (the routes the pruned tree keeps). */
+  let clientRoutes = 0
   const clientRouteTree = createClientRouteTree({
-    onClientRoutesChange: () => {},
+    onClientRoutesChange: () => {
+      clientRoutes++
+    },
   })
 
   const instance = (): Generator => {
@@ -135,19 +139,30 @@ export function createRsbuildRouteGenerator(opts: {
   }
 
   /**
-   * The client's tree of the current publication, printed once for its
-   * readers (the transform, each compilation's check, the reload's evidence).
+   * The client's tree, printed once for its readers (the transform, each
+   * compilation's check, the reload's evidence) while the generator's tree
+   * and the client's route set are the ones it was printed from: the pruned
+   * tree is a function of the tree's model, which changes with the full
+   * tree's text or with the set of routes the client keeps. (The generator
+   * session publishes at every watch compilation, changed or not.)
    */
-  let clientTree: Promise<ClientRouteTreeCode> | undefined
+  let clientTree:
+    | { from: string; code: Promise<ClientRouteTreeCode> }
+    | undefined
   const clientTreeCode = (): Promise<ClientRouteTreeCode> => {
-    const printing = (clientTree ??= clientRouteTree.code())
-    printing.catch(() => {
-      // (asked again: the next publication's, or this one's once the tree is generated)
-      if (clientTree === printing) {
-        clientTree = undefined
-      }
-    })
-    return printing
+    const from = `${generator?.treeDigest()}\0${clientRoutes}`
+    if (clientTree?.from !== from) {
+      const code = clientRouteTree.code()
+      const printed = { from, code }
+      code.catch(() => {
+        // (asked again: once the tree is generated)
+        if (clientTree === printed) {
+          clientTree = undefined
+        }
+      })
+      clientTree = printed
+    }
+    return clientTree.code
   }
 
   const evidence = createRouteSetEvidence({
@@ -160,7 +175,6 @@ export function createRsbuildRouteGenerator(opts: {
     generator: instance,
     publish: (routesByFile, failure) => {
       publishRoutes(context, routesByFile, failure)
-      clientTree = undefined
       evidence.published()
     },
   })

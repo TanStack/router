@@ -38,7 +38,7 @@ export interface VirtualModuleState {
    */
   updateManifest: (clientBuild: NormalizedClientBuild) => void
   /** Number of times the manifest module was written (the server environment's) */
-  /** The manifest module content written last (none yet: undefined). */
+  /** The manifest module content the server environment's current compiler has (its initial content, then each write). */
   getManifestContent: () => string | undefined
   /** Call to update server fn resolver content after compilation discovers fns; the content */
   updateServerFnResolver: () => string
@@ -296,22 +296,58 @@ export function registerVirtualModules(
   const pendingWrites = new Map<string, Map<string, string>>()
 
   let clientBuild: NormalizedClientBuild | undefined
-  let lastManifestContent: string | undefined
-  // the server fn resolver module lives in the server environment only
-  let lastResolverContent: string | undefined
+  /**
+   * What the current compiler of each environment has in its virtual file
+   * system for the modules Start generates there (the manifest, the server
+   * fn resolver), by file: its initial content, then each write. The
+   * compiler's own: a `build()` or a dev server of the instance after
+   * another one configures new compilers, with new virtual file systems
+   * that hold none of the earlier one's writes.
+   */
+  const written = new Map<string, Map<string, string>>()
   const hasSerializationAdapters = Boolean(opts.serializationAdapters?.length)
 
   function writeResolverContent(content: string): string {
-    const changed = content !== lastResolverContent
-    lastResolverContent = content
-    if (!isDev || changed) {
-      tryWriteModule(
-        RSBUILD_ENVIRONMENT_NAMES.server,
-        pathsOf().serverFnResolver,
-        content,
-      )
-    }
+    writeGenerated(
+      RSBUILD_ENVIRONMENT_NAMES.server,
+      pathsOf().serverFnResolver,
+      content,
+    )
     return content
+  }
+
+  /** What the environment's compiler has, or is about to be given, for a generated file. */
+  function generatedContent(
+    environmentName: string,
+    filePath: string,
+  ): string | undefined {
+    return (
+      pendingWrites.get(environmentName)?.get(filePath) ??
+      written.get(environmentName)?.get(filePath)
+    )
+  }
+
+  /**
+   * Writes a generated file of an environment when its compiler does not
+   * have this content (each write makes Rspack build the module again, and
+   * its watcher, where it watches the virtual files, compile again).
+   */
+  function writeGenerated(
+    environmentName: string,
+    filePath: string,
+    content: string,
+  ): void {
+    if (generatedContent(environmentName, filePath) === content) {
+      return
+    }
+    if (tryWriteModule(environmentName, filePath, content)) {
+      let files = written.get(environmentName)
+      if (!files) {
+        files = new Map()
+        written.set(environmentName, files)
+      }
+      files.set(filePath, content)
+    }
   }
 
   function queuePendingWrite(
@@ -357,6 +393,11 @@ export function registerVirtualModules(
         return
       }
       writes.delete(filePath)
+      const files = written.get(environmentName)
+      if (files?.has(filePath)) {
+        // (a generated file: what its compiler has now)
+        files.set(filePath, content)
+      }
     }
 
     if (writes.size === 0) {
@@ -480,6 +521,10 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
     const vmPlugin = new VMP(initialContent)
     vmPlugins[envName] = vmPlugin
     readyVmPlugins[envName] = false
+    // (a new compiler: its virtual file system holds the initial content,
+    // and nothing queued for the one before it)
+    written.set(envName, new Map(Object.entries(initialContent)))
+    pendingWrites.delete(envName)
     config.plugins.push(vmPlugin)
     config.plugins.push({
       apply(compiler: {
@@ -554,19 +599,18 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
           : { enabled: false, transformAssets: false },
         opts.scriptFormat,
       )
-      // only on a change: each write recompiles the server environment
-      if (content !== lastManifestContent) {
-        lastManifestContent = content
-        tryWriteModule(
-          RSBUILD_ENVIRONMENT_NAMES.server,
-          pathsOf().manifest,
-          content,
-        )
-      }
+      writeGenerated(
+        RSBUILD_ENVIRONMENT_NAMES.server,
+        pathsOf().manifest,
+        content,
+      )
     },
 
     getManifestContent(): string | undefined {
-      return lastManifestContent
+      return generatedContent(
+        RSBUILD_ENVIRONMENT_NAMES.server,
+        pathsOf().manifest,
+      )
     },
 
     updateServerFnResolver() {

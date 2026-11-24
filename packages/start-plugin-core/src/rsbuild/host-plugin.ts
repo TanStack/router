@@ -18,19 +18,14 @@ import {
   emittedMapTexts,
   identify,
   invariantViolated,
-  isRecordedDiagnostic,
   locateDiagnostics,
   locatedError,
   normalizePath,
-  rebuildModules,
   rebuildModulesWhere,
   reportingFailure,
 } from '@tanstack/router-utils/compiler'
 import { NODE_MODULES_RE } from '../compiler/scope'
-import {
-  RSPACK_BUILD_INFO_KEY,
-  dedupeKey,
-} from '../import-protection/violations'
+import { dedupeKey } from '../import-protection/violations'
 import {
   readRspackWitness,
   rspackHolds,
@@ -38,16 +33,20 @@ import {
 } from '../import-protection/witness'
 import { manifestFunctionsDiffering } from '../server-fns/resolver'
 import {
-  FOUND_WARNINGS_FIELD,
   LOCATED_DIAGNOSTICS,
-  PLAN_BUILD_INFO_FIELD,
-  SERVER_FN_BUILD_INFO_FIELD,
   canonicalResource,
-  holdsDiagnostics,
+  holdsRecord,
   isJsAsset,
   resourcePath,
 } from './compiler-session'
 import { LOADER_REGISTRY } from './loader-registry'
+import {
+  FOUND_WARNINGS_PART,
+  IMPORT_PROTECTION_PART,
+  PLAN_PART,
+  SERVER_FNS_PART,
+  partOf,
+} from './module-record'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import { serverFnResolverRebuild } from './server-fn-resolver-rebuild'
 import { buildGenerated } from './generated-module'
@@ -98,7 +97,7 @@ interface StartHostPluginOptions {
   serverFnResolver?: ServerFnResolverModule
   /**
    * Development: Rsbuild's `onDevCompileDone`, which tells the compilations
-   * Rsbuild printed (`handOverWarnings`).
+   * Rsbuild printed: the warnings they carry count as reported (`printed`).
    */
   onDevCompileDone?: RsbuildPluginAPI['onDevCompileDone']
   /**
@@ -127,72 +126,6 @@ interface ModuleLike {
   buildInfo?: Record<string, unknown>
   layer?: string | null
   identifier: () => string
-}
-
-/**
- * Development: the warnings a compilation reports for the one before it,
- * which Rsbuild never printed (`before`: what that one reported, by module:
- * `keyOf`, its compile environment and resource). Rspack before 2.3.3
- * reports a module's warnings only in the compilation that built it (2.3.3
- * reports a kept module's again, which `reportHandedOver` drops), and the
- * session reports a warning once per dev session (the warning ledger), so a
- * module the compilation kept, or built again, reports none of them: each
- * recorded warning of one of its modules that it does not report itself
- * (`built`: it built the module) is handed over. Also returns what the
- * compilation reports, by module (its built modules' warnings and the handed
- * ones), for the compilation after it.
- */
-export function handOverWarnings(
-  before: ReadonlyMap<string, ReadonlyArray<LocatedDiagnostic>> | null,
-  modules: Iterable<ModuleLike>,
-  keyOf: (module: ModuleLike & { resource: string }) => string,
-  built: (module: ModuleLike & { resource: string }) => boolean,
-): {
-  handed: Array<{ module: ModuleLike; warning: LocatedDiagnostic }>
-  reported: Map<string, Array<LocatedDiagnostic>>
-} {
-  const handed: Array<{ module: ModuleLike; warning: LocatedDiagnostic }> = []
-  const reported = new Map<string, Array<LocatedDiagnostic>>()
-  for (const module of modules) {
-    if (!module.resource) {
-      continue
-    }
-    const one = module as ModuleLike & { resource: string }
-    const key = keyOf(one)
-    const own = built(one)
-      ? (
-          (module.buildInfo?.[LOCATED_DIAGNOSTICS.field] ??
-            []) as Array<LocatedDiagnostic>
-        ).filter((d) => d.severity === 'warning')
-      : []
-    const missing = (before?.get(key) ?? []).filter(
-      (d) =>
-        !own.some(
-          (o) =>
-            o.message === d.message &&
-            o.line === d.line &&
-            o.column === d.column,
-        ),
-    )
-    for (const warning of missing) {
-      handed.push({ module, warning })
-    }
-    if (own.length > 0 || missing.length > 0) {
-      reported.set(key, [...own, ...missing])
-    }
-  }
-  return { handed, reported }
-}
-
-/** Adds the server fns a module's `buildInfo` records to a snapshot of the registry. */
-function addServerFns(
-  snapshot: Map<string, ReadonlyArray<ServerFnFact>>,
-  info: Record<string, unknown>,
-): void {
-  const fns = info[SERVER_FN_BUILD_INFO_FIELD] as ServerFnBuildInfo | undefined
-  if (fns?.version === 4) {
-    snapshot.set(fns.canonicalId, fns.facts)
-  }
 }
 
 /**
@@ -230,6 +163,17 @@ function flipped(before: ReadonlyArray<Flip>, flip: Flip): boolean {
 const unsettledCause =
   'The imports of a module changed between two builds of the same source in one compilation: a loader whose output is not a function of its input, or a defect of TanStack Start (please report it at https://github.com/TanStack/router/issues with this message).'
 
+/** The resources of the modules in indexes of records (their keys: `<env>\0<resource>`). */
+function resourcesOf(...indexes: Array<ReadonlySet<string>>): Set<string> {
+  const resources = new Set<string>()
+  for (const index of indexes) {
+    for (const key of index) {
+      resources.add(key.slice(key.indexOf('\0') + 1))
+    }
+  }
+  return resources
+}
+
 export function createStartHostPlugin(opts: StartHostPluginOptions): {
   apply: (compiler: Rspack.Compiler) => void
 } {
@@ -259,6 +203,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
     }
     return env
   }
+  /** Whether a compilation of this build can have RSC client-reference connections (`rspackHolds`). */
+  const clientReferences = session.start.opts.rsc !== undefined
   /** The key of the compile environment of a module (`envOf`), for the drain. */
   const envKeyOf = (module: unknown): string =>
     envOf(module as { resource?: string; layer?: string | null }).name
@@ -694,34 +640,27 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         session.onEnvironment(environment.name, installReporter)
       }
       /**
-       * Development: what this environment's last compilation reported,
-       * until Rsbuild printed it: its modules' warnings and its
-       * import-protection reports. Rsbuild
-       * prints the last compilation of each environment once every
-       * environment is done, so one a newer compilation replaced before that
-       * is never printed (a cold start's client compile, when the generator
-       * writes the route tree), and Rspack before 2.3.3 reports a module's
-       * warnings only in the compilation that built it: the next compilation
-       * reports them (`handOverWarnings`).
+       * Development: the import-protection reports of this compiler's last
+       * compilation, until Rsbuild printed it. Rsbuild prints the last
+       * compilation of each environment once every environment is done, so
+       * one a newer compilation replaced before that is never printed (a
+       * cold start's client compile, when the generator writes the route
+       * tree): the next compilation reports them again (`reportUnprinted`).
+       * Compiler and package warnings need none of it: each compilation
+       * decides them from its own modules (`reportWarnings`).
        */
       let unprinted: {
         compilation: Rspack.Compilation
-        warnings: ReadonlyMap<string, ReadonlyArray<LocatedDiagnostic>>
         reports: Array<string>
       } | null = null
-      /** Development: this compilation's import-protection reports, and its modules' warnings (theirs and the ones it reports for the one before), by module (`keyOf`). */
+      /** Development: this compilation's import-protection reports. */
       let reports: Array<string> = []
-      let warned: ReadonlyMap<
-        string,
-        ReadonlyArray<LocatedDiagnostic>
-      > = new Map()
-      /** Development: the warnings this compilation reports for the one before it (`reportHandedOver`). */
-      let handedOver: ReturnType<typeof handOverWarnings>['handed'] = []
       opts.onDevCompileDone?.(({ stats }) => {
         const printed = 'stats' in stats ? stats.stats : [stats]
         if (printed.some((one) => one.compilation === unprinted?.compilation)) {
           unprinted = null
         }
+        session.printed(new Set(printed.map((one) => one.compilation)))
       })
 
       // a production run (`build()`, or a program's `run()` of the compiler of
@@ -758,7 +697,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             ) {
               // `build --watch`: each rebuild is a run (Rspack's `Watching` calls
               // no `beforeRun`); the client compiles first
-              session.start.warnings.reset()
+              session.resetWarnings()
             }
             const modified = [...(c.modifiedFiles ?? [])]
             const removed = [...(c.removedFiles ?? [])]
@@ -830,13 +769,16 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         void opts.generator.close()
       })
 
+      if (opts.onDevCompileDone) {
+        // (before Rsbuild's own `done` tap, which formats the report once
+        // every compiler is done)
+        compiler.hooks.done.tap({ name: PLUGIN_NAME, stage: -1000 }, () => {
+          session.assignWarnings(environment.name)
+        })
+      }
       compiler.hooks.done.tap(PLUGIN_NAME, (stats) => {
         if (opts.onDevCompileDone) {
-          unprinted = {
-            compilation: stats.compilation,
-            warnings: warned,
-            reports,
-          }
+          unprinted = { compilation: stats.compilation, reports }
         }
         const changed = session.files.record(
           environment.name,
@@ -861,6 +803,16 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         session.drain.compiled(environment.name)
       })
 
+      // a child compiler's compilation (a worker plugin's): its modules
+      // compiled as this compiler's, and their warnings are its own, which
+      // its owner takes when it ends
+      compiler.hooks.compilation.tap(PLUGIN_NAME, (compilation) => {
+        if (compilation.compiler !== compiler) {
+          compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) =>
+            reportWarnings(compilation, modules as Iterable<ModuleLike>, true),
+          )
+        }
+      })
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
         // the modules Start generates for this compiler, whose loader records
         // what they are built from (`generated-module.ts`)
@@ -880,10 +832,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           env.compiled.clear()
         }
         reports = []
-        warned = new Map()
-        handedOver = []
+        if (opts.onDevCompileDone) {
+          session.beginWarnings(environment.name, compilation)
+        }
         compilation.hooks.afterSeal.tap(PLUGIN_NAME, () => {
-          reportHandedOver(compilation)
           locateDiagnostics(compilation, WebpackError, LOCATED_DIAGNOSTICS)
         })
         if (compiler.watchMode) {
@@ -958,7 +910,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                         continue
                       }
                       const ip = ipEnvOf(envOf(module))!
-                      const record = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
+                      const record = partOf(
+                        module.buildInfo,
+                        IMPORT_PROTECTION_PART,
+                      )
                       if (record) {
                         await ip.reportAgain(record)
                       } else {
@@ -1024,44 +979,15 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         }
         if (opts.onDevCompileDone) {
           // after import protection's dev reports (`flush`)
-          compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) =>
-            reportUnprinted(compilation, modules as Iterable<ModuleLike>),
+          compilation.hooks.finishModules.tap(PLUGIN_NAME, () =>
+            reportUnprinted(compilation),
           )
         }
-        if (
-          own.persistsModules &&
-          (!opts.onDevCompileDone || !session.files.compiled(environment.name))
-        ) {
-          // a compilation on the persistent cache (development: a compiler's
-          // first, the one that restores; the next hands over what Rsbuild
-          // did not print): the modules it kept without compiling them report
-          // the warnings their latest compile found (Rspack replays no loader
-          // warning of a restored module)
-          compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) => {
-            const kept = keptWarnings(
-              compilation,
-              modules as Iterable<ModuleLike>,
-            )
-            if (!opts.onDevCompileDone) {
-              handedOver = kept
-              return
-            }
-            handedOver = [...handedOver, ...kept]
-            const reported = new Map(warned)
-            for (const { module, warning } of kept) {
-              const key = keyOf(module as ModuleLike & { resource: string })
-              reported.set(key, [...(reported.get(key) ?? []), warning])
-            }
-            warned = reported
-          })
-        }
-        // the "does not declare Start" warning, from the compilation's modules,
-        // compiled or restored (decision 6): once per package and run
-        compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) => {
-          if (session.packageUses.size > 0) {
-            reportPackageUses(compilation, modules as Iterable<ModuleLike>)
-          }
-        })
+        // the compiler's and the packages' warnings of the modules the
+        // compilation holds, compiled now, kept or restored alike
+        compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) =>
+          reportWarnings(compilation, modules as Iterable<ModuleLike>, false),
+        )
         if (session.start.allocator && session.start.opts.mode === 'build') {
           compilation.hooks.processAssets.tap(
             {
@@ -1095,164 +1021,330 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       })
 
       /**
-       * A compilation's modules that it kept without compiling them, each
-       * with the warnings their latest compile found (`FOUND_WARNINGS_FIELD`)
-       * that the run's warning ledger lets through (a compiled module of
-       * another environment may have reported one), for `reportHandedOver`.
+       * The warnings of `compilation`: for each module it holds
+       * (`rspackHolds`: a module nothing reaches any more reports nothing),
+       * the warnings its latest compile found (its record, whoever compiled
+       * it: this compilation, an earlier one, another process), and the
+       * "does not declare Start" warning of each package instance with a
+       * module that recognised a Start use, decided against the package's
+       * current manifest at the first of its modules by resource. Each once
+       * per run (J2.19). The loader emits no warning, so nothing of a kept
+       * module is reported twice and nothing is handed over.
+       *
+       * A build reports them here, the first compilation to ask
+       * (`claimWarning`). In development the compilation only says what it
+       * could report (`offerWarning`): which compilation carries a warning
+       * is decided as compilers finish (`assignWarnings`), and it counts as
+       * reported once Rsbuild printed that compilation. `child`: a child
+       * compiler's compilation (a worker's), whose modules have records of
+       * their own and whose owner takes its warnings when it ends: it
+       * reports as it seals, on behalf of this compiler's compilation.
        */
-      function keptWarnings(
+      function reportWarnings(
         compilation: Rspack.Compilation,
         modules: Iterable<ModuleLike>,
-      ): Array<{ module: ModuleLike; warning: LocatedDiagnostic }> {
-        const out: Array<{ module: ModuleLike; warning: LocatedDiagnostic }> =
-          []
-        const held = rspackHolds(compilation as never)
+        child: boolean,
+      ): void {
+        if (session.warned.size === 0 && session.packageUses.size === 0) {
+          return
+        }
+        const dev = !!opts.onDevCompileDone
+        /** Whether the warning is reported now; in development, by this compiler's own compilation, it is offered instead (`add` then adds it). */
+        const decides = (key: string, add: () => void): boolean => {
+          if (!dev) {
+            return session.claimWarning(key)
+          }
+          if (child) {
+            return session.carryWarning(environment.name, key)
+          }
+          session.offerWarning(environment.name, key, add)
+          return false
+        }
+        let holds: ReturnType<typeof rspackHolds> | undefined
+        const held = (module: ModuleLike) =>
+          (holds ??= rspackHolds(compilation as never, { clientReferences }))(
+            module,
+          )
+        const push = (
+          module: ModuleLike,
+          warning: Omit<LocatedDiagnostic, 'severity'>,
+        ) => {
+          compilation.warnings.push(
+            locatedError(
+              WebpackError,
+              module,
+              { severity: 'warning', ...warning },
+              LOCATED_DIAGNOSTICS,
+            ) as never,
+          )
+        }
+        // (a child compiler's module has a record key of its own: `recordKey`)
+        const mark = child ? '\0' : ''
+        const uses: Array<ModuleLike & { resource: string }> = []
+        const resources = resourcesOf(session.warned, session.packageUses)
         for (const module of modules) {
-          if (
-            !module.resource ||
-            compiledHere(module as ModuleLike & { resource: string })
-          ) {
+          if (!module.resource || !resources.has(mark + module.resource)) {
             continue
           }
-          const found = module.buildInfo?.[FOUND_WARNINGS_FIELD] as
-            | Array<FoundWarning>
-            | undefined
-          if (!found || !held(module as ModuleLike & { resource: string })) {
-            continue
-          }
-          const file = resourcePath(module.resource)
-          for (const w of found) {
-            if (
-              session.start.warnings.once(file, {
-                ...(w.code !== undefined && { code: w.code }),
-                message: w.message,
-              })
-            ) {
-              out.push({
-                module,
-                warning: {
-                  severity: 'warning',
-                  message: w.message,
-                  ...(w.line !== undefined && {
-                    line: w.line,
-                    column: w.column,
-                  }),
-                },
-              })
+          const one = module as ModuleLike & { resource: string }
+          const key = `${envOf(one).name}\0${mark}${one.resource}`
+          if (session.warned.has(key)) {
+            const found = partOf(module.buildInfo, FOUND_WARNINGS_PART) as
+              | Array<FoundWarning>
+              | undefined
+            if (found && held(module)) {
+              const file = resourcePath(one.resource)
+              for (const w of found) {
+                const add = () =>
+                  push(module, {
+                    message: w.message,
+                    ...(w.line !== undefined && {
+                      line: w.line,
+                      column: w.column,
+                    }),
+                  })
+                if (decides(`${file}\0${w.code ?? ''}\0${w.message}`, add)) {
+                  add()
+                }
+              }
             }
           }
-        }
-        return out
-      }
-
-      /**
-       * The "does not declare Start" warning of each package instance whose
-       * modules in `compilation` recognised a Start use at their latest
-       * compile, in this process or restored from the persistent cache
-       * (`packageUses`), decided against the package's current manifest
-       * through the run's warning ledger (`packageUseWarning`), at the first of
-       * its modules by resource.
-       */
-      function reportPackageUses(
-        compilation: Rspack.Compilation,
-        modules: Iterable<ModuleLike>,
-      ): void {
-        const uses: Array<ModuleLike & { resource: string }> = []
-        for (const module of modules) {
           if (
-            module.resource &&
-            NODE_MODULES_RE.test(module.resource) &&
-            session.packageUses.has(
-              keyOf(module as ModuleLike & { resource: string }),
-            )
+            session.packageUses.has(key) &&
+            NODE_MODULES_RE.test(one.resource)
           ) {
-            uses.push(module as ModuleLike & { resource: string })
+            uses.push(one)
           }
         }
         uses.sort((a, b) =>
           a.resource < b.resource ? -1 : a.resource > b.resource ? 1 : 0,
         )
-        const held = rspackHolds(compilation as never)
         for (const module of uses) {
+          // (asked last: the package's manifest decides first)
+          let root: string | undefined
           const warning = session.start.packageUseWarning(
             resourcePath(module.resource),
             undefined,
             () => held(module),
+            (packageRoot) => {
+              root = packageRoot
+              return true
+            },
           )
-          if (warning) {
-            compilation.warnings.push(
-              locatedError(
-                WebpackError,
-                module,
-                { severity: 'warning', message: warning.message },
-                LOCATED_DIAGNOSTICS,
-              ) as never,
-            )
-            // (development: the next compilation reports it if Rsbuild never
-            // prints this one, as import protection's reports: `reportUnprinted`)
-            if (opts.onDevCompileDone) {
-              reports.push(warning.message)
+          if (warning && root !== undefined) {
+            const add = () => push(module, { message: warning.message })
+            if (decides(`\0package\0${root}`, add)) {
+              add()
             }
           }
         }
       }
 
       /**
-       * The warnings of the compilation before `compilation`, which Rsbuild
-       * never printed (`unprinted`), reported by `compilation`: its
-       * import-protection reports that `compilation` did not report again,
-       * and its modules' warnings `compilation` does not report itself
-       * (`handOverWarnings`).
+       * The import-protection reports of the compilation before
+       * `compilation`, which Rsbuild never printed (`unprinted`), reported
+       * by `compilation` unless it reported them itself.
        */
-      function reportUnprinted(
-        compilation: Rspack.Compilation,
-        modules: Iterable<ModuleLike>,
-      ): void {
-        const from = unprinted
-        for (const message of from?.reports ?? []) {
+      function reportUnprinted(compilation: Rspack.Compilation): void {
+        for (const message of unprinted?.reports ?? []) {
           if (!reports.includes(message)) {
             reports.push(message)
             compilation.warnings.push(new WebpackError(message))
           }
         }
-        const { handed, reported } = handOverWarnings(
-          from?.warnings ?? null,
-          modules,
-          keyOf,
-          compiledHere,
-        )
-        handedOver = handed
-        warned = reported
       }
 
       /**
-       * What `compilation` reports of its modules' recorded warnings: those of
-       * the modules it built and the ones handed over to it
-       * (`handOverWarnings`), once per file per run (J2.19). Rspack 2.3.3
-       * reports a kept module's warnings again in every compilation, as
-       * webpack does (before: only in the one that built it), when sealing:
-       * those are dropped here, after the seal.
+       * The server functions of this compiler's compile environments, derived
+       * from the modules `compilation` holds: the registry's one writer on
+       * this host (`serverFnsAtSettlement`: a compile registers nothing), at
+       * `finishMake` after the drain and again in the closure whenever a
+       * round built modules. A module counts by its record (what its latest
+       * compile declared as the module is served: a mock declares nothing),
+       * whoever compiled it.
+       *
+       * Who asks for a function. A defining module declares its functions
+       * when an entry reaches it by real imports. The server-function
+       * resolver is Start's own module and imports the provider of every
+       * function it lists: that import is no caller, so the walk does not
+       * pass it (`stop`). A provider is admitted when something asks for
+       * its file's functions: a defining module admitted here, a child
+       * compilation, or another compiler's code that calls them (the
+       * client's stubs: `clientReferenced`). What an admitted provider
+       * imports is really imported (a handler calling another file's
+       * function), so admitted providers ground further modules, until
+       * nothing changes. A function whose last caller left is no longer
+       * provided, though the resolver still imports its provider in this
+       * compilation: the closure then builds the resolver without it.
+       *
+       * A provider module is what the resolver imports the wrappers from:
+       * where the compilation holds one built, the functions it provides
+       * are the file's (a provider that provides none withdraws them).
+       *
+       * Child compilations (a worker's) are observed as they are: their
+       * modules compiled as this compiler's, their graphs are their own.
        */
-      function reportHandedOver(compilation: Rspack.Compilation): void {
-        const list = compilation.warnings
-        for (let i = list.length - 1; i >= 0; i--) {
-          const module = (list[i] as { module?: ModuleLike | null }).module
-          if (
-            module?.resource &&
-            isRecordedDiagnostic(list[i], 'warning', LOCATED_DIAGNOSTICS) &&
-            // judged by the module's own compile environment (a file in both
-            // RSC layers is two modules)
-            !compiledHere(module as ModuleLike & { resource: string })
-          ) {
-            list.splice(i, 1)
+      function deriveServerFns(compilation: Rspack.Compilation): void {
+        const snapshots = new Map<
+          EnvState,
+          Map<string, ReadonlyArray<ServerFnFact>>
+        >()
+        for (const env of session.envsOf(environment.name)) {
+          snapshots.set(env, new Map())
+        }
+        const snapshotOf = (env: EnvState) => {
+          let snapshot = snapshots.get(env)
+          if (!snapshot) {
+            // (a user layer's environment, first seen here)
+            snapshot = new Map()
+            snapshots.set(env, snapshot)
+          }
+          return snapshot
+        }
+        const recordOf = (module: ModuleLike) => {
+          const fns = partOf(module.buildInfo, SERVER_FNS_PART) as
+            | ServerFnBuildInfo
+            | undefined
+          return fns?.version === 4 ? fns : null
+        }
+        /** The files something asks the functions of. */
+        const asked = new Set<string>()
+        const children = [...compilation.children]
+        for (const child of children) {
+          children.push(...child.children)
+          for (const m of child.modules) {
+            const module = m as unknown as ModuleLike
+            const record = module.buildInfo && recordOf(module)
+            if (record && record.facts.length > 0) {
+              snapshotOf(envOf(module)).set(record.canonicalId, record.facts)
+              asked.add(record.canonicalId)
+            }
           }
         }
-        for (const { module, warning } of handedOver) {
-          list.push(
-            locatedError(WebpackError, module, warning, LOCATED_DIAGNOSTICS),
-          )
+        if (session.fnModules.size > 0) {
+          interface Candidate {
+            module: ModuleLike
+            env: EnvState
+            record: ServerFnBuildInfo
+          }
+          const definers: Array<Candidate> = []
+          const providers: Array<Candidate> = []
+          const resolverPath = opts.serverFnResolver?.path()
+          const resolvers = new Set<string>()
+          // (by resource first: a module's environment is asked of the few
+          // that can hold a record, not of every module of the compilation)
+          const resources = resourcesOf(session.fnModules)
+          for (const m of compilation.modules) {
+            const module = m as unknown as ModuleLike
+            if (!module.resource) {
+              continue
+            }
+            if (module.resource === resolverPath) {
+              resolvers.add(module.identifier())
+              continue
+            }
+            const one = module as ModuleLike & { resource: string }
+            if (
+              !resources.has(one.resource) ||
+              !session.fnModules.has(keyOf(one))
+            ) {
+              continue
+            }
+            const record = recordOf(module)
+            if (!record) {
+              continue
+            }
+            const kind = identify(canonicalResource(one.resource)).derived?.kind
+            ;(kind === 'provider' || kind === 'handler'
+              ? providers
+              : definers
+            ).push({ module, env: envOf(module), record })
+          }
+          const held = rspackHolds(compilation as never, { clientReferences })
+          const admitted = new Set<Candidate>()
+          // every module of a file records the file's functions (the file,
+          // its split chunks): one of them admitted declares them for its
+          // environment, the others are not walked
+          const declared = new Set<string>()
+          const declares = ({ env, record }: Candidate) =>
+            `${env.name}\0${record.canonicalId}`
+          if (resolvers.size === 0) {
+            // (no resolver here: the client compiler, whose modules call)
+            for (const candidate of [...definers, ...providers]) {
+              if (
+                !declared.has(declares(candidate)) &&
+                held(candidate.module)
+              ) {
+                admitted.add(candidate)
+                declared.add(declares(candidate))
+              }
+            }
+          } else {
+            for (const entry of session.start.registry.entries()) {
+              if (entry.clientReferenced) {
+                asked.add(entry.definingCanonicalId)
+              }
+            }
+            const grounds = new Set<string>()
+            for (let changed = true; changed; ) {
+              changed = false
+              const grounded = rspackHolds(compilation as never, {
+                stop: resolvers,
+                grounds,
+                clientReferences,
+              })
+              for (const candidate of definers) {
+                if (
+                  !declared.has(declares(candidate)) &&
+                  grounded(candidate.module)
+                ) {
+                  admitted.add(candidate)
+                  declared.add(declares(candidate))
+                  asked.add(candidate.record.canonicalId)
+                  changed = true
+                }
+              }
+              for (const candidate of providers) {
+                if (
+                  !admitted.has(candidate) &&
+                  asked.has(candidate.record.canonicalId) &&
+                  held(candidate.module)
+                ) {
+                  admitted.add(candidate)
+                  grounds.add(candidate.module.identifier())
+                  changed = true
+                }
+              }
+            }
+          }
+          for (const candidate of definers) {
+            if (admitted.has(candidate) && candidate.record.facts.length > 0) {
+              snapshotOf(candidate.env).set(
+                candidate.record.canonicalId,
+                candidate.record.facts,
+              )
+            }
+          }
+          for (const { env, record } of providers.filter((p) =>
+            admitted.has(p),
+          )) {
+            if (record.facts.length > 0) {
+              snapshotOf(env).set(record.canonicalId, record.facts)
+            } else {
+              for (const snapshot of snapshots.values()) {
+                snapshot.delete(record.canonicalId)
+              }
+            }
+          }
         }
+        for (const [env, snapshot] of snapshots) {
+          session.start.registry.replace(env, snapshot)
+        }
+        derivedAt.set(compilation, session.loaderRuns)
       }
+
+      /** The loader runs of the session when each compilation's registry was derived last (`close`). */
+      const derivedAt = new WeakMap<Rspack.Compilation, number>()
 
       /**
        * The history of each compilation's closure (`close`), shared by its
@@ -1324,8 +1416,17 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           // its records)
           await reportEndedChildren(owner, false)
         }
+        // whether modules were built since the registry was derived (the
+        // replay did at stage -20). The last run follows what happened
+        // since the first: a plugin built a module (again, or a new one),
+        // this compiler's or, with RSC, the client compiler's it runs beside
+        let built = last && derivedAt.get(compilation) !== session.loaderRuns
         for (;;) {
           const round = ++history.round
+          if (!child && built) {
+            deriveServerFns(compilation)
+            built = false
+          }
           // (what the child's requests stood for since its last round: its
           // `make`, the round's builds)
           if (child && childRequests.get(owner)?.has(compilation)) {
@@ -1364,6 +1465,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             await fnResolver!.rebuild(compilation, content)
             graph = null
             unheld = true
+            built = true
           }
           // (a user layer's environment may be found while modules build)
           const envs = ipEnvs()
@@ -1449,6 +1551,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           }
           graph = null
           unheld = !child
+          built = true
         }
       }
 
@@ -1598,25 +1701,22 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 for (const m of compilation.modules) {
                   const module = m as unknown as ModuleLike
                   const buildInfo = module.buildInfo
-                  const plan = buildInfo?.[PLAN_BUILD_INFO_FIELD]
-                  const records = !!buildInfo && holdsDiagnostics(buildInfo)
+                  const records = !!buildInfo && holdsRecord(buildInfo)
                   if (
-                    (typeof plan !== 'string' && !records) ||
+                    !records ||
                     !module.resource ||
                     compiledHere(module as ModuleLike & { resource: string })
                   ) {
                     continue
                   }
                   const env = envOf(module)
-                  if (records) {
-                    // (a compile in this process replaces them)
-                    session.noteRestored(env.name, module.resource, buildInfo)
-                  }
-                  if (typeof plan === 'string') {
-                    restored.push({
-                      plan: JSON.parse(plan) as PersistedPlan,
-                      env,
-                    })
+                  // (a compile in this process replaces them)
+                  session.noteRestored(env.name, module.resource, buildInfo)
+                  const plan = partOf(buildInfo, PLAN_PART) as
+                    | PersistedPlan
+                    | undefined
+                  if (plan) {
+                    restored.push({ plan, env })
                   }
                 }
                 await session.restorePlans(restored)
@@ -1647,7 +1747,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                     : []
                 })
                 for (const module of modules) {
-                  const record = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
+                  const record = partOf(
+                    module.buildInfo,
+                    IMPORT_PROTECTION_PART,
+                  )
                   if (
                     record &&
                     !compiledHere(module) &&
@@ -1660,7 +1763,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                   }
                 }
                 for (const module of modules) {
-                  const record = module.buildInfo?.[RSPACK_BUILD_INFO_KEY]
+                  const record = partOf(
+                    module.buildInfo,
+                    IMPORT_PROTECTION_PART,
+                  )
                   if (record) {
                     ipEnvOf(envOf(module))!.replay(
                       canonicalResource(module.resource),
@@ -1687,35 +1793,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                   }
                 }
               }
-              // the server-fn snapshot of each environment, from each module's `buildInfo`;
-              // the modules of child compilers (a worker's, a service worker's: compiled as
-              // this compiler's, done during `make`) call the server fns they define too
-              const snapshots = new Map<
-                EnvState,
-                Map<string, ReadonlyArray<ServerFnFact>>
-              >()
-              for (const env of session.envsOf(environment.name)) {
-                snapshots.set(env, new Map())
-              }
-              const compilations = [compilation]
-              for (const c of compilations) {
-                compilations.push(...c.children)
-                for (const m of c.modules) {
-                  const module = m as unknown as ModuleLike
-                  if (module.buildInfo) {
-                    let snapshot = snapshots.get(envOf(module))
-                    if (!snapshot) {
-                      // (a user layer's environment, first seen here)
-                      snapshot = new Map()
-                      snapshots.set(envOf(module), snapshot)
-                    }
-                    addServerFns(snapshot, module.buildInfo)
-                  }
-                }
-              }
-              for (const [env, snapshot] of snapshots) {
-                session.start.registry.replace(env, snapshot)
-              }
+              deriveServerFns(compilation)
               opts.onServerFnsReplayed()
             },
           ),
