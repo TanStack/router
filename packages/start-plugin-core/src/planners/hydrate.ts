@@ -31,7 +31,6 @@ import {
   LookupPath,
   UNKNOWN,
   derivedIdOf,
-  forEachChild,
   isKnownSpecifier,
   listEnd,
   ownEntry,
@@ -40,6 +39,7 @@ import {
   sameFileSpecifier,
   unwrapExpression,
   valueBinding,
+  walkMoved,
 } from '@tanstack/router-utils/compiler'
 import { startValueReader } from '../compiler/prefetch'
 import {
@@ -51,6 +51,8 @@ import type { PackageClasses } from '../compiler/package-class'
 import type {
   AbstractValue,
   ClassifiedRef,
+  ContextKind,
+  ContextUse,
   Diagnostic,
   ImportEntry,
   ModuleAnalysis,
@@ -604,24 +606,12 @@ function nestedRegions(
 /** Names and symbols shared by every boundary of the file (allocated on first use). */
 class SharedNames {
   private propsSym: SymbolId | null = null
-  private argsSym: SymbolId | null = null
-  private argsProp: { name: string; sym: SymbolId } | null = null
   private elName: string | null = null
   constructor(private readonly ctx: PlanContext) {}
   /** The Solid chunk component's parameter. */
   get props(): SymbolId {
     this.propsSym ??= this.ctx.names.alloc('props').sym
     return this.propsSym
-  }
-  /** `arguments` of the enclosing function, as generated text reads it (renders `arguments`). */
-  get args(): SymbolId {
-    this.argsSym ??= this.ctx.symbols.declare('arguments', 'synthetic')
-    return this.argsSym
-  }
-  /** The prop (and React local) carrying the enclosing function's `arguments`. */
-  get argsCapture(): { name: string; sym: SymbolId } {
-    this.argsProp ??= this.ctx.names.alloc('tsrArguments')
-    return this.argsProp
   }
   /** The parameter of generated ref setters. */
   get el(): string {
@@ -667,20 +657,68 @@ function boundaryError(
 
 interface Scan {
   ok: boolean
-  /** `arguments` occurrences owned by a function enclosing the boundary. */
-  argumentsRefs: Array<Range>
   /** Solid `use:x` directives: the directive's name node range and binding. */
   directives: Array<{ nameRange: Range; sym: SymbolId | null }>
   /** Solid `ref={x}` attributes naming a binding: the identifier range and symbol. */
   refAttrs: Array<{ range: Range; sym: SymbolId }>
-  /** The functions of the children (outermost first, nested ones too). */
-  functions: Array<Range>
+  /** The outermost functions and instance-field initialisers of the children (`walkMoved`'s `callables`). */
+  callables: Array<Range>
+}
+
+/** The refusal of each context the children would take from the component without a name. */
+const CONTEXT_REFUSALS: Record<
+  ContextKind,
+  { code: string; message: (use: ContextUse) => string; at: boolean }
+> = {
+  this: {
+    code: 'hydrate-this',
+    message: () =>
+      'Hydrate cannot code-split JSX that reads `this` of the enclosing component: the children render in another component. Read the value into a local before the boundary, or use split={false}.',
+    at: false,
+  },
+  super: {
+    code: 'hydrate-super',
+    message: () =>
+      'Hydrate cannot code-split JSX that reads `super` of the enclosing component: the children render in another component. Read the value into a local before the boundary, or use split={false}.',
+    at: false,
+  },
+  'new.target': {
+    code: 'hydrate-this',
+    message: () =>
+      'Hydrate cannot code-split JSX that reads `new.target` of the enclosing function. Read it into a local before the boundary, or use split={false}.',
+    at: false,
+  },
+  arguments: {
+    code: 'hydrate-arguments',
+    message: () =>
+      'Hydrate cannot code-split JSX that reads `arguments` of the enclosing function: the children render in another component. Read it into a local before the boundary (`const args = arguments`), or use split={false}.',
+    at: true,
+  },
+  await: {
+    code: 'hydrate-await',
+    message: () =>
+      'Hydrate cannot code-split JSX containing `await`: the split children render in a synchronous component. Compute the value before the boundary, or use split={false}.',
+    at: false,
+  },
+  yield: {
+    code: 'hydrate-await',
+    message: () =>
+      'Hydrate cannot code-split JSX containing `yield`: the split children render in a synchronous component. Compute the value before the boundary, or use split={false}.',
+    at: false,
+  },
+  'private-name': {
+    code: 'hydrate-private-name',
+    message: (use) =>
+      `Hydrate cannot code-split JSX that reads \`#${(use.node as { name: string }).name}\` of the enclosing class: the split children render in another module, outside the class. Read it into a local before the boundary, or use split={false}.`,
+    at: false,
+  },
 }
 
 /**
  * Validates the children of `b` (J5.5) and collects what extraction needs.
  * `skip` are the regions of nested extracted boundaries (they render as
- * placeholders here and are validated on their own).
+ * placeholders here and are validated on their own). The first failure in
+ * the walk's order is reported.
  */
 function validate(
   ctx: PlanContext,
@@ -688,13 +726,7 @@ function validate(
   skip: ReadonlyArray<Range>,
 ): Scan {
   const shape = b.children!
-  const scan: Scan = {
-    ok: true,
-    argumentsRefs: [],
-    directives: [],
-    refAttrs: [],
-    functions: [],
-  }
+  const scan: Scan = { ok: true, directives: [], refAttrs: [], callables: [] }
   const fail = (code: string, message: string, range?: Range) => {
     if (scan.ok) {
       boundaryError(ctx, b, code, message, range)
@@ -709,16 +741,6 @@ function validate(
     return scan
   }
   const { t1, analysis } = ctx
-  const freeArguments = new Set<number>()
-  for (const f of t1.freeRefs) {
-    if (
-      f.name === 'arguments' &&
-      f.range.start >= shape.range.start &&
-      f.range.end <= shape.range.end
-    ) {
-      freeArguments.add(f.range.start)
-    }
-  }
   const solid = b.framework === 'solid'
   const refAt = (start: number): ClassifiedRef | undefined =>
     t1.refs
@@ -762,122 +784,24 @@ function validate(
     }
     return member ? 'use' : root.name
   }
-
-  /** Whether a class inside the children around `node` declares the private name `name`. */
-  const declaresPrivateInside = (node: Node, name: string) =>
-    [...analysis.file.ancestors(node)].some(
-      (a) =>
-        a.type === 'ClassBody' &&
-        a.start >= shape.range.start &&
-        a.body.some(
-          (m) =>
-            'key' in m &&
-            m.key.type === 'PrivateIdentifier' &&
-            m.key.name === name,
-        ),
-    )
-  /** The functions the children call where they are written (an IIFE's callee), by start. */
-  const invoked = new Set<number>()
-  /**
-   * `fn`: inside a function of the children; `self`: `this`/`arguments` are
-   * owned inside; `render`: runs while the boundary renders (outside any
-   * function but an IIFE's, which the hook check reads).
-   */
-  const visit = (
-    node: Node,
-    fn: boolean,
-    self: boolean,
-    render: boolean,
-  ): void => {
-    if (skip.some((r) => within(node, r))) {
-      return
-    }
-    let nextFn = fn
-    let nextSelf = self
-    let nextRender = render
-    switch (node.type) {
-      case 'ArrowFunctionExpression':
-        nextFn = true
-        nextRender = render && invoked.has(node.start)
-        scan.functions.push({ start: node.start, end: node.end })
-        break
-      case 'FunctionExpression':
-      case 'FunctionDeclaration':
-        nextFn = true
-        nextSelf = true
-        nextRender = render && invoked.has(node.start)
-        scan.functions.push({ start: node.start, end: node.end })
-        break
-      case 'ClassBody':
-        nextFn = true
-        nextSelf = true
-        nextRender = false
-        break
-      case 'ThisExpression':
-        if (!self) {
-          fail(
-            'hydrate-this',
-            'Hydrate cannot code-split JSX that reads `this` of the enclosing component: the children render in another component. Read the value into a local before the boundary, or use split={false}.',
-          )
-        }
-        break
-      case 'Super':
-        if (!self) {
-          fail(
-            'hydrate-super',
-            'Hydrate cannot code-split JSX that reads `super` of the enclosing component: the children render in another component. Read the value into a local before the boundary, or use split={false}.',
-          )
-        }
-        break
-      case 'MemberExpression':
-      case 'BinaryExpression': {
-        // a private name of a class around the boundary: the chunk is
-        // outside it (`#x` there is a syntax error)
-        const name =
-          node.type === 'MemberExpression'
-            ? node.property.type === 'PrivateIdentifier'
-              ? node.property.name
-              : null
-            : node.left.type === 'PrivateIdentifier'
-              ? node.left.name
-              : null
-        if (name !== null && !declaresPrivateInside(node, name)) {
-          fail(
-            'hydrate-private-name',
-            `Hydrate cannot code-split JSX that reads \`#${name}\` of the enclosing class: the split children render in another module, outside the class. Read it into a local before the boundary, or use split={false}.`,
-          )
-        }
-        break
-      }
-      case 'MetaProperty':
-        if (!self && node.meta.name === 'new') {
-          fail(
-            'hydrate-this',
-            'Hydrate cannot code-split JSX that reads `new.target` of the enclosing function. Read it into a local before the boundary, or use split={false}.',
-          )
-        }
-        break
-      case 'AwaitExpression':
-      case 'YieldExpression':
-        if (!fn) {
-          fail(
-            'hydrate-await',
-            `Hydrate cannot code-split JSX containing \`${node.type === 'AwaitExpression' ? 'await' : 'yield'}\`: the split children render in a synchronous component. Compute the value before the boundary, or use split={false}.`,
-          )
-        }
-        break
-      case 'CallExpression':
-        // React's rules of hooks: the call would move into another
-        // component. Solid has none: a `use*` call in the chunk runs under
-        // the boundary's owner, with its context
-        if (render && !solid) {
-          const callee = unwrapExpression(node.callee)
-          if (
-            callee.type === 'ArrowFunctionExpression' ||
-            callee.type === 'FunctionExpression'
-          ) {
-            invoked.add(callee.start)
-          }
+  const { callables } = walkMoved(t1, shape.nodes, {
+    skip,
+    // every use crosses: the children render in another component
+    onUse: (use) => {
+      const refusal = CONTEXT_REFUSALS[use.kind]
+      fail(
+        refusal.code,
+        refusal.message(use),
+        refusal.at ? { start: use.node.start, end: use.node.end } : undefined,
+      )
+    },
+    onNode: (node, runs) => {
+      if (node.type === 'CallExpression') {
+        // React's rules of hooks: a call that may run while the children
+        // render would move into another component. Solid has none: a
+        // `use*` call in the chunk runs under the boundary's owner, with
+        // its context
+        if (runs === 'now' && !solid) {
           const hook = hookName(node.callee) ?? reactUseName(node.callee)
           if (hook !== null) {
             fail(
@@ -887,56 +811,39 @@ function validate(
             )
           }
         }
-        break
-      case 'Identifier':
+      } else if (node.type === 'JSXAttribute' && solid) {
         if (
-          node.name === 'arguments' &&
-          !self &&
-          freeArguments.has(node.start)
+          node.name.type === 'JSXNamespacedName' &&
+          node.name.namespace.name === 'use'
         ) {
-          scan.argumentsRefs.push({ start: node.start, end: node.end })
-        }
-        break
-      case 'JSXAttribute':
-        if (solid) {
-          if (
-            node.name.type === 'JSXNamespacedName' &&
-            node.name.namespace.name === 'use'
-          ) {
-            const binding = valueBinding(
-              analysis.file.scopeOf(node),
-              node.name.name.name,
-            )
-            scan.directives.push({
-              nameRange: {
-                start: node.name.name.start,
-                end: node.name.name.end,
-              },
-              sym: binding ? ctx.symbols.ofBinding(binding) : null,
-            })
-          } else if (
-            node.name.type === 'JSXIdentifier' &&
-            node.name.name === 'ref' &&
-            node.value?.type === 'JSXExpressionContainer'
-          ) {
-            // (Solid's JSX transform unwraps `ref={el!}`, `ref={el as T}`, `ref={(el)}`)
-            const target = unwrapExpression(node.value.expression)
-            const ref =
-              target.type === 'Identifier' ? refAt(target.start) : undefined
-            if (ref) {
-              scan.refAttrs.push({ range: ref.range, sym: ref.sym })
-            }
+          const binding = valueBinding(
+            analysis.file.scopeOf(node),
+            node.name.name.name,
+          )
+          scan.directives.push({
+            nameRange: {
+              start: node.name.name.start,
+              end: node.name.name.end,
+            },
+            sym: binding ? ctx.symbols.ofBinding(binding) : null,
+          })
+        } else if (
+          node.name.type === 'JSXIdentifier' &&
+          node.name.name === 'ref' &&
+          node.value?.type === 'JSXExpressionContainer'
+        ) {
+          // (Solid's JSX transform unwraps `ref={el!}`, `ref={el as T}`, `ref={(el)}`)
+          const target = unwrapExpression(node.value.expression)
+          const ref =
+            target.type === 'Identifier' ? refAt(target.start) : undefined
+          if (ref) {
+            scan.refAttrs.push({ range: ref.range, sym: ref.sym })
           }
         }
-        break
-      default:
-        break
-    }
-    forEachChild(node, (c) => visit(c, nextFn, nextSelf, nextRender))
-  }
-  for (const n of shape.nodes) {
-    visit(n, false, false, true)
-  }
+      }
+    },
+  })
+  scan.callables = callables
   return scan
 }
 
@@ -1149,7 +1056,7 @@ function extract(
   const readsSnapshot = (sym: SymbolId, evaluated: Range): boolean =>
     !solid &&
     symbols.isReassignable(sym) &&
-    scan.functions.some((f) => within(evaluated, f)) &&
+    scan.callables.some((f) => within(evaluated, f)) &&
     t1.mutation.isReassigned(sym, (r) => liveEnv.live(r))
   /** Reports a snapshot read of `sym` (`readsSnapshot`) at `read`. */
   const refuseSnapshot = (sym: SymbolId, read: Range): null => {
@@ -1166,13 +1073,11 @@ function extract(
   // the first snapshot read: reported after the walk, so a write of the
   // children (the cause of the snapshot) is reported first
   let snapshot: { sym: SymbolId; at: Range } | undefined
-  for (const ref of t1.refs.refsIn(region)) {
+  for (const ref of t1.capturesOf(region)) {
     if (
       skip.some((r) => within(ref.range, r)) ||
       setterAt.has(ref.range.start) ||
       ref.kind === 'exportSpecifier' ||
-      symbols.isModuleLevel(ref.sym) ||
-      declaredInside(ref.sym) ||
       !liveEnv.live(ref)
     ) {
       continue
@@ -1199,13 +1104,8 @@ function extract(
   if (snapshot) {
     return refuseSnapshot(snapshot.sym, snapshot.at)
   }
-  let args = scan.argumentsRefs.length > 0
   for (const e of direct) {
     for (const sym of e.placeholderSyms) {
-      if (sym === shared.args) {
-        args = true
-        continue
-      }
       if (symbols.isModuleLevel(sym) || declaredInside(sym)) {
         continue
       }
@@ -1297,21 +1197,6 @@ function extract(
       }
     }
   }
-  if (args) {
-    const a = shared.argsCapture
-    env.set(
-      shared.args,
-      props !== null ? { member: [props, a.name] } : { sym: a.sym },
-    )
-  }
-  // (inside the children: their text, rendered in the chunk)
-  for (const r of scan.argumentsRefs) {
-    ctx.rewrites.edit({
-      range: r,
-      body: [{ k: 'text', parts: [{ sym: shared.args }], mapTo: r.start }],
-      by: HYDRATE_PLANNER,
-    })
-  }
   for (const s of setterProps) {
     const setter = symbols.declare(s.prop, 'synthetic')
     env.set(setter, { member: [props!, s.prop] })
@@ -1330,7 +1215,7 @@ function extract(
   const head: Array<string | SymRef> = ['function ', { sym: comp.sym }]
   if (props !== null) {
     // Solid: the one `props` parameter, when the chunk reads it
-    const readsProps = captures.length > 0 || args || setterProps.length > 0
+    const readsProps = captures.length > 0 || setterProps.length > 0
     head.push(readsProps ? '(' : '() { ')
     if (readsProps) {
       head.push({ sym: props }, ') { ')
@@ -1344,9 +1229,6 @@ function extract(
       const name = symbols.name(c)
       const prop = propOf.get(c)!
       params.push(prop === name ? name : `${prop}: ${name}`)
-    }
-    if (args) {
-      params.push(shared.argsCapture.name)
     }
     head.push(params.length > 0 ? `({ ${params.join(', ')} }) { ` : '() { ')
   }
@@ -1390,10 +1272,6 @@ function extract(
       parts.push(` ${propOf.get(c)}={`, { sym: c }, '}')
     }
     placeholderSyms.push(c)
-  }
-  if (args) {
-    parts.push(` ${shared.argsCapture.name}={`, { sym: shared.args }, '}')
-    placeholderSyms.push(shared.args)
   }
   for (const s of setterProps) {
     // Solid's own `ref` assignment: call a function ref, else assign the variable

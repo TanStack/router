@@ -129,22 +129,6 @@ function info not found` when one of them calls it, and the build says nothing, 
   the value, and a wrapper is not followed (R92). SPEC J4.5. `start-plugin-core/tests/start-compiler-cases.test.ts`:
   "each output keeps its implementation of an isomorphic fn whose chain passes through a helper function". Fix: each
   output keeps its implementation, or the build fails at the helper.
-- **`<Hydrate>` children passing `arguments` as a shorthand property change its key** (Astra hydrate #3; a regression
-  from `main`): the chunk's capture rewrite of `arguments` is a raw text edit, so `{ arguments }` becomes
-  `{ tsrArguments }` (React #418) or `{ props.tsrArguments }` (Solid: the chunk fails to parse). R182 fixed it only as
-  a one-line change; it needs the scan to mark a shorthand property, so it stays pinned. SPEC J5.2.
-  `start-plugin-core/tests/integration/pages/hydrate-ids-and-captures.test.ts`: "client: split children passing the
-  component's arguments as a shorthand property render its props". Fix: emit `arguments: tsrArguments` (React) and
-  `arguments: props.tsrArguments` (Solid) for a shorthand property. Workaround: write `{ arguments: arguments }`.
-- **A nested `<Hydrate>` inside a `function` callback reads the component's `arguments`, not the callback's** (Astra
-  round 4 hydrate B4; `main` is wrong too, differently: `[object Object]`): an inner placeholder that needs
-  `arguments` makes the outer extraction forward the outer component's arguments unconditionally, although the inner
-  placeholder stands inside `function (row) {…}`, whose own `arguments` it should read. The server renders `row`, the
-  client `page` (React #418). Not fixed (R182 precedent: not a one-line change). SPEC J5.2.
-  `start-plugin-core/tests/integration/pages/hydrate-ids-and-captures.test.ts`: "client: a nested boundary in a
-  function callback reads the arguments of the callback". Fix: each `arguments` site gets its lexical owner (the
-  nearest non-arrow function): forwarded from the parent only when that owner is outside the parent's moved region.
-  Workaround: read the callback's parameter.
 - **Solid: `ref={field}` in `<Hydrate>` children naming a module-level `let` assigns the chunk's copy** (Astra hydrate
   B4; `main` too): the chunk copies the `let` (R161 D1), and the `hydrate-module-write` refusal (H4) misses the write
   because a JSX ref is not an assignment before Solid lowers it. Code outside the boundary reads `undefined`. SPEC J5.5,
@@ -1601,11 +1585,12 @@ Paths under `start-plugin-core/tests/integration/`; `pages/` means `integration/
   single child on one line render like on the server".
 - **Capture analysis is wrong**: locals named `key`/`ref` become React props; tags starting with `_`, `$` or non-ASCII
   letters, member-expression tags and enums are not passed; bindings declared inside the children and property names
-  are taken for captures; `arguments` changes meaning. SPEC J5.2. `pages/hydrate-ids-and-captures.test.ts`: "client: captured
+  are taken for captures. SPEC J5.2. `pages/hydrate-ids-and-captures.test.ts`: "client: captured
   locals named key and ref reach the split children"; "client: the split children render a local component named %s";
   "client: the split children render member-expression tags of $name"; "client: the split children render a component
   bound inside them"; "client: property names, method keys and optional members are no reads of a local"; "client: the
-  split children read a local enum"; "client: split children reading the component's arguments render its props".
+  split children read a local enum". (`main` rewrote `arguments` to another function's; it is now refused, J5.5:
+  `pages/hydrate-moved-code.test.ts`.)
 - **A Solid directive (`use:tip`) is no use of `tip`**: the chunk neither declares a module-level `tip` nor receives
   a component's `tip`, and Solid's JSX transform calls it there ("tip is not defined"). SPEC G1, J5.2.
   `hydrate-pages-solid.ts`: "split children run a directive declared in the $where".
