@@ -718,7 +718,7 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   view of the module). Not refused: a binding only server code assigns, and one the client keeps anyway (exported, or
   read outside server code, its own declarator and each assignment's smallest clause, its statement or the loop head
   or condition holding it, with the tests of the `if`, loop and `switch` statements around it up to its function;
-  never a body). Unrecognised shapes must not leak
+  never a body, nor a function or class in a test)). Unrecognised shapes must not leak
   silently (J4.12): for a builder method called through a computed
   member (`createServerFn()['handler'](…)`, `createMiddleware()['server'](…)`) or a server-only fn whose result is
   member-called (`createServerOnlyFn(…).bind(null)`), the client holds no server code, or the build fails with an

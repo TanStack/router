@@ -157,12 +157,13 @@ function reportReassignedServerOptions(
   const code = ctx.analysis.source.code
   /**
    * Each name, with the keys down to it as written (a spread's or an
-   * element's: its container's), whether it is `ssr`'s, and whether it is
-   * in a `createHandlers(…)` object.
+   * element's: its container's, and `keyed` false), whether it is `ssr`'s,
+   * and whether it is in a `createHandlers(…)` object.
    */
   interface Named {
     node: Node
     path: Array<string>
+    keyed: boolean
     ssr: boolean
     factory: boolean
   }
@@ -174,16 +175,24 @@ function reportReassignedServerOptions(
     } else if (node.type === 'ObjectExpression') {
       for (const p of node.properties) {
         if (p.type === 'SpreadElement') {
-          visit(p.argument, at, false)
+          visit(p.argument, { ...at, keyed: false }, false)
         } else if (!p.computed) {
           const path = [...at.path, code.slice(p.key.start, p.key.end)]
-          visit(p.value, { ...at, path }, staticPropertyKey(p) === 'handlers')
+          visit(
+            p.value,
+            { ...at, path, keyed: true },
+            staticPropertyKey(p) === 'handlers',
+          )
         }
       }
     } else if (node.type === 'ArrayExpression') {
       for (const e of node.elements) {
         if (e !== null) {
-          visit(e.type === 'SpreadElement' ? e.argument : e, at, false)
+          visit(
+            e.type === 'SpreadElement' ? e.argument : e,
+            { ...at, keyed: false },
+            false,
+          )
         }
       }
     } else if (handlers) {
@@ -194,9 +203,13 @@ function reportReassignedServerOptions(
     }
   }
   for (const { keyText, key, value } of serverOptionsOf(ctx, route)) {
-    visit(value, { path: [keyText], ssr: key === 'ssr', factory: false }, false)
+    visit(
+      value,
+      { path: [keyText], keyed: true, ssr: key === 'ssr', factory: false },
+      false,
+    )
   }
-  for (const { node, path, ssr, factory } of named) {
+  for (const { node, path, keyed, ssr, factory } of named) {
     const sym = reassignedServerCode(ctx, node)
     // (a flag is no server code)
     if (sym === null || (ssr && !assignsFunction(ctx, sym))) {
@@ -206,7 +219,7 @@ function reportReassignedServerOptions(
     // (in a `createHandlers(…)` object: at the argument, the callback and
     // the middleware around it stay)
     const inPlace = factory
-      ? `Write it in place at this argument (\`${path.at(-1)}: …\`), keeping the \`createHandlers\` callback and its middleware`
+      ? `Write it in place at this argument${keyed ? ` (\`${path.at(-1)}: …\`)` : ''}, keeping the \`createHandlers\` callback and its middleware`
       : `Write it in place in the route options (\`${path.reduceRight(
           (inner, key) => `${key}: ${inner === '…' ? inner : `{ ${inner} }`}`,
           '…',

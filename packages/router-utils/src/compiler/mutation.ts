@@ -131,13 +131,32 @@ export function reassignedServerCode(
   }
   const own = [
     ...kept.flatMap((w) => assignmentText(ctx, w.range)),
-    ...declaratorText(ctx, sym),
+    ...declaratorText(ctx, sym).map((range) => ({ range, open: false })),
   ]
+  const ofAssignment = (r: Range) =>
+    own.some(
+      (t) => within(r, [t.range]) && !(t.open && inFunctionOf(ctx, r, t.range)),
+    )
   return t1.refs
     .valueRefsOf(sym)
-    .some((r) => !within(r.range, serverText) && !within(r.range, own))
+    .some((r) => !within(r.range, serverText) && !ofAssignment(r.range))
     ? null
     : sym
+}
+
+/** Whether `at` is in a function or class nested in `text` (code that runs another time). */
+function inFunctionOf(ctx: PlanContext, at: Range, text: Range): boolean {
+  const file = ctx.analysis.file
+  for (
+    let n = ctx.t1.nodeAt(at.start);
+    n !== null && within(n, [text]);
+    n = file.parentOf(n)
+  ) {
+    if (BOUNDARY.has(n.type)) {
+      return true
+    }
+  }
+  return false
 }
 
 /**
@@ -145,32 +164,43 @@ export function reassignedServerCode(
  * statement, or the head clause of a loop or `if` it is in: a `for` init,
  * test or update, a `for…in`/`for…of` target or object, a condition), and
  * the tests of every control statement around that clause (`if` tests, loop
- * conditions, a `switch`'s discriminant and case tests), never their bodies
- * and never past the function or class around it.
+ * conditions, a `switch`'s discriminant and case tests; a `for` update's
+ * own loop test too), never their bodies and never past the function or
+ * class around it. A head clause or test is `open`: a function or class in
+ * it is not the assignment (`if (register(() => h())) { h = … }`).
  */
-function assignmentText(ctx: PlanContext, at: Range): Array<Range> {
+function assignmentText(
+  ctx: PlanContext,
+  at: Range,
+): Array<{ range: Range; open: boolean }> {
   const file = ctx.analysis.file
   let below = ctx.t1.nodeAt(at.start)
   if (below === null) {
-    return [at]
+    return [{ range: at, open: false }]
   }
-  const text: Array<Range> = []
+  const text: Array<{ range: Range; open: boolean }> = []
   let clause = false
   for (let n = file.parentOf(below); ; below = n, n = file.parentOf(n)) {
     if (n === null || n.type === 'Program' || BOUNDARY.has(n.type)) {
       if (!clause) {
-        text.push(below)
+        text.push({ range: below, open: false })
       }
       return text
     }
-    const heads = headsOf(n)
-    const inHead = heads.some((h) => sameNode(h, below!))
+    const inHead = headsOf(n).some((h) => sameNode(h, below!))
     if (!clause && (inHead || isStatement(below))) {
       clause = true
-      text.push(below)
+      text.push({ range: below, open: inHead })
     }
-    if (clause && !inHead) {
-      text.push(...testsOf(n))
+    // (the tests of what holds the clause; a `for` update runs after its test)
+    if (
+      clause &&
+      (!inHead ||
+        (n.type === 'ForStatement' &&
+          n.update !== null &&
+          sameNode(n.update, below)))
+    ) {
+      text.push(...testsOf(n).map((range) => ({ range, open: true })))
     }
   }
 }

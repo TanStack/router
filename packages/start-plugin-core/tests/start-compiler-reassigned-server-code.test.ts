@@ -95,6 +95,13 @@ export const fn = createServerFn().handler(h)
 `,
   ],
   [
+    'a write a `for` update holds, its test reading the binding',
+    `let h: undefined | (() => Promise<string>)
+for (; !h; h = async () => db.x()) {}
+export const fn = createServerFn().handler(h)
+`,
+  ],
+  [
     'a write a switch on the binding holds',
     `let h = async () => db.y()
 switch (typeof h) {
@@ -519,6 +526,23 @@ export const fn = createServerFn().validator(validate).handler(async () => 'ok')
 `,
     ],
     [
+      "a validator a callback in the guard's test calls",
+      `type Validator = (input: string) => string
+let validate: Validator = (input) => input
+export function installPreview(
+  register: (key: string, render: Validator) => boolean,
+  trim: boolean,
+) {
+  if (register('preview', (input) => validate(input))) {
+    if (trim) {
+      validate = (input) => input.trim()
+    }
+  }
+}
+export const fn = createServerFn().validator(validate).handler(async () => 'ok')
+`,
+    ],
+    [
       'a binding a default export assigns and a function reads',
       `let h = () => db.y()
 export const read = () => h()
@@ -672,6 +696,18 @@ export const Route = createFileRoute('/reassigned-quoted-handlers')({
 `,
     at: 'GET: get',
   },
+  'src/routes/reassigned-create-handlers-spread.tsx': {
+    source: `${routeHead}let more: Record<string, () => Response> = { GET: () => new Response(db.y()) }
+more = { GET: () => new Response(db.x()) }
+export const Route = createFileRoute('/reassigned-create-handlers-spread')({
+  server: {
+    handlers: ({ createHandlers }) => createHandlers({ ...more }),
+  },
+  component: () => <p>page</p>,
+})
+`,
+    at: '...more',
+  },
   'src/routes/reassigned-create-handlers.tsx': {
     source: `${routeHead}let get = async () => new Response(db.y())
 get = async () => new Response(db.x())
@@ -774,6 +810,23 @@ describe("Vite: a route's server options by a name the module assigns", () => {
     expect(text).toContain('`handler: …`')
     expect(text).toContain(
       'keeping the `createHandlers` callback and its middleware',
+    )
+  })
+
+  // a spread is the argument: no key to name
+  test('the error at a spread in a createHandlers object names no key', async () => {
+    const { host: dev } = await host()
+    const error = await dev
+      .transform('/src/routes/reassigned-create-handlers-spread.tsx', 'client')
+      .then(
+        () => undefined,
+        (e: unknown) => e,
+      )
+    const text = diagnosticsOf(error)
+      .map((d) => d.text)
+      .join('\n')
+    expect(text).toContain(
+      'Write it in place at this argument, keeping the `createHandlers` callback and its middleware',
     )
   })
 
