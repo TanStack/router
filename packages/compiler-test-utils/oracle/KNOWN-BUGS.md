@@ -298,11 +298,65 @@ static made = … }` off the client also when the kept loader, the split compone
   `<ClientOnly>` in the handler's JSX or in a client component.
   `start-plugin-core/tests/planners/start-env.test.ts` ("keeps <ClientOnly> children in a handler…").
 
-- **A hoisted server fn whose chain runs a function at load that reads its own statement's declaration is not
-  refused** (R162; review-phase3-fixes; accepted: niche, no corpus file): the order refusal counts reads at load
-  outside the chain's functions, so an IIFE, a synchronous callback or a getter inside the chain that reads a
-  `let`/`const`/`class` of the same statement throws at load (a `var` reads `undefined`). `main` fails the build on
-  every such shape.
+- **A hoisted server fn whose chain runs a callback or a getter at load that reads its own statement's declaration is
+  not refused** (R162; review-phase3-fixes; accepted: niche, no corpus file): the order refusal counts what the chain
+  reads at load outside its functions and in a function called or constructed in place (hotspot 5, S8), so a
+  synchronous callback another call runs, a getter or a constructor inside the chain that reads a `let`/`const`/`class`
+  of the same statement throws at load (a `var` reads `undefined`). `main` fails the build on every such shape.
+
+- **A hoisted chain holding a class it never constructs while defined is refused when the class's instance field reads
+  a binding declared later** (hotspot 5, §4; a known incorrect rejection, contrived):
+  `.validator((class V { field = later; static validate = (d) => new V().field(d) }).validate)` with `later` below
+  reads `later` only when called, yet an instance field's initialiser may run while its class is defined
+  (`static validate = new V().field`), and telling the two apart needs a proof the shared walk does not give. `main`
+  refuses the position. Workaround: declare what the field reads above the statement. Control:
+  `start-plugin-core/tests/createServerFn/load-positions.test.ts`: "is a compile error when it reads a declaration of
+  its own statement, in an instance field of a class constructed while it is defined".
+
+- **Code the client erases inside `<Hydrate>` children is still validated** (hotspot 5, §4; a known incorrect
+  rejection): `createIsomorphicFn().server(() => this.x).client(…)` or `createServerOnlyFn(() => this.x)` in the
+  children is refused in both environments, because the server validates the same children (J5.5) and there the
+  server half is live; `main` accepts the client and refuses the server, so its build fails too. Workaround: read
+  `this.x` into a local before the boundary. No test (the outcome is the refusal).
+
+- **A function loader the router splits and calls through its chunk sees the chunk's module namespace as `this`**
+  (hotspot 5 decision 4; as `main`): a named, conditional or imported `function` loader (`loader: myLoader`) is split,
+  and `lazyFn` calls `imported[key](...args)`, so `this` is the chunk's namespace where the router's own call gives
+  `undefined`. A function written in place that reads `this` stays unsplit with `split-this` (#8688). People should
+  not use `this` here; a receiver-forwarding `lazyFn` is a follow-up. No test (the outcome is the limit).
+
+- **A `function` server fn handler sees the lazy handler module's namespace as `this`** (hotspot 5 decision 4): on
+  the lazy path the handler module calls it as a member; on the eager path (a top-level `await` in the file) and on
+  `main` it gets the server fn's options object. Undocumented in both forms; the handler's parameter carries what it
+  needs (`method`). No test (the outcome is the limit).
+
+- **A render-time read after the children call a captured function that assigns the variable reads the value from
+  before the call** (hotspot 5, §4; as `main`): `{(bump(), x)}` with `const bump = () => ++x` renders the value the
+  placeholder passed, not the one `bump()` gave; refusing it needs to know what a captured function writes when
+  called. The variable read in a function (`{(bump(), (() => x)())}`) is refused. Rare: the variable must be read
+  directly as well as through the function. No test (the outcome is the limit).
+
+- **A Solid directive reassigned after the chunk read it keeps the first function** (hotspot 5, §4, Gemini P29; as
+  `main`): a directive local reaches the chunk by value (`const tip = props.tip`), so a call telling the two functions
+  apart after a reassignment sees the old one. Contrived; renaming directive locals would be new machinery. No test.
+
+- **`import.meta.url` in moved code names the derived module** (hotspot 5, §4; as `main` for what it splits): a split
+  option, Hydrate children or a lazy handler evaluate it in a module whose id is the file's path with a query, and
+  what the bundler emits for it is the bundler's. Resolving a relative asset is unaffected; comparing the full URL is
+  not. No test (the outcome is the limit).
+
+- **Hydrate's hook rule is by name and by place** (hotspot 5, §4): a hook under another name (`import { useId as mk }`,
+  `const read = useContext`) is not seen, nor is a hook in a callback another call runs during render (`.map()`):
+  each moves into the chunk's component. `main` checks no hook at all. Workaround: name hooks `use…` and call them in a
+  child component. No test (the outcome is the limit).
+
+- **React captures refused that `main` compiles** (hotspot 5 decision 3b deferred): a render counter written in a
+  `.map()` callback of the children (`pageNumber++`, read only there; two wrapped real components) is refused as a
+  write of the children (a method named `map` does not establish when its callback runs; never on Solid, where a
+  capture is `props.x`), and a reassigned capture read in a function of the children when the boundary is in a loop
+  the variable outlives, in a callback, or in a function called before a later write. Loud, with a fix in the
+  message (a `useRef`, or `split={false}`). A boundary merely placed in a callback compiles.
+  `start-plugin-core/tests/integration/pages/hydrate-moved-code.test.ts`: "$name: at the read", "$name: at the write".
 
 - **A hoisted server fn reads a module binding before an earlier operand of its statement writes it** (R181 (3),
   Astra start review 4; accepted: `main` refuses the position, "createServerFn must be assigned to a variable!"):

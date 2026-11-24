@@ -480,6 +480,14 @@ planners before it. The router plugin alone runs only the `router` planner.
 | `rsc-css`      | RSC CSS injection in the provider env                                 | `start-plugin-core/src/planners/rsc-css.ts`                                                                                                  |
 | `import-edges` | import protection: per-output edges, mock substitution (policy phase) | `start-plugin-core/src/planners/edges.ts`; rules, verdicts, reports `src/import-protection/`                                                 |
 
+Code moved across a function boundary (Hydrate's children, Start's hoisted chain, the router's split function
+values) is read by one walk, `walkMoved` (`moved.ts`), on the language's table of who provides `this`, `super`,
+`new.target`, `arguments`, `await`, `yield` and private names (a parameter decorator has the code around its class),
+with when each node runs (`now`, `maybe` in an instance field, `later` in a function) and the moved code's callables;
+`contextOwner` climbs to the construct providing a use. Planners keep their policy and messages. Under Solid
+(`ModuleAnalysis`'s `jsx`, one per session), a `ref={x}` read is marked as possibly assigning `x`
+(`ClassifiedRef.assigns`), which the mutation model (through a liveness filter) and placement's write table count.
+
 Composition: `startPlanners()` in `start-plugin-core/src/planners/index.ts`; the router planner and its configuration
 builder (`routerPlannerConfigFrom`) are exported from `@tanstack/router-plugin/planners`.
 
