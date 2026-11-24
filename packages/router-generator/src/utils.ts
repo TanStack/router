@@ -177,7 +177,7 @@ function determineInitialRoutePathFromParts(
       if (character === undefined) continue
       if (DISALLOWED_ESCAPE_CHARS.has(character)) {
         throw new Error(
-          `Disallowed character "${character}" found in square brackets in route path "${routePath}".\nYou cannot use any of the following characters in square brackets: ${Array.from(
+          `[tanstack-router] Disallowed character "${character}" found in square brackets in route path "${routePath}".\nYou cannot use any of the following characters in square brackets: ${Array.from(
             DISALLOWED_ESCAPE_CHARS,
           ).join(', ')}\nPlease remove and/or replace them.`,
         )
@@ -582,7 +582,7 @@ export function createTokenRegex(
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (token === undefined || token === null) {
     throw new Error(
-      `createTokenRegex: token is ${token}. This usually means the config was not properly parsed with defaults.`,
+      `[tanstack-router] createTokenRegex: token is ${token}. This usually means the config was not properly parsed with defaults.`,
     )
   }
 
@@ -609,7 +609,7 @@ export function createTokenRegex(
     }
 
     throw new Error(
-      `createTokenRegex: invalid token type. Expected string, RegExp, or { regex, flags } object, got: ${typeof token}`,
+      `[tanstack-router] createTokenRegex: invalid token type. Expected string, RegExp, or { regex, flags } object, got: ${typeof token}`,
     )
   } catch (e) {
     if (e instanceof SyntaxError) {
@@ -620,7 +620,7 @@ export function createTokenRegex(
             ? token.source
             : token.regex
       throw new Error(
-        `Invalid regex pattern in token config: "${pattern}". ${e.message}`,
+        `[tanstack-router] Invalid regex pattern in token config: "${pattern}". ${e.message}`,
       )
     }
     throw e

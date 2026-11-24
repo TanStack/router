@@ -123,7 +123,7 @@ function checkRouteFilesUsedOnce(
       )
     })
     throw new Error(
-      `A route file can be used for one route only (files differing only by their extension are imported as one module). Files used for several routes:\n${lines.join('\n')}\n`,
+      `[tanstack-router] A route file can be used for one route only (files differing only by their extension are imported as one module). Files used for several routes:\n${lines.join('\n')}\n`,
     )
   }
 }

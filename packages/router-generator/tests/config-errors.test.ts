@@ -51,6 +51,25 @@ describe('generator configuration errors', () => {
     expect(error!.message).toContain('tsr.config.json')
   })
 
+  // Source: the reviews of the implementation (Astra 5: a directory read
+  // as "not valid JSON: EISDIR"; Gemini P3-1: `[]` spread as options).
+  test('a tsr.config.json that cannot be read fails with its read error', async () => {
+    const root = await createApp({ 'tsr.config.json/x': '' })
+    const { error } = await failure(() => getConfig({}, root))
+    expect((error as NodeJS.ErrnoException).code).toBe('EISDIR')
+  })
+
+  test.each(['[]', 'null', '"src/routes"'])(
+    'a tsr.config.json holding %s fails naming the file',
+    async (json) => {
+      const root = await createApp({ 'tsr.config.json': json })
+      const { error } = await failure(() => getConfig({}, root))
+      expect(error!.message).toBe(
+        `[tanstack-router] ${path.join(root, 'tsr.config.json')} must hold an object of options.`,
+      )
+    },
+  )
+
   test('experimental.enableCodeSplitting fails once, with its migration', async () => {
     const root = await createApp({})
     const { error, printed } = await failure(() =>

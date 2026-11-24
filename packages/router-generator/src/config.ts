@@ -106,15 +106,26 @@ export function getConfig(
   let raw: Record<string, unknown> = inlineConfig
   if (exists) {
     // (the file allows the JSON regex-object form)
+    // (a file that cannot be read fails with its read error)
+    const text = readFileSync(configFilePathJson, 'utf-8')
     let fileConfigRaw: unknown
     try {
-      fileConfigRaw = JSON.parse(readFileSync(configFilePathJson, 'utf-8'))
+      fileConfigRaw = JSON.parse(text)
     } catch (error) {
       throw new Error(
         `[tanstack-router] ${configFilePathJson} is not valid JSON: ${(error as Error).message}`,
       )
     }
-    raw = { ...(fileConfigRaw as object), ...inlineConfig }
+    if (
+      typeof fileConfigRaw !== 'object' ||
+      fileConfigRaw === null ||
+      Array.isArray(fileConfigRaw)
+    ) {
+      throw new Error(
+        `[tanstack-router] ${configFilePathJson} must hold an object of options.`,
+      )
+    }
+    raw = { ...fileConfigRaw, ...inlineConfig }
   }
   const parsed = configSchema.safeParse(raw)
   if (!parsed.success) {
@@ -215,7 +226,7 @@ function validateConfig(config: Config) {
   // Works for strings, RegExp, and JSON regex objects
   if (areTokensEqual(config.indexToken, config.routeToken)) {
     throw new Error(
-      `The "indexToken" and "routeToken" options must be different.`,
+      `[tanstack-router] The "indexToken" and "routeToken" options must be different.`,
     )
   }
 
@@ -224,7 +235,7 @@ function validateConfig(config: Config) {
     config.routeFileIgnorePrefix.trim() === '_'
   ) {
     throw new Error(
-      `The "routeFileIgnorePrefix" cannot be an underscore ("_"). This is a reserved character used to denote a pathless route. Please use a different prefix.`,
+      `[tanstack-router] The "routeFileIgnorePrefix" cannot be an underscore ("_"). This is a reserved character used to denote a pathless route. Please use a different prefix.`,
     )
   }
 

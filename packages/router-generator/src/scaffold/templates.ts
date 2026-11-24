@@ -25,7 +25,7 @@ export function routerPackageOf(target: Config['target']) {
     case 'vue':
       return `@tanstack/${target}-router`
     default:
-      throw new Error(`router-generator: Unknown target type: ${target}`)
+      throw new Error(`[tanstack-router] Unknown target type: ${target}`)
   }
 }
 

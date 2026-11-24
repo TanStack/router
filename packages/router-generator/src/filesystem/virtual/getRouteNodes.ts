@@ -61,7 +61,7 @@ export async function getRouteNodes(
 ): Promise<GetRouteNodesResult> {
   const fullDir = resolve(tsrConfig.routesDirectory)
   if (tsrConfig.virtualRouteConfig === undefined) {
-    throw new Error(`virtualRouteConfig is undefined`)
+    throw new Error(`[tanstack-router] virtualRouteConfig is undefined`)
   }
   let virtualRouteConfig: VirtualRootRoute
   if (typeof tsrConfig.virtualRouteConfig === 'string') {
@@ -119,7 +119,9 @@ async function getVirtualRouteConfigFromFileExport(
     typeof tsrConfig.virtualRouteConfig !== 'string' ||
     tsrConfig.virtualRouteConfig === ''
   ) {
-    throw new Error(`virtualRouteConfig is undefined or empty`)
+    throw new Error(
+      `[tanstack-router] virtualRouteConfig is undefined or empty`,
+    )
   }
   const exports = await loadConfigFile(
     resolve(root, tsrConfig.virtualRouteConfig),
@@ -127,7 +129,7 @@ async function getVirtualRouteConfigFromFileExport(
 
   if (!('routes' in exports) && !('default' in exports)) {
     throw new Error(
-      `routes not found in ${tsrConfig.virtualRouteConfig}. The routes export must be named like 'export const routes = ...' or done using 'export default ...'`,
+      `[tanstack-router] routes not found in ${tsrConfig.virtualRouteConfig}. The routes export must be named like 'export const routes = ...' or done using 'export default ...'`,
     )
   }
 
