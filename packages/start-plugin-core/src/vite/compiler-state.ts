@@ -155,7 +155,11 @@ function unoptimizedDependency(environment: Environment, id: string): string {
  * imports inlined, or a chunk such bundles share), the module an offset of
  * its code is from (`StartPackageReach.original`), by the map the
  * optimizer writes beside it, which Vite does not hand to plugins (read
- * once, when asked). Undefined for any other file.
+ * and checked once, when first asked). Only for the bundle as the
+ * optimizer wrote it: when the compile's input is other text (a plugin
+ * before Start's transform edited it), the map describes no offset of it,
+ * so none is attributed (no package is told to change its manifest).
+ * Undefined for any other file.
  */
 function bundleOriginal(
   environment: Environment,
@@ -171,18 +175,27 @@ function bundleOriginal(
   ) {
     return undefined
   }
-  let locator: Locator | undefined
-  return (offset) => {
-    locator ??= new Locator(code, file, () => {
-      try {
-        return JSON.parse(readFileSync(`${file}.map`, 'utf8')) as InputSourceMap
-      } catch {
-        // (no map: no offset is attributed)
-        return { version: 3, sources: [], mappings: '' }
+  let locator: Locator | null | undefined
+  const locatorOf = (): Locator | null => {
+    let map: unknown = null
+    try {
+      if (readFileSync(file, 'utf8') === code) {
+        map = JSON.parse(readFileSync(`${file}.map`, 'utf8'))
       }
-    })
-    return locator.at(offset)?.file ?? null
+    } catch {
+      // (no bundle or no map to read: nothing is attributed)
+    }
+    const valid =
+      typeof map === 'object' &&
+      map !== null &&
+      typeof (map as InputSourceMap).mappings === 'string' &&
+      Array.isArray((map as InputSourceMap).sources)
+    // (the parsed map, once: the locator reads it on every offset)
+    return valid ? new Locator(code, file, () => map as InputSourceMap) : null
   }
+  return (offset) =>
+    (locator === undefined ? (locator = locatorOf()) : locator)?.at(offset)
+      ?.file ?? null
 }
 
 /**

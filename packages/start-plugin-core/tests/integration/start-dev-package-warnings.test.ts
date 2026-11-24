@@ -30,6 +30,7 @@ import {
 } from './importProtection/client-pages'
 import { rootDocument, routerFile } from './start-compose-app'
 import type { InstalledPackage, StartDeclaration } from '../package-layouts'
+import type { Plugin } from 'vite'
 
 const timeout = 60_000
 
@@ -52,7 +53,12 @@ async function devPage(
   packages: ReadonlyArray<InstalledPackage>,
   listed: ReadonlyArray<InstalledPackage>,
   imports: string,
-  options: { cacheDir?: string; fails?: true } = {},
+  options: {
+    cacheDir?: string
+    fails?: true
+    optimize?: Array<string>
+    plugins?: Array<Plugin>
+  } = {},
 ) {
   const server = await startBrowserStartDevServer({
     files: {
@@ -61,10 +67,16 @@ async function devPage(
       'src/entry.ts': `${imports}\nexport const kind = () => 'loaded'\n`,
     },
     // (a kit's router import resolves as installed: the app's own)
-    symlinks: workspacePackageLinks(['@tanstack/react-router']),
-    ...(options.cacheDir !== undefined && {
-      config: { cacheDir: options.cacheDir },
-    }),
+    symlinks: Object.assign(
+      workspacePackageLinks(['@tanstack/react-router']),
+      ...packages.map((p) => p.symlinks),
+    ),
+    config: {
+      ...(options.cacheDir !== undefined && { cacheDir: options.cacheDir }),
+      ...(options.optimize && { optimizeDeps: { include: options.optimize } }),
+    },
+    // (before Start's transform, as an app listing them first)
+    ...(options.plugins && { plugins: options.plugins, startLast: true }),
   })
   const loaded = runViteClient(server, '/src/entry.ts', 'return entry.kind()')
   if (options.fails) {
@@ -195,6 +207,64 @@ describe('vite dev, a pre-bundled package that uses Start', () => {
     timeout,
   )
 
+  // A plugin before Start's transform edits the pre-bundle (a license
+  // banner): the uses are offsets of that text, which the optimizer's map
+  // does not describe, so no package is told to change its manifest
+  // (Astra's re-check of the implementation, 1: the warning blamed
+  // `outer-kit`).
+  test(
+    'a pre-bundle another plugin edited first: no package is named',
+    async () => {
+      // (Astra's shape: the factory from a Start package's re-export, the
+      // call in `fake-sfn`, the kit's code right after it in the bundle)
+      const bridge = installPackage('npm', {
+        name: 'builder-bridge',
+        declaration: 'peer',
+        files: {
+          'index.js': `export { createServerFn as make } from '@tanstack/react-start'\n`,
+        },
+      })
+      const inner = installPackage('npm', {
+        name: 'fake-sfn',
+        manifest: { dependencies: { 'builder-bridge': '1.0.0' } },
+        files: {
+          'index.js': `import { make } from 'builder-bridge'\nexport const getX = make().handler(async () => 'MARK')\n`,
+        },
+      })
+      const kit = installPackage('npm', {
+        name: 'outer-kit',
+        manifest: { dependencies: { 'fake-sfn': '1.0.0' } },
+        files: {
+          'index.js': `import { createRouter } from '@tanstack/react-router'\nimport { getX as load } from 'fake-sfn'\nexport const getX = () => typeof createRouter === 'function' ? load() : undefined\n`,
+        },
+      })
+      const banner: Plugin = {
+        name: 'test:license-banner',
+        enforce: 'pre',
+        transform(code, id) {
+          return /\/deps\/outer-kit\.js(\?|$)/.test(id)
+            ? { code: `/* license banner */\n\n${code}`, map: null }
+            : null
+        },
+      }
+      const run = (plugins: Array<Plugin>) =>
+        devPage(
+          [bridge, inner, kit],
+          [kit],
+          `import { getX } from 'outer-kit'\nexport { getX }`,
+          { plugins },
+        )
+      // (the control: the call is `fake-sfn`'s)
+      const control = await run([])
+      expect(naming(control, inner)).toHaveLength(1)
+      expect(naming(control, kit)).toEqual([])
+      const edited = await run([banner])
+      expect(naming(edited, kit)).toEqual([])
+      notTheCache(edited.warnings)
+    },
+    timeout,
+  )
+
   test(
     'two packages that do not declare Start in one bundle: one warning for each',
     async () => {
@@ -239,17 +309,42 @@ describe('vite dev, a pre-bundled package that uses Start', () => {
   )
 })
 
-/** `mw-lib`, a middleware factory reading its parameter in `.server()`, declaring no Start. */
+/** A middleware factory reading its parameter in `.server()`. */
+const middlewareSource = `import { createMiddleware } from '@tanstack/react-start'
+export const guard = (options) => createMiddleware({ type: 'function' }).server(async ({ next }) => { if (options.rule !== 'MARK_RULE') { throw new Error('denied') } return next() })
+`
+
+/** `mw-lib`, the middleware factory, declaring no Start. */
 const middlewareLib = installPackage('npm', {
   name: 'mw-lib',
-  files: {
-    'index.js': `import { createMiddleware } from '@tanstack/react-start'
-export const guard = (options) => createMiddleware({ type: 'function' }).server(async ({ next }) => { if (options.rule !== 'MARK_RULE') { throw new Error('denied') } return next() })
-`,
-  },
+  files: { 'index.js': middlewareSource },
 })
 
 describe('vite dev, a pre-bundled package is installed code', () => {
+  // A workspace package the app asks Vite to pre-bundle: its source is the
+  // user's, which the optimizer's map names (Astra's re-check, 2).
+  test(
+    'a workspace package in optimizeDeps.include keeps the advice for its author',
+    async () => {
+      const lib = installPackage('workspace', {
+        name: 'mw-lib',
+        files: { 'index.js': middlewareSource },
+      })
+      const page = await devPage(
+        [lib],
+        [lib],
+        `import { guard } from 'mw-lib'\nexport const mw = guard({ rule: 'MARK_RULE' })`,
+        { optimize: ['mw-lib'] },
+      )
+      expect(
+        page.warnings.filter(({ text }) =>
+          text.includes('Only server code reads `options`'),
+        ),
+      ).toHaveLength(1)
+    },
+    timeout,
+  )
+
   test.each([
     { name: 'in node_modules/.vite', cacheDir: undefined },
     { name: 'in a cacheDir outside node_modules', cacheDir: '.cache/vite' },

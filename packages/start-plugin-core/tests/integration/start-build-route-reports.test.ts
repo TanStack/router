@@ -124,8 +124,9 @@ export const Route = wrap(createRootRoute({ component: () => <Outlet /> }))
         file: 'src/routes/__root.tsx',
         root: result.root,
       })
-      // once on each channel that carries it (Vite's build warnings; Rsbuild's
-      // printed report and the stats behind it)
+      // reported, and once on each channel that carries it (Vite's build
+      // warnings; Rsbuild's printed report and the stats behind it)
+      expect(reports.length).toBeGreaterThan(0)
       const perChannel = new Map<unknown, number>()
       for (const { source } of reports) {
         perChannel.set(source, (perChannel.get(source) ?? 0) + 1)

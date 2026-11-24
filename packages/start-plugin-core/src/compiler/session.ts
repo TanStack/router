@@ -587,19 +587,19 @@ export class StartCompilerSession {
         ? vueReport(out, file, inputMap, locate)
         : null
     const located = locate ? originalSink(sink, code, locate, vue?.moved) : sink
-    // an installed package's module, or a bundle of them (whose package is
-    // the one of the module a diagnostic's offset is from, when known)
+    // an installed package's module, or a bundle (whose diagnostic is of
+    // the module its offset is from: installed code, unless that is the
+    // user's source; unknown, it stays installed)
+    const ownerOf = (d: Diagnostic) => {
+      const module =
+        d.range !== undefined ? moduleAt(d.range.start) : original ? null : file
+      return {
+        installed: module === null || this.isInstalled(module),
+        name: this.packageNameOf(module),
+      }
+    }
     const installed =
-      original !== undefined || this.isInstalled(file)
-        ? (d: Diagnostic) =>
-            this.packageNameOf(
-              d.range === undefined
-                ? original
-                  ? null
-                  : file
-                : moduleAt(d.range.start),
-            )
-        : null
+      original !== undefined || this.isInstalled(file) ? ownerOf : null
     reportCompileDiagnostics(
       vue?.diagnostics ?? out.diagnostics,
       file,
@@ -868,26 +868,31 @@ const MODULE_AUTHOR_ADVICE: ReadonlySet<string> = new Set([
 /**
  * `sink` for installed code (a package's module, a bundle of them): the
  * app's author cannot edit it, so advice for its author
- * (`MODULE_AUTHOR_ADVICE`) is not reported, and an error names the package
- * (`nameOf`, when known: its fix is the package's), but for an internal
+ * (`MODULE_AUTHOR_ADVICE`) is not reported where a diagnostic's module
+ * (`ownerOf`) is installed or unknown, and an error names that module's
+ * package (when known: its fix is the package's), but for an internal
  * compiler error (`by: 'core'`), which is ours to fix.
  */
 function installedSink(
   sink: StartDiagnosticSink,
-  nameOf: (d: Diagnostic) => string | null,
+  ownerOf: (d: Diagnostic) => { installed: boolean; name: string | null },
 ): StartDiagnosticSink {
   const kept = (
     report: StartDiagnosticSink['warn'],
   ): StartDiagnosticSink['warn'] =>
     report &&
     ((d, at, generated) => {
-      if (d.code === undefined || !MODULE_AUTHOR_ADVICE.has(d.code)) {
+      if (
+        d.code === undefined ||
+        !MODULE_AUTHOR_ADVICE.has(d.code) ||
+        !ownerOf(d).installed
+      ) {
         report(d, at, generated)
       }
     })
   return {
     error: (d, at, generated) => {
-      const name = d.by === 'core' ? null : nameOf(d)
+      const name = d.by === 'core' ? null : ownerOf(d).name
       sink.error(
         name === null
           ? d
