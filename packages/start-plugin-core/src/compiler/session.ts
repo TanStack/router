@@ -251,6 +251,7 @@ export class StartCompilerSession {
       modifiedAt: fileModifiedAt,
       loadVirtual: opts.loadVirtual,
       recognizer: startRecognizer(),
+      jsx: opts.framework,
       // every analysis of the session agrees on the marker specifiers
       markerSpecifiers: this.ip?.markerSpecifiers,
       opaque: (path, text) =>

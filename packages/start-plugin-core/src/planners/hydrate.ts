@@ -1345,11 +1345,17 @@ function extract(
     if (
       solid &&
       symbols.isReassignable(c) &&
-      (t1.mutation.isReassigned(c) || setters.some((s) => s.sym === c))
+      (t1.mutation.isReassigned(
+        c,
+        // (a `ref={c}` assigns only where the client keeps it)
+        (r) => r.kind === 'write' || liveEnv.live(r),
+      ) ||
+        setters.some((s) => s.sym === c))
     ) {
       // Solid passes a bare identifier by value; a binding assigned later
-      // (`ref={el}` sets it, a reassigned let) is read through a getter
-      // (a call makes the prop dynamic), so the chunk sees its current value
+      // (`ref={el}` sets it, outside the boundary too, a reassigned let) is
+      // read through a getter (a call makes the prop dynamic), so the chunk
+      // sees its current value
       parts.push(` ${propOf.get(c)}={(() => `, { sym: c }, ')()}')
     } else {
       parts.push(` ${propOf.get(c)}={`, { sym: c }, '}')

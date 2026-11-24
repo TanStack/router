@@ -1,11 +1,13 @@
 /**
  * What assigns a module's bindings (`x = …`, `x++`, a destructuring or
- * for-in/of target, a `var` declared again with a value), for the planners
- * that ask whether a binding keeps the value its declaration gave it (the
- * router planner's options, the Hydrate captures) and for the glue's export
- * check. A view over the classified references: nothing is built until a
- * binding is asked about, and then once. Erasure is the consumer's business,
- * passed as the `live` filter.
+ * for-in/of target, a `var` declared again with a value, a Solid `ref={x}`
+ * that may assign: `ClassifiedRef.assigns`), for the planners that ask
+ * whether a binding keeps the value its declaration gave it (the router
+ * planner's options, the Hydrate captures) and for the glue's export check.
+ * A view over the classified references: nothing is built until a binding is
+ * asked about, and then once. Erasure is the consumer's business, passed as
+ * the `live` filter; a possible assignment counts only through one (a ref in
+ * text an output erases assigns nothing there).
  */
 import type { ClassifiedRef, RefIndex } from './analysis'
 import type { SymbolId } from './symbols'
@@ -31,9 +33,11 @@ export class MutationModel {
     this.sites ??= new Map()
     let sites = this.sites.get(sym)
     if (sites === undefined) {
-      sites = this.refs.refsOf(sym).filter((r) => r.kind === 'write')
+      sites = this.refs
+        .refsOf(sym)
+        .filter((r) => r.kind === 'write' || r.assigns)
       this.sites.set(sym, sites)
     }
-    return live === undefined ? sites : sites.filter(live)
+    return sites.filter((r) => (live === undefined ? !r.assigns : live(r)))
   }
 }

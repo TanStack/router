@@ -1622,3 +1622,33 @@ return out`,
     ).toEqual(['<p>page</p>', '<p>error</p>'])
   })
 })
+
+// Solid lowers `ref={box}` on a reassignable binding holding no callback to
+// "call it if it holds a function, else assign it": an assignment of `box`.
+// A split component would assign its chunk's copy, or a binding it imports,
+// while `beforeLoad` reads the route module's: the component stays in the
+// route module, as with an explicit `box = el`, and `beforeLoad` sees the
+// element (on `main`, `undefined`). Source: Astra review of the hotspot 5
+// design.
+describe('a Solid ref naming a module let', () => {
+  it("keeps beforeLoad reading the element the component's ref binds", async () => {
+    const route = await loadRoute(
+      `import { createFileRoute } from '@tanstack/solid-router'
+let box: HTMLElement | undefined
+export const Route = createFileRoute('/')({
+  beforeLoad: () => box?.tagName ?? 'none',
+  component: Form,
+})
+function Form() {
+  return <div ref={box}>form</div>
+}
+`,
+      { targetFramework: 'solid' },
+    )
+    await expectValidModules(route)
+    expect(
+      await route.run(`await render('component')
+return options.beforeLoad()`),
+    ).toBe('DIV')
+  })
+})

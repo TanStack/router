@@ -40,8 +40,9 @@ export interface Cluster {
 
 /**
  * An assignment of a module binding a unit or a generated unit declares
- * (`x = …`, `x++`, `x += …`), with the evaluation holding it: the unit, or
- * the claimed region (an option value a chunk owns), around it.
+ * (`x = …`, `x++`, `x += …`, a Solid `ref={x}` that may assign it), with the
+ * evaluation holding it: the unit, or the claimed region (an option value a
+ * chunk owns), around it.
  */
 export interface Write {
   sym: SymbolId
@@ -210,7 +211,7 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     return r
   }
   for (const ref of refs.all) {
-    if (ref.kind !== 'write' || !declMember.has(ref.sym)) {
+    if ((ref.kind !== 'write' && !ref.assigns) || !declMember.has(ref.sym)) {
       continue
     }
     const w: Write = {

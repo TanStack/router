@@ -10,7 +10,7 @@
  */
 import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
-import { declaredNames, isExpressionWrapper } from './source'
+import { declaredNames, isExpressionWrapper, unwrapExpression } from './source'
 import { SymbolTable, valueBinding } from './symbols'
 import { buildItems, buildUnits } from './units'
 import { MutationModel } from './mutation'
@@ -133,6 +133,13 @@ export interface ClassifiedRef {
   ctx: RefContext
   /** `export { a }` (true) vs `export { a as b }` (false); only for exportSpec. */
   exportShorthand?: boolean
+  /**
+   * A read that may assign the binding: Solid's `ref={x}` on a reassignable
+   * binding that holds no callback (Solid lowers it to "call it if it holds
+   * a function, else assign it"). The owners of what writes a binding
+   * (`MutationModel`, placement's write table) count it.
+   */
+  assigns?: true
 }
 
 interface FreeRef {
@@ -254,7 +261,12 @@ interface ModuleAnalysisOptions {
    * (`RecognizerTable.pureCalls`) are pure callees.
    */
   recognizer?: RecognizerTable
+  /** The JSX dialect the module's framework compiles (`refAssigns`), one per session; default React's. */
+  jsx?: JsxDialect
 }
+
+/** The framework whose JSX transform compiles a module's JSX. */
+export type JsxDialect = 'react' | 'solid' | 'vue'
 
 /** Per environment type, whether a module's own statements have effects there. */
 export interface CodeEffects {
@@ -301,6 +313,7 @@ export class ModuleAnalysis {
   readonly hasImportOrExport: boolean
   /** The recognizer `effects()` reads (pure calls, builder chains). */
   private readonly recognizer: RecognizerTable | undefined
+  private readonly jsx: JsxDialect
   /** `effects()`'s purity: of the module's own statements, and the recognizer's chain factories it imports (each environment's builder purity). */
   private effectsPurity: {
     own: PurityContext
@@ -325,6 +338,7 @@ export class ModuleAnalysis {
     this.path = opts.path
     this.header = analyzeHeader(file)
     this.recognizer = opts.recognizer
+    this.jsx = opts.jsx ?? 'react'
     const markers = opts.markerSpecifiers ?? DEFAULT_MARKERS
     const imports: Array<ImportEntry> = []
     const exportEntries: Array<ExportEntry> = []
@@ -981,6 +995,8 @@ export class ModuleAnalysis {
 
     const refs: Array<ClassifiedRef> = []
     const freeRefs: Array<FreeRef> = []
+    /** Solid `ref={x}` reads of reassignable bindings (`refAssigns`). */
+    const refTargets: Array<{ ref: ClassifiedRef; binding: Binding }> = []
     const names = new Set<string>(symbols.names())
     for (const ref of file.references) {
       let b: Binding | null
@@ -1023,7 +1039,16 @@ export class ModuleAnalysis {
         exportShorthand: c.exportShorthand,
       }
       refs.push(r)
+      if (
+        this.jsx === 'solid' &&
+        r.kind === 'value' &&
+        symbols.isReassignable(r.sym) &&
+        isRefAttributeValue(file, node)
+      ) {
+        refTargets.push({ ref: r, binding: b })
+      }
     }
+    refAssigns(file, refs, refTargets)
 
     // a `var` declared again: what that declaration gives it is a write, like
     // an assignment, except what its declaring unit starts it with (a nested
@@ -1358,6 +1383,60 @@ function metadataNames(
         break
       default:
         break
+    }
+  }
+}
+
+/** Whether `node` is the value of a JSX `ref` attribute (`ref={x}`, through parentheses and casts). */
+function isRefAttributeValue(file: SourceFile, node: Node): boolean {
+  let p = file.parentOf(node)
+  while (p !== null && isExpressionWrapper(p)) {
+    p = file.parentOf(p)
+  }
+  if (p?.type !== 'JSXExpressionContainer') {
+    return false
+  }
+  const attr = file.parentOf(p)
+  return (
+    attr?.type === 'JSXAttribute' &&
+    attr.name.type === 'JSXIdentifier' &&
+    attr.name.name === 'ref'
+  )
+}
+
+/**
+ * Marks the Solid `ref={x}` reads that may assign `x` (`ClassifiedRef.assigns`):
+ * all but those of a callback, a binding its declaration initialises with a
+ * function and that nothing else assigns (Solid calls it, never assigns it).
+ */
+function refAssigns(
+  file: SourceFile,
+  refs: ReadonlyArray<ClassifiedRef>,
+  targets: ReadonlyArray<{ ref: ClassifiedRef; binding: Binding }>,
+): void {
+  if (targets.length === 0) {
+    return
+  }
+  const written = new Set<SymbolId>()
+  for (const r of refs) {
+    if (r.kind === 'write') {
+      written.add(r.sym)
+    }
+  }
+  for (const { ref, binding } of targets) {
+    const decl = binding.declarations[0]
+    const declarator = decl ? file.parentOf(decl) : null
+    const callback =
+      binding.declarations.length === 1 &&
+      declarator?.type === 'VariableDeclarator' &&
+      declarator.id === decl &&
+      declarator.init !== null &&
+      /^(?:Arrow)?Function(?:Expression)?$/.test(
+        unwrapExpression(declarator.init).type,
+      ) &&
+      !written.has(ref.sym)
+    if (!callback) {
+      ref.assigns = true
     }
   }
 }

@@ -36,7 +36,7 @@ import { buildSummary, exportKeysOf } from './summary'
 import { ownEntry } from './strings'
 import { EMPTY_RECOGNIZER, isKnownSpecifier } from './values'
 import { approxBytes, cacheDisabled } from './stats'
-import type { CodeEffects } from './analysis'
+import type { CodeEffects, JsxDialect } from './analysis'
 import type { ModuleSummary } from './summary'
 import type { AbstractValue, RecognizerTable } from './values'
 
@@ -84,6 +84,8 @@ interface RawFactsOptions {
   loadVirtual: (id: string, env: string) => Promise<string | null>
   recognizer?: RecognizerTable
   markerSpecifiers?: Record<string, 'server-only' | 'client-only'>
+  /** The JSX dialect every analysis of the session reads (`ModuleAnalysis`'s `jsx`). */
+  jsx?: JsxDialect
   /**
    * Whether a module is opaque to the summaries, by its path and text (an
    * ordinary package: its exports carry no value a planner recognises). An
@@ -220,6 +222,11 @@ export class RawFactsCache {
   /** The marker specifiers every analysis of this session uses (transform and raw reads agree). */
   get markerSpecifiers(): RawFactsOptions['markerSpecifiers'] {
     return this.opts.markerSpecifiers
+  }
+
+  /** The JSX dialect every analysis of this session reads. */
+  get jsx(): JsxDialect | undefined {
+    return this.opts.jsx
   }
 
   /** The recognizer every analysis of this session uses (its pure calls; a compile's builder chains). */
@@ -827,6 +834,7 @@ export class RawFactsCache {
       path: id.path,
       markerSpecifiers: this.opts.markerSpecifiers,
       recognizer: this.opts.recognizer,
+      jsx: this.opts.jsx,
     })
     return this.fromAnalysis(analysis)
   }

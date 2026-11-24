@@ -129,23 +129,6 @@ function info not found` when one of them calls it, and the build says nothing, 
   the value, and a wrapper is not followed (R92). SPEC J4.5. `start-plugin-core/tests/start-compiler-cases.test.ts`:
   "each output keeps its implementation of an isomorphic fn whose chain passes through a helper function". Fix: each
   output keeps its implementation, or the build fails at the helper.
-- **Solid: `ref={field}` in `<Hydrate>` children naming a module-level `let` assigns the chunk's copy** (Astra hydrate
-  B4; `main` too): the chunk copies the `let` (R161 D1), and the `hydrate-module-write` refusal (H4) misses the write
-  because a JSX ref is not an assignment before Solid lowers it. Code outside the boundary reads `undefined`. SPEC J5.5,
-  J5.2. `start-plugin-core/tests/integration/pages/hydrate-boundary-forms.test.ts`: "client: a Solid ref in the
-  children naming a module let binds the let the module reads". Fix: rejected at the boundary like an explicit
-  `field = el` (a function-valued module ref stays legal: Solid calls it), or the module reads the element.
-  Workaround: a `let` in the component, or `split={false}`.
-- **Solid: a split handler reads a component `let` that a `ref` outside the boundary sets later as its value at the
-  boundary's render** (Astra round 3 hydrate B2; `main` too, which also misses the explicit `ref={el => { field = el
-}}` form the PR handles): a Solid capture is read through a getter when it is reassigned or a `ref={x}` inside this
-  boundary sets it; a JSX `ref={field}` outside the boundary is neither (a JSX ref is no write before Solid lowers it),
-  so the children get `undefined` when the element mounts after the boundary rendered (a `<Show>` that opens later).
-  An element in the same first render works. SPEC J5.8, J5.2.
-  `start-plugin-core/tests/integration/hydrate-pages-solid.ts`: "a split handler reads an element a later ref outside
-  the boundary binds". Fix: a Solid `ref={x}` anywhere in the file counts as an assignment of `x` for the getter
-  decision (not a getter for every reassignable capture: that includes parameters). Workaround: an explicit
-  `ref={(el) => { field = el }}`, or `split={false}`.
 
 ## Known incorrect rejections (accepted, R89)
 
@@ -1540,7 +1523,20 @@ Paths under `start-plugin-core/tests/` unless noted.
 
 ### J5 Deferred hydration `<Hydrate>`
 
-Paths under `start-plugin-core/tests/integration/`; `pages/` means `integration/pages/`.
+- **Solid's `ref={x}` was no assignment of `x`** (Astra hydrate B4, round 3 B2; the router's split too): a
+  module-level `let` named by a ref in split children, or in a helper only they render, was copied into the chunk
+  (code outside read `undefined`); a component `let` set by a ref outside the boundary reached the children as the
+  value of then (a later-mounting element never seen); a split Solid route component whose ref named a module `let`
+  that `beforeLoad` reads assigned its chunk's copy. The analysis now marks such a ref as possibly assigning, unless the
+  binding holds a callback nothing assigns (Solid calls it); placement's write table and the mutation model count
+  the mark where the output keeps the ref. SPEC J5.5, J5.8, J2.4.
+  `start-plugin-core/tests/integration/pages/hydrate-boundary-forms.test.ts`: "client: a Solid ref in the children
+  naming a module let binds the let the module reads", "client: a Solid ref naming a module let in a helper only the
+  children render is rejected", "Solid: split children with $name build and bind it";
+  `start-plugin-core/tests/integration/hydrate-pages-solid.ts`: "a split handler reads an element a later ref outside
+  the boundary binds"; `router-plugin/tests/code-splitter-main-shapes.test.ts`: "keeps beforeLoad reading the element
+  the component's ref binds".
+  Paths under `start-plugin-core/tests/integration/`; `pages/` means `integration/pages/`.
 
 - **A split component with a boundary that another option reads goes to the shared module without its lazy
   component.** SPEC J2.20. `hydrate-build-cases.ts`: "boundaries in split route options that another option reads

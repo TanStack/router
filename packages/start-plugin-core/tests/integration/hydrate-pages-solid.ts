@@ -828,7 +828,7 @@ return root.querySelector('output').textContent`
       ])
     })
 
-    // Control of the pin below: unsplit, the handler reads the element.
+    // Control of the row below: unsplit, the handler reads the element.
     test('an unsplit handler reads an element a later ref outside the boundary binds', async () => {
       const page = await app.hydrate('lateRefReference', {
         script: readLateRef,
@@ -839,24 +839,18 @@ return root.querySelector('output').textContent`
       }).toEqual({ read: 'draft', consoleErrors: [] })
     })
 
-    // Bug: a Solid capture is read through a getter when it is reassigned or
-    // a `ref={x}` inside this boundary sets it; `ref={field}` outside the
-    // boundary is neither (a JSX ref is no write before Solid lowers it), so
-    // the split children get `field`'s value when the boundary rendered.
-    // Impact: the handler reads `undefined` ('missing') once the element
-    // mounts after the boundary rendered; `main` too. Fix: a Solid `ref={x}`
-    // anywhere in the file counts as an assignment of `x`.
-    // Source: Astra review of #8817, round 3, hydrate B2.
-    test.fails(
-      'a split handler reads an element a later ref outside the boundary binds',
-      async () => {
-        const page = await app.hydrate('lateRef', { script: readLateRef })
-        expect({
-          read: page.result,
-          consoleErrors: page.consoleErrors,
-        }).toEqual({ read: 'draft', consoleErrors: [] })
-      },
-    )
+    // A Solid `ref={field}` outside the boundary assigns `field` too: the
+    // split children read it through a getter, and see the element once it
+    // mounts after the boundary rendered (`main` passes the value of then:
+    // the handler read `undefined`). Source: Astra review of #8817, round 3,
+    // hydrate B2.
+    test('a split handler reads an element a later ref outside the boundary binds', async () => {
+      const page = await app.hydrate('lateRef', { script: readLateRef })
+      expect({
+        read: page.result,
+        consoleErrors: page.consoleErrors,
+      }).toEqual({ read: 'draft', consoleErrors: [] })
+    })
 
     // On main, silently, the parent's `let` stays `undefined`.
     test.each(['letRefNonNull', 'letRefCast', 'letRefParens'])(

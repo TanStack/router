@@ -1039,7 +1039,15 @@ function planStartEnv(
               .refsIn(rangeOf(named))
               .find((r) => r.range.start === named.start)
           : undefined
-      if (ref && t1.mutation.isReassigned(ref.sym)) {
+      const envLive = ctx.liveness('env')
+      if (
+        ref &&
+        t1.mutation.isReassigned(
+          ref.sym,
+          // (a Solid `ref={h}` assigns only where this module keeps it)
+          (r) => r.kind === 'write' || envLive.live(r),
+        )
+      ) {
         const binding = ctx.symbols.name(ref.sym)
         ctx.diagnostic({
           severity: 'warning',

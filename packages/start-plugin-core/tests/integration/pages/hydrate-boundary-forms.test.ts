@@ -776,19 +776,13 @@ export const Page = () => <Hydrate><button onClick={() => { flag = 1 }}>{String(
     })
   })
 
-  // Bug: Solid's `ref={field}` assigns `field`, but before Solid lowers it
-  // the JSX ref is not a write, so the `hydrate-module-write` refusal (H4)
-  // does not see it: the chunk copies the module `let` (R161 D1) and the ref
-  // assigns the copy. The module's own code reads `undefined`.
-  // Impact: code outside the boundary never sees the element, silently.
-  // `main` copies it too. Fix: rejected at the boundary like an explicit
-  // `field = el` (a function-valued module ref stays legal: Solid calls
-  // it), or the module reads the element.
-  // Source: Astra review of #8817, hydrate B4.
-  test.fails(
-    'client: a Solid ref in the children naming a module let binds the let the module reads',
-    async () => {
-      const code = `${solidHead}import { createSignal, onMount } from 'solid-js'
+  // Solid's `ref={field}` assigns `field` (when it holds no callback): the
+  // chunk would assign its own copy of a module `let` the module reads (R161
+  // D1), so the children are refused like an explicit `field = el` (H4), or
+  // the module reads the element. On `main`, the module's own code reads
+  // `undefined`. Source: Astra review of #8817, hydrate B4.
+  test('client: a Solid ref in the children naming a module let binds the let the module reads', async () => {
+    const code = `${solidHead}import { createSignal, onMount } from 'solid-js'
 export let field: HTMLInputElement | undefined
 function Run(props: { fn: () => void }) {
   onMount(() => props.fn())
@@ -804,16 +798,89 @@ export function Page() {
     </div>
   )
 }`
-      const solid = await solidHost()
-      const startCase = await solid.start.case({ 'module.tsx': code })
-      const failure = await compileError(startCase, 'client')
-      if (failure !== undefined) {
-        expectCompileError(failure, { source: code, at: '<Hydrate' })
-        return
-      }
-      const mounted = await solid.mount(code)
+    const solid = await solidHost()
+    const startCase = await solid.start.case({ 'module.tsx': code })
+    const failure = await compileError(startCase, 'client')
+    if (failure !== undefined) {
+      expectCompileError(failure, { source: code, at: '<Hydrate' })
+      return
+    }
+    const mounted = await solid.mount(code)
+    expect(mounted.errors).toEqual([])
+    expect(mounted.html).toContain('<output>typed</output>')
+  })
+
+  // The same ref in a helper only the children render: refused at the
+  // boundary (on `main`, the module reads `undefined`).
+  test('client: a Solid ref naming a module let in a helper only the children render is rejected', async () => {
+    const code = `${solidHead}let box: HTMLElement | undefined
+function Helper() {
+  return <div ref={box} />
+}
+export function Page() {
+  return <><Hydrate when={load()}><Helper /></Hydrate><button onClick={() => console.log(box)} /></>
+}`
+    const startCase = await (
+      await solidHost()
+    ).start.case({ 'module.tsx': code })
+    expectCompileError(await compileError(startCase, 'client'), {
+      source: code,
+      at: '<Hydrate',
+      column: true,
+    })
+  })
+
+  // What a Solid ref may still name in split children: a module `let`
+  // holding a callback nothing assigns (Solid calls it, as a `const`
+  // callback), a module `let` only the children use (it moves with them),
+  // and a module `let` the module reads whose ref only the server's half of
+  // an isomorphic fn holds (the client erases it: no write there).
+  test.each([
+    {
+      name: 'a module let holding a callback',
+      code: `${solidHead}export let paint = (el: HTMLElement) => {
+  el.dataset.painted = 'let'
+}
+const stamp = (el: HTMLElement) => {
+  el.dataset.stamped = 'const'
+}
+export function Page() {
+  return <Hydrate when={load()}><b ref={paint}>a</b><i ref={stamp}>b</i></Hydrate>
+}`,
+      shows: ['data-painted="let"', 'data-stamped="const"'],
+    },
+    {
+      name: 'a module let only the children use',
+      code: `${solidHead}import { onMount } from 'solid-js'
+let el: HTMLElement | undefined
+function Run(props: { fn: () => void }) {
+  onMount(() => props.fn())
+  return null
+}
+export function Page() {
+  return <Hydrate when={load()}><b ref={el}>a</b><Run fn={() => { el!.dataset.bound = 'yes' }} /></Hydrate>
+}`,
+      shows: ['data-bound="yes"'],
+    },
+    {
+      name: "a module let the module reads, the ref in the server's half of an isomorphic fn",
+      code: `import { Hydrate, createIsomorphicFn } from '@tanstack/solid-start'
+import { load } from '@tanstack/solid-start/hydration'
+let box: HTMLElement | undefined
+export function Page() {
+  return <><Hydrate when={load()}>{createIsomorphicFn().server(() => <div ref={box} />).client(() => <p>client</p>)()}</Hydrate><output>{String(box)}</output></>
+}`,
+      shows: ['<p>client</p>'],
+    },
+  ])(
+    'Solid: split children with $name build and bind it',
+    async ({ code, shows }) => {
+      const mounted = await (await solidHost()).mount(code)
       expect(mounted.errors).toEqual([])
-      expect(mounted.html).toContain('<output>typed</output>')
+      for (const text of shows) {
+        expect(mounted.html).toContain(text)
+      }
+      expect(mounted.lazy).not.toEqual([])
     },
   )
 

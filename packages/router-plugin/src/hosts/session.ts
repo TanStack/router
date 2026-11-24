@@ -143,6 +143,7 @@ export class RouterCompiler {
       modifiedAt: fileModifiedAt,
       loadVirtual: () => Promise.resolve(null),
       recognizer: EMPTY_RECOGNIZER,
+      jsx: opts.config.target,
     })
     this.caches = createCompilerCaches(
       rawFacts,
