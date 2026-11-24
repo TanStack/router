@@ -305,6 +305,45 @@ export const guard = (options) => createMiddleware({ type: 'function' }).server(
     timeout,
   )
 
+  // The same for server code passed by a name the package's module assigns
+  // elsewhere (`start-server-code-reassigned`): an error, so it is not
+  // dropped as advice for the module's author, and it names the package.
+  // Source: reassigned binding at every server-code position (2026-11-24).
+  test(
+    "a server-only fn on a reassigned name in a Start package's module fails the build naming the package",
+    async () => {
+      const lib = installPackage('npm', {
+        name: 'reassign-lib',
+        declaration: 'peer',
+        files: {
+          'index.js': `import { createServerOnlyFn } from '@tanstack/react-start'\nlet impl = () => 'MARK_SERVER_FIRST'\nimpl = () => 'MARK_SERVER_SECOND'\nexport const read = createServerOnlyFn(impl)\n`,
+        },
+      })
+      const error = await buildStart({
+        bundler,
+        files: {
+          ...lib.files,
+          'src/entry.ts': `export { read } from 'reassign-lib'\n`,
+        },
+        symlinks: lib.symlinks,
+        packageJson: appManifest([lib]),
+        entry: 'src/entry.ts',
+      }).then(
+        () => null,
+        (e: unknown) => e as { diagnostics?: Array<unknown>; root?: string },
+      )
+      expect(error).not.toBeNull()
+      const refusal = expectDiagnostic(error!.diagnostics, {
+        severity: 'error',
+        file: `${lib.directory}/index.js`,
+        root: error!.root,
+        position: { line: 4 },
+      })
+      expect(refusal.text).toContain('installed package `reassign-lib`')
+    },
+    timeout,
+  )
+
   // A Start package's module is read like the app's: its namespace handed
   // to code the compiler cannot follow carries its builder there, which is
   // refused as for an app module (an ordinary package's is not read).
