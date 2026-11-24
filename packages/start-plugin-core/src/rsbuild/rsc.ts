@@ -21,6 +21,7 @@ import type {
   rspack as rspackNamespaceType,
 } from '@rsbuild/core'
 import type { VirtualModuleState } from './virtual-modules'
+import type { GeneratedTarget } from './generated-module'
 import type { StartConfigContext } from '../config-context'
 
 type RspackNamespace = typeof rspackNamespaceType
@@ -50,6 +51,8 @@ export function registerRsc(
     getClientBuild: ReturnType<
       typeof registerClientBuildCapture
     >['getClientBuild']
+    /** The server compiler's generated module at a file (`StartRsbuildCompilerSession.generatedTarget`). */
+    serverGenerated: (file: string) => GeneratedTarget
   },
 ): void {
   const { resolvedStartConfig, virtualModuleState, getClientBuild } = opts
@@ -139,7 +142,7 @@ export function registerRsc(
           tapManifestRebuild(compiler, {
             name: 'TanStackStartRscManifestRebuild',
             virtualModuleState,
-            onlyWhenWritten: api.context.action === 'dev',
+            target: opts.serverGenerated,
             clientBuild: getClientBuild,
           })
         },

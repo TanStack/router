@@ -45,6 +45,7 @@ import {
   RSBUILD_RSC_LAYER_RESOLVE,
 } from './planning'
 import { runsAgainLater } from './vue'
+import { GeneratedIndex } from './generated-module'
 import type {
   StartCompilerEnvironment,
   StartCompilerSessionOptions,
@@ -614,6 +615,30 @@ export class StartRsbuildCompilerSession {
     }
   }
 
+  /**
+   * The files of the modules Start generates for its compilers (the client's
+   * route tree, the server-function resolver, the Start manifest), as a
+   * loader context spells them: the loader records the content each is
+   * built from (`generated-module.ts`).
+   */
+  readonly generated = new Set<string>()
+  /** What each compiler's generated modules were last built from (`generated-module.ts`). */
+  readonly generatedIndex = new GeneratedIndex()
+
+  /** A compiler's generated module(s) at `files` (normalized paths), for a check of what they were built from. */
+  generatedTarget(
+    compiler: string,
+    files: ReadonlyArray<string>,
+    is: (resource: string) => boolean,
+  ) {
+    return {
+      index: this.generatedIndex,
+      compiler,
+      files: [...new Set(files.flatMap((f) => [f, path.normalize(f)]))],
+      is,
+    }
+  }
+
   /** Paths a read found missing (their raw facts say so until an event or `forgetMisses`). */
   private readonly missing = new Set<string>()
 
@@ -922,6 +947,15 @@ export class StartRsbuildCompilerSession {
       layer: ctx._module?.layer,
     })
     const passthrough: LoaderResult = { code: bytes, map: inputMap }
+    if (options.pass === undefined && this.generated.has(ctx.resourcePath)) {
+      this.generatedIndex.built(
+        options.environment,
+        ctx.resourcePath,
+        ctx._module?.buildInfo,
+        loaderText(bytes),
+        ctx._compiler?.isChild() === true,
+      )
+    }
     const { ip } = this.start
     if (options.pass === 'edge') {
       // the bundler requested this edge module from the importer's post-SWC

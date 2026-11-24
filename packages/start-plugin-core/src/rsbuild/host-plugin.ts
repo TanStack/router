@@ -50,6 +50,7 @@ import {
 import { LOADER_REGISTRY } from './loader-registry'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import { serverFnResolverRebuild } from './server-fn-resolver-rebuild'
+import { buildGenerated } from './generated-module'
 import type { ServerFnResolverModule } from './server-fn-resolver-rebuild'
 import type { LoaderImpl } from './compiler-loader'
 import type {
@@ -86,9 +87,11 @@ interface StartHostPluginOptions {
   /** The client route tree module (client environment only): rebuilt when it is stale. */
   clientRouteTree?: {
     paths: () => ReadonlyArray<string>
-    stale: () => boolean
-    version: () => number
+    /** The tree the generator has for the client (`tree`) and its module text, as the transform serves it. */
+    module: () => Promise<{ tree: string; module: string }>
   }
+  /** The server environment's Start manifest module (`manifest-rebuild.ts`). */
+  manifestPath?: () => string
   /** After the `finishMake` replay rebuilt the registry (the resolver virtual module is rewritten). */
   onServerFnsReplayed: () => void
   /** The server environment's server-fn resolver: rebuilt in the compilation's closure (`finishMake`). */
@@ -859,6 +862,16 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       })
 
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
+        // the modules Start generates for this compiler, whose loader records
+        // what they are built from (`generated-module.ts`)
+        for (const file of [
+          ...(opts.clientRouteTree?.paths() ?? []),
+          ...(opts.serverFnResolver ? [opts.serverFnResolver.path()] : []),
+          ...(opts.manifestPath ? [opts.manifestPath()] : []),
+        ]) {
+          session.generated.add(file)
+          session.generated.add(path.normalize(file))
+        }
         compilation.errors.push(...failedBeforeCompilation.splice(0))
         currentCompilation = compilation
         // (until its end: `childRequests`)
@@ -1322,7 +1335,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               (graph ??= nodeGraph(compilation)),
             )
           }
-          const content = child ? null : (fnResolver?.pending() ?? null)
+          const content = fnResolver?.pending(compilation) ?? null
           if (content !== null) {
             if (contents.includes(content)) {
               const differing =
@@ -1520,15 +1533,13 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       }
 
       // the client route tree without its server-only routes: served by the host's transform
-      // of the tree module; when its routes changed since it served the module (the file
-      // did not), or it served none (a module restored from the persistent cache), the
-      // module is rebuilt. A child compiler (a worker) runs the transform too: what it
-      // served is not this compiler's module, so the tree is fresh here once this
-      // compiler built its module at the current route set
+      // of the tree module. The module of this compiler's compilation is built again when it
+      // was built from another text than the transform serves now (`generated-module.ts`):
+      // its routes changed and the tree file did not. A module the persistent cache restored
+      // is judged by what it was built from, as one built now (a child compiler's module of
+      // the tree, a worker's, is another module: the transform served it its own)
       if (opts.clientRouteTree && environment.type === 'client') {
         const tree = opts.clientRouteTree
-        /** The route set's version this compiler's tree module has (none known: -1). */
-        let builtAt = -1
         compiler.hooks.finishMake.tapPromise(
           { name: `${PLUGIN_NAME}:route-tree`, stage: -30 },
           (compilation) =>
@@ -1539,19 +1550,21 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 if (compilation.compiler !== compiler) {
                   return
                 }
-                const version = tree.version()
                 const ids = new Set(tree.paths())
-                const builtHere = () =>
-                  [...compilation.builtModules].some((m) => {
-                    const { resource } = m as unknown as ModuleLike
-                    return !!resource && ids.has(canonicalResource(resource))
-                  })
-                if (!tree.stale() && (builtAt === version || builtHere())) {
-                  builtAt = version
-                  return
+                const current = await tree.module()
+                const built = await buildGenerated(
+                  compilation,
+                  session.generatedTarget(
+                    environment.name,
+                    [...ids],
+                    (resource) => ids.has(canonicalResource(resource)),
+                  ),
+                  current.module,
+                )
+                if (!built && evidence !== null) {
+                  // (a module this process did not build serves this tree)
+                  evidence.clientServed(current.tree)
                 }
-                await rebuildModules(compilation, ids, canonicalResource)
-                builtAt = version
               },
             ),
         )
@@ -1717,7 +1730,13 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       // built again from what the finished client build calls (what a build there
       // brings has no client references in that build: the nested-reach limit)
       const fnResolver = opts.serverFnResolver
-        ? serverFnResolverRebuild(opts.serverFnResolver)
+        ? serverFnResolverRebuild(opts.serverFnResolver, (file) =>
+            session.generatedTarget(
+              environment.name,
+              [file],
+              (resource) => resource === file,
+            ),
+          )
         : null
       compiler.hooks.finishMake.tapPromise(
         { name: `${PLUGIN_NAME}:close`, stage: -10 },
@@ -1726,9 +1745,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             compilation.errors,
             'Building the out-of-date modules again',
             async () => {
-              if (compilation.compiler !== compiler) {
-                await fnResolver?.child(compilation)
-              }
               await close(compilation, false)
             },
           ),

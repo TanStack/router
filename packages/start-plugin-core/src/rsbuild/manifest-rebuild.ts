@@ -1,23 +1,19 @@
-import {
-  rebuildModules,
-  reportingFailure,
-} from '@tanstack/router-utils/compiler'
+import { reportingFailure } from '@tanstack/router-utils/compiler'
+import { buildGenerated } from './generated-module'
 import type { Rspack } from '@rsbuild/core'
 import type { NormalizedClientBuild } from '../types'
 import type { VirtualModuleState } from './virtual-modules'
+import type { GeneratedTarget } from './generated-module'
 
 export interface ManifestRebuildOptions {
   /** Name of the finishMake tap. */
   name: string
   virtualModuleState: Pick<
     VirtualModuleState,
-    'manifestPath' | 'getManifestWriteCount' | 'updateManifest'
+    'manifestPath' | 'getManifestContent' | 'updateManifest'
   >
-  /**
-   * Rebuild only when the manifest module was written since this compiler
-   * last rebuilt it (dev), else in every compilation (build).
-   */
-  onlyWhenWritten: boolean
+  /** The server compiler's generated module at a file (`StartRsbuildCompilerSession.generatedTarget`). */
+  target: (file: string) => GeneratedTarget
   /**
    * The client build to write the manifest module from first (RSC: the
    * client compiles concurrently with the server, so it may have completed
@@ -33,20 +29,17 @@ export interface ManifestRebuildOptions {
  *
  * The manifest module is a virtual module under `node_modules/.virtual/`,
  * and Rspack's watcher ignores `node_modules` by default: the write alone
- * never makes a later compilation build the module again. In dev the module
- * is rebuilt only when it was written since this compiler last rebuilt it,
- * and once in the compiler's first compilation (a client compilation may
- * have written it after this one built it): rebuilding an unchanged module
- * can make Rspack rebuild the whole chunk graph.
+ * never makes a later compilation build the module again. The module is
+ * built again when it was built from another content than the manifest
+ * written last (`generated-module.ts`; a child compilation's module too):
+ * rebuilding an unchanged module can make Rspack rebuild the whole chunk
+ * graph.
  */
 export function tapManifestRebuild(
   compiler: Rspack.Compiler,
   options: ManifestRebuildOptions,
 ): void {
   const { virtualModuleState } = options
-  // The manifest write count this compiler last rebuilt from (dev)
-  let rebuiltAtWriteCount: number | undefined
-
   compiler.hooks.finishMake.tapPromise(
     {
       name: options.name,
@@ -71,26 +64,14 @@ export function tapManifestRebuild(
             virtualModuleState.updateManifest(clientBuild)
           }
 
-          const rebuild = () =>
-            rebuildModules(
+          const content = virtualModuleState.getManifestContent()
+          if (content !== undefined) {
+            await buildGenerated(
               compilation,
-              new Set([virtualModuleState.manifestPath]),
-              (r) => r,
+              options.target(virtualModuleState.manifestPath),
+              content,
             )
-
-          // Child compilers copy finishMake taps from their parent. Child
-          // compilations always rebuild and do not change this compiler's state.
-          if (!options.onlyWhenWritten || compilation.compiler !== compiler) {
-            await rebuild()
-            return
           }
-
-          const writeCount = virtualModuleState.getManifestWriteCount()
-          if (writeCount === rebuiltAtWriteCount) {
-            return
-          }
-          rebuiltAtWriteCount = writeCount
-          await rebuild()
         },
       ),
   )

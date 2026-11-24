@@ -122,8 +122,19 @@ export function tanStackStartRsbuild(
           path: () => virtualModuleState.serverFnResolverPath,
           update: () => virtualModuleState.updateServerFnResolver(),
         },
+        manifestPath: () => virtualModuleState.manifestPath,
         isEntry: (file) => entryPaths().has(normalizePath(file)),
       })
+
+      /** The server compiler's generated module at a file (the manifest's rebuild). */
+      const serverGenerated = (file: string) =>
+        compiler
+          .session()!
+          .generatedTarget(
+            RSBUILD_ENVIRONMENT_NAMES.server,
+            [file],
+            (resource) => resource === file,
+          )
 
       // ---------------------------------------------------------------
       // 3. Virtual modules — manifest, server fn resolver, adapters,
@@ -157,7 +168,7 @@ export function tanStackStartRsbuild(
                 tapManifestRebuild(compiler, {
                   name: 'TanStackStartManifestRebuild',
                   virtualModuleState,
-                  onlyWhenWritten: true,
+                  target: serverGenerated,
                 })
               }
             },
@@ -215,6 +226,7 @@ export function tanStackStartRsbuild(
           resolvedStartConfig,
           virtualModuleState,
           getClientBuild,
+          serverGenerated,
         })
       }
 

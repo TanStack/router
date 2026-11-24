@@ -1,10 +1,12 @@
 /**
- * Rsbuild: a transform the app registers on the route tree module runs once
- * per client build, as for any other module: in a build without a persistent
- * cache, in one that fills it and in one that restores from it, on the same
- * input.
+ * Rsbuild: a transform the app registers on the route tree module runs as
+ * for any other module: once in a client build that builds the module
+ * (without a persistent cache, and in the build that fills one), not at all
+ * in a build that restores the unchanged module from the cache, and once,
+ * on the new tree, in a build on the cache after a route was added.
  * Source: astra round 3 fact-check of #8817 (B1: a fresh build ran the
- * client route tree's loader chain twice on the identical input).
+ * client route tree's loader chain twice on the identical input); hotspot 3
+ * (a restored tree module built from the current tree is not built again).
  */
 import { expect, test } from 'vitest'
 import { buildStart } from '../../build-harness'
@@ -64,7 +66,7 @@ async function transformCalls(
 }
 
 test(
-  'a transform of the client route tree runs once per build, with or without a persistent cache',
+  'a transform of the client route tree runs once per build that builds the module, and not for a restored one',
   async () => {
     const [fresh] = await transformCalls(1)
     const [cold, warm] = await transformCalls(2, {
@@ -72,10 +74,35 @@ test(
     })
     expect(fresh).toHaveLength(1)
     expect(cold).toHaveLength(1)
-    expect(warm).toHaveLength(1)
+    expect(warm).toHaveLength(0)
     expect(fresh![0]).toContain(`'/about'`)
     expect(cold![0]).toBe(fresh![0])
-    expect(warm![0]).toBe(fresh![0])
+  },
+  timeout,
+)
+
+test(
+  'a build on the cache after a route was added runs the transform once, on the new tree',
+  async () => {
+    const observed = observeRouteTree()
+    const cold = await buildStart({
+      bundler: 'rsbuild',
+      rsbuildConfig: {
+        performance: { buildCache: true },
+        plugins: [observed.plugin],
+      },
+      files,
+    })
+    await cold.rebuild({
+      'src/routes/contact.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/contact')({ component: () => <p>contact</p> })
+`,
+    })
+    const [first, second] = observed.builds
+    expect(first).toHaveLength(1)
+    expect(first![0]).not.toContain(`'/contact'`)
+    expect(second).toHaveLength(1)
+    expect(second![0]).toContain(`'/contact'`)
   },
   timeout,
 )

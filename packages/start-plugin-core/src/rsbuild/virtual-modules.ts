@@ -38,7 +38,8 @@ export interface VirtualModuleState {
    */
   updateManifest: (clientBuild: NormalizedClientBuild) => void
   /** Number of times the manifest module was written (the server environment's) */
-  getManifestWriteCount: () => number
+  /** The manifest module content written last (none yet: undefined). */
+  getManifestContent: () => string | undefined
   /** Call to update server fn resolver content after compilation discovers fns; the content */
   updateServerFnResolver: () => string
   /** Get the virtual path for a given module ID */
@@ -296,7 +297,6 @@ export function registerVirtualModules(
 
   let clientBuild: NormalizedClientBuild | undefined
   let lastManifestContent: string | undefined
-  let manifestWriteCount = 0
   // the server fn resolver module lives in the server environment only
   let lastResolverContent: string | undefined
   const hasSerializationAdapters = Boolean(opts.serializationAdapters?.length)
@@ -557,7 +557,6 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
       // only on a change: each write recompiles the server environment
       if (content !== lastManifestContent) {
         lastManifestContent = content
-        manifestWriteCount++
         tryWriteModule(
           RSBUILD_ENVIRONMENT_NAMES.server,
           pathsOf().manifest,
@@ -566,8 +565,8 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
       }
     },
 
-    getManifestWriteCount(): number {
-      return manifestWriteCount
+    getManifestContent(): string | undefined {
+      return lastManifestContent
     },
 
     updateServerFnResolver() {

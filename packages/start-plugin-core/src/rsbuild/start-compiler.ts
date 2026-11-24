@@ -61,6 +61,8 @@ interface RegisterStartCompilerOptions {
   onServerFnsChange: () => void
   /** The server environment's server-fn resolver module, rebuilt in its compiler's `finishMake` closure. */
   serverFnResolver: ServerFnResolverModule
+  /** The server environment's Start manifest module (`manifest-rebuild.ts`). */
+  manifestPath: () => string
   /** Whether a path is an app entry (import protection: a marked entry is its own violation). */
   isEntry: (path: string) => boolean
 }
@@ -136,15 +138,21 @@ export function registerStartCompiler(
       if (dev) {
         generator.evidence.clientServed(tree.code)
       }
+      // (the same text as `clientTreeModule`: the host compares the module
+      // built with it)
       // Dev: the tree module accepts its own hot update, which changes
       // nothing in the page (its router keeps the tree it hydrated with):
       // Rsbuild's client does not reload for an update nothing accepted,
       // at the client's compile, and Start's reload is the one reload, once
       // the server serves the change too (`reloadOnRouteSetChange`). The
       // evidence is of the tree's own text
-      return dev ? `${tree.code}${acceptOwnUpdate}` : tree.code
+      return clientTreeModule(tree.code)
     },
   )
+  /** The client's route tree module, as the transform serves it. */
+  function clientTreeModule(code: string): string {
+    return dev ? `${code}${acceptOwnUpdate}` : code
+  }
 
   if (dev) {
     reloadOnRouteSetChange(api, generator.evidence, {
@@ -256,7 +264,19 @@ export function registerStartCompiler(
           opts.writeVirtualModule(environment.name, file, content),
         generator,
         clientRouteTree:
-          environment.type === 'client' ? generator.clientRouteTree : undefined,
+          environment.type === 'client'
+            ? {
+                paths: generator.clientRouteTree.paths,
+                module: async () => {
+                  const { code } = await generator.clientRouteTree.code()
+                  return { tree: code, module: clientTreeModule(code) }
+                },
+              }
+            : undefined,
+        manifestPath:
+          environment.name === RSBUILD_ENVIRONMENT_NAMES.server
+            ? opts.manifestPath
+            : undefined,
         onServerFnsReplayed: opts.onServerFnsChange,
         serverFnResolver:
           environment.name === RSBUILD_ENVIRONMENT_NAMES.server

@@ -98,15 +98,6 @@ export interface RsbuildRouteGenerator {
     /** The paths of the tree module (`createTreePaths`: configured, and real). */
     paths: () => ReadonlyArray<string>
     code: () => Promise<ClientRouteTreeCode>
-    /**
-     * Whether the tree module of the compilation may hold another pruned route
-     * set than the current one: its routes changed since `code()` last served
-     * it (the tree file may not), or nothing served it in this process (a
-     * module restored from the persistent cache).
-     */
-    stale: () => boolean
-    /** The pruned route set's version (bumped when it changes). */
-    version: () => number
   }
 }
 
@@ -119,19 +110,12 @@ export function createRsbuildRouteGenerator(opts: {
   // the published registry (the context dedupes an unchanged publication)
   const context = createRouterPluginContext()
   const registry = new RouteRegistryView(context)
-  /** Bumped when the pruned route set changes. */
-  let version = 0
-  /** The version of the last tree `code()` served (none yet: -1). */
-  let served = -1
-
   const treePath = () =>
     path.resolve(opts.getConfig().startConfig.router.generatedRouteTree)
   const treePaths = createTreePaths(treePath)
 
   const clientRouteTree = createClientRouteTree({
-    onClientRoutesChange: () => {
-      version++
-    },
+    onClientRoutesChange: () => {},
   })
 
   const instance = (): Generator => {
@@ -150,16 +134,33 @@ export function createRsbuildRouteGenerator(opts: {
     return generator
   }
 
+  /**
+   * The client's tree of the current publication, printed once for its
+   * readers (the transform, each compilation's check, the reload's evidence).
+   */
+  let clientTree: Promise<ClientRouteTreeCode> | undefined
+  const clientTreeCode = (): Promise<ClientRouteTreeCode> => {
+    const printing = (clientTree ??= clientRouteTree.code())
+    printing.catch(() => {
+      // (asked again: the next publication's, or this one's once the tree is generated)
+      if (clientTree === printing) {
+        clientTree = undefined
+      }
+    })
+    return printing
+  }
+
   const evidence = createRouteSetEvidence({
     generator: () => generator,
     treePaths,
-    clientTreeCode: async () => (await clientRouteTree.code()).code,
+    clientTreeCode: async () => (await clientTreeCode()).code,
   })
 
   const session = createGeneratorSession({
     generator: instance,
     publish: (routesByFile, failure) => {
       publishRoutes(context, routesByFile, failure)
+      clientTree = undefined
       evidence.published()
     },
   })
@@ -180,14 +181,7 @@ export function createRsbuildRouteGenerator(opts: {
     },
     clientRouteTree: {
       paths: treePaths,
-      code: async () => {
-        const serving = version
-        const code = await clientRouteTree.code()
-        served = serving
-        return code
-      },
-      stale: () => served !== version,
-      version: () => version,
+      code: clientTreeCode,
     },
   }
 }
