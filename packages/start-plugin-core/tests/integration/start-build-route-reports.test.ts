@@ -124,9 +124,14 @@ export const Route = wrap(createRootRoute({ component: () => <Outlet /> }))
         file: 'src/routes/__root.tsx',
         root: result.root,
       })
-      // what the terminal shows (not the stats objects behind it): one
-      expect(reports.filter(({ source }) => source !== 'bundler')).toHaveLength(
-        1,
+      // once on each channel that carries it (Vite's build warnings; Rsbuild's
+      // printed report and the stats behind it)
+      const perChannel = new Map<unknown, number>()
+      for (const { source } of reports) {
+        perChannel.set(source, (perChannel.get(source) ?? 0) + 1)
+      }
+      expect([...perChannel.values()]).toEqual(
+        [...perChannel.values()].map(() => 1),
       )
       for (const { text } of reports) {
         expect(text).toContain('are not removed')
