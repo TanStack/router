@@ -50,4 +50,34 @@ describe('#8986 commitLocation under a basepath', () => {
 
     expect(history.length).toBe(entriesBefore)
   })
+
+  test('a rewrite.output that returns a new URL still commits a basepath-colliding navigation', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const appRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/app',
+    })
+    const history = createMemoryHistory({ initialEntries: ['/app/'] })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute, appRoute]),
+      basepath: '/app',
+      rewrite: {
+        output: ({ url }) => new URL(url),
+      },
+      history,
+    })
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/')
+    const entriesBefore = history.length
+
+    await router.navigate({ to: '/app' })
+
+    expect(router.state.location.pathname).toBe('/app')
+    expect(history.length).toBe(entriesBefore + 1)
+  })
 })

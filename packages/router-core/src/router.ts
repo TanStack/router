@@ -2241,10 +2241,10 @@ export class RouterCore<
     }
 
     let historyAction: HistoryAction | undefined
-    // next.href is rewritten into the public URL space while
-    // latestLocation.href is in the internal app space.
+    // next.publicHref is in the public URL space the input rewrite expects,
+    // while latestLocation.href is in the internal app space.
     const nextInternalHref = getUrlPath(
-      executeRewriteInput(this.rewrite, new URL(next.href, this.origin)),
+      executeRewriteInput(this.rewrite, new URL(next.publicHref, this.origin)),
     )
     const isSameLocation =
       trimPathRight(this.latestLocation.href) ===
