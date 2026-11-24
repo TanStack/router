@@ -575,12 +575,14 @@ export class StartCompilerSession {
       inputMap && locate && isVueSfc(file)
         ? vueReport(out, file, inputMap, locate)
         : null
+    const located = locate ? originalSink(sink, code, locate, vue?.moved) : sink
+    const installed = this.installedPackageOf(file)
     reportCompileDiagnostics(
       vue?.diagnostics ?? out.diagnostics,
       file,
       code,
       this.warnings,
-      locate ? originalSink(sink, code, locate, vue?.moved) : sink,
+      installed === null ? located : installedSink(located, installed),
       (d) => {
         if (namesStartSpecifier(code)) {
           return {
@@ -606,6 +608,21 @@ export class StartCompilerSession {
         return null
       },
     )
+  }
+
+  /**
+   * The name of the installed package (`node_modules`) that owns `file`,
+   * by its manifest; null for the app's and workspace modules, and for a
+   * directory without a named manifest (Vite's optimizer cache).
+   */
+  private installedPackageOf(file: string): string | null {
+    const cls = this.classes.classOf(file)
+    if (cls !== 'package' && cls !== 'start-package') {
+      return null
+    }
+    const root = packageRootOf(normalizePath(file.split('?')[0]!))
+    const name = root && this.classes.manifest(`${root}/package.json`)?.['name']
+    return typeof name === 'string' ? name : null
   }
 
   /**
@@ -802,6 +819,55 @@ function unreachedPackageMessage(
   file: string,
 ): string {
   return `[tanstack-start] ${displayPath(file, opts.root)} uses TanStack Start, and its package (${displayPath(root, opts.root)}) declares it, but Start did not find ${key} among the app's dependencies (from the app's package.json, through workspace packages and packages that declare Start). Vite keeps it external on the server and pre-bundles it in development, so its Start APIs are not compiled there. List ${key} in the app's dependencies; if the app reaches it through an installed package that does not declare Start, add that package to ssr.noExternal and optimizeDeps.exclude (listing ${key} alone does not change how Vite loads that package).`
+}
+
+/**
+ * The warnings whose only remedy is an edit of the module they point at,
+ * with no server code reaching the client: advice for the module's author
+ * (`installedSink`). A warning that server code stays in client code (an
+ * unread or unrecognised route option) is the app's to know wherever it is.
+ */
+const MODULE_AUTHOR_ADVICE: ReadonlySet<string> = new Set([
+  'start-server-param',
+  'rsc-css-opaque-argument',
+  // (a server compile's: the client's is an error)
+  'parse',
+  'exported-not-split',
+  'split-this',
+  'split-claimed',
+])
+
+/**
+ * `sink` for a module of the installed package `name`: the app's author
+ * cannot edit it, so advice for its author (`MODULE_AUTHOR_ADVICE`) is not
+ * reported, and an error names the package (its fix is the package's).
+ */
+function installedSink(
+  sink: StartDiagnosticSink,
+  name: string,
+): StartDiagnosticSink {
+  const kept = (
+    report: StartDiagnosticSink['warn'],
+  ): StartDiagnosticSink['warn'] =>
+    report &&
+    ((d, at, generated) => {
+      if (d.code === undefined || !MODULE_AUTHOR_ADVICE.has(d.code)) {
+        report(d, at, generated)
+      }
+    })
+  return {
+    error: (d, at, generated) =>
+      sink.error(
+        {
+          ...d,
+          message: `${d.message} This code is in the installed package \`${name}\`: update it, or report this to its maintainers.`,
+        },
+        at,
+        generated,
+      ),
+    warn: kept(sink.warn),
+    found: kept(sink.found),
+  }
 }
 
 export interface StartDiagnosticSink {

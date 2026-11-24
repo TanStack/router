@@ -1442,7 +1442,7 @@ function lateEscapesOf(
 }
 
 const INPUT_VALIDATOR_MESSAGE =
-  "`.inputValidator()` was renamed to `.validator()` (same arguments) and is no longer supported: call `.validator(…)`. See the 'Migrate from the Release Candidate' guide. When a dependency calls it, update that package to a version that uses `.validator()`."
+  "`.inputValidator()` was renamed to `.validator()` (same arguments) and is no longer supported: call `.validator(…)`. See the 'Migrate from the Release Candidate' guide."
 
 function escapeMessage(
   e: Escape,

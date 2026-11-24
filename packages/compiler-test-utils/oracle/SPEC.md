@@ -211,7 +211,10 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
   means at least a warning (an error where the clause allows refusal); an info or log line does not count. A clause
   that says "warn" and allows no refusal asks for a warning; an option that asks for a severity (`mockAccess: 'warn'`)
   is checked at that severity. "The build fails" means it fails. Route splitting (R153): a shape main cannot split
-  stays unsplit without a warning (J2.8). (R5)
+  stays unsplit without a warning (J2.8). An installed package's module (`node_modules`) is not the user's to edit: a
+  warning whose only remedy is an edit of that module, with no server code reaching the client (a parameter read
+  inside server code, an exported or `this`-using split option, a server compile's parse failure), is not reported for
+  it, and its errors name the package. (R5)
 - **G6 Source maps.** Every emitted module derived from user source (route modules, split chunks, Start client, ssr
   and provider output, Hydrate chunks, rewritten import-protection modules) carries a map, so stack traces and
   import-protection reports resolve to the user's original line and column, through composed maps when other plugins
@@ -705,10 +708,10 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   namespaces, dependencies excepted) exports one of them, and an RSC primitive outside a server fn. A parameter passed
   directly as server code (`(fn) => createServerOnlyFn(fn)`, `.server(fn)`, `.validator(schema)`) fails the client
   build at that use, since every call keeps its argument, which is server code; one only read inside server code gets
-  one warning at its definition. Neither looks across modules. A server fn handler passed by name whose binding the
-  module assigns elsewhere (`let h = a; h = b; createServerFn().handler(h)`) fails the build at that argument in every
-  compile that keeps the site and accepts its creation, since the client can keep the assignments with what they read
-  (R154). Unrecognised shapes must not leak
+  one warning at its definition (not in an installed package's module, G5). Neither looks across modules. A server fn
+  handler passed by name whose binding the module assigns elsewhere (`let h = a; h = b; createServerFn().handler(h)`)
+  fails the build at that argument in every compile that keeps the site and accepts its creation, since the client can
+  keep the assignments with what they read (R154). Unrecognised shapes must not leak
   silently (J4.12): for a builder method called through a computed
   member (`createServerFn()['handler'](…)`, `createMiddleware()['server'](…)`) or a server-only fn whose result is
   member-called (`createServerOnlyFn(…).bind(null)`), the client holds no server code, or the build fails with an

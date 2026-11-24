@@ -218,6 +218,93 @@ export const getRouter = () => createRouter({ routeTree })
     timeout,
   )
 
+  // A warning whose fix is an edit of the module it points at is for the
+  // module's author: an installed package's module does not get it (Clerk's
+  // `clerkMiddleware(options)` in a corpus app), a workspace package's
+  // (which the user writes) does, at the parameter.
+  // Source: diagnostics spike (2026-11-24), inventory flag 3, agreed
+  // change A2.
+  test.each<[PackageLayout, boolean]>([
+    ['npm', false],
+    ['pnpm', false],
+    ['workspace', true],
+  ])(
+    "a %s Start package's middleware factory reading its parameter in `.server()`: warned %s",
+    async (layout, warned) => {
+      const lib = installPackage(layout, {
+        name: 'mw-lib',
+        declaration: 'peer',
+        files: {
+          'index.js': `import { createMiddleware } from '@tanstack/react-start'
+export const guard = (options) => createMiddleware({ type: 'function' }).server(async ({ next }) => { if (options.rule !== 'MARK_RULE') { throw new Error('denied') } return next() })
+`,
+        },
+      })
+      const build = await buildStart({
+        bundler,
+        files: {
+          ...lib.files,
+          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'\nimport { guard } from 'mw-lib'\nexport const fn = createServerFn().middleware([guard({ rule: 'MARK_RULE' })]).handler(async () => 'MARK_HANDLER_BODY')\n`,
+          'src/entry.ts': `export { fn } from './fns'\n`,
+          'src/ssr-entry.ts': `export { fn } from './fns'\n${callByIdExports}`,
+        },
+        symlinks: lib.symlinks,
+        packageJson: appManifest([lib]),
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+      })
+      expect(build.client.where('MARK_HANDLER_BODY')).toBe('nowhere')
+      if (warned) {
+        expectDiagnostic(problems(build.diagnostics), {
+          severity: 'warning',
+          file: `${lib.directory}/index.js`,
+          root: build.root,
+          position: { line: 2, column: 23 },
+        })
+      } else {
+        expect(problems(build.diagnostics).map(({ text }) => text)).toEqual([])
+      }
+    },
+    timeout,
+  )
+
+  // An error stays, whoever wrote the module, and names the package: the
+  // app updates it or reports it to the package's maintainers.
+  // Source: diagnostics spike (2026-11-24), agreed change A2.
+  test(
+    "a refusal in a Start package's module fails the build naming the package",
+    async () => {
+      const lib = installPackage('npm', {
+        name: 'old-lib',
+        declaration: 'peer',
+        files: {
+          'index.js': `import { createServerFn } from '@tanstack/react-start'\nexport const fn = createServerFn().inputValidator((d) => d).handler(async () => 'MARK_HANDLER_BODY')\n`,
+        },
+      })
+      const error = await buildStart({
+        bundler,
+        files: {
+          ...lib.files,
+          'src/entry.ts': `export { fn } from 'old-lib'\n`,
+        },
+        symlinks: lib.symlinks,
+        packageJson: appManifest([lib]),
+        entry: 'src/entry.ts',
+      }).then(
+        () => null,
+        (e: unknown) => e as { diagnostics?: Array<unknown>; root?: string },
+      )
+      expect(error).not.toBeNull()
+      const refusal = expectDiagnostic(error!.diagnostics, {
+        severity: 'error',
+        file: `${lib.directory}/index.js`,
+        root: error!.root,
+        position: { line: 2 },
+      })
+      expect(refusal.text).toContain('installed package `old-lib`')
+    },
+    timeout,
+  )
+
   // A Start package's module is read like the app's: its namespace handed
   // to code the compiler cannot follow carries its builder there, which is
   // refused as for an app module (an ordinary package's is not read).
