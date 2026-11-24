@@ -29,7 +29,7 @@ import type {
   YukuNode as Node,
   PlanContext,
   Planner,
-  Range,
+  SymbolId,
 } from '@tanstack/router-utils/compiler'
 
 /** What one planning round of the router planner decided, read by its split and HMR parts. */
@@ -115,50 +115,80 @@ export function routerPlanner(): Planner<typeof ROUTER_PLANNER> {
       }
     },
     serverCode: routeServerCode,
+    serverText(ctx) {
+      const entry = ctx.prefetched.get(ROUTER_PLANNER) ?? null
+      const route =
+        entry && !('failure' in entry) ? recognizeRoute(ctx, entry) : null
+      return route ? serverOptionsOf(ctx, route).map(({ value }) => value) : []
+    },
   }
 }
 
+/** The route's options that hold server code (`RouterPlannerConfig.serverOptions`), with their values. */
+function serverOptionsOf(
+  ctx: PlanContext<typeof ROUTER_PLANNER>,
+  route: RouteModuleInfo,
+): Array<{ keyText: string; key: string; value: Node }> {
+  return route.props.flatMap((option) =>
+    option.key !== null &&
+    option.value !== null &&
+    ctx.config.serverOptions.includes(option.key)
+      ? [{ keyText: option.keyText, key: option.key, value: option.value }]
+      : [],
+  )
+}
+
 /**
- * Refuses each name a route's server option passes server code by (its
- * value, or a property of an object literal in it: `server: { handlers: {
- * GET: get } }`) when the module assigns it elsewhere, so that the client,
- * which erases the option, would keep the assignments with what they read
- * (`reassignedServerCode`). Judged on the source, so in every environment
- * alike.
+ * Refuses each name a route's server option passes server code by, when the
+ * module assigns it elsewhere and the client, which erases the option, would
+ * keep the assignments with what they read (`reassignedServerCode`). The
+ * names: the value, and in it each property value and spread of an object
+ * literal (`server: { handlers: { GET: get, ...more } }`), each element of an
+ * array (`middleware: [auth]`), and the object a `handlers` function gives
+ * `createHandlers` (`handlers: ({ createHandlers }) => createHandlers({ GET:
+ * get })`). An `ssr` name only where a function is assigned to it: a flag
+ * holds no server code. Judged on the source, so in every environment alike.
  */
 function reportReassignedServerOptions(
   ctx: PlanContext<typeof ROUTER_PLANNER>,
   route: RouteModuleInfo,
 ): void {
-  const named: Array<{ node: Node; path: Array<string> }> = []
-  const serverCode: Array<Range> = []
-  const visit = (value: Node, path: Array<string>) => {
+  const code = ctx.analysis.source.code
+  /** Each name, with the keys down to it (a spread's or an element's: its container's). */
+  const named: Array<{ node: Node; path: Array<string>; ssr: boolean }> = []
+  const visit = (value: Node, path: Array<string>, ssr: boolean): void => {
     const node = unwrapExpression(value)
     if (node.type === 'Identifier') {
-      named.push({ node, path })
+      named.push({ node, path, ssr })
     } else if (node.type === 'ObjectExpression') {
       for (const p of node.properties) {
-        if (p.type === 'Property' && !p.computed) {
+        if (p.type === 'SpreadElement') {
+          visit(p.argument, path, ssr)
+        } else if (!p.computed) {
           // (the key as written)
-          const key = ctx.analysis.source.code.slice(p.key.start, p.key.end)
-          visit(p.value, [...path, key])
+          visit(p.value, [...path, code.slice(p.key.start, p.key.end)], ssr)
         }
+      }
+    } else if (node.type === 'ArrayExpression') {
+      for (const e of node.elements) {
+        if (e !== null) {
+          visit(e.type === 'SpreadElement' ? e.argument : e, path, ssr)
+        }
+      }
+    } else if (path.at(-1) === 'handlers') {
+      const handlers = createHandlersArgument(node)
+      if (handlers) {
+        visit(handlers, path, ssr)
       }
     }
   }
-  for (const option of route.props) {
-    if (
-      option.key !== null &&
-      option.value !== null &&
-      ctx.config.serverOptions.includes(option.key)
-    ) {
-      serverCode.push({ start: option.value.start, end: option.value.end })
-      visit(option.value, [option.keyText])
-    }
+  for (const { keyText, key, value } of serverOptionsOf(ctx, route)) {
+    visit(value, [keyText], key === 'ssr')
   }
-  for (const { node, path } of named) {
-    const sym = reassignedServerCode(ctx.t1, node, serverCode)
-    if (sym === null) {
+  for (const { node, path, ssr } of named) {
+    const sym = reassignedServerCode(ctx, node)
+    // (a flag is no server code)
+    if (sym === null || (ssr && !assignsFunction(ctx, sym))) {
       continue
     }
     const binding = ctx.symbols.name(sym)
@@ -175,4 +205,71 @@ function reportReassignedServerOptions(
       code: 'route-server-code-reassigned',
     })
   }
+}
+
+/**
+ * The object of handlers a `handlers` function gives `createHandlers` (its
+ * result: `({ createHandlers }) => createHandlers({ GET })`, also as the one
+ * statement `return createHandlers(…)`), or null.
+ */
+function createHandlersArgument(node: Node): Node | null {
+  if (
+    node.type !== 'ArrowFunctionExpression' &&
+    node.type !== 'FunctionExpression'
+  ) {
+    return null
+  }
+  let body = node.body
+  if (body?.type === 'BlockStatement') {
+    const only = body.body.length === 1 ? body.body[0]! : null
+    if (only?.type !== 'ReturnStatement' || !only.argument) {
+      return null
+    }
+    body = only.argument
+  }
+  const call = body ? unwrapExpression(body) : null
+  if (call?.type !== 'CallExpression') {
+    return null
+  }
+  const callee = unwrapExpression(call.callee)
+  const name =
+    callee.type === 'Identifier'
+      ? callee.name
+      : callee.type === 'MemberExpression' &&
+          !callee.computed &&
+          callee.property.type === 'Identifier'
+        ? callee.property.name
+        : null
+  const first = call.arguments[0]
+  return name === 'createHandlers' && first && first.type !== 'SpreadElement'
+    ? first
+    : null
+}
+
+/** Whether a function is ever assigned to `sym`: its declaration's value, or a write's. */
+function assignsFunction(ctx: PlanContext, sym: SymbolId): boolean {
+  const file = ctx.analysis.file
+  const values: Array<Node | null | undefined> = []
+  for (const name of ctx.symbols.binding(sym)?.declarations ?? []) {
+    const p = file.parentOf(name)
+    if (p?.type === 'FunctionDeclaration') {
+      return true
+    }
+    if (p?.type === 'VariableDeclarator') {
+      values.push(p.init)
+    }
+  }
+  for (const w of ctx.t1.mutation.writesOf(sym)) {
+    const id = ctx.t1.nodeAt(w.range.start)
+    const p = id && file.parentOf(id)
+    if (p?.type === 'AssignmentExpression') {
+      values.push(p.right)
+    }
+  }
+  return values.some((v) => {
+    const f = v && unwrapExpression(v)
+    return (
+      f?.type === 'ArrowFunctionExpression' || f?.type === 'FunctionExpression'
+    )
+  })
 }

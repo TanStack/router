@@ -102,5 +102,10 @@ export function routerPlannerConfigDigest(cfg: RouterPlannerConfig): string {
 
 /** Whether the router planner can change a route module of this configuration (else a host may skip the parse). */
 export function routerPlannerApplies(cfg: RouterPlannerConfig): boolean {
-  return cfg.split || cfg.deleteNodes.length > 0 || cfg.hmr !== null
+  return (
+    cfg.split ||
+    cfg.deleteNodes.length > 0 ||
+    cfg.serverOptions.length > 0 ||
+    cfg.hmr !== null
+  )
 }

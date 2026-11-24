@@ -241,6 +241,12 @@ export interface PlanContext<TName extends string = string> {
     form: EdgeForm,
     origin?: EdgeProvenance['origin'],
   ) => string
+  /**
+   * The module's server-only text: what every planner's recognition calls
+   * server code (`Planner.serverText`), the same in every environment,
+   * computed on first use. One view for every planner (`reassignedServerCode`).
+   */
+  serverText: () => ReadonlyArray<Range>
 }
 
 export class AnalysisPlan implements PlanContext {
@@ -284,6 +290,8 @@ export class AnalysisPlan implements PlanContext {
     readonly fallbacks: ReadonlyArray<FallbackRecord>,
     /** The module as messages name it (`displayPath`). */
     readonly displayPath: string = identity.path,
+    /** `PlanContext.serverText` (none without planners: a test's plan). */
+    readonly serverText: () => ReadonlyArray<Range> = () => [],
   ) {
     this.t1 = analysis.t1()
     this.symbols = this.t1.symbols

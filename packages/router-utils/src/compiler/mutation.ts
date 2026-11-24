@@ -11,7 +11,8 @@
  * asks it for the planners' server code passed by name.
  */
 import { unwrapExpression } from './source'
-import type { ClassifiedRef, RefIndex, Tier1 } from './analysis'
+import type { ClassifiedRef, RefIndex } from './analysis'
+import type { PlanContext } from './plan'
 import type { Range } from './header'
 import type { SymbolId } from './symbols'
 import type { Node } from 'yuku'
@@ -78,24 +79,27 @@ function counts(
  * `.handler(h as any)` passes `h` all the same) when the client keeps
  * assignments of it that only server code needs: the module writes it
  * explicitly (`h = …`, `h ??= …`, a destructuring target, in any function)
- * outside `serverCode`, the module's server-only text, and nothing the
- * client keeps for its own sake reads it: no read outside `serverCode` and
- * the top-level statements writing it (`h = wrap(h)`, `if (!h) h = …`), no
- * export. Such assignments are statements, which the client output keeps
- * with what they read (R154), so the server code they assign ships to the
- * client. A planner refuses every argument it names, in every compile
- * (SPEC J4.5): the verdict reads the source only. A binding the client reads
- * anyway (a validator a form uses too) ships with its assignments whatever
- * the planner does; assignments inside server code leave the client with
- * it. A Solid `ref={h}` is no explicit assignment (Solid sets it when the
- * element renders), and the element reads `h`. (A `const` alias or a
- * closure calling `h` is such a read: no rule follows the name further.)
+ * outside the module's server-only text (`PlanContext.serverText`, every
+ * planner's), and nothing the client keeps for its own sake reads it. That
+ * is no export, and no read outside the server-only text, the binding's own
+ * declarator, and the assignments: each write's statement within its
+ * function (`h = wrap(h)`) and the test of an `if` it is the branch of
+ * (`if (!h) h = …`). Such assignments are statements, which the client
+ * output keeps with what they read (R154), so the server code they assign
+ * ships to the client. A planner refuses every argument it names, in every
+ * compile (SPEC J4.5): the verdict reads the source only. A binding the
+ * client reads anyway (a form calling the validator it also passes) ships
+ * with its assignments whatever the planner does; assignments inside
+ * server code leave the client with it. A Solid `ref={h}` is no explicit
+ * assignment (Solid sets it when the element renders), and the element
+ * reads `h`. (A `const` alias or a closure calling `h` is such a read: no
+ * rule follows the name further.)
  */
 export function reassignedServerCode(
-  t1: Tier1,
+  ctx: PlanContext,
   arg: Node,
-  serverCode: ReadonlyArray<Range>,
 ): SymbolId | null {
+  const { t1 } = ctx
   const named = unwrapExpression(arg)
   if (named.type !== 'Identifier') {
     return null
@@ -110,24 +114,91 @@ export function reassignedServerCode(
   ) {
     return null
   }
-  const inServerCode = (r: ClassifiedRef) => within(r.range, serverCode)
-  const kept = t1.mutation.writesOf(sym).filter((w) => !inServerCode(w))
-  if (kept.length === 0) {
-    return null
-  }
-  const writing = t1.items
-    .map((item) => item.nodeRange)
-    .filter((statement) => kept.some((w) => within(w.range, [statement])))
-  const readByClient =
+  const serverText = ctx.serverText()
+  const kept = t1.mutation
+    .writesOf(sym)
+    .filter((w) => !within(w.range, serverText))
+  if (
+    kept.length === 0 ||
     t1.refs.refsOf(sym).some((r) => r.kind === 'exportSpecifier') ||
     (t1.declaringUnits.get(sym) ?? []).some(
       (u) => t1.units[u]!.exported.length > 0,
-    ) ||
-    t1.refs
-      .valueRefsOf(sym)
-      .some((r) => !inServerCode(r) && !within(r.range, writing))
-  return readByClient ? null : sym
+    )
+  ) {
+    return null
+  }
+  const own = [
+    ...kept.flatMap((w) => assignmentText(ctx, w.range)),
+    ...declaratorText(ctx, sym),
+  ]
+  return t1.refs
+    .valueRefsOf(sym)
+    .some((r) => !within(r.range, serverText) && !within(r.range, own))
+    ? null
+    : sym
 }
+
+/**
+ * The text a write at `at` belongs to: its statement (a `for` head only),
+ * with the test of the `if` whose branch that is, never past the function
+ * or class around it (where none: the expression below that boundary).
+ */
+function assignmentText(ctx: PlanContext, at: Range): Array<Range> {
+  const file = ctx.analysis.file
+  let below = ctx.t1.nodeAt(at.start)
+  if (below === null) {
+    return [at]
+  }
+  for (let n = file.parentOf(below); n !== null; n = file.parentOf(n)) {
+    if (BOUNDARY.has(n.type)) {
+      break
+    }
+    if (n.type.endsWith('Statement') || n.type === 'VariableDeclaration') {
+      const text: Array<Range> = [
+        n.type === 'ForInStatement' || n.type === 'ForOfStatement'
+          ? { start: n.start, end: n.body.start }
+          : n,
+      ]
+      let branchOf = file.parentOf(n)
+      if (branchOf?.type === 'BlockStatement') {
+        branchOf = file.parentOf(branchOf)
+      }
+      if (branchOf?.type === 'IfStatement') {
+        text.push(branchOf.test)
+      }
+      return text
+    }
+    below = n
+  }
+  return [below]
+}
+
+/** A local binding's own declarator (a top-level one's reads are no `valueRefsOf`). */
+function declaratorText(ctx: PlanContext, sym: SymbolId): Array<Range> {
+  const file = ctx.analysis.file
+  return (ctx.symbols.binding(sym)?.declarations ?? []).flatMap((name) => {
+    for (let n = file.parentOf(name); n !== null; n = file.parentOf(n)) {
+      if (n.type === 'VariableDeclarator' || n.type === 'FunctionDeclaration') {
+        return [n]
+      }
+      if (BOUNDARY.has(n.type) || n.type.endsWith('Statement')) {
+        break
+      }
+    }
+    return []
+  })
+}
+
+/** What a write's statement does not reach past: code that runs another time. */
+const BOUNDARY: ReadonlySet<string> = new Set([
+  'ArrowFunctionExpression',
+  'FunctionExpression',
+  'FunctionDeclaration',
+  'ClassDeclaration',
+  'ClassExpression',
+  'StaticBlock',
+  'PropertyDefinition',
+])
 
 function within(range: Range, texts: ReadonlyArray<Range>): boolean {
   return texts.some((t) => t.start <= range.start && range.end <= t.end)

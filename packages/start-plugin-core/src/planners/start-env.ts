@@ -42,7 +42,12 @@ import {
   startRecognizer,
 } from '../compiler/recognizer'
 import { prefetchStartValues } from '../compiler/prefetch'
-import { isFunctionNode, startAnalysisOf } from '../compiler/start-analysis'
+import {
+  compilesIsoFn,
+  isFunctionNode,
+  serverCodeArgs,
+  startAnalysisOf,
+} from '../compiler/start-analysis'
 import { devFunctionId, gateToken, placeholderId } from '../server-fns/ids'
 import {
   defaultFunctionId,
@@ -59,7 +64,12 @@ import type {
   NamespaceEscape,
   StartPrefetch,
 } from '../compiler/prefetch'
-import type { Chain, Escape, EscapeReason } from '../compiler/start-analysis'
+import type {
+  Chain,
+  Escape,
+  EscapeReason,
+  ServerCodeArg,
+} from '../compiler/start-analysis'
 import type { ProviderModule, ServerFnFact } from '../server-fns/registry'
 import type {
   AbstractValue,
@@ -432,6 +442,10 @@ export function startEnvPlanner(opts: {
       planStartEnv(ctx, ctx.config, table)
     },
     serverCode: (ctx) => startServerCode(ctx, table),
+    serverText: (ctx) =>
+      serverCodeArgs(startAnalysisOf(ctx, table), table).map(({ arg }) =>
+        rangeOf(arg),
+      ),
   }
 }
 
@@ -476,11 +490,8 @@ function planStartEnv(
   if (uses.length > 0) {
     facts.uses = uses
   }
-  /**
-   * The server-only text the client compile erases, with the API it is
-   * written in (step 6's parameter check reads it).
-   */
-  const erased: Array<{ range: Range; api: string }> = []
+  /** The module's server-only arguments: the client compile erases those it compiles (steps 1-4, 2b). */
+  const serverCode = serverCodeArgs(analysis, table)
 
   const diag = (message: string, range: Range) =>
     ctx.diagnostic({ severity: 'error', message, range, by })
@@ -635,7 +646,6 @@ function planStartEnv(
         continue
       }
       if (role === 'client') {
-        erased.push({ range: rangeOf(link.arg), api: `.${link.method}()` })
         // (the link goes with it)
         rewrites.placeholder({
           range: { start: link.member.object.end, end: link.call.end },
@@ -793,14 +803,6 @@ function planStartEnv(
       continue
     }
     const X = chain.terminal
-    if (!isServer) {
-      for (const l of chain.links) {
-        if (l.method === 'server' && l.arg !== null) {
-          // (erased with the rest of the chain, below)
-          erased.push({ range: rangeOf(l.arg), api: '.server()' })
-        }
-      }
-    }
     const link = chain.links.find((l) => l.method === wantLink)
     if (link) {
       if (link.arg === null || link.argIsSpread) {
@@ -853,10 +855,6 @@ function planStartEnv(
         by,
       })
     } else {
-      if (c.arg !== null && c.kind === 'server') {
-        // (the stub below is the call's text)
-        erased.push({ range: rangeOf(c.arg), api: 'createServerOnlyFn()' })
-      }
       const message = `create${c.kind === 'server' ? 'Server' : 'Client'}OnlyFn() functions can only be called on the ${c.kind}!`
       ctx.replaceExpression({
         node: c.call,
@@ -902,45 +900,17 @@ function planStartEnv(
   }
 
   // ---- 2a. server code passed by a name the module assigns elsewhere
-  // (`reassignedServerCode`, SPEC J4.5): the argument of every link the
-  // recognizer table keeps on the server and of every `createServerOnlyFn`,
-  // judged on the source, so in every compile alike. Reported after the
-  // server fn rewrites (2c), which skip a refused handler and leave a
-  // handler to the hoist check where it refuses the server fn's creation
-  // (a local, or no single creation: that error first) or the env erases
-  // the site
-  const serverCode: Array<{ arg: Node; api: string; value: string }> = []
-  for (const chain of analysis.chains) {
-    if (chain.unsupported) {
-      continue
-    }
-    for (const { receiver, method, arg } of chain.links) {
-      const kind = receiver.t === 'builder' ? receiver.kind : receiver.t
-      const links = ownEntry(table.builderLinks ?? {}, kind)
-      if (arg !== null && links && ownEntry(links, method) === 'server') {
-        const value = ownEntry(SERVER_CODE_VALUES, `${kind}.${method}`) ?? '…'
-        serverCode.push({ arg, api: `.${method}(${value})`, value })
-      }
-    }
-  }
-  for (const { kind, arg } of analysis.envOnlyCalls) {
-    if (kind === 'server' && arg !== null) {
-      serverCode.push({
-        arg,
-        api: 'createServerOnlyFn(() => …)',
-        value: '() => …',
-      })
-    }
-  }
-  const serverCodeTexts = serverCode.map(({ arg }) => rangeOf(arg))
-  const reassigned = new Map<
-    Node,
-    { sym: SymbolId; api: string; value: string }
-  >()
-  for (const { arg, api, value } of serverCode) {
-    const sym = reassignedServerCode(t1, arg, serverCodeTexts)
+  // (`reassignedServerCode`, SPEC J4.5), at every server-only argument of a
+  // site the compile replaces, judged on the source, so in every compile
+  // alike. Reported after the server fn rewrites (2c), which skip a refused
+  // handler and leave a handler to the hoist check where it refuses the
+  // server fn's creation (a local, or no single creation: that error first)
+  // or the env erases the site
+  const reassigned = new Map<Node, { sym: SymbolId; at: ServerCodeArg }>()
+  for (const at of serverCode) {
+    const sym = at.compiled ? reassignedServerCode(ctx, at.arg) : null
     if (sym !== null) {
-      reassigned.set(arg, { sym, api, value })
+      reassigned.set(at.arg, { sym, at })
     }
   }
 
@@ -1025,7 +995,6 @@ function planStartEnv(
       // ours would scope it, but a later transform may print them away:
       // @swc/core does)
       const call = site.handlerCall
-      erased.push({ range: site.stubbed, api: '.handler()' })
       rewrites.edit({
         range: rangeOf(call),
         body: [
@@ -1194,10 +1163,10 @@ function planStartEnv(
   }
 
   // ---- 2c. the refusals of 2a
-  for (const [arg, { sym, api, value }] of reassigned) {
+  for (const [arg, { sym, at }] of reassigned) {
     ctx.diagnostic({
       severity: 'error',
-      message: reassignedServerCodeMessage(ctx.symbols.name(sym), api, value),
+      message: reassignedServerCodeMessage(ctx.symbols.name(sym), at),
       range: rangeOf(arg),
       by,
       code: 'start-server-code-reassigned',
@@ -1269,7 +1238,12 @@ function planStartEnv(
       SymbolId,
       { name: Node; fn: Node; direct: Node | null; api: string }
     >()
-    for (const { range: text, api } of erased) {
+    for (const { arg, position, api, compiled } of serverCode) {
+      // (what the client erases)
+      if (!compiled || position === 'serverFn.handler') {
+        continue
+      }
+      const text = rangeOf(arg)
       for (const { kind, sym, range } of t1.refs.refsIn(text)) {
         const param =
           kind === 'value' &&
@@ -1304,7 +1278,7 @@ function planStartEnv(
         ctx.liveDiagnostic(
           {
             severity: 'warning',
-            message: `Only server code reads \`${param}\`. Arguments at calls included in client code can be visible to the browser. Public labels are fine. Read secrets inside \`${api}\`.`,
+            message: `Only server code reads \`${param}\`. Arguments at calls included in client code can be visible to the browser. Public labels are fine. Read secrets inside \`${api}()\`.`,
             range: rangeOf(name),
             by,
             code: 'start-server-param',
@@ -1321,22 +1295,23 @@ function planStartEnv(
   ctx.setFacts(START_ENV, facts)
 }
 
-/** Each server-only link's argument written in place, by builder kind and method (`reassignedServerCodeMessage`). */
+/** Each server-only argument written in place, by position (`ServerCodeArg.position`). */
 const SERVER_CODE_VALUES: Readonly<Record<string, string>> = {
   'serverFn.handler': 'async () => …',
   'serverFn.validator': '(data) => …',
   'middleware.server': 'async ({ next }) => next()',
   'middleware.validator': '(data) => …',
   'isoFn.server': '() => …',
+  serverOnly: '() => …',
 }
 
-/** The error for server code passed by a name the module assigns elsewhere, at `api` (as written in place). */
+/** The error for server code passed by a name the module assigns elsewhere, at `at` (its API as written in place). */
 function reassignedServerCodeMessage(
   binding: string,
-  api: string,
-  value: string,
+  at: ServerCodeArg,
 ): string {
-  return `\`${binding}\` is assigned elsewhere in this module, so the server code it holds can ship to the client: the client output can keep the assignments of \`${binding}\` and the code they reference. Pass it written in place (\`${api}\`), or define it once with a \`const\` (\`const ${binding} = wrap(${value})\`, \`const ${binding} = condition ? a : b\`).`
+  const value = ownEntry(SERVER_CODE_VALUES, at.position) ?? '…'
+  return `\`${binding}\` is assigned elsewhere in this module, so the server code it holds can ship to the client: the client output can keep the assignments of \`${binding}\` and the code they reference. Pass it written in place (\`${at.api}(${value})\`), or define it once with a \`const\` (\`const ${binding} = wrap(${value})\`, \`const ${binding} = condition ? a : b\`).`
 }
 
 /** The node on exactly `range`. */
@@ -1768,22 +1743,6 @@ function serverFnFact(
     name,
     provider,
   }
-}
-
-/**
- * Whether the compile replaces an isomorphic fn chain. One its computed
- * member ends after links (`.client(fn)['name']`) is compiled, and the member
- * reads the compiled value, as a dot member does; one ending at a computed
- * member right after its factory call or stored value
- * (`createIsomorphicFn()['server'](…)`) is left to the runtime. The client
- * reports both uses (`start-escape:computed`).
- */
-function compilesIsoFn(chain: Chain): boolean {
-  const v = chain.terminalValue
-  return (
-    (v.t === 'isoFn' || (v.t === 'builder' && v.kind === 'isoFn')) &&
-    (!chain.unsupported || chain.links.length > 0)
-  )
 }
 
 /** The chain a terminal stands for: the last operand of a sequence, inside the wrappers a value passes unchanged (`isExpressionWrapper`). */

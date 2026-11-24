@@ -75,6 +75,23 @@ export const fn = createServerFn().handler(h)
 `,
   ],
   [
+    'a write a block guarded by the binding holds',
+    `let h: undefined | (() => Promise<string>)
+if (!h) {
+  h = async () => db.x()
+}
+export const fn = createServerFn().handler(h)
+`,
+  ],
+  [
+    'a wrapper of itself in a function',
+    `const withLogging = <T,>(f: T) => f
+let h = async () => db.x()
+export function instrument() { h = withLogging(h) }
+export const fn = createServerFn().handler(h)
+`,
+  ],
+  [
     'a logical assignment',
     `let h: undefined | (() => Promise<string>)
 h ??= async () => db.x()
@@ -344,6 +361,25 @@ describe('Vite: every compile refuses server code passed by a name the module as
     )
   })
 
+  // the local reads itself in its own declarator only
+  test('createServerOnlyFn(…) on a local that reads itself in its declarator', async () => {
+    const source = `${head}export function make(replica: boolean) {
+  let impl = (): unknown => impl
+  if (replica) { impl = () => db.x() }
+  return createServerOnlyFn(impl)
+}
+`
+    const startCase = await (
+      await host()
+    ).case({ ...dbFile, 'module.tsx': source })
+    await expectRefused(
+      startCase,
+      source,
+      ['client', 'ssr'],
+      'createServerOnlyFn(impl)',
+    )
+  })
+
   // the client erases the outer handler, and the server fn with it
   test('a server fn inside another handler, on a reassigned local, compiles on the client', async () => {
     const source = `${head}export const outer = createServerFn().handler(async () => {
@@ -390,6 +426,27 @@ if (import.meta.env.DEV) schema = (data: unknown) => String(data).trim()
 export const fn = createServerFn().validator(schema).handler(async () => 'ok')
 export function Form() {
   return <p>{schema('form')}</p>
+}
+`,
+    ],
+    [
+      'a validator a function updates and reads',
+      `let schema = (data: unknown) => String(data)
+export function preview(mode: string, input: unknown) {
+  if (mode === 'strict') schema = (data: unknown) => String(data).trim()
+  return schema(input)
+}
+export const fn = createServerFn().validator(schema).handler(async () => 'ok')
+`,
+    ],
+    [
+      "a component's formatter it updates and renders",
+      `export function Page({ strict }: { strict: boolean }) {
+  let format = (v: string) => v
+  if (strict) format = (v: string) => v.trim()
+  const read = createServerOnlyFn(format)
+  void read
+  return <p>{format('page')}</p>
 }
 `,
     ],
@@ -508,6 +565,77 @@ export const Route = createFileRoute('/reassigned-headers')({
 `,
     at: 'headers: pickHeaders',
   },
+  'src/routes/reassigned-create-handlers.tsx': {
+    source: `${routeHead}let get = async () => new Response(db.y())
+get = async () => new Response(db.x())
+export const Route = createFileRoute('/reassigned-create-handlers')({
+  server: {
+    handlers: ({ createHandlers }) =>
+      createHandlers({ GET: { middleware: [], handler: get } }),
+  },
+  component: () => <p>page</p>,
+})
+`,
+    at: 'handler: get',
+  },
+  'src/routes/reassigned-spread.tsx': {
+    source: `${routeHead}let more: Record<string, () => Response> = { GET: () => new Response(db.y()) }
+more = { GET: () => new Response(db.x()) }
+export const Route = createFileRoute('/reassigned-spread')({
+  server: { handlers: { ...more, POST: () => new Response('post') } },
+  component: () => <p>page</p>,
+})
+`,
+    at: '...more',
+  },
+  'src/routes/reassigned-middleware.tsx': {
+    source: `${routeHead}import { createMiddleware } from '@tanstack/react-start'
+const guard = (rule: string) => createMiddleware().server(({ next }) => next({ context: { rule } }))
+let auth = guard(db.y())
+auth = guard(db.x())
+export const Route = createFileRoute('/reassigned-middleware')({
+  server: { middleware: [auth], handlers: { GET: () => new Response('get') } },
+  component: () => <p>page</p>,
+})
+`,
+    at: 'middleware: [auth]',
+  },
+  'src/routes/reassigned-ssr-function.tsx': {
+    source: `${routeHead}let decide = () => true
+decide = () => db.x() === 'MARK_DB_X'
+export const Route = createFileRoute('/reassigned-ssr-function')({
+  ssr: decide,
+  component: () => <p>page</p>,
+})
+`,
+    at: 'ssr: decide',
+  },
+  // the other planner's server code reads the binding: no client read (one
+  // view of the module's server-only text), in both directions
+  'src/routes/reassigned-read-by-server-only-fn.tsx': {
+    source: `${routeHead}import { createServerOnlyFn } from '@tanstack/react-start'
+let pickHeaders = () => ({ 'x-db': db.y() })
+pickHeaders = () => ({ 'x-db': db.x() })
+export const readHeaders = createServerOnlyFn(() => pickHeaders())
+export const Route = createFileRoute('/reassigned-read-by-server-only-fn')({
+  headers: pickHeaders,
+  component: () => <p>page</p>,
+})
+`,
+    at: 'headers: pickHeaders',
+  },
+  'src/routes/reassigned-read-by-route-handler.tsx': {
+    source: `${routeHead}import { createServerOnlyFn } from '@tanstack/react-start'
+let format = (v: string) => db.y() + v
+format = (v: string) => db.x() + v
+export const read = createServerOnlyFn(format)
+export const Route = createFileRoute('/reassigned-read-by-route-handler')({
+  server: { handlers: { GET: () => new Response(format('get')) } },
+  component: () => <p>page</p>,
+})
+`,
+    at: 'createServerOnlyFn(format)',
+  },
 }
 
 describe("Vite: a route's server options by a name the module assigns", () => {
@@ -556,7 +684,53 @@ export const Route = createFileRoute('/const-get')({
   component: () => <p>page</p>,
 })
 `,
+      'src/routes/written-by-handler.tsx': `${routeHead}import { createServerOnlyFn } from '@tanstack/react-start'
+let format = (v: string) => v
+export const read = createServerOnlyFn(format)
+export const Route = createFileRoute('/written-by-handler')({
+  server: {
+    handlers: {
+      POST: () => {
+        format = (v: string) => db.x() + v
+        return new Response('ok')
+      },
     },
+  },
+  component: () => <p>page</p>,
+})
+`,
+      'src/routes/ssr-flag.tsx': `import { createFileRoute } from '@tanstack/react-router'
+let ssr = true
+if (import.meta.env.DEV) ssr = false
+export const Route = createFileRoute('/ssr-flag')({
+  ssr,
+  component: () => <p>page</p>,
+})
+`,
+      'src/routes/const-create-handlers.tsx': `${routeHead}const get = import.meta.env.DEV
+  ? async () => new Response(db.x())
+  : async () => new Response(db.y())
+export const Route = createFileRoute('/const-create-handlers')({
+  server: {
+    handlers: ({ createHandlers }) =>
+      createHandlers({ GET: { middleware: [], handler: get } }),
+  },
+  component: () => <p>page</p>,
+})
+`,
+    },
+  })
+
+  // only server code assigns it, or it holds no server code
+  test.each([
+    'src/routes/written-by-handler.tsx',
+    'src/routes/ssr-flag.tsx',
+    'src/routes/const-create-handlers.tsx',
+  ])('%s compiles in every environment', async (file) => {
+    const { host: dev } = await host()
+    for (const environment of ['client', 'ssr'] as const) {
+      await dev.transform(`/${file}`, environment)
+    }
   })
 
   test('compiles, and the client loads no server code', async () => {

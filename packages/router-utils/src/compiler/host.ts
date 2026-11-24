@@ -23,6 +23,7 @@ import type {
 } from './cache'
 import type { ModuleAnalysis } from './analysis'
 import type { Diagnostic } from './diagnostics'
+import type { Range } from './header'
 import type { Lang, PlanKey, SourceIdentity } from './identity'
 import type {
   EmitPlan,
@@ -341,6 +342,14 @@ export interface Planner<TName extends string = any> {
    * `plan`.
    */
   serverCode?: (ctx: PlanContext<TName>) => ReadonlyArray<ServerOnlyText>
+  /**
+   * The text the planner's recognition calls server code, whatever this
+   * environment does with it (what Start's client erases): its part of
+   * `PlanContext.serverText`. Asked during planning, at most once per
+   * plan, with a context whose diagnostics are dropped and that has no
+   * `serverText` of its own.
+   */
+  serverText?: (ctx: PlanContext<TName>) => ReadonlyArray<Range>
   /**
    * Phase C, once per output: `edges` holds this compile's edges of every
    * output (`edges[output]` are this one's; a logical edge can appear in

@@ -46,6 +46,7 @@ import { verifyPlan } from './verify'
 import { checkServerCode } from './server-code'
 import type { CacheEntry, Settled } from './cache'
 import type { Diagnostic } from './diagnostics'
+import type { Range } from './header'
 import type {
   EmitPlan,
   EnvInfo,
@@ -818,7 +819,8 @@ function planRound(
   input: CompileInput,
   displayFile: string,
 ): AnalysisPlan {
-  const plan = new AnalysisPlan(
+  let serverText: ReadonlyArray<Range> | undefined
+  const plan: AnalysisPlan = new AnalysisPlan(
     t0,
     identity,
     env,
@@ -826,6 +828,20 @@ function planRound(
     prefetched as PlannerPrefetches,
     fallbacks,
     displayFile,
+    () =>
+      (serverText ??= planners.flatMap(
+        (p) =>
+          p.serverText?.({
+            ...withConfig(plan, input.config.perPlanner[p.name]),
+            diagnostic: () => {},
+            liveDiagnostic: () => {},
+            serverText: () => {
+              throw internalError(
+                `The planner ${p.name} asked for the server-only text while giving its own`,
+              )
+            },
+          }) ?? [],
+      )),
   )
   for (const p of planners) {
     p.plan(withConfig(plan, input.config.perPlanner[p.name]))
@@ -863,6 +879,7 @@ function withConfig(plan: AnalysisPlan, config: unknown): PlanContext {
     diagnostic: (d) => plan.diagnostic(d),
     liveDiagnostic: (d, when) => plan.liveDiagnostic(d, when),
     edgeKey: (raw, form, origin) => plan.edgeKey(raw, form, origin),
+    serverText: () => plan.serverText(),
   }
 }
 

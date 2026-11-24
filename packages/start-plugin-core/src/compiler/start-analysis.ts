@@ -17,6 +17,7 @@ import {
   ValueAnalysis,
   isExpressionWrapper,
   isKnownSpecifier,
+  ownEntry,
   recognizeImport,
   staticPropertyKey,
 } from '@tanstack/router-utils/compiler'
@@ -134,6 +135,73 @@ export function isFunctionNode(n: Node): n is Extract<
     n.type === 'ArrowFunctionExpression' ||
     n.type === 'FunctionExpression' ||
     n.type === 'FunctionDeclaration'
+  )
+}
+
+/**
+ * A server-only argument the analysis recognises: of a link the recognizer
+ * table keeps on the server (`builderLinks`: a server fn's `.handler()` and
+ * `.validator()`, a middleware's `.server()` and `.validator()`, an
+ * isomorphic fn's `.server()`), or of a `createServerOnlyFn` call. The one
+ * list of them: start-env's checks, its part of the module's server-only
+ * text, and the server-code net's recorder.
+ */
+export interface ServerCodeArg {
+  arg: Node
+  /** The builder kind and method (`serverFn.handler`), or `serverOnly`. */
+  position: string
+  /** The API as written: `.handler`, `.server`, `createServerOnlyFn`. */
+  api: string
+  /** start-env compiles the site: its chain is followed whole, or it is an isomorphic fn's (`compilesIsoFn`). */
+  compiled: boolean
+}
+
+/** Every server-only argument of `analysis`, chains first, in their order. */
+export function serverCodeArgs(
+  analysis: StartAnalysis,
+  table: RecognizerTable,
+): Array<ServerCodeArg> {
+  const args: Array<ServerCodeArg> = []
+  for (const chain of analysis.chains) {
+    for (const { receiver, method, arg } of chain.links) {
+      const kind = receiver.t === 'builder' ? receiver.kind : receiver.t
+      const links = ownEntry(table.builderLinks ?? {}, kind)
+      if (arg !== null && links && ownEntry(links, method) === 'server') {
+        args.push({
+          arg,
+          position: `${kind}.${method}`,
+          api: `.${method}`,
+          compiled: !chain.unsupported || compilesIsoFn(chain),
+        })
+      }
+    }
+  }
+  for (const { kind, arg } of analysis.envOnlyCalls) {
+    if (kind === 'server' && arg !== null) {
+      args.push({
+        arg,
+        position: START_KINDS.serverOnly,
+        api: 'createServerOnlyFn',
+        compiled: true,
+      })
+    }
+  }
+  return args
+}
+
+/**
+ * Whether start-env replaces an isomorphic fn chain. One its computed
+ * member ends after links (`.client(fn)['name']`) is compiled, and the member
+ * reads the compiled value, as a dot member does; one ending at a computed
+ * member right after its factory call or stored value
+ * (`createIsomorphicFn()['server'](…)`) is left to the runtime. The client
+ * reports both uses (`start-escape:computed`).
+ */
+export function compilesIsoFn(chain: Chain): boolean {
+  const v = chain.terminalValue
+  return (
+    (v.t === 'isoFn' || (v.t === 'builder' && v.kind === 'isoFn')) &&
+    (!chain.unsupported || chain.links.length > 0)
   )
 }
 

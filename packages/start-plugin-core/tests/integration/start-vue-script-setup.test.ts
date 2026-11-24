@@ -195,6 +195,23 @@ console.log(fn)
   },
 ]
 
+/** A component whose two-line `script` declares `impl`, which the block passes to a server-only fn (line 5 of the file). */
+const reassignedSfc = (
+  lang: 'ts' | undefined,
+  script: string,
+  template: string,
+) => `<script setup${lang ? ` lang="${lang}"` : ''}>
+import { createServerOnlyFn } from '@tanstack/vue-start'
+${script}
+const read = createServerOnlyFn(impl)
+console.log(read)
+</script>
+
+<template>
+  ${template}
+</template>
+`
+
 /** One dev host for the cases below (each case is its own module). */
 let devHost: Promise<StartHost> | undefined
 async function sfcCase(sfc: string) {
@@ -255,27 +272,41 @@ console.log(fn)
   // the setup function keeps the `let` and its assignments on the client: a
   // server-only fn on it is refused for the assignment (no creation rule
   // applies to it)
-  test('a server-only fn on a reassigned `let` of a <script setup> block is refused for the assignment', async () => {
-    const startCase = await sfcCase(`<script setup>
-import { createServerOnlyFn } from '@tanstack/vue-start'
-let impl = () => 'MARK_SERVER_SECRET'
-impl = () => 'MARK_SERVER_SECRET_2'
-const read = createServerOnlyFn(impl)
-console.log(read)
-</script>
-
-<template>
-  <p>page</p>
-</template>
-`)
-    const failure = await compileError(startCase, 'client', 'Page.vue')
-    expect(failure).toBeInstanceOf(Error)
-    // (at the argument, line 5 of the file)
-    expectDiagnostic(
-      [...diagnosticsOf(failure!.error), ...diagnosticsOf(failure!.reported)],
-      { position: { line: 5 } },
-    )
-  })
+  // Vue's development output hands every binding of the block to the
+  // template (a getter and a setter each): the client keeps the binding, and
+  // reads it, so a server-only fn on a `let` is not refused here, assigned or
+  // not; the inlined production template reads only what it renders (below)
+  test.each([
+    {
+      name: 'a `let` nothing assigns again',
+      script: `// (nothing assigns it)
+let impl = (): string => 'MARK_SERVER_SECRET'`,
+      template: '<p>page</p>',
+    },
+    {
+      name: 'a formatter the block updates and the template renders',
+      script: `let impl = (v: string): string => v
+if (import.meta.env.DEV) impl = (v: string): string => v.trim()`,
+      template: "<p>{{ impl('page') }}</p>",
+    },
+    {
+      name: 'a `let` the block assigns again',
+      script: `let impl = (): string => 'MARK_SERVER_SECRET'
+impl = (): string => 'MARK_SERVER_SECRET_2'`,
+      template: '<p>page</p>',
+    },
+  ])(
+    'a server-only fn on $name of a <script setup lang="ts"> block compiles',
+    async ({ script, template }) => {
+      const startCase = await sfcCase(reassignedSfc('ts', script, template))
+      for (const environment of ['client', 'ssr'] as const) {
+        expect(
+          await compileError(startCase, environment, 'Page.vue'),
+          environment,
+        ).toBeUndefined()
+      }
+    },
+  )
 
   test.each(recipes)('$name compiles', async ({ sfc }) => {
     const startCase = await sfcCase(sfc)
@@ -352,4 +383,59 @@ describe('vite build with Vue devtools', () => {
     },
     60_000,
   )
+})
+
+/**
+ * A production build without devtools: Vue inlines the template in the
+ * setup function, which reads only what the template renders.
+ */
+describe('vite build', () => {
+  const build = (sfc: string) =>
+    buildStart({
+      framework: 'vue',
+      files: {
+        'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/vue-router'
+export const Route = createRootRoute()
+`,
+        'src/Page.vue': sfc,
+        'src/entry.ts': `export { default as Page } from './Page.vue'\n`,
+      },
+      entry: 'src/entry.ts',
+      viteConfig: { plugins: [vue()] },
+    })
+
+  test('a server-only fn on a `let` the block assigns again fails the build at the argument', async () => {
+    const error = await build(
+      reassignedSfc(
+        'ts',
+        `let impl = (): string => 'MARK_SERVER_SECRET'
+impl = (): string => 'MARK_SERVER_SECRET_2'`,
+        '<p>page</p>',
+      ),
+    ).then(
+      () => expect.fail('the build succeeded'),
+      (e: unknown) => e,
+    )
+    if (!(error instanceof StartBuildError)) {
+      throw error
+    }
+    expectDiagnostic(error.diagnostics, {
+      severity: 'error',
+      file: 'src/Page.vue',
+      root: error.root,
+      position: { line: 5 },
+    })
+  }, 60_000)
+
+  test('a formatter the block updates and the template renders builds', async () => {
+    const built = await build(
+      reassignedSfc(
+        'ts',
+        `let impl = (v: string): string => v + 'MARK_FORMATTED'
+if (import.meta.env.DEV) impl = (v: string): string => v.trim()`,
+        "<p>{{ impl('page') }}</p>",
+      ),
+    )
+    expect(built.client.where('MARK_FORMATTED')).not.toBe('nowhere')
+  }, 60_000)
 })
