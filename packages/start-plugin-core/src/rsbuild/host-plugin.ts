@@ -113,6 +113,18 @@ interface StartHostPluginOptions {
 
 const PLUGIN_NAME = 'tanstack-start:compiler'
 
+/**
+ * A warning as the compilation holds it: its text as Rspack renders it and
+ * its module. A child compilation's warning that a worker plugin handed to
+ * its owner reads back the same in the owner (`childWarning`).
+ */
+function warningSignature(warning: {
+  message: string
+  module?: { identifier: () => string } | null
+}): string {
+  return `${warning.message}\0${warning.module?.identifier() ?? ''}`
+}
+
 const require = createRequire(import.meta.url)
 
 const COMPILER_PACKAGES = [
@@ -769,13 +781,13 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         void opts.generator.close()
       })
 
-      if (opts.onDevCompileDone) {
-        // (before Rsbuild's own `done` tap, which formats the report once
-        // every compiler is done)
-        compiler.hooks.done.tap({ name: PLUGIN_NAME, stage: -1000 }, () => {
-          session.assignWarnings(environment.name)
-        })
-      }
+      // (before Rsbuild's own `done` tap, which formats the report once
+      // every compiler is done)
+      compiler.hooks.done.tap({ name: PLUGIN_NAME, stage: -1000 }, (stats) => {
+        session.assignWarnings(environment.name, () =>
+          stats.compilation.warnings.map(warningSignature),
+        )
+      })
       compiler.hooks.done.tap(PLUGIN_NAME, (stats) => {
         if (opts.onDevCompileDone) {
           unprinted = { compilation: stats.compilation, reports }
@@ -805,7 +817,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
 
       // a child compiler's compilation (a worker plugin's): its modules
       // compiled as this compiler's, and their warnings are its own, which
-      // its owner takes when it ends
+      // a worker plugin may hand to its owner when it ends
       compiler.hooks.compilation.tap(PLUGIN_NAME, (compilation) => {
         if (compilation.compiler !== compiler) {
           compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) =>
@@ -832,9 +844,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           env.compiled.clear()
         }
         reports = []
-        if (opts.onDevCompileDone) {
-          session.beginWarnings(environment.name, compilation)
-        }
+        session.beginWarnings(environment.name, compilation)
         compilation.hooks.afterSeal.tap(PLUGIN_NAME, () => {
           locateDiagnostics(compilation, WebpackError, LOCATED_DIAGNOSTICS)
         })
@@ -1031,14 +1041,15 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
        * per run (J2.19). The loader emits no warning, so nothing of a kept
        * module is reported twice and nothing is handed over.
        *
-       * A build reports them here, the first compilation to ask
-       * (`claimWarning`). In development the compilation only says what it
-       * could report (`offerWarning`): which compilation carries a warning
-       * is decided as compilers finish (`assignWarnings`), and it counts as
-       * reported once Rsbuild printed that compilation. `child`: a child
-       * compiler's compilation (a worker's), whose modules have records of
-       * their own and whose owner takes its warnings when it ends: it
-       * reports as it seals, on behalf of this compiler's compilation.
+       * The compilation only says what it could report (`offerWarning`):
+       * which compilation carries a warning is decided as compilers finish
+       * (`assignWarnings`), and it counts as reported once that compiler
+       * finished (a build) or Rsbuild printed that compilation
+       * (development). `child`: a child compiler's compilation (a
+       * worker's), whose modules have records of their own and which Rsbuild
+       * does not print: it adds the warnings as it seals, on behalf of this
+       * compiler's compilation, and they count once they reached it (a
+       * worker plugin hands them over, or does not: `childWarning`).
        */
       function reportWarnings(
         compilation: Rspack.Compilation,
@@ -1048,27 +1059,23 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         if (session.warned.size === 0 && session.packageUses.size === 0) {
           return
         }
-        const dev = !!opts.onDevCompileDone
-        /** Whether the warning is reported now; in development, by this compiler's own compilation, it is offered instead (`add` then adds it). */
-        const decides = (key: string, add: () => void): boolean => {
-          if (!dev) {
-            return session.claimWarning(key)
-          }
+        const decide = (key: string, add: () => string): void => {
           if (child) {
-            return session.carryWarning(environment.name, key)
+            session.childWarning(environment.name, key, add)
+          } else {
+            session.offerWarning(environment.name, key, add)
           }
-          session.offerWarning(environment.name, key, add)
-          return false
         }
         let holds: ReturnType<typeof rspackHolds> | undefined
         const held = (module: ModuleLike) =>
           (holds ??= rspackHolds(compilation as never, { clientReferences }))(
             module,
           )
+        /** Adds the warning to the compilation; how it reads back (`warningSignature`), for a child's. */
         const push = (
           module: ModuleLike,
           warning: Omit<LocatedDiagnostic, 'severity'>,
-        ) => {
+        ): string => {
           compilation.warnings.push(
             locatedError(
               WebpackError,
@@ -1077,6 +1084,12 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               LOCATED_DIAGNOSTICS,
             ) as never,
           )
+          if (!child) {
+            return ''
+          }
+          // (Rspack's array of the compilation's warnings has no `at`)
+          const warnings = compilation.warnings
+          return warningSignature(warnings[warnings.length - 1]!)
         }
         // (a child compiler's module has a record key of its own: `recordKey`)
         const mark = child ? '\0' : ''
@@ -1103,9 +1116,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                       column: w.column,
                     }),
                   })
-                if (decides(`${file}\0${w.code ?? ''}\0${w.message}`, add)) {
-                  add()
-                }
+                decide(`${file}\0${w.code ?? ''}\0${w.message}`, add)
               }
             }
           }
@@ -1133,9 +1144,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
           )
           if (warning && root !== undefined) {
             const add = () => push(module, { message: warning.message })
-            if (decides(`\0package\0${root}`, add)) {
-              add()
-            }
+            decide(`\0package\0${root}`, add)
           }
         }
       }
