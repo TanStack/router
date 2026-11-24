@@ -41,7 +41,7 @@
  * stays (the client holds none of the text, check or no check): only its
  * header comment names the check. No planner reads anything of it.
  */
-import { SELF_CHECKS } from './self-checks'
+import { SELF_CHECKS, internalError } from './self-checks'
 import type { Diagnostic } from './diagnostics'
 import type { Planner } from './host'
 import type { EmitPlan, EnvInfo, OutputRecipe, PlanContext } from './plan'
@@ -147,7 +147,7 @@ export function checkServerCode(
       reported.add(text)
       const id = recipe.derivedId ?? canonicalId
       if (SELF_CHECKS) {
-        throw new Error(
+        throw internalError(
           `server code in a client output: ${id} holds ${text.subject} [${text.range.start}, ${text.range.end}) at [${start}, ${end})`,
         )
       }

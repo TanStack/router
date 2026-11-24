@@ -14,7 +14,7 @@
  * copies them by the same rule, with the same roots.
  */
 import { NEED_KINDS } from '../clusters'
-import { SELF_CHECKS } from '../self-checks'
+import { SELF_CHECKS, internalError } from '../self-checks'
 import { Definitions, definedBelow } from './build'
 import { closure, sourceUses } from './closure'
 import { mark } from './mark'
@@ -293,7 +293,7 @@ export class Removal {
       if (SELF_CHECKS) {
         for (let i = 0; i < staysEnv.length; i++) {
           if (staysEnv[i] === 1 && staysEvery[i] === 0) {
-            throw new Error(
+            throw internalError(
               'removal: a definition stays in the env module and in no output',
             )
           }

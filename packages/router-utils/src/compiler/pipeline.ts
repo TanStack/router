@@ -37,8 +37,10 @@ import { registerCompilerStats } from './stats'
 import { exportKeyOf, summaryDigest } from './summary'
 import {
   SELF_CHECKS,
+  internalError,
   invariantDiagnostic,
   invariantViolated,
+  reportedError,
 } from './self-checks'
 import { verifyPlan } from './verify'
 import { checkServerCode } from './server-code'
@@ -160,6 +162,13 @@ export async function compileModule(
       out.superseded = true
     }
     return out
+  } catch (error) {
+    // the one place an internal error becomes one to report
+    throw reportedError(
+      error,
+      tagOf(host),
+      displayPath(identity.path, host.root),
+    )
   } finally {
     cache.end(key)
   }
@@ -696,7 +705,7 @@ async function runAttempt(
     }
     frozen = plan.freeze(rev)
     if (langFromId(input.id) === null && plan.outputs.size > 1) {
-      throw new Error(
+      throw internalError(
         `A plan of ${identity.path}, whose code is no JS/TS of its own, declared a derived output (it would load the file)`,
       )
     }

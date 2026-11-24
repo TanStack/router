@@ -13,6 +13,7 @@ import { SourceText } from './output-builder'
 import { resolveSameFileSpecifier } from './identity'
 import { forEachChild, parseModule, patternIdentifiers } from './source'
 import { hasRuntimeValue } from './symbols'
+import { internalError } from './self-checks'
 import type { Node } from 'yuku'
 import type { SourceIdentity } from './identity'
 import type { AnalysisPlan, EmitPlan, OutputRecipe } from './plan'
@@ -236,7 +237,7 @@ export function verifyPlan(
     problems.push('the planner facts are not JSON data')
   }
   if (problems.length > 0) {
-    throw new Error(
+    throw internalError(
       `compiler invariants violated for ${identity.canonicalId}:\n${problems.join('\n')}`,
     )
   }

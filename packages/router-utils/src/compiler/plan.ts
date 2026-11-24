@@ -14,6 +14,7 @@ import { freezePlan } from './freeze'
 import { RegionTable, RewriteSet } from './rewrite'
 import { destOf, shapeOf } from './expression'
 import { unwrapExpression } from './source'
+import { internalError } from './self-checks'
 import type { Shape } from './expression'
 import type { Node } from 'yuku'
 import type {
@@ -395,7 +396,7 @@ export class AnalysisPlan implements PlanContext {
   addRoot(output: OutputId, root: RootRef): void {
     const decl = this.outputs.get(output)
     if (!decl) {
-      throw new Error(`addRoot: unknown output ${output}`)
+      throw internalError(`addRoot: unknown output ${output}`)
     }
     decl.roots.push(root)
   }

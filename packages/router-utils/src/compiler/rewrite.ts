@@ -17,7 +17,7 @@
  * the erased parts; the point questions climb it from a position's innermost
  * range.
  */
-import { SELF_CHECKS } from './self-checks'
+import { SELF_CHECKS, internalError } from './self-checks'
 import type { Range } from './header'
 import type { OutputKind } from './placement'
 import type { ClassifiedRef, RefContext } from './analysis'
@@ -305,7 +305,7 @@ export class RegionTable {
     if (existing !== undefined) {
       const other = this.regions[existing]!.kind
       if (other !== kind) {
-        throw new Error(
+        throw internalError(
           `conflict: a ${kind} region [${range.start}, ${range.end}) is the ${other} region there`,
         )
       }
@@ -322,7 +322,7 @@ export class RegionTable {
       last.range.end <= range.end &&
       (last.range.start !== range.start || last.range.end !== range.end)
     ) {
-      throw new Error(
+      throw internalError(
         `conflict: a ${kind} region [${range.start}, ${range.end}) holds unit ${last.unit} [${last.range.start}, ${last.range.end}): a region stands inside one statement`,
       )
     }
@@ -452,7 +452,7 @@ export class RegionTable {
       return hit
     }
     if (start < 0 || end > this.root.end) {
-      throw new Error(
+      throw internalError(
         `conflict: ${by} [${start}, ${end}) is outside the module [0, ${this.root.end})`,
       )
     }
@@ -478,7 +478,7 @@ export class RegionTable {
         !(u.start <= start && u.end >= end) &&
         !(u.start >= start && u.end <= end)
       ) {
-        throw new Error(
+        throw internalError(
           `conflict: ${by} [${start}, ${end}) partially overlaps unit ${units[k]!.unit} [${u.start}, ${u.end})`,
         )
       }
@@ -520,7 +520,7 @@ export class RegionTable {
     while (j < siblings.length && siblings[j]!.start < end) {
       const c = siblings[j]!
       if (c.start < start || c.end > end) {
-        throw new Error(
+        throw internalError(
           `conflict: ${by} [${start}, ${end}) partially overlaps ${c.by} [${c.start}, ${c.end})`,
         )
       }
@@ -783,7 +783,7 @@ export class RewriteSet {
     const p: Placeholder = { ...place }
     const node = this.regions.node(place.range, place.by)
     if (node === null) {
-      throw new Error(
+      throw internalError(
         `placeholder of ${place.by} at [${place.range.start}, ${place.range.end}): a place is a range`,
       )
     }
@@ -798,7 +798,7 @@ export class RewriteSet {
     const e = { ...edit }
     if (edit.range.end <= edit.range.start) {
       if (this.regions.unitAt(edit.range.start, edit.range.start) === null) {
-        throw new Error(
+        throw internalError(
           `conflict: an insert of ${edit.by} at ${edit.range.start} stands in no statement's text (no unit holds its position): nothing would read what it names`,
         )
       }
@@ -847,7 +847,7 @@ export class RewriteSet {
           f.parts.every((p) => typeof p === 'string' || own.has(p.sym)),
       )
       if (unit.declares.length > 0 || unit.env || !readsOwn) {
-        throw new Error(
+        throw internalError(
           `generated unit of ${unit.by}: a unit for the env module's readers declares nothing and reads only its own imports`,
         )
       }
@@ -866,13 +866,13 @@ export class RewriteSet {
    */
   claim(claim: RegionClaim): void {
     if (typeof this.generated[claim.owner]!.home === 'object') {
-      throw new Error(
+      throw internalError(
         `region ${claim.region}: a unit for the env module's readers owns no claim (${claim.by})`,
       )
     }
     const prev = this.claims.get(claim.region)
     if (prev) {
-      throw new Error(
+      throw internalError(
         `region ${claim.region} is claimed twice (by ${prev.by} and ${claim.by})`,
       )
     }
@@ -881,7 +881,7 @@ export class RewriteSet {
       claim.by,
     )!
     if (node.claim !== null) {
-      throw new Error(
+      throw internalError(
         `conflict: two claims on [${node.start}, ${node.end}) (by ${node.claim.by} and ${claim.by})`,
       )
     }
@@ -1087,7 +1087,7 @@ function keeps(body: ReadonlyArray<Frag>, range: Range): boolean {
     }
   }
   if (any && SELF_CHECKS) {
-    throw new Error(
+    throw internalError(
       `a body keeps part of [${range.start}, ${range.end}) (a slice cuts a region)`,
     )
   }
@@ -1183,7 +1183,7 @@ export class OutputView {
       return own
     }
     if (own !== null) {
-      throw new Error(
+      throw internalError(
         `conflict: ${own.by} and ${claim.by} both put text at the place of [${n.start}, ${n.end})`,
       )
     }
@@ -1344,7 +1344,7 @@ export class OutputView {
       const n = c!
       if (n.start < a || n.end > b) {
         if (this.active(n)) {
-          throw new Error(
+          throw internalError(
             `conflict: the text [${a}, ${b}) cuts ${n.by} [${n.start}, ${n.end}), which renders otherwise`,
           )
         }
@@ -1684,7 +1684,7 @@ function same<T extends Edit>(found: T | null, e: T, n: RangeNode): T {
     found.expr?.shape !== e.expr?.shape ||
     found.shape !== e.shape
   ) {
-    throw new Error(
+    throw internalError(
       `conflict: ${found.by} and ${e.by} both rewrite [${n.start}, ${n.end}) with different bodies`,
     )
   }

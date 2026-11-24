@@ -6,7 +6,7 @@
  */
 import { BindingFlags } from 'yuku'
 import { hasRuntimeValue, isAmbient } from './declarations'
-import { SELF_CHECKS } from './self-checks'
+import { SELF_CHECKS, internalError } from './self-checks'
 import type { Binding, Scope, SourceFile } from 'yuku'
 
 export { hasRuntimeValue }
@@ -123,7 +123,7 @@ export class SymbolTable {
     // the module's own file (`bindingOf`, `referenceOf`), so it has no
     // warning. It catches compiler bugs and can go once we trust the compiler.
     if (SELF_CHECKS && b.file !== this.file) {
-      throw new Error('SymbolTable.ofBinding: binding of another file')
+      throw internalError('SymbolTable.ofBinding: binding of another file')
     }
     return b.id as SymbolId
   }

@@ -5,6 +5,7 @@
  */
 import { OutputBuilder } from './output-builder'
 import { specifierLiteral } from './strings'
+import { internalError } from './self-checks'
 import type { RawSourceMap, SourceText } from './output-builder'
 import type { EdgeRecord, OutputRecipe, Segment } from './plan'
 
@@ -78,8 +79,8 @@ export function substituteSpecifier(
         (s) => s.k === 'slice' && s.start < end && s.end > start,
       )
       if (partly || !generated) {
-        throw new Error(
-          `Internal compiler error: the import "${edge.specifier}" of ${edge.importerId}:${lineColumn(code, start)} could not be replaced, because an edit of the module covers part of it. Please report this at https://github.com/TanStack/router/issues`,
+        throw internalError(
+          `the import "${edge.specifier}" of ${edge.importerId}:${lineColumn(code, start)} could not be replaced, because an edit of the module covers part of it`,
         )
       }
       continue

@@ -35,6 +35,7 @@ import {
   tokensMeet,
   withRef,
 } from './expression'
+import { internalError } from './self-checks'
 import type { Dest, Role, Shape } from './expression'
 import type { ClassifiedRef, RefContext } from './analysis'
 import type { EdgeView } from './edges'
@@ -1218,7 +1219,7 @@ class Renderer {
             f.range.start < level.start ||
             f.range.end > level.end
           ) {
-            throw new Error(
+            throw internalError(
               `conflict: a body copies [${f.range.start}, ${f.range.end}), outside the text it rewrites${level ? ` [${level.start}, ${level.end})` : ''}`,
             )
           }
@@ -1243,7 +1244,7 @@ class Renderer {
             owner === null ||
             claim.owner !== owner.id
           ) {
-            throw new Error(
+            throw internalError(
               `conflict: a generated unit renders region ${f.id}, which it does not claim`,
             )
           }
@@ -1252,7 +1253,7 @@ class Renderer {
           )!
           if (!this.view.isClaimed(node) && !this.view.isErasedAround(node)) {
             // (claimed for other outputs: its text stands at its place here)
-            throw new Error(
+            throw internalError(
               `conflict: region ${f.id} renders in its owner and at its place in ${this.view.output}`,
             )
           }
@@ -1760,14 +1761,14 @@ class Renderer {
         return `${original}: ${t}`
       case 'exportSpec':
         if (isMember) {
-          throw new Error(
+          throw internalError(
             `cannot export a member expression (${t}) as ${original}`,
           )
         }
         return exportShorthand ? `${t} as ${original}` : t
       case 'declName':
         if (isMember) {
-          throw new Error(
+          throw internalError(
             `a declaration name cannot become a member expression (${t})`,
           )
         }

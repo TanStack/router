@@ -27,9 +27,42 @@ export interface InvariantViolation {
 /** `v`, when the run reports it; in our test runs, throws its detail. */
 export function invariantViolated(v: InvariantViolation): InvariantViolation {
   if (SELF_CHECKS) {
-    throw new Error(v.detail)
+    throw internalError(v.detail)
   }
   return v
+}
+
+const INTERNAL = Symbol.for('tanstack.compiler.internal-error')
+
+/**
+ * The error of a failed internal assertion (only a compiler bug throws it),
+ * `detail` its message: the compile's caller gets it as an internal
+ * compiler error to report (`reportedError`).
+ */
+export function internalError(detail: string): Error {
+  return Object.assign(new Error(detail), { [INTERNAL]: true })
+}
+
+/**
+ * What a failed compile of `file` (as messages name it) throws to its
+ * caller: an internal compiler error (`internalError`) as one a user can act
+ * on (report it, with the file), its detail and stack after that; any other
+ * error (a host's, a plugin's) as it is.
+ */
+export function reportedError(
+  error: unknown,
+  tag: string,
+  file: string,
+): unknown {
+  if (!(error instanceof Error) || !(INTERNAL in error)) {
+    return error
+  }
+  const message = `${tag}Internal compiler error in ${file}. Please report it at https://github.com/TanStack/router/issues with this file and the detail below.\n${error.message}`
+  const reported = new Error(message, { cause: error })
+  const frames = error.stack?.indexOf('\n    at ') ?? -1
+  reported.stack =
+    frames < 0 ? message : `${message}${error.stack!.slice(frames)}`
+  return reported
 }
 
 /** The diagnostic of a module whose compile violated an invariant (`tag` with its space, `file` as messages name it). */

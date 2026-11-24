@@ -76,6 +76,20 @@ describe('a kept slice cuts no edited region', () => {
     )
   })
 
+  // The compile's caller gets one error a user can act on: an internal
+  // error to report, naming the file, with the detail after it.
+  // Source: diagnostics spike (2026-11-24), inventory flag 15, Fable's
+  // change 8.
+  it('fails as an internal compiler error to report, naming the file, with the detail', async () => {
+    const error = await compileIn(MemoryHost, between).then(
+      () => undefined,
+      (e: unknown) => e as Error,
+    )
+    expect(error?.message).toMatch(
+      /^Internal compiler error in \S*mod\.ts\. Please report it at https:\/\/github\.com\/TanStack\/router\/issues with this file and the detail below\.\nconflict: .* cuts /,
+    )
+  })
+
   it("fails the compile on both in users' runs", async () => {
     vi.stubEnv('TSR_COMPILER_VERIFY', undefined)
     vi.resetModules()
