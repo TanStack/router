@@ -182,6 +182,13 @@ export const Page = () => el`,
       code: fnPage('<p>{String((async () => useId())())}</p>'),
       at: 'useId())()',
     },
+    // (a generator's parameters run at the call; its body waits for
+    // `.next()`: Astra review of the hotspot 5 implementation, 3)
+    {
+      name: 'in a default parameter of a generator called in place',
+      code: fnPage('<p>{String((function* (arg = useId()) {})())}</p>'),
+      at: 'useId()) {',
+    },
   ])('a hook call $name: at the call', async ({ code, at }) => {
     await expectRejected(code, at)
   })
@@ -326,6 +333,11 @@ describe('what the children own splits and renders like the source', () => {
       rendered: '<p>5</p>',
     },
     {
+      name: 'a hook in the body of a generator called in place and never resumed',
+      code: fnPage('<p>{String((function* () { useId() })())}</p>'),
+      rendered: '<p>[object Generator]</p>',
+    },
+    {
       name: "an async arrow's own `await`",
       code: fnPage("<p>{typeof (async () => { await fetch('/x') })}</p>"),
       rendered: '<p>function</p>',
@@ -426,6 +438,36 @@ describe('React: a reassigned local read in a function of the children', () => {
       rendered: '<p>1</p>',
       result: [1],
     },
+    {
+      name: 'a var initialised and assigned in an if block before the boundary',
+      code: `${head}export function Page({ user }: { user?: { name: string } }) {
+  var label = 'Guest'
+  if (user) {
+    label = user.name
+  }
+  return <Hydrate when={load()}><button onClick={() => { (globalThis as any).read.push(label) }}>hi</button></Hydrate>
+}`,
+      props: { user: { name: 'Ann' } },
+      rendered: '<button>hi</button>',
+      result: ['Ann'],
+    },
+    {
+      name: 'assigned in a switch that finishes before the boundary',
+      code: `${head}export function Page({ kind }: { kind?: string }) {
+  let label = 'none'
+  switch (kind) {
+    case 'a':
+      label = 'A'
+      break
+    default:
+      label = 'other'
+  }
+  return <Hydrate when={load()}><button onClick={() => { (globalThis as any).read.push(label) }}>hi</button></Hydrate>
+}`,
+      props: { kind: 'a' },
+      rendered: '<button>hi</button>',
+      result: ['A'],
+    },
   ])(
     'builds and reads its value: $name',
     async ({ code, props, rendered, result }) => {
@@ -498,6 +540,43 @@ ${body}
     out.push(<Hydrate key={k} when={load()}>${button}</Hydrate>)
   }
   return <>{out}</>`),
+    },
+    {
+      // (the write passes the write rule: what holds the refusal is the
+      // loop the variable outlives; Fable review of the implementation, L2)
+      name: 'a write before a loop holding the boundary',
+      code: page(`  x = 1
+  const out: Array<unknown> = []
+  for (const k of ['a']) {
+    out.push(<Hydrate key={k} when={load()}>${button}</Hydrate>)
+  }
+  return <>{out}</>`),
+    },
+    {
+      // (the declarator gives the hoisted `var` its value after the
+      // boundary: Astra review of the implementation, 1)
+      name: "a var's initialiser after the boundary, with an assignment before it",
+      code: `${head}export function Page() {
+  var x
+  x = 1
+  const el = <Hydrate when={load()}>${button}</Hydrate>
+  var x = 2
+  return el
+}`,
+    },
+    {
+      // (a `case` selector runs before an earlier `default` branch:
+      // Astra review of the implementation, 2)
+      name: 'the boundary in a case selector, a default branch before it writing',
+      code: page(`  let el: unknown
+  switch (0) {
+    default:
+      x = 1
+      break
+    case (el = <Hydrate when={load()}>${button}</Hydrate>, 1):
+      break
+  }
+  return el as any`),
     },
     {
       name: 'the boundary in a map callback',

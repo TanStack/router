@@ -950,16 +950,27 @@ function declaredWithin(ctx: PlanContext, s: SymbolId, region: Range): boolean {
   return scope !== null && within(scope, region)
 }
 
+/** The statements an ordinary write of decision 3a may sit in, up to the code declaring the variable. */
+const WRITE_CONTAINERS = new Set([
+  'BlockStatement',
+  'IfStatement',
+  'SwitchStatement',
+  'SwitchCase',
+  'TryStatement',
+  'CatchClause',
+])
+
 /**
  * Whether every write of `sym` the output keeps (`live`) is complete when
  * the boundary `b` is created, so the value its placeholder passes is the
  * one any later read sees (decision 3a): each write is an ordinary
- * statement (`x = …`, `x++`) of the code declaring `sym`, also in its
- * blocks, `if`, `switch` and `try`, and ends before the boundary starts;
- * the boundary is in that code too, in no loop the variable outlives. A
- * write in a function or a class may run later (an async function after it
- * returned, a generator when resumed, an instance field when constructed),
- * called in place or not: not complete.
+ * statement (`x = …`, `x++`; a `var`'s initialised declarator too) of the
+ * code declaring `sym`, also in its blocks, `if`, `switch` and `try`, and
+ * ends before the boundary starts; the boundary is in that code too, in no
+ * loop the variable outlives and in no `case` selector (evaluated before an
+ * earlier `default` branch). A write in a function or a class may run later
+ * (an async function after it returned, a generator when resumed, an
+ * instance field when constructed), called in place or not: not complete.
  */
 function writesComplete(
   ctx: PlanContext,
@@ -976,15 +987,20 @@ function writesComplete(
   if (scope === null) {
     return false
   }
-  /** The nodes from `node` up to the code declaring `sym`, which `ok` accepts each of, or false. */
-  const climb = (node: Node | null, ok: (n: Node) => boolean): boolean => {
-    for (let n = node; n !== null; n = t1.parentOf(n)) {
+  /** The nodes from `node` up to the code declaring `sym`, which `ok` accepts each of (with the child it came from), or false. */
+  const climb = (
+    node: Node,
+    ok: (n: Node, child: Node) => boolean,
+  ): boolean => {
+    for (let child = node, n = t1.parentOf(node); n !== null; ) {
       if (n.start === scope.start && n.end === scope.end) {
         return true
       }
-      if (!ok(n)) {
+      if (!ok(n, child)) {
         return false
       }
+      child = n
+      n = t1.parentOf(n)
     }
     return false
   }
@@ -1000,8 +1016,52 @@ function writesComplete(
     n.type === 'ForOfStatement' ||
     n.type === 'WhileStatement' ||
     n.type === 'DoWhileStatement'
-  if (!climb(t1.parentOf(b.element), (n) => !opensCode(n) && !isLoop(n))) {
+  const inOrder = (statement: Node) =>
+    statement.end <= b.element.start &&
+    climb(statement, (n) => WRITE_CONTAINERS.has(n.type))
+  if (
+    !climb(
+      b.element,
+      (n, child) =>
+        !opensCode(n) &&
+        !isLoop(n) &&
+        !(n.type === 'SwitchCase' && n.test === child),
+    )
+  ) {
     return false
+  }
+  // a `var`'s declarators that give it a value (the model counts only a
+  // module's): each an ordinary declaration statement before the boundary
+  const binding = ctx.analysis.file.referenceOf(
+    t1.nodeAt(writes[0]!.range.start)!,
+  )?.binding
+  if (!binding) {
+    return false
+  }
+  for (const id of binding.declarations) {
+    let declarator: Node | null = t1.parentOf(id)
+    while (
+      declarator !== null &&
+      declarator.type !== 'VariableDeclarator' &&
+      !opensCode(declarator) &&
+      !/(?:Statement|Declaration|Clause)$/.test(declarator.type)
+    ) {
+      declarator = t1.parentOf(declarator)
+    }
+    const declaration =
+      declarator?.type === 'VariableDeclarator' ? t1.parentOf(declarator) : null
+    if (
+      declarator?.type === 'VariableDeclarator' &&
+      declaration?.type === 'VariableDeclaration' &&
+      declaration.kind === 'var' &&
+      !(
+        declarator.init === null &&
+        climb(declaration, (n) => WRITE_CONTAINERS.has(n.type))
+      ) &&
+      !inOrder(declaration)
+    ) {
+      return false
+    }
   }
   return writes.every((w) => {
     // the write's statement, through expressions only
@@ -1015,20 +1075,7 @@ function writesComplete(
       }
       statement = t1.parentOf(statement)
     }
-    return (
-      statement !== null &&
-      statement.end <= b.element.start &&
-      climb(t1.parentOf(statement), (n) =>
-        [
-          'BlockStatement',
-          'IfStatement',
-          'SwitchStatement',
-          'SwitchCase',
-          'TryStatement',
-          'CatchClause',
-        ].includes(n.type),
-      )
-    )
+    return statement !== null && inOrder(statement)
   })
 }
 
