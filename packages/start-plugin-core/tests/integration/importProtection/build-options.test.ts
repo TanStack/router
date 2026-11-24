@@ -402,8 +402,8 @@ export const secret = () => 'MARK_SECRET'
   })
 
   describe('onViolation', () => {
-    // Only `false` allows an import: a callback that returns nothing (one
-    // that logs, say) leaves the import denied.
+    // The callback only reports: a callback that returns nothing (one that
+    // logs, say) leaves the import denied.
     // Each report is at the importer's use of the import (`use`), its import
     // on line 1 (SPEC J6.5), or one of `others`.
     test.each<{
@@ -469,6 +469,35 @@ export const read = () => getRequest()
           { environment: 'client', use, also: ['src/entry.ts:1', ...others] },
         ])
         expect(distinct(seen.map((info) => info.type))).toEqual([type])
+      },
+      timeout,
+    )
+
+    // Returning `false` allowed the import once (`allowImport` does that
+    // now): it still denies, and the build warns that it no longer does
+    // anything, naming what to use instead.
+    // Source: diagnostics spike (2026-11-24), agreed change A7 (IP-16, no
+    // test).
+    test(
+      'a callback that returns false: the import is denied, and the build warns once that false no longer allows it',
+      async () => {
+        const error = await rejection(
+          buildStart({
+            bundler,
+            files: {
+              ...secretServer,
+              'src/entry.ts': userOf('./secret.server'),
+            },
+            entry: 'src/entry.ts',
+            start: { importProtection: { onViolation: () => false } },
+          }),
+        )
+        expect(reportedViolations(error)).toHaveLength(1)
+        const migration = findDiagnostics(error.diagnostics, {
+          severity: 'warning',
+        }).filter(({ text }) => text.includes('onViolation returned false'))
+        expect(migration).toHaveLength(1)
+        expect(migration[0]!.text).toContain('importProtection.allowImport')
       },
       timeout,
     )

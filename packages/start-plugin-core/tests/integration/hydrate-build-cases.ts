@@ -748,13 +748,15 @@ export { PostBadge as badge } from './routes/badge'
         at: 'clearInterval(timer)',
       },
       // The chunk would assign its own copy of a module `let` the module
-      // reads
+      // reads, or a binding it imports (a `var` a statement declares).
+      // The two texts say which (diagnostics spike, 2026-11-24, A7).
       {
         name: 'a module let the children assign',
         module: `let last = ''
 export const readLast = () => last
 `,
         children: `<button onClick={() => { last = 'x' }}>b</button>`,
+        says: 'its own copy of `last`',
       },
       {
         name: 'a module let their component assigns',
@@ -765,6 +767,14 @@ function Btn() {
 }
 `,
         children: '<Btn />',
+        says: 'its own copy of `last`',
+      },
+      {
+        name: 'a var a top-level statement declares, which the children assign',
+        module: `if (typeof window !== 'undefined') { var flag: unknown = globalThis.length }
+`,
+        children: `<button onClick={() => { flag = 1 }}>{String(flag)}</button>`,
+        says: 'a module cannot assign a binding it imports',
       },
       // A private name of the class the boundary is in: the chunk is
       // outside it (on main, the build fails to parse the chunk; Rsbuild
@@ -795,6 +805,8 @@ export function Page() {
       module?: string
       /** The whole page, instead of `Page` rendering `children`. */
       page?: string
+      /** What the error says (the cause, where two texts share a code). */
+      says?: string
     }>)(
       'client: $name in a boundary fails the build, naming the file and line',
       async ({
@@ -832,11 +844,17 @@ ${module}export function Page() {
           (error: unknown) => error,
         )
         expect(failure, 'the build fails').toBeInstanceOf(StartBuildError)
-        expectDiagnostic(problems((failure as StartBuildError).diagnostics), {
-          severity: 'error',
-          file: 'src/pages/unsafe.tsx',
-          position: { line: diagnosticPosition(page, at).line },
-        })
+        const error = expectDiagnostic(
+          problems((failure as StartBuildError).diagnostics),
+          {
+            severity: 'error',
+            file: 'src/pages/unsafe.tsx',
+            position: { line: diagnosticPosition(page, at).line },
+          },
+        )
+        if (row.says !== undefined) {
+          expect(error.text).toContain(row.says)
+        }
       },
       timeout,
     )
