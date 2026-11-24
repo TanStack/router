@@ -106,6 +106,76 @@ describe('Link', () => {
     }
   })
 
+  test('a disabled Link keeps a role set by the caller', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <Link to="/posts" disabled role="menuitem" data-testid="element-role">
+            Element role
+          </Link>
+          <Link
+            to="/"
+            disabled
+            activeProps={{ role: 'menuitemradio' }}
+            data-testid="state-role"
+          >
+            State role
+          </Link>
+          <Link
+            to="javascript:alert(1)"
+            role="menuitem"
+            data-testid="blocked-role"
+          >
+            Blocked role
+          </Link>
+          <Link to="/posts" disabled data-testid="no-role">
+            No role
+          </Link>
+        </>
+      ),
+    })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByTestId('element-role')).toHaveAttribute(
+      'role',
+      'menuitem',
+    )
+    expect(screen.getByTestId('state-role')).toHaveAttribute(
+      'role',
+      'menuitemradio',
+    )
+    expect(screen.getByTestId('blocked-role')).toHaveAttribute(
+      'role',
+      'menuitem',
+    )
+    expect(screen.getByTestId('no-role')).toHaveAttribute('role', 'link')
+    for (const testId of [
+      'element-role',
+      'state-role',
+      'blocked-role',
+      'no-role',
+    ]) {
+      expect(screen.getByTestId(testId)).not.toHaveAttribute('href')
+      expect(screen.getByTestId(testId)).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+    }
+  })
+
   test('blocks a dangerous final href produced by an output rewrite', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({

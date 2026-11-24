@@ -560,3 +560,70 @@ test.each([
     }
   },
 )
+
+test.each([false, true])(
+  'a disabled Link keeps a role set by the caller (server: %s)',
+  async (server) => {
+    const root = createRootRoute()
+    const router = createRouter({
+      routeTree: root.addChildren([
+        createRoute({ getParentRoute: () => root, path: '/target' }),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/target'] }),
+      isServer: server,
+    })
+    disposers.push(router.history.destroy)
+    await router.load()
+    const tree = (
+      <RouterContextProvider router={router}>
+        <Link to="/target" disabled role="menuitem" data-testid="element-role">
+          Element role
+        </Link>
+        <Link
+          to="/target"
+          disabled
+          activeProps={{ role: 'menuitemradio' }}
+          data-testid="state-role"
+        >
+          State role
+        </Link>
+        <Link
+          to="javascript:alert(1)"
+          role="menuitem"
+          data-testid="blocked-role"
+        >
+          Blocked role
+        </Link>
+        <Link to="/target" disabled data-testid="no-role">
+          No role
+        </Link>
+      </RouterContextProvider>
+    )
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const container = server
+        ? document.createElement('div')
+        : render(tree).container
+      if (server) {
+        container.innerHTML = renderToString(tree)
+      }
+      const getLink = (testId: string) =>
+        container.querySelector(`[data-testid="${testId}"]`)!
+      expect(getLink('element-role')).toHaveAttribute('role', 'menuitem')
+      expect(getLink('state-role')).toHaveAttribute('role', 'menuitemradio')
+      expect(getLink('blocked-role')).toHaveAttribute('role', 'menuitem')
+      expect(getLink('no-role')).toHaveAttribute('role', 'link')
+      for (const testId of [
+        'element-role',
+        'state-role',
+        'blocked-role',
+        'no-role',
+      ]) {
+        expect(getLink(testId)).not.toHaveAttribute('href')
+        expect(getLink(testId)).toHaveAttribute('aria-disabled', 'true')
+      }
+    } finally {
+      warn.mockRestore()
+    }
+  },
+)

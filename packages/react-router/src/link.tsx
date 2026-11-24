@@ -571,7 +571,9 @@ function applyLinkState(
       : stateClassName
   }
   if (linkDisabled) {
-    props.role = 'link'
+    // An anchor without `href` has no implicit role. Default it to `link`,
+    // but keep a role the caller set (e.g. `menuitem` inside a menu).
+    props.role ??= 'link'
     props['aria-disabled'] = true
   }
   if (isActive) {
