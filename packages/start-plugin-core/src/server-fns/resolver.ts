@@ -15,6 +15,24 @@ export const SERVER_FN_LOOKUP_VIRTUAL_ID =
   'virtual:tanstack-start-server-fn-lookup'
 
 /**
+ * The text of a call by an id the server has no function of, or none the
+ * caller may call (the two read the same), on every host and in every mode:
+ * the error the generated resolvers throw, before and after the id.
+ */
+const UNKNOWN_ID = [
+  'Server function info not found for ',
+  '. If the page loaded before the server changed, reload it.',
+] as const
+
+/** The message of a call by an unknown id (`UNKNOWN_ID`). */
+export function unknownServerFnMessage(id: string): string {
+  return `${UNKNOWN_ID[0]}${id}${UNKNOWN_ID[1]}`
+}
+
+/** The statement of a generated resolver that throws it for its `id`. */
+const THROW_UNKNOWN_ID = `throw new Error(${JSON.stringify(UNKNOWN_ID[0])} + id + ${JSON.stringify(UNKNOWN_ID[1])})`
+
+/**
  * The dev resolver: every call imports the lookup module of the id (never
  * memoised: handlers are hot-replaced). A client-origin call (an HTTP
  * request) imports the lookup under `origin=client`: the lookup warns once
@@ -31,7 +49,7 @@ export async function getServerFnById(id, access) {
   const mod = await import(/* @vite-ignore */ lookup)
   // a lookup loaded before an edit removed its server fn re-exports nothing
   if (!mod.action) {
-    throw new Error('Invalid server function ID: ' + id)
+    ${THROW_UNKNOWN_ID}
   }
   return mod.action
 }
@@ -170,7 +188,7 @@ const manifest = {
 export async function getServerFnById(id, access) {
   const serverFnInfo = manifest[id]
   if (!serverFnInfo${gated}) {
-    throw new Error('Server function info not found for ' + id)
+    ${THROW_UNKNOWN_ID}
   }
 ${warnUnreferenced}
   const fnModule = ${resolveModule}
@@ -220,7 +238,7 @@ export function callerGateModule(
 const clientCallable = new Set(${JSON.stringify(ids)})
 export async function getServerFnById(id, access) {
   if (access && access.origin === 'client' && !clientCallable.has(id)) {
-    throw new Error('Server function info not found for ' + id)
+    ${THROW_UNKNOWN_ID}
   }
   return forward(id, access)
 }

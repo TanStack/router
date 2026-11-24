@@ -29,6 +29,12 @@ export interface LocatedDiagnosticsOptions {
   errorName: string
   warningName: string
   /**
+   * The prefix of a located message that names no tool of its own
+   * (`[tanstack-start]`): these bundlers print a loader's error or warning
+   * without the plugin's name (Vite prints it, so its messages need none).
+   */
+  tag: string
+  /**
    * The name in the message of the error a loader throws for all of a
    * module's errors at once (the module fails): it is replaced by one
    * located error per recorded error. Without it, each reported error is
@@ -157,10 +163,12 @@ export function locatedError(
   d: LocatedDiagnostic,
   options: Pick<
     LocatedDiagnosticsOptions,
-    'errorName' | 'warningName' | 'fileOfDerived'
+    'errorName' | 'warningName' | 'tag' | 'fileOfDerived'
   >,
 ): Error {
-  const error = new WebpackError(d.message) as Error & {
+  const error = new WebpackError(
+    /^\s*\[/.test(d.message) ? d.message : `${options.tag} ${d.message}`,
+  ) as Error & {
     module?: unknown
     file?: string
     loc?: { start: { line: number; column?: number } }

@@ -75,6 +75,7 @@ export const LOCATED_DIAGNOSTICS: LocatedDiagnosticsOptions = {
   field: 'tanstack.router.diagnostics',
   errorName: 'TanStackRouterCompilerError',
   warningName: 'TanStackRouterCompilerWarning',
+  tag: '[tanstack-router]',
 }
 
 function diagnosticError(d: LocatedDiagnostic): Error {

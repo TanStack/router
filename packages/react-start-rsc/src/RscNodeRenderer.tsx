@@ -52,7 +52,7 @@ export function RscNodeRenderer({ data }: { data: any }): React.ReactNode {
   const getTree = data[RSC_PROXY_GET_TREE] as (() => unknown) | undefined
   if (!getTree) {
     throw new Error(
-      '[tanstack/start] RscNodeRenderer missing getTree on RSC data.',
+      '[tanstack-start] RscNodeRenderer missing getTree on RSC data.',
     )
   }
 

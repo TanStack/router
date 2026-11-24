@@ -313,7 +313,7 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
 
   // On main, after a dev server restart, calling a server fn whose module the
   // new server has not compiled yet (e.g. from a page loaded before the
-  // restart) fails with "Invalid server function ID" (500).
+  // restart) fails with "Server function info not found" (500).
   // Source: issue #8447.
   test('calls a server fn id on a fresh dev server that has not compiled its module', async () => {
     expect(await callServerFnId(true)).toBe('hello')

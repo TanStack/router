@@ -17,6 +17,7 @@ import {
   devLookupModule,
   devResolverModule,
   productionResolverModule,
+  unknownServerFnMessage,
   unreferencedWarning,
 } from '../server-fns/resolver'
 import { createVirtualModule } from './createVirtualModule'
@@ -138,7 +139,7 @@ export function devLookupPlugin(state: ViteCompilerState): Plugin {
         }
       }
       if (!entry) {
-        this.error(`Invalid server function ID: ${fnId}`)
+        this.error(unknownServerFnMessage(fnId))
       }
       if (
         params.get('origin') === 'client' &&

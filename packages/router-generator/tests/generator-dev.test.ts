@@ -761,9 +761,17 @@ describe('first runs', () => {
     const root = await createApp({
       'src/routes/index.tsx': fileRoute('/'),
     })
-    await expect(
-      new Generator({ config: configOf(root), root }).run(),
-    ).rejects.toThrow('__root.tsx')
+    const error = await new Generator({ config: configOf(root), root })
+      .run()
+      .then(
+        () => undefined,
+        (e: unknown) => e as Error,
+      )
+    // what is missing and the file to add, in the user's terms (diagnostics
+    // spike, 2026-11-24, G12)
+    expect(error?.message).toBe(
+      `[tanstack-router] The routes have no root route. Add the file ${path.join(root, 'src/routes/__root.tsx')}.`,
+    )
   })
 })
 

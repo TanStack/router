@@ -132,6 +132,41 @@ describe('rsbuild build', () => {
     },
     timeout,
   )
+
+  // Rsbuild prints a loader's error or warning without the plugin's name,
+  // so a Start message that names no tool of its own gets Start's tag; one
+  // that does (a route's `[tanstack-router]`) keeps it alone.
+  // Source: diagnostics spike (2026-11-24), inventory flag 14 (one tag rule).
+  test(
+    "a compile error and a warning say they are Start's",
+    async () => {
+      const { plugin, seen } = recordLocations()
+      await expect(
+        buildStart({
+          bundler: 'rsbuild',
+          files: {
+            'src/wrap.ts': wrapSource,
+            'src/fns.ts': escapingSource,
+            'src/role.ts': serverParamSource,
+            'src/entry.ts': `export { reveal } from './fns'\nexport { requireRole } from './role'\n`,
+          },
+          entry: 'src/entry.ts',
+          rsbuildConfig: { plugins: [plugin] },
+        }),
+      ).rejects.toBeInstanceOf(StartBuildError)
+      const ours = seen.filter(({ moduleName }) =>
+        /src\/(?:fns|role)\.ts$/.test(moduleName ?? ''),
+      )
+      expect(ours.map(({ severity }) => severity).sort()).toEqual(
+        expect.arrayContaining(['error', 'warning']),
+      )
+      for (const { message } of ours) {
+        expect(message).toContain('[tanstack-start] ')
+        expect(message).not.toContain('[tanstack-start] [')
+      }
+    },
+    timeout,
+  )
 })
 
 describe('rsbuild dev', () => {

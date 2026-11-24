@@ -655,16 +655,18 @@ export function importEdgesPlanner(
       (i) => first !== undefined && kind(i.specifier) !== kind(first.specifier),
     )
     const file = relativizePath(ctx.identity.path, config.root)
-    const line =
+    // the first marker in the original file, as a denial names it (the
+    // error is at the second)
+    const at =
       first &&
       originalPositions(ctx.identity.path, ctx.code, ctx.inputMap).at(
         first.specifierRange.start,
-      )?.line
+      )
     return {
       severity: 'error' as const,
       message:
         first && second
-          ? `[import-protection] ${file} imports both "${first.specifier}"${line ? ` (line ${line})` : ''} and "${second.specifier}": a module can be restricted to one environment only. Remove one of the two imports.`
+          ? `[import-protection] ${file} imports both "${first.specifier}"${at ? ` (${relativizePath(at.file, config.root)}:${at.line}:${at.column})` : ''} and "${second.specifier}": a module can be restricted to one environment only. Remove one of the two imports.`
           : `[import-protection] ${file} imports both a server-only and a client-only marker: a module can be restricted to one environment only. Remove one of the two imports.`,
       ...(second && {
         range: {

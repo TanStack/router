@@ -159,7 +159,7 @@ export const Route = createFileRoute('/posts')({
     // (the bundler prefixes its plugin's name and appends the position)
     expect(warnings).toHaveLength(1)
     expect(warnings[0]).toContain(
-      "[tanstack-router] The `loader` option of src/routes/posts.tsx uses `this`, so it isn't code-split (splitting can change what `this` refers to). Use an arrow function or avoid `this` to split it.",
+      '[tanstack-router] The `loader` option of src/routes/posts.tsx uses `this`, so it is not code-split (splitting can change what `this` refers to). Use an arrow function or avoid `this` to split it.',
     )
     expect(built.where('typeof this')).toBe('eager')
   })

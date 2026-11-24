@@ -152,7 +152,7 @@ describe('vite dev: by-id requests', () => {
   const naming = (file: string) => encode({ ...decode(appId), f: file })
 
   const call = (id: string) =>
-    callAt(server.url!, id, 'Invalid server function ID')
+    callAt(server.url!, id, 'Server function info not found for')
 
   beforeAll(async () => {
     server = await startDevServer({

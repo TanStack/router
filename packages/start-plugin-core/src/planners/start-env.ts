@@ -800,7 +800,7 @@ function planStartEnv(
     if (link) {
       if (link.arg === null || link.argIsSpread) {
         diag(
-          `createIsomorphicFn().${wantLink}(fn) must be called with a function`,
+          `createIsomorphicFn().${wantLink}(fn) must be called with a function: \`.${wantLink}(() => …)\`.`,
           rangeOf(link.call),
         )
         continue
@@ -837,7 +837,7 @@ function planStartEnv(
     if (own) {
       if (c.arg === null || c.arg.type === 'SpreadElement') {
         diag(
-          `create${c.kind === 'server' ? 'Server' : 'Client'}OnlyFn() must be called with a function`,
+          `create${c.kind === 'server' ? 'Server' : 'Client'}OnlyFn() must be called with a function: \`create${c.kind === 'server' ? 'Server' : 'Client'}OnlyFn(() => …)\`.`,
           rangeOf(c.call),
         )
         continue

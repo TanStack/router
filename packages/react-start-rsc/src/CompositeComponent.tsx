@@ -131,7 +131,7 @@ export function CompositeComponent<TComp extends AnyCompositeComponent>(
 
   if (!stream) {
     throw new Error(
-      '[tanstack/start] <CompositeComponent> missing RSC stream on src',
+      '[tanstack-start] <CompositeComponent> missing RSC stream on src',
     )
   }
 
@@ -144,7 +144,7 @@ export function CompositeComponent<TComp extends AnyCompositeComponent>(
 
   if (!getTree) {
     throw new Error(
-      '[tanstack/start] <CompositeComponent> missing getTree on RSC src. ' +
+      '[tanstack-start] <CompositeComponent> missing getTree on RSC src. ' +
         'Make sure src comes from createCompositeComponent().',
     )
   }

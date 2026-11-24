@@ -418,7 +418,7 @@ export const removed = createServerFn().handler(() => 'MARK_REMOVED')
       await server.edit({ 'src/fns.ts': edited })
 
       await expect(callServerFn(server, removed)).rejects.toThrow(
-        /Invalid server function ID/,
+        /Server function info not found for .*reload it/,
       )
     },
     timeout,

@@ -347,8 +347,9 @@ export const fn = createServerFn().handler(() => label)
       asked = []
       await server.edit({ 'src/label.js': `export const label = 'MARK_JS'\n` })
       expect(asked).toEqual([])
+      // (one text on every host: diagnostics spike, 2026-11-24, flag 10)
       await expect(callServerFn(server, fn)).rejects.toThrow(
-        'Invalid server function ID',
+        'Server function info not found for',
       )
 
       // (`./label` now finds `label.js`)

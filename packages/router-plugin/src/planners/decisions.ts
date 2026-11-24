@@ -253,7 +253,7 @@ export function splitPlanOf(
           by: ROUTER_PLANNER,
           message:
             option.kind === 'spread'
-              ? `[tanstack-router] ${file} spreads route options: what the spread holds is not code-split, and ${deletedNames()} in it ${are()} not removed, so any server code in it ships to the client. Move what to split or remove out of the spread, as properties of this object; this warning stays while the spread does.`
+              ? `[tanstack-router] ${file} spreads route options, which the compiler cannot read. If the spread holds ${deletedNames()}, ${deleteNodes.size === 1 ? 'it stays' : 'they stay'} in client code, and any server code in ${deleteNodes.size === 1 ? 'it' : 'them'} ships to the client${splitting ? '; nothing it holds is code-split' : ''}. Write those options as properties of this object, and take them out of the spread's object: a property written here does not remove the spread's.`
               : `[tanstack-router] ${file} computes a route option's key: that option is not code-split, and it is not removed if it names ${deletedNames()}, so any server code in it ships to the client. Write the key literally.`,
           range: { start: option.prop.start, end: option.prop.end },
         })
@@ -349,8 +349,8 @@ export function splitPlanOf(
           by: ROUTER_PLANNER,
           message:
             own === 'this'
-              ? `[tanstack-router] The \`${key}\` option of ${file} uses \`this\`, so it isn't code-split (splitting can change what \`this\` refers to). Use an arrow function or avoid \`this\` to split it.`
-              : `[tanstack-router] The \`${key}\` option of ${file} uses \`super\`, so it isn't code-split (split, it would no longer be a method of the route options). Avoid \`super\` to split it.`,
+              ? `[tanstack-router] The \`${key}\` option of ${file} uses \`this\`, so it is not code-split (splitting can change what \`this\` refers to). Use an arrow function or avoid \`this\` to split it.`
+              : `[tanstack-router] The \`${key}\` option of ${file} uses \`super\`, so it is not code-split (split, it would no longer be a method of the route options). Avoid \`super\` to split it.`,
           range: { start: target.prop.start, end: target.prop.end },
         })
         continue

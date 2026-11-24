@@ -19,6 +19,7 @@ import {
   StaleSetDrain,
   collectionSizes,
   composeLoaderMap,
+  displayPath,
   identify,
   invalidate,
   langFromId,
@@ -108,6 +109,7 @@ export const LOCATED_DIAGNOSTICS: LocatedDiagnosticsOptions = {
   field: 'tanstack.start.diagnostics',
   errorName: 'TanStackStartCompilerError',
   warningName: 'TanStackStartCompilerWarning',
+  tag: '[tanstack-start]',
   failureName: 'TanStackStartCompilerError',
   // Start builds through Rsbuild, which prints a located error's `file`
   fileOfDerived: true,
@@ -1048,7 +1050,7 @@ export class StartRsbuildCompilerSession {
     this.unlistenRoutes ??= generator.onRoutesChanged((files) => {
       this.registryChanged(files).catch((error: unknown) => {
         console.error(
-          `[tanstack-start] invalidating after a route change failed:`,
+          `[tanstack-start] invalidating ${files.map((file) => displayPath(file, this.startOptions.root)).join(', ')} after a route change failed:`,
           error,
         )
       })

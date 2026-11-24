@@ -380,7 +380,7 @@ export const both = 1
           entry: 'src/entry.ts',
         }),
       )
-      expectDiagnostic(error.diagnostics, {
+      const conflict = expectDiagnostic(error.diagnostics, {
         severity: 'error',
         file: 'src/both.ts',
         root: error.root,
@@ -389,6 +389,15 @@ export const both = 1
           `'@tanstack/react-start/client-only'`,
         ),
       })
+      // the first marker, as the position of a denial names it
+      // (diagnostics spike, 2026-11-24, inventory flag 9)
+      const first = diagnosticPosition(
+        both,
+        `'@tanstack/react-start/server-only'`,
+      )
+      expect(conflict.text).toContain(
+        `"@tanstack/react-start/server-only" (src/both.ts:${first.line}:${first.column})`,
+      )
     },
     timeout,
   )

@@ -56,7 +56,14 @@ const component = `component: () => <p>MARK_PAGE</p>`
 
 describe.each(startBundlers)('%s build', (bundler) => {
   test.each([
-    { name: 'a spread', route: `{ ...shared, ${component} }` },
+    // (a spread's warning is conditional: the compiler cannot tell whether
+    // it holds a server option. Source: diagnostics spike, 2026-11-24,
+    // Astra on c15t and Fog)
+    {
+      name: 'a spread',
+      route: `{ ...shared, ${component} }`,
+      says: 'If the spread holds',
+    },
     { name: 'options imported from another module', route: `shared` },
     {
       name: 'options returned by a call',
@@ -65,12 +72,15 @@ describe.each(startBundlers)('%s build', (bundler) => {
     { name: 'a computed key', route: `{ [key]: shared.server, ${component} }` },
   ])(
     '$name: the build warns, and what it holds ships',
-    async ({ route }) => {
+    async ({ route, says }) => {
       const result = await build(bundler, route)
-      expectDiagnostic(result.diagnostics, {
+      const warning = expectDiagnostic(result.diagnostics, {
         severity: 'warning',
         file: 'src/routes/x.tsx',
       })
+      if (says !== undefined) {
+        expect(warning.text).toContain(says)
+      }
       expect(result.client.where('MARK_SPREAD_SERVER')).not.toBe('nowhere')
     },
     timeout,

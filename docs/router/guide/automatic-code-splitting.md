@@ -140,7 +140,7 @@ A property is not split when its value is `true`, `false`, `null` or `undefined`
 A function or method that uses its own `this` or `super` stays in the route file as written, because splitting can change what `this` refers to. `this` inside an arrow function counts; inside a nested `function`, method or class it is that function's own and does not. The build warns at the property, for example:
 
 ```txt
-[tanstack-router] The `loader` option of src/routes/posts.tsx uses `this`, so it isn't code-split (splitting can change what `this` refers to). Use an arrow function or avoid `this` to split it.
+[tanstack-router] The `loader` option of src/routes/posts.tsx uses `this`, so it is not code-split (splitting can change what `this` refers to). Use an arrow function or avoid `this` to split it.
 ```
 
 **That's it!** There are no other restrictions. You can use any other JavaScript or TypeScript features in your route files as you normally would. If you run into any issues, please [open an issue](https://github.com/tanstack/router/issues) on GitHub.

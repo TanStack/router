@@ -48,11 +48,11 @@ export async function scanRoutes(
     : await physicalGetRouteNodes(config, root, tokenRegexes, logger)
 
   if (result.rootRouteNode === undefined) {
-    let errorMessage = `rootRouteNode must not be undefined. Make sure you've added your root route into the route-tree.`
-    if (!config.virtualRouteConfig) {
-      errorMessage += `\nMake sure that you add a "${rootPathId}.${config.disableTypes ? 'js' : 'tsx'}" file to your routes directory.\nAdd the file in: "${config.routesDirectory}/${rootPathId}.${config.disableTypes ? 'js' : 'tsx'}"`
-    }
-    throw new Error(errorMessage)
+    throw new Error(
+      config.virtualRouteConfig
+        ? `[tanstack-router] The virtual route configuration has no root route. Make its root a \`rootRoute('${rootPathId}.${config.disableTypes ? 'js' : 'tsx'}', [ … ])\`.`
+        : `[tanstack-router] The routes have no root route. Add the file ${path.join(config.routesDirectory, `${rootPathId}.${config.disableTypes ? 'js' : 'tsx'}`)}.`,
+    )
   }
 
   // A root route file is no route of the tree but its root: the routes
