@@ -176,6 +176,40 @@ describe('a server fn created once when its module loads', () => {
       code: `export const api = {\n  foo: createServerFn({ method: await Promise.resolve('POST' as const) }).handler(\n    async () => db.inner(),\n  ),\n}`,
       read: 'module.api.foo',
     },
+    // what the chain takes from around it is the language's: a property
+    // or key named `arguments`, `this` in a type only, a function's own
+    // `this` and `arguments`, an async arrow's own `await`, an inner class's
+    // own private name (S4, S6, S11 of the hotspot 5 design)
+    {
+      name: 'a static field reading a member named arguments',
+      code: `export class Api {\n  static arguments = 1\n  static foo = createServerFn().handler(async () => (Api.arguments ? db.inner() : 'none'))\n}`,
+      read: 'module.Api.foo',
+    },
+    {
+      name: 'a static field whose handler returns a key named arguments',
+      code: `export class Api {\n  static foo = createServerFn().handler(async () => ({ arguments: db.inner() }).arguments)\n}`,
+      read: 'module.Api.foo',
+    },
+    {
+      name: 'a static field naming `this` in a type only',
+      code: `export class Api {\n  static x = 'x'\n  static foo = createServerFn().handler(async () => db.inner() as typeof this.x)\n}`,
+      read: 'module.Api.foo',
+    },
+    {
+      name: 'a static field whose function handler reads its own `this` and `arguments`',
+      code: `export class Api {\n  static foo = createServerFn().handler(async function () {\n    return typeof this === 'object' && arguments.length > 0 ? db.inner() : 'none'\n  })\n}`,
+      read: 'module.Api.foo',
+    },
+    {
+      name: 'a static field whose async arrow awaits',
+      code: `export class Api {\n  static foo = createServerFn().handler(async () => await Promise.resolve(db.inner()))\n}`,
+      read: 'module.Api.foo',
+    },
+    {
+      name: "a static field reading an inner class's own private name",
+      code: `export class Api {\n  static foo = createServerFn().handler(async () => new (class {\n    #y = db.inner()\n    m() {\n      return this.#y\n    }\n  })().m())\n}`,
+      read: 'module.Api.foo',
+    },
   ]
 
   test.each<{
@@ -546,6 +580,34 @@ const reg = { add: <T,>(f: T) => f }
       code: `export const B = class A {\n  static k = 'k'\n  static foo = createServerFn().handler(async () => db.inner() + A.k)\n}`,
       at: 'A.k)',
     },
+    // the class's `this`, `super`, `new.target`, read in code of the chain
+    // that is no function of its own: a nested class's computed key or
+    // `extends`, a JSX member tag (S1, S2, S10 of the hotspot 5 design)
+    {
+      name: "`this` of the class in a nested class's computed key",
+      code: `export class Api {\n  static k = 'k'\n  static foo = createServerFn().handler(async () => new (class {\n    [this.k]() {}\n  })())\n}`,
+      at: 'this.k',
+    },
+    {
+      name: "`this` of the class in a nested class's extends",
+      code: `export class Api {\n  static B = class {}\n  static foo = createServerFn().handler(async () => new (class extends this.B {})())\n}`,
+      at: 'this.B',
+    },
+    {
+      name: '`this` of the class as a JSX member tag',
+      code: `export class Api {\n  static P = () => null\n  static foo = createServerFn().handler(async () => <this.P />)\n}`,
+      at: 'this.P',
+    },
+    {
+      name: '`super` of the class',
+      code: `class Base {\n  static x = 1\n}\nexport class Api extends Base {\n  static foo = createServerFn().handler(async () => super.x)\n}`,
+      at: 'super.x',
+    },
+    {
+      name: '`new.target` of the class',
+      code: `export class Api {\n  static foo = createServerFn().handler(async () => new.target)\n}`,
+      at: 'new.target',
+    },
     {
       name: '`this` of the class it is written in',
       code: `export class Api {\n  static mws: Array<never> = []\n  static foo = createServerFn().middleware(this.mws).handler(async () => db.inner())\n}`,
@@ -560,6 +622,19 @@ const reg = { add: <T,>(f: T) => f }
       name: 'its own class, when the module loads',
       code: `export class Api {\n  static mws: Array<never> = []\n  static foo = createServerFn().middleware(Api.mws).handler(async () => db.inner())\n}`,
       at: 'Api.mws',
+    },
+    // a function called in place runs when the module loads (S8), and so
+    // may an instance field's initialiser, of a class constructed while it
+    // is defined (S10)
+    {
+      name: 'a declaration of its own statement, in a function called in place',
+      code: `export const v = (d: unknown) => d,\n  o = { foo: createServerFn().validator((() => v)()).handler(async () => db.inner()) }`,
+      at: 'v)())',
+    },
+    {
+      name: 'a declaration of its own statement, in an instance field of a class constructed while it is defined',
+      code: `export const earlier = (d: unknown) => d,\n  o = { foo: createServerFn().validator((class V {\n    field = earlier\n    static validate = new V().field\n  }).validate).handler(async () => db.inner()) }`,
+      at: 'earlier\n    static',
     },
     {
       name: 'a `const` a later statement declares, when the module loads',
@@ -590,18 +665,54 @@ const reg = { add: <T,>(f: T) => f }
 
   // d19: a private name of the class can't leave it: a static server fn
   // whose code reads one is a compile error at the name
-  test('is a compile error when it reads a private name of its class', async () => {
-    const source = `${head}export class Api {
-  static #key = 'k'
-  static foo = createServerFn().handler(async () => db.inner() + Api.#key)
-}`
+  // (also `#key in o`, and from a nested class declaring a private name of
+  // its own: S3 of the hotspot 5 design)
+  test.each([
+    {
+      name: 'a member',
+      code: `export class Api {\n  static #key = 'k'\n  static foo = createServerFn().handler(async () => db.inner() + Api.#key)\n}`,
+      at: '#key)',
+    },
+    {
+      name: 'an in check',
+      code: `export class Api {\n  static #key = 'k'\n  static foo = createServerFn().handler(async () => #key in Api)\n}`,
+      at: '#key in',
+    },
+    {
+      name: 'a member, in a nested class with a private name of its own',
+      code: `export class Api {\n  static #key = 'k'\n  static foo = createServerFn().handler(async () => new (class {\n    #own = 1\n    m() {\n      return Api.#key + this.#own\n    }\n  })().m())\n}`,
+      at: '#key +',
+    },
+  ])(
+    'is a compile error when it reads a private name of its class: $name',
+    async ({ code, at }) => {
+      const source = `${head}${code}`
+      const startCase = await (
+        await host()
+      ).case({ 'module.tsx': source, ...files })
+      for (const environment of ['client', 'ssr'] as const) {
+        const failure = await compileError(startCase, environment)
+        expect(failure, `${environment} serves the module`).toBeDefined()
+        expectCompileError(failure, { source, at, column: true })
+      }
+    },
+  )
+
+  // in a function, a key named `arguments` is no use of the function's:
+  // the general refusal, at the server fn (S5 of the hotspot 5 design)
+  test('is a compile error at the server fn in a function when its handler returns a key named arguments', async () => {
+    const source = `${head}export function make() {\n  return createServerFn().handler(async () => ({ arguments: 1 }))\n}`
     const startCase = await (
       await host()
     ).case({ 'module.tsx': source, ...files })
     for (const environment of ['client', 'ssr'] as const) {
       const failure = await compileError(startCase, environment)
       expect(failure, `${environment} serves the module`).toBeDefined()
-      expectCompileError(failure, { source, at: '#key)', column: true })
+      expectCompileError(failure, {
+        source,
+        at: 'createServerFn().handler(async () => ({',
+        column: true,
+      })
     }
   })
 })

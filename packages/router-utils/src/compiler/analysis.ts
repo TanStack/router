@@ -238,8 +238,11 @@ export interface Tier1 {
   nodeAt: (offset: number) => Node | null
   /** The unit whose range holds `range` (a unit is the outermost region of what it holds: `RegionTable`). */
   unitAt: (range: Range) => UnitId | null
-  /** Non-module symbols read inside `range` whose declaring scope lies outside it (captures). */
-  capturesOf: (range: Range) => Array<SymbolId>
+  /**
+   * The references inside `range` to non-module bindings declared outside it
+   * (captures), in source order.
+   */
+  capturesOf: (range: Range) => Array<ClassifiedRef>
 }
 
 interface ModuleAnalysisOptions {
@@ -1143,22 +1146,18 @@ export class ModuleAnalysis {
           ? found.id
           : null
       },
-      capturesOf: (range) => {
-        const out: Array<SymbolId> = []
-        const seen = new Set<SymbolId>()
-        for (const r of refIndex.refsIn(range)) {
-          if (seen.has(r.sym) || symbols.isModuleLevel(r.sym)) {
-            continue
+      capturesOf: (range) =>
+        refIndex.refsIn(range).filter((r) => {
+          if (symbols.isModuleLevel(r.sym)) {
+            return false
           }
           const scope = symbols.scopeRange(r.sym)
-          if (scope && scope.start >= range.start && scope.end <= range.end) {
-            continue
-          }
-          seen.add(r.sym)
-          out.push(r.sym)
-        }
-        return out
-      },
+          return !(
+            scope &&
+            scope.start >= range.start &&
+            scope.end <= range.end
+          )
+        }),
     }
     this.tier1 = tier1
     return tier1

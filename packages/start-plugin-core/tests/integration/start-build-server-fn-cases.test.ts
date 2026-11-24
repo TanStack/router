@@ -281,19 +281,24 @@ export { default } from '@tanstack/react-start/server-entry'
   // when the module loads; here the lazy handler module reads `selected` at
   // the first call, so a later assignment changes the handler (accepted,
   // R182). The build warns at such an argument: a binding the module
-  // assigns anywhere else (a syntactic write); a function written in place
-  // or a `const` says nothing.
+  // assigns anywhere else (a syntactic write), also through a cast; a
+  // function written in place or a `const` says nothing. With a top-level
+  // `await` the handlers stay in place, read when the chain is created: no
+  // warning.
   test(
     'a handler passed as a binding the module assigns elsewhere warns at the argument, and only there',
     async () => {
       const source = `${head}let selected = () => 'first'
 export const fn = createServerFn().handler(selected)
+let picked = () => 'first'
+export const cast = createServerFn().handler(picked as any)
 export const closure = createServerFn().handler(() => selected())
 const kept = () => 'kept'
 export const constant = createServerFn().handler(kept)
 let unchanged = () => 'unchanged'
 export const neverAssigned = createServerFn().handler(unchanged)
 selected = () => 'second'
+picked = () => 'second'
 `
       const { diagnostics, root } = await buildStart({
         bundler,
@@ -303,15 +308,38 @@ selected = () => 'second'
         },
       })
       const warning = { severity: 'warning', file: 'fns.ts', root } as const
-      const position = diagnosticPosition(
-        source,
-        'selected)\nexport const closure',
+      const positions = [
+        diagnosticPosition(source, 'selected)\nlet picked'),
+        diagnosticPosition(source, 'picked as any'),
+      ]
+      for (const position of positions) {
+        expectDiagnostic(diagnostics, { ...warning, position })
+      }
+      // (none at the other handlers; Rsbuild reports a warning on two
+      // channels, one of them both warnings at once)
+      const atPositions = new Set(
+        positions.flatMap((position) =>
+          findDiagnostics(diagnostics, { ...warning, position }),
+        ),
       )
-      expectDiagnostic(diagnostics, { ...warning, position })
-      // (none at the other handlers; Rsbuild reports a warning on two channels)
-      expect(findDiagnostics(diagnostics, warning)).toEqual(
-        findDiagnostics(diagnostics, { ...warning, position }),
-      )
+      expect(
+        findDiagnostics(diagnostics, warning).filter(
+          (d) => !atPositions.has(d),
+        ),
+      ).toEqual([])
+      const eager = await buildStart({
+        bundler,
+        files: {
+          'fns.ts': `${source}export const ready = await Promise.resolve(true)\n`,
+          'entry.ts': `export * from './fns'\n`,
+        },
+      })
+      expect(
+        findDiagnostics(eager.diagnostics, {
+          ...warning,
+          root: eager.root,
+        }),
+      ).toEqual([])
     },
     timeout,
   )

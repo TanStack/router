@@ -28,8 +28,10 @@ import {
   revision,
   sameFileSpecifier,
   stringLiteral,
+  contextOwner,
   unwrapExpression,
   walk,
+  walkMoved,
 } from '@tanstack/router-utils/compiler'
 import { relative } from 'pathe'
 import {
@@ -59,6 +61,7 @@ import type { Chain, Escape, EscapeReason } from '../compiler/start-analysis'
 import type { ProviderModule, ServerFnFact } from '../server-fns/registry'
 import type {
   AbstractValue,
+  ContextKind,
   EditScope,
   Frag,
   GenUnitId,
@@ -1028,9 +1031,13 @@ function planStartEnv(
       // the handler module evaluates the argument at the first call, `main`
       // when the chain is created: they differ for a binding the module
       // assigns elsewhere (R182: a warning, no other placement)
+      // (through a cast: `.handler(h as any)` evaluates `h` all the same)
+      const named = unwrapExpression(h)
       const ref =
-        h.type === 'Identifier'
-          ? t1.refs.refsIn(rangeOf(h)).find((r) => r.range.start === h.start)
+        named.type === 'Identifier'
+          ? t1.refs
+              .refsIn(rangeOf(named))
+              .find((r) => r.range.start === named.start)
           : undefined
       if (ref && t1.mutation.isReassigned(ref.sym)) {
         const binding = ctx.symbols.name(ref.sym)
@@ -1874,106 +1881,6 @@ function optionalBefore(n: Node): boolean {
   }
 }
 
-/** A private name (`#x`) the code of `node` reads of a class around it, if any (none of a class `node` itself declares). */
-function privateNameOutside(node: Node): (Node & { name: string }) | null {
-  const found: { node: (Node & { name: string }) | null } = { node: null }
-  walk(node, {
-    enter: (n, wctx) => {
-      if (found.node) {
-        wctx.stop()
-        return
-      }
-      if (
-        n.type === 'PrivateIdentifier' &&
-        !wctx
-          .ancestors()
-          .some(
-            (a) =>
-              a !== node && a.start >= node.start && a.type === 'ClassBody',
-          )
-      ) {
-        found.node = n as Node & { name: string }
-      }
-    },
-  })
-  return found.node
-}
-
-/**
- * The first `this`, `super`, `new.target` or `arguments` (and, with `awaits`,
- * `await` or `yield`) in `node` that belongs to the code around it, not to a
- * function or a class of its own.
- */
-function enclosingCallCode(
-  node: Node,
-  /** Whether an identifier refers to a declared binding (an `arguments` the code declares). */
-  bound: (n: Node) => boolean,
-  awaits = true,
-): Node | null {
-  const found: { node: Node | null } = { node: null }
-  walk(node, {
-    enter: (n, wctx) => {
-      if (found.node) {
-        wctx.stop()
-        return
-      }
-      const inside = (types: ReadonlyArray<string>) =>
-        wctx
-          .ancestors()
-          .some(
-            (a) =>
-              a !== node && a.start >= node.start && types.includes(a.type),
-          )
-      switch (n.type) {
-        case 'ThisExpression':
-        case 'Super':
-        case 'MetaProperty':
-        case 'Identifier':
-          if (
-            (n.type !== 'MetaProperty' || n.meta.name === 'new') &&
-            (n.type !== 'Identifier' ||
-              (n.name === 'arguments' && !bound(n))) &&
-            !inside(['FunctionExpression', 'FunctionDeclaration', 'ClassBody'])
-          ) {
-            found.node = n
-          }
-          break
-        case 'AwaitExpression':
-        case 'YieldExpression':
-          if (
-            awaits &&
-            !inside([
-              'FunctionExpression',
-              'FunctionDeclaration',
-              'ArrowFunctionExpression',
-            ])
-          ) {
-            found.node = n
-          }
-          break
-        default:
-          break
-      }
-    },
-  })
-  return found.node
-}
-
-/** How a message names the code `enclosingCallCode` found. */
-function ownedWord(n: Node): string {
-  return n.type === 'ThisExpression'
-    ? 'this'
-    : n.type === 'Super'
-      ? 'super'
-      : n.type === 'MetaProperty'
-        ? 'new.target'
-        : n.type === 'AwaitExpression'
-          ? 'await'
-          : n.type === 'YieldExpression'
-            ? 'yield'
-            : 'arguments'
-}
-
 /**
  * Hoists a server-fn chain that is no top-level declarator's value to module
  * level on the server (J4.6, R162): the chain region is claimed by a
@@ -2036,10 +1943,26 @@ function hoist(
     return null
   }
   const captures = t1.capturesOf(xRange)
-  const firstCapture = () => {
-    const first = t1.refs.refsIn(xRange).find((r) => captures.includes(r.sym))
-    return { first, name: symbols.name(first ? first.sym : captures[0]!) }
-  }
+  const firstCapture = () => ({
+    first: captures[0]!,
+    name: symbols.name(captures[0]!.sym),
+  })
+  // what the chain takes from the code around it without a name, and the
+  // code only a function of its own runs, when that function is called
+  // (`walkMoved`: not one called or constructed in place, nor an instance
+  // field's initialiser, which may run while its class is defined): the
+  // outermost such nodes, in source order
+  const later: Array<Range> = []
+  const { uses } = walkMoved(t1, [X], {
+    onNode: (n, runs) => {
+      if (runs === 'later' && n.end > (later.at(-1)?.end ?? -1)) {
+        later.push(rangeOf(n))
+      }
+    },
+  })
+  /** The first use, of a kind `which` accepts, the code around the chain provides (not the module). */
+  const ownedUse = (which: (kind: ContextKind) => boolean) =>
+    uses.find((u) => which(u.kind) && contextOwner(t1, u.node, u) !== null)
   // created exactly once, unconditionally, when the module loads (R162)
   const position = loadPosition(file, X)
   if (position.k === 'refused') {
@@ -2048,27 +1971,27 @@ function hoist(
       const { first, name } = firstCapture()
       // `base.handler(…)` with `const base = createServerFn()` in the function
       const builder =
-        !!first &&
         !site.chain.headIsFactoryCall &&
         first.range.start === site.chain.head.start
       return refuse(
         builder
           ? `${NESTED} and is built on \`${name}\`, a local of that function. Define the server function at the module top level, with \`${name}\` there too (export it to share it), or as one chain there: \`export const fn = createServerFn().handler(…)\`.`
           : `${NESTED} and reads \`${name}\`, a local of that function. Define it at the module top level and pass \`${name}\` in its input: declare it with \`.validator()\` and call the server function with \`{ data: … }\`.`,
-        first ? first.range : xRange,
+        first.range,
         { reads: { name, builder } },
       )
     }
-    const bound = (n: Node) => !!file.referenceOf(n)?.binding
     const owned =
-      position.why === 'function' ? enclosingCallCode(X, bound) : null
+      position.why === 'function'
+        ? ownedUse((kind) => kind !== 'private-name')
+        : undefined
     if (owned) {
-      const what = ownedWord(owned)
+      const what = owned.kind
       return refuse(
         what === 'await' || what === 'yield'
           ? `${NESTED} and uses \`${what}\` of that function outside its handler. Define it at the module top level.`
           : `${NESTED} and uses \`${what}\` of that function. Define it at the module top level and pass what it reads from \`${what}\` in its input: declare it with \`.validator()\` and call the server function with \`{ data: … }\`.`,
-        rangeOf(owned),
+        rangeOf(owned.node),
       )
     }
     return refuse(
@@ -2080,7 +2003,7 @@ function hoist(
   // name a class expression gives itself (the hoisted `const` is outside)
   if (captures.length > 0) {
     const { first, name } = firstCapture()
-    const scope = symbols.scopeRange(first ? first.sym : captures[0]!)
+    const scope = symbols.scopeRange(first.sym)
     let owner: Node | null = file.parentOf(X)
     while (
       owner !== null &&
@@ -2096,34 +2019,25 @@ function hoist(
           : 'a name of the code around it'
     return refuse(
       `A server function cannot be compiled when its code reads \`${name}\`, ${what}: the server function is created at the module top level, where \`${name}\` does not exist. Declare what it reads at the module top level, above the statement holding the server function, or pass it in its input.`,
-      first ? first.range : xRange,
+      first.range,
     )
   }
   // `this`, `super`, `new.target`, `arguments` of a class's static parts: the
   // class's own, which the hoisted `const` outside the class does not have
-  // (at the module top level they mean the same there)
-  let classAround = false
-  for (let a = file.parentOf(X); a !== null; a = file.parentOf(a)) {
-    if (a.type === 'ClassBody') {
-      classAround = true
-      break
-    }
-  }
-  const classCode = classAround
-    ? enclosingCallCode(X, (n) => !!file.referenceOf(n)?.binding, false)
-    : null
+  // (the module's mean the same there)
+  const classCode = ownedUse((kind) => kind !== 'private-name')
   if (classCode) {
     return refuse(
-      `A server function cannot be compiled when its code uses \`${ownedWord(classCode)}\` of the class it is written in: the server function is created at the module top level, outside the class. Read the class by its name in the handler, or declare what it reads above the class.`,
-      rangeOf(classCode),
+      `A server function cannot be compiled when its code uses \`${classCode.kind}\` of the class it is written in: the server function is created at the module top level, outside the class. Read the class by its name in the handler, or declare what it reads above the class.`,
+      rangeOf(classCode.node),
     )
   }
-  // a private name of a class the chain is written in cannot leave it (d19)
-  const privateName = privateNameOutside(X)
+  // a private name of a class around the chain cannot leave it (d19)
+  const privateName = uses.find((u) => u.kind === 'private-name')
   if (privateName) {
     return refuse(
-      `A server function cannot be compiled when its code reads \`#${privateName.name}\`, a private name of the class it is written in: the server runs it outside the class. Define it at the module top level and read the value through a static method or a module-level binding.`,
-      rangeOf(privateName),
+      `A server function cannot be compiled when its code reads \`#${(privateName.node as { name: string }).name}\`, a private name of the class it is written in: the server runs it outside the class. Define it at the module top level and read the value through a static method or a module-level binding.`,
+      rangeOf(privateName.node),
     )
   }
   const statement = position.statement
@@ -2132,24 +2046,12 @@ function hoist(
   )!
   // what the chain reads when the module loads has the value there that the
   // source reads: the hoisted `const` evaluates it before its own statement
-  // runs (what a function of the chain reads, its handler's code included,
-  // runs when it is called)
-  const functions: Array<Range> = []
-  walk(X, {
-    enter: (n) => {
-      if (
-        n.type === 'FunctionExpression' ||
-        n.type === 'FunctionDeclaration' ||
-        n.type === 'ArrowFunctionExpression'
-      ) {
-        functions.push(rangeOf(n))
-      }
-    },
-  })
+  // runs (what only a function of the chain reads, its handler's code
+  // included, is read when it is called)
   for (const r of t1.refs.refsIn(xRange)) {
     if (
-      functions.some((f) => r.range.start >= f.start && r.range.end <= f.end) ||
-      !symbols.isModuleLevel(r.sym)
+      !symbols.isModuleLevel(r.sym) ||
+      later.some((f) => r.range.start >= f.start && r.range.end <= f.end)
     ) {
       continue
     }
