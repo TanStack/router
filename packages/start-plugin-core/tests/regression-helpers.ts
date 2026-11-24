@@ -123,14 +123,14 @@ export class CompileFailure extends Error {
 }
 
 /**
- * The failure of an environment (default `client`) to serve a case file
+ * The failure of an environment (default `client`; `rsc` on an RSC host) to serve a case file
  * (default `module.tsx`): a `CompileFailure` (the error it threw and the
  * warnings and errors the app reported on any channel while it tried), or
  * `undefined` when it serves the file.
  */
 export async function compileError(
   startCase: StartCase,
-  environment: 'client' | 'ssr' = 'client',
+  environment: 'client' | 'ssr' | 'rsc' = 'client',
   file = moduleFile,
 ): Promise<CompileFailure | undefined> {
   const mark = startCase.diagnostics().length

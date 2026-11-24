@@ -13,6 +13,7 @@ import {
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
 import {
+  StartBuildError,
   buildStart,
   callByIdExports,
   callByIdPrelude,
@@ -277,69 +278,89 @@ export { default } from '@tanstack/react-start/server-entry'
     timeout,
   )
 
-  // On main, `.handler(selected)` registers the function `selected` holds
-  // when the module loads; here the lazy handler module reads `selected` at
-  // the first call, so a later assignment changes the handler (accepted,
-  // R182). The build warns at such an argument: a binding the module
-  // assigns anywhere else (a syntactic write), also through a cast; a
-  // function written in place or a `const` says nothing. With a top-level
-  // `await` the handlers stay in place, read when the chain is created: no
-  // warning.
-  test(
-    'a handler passed as a binding the module assigns elsewhere warns at the argument, and only there',
-    async () => {
-      const source = `${head}let selected = () => 'first'
-export const fn = createServerFn().handler(selected)
-let picked = () => 'first'
-export const cast = createServerFn().handler(picked as any)
-export const closure = createServerFn().handler(() => selected())
+  // On main the build accepts `.handler(selected)` for a binding the module
+  // assigns again, and the client bundle can keep the assignments with what
+  // they read. A handler passed by name whose binding the module assigns
+  // anywhere else (a syntactic write), also through a cast, fails the build
+  // at the argument, with the provider in place and in a module awaiting at
+  // its top level (handlers in place) alike, and only there: a function
+  // written in place, a `const` and a `let` nothing assigns again beside it
+  // are not reported, and on their own they build and answer. (One refusal
+  // per build: Vite reports a module's first error.)
+  const controls = `export const closure = createServerFn().handler(() => 'closure')
 const kept = () => 'kept'
 export const constant = createServerFn().handler(kept)
 let unchanged = () => 'unchanged'
 export const neverAssigned = createServerFn().handler(unchanged)
-selected = () => 'second'
-picked = () => 'second'
 `
-      const { diagnostics, root } = await buildStart({
+  const reassigned = `${head}let selected = () => 'first'
+export const fn = createServerFn().handler(selected)
+${controls}selected = () => 'second'
+`
+  test.each([
+    { name: 'a binding', module: reassigned, at: 'selected)' },
+    {
+      name: 'a binding through a cast',
+      module: `${head}let picked = () => 'first'
+export const cast = createServerFn().handler(picked as any)
+${controls}picked = () => 'second'
+`,
+      at: 'picked as any',
+    },
+    {
+      name: 'a binding, in a module awaiting at its top level',
+      module: `${reassigned}export const ready = await Promise.resolve(true)\n`,
+      at: 'selected)',
+    },
+  ])(
+    'a handler passed as $name the module assigns elsewhere fails the build at the argument, and only there',
+    async ({ module, at }) => {
+      const error = await buildStart({
         bundler,
-        files: {
-          'fns.ts': source,
-          'entry.ts': `export * from './fns'\n`,
-        },
-      })
-      const warning = { severity: 'warning', file: 'fns.ts', root } as const
-      const positions = [
-        diagnosticPosition(source, 'selected)\nlet picked'),
-        diagnosticPosition(source, 'picked as any'),
-      ]
-      for (const position of positions) {
-        expectDiagnostic(diagnostics, { ...warning, position })
+        files: { 'fns.ts': module, 'entry.ts': `export * from './fns'\n` },
+      }).then(
+        () => expect.fail('the build succeeded'),
+        (e: unknown) => e,
+      )
+      if (!(error instanceof StartBuildError)) {
+        throw error
       }
-      // (none at the other handlers; Rsbuild reports a warning on two
-      // channels, one of them both warnings at once)
-      const atPositions = new Set(
-        positions.flatMap((position) =>
-          findDiagnostics(diagnostics, { ...warning, position }),
-        ),
+      const refusal = {
+        severity: 'error',
+        file: 'fns.ts',
+        root: error.root,
+      } as const
+      const position = diagnosticPosition(module, at)
+      expectDiagnostic(error.diagnostics, { ...refusal, position })
+      // (none at the other handlers)
+      const atArgument = new Set(
+        findDiagnostics(error.diagnostics, { ...refusal, position }),
       )
       expect(
-        findDiagnostics(diagnostics, warning).filter(
-          (d) => !atPositions.has(d),
+        findDiagnostics(error.diagnostics, refusal).filter(
+          (d) => !atArgument.has(d),
         ),
       ).toEqual([])
-      const eager = await buildStart({
+    },
+    timeout,
+  )
+
+  test(
+    'a function written in place, a `const` and a `let` nothing assigns again build as handlers, and answer',
+    async () => {
+      const { ssr } = await buildStart({
         bundler,
         files: {
-          'fns.ts': `${source}export const ready = await Promise.resolve(true)\n`,
-          'entry.ts': `export * from './fns'\n`,
+          'fns.ts': `${head}${controls}`,
+          'ssr-entry.ts': `export * from './fns'\n`,
+          'client-entry.ts': `export * from './fns'\n`,
         },
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
       })
-      expect(
-        findDiagnostics(eager.diagnostics, {
-          ...warning,
-          root: eager.root,
-        }),
-      ).toEqual([])
+      const { result } = await ssr.run(
+        `return [await entry.closure(), await entry.constant(), await entry.neverAssigned()]`,
+      )
+      expect(result).toEqual(['closure', 'kept', 'unchanged'])
     },
     timeout,
   )

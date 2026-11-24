@@ -920,6 +920,21 @@ function planStartEnv(
         continue
       }
     }
+    // in every compile that keeps the site, whatever its role, before its
+    // output: a handler passed by name the module assigns elsewhere. After
+    // the hoist check: a site it refuses (in a function or block: a local, or
+    // no single creation) gets that error, and one in code this env erases none
+    const reassigned = reassignedBinding(ctx, site.handler)
+    if (reassigned !== null) {
+      ctx.diagnostic({
+        severity: 'error',
+        message: reassignedHandlerMessage(reassigned),
+        range: rangeOf(site.handler),
+        by,
+        code: 'start-handler-reassigned',
+      })
+      continue
+    }
     const id =
       config.idMode === 'dev'
         ? devFunctionId(key)
@@ -1028,35 +1043,6 @@ function planStartEnv(
       commitHoist = hoisted!.commit
     }
     if (lazySites.has(site)) {
-      // the handler module evaluates the argument at the first call, `main`
-      // when the chain is created: they differ for a binding the module
-      // assigns elsewhere (R182: a warning, no other placement)
-      // (through a cast: `.handler(h as any)` evaluates `h` all the same)
-      const named = unwrapExpression(h)
-      const ref =
-        named.type === 'Identifier'
-          ? t1.refs
-              .refsIn(rangeOf(named))
-              .find((r) => r.range.start === named.start)
-          : undefined
-      const envLive = ctx.liveness('env')
-      if (
-        ref &&
-        t1.mutation.isReassigned(
-          ref.sym,
-          // (a Solid `ref={h}` assigns only where this module keeps it)
-          (r) => r.kind === 'write' || envLive.live(r),
-        )
-      ) {
-        const binding = ctx.symbols.name(ref.sym)
-        ctx.diagnostic({
-          severity: 'warning',
-          message: `\`${binding}\` is read when the server function is first called, not when it is created: this module assigns \`${binding}\` elsewhere, so a call runs the function it holds at that moment. Pass a function written in place (\`.handler(async () => …)\`) or a \`const\`.`,
-          range: rangeOf(h),
-          by,
-          code: 'start-handler-reassigned',
-        })
-      }
       const { out, load } = lazyHandlerOutput()
       const local = names.alloc(`tsrHandler$${identifierBase(site.stableKey)}`)
       const region = ctx.region(rangeOf(h), 'custom')
@@ -1281,6 +1267,35 @@ function planStartEnv(
   }
 
   ctx.setFacts(START_ENV, facts)
+}
+
+/**
+ * The name of the binding a `.handler()` argument passes by name (through a
+ * cast: `.handler(h as any)` passes `h` all the same) when this module
+ * assigns it anywhere else, explicitly (`h = …`, `h ??= …`, a destructuring
+ * target, in any function): every compile that keeps the site refuses it (SPEC
+ * J4.5). The assignments are statements, which the client output can keep
+ * with what they read (R154), so the server code the binding holds can ship
+ * to the client. A Solid `ref={h}` is no explicit assignment: Solid sets it
+ * when the element renders, in code that reads `h` anyway. (A `const` alias
+ * or a closure calling `h` keeps the assignments too: the error names no such
+ * rewrite.)
+ */
+function reassignedBinding(ctx: PlanContext, arg: Node): string | null {
+  const named = unwrapExpression(arg)
+  if (named.type !== 'Identifier') {
+    return null
+  }
+  const ref = ctx.t1.refs
+    .refsIn(rangeOf(named))
+    .find((r) => r.range.start === named.start)
+  return ref && ctx.t1.mutation.isReassigned(ref.sym)
+    ? ctx.symbols.name(ref.sym)
+    : null
+}
+
+function reassignedHandlerMessage(binding: string): string {
+  return `\`${binding}\` is assigned elsewhere in this module, so the server code it holds can ship to the client: the client output can keep the assignments of \`${binding}\` and the code they reference. Pass the function written in place (\`.handler(async () => …)\`), or define the implementation once with a \`const\` (\`const ${binding} = wrap(async () => …)\`, \`const ${binding} = condition ? a : b\`).`
 }
 
 /** The node on exactly `range`. */

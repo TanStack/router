@@ -6,6 +6,7 @@
  * code ships.
  */
 import vue from '@vitejs/plugin-vue'
+import { diagnosticsOf } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, describe, expect, test } from 'vitest'
 import { StartBuildError, buildStart } from '../build-harness'
 import { compileError, createStartHost } from '../regression-helpers'
@@ -218,6 +219,35 @@ describe('vite dev', () => {
       ).toBeInstanceOf(Error)
     },
   )
+
+  // a `let` of the block is a local of the setup function: the server fn is
+  // refused for where it is created, with the block's own message, also when
+  // the block assigns the handler again (not the module-level reassignment
+  // error, whose rewrite would leave it in the block)
+  test('a server fn on a reassigned `let` of a <script setup> block keeps the script-setup message', async () => {
+    const startCase = await sfcCase(`<script setup>
+import { createServerFn } from '@tanstack/vue-start'
+let h = async () => 'MARK_SERVER_SECRET'
+h = async () => 'MARK_SERVER_SECRET_2'
+const fn = createServerFn().handler(h)
+console.log(fn)
+</script>
+
+<template>
+  <p>page</p>
+</template>
+`)
+    const failure = await compileError(startCase, 'client', 'Page.vue')
+    expect(failure).toBeInstanceOf(Error)
+    const texts = [
+      ...diagnosticsOf(failure!.error),
+      ...diagnosticsOf(failure!.reported),
+    ]
+      .map((d) => d.text)
+      .join('\n')
+    expect(texts).toContain('created each time a component is set up')
+    expect(texts).not.toContain('assigned elsewhere')
+  })
 
   test.each(recipes)('$name compiles', async ({ sfc }) => {
     const startCase = await sfcCase(sfc)

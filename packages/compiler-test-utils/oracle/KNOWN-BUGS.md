@@ -242,14 +242,6 @@ function info not found` when one of them calls it, and the build says nothing, 
   not on the client, and rendering it fails hydration (React #418). `Object.values(ns)` gets each server fn twice.
   Member reads (`ns.alpha()`) are unaffected. Workaround: enumerate an explicit list.
 
-- **A handler passed as a binding the module assigns elsewhere is read at the first call** (R182, Astra start #3;
-  accepted, no placement change): the lazy handler module evaluates `.handler(selected)`'s argument when the server fn
-  is first called, `main` when the chain is created, so `let selected = a; … .handler(selected); selected = b` runs
-  `b` here and `a` on `main`. The build warns at the argument when the module writes the binding anywhere (a closed,
-  syntactic rule: an assignment, update or destructuring target, or a `var` declared again).
-  `integration/start-build-server-fn-cases.test.ts`: "a handler passed as a binding the module assigns elsewhere warns
-  at the argument, and only there". Workaround: pass a function written in place, or a `const`.
-
 - **A class, enum or namespace only a server fn handler reads runs at the first call on the server** (R163 round-2
   rulings (c), review-a1-classes-stay-round2 3, `s13`; accepted: R157/R158 cover classes like any declaration): the
   lazy handler module holds what only the handler reads, so `class Repo { static made = registry.add('repo') }`
@@ -423,8 +415,14 @@ declaration table of 11-23). Rows: `start-plugin-core/tests/start-compiler-remov
   TypeScript text only, which every bundler strips. Rows: "a plain parameter".
 
 - **A statement that only assigns stays, with what it reads** (D3 A, R154): `let db; db = connect()` read only by a
-  handler keeps the assignment and its import on the client; import protection reports the import. Workaround:
-  `const db = connect()`. Row: `start-compiler-erasure.test.ts` "a `let` a top-level statement assigns stays with
+  handler keeps the assignment and its import on the client, silently unless the imported file is protected (a
+  `.server` file or a `server-only` marker: import protection reports that one), and in the production bundle too
+  when the statement or the import has an effect at load. A server fn handler passed by name whose binding the module
+  assigns (`.handler(h)`, `h = …`) is refused (`start-handler-reassigned`); the other positions that take server code
+  by name still build and keep the assignments: `createServerOnlyFn(h)`, `createIsomorphicFn().server(h)` (and a
+  middleware's `.server(h)`), `.validator(h)`, a route's `server.handlers` and `headers` by name, and a binding only a
+  handler reads that a top-level statement initialises conditionally (`let conn; if (url) { conn = connect() }`).
+  Workaround: `const db = connect()`. Row: `start-compiler-erasure.test.ts` "a `let` a top-level statement assigns stays with
   the statement, which runs at load".
 
 - **Self-reads are followed through code that runs on the spot only** (1.4 of the design): a function counts only as
