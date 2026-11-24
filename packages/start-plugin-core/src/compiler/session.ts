@@ -553,7 +553,8 @@ export class StartCompilerSession {
   ): void {
     // (a host that restores modules decides it from them all: `packageUseAtSeal`)
     if (!this.opts.packageUseAtSeal && this.usesStartInPackage(out, file)) {
-      const warning = this.packageUseWarning(file, reach)
+      const module = reach?.module ? reach.module() : file
+      const warning = module !== null && this.packageUseWarning(module, reach)
       if (warning) {
         sink.warn?.(warning, undefined)
       }
@@ -776,6 +777,13 @@ export interface ClientPublication {
  */
 export interface StartPackageReach {
   roots: ReadonlySet<string>
+  /**
+   * The module a compiled file's Start use is in, when the file bundles
+   * other modules (Vite's dependency optimizer): the module the warning
+   * names, null when no one package's module is (no warning). Default: the
+   * file.
+   */
+  module?: () => string | null
 }
 
 function undeclaredPackageMessage(
