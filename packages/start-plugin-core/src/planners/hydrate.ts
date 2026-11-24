@@ -950,6 +950,88 @@ function declaredWithin(ctx: PlanContext, s: SymbolId, region: Range): boolean {
   return scope !== null && within(scope, region)
 }
 
+/**
+ * Whether every write of `sym` the output keeps (`live`) is complete when
+ * the boundary `b` is created, so the value its placeholder passes is the
+ * one any later read sees (decision 3a): each write is an ordinary
+ * statement (`x = …`, `x++`) of the code declaring `sym`, also in its
+ * blocks, `if`, `switch` and `try`, and ends before the boundary starts;
+ * the boundary is in that code too, in no loop the variable outlives. A
+ * write in a function or a class may run later (an async function after it
+ * returned, a generator when resumed, an instance field when constructed),
+ * called in place or not: not complete.
+ */
+function writesComplete(
+  ctx: PlanContext,
+  b: Boundary,
+  sym: SymbolId,
+  live: (ref: ClassifiedRef) => boolean,
+): boolean {
+  const { t1 } = ctx
+  const writes = t1.mutation.writesOf(sym, live)
+  const scope = ctx.symbols.scopeRange(sym)
+  if (writes.length === 0) {
+    return true
+  }
+  if (scope === null) {
+    return false
+  }
+  /** The nodes from `node` up to the code declaring `sym`, which `ok` accepts each of, or false. */
+  const climb = (node: Node | null, ok: (n: Node) => boolean): boolean => {
+    for (let n = node; n !== null; n = t1.parentOf(n)) {
+      if (n.start === scope.start && n.end === scope.end) {
+        return true
+      }
+      if (!ok(n)) {
+        return false
+      }
+    }
+    return false
+  }
+  const opensCode = (n: Node) =>
+    n.type === 'FunctionExpression' ||
+    n.type === 'FunctionDeclaration' ||
+    n.type === 'ArrowFunctionExpression' ||
+    n.type === 'ClassBody' ||
+    n.type === 'StaticBlock'
+  const isLoop = (n: Node) =>
+    n.type === 'ForStatement' ||
+    n.type === 'ForInStatement' ||
+    n.type === 'ForOfStatement' ||
+    n.type === 'WhileStatement' ||
+    n.type === 'DoWhileStatement'
+  if (!climb(t1.parentOf(b.element), (n) => !opensCode(n) && !isLoop(n))) {
+    return false
+  }
+  return writes.every((w) => {
+    // the write's statement, through expressions only
+    let statement = t1.nodeAt(w.range.start)
+    while (statement !== null && statement.type !== 'ExpressionStatement') {
+      if (
+        opensCode(statement) ||
+        /(?:Statement|Declaration)$/.test(statement.type)
+      ) {
+        return false
+      }
+      statement = t1.parentOf(statement)
+    }
+    return (
+      statement !== null &&
+      statement.end <= b.element.start &&
+      climb(t1.parentOf(statement), (n) =>
+        [
+          'BlockStatement',
+          'IfStatement',
+          'SwitchStatement',
+          'SwitchCase',
+          'TryStatement',
+          'CatchClause',
+        ].includes(n.type),
+      )
+    )
+  })
+}
+
 /** The hook a callee names (`useX`, `NS.useX`, `(useX)`), or null. */
 function hookName(callee: Node): string | null {
   const c = unwrapExpression(callee)
@@ -1052,12 +1134,13 @@ function extract(
   // reads a reassigned binding through a getter): a function of the
   // children that reads it later, itself or through a nested boundary's
   // placeholder it renders, would read that snapshot: when `evaluated`,
-  // where the children read `sym`, is in one.
+  // where the children read `sym`, is in one, and a write of `sym` may run
+  // after the boundary is created (`writesComplete`).
   const readsSnapshot = (sym: SymbolId, evaluated: Range): boolean =>
     !solid &&
     symbols.isReassignable(sym) &&
     scan.callables.some((f) => within(evaluated, f)) &&
-    t1.mutation.isReassigned(sym, (r) => liveEnv.live(r))
+    !writesComplete(ctx, b, sym, (r) => liveEnv.live(r))
   /** Reports a snapshot read of `sym` (`readsSnapshot`) at `read`. */
   const refuseSnapshot = (sym: SymbolId, read: Range): null => {
     const name = symbols.name(sym)

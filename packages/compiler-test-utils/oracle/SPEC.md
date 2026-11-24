@@ -826,7 +826,10 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   and what the children would take from the enclosing code without a name (`this`, `super`, `new.target`,
   `arguments`, `await`, `yield`, a private name of a class around them, as the language scopes them) give a compile
   error naming the fix (`split={false}`, a local before the boundary, or a child component); so does, on React, a read of a reassigned
-  `let` inside a function of the children, directly or through a nested boundary (R123, R161 D2; the fix is `useRef`), and children assigning a module binding the
+  `let` inside a function of the children, directly or through a nested boundary (R123, R161 D2; the fix is `useRef`),
+  unless every write of it is complete when the boundary is created (decision 3a: an ordinary statement of the code
+  declaring it, in its blocks, `if`, `switch` or `try`, before the boundary, which is in that code too and in no loop
+  the variable outlives; a write in a function or a class is never complete), and children assigning a module binding the
   chunk imports, or its copy of one the module also keeps (J5.2; the fix is `split={false}`). Dynamic `split` counts as split. A boundary with literal `split={false}` is
   neither extracted nor rejected, and its runtime behaviour is the framework's (C8). These rejections are the
   specified outcome, not a limitation to remove (G5's "our limitation is a bug" does not apply). Each compilation

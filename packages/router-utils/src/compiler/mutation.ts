@@ -20,12 +20,20 @@ export class MutationModel {
    * its value is not the one its declaration gave it.
    */
   isReassigned(sym: SymbolId, live?: (ref: ClassifiedRef) => boolean): boolean {
+    return this.writesOf(sym, live).length > 0
+  }
+
+  /** What assigns the binding (`live`: in code an output keeps), in source order. */
+  writesOf(
+    sym: SymbolId,
+    live?: (ref: ClassifiedRef) => boolean,
+  ): ReadonlyArray<ClassifiedRef> {
     this.sites ??= new Map()
     let sites = this.sites.get(sym)
     if (sites === undefined) {
       sites = this.refs.refsOf(sym).filter((r) => r.kind === 'write')
       this.sites.set(sym, sites)
     }
-    return live === undefined ? sites.length > 0 : sites.some(live)
+    return live === undefined ? sites : sites.filter(live)
   }
 }
