@@ -101,7 +101,7 @@ describe('route options read from the environment', () => {
 })
 
 describe('exported bindings', () => {
-  // Bug: the "will not be code-split" warning is only reported when the code
+  // Bug: the "stays in the route module" warning is only reported when the code
   // splitter changes the route module. In a production build, a route whose
   // only split candidate is an exported component is left as is, so the
   // warning is never shown (route HMR changes the module in dev, which shows

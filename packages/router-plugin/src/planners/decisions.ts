@@ -312,11 +312,13 @@ export function splitPlanOf(
       if (isFallbackLiteral(value)) {
         continue
       }
-      if (exportedAsOnMain(ctx, value)) {
+      const exportedBy = exportAsOnMain(ctx, value)
+      if (exportedBy) {
         // the route file keeps exporting it: splitting it would only move a
-        // re-export (`main` leaves it, with a warning)
-        exported.push(value.name)
-        exportedAt ??= { start: value.start, end: value.end }
+        // re-export (`main` leaves it, with a warning at what to edit: the
+        // first export)
+        exported.push((value as Node & { name: string }).name)
+        exportedAt ??= { start: exportedBy.start, end: exportedBy.end }
         continue
       }
       if (
@@ -393,11 +395,10 @@ export function splitPlanOf(
       severity: 'warning',
       code: 'exported-not-split',
       by: ROUTER_PLANNER,
-      message: [
-        `[tanstack-router] These exports from "${file}" will not be code-split and will increase your bundle size:`,
-        ...exported.map((name) => `- ${name}`),
-        'For the best optimization, these items should either have their export statements removed, or be imported from another location that is not a route file.',
-      ].join('\n'),
+      message:
+        exported.length === 1
+          ? `[tanstack-router] \`${exported[0]}\` stays in the route module because ${file} exports it. To split it, remove its export, or move it to another module and import it here.`
+          : `[tanstack-router] ${listOf(exported)} stay in the route module because ${file} exports them. To split them, remove their exports, or move them to another module and import them here.`,
       range: exportedAt,
     })
   }
@@ -478,23 +479,28 @@ export function claimedValueOf(value: Node): Node {
   return n.type === 'SequenceExpression' && parens !== null ? parens : n
 }
 
+/** `\`a\``, `\`a\` and \`b\``, `\`a\`, \`b\` and \`c\``. */
+function listOf(names: ReadonlyArray<string>): string {
+  const quoted = names.map((name) => `\`${name}\``)
+  return quoted.length === 1
+    ? quoted[0]!
+    : `${quoted.slice(0, -1).join(', ')} and ${quoted.at(-1)}`
+}
+
 /**
  * `main`'s `hasExport(ast, value)`, called by `compileCodeSplitReferenceRoute`
  * on a value that is a bare identifier only (an `as any` around it is split):
  * a top-level `export const|let|var` declares the name (patterns included),
  * `export function name`, `export default function name` or `export default
  * name`. By name, as `main` compares them; not `export { name }`, not
- * `export class`.
+ * `export class`. The export statement that does, or undefined.
  */
-function exportedAsOnMain(
-  ctx: PlanContext,
-  value: Node,
-): value is Node & { name: string } {
+function exportAsOnMain(ctx: PlanContext, value: Node): Node | undefined {
   if (value.type !== 'Identifier') {
-    return false
+    return undefined
   }
   const { name } = value
-  return ctx.t1.items.some(({ node }) => {
+  return ctx.t1.items.find(({ node }) => {
     if (node.type === 'ExportNamedDeclaration') {
       const d = node.declaration
       return (
@@ -515,7 +521,7 @@ function exportedAsOnMain(
       )
     }
     return false
-  })
+  })?.node
 }
 
 /**

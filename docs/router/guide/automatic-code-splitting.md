@@ -80,7 +80,7 @@ For automatic code splitting to work, there are some rules in place to make sure
 
 #### Do not export route properties
 
-Route properties like `component`, `loader`, etc., should not be exported from the route file. Exporting these properties results in them being bundled into the main application bundle, which means that they will not be code-split. The build warns once, naming the file and the exports.
+Route properties like `component`, `loader`, etc., should not be exported from the route file. Exporting these properties results in them being bundled into the main application bundle, which means that they will not be code-split. The build warns once, at the first such export, naming the file and the exports.
 
 ```tsx
 export const Route = createFileRoute('/posts')({
