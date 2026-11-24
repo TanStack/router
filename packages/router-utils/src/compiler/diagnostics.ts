@@ -69,7 +69,12 @@ export function positionSuffix(file: string, at: DiagnosticPosition): string {
 /** Where a host reports: an error fails the module (a sink may throw), a warning is printed. */
 export interface DiagnosticSink {
   error: (d: Diagnostic, at: DiagnosticPosition | undefined) => void
-  warn: (d: Diagnostic, at: DiagnosticPosition | undefined) => void
+  /**
+   * A warning the run reports now: each once per (file, reason and wording)
+   * per run. Absent for a host that decides which warnings a build reports
+   * itself, later, from what `found` gave it: no ledger is consulted.
+   */
+  warn?: (d: Diagnostic, at: DiagnosticPosition | undefined) => void
   /**
    * Every warning the compile found, before the once-per-run rule: what a
    * host that restores modules without compiling them records (a module's
@@ -122,7 +127,7 @@ export function reportCompileDiagnostics(
       continue
     }
     sink.found?.(d, at(d))
-    if (ledger.once(file, d)) {
+    if (sink.warn && ledger.once(file, d)) {
       sink.warn(d, at(d))
     }
   }
