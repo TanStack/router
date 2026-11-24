@@ -422,7 +422,9 @@ declaration table of 11-23). Rows: `start-plugin-core/tests/start-compiler-remov
   by name still build and keep the assignments: `createServerOnlyFn(h)`, `createIsomorphicFn().server(h)` (and a
   middleware's `.server(h)`), `.validator(h)`, a route's `server.handlers` and `headers` by name, and a binding only a
   handler reads that a top-level statement initialises conditionally (`let conn; if (url) { conn = connect() }`).
-  Workaround: `const db = connect()`. Row: `start-compiler-erasure.test.ts` "a `let` a top-level statement assigns stays with
+  `main` keeps the same statements. Known limit (user, 2026-11-24): too narrow a case for machinery; a warning would
+  flag correct `if (import.meta.env.SSR)` setup. Workaround (documented in the execution-model guide): the setup in
+  its own module only server code imports, or `const db = connect()`. Row: `start-compiler-erasure.test.ts` "a `let` a top-level statement assigns stays with
   the statement, which runs at load".
 
 - **Self-reads are followed through code that runs on the spot only** (1.4 of the design): a function counts only as

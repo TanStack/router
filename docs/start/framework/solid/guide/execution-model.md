@@ -203,6 +203,35 @@ const apiKey = process.env.SECRET_KEY
 const apiKey = createServerOnlyFn(() => process.env.SECRET_KEY)
 ```
 
+### Top-Level Setup Statements
+
+The compiler removes server code (server function handlers, `.server()` bodies, `createServerOnlyFn` implementations) from the client bundle, together with the imports only that code uses. A statement at the top level of a module always stays, so setup written as a statement (`if`, `try`, an assignment, `??=`) keeps its imports in the client bundle, and runs in the browser when the module loads. This is true in development and in production builds.
+
+```tsx
+// ❌ The `if` stays in client code: `./redis` is bundled and `connect()` runs in the browser
+import { connect } from './redis'
+
+let redis
+if (process.env.REDIS_URL) {
+  redis = connect()
+}
+
+export const getCount = createServerFn().handler(() => redis.get('count'))
+```
+
+```tsx
+// ✅ Put the setup in its own module, imported only by server code
+// redis.server.ts
+import { connect } from './redis'
+export const redis = connect()
+
+// count.ts
+import { redis } from './redis.server'
+export const getCount = createServerFn().handler(() => redis.get('count'))
+```
+
+A single `const` declaration also works: `const redis = connect()` leaves the client bundle with its import when only server code reads it. Naming the module `*.server.ts` lets [import protection](./import-protection.md) report it if client code ever imports it (a production build fails); for a package, add it to `importProtection.client.specifiers`.
+
 ### Incorrect Loader Assumptions
 
 ```tsx
