@@ -27,7 +27,7 @@ const nodeOnlyPkg = {
     exports: {
       '.': { node: './index.js' },
       './client': { node: './client.js' },
-      './helper.server': { node: './client.js' },
+      './helper.server.js': { node: './client.js' },
     },
   }),
   'node_modules/node-only/index.js': `export const greeting = () => 'MARK_NODE_ONLY'\n`,
@@ -126,7 +126,11 @@ export const Route = createFileRoute('/api/hello')({
 test(
   'client dep-scan succeeds when createServerFn imports a node-only package with or without importProtection',
   async () => {
-    for (const startOptions of [{}, { importProtection: { enabled: false } }]) {
+    for (const startOptions of [
+      {},
+      { importProtection: { behavior: 'error' } },
+      { importProtection: { enabled: false } },
+    ]) {
       const app = await createStartApp(
         appFiles({
           'package.json': JSON.stringify({
@@ -137,7 +141,7 @@ test(
           ...nodeOnlyPkg,
           'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { query } from 'node-only/helper.server'
+import { query } from 'node-only/helper.server.js'
 import { label } from 'client-dep'
 
 const loadData = createServerFn().handler(async () => query())
@@ -156,7 +160,7 @@ export const Route = createFileRoute('/')({
       )
       expect(errors).toEqual([])
       expect(discovered).toContain('client-dep')
-      expect(discovered).not.toContain('node-only/helper.server')
+      expect(discovered).not.toContain('node-only/helper.server.js')
       await close()
     }
   },

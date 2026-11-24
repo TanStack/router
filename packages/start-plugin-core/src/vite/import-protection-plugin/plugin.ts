@@ -1828,7 +1828,7 @@ export function importProtectionPlugin(
                   !(
                     isScanResolve &&
                     resolvedForInfo.result.external &&
-                    !isAbsolute(resolvedForInfo.id)
+                    !isAbsolute(resolvedForInfo.result.id)
                   )
                 ) {
                   info.resolved = resolvedForInfo.id
@@ -1861,7 +1861,7 @@ export function importProtectionPlugin(
             if (
               isScanResolve &&
               resolution?.result.external &&
-              !isAbsolute(resolution.id)
+              !isAbsolute(resolution.result.id)
             ) {
               return resolution.result
             }
