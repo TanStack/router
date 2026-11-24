@@ -64,7 +64,7 @@
  *   planner keeps it in place.
  */
 import { deriveId } from './identity'
-import { buildClusters } from './clusters'
+import { buildClusters, writeAssigns } from './clusters'
 import { readIndex } from './reads'
 import { NAMESPACE, TYPE } from './declarations'
 import { Removal, sourceUses } from './removal/index'
@@ -489,8 +489,9 @@ export function computePlacement(input: PlacementInput): Placement {
         const assignedOutside = [...clusters[c]!.declares].some((s) =>
           (graph.writesOfSym.get(s) ?? []).some((w) => {
             // (code the env module erases, a server function's handler on
-            // the client, writes nothing in this environment)
-            if (envView.isErasedAt(w.at)) {
+            // the client, writes nothing in this environment; a Solid ref
+            // on a callback only beside a kept explicit write)
+            if (!writeAssigns(graph, w, (at) => envView.isErasedAt(at))) {
               return false
             }
             const by =
@@ -1203,7 +1204,7 @@ export function computePlacement(input: PlacementInput): Placement {
         home.get(d) !== 'removed' &&
         // (a write in text that output erases, a client's stubbed server-fn
         // handler, assigns nothing there)
-        !graph.viewOf(h).isErasedAt(w.at)
+        writeAssigns(graph, w, (at) => graph.viewOf(h).isErasedAt(at))
       ) {
         const first = writers.get(c)
         if (first === undefined || w.at < first.at) {

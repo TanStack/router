@@ -830,6 +830,28 @@ export function Page() {
     })
   })
 
+  // A callback `let` the client's own code reassigns may hold an element
+  // ref target by then: the ref may assign it, refused like `field = el`.
+  test('client: a Solid ref naming a module let holding a callback the module reassigns is rejected', async () => {
+    const code = `${solidHead}export let paint = (el: HTMLElement) => {
+  el.dataset.painted = 'let'
+}
+export function clear() {
+  paint = undefined as any
+}
+export function Page() {
+  return <><Hydrate when={load()}><b ref={paint}>a</b></Hydrate><button onClick={() => console.log(paint)} /></>
+}`
+    const startCase = await (
+      await solidHost()
+    ).start.case({ 'module.tsx': code })
+    expectCompileError(await compileError(startCase, 'client'), {
+      source: code,
+      at: '<Hydrate',
+      column: true,
+    })
+  })
+
   // What a Solid ref may still name in split children: a module `let`
   // holding a callback nothing assigns (Solid calls it, as a `const`
   // callback), a module `let` only the children use (it moves with them),
@@ -871,6 +893,45 @@ export function Page() {
   return <><Hydrate when={load()}>{createIsomorphicFn().server(() => <div ref={box} />).client(() => <p>client</p>)()}</Hydrate><output>{String(box)}</output></>
 }`,
       shows: ['<p>client</p>'],
+    },
+    // the callback's reassignment is code the client erases: on the client
+    // the ref can only call the callback (Astra review of the hotspot 5
+    // implementation, 4)
+    {
+      name: 'a module let holding a callback that only a server-only fn reassigns',
+      code: `import { Hydrate, createServerOnlyFn } from '@tanstack/solid-start'
+import { load } from '@tanstack/solid-start/hydration'
+export let paint = (el: HTMLElement) => {
+  el.dataset.painted = 'let'
+}
+export const reset = createServerOnlyFn(() => {
+  paint = (el: HTMLElement) => {
+    el.dataset.painted = 'changed'
+  }
+})
+export function Page() {
+  return <Hydrate when={load()}><b ref={paint}>a</b></Hydrate>
+}`,
+      shows: ['data-painted="let"'],
+    },
+    {
+      name: "a module let holding a callback that only an isomorphic fn's server half reassigns",
+      code: `import { Hydrate, createIsomorphicFn } from '@tanstack/solid-start'
+import { load } from '@tanstack/solid-start/hydration'
+export let paint = (el: HTMLElement) => {
+  el.dataset.painted = 'let'
+}
+export const reset = createIsomorphicFn()
+  .server(() => {
+    paint = (el: HTMLElement) => {
+      el.dataset.painted = 'changed'
+    }
+  })
+  .client(() => {})
+export function Page() {
+  return <Hydrate when={load()}><b ref={paint}>a</b></Hydrate>
+}`,
+      shows: ['data-painted="let"'],
     },
   ])(
     'Solid: split children with $name build and bind it',

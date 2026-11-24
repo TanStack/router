@@ -135,11 +135,13 @@ export interface ClassifiedRef {
   exportShorthand?: boolean
   /**
    * A read that may assign the binding: Solid's `ref={x}` on a reassignable
-   * binding that holds no callback (Solid lowers it to "call it if it holds
-   * a function, else assign it"). The owners of what writes a binding
-   * (`MutationModel`, placement's write table) count it.
+   * binding (Solid lowers it to "call it if it holds a function, else assign
+   * it"). `value`: its declaration gives it no callback; `callback`: it does,
+   * so the ref assigns only where code that assigns the binding is kept (an
+   * output erasing every such write calls the callback). The owners of what
+   * writes a binding (`MutationModel`, placement's write table) count it.
    */
-  assigns?: true
+  assigns?: 'value' | 'callback'
 }
 
 interface FreeRef {
@@ -1048,7 +1050,7 @@ export class ModuleAnalysis {
         refTargets.push({ ref: r, binding: b })
       }
     }
-    refAssigns(file, refs, refTargets)
+    refAssigns(file, refTargets)
 
     // a `var` declared again: what that declaration gives it is a write, like
     // an assignment, except what its declaring unit starts it with (a nested
@@ -1406,38 +1408,27 @@ function isRefAttributeValue(file: SourceFile, node: Node): boolean {
 
 /**
  * Marks the Solid `ref={x}` reads that may assign `x` (`ClassifiedRef.assigns`):
- * all but those of a callback, a binding its declaration initialises with a
- * function and that nothing else assigns (Solid calls it, never assigns it).
+ * `callback` when the binding's one declaration initialises it with a
+ * function (Solid calls it, unless other code assigned it), else `value`.
  */
 function refAssigns(
   file: SourceFile,
-  refs: ReadonlyArray<ClassifiedRef>,
   targets: ReadonlyArray<{ ref: ClassifiedRef; binding: Binding }>,
 ): void {
-  if (targets.length === 0) {
-    return
-  }
-  const written = new Set<SymbolId>()
-  for (const r of refs) {
-    if (r.kind === 'write') {
-      written.add(r.sym)
-    }
-  }
   for (const { ref, binding } of targets) {
     const decl = binding.declarations[0]
     const declarator = decl ? file.parentOf(decl) : null
-    const callback =
+    const init =
       binding.declarations.length === 1 &&
       declarator?.type === 'VariableDeclarator' &&
       declarator.id === decl &&
-      declarator.init !== null &&
-      /^(?:Arrow)?Function(?:Expression)?$/.test(
-        unwrapExpression(declarator.init).type,
-      ) &&
-      !written.has(ref.sym)
-    if (!callback) {
-      ref.assigns = true
-    }
+      declarator.init !== null
+        ? unwrapExpression(declarator.init).type
+        : null
+    ref.assigns =
+      init === 'ArrowFunctionExpression' || init === 'FunctionExpression'
+        ? 'callback'
+        : 'value'
   }
 }
 

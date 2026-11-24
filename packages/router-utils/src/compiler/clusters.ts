@@ -48,6 +48,27 @@ export interface Write {
   sym: SymbolId
   at: number
   owner: RegionId | null
+  /** A Solid `ref={x}` on a binding holding a callback (`ClassifiedRef.assigns`): it assigns only beside a kept explicit write. */
+  callback?: true
+}
+
+/**
+ * Whether `w` assigns its binding in an output (`isErasedAt`: that output's
+ * erasure): not in erased text, and a Solid ref on a callback binding only
+ * where an explicit write of the binding is kept too.
+ */
+export function writeAssigns(
+  graph: Pick<ClusterGraph, 'writesOfSym'>,
+  w: Write,
+  isErasedAt: (at: number) => boolean,
+): boolean {
+  return (
+    !isErasedAt(w.at) &&
+    (!w.callback ||
+      (graph.writesOfSym.get(w.sym) ?? []).some(
+        (o) => !o.callback && o !== w && !isErasedAt(o.at),
+      ))
+  )
 }
 
 export interface ClusterGraph {
@@ -211,13 +232,17 @@ export function buildClusters(input: PlacementInput): ClusterGraph {
     return r
   }
   for (const ref of refs.all) {
-    if ((ref.kind !== 'write' && !ref.assigns) || !declMember.has(ref.sym)) {
+    if (
+      (ref.kind !== 'write' && ref.assigns === undefined) ||
+      !declMember.has(ref.sym)
+    ) {
       continue
     }
     const w: Write = {
       sym: ref.sym,
       at: ref.range.start,
       owner: evaluationAt(ref.range),
+      ...(ref.assigns === 'callback' && { callback: true as const }),
     }
     writes.push(w)
     let list = writesOfSym.get(w.sym)

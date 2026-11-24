@@ -22,7 +22,8 @@ export class MutationModel {
    * its value is not the one its declaration gave it.
    */
   isReassigned(sym: SymbolId, live?: (ref: ClassifiedRef) => boolean): boolean {
-    return this.sitesOf(sym).some((r) => counts(r, live))
+    const sites = this.sitesOf(sym)
+    return sites.some((r) => counts(r, sites, live))
   }
 
   /** What assigns the binding (`live`: in code an output keeps), in source order. */
@@ -30,7 +31,8 @@ export class MutationModel {
     sym: SymbolId,
     live?: (ref: ClassifiedRef) => boolean,
   ): ReadonlyArray<ClassifiedRef> {
-    return this.sitesOf(sym).filter((r) => counts(r, live))
+    const sites = this.sitesOf(sym)
+    return sites.filter((r) => counts(r, sites, live))
   }
 
   private sitesOf(sym: SymbolId): ReadonlyArray<ClassifiedRef> {
@@ -39,17 +41,30 @@ export class MutationModel {
     if (sites === undefined) {
       sites = this.refs
         .refsOf(sym)
-        .filter((r) => r.kind === 'write' || r.assigns)
+        .filter((r) => r.kind === 'write' || r.assigns !== undefined)
       this.sites.set(sym, sites)
     }
     return sites
   }
 }
 
-/** Whether a write counts: a possible assignment only through a liveness filter. */
+/**
+ * Whether a write of `sites` counts: a possible assignment only through a
+ * liveness filter, and on a callback binding only beside a kept explicit
+ * write.
+ */
 function counts(
   r: ClassifiedRef,
+  sites: ReadonlyArray<ClassifiedRef>,
   live: ((ref: ClassifiedRef) => boolean) | undefined,
 ): boolean {
-  return live === undefined ? !r.assigns : live(r)
+  if (r.assigns === undefined) {
+    return live === undefined || live(r)
+  }
+  return (
+    live !== undefined &&
+    live(r) &&
+    (r.assigns === 'value' ||
+      sites.some((w) => w.assigns === undefined && live(w)))
+  )
 }
