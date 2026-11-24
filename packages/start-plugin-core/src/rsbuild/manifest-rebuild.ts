@@ -25,7 +25,9 @@ export interface ManifestRebuildOptions {
 
 /**
  * Rebuilds the server environment's manifest module at finishMake stage 10,
- * so the server bundle serves the manifest of the last client build.
+ * so the server bundle serves the manifest of the last client build, in
+ * every mode (a dev server, a watch build, a production build whose module
+ * the persistent cache restored from an earlier build's manifest).
  *
  * The manifest module is a virtual module under `node_modules/.virtual/`,
  * and Rspack's watcher ignores `node_modules` by default: the write alone

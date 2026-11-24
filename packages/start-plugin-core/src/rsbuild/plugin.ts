@@ -160,17 +160,11 @@ export function tanStackStartRsbuild(
 
           config.plugins.push({
             apply(compiler: RspackCompiler) {
-              // Dev: each client compilation writes the manifest (step 9)
-              // before this compiler compiles again (step 8's ordering), but
-              // the write alone never builds the module again. A build
-              // compiles the server once, after the write.
-              if (api.context.action === 'dev') {
-                tapManifestRebuild(compiler, {
-                  name: 'TanStackStartManifestRebuild',
-                  virtualModuleState,
-                  target: serverGenerated,
-                })
-              }
+              tapManifestRebuild(compiler, {
+                name: 'TanStackStartManifestRebuild',
+                virtualModuleState,
+                target: serverGenerated,
+              })
             },
           })
         })

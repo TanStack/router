@@ -2,7 +2,7 @@
  * Start's Rsbuild host, one Rsbuild instance that builds, fails a build and
  * builds again: the last build's page links the client files that build
  * emitted (the client build the server publishes is the current run's), with
- * and without RSC. A pin of the left-out piece "the client build publication
+ * and without RSC, and with the persistent cache. A pin of the left-out piece "the client build publication
  * on the session" (hotspot 3 decision 6: green on the integration head).
  * Source: design-hotspot3-merged.md, review round 1, decision 6.
  */
@@ -88,6 +88,41 @@ export const Route = createFileRoute('/about')({ component: () => <p>MARK_ABOUT<
         Object.entries(served.scripts).filter(([, status]) => status !== 200),
       ).toEqual([])
       expect((await fetch(new URL('/about', url))).status).toBe(200)
+    },
+    timeout,
+  )
+
+  // With the persistent cache: the server's Start manifest module is
+  // restored with the first build's manifest; it is built again from the
+  // second build's, as any module Start generates (rule 3 of the Rsbuild
+  // host). Upstream cause: web-infra-dev/rspack#16785 (a virtual-module
+  // write the persistent cache does not see).
+  // Source: re-check 6 finding 1.
+  test(
+    'with the persistent cache, an edited route built again: the page links the files that build emitted',
+    async () => {
+      const first = await buildStart({
+        bundler: 'rsbuild',
+        samePlugins: true,
+        rsbuildConfig: { performance: { buildCache: true } },
+        files: {
+          ...rsbuildEntries,
+          'src/routes/__root.tsx': root,
+          'src/label.ts': label,
+          'src/routes/index.tsx': index('MARK_ONE'),
+        },
+      })
+      const second = await first.rebuild({
+        'src/routes/index.tsx': index('MARK_TWO'),
+      })
+      const { url } = await second.preview()
+      const served = await page(url)
+      expect(served.status).toBe(200)
+      expect(served.html).toContain('MARK_TWO')
+      expect(Object.keys(served.scripts)).not.toEqual([])
+      expect(
+        Object.entries(served.scripts).filter(([, status]) => status !== 200),
+      ).toEqual([])
     },
     timeout,
   )

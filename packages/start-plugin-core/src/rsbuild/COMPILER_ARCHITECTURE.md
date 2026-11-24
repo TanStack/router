@@ -39,8 +39,9 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
   content than the current one (rule 3; a rebuild brings the provider modules it reaches, which may declare
   functions): the resolver's part of each round of the host plugin's `finishMake` closure.
 - `manifest-rebuild.ts` builds the Start manifest module again at the server compiler's `finishMake` (stage 10) when
-  it was built from another manifest than the one written last (rule 3): Rspack's watcher ignores `node_modules`, so
-  a write alone never builds it again.
+  it was built from another manifest than the one written last (rule 3), in every mode: Rspack's watcher ignores
+  `node_modules`, so a write alone never builds it again, and a persistent cache can restore it from an earlier
+  build's manifest.
 - `generated-module.ts` is rule 3 for the modules Start generates (the client route tree, the resolver, the
   manifest): the digest of the content each was built from, on the module and in a per-compiler index.
 - `module-record.ts` names where the parts of a module's record live in `buildInfo` (rule 1): each part a field of its
