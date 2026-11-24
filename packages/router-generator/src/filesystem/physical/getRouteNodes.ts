@@ -204,9 +204,9 @@ export async function getRouteNodes(
           }
 
           if (disallowedRouteGroupConfiguration.test(dirent.name)) {
-            const errorMessage = `A route configuration for a route group was found at \`${fullPath}\`. This is not supported. Did you mean to use a layout/pathless route instead?`
-            logger.error(`ERROR: ${errorMessage}`)
-            throw new Error(errorMessage)
+            throw new Error(
+              `A route configuration for a route group was found at \`${fullPath}\`. This is not supported. Did you mean to use a layout/pathless route instead?`,
+            )
           }
 
           const meta = getRouteMeta(routePath, originalRoutePath, tokenRegexes)

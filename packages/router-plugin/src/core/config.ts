@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import {
+  configError,
   configSchema as generatorConfigSchema,
   getConfig as getGeneratorConfig,
 } from '@tanstack/router-generator'
@@ -126,28 +127,11 @@ export const getConfig = (inlineConfig: Partial<Config>, root: string) => {
 
   const res = configSchema.safeParse({ ...inlineConfig, ...config })
   if (!res.success) {
-    throw configError(res.error.issues)
+    // (`codeSplittingOptions.defaultBehavior: lists "compnent", which is not
+    // an option that can be split (…)`)
+    throw configError(res.error.issues, 'router plugin options')
   }
   return res.data
-}
-
-/**
- * The plugin options' problems as one error naming each option
- * (`codeSplittingOptions.defaultBehavior: "compnent" is not an option that
- * can be split (…)`), its message as its stack: a user error, not ours.
- */
-function configError(
-  issues: ReadonlyArray<{ path: ReadonlyArray<PropertyKey>; message: string }>,
-): Error {
-  const lines = issues.map((issue) => {
-    const at = issue.path.map(String).join('.')
-    return `  ${at === '' ? '' : `${at}: `}${issue.message}`
-  })
-  const error = new Error(
-    `[tanstack-router] Invalid router plugin options:\n${lines.join('\n')}`,
-  )
-  error.stack = error.message
-  return error
 }
 
 export type Config = z.infer<typeof configSchema>

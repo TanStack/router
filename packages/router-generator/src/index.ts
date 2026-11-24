@@ -1,4 +1,5 @@
 export {
+  configError,
   configSchema,
   getConfig,
   resolveConfigPath,
