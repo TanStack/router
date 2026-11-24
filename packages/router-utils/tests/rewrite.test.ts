@@ -1,3 +1,4 @@
+import { inspect } from 'node:util'
 import { describe, expect, it, vi } from 'vitest'
 import { MemoryHost, dedent } from './helpers'
 import type { Planner } from '../src/compiler'
@@ -88,6 +89,10 @@ describe('a kept slice cuts no edited region', () => {
     expect(error?.message).toMatch(
       /^Internal compiler error in \S*mod\.ts\. Please report it at https:\/\/github\.com\/TanStack\/router\/issues with this file and the detail below\.\nconflict: .* cuts /,
     )
+    // a host printing the error (Node's `inspect`, as Vite's and Rsbuild's
+    // loggers do) shows the detail once (Fable's review of the
+    // implementation, 6)
+    expect(inspect(error).match(/conflict: /g)).toHaveLength(1)
   })
 
   it("fails the compile on both in users' runs", async () => {

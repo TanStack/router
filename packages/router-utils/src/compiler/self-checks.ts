@@ -46,7 +46,7 @@ export function internalError(detail: string): Error {
 /**
  * What a failed compile of `file` (as messages name it) throws to its
  * caller: an internal compiler error (`internalError`) as one a user can act
- * on (report it, with the file), its detail and stack after that; any other
+ * on (report it, with the file), its detail and its stack after that; any other
  * error (a host's, a plugin's) as it is.
  */
 export function reportedError(
@@ -58,7 +58,8 @@ export function reportedError(
     return error
   }
   const message = `${tag}Internal compiler error in ${file}. Please report it at https://github.com/TanStack/router/issues with this file and the detail below.\n${error.message}`
-  const reported = new Error(message, { cause: error })
+  // (no `cause`: the detail is in the message, which a host would print twice)
+  const reported = new Error(message)
   const frames = error.stack?.indexOf('\n    at ') ?? -1
   reported.stack =
     frames < 0 ? message : `${message}${error.stack!.slice(frames)}`
