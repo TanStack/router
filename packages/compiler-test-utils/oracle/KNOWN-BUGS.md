@@ -418,18 +418,25 @@ declaration table of 11-23). Rows: `start-plugin-core/tests/start-compiler-remov
   handler keeps the assignment and its import on the client, silently unless the imported file is protected (a
   `.server` file or a `server-only` marker: import protection reports that one), and in the production bundle too
   when the statement or the import has an effect at load. Server code passed by name whose binding the module
-  assigns (`.handler(h)`, `createServerOnlyFn(h)`, `.server(h)`, `.validator(h)`, a route's `server.handlers.GET: h`
-  or `headers: h`, with `h = …`) is refused (`start-server-code-reassigned`, `route-server-code-reassigned`). Still
-  built, with the assignments kept: a binding only a handler reads that a top-level statement initialises
-  conditionally (`let conn; if (url) { conn = connect() }`); server code reached through another name (a `const`
-  alias, a forwarding closure, `.handler(withLogging(h))`, `.handler(impls.h)`); a binding the module exports or
-  other code reads too (the client keeps it anyway, as on `main`; also when that code is one the client drops, such as
-  a function nothing calls), or one a route's server option and a Start position share (each planner counts only its
-  own server code as such).
-  `main` keeps the same statements. Known limit (user, 2026-11-24): too narrow a case for machinery; a warning would
-  flag correct `if (import.meta.env.SSR)` setup. Workaround (documented in the execution-model guide): the setup in
-  its own module only server code imports, or `const db = connect()`. Row: `start-compiler-erasure.test.ts` "a `let` a top-level statement assigns stays with
-  the statement, which runs at load".
+  assigns (`.handler(h)`, `createServerOnlyFn(h)`, `.server(h)`, `.validator(h)`, a route's `server.handlers.GET: h`,
+  `createHandlers({ GET: h })`, `...h`, `middleware: [h]`, `headers: h`, `ssr: h` holding a function, with `h = …`) is
+  refused (`start-server-code-reassigned`, `route-server-code-reassigned`). Still built, with the assignments kept:
+  a binding only a handler reads that a top-level statement initialises conditionally
+  (`let conn; if (url) { conn = connect() }`); server code reached through another name
+  (`.handler(withLogging(h))`, `.handler(impls.h)`); a binding the module exports or any other code reads (the client
+  keeps it anyway, as on `main`), which turns the refusal off also where that read serves only server code or
+  nothing: the previous value kept in an alias (`const original = h; h = (c) => original(c)`, the realistic one),
+  `typeof h` in a statement, a helper only a handler calls (`const helper = () => h()`), a function nothing calls
+  (the first, handler-only rule of 2026-11-24 refused these four); a reassigned `let` of a Vue `<script setup>` block
+  in development and in builds with Vue's devtools (Vue hands every binding of the block to the template through a
+  getter, which reads it; a production build, whose template is inlined, refuses it unless the template uses it); an
+  `ssr` name whose values are no function literals (`ssr = decide()`: not known to be server code); route server
+  options the router cannot read (a spread at the top level, a computed key: `options-unread`), and a `handlers`
+  function whose result is not one `createHandlers(…)` call. `main` keeps the same statements. Known limit (user,
+  2026-11-24): too narrow a case for machinery; a warning would flag correct `if (import.meta.env.SSR)` setup.
+  Workaround (documented in the execution-model guide): the setup in its own module only server code imports, or
+  `const db = connect()`. Row: `start-compiler-erasure.test.ts` "a `let` a top-level statement assigns stays with the
+  statement, which runs at load".
 
 - **Self-reads are followed through code that runs on the spot only** (1.4 of the design): a function counts only as
   the callee of a call or `new` written there. A getter read on the spot (`const x = ({ get data() { return x } }).data`),

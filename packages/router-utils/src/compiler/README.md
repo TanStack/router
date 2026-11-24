@@ -488,8 +488,9 @@ with when each node runs (`now`, `maybe` in an instance field, `later` in a func
 (`ModuleAnalysis`'s `jsx`, one per session), a `ref={x}` read is marked as possibly assigning `x`
 (`ClassifiedRef.assigns`), which the mutation model (through a liveness filter) and placement's write table count.
 Server code passed by name (a Start position, a route's server option) whose binding the client would keep assigned
-only for that code is one rule, `reassignedServerCode` (`mutation.ts`), on the source alone; each planner passes its
-arguments and its server-only text, and words the refusal.
+only for that code is one rule, `reassignedServerCode` (`mutation.ts`), on the source alone. The server-only text is
+one view of the module, `PlanContext.serverText`: every planner's `serverText` (its recognition alone, the same in every
+environment), computed on first use. Each planner passes its own arguments and words the refusal.
 
 Composition: `startPlanners()` in `start-plugin-core/src/planners/index.ts`; the router planner and its configuration
 builder (`routerPlannerConfigFrom`) are exported from `@tanstack/router-plugin/planners`.
