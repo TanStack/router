@@ -44,7 +44,8 @@ export interface ContextUse {
  * When a node of the moved code is evaluated, relative to the moved code:
  * - `now`: with it (outside every callable; or in a non-generator function
  *   that is the callee of the call or `new` holding it: an async one runs
- *   with it up to its first `await`);
+ *   with it up to its first `await`; or in the parameters of a generator
+ *   called so, whose body waits for `.next()`);
  * - `maybe`: in an instance field's initialiser, when the class is
  *   constructed, which may be while it is defined;
  * - `later`: in any other function, when it is called.
@@ -159,8 +160,11 @@ export function walkMoved(
     )
     return freeArguments.has(node.start)
   }
-  /** Functions called or constructed where they are written. */
-  const inPlace = new Set<Node>()
+  /**
+   * Functions called or constructed where they are written: what runs at
+   * the call (`all`; a generator's `params` only).
+   */
+  const inPlace = new Map<Node, 'all' | 'params'>()
 
   /**
    * `outer`: the state around the function whose parameter `node` is (its
@@ -192,11 +196,10 @@ export function walkMoved(
       case 'NewExpression': {
         const callee = unwrapExpression(node.callee)
         if (
-          (callee.type === 'FunctionExpression' ||
-            callee.type === 'ArrowFunctionExpression') &&
-          !callee.generator
+          callee.type === 'FunctionExpression' ||
+          callee.type === 'ArrowFunctionExpression'
         ) {
-          inPlace.add(callee)
+          inPlace.set(callee, callee.generator ? 'params' : 'all')
         }
         break
       }
@@ -209,7 +212,7 @@ export function walkMoved(
         next = {
           ...next,
           inCallable: true,
-          runs: inPlace.has(node) ? st.runs : 'later',
+          runs: inPlace.get(node) === 'all' ? st.runs : 'later',
         }
         break
       case 'ClassBody': {
@@ -300,7 +303,9 @@ export function walkMoved(
           continue
         }
         let childSt = next
-        if (k === 'value' && isFieldValue(node, c)) {
+        if (k === 'params' && inPlace.get(node) === 'params') {
+          childSt = { ...next, runs: st.runs }
+        } else if (k === 'value' && isFieldValue(node, c)) {
           childSt = { ...next, have: next.have | FN | ASYNC }
           // an instance field's initialiser runs when the class is constructed
           if (!(node as { static: boolean }).static) {

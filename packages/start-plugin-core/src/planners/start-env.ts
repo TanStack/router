@@ -1963,14 +1963,20 @@ function hoist(
   const later: Array<Range> = []
   const { uses } = walkMoved(t1, [X], {
     onNode: (n, runs) => {
-      if (runs === 'later' && n.end > (later.at(-1)?.end ?? -1)) {
+      // (a decorated parameter's range holds its decorators, which run
+      // when the class is defined: its other parts are ranges of their own)
+      if (
+        runs === 'later' &&
+        n.end > (later.at(-1)?.end ?? -1) &&
+        !('decorators' in n && (n.decorators?.length ?? 0) > 0)
+      ) {
         later.push(rangeOf(n))
       }
     },
   })
   /** The first use, of a kind `which` accepts, the code around the chain provides (not the module). */
   const ownedUse = (which: (kind: ContextKind) => boolean) =>
-    uses.find((u) => which(u.kind) && contextOwner(t1, u.node, u) !== null)
+    uses.find((u) => which(u.kind) && contextOwner(t1, X, u) !== null)
   // created exactly once, unconditionally, when the module loads (R162)
   const position = loadPosition(file, X)
   if (position.k === 'refused') {

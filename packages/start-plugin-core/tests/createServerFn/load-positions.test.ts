@@ -631,6 +631,19 @@ const reg = { add: <T,>(f: T) => f }
       code: `export const v = (d: unknown) => d,\n  o = { foo: createServerFn().validator((() => v)()).handler(async () => db.inner()) }`,
       at: 'v)())',
     },
+    // a generator called in place runs its parameters at the call, and a
+    // parameter's decorator when its class is defined (Astra and Gemini
+    // reviews of the hotspot 5 implementation)
+    {
+      name: 'a declaration of its own statement, in a default parameter of a generator called in place',
+      code: `export const v = (d: unknown) => d,\n  o = { foo: createServerFn().validator((function* (f = v) { yield f })().next().value!).handler(async () => db.inner()) }`,
+      at: 'v) { yield',
+    },
+    {
+      name: "a later declaration, in a decorator of a class's constructor parameter",
+      code: `const dec = (_v: unknown) => (..._args: Array<unknown>) => {}\nexport const api = { foo: createServerFn().validator(((class C {\n    constructor(@dec(later) public b: string) {}\n  }), (d: unknown) => d)).handler(async () => db.inner()) }\nconst later = 1`,
+      at: 'later) public',
+    },
     {
       name: 'a declaration of its own statement, in an instance field of a class constructed while it is defined',
       code: `export const earlier = (d: unknown) => d,\n  o = { foo: createServerFn().validator((class V {\n    field = earlier\n    static validate = new V().field\n  }).validate).handler(async () => db.inner()) }`,
