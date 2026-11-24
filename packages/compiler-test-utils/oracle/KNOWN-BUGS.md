@@ -632,19 +632,6 @@ properties of undefined (reading 'id')`, page 500 (build and dev). `main` resolv
   Without Start in `worker.plugins` the worker's code has no stub. Rsbuild reads a child compiler's assets: a worker
   child's call is in the gate. No test (the outcome is the limit). A fix adds the code of Vite's worker bundles to the
   publication.
-- **Rsbuild `build --watch`: a server function whose only caller an edit removed stays in the resolver** (RSC phase 1,
-  design-rsc-phase1-settlement.md §9 fact 14; known limit, labelled while the grounding of the server-fn registry is
-  open, option B there). A chain of server fns where `fn1`'s handler calls `fn2` through other modules: an edit turns
-  `fn1` into a plain function. The resolver the compilation started with still imports `fn2`'s provider, which keeps
-  the provider in the compilation, so the snapshot of the registry (read from the compilation's modules) lists `fn2`
-  and the rebuilt resolver keeps it: `fn2.ts?tss-serverfn-split` is in `dist/server` (`DEEP_VALUE`), where a cold
-  build of the same source has none. The page renders the edited source's value; whether the kept function answers
-  over HTTP was not checked. Same on db260cf3a3. Driver: `/var/tmp/rsc-p1-design3/retained.py` (`python3
-retained.py head base`). The same with RSC for a server fn whose last client call an edit removed (RSC phase 2,
-  design-rsc-phase2.md §3.3, ruled with this entry on 11-20): its provider's own record makes it a function a server
-  compile declares, so the rebuilt resolver keeps it and its provider; HTTP refuses it (no client code calls it). A
-  new build has neither. No test (the outcome is the limit). A fix grounds the registry as the settlement grounds
-  denied modules: a provider counts once a module the app reaches without it references the function.
 - **Without RSC, a server fn nothing calls is still built: a handler import that resolves only under development
   conditions fails the production build** (as `main`; RSC phase 2 decision B, 11-20). A route renders a label of a
   module that also exports a server fn no code calls, whose handler imports a package with a `development` export
