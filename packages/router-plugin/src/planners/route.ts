@@ -517,9 +517,9 @@ function reportUnrecognizedRoute(
   const consequences = [
     lost.length > 0 && `it is not ${lost.join(' or ')}`,
     deleteNodes.length === 1 &&
-      `${deleted} in its options is not removed, so any server code in it ships to the client`,
+      `${deleted} in its options is not removed (any server code in it ships to the client)`,
     deleteNodes.length > 1 &&
-      `${deleted} in its options are not removed, so any server code in them ships to the client`,
+      `${deleted} in its options are not removed (any server code in them ships to the client)`,
   ].filter(Boolean)
   if (consequences.length === 0 && reason.kind === 'wrapped') {
     // (a wrapped route works as written: nothing is lost here)
