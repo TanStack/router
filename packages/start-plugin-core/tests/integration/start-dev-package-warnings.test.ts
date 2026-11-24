@@ -1,22 +1,34 @@
 /**
- * The warning of an installed package that uses Start (node_modules policy,
- * decision 6) on a Vite dev server, whose dependency optimizer pre-bundles
- * the package: the compile sees the optimizer's bundle
- * (`node_modules/.vite/deps/…`), and the warning names the package the
- * Start use is in, with that package's remedy, never the optimizer's cache.
- * The client page loads the package through the optimizer, as an app's
- * page does, and the server imports the same module.
- * Source: diagnostics spike (2026-11-24), inventory flag 1, agreed change
- * A1 (`pkg-undeclared`, `pkg-unreached` of the harness shapes).
+ * Installed packages that use Start on a Vite dev server, whose dependency
+ * optimizer pre-bundles them: the compile sees the optimizer's bundle
+ * (`node_modules/.vite/deps/…`, or wherever the app keeps its `cacheDir`),
+ * which may hold several packages' modules. What is reported is about the
+ * module each finding is in (the bundle's map), never the optimizer's
+ * cache:
+ * - the package warning (node_modules policy, decision 6) names each
+ *   package a recognised Start use is in, with that package's remedy, once
+ *   per package; a package that only imports the router is not one;
+ * - the bundle is installed code: advice for its author is not reported
+ *   (A2), and an error names the package the refused code is in.
+ * The client page loads the packages through the optimizer, as an app's
+ * page does; a rendered page's server compiles the client's bundle too.
+ * Source: diagnostics spike (2026-11-24), inventory flag 1, agreed changes
+ * A1 and A2 (`pkg-undeclared`, `pkg-unreached` of the harness shapes); the
+ * implementation reviews (Fable p1, p1b, p2, p3; Astra 1, 2, 3; Gemini
+ * P0-1, P1-1).
  */
-import { describe, expect, test } from 'vitest'
+import { describe, expect, onTestFinished, test } from 'vitest'
+import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import { startDevServer } from '../dev-server'
 import { appManifest, installPackage } from '../package-layouts'
 import {
   runViteClient,
   startBrowserStartDevServer,
 } from './importProtection/client-pages'
+import { rootDocument, routerFile } from './start-compose-app'
 import type { InstalledPackage, StartDeclaration } from '../package-layouts'
 
 const timeout = 60_000
@@ -32,55 +44,68 @@ const usesStart = (name: string, declaration: StartDeclaration) =>
   })
 
 /**
- * The warnings of a dev server whose client page imports `importAs`
- * (`packages` installed, `listed` in the app's manifest), after the page
- * loaded it.
+ * The dev server of a client page importing `imports` (`packages`
+ * installed, `listed` in the app's manifest), after the page loaded it, or
+ * failed to (`fails`).
  */
-async function devWarnings(
+async function devPage(
   packages: ReadonlyArray<InstalledPackage>,
   listed: ReadonlyArray<InstalledPackage>,
-  importAs: string,
+  imports: string,
+  options: { cacheDir?: string; fails?: true } = {},
 ) {
   const server = await startBrowserStartDevServer({
     files: {
       ...Object.assign({}, ...packages.map((p) => p.files)),
       'package.json': JSON.stringify(appManifest(listed)),
-      'src/entry.ts': `import { base } from '${importAs}'\nexport const kind = () => typeof base\n`,
+      'src/entry.ts': `${imports}\nexport const kind = () => 'loaded'\n`,
     },
+    // (a kit's router import resolves as installed: the app's own)
+    symlinks: workspacePackageLinks(['@tanstack/react-router']),
+    ...(options.cacheDir !== undefined && {
+      config: { cacheDir: options.cacheDir },
+    }),
   })
-  const { result } = await runViteClient(
-    server,
-    '/src/entry.ts',
-    'return entry.kind()',
-  )
-  expect(result).toBe('function')
-  // the server renders with it too (its environment compiles the client's
-  // pre-bundle: harness rows `pkg-undeclared`, `pkg-unreached`)
-  expect((await server.import('/src/entry.ts')).kind()).toBe('function')
+  const loaded = runViteClient(server, '/src/entry.ts', 'return entry.kind()')
+  if (options.fails) {
+    await expect(loaded).rejects.toThrow()
+  } else {
+    expect((await loaded).result).toBe('loaded')
+  }
+  const reported = problems(server.diagnostics)
   return {
     root: server.root,
-    warnings: problems(server.diagnostics).filter(
-      (d) => d.severity === 'warning',
-    ),
+    reported,
+    warnings: reported.filter((d) => d.severity === 'warning'),
   }
 }
+
+/** The warnings naming `lib`'s module `index.js`. */
+const naming = (
+  { root, warnings }: { root: string; warnings: ReturnType<typeof problems> },
+  lib: InstalledPackage,
+) => findDiagnostics(warnings, { file: `${lib.directory}/index.js`, root })
+
+const notTheCache = (warnings: ReturnType<typeof problems>) =>
+  expect(warnings.map((d) => d.text).join('\n')).not.toMatch(
+    /node_modules\/\.vite|\.cache\/vite/,
+  )
 
 describe('vite dev, a pre-bundled package that uses Start', () => {
   test(
     "a package that does not declare Start: the warning names its module and its manifest, not the optimizer's cache",
     async () => {
       const lib = usesStart('fake-sfn', 'none')
-      const { root, warnings } = await devWarnings([lib], [lib], 'fake-sfn')
-      const named = findDiagnostics(warnings, {
-        file: `${lib.directory}/index.js`,
-        root,
-      })
+      const page = await devPage(
+        [lib],
+        [lib],
+        `import { base } from 'fake-sfn'\nexport { base }`,
+      )
+      const named = naming(page, lib)
       expect(named).toHaveLength(1)
       expect(named[0]!.text).toContain(`${lib.directory}/package.json`)
       expect(named[0]!.text).toContain('as a peer dependency')
-      expect(warnings.map((d) => d.text).join('\n')).not.toContain(
-        'node_modules/.vite',
-      )
+      notTheCache(page.warnings)
     },
     timeout,
   )
@@ -89,48 +114,242 @@ describe('vite dev, a pre-bundled package that uses Start', () => {
     "a package that declares Start but the app does not list: the warning asks to list it in the app's dependencies",
     async () => {
       const lib = usesStart('fake-sfn', 'peer')
-      const { root, warnings } = await devWarnings([lib], [], 'fake-sfn')
-      const named = findDiagnostics(warnings, {
-        file: `${lib.directory}/index.js`,
-        root,
-      })
+      const page = await devPage(
+        [lib],
+        [],
+        `import { base } from 'fake-sfn'\nexport { base }`,
+      )
+      const named = naming(page, lib)
       expect(named).toHaveLength(1)
       expect(named[0]!.text).toContain(
         "List fake-sfn in the app's dependencies",
       )
-      expect(warnings.map((d) => d.text).join('\n')).not.toContain(
-        'node_modules/.vite',
-      )
+      notTheCache(page.warnings)
     },
     timeout,
   )
 
   // The optimizer bundles a package's dependencies into its bundle: the
   // Start use is the inner package's, which the warning names; the package
-  // the app imports uses no Start API.
+  // the app imports uses no Start API, also when it imports the router
+  // (a UI kit's `useRouter`).
+  test.each([
+    { name: 're-exports it', outer: `export { base } from 'inner-sfn'\n` },
+    {
+      name: 'imports the router and calls it',
+      outer: `import { useRouter } from '@tanstack/react-router'\nexport const useKit = () => useRouter()\nexport { base } from 'inner-sfn'\n`,
+    },
+  ])(
+    'a package the optimizer inlines into another package that $name: the warning names the inner package',
+    async ({ outer }) => {
+      const inner = usesStart('inner-sfn', 'none')
+      const kit = installPackage('npm', {
+        name: 'outer-lib',
+        manifest: { dependencies: { 'inner-sfn': '1.0.0' } },
+        files: { 'index.js': outer },
+      })
+      const page = await devPage(
+        [inner, kit],
+        [kit],
+        `import * as kit from 'outer-lib'\nexport { kit }`,
+      )
+      expect(naming(page, inner)).toHaveLength(1)
+      expect(naming(page, inner)[0]!.text).toContain(
+        `${inner.directory}/package.json`,
+      )
+      expect(naming(page, kit)).toEqual([])
+      notTheCache(page.warnings)
+    },
+    timeout,
+  )
+
+  // A Start factory the inner package takes through a barrel of its own:
+  // the bundle maps the call to the inner package's module, which imports
+  // no Start package by name.
   test(
-    'a package the optimizer inlines into another package: the warning names the inner package',
+    'a package calling a Start factory through its own barrel, inlined into a router-using kit: the warning names the package that calls it',
+    async () => {
+      const inner = installPackage('npm', {
+        name: 'inner-sfn',
+        files: {
+          'start.js': `export { createServerFn } from '@tanstack/react-start'\n`,
+          'index.js': `import { createServerFn } from './start.js'\nexport const base = createServerFn({ method: 'POST' })\n`,
+        },
+      })
+      const kit = installPackage('npm', {
+        name: 'outer-kit',
+        manifest: { dependencies: { 'inner-sfn': '1.0.0' } },
+        files: {
+          'index.js': `import { createRouter } from '@tanstack/react-router'\nexport const makeRouter = createRouter\nexport { base } from 'inner-sfn'\n`,
+        },
+      })
+      const page = await devPage(
+        [inner, kit],
+        [kit],
+        `import * as kit from 'outer-kit'\nexport { kit }`,
+      )
+      expect(naming(page, inner)).toHaveLength(1)
+      expect(naming(page, kit)).toEqual([])
+      notTheCache(page.warnings)
+    },
+    timeout,
+  )
+
+  test(
+    'two packages that do not declare Start in one bundle: one warning for each',
     async () => {
       const inner = usesStart('inner-sfn', 'none')
       const outer = installPackage('npm', {
-        name: 'outer-lib',
+        name: 'outer-sfn',
         manifest: { dependencies: { 'inner-sfn': '1.0.0' } },
-        files: { 'index.js': `export { base } from 'inner-sfn'\n` },
+        files: {
+          'index.js': `import { createServerFn } from '@tanstack/react-start'\nexport { base } from 'inner-sfn'\nexport const own = createServerFn({ method: 'GET' })\n`,
+        },
       })
-      const { root, warnings } = await devWarnings(
+      const page = await devPage(
         [inner, outer],
         [outer],
-        'outer-lib',
+        `import * as lib from 'outer-sfn'\nexport { lib }`,
       )
-      const named = findDiagnostics(warnings, {
-        file: `${inner.directory}/index.js`,
-        root,
+      expect(naming(page, inner)).toHaveLength(1)
+      expect(naming(page, outer)).toHaveLength(1)
+      notTheCache(page.warnings)
+    },
+    timeout,
+  )
+
+  // Wherever the app keeps the optimizer's cache, its bundles are installed
+  // code (Astra: `cacheDir: '.cache/vite'` lost the package warning).
+  test(
+    'a cacheDir outside node_modules: the package warning names the package',
+    async () => {
+      const lib = usesStart('fake-sfn', 'none')
+      const page = await devPage(
+        [lib],
+        [lib],
+        `import { base } from 'fake-sfn'\nexport { base }`,
+        {
+          cacheDir: '.cache/vite',
+        },
+      )
+      expect(naming(page, lib)).toHaveLength(1)
+      notTheCache(page.warnings)
+    },
+    timeout,
+  )
+})
+
+/** `mw-lib`, a middleware factory reading its parameter in `.server()`, declaring no Start. */
+const middlewareLib = installPackage('npm', {
+  name: 'mw-lib',
+  files: {
+    'index.js': `import { createMiddleware } from '@tanstack/react-start'
+export const guard = (options) => createMiddleware({ type: 'function' }).server(async ({ next }) => { if (options.rule !== 'MARK_RULE') { throw new Error('denied') } return next() })
+`,
+  },
+})
+
+describe('vite dev, a pre-bundled package is installed code', () => {
+  test.each([
+    { name: 'in node_modules/.vite', cacheDir: undefined },
+    { name: 'in a cacheDir outside node_modules', cacheDir: '.cache/vite' },
+  ])(
+    'advice for its author is not reported ($name)',
+    async ({ cacheDir }) => {
+      const page = await devPage(
+        [middlewareLib],
+        [middlewareLib],
+        `import { guard } from 'mw-lib'\nexport const mw = guard({ rule: 'MARK_RULE' })`,
+        { cacheDir },
+      )
+      // (the package warning: it does not declare Start)
+      expect(naming(page, middlewareLib)).toHaveLength(1)
+      expect(page.warnings).toHaveLength(1)
+    },
+    timeout,
+  )
+
+  test(
+    'an error names the package the refused code is in',
+    async () => {
+      const lib = installPackage('npm', {
+        name: 'old-lib',
+        files: {
+          'index.js': `import { createServerFn } from '@tanstack/react-start'\nexport const fn = createServerFn().inputValidator((d) => d).handler(async () => 'MARK')\n`,
+        },
       })
-      expect(named).toHaveLength(1)
-      expect(named[0]!.text).toContain(`${inner.directory}/package.json`)
-      expect(warnings.map((d) => d.text).join('\n')).not.toMatch(
-        /node_modules\/(?:\.vite|outer-lib)/,
+      const page = await devPage(
+        [lib],
+        [lib],
+        `import { fn } from 'old-lib'\nexport { fn }`,
+        {
+          fails: true,
+        },
       )
+      const errors = page.reported.filter((d) => d.severity === 'error')
+      expect(errors).not.toEqual([])
+      for (const { text } of errors) {
+        expect(text).toContain('installed package `old-lib`')
+      }
+    },
+    timeout,
+  )
+})
+
+// A page that calls a package's server fn: the client registers it from the
+// optimizer's bundle, so the server compiles that bundle to run its handler
+// (harness rows `pkg-undeclared`, `pkg-unreached`: a second warning naming
+// `node_modules/.vite/package.json`, from `compiler:ssr:dependencies`,
+// before the bundle was told by `cacheDir`).
+describe("vite dev, a page calling a pre-bundled package's server fn", () => {
+  test(
+    'a package that does not declare Start: one warning, naming the package, and the call answers',
+    async () => {
+      const lib = installPackage('npm', {
+        name: 'fake-sfn',
+        files: {
+          'index.js': `import { createServerFn } from '@tanstack/react-start'\nexport const ping = createServerFn().handler(async () => 'MARK_PING')\n`,
+        },
+      })
+      const server = await startDevServer({
+        browser: true,
+        files: {
+          ...lib.files,
+          'package.json': JSON.stringify(appManifest([lib])),
+          'harness/client-entry.ts': `import { createElement } from 'react'
+import { hydrateRoot } from 'react-dom/client'
+import { StartClient } from '@tanstack/react-start/client'
+hydrateRoot(document, createElement(StartClient))
+`,
+          'harness/server-entry.ts': `export { default } from '@tanstack/react-start/server-entry'\n`,
+          'src/router.ts': routerFile,
+          'src/routes/__root.tsx': rootDocument(),
+          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { ping } from 'fake-sfn'
+export const Route = createFileRoute('/')({ component: Page })
+function Page() {
+  const [text, setText] = useState('idle')
+  return <button data-testid="probe" onClick={async () => setText('got=' + (await ping()))}>{text}</button>
+}
+`,
+        },
+      })
+      const page = await openPage(server.url!, {
+        registerCleanup: onTestFinished,
+      })
+      await page.waitForText('hydrated', {
+        selector: '[data-testid=hydrated]',
+      })
+      await page.page.locator('[data-testid=probe]').click()
+      await page.waitForText('got=MARK_PING', {
+        selector: '[data-testid=probe]',
+      })
+      const warnings = problems(server.diagnostics).filter(
+        (d) => d.severity === 'warning',
+      )
+      expect(naming({ root: server.root, warnings }, lib)).toHaveLength(1)
+      notTheCache(warnings)
     },
     timeout,
   )

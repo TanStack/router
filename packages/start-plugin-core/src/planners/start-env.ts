@@ -105,12 +105,14 @@ export interface StartEnvConfig {
 export interface StartEnvFacts {
   serverFns: Array<ServerFnFact>
   /**
-   * The compile recognised a Start primitive in the module (a builder or
-   * factory chain, an environment-only call, a `<ClientOnly>`, an RSC
-   * call): a package's module that uses Start (the warning of a package
-   * that does not declare it).
+   * The offsets of the Start primitives the compile recognised in the
+   * module (a builder or factory chain, an environment-only call, a
+   * `<ClientOnly>`, an RSC call), absent when there is none: a package's
+   * module that uses Start (the warning of a package that does not declare
+   * it), and in a bundle of several modules (Vite's pre-bundle), which of
+   * them does.
    */
-  recognises?: true
+  uses?: Array<number>
   /**
    * The late pass (`config.late`): the binding each refused escape of a
    * binding hands on, by the escape's offset (another plugin's generated
@@ -463,13 +465,14 @@ function planStartEnv(
   let fileTag: string | undefined
   const tagOfFile = () => (fileTag ??= fileTagOf(rootRel))
   const facts: StartEnvFacts = { serverFns: [] }
-  if (
-    analysis.chains.length > 0 ||
-    analysis.envOnlyCalls.length > 0 ||
-    analysis.clientOnlyElements.length > 0 ||
-    analysis.rscCalls.length > 0
-  ) {
-    facts.recognises = true
+  const uses = [
+    ...analysis.chains.map((c) => c.head.start),
+    ...analysis.envOnlyCalls.map((c) => c.call.start),
+    ...analysis.clientOnlyElements.map((e) => e.start),
+    ...analysis.rscCalls.map((c) => c.call.start),
+  ]
+  if (uses.length > 0) {
+    facts.uses = uses
   }
   /**
    * The server-only text the client compile erases, with the API it is
@@ -2146,8 +2149,6 @@ function hoist(
       // import in this env)
       ...(home === 'auto' ? {} : { scope: { except: ['env'] } }),
       by,
-      subject:
-        'a server function written in place, which TanStack Start moves to the module top level',
     })
   }
   return { sym: hoisted.sym, anchor, commit }

@@ -40,8 +40,7 @@ import {
   dependencyTextFilter,
   untestedDependencyIds,
 } from '../compiler/scope'
-import { packageRootOf } from '../compiler/package-class'
-import { namesStartSpecifier } from '../compiler/recognizer'
+import { Locator } from '../import-protection/locate'
 import { resolveImportProtectionConfig } from '../import-protection/config'
 import { escapeRegExp, resolveViteId } from '../utils'
 import { invalidateRegistry, reloadMismatched } from './invalidation'
@@ -151,19 +150,18 @@ function unoptimizedDependency(environment: Environment, id: string): string {
 }
 
 /**
- * The module whose package a compile of `file` that uses Start reports
- * (`StartPackageReach.module`): `file`, or for the optimizer's bundle of
- * pre-bundled dependencies (in the app's `cacheDir`) (a dependency's entry with the modules of the
- * packages it imports inlined, or a chunk such bundles share) the module
- * among the bundle's sources (the map the optimizer writes beside it, which
- * Vite does not hand to plugins) whose text names a Start package, when
- * they are all in one package: the first of them. Null when none is, or
- * they are in several packages: the use is no package's to fix.
+ * For the optimizer's bundle of pre-bundled dependencies (in the app's
+ * `cacheDir`: a dependency's entry with the modules of the packages it
+ * imports inlined, or a chunk such bundles share), the module an offset of
+ * its code is from (`StartPackageReach.original`), by the map the
+ * optimizer writes beside it, which Vite does not hand to plugins (read
+ * once, when asked). Undefined for any other file.
  */
-function packageModuleOf(
+function bundleOriginal(
   environment: Environment,
   file: string,
-): string | null {
+  code: string,
+): ((offset: number) => string | null) | undefined {
   // (by the app's `cacheDir`, not the environment's optimizer: the SSR
   // environment of a dev server compiles the client's bundles too)
   if (
@@ -171,30 +169,20 @@ function packageModuleOf(
       normalizePath(file),
     )
   ) {
-    return file
+    return undefined
   }
-  let map: InputSourceMap | null = null
-  try {
-    map = JSON.parse(readFileSync(`${file.split('?')[0]}.map`, 'utf8'))
-  } catch {
-    // (no map: nothing to attribute)
+  let locator: Locator | undefined
+  return (offset) => {
+    locator ??= new Locator(code, file, () => {
+      try {
+        return JSON.parse(readFileSync(`${file}.map`, 'utf8')) as InputSourceMap
+      } catch {
+        // (no map: no offset is attributed)
+        return { version: 3, sources: [], mappings: '' }
+      }
+    })
+    return locator.at(offset)?.file ?? null
   }
-  const { sources = [], sourcesContent = [], sourceRoot = '' } = map ?? {}
-  let found: string | null = null
-  for (const [i, source] of sources.entries()) {
-    if (source === null || !namesStartSpecifier(sourcesContent[i] ?? '')) {
-      continue
-    }
-    const module = normalizePath(
-      path.resolve(path.dirname(file), sourceRoot, source),
-    )
-    const root = packageRootOf(module)
-    if (root === null || (found !== null && packageRootOf(found) !== root)) {
-      return null
-    }
-    found ??= module
-  }
-  return found
 }
 
 /**
@@ -904,13 +892,6 @@ export class ViteCompilerState implements ClientBuilds {
         ? // Vite maps the position in `code` back to the SFC itself
           viteLog(d.message, generated, code, name, filePath, true)
         : viteLog(d.message, at, frameOf, name, filePath, dev)
-    // (the package-use warning names the module the use is in, an
-    // optimizer bundle's source: `packageModuleOf`)
-    let module: string | null | undefined
-    const packageModule = () =>
-      module === undefined
-        ? (module = packageModuleOf(ctx.environment, filePath))
-        : module
     s.start.report(
       out,
       filePath,
@@ -918,16 +899,20 @@ export class ViteCompilerState implements ClientBuilds {
       envType,
       {
         error: (d, at, generated) => ctx.error(log(d, at, generated)),
-        warn: (d, at, generated) =>
+        // (a warning of a bundle's source names that module: Vite prints it)
+        warn: (d, at, generated, module) =>
           ctx.warn(
-            d.code === 'start-package'
-              ? { message: d.message, id: packageModule() ?? filePath }
-              : log(d, at, generated),
+            module === undefined
+              ? log(d, at, generated)
+              : { message: d.message, id: module },
           ),
       },
       inputMap,
       this.startPackageRoots
-        ? { roots: this.startPackageRoots, module: packageModule }
+        ? {
+            roots: this.startPackageRoots,
+            original: bundleOriginal(ctx.environment, filePath, code),
+          }
         : undefined,
     )
   }

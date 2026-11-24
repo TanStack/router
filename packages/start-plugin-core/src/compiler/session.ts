@@ -551,12 +551,23 @@ export class StartCompilerSession {
     inputMap?: () => InputSourceMap | null,
     reach?: StartPackageReach,
   ): void {
+    // the module each offset of `code` is from: the file, or a bundle's
+    // source (`StartPackageReach.original`)
+    const original = reach?.original
+    const moduleAt = (offset: number) =>
+      original ? original(offset) : normalizePath(file.split('?')[0]!)
     // (a host that restores modules decides it from them all: `packageUseAtSeal`)
-    if (!this.opts.packageUseAtSeal && this.usesStartInPackage(out, file)) {
-      const module = reach?.module ? reach.module() : file
-      const warning = module !== null && this.packageUseWarning(module, reach)
-      if (warning) {
-        sink.warn?.(warning, undefined)
+    const uses = out.facts.planners[START_ENV]?.uses
+    if (!this.opts.packageUseAtSeal && uses) {
+      // once per module the uses are in (`packageUseWarning`: once per package)
+      for (const module of new Set(uses.map(moduleAt))) {
+        const warning =
+          module !== null &&
+          packageRootOf(module) !== null &&
+          this.packageUseWarning(module, reach)
+        if (warning) {
+          sink.warn?.(warning, undefined, undefined, module)
+        }
       }
     }
     if (out.diagnostics.length === 0) {
@@ -576,7 +587,19 @@ export class StartCompilerSession {
         ? vueReport(out, file, inputMap, locate)
         : null
     const located = locate ? originalSink(sink, code, locate, vue?.moved) : sink
-    const installed = this.installedPackageOf(file)
+    // an installed package's module, or a bundle of them (whose package is
+    // the one of the module a diagnostic's offset is from, when known)
+    const installed =
+      original !== undefined || this.isInstalled(file)
+        ? (d: Diagnostic) =>
+            this.packageNameOf(
+              d.range === undefined
+                ? original
+                  ? null
+                  : file
+                : moduleAt(d.range.start),
+            )
+        : null
     reportCompileDiagnostics(
       vue?.diagnostics ?? out.diagnostics,
       file,
@@ -610,17 +633,22 @@ export class StartCompilerSession {
     )
   }
 
-  /**
-   * The name of the installed package (`node_modules`) that owns `file`,
-   * by its manifest; null for the app's and workspace modules, and for a
-   * directory without a named manifest (Vite's optimizer cache).
-   */
-  private installedPackageOf(file: string): string | null {
+  /** Whether `file` is a module of an installed package (`node_modules`). */
+  private isInstalled(file: string): boolean {
     const cls = this.classes.classOf(file)
-    if (cls !== 'package' && cls !== 'start-package') {
+    return cls === 'package' || cls === 'start-package'
+  }
+
+  /**
+   * The name of the installed package that owns `module`, by its manifest;
+   * null for the app's and workspace modules, an unknown module, and a
+   * directory without a named manifest.
+   */
+  private packageNameOf(module: string | null): string | null {
+    if (module === null || !this.isInstalled(module)) {
       return null
     }
-    const root = packageRootOf(normalizePath(file.split('?')[0]!))
+    const root = packageRootOf(normalizePath(module.split('?')[0]!))
     const name = root && this.classes.manifest(`${root}/package.json`)?.['name']
     return typeof name === 'string' ? name : null
   }
@@ -632,7 +660,7 @@ export class StartCompilerSession {
    */
   usesStartInPackage(out: CompileOutput, file: string): boolean {
     return (
-      out.facts.planners[START_ENV]?.recognises === true &&
+      out.facts.planners[START_ENV]?.uses !== undefined &&
       packageRootOf(normalizePath(file.split('?')[0]!)) !== null
     )
   }
@@ -795,12 +823,13 @@ export interface ClientPublication {
 export interface StartPackageReach {
   roots: ReadonlySet<string>
   /**
-   * The module a compiled file's Start use is in, when the file bundles
-   * other modules (Vite's dependency optimizer): the module the warning
-   * names, null when no one package's module is (no warning). Default: the
-   * file.
+   * Present when the compiled file bundles installed modules (Vite's
+   * dependency optimizer): the module an offset of its code is from (its
+   * map's source), null where the map names none. The package warning is
+   * then of the modules the Start uses are in, and the file is installed
+   * code wherever it is kept.
    */
-  module?: () => string | null
+  original?: (offset: number) => string | null
 }
 
 function undeclaredPackageMessage(
@@ -834,17 +863,18 @@ const MODULE_AUTHOR_ADVICE: ReadonlySet<string> = new Set([
   'parse',
   'exported-not-split',
   'split-this',
-  'split-claimed',
 ])
 
 /**
- * `sink` for a module of the installed package `name`: the app's author
- * cannot edit it, so advice for its author (`MODULE_AUTHOR_ADVICE`) is not
- * reported, and an error names the package (its fix is the package's).
+ * `sink` for installed code (a package's module, a bundle of them): the
+ * app's author cannot edit it, so advice for its author
+ * (`MODULE_AUTHOR_ADVICE`) is not reported, and an error names the package
+ * (`nameOf`, when known: its fix is the package's), but for an internal
+ * compiler error (`by: 'core'`), which is ours to fix.
  */
 function installedSink(
   sink: StartDiagnosticSink,
-  name: string,
+  nameOf: (d: Diagnostic) => string | null,
 ): StartDiagnosticSink {
   const kept = (
     report: StartDiagnosticSink['warn'],
@@ -856,15 +886,19 @@ function installedSink(
       }
     })
   return {
-    error: (d, at, generated) =>
+    error: (d, at, generated) => {
+      const name = d.by === 'core' ? null : nameOf(d)
       sink.error(
-        {
-          ...d,
-          message: `${d.message} This code is in the installed package \`${name}\`: update it, or report this to its maintainers.`,
-        },
+        name === null
+          ? d
+          : {
+              ...d,
+              message: `${d.message} This code is in the installed package \`${name}\`: update it, or report this to its maintainers.`,
+            },
         at,
         generated,
-      ),
+      )
+    },
     warn: kept(sink.warn),
     found: kept(sink.found),
   }
@@ -881,6 +915,8 @@ export interface StartDiagnosticSink {
     d: Diagnostic,
     at: DiagnosticPosition | undefined,
     generated?: DiagnosticPosition,
+    /** The module the warning is of, when not the compiled file (a bundle's source). */
+    module?: string,
   ) => void
   /** Every warning the compile found, before the once-per-run rule (`DiagnosticSink.found`). */
   found?: (
