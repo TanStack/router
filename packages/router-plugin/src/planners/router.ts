@@ -26,10 +26,10 @@ import type { RouteEntryFacts, RouteModuleInfo } from './route'
 import type { SplitPlan } from './decisions'
 import type { RouterPlannerConfig } from './config'
 import type {
+  YukuNode as Node,
   PlanContext,
   Planner,
   Range,
-  YukuNode as Node,
 } from '@tanstack/router-utils/compiler'
 
 /** What one planning round of the router planner decided, read by its split and HMR parts. */
