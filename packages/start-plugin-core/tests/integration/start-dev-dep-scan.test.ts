@@ -27,6 +27,7 @@ const nodeOnlyPkg = {
     exports: {
       '.': { node: './index.js' },
       './client': { node: './client.js' },
+      './helper.server': { node: './client.js' },
     },
   }),
   'node_modules/node-only/index.js': `export const greeting = () => 'MARK_NODE_ONLY'\n`,
@@ -136,7 +137,7 @@ test(
           ...nodeOnlyPkg,
           'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { query } from 'node-only/client'
+import { query } from 'node-only/helper.server'
 import { label } from 'client-dep'
 
 const loadData = createServerFn().handler(async () => query())
@@ -155,7 +156,7 @@ export const Route = createFileRoute('/')({
       )
       expect(errors).toEqual([])
       expect(discovered).toContain('client-dep')
-      expect(discovered).not.toContain('node-only/client')
+      expect(discovered).not.toContain('node-only/helper.server')
       await close()
     }
   },
@@ -249,6 +250,55 @@ export const Route = createFileRoute('/')({
       ),
     ).rejects.toThrow(/not exported under the conditions/)
     await close()
+  },
+  timeout,
+)
+
+test(
+  'non-scan external resolutions to repository .server files still trigger import protection',
+  async () => {
+    const app = await createStartApp(
+      appFiles({
+        'src/secret.server.ts': `export const secret = 'TOP_SECRET'\n`,
+        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { secret } from '#external-secret'
+export const Route = createFileRoute('/')({
+  component: () => secret,
+})
+`,
+      }),
+    )
+
+    const { tanstackStart } = await import(reactStartViteEntry)
+    const server = await createServer({
+      root: app.root,
+      configFile: false,
+      logLevel: 'error',
+      server: { middlewareMode: true },
+      plugins: [
+        tanstackStart({ importProtection: { behavior: 'error' } }),
+        {
+          name: 'test:external-local-server-file',
+          resolveId(source) {
+            if (source === '#external-secret') {
+              return {
+                id: path.join(app.root, 'src/secret.server.ts'),
+                external: true,
+              }
+            }
+            return undefined
+          },
+        },
+      ],
+    })
+    onTestFinished(() => server.close())
+
+    await expect(
+      server.environments.client.transformRequest(
+        '/src/routes/index.tsx?tsr-split=component',
+      ),
+    ).rejects.toThrow(/secret\.server\.ts/)
+    await server.close()
   },
   timeout,
 )

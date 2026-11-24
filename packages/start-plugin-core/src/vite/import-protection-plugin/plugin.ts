@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs'
 import { normalizePath } from 'vite'
-import { dirname, relative } from 'pathe'
+import { dirname, isAbsolute, relative } from 'pathe'
 
 import { escapeRegExp, resolveViteId } from '../../utils'
 import { SERVER_FN_LOOKUP, VITE_ENVIRONMENT_NAMES } from '../../constants'
@@ -1823,7 +1823,14 @@ export function importProtectionPlugin(
             if (shouldDefer && !info.resolved) {
               try {
                 const resolvedForInfo = await resolveAgainstImporter()
-                if (resolvedForInfo && !resolvedForInfo.result.external) {
+                if (
+                  resolvedForInfo &&
+                  !(
+                    isScanResolve &&
+                    resolvedForInfo.result.external &&
+                    !isAbsolute(resolvedForInfo.id)
+                  )
+                ) {
                   info.resolved = resolvedForInfo.id
                 }
               } catch {
@@ -1851,16 +1858,21 @@ export function importProtectionPlugin(
             resolved = env.resolveCache.get(cacheKey) ?? null
           } else {
             const resolution = await resolveAgainstImporter()
-            if (resolution?.result.external) {
+            if (
+              isScanResolve &&
+              resolution?.result.external &&
+              !isAbsolute(resolution.id)
+            ) {
               return resolution.result
             }
             resolved = resolution?.id ?? null
             passThroughResult = resolution?.result ?? null
 
-            // Only cache successful resolves.  Null resolves can be
-            // order-dependent across importer variants (e.g. code-split
-            // `?tsr-split=...` ids) and may poison later lookups.
-            if (resolved !== null) {
+            // Only cache successful non-external resolves.  Null or external
+            // resolves can be order- or scan-dependent across importer variants
+            // (e.g. code-split `?tsr-split=...` ids or dep-scan externalization)
+            // and may poison later lookups.
+            if (resolved !== null && !resolution?.result.external) {
               env.resolveCache.set(cacheKey, resolved)
               getOrCreate(
                 env.resolveCacheByFile,
