@@ -9,6 +9,7 @@
  */
 import {
   reassignedServerCode,
+  staticPropertyKey,
   unwrapExpression,
 } from '@tanstack/router-utils/compiler'
 import {
@@ -154,52 +155,66 @@ function reportReassignedServerOptions(
   route: RouteModuleInfo,
 ): void {
   const code = ctx.analysis.source.code
-  /** Each name, with the keys down to it (a spread's or an element's: its container's). */
-  const named: Array<{ node: Node; path: Array<string>; ssr: boolean }> = []
-  const visit = (value: Node, path: Array<string>, ssr: boolean): void => {
+  /**
+   * Each name, with the keys down to it as written (a spread's or an
+   * element's: its container's), whether it is `ssr`'s, and whether it is
+   * in a `createHandlers(…)` object.
+   */
+  interface Named {
+    node: Node
+    path: Array<string>
+    ssr: boolean
+    factory: boolean
+  }
+  const named: Array<Named> = []
+  const visit = (value: Node, at: Omit<Named, 'node'>, handlers: boolean) => {
     const node = unwrapExpression(value)
     if (node.type === 'Identifier') {
-      named.push({ node, path, ssr })
+      named.push({ node, ...at })
     } else if (node.type === 'ObjectExpression') {
       for (const p of node.properties) {
         if (p.type === 'SpreadElement') {
-          visit(p.argument, path, ssr)
+          visit(p.argument, at, false)
         } else if (!p.computed) {
-          // (the key as written)
-          visit(p.value, [...path, code.slice(p.key.start, p.key.end)], ssr)
+          const path = [...at.path, code.slice(p.key.start, p.key.end)]
+          visit(p.value, { ...at, path }, staticPropertyKey(p) === 'handlers')
         }
       }
     } else if (node.type === 'ArrayExpression') {
       for (const e of node.elements) {
         if (e !== null) {
-          visit(e.type === 'SpreadElement' ? e.argument : e, path, ssr)
+          visit(e.type === 'SpreadElement' ? e.argument : e, at, false)
         }
       }
-    } else if (path.at(-1) === 'handlers') {
-      const handlers = createHandlersArgument(node)
-      if (handlers) {
-        visit(handlers, path, ssr)
+    } else if (handlers) {
+      const object = createHandlersArgument(node)
+      if (object) {
+        visit(object, { ...at, factory: true }, false)
       }
     }
   }
   for (const { keyText, key, value } of serverOptionsOf(ctx, route)) {
-    visit(value, [keyText], key === 'ssr')
+    visit(value, { path: [keyText], ssr: key === 'ssr', factory: false }, false)
   }
-  for (const { node, path, ssr } of named) {
+  for (const { node, path, ssr, factory } of named) {
     const sym = reassignedServerCode(ctx, node)
     // (a flag is no server code)
     if (sym === null || (ssr && !assignsFunction(ctx, sym))) {
       continue
     }
     const binding = ctx.symbols.name(sym)
-    const inPlace = path.reduceRight(
-      (inner, key) => `${key}: ${inner === '…' ? inner : `{ ${inner} }`}`,
-      '…',
-    )
+    // (in a `createHandlers(…)` object: at the argument, the callback and
+    // the middleware around it stay)
+    const inPlace = factory
+      ? `Write it in place at this argument (\`${path.at(-1)}: …\`), keeping the \`createHandlers\` callback and its middleware`
+      : `Write it in place in the route options (\`${path.reduceRight(
+          (inner, key) => `${key}: ${inner === '…' ? inner : `{ ${inner} }`}`,
+          '…',
+        )}\`)`
     // (an error: every environment reports it)
     reportRouterDiagnostic(ctx, {
       severity: 'error',
-      message: `[tanstack-router] \`${binding}\` is assigned elsewhere in ${ctx.displayPath}, so the server code it holds can ship to the client: the client output can keep the assignments of \`${binding}\` and the code they reference. Write it in place in the route options (\`${inPlace}\`), or define it once with a \`const\` (\`const ${binding} = wrap(…)\`, \`const ${binding} = condition ? a : b\`).`,
+      message: `[tanstack-router] \`${binding}\` is assigned elsewhere in ${ctx.displayPath}, so the server code it holds can ship to the client: the client output can keep the assignments of \`${binding}\` and the code they reference. ${inPlace}, or define it once with a \`const\` (\`const ${binding} = wrap(…)\`, \`const ${binding} = condition ? a : b\`).`,
       range: { start: node.start, end: node.end },
       by: ROUTER_PLANNER,
       code: 'route-server-code-reassigned',

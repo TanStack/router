@@ -75,6 +75,36 @@ export const fn = createServerFn().handler(h)
 `,
   ],
   [
+    'a write two guards hold, the outer reading the binding',
+    `let h: undefined | (() => Promise<string>)
+if (!h) {
+  if (import.meta.env.DEV) {
+    h = async () => db.x()
+  }
+}
+export const fn = createServerFn().handler(h)
+`,
+  ],
+  [
+    'a write a loop on the binding holds',
+    `let h: undefined | (() => Promise<string>)
+while (!h) {
+  h = async () => db.x()
+}
+export const fn = createServerFn().handler(h)
+`,
+  ],
+  [
+    'a write a switch on the binding holds',
+    `let h = async () => db.y()
+switch (typeof h) {
+  case 'function':
+    h = async () => db.x()
+}
+export const fn = createServerFn().handler(h)
+`,
+  ],
+  [
     'a write a block guarded by the binding holds',
     `let h: undefined | (() => Promise<string>)
 if (!h) {
@@ -362,6 +392,35 @@ describe('Vite: every compile refuses server code passed by a name the module as
   })
 
   // the local reads itself in its own declarator only
+  // a function's parameter, assigned and read by the client: SSR compiles it
+  // whether the function is declared or an arrow (the client refuses the
+  // parameter: \`start-escape:server-param\`)
+  test.each([
+    [
+      'a function declaration',
+      `export function make(impl?: () => unknown) {
+  impl = impl ?? (() => db.x())
+  const read = createServerOnlyFn(impl)
+  return { read, also: () => impl!() }
+}
+`,
+    ],
+    [
+      'an arrow function',
+      `export const make = (impl?: () => unknown) => {
+  impl = impl ?? (() => db.x())
+  const read = createServerOnlyFn(impl)
+  return { read, also: () => impl!() }
+}
+`,
+    ],
+  ])('a parameter of %s the client reads compiles on SSR', async (_, body) => {
+    const startCase = await (
+      await host()
+    ).case({ ...dbFile, 'module.tsx': head + body })
+    await expectCompiles(startCase, ['ssr'])
+  })
+
   test('createServerOnlyFn(…) on a local that reads itself in its declarator', async () => {
     const source = `${head}export function make(replica: boolean) {
   let impl = (): unknown => impl
@@ -427,6 +486,44 @@ export const fn = createServerFn().validator(schema).handler(async () => 'ok')
 export function Form() {
   return <p>{schema('form')}</p>
 }
+`,
+    ],
+    [
+      "a validator a classic \`for\` loop's initialiser picks and its body calls",
+      `type Validator = (input: string) => string
+let validate: Validator = (s) => s
+export function preview(input: string, validators: Array<Validator>) {
+  let i = 0
+  const result: Array<string> = []
+  for (validate = validators[0] ?? validate; i < validators.length; i++) {
+    result.push(validate(input))
+  }
+  return result
+}
+export const fn = createServerFn().validator(validate).handler(async () => 'ok')
+`,
+    ],
+    [
+      'a validator a \`while\` condition picks and its body calls',
+      `type Validator = (input: string) => string
+let validate: Validator = (s) => s
+export function preview(input: string, validators: Array<Validator>) {
+  let i = 0
+  const result: Array<string> = []
+  while (i < validators.length && (validate = validators[i++]!)) {
+    result.push(validate(input))
+  }
+  return result
+}
+export const fn = createServerFn().validator(validate).handler(async () => 'ok')
+`,
+    ],
+    [
+      'a binding a default export assigns and a function reads',
+      `let h = () => db.y()
+export const read = () => h()
+export const so = createServerOnlyFn(h)
+export default (h = () => db.x())
 `,
     ],
     [
@@ -565,6 +662,16 @@ export const Route = createFileRoute('/reassigned-headers')({
 `,
     at: 'headers: pickHeaders',
   },
+  'src/routes/reassigned-quoted-handlers.tsx': {
+    source: `${routeHead}let get = async () => new Response(db.y())
+get = async () => new Response(db.x())
+export const Route = createFileRoute('/reassigned-quoted-handlers')({
+  server: { 'handlers': ({ createHandlers }) => createHandlers({ GET: get }) },
+  component: () => <p>page</p>,
+})
+`,
+    at: 'GET: get',
+  },
   'src/routes/reassigned-create-handlers.tsx': {
     source: `${routeHead}let get = async () => new Response(db.y())
 get = async () => new Response(db.x())
@@ -649,6 +756,25 @@ describe("Vite: a route's server options by a name the module assigns", () => {
         ]),
       ),
     },
+  })
+
+  // what the user reads in a `createHandlers(…)` object: the argument, with
+  // the callback and its middleware kept
+  test('the error in a createHandlers object keeps the factory', async () => {
+    const { host: dev } = await host()
+    const error = await dev
+      .transform('/src/routes/reassigned-create-handlers.tsx', 'client')
+      .then(
+        () => undefined,
+        (e: unknown) => e,
+      )
+    const text = diagnosticsOf(error)
+      .map((d) => d.text)
+      .join('\n')
+    expect(text).toContain('`handler: …`')
+    expect(text).toContain(
+      'keeping the `createHandlers` callback and its middleware',
+    )
   })
 
   test.each(Object.keys(refusedRoutes))(

@@ -82,9 +82,11 @@ function counts(
  * outside the module's server-only text (`PlanContext.serverText`, every
  * planner's), and nothing the client keeps for its own sake reads it. That
  * is no export, and no read outside the server-only text, the binding's own
- * declarator, and the assignments: each write's statement within its
- * function (`h = wrap(h)`) and the test of an `if` it is the branch of
- * (`if (!h) h = …`). Such assignments are statements, which the client
+ * declarator, and the assignments: each write's smallest clause (its
+ * statement, `h = wrap(h)`, or the loop head or condition holding it) with
+ * the tests of the control statements around it up to its function
+ * (`if (!h) h = …`, `while (!h) { h = … }`), never a body
+ * (`assignmentText`). Such assignments are statements, which the client
  * output keeps with what they read (R154), so the server code they assign
  * ships to the client. A planner refuses every argument it names, in every
  * compile (SPEC J4.5): the verdict reads the source only. A binding the
@@ -139,9 +141,12 @@ export function reassignedServerCode(
 }
 
 /**
- * The text a write at `at` belongs to: its statement (a `for` head only),
- * with the test of the `if` whose branch that is, never past the function
- * or class around it (where none: the expression below that boundary).
+ * The text a write at `at` belongs to: the smallest clause holding it (its
+ * statement, or the head clause of a loop or `if` it is in: a `for` init,
+ * test or update, a `for…in`/`for…of` target or object, a condition), and
+ * the tests of every control statement around that clause (`if` tests, loop
+ * conditions, a `switch`'s discriminant and case tests), never their bodies
+ * and never past the function or class around it.
  */
 function assignmentText(ctx: PlanContext, at: Range): Array<Range> {
   const file = ctx.analysis.file
@@ -149,28 +154,73 @@ function assignmentText(ctx: PlanContext, at: Range): Array<Range> {
   if (below === null) {
     return [at]
   }
-  for (let n = file.parentOf(below); n !== null; n = file.parentOf(n)) {
-    if (BOUNDARY.has(n.type)) {
-      break
-    }
-    if (n.type.endsWith('Statement') || n.type === 'VariableDeclaration') {
-      const text: Array<Range> = [
-        n.type === 'ForInStatement' || n.type === 'ForOfStatement'
-          ? { start: n.start, end: n.body.start }
-          : n,
-      ]
-      let branchOf = file.parentOf(n)
-      if (branchOf?.type === 'BlockStatement') {
-        branchOf = file.parentOf(branchOf)
-      }
-      if (branchOf?.type === 'IfStatement') {
-        text.push(branchOf.test)
+  const text: Array<Range> = []
+  let clause = false
+  for (let n = file.parentOf(below); ; below = n, n = file.parentOf(n)) {
+    if (n === null || n.type === 'Program' || BOUNDARY.has(n.type)) {
+      if (!clause) {
+        text.push(below)
       }
       return text
     }
-    below = n
+    const heads = headsOf(n)
+    const inHead = heads.some((h) => sameNode(h, below!))
+    if (!clause && (inHead || isStatement(below))) {
+      clause = true
+      text.push(below)
+    }
+    if (clause && !inHead) {
+      text.push(...testsOf(n))
+    }
   }
-  return [below]
+}
+
+/** The clauses of a control statement that are not its body. */
+function headsOf(n: Node): Array<Node> {
+  switch (n.type) {
+    case 'IfStatement':
+    case 'WhileStatement':
+    case 'DoWhileStatement':
+      return [n.test]
+    case 'ForStatement':
+      return [n.init, n.test, n.update].filter((h) => h !== null)
+    case 'ForInStatement':
+    case 'ForOfStatement':
+      return [n.left, n.right]
+    case 'SwitchStatement':
+      return [n.discriminant]
+    case 'SwitchCase':
+      return n.test ? [n.test] : []
+    default:
+      return []
+  }
+}
+
+/** The tests deciding whether a control statement's body runs (`headsOf` but the loop targets and objects). */
+function testsOf(n: Node): Array<Node> {
+  switch (n.type) {
+    case 'IfStatement':
+    case 'WhileStatement':
+    case 'DoWhileStatement':
+      return [n.test]
+    case 'ForStatement':
+      return n.test ? [n.test] : []
+    case 'SwitchStatement':
+      return [
+        n.discriminant,
+        ...n.cases.flatMap((c) => (c.test ? [c.test] : [])),
+      ]
+    default:
+      return []
+  }
+}
+
+function isStatement(n: Node): boolean {
+  return n.type.endsWith('Statement') || n.type.endsWith('Declaration')
+}
+
+function sameNode(a: Range, b: Range): boolean {
+  return a.start === b.start && a.end === b.end
 }
 
 /** A local binding's own declarator (a top-level one's reads are no `valueRefsOf`). */
@@ -178,7 +228,12 @@ function declaratorText(ctx: PlanContext, sym: SymbolId): Array<Range> {
   const file = ctx.analysis.file
   return (ctx.symbols.binding(sym)?.declarations ?? []).flatMap((name) => {
     for (let n = file.parentOf(name); n !== null; n = file.parentOf(n)) {
-      if (n.type === 'VariableDeclarator' || n.type === 'FunctionDeclaration') {
+      if (
+        n.type === 'VariableDeclarator' ||
+        (n.type === 'FunctionDeclaration' &&
+          n.id !== null &&
+          sameNode(n.id, name))
+      ) {
         return [n]
       }
       if (BOUNDARY.has(n.type) || n.type.endsWith('Statement')) {
