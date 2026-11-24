@@ -253,7 +253,7 @@ export function splitPlanOf(
           by: ROUTER_PLANNER,
           message:
             option.kind === 'spread'
-              ? `[tanstack-router] ${file} spreads route options, which the compiler cannot read. If the spread holds ${deletedNames()}, ${deleteNodes.size === 1 ? 'it stays' : 'they stay'} in client code, and any server code in ${deleteNodes.size === 1 ? 'it' : 'them'} ships to the client${splitting ? '; nothing it holds is code-split' : ''}. Write those options as properties of this object, and take them out of the spread's object: a property written here does not remove the spread's.`
+              ? `[tanstack-router] ${file} spreads route options, which the compiler cannot read. If the spread holds ${listOf([...deleteNodes], 'or')}, ${deleteNodes.size === 1 ? 'it stays' : 'they stay'} in client code, and any server code in ${deleteNodes.size === 1 ? 'it' : 'them'} ships to the client${splitting ? '; what the spread holds is not code-split either' : ''}. Write those options as properties of this object, and take them out of the spread's object: a property written here does not remove the spread's.`
               : `[tanstack-router] ${file} computes a route option's key: that option is not code-split, and it is not removed if it names ${deletedNames()}, so any server code in it ships to the client. Write the key literally.`,
           range: { start: option.prop.start, end: option.prop.end },
         })
@@ -317,7 +317,11 @@ export function splitPlanOf(
         // the route file keeps exporting it: splitting it would only move a
         // re-export (`main` leaves it, with a warning at what to edit: the
         // first export)
-        exported.push((value as Node & { name: string }).name)
+        const name = (value as Node & { name: string }).name
+        // (one binding two options name is listed once)
+        if (!exported.includes(name)) {
+          exported.push(name)
+        }
         exportedAt ??= { start: exportedBy.start, end: exportedBy.end }
         continue
       }
@@ -360,17 +364,11 @@ export function splitPlanOf(
         ? { start: target.prop.start, end: target.prop.end }
         : { start: inner.start, end: inner.end }
       // another planner already puts something at exactly this text's place
-      // in the route module (Start hoists a server fn written in place): the
-      // chunk cannot take it as well, and the option keeps working there
-      const claimed = ctx.rewrites.view('env').placeholderAt(region)
-      if (claimed) {
-        warnings.push({
-          severity: 'warning',
-          code: 'split-claimed',
-          by: ROUTER_PLANNER,
-          message: `[tanstack-router] The \`${key}\` option of ${file} is not code-split: its value is ${('owner' in claimed ? claimed.subject : undefined) ?? 'moved elsewhere by the compiler'}, so it cannot move into a chunk as well. Declare it as a module-level \`const\` before the route and pass it by name: \`${target.keyText}: ${key}Fn\`.`,
-          range: region,
-        })
+      // in the route module: the chunk cannot take it as well, and the
+      // option keeps working there, silently (only Start's server hoists a
+      // server fn written in place: the client splits it, so nothing the
+      // user would change is lost)
+      if (ctx.rewrites.view('env').placeholderAt(region)) {
         continue
       }
       decisions.push({
@@ -390,7 +388,6 @@ export function splitPlanOf(
     }
   }
   if (exported.length > 0) {
-    // `main`'s message
     warnings.push({
       severity: 'warning',
       code: 'exported-not-split',
@@ -479,12 +476,15 @@ export function claimedValueOf(value: Node): Node {
   return n.type === 'SequenceExpression' && parens !== null ? parens : n
 }
 
-/** `\`a\``, `\`a\` and \`b\``, `\`a\`, \`b\` and \`c\``. */
-function listOf(names: ReadonlyArray<string>): string {
+/** `\`a\``, `\`a\` and \`b\``, `\`a\`, \`b\` and \`c\`` (or with `or`). */
+function listOf(
+  names: ReadonlyArray<string>,
+  conjunction: 'and' | 'or' = 'and',
+): string {
   const quoted = names.map((name) => `\`${name}\``)
   return quoted.length === 1
     ? quoted[0]!
-    : `${quoted.slice(0, -1).join(', ')} and ${quoted.at(-1)}`
+    : `${quoted.slice(0, -1).join(', ')} ${conjunction} ${quoted.at(-1)}`
 }
 
 /**

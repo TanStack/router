@@ -186,13 +186,6 @@ interface RegionClaim {
   /** The outputs whose place of the region holds the placeholder (default: every output). */
   scope?: EditScope
   by: string
-  /**
-   * What the claimed text is, in a message's words (`a server function
-   * written in place, …`): a later planner that would claim exactly the
-   * same text reports it at that text instead (two claims on one range have
-   * no order).
-   */
-  subject?: string
 }
 
 // ---- regions ------------------------------------------------------------------

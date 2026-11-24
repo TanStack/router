@@ -62,7 +62,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
     {
       name: 'a spread',
       route: `{ ...shared, ${component} }`,
-      says: 'If the spread holds',
+      says: 'If the spread holds `ssr`, `server` or `headers`',
     },
     { name: 'options imported from another module', route: `shared` },
     {

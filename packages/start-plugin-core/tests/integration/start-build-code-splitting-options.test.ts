@@ -5,11 +5,8 @@
  * Start's Vite and Rsbuild plugins (build-harness.ts).
  */
 import { describe, expect, test } from 'vitest'
+import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { loadedModulesExpression } from '@tanstack/compiler-test-utils/importers'
-import {
-  diagnosticPosition,
-  expectDiagnostic,
-} from '@tanstack/compiler-test-utils/diagnostics'
 import {
   buildStart,
   callByIdExports,
@@ -248,27 +245,23 @@ return requestsOf((options) => (typeof loader === 'function' ? loader : loader.h
     },
     timeout,
   )
-  test.each([
-    {
-      name: 'written in place',
-      declarations: '',
-      loader: `createServerFn().handler(async () => 'MARK_LOADER_FN')`,
-    },
-  ])(
-    'router.codeSplittingOptions: a loader that is a server fn $name stays in the route module, warned at, and runs on the server',
-    async ({ declarations, loader }) => {
-      const module = routeModule(declarations, loader)
-      const built = await buildSplitLoader(module)
-      expectDiagnostic(built.diagnostics, {
-        severity: 'warning',
-        file: 'src/routes/index.tsx',
-        root: built.root,
-        position: diagnosticPosition(
-          module,
-          module.indexOf(`loader: ${loader}`) + 'loader: '.length,
+  // The client splits it (its call of the server fn, by id, loads on
+  // demand); only the server's module keeps it, where Start hoists the
+  // handler: nothing to tell the user (Fable's review of the
+  // implementation, 8).
+  test(
+    'router.codeSplittingOptions: a loader that is a server fn written in place is split on the client, runs on the server, and nothing is reported',
+    async () => {
+      const built = await buildSplitLoader(
+        routeModule(
+          '',
+          `createServerFn().handler(async () => 'MARK_LOADER_FN')`,
         ),
-      })
-      expect(await runServerFnLoader(built)).toBe('MARK_LOADER_FN')
+      )
+      const { result, id } = await callServerFnLoader(built)
+      expect(result).toBe('MARK_LOADER_FN')
+      expect(built.client.where(id)).toBe('lazy')
+      expect(problems(built.diagnostics)).toEqual([])
     },
     timeout,
   )

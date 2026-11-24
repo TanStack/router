@@ -59,6 +59,27 @@ export const Route = createFileRoute('/')({ component: Page })
     expect(reports[0]!.text).toContain('remove its export')
   })
 
+  // Source: Astra's review of the implementation (6: "`C` and `C` stay").
+  it('one exported binding two options name: listed once', async () => {
+    const code = `${head}export function Page${page}
+export const Route = createFileRoute('/')({
+  component: Page,
+  notFoundComponent: Page,
+})
+`
+    const route = await loadRoute(code, { fresh: true })
+    expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
+    const reports = findDiagnostics(await route.diagnostics(), {
+      severity: 'warning',
+      file: 'route.tsx',
+      root: route.host.root,
+    })
+    expect(reports).toHaveLength(1)
+    expect(reports[0]!.text).toContain(
+      '`Page` stays in the route module because',
+    )
+  })
+
   it('two exported bindings: one report, at the first listed export, naming both', async () => {
     const code = `${head}export function Crash${page}
 export function Page${page}

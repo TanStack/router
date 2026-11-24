@@ -124,7 +124,10 @@ export const Route = wrap(createRootRoute({ component: () => <Outlet /> }))
         file: 'src/routes/__root.tsx',
         root: result.root,
       })
-      expect(reports).not.toEqual([])
+      // what the terminal shows (not the stats objects behind it): one
+      expect(reports.filter(({ source }) => source !== 'bundler')).toHaveLength(
+        1,
+      )
       for (const { text } of reports) {
         expect(text).toContain('are not removed')
         expect(text).not.toContain('code-split')
