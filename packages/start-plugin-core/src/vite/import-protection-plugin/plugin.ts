@@ -1823,7 +1823,7 @@ export function importProtectionPlugin(
             if (shouldDefer && !info.resolved) {
               try {
                 const resolvedForInfo = await resolveAgainstImporter()
-                if (resolvedForInfo) {
+                if (resolvedForInfo && !resolvedForInfo.result.external) {
                   info.resolved = resolvedForInfo.id
                 }
               } catch {
@@ -1851,6 +1851,9 @@ export function importProtectionPlugin(
             resolved = env.resolveCache.get(cacheKey) ?? null
           } else {
             const resolution = await resolveAgainstImporter()
+            if (resolution?.result.external) {
+              return resolution.result
+            }
             resolved = resolution?.id ?? null
             passThroughResult = resolution?.result ?? null
 
