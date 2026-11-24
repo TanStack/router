@@ -910,6 +910,8 @@ interface Warned extends Shape {
   at: string
   /** Text of the call's argument the client still holds. */
   ships?: string
+  /** Where the warning says to read a secret instead (diagnostics spike D1: the API the server code is written in). */
+  inside: string
 }
 
 const warned: Array<Warned> = [
@@ -918,6 +920,7 @@ const warned: Array<Warned> = [
     code: `${P}const requireRole = (role: string) => createMiddleware().server(async ({ next }) => { if (db.x() !== role) throw new Error('no'); return next() })\nexport const fn = createServerFn().middleware([requireRole('admin')]).handler(async () => 'ok')`,
     at: 'role: string',
     ships: 'admin',
+    inside: '`.server()`',
   },
   {
     name: 'an options parameter read in `.server()`',
@@ -925,24 +928,28 @@ const warned: Array<Warned> = [
     at: 'options:',
     body: 'db.y',
     ships: 'RULES',
+    inside: '`.server()`',
   },
   {
     name: 'an isomorphic factory reading its parameter in `.server()`',
     code: `${P}export const make = (name: string) => createIsomorphicFn().server(() => db.y(name))`,
     at: 'name:',
     body: 'db.y',
+    inside: '`.server()`',
   },
   {
     name: 'a destructured parameter read in `.server()`',
     code: `${P}export const make = ({ role }: { role: string }) => createMiddleware().server(async ({ next }) => { db.y(role); return next() })`,
     at: 'role }',
     body: 'db.y',
+    inside: '`.server()`',
   },
   {
     name: 'a server-only fn reading a parameter',
     code: `${P}export const make = (n: number) => createServerOnlyFn(() => db.y(n))`,
     at: 'n:',
     body: 'db.y',
+    inside: '`createServerOnlyFn()`',
   },
 ]
 
@@ -1092,14 +1099,14 @@ describe('a parameter that reaches server code by being read', () => {
     const startCase = await (await host()).case(caseFiles(shape))
     const client = await reportedBy(startCase, 'client')
     expect(client.of('error')).toEqual([])
-    expect(
-      findDiagnostics(client.reported, {
-        severity: 'warning',
-        file: startCase.file(),
-        position: diagnosticPosition(shape.code, shape.at),
-        times: 1,
-      }),
-    ).toHaveLength(1)
+    const found = findDiagnostics(client.reported, {
+      severity: 'warning',
+      file: startCase.file(),
+      position: diagnosticPosition(shape.code, shape.at),
+      times: 1,
+    })
+    expect(found).toHaveLength(1)
+    expect(found[0]!.text).toContain(`Read secrets inside ${shape.inside}`)
     expect(client.of('warning')).toHaveLength(1)
     expect(client.code).not.toContain(shape.body ?? 'db.x()')
     if (shape.ships) {

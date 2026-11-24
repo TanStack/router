@@ -471,8 +471,11 @@ function planStartEnv(
   ) {
     facts.recognises = true
   }
-  /** The server-only text the client compile erases (step 6's parameter check reads it). */
-  const erased: Array<Range> = []
+  /**
+   * The server-only text the client compile erases, with the API it is
+   * written in (step 6's parameter check reads it).
+   */
+  const erased: Array<{ range: Range; api: string }> = []
 
   const diag = (message: string, range: Range) =>
     ctx.diagnostic({ severity: 'error', message, range, by })
@@ -627,7 +630,7 @@ function planStartEnv(
         continue
       }
       if (role === 'client') {
-        erased.push(rangeOf(link.arg))
+        erased.push({ range: rangeOf(link.arg), api: `.${link.method}()` })
         // (the link goes with it)
         rewrites.placeholder({
           range: { start: link.member.object.end, end: link.call.end },
@@ -789,7 +792,7 @@ function planStartEnv(
       for (const l of chain.links) {
         if (l.method === 'server' && l.arg !== null) {
           // (erased with the rest of the chain, below)
-          erased.push(rangeOf(l.arg))
+          erased.push({ range: rangeOf(l.arg), api: '.server()' })
         }
       }
     }
@@ -847,7 +850,7 @@ function planStartEnv(
     } else {
       if (c.arg !== null && c.kind === 'server') {
         // (the stub below is the call's text)
-        erased.push(rangeOf(c.arg))
+        erased.push({ range: rangeOf(c.arg), api: 'createServerOnlyFn()' })
       }
       const message = `create${c.kind === 'server' ? 'Server' : 'Client'}OnlyFn() functions can only be called on the ${c.kind}!`
       ctx.replaceExpression({
@@ -984,7 +987,7 @@ function planStartEnv(
       // ours would scope it, but a later transform may print them away:
       // @swc/core does)
       const call = site.handlerCall
-      erased.push(site.stubbed)
+      erased.push({ range: site.stubbed, api: '.handler()' })
       rewrites.edit({
         range: rangeOf(call),
         body: [
@@ -1215,9 +1218,9 @@ function planStartEnv(
     // (a handler's captures are refused by `hoist`)
     const params = new Map<
       SymbolId,
-      { name: Node; fn: Node; direct: Node | null }
+      { name: Node; fn: Node; direct: Node | null; api: string }
     >()
-    for (const text of erased) {
+    for (const { range: text, api } of erased) {
       for (const { kind, sym, range } of t1.refs.refsIn(text)) {
         const param =
           kind === 'value' &&
@@ -1230,12 +1233,12 @@ function planStartEnv(
         const direct =
           code.type === 'Identifier' && code.start === range.start ? code : null
         if (!params.get(sym)?.direct) {
-          params.set(sym, { ...param, direct })
+          params.set(sym, { ...param, direct, api })
         }
       }
     }
     // (judged at the function: a pattern property only erased code read is pruned)
-    for (const [sym, { name, fn, direct }] of params) {
+    for (const [sym, { name, fn, direct, api }] of params) {
       const param = ctx.symbols.name(sym)
       if (direct) {
         ctx.liveDiagnostic(
@@ -1252,7 +1255,7 @@ function planStartEnv(
         ctx.liveDiagnostic(
           {
             severity: 'warning',
-            message: `The parameter \`${param}\` is read only by server-only code, but what each call passes for it stays in the client bundle. That is fine for values that are not secret (a role name, a flag); read secrets inside the server code instead of passing them.`,
+            message: `Only server code reads \`${param}\`. Arguments at calls included in client code can be visible to the browser. Public labels are fine. Read secrets inside \`${api}\`.`,
             range: rangeOf(name),
             by,
             code: 'start-server-param',
