@@ -394,7 +394,7 @@ describe('Vite: every compile refuses server code passed by a name the module as
   // the local reads itself in its own declarator only
   // a function's parameter, assigned and read by the client: SSR compiles it
   // whether the function is declared or an arrow (the client refuses the
-  // parameter: \`start-escape:server-param\`)
+  // parameter: `start-escape:server-param`)
   test.each([
     [
       'a function declaration',
@@ -489,7 +489,7 @@ export function Form() {
 `,
     ],
     [
-      "a validator a classic \`for\` loop's initialiser picks and its body calls",
+      "a validator a classic `for` loop's initialiser picks and its body calls",
       `type Validator = (input: string) => string
 let validate: Validator = (s) => s
 export function preview(input: string, validators: Array<Validator>) {
@@ -504,7 +504,7 @@ export const fn = createServerFn().validator(validate).handler(async () => 'ok')
 `,
     ],
     [
-      'a validator a \`while\` condition picks and its body calls',
+      'a validator a `while` condition picks and its body calls',
       `type Validator = (input: string) => string
 let validate: Validator = (s) => s
 export function preview(input: string, validators: Array<Validator>) {
