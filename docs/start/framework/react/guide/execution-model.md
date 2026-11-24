@@ -217,16 +217,16 @@ const fetchData = createServerFn().handler(async () => {
 
 ### Top-Level Setup Statements
 
-The compiler removes server code (server function handlers, `.server()` bodies, `createServerOnlyFn` implementations) from the client bundle, together with the imports only that code uses. A statement at the top level of a module always stays, so setup written as a statement (`if`, `try`, an assignment, `??=`) keeps its imports in the client bundle, and runs in the browser when the module loads. This is true in development and in production builds.
+The compiler removes server code (server function handlers, `.server()` bodies, `createServerOnlyFn` implementations) from the client bundle, together with the imports only that code uses. Start's transform keeps every statement at the top level of a module in client code, so setup written as a statement (`if`, `try`, an assignment, `??=`) keeps its imports in the client bundle and runs in the browser when the module loads (a production bundler may still drop a branch whose condition it can tell is false). This is true in development and in production builds.
 
 ```tsx
-// ❌ The `if` stays in client code: `./redis` is bundled and `connect()` runs in the browser
+// ❌ The `try` stays in client code: `./redis` is bundled and `connect()` runs in the browser
 import { connect } from './redis'
 
 let redis
-if (process.env.REDIS_URL) {
+try {
   redis = connect()
-}
+} catch {}
 
 export const getCount = createServerFn().handler(() => redis.get('count'))
 ```
