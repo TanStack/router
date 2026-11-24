@@ -540,13 +540,21 @@ function reportUnrecognizedRoute(
  * Reports a router planner diagnostic from its owner environment: every
  * error, and every warning but in Start's server environments
  * (`clientReports`): the client's compile of the file reads the same route
- * options and reports them, once, with what ships to the client.
+ * options and reports them, once, with what ships to the client. A claimed
+ * option (`split-claimed`) is the environment's own finding: another
+ * planner's placeholder in this environment's output, which the client's
+ * compile may not have (a server fn written in place is hoisted on the
+ * server).
  */
 export function reportRouterDiagnostic(
   ctx: PlanContext<typeof ROUTER_PLANNER>,
   d: Diagnostic,
 ): void {
-  if (d.severity === 'warning' && ctx.config.clientReports) {
+  if (
+    d.severity === 'warning' &&
+    ctx.config.clientReports &&
+    d.code !== 'split-claimed'
+  ) {
     return
   }
   ctx.diagnostic(d)
