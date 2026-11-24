@@ -260,6 +260,7 @@ describe('vite dev, a pre-bundled package that uses Start', () => {
       expect(naming(control, kit)).toEqual([])
       const edited = await run([banner])
       expect(naming(edited, kit)).toEqual([])
+      expect(naming(edited, inner)).toEqual([])
       notTheCache(edited.warnings)
     },
     timeout,

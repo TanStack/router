@@ -154,8 +154,8 @@ function unoptimizedDependency(environment: Environment, id: string): string {
  * `cacheDir`: a dependency's entry with the modules of the packages it
  * imports inlined, or a chunk such bundles share), the module an offset of
  * its code is from (`StartPackageReach.original`), by the map the
- * optimizer writes beside it, which Vite does not hand to plugins (read
- * and checked once, when first asked). Only for the bundle as the
+ * optimizer writes beside it, read from disk (Vite 7 hands plugins no map
+ * for it; read and checked once, when first asked). Only for the bundle as the
  * optimizer wrote it: when the compile's input is other text (a plugin
  * before Start's transform edited it), the map describes no offset of it,
  * so none is attributed (no package is told to change its manifest).

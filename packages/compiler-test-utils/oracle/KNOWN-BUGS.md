@@ -921,6 +921,19 @@ module "…" in the React Client Manifest`. Dev is not affected (the next compil
   `vite-two-router-plugins.test.ts`: "one instance: a split id of a file of its routes directory that is no route
   serves an empty module" covers the owned case).
 
+- **Dev: a warning is printed once per run, so one that returns after its fix is undone stays hidden** (diagnostics
+  spike, 11-24). A compile warning is printed the first time it is reported in a dev session (Vite) or a build run
+  (Rsbuild replays a warm build's warnings); `start-package` once per package. Fixing the code and then undoing the
+  fix in the same session prints nothing until a restart or a build. Why: printing on every compile still needs most
+  of that state (once per package, Rsbuild's cross-compilation check and warm replay, one owner per split output) and
+  reprints deliberate warnings (`exported-not-split`) on every save; forgetting a file's entry when its compile no
+  longer reports it needs state per environment and output. No test (the outcome is the limit).
+- **Vite dev: a warning in a pre-bundled workspace package names the optimizer's file** (diagnostics spike, 11-24).
+  Author advice kept for a linked workspace package listed in `optimizeDeps.include` prints
+  `node_modules/.vite/deps/<dep>.js` with the original source's line and column; the code frame shows the token.
+  Pre-bundles another plugin edited before Start's transform, or rewritten on disk after the optimizer wrote its
+  map, are not attributed to a package (no package is told to change its manifest), or attributed by a stale map.
+
 ## Fixed, kept as regression tests
 
 ### Shared causes (several jobs)
