@@ -103,7 +103,11 @@ export function reassignedServerCode(
   const sym = t1.refs
     .refsIn(named)
     .find((r) => r.range.start === named.start)?.sym
-  if (sym === undefined) {
+  // (most bindings are never written: no model built for them)
+  if (
+    sym === undefined ||
+    !t1.refs.refsOf(sym).some((r) => r.kind === 'write')
+  ) {
     return null
   }
   const inServerCode = (r: ClassifiedRef) => within(r.range, serverCode)
