@@ -90,7 +90,7 @@ export function isJsAsset(name: string): boolean {
   return /\.[cm]?js$/.test(name)
 }
 
-/** A warning a module's compile found: the ledger's key (`code`, `message`) and its position. */
+/** A warning a module's compile found, with its position: the record's part the seal reports from (`FOUND_WARNINGS_PART`). */
 export interface FoundWarning {
   message: string
   code?: string

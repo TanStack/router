@@ -104,6 +104,59 @@ describe('rsbuild dev: the warnings of modules a worker imports', () => {
   )
 })
 
+describe('rsbuild dev on the persistent cache: the warnings of modules only a worker imports', () => {
+  // The cold start's first client compilation is replaced before Rsbuild
+  // prints (the generator writes the route tree); the next child compilation
+  // restores the worker's modules from the cache, with their records.
+  // Source: review-hotspot3-impl-2-fable.md, change 1.
+  test.each(handOvers)(
+    'a worker plugin that %s: each warning is printed at the cold start, after a restart on the cache, and not again after a save',
+    async (_, handOver) => {
+      const printed = printedWarnings()
+      const files = workerApp()
+      const first = await startRsbuildStartDevServer({
+        packageJson: appManifest([uiKit]),
+        config: {
+          plugins: [printed.plugin],
+          performance: { buildCache: true },
+          environments: {
+            client: {
+              tools: { rspack: { plugins: [workerPluginOf({ handOver })] } },
+            },
+          },
+        },
+        files: {
+          ...files,
+          'src/other.ts': `export const other = 0\n`,
+          'src/client.tsx': `import './other'\n${files['src/client.tsx']}`,
+        },
+      })
+      await first.settle()
+      const cold = printed.reports.length
+      await first.stop()
+      const server = await first.restart()
+      await server.settle()
+      const warm = printed.reports.length
+      await server.write({ 'src/other.ts': `export const other = 1\n` })
+      await server.settle({ accept: () => true })
+      const phases = (file: string) => {
+        const counts = printed.counts(server.root, file)
+        return {
+          cold: Math.max(0, ...counts.slice(0, cold)),
+          warm: Math.max(0, ...counts.slice(cold, warm)),
+          afterSave: counts.slice(warm).reduce((a, b) => a + b, 0),
+        }
+      }
+      const expected = { cold: 1, warm: 1, afterSave: 0 }
+      expect({
+        compiler: phases('src/role.ts'),
+        package: phases(uiKitFile),
+      }).toEqual({ compiler: expected, package: expected })
+    },
+    timeout,
+  )
+})
+
 describe('rsbuild dev with RSC: a module a page and a worker share', () => {
   test.each(handOvers)(
     "a worker plugin that %s: the module's compiler warning is printed, once in a report",

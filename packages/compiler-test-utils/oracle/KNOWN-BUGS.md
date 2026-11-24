@@ -635,19 +635,40 @@ properties of undefined (reading 'id')`, page 500 (build and dev). `main` resolv
   plugin pair is created once per plugin setup, so the second server's compilers may share the first one's
   client-reference state. No test.
 - **Rsbuild: the warnings of a child compilation that runs after its owner sealed are not on the owner at its
-  seal** (hotspot 3, rule 4 of the Rsbuild host; stated limit). A worker plugin that runs its child compiler in
-  `processAssets` or in the compiler's `done` gets the child's warnings added to the owner's compilation as the child
-  seals: Rsbuild prints them once, but an app plugin that reads the owner's warnings at `afterSeal` (a "no warnings"
+  seal** (hotspot 3, rule 4 of the Rsbuild host; stated limit). A worker plugin that runs its child compiler in the
+  compiler's `done` (after the owner's `afterSeal`) gets the child's warnings added to the owner's compilation as the
+  child seals: Rsbuild prints them once, but an app plugin that reads the owner's warnings at `afterSeal` (a "no warnings"
   policy) does not see them. No earlier moment exists: the child's modules do not exist before it runs. A child run in
-  `make` is on the owner before its seal (`start-plugin-core/tests/integration/rsbuild/worker-warnings.test.ts`, "the
+  `make`, or awaited in the owner's `processAssets`, is on the owner at its `afterSeal` (`start-plugin-core/tests/integration/rsbuild/worker-warnings.test.ts`, "the
   worker is built once the client compiler is done" for the late child's print). No test of the limit itself.
 - **Rsbuild: the warnings of a child compilation that runs after Rsbuild printed its owner** (an `afterDone` tap;
-  hotspot 3, stated limit, no fixture and no known plugin). They are added to the owner's compilation, which a build
-  never prints again; a dev server prints them with the next report that still has that compilation. No test.
+  hotspot 3, stated limit, no known plugin). They are added to the owner's compilation after its report: a one-shot
+  build never prints them; a `build --watch` session and a dev server print them with the next report that still has
+  that compilation (Rsbuild prints an unchanged compiler's last compilation again). No test.
 - **Rsbuild: a program that runs the compiler of `createCompiler()` itself in development mode prints a warning in
   every compilation** (hotspot 3; stated limit). Rsbuild calls no `onDevCompileDone` for such a program, so nothing
   counts as printed: each new compilation of a compiler carries the warnings it holds again. Within one compilation
-  each warning is still added once. `rsbuild dev` and `createDevServer()` are once per dev session. No test.
+  each warning is still added once. `rsbuild dev` and `createDevServer()` are once per dev session (but for Rsbuild's
+  reprint of an unchanged compilation, the entry below). No test.
+- **Rsbuild dev: a warning of a compilation that did not compile again is printed again with every report** (Rsbuild's
+  report convention; hotspot 3, Astra's re-check 2). Without RSC, a save that only the server compiles prints a report
+  of the client's unchanged last compilation and the server's new one, and Rsbuild formats every warning of both: a
+  warning only client code has is printed after every server-only save. Rspack's own warnings do the same (an
+  `ESModulesLinkingWarning` of a client-only module, printed with each of three reports). Start adds each warning
+  once per dev session; it does not edit a compilation Rsbuild prints again. With RSC both compilers compile again
+  and the later reports have none. No test.
+- **Rsbuild `build --watch`: the deprecation warning of a custom server function id can be in no report** (hotspot 3;
+  stated limit, Astra and Fable re-check 2). The id allocator warns about a deprecated id (`generateFunctionId`
+  returning a character outside `A-Z a-z 0-9 - . _ ~ $`) only when it allocates the id, once per session. When the
+  compilation that carried it is replaced before a report (a client save while the server finishes the first build),
+  no later compilation offers it again, so no report has it; a build without that overlap prints it once. The error
+  of an invalid id is returned on every allocation and is in every report. Vite prints what the allocator returns on
+  each call, so returning the deprecation every time needs a deduplication there first. No test.
+- **Rsbuild `build --watch`: a dependency whose `package.json` is edited to declare Start is still reported as not
+  declaring it** (hotspot 3; stated limit, Astra re-check 2 finding 4). The package classification and the manifest
+  Start read are fixed for the session: an edit of an installed package's manifest while the watch runs (its directory
+  watched) keeps the "does not declare Start" warning in every report. A new build prints none. Restart the watch (or
+  the dev server) after editing a dependency's manifest. No test.
 - **Vite production build: a server fn only a worker calls is not HTTP-callable** (RSC phase 2, design-rsc-phase2.md
   G10; known limit, Astra review of 36bfa61d07; as c9701e2fc1). With Start in `worker.plugins`, Vite builds the worker
   apart and the client bundle gets it as an asset: its stub (the id and, with a generator, the gate token) is in the

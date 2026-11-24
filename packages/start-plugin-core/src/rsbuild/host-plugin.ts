@@ -799,13 +799,14 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       compiler.hooks.compilation.tap(PLUGIN_NAME, (compilation) => {
         if (compilation.compiler !== compiler) {
           compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) => {
-            if (
-              own.persistsModules &&
-              !session.files.compiled(environment.name)
-            ) {
+            if (own.persistsModules) {
               // a child's modules the persistent cache restored, with the
               // records of their latest compile (as the compiler's own:
-              // `finishMake`)
+              // `finishMake`). In every compilation, not the first only: a
+              // dev server forgets the index of modules whose files its
+              // compilation does not depend on (the session's `retain`),
+              // which a child's are, and the cache gives the next child
+              // compilation its modules without a compile
               for (const m of modules) {
                 const module = m as unknown as ModuleLike
                 const buildInfo = module.buildInfo

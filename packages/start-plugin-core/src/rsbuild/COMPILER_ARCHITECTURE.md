@@ -106,9 +106,11 @@ what a watch-written cache restored.
    session. A child compilation (a worker's), which Rsbuild does not print, gives its modules' warnings on behalf of
    its owner, and they are added to the owner's compilation: nothing depends on what a worker plugin does with a
    child's own warnings. A child's modules the persistent cache restored are indexed as the compiler's own are.
-   The host's own reports take the same path (`warn`, keyed on their text): a custom server function id's error or
-   deprecation (`processAssets`) and a closure that cannot settle (an error in builds, a warning in dev servers). No
-   reset is keyed on a compiler's `watchRun`: a `build --watch` rebuild of the server alone reports what applies.
+   The host's own reports take the same path (`warn`, keyed on their text): a custom server function id's error
+   (`processAssets`, returned on every allocation) and a closure that cannot settle (an error in builds, a warning in
+   dev servers). A deprecated custom id's warning goes there too, but the allocator returns it only when it allocates
+   the id (once per session), so it has no "once in every report" (KNOWN-BUGS). No reset is keyed on a compiler's
+   `watchRun`: a `build --watch` rebuild of the server alone reports what applies.
    Import protection's dev reports keep their own reporter.
 
 ## One compile per module
