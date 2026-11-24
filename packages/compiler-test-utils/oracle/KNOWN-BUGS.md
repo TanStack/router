@@ -624,6 +624,25 @@ properties of undefined (reading 'id')`, page 500 (build and dev). `main` resolv
   cache (`performance.buildCache`) after such a change. A module the worker newly imports is compiled: the client's
   restored module of the same file is still checked
   (`start-plugin-core/tests/integration/rsbuild/child-compiler-build-cache.test.ts`).
+- **Rsbuild with a persistent cache: a build on a cache that a `build --watch` session wrote after an edit dropped
+  modules can fail to link** (upstream, web-infra-dev/rspack#16839; hotspot 3 design study §10; as `main`).
+  `rsbuild build --watch` with `performance.buildCache`, an edit removes an import, the session ends; a later
+  `rsbuild build` on that cache restores the dropped modules with the modules that imported them, and Rspack's
+  `rebuildModule` of such a module fails with `ESModulesLinkingError` (Rspack 2.3.3 and canary). A build on a fresh
+  cache directory succeeds. Workaround: clear the build cache after such a watch session. No test (the reproduction
+  aborts its Vitest worker in some runs; upstream has a plain-Rspack one).
+- **Rsbuild: a module Start generates whose bytes an app's `pre` loader rewrites before Start's loader reads them is
+  built again in every compilation** (hotspot 3, rule 3 of the Rsbuild host; stated limit, no such setup known). Start
+  records on the client route tree, the server-function resolver and the Start manifest the digest of the bytes its
+  loader reads, and builds the module again at `finishMake` when that differs from the content Start published: a
+  foreign loader that changes the bytes first leaves a digest that never matches, so each compilation builds the
+  module once more (the resolver once per content and compilation). The output is right; a warm build and a dev edit
+  cost one module build more. No test.
+- **Rsbuild with RSC: a second dev server of one Rsbuild instance is not tested** (hotspot 3; Gemini's design, read,
+  not run). Without RSC, `createDevServer()` again on one instance serves what its own compilers built (each new
+  compiler's virtual file system starts from its initial content: `virtual-modules.ts`, H5-dev). With RSC the RSC
+  plugin pair is created once per plugin setup, so the second server's compilers may share the first one's
+  client-reference state. No test.
 - **Vite production build: a server fn only a worker calls is not HTTP-callable** (RSC phase 2, design-rsc-phase2.md
   G10; known limit, Astra review of 36bfa61d07; as c9701e2fc1). With Start in `worker.plugins`, Vite builds the worker
   apart and the client bundle gets it as an asset: its stub (the id and, with a generator, the gate token) is in the

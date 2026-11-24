@@ -35,12 +35,16 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
   extension, imported as an asset, stays intact); it decodes only to compile.
 - `asset-query-loader.ts` is a pitch-only loader on ids with an asset query (`x.server.ts?raw`): a denied file's mock
   replaces it before it is read; any other file is left untouched, its bytes never decoded.
-- `server-fn-resolver-rebuild.ts` rebuilds the server-function resolver when its content differs from the one the
-  compiler last built it from (a rebuild may register the functions of the provider modules it reaches): the
-  resolver's part of each round of the host plugin's `finishMake` closure.
-- `manifest-rebuild.ts` rebuilds the Start manifest module within the server compiler's `finishMake` once a client
-  compilation wrote it (dev; RSC builds too): Rspack's watcher ignores `node_modules`, so the write alone never builds
-  it again.
+- `server-fn-resolver-rebuild.ts` builds the server-function resolver again when the module was built from another
+  content than the current one (rule 3; a rebuild brings the provider modules it reaches, which may declare
+  functions): the resolver's part of each round of the host plugin's `finishMake` closure.
+- `manifest-rebuild.ts` builds the Start manifest module again at the server compiler's `finishMake` (stage 10) when
+  it was built from another manifest than the one written last (rule 3): Rspack's watcher ignores `node_modules`, so
+  a write alone never builds it again.
+- `generated-module.ts` is rule 3 for the modules Start generates (the client route tree, the resolver, the
+  manifest): the digest of the content each was built from, on the module and in a per-compiler index.
+- `module-record.ts` names where the parts of a module's record live in `buildInfo` (rule 1): each part a field of its
+  own, the plan one string.
 - `host-plugin.ts` holds the Rspack hooks of one environment compiler (below).
 - `router-generator.ts` runs the route generator and serves the client route tree without its server-only routes; the
   tree transform depends on the files of the routes it left out, which no client module imports (an edit that makes
@@ -50,6 +54,54 @@ compiler core (`@tanstack/router-utils/compiler`, [README](../../../router-utils
 - `virtual-modules.ts` owns the pure virtual modules (manifest, server-fn resolver, adapters, RSC runtime and HMR)
   and the import-protection edge module files, under `<root>/node_modules/.virtual/`.
 
+## The four rules
+
+The host keeps what a compile leaves besides the module (its record, the registry, the generated modules, the
+warnings) by four rules. Each fold reads the modules a compilation **holds**: those a connection from no module (an
+entry, an include, a container) or an RSC client-reference connection reaches, directly or through their importers
+(`rspackHolds`). `compilation.modules` is not that set: it also lists what a rebuild in place left unreachable and
+what a watch-written cache restored.
+
+1. **A module's record is what the loader served**, written once per loader run at its exit
+   (`StartRsbuildCompilerSession.record`): compiled and served as it is (its plan, when the cache outlives the
+   process, its server functions, the warnings its compile found, a package's Start use, import protection's record);
+   served as its mock (the same, without server functions); not compiled (served as its bytes: nothing, and what an
+   earlier compile left is removed, import protection's record included); failed (its located errors only). The asset
+   and edge passes write through it too. A provider module (`?tss-serverfn-handler`, `?tss-serverfn-split`) always
+   records what it provides, also nothing: an empty provider and one not built yet are different facts. One index
+   (`recorded`) says which modules hold a record, with three sub-indexes for its readers (`fnModules`, `warned`,
+   `packageUses`), pruned with the plans (`retain`). A compile overtaken by a newer one of the same id takes nothing
+   out of the index.
+2. **The registry is derived at settlement from the modules the compilation holds, by one writer**
+   (`deriveServerFns`; the session's `serverFnsAtSettlement`: on this host a compile registers nothing, Vite is
+   unchanged). It runs at `finishMake` stage −20, after the drain, and in a closure round that follows builds (the last
+   run derives again when a loader ran since: `loaderRuns`). A function needs a real caller: a defining module declares
+   its functions when an entry reaches it without passing the server-function resolver (Start's own module, which
+   imports the provider of everything it lists); a provider is admitted when something asks for its file's functions
+   (an admitted defining module, a child compilation, the client's stubs: `clientReferenced`), and what an admitted
+   provider imports grounds further modules, until nothing changes. Where the compilation holds a provider built, what
+   it provides is the file's (an empty one withdraws them). In a compiler without the resolver (the client) a module
+   counts when it is held. So a function whose last caller left leaves the registry although the resolver still
+   imports its provider, and the closure builds the resolver without it.
+3. **A generated module is as current as the content it was built from**, and each compiler knows what it wrote into
+   its own virtual file system. Start's loader records on the client route tree, the resolver and the manifest the
+   digest of the bytes it builds each from (`generated-module.ts`); at `finishMake` a module is built again only when
+   that differs from the current content, read from a per-compiler index or, for a module the index does not know
+   (restored, a child's), from the compilation once. `virtual-modules.ts` keeps per environment what the current
+   compiler's virtual file system holds (its initial content, then each write; reset when a new compiler is
+   configured) and writes only a content that differs. A restored module built from the current content is an
+   ordinary cached module: nothing builds it again (an app transform on the route tree runs when the tree is built).
+4. **A compilation's warnings are decided when it seals, from its held modules' records, and count as reported once
+   reported**: the loader emits none. At `finishModules` a compilation offers each warning a held module's record has
+   and the "does not declare Start" warning of each package with a held module that uses Start (against the package's
+   current manifest, `packageUseWarning`). As each compiler finishes (`done`, before Rsbuild formats a report) every
+   offered warning no current compilation carries is added to one that offered it, the finishing compiler's first
+   (`assignWarnings`). A build reports what its finished compilers carry, once per run (a `build --watch` rebuild is a
+   run); a dev server what Rsbuild printed (`onDevCompileDone`), once per dev session. A child compilation (a
+   worker's), which Rsbuild does not print, adds its modules' warnings as it seals on behalf of its owner; they count
+   only once the owner's compilation holds them (a worker plugin hands them over, or does not: then the owner, or
+   another compilation that holds the module, reports them). Import protection's dev reports keep their own reporter.
+
 ## One compile per module
 
 The loader runs for every JavaScript/TypeScript id of an environment, derived ids included (`?tsr-split=`,
@@ -57,8 +109,8 @@ The loader runs for every JavaScript/TypeScript id of an environment, derived id
 their file at the same revision. The planners run in the core's fixed order: `start-env` (server functions,
 environment separation), `hydrate`, `rsc-css` (the `rsc` environment's modules), `router` (every other environment; route
 HMR in the development client), `import-edges` (import protection). The loader composes its source map with the input map, names the absolute file
-as the map source, writes the plan's key and dependencies, the module's server-function facts and import-protection
-records into `module.buildInfo`, and fails the module on an error diagnostic. A module depends on no file but its own
+as the map source, writes the module's record into `module.buildInfo` (rule 1), and fails the module on an error
+diagnostic. A module depends on no file but its own
 (Rspack builds it again for a change of its file only): the compiler's invalidation decides which modules a change
 makes stale (see "Development invalidation"). The analysis resolves through the resolver a loader's `getResolve()`
 gives, asked outside the loader (whose resolve context records every file it looks at as a dependency); its answers
@@ -89,7 +141,7 @@ puts the file in (`envOfModule`: an `.mjs` rule's), for the loader, the witness 
 compile is a module of each environment, with its own plan, import-protection records, stale-set entry and
 registry snapshot: every operation of the host groups modules by environment before it deduplicates by resource
 (the drain, the restore, the witness, the graph, `hold`, the served ledger's rebuilds, the snapshots, the
-warning hand-over). Import protection reads one graph per compilation (`rspackNodeGraph`, built on its first read):
+warnings). Import protection reads one graph per compilation (`rspackNodeGraph`, built on its first read):
 a node is a module of one environment, and its importers are nodes of their own environments (an issuer-layer
 rule: an SSR-layer module importing the RSC layer's server-fn module; a user's rule moving an imported file to its
 layer), so a walk goes on through the module it reached, and an entry is an entry of its environment only. An entry
@@ -103,17 +155,16 @@ server component's import of it (recorded in `rsc`, never substituted) is how SS
 
 ## Server functions
 
-A compile reports the server functions of its module in plan facts: the Start session's registry replaces the module's
-snapshot in its environment with them, and the loader stores them in `buildInfo['tanstack.start.serverFns']`, which
-Rspack persists with the module. At `finishMake` (stage −20) the host plugin replaces the environment's snapshots in
-the registry with those of every module of the compilation (built now or restored from the persistent cache) and of
-its child compilations (done during `make`), and the
-resolver virtual module is rewritten;
+A compile reports the server functions of its module in plan facts, which the loader records with the module as it
+serves it (rule 1; Rspack persists the record with the module). The registry is derived from the records of the
+modules the compilation holds, built now or restored, and of its child compilations (done during `make`), at
+`finishMake` (stage −20) and in the closure (rule 2), and the resolver virtual module is rewritten;
 at stage −10 the host plugin closes the compilation (on the server compiler, before the RSC plugin's client handoff at
 stage 0), and again at the last stage (`0x7fffffff`: what a plugin added since, a provide-shared module's, is judged;
 once the last `finishMake` tap returns the compilation's modules are final), in rounds of one loop, until a round
-builds nothing: the resolver module itself is rebuilt when its content
-changed (`server-fn-resolver-rebuild.ts`), the records of what the compilation no longer holds are forgotten, and
+builds nothing: the registry is derived again after a round that built, the resolver module itself is built again
+when it was built from another content (`server-fn-resolver-rebuild.ts`), the records of what the compilation no
+longer holds are forgotten, and
 import protection's settlement (below) builds again the modules served otherwise than a fresh build of the source
 serves them. Each step can add modules the other must see (a provider's imports; a module built real defines server
 functions). No count bounds the loop: the settlement builds a denied module as its real module at most once (builds
@@ -220,7 +271,7 @@ plan) enters the stale set, built by the same drain; the others' plans join the 
 A route-registry change (the generator published new route ids) evicts the plans of the files concerned and puts them
 in every environment's stale set; the session listens once for all its compilers. The generator runs once before a
 production build and before each watch compilation, with the compiler's file events (and its own watcher for files
-outside the bundle); when the client's pruned route set changes without the tree file changing, or the client
-compiler's tree module is one the cache restored, the client compiler rebuilds the tree module at `finishMake`. A child compiler (a worker) builds a tree
-module of its own: that the transform served it says nothing of the client's, which counts as fresh only once the
-client compiler built it (`compilation.builtModules`) at the current route set.
+outside the bundle); the client compiler builds its tree module again at `finishMake` (stage −30) when it was built
+from another tree than the one served now (rule 3: the client's pruned route set changed without the tree file
+changing; a module the cache restored from the current tree is current). A child compiler (a worker) builds a tree
+module of its own, which says nothing of the client's.

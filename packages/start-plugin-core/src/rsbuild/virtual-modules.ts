@@ -37,7 +37,6 @@ export interface VirtualModuleState {
    * Rspack's persistent cache keys the module on it)
    */
   updateManifest: (clientBuild: NormalizedClientBuild) => void
-  /** Number of times the manifest module was written (the server environment's) */
   /** The manifest module content the server environment's current compiler has (its initial content, then each write). */
   getManifestContent: () => string | undefined
   /** Call to update server fn resolver content after compilation discovers fns; the content */
