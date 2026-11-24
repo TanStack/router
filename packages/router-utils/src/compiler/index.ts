@@ -65,6 +65,8 @@ export type { SymbolId } from './symbols'
 export type { Range } from './header'
 export type { RegionId, Unit } from './units'
 export { ModuleAnalysis } from './analysis'
+export { contextOwner, walkMoved } from './moved'
+export type { ContextKind, ContextUse, MovedWalk, Runs } from './moved'
 export type { ClassifiedRef, ImportEntry, Tier1 } from './analysis'
 export type {
   Anchor,

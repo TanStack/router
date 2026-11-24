@@ -9,6 +9,7 @@ import {
   patternIdentifiers,
   unwrapExpression,
   walk,
+  walkMoved,
 } from '@tanstack/router-utils/compiler'
 import { propertyKeyName } from '@tanstack/router-generator'
 import { groupingsProblem } from '../core/config'
@@ -559,14 +560,11 @@ export function splitOnMain(ctx: PlanContext, value: Node): boolean {
  * refer to (a split chunk's lazy wrapper calls the function its own way;
  * `super` needs the options object as its home), so the option stays in
  * the route module, and route HMR does not hoist such a method out of it.
- * Its own, as the language scopes them: in its parameters and body and in
- * the arrow functions there, not in a nested non-arrow function or method,
- * a class field's initialiser or a static block (which bind their own); a
- * class's `extends`, computed keys and decorators are evaluated in the
- * enclosing function and count. `<this.Foo />` is a `this` (a JSX member
- * expression's object `JSXIdentifier`, as in Babel); `typeof this` in a type
- * is no use. An arrow function value has the module's `this` wherever it
- * is: null.
+ * Its own, as the language scopes them (`walkMoved` on its parameters and
+ * body): a nested class's `extends`, computed keys and decorators, a
+ * parameter's decorators included, are evaluated in the function and count;
+ * `<this.Foo />` is a `this`; `typeof this` in a type is no use. An arrow
+ * function value has the module's `this` wherever it is: null.
  */
 export function ownThisOf(ctx: PlanContext, fn: Node): 'this' | 'super' | null {
   if (
@@ -575,37 +573,16 @@ export function ownThisOf(ctx: PlanContext, fn: Node): 'this' | 'super' | null {
   ) {
     return null
   }
-  let found: 'this' | 'super' | null = null
-  walk(fn, {
-    enter: (n, wctx) => {
-      if (n === fn) {
-        return
-      }
-      const parent = wctx.parent
-      if (
-        n.type === 'FunctionExpression' ||
-        n.type === 'FunctionDeclaration' ||
-        n.type === 'StaticBlock' ||
-        n.type === 'TSTypeQuery' ||
-        (wctx.key === 'value' &&
-          (parent?.type === 'PropertyDefinition' ||
-            parent?.type === 'AccessorProperty'))
-      ) {
-        wctx.skip()
-      } else if (
-        n.type === 'ThisExpression' ||
-        n.type === 'Super' ||
-        (n.type === 'JSXIdentifier' &&
-          n.name === 'this' &&
-          wctx.key === 'object' &&
-          parent?.type === 'JSXMemberExpression')
-      ) {
-        found = n.type === 'Super' ? 'super' : 'this'
-        wctx.stop()
-      }
-    },
-  })
-  return found
+  const roots: Array<Node> = [...fn.params]
+  if (fn.body) {
+    roots.push(fn.body)
+  }
+  for (const use of walkMoved(ctx.t1, roots).uses) {
+    if (use.kind === 'this' || use.kind === 'super') {
+      return use.kind
+    }
+  }
+  return null
 }
 
 /**

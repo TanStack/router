@@ -1526,6 +1526,44 @@ return out`,
     },
   )
 
+  // A parameter's decorator (TypeScript `experimentalDecorators`) runs when
+  // its class is defined, with the `this` of the code around the class: the
+  // loader's, though the decorator is written inside a method. Source: Astra
+  // review of the hotspot 5 design (split, the loader returned `V bound`).
+  it("keeps a loader whose nested class has a parameter decorator reading the loader's `this` in the route module, and warns once at it", async () => {
+    const loader = `loader: function () {
+    let label = 'unset'
+    const capture = (v: unknown) => {
+      label = v === undefined ? 'plain' : 'bound'
+      return () => {}
+    }
+    class V {
+      m(@(capture(this)) _x: string) {}
+    }
+    return V.name + ' ' + label
+  }`
+    const code = `${head}export const Route = createFileRoute('/')({
+  codeSplitGroupings: [['loader']],
+  ${loader},
+  component: () => <p>{String(Route.useLoaderData())}</p>,
+})
+`
+    const route = await loadRoute(code, {
+      fresh: true,
+      tsconfig: { experimentalDecorators: true },
+    })
+    await expectValidModules(route)
+    expect(await route.isLazy('loader')).toBe(false)
+    expect(await route.run('return renderRoute()')).toBe('<p>V plain</p>')
+    expectDiagnostic(await route.diagnostics(), {
+      severity: 'warning',
+      file: route.url.slice(1),
+      root: route.host.root,
+      position: diagnosticPosition(code, loader),
+      times: 1,
+    })
+  })
+
   it.each([
     {
       name: 'reading `this`',
