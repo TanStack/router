@@ -101,8 +101,6 @@ export function getConfig(
   const configFilePathJson = resolveConfigPath({ configDirectory })
   const exists = existsSync(configFilePathJson)
 
-  let config: Config
-
   // the inline options, over those of the file when there is one (parsed
   // once, so a file's value is not overwritten by an inline default)
   let raw: Record<string, unknown> = inlineConfig
@@ -127,7 +125,7 @@ export function getConfig(
         : 'router generator options',
     )
   }
-  config = parsed.data
+  const config = parsed.data
 
   // If typescript is disabled, make sure the generated route tree is a .js file
   if (config.disableTypes) {

@@ -284,7 +284,7 @@ export const Route = createFileRoute('/x')(options)
       code: `${head}import { options } from './-x.options'
 export const Route = createFileRoute('/x')({ ...options })
 `,
-      says: '`ssr` in it is not removed',
+      says: 'If the spread holds `ssr`, it stays in client code',
     },
     {
       name: 'a route constructor called without its options call',

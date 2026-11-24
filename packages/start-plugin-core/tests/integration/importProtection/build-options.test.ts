@@ -489,7 +489,12 @@ export const read = () => getRequest()
               'src/entry.ts': userOf('./secret.server'),
             },
             entry: 'src/entry.ts',
-            start: { importProtection: { onViolation: () => false } },
+            start: {
+              importProtection: {
+                // (what an app written for the old contract returns)
+                onViolation: (() => false) as unknown as () => void,
+              },
+            },
           }),
         )
         expect(reportedViolations(error)).toHaveLength(1)
