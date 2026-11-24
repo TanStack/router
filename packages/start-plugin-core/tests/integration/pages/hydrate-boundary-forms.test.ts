@@ -683,15 +683,16 @@ export function Page() {
     expect(client.html).toContain('<b>1</b>')
   })
 
-  // The client rejects children reading `this` or `super` at the boundary.
+  // The client rejects children reading `this` or `super` at the use.
   test.each([
-    { name: 'this', code: classPage('this') },
-    { name: 'super', code: classPage('super') },
-  ])('client: children reading $name are rejected', async ({ code }) => {
+    { name: 'this', code: classPage('this'), at: 'this.title2' },
+    { name: 'super', code: classPage('super'), at: 'super.title' },
+  ])('client: children reading $name are rejected', async ({ code, at }) => {
     const startCase = await (await hosts()).start.case({ 'module.tsx': code })
     expectCompileError(await compileError(startCase, 'client'), {
       source: code,
-      at: diagnosticPosition(code, '<Hydrate').line,
+      at,
+      column: true,
     })
   })
 
@@ -755,6 +756,7 @@ export const Page = () => <Hydrate><button onClick={() => { flag = 1 }}>{String(
       code: `${head}export function Page() {
   return <Hydrate when={load()}><p>{String(new.target)}</p></Hydrate>
 }`,
+      at: 'new.target)',
     },
     {
       name: 'with a ref of a let declared outside two nested boundaries (Solid)',

@@ -665,52 +665,48 @@ interface Scan {
   callables: Array<Range>
 }
 
-/** The refusal of each context the children would take from the component without a name. */
+/**
+ * The refusal of each context the children would take from the component
+ * without a name, reported at the use (where the edit acts).
+ */
 const CONTEXT_REFUSALS: Record<
   ContextKind,
-  { code: string; message: (use: ContextUse) => string; at: boolean }
+  { code: string; message: (use: ContextUse) => string }
 > = {
   this: {
     code: 'hydrate-this',
     message: () =>
       'Hydrate cannot code-split JSX that reads `this` of the enclosing component: the children render in another component. Read the value into a local before the boundary, or use split={false}.',
-    at: false,
   },
   super: {
     code: 'hydrate-super',
     message: () =>
       'Hydrate cannot code-split JSX that reads `super` of the enclosing component: the children render in another component. Read the value into a local before the boundary, or use split={false}.',
-    at: false,
   },
   'new.target': {
-    code: 'hydrate-this',
+    code: 'hydrate-new-target',
     message: () =>
-      'Hydrate cannot code-split JSX that reads `new.target` of the enclosing function. Read it into a local before the boundary, or use split={false}.',
-    at: false,
+      'Hydrate cannot code-split JSX that reads `new.target` of the enclosing function: the children render in another component. Read it into a local before the boundary, or use split={false}.',
   },
   arguments: {
     code: 'hydrate-arguments',
     message: () =>
       'Hydrate cannot code-split JSX that reads `arguments` of the enclosing function: the children render in another component. Read it into a local before the boundary (`const args = arguments`), or use split={false}.',
-    at: true,
   },
   await: {
     code: 'hydrate-await',
     message: () =>
       'Hydrate cannot code-split JSX containing `await`: the split children render in a synchronous component. Compute the value before the boundary, or use split={false}.',
-    at: false,
   },
   yield: {
-    code: 'hydrate-await',
+    code: 'hydrate-yield',
     message: () =>
       'Hydrate cannot code-split JSX containing `yield`: the split children render in a synchronous component. Compute the value before the boundary, or use split={false}.',
-    at: false,
   },
   'private-name': {
     code: 'hydrate-private-name',
     message: (use) =>
       `Hydrate cannot code-split JSX that reads \`#${(use.node as { name: string }).name}\` of the enclosing class: the split children render in another module, outside the class. Read it into a local before the boundary, or use split={false}.`,
-    at: false,
   },
 }
 
@@ -789,11 +785,10 @@ function validate(
     // every use crosses: the children render in another component
     onUse: (use) => {
       const refusal = CONTEXT_REFUSALS[use.kind]
-      fail(
-        refusal.code,
-        refusal.message(use),
-        refusal.at ? { start: use.node.start, end: use.node.end } : undefined,
-      )
+      fail(refusal.code, refusal.message(use), {
+        start: use.node.start,
+        end: use.node.end,
+      })
     },
     onNode: (node, runs) => {
       if (node.type === 'CallExpression') {

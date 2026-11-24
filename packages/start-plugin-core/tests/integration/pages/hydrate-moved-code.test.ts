@@ -89,10 +89,15 @@ describe('a context the children take from around them is a compile error', () =
     // their own: a JSX member tag, a nested class's computed key, a
     // parameter decorator of a nested class's method (it runs when the
     // class is defined, with the `this` around the class), a cast
-    { name: '<this.Body />', code: classPage('<this.Body />') },
+    {
+      name: '<this.Body />',
+      code: classPage('<this.Body />'),
+      at: 'this.Body />',
+    },
     {
       name: "`this` in a nested class's computed key",
       code: classPage('<p>{String(new (class { [this.k]() {} })())}</p>'),
+      at: 'this.k]',
     },
     {
       name: "`this` in a parameter decorator of a nested class's method",
@@ -100,56 +105,75 @@ describe('a context the children take from around them is a compile error', () =
         '<p>{(() => { class C { m(@((this as any).dec) _x: string) {} } return C.name })()}</p>',
         '  dec = () => {}\n',
       ),
+      at: 'this as any).dec',
     },
     {
       name: '`this` through a cast',
       code: classPage('<p>{(this as any).k}</p>'),
+      at: 'this as any).k',
     },
     // first in the children's order: `this` before a later hook, the
     // private name of `this.#x` before its `this`
     {
       name: '`this` before a hook call',
       code: classPage('<p>{[this.k, useId()]}</p>'),
+      at: 'this.k, useId',
     },
-    { name: 'this.#x', code: classPage('<p>{this.#x}</p>') },
+    { name: 'this.#x', code: classPage('<p>{this.#x}</p>'), at: '#x}</p>' },
     // (as before)
-    { name: '`this`', code: classPage('<p>{this.k}</p>') },
+    { name: '`this`', code: classPage('<p>{this.k}</p>'), at: 'this.k}' },
     {
       name: "`this` in a nested class's extends",
       code: classPage('<p>{String(new (class extends this.B {})())}</p>'),
+      at: 'this.B {}',
     },
-    { name: '`super`', code: classPage('<p>{super.label()}</p>') },
-    { name: 'o.#x', code: classPage('<p>{o.#x}</p>') },
-    { name: '#x in o', code: classPage('<p>{String(#x in o)}</p>') },
+    {
+      name: '`super`',
+      code: classPage('<p>{super.label()}</p>'),
+      at: 'super.label()}',
+    },
+    { name: 'o.#x', code: classPage('<p>{o.#x}</p>'), at: '#x}</p>' },
+    {
+      name: '#x in o',
+      code: classPage('<p>{String(#x in o)}</p>'),
+      at: '#x in o',
+    },
     {
       name: 'the outer #x, in a nested class with a private name of its own',
       code: classPage(
         '<p>{String(new (class { #y = 2; m() { return o.#x + this.#y } })().m())}</p>',
       ),
+      at: '#x + this',
     },
     {
       name: '`new.target`',
       code: fnPage('<p>{String(new.target)}</p>'),
+      at: 'new.target)',
     },
     {
       name: '`await`',
       code: `${head}export async function Page() {
   return <Hydrate when={load()}><p>{await Promise.resolve(1)}</p></Hydrate>
 }`,
+      at: 'await Promise',
     },
     {
       name: '`yield`',
       code: `${head}export function* Page() {
   yield <Hydrate when={load()}><p>{yield 1}</p></Hydrate>
 }`,
+      at: 'yield 1',
     },
     {
       name: 'a top-level `await`',
       code: `${head}export const el = <Hydrate when={load()}><p>{await Promise.resolve(1)}</p></Hydrate>
 export const Page = () => el`,
+      at: 'await Promise',
     },
-  ])('$name: at the boundary', async ({ code }) => {
-    await expectRejected(code, '<Hydrate')
+    // (at the use: the edit acts there. Source: diagnostics spike
+    // (2026-11-24), inventory flag 5, agreed change A6)
+  ])('$name: at the use', async ({ code, at }) => {
+    await expectRejected(code, at)
   })
 
   // React's rules of hooks: a call that may run while the children render
