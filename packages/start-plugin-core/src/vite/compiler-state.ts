@@ -153,7 +153,7 @@ function unoptimizedDependency(environment: Environment, id: string): string {
 /**
  * The module whose package a compile of `file` that uses Start reports
  * (`StartPackageReach.module`): `file`, or for the optimizer's bundle of
- * pre-bundled dependencies (a dependency's entry with the modules of the
+ * pre-bundled dependencies (in the app's `cacheDir`) (a dependency's entry with the modules of the
  * packages it imports inlined, or a chunk such bundles share) the module
  * among the bundle's sources (the map the optimizer writes beside it, which
  * Vite does not hand to plugins) whose text names a Start package, when
@@ -164,8 +164,13 @@ function packageModuleOf(
   environment: Environment,
   file: string,
 ): string | null {
-  const optimizer = (environment as DevEnvironment).depsOptimizer
-  if (!optimizer?.isOptimizedDepFile(file)) {
+  // (by the app's `cacheDir`, not the environment's optimizer: the SSR
+  // environment of a dev server compiles the client's bundles too)
+  if (
+    !cacheDirRe(environment.getTopLevelConfig().cacheDir).test(
+      normalizePath(file),
+    )
+  ) {
     return file
   }
   let map: InputSourceMap | null = null

@@ -5,7 +5,7 @@
  * (`node_modules/.vite/deps/…`), and the warning names the package the
  * Start use is in, with that package's remedy, never the optimizer's cache.
  * The client page loads the package through the optimizer, as an app's
- * page does.
+ * page does, and the server imports the same module.
  * Source: diagnostics spike (2026-11-24), inventory flag 1, agreed change
  * A1 (`pkg-undeclared`, `pkg-unreached` of the harness shapes).
  */
@@ -54,6 +54,9 @@ async function devWarnings(
     'return entry.kind()',
   )
   expect(result).toBe('function')
+  // the server renders with it too (its environment compiles the client's
+  // pre-bundle: harness rows `pkg-undeclared`, `pkg-unreached`)
+  expect((await server.import('/src/entry.ts')).kind()).toBe('function')
   return {
     root: server.root,
     warnings: problems(server.diagnostics).filter(
