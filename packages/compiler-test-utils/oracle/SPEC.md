@@ -708,10 +708,13 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   namespaces, dependencies excepted) exports one of them, and an RSC primitive outside a server fn. A parameter passed
   directly as server code (`(fn) => createServerOnlyFn(fn)`, `.server(fn)`, `.validator(schema)`) fails the client
   build at that use, since every call keeps its argument, which is server code; one only read inside server code gets
-  one warning at its definition (not in an installed package's module, G5). Neither looks across modules. A server fn
-  handler passed by name whose binding the module assigns elsewhere (`let h = a; h = b; createServerFn().handler(h)`)
-  fails the build at that argument in every compile that keeps the site and accepts its creation, since the client can
-  keep the assignments with what they read (R154). Unrecognised shapes must not leak
+  one warning at its definition (not in an installed package's module, G5). Neither looks across modules. Server code passed by name (a server fn's handler or
+  validator, a middleware's `.server()` or validator, an isomorphic fn's `.server()`, a `createServerOnlyFn` argument,
+  a name a route's `server`, `headers` or `ssr` option gives, also inside its object literals) whose binding the module
+  assigns elsewhere (`let h = a; h = b; createServerFn().handler(h)`) fails the build at that argument in every
+  compile, since the client can keep the assignments with what they read (R154); a server fn's handler only where the
+  compile keeps the site and accepts its creation. Not refused: a binding only server code assigns, and one the client
+  keeps anyway (exported, or read outside server code and the statements assigning it). Unrecognised shapes must not leak
   silently (J4.12): for a builder method called through a computed
   member (`createServerFn()['handler'](…)`, `createMiddleware()['server'](…)`) or a server-only fn whose result is
   member-called (`createServerOnlyFn(…).bind(null)`), the client holds no server code, or the build fails with an

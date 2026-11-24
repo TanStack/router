@@ -417,11 +417,15 @@ declaration table of 11-23). Rows: `start-plugin-core/tests/start-compiler-remov
 - **A statement that only assigns stays, with what it reads** (D3 A, R154): `let db; db = connect()` read only by a
   handler keeps the assignment and its import on the client, silently unless the imported file is protected (a
   `.server` file or a `server-only` marker: import protection reports that one), and in the production bundle too
-  when the statement or the import has an effect at load. A server fn handler passed by name whose binding the module
-  assigns (`.handler(h)`, `h = …`) is refused (`start-handler-reassigned`); the other positions that take server code
-  by name still build and keep the assignments: `createServerOnlyFn(h)`, `createIsomorphicFn().server(h)` (and a
-  middleware's `.server(h)`), `.validator(h)`, a route's `server.handlers` and `headers` by name, and a binding only a
-  handler reads that a top-level statement initialises conditionally (`let conn; if (url) { conn = connect() }`).
+  when the statement or the import has an effect at load. Server code passed by name whose binding the module
+  assigns (`.handler(h)`, `createServerOnlyFn(h)`, `.server(h)`, `.validator(h)`, a route's `server.handlers.GET: h`
+  or `headers: h`, with `h = …`) is refused (`start-server-code-reassigned`, `route-server-code-reassigned`). Still
+  built, with the assignments kept: a binding only a handler reads that a top-level statement initialises
+  conditionally (`let conn; if (url) { conn = connect() }`); server code reached through another name (a `const`
+  alias, a forwarding closure, `.handler(withLogging(h))`, `.handler(impls.h)`); a binding the module exports or
+  other code reads too (the client keeps it anyway, as on `main`; also when that code is one the client drops, such as
+  a function nothing calls), or one a route's server option and a Start position share (each planner counts only its
+  own server code as such).
   `main` keeps the same statements. Known limit (user, 2026-11-24): too narrow a case for machinery; a warning would
   flag correct `if (import.meta.env.SSR)` setup. Workaround (documented in the execution-model guide): the setup in
   its own module only server code imports, or `const db = connect()`. Row: `start-compiler-erasure.test.ts` "a `let` a top-level statement assigns stays with

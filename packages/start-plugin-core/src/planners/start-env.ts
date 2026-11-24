@@ -25,7 +25,9 @@ import {
   derivedIdOf,
   identifierBase,
   isExpressionWrapper,
+  ownEntry,
   patternIdentifiers,
+  reassignedServerCode,
   revision,
   sameFileSpecifier,
   stringLiteral,
@@ -899,6 +901,49 @@ function planStartEnv(
     }
   }
 
+  // ---- 2a. server code passed by a name the module assigns elsewhere
+  // (`reassignedServerCode`, SPEC J4.5): the argument of every link the
+  // recognizer table keeps on the server and of every `createServerOnlyFn`,
+  // judged on the source, so in every compile alike. Reported after the
+  // server fn rewrites (2c), which skip a refused handler and leave a
+  // handler to the hoist check where it refuses the server fn's creation
+  // (a local, or no single creation: that error first) or the env erases
+  // the site
+  const serverCode: Array<{ arg: Node; api: string; value: string }> = []
+  for (const chain of analysis.chains) {
+    if (chain.unsupported) {
+      continue
+    }
+    for (const { receiver, method, arg } of chain.links) {
+      const kind = receiver.t === 'builder' ? receiver.kind : receiver.t
+      const links = ownEntry(table.builderLinks ?? {}, kind)
+      if (arg !== null && links && ownEntry(links, method) === 'server') {
+        const value = ownEntry(SERVER_CODE_VALUES, `${kind}.${method}`) ?? '…'
+        serverCode.push({ arg, api: `.${method}(${value})`, value })
+      }
+    }
+  }
+  for (const { kind, arg } of analysis.envOnlyCalls) {
+    if (kind === 'server' && arg !== null) {
+      serverCode.push({
+        arg,
+        api: 'createServerOnlyFn(() => …)',
+        value: '() => …',
+      })
+    }
+  }
+  const serverCodeTexts = serverCode.map(({ arg }) => rangeOf(arg))
+  const reassigned = new Map<
+    Node,
+    { sym: SymbolId; api: string; value: string }
+  >()
+  for (const { arg, api, value } of serverCode) {
+    const sym = reassignedServerCode(t1, arg, serverCodeTexts)
+    if (sym !== null) {
+      reassigned.set(arg, { sym, api, value })
+    }
+  }
+
   // ---- 2b. server fn rewrites
   // After steps 3-5: a nested server fn is hoisted (and its captures refused)
   // only where it is live (`hoist` reads the rewrite tree), so every edit
@@ -923,22 +968,12 @@ function planStartEnv(
           : undefined,
       )
       if (!hoisted) {
+        reassigned.delete(site.handler)
         continue
       }
     }
-    // in every compile that keeps the site, whatever its role, before its
-    // output: a handler passed by name the module assigns elsewhere. After
-    // the hoist check: a site it refuses (in a function or block: a local, or
-    // no single creation) gets that error, and one in code this env erases none
-    const reassigned = reassignedBinding(ctx, site.handler)
-    if (reassigned !== null) {
-      ctx.diagnostic({
-        severity: 'error',
-        message: reassignedHandlerMessage(reassigned),
-        range: rangeOf(site.handler),
-        by,
-        code: 'start-handler-reassigned',
-      })
+    if (reassigned.has(site.handler)) {
+      // (refused in 2c: no server fn)
       continue
     }
     const id =
@@ -1158,6 +1193,17 @@ function planStartEnv(
     )
   }
 
+  // ---- 2c. the refusals of 2a
+  for (const [arg, { sym, api, value }] of reassigned) {
+    ctx.diagnostic({
+      severity: 'error',
+      message: reassignedServerCodeMessage(ctx.symbols.name(sym), api, value),
+      range: rangeOf(arg),
+      by,
+      code: 'start-server-code-reassigned',
+    })
+  }
+
   // the in-place provider accepts its own hot updates in development (J4.15): an edit of a
   // module only its handlers read reaches the next call without an SSR full reload
   if (
@@ -1275,33 +1321,22 @@ function planStartEnv(
   ctx.setFacts(START_ENV, facts)
 }
 
-/**
- * The name of the binding a `.handler()` argument passes by name (through a
- * cast: `.handler(h as any)` passes `h` all the same) when this module
- * assigns it anywhere else, explicitly (`h = …`, `h ??= …`, a destructuring
- * target, in any function): every compile that keeps the site refuses it (SPEC
- * J4.5). The assignments are statements, which the client output can keep
- * with what they read (R154), so the server code the binding holds can ship
- * to the client. A Solid `ref={h}` is no explicit assignment: Solid sets it
- * when the element renders, in code that reads `h` anyway. (A `const` alias
- * or a closure calling `h` keeps the assignments too: the error names no such
- * rewrite.)
- */
-function reassignedBinding(ctx: PlanContext, arg: Node): string | null {
-  const named = unwrapExpression(arg)
-  if (named.type !== 'Identifier') {
-    return null
-  }
-  const ref = ctx.t1.refs
-    .refsIn(rangeOf(named))
-    .find((r) => r.range.start === named.start)
-  return ref && ctx.t1.mutation.isReassigned(ref.sym)
-    ? ctx.symbols.name(ref.sym)
-    : null
+/** Each server-only link's argument written in place, by builder kind and method (`reassignedServerCodeMessage`). */
+const SERVER_CODE_VALUES: Readonly<Record<string, string>> = {
+  'serverFn.handler': 'async () => …',
+  'serverFn.validator': '(data) => …',
+  'middleware.server': 'async ({ next }) => next()',
+  'middleware.validator': '(data) => …',
+  'isoFn.server': '() => …',
 }
 
-function reassignedHandlerMessage(binding: string): string {
-  return `\`${binding}\` is assigned elsewhere in this module, so the server code it holds can ship to the client: the client output can keep the assignments of \`${binding}\` and the code they reference. Pass the function written in place (\`.handler(async () => …)\`), or define the implementation once with a \`const\` (\`const ${binding} = wrap(async () => …)\`, \`const ${binding} = condition ? a : b\`).`
+/** The error for server code passed by a name the module assigns elsewhere, at `api` (as written in place). */
+function reassignedServerCodeMessage(
+  binding: string,
+  api: string,
+  value: string,
+): string {
+  return `\`${binding}\` is assigned elsewhere in this module, so the server code it holds can ship to the client: the client output can keep the assignments of \`${binding}\` and the code they reference. Pass it written in place (\`${api}\`), or define it once with a \`const\` (\`const ${binding} = wrap(${value})\`, \`const ${binding} = condition ? a : b\`).`
 }
 
 /** The node on exactly `range`. */

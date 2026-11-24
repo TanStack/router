@@ -487,6 +487,9 @@ with when each node runs (`now`, `maybe` in an instance field, `later` in a func
 `contextOwner` climbs to the construct providing a use. Planners keep their policy and messages. Under Solid
 (`ModuleAnalysis`'s `jsx`, one per session), a `ref={x}` read is marked as possibly assigning `x`
 (`ClassifiedRef.assigns`), which the mutation model (through a liveness filter) and placement's write table count.
+Server code passed by name (a Start position, a route's server option) whose binding the client would keep assigned
+only for that code is one rule, `reassignedServerCode` (`mutation.ts`), on the source alone; each planner passes its
+arguments and its server-only text, and words the refusal.
 
 Composition: `startPlanners()` in `start-plugin-core/src/planners/index.ts`; the router planner and its configuration
 builder (`routerPlannerConfigFrom`) are exported from `@tanstack/router-plugin/planners`.

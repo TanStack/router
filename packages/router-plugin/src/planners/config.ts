@@ -19,6 +19,12 @@ export interface RouterPlannerConfig {
     | undefined
   deleteNodes: ReadonlyArray<string>
   /**
+   * The route options that hold server code, in every environment (Start:
+   * the options its client erases): one passed by a name the module assigns
+   * elsewhere is refused (`reassignedServerCode`). None without Start.
+   */
+  serverOptions: ReadonlyArray<string>
+  /**
    * Start's server environments: the client's compile of a route file
    * reports the router's warnings (one owner environment per warning,
    * `reportRouterDiagnostic`): it reads the same route options, and says
@@ -74,6 +80,7 @@ export function routerPlannerConfigFrom(
       env.start && client
         ? START_CLIENT_DELETE_NODES
         : (options?.deleteNodes ?? []),
+    serverOptions: env.start ? START_CLIENT_DELETE_NODES : [],
     clientReports: env.start && !client,
     hmr: hmr ? { style: env.hmrStyle } : null,
   }
@@ -87,6 +94,7 @@ export function routerPlannerConfigDigest(cfg: RouterPlannerConfig): string {
     groupings: cfg.defaultGroupings,
     splitBehavior: cfg.splitBehavior?.toString() ?? null,
     deleteNodes: cfg.deleteNodes,
+    serverOptions: cfg.serverOptions,
     clientReports: cfg.clientReports,
     hmr: cfg.hmr,
   })

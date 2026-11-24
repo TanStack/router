@@ -3,8 +3,14 @@
  * round recognises the route and decides its splits once; route HMR hoists
  * the component options that stay in the route module (`hmr.ts`), the split
  * part moves the others to their chunks and erases `deleteNodes`
- * (`split.ts`), then route HMR appends the dev block.
+ * (`split.ts`), then route HMR appends the dev block. In every environment,
+ * a server option passed by a name the module assigns elsewhere is refused
+ * (`reportReassignedServerOptions`).
  */
+import {
+  reassignedServerCode,
+  unwrapExpression,
+} from '@tanstack/router-utils/compiler'
 import {
   recognizeRoute,
   reportNotGenerated,
@@ -19,7 +25,12 @@ import { ROUTER_PLANNER, routerPlannerApplies } from './config'
 import type { RouteEntryFacts, RouteModuleInfo } from './route'
 import type { SplitPlan } from './decisions'
 import type { RouterPlannerConfig } from './config'
-import type { Planner } from '@tanstack/router-utils/compiler'
+import type {
+  PlanContext,
+  Planner,
+  Range,
+  YukuNode as Node,
+} from '@tanstack/router-utils/compiler'
 
 /** What one planning round of the router planner decided, read by its split and HMR parts. */
 export interface RouterRound {
@@ -82,6 +93,7 @@ export function routerPlanner(): Planner<typeof ROUTER_PLANNER> {
       if (!route) {
         return
       }
+      reportReassignedServerOptions(ctx, route)
       const round: RouterRound = {
         cfg,
         route,
@@ -103,5 +115,64 @@ export function routerPlanner(): Planner<typeof ROUTER_PLANNER> {
       }
     },
     serverCode: routeServerCode,
+  }
+}
+
+/**
+ * Refuses each name a route's server option passes server code by (its
+ * value, or a property of an object literal in it: `server: { handlers: {
+ * GET: get } }`) when the module assigns it elsewhere, so that the client,
+ * which erases the option, would keep the assignments with what they read
+ * (`reassignedServerCode`). Judged on the source, so in every environment
+ * alike.
+ */
+function reportReassignedServerOptions(
+  ctx: PlanContext<typeof ROUTER_PLANNER>,
+  route: RouteModuleInfo,
+): void {
+  const named: Array<{ node: Node; path: Array<string> }> = []
+  const serverCode: Array<Range> = []
+  const visit = (value: Node, path: Array<string>) => {
+    const node = unwrapExpression(value)
+    if (node.type === 'Identifier') {
+      named.push({ node, path })
+    } else if (node.type === 'ObjectExpression') {
+      for (const p of node.properties) {
+        if (p.type === 'Property' && !p.computed) {
+          // (the key as written)
+          const key = ctx.analysis.source.code.slice(p.key.start, p.key.end)
+          visit(p.value, [...path, key])
+        }
+      }
+    }
+  }
+  for (const option of route.props) {
+    if (
+      option.key !== null &&
+      option.value !== null &&
+      ctx.config.serverOptions.includes(option.key)
+    ) {
+      serverCode.push({ start: option.value.start, end: option.value.end })
+      visit(option.value, [option.keyText])
+    }
+  }
+  for (const { node, path } of named) {
+    const sym = reassignedServerCode(ctx.t1, node, serverCode)
+    if (sym === null) {
+      continue
+    }
+    const binding = ctx.symbols.name(sym)
+    const inPlace = path.reduceRight(
+      (inner, key) => `${key}: ${inner === '…' ? inner : `{ ${inner} }`}`,
+      '…',
+    )
+    // (an error: every environment reports it)
+    reportRouterDiagnostic(ctx, {
+      severity: 'error',
+      message: `[tanstack-router] \`${binding}\` is assigned elsewhere in ${ctx.displayPath}, so the server code it holds can ship to the client: the client output can keep the assignments of \`${binding}\` and the code they reference. Write it in place in the route options (\`${inPlace}\`), or define it once with a \`const\` (\`const ${binding} = wrap(…)\`, \`const ${binding} = condition ? a : b\`).`,
+      range: { start: node.start, end: node.end },
+      by: ROUTER_PLANNER,
+      code: 'route-server-code-reassigned',
+    })
   }
 }

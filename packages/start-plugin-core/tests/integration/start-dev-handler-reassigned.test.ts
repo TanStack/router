@@ -4,7 +4,7 @@
  * server code to the client. The assignments are statements, which the
  * client output can keep with what they read (R154): on main both dev
  * servers serve `db.ts` to the browser, which runs it. Every compile refuses
- * the shape instead (`start-handler-reassigned`, decision of 2026-11-24).
+ * the shape instead (`start-server-code-reassigned`, decision of 2026-11-24).
  *
  * On Vite's and Rsbuild's dev servers, a real page:
  * - with the reassigned `let`, the dev server reports the error at the

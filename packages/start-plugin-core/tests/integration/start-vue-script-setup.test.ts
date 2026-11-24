@@ -6,7 +6,10 @@
  * code ships.
  */
 import vue from '@vitejs/plugin-vue'
-import { diagnosticsOf } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  diagnosticsOf,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, describe, expect, test } from 'vitest'
 import { StartBuildError, buildStart } from '../build-harness'
 import { compileError, createStartHost } from '../regression-helpers'
@@ -247,6 +250,31 @@ console.log(fn)
       .join('\n')
     expect(texts).toContain('created each time a component is set up')
     expect(texts).not.toContain('assigned elsewhere')
+  })
+
+  // the setup function keeps the `let` and its assignments on the client: a
+  // server-only fn on it is refused for the assignment (no creation rule
+  // applies to it)
+  test('a server-only fn on a reassigned `let` of a <script setup> block is refused for the assignment', async () => {
+    const startCase = await sfcCase(`<script setup>
+import { createServerOnlyFn } from '@tanstack/vue-start'
+let impl = () => 'MARK_SERVER_SECRET'
+impl = () => 'MARK_SERVER_SECRET_2'
+const read = createServerOnlyFn(impl)
+console.log(read)
+</script>
+
+<template>
+  <p>page</p>
+</template>
+`)
+    const failure = await compileError(startCase, 'client', 'Page.vue')
+    expect(failure).toBeInstanceOf(Error)
+    // (at the argument, line 5 of the file)
+    expectDiagnostic(
+      [...diagnosticsOf(failure!.error), ...diagnosticsOf(failure!.reported)],
+      { position: { line: 5 } },
+    )
   })
 
   test.each(recipes)('$name compiles', async ({ sfc }) => {
