@@ -189,7 +189,7 @@ export function splitPlanOf(
   const are = () => (deleteNodes.size === 1 ? 'is' : 'are')
 
   if (route.options.kind === 'opaque') {
-    if (!cfg.clientReportsUnread && (splitting || deleteNodes.size > 0)) {
+    if (splitting || deleteNodes.size > 0) {
       const how =
         route.options.reason === 'imported'
           ? 'imported from another module'

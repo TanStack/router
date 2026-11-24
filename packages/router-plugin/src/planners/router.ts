@@ -5,7 +5,12 @@
  * part moves the others to their chunks and erases `deleteNodes`
  * (`split.ts`), then route HMR appends the dev block.
  */
-import { recognizeRoute, reportNotGenerated, routeEntryDigest } from './route'
+import {
+  recognizeRoute,
+  reportNotGenerated,
+  reportRouterDiagnostic,
+  routeEntryDigest,
+} from './route'
 import { splitPlanOf } from './decisions'
 import { planSplit } from './split'
 import { planHmrBlock, planHmrHoists } from './hmr'
@@ -83,7 +88,7 @@ export function routerPlanner(): Planner<typeof ROUTER_PLANNER> {
         plan: splitPlanOf(ctx, cfg, route),
       }
       for (const w of round.plan.warnings) {
-        ctx.diagnostic(w)
+        reportRouterDiagnostic(ctx, w)
       }
       // the hoists and renames come first: the split part reads the renamed
       // bindings of the options it moves

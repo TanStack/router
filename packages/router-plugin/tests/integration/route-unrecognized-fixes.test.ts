@@ -53,6 +53,13 @@ interface Row {
   split: boolean
   /** The text the report points at, when the row checks the printed position. */
   at?: string
+  /**
+   * A route that works as written, which the build does nothing to (a root
+   * or lazy file is not split, a build has no hot updates, nothing is
+   * removed): nothing is reported. Source: diagnostics spike (2026-11-24),
+   * Fable 1d, decision 4.
+   */
+  quiet?: true
 }
 
 const rows: Array<Row> = [
@@ -145,6 +152,20 @@ export const Route = createLazyFileRoute('/')(${page})
 `,
     },
     split: false,
+    quiet: true,
+  },
+  {
+    name: 'a wrapped root route call',
+    file: 'routes/__root.tsx',
+    files: {
+      'routes/__root.tsx': `import { Outlet, createRootRoute } from '${RP}'
+const wrap = <T,>(route: T) => route
+export const Route = wrap(createRootRoute({ component: () => <Outlet /> }))
+`,
+    },
+    fixed: { 'routes/__root.tsx': rootFile },
+    split: false,
+    quiet: true,
   },
   {
     name: 'route options in a `let` that is reassigned',
@@ -236,10 +257,14 @@ export const Route = createFileRoute('/')(${page})
 
 describe('a listed route the code splitter does not read', () => {
   it.for(rows)(
-    '$name is reported, and the offered fix is read',
+    '$name is reported (unless quiet), and the offered fix is read',
     { timeout },
-    async ({ file, files, fixed, split, at }) => {
+    async ({ file, files, fixed, split, at, quiet }) => {
       const before = await buildApp(files)
+      if (quiet) {
+        expectNoProblems(before.diagnostics)
+        return
+      }
       expectDiagnostic(before.diagnostics, {
         severity: 'warning',
         file,

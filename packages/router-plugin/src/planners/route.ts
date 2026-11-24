@@ -505,21 +505,51 @@ function reportUnrecognizedRoute(
       fix = `${writeIt}${entry.kind === 'root' ? ' (or `createRootRouteWithContext<Ctx>()({ … })`)' : ''}.`
       break
   }
-  const deleteNodes = ctx.config.deleteNodes
+  // what the compiler would do to the route and does not: what applies to
+  // this file in this environment (a root or lazy file is not split, a
+  // build has no hot updates)
+  const { deleteNodes, split, hmr } = ctx.config
+  const lost = [
+    split && entry.kind === 'file' && 'code-split',
+    hmr && 'hot-updated',
+  ].filter(Boolean)
   const deleted = deleteNodes.map((k) => `\`${k}\``).join(', ')
-  const removed =
-    deleteNodes.length === 1
-      ? `, and ${deleted} in its options is not removed, so any server code in it ships to the client`
-      : `, and ${deleted} in its options are not removed, so any server code in them ships to the client`
-  ctx.diagnostic({
+  const consequences = [
+    lost.length > 0 && `it is not ${lost.join(' or ')}`,
+    deleteNodes.length === 1 &&
+      `${deleted} in its options is not removed, so any server code in it ships to the client`,
+    deleteNodes.length > 1 &&
+      `${deleted} in its options are not removed, so any server code in them ships to the client`,
+  ].filter(Boolean)
+  if (consequences.length === 0 && reason.kind === 'wrapped') {
+    // (a wrapped route works as written: nothing is lost here)
+    return
+  }
+  reportRouterDiagnostic(ctx, {
     severity: 'warning',
-    message: `[tanstack-router] The route of ${ctx.displayPath} ${cause}, so it is not code-split or hot-updated${deleted ? removed : ''}. ${fix}`,
+    message: `[tanstack-router] The route of ${ctx.displayPath} ${cause}${consequences.length > 0 ? `, so ${consequences.join(', and ')}` : ''}. ${fix}`,
     range: declarator
       ? { start: declarator.start, end: declarator.end }
       : routeExport?.range,
     by: ROUTER_PLANNER,
     code: 'route-unrecognized',
   })
+}
+
+/**
+ * Reports a router planner diagnostic from its owner environment: every
+ * error, and every warning but in Start's server environments
+ * (`clientReports`): the client's compile of the file reads the same route
+ * options and reports them, once, with what ships to the client.
+ */
+export function reportRouterDiagnostic(
+  ctx: PlanContext<typeof ROUTER_PLANNER>,
+  d: Diagnostic,
+): void {
+  if (d.severity === 'warning' && ctx.config.clientReports) {
+    return
+  }
+  ctx.diagnostic(d)
 }
 
 /**

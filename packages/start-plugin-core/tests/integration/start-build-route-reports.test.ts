@@ -100,6 +100,40 @@ export const [Route] = [createFileRoute('/x')(${options})]
     timeout,
   )
 
+  // The client's compile reports it (Start's server environments compile the
+  // same options): one text, saying what applies to a root in a build (it
+  // is not split, a build has no hot updates; its server options are not
+  // removed). Source: diagnostics spike (2026-11-24), Fable 1d, decision 4.
+  test(
+    'a wrapped root route is reported once, with what applies to it',
+    async () => {
+      const result = await buildStart({
+        bundler,
+        files: {
+          'src/routes/__root.tsx': `import { Outlet, createRootRoute } from '${RP}'
+const wrap = <T,>(route: T) => route
+export const Route = wrap(createRootRoute({ component: () => <Outlet /> }))
+`,
+          'src/routes/x.tsx': fixed,
+          'src/entry.ts': `export { routeTree } from './routeTree.gen'\n`,
+        },
+        entry: 'src/entry.ts',
+      })
+      const reports = findDiagnostics(result.diagnostics, {
+        severity: 'warning',
+        file: 'src/routes/__root.tsx',
+        root: result.root,
+      })
+      expect(reports).not.toEqual([])
+      for (const { text } of reports) {
+        expect(text).toContain('are not removed')
+        expect(text).not.toContain('code-split')
+        expect(text).not.toContain('hot-updated')
+      }
+    },
+    timeout,
+  )
+
   test.each([
     { name: 'the file’s own', id: `('/x')` },
     { name: 'a stale', id: `('/wrong')` },
