@@ -1,213 +1,190 @@
 /**
  * Start's Rsbuild host, the warnings of modules a child compiler builds (a
- * worker plugin's): a child compilation reports its modules' warnings on
- * behalf of the compilation that owns it, which a worker plugin may hand them
- * to (rule 4 of the Rsbuild host).
- * Source: review-hotspot3-merged-astra.md, finding 2.
+ * worker plugin's), in builds: Rsbuild prints no child compilation, so a
+ * child's warnings are its owner's (rule 4 of the Rsbuild host). Each is
+ * printed once, at its file, whatever the worker plugin does with the
+ * child's own warnings, whoever else imports the module, whenever the child
+ * runs, and when the persistent cache restored the worker's modules.
+ * Sources: review-hotspot3-merged-astra.md finding 2,
+ * review-hotspot3-merged-2-astra.md, review-hotspot3-impl-astra.md findings
+ * 1 and 4, review-hotspot3-impl-fable.md findings 1 and 3.
  */
 import { describe, expect, test } from 'vitest'
-import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import {
-  diagnosticsOf,
-  findDiagnostics,
-} from '@tanstack/compiler-test-utils/diagnostics'
-import { buildStart, callByIdExports } from '../../build-harness'
-import { appManifest, installPackage } from '../../package-layouts'
-import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
-import { rsbuildEntries } from '../route-css-cases'
-import { workerPlugin } from './worker-plugin'
-import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import type { RsbuildPlugin, Rspack } from '@rsbuild/core'
+import { buildStart } from '../../build-harness'
+import { appManifest } from '../../package-layouts'
+import { rsbuildRscLinks } from '../../start-plugins'
+import { rscAppFiles } from '../rsc-warning-app'
+import { printedWarnings } from './printed-warnings'
+import { roleFile, uiKit, uiKitFile, workerApp } from './worker-warning-apps'
+import { workerPluginOf } from './worker-plugin'
+import type { WorkerPluginOptions } from './worker-plugin'
+import type { RsbuildConfig } from '@rsbuild/core'
 
 const timeout = 120_000
 
-/** A middleware factory whose parameter only server code reads: a compiler warning. */
-const serverParam = `import { createMiddleware } from '@tanstack/react-start'
-export const requireRole = (role: string) =>
-  createMiddleware().server(async ({ next }) => {
-    if (role === 'none') {
-      throw new Error('no')
-    }
-    return next()
-  })
-`
+/** What a worker plugin does with its child compilation's warnings. */
+const handOvers = [
+  ['hands nothing over', false],
+  ['hands its warnings over', 'as they are'],
+  ['hands its warnings over reworded', 'reworded'],
+] as const
 
-/** A worker plugin that hands its child compilation's warnings to the client compilation. */
-const forwardingWorkerPlugin = {
-  apply(compiler: Rspack.Compiler) {
-    compiler.hooks.make.tapPromise('app:worker', (compilation) => {
-      const child = compilation.createChildCompiler(
-        'app-worker',
-        { filename: 'worker.js', chunkFilename: 'worker-[name].js' },
-        [
-          new compiler.rspack.EntryPlugin(compiler.context, './src/worker.ts', {
-            name: 'worker',
-          }),
-          new compiler.rspack.webworker.WebWorkerTemplatePlugin(),
-        ],
-      )
-      return new Promise<void>((resolve, reject) => {
-        child.runAsChild((error, _entries, built) => {
-          if (error) {
-            reject(error)
-            return
-          }
-          compilation.warnings.push(...(built?.warnings ?? []))
-          resolve()
-        })
-      })
-    })
-  },
+/** A build of the worker app with the worker plugin(s) on the client compiler: the counts of each warning per report. */
+async function buildWith(
+  files: Record<string, string>,
+  workers: ReadonlyArray<WorkerPluginOptions>,
+  config: RsbuildConfig = {},
+) {
+  const printed = printedWarnings()
+  const build = await buildStart({
+    bundler: 'rsbuild',
+    packageJson: appManifest([uiKit]),
+    files,
+    rsbuildConfig: {
+      ...config,
+      plugins: [printed.plugin],
+      environments: {
+        client: {
+          tools: { rspack: { plugins: workers.map(workerPluginOf) } },
+        },
+      },
+    },
+  })
+  return {
+    build,
+    compiler: () => printed.counts(build.root, 'src/role.ts'),
+    package: () => printed.counts(build.root, uiKitFile),
+  }
 }
 
-describe('rsbuild build: a module only a worker imports', () => {
-  // Finding 2. The worker is built by a child compiler of the client
-  // compilation (Rspack's public plugin API), which hands its warnings to
-  // the compilation, as a worker plugin does. The compiler's warning of a
-  // module only the worker imports is one of them.
+describe('rsbuild build: the warnings of modules only a worker imports', () => {
+  // The child compilation holds the only modules with the warnings. They
+  // are printed with the client compilation's, at their files, whether or
+  // not the worker plugin hands the child's warnings over.
+  test.each(handOvers)(
+    'a worker plugin that %s: each warning is printed once, at its file',
+    async (_, handOver) => {
+      const printed = await buildWith(workerApp(), [{ handOver }])
+      expect(printed.compiler()).toEqual([1])
+      expect(printed.package()).toEqual([1])
+    },
+    timeout,
+  )
+
+  // Two workers import the same modules; the first plugin keeps its child's
+  // warnings, the second hands them over.
   test(
-    "the compiler's warning of the module is reported with the worker's",
+    'two workers, the first keeps its warnings and the second hands them over: each warning is printed once',
     async () => {
+      const files = workerApp()
+      const printed = await buildWith(
+        { ...files, 'src/second.ts': files['src/worker.ts'] },
+        [
+          { name: 'worker' },
+          { name: 'second', entry: './src/second.ts', handOver: 'as they are' },
+        ],
+      )
+      expect(printed.compiler()).toEqual([1])
+      expect(printed.package()).toEqual([1])
+    },
+    timeout,
+  )
+
+  // The persistent cache restores the worker's modules with their records:
+  // a build of the unchanged app on the cache prints what the first did.
+  test.each(handOvers.slice(0, 2))(
+    'a worker plugin that %s, a build of the unchanged app on the persistent cache: the same warnings',
+    async (_, handOver) => {
+      const cold = await buildWith(workerApp(), [{ handOver }], {
+        performance: { buildCache: true },
+      })
+      expect([cold.compiler(), cold.package()]).toEqual([[1], [1]])
+      await cold.build.rebuild({})
+      expect([cold.compiler(), cold.package()]).toEqual([
+        [1, 1],
+        [1, 1],
+      ])
+    },
+    timeout,
+  )
+})
+
+describe('rsbuild build: a package a worker and other code import', () => {
+  // The page imports the package too: the client's, the server's and the
+  // child's compilations hold it.
+  test.each(handOvers)(
+    'the page imports it, a worker plugin that %s: the package warning is printed once',
+    async (_, handOver) => {
+      const printed = await buildWith(workerApp({ page: true }), [{ handOver }])
+      expect(printed.package()).toEqual([1])
+    },
+    timeout,
+  )
+
+  // Server code imports it and the page does not: the client compilation,
+  // which owns the worker's, does not hold the package's module.
+  test.each(handOvers)(
+    'server code imports it and the page does not, a worker plugin that %s: the package warning is printed once',
+    async (_, handOver) => {
+      const printed = await buildWith(workerApp({ server: true }), [
+        { handOver },
+      ])
+      expect(printed.package()).toEqual([1])
+    },
+    timeout,
+  )
+
+  // The worker plugin runs its child compiler once the client compiler is
+  // done, and hands nothing over.
+  test(
+    'server code imports it, the worker is built once the client compiler is done: the package warning is printed once',
+    async () => {
+      const printed = await buildWith(workerApp({ server: true }), [
+        { at: 'done' },
+      ])
+      expect(printed.package()).toEqual([1])
+    },
+    timeout,
+  )
+})
+
+describe('rsbuild build with RSC: a module a page and a worker share', () => {
+  test.each(handOvers.slice(0, 2))(
+    "a worker plugin that %s: the module's compiler warning is printed once",
+    async (_, handOver) => {
+      const printed = printedWarnings()
       const build = await buildStart({
         bundler: 'rsbuild',
+        entry: 'src/entry.ts',
+        symlinks: rsbuildRscLinks(),
+        start: { rsc: { enabled: true } } as never,
         files: {
-          'src/role.ts': serverParam,
+          ...rscAppFiles,
+          'src/entry.ts': `export {}\n`,
+          'tsconfig.json': JSON.stringify({
+            compilerOptions: { jsx: 'react-jsx' },
+          }),
+          'src/role.ts': roleFile,
+          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { requireRole } from '../role'
+export const Route = createFileRoute('/')({
+  component: () => <main>{String(requireRole).length}</main>,
+})
+`,
           'src/worker.ts': `import { requireRole } from './role'
 self.onmessage = () => self.postMessage(String(requireRole))
 `,
-          'src/entry.ts': `export const none = 1\n`,
-          'src/ssr-entry.ts': `export const none = 1\n${callByIdExports}`,
         },
-        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
         rsbuildConfig: {
+          plugins: [printed.plugin],
           environments: {
             client: {
-              tools: { rspack: { plugins: [forwardingWorkerPlugin] } },
+              tools: { rspack: { plugins: [workerPluginOf({ handOver })] } },
             },
           },
         },
       })
-      // (the worker plugin hands the child's warnings to a compilation that
-      // does not hold the module: the report keeps no file of its own, so
-      // the row counts the build's warnings; this app has no other)
-      expect(
-        problems(build.diagnostics).filter((d) => d.severity === 'warning')
-          .length,
-      ).toBeGreaterThan(0)
-    },
-    timeout,
-  )
-})
-
-/** `ui-kit`, a package that uses Start and does not declare it. */
-const uiKit = installPackage('npm', {
-  name: 'ui-kit',
-  files: {
-    'a.js': `import { createIsomorphicFn } from '@tanstack/react-start'
-export const tag = createIsomorphicFn().client(() => 'client').server(() => 'server')
-`,
-  },
-})
-
-/** A page and a worker that both import `ui-kit`: the client, the server and the worker's child compilation hold it. */
-const sharedFiles = {
-  ...rsbuildEntries,
-  ...uiKit.files,
-  'src/routes/__root.tsx': `import { Outlet, createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute({ component: () => <Outlet /> })
-`,
-  'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-import { tag } from 'ui-kit/a.js'
-export const Route = createFileRoute('/')({ component: () => <p>{tag()}</p> })
-`,
-  'src/worker.ts': `import { tag } from 'ui-kit/a.js'
-self.onmessage = () => self.postMessage(tag())
-`,
-}
-
-const workers = [
-  ['a worker plugin that does not hand over its warnings', workerPlugin],
-  ['a worker plugin that hands over its warnings', forwardingWorkerPlugin],
-] as const
-
-/** The package's warnings in each report Rsbuild prints (`onAfterBuild`, `onDevCompileDone`), of the compilations it prints. */
-function printedPackageWarnings() {
-  const printed: Array<Array<Diagnostic>> = []
-  const record = (stats: Rspack.Stats | Rspack.MultiStats) => {
-    const all = 'stats' in stats ? stats.stats : [stats]
-    printed.push(
-      all.flatMap((one) =>
-        diagnosticsOf(
-          one.toJson({ all: false, warnings: true }).warnings ?? [],
-          'warning',
-        ),
-      ),
-    )
-  }
-  const plugin: RsbuildPlugin = {
-    name: 'test:printed-warnings',
-    setup(api) {
-      api.onAfterBuild(({ stats }) => stats && record(stats))
-      api.onDevCompileDone(({ stats }) => record(stats))
-    },
-  }
-  const counts = (root: string) =>
-    printed.map(
-      (report) =>
-        findDiagnostics(report, {
-          severity: 'warning',
-          file: `${uiKit.directory}/a.js`,
-          root,
-        }).length,
-    )
-  return { plugin, counts }
-}
-
-describe('rsbuild: a package a page and a worker share', () => {
-  // Astra, round 2 of the merged design: the worker's child compilation
-  // holds the package too. Whether or not the worker plugin hands the
-  // child's warnings to the client compilation, the package's warning is
-  // printed once: a child's report does not take the warning from the
-  // compilations Rsbuild prints.
-  // Source: review-hotspot3-merged-2-astra.md, required change.
-  test.each(workers)(
-    'build, %s: the package warning is printed once',
-    async (_, worker) => {
-      const printed = printedPackageWarnings()
-      const build = await buildStart({
-        bundler: 'rsbuild',
-        packageJson: appManifest([uiKit]),
-        files: sharedFiles,
-        rsbuildConfig: {
-          plugins: [printed.plugin],
-          environments: {
-            client: { tools: { rspack: { plugins: [worker] } } },
-          },
-        },
-      })
-      expect(printed.counts(build.root)).toEqual([1])
-    },
-    timeout,
-  )
-
-  // (Rsbuild prints an environment's last compilation again when another
-  // environment compiles after it: once in a report)
-  test.each(workers)(
-    'dev, %s: the package warning is printed, once in a report',
-    async (_, worker) => {
-      const printed = printedPackageWarnings()
-      const server = await startRsbuildStartDevServer({
-        packageJson: appManifest([uiKit]),
-        config: {
-          plugins: [printed.plugin],
-          environments: {
-            client: { tools: { rspack: { plugins: [worker] } } },
-          },
-        },
-        files: sharedFiles,
-      })
-      await server.settle()
-      expect(Math.max(0, ...printed.counts(server.root))).toBe(1)
+      expect(printed.counts(build.root, 'src/role.ts')).toEqual([1])
     },
     timeout,
   )

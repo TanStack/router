@@ -92,16 +92,24 @@ what a watch-written cache restored.
    compiler's virtual file system holds (its initial content, then each write; reset when a new compiler is
    configured) and writes only a content that differs. A restored module built from the current content is an
    ordinary cached module: nothing builds it again (an app transform on the route tree runs when the tree is built).
-4. **A compilation's warnings are decided when it seals, from its held modules' records, and count as reported once
-   reported**: the loader emits none. At `finishModules` a compilation offers each warning a held module's record has
-   and the "does not declare Start" warning of each package with a held module that uses Start (against the package's
-   current manifest, `packageUseWarning`). As each compiler finishes (`done`, before Rsbuild formats a report) every
-   offered warning no current compilation carries is added to one that offered it, the finishing compiler's first
-   (`assignWarnings`). A build reports what its finished compilers carry, once per run (a `build --watch` rebuild is a
-   run); a dev server what Rsbuild printed (`onDevCompileDone`), once per dev session. A child compilation (a
-   worker's), which Rsbuild does not print, adds its modules' warnings as it seals on behalf of its owner; they count
-   only once the owner's compilation holds them (a worker plugin hands them over, or does not: then the owner, or
-   another compilation that holds the module, reports them). Import protection's dev reports keep their own reporter.
+4. **A compilation's warnings are added when it seals, from its held modules' records, and one current compilation
+   carries each**: the loader emits none. At `finishModules` a compilation gives the session each warning a held
+   module's record has and the "does not declare Start" warning of each package with a held module that uses Start
+   (against the package's current manifest, `packageUseWarning`). The session adds it to the compilation then, before
+   it emits (an app plugin that reads a compilation's warnings after the seal sees it), unless a current compilation
+   of any compiler carries it already (`warn`). Rsbuild prints the last compilation of each compiler once all are
+   done, one that did not compile again included, so every report has each warning once, whichever compilers a
+   rebuild ran and in whatever order; a build remembers nothing from one report to the next. A compilation that is
+   replaced takes nothing with it: when a compiler finishes (`done`, before Rsbuild formats a report), a warning
+   whose carrier was replaced goes to a current compilation that holds the module (`finishWarnings`). A dev server
+   also counts a warning as reported once Rsbuild printed its compilation (`onDevCompileDone`): once per dev
+   session. A child compilation (a worker's), which Rsbuild does not print, gives its modules' warnings on behalf of
+   its owner, and they are added to the owner's compilation: nothing depends on what a worker plugin does with a
+   child's own warnings. A child's modules the persistent cache restored are indexed as the compiler's own are.
+   The host's own reports take the same path (`warn`, keyed on their text): a custom server function id's error or
+   deprecation (`processAssets`) and a closure that cannot settle (an error in builds, a warning in dev servers). No
+   reset is keyed on a compiler's `watchRun`: a `build --watch` rebuild of the server alone reports what applies.
+   Import protection's dev reports keep their own reporter.
 
 ## One compile per module
 

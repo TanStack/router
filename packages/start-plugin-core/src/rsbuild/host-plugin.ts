@@ -113,18 +113,6 @@ interface StartHostPluginOptions {
 
 const PLUGIN_NAME = 'tanstack-start:compiler'
 
-/**
- * A warning as the compilation holds it: its text as Rspack renders it and
- * its module. A child compilation's warning that a worker plugin handed to
- * its owner reads back the same in the owner (`childWarning`).
- */
-function warningSignature(warning: {
-  message: string
-  module?: { identifier: () => string } | null
-}): string {
-  return `${warning.message}\0${warning.module?.identifier() ?? ''}`
-}
-
 const require = createRequire(import.meta.url)
 
 const COMPILER_PACKAGES = [
@@ -703,14 +691,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             // (once the reports of the compilation that failed before it are
             // made: `failedReports`)
             await failedReports
-            if (
-              environment.type === 'client' &&
-              session.start.opts.mode === 'build'
-            ) {
-              // `build --watch`: each rebuild is a run (Rspack's `Watching` calls
-              // no `beforeRun`); the client compiles first
-              session.resetWarnings()
-            }
             const modified = [...(c.modifiedFiles ?? [])]
             const removed = [...(c.removedFiles ?? [])]
             if (modified.length > 0 || removed.length > 0) {
@@ -783,10 +763,8 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
 
       // (before Rsbuild's own `done` tap, which formats the report once
       // every compiler is done)
-      compiler.hooks.done.tap({ name: PLUGIN_NAME, stage: -1000 }, (stats) => {
-        session.assignWarnings(environment.name, () =>
-          stats.compilation.warnings.map(warningSignature),
-        )
+      compiler.hooks.done.tap({ name: PLUGIN_NAME, stage: -1000 }, () => {
+        session.finishWarnings(environment.name)
       })
       compiler.hooks.done.tap(PLUGIN_NAME, (stats) => {
         if (opts.onDevCompileDone) {
@@ -816,13 +794,32 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
       })
 
       // a child compiler's compilation (a worker plugin's): its modules
-      // compiled as this compiler's, and their warnings are its own, which
-      // a worker plugin may hand to its owner when it ends
+      // compiled as this compiler's, and their warnings go to this
+      // compiler's compilation (`reportWarnings`)
       compiler.hooks.compilation.tap(PLUGIN_NAME, (compilation) => {
         if (compilation.compiler !== compiler) {
-          compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) =>
-            reportWarnings(compilation, modules as Iterable<ModuleLike>, true),
-          )
+          compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) => {
+            if (
+              own.persistsModules &&
+              !session.files.compiled(environment.name)
+            ) {
+              // a child's modules the persistent cache restored, with the
+              // records of their latest compile (as the compiler's own:
+              // `finishMake`)
+              for (const m of modules) {
+                const module = m as unknown as ModuleLike
+                const buildInfo = module.buildInfo
+                if (module.resource && buildInfo && holdsRecord(buildInfo)) {
+                  session.noteRestored(
+                    envOf(module).name,
+                    `\0${module.resource}`,
+                    buildInfo,
+                  )
+                }
+              }
+            }
+            reportWarnings(compilation, modules as Iterable<ModuleLike>, true)
+          })
         }
       })
       compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
@@ -1037,19 +1034,18 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
        * it: this compilation, an earlier one, another process), and the
        * "does not declare Start" warning of each package instance with a
        * module that recognised a Start use, decided against the package's
-       * current manifest at the first of its modules by resource. Each once
-       * per run (J2.19). The loader emits no warning, so nothing of a kept
-       * module is reported twice and nothing is handed over.
+       * current manifest at the first of its modules by resource. The loader
+       * emits no warning, so nothing of a kept module is reported twice.
        *
-       * The compilation only says what it could report (`offerWarning`):
-       * which compilation carries a warning is decided as compilers finish
-       * (`assignWarnings`), and it counts as reported once that compiler
-       * finished (a build) or Rsbuild printed that compilation
-       * (development). `child`: a child compiler's compilation (a
-       * worker's), whose modules have records of their own and which Rsbuild
-       * does not print: it adds the warnings as it seals, on behalf of this
-       * compiler's compilation, and they count once they reached it (a
-       * worker plugin hands them over, or does not: `childWarning`).
+       * Each goes to the session as the compilation seals (`warn`): it is
+       * added then, before the compilation emits, unless a current
+       * compilation carries it or the dev session printed it. `child`: a
+       * child compiler's compilation (a worker's), whose modules have
+       * records of their own and which Rsbuild does not print: its warnings
+       * are this compiler's compilation's, added to that one. Nothing is
+       * added to the child, so what a worker plugin does with a child's
+       * warnings (hands them over, as they are or reworded, or not) changes
+       * nothing.
        */
       function reportWarnings(
         compilation: Rspack.Compilation,
@@ -1059,37 +1055,29 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         if (session.warned.size === 0 && session.packageUses.size === 0) {
           return
         }
-        const decide = (key: string, add: () => string): void => {
-          if (child) {
-            session.childWarning(environment.name, key, add)
-          } else {
-            session.offerWarning(environment.name, key, add)
-          }
-        }
+        // (Rsbuild prints no child compilation: a child's warnings are its owner's)
+        const target = child ? (currentCompilation ?? compilation) : compilation
         let holds: ReturnType<typeof rspackHolds> | undefined
         const held = (module: ModuleLike) =>
           (holds ??= rspackHolds(compilation as never, { clientReferences }))(
             module,
           )
-        /** Adds the warning to the compilation; how it reads back (`warningSignature`), for a child's. */
         const push = (
-          module: ModuleLike,
+          module: ModuleLike & { resource: string },
           warning: Omit<LocatedDiagnostic, 'severity'>,
-        ): string => {
-          compilation.warnings.push(
-            locatedError(
-              WebpackError,
-              module,
-              { severity: 'warning', ...warning },
-              LOCATED_DIAGNOSTICS,
-            ) as never,
-          )
-          if (!child) {
-            return ''
+        ): void => {
+          const error = locatedError(
+            WebpackError,
+            module,
+            { severity: 'warning', ...warning },
+            LOCATED_DIAGNOSTICS,
+          ) as Error & { file?: string }
+          if (child) {
+            // (the owner's compilation may not hold the module: Rsbuild
+            // prints the warning's `file` then)
+            error.file ??= resourcePath(module.resource)
           }
-          // (Rspack's array of the compilation's warnings has no `at`)
-          const warnings = compilation.warnings
-          return warningSignature(warnings[warnings.length - 1]!)
+          target.warnings.push(error as never)
         }
         // (a child compiler's module has a record key of its own: `recordKey`)
         const mark = child ? '\0' : ''
@@ -1108,15 +1096,18 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             if (found && held(module)) {
               const file = resourcePath(one.resource)
               for (const w of found) {
-                const add = () =>
-                  push(module, {
-                    message: w.message,
-                    ...(w.line !== undefined && {
-                      line: w.line,
-                      column: w.column,
+                session.warn(
+                  environment.name,
+                  `${file}\0${w.code ?? ''}\0${w.message}`,
+                  () =>
+                    push(one, {
+                      message: w.message,
+                      ...(w.line !== undefined && {
+                        line: w.line,
+                        column: w.column,
+                      }),
                     }),
-                  })
-                decide(`${file}\0${w.code ?? ''}\0${w.message}`, add)
+                )
               }
             }
           }
@@ -1143,8 +1134,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             },
           )
           if (warning && root !== undefined) {
-            const add = () => push(module, { message: warning.message })
-            decide(`\0package\0${root}`, add)
+            const message = warning.message
+            session.warn(environment.name, `\0package\0${root}`, () =>
+              push(module, { message }),
+            )
           }
         }
       }
@@ -1572,9 +1565,10 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
        * dev server warns, and the next edit starts a new closure. In our
        * test runs it throws (`invariantViolated`, R116). The one place that
        * decides it (DECISIONS 2026-11-20, design-rsc-phase1-settlement.md
-       * §2.4). Once per `what` and run (the session's `WarningLedger`): a
-       * compilation's last run meets its first run's refusal again, with
-       * the same history.
+       * §2.4). Carried by one current compilation, as every warning of
+       * this host (the session's `warn`, rule 4): a compilation's last run
+       * meets its first run's refusal again, with the same history, and a
+       * report has it once.
        */
       function reportUnsettled(
         compilation: Rspack.Compilation,
@@ -1582,23 +1576,21 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         detail: string,
         message: string,
       ): void {
-        if (
-          !session.start.warnings.once(what.file, {
-            code: 'unsettled',
-            message: what.cause,
-          })
-        ) {
-          return
-        }
-        invariantViolated({
-          effect:
-            'import protection may serve a module as its mock or as it is',
-          detail,
-        })
-        ;(session.start.opts.mode === 'dev'
-          ? compilation.warnings
-          : compilation.errors
-        ).push(new WebpackError(message))
+        session.warn(
+          environment.name,
+          `\0unsettled\0${what.file}\0${what.cause}`,
+          () => {
+            invariantViolated({
+              effect:
+                'import protection may serve a module as its mock or as it is',
+              detail,
+            })
+            ;(session.start.opts.mode === 'dev'
+              ? compilation.warnings
+              : compilation.errors
+            ).push(new WebpackError(message))
+          },
+        )
       }
 
       /** Custom server-fn ids: this environment's rank, patched before minification. */
@@ -1606,19 +1598,18 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
         const { allocator, errors, warnings } = session.start.allocateIds(
           environment.type,
         )
-        // once per run: every environment allocates the same custom ids, and
-        // Rsbuild prints each environment's errors and warnings
-        const once = (code: string, message: string) =>
-          session.start.warnings.once('', { code, message })
+        // (every environment allocates the same custom ids, and Rsbuild
+        // prints each environment's errors and warnings: one current
+        // compilation carries each, the session's `warn`)
         for (const error of errors) {
-          if (once('function-id:error', error)) {
-            compilation.errors.push(new WebpackError(error))
-          }
+          session.warn(environment.name, `\0function-id\0${error}`, () =>
+            compilation.errors.push(new WebpackError(error)),
+          )
         }
         for (const warning of warnings) {
-          if (once('function-id:warning', warning)) {
-            compilation.warnings.push(new WebpackError(warning))
-          }
+          session.warn(environment.name, `\0function-id\0${warning}`, () =>
+            compilation.warnings.push(new WebpackError(warning)),
+          )
         }
         for (const asset of compilation.getAssets()) {
           if (!isJsAsset(asset.name)) {

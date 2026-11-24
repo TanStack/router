@@ -698,119 +698,84 @@ export class StartRsbuildCompilerSession {
     })
   }
 
-  /** The warnings this run reported: in a build, those of the compilations whose compiler finished (`assignWarnings`); in development, those of the compilations Rsbuild printed (`printed`). */
+  /** Development: the warnings Rsbuild printed (`printed`), each once per dev session. A build remembers none: its report is its current compilations'. */
   private readonly reportedWarnings = new Set<string>()
   /**
-   * Each compiler's current compilation, with the warnings it could report
-   * (`offerWarning`: what its held modules' records say, each with the way
-   * to add it to the compilation), those it carries, and those of the
-   * carried that its child compilations added (`childWarning`), by the text
-   * they were added with. Which compilation carries a warning is decided
-   * when a compiler finishes (`assignWarnings`), from what every current
-   * compilation could report then: Rsbuild prints the last compilation of
-   * each compiler once all of them are done, never one a newer compilation
-   * replaced, so a warning one compilation claimed at its seal would be lost
-   * with it while another compilation in the same report still holds the
-   * module. Nor does Rsbuild print a child compilation: its warning counts
-   * only once its owner holds it (a worker plugin hands a child's warnings
-   * to its owner, or does not).
+   * Each compiler's current compilation, with the warnings its held
+   * modules' records have (`warn`, each with the way to add it) and those it
+   * carries. A warning is carried by one current compilation at a time:
+   * Rsbuild prints the last compilation of each compiler once all of them
+   * are done, a compiler that did not compile again included, and never a
+   * compilation a newer one replaced. So a report has each warning once,
+   * whichever compilers ran, and a compilation that is replaced takes
+   * nothing with it: what it carried is open again (`warn`,
+   * `finishWarnings`).
    */
   private readonly sealed = new Map<
     string,
     {
       compilation: object
-      eligible: Map<string, () => void>
+      offered: Map<string, () => void>
       carried: Set<string>
-      fromChildren: Map<string, string>
-      done: boolean
     }
   >()
 
-  /** A compiler's compilation starts; what the one before it could report or carried is not this one's. */
+  /** A compiler's compilation starts; what the one before it held or carried is not this one's. */
   beginWarnings(compiler: string, compilation: object): void {
     this.sealed.set(compiler, {
       compilation,
-      eligible: new Map(),
+      offered: new Map(),
       carried: new Set(),
-      fromChildren: new Map(),
-      done: false,
     })
   }
 
-  /** `compiler`'s current compilation could report the warning `key` (a compiler warning of a file, a package's); `report` adds it to the compilation. */
-  offerWarning(compiler: string, key: string, report: () => void): void {
-    const eligible = this.sealed.get(compiler)?.eligible
+  /**
+   * `compiler`'s current compilation holds the warning `key` (a compiler
+   * warning of a file, a package's, as it or one of its child compilations
+   * seals; a report of the host's own: a custom server function id, a
+   * closure that cannot settle); `add` adds it to the compilation. It is
+   * added now, before the compilation emits, unless a current compilation
+   * carries it or the dev session printed it.
+   */
+  warn(compiler: string, key: string, add: () => void): void {
+    const own = this.sealed.get(compiler)
     // (every module of a file, and the file's module in each layer, records the file's warnings)
-    if (eligible && !eligible.has(key)) {
-      eligible.set(key, report)
+    if (own && !own.offered.has(key)) {
+      own.offered.set(key, add)
+      this.carry(own, key, add)
     }
   }
 
-  /**
-   * A child compilation of `compiler`'s current one (a worker's, which
-   * reports as it seals) holds a module with the warning `key`: unless a
-   * compilation carries it already, the child adds it (`report`, which
-   * returns how the warning reads back, `warningSignature`) on behalf of its
-   * owner. Whether it counts is decided when the owner's compiler finishes:
-   * once the owner holds it (`assignWarnings`).
-   */
-  childWarning(compiler: string, key: string, report: () => string): void {
-    const owner = this.sealed.get(compiler)
-    if (!owner || this.reportedWarnings.has(key) || this.carried(key)) {
+  private carry(
+    one: { carried: Set<string> },
+    key: string,
+    add: () => void,
+  ): void {
+    if (this.reportedWarnings.has(key)) {
       return
     }
-    owner.carried.add(key)
-    owner.fromChildren.set(key, report())
-  }
-
-  private carried(key: string): boolean {
-    for (const one of this.sealed.values()) {
-      if (one.carried.has(key)) {
-        return true
+    for (const other of this.sealed.values()) {
+      if (other.carried.has(key)) {
+        return
       }
     }
-    return false
+    one.carried.add(key)
+    add()
   }
 
   /**
-   * As `compiler` finishes a compilation (before Rsbuild formats a report),
-   * whose warnings read back as `warnings` (`warningSignature`): what its
-   * child compilations added counts where it reached it; then every warning
-   * a current compilation could report and none carries is added to one
-   * that could, `compiler`'s first (one that finished before takes it too:
-   * Rsbuild reads the warnings once every compiler is done). A build
-   * reports what the finished compilers' compilations carry.
+   * As `compiler` finishes a compilation (before Rsbuild formats a report):
+   * a warning whose carrier a newer compilation replaced since goes to a
+   * current compilation that holds it, `compiler`'s first (one that finished
+   * before takes it too: Rsbuild reads the warnings once every compiler is
+   * done).
    */
-  assignWarnings(compiler: string, warnings: () => Iterable<string>): void {
+  finishWarnings(compiler: string): void {
     const first = this.sealed.get(compiler)
-    if (first) {
-      first.done = true
-      if (first.fromChildren.size > 0) {
-        const held = new Set(warnings())
-        for (const [key, text] of first.fromChildren) {
-          if (!held.has(text)) {
-            first.carried.delete(key)
-          }
-        }
-        first.fromChildren.clear()
-      }
-    }
     const others = [...this.sealed.values()].filter((one) => one !== first)
     for (const one of first ? [first, ...others] : others) {
-      for (const [key, report] of one.eligible) {
-        if (!this.reportedWarnings.has(key) && !this.carried(key)) {
-          one.carried.add(key)
-          report()
-        }
-      }
-    }
-    if (this.start.opts.mode === 'build') {
-      for (const one of this.sealed.values()) {
-        if (one.done) {
-          for (const key of one.carried) {
-            this.reportedWarnings.add(key)
-          }
-        }
+      for (const [key, add] of one.offered) {
+        this.carry(one, key, add)
       }
     }
   }
@@ -824,13 +789,6 @@ export class StartRsbuildCompilerSession {
         }
       }
     }
-  }
-
-  /** A new run's warnings (a `build --watch` rebuild; `begin`). */
-  resetWarnings(): void {
-    this.reportedWarnings.clear()
-    this.sealed.clear()
-    this.start.warnings.reset()
   }
 
   /**

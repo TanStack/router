@@ -634,6 +634,20 @@ properties of undefined (reading 'id')`, page 500 (build and dev). `main` resolv
   compiler's virtual file system starts from its initial content: `virtual-modules.ts`, H5-dev). With RSC the RSC
   plugin pair is created once per plugin setup, so the second server's compilers may share the first one's
   client-reference state. No test.
+- **Rsbuild: the warnings of a child compilation that runs after its owner sealed are not on the owner at its
+  seal** (hotspot 3, rule 4 of the Rsbuild host; stated limit). A worker plugin that runs its child compiler in
+  `processAssets` or in the compiler's `done` gets the child's warnings added to the owner's compilation as the child
+  seals: Rsbuild prints them once, but an app plugin that reads the owner's warnings at `afterSeal` (a "no warnings"
+  policy) does not see them. No earlier moment exists: the child's modules do not exist before it runs. A child run in
+  `make` is on the owner before its seal (`start-plugin-core/tests/integration/rsbuild/worker-warnings.test.ts`, "the
+  worker is built once the client compiler is done" for the late child's print). No test of the limit itself.
+- **Rsbuild: the warnings of a child compilation that runs after Rsbuild printed its owner** (an `afterDone` tap;
+  hotspot 3, stated limit, no fixture and no known plugin). They are added to the owner's compilation, which a build
+  never prints again; a dev server prints them with the next report that still has that compilation. No test.
+- **Rsbuild: a program that runs the compiler of `createCompiler()` itself in development mode prints a warning in
+  every compilation** (hotspot 3; stated limit). Rsbuild calls no `onDevCompileDone` for such a program, so nothing
+  counts as printed: each new compilation of a compiler carries the warnings it holds again. Within one compilation
+  each warning is still added once. `rsbuild dev` and `createDevServer()` are once per dev session. No test.
 - **Vite production build: a server fn only a worker calls is not HTTP-callable** (RSC phase 2, design-rsc-phase2.md
   G10; known limit, Astra review of 36bfa61d07; as c9701e2fc1). With Start in `worker.plugins`, Vite builds the worker
   apart and the client bundle gets it as an asset: its stub (the id and, with a generator, the gate token) is in the
