@@ -9,7 +9,7 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { expect, onTestFinished, test } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
 import { describeBuild } from '../../src/build-harness'
 import { problems } from '../../src/diagnostic-channel'
 import { expectDiagnostic } from '../../src/diagnostics'
@@ -93,6 +93,37 @@ test(
     expect((await host.loadServer<{ read: () => string }>('node')).read()).toBe(
       'MARKED v2',
     )
+  },
+  timeout,
+)
+
+test(
+  'build: plugins run under the production NODE_ENV, whatever the worker’s',
+  async () => {
+    const seen: Array<string | undefined> = []
+    const recordNodeEnv: RsbuildPlugin = {
+      name: 'record-node-env',
+      setup(api) {
+        api.modifyRspackConfig(() => {
+          seen.push(process.env.NODE_ENV)
+        })
+      },
+    }
+    vi.stubEnv('NODE_ENV', 'test')
+    onTestFinished(() => {
+      vi.unstubAllEnvs()
+    })
+    const host = await createRsbuildPluginHost({
+      dir: testsDir,
+      registerCleanup: onTestFinished,
+      files,
+      plugins: [recordNodeEnv],
+      config: { environments },
+      serve: false,
+    })
+    await host.build()
+    expect(new Set(seen)).toEqual(new Set(['production']))
+    expect(process.env.NODE_ENV).toBe('test')
   },
   timeout,
 )

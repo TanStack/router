@@ -117,32 +117,33 @@ describe('Vite dev server', () => {
         await writeFile(path.join(root, file), content)
       }
       await linkStartRuntime(root)
-      runAsDevCommand()
-      server = await createServer({
-        root,
-        configFile: false,
-        logLevel: 'silent',
-        cacheDir: path.join(root, '.vite'),
-        appType: 'custom',
-        // One address, as the harness's other servers: 127.0.0.1, because of
-        // Node's address-family selection
-        server: { host: '127.0.0.1', hmr: false, ws: false, watch: null },
-        plugins: [
-          {
-            name: 'record-activity',
-            enforce: 'pre',
-            resolveId: active,
-            load(id) {
-              if (id === fnFile) {
-                fnLoading()
-              }
-              return active()
+      server = await runAsDevCommand(async () =>
+        createServer({
+          root,
+          configFile: false,
+          logLevel: 'silent',
+          cacheDir: path.join(root, '.vite'),
+          appType: 'custom',
+          // One address, as the harness's other servers: 127.0.0.1, because of
+          // Node's address-family selection
+          server: { host: '127.0.0.1', hmr: false, ws: false, watch: null },
+          plugins: [
+            {
+              name: 'record-activity',
+              enforce: 'pre',
+              resolveId: active,
+              load(id) {
+                if (id === fnFile) {
+                  fnLoading()
+                }
+                return active()
+              },
+              transform: active,
             },
-            transform: active,
-          },
-          startPlugin(root, {}),
-        ],
-      })
+            startPlugin(root, {}),
+          ],
+        }),
+      )
       // A server that is not listening yet has not started its dependency
       // optimizer (Vite starts it in `listen()`)
       const transformed =
@@ -234,16 +235,17 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
    * SSR as the server fn provider.
    */
   function startServerFnDevServer(root: string) {
-    runAsDevCommand()
-    return createServer({
-      root,
-      configFile: false,
-      logLevel: 'silent',
-      cacheDir: path.join(root, '.vite'),
-      appType: 'custom',
-      server: { middlewareMode: true, hmr: false, ws: false, watch: null },
-      plugins: [startPlugin(root, {})],
-    })
+    return runAsDevCommand(async () =>
+      createServer({
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        cacheDir: path.join(root, '.vite'),
+        appType: 'custom',
+        server: { middlewareMode: true, hmr: false, ws: false, watch: null },
+        plugins: [startPlugin(root, {})],
+      }),
+    )
   }
 
   /**

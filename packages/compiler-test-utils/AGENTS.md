@@ -34,8 +34,11 @@ package. What the suite is and how to read it: [oracle/README.md](oracle/README.
 - `./hmr-sync` (`settlePage`): whether a page reloaded or updated in place, told by the page;
   `errorsOutsideReloads`: a page's errors but for a document's after Vite announced its reload.
 - `./outcome` (`waitForOutcome`): wait for an edit's outcome within one bound.
-- `./diagnostic-channel`, `./diagnostics` (`expectDiagnostic`, `expectNoProblems`): every reporting channel merged;
-  checks by severity, file and position.
+- `./diagnostic-channel`, `./diagnostics` (`expectDiagnostic`, `expectNoDiagnostic`, `expectNoProblems`): every
+  reporting channel merged; checks by severity, file and position. An absence check is `expectNoDiagnostic` (it also
+  sees output of unknown owner), not `findDiagnostics(...)` equal to `[]`.
+- `./node-env` (`withNodeEnv`, `holdNodeEnv`), `./dev-command` (`runAsDevCommand`): the one owner of the worker's
+  `NODE_ENV`; builds, dev-server starts and preview servers hold their value through it.
 - `./importers` (`loadMarker`, `loadedModulesExpression`, `expectNotLoaded`): load markers.
 - `./free-names`, `./known-globals`: a module's free names (Yuku), minus the environment's globals.
 - `./global-trap`: trap a page's dev-only globals (SPEC G7).

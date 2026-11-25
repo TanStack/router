@@ -221,6 +221,26 @@ test(
 )
 
 test(
+  'a define of NODE_ENV the config gives wins over the dev server’s',
+  async () => {
+    const app = await createPluginHost({
+      dir: testsDir,
+      registerCleanup: onTestFinished,
+      files: {
+        'src/env.ts': `export const env = process.env.NODE_ENV\n`,
+      },
+      plugins: [],
+      client: true,
+      config: { define: { 'process.env.NODE_ENV': JSON.stringify('custom') } },
+    })
+    expect(
+      (await app.runClient('/src/env.ts', 'return module.env')).result,
+    ).toBe('custom')
+  },
+  timeout,
+)
+
+test(
   'a failed build rejects with its error and what it reported',
   async () => {
     const app = await createPluginHost({

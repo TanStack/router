@@ -83,28 +83,29 @@ export async function renderAt(url, expectedParagraphs) {
     plugins.push((await import('vite-plugin-solid')).default())
   }
   const channel = openDiagnosticChannel()
-  runAsDevCommand()
-  const server = await createServer({
-    root,
-    cacheDir: path.join(root, '.vite-consumer', framework),
-    configFile: false,
-    envDir: false,
-    appType: 'custom',
-    plugins,
-    customLogger: channel.viteLogger(),
-    server: { host: '127.0.0.1', port: 0, watch: null },
-    optimizeDeps: {
-      include: [
-        `@tanstack/${framework}-router`,
-        '@tanstack/compiler-test-utils/outcome',
-        ...(framework === 'react'
-          ? ['react', 'react-dom/client', 'react-dom']
-          : framework === 'solid'
-            ? ['solid-js', 'solid-js/web']
-            : ['vue']),
-      ],
-    },
-  })
+  const server = await runAsDevCommand(async () =>
+    createServer({
+      root,
+      cacheDir: path.join(root, '.vite-consumer', framework),
+      configFile: false,
+      envDir: false,
+      appType: 'custom',
+      plugins,
+      customLogger: channel.viteLogger(),
+      server: { host: '127.0.0.1', port: 0, watch: null },
+      optimizeDeps: {
+        include: [
+          `@tanstack/${framework}-router`,
+          '@tanstack/compiler-test-utils/outcome',
+          ...(framework === 'react'
+            ? ['react', 'react-dom/client', 'react-dom']
+            : framework === 'solid'
+              ? ['solid-js', 'solid-js/web']
+              : ['vue']),
+        ],
+      },
+    }),
+  )
   await server.listen()
   const base = server.resolvedUrls!.local[0]!
   return {

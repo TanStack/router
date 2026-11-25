@@ -26,6 +26,7 @@ import react from '@vitejs/plugin-react'
 import rsc from '@vitejs/plugin-rsc'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { holdNodeEnv } from '@tanstack/compiler-test-utils/node-env'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import {
   createRsbuildDevServer,
@@ -263,8 +264,8 @@ export async function startRscPreviewServer(
   if (built !== null) {
     throw built
   }
-  const nodeEnv = process.env.NODE_ENV
-  process.env.NODE_ENV = 'production'
+  // (`vite preview` runs under it, for as long as the server serves)
+  const releaseNodeEnv = await holdNodeEnv('production')
   const server = await preview({
     ...config(),
     // Vite's default port: the server binds the next free port itself
@@ -274,7 +275,7 @@ export async function startRscPreviewServer(
   })
   registerCleanup(async () => {
     await server.close()
-    process.env.NODE_ENV = nodeEnv
+    releaseNodeEnv()
   })
   const url = server.resolvedUrls?.local[0]
   if (!url) {
@@ -429,7 +430,6 @@ export async function startRscRsbuildPreviewServer(options: {
     },
   }
   const cwd = process.cwd()
-  const nodeEnv = process.env.NODE_ENV
   // In the app's directory, as `rsbuild build` and `rsbuild preview` run
   process.chdir(app.root)
   try {
@@ -506,13 +506,13 @@ export async function startRscRsbuildPreviewServer(options: {
         { cause: error },
       )
     })
-    process.env.NODE_ENV = 'production'
+    const releaseNodeEnv = await holdNodeEnv('production')
     const { server, urls } = await (
       await rsbuild()
     ).preview({ getPortSilently: true })
     registerCleanup(async () => {
       await server.close()
-      process.env.NODE_ENV = nodeEnv
+      releaseNodeEnv()
     })
     const url = urls[0]
     if (!url) {

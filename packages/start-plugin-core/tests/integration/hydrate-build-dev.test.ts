@@ -106,19 +106,20 @@ createRoot(document.getElementById('root')!).render(<Page />)
         ),
       )
       await server.stop()
-      runAsDevCommand()
-      const restarted = await createServer({
-        root: server.root,
-        configFile: false,
-        logLevel: 'error',
-        server: {
-          host: '127.0.0.1',
-          port: 0,
-          fs: { allow: await servedDirectories(server.root) },
-        },
-        optimizeDeps,
-        plugins: [startPlugin(server.root, {}), clientFixturePlugin, react()],
-      })
+      const restarted = await runAsDevCommand(async () =>
+        createServer({
+          root: server.root,
+          configFile: false,
+          logLevel: 'error',
+          server: {
+            host: '127.0.0.1',
+            port: 0,
+            fs: { allow: await servedDirectories(server.root) },
+          },
+          optimizeDeps,
+          plugins: [startPlugin(server.root, {}), clientFixturePlugin, react()],
+        }),
+      )
       onTestFinished(() => closeViteServer(restarted))
       await restarted.listen()
       const restartedUrl = new URL(

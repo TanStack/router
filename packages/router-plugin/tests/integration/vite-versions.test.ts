@@ -180,38 +180,39 @@ export const Route = createFileRoute('/shared')({ component: Shared })
     const log = (level: string) => (message: unknown) => {
       logs.push(`${level}: ${String(message)}`)
     }
-    runAsDevCommand()
-    const server = await vite.createServer({
-      root: app.root,
-      configFile: false,
-      appType: 'spa',
-      clearScreen: false,
-      customLogger: {
-        info: log('info'),
-        warn: log('warn'),
-        warnOnce: log('warn'),
-        error: log('error'),
-        clearScreen() {},
-        hasErrorLogged: () => false,
-        hasWarned: false,
-      },
-      cacheDir: path.join(app.root, 'node_modules/.vite'),
-      esbuild: { jsx: 'automatic' },
-      optimizeDeps: {
-        include: [
-          'react',
-          'react/jsx-runtime',
-          'react/jsx-dev-runtime',
-          'react-dom/client',
-          '@tanstack/react-router',
-        ],
-      },
-      server: {
-        host: '127.0.0.1',
-        fs: { allow: await servedDirectories(app.root) },
-      },
-      plugins: [tanstackRouter(pluginOptions(app.root))],
-    })
+    const server = await runAsDevCommand(async () =>
+      vite.createServer({
+        root: app.root,
+        configFile: false,
+        appType: 'spa',
+        clearScreen: false,
+        customLogger: {
+          info: log('info'),
+          warn: log('warn'),
+          warnOnce: log('warn'),
+          error: log('error'),
+          clearScreen() {},
+          hasErrorLogged: () => false,
+          hasWarned: false,
+        },
+        cacheDir: path.join(app.root, 'node_modules/.vite'),
+        esbuild: { jsx: 'automatic' },
+        optimizeDeps: {
+          include: [
+            'react',
+            'react/jsx-runtime',
+            'react/jsx-dev-runtime',
+            'react-dom/client',
+            '@tanstack/react-router',
+          ],
+        },
+        server: {
+          host: '127.0.0.1',
+          fs: { allow: await servedDirectories(app.root) },
+        },
+        plugins: [tanstackRouter(pluginOptions(app.root))],
+      }),
+    )
     onTestFinished(() => server.close())
     await server.listen()
     const url = server.resolvedUrls?.local[0]

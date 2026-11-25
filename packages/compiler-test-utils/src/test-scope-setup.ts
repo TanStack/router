@@ -26,6 +26,7 @@
  *   build's plugins): what the file found at its start is not its own.
  */
 import { afterAll, aroundEach, beforeAll } from 'vitest'
+import { setCommandNodeEnv } from './node-env'
 import { runFileCleanups, runInTestScope } from './test-scope'
 
 aroundEach(async (runTest, context) => {
@@ -95,11 +96,14 @@ afterAll(async () => {
     }
   } finally {
     process.chdir(cwd)
+    const { NODE_ENV: nodeEnv, ...rest } = environment
     for (const name of Object.keys(process.env)) {
-      if (!(name in environment)) {
+      if (!(name in environment) && name !== 'NODE_ENV') {
         delete process.env[name]
       }
     }
-    Object.assign(process.env, environment)
+    Object.assign(process.env, rest)
+    // (its owner's: a hold still running keeps it until it ends)
+    setCommandNodeEnv(nodeEnv)
   }
 })

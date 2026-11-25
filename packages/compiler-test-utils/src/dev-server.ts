@@ -62,7 +62,6 @@ import { createApp, stripAnsi } from './build-harness'
 import { scopeMethods } from './console-hook'
 import { openDiagnosticChannel } from './diagnostic-channel'
 import { runAsDevCommand } from './dev-command'
-import { withNodeEnv } from './node-env'
 import { saveAppFile } from './save-file'
 import type { AppOptions } from './build-harness'
 import type { ChannelDiagnostic, DiagnosticChannel } from './diagnostic-channel'
@@ -292,10 +291,9 @@ interface ReportedEvent {
 export async function createDevServer(
   options: DevServerOptions,
 ): Promise<DevServer> {
-  runAsDevCommand()
   const channel = openDiagnosticChannel()
   try {
-    return await withNodeEnv('development', () =>
+    return await runAsDevCommand(() =>
       channel.run(() => startServer(options, channel)),
     )
   } catch (error) {
@@ -649,6 +647,27 @@ async function startServer(
     // environment's (a plugin may send its reload there)
     recordSends('client', server.ws)
   }
+  /**
+   * The `NODE_ENV` the server started under, for its client code from then
+   * on: Vite reads the process's at each client transform, and a build of
+   * the process runs under its own (`./node-env`). A `define` of it the
+   * test's config or a plugin gives wins (the hook runs after theirs).
+   */
+  const clientNodeEnv = JSON.stringify(process.env.NODE_ENV)
+  const clientNodeEnvPlugin: Plugin = {
+    name: 'dev-server-harness:client-node-env',
+    enforce: 'post',
+    config: (config) => {
+      const key = 'process.env.NODE_ENV'
+      if (
+        config.define?.[key] !== undefined ||
+        config.environments?.client?.define?.[key] !== undefined
+      ) {
+        return undefined
+      }
+      return { environments: { client: { define: { [key]: clientNodeEnv } } } }
+    },
+  }
   const followPlugin: Plugin = {
     name: 'dev-server-harness:follow',
     configureServer: (server) => {
@@ -661,19 +680,7 @@ async function startServer(
     vite = await createServer(
       mergeConfig(
         {
-          ...mergeConfig(bundledDevConfig, {
-            // The `NODE_ENV` the server started under, for its client code
-            // from then on: Vite reads the process's at each client
-            // transform, and a build of the process runs under its own
-            // (`./node-env`)
-            environments: {
-              client: {
-                define: {
-                  'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
-                },
-              },
-            },
-          }),
+          ...bundledDevConfig,
           root,
           configFile: false,
           envDir: false,
@@ -734,6 +741,7 @@ async function startServer(
           plugins: [
             ...(typeof plugins === 'function' ? plugins({ root }) : plugins),
             ...(bundledDev ? [clientBundlePlugin] : []),
+            clientNodeEnvPlugin,
             followPlugin,
           ],
         } satisfies InlineConfig,

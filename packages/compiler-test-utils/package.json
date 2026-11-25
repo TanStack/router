@@ -19,6 +19,7 @@
     "./global-trap": "./src/global-trap.ts",
     "./hmr-sync": "./src/hmr-sync.ts",
     "./importers": "./src/importers.ts",
+    "./node-env": "./src/node-env.ts",
     "./known-globals": "./src/known-globals.ts",
     "./outcome": "./src/outcome.ts",
     "./pins": "./src/pins.ts",

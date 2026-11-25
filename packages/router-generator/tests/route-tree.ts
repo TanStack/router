@@ -164,23 +164,24 @@ async function withModule<T>(
   const entry = path.join(path.dirname(file), `.consumer-${randomUUID()}.ts`)
   await writeFile(entry, consumerSource(framework))
   const channel = openDiagnosticChannel()
-  runAsDevCommand()
-  const server = await createServer({
-    root,
-    configFile: false,
-    // The app's own: Vite's default, the `node_modules/.vite` of an app
-    // without a package.json, is this package's (the app links its
-    // `node_modules`)
-    cacheDir: path.join(root, '.vite'),
-    envDir: false,
-    appType: 'custom',
-    customLogger: channel.viteLogger(),
-    clearScreen: false,
-    plugins,
-    server: { middlewareMode: true, hmr: false, watch: null, ws: false },
-    optimizeDeps: { noDiscovery: true, include: [] },
-    ssr: framework === 'solid' ? {} : { external: true },
-  })
+  const server = await runAsDevCommand(async () =>
+    createServer({
+      root,
+      configFile: false,
+      // The app's own: Vite's default, the `node_modules/.vite` of an app
+      // without a package.json, is this package's (the app links its
+      // `node_modules`)
+      cacheDir: path.join(root, '.vite'),
+      envDir: false,
+      appType: 'custom',
+      customLogger: channel.viteLogger(),
+      clearScreen: false,
+      plugins,
+      server: { middlewareMode: true, hmr: false, watch: null, ws: false },
+      optimizeDeps: { noDiscovery: true, include: [] },
+      ssr: framework === 'solid' ? {} : { external: true },
+    }),
+  )
   const runner = createServerModuleRunner(server.environments.ssr, {
     hmr: false,
   })
