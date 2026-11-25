@@ -265,14 +265,17 @@ export async function startRscPreviewServer(
     throw built
   }
   // (`vite preview` runs under it, for as long as the server serves)
-  const releaseNodeEnv = await holdNodeEnv('production')
-  const server = await preview({
-    ...config(),
-    // Vite's default port: the server binds the next free port itself
-    // (`port: 0` makes Vite 8 probe a port and bind it after, which another
-    // process can take meanwhile).
-    preview: { host: '127.0.0.1' },
-  })
+  const { result: server, release: releaseNodeEnv } = await holdNodeEnv(
+    'production',
+    () =>
+      preview({
+        ...config(),
+        // Vite's default port: the server binds the next free port itself
+        // (`port: 0` makes Vite 8 probe a port and bind it after, which
+        // another process can take meanwhile).
+        preview: { host: '127.0.0.1' },
+      }),
+  )
   registerCleanup(async () => {
     await server.close()
     releaseNodeEnv()
@@ -506,10 +509,12 @@ export async function startRscRsbuildPreviewServer(options: {
         { cause: error },
       )
     })
-    const releaseNodeEnv = await holdNodeEnv('production')
-    const { server, urls } = await (
-      await rsbuild()
-    ).preview({ getPortSilently: true })
+    const {
+      result: { server, urls },
+      release: releaseNodeEnv,
+    } = await holdNodeEnv('production', async () =>
+      (await rsbuild()).preview({ getPortSilently: true }),
+    )
     registerCleanup(async () => {
       await server.close()
       releaseNodeEnv()

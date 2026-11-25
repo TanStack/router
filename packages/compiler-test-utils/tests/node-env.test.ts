@@ -7,7 +7,7 @@
 import { expect, onTestFinished, test, vi } from 'vitest'
 import { withBuildEnvironment } from '../src/build-harness'
 import { runAsDevCommand } from '../src/dev-command'
-import { nodeEnvWaitLimit, withNodeEnv } from '../src/node-env'
+import { holdNodeEnv, nodeEnvWaitLimit, withNodeEnv } from '../src/node-env'
 
 test('overlapping builds of different values each run under their own, and the worker’s comes back', async () => {
   vi.stubEnv('NODE_ENV', 'test')
@@ -91,25 +91,6 @@ test('a hold of another value waits at most nodeEnvWaitLimit, and its failure na
   )
 })
 
-test('holds start in the order asked: one of the running value asked after a waiter waits behind it', async () => {
-  const order: Array<string> = []
-  const first = deferred()
-  const production = withNodeEnv('production', async () => {
-    order.push('production 1')
-    await first.promise
-  })
-  const development = withNodeEnv('development', async () => {
-    order.push('development')
-  })
-  const later = withNodeEnv('production', async () => {
-    order.push('production 2')
-  })
-  await new Promise((resolve) => setImmediate(resolve))
-  first.resolve()
-  await Promise.all([production, development, later])
-  expect(order).toEqual(['production 1', 'development', 'production 2'])
-})
-
 test('unset builds run one at a time: a value a tool set meanwhile is not the next one’s', async () => {
   vi.stubEnv('NODE_ENV', 'test')
   onTestFinished(() => {
@@ -158,4 +139,80 @@ test('a dev server started after the dev command, while a build runs, starts und
   await building
   expect(await server).toBe('development')
   expect(process.env.NODE_ENV).toBe('development')
+})
+
+test('a hold of the running value asked outside its scope joins at once, also while another value waits', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
+  const running = deferred()
+  const production = withNodeEnv('production', () => running.promise)
+  const development = withNodeEnv('development', async () => 'started').then(
+    () => undefined,
+    (error: unknown) => error as Error,
+  )
+  // (work the running build waits for, from a callback outside its scope)
+  let joined = false
+  const work = withNodeEnv('production', async () => {
+    joined = true
+  })
+  await vi.advanceTimersByTimeAsync(0)
+  expect(joined).toBe(true)
+  await work
+  await vi.advanceTimersByTimeAsync(nodeEnvWaitLimit + 1)
+  expect((await development)?.message).toMatch(/waited/)
+  running.resolve()
+  await production
+})
+
+test('a waiter past its limit when the holder ends rejects and never starts', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
+  const running = deferred()
+  const production = withNodeEnv('production', () => running.promise)
+  let started = false
+  const development = withNodeEnv('development', async () => {
+    started = true
+  }).then(
+    () => undefined,
+    (error: unknown) => error as Error,
+  )
+  // The process was busy past the limit: the timer has not run yet
+  vi.setSystemTime(Date.now() + nodeEnvWaitLimit + 1)
+  running.resolve()
+  await production
+  expect((await development)?.message).toMatch(/waited/)
+  expect(started).toBe(false)
+})
+
+test('an unset build inside another build’s hold runs unset, and the outer value is back after it', async () => {
+  vi.stubEnv('NODE_ENV', 'test')
+  onTestFinished(() => {
+    vi.unstubAllEnvs()
+  })
+  const seen: Array<string | undefined> = []
+  await withBuildEnvironment(null, [], async () => {
+    // (as `vite build` does when it is unset)
+    process.env.NODE_ENV = 'production'
+    await withBuildEnvironment(null, [], async () => {
+      seen.push(process.env.NODE_ENV)
+    })
+    seen.push(process.env.NODE_ENV)
+  })
+  expect(seen).toEqual([undefined, 'production'])
+  expect(process.env.NODE_ENV).toBe('test')
+})
+
+test('a server that fails to start gives its hold back', async () => {
+  await expect(
+    holdNodeEnv('production', () => Promise.reject(new Error('no port'))),
+  ).rejects.toThrow('no port')
+  const started = await Promise.race([
+    withNodeEnv('development', async () => 'started'),
+    new Promise((resolve) => setTimeout(() => resolve('waiting'), 100)),
+  ])
+  expect(started).toBe('started')
 })

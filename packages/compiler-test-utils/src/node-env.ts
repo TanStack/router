@@ -8,18 +8,26 @@
  * So it has one owner here, and every write of the harness goes through it:
  *
  * - `withNodeEnv(value, run)`: `run` (a build, a server's start) runs under
- *   `value` (`null`: unset) from start to end. `holdNodeEnv(value)` holds it
- *   until the release it returns is called (a preview server, which reads
- *   it per request). Holds of the same value run at once, but for `null`: a
- *   tool may set it while it runs (`vite build` sets `production` when it is
- *   unset), so each unset build runs alone. A hold of another value waits,
- *   in the order asked (a hold of the running value asked later waits
- *   behind it); one asked inside `run` joins at once, or throws when its
- *   value differs (it would wait for itself). A wait longer than
- *   `nodeEnvWaitLimit` rejects, naming what holds the value meanwhile: a
- *   build that never ends, or a hold asked outside `run`'s async scope by
- *   work `run` waits for. When the last hold ends, the value from before
- *   the first is back.
+ *   `value` (`null`: unset) from start to end. `holdNodeEnv(value, start)`
+ *   holds it from `start` on until the release it returns is called (a
+ *   preview server, which reads it per request), or gives it back when
+ *   `start` fails.
+ * - One rule decides when a hold starts. A hold of the value that holds now
+ *   starts at once, whoever asks: it may be work the holder waits for, from
+ *   a callback outside its async scope. `null` is the exception: a tool may
+ *   set the value while it runs (`vite build` sets `production` when it is
+ *   unset), so an unset build asked outside another's scope waits. A hold of
+ *   another value waits, in the order asked, until every hold ended, and
+ *   for at most `nodeEnvWaitLimit`: past it, it rejects naming what holds
+ *   the value, and never starts (also when the holder ends later than its
+ *   timer could run). So a build that never ends, a hold of another value
+ *   asked by work the holder waits for, or holds of the running value one
+ *   after another for that long fail the waiter loudly at the limit.
+ * - A hold asked inside `run` joins it: under the same value it runs under
+ *   its own (an unset build inside an unset build whose tool set the value
+ *   sees it unset), and the value from before it is back after it; under
+ *   another value it throws (it would wait for itself). When the last hold
+ *   ends, the value from before the first is back.
  * - `setCommandNodeEnv(value)`: the process runs as a command that sets it
  *   (`runAsDevCommand` of `./dev-command`; `undefined` unsets it): at once,
  *   or once the running holds ended.
@@ -41,6 +49,16 @@ interface Hold {
   value: string | null
   /** Whether it still holds (`run` may have left callbacks behind). */
   active: boolean
+  /** A hold asked inside another's `run`: the value to put back after it. */
+  restore?: { value: string | undefined }
+}
+
+interface Waiting {
+  value: string | null
+  /** When it stops waiting. */
+  deadline: number
+  grant: (hold: Hold) => void
+  expire: () => void
 }
 
 /** The holds running now, of one value, and since when. */
@@ -48,7 +66,7 @@ let held: { value: string | null; holds: Set<Hold>; since: number } | undefined
 /** The value to restore once nothing holds. */
 let outside: string | undefined
 /** The holds waiting, in the order asked. */
-const queue: Array<{ value: string | null; grant: (hold: Hold) => void }> = []
+const queue: Array<Waiting> = []
 /** The hold whose `run` an async scope belongs to. */
 const scope = new AsyncLocalStorage<Hold>()
 
@@ -79,19 +97,36 @@ function release(hold: Hold) {
     return
   }
   hold.active = false
+  if (hold.restore) {
+    apply(hold.restore.value)
+  }
   held!.holds.delete(hold)
   if (held!.holds.size > 0) {
     return
   }
   held = undefined
   apply(outside)
-  const next = queue.shift()
-  if (next) {
-    next.grant(begin(next.value))
-    // The holds of the same value asked right after it, with it
-    while (next.value !== null && queue[0]?.value === next.value) {
-      queue.shift()!.grant(join())
+  // The first waiter still within its limit starts, with every waiter of
+  // its value (they would start at once if asked now)
+  let next: Waiting | undefined
+  while ((next = queue.shift())) {
+    if (Date.now() > next.deadline) {
+      next.expire()
+      continue
     }
+    next.grant(begin(next.value))
+    const value = next.value
+    for (const waiting of value === null
+      ? []
+      : queue.filter((other) => other.value === value)) {
+      queue.splice(queue.indexOf(waiting), 1)
+      if (Date.now() > waiting.deadline) {
+        waiting.expire()
+      } else {
+        waiting.grant(join())
+      }
+    }
+    return
   }
 }
 
@@ -103,29 +138,38 @@ async function acquire(value: string | null): Promise<Hold> {
         `a build under NODE_ENV=${String(enclosing.value)} started one under NODE_ENV=${String(value)}: one process runs one value at a time`,
       )
     }
-    return join()
+    // Under its own value, whatever a tool of the enclosing one set
+    const hold = join()
+    hold.restore = { value: process.env.NODE_ENV }
+    apply(value)
+    return hold
   }
   if (held === undefined) {
     return begin(value)
   }
-  if (held.value === value && value !== null && queue.length === 0) {
+  if (held.value === value && value !== null) {
     return join()
   }
   return new Promise<Hold>((resolve, reject) => {
-    const waiting = {
+    const waiting: Waiting = {
       value,
-      grant: (hold: Hold) => {
+      deadline: Date.now() + nodeEnvWaitLimit,
+      grant: (hold) => {
         clearTimeout(timer)
         resolve(hold)
+      },
+      expire: () => {
+        clearTimeout(timer)
+        reject(
+          new Error(
+            `NODE_ENV=${String(value)} waited ${nodeEnvWaitLimit} ms for NODE_ENV=${String(held?.value)}, held by ${held?.holds.size ?? 0} build(s) or server(s) since ${held ? Date.now() - held.since : 0} ms ago: one that never ended, one waiting for work of this one, or holds of that value one after another`,
+          ),
+        )
       },
     }
     const timer = setTimeout(() => {
       queue.splice(queue.indexOf(waiting), 1)
-      reject(
-        new Error(
-          `NODE_ENV=${String(value)} waited ${nodeEnvWaitLimit} ms for NODE_ENV=${String(held?.value)}, held by ${held?.holds.size ?? 0} build(s) or server(s) since ${held ? Date.now() - held.since : 0} ms ago: one that never ended, or one waiting for work of this one`,
-        ),
-      )
+      waiting.expire()
     }, nodeEnvWaitLimit)
     queue.push(waiting)
   })
@@ -145,12 +189,22 @@ export async function withNodeEnv<T>(
 }
 
 /**
- * Holds `NODE_ENV=value` until the returned release is called (see the
+ * Holds `NODE_ENV=value` from `start` (a server's start) on, until the
+ * returned release is called; gives it back when `start` fails (see the
  * module comment).
  */
-export async function holdNodeEnv(value: string): Promise<() => void> {
+export async function holdNodeEnv<T>(
+  value: string,
+  start: () => Promise<T>,
+): Promise<{ result: T; release: () => void }> {
   const hold = await acquire(value)
-  return () => release(hold)
+  try {
+    const result = await scope.run(hold, start)
+    return { result, release: () => release(hold) }
+  } catch (error) {
+    release(hold)
+    throw error
+  }
 }
 
 /**
