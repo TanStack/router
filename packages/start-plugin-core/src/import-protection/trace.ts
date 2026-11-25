@@ -793,11 +793,13 @@ function suggestionsOf(
   if (clientComponent) {
     return clientComponentSuggestions(info, ctx)
   }
-  // (every specifier a type: the import is there only because the
-  // bundler's TypeScript keeps it, `verbatimModuleSyntax`)
+  // (a declaration whose every specifier is a type: a host's TypeScript
+  // may keep it as an import of the module, `verbatimModuleSyntax`, so its
+  // mock runs wherever the importer does)
   if (v.typeSpecifiers) {
+    const kw = v.reexport ? 'export' : 'import'
     return [
-      `Every name this ${v.reexport ? 'export' : 'import'} takes is a type, but verbatimModuleSyntax keeps it as ${v.reexport ? 'an export' : 'an import'} of the module, which runs it: write it as \`${v.reexport ? 'export type' : 'import type'} { … } from '${info.specifier}'\``,
+      `An ${kw} of '${info.specifier}' takes only types, written \`{ type … }\`: a host's TypeScript may keep it as an ${kw} of the module (verbatimModuleSyntax), which runs it, so import protection treats it as one wherever the importer runs: write it as \`${kw} type { … } from '${info.specifier}'\`, which no host keeps`,
     ]
   }
   // (a package's module imports a marked file: the app cannot edit it)

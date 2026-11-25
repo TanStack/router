@@ -9,11 +9,20 @@
  * built with protection on and off (off: the initializer ships), Vite and
  * Rsbuild.
  */
+import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { describe, expect, test } from 'vitest'
-import { startBundlers } from '../../build-harness'
+import { StartBuildError, buildStart, startBundlers } from '../../build-harness'
+import { reportedViolations } from '../../importProtection/start-apps'
 import { db, outcome, timeout } from './kept-importer-cases'
 import type { KeptCase } from './kept-importer-cases'
 import type { StartBundler } from '../../build-harness'
+
+/** A module importing the denied file's type in one declaration and a value it never reads in another. */
+const adapterWithTypeImport = `import { type User } from './db.server'
+import { secret } from './db.server'
+export const unused = (u: User) => secret + u.name
+export const label = 'l'
+`
 
 const cases: Array<
   KeptCase & {
@@ -79,6 +88,15 @@ export const label = 'l'
     on: ['src/adapter.ts'],
   },
   {
+    name: 'an import of type specifiers only, next to an import of the same file read only in an unused function, without verbatimModuleSyntax',
+    files: {
+      ...db,
+      'src/adapter.ts': adapterWithTypeImport,
+      'src/entry.ts': `import { label } from './adapter'\nexport const read = () => label\n`,
+    },
+    on: ['src/adapter.ts'],
+  },
+  {
     name: 'an empty re-export of a denied file in a JavaScript module that runs',
     files: {
       ...db,
@@ -107,3 +125,94 @@ describe.each(startBundlers)('%s build', (bundler) => {
     timeout,
   )
 })
+
+/** The client error of a build that must fail: its text and the reported importers (with their positions). */
+async function failure(
+  bundler: StartBundler,
+  files: Record<string, string>,
+  verbatim = false,
+): Promise<{ text: string; importers: Array<string> }> {
+  const error = await buildStart({
+    bundler,
+    files: {
+      ...db,
+      'src/entry.ts': `import { label } from './adapter'\nexport const read = () => label\n`,
+      ...files,
+      ...(verbatim && {
+        'tsconfig.json': JSON.stringify({
+          compilerOptions: { verbatimModuleSyntax: true },
+        }),
+      }),
+    },
+    entry: 'src/entry.ts',
+    start: { importProtection: { behavior: 'error' } },
+    ...(bundler === 'rsbuild' &&
+      verbatim && {
+        rsbuildConfig: {
+          tools: {
+            swc: { jsc: { transform: { verbatimModuleSyntax: true } } },
+          },
+        },
+      }),
+  }).then(
+    () => null,
+    (e: unknown) => e,
+  )
+  if (!(error instanceof StartBuildError)) {
+    throw new Error(`expected the ${bundler} build to fail`)
+  }
+  return {
+    text: problems(error.diagnostics)
+      .filter(({ severity }) => severity === 'error')
+      .map(({ text }) => text)
+      .join('\n'),
+    importers: reportedViolations(error)
+      .filter((v) => v.environment === 'client')
+      .map((v) => v.importer),
+  }
+}
+
+describe.each(startBundlers)('%s build, the advice', (bundler) => {
+  test(
+    'an import of type specifiers next to a value import of the same file suggests `import type`',
+    async () => {
+      const { text } = await failure(bundler, {
+        'src/adapter.ts': adapterWithTypeImport,
+      })
+      expect(text).toContain(
+        "write it as `import type { … } from './db.server'`",
+      )
+    },
+    timeout,
+  )
+})
+
+// (Vite: SWC drops a TypeScript `export {} from`, so Rsbuild builds)
+test(
+  'vite build: an empty re-export with a comment inside its braces suggests no `export type`',
+  async () => {
+    const { text } = await failure('vite', {
+      'src/adapter.ts': `export { /* nothing */ } from './db.server'\nexport const label = 'l'\n`,
+    })
+    expect(text).toContain('Denied by file pattern')
+    expect(text).not.toContain('export type')
+  },
+  timeout,
+)
+
+test(
+  'rsbuild build: a re-export of type names only kept by verbatimModuleSyntax is reported at its statement',
+  async () => {
+    const { importers } = await failure(
+      'rsbuild',
+      {
+        'src/adapter.ts': `export const label = 'l'\nexport { type User } from './db.server'\n`,
+      },
+      true,
+    )
+    expect(importers).toEqual([
+      expect.stringMatching(/^src\/adapter\.ts:2:\d+$/),
+    ])
+  },
+  timeout,
+)

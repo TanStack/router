@@ -574,16 +574,19 @@ export function importEdgesPlanner(
         // or kept as one
         const emptyReexport = (r: (typeof reexports)[number]) =>
           r.kind === 'named' && !r.typeOnly && r.names.length === 0
+        // (one with type specifiers: its statement's re-exported names)
         const typeOnlyReexport = (r: (typeof reexports)[number]) =>
-          typescript &&
           emptyReexport(r) &&
-          !/^export\s*\{\s*\}/.test(
-            ctx.code.slice(r.statementRange.start, r.specifierRange.start),
+          ctx.analysis.exports.some(
+            (e) =>
+              e.kind === 'reExport' &&
+              e.range.start >= r.statementRange.start &&
+              e.range.end <= r.statementRange.end,
           )
-        // (its suggestion: `import type`)
+        // a declaration of the edge whose every specifier is a type (its
+        // suggestion: `import type`, which no host keeps)
         const typeSpecifiers =
-          (imports.length > 0 && imports.every(typeOnlyImport)) ||
-          (reexports.length > 0 && reexports.every(typeOnlyReexport))
+          imports.some(typeOnlyImport) || reexports.some(typeOnlyReexport)
         // a declaration of the edge that evaluates the module whatever it
         // reads of it, as a host may keep it: its mock is evaluated
         const evaluates =

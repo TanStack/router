@@ -2560,15 +2560,16 @@ class ImportProtectionEnv {
       importerId: c.importerId,
       ...found,
       ...(found.pattern === null &&
-        self.rule.type === 'marker' &&
         (await this.literalImportOf(c.importer, self.resolved!, resolve))),
     }
   }
 
   /**
-   * Where an importer the compiler did not compile imports a marked file:
-   * the first string literal of its raw text naming the file, its position
-   * and code frame. Read once the violation survived (a report).
+   * Where an importer imports a denied file by an import the compiler does
+   * not read (a package module, another plugin's import, a declaration the
+   * compiler reads as a type that the host's TypeScript keeps): the first
+   * string literal of its raw text naming the file, its position and code
+   * frame. Read once the violation survived (a report).
    */
   private async literalImportOf(
     importer: string,

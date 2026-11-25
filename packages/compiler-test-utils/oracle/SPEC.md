@@ -912,7 +912,9 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   (`import './x.server'`, `import {} from`, `export {} from`; not of an asset query), an `import()` or `require()`
   (one tree-shaking drops loads nothing), an import or re-export of type names only (kept as an import by a host's
   `verbatimModuleSyntax`), a marker; each declaration decides for its edge (one that runs next to one whose binding
-  the build drops still runs). A client entry's own marker is one whatever its form or what the host's
+  the build drops still runs): an import of type names next to an import of the same file's values runs whatever
+  the host's `verbatimModuleSyntax` (its mock cannot know the setting), so a dead value import beside
+  `import { type T }` is a violation; `import type` is never an edge. A client entry's own marker is one whatever its form or what the host's
   TypeScript makes of it. A denied file mocked under its own id (its importers are code the compiler does not read:
   a package module, an import another plugin added, a pattern import) runs under its package's own `sideEffects`:
   an unused import of it in a module the build keeps is a violation, as on main; one the bundler drops (a bare
