@@ -6,7 +6,6 @@
  * Vite and Rspack hosts call it from their hooks.
  */
 import path from 'node:path'
-import picomatch from 'picomatch'
 import {
   deriveId,
   identify,
@@ -56,6 +55,7 @@ import {
 } from './violations'
 import { witnessLookup } from './witness'
 import {
+  formatDroppedImport,
   formatServedConflict,
   formatServedMismatch,
   formatUncheckedImporters,
@@ -90,7 +90,6 @@ import type { WitnessLookup } from './witness'
 import type { ReportContext, ViolationInfo } from './trace'
 import type { ImportProtectionOptions } from '../schema'
 import type { CompileStartFrameworkOptions } from '../types'
-import type { PackageClasses } from '../compiler/package-class'
 
 export interface CreateImportProtectionOptions {
   /** The user's `importProtection` option. */
@@ -101,8 +100,6 @@ export interface CreateImportProtectionOptions {
   mode: ImportProtectionMode
   /** How the host names edge modules (default: Vite ids). */
   ids?: EdgeModuleIds
-  /** The session's package classes and manifests (`sideEffects`, a denied module's effects). */
-  classes: PackageClasses
   /** Reads a source file's raw text, synchronously (trace positions, `EdgeIndex`); default `node:fs`. */
   readSource?: SourceReader
   /**
@@ -151,7 +148,6 @@ export function createImportProtection(
     ? new ImportProtection(
         config,
         opts.ids ?? viteEdgeModuleIds,
-        opts.classes,
         opts.isEntry ?? (() => false),
         opts.readSource,
         opts.framework,
@@ -197,11 +193,6 @@ export class ImportProtection {
   private readonly envs = new Map<string, ImportProtectionEnv>()
   private readonly listeners = new Set<EdgeModuleListener>()
   private readonly scopeCache = new Map<string, boolean>()
-  /** By package directory, its `sideEffects` declaration (`packageSideEffectFree`). */
-  private readonly packageSideEffects = new Map<
-    string,
-    boolean | Array<string>
-  >()
   /**
    * Per environment type, the modules the allowed imports of a released
    * environment brought into it. A live environment's are read from its
@@ -242,8 +233,6 @@ export class ImportProtection {
   constructor(
     readonly config: ImportProtectionConfig,
     readonly ids: EdgeModuleIds,
-    /** The session's package classes and manifests (`PackageClasses`). */
-    readonly classes: PackageClasses,
     /** Whether a path is an app entry (`CreateImportProtectionOptions.isEntry`). */
     readonly isEntry: (path: string) => boolean,
     /** Raw source text for trace positions (`CreateImportProtectionOptions.readSource`). */
@@ -714,45 +703,6 @@ export class ImportProtection {
       l(specifier, code, ref)
     }
   }
-
-  /**
-   * Whether the package containing `file` declares it free of side effects
-   * (`package.json` `sideEffects`: `false`, or an array not matching it).
-   * No `package.json` or no field: it has effects. Cached per package for
-   * the session.
-   */
-  packageSideEffectFree(file: string): boolean {
-    const dir = this.classes.packageDirOf(path.dirname(file))
-    if (dir === null) {
-      return false
-    }
-    let value = this.packageSideEffects.get(dir)
-    if (value === undefined) {
-      const declared = this.classes.manifest(
-        path.join(dir, 'package.json'),
-      )?.sideEffects
-      value =
-        declared === false
-          ? false
-          : Array.isArray(declared)
-            ? declared.filter((p): p is string => typeof p === 'string')
-            : true
-      this.packageSideEffects.set(dir, value)
-    }
-    if (value === false) {
-      return true
-    }
-    if (value === true) {
-      return false
-    }
-    const rel = normalizePath(path.relative(dir, file))
-    return !value.some((pattern) => {
-      const p = pattern.replace(/^\.\//, '')
-      return p.includes('/')
-        ? picomatch.isMatch(rel, p, { dot: true })
-        : picomatch.isMatch(path.posix.basename(rel), p, { dot: true })
-    })
-  }
 }
 
 /** An edge module nothing registered (a stale importer after a restart): a mock with a default export only. */
@@ -773,7 +723,6 @@ function unknownEdgeLoad(
         importer: '',
         file: null,
         names: [],
-        effectful: false,
         resolved: null,
         hasDefault: true,
         bare: false,
@@ -1085,7 +1034,6 @@ class ImportProtectionEnv {
                     selfViolationOf(config, this, id, rule, {
                       names: [],
                       hasDefault: true,
-                      effectful: false,
                     }),
                   ]
                 : [],
@@ -2236,7 +2184,7 @@ class ImportProtectionEnv {
     const mockOf = (key: string) => {
       const m = this.modules.get(key)
       return m && this.served.get(key)?.verdict !== 'real'
-        ? m.content.effectful
+        ? m.content.runs === true
         : null
     }
     const edges = witnessLookup(this.ip.ids, this.name, mockOf)
@@ -2246,7 +2194,7 @@ class ImportProtectionEnv {
         const key = served.self.module.key
         const m = this.modules.get(key)
         if (m) {
-          return { key, effectful: m.content.effectful }
+          return { key, runs: m.content.runs === true }
         }
       }
       return edges(id)
@@ -2358,6 +2306,41 @@ class ImportProtectionEnv {
       this.shownConflicts.add(m)
     }
     return fresh
+  }
+
+  /**
+   * The denied modules this build's importers import through a mocked edge
+   * whose mocks all were dropped by tree-shaking (none of `liveKeys`, or
+   * erased by the importer's TypeScript transform: an import used only as a
+   * type), and that no other report of the build names (`reported`): one
+   * violation of each, by an importer reached from an entry, with its trace.
+   * Not exhaustive: a denied module with no such importer is left out.
+   */
+  private dropped(
+    liveKeys: ReadonlyArray<string>,
+    graph: NodeGraph,
+    reported: ReadonlyArray<EdgeViolation>,
+  ): Array<{ v: EdgeViolation; trace: Trace }> {
+    const survived = new Set(liveKeys)
+    const seen = new Set(reported.map((v) => v.resolved ?? v.specifier))
+    const out: Array<{ v: EdgeViolation; trace: Trace }> = []
+    for (const [key, m] of this.modules) {
+      if (survived.has(key) || this.served.get(key)?.verdict === 'real') {
+        continue
+      }
+      for (const v of m.violations.values()) {
+        const denied = v.resolved ?? v.specifier
+        if (v.self || v.handoff || seen.has(denied)) {
+          continue
+        }
+        const trace = this.trace(v.importerId, graph)
+        if (trace.fromEntry) {
+          seen.add(denied)
+          out.push({ v, trace })
+        }
+      }
+    }
+    return out
   }
 
   /** A rebuild of `build --watch`: `onViolation` hears about what survives it again. */
@@ -2493,6 +2476,13 @@ class ImportProtectionEnv {
         }
       }
     }
+    const dropped = this.dropped(liveKeys, graph, [
+      ...[...live.values()].map(({ v }) => v),
+      ...[...demanded.values()].map((c) => c.self),
+      ...[...unsettled.values()].map((u) => u.self),
+      ...[...unchecked.values()].map(([v]) => v),
+      ...unaccounted,
+    ])
     const reports = []
     // not violations (no `onViolation`), and errors under both behaviors
     for (const c of conflicts.values()) {
@@ -2539,6 +2529,15 @@ class ImportProtectionEnv {
           NO_TRACE,
           this.publicName,
         ) as ViolationInfo,
+      })
+    }
+    // not violations (no `onViolation`, no failure): mocked, nothing shipped
+    for (const { v, trace } of dropped) {
+      const info = violationInfo(v, this.ip.config, trace, this.publicName)
+      reports.push({
+        severity: 'warning' as const,
+        message: formatDroppedImport(info, this.ip.report),
+        info: info as ViolationInfo,
       })
     }
     // not violations either, but the build shipped what no importer asked for

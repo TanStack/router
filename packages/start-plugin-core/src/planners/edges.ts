@@ -43,15 +43,12 @@
  * Violations are recorded in the plan's facts (`ImportEdgesFacts`), so a
  * cached plan reports and registers them again without re-judging.
  */
-import { isBuiltin } from 'node:module'
 import {
   identify,
   isAssetId,
   isExpressionWrapper,
-  isKnownSpecifier,
   ownEntry,
 } from '@tanstack/router-utils/compiler'
-import { startRecognizer } from '../compiler/recognizer'
 import { originalPositions } from '../compiler/reprinted'
 import { NODE_MODULES_RE } from '../compiler/scope'
 import { edgeModuleKey } from '../import-protection/edge-modules'
@@ -126,7 +123,6 @@ interface Judged {
 interface TargetDescription {
   names: Array<string>
   hasDefault: boolean
-  effectful: boolean
 }
 
 /**
@@ -307,9 +303,6 @@ function freeName(analysis: ModuleAnalysis, name: string): string {
   }
   return free
 }
-
-/** The framework's packages the analysis knows by specifier (never resolved, all free of side effects). */
-const KNOWN_PACKAGES = startRecognizer()
 
 declare module '@tanstack/router-utils/compiler' {
   interface PlannerData {
@@ -679,33 +672,23 @@ export function importEdgesPlanner(
     }
   }
 
-  /** The edge module of a violation: names, effect witness and allowed form. */
+  /** The edge module of a violation: names, survival witness and allowed form. */
   async function edgeModuleContent(
     edges: Readonly<PlanEdges>,
     j: Judged,
     ctx: PolicyContext,
   ): Promise<EdgeModuleContent> {
-    // the module's own marker: the marker module is empty, but the edge must
-    // survive with the module (its witness tells whether the marked module is
-    // in the bundle), so the mock keeps the effect witness
+    // the module's own marker: the marker module is empty, and its import is
+    // bare (the edge stands for the marked module being in the bundle)
     const ownMarker = ownEntry(ip.markerSpecifiers, j.raw) !== undefined
-    // a bare import of a marked module says its code runs: a violation
-    // wherever the import survives, whatever `sideEffects` declares of the
-    // module (D-c); its effects are not read (an asset query of it, its text
-    // or URL, runs nothing)
-    // (a file its name denies too: its marker still says so)
-    const runsMarked =
-      j.edge.form === 'bare' &&
-      j.resolved !== null &&
-      !isAssetId(j.resolved) &&
-      (j.rule?.type === 'marker' ||
-        (j.rule?.type === 'file' &&
-          markerViolates(
-            ctx.env.type,
-            await ctx.targetMarker(markerIdOf(ctx.env.type, j.resolved)),
-          )))
+    // a bare import of a denied module says its code runs: a violation
+    // wherever the importer is evaluated, whatever the module does or
+    // `sideEffects` declares (D-c); an asset query of it (its text or URL)
+    // runs nothing
+    const runs =
+      j.edge.form === 'bare' && (j.resolved === null || !isAssetId(j.resolved))
     const target =
-      j.resolved !== null && !ownMarker && !runsMarked
+      j.resolved !== null && !ownMarker && j.edge.form !== 'bare'
         ? await describeTarget(j.resolved, ctx)
         : null
     const names = new Set<string>(target?.names ?? [])
@@ -732,34 +715,27 @@ export function importEdgesPlanner(
           ? relativeTargetPath(config, j.resolved)
           : null,
       names: [...names].sort(),
-      effectful: ownMarker || runsMarked || (target?.effectful ?? true),
       resolved: j.resolved,
       hasDefault: importsDefault || (target?.hasDefault ?? true),
       bare: j.edge.form === 'bare',
-      ...(runsMarked && { runs: true }),
+      ...(runs && { runs: true }),
       rule: j.rule!,
     }
   }
 
   /**
-   * What a mock of `resolved` must export (its export names, following
-   * `export *`) and, in a build (the effect witness is read after tree-shaking),
-   * whether evaluating it has effects (own top-level effects in this
-   * environment, an effectful module it evaluates, a dependency without
-   * `sideEffects: false`; unknown → effectful). A module of a package declaring `sideEffects: false`, a platform
-   * builtin and the framework's own packages have none: bundlers drop them with
-   * an unused importer. Every
-   * consulted module is a target-facts/resolution fingerprint of this plan
-   * (J6.13).
+   * What a mock of `resolved` must export: its export names, following
+   * `export *`. Every consulted module is a target-facts/resolution
+   * fingerprint of this plan (J6.13).
    */
   async function describeTarget(
     resolved: string,
     ctx: PolicyContext,
   ): Promise<TargetDescription> {
     const p = identify(resolved).path
-    // a text or URL: importing it evaluates nothing of the file
+    // a text or URL: its mock exports a default only
     if (/\.json$/i.test(p) || isAssetId(resolved)) {
-      return { names: [], hasDefault: true, effectful: false }
+      return { names: [], hasDefault: true }
     }
     const names = new Set<string>()
     const top = await ctx.targetFacts(resolved)
@@ -784,48 +760,9 @@ export function importEdgesPlanner(
       }
     }
     await collect(resolved, true)
-    const visited = new Set<string>()
-    const effectful = async (id: string): Promise<boolean> => {
-      if (visited.has(id)) {
-        return false
-      }
-      visited.add(id)
-      const path = identify(id).path
-      if (ip.packageSideEffectFree(path)) {
-        return false
-      }
-      // the denied module itself and a Start package's modules are analysed
-      // like the app's; an ordinary package's imports are not read
-      if (id !== resolved && ip.classes.classOf(path) === 'package') {
-        return true
-      }
-      const facts = id === resolved ? top : await ctx.targetFacts(id)
-      if (!facts.exists || !facts.esm || facts.codeEffects[ctx.env.type]) {
-        return true
-      }
-      const erased = facts.erasedImports?.[ctx.env.type] ?? []
-      for (const spec of facts.imports) {
-        if (
-          isBuiltin(spec) ||
-          isKnownSpecifier(KNOWN_PACKAGES, spec) ||
-          erased.includes(spec)
-        ) {
-          continue
-        }
-        // this environment may not resolve what a denied module imports (a
-        // package with only `node` exports on the client): the module stays
-        // denied, and what is unknown of it counts as effectful
-        const r = await ctx.resolve(spec, id)
-        if (r === null || (await effectful(r))) {
-          return true
-        }
-      }
-      return false
-    }
     return {
       names: [...names].filter((n) => n !== 'default'),
       hasDefault: top.exportNames.includes('default') || !top.esm,
-      effectful: config.mode === 'build' && (await effectful(resolved)),
     }
   }
 }

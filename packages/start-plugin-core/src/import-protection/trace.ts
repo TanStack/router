@@ -268,6 +268,50 @@ export function formatUncheckedImporters(
 }
 
 /**
+ * A build's warning (not a violation, SPEC J6.4): a denied module the
+ * environment's graph imports, mocked, whose mocks tree-shaking dropped
+ * everywhere, so nothing of it shipped. One per denied module, with one
+ * importer and its chain from an entry.
+ */
+export function formatDroppedImport(
+  info: ReportedInfo,
+  ctx: ReportContext,
+): string {
+  const { root } = ctx.config
+  const rel = (p: string) => relativizePath(p, root)
+  const loc = info.importerLoc
+  const lines = [
+    ``,
+    `[import-protection] Denied import mocked in ${info.envType} environment and removed by tree-shaking`,
+    ``,
+    deniedBy(info, ctx),
+    info.type === 'specifier' || !info.resolved
+      ? `  Denied import: "${info.specifier}"`
+      : `  Denied file: ${rel(info.resolved)}`,
+    `  Importer: ${loc ? `${rel(loc.file ?? info.importer)}:${loc.line}:${loc.column}` : rel(info.importer)}`,
+  ]
+  const printed = printedSteps(
+    info.freezeTrace(),
+    root,
+    ctx.config.maxTraceDepth,
+  )
+  if (printed.steps.length > 1) {
+    lines.push(``, `  Trace:`)
+    printed.steps.forEach((step, i) => {
+      const at = step.line != null ? `:${step.line}:${step.column ?? 1}` : ''
+      const tag = i === 0 && printed.entry ? ' (entry)' : ''
+      lines.push(`    ${printed.first + i}. ${rel(step.file)}${at}${tag}`)
+    })
+  }
+  lines.push(
+    ``,
+    `  Not a violation: the import was mocked and nothing of it shipped to the ${info.envType}. Move the import out of ${info.envType} code.`,
+    ``,
+  )
+  return lines.join('\n')
+}
+
+/**
  * A Vite build's report of a denied file whose order of compiles decides
  * what every importer gets (design 4 closing follow-up): an importer needs
  * it as it is (`needers`, exempt or outside the scope; none: an import

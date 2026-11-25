@@ -5,10 +5,12 @@
  * TypeScript transform resolves it*: Vite's oxc reads the nearest tsconfig,
  * through `references` (a solution-style root, the stock Vite template) and
  * `extends`, unless `oxc.typescript.onlyRemoveTypeImports` overrides it;
- * Rsbuild's SWC never reads tsconfig (`tools.swc` decides). Import
- * protection reports exactly what each bundler keeps, and the client never
- * loads the denied file either way. Client environment, mock mode, Vite and
- * Rsbuild, builds and dev servers.
+ * Rsbuild's SWC never reads tsconfig (`tools.swc` decides). A dev server
+ * reports exactly the imports its bundler keeps; a build decides on the mock
+ * (SPEC J6.4): nothing reads it, so the import is no violation, kept or
+ * erased, and the build warns that the mocked import was dropped. The client
+ * never loads the denied file either way. Client environment, mock mode, Vite and Rsbuild,
+ * builds and dev servers.
  */
 import {
   captureConsole,
@@ -163,6 +165,24 @@ const expected = (layout: Layout, kept: boolean) => ({
   reported: kept ? [layout.importer] : [],
 })
 
+/** A build, whether the bundler kept the import or not: no violation, a warning naming the importer. */
+const expectedBuild = (layout: Layout) => ({
+  typesLoaded: null,
+  reported: [],
+  warned: [layout.importer],
+})
+
+/** The importers of `layouts` a build's warnings name. */
+const warnedImporters = (build: { diagnostics: unknown; root: string }) =>
+  [...new Set(layouts.map((l) => l.importer))].filter(
+    (importer) =>
+      findDiagnostics(build.diagnostics, {
+        severity: 'warning',
+        file: importer,
+        root: build.root,
+      }).length > 0,
+  )
+
 async function viteBuild(
   files: Record<string, string>,
   viteConfig?: InlineConfig,
@@ -177,7 +197,11 @@ async function viteBuild(
   const { result } = await build.client.run(
     `return globalThis.typesLoaded ?? null`,
   )
-  return { typesLoaded: result, reported: importersIn(build, 'client') }
+  return {
+    typesLoaded: result,
+    reported: importersIn(build, 'client'),
+    warned: warnedImporters(build),
+  }
 }
 
 async function rsbuildBuild(
@@ -194,7 +218,11 @@ async function rsbuildBuild(
   const { result } = await build.client.run(
     `return globalThis.typesLoaded ?? null`,
   )
-  return { typesLoaded: result, reported: importersIn(build, 'client') }
+  return {
+    typesLoaded: result,
+    reported: importersIn(build, 'client'),
+    warned: warnedImporters(build),
+  }
 }
 
 async function viteDev(
@@ -272,9 +300,9 @@ async function rsbuildDev(
 describe.each(layouts)('tsconfig layout: $name', (layout) => {
   const files = appOf(layout)
   test(
-    'vite build: reported iff oxc keeps the import',
+    'vite build: no violation, kept or erased',
     async () => {
-      expect(await viteBuild(files)).toEqual(expected(layout, layout.oxcKeeps))
+      expect(await viteBuild(files)).toEqual(expectedBuild(layout))
     },
     timeout,
   )
@@ -295,9 +323,9 @@ describe.each(layouts)('tsconfig layout: $name', (layout) => {
     timeout,
   )
   test(
-    'rsbuild build: SWC never reads tsconfig, the import is erased',
+    'rsbuild build: SWC never reads tsconfig, no violation',
     async () => {
-      expect(await rsbuildBuild(files)).toEqual(expected(layout, false))
+      expect(await rsbuildBuild(files)).toEqual(expectedBuild(layout))
     },
     timeout,
   )
@@ -323,7 +351,7 @@ describe('the transformer option wins over tsconfig', () => {
     'vite build, oxc onlyRemoveTypeImports: false erases despite the solution-style verbatimModuleSyntax',
     async () => {
       expect(await viteBuild(appOf(solution), oxcErases)).toEqual(
-        expected(solution, false),
+        expectedBuild(solution),
       )
     },
     timeout,
@@ -350,7 +378,7 @@ describe('the transformer option wins over tsconfig', () => {
     'rsbuild build, tools.swc verbatimModuleSyntax keeps the import without any tsconfig setting',
     async () => {
       expect(await rsbuildBuild(appOf(off), swcKeeps)).toEqual(
-        expected(off, true),
+        expectedBuild(off),
       )
     },
     timeout,

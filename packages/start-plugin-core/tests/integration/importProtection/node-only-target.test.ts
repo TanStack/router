@@ -3,6 +3,10 @@
  * with only `node` exports, on the client): the normal denial, live or dead,
  * and no resolver error from reading what the mock of the denied file must be.
  */
+import {
+  expectDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
@@ -26,31 +30,18 @@ export const secret = () => db() + 'MARK_SECRET'
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  test.each<{ name: string; files: Record<string, string> }>([
-    {
-      name: 'live',
-      files: {
-        'src/entry.ts': `import { secret } from './s.server'
-export const read = () => secret()
-`,
-      },
-    },
-    {
-      name: 'dead',
-      files: {
-        'src/barrel.ts': `export { secret } from './s.server'
-export const safe = () => 'MARK_SAFE'
-`,
-        'src/entry.ts': `export { safe } from './barrel'\n`,
-      },
-    },
-  ])(
-    'an edge that is $name to a denied file importing a node-only package fails with the denial',
-    async ({ files }) => {
+  test(
+    'a live edge to a denied file importing a node-only package fails with the denial',
+    async () => {
       const error = await rejection(
         buildStart({
           bundler,
-          files: { ...nodeOnly, ...files },
+          files: {
+            ...nodeOnly,
+            'src/entry.ts': `import { secret } from './s.server'
+export const read = () => secret()
+`,
+          },
           entry: 'src/entry.ts',
         }),
       )
@@ -58,6 +49,35 @@ export const safe = () => 'MARK_SAFE'
         reportedViolations(error).map(({ environment }) => environment),
       ).toContain('client')
       expect(String(error.message)).not.toMatch(/Errored while resolving/)
+    },
+    timeout,
+  )
+
+  test(
+    'a dead edge to a denied file importing a node-only package builds, warning of the dropped import',
+    async () => {
+      const build = await buildStart({
+        bundler,
+        files: {
+          ...nodeOnly,
+          'src/barrel.ts': `export { secret } from './s.server'
+export const safe = () => 'MARK_SAFE'
+`,
+          'src/entry.ts': `export { safe } from './barrel'\n`,
+        },
+        entry: 'src/entry.ts',
+      })
+      expect(reportedViolations(build)).toEqual([])
+      expectDiagnostic(build.diagnostics, {
+        severity: 'warning',
+        file: 'src/s.server.ts',
+        root: build.root,
+        times: 1,
+      })
+      expect(findDiagnostics(build.diagnostics, { severity: 'error' })).toEqual(
+        [],
+      )
+      expect(build.client.where('MARK_SECRET')).toBe('nowhere')
     },
     timeout,
   )

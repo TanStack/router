@@ -118,7 +118,6 @@ export function selfViolationOf(
   target: {
     names: Array<string>
     hasDefault: boolean
-    effectful: boolean
   },
 ): EdgeViolation {
   const file = relativeTargetPath(config, id)
@@ -134,7 +133,6 @@ export function selfViolationOf(
     importer: '',
     file,
     names: target.names.sort(),
-    effectful: target.effectful,
     resolved: id,
     hasDefault: target.hasDefault,
     bare: false,
@@ -315,8 +313,9 @@ export const RSPACK_BUILD_INFO_KEY = 'tanstack.start.ip'
  * edge keys and edge-module ids of compile environments (no layer; an
  * Rspack RSC layer's module records the `rsc` environment's). 4: the
  * client-reference handoff (`EdgeViolation.handoff`, `clientReferences`).
+ * 5: no effect witness (`EdgeModuleContent.runs` for every bare import).
  */
-export const RSPACK_BUILD_INFO_VERSION = 4
+export const RSPACK_BUILD_INFO_VERSION = 5
 
 /**
  * What the Rspack loader stores in an importer's `buildInfo[RSPACK_BUILD_INFO_KEY]`

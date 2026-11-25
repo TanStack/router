@@ -225,7 +225,6 @@ export class StartCompilerSession {
       srcDirectory: opts.srcDirectory,
     })
     this.ip = createImportProtection({
-      classes: this.classes,
       options: opts.importProtection,
       root: opts.root,
       srcDirectory: opts.srcDirectory,

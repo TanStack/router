@@ -14,7 +14,7 @@ import {
   identify,
   normalizePath,
 } from '@tanstack/router-utils/compiler'
-import { RUNS_MARKED_EDGE_QUERY } from '../import-protection/edge-modules'
+import { RUNS_EDGE_QUERY } from '../import-protection/edge-modules'
 import { ownFileRule } from '../import-protection/rules'
 import { StartRsbuildCompilerSession } from './compiler-session'
 import { createStartHostPlugin } from './host-plugin'
@@ -246,12 +246,12 @@ export function registerStartCompiler(
       )
     }
     if (ip) {
-      // the edge module of a bare import of a marked module keeps its effect
+      // the edge module of a bare import of a denied module keeps its
       // witness under the app's `sideEffects: false` (D-c). Last too: no
       // other rule's index moves
       rules.push({
         test: EDGE_MODULE_FILE_RE,
-        resourceQuery: RUNS_MARKED_EDGE_QUERY,
+        resourceQuery: RUNS_EDGE_QUERY,
         sideEffects: true,
       })
     }

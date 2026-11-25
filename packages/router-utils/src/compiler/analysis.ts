@@ -3,10 +3,9 @@
  * never pay for the rest.
  *
  * Tier 0 (always): import/export tables, evaluation edges, header, markers.
- * Own effects (`effects()`, what raw facts describe of a target) and Tier 1
- * (items, units, regions, symbols, classified references, JSX info, name
- * universe) on demand. Both are views over one Yuku parse that lives for the
- * compile attempt only (nothing cached may reach a Yuku object).
+ * Tier 1 (items, units, regions, symbols, classified references, JSX info,
+ * name universe) on demand. Both are views over one Yuku parse that lives
+ * for the compile attempt only (nothing cached may reach a Yuku object).
  */
 import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
@@ -15,19 +14,12 @@ import { SymbolTable, valueBinding } from './symbols'
 import { buildItems, buildUnits } from './units'
 import { isTypeOnlyExport } from './declarations'
 import { MutationModel } from './mutation'
-import {
-  noteBuilderConsts,
-  seedNoSideEffectDeclarations,
-  statementHasEffects,
-} from './purity'
 import { ownEntry } from './strings'
-import type { PurityContext } from './purity'
 import type { Header, Range } from './header'
 import type { SymbolId } from './symbols'
 import type { TopLevelItem, Unit, UnitId } from './units'
 import type { Binding, Node, Scope, SourceFile } from 'yuku'
 import type { SourceText } from './output-builder'
-import type { RecognizerTable } from './values'
 
 export type { Range } from './header'
 
@@ -52,9 +44,6 @@ export interface ImportEntry {
   typeOnly: boolean
   specifiers: Array<ImportSpecifierEntry>
 }
-
-/** The namespace imports of a module without any (shared, never written). */
-const NO_NAMESPACES: ReadonlySet<number> = new Set()
 
 type ExportEntry =
   | {
@@ -260,42 +249,12 @@ interface ModuleAnalysisOptions {
   /** Bare import specifiers that mark a module (default: 'server-only' / 'client-only'). */
   markerSpecifiers?: Record<string, 'server-only' | 'client-only'>
   /**
-   * The recognizer: the pure exports of its known packages
-   * (`RecognizerTable.pureCalls`) are pure callees.
-   */
-  recognizer?: RecognizerTable
   /** The JSX dialect the module's framework compiles (`refAssigns`), one per session; default React's. */
   jsx?: JsxDialect
 }
 
 /** The framework whose JSX transform compiles a module's JSX. */
 export type JsxDialect = 'react' | 'solid' | 'vue'
-
-/** Per environment type, whether a module's own statements have effects there. */
-export interface CodeEffects {
-  client: boolean
-  server: boolean
-}
-
-/** What a module's own top-level statements do when it is evaluated (`ModuleAnalysis.effects`). */
-export interface ModuleEffects {
-  /**
-   * Whether the module's own statements have effects, module loading aside
-   * (bare imports and re-exports are followed by consumers), per environment
-   * type: with `builders`, a builder chain with pure arguments is none, and
-   * an argument the environment's compile erases is not evaluated there.
-   */
-  code: CodeEffects
-  /**
-   * Per environment type, the specifiers whose every import only erased
-   * code reads (`code`): that environment's compile does not evaluate them.
-   * Null when none is (always without `builders`).
-   */
-  erasedImports: {
-    client: ReadonlyArray<string>
-    server: ReadonlyArray<string>
-  } | null
-}
 
 export const DEFAULT_MARKERS: Record<string, 'server-only' | 'client-only'> = {
   'server-only': 'server-only',
@@ -314,14 +273,7 @@ export class ModuleAnalysis {
   readonly markers: Marker
   readonly sourceType: 'module' | 'script' | 'commonjs'
   readonly hasImportOrExport: boolean
-  /** The recognizer `effects()` reads (pure calls, builder chains). */
-  private readonly recognizer: RecognizerTable | undefined
   private readonly jsx: JsxDialect
-  /** `effects()`'s purity: of the module's own statements, and the recognizer's chain factories it imports (each environment's builder purity). */
-  private effectsPurity: {
-    own: PurityContext
-    builderImports: BuilderImports | null
-  } | null = null
   private tier1: Tier1 | null = null
   private readonly importByStatement = new Map<number, number>()
   /**
@@ -340,7 +292,6 @@ export class ModuleAnalysis {
     this.source = source
     this.path = opts.path
     this.header = analyzeHeader(file)
-    this.recognizer = opts.recognizer
     this.jsx = opts.jsx ?? 'react'
     const markers = opts.markerSpecifiers ?? DEFAULT_MARKERS
     const imports: Array<ImportEntry> = []
@@ -641,195 +592,6 @@ export class ModuleAnalysis {
     this.sourceType =
       file.sourceType === 'commonjs' ? 'commonjs' : file.program.sourceType
     this.hasImportOrExport = imports.length > 0 || exportEntries.length > 0
-  }
-
-  /**
-   * `effects()`'s purity, built when it is first asked (a compile never
-   * asks): the module's own statements' (pure exports of known packages,
-   * `#__NO_SIDE_EFFECTS__` declarations) and the recognizer's chain
-   * factories the module imports.
-   */
-  private purityForEffects(): NonNullable<ModuleAnalysis['effectsPurity']> {
-    if (this.effectsPurity !== null) {
-      return this.effectsPurity
-    }
-    const file = this.file
-    const noSideEffectCallees = new Set<number>()
-    const pureNamespaces = new Map<number, ReadonlySet<string>>()
-    let namespaceImports: Set<number> | null = null
-    const pureCalls = this.recognizer?.pureCalls
-    // the imports of the recognizer's chain factories (`BuilderImports`),
-    // in the same pass (a record's fields are decoded on every read)
-    const chains = this.recognizer?.builderLinks ? this.recognizer : null
-    const chainFactories = chains && factoryTable(chains)
-    let builderImports: BuilderImports | null = null
-    for (const record of file.imports) {
-      const local = record.local
-      if (local) {
-        if (record.typeOnly) {
-          continue
-        }
-        const kind = record.kind
-        if (kind === 'namespace') {
-          ;(namespaceImports ??= new Set()).add(local.id)
-        }
-        const specifier = pureCalls || chainFactories ? record.specifier : ''
-        // an import of a known package's pure export: before any
-        // statement is classified (a call may precede its hoisted import)
-        const pure = pureCalls && ownEntry(pureCalls, specifier)
-        const factories = chainFactories?.get(specifier)
-        const name = pure || factories ? record.name : null
-        if (pure) {
-          if (kind === 'namespace') {
-            pureNamespaces.set(local.id, pure)
-          } else if (kind === 'named' && name !== null && pure.has(name)) {
-            noSideEffectCallees.add(local.id)
-          }
-        }
-        if (factories) {
-          builderImports ??= {
-            table: chains!,
-            factories: new Map(),
-            namespaces: new Map(),
-          }
-          if (kind === 'namespace') {
-            builderImports.namespaces.set(local.name, {
-              binding: local.id,
-              factories,
-            })
-          } else if (kind === 'named' && name !== null) {
-            const factory = ownEntry(factories, name)
-            // (a chain's: other kinds need no per-environment purity)
-            if (
-              factory !== undefined &&
-              (ownEntry(chains!.builderLinks!, factory) !== undefined ||
-                ownEntry(chains!.envOnlyKinds, factory) !== undefined)
-            ) {
-              builderImports.factories.set(local.name, {
-                binding: local.id,
-                kind: factory,
-              })
-            }
-          }
-        }
-      }
-    }
-    if (
-      builderImports?.factories.size === 0 &&
-      builderImports.namespaces.size === 0
-    ) {
-      builderImports = null
-    }
-    const ownPurity: PurityContext = {
-      file,
-      comments: file.comments,
-      noSideEffectCallees,
-      pureNamespaces,
-      namespaceImports: namespaceImports ?? NO_NAMESPACES,
-      // (every context has the same shape: the per-environment ones below
-      // set it, and the purity checks run on both)
-      builders: undefined,
-    }
-    seedNoSideEffectDeclarations(
-      ownPurity,
-      noSideEffectCallees,
-      file.program.body,
-    )
-    this.effectsPurity = { own: ownPurity, builderImports }
-    return this.effectsPurity
-  }
-
-  /**
-   * The module's own effects, classified statement by statement (raw facts
-   * ask, for a module read as a target; a compile never does). The
-   * recognizer's builder chains are no effect per environment
-   * (`RecognizerTable.builderLinks`).
-   */
-  effects(): ModuleEffects {
-    const file = this.file
-    const body = file.program.body
-    const code: CodeEffects = { client: false, server: false }
-    const { own, builderImports } = this.purityForEffects()
-    // the purity of each environment type, with its builder chains
-    const envPurity = builderImports
-      ? ENV_TYPES.map((env) => builderPurityOf(own, builderImports, env))
-      : null
-    for (let i = this.header.directiveCount; i < body.length; i++) {
-      const stmt = body[i]!
-      // module loading is no effect of the module's own code (consumers
-      // follow `imports`)
-      if (loadsModule(stmt)) {
-        continue
-      }
-      if (code.client && code.server) {
-        continue
-      }
-      const declaration =
-        stmt.type === 'ExportNamedDeclaration' ||
-        stmt.type === 'ExportDefaultDeclaration'
-          ? stmt.declaration
-          : stmt
-      if (statementHasEffects(own, stmt)) {
-        if (!envPurity) {
-          code.client = code.server = true
-          continue
-        }
-        for (const p of envPurity) {
-          if (
-            !code[p.env] &&
-            // (a TS namespace's body has scopes of its own: the names of
-            // `BuilderPurity` are the module's)
-            (declaration?.type === 'TSModuleDeclaration' ||
-              statementHasEffects(p.ctx, stmt))
-          ) {
-            // a declaration only erased code reads is erased with it:
-            // decided once every statement was read
-            const names = erasableNames(stmt, this.source.code)
-            if (names) {
-              p.pending.push(names)
-            } else {
-              code[p.env] = true
-            }
-          }
-        }
-      }
-      if (envPurity && declaration?.type === 'VariableDeclaration') {
-        for (const { ctx } of envPurity) {
-          noteBuilderConsts(ctx, ctx.builders, declaration)
-        }
-      }
-    }
-    // per environment: the bindings only the arguments its compile erases
-    // read, transitively, are erased with them (the compile removes what its
-    // edits orphaned): their declarations' effects and their imports'
-    // evaluation do not count there
-    let erasedImports: { client: Array<string>; server: Array<string> } | null =
-      null
-    for (const p of envPurity ?? NO_ENV_PURITY) {
-      if (code[p.env]) {
-        continue
-      }
-      const erased = erasedBindings(
-        file,
-        body,
-        this.imports,
-        p.ctx.builders.erased,
-      )
-      if (!p.pending.every((names) => names.every((n) => erased.has(n)))) {
-        code[p.env] = true
-        continue
-      }
-      const specifiers = erasedImportSpecifiers(
-        this.imports,
-        this.reexports,
-        erased,
-      )
-      if (specifiers.length > 0) {
-        erasedImports ??= { client: [], server: [] }
-        erasedImports[p.env] = specifiers
-      }
-    }
-    return { code, erasedImports }
   }
 
   importIndexOfStatement(stmtStart: number): number | null {
@@ -1211,15 +973,6 @@ export class ModuleAnalysis {
   }
 }
 
-/** An import or re-export statement (it evaluates another module). */
-function loadsModule(stmt: Node): boolean {
-  return (
-    stmt.type === 'ImportDeclaration' ||
-    stmt.type === 'ExportAllDeclaration' ||
-    (stmt.type === 'ExportNamedDeclaration' && stmt.source !== null)
-  )
-}
-
 interface ImportUses {
   live: boolean
   /** Statically read member names (namespace bindings). */
@@ -1501,250 +1254,4 @@ function classify(
       }
       return { kind: ref.isWrite ? 'write' : 'value', ctx: 'plain' }
   }
-}
-
-/**
- * The names a statement declares when only erased code may read them: a
- * module-level `const` of plain identifiers (an exported one is read by its
- * importers). Not one with `await` in its text: an async module delays its
- * importers' evaluation, whatever reads it.
- */
-function erasableNames(stmt: Node, code: string): Array<string> | null {
-  if (
-    stmt.type !== 'VariableDeclaration' ||
-    stmt.kind !== 'const' ||
-    code.slice(stmt.start, stmt.end).includes('await')
-  ) {
-    return null
-  }
-  const names: Array<string> = []
-  for (const d of stmt.declarations) {
-    if (d.id.type !== 'Identifier') {
-      return null
-    }
-    names.push(d.id.name)
-  }
-  return names
-}
-
-/**
- * The names of the module-level bindings (value imports, unexported
- * `const`s and function declarations) the erasure of `erased` orphans:
- * every value read of one lies in `erased` or in the declaration of
- * another, and a chain of such reads reaches it from `erased`. A binding
- * nothing reads, or only code unreferenced in the source reads, is never
- * one (that code stays). By name: module-level names are unique.
- */
-function erasedBindings(
-  file: SourceFile,
-  body: ReadonlyArray<Node>,
-  imports: ReadonlyArray<ImportEntry>,
-  erased: ReadonlyArray<{ start: number; end: number }>,
-): Set<string> {
-  if (erased.length === 0) {
-    return new Set()
-  }
-  const exported = new Set<string>()
-  for (const record of file.exports) {
-    if (record.local) {
-      exported.add(record.local.name)
-    }
-  }
-  const importBindings = new Map<string, Binding>()
-  for (const record of file.imports) {
-    if (record.local && !record.typeOnly) {
-      importBindings.set(record.local.name, record.local)
-    }
-  }
-  /** Candidate name → its declaration's range (none for an import). */
-  const declared = new Map<string, { start: number; end: number } | null>()
-  for (const imp of imports) {
-    if (imp.typeOnly || imp.bare) {
-      continue
-    }
-    for (const spec of imp.specifiers) {
-      if (!spec.typeOnly) {
-        declared.set(spec.localName, null)
-      }
-    }
-  }
-  for (const stmt of body) {
-    if (stmt.type === 'VariableDeclaration' && stmt.kind === 'const') {
-      for (const d of stmt.declarations) {
-        if (d.id.type === 'Identifier') {
-          declared.set(d.id.name, { start: d.start, end: d.end })
-        }
-      }
-    } else if (stmt.type === 'FunctionDeclaration' && stmt.id) {
-      declared.set(stmt.id.name, { start: stmt.start, end: stmt.end })
-    }
-  }
-  // only a binding whose name the erased text (or a declaration it reaches)
-  // holds can be read there: no other binding's references are read (each
-  // reference's node is built on demand)
-  const named = new Set<string>()
-  let unnamed = [...declared.keys()].filter((name) => !exported.has(name))
-  let text = erased.map((r) => file.source.slice(r.start, r.end)).join('\n')
-  while (text !== '' && unnamed.length > 0) {
-    const rest: Array<string> = []
-    const added: Array<string> = []
-    for (const name of unnamed) {
-      if (text.includes(name)) {
-        named.add(name)
-        const d = declared.get(name)
-        if (d) {
-          added.push(file.source.slice(d.start, d.end))
-        }
-      } else {
-        rest.push(name)
-      }
-    }
-    unnamed = rest
-    // (the next round looks in the declarations just reached)
-    text = added.join('\n')
-  }
-  const reads = new Map<string, Array<number>>()
-  for (const name of named) {
-    const binding =
-      declared.get(name) === null
-        ? importBindings.get(name)
-        : file.rootScope.find(name)
-    const at = (binding?.references ?? [])
-      .filter((r) => !r.inTypePosition)
-      .map((r) => r.node.start)
-    if (at.length > 0) {
-      reads.set(name, at)
-    }
-  }
-  const inside = (
-    at: number,
-    ranges: Iterable<{ start: number; end: number } | null | undefined>,
-  ) => {
-    for (const r of ranges) {
-      if (r && at >= r.start && at < r.end) {
-        return true
-      }
-    }
-    return false
-  }
-  let set = new Set(reads.keys())
-  for (let changed = true; changed; ) {
-    changed = false
-    // every read inside the erased code
-    const ranges = [...erased, ...[...set].map((n) => declared.get(n))]
-    for (const name of set) {
-      if (!reads.get(name)!.every((at) => inside(at, ranges))) {
-        set.delete(name)
-        changed = true
-      }
-    }
-    // reached from the erased arguments
-    const reached = new Set<string>()
-    for (let grew = true; grew; ) {
-      grew = false
-      const from = [...erased, ...[...reached].map((n) => declared.get(n))]
-      for (const name of set) {
-        if (
-          !reached.has(name) &&
-          reads.get(name)!.some((at) => inside(at, from))
-        ) {
-          reached.add(name)
-          grew = true
-        }
-      }
-    }
-    if (reached.size < set.size) {
-      set = reached
-      changed = true
-    }
-  }
-  return set
-}
-
-/** The specifiers whose every value import binds only `erased` bindings, and that nothing re-exports. */
-function erasedImportSpecifiers(
-  imports: ReadonlyArray<ImportEntry>,
-  reexports: ReadonlyArray<ReexportEntry>,
-  erased: ReadonlySet<string>,
-): Array<string> {
-  const kept = new Set<string>()
-  const dropped = new Set<string>()
-  for (const imp of imports) {
-    if (imp.typeOnly) {
-      continue
-    }
-    const values = imp.specifiers.filter((spec) => !spec.typeOnly)
-    if (
-      !imp.bare &&
-      values.length > 0 &&
-      values.every((spec) => erased.has(spec.localName))
-    ) {
-      dropped.add(imp.specifier)
-    } else if (imp.bare || values.length > 0) {
-      kept.add(imp.specifier)
-    }
-  }
-  for (const r of reexports) {
-    if (!r.typeOnly) {
-      kept.add(r.specifier)
-    }
-  }
-  return [...dropped].filter((spec) => !kept.has(spec))
-}
-
-const NO_ENV_PURITY: ReadonlyArray<never> = []
-
-/** The recognizer's chain factories a module imports, by local name and binding (`BuilderPurity.factories`, `namespaces`). */
-interface BuilderImports {
-  table: RecognizerTable
-  factories: Map<string, { binding: number; kind: string }>
-  namespaces: Map<
-    string,
-    { binding: number; factories: Readonly<Record<string, string>> }
-  >
-}
-
-const ENV_TYPES = ['client', 'server'] as const
-
-/** The purity of one environment type with the recognizer's builder chains the module imports. */
-function builderPurityOf(
-  purity: PurityContext,
-  imports: BuilderImports,
-  env: 'client' | 'server',
-) {
-  const table = imports.table
-  return {
-    env,
-    ctx: {
-      ...purity,
-      builders: {
-        env,
-        links: table.builderLinks!,
-        envOnly: table.envOnlyKinds,
-        factories: imports.factories,
-        namespaces: imports.namespaces,
-        terminal: table.terminal,
-        locals: new Map<string, string>(),
-        erased: [],
-      },
-    } satisfies PurityContext,
-    /** Names of the `const` declarations with effects only erased code may read (`erasableNames`). */
-    pending: [] as Array<Array<string>>,
-  }
-}
-
-const factoryTables = new WeakMap<
-  RecognizerTable,
-  Map<string, Readonly<Record<string, string>>>
->()
-/** The recognizer's factories by specifier (a `Map`: looked up for every import of every module read). */
-function factoryTable(
-  table: RecognizerTable,
-): Map<string, Readonly<Record<string, string>>> {
-  let map = factoryTables.get(table)
-  if (!map) {
-    map = new Map(Object.entries(table.factories))
-    factoryTables.set(table, map)
-  }
-  return map
 }

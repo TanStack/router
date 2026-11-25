@@ -248,13 +248,14 @@ export const cases: Array<WitnessCase> = [
     expect: { 'src/entry.ts -> ./effect.server': true },
   },
   {
-    // The real program drops the pure target entirely.
+    // A bare import says the module runs: a violation wherever its importer
+    // is evaluated, whatever the module does.
     name: 'a side-effect import of a pure module',
     files: {
       'src/effect.server.ts': SECRET,
       'src/entry.ts': `import './effect.server'\n` + log(`'client'`),
     },
-    expect: { 'src/entry.ts -> ./effect.server': false },
+    expect: { 'src/entry.ts -> ./effect.server': true },
   },
   {
     // Side-effect import in a module that is otherwise unused: its effects
@@ -373,8 +374,8 @@ export const cases: Array<WitnessCase> = [
     expect: { 'src/entry.js -> ./corpus.server': false },
   },
   {
-    // Unused binding, effectful target: the real program runs the target's
-    // top-level code, so the import edge is kept (as an evaluation edge).
+    // Unused binding, effectful target: the mock alone decides, and nothing
+    // reads it (the build warns that the mocked import was dropped).
     name: 'an unused binding of an effectful module (JavaScript)',
     entry: 'src/entry.js',
     files: {
@@ -384,7 +385,7 @@ export const cases: Array<WitnessCase> = [
         `import { secret } from './secret.server'\n` +
         log(`'client', globalThis.secretLoaded`),
     },
-    expect: { 'src/entry.js -> ./secret.server': true },
+    expect: { 'src/entry.js -> ./secret.server': false },
   },
   {
     // Same, but the effectful target is also imported by an exempt importer:

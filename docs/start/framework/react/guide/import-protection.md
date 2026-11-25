@@ -122,7 +122,7 @@ A marker is a statement of its file, so it holds wherever the file is and whoeve
 
 - It is honoured in every package: your app, a workspace package, an installed package (`excludeFiles` skips file-name rules only).
 - It denies the file to every importer that `exclude` or `ignoreImporters` does not exempt and [`allowImport`](#the-allowimport-callback) does not allow, including a module outside `srcDirectory` and a module of an installed package. A package module the compiler does not compile (a barrel that re-exports the marked file, say) is reported at its import of the file, and a build with the `error` behavior fails. File names (`*.server.*`) keep their scope: see [Limitations](#limitations).
-- A bare import of a marked file (`import './secrets'`) says that its code runs: it is a violation where the import survives, even in a package that declares `"sideEffects": false`. A marked barrel that only re-exports is judged by what the client uses of it.
+- A bare import of a marked file (`import './secrets'`) says that its code runs: it is a violation wherever its importer runs, even in a package that declares `"sideEffects": false`. A marked barrel that only re-exports is judged by what the client uses of it.
 - A `?raw` import of a marked file is denied like any other import of it.
 
 To take a marked file of a package as it is, list the package's module that imports it in `ignoreImporters`, or allow the file in `allowImport` (asked about the file itself, see [The `allowImport` Callback](#the-allowimport-callback)). In dev, a package barrel that re-exports a marked file is served with the file's mock and one warning, even when a build would drop the re-export: the dev server does not tree-shake, as for your own barrels ([Mixed Barrels](#mixed-barrels-and-split-entry-points)).
@@ -613,11 +613,13 @@ If you see an import-protection violation for a file you expected to be "compile
 
 ## False Positives: Dev vs Build
 
-In **build mode**, import protection defers violation checks until after tree-shaking. If an import is eliminated from the final bundle, no violation is reported. Build-time violations are definitive, with one exception: an import of a denied file whose module runs top-level code (a side effect) is reported even when nothing uses what it imports, because loading the module would run that code. A statement behind a development-only guard (`if (import.meta.env.DEV)`, `process.env.NODE_ENV !== 'production'`) counts too, though the production bundle would not run it.
+In **build mode**, import protection defers violation checks until after tree-shaking, and decides on the mock: a denied import is replaced by its mock, and it is a violation when the bundle uses what the mock stands in for. What the denied module itself would do does not count: it never ships. A bare import (`import './secrets.server'`) is a violation wherever its importer runs, since it is written for the module's side effects.
+
+If tree-shaking removes every use of a denied import, no violation is reported and the build does not fail. The build prints one warning per denied module instead, naming the module and one importer with its import chain: the import was mocked and nothing of the module shipped, but the client still imports it, so move the import out of client code. An import TypeScript erased because it was used only as a type gets the same warning (write it as `import type`).
 
 In **dev mode**, tree-shaking may be incomplete or unavailable, so import protection can report false positives for imports that would later be compiled away.
 
-If a warning appears in dev but not build, that usually means the unsafe edge existed before tree-shaking but did not survive the final bundle. Even so, prefer changing the import structure so that edge does not exist in the first place.
+If dev reports a violation where the build only warns that the mocked import was dropped, the unsafe edge existed before tree-shaking but did not survive the final bundle. Even so, prefer changing the import structure so that edge does not exist in the first place.
 
 ## Mixed Barrels and Split Entry Points
 
@@ -662,9 +664,9 @@ import { fetchUsers } from '../lib'
 import { getDb } from '../lib/server'
 ```
 
-The same applies to marker-protected files (`import '@tanstack/react-start/server-only'`). If a marked file is re-exported through a mixed barrel but never consumed by client code, production may suppress the warning after tree-shaking, but the better fix is still to avoid exposing that server-only edge to client-reachable code at all.
+The same applies to marker-protected files (`import '@tanstack/react-start/server-only'`). If a marked file is re-exported through a mixed barrel but never consumed by client code, a build reports no violation after tree-shaking, only the warning that the mocked import was dropped, but the better fix is still to avoid exposing that server-only edge to client-reachable code at all.
 
-A re-export that nothing uses still fails the build when the denied file has a top-level side effect, even one only development runs, such as a warning behind `if (import.meta.env.DEV)`: split the barrel as above.
+A re-export that nothing uses never fails the build, whatever the denied file runs at its top level: the client gets the mock, and the build warns about the dropped import. Split the barrel as above to silence it.
 
 ## The `onViolation` Callback
 

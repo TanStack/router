@@ -7,6 +7,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
+import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
@@ -69,11 +70,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // imports, and report violations the client never reaches.
   // Source: review (the check "returns mock code" of virtualModules.test.ts
   // asserted the purity annotations as text).
-  // Judged by what the user sees: no report on any channel, no code or effect
-  // of the module in the bundle; not by comparing the bundle's statements with
+  // Judged by what the user sees: no violation, one warning that the mocked
+  // import was dropped (SPEC J6.4), no code or effect of the module in the
+  // bundle; not by comparing the bundle's statements with
   // another build's. The live-denial controls show the same harness sees a used
   // mock: its report, its safe value, and the real value without protection.
-  test('in mock mode, an unused denied module leaves nothing in the client bundle and no warning', async () => {
+  test('in mock mode, an unused denied module leaves nothing in the client bundle and no violation', async () => {
     // (one build at a time: a Vite build runs in its app's directory)
     const mocked = await buildStart({
       bundler,
@@ -108,9 +110,15 @@ describe.each(startBundlers)('%s build', (bundler) => {
     expect(
       (await usedDisabled.client.run('return entry.size()')).result,
     ).toContain('MARK_CORPUS')
-    // Nothing reported, on any channel
+    // No violation; the one warning names the denied module
     expect(reportedViolations(mocked)).toEqual([])
-    expect(problems(mocked.diagnostics).map(({ text }) => text)).toEqual([])
+    expect(problems(mocked.diagnostics)).toHaveLength(1)
+    expectDiagnostic(mocked.diagnostics, {
+      severity: 'warning',
+      file: 'src/corpus.ts',
+      root: mocked.root,
+      times: 1,
+    })
     expect(mocked.client.where('MARK_CORPUS')).toBe('nowhere')
     expect(
       (await mocked.client.run('return globalThis.corpusInitialized ?? null'))

@@ -1,7 +1,7 @@
 /**
  * `RawFacts`: the one owner of raw module text per canonical id (see
  * README.md, "Caches and invalidation"). Serves summaries (raw domain) and J6
- * target facts (marker, export names, effect classification) from the same
+ * target facts (marker, export names, imports) from the same
  * read. Content-addressed, lazily built, invalidated by the watcher through
  * `markStale`.
  *
@@ -36,7 +36,7 @@ import { buildSummary, exportKeysOf } from './summary'
 import { ownEntry } from './strings'
 import { EMPTY_RECOGNIZER, isKnownSpecifier } from './values'
 import { approxBytes, cacheDisabled } from './stats'
-import type { CodeEffects, JsxDialect } from './analysis'
+import type { JsxDialect } from './analysis'
 import type { ModuleSummary } from './summary'
 import type { AbstractValue, RecognizerTable } from './values'
 
@@ -55,10 +55,6 @@ export interface TargetFacts {
   esm: boolean
   /** Its directive prologue holds `'use client'`: where server components render, an import of it is a client reference. */
   useClient: boolean
-  /** Per environment type, whether its own statements have effects there, module loading (`imports`) aside (`ModuleAnalysis.effects().code`). */
-  codeEffects: CodeEffects
-  /** Per environment type, the `imports` its compile does not evaluate: only code it erases reads them (`ModuleAnalysis.effects().erasedImports`; absent when none is). */
-  erasedImports?: { client: Array<string>; server: Array<string> }
   digest: string
 }
 
@@ -102,14 +98,11 @@ interface RawFactsOptions {
   modifiedAt?: (path: string) => Promise<number | null>
 }
 
-/** Effects in every environment: what is unknown of a module. */
-const ALL_EFFECTS: CodeEffects = { client: true, server: true }
-
 /** Whether a module is virtual: its raw text is the host's `loadVirtual`, not a file's. */
 export const isVirtualId = (canonicalId: string): boolean =>
   canonicalId.startsWith('\0') || canonicalId.startsWith('virtual:')
 
-/** The target facts of an opaque module before anyone asks for them: exists, no marker, otherwise unknown (effectful). */
+/** The target facts of an opaque module before anyone asks for them: exists, no marker, otherwise unknown. */
 const OPAQUE_TARGET: Omit<TargetFacts, 'digest'> = {
   exists: true,
   marker: null,
@@ -119,7 +112,6 @@ const OPAQUE_TARGET: Omit<TargetFacts, 'digest'> = {
   lazyImports: [],
   esm: false,
   useClient: false,
-  codeEffects: ALL_EFFECTS,
 }
 
 const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
@@ -131,7 +123,6 @@ const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
   lazyImports: [],
   esm: false,
   useClient: false,
-  codeEffects: ALL_EFFECTS,
 }
 
 /** (computed once: an opaque module's read is on every package module's path) */
@@ -231,11 +222,6 @@ export class RawFactsCache {
   /** The JSX dialect every analysis of this session reads. */
   get jsx(): JsxDialect | undefined {
     return this.opts.jsx
-  }
-
-  /** The recognizer every analysis of this session uses (its pure calls; a compile's builder chains). */
-  get recognizer(): RecognizerTable | undefined {
-    return this.opts.recognizer
   }
 
   /**
@@ -696,7 +682,6 @@ export class RawFactsCache {
       lazyImports: [],
       esm: true,
       useClient: false,
-      codeEffects: { client: false, server: false },
     }
     return {
       summary: {
@@ -835,7 +820,6 @@ export class RawFactsCache {
         lazyImports: [],
         esm: false,
         useClient: false,
-        codeEffects: ALL_EFFECTS,
       }
       return {
         summary: null,
@@ -845,7 +829,6 @@ export class RawFactsCache {
     const analysis = new ModuleAnalysis(parsed.file, parsed.source, {
       path: id.path,
       markerSpecifiers: this.opts.markerSpecifiers,
-      recognizer: this.opts.recognizer,
       jsx: this.opts.jsx,
     })
     return this.fromAnalysis(analysis)
@@ -857,7 +840,6 @@ export class RawFactsCache {
       this.opts.recognizer ?? EMPTY_RECOGNIZER,
     )
     const exportNames = Object.keys(summary.exports).sort()
-    const effects = analysis.effects()
     // a marker import (`import '@tanstack/react-start/server-only'`) declares
     // the module's environment: it evaluates nothing
     const markers = this.opts.markerSpecifiers ?? DEFAULT_MARKERS
@@ -888,13 +870,6 @@ export class RawFactsCache {
       useClient: analysis.header.directives.some(
         (d) => d.value === 'use client',
       ),
-      codeEffects: effects.code,
-      ...(effects.erasedImports && {
-        erasedImports: {
-          client: [...effects.erasedImports.client],
-          server: [...effects.erasedImports.server],
-        },
-      }),
     }
     return {
       summary,

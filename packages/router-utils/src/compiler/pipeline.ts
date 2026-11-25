@@ -596,7 +596,6 @@ async function runAttempt(
   const t0 = new ModuleAnalysis(parsed.file, parsed.source, {
     path: identity.path,
     markerSpecifiers: host.rawFacts.markerSpecifiers,
-    recognizer: host.rawFacts.recognizer,
     jsx: host.rawFacts.jsx,
   })
   const cjs = t0.sourceType !== 'module' || isCommonJsPath(identity.path)

@@ -901,11 +901,18 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   sets `mockAccess: 'off'`. Rsbuild: a module a child compiler builds (a worker or service-worker plugin's) gets
   no mock: its violation fails the build at the import, whatever the behaviour, and `allowImport` is not asked
   (ruling of review round 3, F1).
-- **J6.4 Only surviving edges are reported.** Build: violations are decided after compilation and tree-shaking.
-  Dev: an edge the Start compiler itself removed from the importer's output (handler-only, `.server()`-only,
-  server-only-fn-only imports) is not a violation and is neither reported nor mocked, whatever the request order,
-  warm-up, pre-transform, lookup requests or full-bundle mode; edges that only bundler tree-shaking would remove may
-  still be reported in dev.
+- **J6.4 Only surviving edges are reported.** Build: violations are decided after compilation and tree-shaking, on
+  the mock alone: an import is a violation when its mock survives (the bundle uses a binding of it), whatever the
+  denied module itself would do; nothing predicts the real module's effects. A bare import (`import './x.server'`,
+  not of an asset query) is a violation wherever its importer is evaluated, whatever `sideEffects` declares. A denied
+  module the environment's importers import (an importer reached from an entry) whose mocks all were dropped, or that
+  the importer's TypeScript transform erased, is no violation (no `onViolation`, no failure under `error`): the
+  build warns once per denied module, naming it and one importer with its chain (wording free, J6.12), and nothing
+  of it ships. The warning is not exhaustive. Dev: an edge the Start compiler itself removed from the importer's
+  output (handler-only, `.server()`-only, server-only-fn-only imports) is not a violation and is neither reported
+  nor mocked, whatever the request order, warm-up, pre-transform, lookup requests or full-bundle mode; edges that
+  only bundler tree-shaking would remove may still be reported in dev: dev reports each mock it serves as a
+  violation, once, and has no dropped-import warning.
 - **J6.5 Report content.** Environment type, the matching rule, the importer's `file:line:col` in the _original_
   source (through source maps, also for non-JS sources and other plugins' rewrites) where the location is
   source-derived, the raw specifier, the resolved path and the import chain from an entry (cut at `maxTraceDepth`)

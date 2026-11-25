@@ -78,23 +78,10 @@ export interface RecognizerTable {
   /** Members of a start instance that are factories. */
   startMembers?: Record<string, Kind>
   /**
-   * specifier → exports whose call is pure when its arguments are
-   * (TanStack's own APIs and Solid's `lazy`, audited
-   * per package by the planner that supplies them). Recognised by import binding (renamed, or a namespace member),
-   * never by spelling; re-exports are not followed; nothing else is assumed
-   * pure.
-   */
-  pureCalls?: Record<string, ReadonlySet<string>>
-  /**
    * Builder kind → the link methods of its runtime builder → the
    * environment whose compile keeps the method's argument (`both`: every
-   * one; a planner erases it from the other). A builder only records what
-   * its links are given, so a chain of these from a factory call (or from a
-   * module-level `const` holding one) with pure arguments is no effect, and
-   * an argument the environment erases is not evaluated there; an env-only
-   * kind's argument is kept in its environment alone (`envOnlyKinds`). Read
-   * by the per-environment code effects of raw facts (import protection's
-   * effect model).
+   * one; a planner erases it from the other). Read by the planners that
+   * tell server-only arguments (`serverCodeArgs`).
    */
   builderLinks?: Record<Kind, Record<string, 'client' | 'server' | 'both'>>
 }

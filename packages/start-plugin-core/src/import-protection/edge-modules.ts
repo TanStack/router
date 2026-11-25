@@ -5,10 +5,10 @@
  *
  * - `mock`: a pure module that owns its exports (string export names: any
  *   spelling), each a `/* @__PURE__ *\/` mock creation, plus one `__fx(…)`
- *   call (the effect witness) when the denied target has top-level effects.
- *   It is the survival witness in builds: bundlers keep an owned
- *   export only where the importer's binding survives, and keep `__fx` only
- *   where the importer is evaluated.
+ *   call for a bare import (`EdgeModuleContent.runs`). It is the survival
+ *   witness in builds: bundlers keep an owned export only where the
+ *   importer's binding survives, and keep `__fx` only where the importer is
+ *   evaluated. What the denied module itself does is not read.
  * - `allowed` (`allowImport` → true): a transparent re-export of the real
  *   module, side effects left to the bundler. The mock is never produced for
  *   it: the host asks before it loads the module (`ImportProtectionEnv.confirm`).
@@ -129,20 +129,15 @@ const CONTENT_QUERY = 'tss-ip='
 
 /**
  * The query flag of an Rspack edge module that stands for a bare import of
- * a marked module: it has effects whatever the `sideEffects` of the
+ * a denied module: it has effects whatever the `sideEffects` of the
  * package its virtual file is under (the app's) declares, so the bundler
  * keeps it where the importer keeps the import (D-c). The host's rule for
- * it is `RUNS_MARKED_EDGE_QUERY`.
+ * it is `RUNS_EDGE_QUERY`.
  */
-const RUNS_MARKED_FLAG = 'tss-ip-runs'
+const RUNS_FLAG = 'tss-ip-runs'
 
-/** Rspack's resource query condition of an edge module `RUNS_MARKED_FLAG` flags. */
-export const RUNS_MARKED_EDGE_QUERY = new RegExp(`^\\?${RUNS_MARKED_FLAG}&`)
-
-/** Whether an edge module stands for a bare import of a marked module (`EdgeModuleContent.runs`, `RUNS_MARKED_FLAG`). */
-export function runsMarked(content: EdgeModuleContent): boolean {
-  return content.runs === true
-}
+/** Rspack's resource query condition of an edge module `RUNS_FLAG` flags. */
+export const RUNS_EDGE_QUERY = new RegExp(`^\\?${RUNS_FLAG}&`)
 
 /**
  * Rspack ids: virtual files under `dir` (e.g.
@@ -162,7 +157,7 @@ export function rspackEdgeModuleIds(dir: string): EdgeModuleIds {
   const ids: EdgeModuleIds = {
     specifier: (ref) => `${prefix}${edgeModuleName(ref)}.mjs`,
     request: (key, content) =>
-      `${ids.specifier({ env: content.env, kind: 'edge', key })}?${runsMarked(content) ? `${RUNS_MARKED_FLAG}&` : ''}${CONTENT_QUERY}${Buffer.from(canonicalJson(content)).toString('base64url')}`,
+      `${ids.specifier({ env: content.env, kind: 'edge', key })}?${content.runs ? `${RUNS_FLAG}&` : ''}${CONTENT_QUERY}${Buffer.from(canonicalJson(content)).toString('base64url')}`,
     content(request) {
       const ref = ids.parse(request)
       const q = Math.max(
@@ -211,8 +206,6 @@ export interface EdgeModuleContent {
   file: string | null
   /** Mock export names besides `default`, sorted: the target's export names and every name the importer reads. */
   names: Array<string>
-  /** The target has top-level effects: the mock carries the effect witness. */
-  effectful: boolean
   /** The real module (canonical id) the allowed state re-exports; null when it did not resolve. */
   resolved: string | null
   /** The allowed state re-exports `default` too. */
@@ -220,8 +213,9 @@ export interface EdgeModuleContent {
   /** The edge only evaluates the module (bare import): the allowed state imports it for its effects. */
   bare: boolean
   /**
-   * A bare import of a marked module: it runs the module, so its edge module
-   * keeps the effect witness whatever `sideEffects` declares (D-c).
+   * A bare import (not of an asset query): it runs the module, so its mock
+   * keeps the `__fx` witness, whatever `sideEffects` declares (D-c), and
+   * survives wherever its importer is evaluated.
    */
   runs?: true
   /** The rule that denied it: `allowImport` is told, even for an importer a persistent cache restored whose record is not read yet. */
@@ -273,8 +267,8 @@ function productionLabel(
 }
 
 /**
- * The mock state of an edge module (pure; owns its exports; the effect
- * witness when the target is effectful). Its metadata is what the runtime
+ * The mock state of an edge module (pure; owns its exports; the `__fx`
+ * witness for a bare import). Its metadata is what the runtime
  * of `production` (`mockRuntimeCode`) reads: in production, only the name
  * its report gives (`productionLabel`); in dev, the environment by the name
  * reports give it (`publicName`).
@@ -310,7 +304,7 @@ export function mockModuleCode(
     lines.push(`export { ${exported.join(', ')} };`)
   }
   lines.push(`export default /* @__PURE__ */ __mk(m, "default");`)
-  if (content.effectful) {
+  if (content.runs) {
     lines.push(`__fx(m);`)
   }
   return `${lines.join('\n')}\n`
@@ -343,7 +337,7 @@ export function allowedModuleCode(
  * `mock.foo().then(…)` runs its callback, with a mock that is not itself
  * thenable: a thenable resolving to itself makes `await` loop in microtasks,
  * freezing the tab or the whole server;
- * `__fx` is the effect witness (a call no bundler can prove pure; no
+ * `__fx` is a bare import's witness (a call no bundler can prove pure; no
  * global, nothing logged).
  */
 export function mockRuntimeCode(

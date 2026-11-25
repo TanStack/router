@@ -2,8 +2,8 @@
  * Survival witness readers: which edge modules survived tree-shaking, read from
  * the bundler after linking, and the bundler's graph for traces. An edge module
  * survives when it owns a used export (`renderedExports` on Rolldown, used
- * exports on Rspack) or, when its target is effectful, when it is in a chunk at
- * all (the `__fx` effect witness is kept iff its importer is evaluated).
+ * exports on Rspack) or, for a bare import, when it is in a chunk at all (its
+ * `__fx` witness is kept iff its importer is evaluated).
  *
  * Structural types only: the readers take what Vite's `generateBundle` and
  * Rspack's `processAssets` hand the host.
@@ -13,10 +13,10 @@ import type { EdgeModuleIds } from './edge-modules'
 import type { GraphNode, NodeGraph } from './graph-trace'
 import type { RspackImportProtectionBuildInfo } from './violations'
 
-/** An edge module as the readers see it: its key and whether its target is effectful. */
+/** An edge module as the readers see it: its key and whether it stands for a bare import (`EdgeModuleContent.runs`). */
 interface WitnessModule {
   key: string
-  effectful: boolean
+  runs: boolean
 }
 
 export type WitnessLookup = (idOrResource: string) => WitnessModule | null
@@ -25,15 +25,15 @@ export type WitnessLookup = (idOrResource: string) => WitnessModule | null
 export function witnessLookup(
   ids: EdgeModuleIds,
   env: string,
-  effectfulOf: (key: string) => boolean | null,
+  runsOf: (key: string) => boolean | null,
 ): WitnessLookup {
   return (id) => {
     const ref = ids.parse(id)
     if (!ref || ref.kind !== 'edge' || ref.env !== env) {
       return null
     }
-    const effectful = effectfulOf(ref.key)
-    return effectful === null ? null : { key: ref.key, effectful }
+    const runs = runsOf(ref.key)
+    return runs === null ? null : { key: ref.key, runs }
   }
 }
 
@@ -67,7 +67,7 @@ export function readRolldownWitness(
     }
     for (const [id, m] of Object.entries(out.modules)) {
       const edge = lookup(id)
-      if (edge && (m.renderedExports.length > 0 || edge.effectful)) {
+      if (edge && (m.renderedExports.length > 0 || edge.runs)) {
         live.add(edge.key)
       }
     }
@@ -199,7 +199,7 @@ export type RspackEnvOf = (
  * The keys of the edge modules that survived an Rspack compilation
  * (`processAssets`, any stage: graph readings do not depend on it), by
  * compile environment (`envOf`; `lookups`: each environment's), sorted. Only modules in a chunk can survive (concatenated
- * inner modules included); a used export or an effectful target makes it
+ * inner modules included); a used export or a bare import makes it
  * live; `null` used exports (usedExports off) leave it to inclusion. A file
  * in two layers is a module of each environment.
  */
@@ -241,7 +241,7 @@ export function readRspackWitness(
       used === true ||
       used === null ||
       (Array.isArray(used) && used.length > 0) ||
-      edge.effectful
+      edge.runs
     ) {
       let keys = live.get(env)
       if (!keys) {
