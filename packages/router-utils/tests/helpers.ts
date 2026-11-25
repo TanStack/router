@@ -9,6 +9,7 @@ import {
   createCompilerCaches,
   invalidate,
   sameFileSpecifier,
+  settleModule,
 } from '../src/compiler'
 import type {
   CompileInput,
@@ -21,6 +22,7 @@ import type {
   PlanContext,
   Planner,
   Range,
+  Settlement,
   SymbolId,
   Unit,
 } from '../src/compiler'
@@ -592,34 +594,54 @@ export class MemoryHost implements HostServices {
     planners: Array<Planner>,
     extra: Partial<CompileInput> = {},
   ): Promise<CompileOutput | null> {
+    const input = this.inputOf(id, planners, extra)
+    const out = compileModule(input, this, this.caches)
+    if (!compileLog.enabled) {
+      return out
+    }
+    return out.then((o) => {
+      compileLog.entries.push({ code: input.code, out: o })
+      return o
+    })
+  }
+
+  /** `settleModule` of a request as `compile` makes it; `use` runs while it is open. */
+  settle<T>(
+    id: string,
+    planners: Array<Planner>,
+    use: (settlement: Settlement) => T | Promise<T>,
+    extra: Partial<CompileInput> = {},
+  ): Promise<T> {
+    return settleModule(
+      this.inputOf(id, planners, extra),
+      this,
+      this.caches,
+      use,
+    )
+  }
+
+  private inputOf(
+    id: string,
+    planners: Array<Planner>,
+    extra: Partial<CompileInput>,
+  ): CompileInput {
     const path = id.split('?')[0]!
     const code = extra.code ?? this.files[path]
     if (code === undefined) {
       throw new Error(`no such file: ${path}`)
     }
-    const out = compileModule(
-      {
-        id,
-        code,
-        inputMap: extra.inputMap,
-        lang: extra.lang,
-        inPlace: extra.inPlace,
-        env: extra.env ?? envInfo(),
-        planners,
-        config: extra.config ?? { configKey: 'cfg', perPlanner: {} },
-        wantMap: extra.wantMap ?? true,
-        lines: extra.lines,
-      },
-      this,
-      this.caches,
-    )
-    if (!compileLog.enabled) {
-      return out
+    return {
+      id,
+      code,
+      inputMap: extra.inputMap,
+      lang: extra.lang,
+      inPlace: extra.inPlace,
+      env: extra.env ?? envInfo(),
+      planners,
+      config: extra.config ?? { configKey: 'cfg', perPlanner: {} },
+      wantMap: extra.wantMap ?? true,
+      lines: extra.lines,
     }
-    return out.then((o) => {
-      compileLog.entries.push({ code, out: o })
-      return o
-    })
   }
 }
 

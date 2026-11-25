@@ -169,15 +169,6 @@ export interface CompileOutput {
   persisted: PersistedPlan | null
   /** The output the request mapped to. */
   output: OutputId
-  /**
-   * The text this output was compiled from was superseded while it was
-   * answered (a request of another text of the module, or a file event
-   * that read another text, removed the file or cannot compare its text),
-   * and its plan was not published. A host publishes nothing of it that a
-   * newer compile may have published (the newer text's facts stand) or
-   * that the file's removal took away.
-   */
-  superseded?: true
 }
 
 /** `HostServices.modifiedAt` for a host whose modules are files on disk. */

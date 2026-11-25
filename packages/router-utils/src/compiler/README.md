@@ -313,7 +313,7 @@ directives, never license comments.
 - `RawFactsCache` retains, per canonical id, the facts of one read and its revision, and serves summaries and
   import-protection _target facts_ (marker, export names, effect classification, evaluation and lazy imports) from it.
 
-## Pipeline (`pipeline.ts` `compileModule`)
+## Pipeline (`pipeline.ts` `settleModule`)
 
 | phase | what                                                                                                                                                                                                                                                                                                        |
 | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -324,8 +324,12 @@ directives, never license comments.
 
 Tier 1 (units, symbols, classified references) is built only when a planner needs it. Phase C restarts the compile
 (up to 3 attempts) when a dependency changed underneath it; a compile overtaken by a newer revision of its own file, or
-by its file's event, is returned but not published, and an output answered at a superseded revision says so (`CompileOutput.superseded`: a
-host publishes nothing of it, such as Start's server-function registry). A revision is newer by its request's arrival, noted once: a request that waits (a plan hit's
+by its file's event, is returned but not published. A request settles on the module untouched or compiled (a derived id
+of an untouched module is the empty module) and its host acts on it while the request is open (`settleModule(input,
+host, caches, use)`; `compileModule` is its output): `current()` says no newer answer of the key exists (the key's
+latest text is the request's, and its generation is the one the answer was taken at: a request of another text, a
+file event, a removal or an eviction moves it; sibling outputs of one text share it). A host writes shared state
+only for a current answer, such as Start's server-function registry. A revision is newer by its request's arrival, noted once: a request that waits (a plan hit's
 validation, a compile it shares) and then compiles never takes back the latest revision from one that arrived meanwhile. Requests of one text share one compile: a request (any id of the file) arriving while that
 text compiles waits for it and emits its own output from the result.
 

@@ -116,15 +116,35 @@ type AttemptResult =
   | { kind: 'plan'; plan: EmitPlan }
 
 /**
- * Compiles one host id. Returns null when untouched (every gate failed,
- * non-ESM, non-JS id). For a derived id whose plan has no such output the
- * code is `export {}\n`.
+ * What one request of a host id settled on, read while the request is open
+ * (`settleModule`): the module untouched (every gate failed, non-ESM,
+ * non-JS id), or compiled (a parse error too). A derived id of an untouched
+ * module, or one whose plan has no such output, is compiled to the empty
+ * module (`export {}\n`).
+ *
+ * `current()`: no newer answer of the key exists. The key's latest text is
+ * the request's and its generation is the one the answer was taken at (a
+ * request of another text, a file event, a removal or an eviction moves
+ * it). Sibling outputs of one text share a generation. It is read in the
+ * turn of a shared write: a host writes shared state (a registry, import
+ * protection's records) only for a current answer.
  */
-export async function compileModule(
+export type Settlement = (
+  | { kind: 'untouched' }
+  | { kind: 'compiled'; output: CompileOutput }
+) & { current: () => boolean }
+
+/**
+ * Settles one host id and runs `use` with the settlement while the request
+ * is open: the key stays live (its generation known) until `use` ends.
+ * Gives what `use` returns.
+ */
+export async function settleModule<T>(
   input: CompileInput,
   host: HostServices,
   caches: CompilerCaches,
-): Promise<CompileOutput | null> {
+  use: (settlement: Settlement) => T | Promise<T>,
+): Promise<T> {
   const own = identify(input.id)
   // a non-JS id whose code reaches us as JS (`.vue`, `.mdx`) compiles with
   // Tier 0 only, or in place (`inPlace`)
@@ -132,7 +152,8 @@ export async function compileModule(
   const identity =
     own.lang === null && input.lang ? { ...own, lang: input.lang } : own
   if (identity.lang === null) {
-    return null
+    // no key: nothing the core keeps of it, nothing to overtake it
+    return use({ kind: 'untouched', current: () => true })
   }
   const env = input.env
   const cache = planCacheFor(caches, env.name)
@@ -145,34 +166,73 @@ export async function compileModule(
   const requested = outputOf(identity)
   // the request's text is the key's latest from its arrival on: a request
   // of another text arriving later supersedes it, whatever this one waits on
-  // (the key stays live until it ends, so its latest revision stays known)
+  // (the key stays live until it ends, so its latest revision and its
+  // generation stay known)
   cache.begin(key, rev)
   try {
-    const out = await answer(
-      input,
-      identity,
-      tier0Only,
-      host,
-      caches,
-      key,
-      rev,
-      requested,
-    )
-    if (out && cache.latestRevision(key) !== rev) {
-      // (decided while the key is live: its latest revision is known until `end`)
-      out.superseded = true
+    let out: CompileOutput | null
+    try {
+      out = await answer(
+        input,
+        identity,
+        tier0Only,
+        host,
+        caches,
+        key,
+        rev,
+        requested,
+      )
+    } catch (error) {
+      // the one place an internal error becomes one to report
+      throw reportedError(
+        error,
+        tagOf(host),
+        displayPath(identity.path, host.root),
+      )
     }
-    return out
-  } catch (error) {
-    // the one place an internal error becomes one to report
-    throw reportedError(
-      error,
-      tagOf(host),
-      displayPath(identity.path, host.root),
-    )
+    const generation = cache.generation(key)
+    const current = () =>
+      cache.latestRevision(key) === rev && cache.generation(key) === generation
+    if (out) {
+      return await use({ kind: 'compiled', output: out, current })
+    }
+    if (identity.derived) {
+      return await use({
+        kind: 'compiled',
+        output: emptyModule(requested),
+        current,
+      })
+    }
+    return await use({ kind: 'untouched', current })
   } finally {
     cache.end(key)
   }
+}
+
+/** The empty module, a derived id's output when its module has none. */
+function emptyModule(requested: OutputId): CompileOutput {
+  return {
+    code: 'export {}\n',
+    map: null,
+    facts: { marker: null, planners: {} },
+    diagnostics: [],
+    dependencies: [],
+    persisted: null,
+    output: requested,
+  }
+}
+
+/**
+ * Compiles one host id (`settleModule`'s answer): null when untouched.
+ */
+export function compileModule(
+  input: CompileInput,
+  host: HostServices,
+  caches: CompilerCaches,
+): Promise<CompileOutput | null> {
+  return settleModule(input, host, caches, (s) =>
+    s.kind === 'compiled' ? s.output : null,
+  )
 }
 
 /** The output of a request of `key` at revision `rev`, from a validated plan hit, a compile in flight or its own compile. */
