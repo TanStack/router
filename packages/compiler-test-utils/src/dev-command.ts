@@ -15,6 +15,14 @@ import { setCommandNodeEnv, withNodeEnv } from './node-env'
 export function runAsDevCommand(): void
 export function runAsDevCommand<T>(start: () => Promise<T>): Promise<T>
 export function runAsDevCommand<T>(start?: () => Promise<T>) {
-  setCommandNodeEnv('development')
-  return start ? withNodeEnv('development', start) : undefined
+  if (!start) {
+    setCommandNodeEnv('development')
+    return undefined
+  }
+  // (only once it holds: a start that cannot hold leaves the process as it
+  // was)
+  return withNodeEnv('development', () => {
+    setCommandNodeEnv('development')
+    return start()
+  })
 }

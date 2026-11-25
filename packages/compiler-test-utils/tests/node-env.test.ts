@@ -184,25 +184,37 @@ test('a waiter past its limit when the holder ends rejects and never starts', as
   vi.setSystemTime(Date.now() + nodeEnvWaitLimit + 1)
   running.resolve()
   await production
-  expect((await development)?.message).toMatch(/waited/)
+  expect((await development)?.message).toMatch(
+    /waited \d+ ms for NODE_ENV=production, held by 1 /,
+  )
   expect(started).toBe(false)
 })
 
-test('an unset build inside another build’s hold runs unset, and the outer value is back after it', async () => {
+test('an unset build inside another build’s hold throws: it can share with no build', async () => {
   vi.stubEnv('NODE_ENV', 'test')
   onTestFinished(() => {
     vi.unstubAllEnvs()
   })
-  const seen: Array<string | undefined> = []
   await withBuildEnvironment(null, [], async () => {
     // (as `vite build` does when it is unset)
     process.env.NODE_ENV = 'production'
-    await withBuildEnvironment(null, [], async () => {
-      seen.push(process.env.NODE_ENV)
-    })
-    seen.push(process.env.NODE_ENV)
+    await expect(
+      withBuildEnvironment(null, [], async () => 'started'),
+    ).rejects.toThrow(/NODE_ENV \(unset\) started one under NODE_ENV \(unset\)/)
   })
-  expect(seen).toEqual([undefined, 'production'])
+  expect(process.env.NODE_ENV).toBe('test')
+})
+
+test('a dev command whose server cannot start leaves NODE_ENV as it was', async () => {
+  vi.stubEnv('NODE_ENV', 'test')
+  onTestFinished(() => {
+    vi.unstubAllEnvs()
+  })
+  await withNodeEnv('production', async () => {
+    await expect(runAsDevCommand(async () => 'started')).rejects.toThrow(
+      /started one under NODE_ENV=development/,
+    )
+  })
   expect(process.env.NODE_ENV).toBe('test')
 })
 

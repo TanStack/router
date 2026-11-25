@@ -277,8 +277,11 @@ export async function startRscPreviewServer(
       }),
   )
   registerCleanup(async () => {
-    await server.close()
-    releaseNodeEnv()
+    try {
+      await server.close()
+    } finally {
+      releaseNodeEnv()
+    }
   })
   const url = server.resolvedUrls?.local[0]
   if (!url) {
@@ -516,8 +519,11 @@ export async function startRscRsbuildPreviewServer(options: {
       (await rsbuild()).preview({ getPortSilently: true }),
     )
     registerCleanup(async () => {
-      await server.close()
-      releaseNodeEnv()
+      try {
+        await server.close()
+      } finally {
+        releaseNodeEnv()
+      }
     })
     const url = urls[0]
     if (!url) {
