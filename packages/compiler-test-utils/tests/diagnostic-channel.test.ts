@@ -233,6 +233,144 @@ describe('diagnostic channel', () => {
   })
 })
 
+// A tool's logger prints a compilation's report again (Rsbuild's "Build
+// errors:" summary, its "build failed in" status line): the channel records
+// the report once, from the compilation, and everything else the logger
+// prints.
+describe('tool logger', () => {
+  const logged = (channel: DiagnosticChannel) =>
+    channel.diagnostics.filter(({ source }) => source === 'rsbuild')
+
+  test('a later message with the text of a replaced compilation report is recorded', async () => {
+    const { diagnostics } = await captureDiagnostics(async (channel) => {
+      const warning = 'src/page.ts:3:1 the export Route is missing'
+      channel.reportCompilation({ warnings: [{ message: warning }] })
+      channel.reportLogged(
+        `Build warning: \n${warning}\n`,
+        [],
+        'warning',
+        'rsbuild',
+      )
+      expect(logged(channel)).toEqual([])
+      await new Promise((resolve) => setImmediate(resolve))
+      // The next compile is clean: what the logger prints now is its own
+      channel.reportCompilation({ warnings: [], errors: [] })
+      channel.reportLogged(warning, [], 'warning', 'rsbuild')
+      expect(logged(channel)).toHaveLength(1)
+    })
+    expectDiagnostic(diagnostics, {
+      severity: 'warning',
+      file: 'src/page.ts',
+      position: { line: 3, column: 1 },
+      times: 2,
+    })
+  })
+
+  test('each compiler’s latest report is the one its summary repeats', async () => {
+    await captureDiagnostics((channel) => {
+      const client = {}
+      const server = {}
+      channel.reportCompilation({
+        errors: [{ message: 'client error in src/a.ts' }],
+        compiler: client,
+      })
+      channel.reportCompilation({
+        errors: [{ message: 'server error in src/b.ts' }],
+        compiler: server,
+      })
+      channel.reportLogged(
+        'Build errors: \nclient error in src/a.ts\n\nserver error in src/b.ts\n',
+        [],
+        'error',
+        'rsbuild',
+      )
+      expect(logged(channel)).toEqual([])
+      // Only the client compiles again, clean; the summary repeats the server's
+      channel.reportCompilation({ errors: [], compiler: client })
+      channel.reportLogged(
+        'Build error: \nserver error in src/b.ts\n',
+        [],
+        'error',
+        'rsbuild',
+      )
+      expect(logged(channel)).toEqual([])
+      channel.reportLogged('client error in src/a.ts', [], 'error', 'rsbuild')
+      expect(logged(channel)).toHaveLength(1)
+    })
+  })
+
+  test('the status line of a failed compile is no report; another error of that turn is', async () => {
+    const { diagnostics } = await captureDiagnostics((channel) => {
+      channel.reportCompilation({
+        errors: [{ message: 'Failed to resolve ./missing in src/a.ts' }],
+      })
+      channel.reportLogged(
+        'build failed in 0.12s (client)',
+        [],
+        'error',
+        'rsbuild',
+      )
+      channel.reportLogged(
+        'the dev server lost its watcher',
+        [],
+        'error',
+        'rsbuild',
+      )
+    })
+    expect(diagnostics.map(({ source, text }) => `${source}: ${text}`)).toEqual(
+      [
+        'bundler: Failed to resolve ./missing in src/a.ts',
+        'rsbuild: the dev server lost its watcher',
+      ],
+    )
+  })
+})
+
+// Output printed outside any async scope while two channels are open goes
+// to both, marked `shared`: a check that a compiler reported something does
+// not pass on another work's output.
+test('output of unknown owner meets no expectation it names only relatively', async () => {
+  let print!: () => void
+  const printed = new Promise<void>((resolve) => {
+    print = resolve
+  }).then(
+    () =>
+      new Promise<void>((resolve) =>
+        // (a timer of no channel's scope, as a bundler's native callback)
+        setTimeout(() => {
+          console.warn('[plugin] src/routes/index.tsx:3:1 could not split')
+          resolve()
+        }),
+      ),
+  )
+  const a = openDiagnosticChannel()
+  const b = openDiagnosticChannel()
+  a.claim('/tmp/apps/a')
+  b.claim('/tmp/apps/b')
+  try {
+    await Promise.all([
+      a.run(async () => {
+        print()
+        await printed
+      }),
+      b.run(() => printed),
+    ])
+  } finally {
+    a.close()
+    b.close()
+  }
+  const expected = {
+    severity: 'warning' as const,
+    file: 'src/routes/index.tsx',
+    position: { line: 3, column: 1 },
+  }
+  expect(b.diagnostics.map(({ shared }) => shared)).toEqual([true])
+  expect(() =>
+    expectDiagnostic(b.diagnostics, { ...expected, root: '/tmp/apps/b' }),
+  ).toThrow(/unknown owner/)
+  expect(() => expectNoProblems(b.diagnostics)).toThrow(/unknown owner/)
+})
+
 // Overlapping async work must keep each capture's output, including streams.
 test('concurrent captures do not receive each other’s output', async () => {
   let release!: () => void

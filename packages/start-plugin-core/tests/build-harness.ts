@@ -1476,6 +1476,7 @@ async function buildWithRsbuild(
               channel.reportCompilation({
                 errors: statsMessages(json.errors),
                 warnings: statsMessages(json.warnings),
+                compiler: child,
               })
             },
           )

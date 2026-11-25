@@ -67,19 +67,22 @@ export interface DiagnosticChannel {
    * a compilation, its stats JSON, or any `{ errors, warnings }`), source
    * `bundler`. Call it when the compile ends, before the tool prints its
    * own summary of it (Rspack: a `done` tap of an early stage), so that
-   * `reportLogged()` recognises the summary.
+   * `reportLogged()` recognises the summary. It replaces the previous report
+   * of the same `compiler` (a compilation's own; default: one compiler per
+   * channel): a summary repeats each compiler's latest compilation.
    */
   reportCompilation: (compilation: {
     errors?: Iterable<unknown>
     warnings?: Iterable<unknown>
+    compiler?: object
   }) => void
   /**
    * Records what a tool's logger printed (e.g. Rsbuild's `customLogger`)
-   * under `source`, unless it only prints again a compilation report this
-   * channel recorded: the report's messages (Rsbuild's "Build errors: …"),
-   * or, while the compile that failed ends, a status line naming nothing
-   * ("build failed in 0.12s"). Each report is then recorded once, from the
-   * compilation; anything else the logger prints is recorded.
+   * under `source`, unless it only prints again the latest compilation
+   * report of a compiler this channel recorded (Rsbuild's "Build errors: …")
+   * or is Rsbuild's status line of a failed compile ("build failed in
+   * 0.12s"). Each report is then recorded once, from the compilation;
+   * anything else the logger prints is recorded.
    */
   reportLogged: (
     message: unknown,
@@ -174,6 +177,13 @@ function quotedOf(item: unknown) {
     : contentOf(message.split('-- inner error --')[0]!)
 }
 
+/**
+ * Rsbuild's status line of a compile that failed (`build failed in 0.12s`,
+ * with the environment's name when it builds several): it names nothing the
+ * compilation's report does not.
+ */
+const rsbuildFailedStatus = /^build failed in \d[^\n]*$/
+
 /** Opens a channel for run()/scope() work, recording until close(). */
 export function openDiagnosticChannel(): DiagnosticChannel {
   const diagnostics: Array<ChannelDiagnostic> = []
@@ -193,13 +203,13 @@ export function openDiagnosticChannel(): DiagnosticChannel {
     streams: true,
     receive: (entry) => push(printedDiagnostic(entry)),
   })
-  /** The messages of the compilation reports recorded (`quotedOf`). */
-  const compiled: Array<string> = []
   /**
-   * Whether a compile that failed is ending now (its errors were recorded
-   * in this turn of the event loop): the tool's status line follows.
+   * The messages of each compiler's latest compilation report (`quotedOf`):
+   * what a tool's summary of the compile repeats.
    */
-  let failing = false
+  const compiled = new Map<object, Array<string>>()
+  /** The compiler of reports that name none. */
+  const channelCompiler = {}
 
   const report = (
     value: unknown,
@@ -266,18 +276,12 @@ export function openDiagnosticChannel(): DiagnosticChannel {
       const warnings = [...(compilation.warnings ?? [])]
       report(errors, 'error', 'bundler')
       report(warnings, 'warning', 'bundler')
-      for (const item of [...errors, ...warnings]) {
-        const quoted = quotedOf(item)
-        if (quoted !== '') {
-          compiled.push(quoted)
-        }
-      }
-      if (errors.length > 0 && !failing) {
-        failing = true
-        setImmediate(() => {
-          failing = false
-        })
-      }
+      compiled.set(
+        compilation.compiler ?? channelCompiler,
+        [...errors, ...warnings]
+          .map(quotedOf)
+          .filter((quoted) => quoted !== ''),
+      )
     },
     reportLogged: (message, args, severity, source) => {
       const printed = [message, ...args]
@@ -285,11 +289,10 @@ export function openDiagnosticChannel(): DiagnosticChannel {
       const reprint =
         (severity === 'error' || severity === 'warning') &&
         // The report's messages, each from the start of a line
-        (compiled.some((quoted) => `\n${content}`.includes(`\n${quoted}`)) ||
-          (severity === 'error' &&
-            failing &&
-            !content.includes('\n') &&
-            !/[\\/]/.test(content)))
+        ([...compiled.values()].some((messages) =>
+          messages.some((quoted) => `\n${content}`.includes(`\n${quoted}`)),
+        ) ||
+          (severity === 'error' && rsbuildFailedStatus.test(content)))
       if (reprint) {
         return
       }
