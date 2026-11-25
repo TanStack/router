@@ -128,9 +128,21 @@ export function classify(
       // the value's: the parser's flag is the binding's)
       const id = namespaceName(node)
       const value =
-        (binding ?? (id === null ? null : file.bindingOf(id)))?.has(
-          BindingFlags.ValueModule,
-        ) === true
+        node.kind === 'global'
+          ? // (`declare global {}` binds no name: it has a value when one of
+            // its declarations does, as a namespace's flag says; tsc in
+            // program mode inlines the members of a `const enum` there)
+            node.body?.type === 'TSModuleBlock' &&
+            node.body.body.some((s) => {
+              const d =
+                s.type === 'ExportNamedDeclaration' && s.declaration !== null
+                  ? s.declaration
+                  : s
+              return ((classify(file, d)?.spaces ?? 0) & VALUE) !== 0
+            })
+          : (binding ?? (id === null ? null : file.bindingOf(id)))?.has(
+              BindingFlags.ValueModule,
+            ) === true
       return {
         node,
         spaces: value ? VALUE | NAMESPACE : NAMESPACE,
