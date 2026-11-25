@@ -719,7 +719,8 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   read outside server code, its own declarator and each assignment's smallest clause, its statement or the loop head
   or condition holding it; a read in the test of an `if`, loop or `switch` around that clause up to its function is
   part of the assignment only as a presence or type check of the binding: `h`, `!h`, `h == null`, `typeof h` compared
-  to a string or as the discriminant). Unrecognised shapes must not leak
+  to a string or as a `switch` discriminant; a bare `switch (h)` discriminant and every `case` test are ordinary
+  reads). Unrecognised shapes must not leak
   silently (J4.12): for a builder method called through a computed
   member (`createServerFn()['handler'](…)`, `createMiddleware()['server'](…)`) or a server-only fn whose result is
   member-called (`createServerOnlyFn(…).bind(null)`), the client holds no server code, or the build fails with an
