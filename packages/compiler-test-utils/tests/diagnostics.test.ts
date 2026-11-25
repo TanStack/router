@@ -691,3 +691,16 @@ describe('file and position', () => {
     ).toEqual([])
   })
 })
+
+// An expectation of a position in no file reads all of the text, the
+// positions a tool's fields print included (round-5 rerun: 34 real rows of
+// start-plugin-core failed without it).
+test('a position asked in no file is read in all of the text, its printed location included', () => {
+  const [diagnostic] = diagnosticsOf({
+    message:
+      '`h` is assigned elsewhere\n  5  |  export const fn = createServerFn().handler(h)\n     |                                             ^',
+    id: '/app/src/module.tsx',
+    loc: { file: '/app/src/module.tsx', line: 5, column: 44 },
+  })
+  expectDiagnostic(diagnostic!, { severity: 'error', position: { line: 5 } })
+})

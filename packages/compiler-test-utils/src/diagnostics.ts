@@ -423,8 +423,9 @@ function contentMismatches(
     return reasons
   }
   // The text, but for what it prints of the fields that name other files
+  // (an expectation of no file reads all of it)
   let text = diagnostic.text
-  for (const { printed } of locations) {
+  for (const { printed } of reader ? locations : []) {
     if (!located.some((location) => location.printed === printed)) {
       text = text.replaceAll(printed, '')
     }
