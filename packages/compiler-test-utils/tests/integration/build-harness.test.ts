@@ -414,21 +414,32 @@ test(
 )
 
 // webpack and Rspack run each module of a lazy chunk in a factory function
-// of the chunk: its body is the module's top level, so a read there that no module's code
-// holds, of a name only a function of a module binds, is dangling too.
+// of the chunk (the values of an object of module ids, or the elements of an
+// array with natural ids): its body is the module's top level, so a read
+// there that no module's code holds, of a name only a function of a module
+// binds, is dangling too. Loading the chunk throws `ReferenceError`; the
+// same chunk without the read loads.
 test.each([
-  ['webpack', 'productLabel'],
-  ['webpack', 'text'],
-  ['rspack', 'productLabel'],
-  ['rspack', 'text'],
+  ['webpack', 'deterministic', 'productLabel', true],
+  ['webpack', 'deterministic', 'text', true],
+  ['webpack', 'natural', 'productLabel', true],
+  ['webpack', 'natural', 'text', true],
+  ['webpack', 'natural', 'productLabel', false],
+  ['rspack', 'deterministic', 'productLabel', true],
+  ['rspack', 'deterministic', 'text', true],
+  ['rspack', 'natural', 'productLabel', true],
+  ['rspack', 'natural', 'productLabel', false],
 ] as const)(
-  '%s: a read added to a module factory is dangling with a parameter %s in the module',
-  async (bundler, parameter) => {
-    const error = await bundleAppIn({
+  '%s, %s ids: a read added to a module factory is dangling with a parameter %s in the module (read added: %s)',
+  async (bundler, moduleIds, parameter, read) => {
+    const outcome = await bundleAppIn({
       dir: testsDir,
       registerCleanup: onTestFinished,
       bundler,
       env: 'client',
+      configure: (options) => {
+        ;(options.optimization as Record<string, unknown>).moduleIds = moduleIds
+      },
       files: {
         // (a lazy chunk's module, run by its factory)
         'entry.ts': `export const load = () => import('./lazy')\n`,
@@ -480,6 +491,7 @@ console.log('MARK_FACTORY')
                         compilation.getAsset(name).source.source(),
                       )
                       if (
+                        read &&
                         /\.[cm]?js$/.test(name) &&
                         code.includes('MARK_FACTORY')
                       ) {
@@ -502,11 +514,19 @@ console.log('MARK_FACTORY')
         }),
       },
     }).then(
-      () => undefined,
+      (app) =>
+        app.run('await entry.load()\nreturn "loaded"').then(
+          ({ result }) => result,
+          (thrown: unknown) => thrown,
+        ),
       (thrown: unknown) => thrown,
     )
-    expect(error).toBeInstanceOf(DanglingNameError)
-    expect(Object.values((error as DanglingNameError).names).flat()).toEqual([
+    if (!read) {
+      expect(outcome).toBe('loaded')
+      return
+    }
+    expect(outcome).toBeInstanceOf(DanglingNameError)
+    expect(Object.values((outcome as DanglingNameError).names).flat()).toEqual([
       'productLabel',
     ])
   },

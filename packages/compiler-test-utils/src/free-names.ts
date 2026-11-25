@@ -102,7 +102,9 @@ export function readNames(
  * function called where it is written (`(() => {…})()`, `!function () {…}()`,
  * `(function () {…}).call(this)`), and the module factories of a webpack or
  * Rspack chunk (the function values of an object whose keys are all module
- * ids, number or string literals: each runs its module's top level).
+ * ids, number or string literals, or the functions of an array of nothing
+ * else, with holes, as natural ids lay them out: each runs its module's top
+ * level).
  */
 function deferred(scope: Scope, file: SourceFile) {
   for (const ancestor of scope.ancestors()) {
@@ -128,6 +130,11 @@ function runsAtLoad(fn: Node, file: SourceFile) {
   ) {
     const call = file.parentOf(parent)
     return call?.type === 'CallExpression' && call.callee === parent
+  }
+  if (parent?.type === 'ArrayExpression') {
+    return parent.elements.every(
+      (element) => element === null || functionTypes.has(element.type),
+    )
   }
   if (parent?.type === 'Property' && parent.value === fn) {
     const object = file.parentOf(parent)
