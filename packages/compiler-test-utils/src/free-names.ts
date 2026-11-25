@@ -7,11 +7,13 @@
  * `typeof process !== 'undefined' && process.env` in client code). The
  * rule is the module's: code of several modules (a chunk) is read with
  * `keepProbed`, and each module decides for itself. A read in code that
- * never runs (after an unconditional `return`, `throw`, `break` or
- * `continue` of its block; in the branch of a constant test, `if (false)`,
- * `!0 || …`) is no read: a minifier drops a function's unused declarations
- * there and may keep their reads (Vue's dev-only `initCustomFormatter` after
- * its `return` in a production build).
+ * never runs (after a statement that always leaves its block: `return`,
+ * `throw`, `break`, `continue`, a `try` that does; in the branch of a
+ * constant test, `if (false)`, `!0 || …`) is no read: a minifier drops a
+ * function's unused declarations there and may keep their reads (Vue's
+ * dev-only `initCustomFormatter` after its `return` in a production
+ * build). But a function declared there that code that runs calls runs
+ * (`unreachable`), and a `case` test runs before its consequent.
  */
 import { parse } from 'yuku'
 import type { Node, Scope, SourceFile } from 'yuku'
@@ -132,6 +134,14 @@ function exits(node: Node): boolean {
       return true
     case 'BlockStatement':
       return node.body.some(exits)
+    case 'TryStatement':
+      // (the block leaves, and so does the handler of what it throws; or
+      // the `finally` leaves whatever came before)
+      return (
+        (exits(node.block) &&
+          (node.handler === null || exits(node.handler.body))) ||
+        (node.finalizer !== null && exits(node.finalizer))
+      )
     case 'IfStatement': {
       const truth = constantTruth(node.test)
       return truth === true
@@ -149,11 +159,17 @@ function exits(node: Node): boolean {
 
 /**
  * Whether `node` is in code that never runs: after a statement that always
- * leaves its block (but in a function declared there that code before it
- * calls: declarations are hoisted), or in the branch a constant test never
- * takes.
+ * leaves its block, or in the branch a constant test never takes. A function
+ * declared there runs when code that runs calls it (declarations are
+ * hoisted): it is live when a reference to it outside itself is in code that
+ * runs, through as many such functions as it takes (`asking`: the
+ * functions whose use is being decided, a cycle reaching none of them).
  */
-function unreachable(node: Node, file: SourceFile) {
+function unreachable(
+  node: Node,
+  file: SourceFile,
+  asking = new Set<Node>(),
+): boolean {
   let child = node
   for (
     let parent = file.parentOf(child);
@@ -161,14 +177,13 @@ function unreachable(node: Node, file: SourceFile) {
     child = parent, parent = file.parentOf(parent)
   ) {
     const statements = statementsOf(parent)
-    if (statements) {
-      const exit = statements.slice(0, statements.indexOf(child)).find(exits)
+    // (a child outside the statements, a `case` test, runs before them)
+    const index = statements ? statements.indexOf(child) : -1
+    if (statements && index !== -1) {
+      const exit = statements.slice(0, index).find(exits)
       if (
         exit &&
-        !(
-          child.type === 'FunctionDeclaration' &&
-          calledBefore(child, exit, file)
-        )
+        !(child.type === 'FunctionDeclaration' && used(child, file, asking))
       ) {
         return true
       }
@@ -197,19 +212,26 @@ function unreachable(node: Node, file: SourceFile) {
 }
 
 /**
- * Whether a function declared after `exit` is used elsewhere than after it
- * or in itself: hoisted, it runs when that code calls it.
+ * Whether a function declared in code that never runs is used by code that
+ * runs, outside itself (see `unreachable`).
  */
-function calledBefore(fn: Node, exit: Node, file: SourceFile) {
+function used(fn: Node, file: SourceFile, asking: Set<Node>): boolean {
+  if (asking.has(fn)) {
+    return false
+  }
   const id = (fn as { id: Node | null }).id
   const binding = id && file.bindingOf(id)
-  return (
-    binding?.references.some(
-      ({ node }) =>
-        node.start < exit.end &&
-        !(fn.start <= node.start && node.end <= fn.end),
-    ) ?? true
+  if (!binding) {
+    return true
+  }
+  asking.add(fn)
+  const live = binding.references.some(
+    ({ node }) =>
+      !(fn.start <= node.start && node.end <= fn.end) &&
+      !unreachable(node, file, asking),
   )
+  asking.delete(fn)
+  return live
 }
 
 /**
