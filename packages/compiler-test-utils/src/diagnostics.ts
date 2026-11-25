@@ -628,13 +628,17 @@ function fileMentions(
   }
   const within = (index: number) =>
     [...found].some(([end, { start }]) => start < index && index <= end)
+  /** Whether `index` is in a code frame's line of source (`  2 | …`, `2 │ …`). */
+  const inCodeFrame = (index: number) =>
+    /^[^\w\n]*\d+\s*[|│]/.test(said.slice(said.lastIndexOf('\n', index) + 1))
   /** Where the text names some other file. */
   const others = new Set<number>()
   // Spelled paths that end with an extension: a path, or a file of a source
-  // extension (a URL's path only with a position after it)
+  // extension (a URL's path only with a position after it); not the paths a
+  // code frame's source names (`  2 | import { b } from './b.ts'`)
   for (const match of said.matchAll(/\.[A-Za-z]\w*(?=[^\w/-]|$)/g)) {
     const end = match.index + match[0].length
-    if (!endsPath(said, end) || within(end)) {
+    if (!endsPath(said, end) || within(end) || inCodeFrame(match.index)) {
       continue
     }
     const { start, path: spelled } = pathReadings(said, match.index, end)[0]!
@@ -651,7 +655,7 @@ function fileMentions(
   for (const match of said.matchAll(
     /(?<![\w.@$~+%#/()[\]-])[\w.@$~+%#()[\]-]+\/[\w.@$~+%#/()[\]-]*(?=:\d)/g,
   )) {
-    if (!within(match.index + match[0].length)) {
+    if (!within(match.index + match[0].length) && !inCodeFrame(match.index)) {
       others.add(match.index)
     }
   }

@@ -25,7 +25,7 @@ import { pluginBabel } from '@rsbuild/plugin-babel'
 import { pluginSolid } from '@rsbuild/plugin-solid'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   hmrSyncModule,
   settlePage,
@@ -322,11 +322,9 @@ describe('Vite dev', () => {
       expect(page.loads(), 'the route edit reloaded the page').toBe(loads)
       expect(page.errors).toEqual([])
       // nothing reported about the app's routes (the route is split)
-      expect(
-        routeFileNames.flatMap((file) =>
-          findDiagnostics(server.diagnostics, { file, root: server.root }),
-        ),
-      ).toEqual([])
+      for (const file of routeFileNames) {
+        expectNoDiagnostic(server.diagnostics, { file, root: server.root })
+      }
     },
     timeout,
   )
@@ -396,11 +394,9 @@ describe('Rsbuild dev, Start listed after the framework plugin', () => {
       expect(page.errors).toEqual([])
       expect(reportedErrors(server)).toEqual([])
       // nothing reported about the app's routes (the route is split)
-      expect(
-        routeFileNames.flatMap((file) =>
-          findDiagnostics(server.diagnostics, { file, root: server.root }),
-        ),
-      ).toEqual([])
+      for (const file of routeFileNames) {
+        expectNoDiagnostic(server.diagnostics, { file, root: server.root })
+      }
     },
     timeout,
   )

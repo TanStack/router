@@ -14,7 +14,7 @@
  * Source: #6185, #7460, #3990.
  */
 import { describe, expect, test } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   buildStart,
   callByIdExports,
@@ -112,11 +112,9 @@ describe.each(startBundlers)('%s build', (bundler) => {
       // No stub either: a bundler that resolves a leftover import for the
       // browser (Vite's empty module for a Node builtin) warns about the
       // module that imports it (G16; by file and severity, SPEC §5.7).
-      expect(
-        ['src/platform.ts', 'src/encoding.ts'].flatMap((file) =>
-          findDiagnostics(client.warnings, { file, root }),
-        ),
-      ).toEqual([])
+      for (const file of ['src/platform.ts', 'src/encoding.ts']) {
+        expectNoDiagnostic(client.warnings, { file, root })
+      }
       const clientRun = (
         await client.run(`${requestsOfPrelude}let refused = false
 try {

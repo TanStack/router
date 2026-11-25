@@ -12,7 +12,10 @@
  * quotes verbatim.
  */
 import { describe, expect, it } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  expectNoDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { loadRoute } from './route-app'
 
 /** The route file `src/routes/<name>.tsx` (route `/<name>`), with `files` and the app modules below. */
@@ -32,12 +35,15 @@ async function production(
   files: Record<string, string> = {},
 ) {
   const built = await (await route(name, code, files)).production()
-  const warnings = findDiagnostics(built.warnings, {
-    severity: 'warning',
+  const about = {
+    severity: 'warning' as const,
     file: `src/routes/${name}.tsx`,
     root: built.root,
-  }).map((d) => d.text)
-  return { built, warnings }
+  }
+  const warnings = findDiagnostics(built.warnings, about).map((d) => d.text)
+  /** Asserts that the build warns about nothing in the route file. */
+  const noWarning = () => expectNoDiagnostic(built.warnings, about)
+  return { built, warnings, noWarning }
 }
 
 /** What the page records before and after rendering the split component on the Vite dev server, and its HTML. */
@@ -57,7 +63,7 @@ return { atLoad, html, after: [...globalThis.seeded] }`,
 
 describe('the code-splitting guide: where top-level code goes', () => {
   it('puts what two split chunks use in one shared module', async () => {
-    const { built, warnings } = await production(
+    const { built, noWarning } = await production(
       'posts',
       `import { createFileRoute } from '@tanstack/react-router'
 import { createAnalytics } from '../analytics'
@@ -73,7 +79,7 @@ export const Route = createFileRoute('/posts')({
 })
 `,
     )
-    expect(warnings).toEqual([])
+    noWarning()
     // (one lazy chunk holds it: neither split chunk carries a copy)
     expect(built.locate('posts-analytics')).toMatchObject({ eager: [] })
     expect(built.locate('posts-analytics').lazy).toHaveLength(1)
@@ -96,7 +102,7 @@ export const Route = createFileRoute('/look')({
   component: () => <p>{initialTheme}</p>,
 })
 `
-    expect((await production('look', code)).warnings).toEqual([])
+    await production('look', code).then(({ noWarning }) => noWarning())
     // (as written, the page would show `light`)
     expect(await rendered('look', code)).toMatchObject({
       html: '<p>dark</p>',
@@ -114,7 +120,7 @@ export const Route = createFileRoute('/data')({
   component: () => <p>{app.name}</p>,
 })
 `
-    expect((await production('data', code)).warnings).toEqual([])
+    await production('data', code).then(({ noWarning }) => noWarning())
     expect(await rendered('data', code)).toEqual({
       atLoad: ['connectEmulator'],
       html: '<p>demo</p>',
@@ -136,7 +142,7 @@ export const Route = createFileRoute('/keys')({
   component: () => <p>{keys.join()}</p>,
 })
 `
-    expect((await production('keys', code)).warnings).toEqual([])
+    await production('keys', code).then(({ noWarning }) => noWarning())
     // (as written, the page would show `dark`)
     expect(await rendered('keys', code)).toMatchObject({
       html: '<p>dark,compact</p>',

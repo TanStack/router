@@ -362,6 +362,18 @@ describe('spellings', () => {
       at(3),
       true,
     ],
+    [
+      'its code frame, with an import line before the highlighted one',
+      "src/a.ts: cannot split\n  2 | import { b } from './b.ts'\n> 3 | b()",
+      at(3),
+      true,
+    ],
+    [
+      'its code frame in a box, with an import line',
+      " × cannot split in src/a.ts\n  ╭─\n 2 │ import { b } from './b.ts'\n 3 │ b()\n   · ─\n> 3 | b()",
+      at(3),
+      true,
+    ],
     ['a version between', 'src/a.ts (vite v8.3.8) 3:5', at(3, 5), true],
     [
       'a URL between',

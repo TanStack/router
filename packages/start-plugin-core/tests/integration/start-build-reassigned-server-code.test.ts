@@ -15,6 +15,7 @@ import { describe, expect, test } from 'vitest'
 import {
   diagnosticPosition,
   expectDiagnostic,
+  expectNoDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { StartBuildError, buildStart, startBundlers } from '../build-harness'
@@ -97,11 +98,10 @@ describe.each(startBundlers)('%s build', (bundler) => {
       const atArgument = new Set(
         findDiagnostics(error.diagnostics, { ...refusal, position }),
       )
-      expect(
-        findDiagnostics(error.diagnostics, refusal).filter(
-          (d) => !atArgument.has(d),
-        ),
-      ).toEqual([])
+      expectNoDiagnostic(
+        error.diagnostics.filter((d) => !atArgument.has(d)),
+        refusal,
+      )
     },
     timeout,
   )

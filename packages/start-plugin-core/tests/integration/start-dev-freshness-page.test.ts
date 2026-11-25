@@ -8,7 +8,10 @@
  */
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  expectNoDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import {
   hmrSyncModule,
   settlePage,
@@ -65,7 +68,11 @@ export { fn, base }
           file: 'src/d.ts',
           root: server.root,
         })
-      expect(errorAtD()).toEqual([])
+      expectNoDiagnostic(server.diagnostics, {
+        severity: 'error',
+        file: 'src/d.ts',
+        root: server.root,
+      })
       await server.edit({ 'src/b.ts': builder })
       await waitForOutcome({
         applied: () => errorAtD().length > 0,
