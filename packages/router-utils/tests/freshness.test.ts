@@ -416,27 +416,29 @@ describe('a check that waits while an event lands', () => {
   // C6-03. An upstream plugin prepends a banner to the file's text; the
   // file's change event (its own save, read without the banner) lands
   // while the compile of that save waits on a resolution. No newer request
-  // exists: the compile's plan is published, or its file is stale (the
-  // bundler builds it again).
-  // Source: whole-PR review C6-03 (Astra's current-input probe).
+  // exists: the host builds the file again if the compile was not kept (its
+  // stale set), and afterwards a change of what the file reads reaches the
+  // host as a rebuild of the file.
+  // Source: whole-PR review C6-03 (Astra's current-input probe); Astra's
+  // review of settlement step 0, finding 6.
   it.fails(
-    "C6-03: the event of a file's own save does not discard the only compile of its transformed text",
+    "C6-03: after the event of a file's own save, a change of what it reads still rebuilds it",
     async () => {
       const { host, arm, release } = aliasHost({ id: '/app/b.ts' })
+      const banner = `/* a plugin's banner */\n${files[PAGE]}`
       const reached = arm()
-      const compiling = host.compile(PAGE, planners(), {
-        code: `/* a plugin's banner */\n${files[PAGE]}`,
-      })
+      const compiling = host.compile(PAGE, planners(), { code: banner })
       await reached
       await invalidate(host.caches, { path: PAGE, kind: 'change' }, host)
       release()
-      await compiling
-      const published = host.caches.plans
-        .get(CLIENT.name)!
-        .keys()
-        .some((key) => key.canonicalId === PAGE)
-      const stale = host.caches.stale.take(CLIENT.name)
-      expect(published || stale.includes(PAGE)).toBe(true)
+      expect(factsOf(await compiling)).toEqual(await cold())
+      if (host.caches.stale.take(CLIENT.name).includes(PAGE)) {
+        // (the host builds the file again)
+        await host.compile(PAGE, planners(), { code: banner })
+      }
+      host.write('/app/b.ts', SERVER_ONLY)
+      await invalidate(host.caches, { path: '/app/b.ts', kind: 'change' }, host)
+      expect(host.caches.stale.take(CLIENT.name)).toEqual([PAGE])
     },
   )
 
@@ -495,6 +497,10 @@ describe('a check that waits while an event lands', () => {
 // Source: Fable's settlement design probe `p1-facts-move-during-check.mjs`;
 // the comment-only edit is its control.
 describe('a dependency saved while a compile checks its snapshot', () => {
+  /** `waited`, or nothing after `ms` (a compiler that does not wait there goes on). */
+  const atMost = (waited: Promise<void>, ms = 2_000) =>
+    Promise.race([waited, new Promise<void>((r) => setTimeout(r, ms))])
+
   it.for([
     ['a change of the export', 'export function make() {}\n'],
     ['a comment-only edit', '// a note\nexport const make = 1\n'],
@@ -505,8 +511,10 @@ describe('a dependency saved while a compile checks its snapshot', () => {
         '/app/a.ts': "import { make } from './b'\nexport const x = make\n",
         '/app/b.ts': 'export const make = 1\n',
       }
-      let bReads = 0
-      let resolves = 0
+      // each hold waits once, from when it is armed
+      let holdEventRead = false
+      let holdCheck = false
+      let holdPrefetch = true
       const eventRead = gate()
       const eventReading = gate()
       const checkResolve = gate()
@@ -516,20 +524,23 @@ describe('a dependency saved while a compile checks its snapshot', () => {
       const host = new MemoryHost({
         files,
         recognizer: RECOGNIZER,
+        // (the event's read of the saved file)
         onRead: async (path) => {
-          if (path === '/app/b.ts' && ++bReads === 2) {
+          if (path === '/app/b.ts' && holdEventRead) {
+            holdEventRead = false
             eventReading.open()
             await eventRead.opened
           }
         },
+        // (the compile's next resolution after its first read: its check's)
         onResolve: async () => {
-          if (++resolves === 2) {
+          if (holdCheck) {
+            holdCheck = false
             checkResolving.open()
             await checkResolve.opened
           }
         },
       })
-      let prefetches = 0
       const planner = (): Planner => ({
         name: 'toy',
         tier: 1,
@@ -537,7 +548,8 @@ describe('a dependency saved while a compile checks its snapshot', () => {
         async prefetch(_t0, ctx) {
           const target = await ctx.resolve('./b')
           const found = await ctx.resolver.resolve(target!, 'make')
-          if (++prefetches === 1) {
+          if (holdPrefetch) {
+            holdPrefetch = false
             read.open()
             await proceed.opened
           }
@@ -550,14 +562,17 @@ describe('a dependency saved while a compile checks its snapshot', () => {
       const compiling = host.compile('/app/a.ts', [planner()])
       await read.opened
       host.write('/app/b.ts', saved)
+      holdEventRead = true
       const event = invalidate(
         host.caches,
         { path: '/app/b.ts', kind: 'change' },
         host,
       )
-      await eventReading.opened
+      await atMost(eventReading.opened)
+      holdCheck = true
       proceed.open()
-      await checkResolving.opened
+      await atMost(checkResolving.opened)
+      holdCheck = false
       eventRead.open()
       await event
       checkResolve.open()
@@ -569,4 +584,75 @@ describe('a dependency saved while a compile checks its snapshot', () => {
       expect(out!.facts.planners).toEqual(cold!.facts.planners)
     },
   )
+})
+
+// The same-text rule of the settlement design (§2, §8.2): a compile whose
+// every attempt was overtaken (a dependency saved during each) answers
+// without publishing and leaves its file for the host to build again; that
+// rebuild, of the same text, compiles the file as it now is and publishes
+// (a later change of the dependency rebuilds the file). Whether the first
+// answer is still current while its caller acts on it is the session's
+// question (step 1's `current()`), not reachable here.
+// Source: Fable's review of settlement step 0 (narrowing 3, tried at the
+// core).
+describe('a compile whose attempts were all overtaken, and the rebuild of its text', () => {
+  it('the rebuild answers the dependency as it is and publishes', async () => {
+    const files = {
+      '/app/a.ts': "import { make } from './b'\nexport const x = make\n",
+      '/app/b.ts': 'export const make = 1\n',
+    }
+    const host = memoryHost(files)
+    /** Attempts still to hold after they read `b.ts`'s export. */
+    let holds = 3
+    const held: Array<() => void> = []
+    const planner = (): Planner => ({
+      name: 'toy',
+      tier: 1,
+      gate: () => true,
+      async prefetch(_t0, ctx) {
+        const target = await ctx.resolve('./b')
+        const found = await ctx.resolver.resolve(target!, 'make')
+        if (holds > 0) {
+          holds--
+          await new Promise<void>((r) => held.push(r))
+        }
+        ctx.set(found.k === 'found' ? found.value : found.k)
+      },
+      plan(ctx) {
+        ctx.setFacts('toy', ctx.prefetched.get('toy') ?? null)
+      },
+    })
+    const until = async (done: () => boolean) => {
+      for (let n = 0; !done(); n++) {
+        if (n > 2_000) {
+          throw new Error('test: no attempt read the dependency')
+        }
+        await new Promise((r) => setTimeout(r, 1))
+      }
+    }
+    const first = host.compile('/app/a.ts', [planner()])
+    // each attempt read `b.ts`; it is saved before the attempt ends
+    for (let save = 1; save <= 3; save++) {
+      await until(() => held.length > 0)
+      host.write(
+        '/app/b.ts',
+        save % 2 === 1
+          ? 'export function make() {}\n'
+          : 'export const make = 1\n',
+      )
+      await invalidate(host.caches, { path: '/app/b.ts', kind: 'change' }, host)
+      held.shift()!()
+    }
+    await first
+    // (the host is told to build the file again)
+    expect(host.caches.stale.take(CLIENT.name)).toEqual(['/app/a.ts'])
+    const rebuilt = await host.compile('/app/a.ts', [planner()])
+    expect(rebuilt!.facts.planners).toEqual(
+      (await memoryHost(host.files).compile('/app/a.ts', [planner()]))!.facts
+        .planners,
+    )
+    host.write('/app/b.ts', 'export const make = 2\n')
+    await invalidate(host.caches, { path: '/app/b.ts', kind: 'change' }, host)
+    expect(host.caches.stale.take(CLIENT.name)).toEqual(['/app/a.ts'])
+  })
 })
