@@ -1,7 +1,7 @@
 /**
  * A plugin of each host that adds code at the top of `src/late.ts` or
  * `src/late.js` after Start's compile (an import the compiler never reads), for
- * `bare-imports.test.ts` and `dropped-imports-scope.test.ts`.
+ * `bare-imports.test.ts` and `plugin-added-imports.test.ts`.
  */
 import type { Plugin } from 'vite'
 import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'

@@ -15,11 +15,7 @@
  * not the file's) locates nothing.
  */
 import fs from 'node:fs'
-import {
-  identify,
-  parseModule,
-  revision,
-} from '@tanstack/router-utils/compiler'
+import { identify, revision } from '@tanstack/router-utils/compiler'
 import { Locator } from './locate'
 import type { TraceStep } from './trace'
 
@@ -54,47 +50,8 @@ export interface NodeGraph {
   imported?: (node: GraphNode) => boolean
   /** A view's (`groundedGraph`): the bundler's graph it reads, with every importer. */
   built?: NodeGraph
-  /** Build, after tree-shaking: whether the output evaluates `node` (a module of one of its chunks). */
+  /** Build, after tree-shaking: whether the output has `node` (a module of one of its chunks: Rolldown `chunk.modules`, Rspack's chunk graph). */
   kept?: (node: GraphNode) => boolean
-  /** Build: `node`'s code as the bundler holds it, after every transform; null when unknown. */
-  code?: (node: GraphNode) => string | null
-  /**
-   * Build, Rspack: the nodes of the output's chunks (`kept`), and whether a
-   * node's package declares it free of side effects: Rspack does not build
-   * a module such a module imports bare (it prunes it while it makes the
-   * graph), so the import is read from the kept importer's code.
-   */
-  keptNodes?: () => Iterable<GraphNode>
-  sideEffectFree?: (node: GraphNode) => boolean
-  /** Whether the compilation built a module of `node` (Rspack). */
-  holds?: (node: GraphNode) => boolean
-}
-
-/**
- * The specifiers `code` imports for evaluation alone: `import 'x'`,
- * `import {} from 'x'`, `export {} from 'x'` (none type-only). Empty when
- * the code does not parse as a module.
- */
-export function evaluationSpecifiers(code: string): Array<string> {
-  const parsed = parseModule(code, { lang: 'js', semantic: false })
-  if (!parsed.ok) {
-    return []
-  }
-  const out: Array<string> = []
-  for (const stmt of parsed.file.program.body) {
-    if (
-      (stmt.type === 'ImportDeclaration' &&
-        stmt.importKind !== 'type' &&
-        stmt.specifiers.length === 0) ||
-      (stmt.type === 'ExportNamedDeclaration' &&
-        stmt.source !== null &&
-        stmt.exportKind !== 'type' &&
-        stmt.specifiers.length === 0)
-    ) {
-      out.push(stmt.source!.value)
-    }
-  }
-  return out
 }
 
 /** A node's key, for sets. */

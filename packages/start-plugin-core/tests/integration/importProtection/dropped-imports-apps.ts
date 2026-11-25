@@ -3,7 +3,6 @@
  * a barrel the client uses one export of, re-exporting a denied module, and
  * what a build of one shipped, ran and reported.
  */
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { reportedViolations } from '../../importProtection/start-apps'
 import type { StartBuild } from '../../build-harness'
 
@@ -43,11 +42,3 @@ export async function outcome(build: StartBuild) {
     read: (await build.client.run(`return entry.read()`)).result,
   }
 }
-
-/** The build's warnings naming `file`, one per message. */
-export const warningsNaming = (build: StartBuild, file: string) =>
-  findDiagnostics(build.diagnostics, {
-    severity: 'warning',
-    file,
-    root: build.root,
-  })

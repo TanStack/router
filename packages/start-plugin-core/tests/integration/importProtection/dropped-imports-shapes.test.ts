@@ -2,18 +2,12 @@
  * The shapes the removed effect model judged wrong (whole-PR review,
  * VERIFY-core V-01, V-04; S6 Astra #2), decided on the mock alone (SPEC
  * J6.4): an unused re-export of a denied module builds under `behavior:
- * 'error'` whatever the module holds, and the build warns that the mocked
- * import was dropped; nothing of the module ships or runs. Vite and Rsbuild
- * builds.
+ * 'error'` whatever the module holds, with no report; nothing of the module
+ * ships or runs. Vite and Rsbuild builds.
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
-import {
-  barrelApp,
-  outcome,
-  timeout,
-  warningsNaming,
-} from './dropped-imports-apps'
+import { barrelApp, outcome, timeout } from './dropped-imports-apps'
 
 describe.each(startBundlers)('%s build', (bundler) => {
   // VERIFY-core V-01: the type-only re-export of an effectful module
@@ -73,8 +67,8 @@ export const listUsers = () => 'MARK_SECRET'
   )
 
   // VERIFY-core V-04: effects the bundler keeps in the real module (a
-  // template coercion, a JSX member tag) are reported, as the dropped mock's
-  // warning, and do not run
+  // template coercion, a JSX member tag) do not run: the client gets the
+  // mock, which the bundler drops
   test.each<{ name: string; denied: Record<string, string> }>([
     {
       name: 'a template coercion',
@@ -105,7 +99,7 @@ export const listUsers = () => [card, 'MARK_SECRET']
       },
     },
   ])(
-    'an export * of a denied module with $name the client uses nothing of warns naming the module',
+    'an export * of a denied module with $name the client uses nothing of builds, and nothing of it runs',
     async ({ denied }) => {
       const build = await buildStart({
         bundler,
@@ -118,12 +112,6 @@ export const listUsers = () => [card, 'MARK_SECRET']
         shipped: [],
         read: 'client|none',
       })
-      expect(
-        warningsNaming(
-          build,
-          Object.keys(denied).find((f) => f.includes('.server'))!,
-        ),
-      ).toHaveLength(1)
     },
     timeout,
   )

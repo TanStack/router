@@ -389,7 +389,7 @@ export const read = () => secret() + '|' + d()
 // Source: mutation testing (generateBundle's survival check).
 describe.each(startBundlers)('%s build, tree-shaken imports', (bundler) => {
   test(
-    'a server-only-marked module re-exported by a barrel the client uses other exports of builds without a violation',
+    'a server-only-marked module re-exported by a barrel the client uses other exports of builds without any report',
     async () => {
       const build = await buildStart({
         bundler,

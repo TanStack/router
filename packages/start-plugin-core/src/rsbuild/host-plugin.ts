@@ -7,7 +7,7 @@
  * the one invalidation operation (`watchRun`, `make`), the `finishMake`
  * drain of the environment's stale set and replay of plan, server-fn and import-protection
  * `buildInfo` (persistent cache), the import-protection build reports
- * (`processAssets` witness) and dev reports (`finishModules`),
+ * (`processAssets`: the mocks in its chunks) and dev reports (`finishModules`),
  * the custom server-fn id patching, and the client route tree rebuild when
  * its pruned routes change without the tree file changing.
  */
@@ -27,8 +27,8 @@ import {
 import { NODE_MODULES_RE } from '../compiler/scope'
 import { dedupeKey } from '../import-protection/violations'
 import {
-  readRspackWitness,
   rspackHolds,
+  rspackMocksInChunks,
   rspackNodeGraph,
 } from '../import-protection/witness'
 import { manifestFunctionsDiffering } from '../server-fns/resolver'
@@ -208,7 +208,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
   /** The key of the compile environment of a module (`envOf`), for the drain. */
   const envKeyOf = (module: unknown): string =>
     envOf(module as { resource?: string; layer?: string | null }).name
-  /** The key of the compile environment of a module of a compilation (`envOf`), for the witness and graph readers. */
+  /** The key of the compile environment of a module of a compilation (`envOf`), for the chunk and graph readers. */
   const envKeyOfModule = (module: object, holder: object): string =>
     envOf(module as ModuleLike, holder as ModuleLike).name
   /** The key of a module of this compiler: its environment and resource. */
@@ -947,10 +947,11 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                   'Checking import protection',
                   async () => {
                     const envs = ipEnvs()
-                    const live = readRspackWitness(
+                    const withMocks = envs.filter(({ ip }) => ip.hasMocks())
+                    const live = rspackMocksInChunks(
                       compilation as never,
                       new Map(
-                        envs.map(({ env, ip }) => [env.name, ip.witness()]),
+                        withMocks.map(({ env, ip }) => [env.name, ip.mocks()]),
                       ),
                       envKeyOfModule,
                       canonicalResource,
@@ -972,7 +973,6 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                               specifier,
                               undefined,
                             )),
-                        (file) => session.start.rawFacts.marker(file, env.name),
                       )
                       for (const report of reports) {
                         ;(report.severity === 'error'

@@ -1,11 +1,12 @@
 /**
- * Survival witness readers: which edge modules survived tree-shaking, read from
- * the bundler after linking, and the bundler's graph for traces. An edge module
- * survives when it owns a used export (`renderedExports` on Rolldown, used
- * exports on Rspack), when it stands for an `import()` or `require()` and is
- * in a chunk at all (`EdgeModuleContent.runs`), or, on Rolldown, when a
- * chunk loads it through a surviving `import()` (`readRolldownWitness`).
- * Bare imports are read in the bundler's graph (`ImportProtectionEnv.surviving`).
+ * What a build's client bundle holds of its mocks (SPEC J6.4): the edge
+ * modules in the bundler's own chunk lists, read after linking (Rolldown
+ * `chunk.modules` with rendered code, Rspack's chunk graph with the inner
+ * modules of a `ConcatenatedModule`), and the bundler's graph for traces. A
+ * mock in a chunk is a violation; one in no chunk reports nothing. Whether a
+ * mock stays is the bundler's: an edge mock owns pure exports (kept where a
+ * binding survives), and an evaluated one (`EdgeModuleContent.evaluated`)
+ * keeps a call, so it stays wherever its importer is evaluated.
  *
  * Structural types only: the readers take what Vite's `generateBundle` and
  * Rspack's `processAssets` hand the host.
@@ -15,27 +16,20 @@ import type { EdgeModuleIds } from './edge-modules'
 import type { GraphNode, NodeGraph } from './graph-trace'
 import type { RspackImportProtectionBuildInfo } from './violations'
 
-/** An edge module as the readers see it: its key and whether it stands for a bare import (`EdgeModuleContent.runs`). */
-interface WitnessModule {
-  key: string
-  runs: boolean
-}
+/** A host id or resource to the key of an environment's mock it is, or null. */
+export type MockLookup = (idOrResource: string) => string | null
 
-export type WitnessLookup = (idOrResource: string) => WitnessModule | null
-
-/** Builds the lookup of an environment's edge modules from the host's ids and the registry. */
-export function witnessLookup(
+/** Builds the lookup of an environment's edge modules from the host's ids and the registry (`isMock`: the registry holds it as a mock). */
+export function mockLookup(
   ids: EdgeModuleIds,
   env: string,
-  runsOf: (key: string) => boolean | null,
-): WitnessLookup {
+  isMock: (key: string) => boolean,
+): MockLookup {
   return (id) => {
     const ref = ids.parse(id)
-    if (!ref || ref.kind !== 'edge' || ref.env !== env) {
-      return null
-    }
-    const runs = runsOf(ref.key)
-    return runs === null ? null : { key: ref.key, runs }
+    return ref?.kind === 'edge' && ref.env === env && isMock(ref.key)
+      ? ref.key
+      : null
   }
 }
 
@@ -44,15 +38,12 @@ export function witnessLookup(
 // ---------------------------------------------------------------------------
 
 interface RolldownRenderedModule {
-  renderedExports: ReadonlyArray<string>
+  renderedLength: number
 }
 
 interface RolldownOutputChunk {
   type: 'chunk'
-  fileName: string
   modules: Record<string, RolldownRenderedModule>
-  /** The chunks this one loads with `import()` (itself, for a module folded into it). */
-  dynamicImports: ReadonlyArray<string>
 }
 
 type RolldownOutputBundle = Record<
@@ -60,50 +51,21 @@ type RolldownOutputBundle = Record<
   RolldownOutputChunk | { type: 'asset' }
 >
 
-/**
- * The keys of the edge modules that survived a Rolldown build
- * (`generateBundle`), sorted. `dynamicImporters`: a module's dynamic
- * importers (`this.getModuleInfo`): a mock that a chunk of the output loads
- * through a surviving `import()` of a module of that chunk survived,
- * whatever it reads of it and whoever wrote the import (a package module,
- * another plugin), in a chunk of its own or folded into its importer's (the
- * chunk then lists itself in `dynamicImports`): the import evaluates it. An
- * `import()` tree-shaking removed loads no chunk.
- */
-export function readRolldownWitness(
+/** The keys of the mocks in a Rolldown build's chunks (`generateBundle`: `chunk.modules`, rendered code), sorted. */
+export function rolldownMocksInChunks(
   bundle: RolldownOutputBundle,
-  lookup: WitnessLookup,
-  dynamicImporters: (id: string) => ReadonlyArray<string> = () => [],
+  lookup: MockLookup,
 ): Array<string> {
   const live = new Set<string>()
-  /** The chunk of each module of the output. */
-  const chunkOf = new Map<string, RolldownOutputChunk>()
-  const present: Array<[string, WitnessModule]> = []
   for (const out of Object.values(bundle)) {
     if (out.type !== 'chunk') {
       continue
     }
     for (const [id, m] of Object.entries(out.modules)) {
-      chunkOf.set(id, out)
-      const edge = lookup(id)
-      if (!edge) {
-        continue
+      const key = m.renderedLength > 0 ? lookup(id) : null
+      if (key !== null) {
+        live.add(key)
       }
-      if (m.renderedExports.length > 0 || edge.runs) {
-        live.add(edge.key)
-      } else {
-        present.push([id, edge])
-      }
-    }
-  }
-  for (const [id, edge] of present) {
-    const file = chunkOf.get(id)!.fileName
-    if (
-      dynamicImporters(id).some((importer) =>
-        chunkOf.get(importer)?.dynamicImports.includes(file),
-      )
-    ) {
-      live.add(edge.key)
     }
   }
   return [...live].sort()
@@ -113,15 +75,14 @@ interface RollupModuleInfoLike {
   importers: ReadonlyArray<string>
   dynamicImporters: ReadonlyArray<string>
   isEntry: boolean
-  code?: string | null
 }
 
 /**
  * The module graph of the Rolldown build of environment `env`
  * (`this.getModuleInfo`): another environment's nodes are not readable
  * there (null). With the output's `bundle` (`generateBundle`), the modules
- * it evaluates: those of its chunks (Rolldown lists a module there when it
- * is evaluated, whatever of its code it kept).
+ * of its chunks (`kept`: Rolldown lists a module there when it is evaluated,
+ * whatever of its code it kept).
  */
 export function rolldownNodeGraph(
   env: string,
@@ -144,8 +105,6 @@ export function rolldownNodeGraph(
         }
         return node.env === env && kept.has(node.id)
       },
-      code: (node) =>
-        node.env === env ? (getModuleInfo(node.id)?.code ?? null) : null,
     }),
     importers(node) {
       if (node.env !== env) {
@@ -170,10 +129,6 @@ export function rolldownNodeGraph(
 
 export interface RspackModuleLike {
   resource?: string
-  /** The module's code after its loaders. */
-  originalSource?: () => { source: () => string | Buffer } | null
-  /** Its package's `sideEffects` declaration, as Rspack read it. */
-  factoryMeta?: { sideEffectFree?: boolean }
   buildInfo?: Record<string, unknown>
   /** Inner modules of a ConcatenatedModule. */
   modules?: Iterable<RspackModuleLike>
@@ -181,9 +136,7 @@ export interface RspackModuleLike {
   rootModule?: RspackModuleLike
 }
 
-interface RspackChunkLike {
-  runtime?: Iterable<string> | string
-}
+type RspackChunkLike = object
 
 /**
  * Whether a connection is Rspack's RSC client reference: the module that
@@ -215,10 +168,6 @@ interface RspackCompilationLike {
     getChunkModules: (chunk: RspackChunkLike) => Iterable<RspackModuleLike>
   }
   moduleGraph: {
-    getUsedExports: (
-      module: RspackModuleLike,
-      runtime: Array<string> | string | undefined,
-    ) => ReadonlyArray<string> | boolean | null
     getIncomingConnections: (
       module: RspackModuleLike,
     ) => Iterable<RspackConnectionLike>
@@ -227,21 +176,6 @@ interface RspackCompilationLike {
   }
   /** The child compilations (a worker plugin's), done during `make`. */
   children?: Iterable<RspackCompilationLike>
-}
-
-function runtimesOf(compilation: RspackCompilationLike): Array<string> {
-  const out = new Set<string>()
-  for (const chunk of compilation.chunks) {
-    const r = chunk.runtime
-    if (typeof r === 'string') {
-      out.add(r)
-    } else if (r) {
-      for (const name of r) {
-        out.add(name)
-      }
-    }
-  }
-  return [...out]
 }
 
 /**
@@ -256,59 +190,36 @@ export type RspackEnvOf = (
 ) => string
 
 /**
- * The keys of the edge modules that survived an Rspack compilation
- * (`processAssets`, any stage: graph readings do not depend on it), by
- * compile environment (`envOf`; `lookups`: each environment's), sorted. Only modules in a chunk can survive (concatenated
- * inner modules included); a used export or a bare import makes it
- * live; `null` used exports (usedExports off) leave it to inclusion. A file
- * in two layers is a module of each environment.
+ * The keys of the mocks in an Rspack compilation's chunks (`processAssets`,
+ * any stage: the chunk graph is final), the inner modules of a
+ * `ConcatenatedModule` included, by compile environment (`envOf`;
+ * `lookups`: each environment's), sorted. A file in two layers is a module
+ * of each environment.
  */
-export function readRspackWitness(
+export function rspackMocksInChunks(
   compilation: RspackCompilationLike,
-  lookups: ReadonlyMap<string, WitnessLookup>,
+  lookups: ReadonlyMap<string, MockLookup>,
   envOf: RspackEnvOf,
   idOf: (resource: string) => string = (resource) => resource,
 ): Map<string, Array<string>> {
-  const inChunk = new Map<
-    string,
-    { env: string; module: RspackModuleLike; edge: WitnessModule }
-  >()
-  for (const chunk of compilation.chunks) {
+  const live = new Map<string, Set<string>>()
+  for (const chunk of lookups.size > 0 ? compilation.chunks : []) {
     for (const m of compilation.chunkGraph.getChunkModules(chunk)) {
       for (const inner of m.modules ?? [m]) {
-        const res = inner.resource
-        if (!res) {
+        if (!inner.resource) {
           continue
         }
         const env = envOf(inner, m)
-        const key = `${env}\0${res}`
-        const lookup = lookups.get(env)
-        if (!lookup || inChunk.has(key)) {
-          continue
-        }
-        const edge = lookup(idOf(res))
-        if (edge) {
-          inChunk.set(key, { env, module: inner, edge })
+        const key = lookups.get(env)?.(idOf(inner.resource)) ?? null
+        if (key !== null) {
+          let keys = live.get(env)
+          if (!keys) {
+            keys = new Set()
+            live.set(env, keys)
+          }
+          keys.add(key)
         }
       }
-    }
-  }
-  const runtimes = runtimesOf(compilation)
-  const live = new Map<string, Set<string>>()
-  for (const { env, module, edge } of inChunk.values()) {
-    const used = compilation.moduleGraph.getUsedExports(module, runtimes)
-    if (
-      used === true ||
-      used === null ||
-      (Array.isArray(used) && used.length > 0) ||
-      edge.runs
-    ) {
-      let keys = live.get(env)
-      if (!keys) {
-        keys = new Set()
-        live.set(env, keys)
-      }
-      keys.add(edge.key)
     }
   }
   const out = new Map<string, Array<string>>()
@@ -483,19 +394,15 @@ export function rspackNodeGraph(
   /** The environment of each concatenated inner module of the index (from its holder). */
   const envs = new Map<RspackModuleLike, string>()
   /** The nodes of the compilation's chunks (`kept`), by key, read on the first ask. */
-  let keptNodes: Map<string, GraphNode> | null = null
-  const keptIndex = (): Map<string, GraphNode> => {
+  let keptNodes: Set<string> | null = null
+  const keptIndex = (): Set<string> => {
     if (!keptNodes) {
-      keptNodes = new Map()
+      keptNodes = new Set()
       for (const chunk of compilation.chunks) {
         for (const m of compilation.chunkGraph.getChunkModules(chunk)) {
           for (const inner of m.modules ?? [m]) {
             if (inner.resource) {
-              const node = {
-                env: envOf(inner, m),
-                id: idOf(inner.resource),
-              }
-              keptNodes.set(key(node.env, node.id), node)
+              keptNodes.add(key(envOf(inner, m), idOf(inner.resource)))
             }
           }
         }
@@ -636,20 +543,6 @@ export function rspackNodeGraph(
     },
     holds: (node) => entryOf(node) !== undefined,
     kept: (node) => keptIndex().has(key(node.env, node.id)),
-    keptNodes: () => keptIndex().values(),
-    sideEffectFree: (node) =>
-      (entryOf(node)?.own ?? []).some(
-        (m) => m.factoryMeta?.sideEffectFree === true,
-      ),
-    code(node) {
-      for (const module of entryOf(node)?.own ?? []) {
-        const source = module.originalSource?.()?.source()
-        if (source !== undefined) {
-          return source.toString()
-        }
-      }
-      return null
-    },
     builds: (node) => (entryOf(node)?.own.length ?? 0) > 0,
     served(node) {
       for (const module of entryOf(node)?.own ?? []) {

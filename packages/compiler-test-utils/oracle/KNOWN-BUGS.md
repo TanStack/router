@@ -1808,9 +1808,9 @@ Paths under `start-plugin-core/tests/integration/`; `ip/` means `integration/imp
   and the client gets a safe mock"; `ip/default-rules.test.ts`: "the client reports the dependency file it denies, and
   does not load it"; "the server reports the dependency file it denies".
 - **Rsbuild builds count denied modules the client bundle dropped.** SPEC J6.4. `ip/build.test.ts`: "a
-  server-only-marked module re-exported by a barrel the client uses other exports of builds without a violation";
+  server-only-marked module re-exported by a barrel the client uses other exports of builds without any report";
   `ip/build-outcomes.test.ts`: "a denied module the client bundle drops does not fail the build"; "in mock mode, an unused
-  denied module leaves nothing in the client bundle and no violation".
+  denied module leaves nothing in the client bundle and no warning".
 - **Dev logs only violations reachable from Start's router and start entries.** SPEC J6.9. `ip/dev-page.test.ts`: "a
   denied import of a module the client entry imports is logged"; "a client-only import of a module the server entry
   imports is mocked on the server and logged".

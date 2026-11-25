@@ -47,7 +47,7 @@ import { resolveViteEdgeModuleId } from '../import-protection/edge-modules'
 import { viteDevNodeGraph } from '../import-protection/graph-trace'
 import { heldIn } from '../import-protection/session'
 import {
-  readRolldownWitness,
+  rolldownMocksInChunks,
   rolldownNodeGraph,
 } from '../import-protection/witness'
 import {
@@ -528,11 +528,9 @@ function envCompilerPlugins(
         return
       }
       const ipEnv = s.start.ip.env(env.name)
-      const live = readRolldownWitness(
-        bundle as never,
-        ipEnv.witness(),
-        (id) => this.getModuleInfo(id)?.dynamicImporters ?? [],
-      )
+      const live = ipEnv.hasMocks()
+        ? rolldownMocksInChunks(bundle as never, ipEnv.mocks())
+        : []
       const reports = await ipEnv.surviving(
         live,
         rolldownNodeGraph(

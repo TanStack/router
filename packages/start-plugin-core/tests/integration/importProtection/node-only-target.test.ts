@@ -3,10 +3,7 @@
  * with only `node` exports, on the client): the normal denial, live or dead,
  * and no resolver error from reading what the mock of the denied file must be.
  */
-import {
-  expectDiagnostic,
-  findDiagnostics,
-} from '@tanstack/compiler-test-utils/diagnostics'
+import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
@@ -54,7 +51,7 @@ export const read = () => secret()
   )
 
   test(
-    'a dead edge to a denied file importing a node-only package builds, warning of the dropped import',
+    'a dead edge to a denied file importing a node-only package builds, with no report',
     async () => {
       const build = await buildStart({
         bundler,
@@ -68,15 +65,9 @@ export const safe = () => 'MARK_SAFE'
         entry: 'src/entry.ts',
       })
       expect(reportedViolations(build)).toEqual([])
-      expectDiagnostic(build.diagnostics, {
-        severity: 'warning',
-        file: 'src/s.server.ts',
-        root: build.root,
-        times: 1,
-      })
-      expect(findDiagnostics(build.diagnostics, { severity: 'error' })).toEqual(
-        [],
-      )
+      expect(
+        findDiagnostics(build.diagnostics, { file: 'src/s.server.ts' }),
+      ).toEqual([])
       expect(build.client.where('MARK_SECRET')).toBe('nowhere')
     },
     timeout,

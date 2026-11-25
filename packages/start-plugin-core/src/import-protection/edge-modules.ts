@@ -4,15 +4,13 @@
  * an environment, and the ids hosts serve them under.
  *
  * - `mock`: a module that owns its exports (string export names: any
- *   spelling), each a `/* @__PURE__ *\/` mock creation. It is the survival
- *   witness in builds: bundlers keep an owned export only where the
- *   importer's binding survives, and an `import()` or `require()` target
- *   wherever the call survives (`EdgeModuleContent.runs`). What the denied
- *   module itself does is not read; a bare import is read in the bundler's
- *   graph (`ImportProtectionEnv.surviving`). The mock of a bare import keeps
- *   one `__fx(…)` call (`EdgeModuleContent.evaluated`): the bundler
- *   evaluates its importer as it would with the real module, so the importer
- *   stays.
+ *   spelling), each a `/* @__PURE__ *\/` mock creation, so a build's bundler
+ *   keeps it where a binding of it survives; an evaluated mock (a bare
+ *   import, `import()`, `require()`, a type-only import a host may keep, a
+ *   marker, a module that is its own violation: `EdgeModuleContent.evaluated`)
+ *   also keeps one call of a global (`EVALUATED_GLOBAL`), so the bundler keeps it wherever the
+ *   import runs. A mock in the client bundle's chunks is a violation (SPEC
+ *   J6.4); what the denied module itself does is not read.
  * - `allowed` (`allowImport` → true): a transparent re-export of the real
  *   module, side effects left to the bundler. The mock is never produced for
  *   it: the host asks before it loads the module (`ImportProtectionEnv.confirm`).
@@ -128,6 +126,13 @@ export function resolveViteEdgeModuleId(specifier: string): string | null {
   return `\0${specifier}`
 }
 
+/**
+ * The global an evaluated mock calls (`EdgeModuleContent.evaluated`), with
+ * optional chaining: nothing defines it, so the call does nothing, and no
+ * bundler can prove it pure.
+ */
+const EVALUATED_GLOBAL = '__tss_ip'
+
 /** The query of an Rspack edge module request that carries its content. */
 const CONTENT_QUERY = 'tss-ip='
 
@@ -216,17 +221,13 @@ export interface EdgeModuleContent {
   /** The edge only evaluates the module (bare import): the allowed state imports it for its evaluation. */
   bare: boolean
   /**
-   * An `import()` or `require()` (not of an asset query): it evaluates its
-   * module whatever it reads, so its edge module survives wherever the
-   * output has it.
-   */
-  runs?: true
-  /**
-   * The mock keeps the `__fx` call, so its importer is evaluated as it would
-   * be with the real module: a bare import (not of an asset query), an
-   * import or re-export of type specifiers only (bare once TypeScript keeps
-   * it), a module that is its own violation (its importers' imports are not
-   * read by the compiler: package modules, another plugin's).
+   * The mock runs: it keeps a call of `EVALUATED_GLOBAL`, so the bundler keeps it
+   * wherever the import runs (Vite `moduleSideEffects: true`, Rspack's
+   * `EVALUATED_EDGE_QUERY` rule): an import that evaluates the module
+   * whatever it reads (bare, `import()`, `require()`, a type-only one a
+   * host's TypeScript may keep bare, a marker; not of an asset query), and a
+   * module that is its own violation (its importers are code the compiler
+   * does not read; under its package's own `sideEffects`).
    */
   evaluated?: true
   /** The rule that denied it: `allowImport` is told, even for an importer a persistent cache restored whose record is not read yet. */
@@ -278,8 +279,8 @@ function productionLabel(
 }
 
 /**
- * The mock state of an edge module (owns its exports; the `__fx` call when
- * it is evaluated). Its metadata is what the runtime
+ * The mock state of an edge module (owns its exports; the call of
+ * `EVALUATED_GLOBAL` when it is evaluated). Its metadata is what the runtime
  * of `production` (`mockRuntimeCode`) reads: in production, only the name
  * its report gives (`productionLabel`); in dev, the environment by the name
  * reports give it (`publicName`).
@@ -299,7 +300,7 @@ export function mockModuleCode(
         ...(content.file !== null && { f: content.file }),
       })
   const lines = [
-    `import { __mk, __fx } from ${stringLiteral(runtimeSpecifier, '"')};`,
+    `import { __mk } from ${stringLiteral(runtimeSpecifier, '"')};`,
     `const m = ${stringLiteral(meta, '"')};`,
   ]
   const exported: Array<string> = []
@@ -316,7 +317,13 @@ export function mockModuleCode(
   }
   lines.push(`export default /* @__PURE__ */ __mk(m, "default");`)
   if (content.evaluated) {
-    lines.push(`__fx(m);`)
+    // (a call of a global: a bundler keeps it wherever it keeps the module,
+    // as it would the real module's statements, under its package's
+    // `sideEffects` too; a call of an import it may drop there)
+    // (its label as a literal: Rolldown 1.2.19 drops the statement of a
+    // side-effect-free dynamic entry when it reads a const the pure calls
+    // read too)
+    lines.push(`globalThis.${EVALUATED_GLOBAL}?.(${stringLiteral(meta, '"')});`)
   }
   return `${lines.join('\n')}\n`
 }
@@ -347,8 +354,7 @@ export function allowedModuleCode(
  * runtime holds none of the longer text and reads no `process`.
  * `mock.foo().then(…)` runs its callback, with a mock that is not itself
  * thenable: a thenable resolving to itself makes `await` loop in microtasks,
- * freezing the tab or the whole server; `__fx` keeps an evaluated mock (a
- * call no bundler can prove pure; no global, nothing logged).
+ * freezing the tab or the whole server.
  */
 export function mockRuntimeCode(
   mockAccess: MockAccess,
@@ -361,7 +367,6 @@ export function mockRuntimeCode(
     : developmentMessageCode(framework)
   return `const MODE = ${stringLiteral(mockAccess, '"')};
 const seen = new Set();
-const evaluated = [];
 function report(meta, action, path) {
   if (MODE === "off") return;
   if (seen.has(meta)) return;
@@ -406,9 +411,6 @@ function create(meta, name, settled) {
 /* @__NO_SIDE_EFFECTS__ */
 export function __mk(meta, name) {
   return create(meta, name);
-}
-export function __fx(meta) {
-  evaluated[evaluated.length] = meta;
 }
 `
 }

@@ -568,17 +568,18 @@ export function importEdgesPlanner(
                 ),
               )
             : []
+        const typeOnlyImport = (i: (typeof imports)[number]) =>
+          i.specifiers.length > 0 && i.specifiers.every((spec) => spec.typeOnly)
+        const typeOnlyReexport = (r: (typeof reexports)[number]) =>
+          r.kind === 'named' && !r.typeOnly && r.names.length === 0
+        // (its suggestion: `import type`)
         const typeSpecifiers =
-          (imports.length > 0 &&
-            imports.every(
-              (i) =>
-                i.specifiers.length > 0 &&
-                i.specifiers.every((spec) => spec.typeOnly),
-            )) ||
-          (reexports.length > 0 &&
-            reexports.every(
-              (r) => r.kind === 'named' && !r.typeOnly && r.names.length === 0,
-            ))
+          (imports.length > 0 && imports.every(typeOnlyImport)) ||
+          (reexports.length > 0 && reexports.every(typeOnlyReexport))
+        // one declaration of the edge that a host's TypeScript may keep as
+        // a bare import (`verbatimModuleSyntax`): its mock is evaluated
+        const keptBare =
+          imports.some(typeOnlyImport) || reexports.some(typeOnlyReexport)
         // a server rendering client-only code: whether it renders it as a component
         const ownStatic = envType === 'server' && j.offset !== undefined
         const offsets = j.edge.locations.map((l) => l.range.start)
@@ -609,7 +610,7 @@ export function importEdgesPlanner(
                 )
             : []
         const spec = specs.find((s) => /^[A-Z]/.test(s.localName)) ?? specs[0]
-        const content = await edgeModuleContent(edges, j, ctx, typeSpecifiers)
+        const content = await edgeModuleContent(edges, j, ctx, keptBare)
         const key = edgeModuleKey(content)
         if (!j.handoff) {
           ctx.substitute(j.edge.edgeKey, ip.ids.request(key, content))
@@ -642,7 +643,6 @@ export function importEdgesPlanner(
           }),
           ...(j.edge.form === 'reexport' && { reexport: true }),
           ...(j.handoff && { handoff: true }),
-          ...(erasable && { erasable: true }),
           ...(typeSpecifiers && { typeSpecifiers: true }),
           ...(ownEntry(ip.markerSpecifiers, j.raw) !== undefined && {
             ownMarker: true,
@@ -708,25 +708,27 @@ export function importEdgesPlanner(
     }
   }
 
-  /** The edge module of a violation: names, survival witness and allowed form. */
+  /** The edge module of a violation: names, whether it is evaluated, and the allowed form. */
   async function edgeModuleContent(
     edges: Readonly<PlanEdges>,
     j: Judged,
     ctx: PolicyContext,
-    /** Every specifier written `type`: TypeScript erases the import, or keeps it bare (`verbatimModuleSyntax`). */
-    typeSpecifiers: boolean,
+    /** A declaration of the edge is type-only: TypeScript erases it, or keeps it bare (`verbatimModuleSyntax`). */
+    keptBare: boolean,
   ): Promise<EdgeModuleContent> {
     // the module's own marker: the marker module is empty
     const ownMarker = ownEntry(ip.markerSpecifiers, j.raw) !== undefined
-    // an `import()` or `require()` the output keeps evaluates its module,
-    // whatever it reads of it: its edge module is in the output then (a bare
-    // import is read in the bundler's graph: `ImportProtectionEnv.surviving`);
-    // an asset query of it (its text or URL) runs nothing
-    const code = j.resolved === null || !isAssetId(j.resolved)
-    const runs =
-      code && (j.edge.form === 'dynamic' || j.edge.form === 'require')
-    // (an import of type specifiers only is bare once TypeScript keeps it)
-    const evaluated = code && (j.edge.form === 'bare' || typeSpecifiers)
+    // an import that evaluates the module whatever it reads of it (bare,
+    // `import()`, `require()`, a type-only one TypeScript keeps bare, a
+    // marker): its mock runs, so the bundler keeps it wherever the import
+    // runs; an asset query of a file (its text or URL) runs nothing
+    const evaluated =
+      (j.resolved === null || !isAssetId(j.resolved)) &&
+      (j.edge.form === 'bare' ||
+        j.edge.form === 'dynamic' ||
+        j.edge.form === 'require' ||
+        keptBare ||
+        ownMarker)
     const target =
       j.resolved !== null && !ownMarker && j.edge.form !== 'bare'
         ? await describeTarget(j.resolved, ctx)
@@ -758,7 +760,6 @@ export function importEdgesPlanner(
       resolved: j.resolved,
       hasDefault: importsDefault || (target?.hasDefault ?? true),
       bare: j.edge.form === 'bare',
-      ...(runs && { runs: true }),
       ...(evaluated && { evaluated: true }),
       rule: j.rule!,
     }

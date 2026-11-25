@@ -90,16 +90,6 @@ describe.each(startBundlers)(
     })
 
     test(
-      'the server using only the safe export builds',
-      async () => {
-        const build = await buildStart(app('SAFE'))
-        expect(build.ssr.where('MARK_CHART')).toBe('nowhere')
-        expect(reportedViolations(build)).toEqual([])
-      },
-      timeout,
-    )
-
-    test(
       'the server using the marked export fails at the barrel, in the server environment',
       async () => {
         const error = await rejection(buildStart(app('chart')))

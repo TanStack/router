@@ -86,7 +86,7 @@ Mixed imports still count when they include at least one runtime value. Split th
 import { type User, getUsers } from './db.server'
 ```
 
-A value import whose bindings are only used as types (or not at all) is judged by what your bundler keeps. Its TypeScript transform erases such an import unless `verbatimModuleSyntax` applies: Vite reads it from the tsconfig that covers the file, Rsbuild from `tools.swc`. Import protection does not read tsconfig itself. It reports the import only when the bundler loads it, and an erased import is never a violation (a build warns about it once, suggesting `import type`). An import whose specifiers are all written `type` (`import { type User }`) is ignored like `import type`, unless `verbatimModuleSyntax` keeps it as a bare import. Write `import type` when only the type should cross the boundary.
+A value import whose bindings are only used as types (or not at all) is judged by what your bundler keeps. Its TypeScript transform erases such an import unless `verbatimModuleSyntax` applies: Vite reads it from the tsconfig that covers the file, Rsbuild from `tools.swc`. Import protection does not read tsconfig itself. It reports the import only when the bundler loads it, and an erased import is never a violation. An import whose specifiers are all written `type` (`import { type User }`) is ignored like `import type`, unless `verbatimModuleSyntax` keeps it as a bare import. Write `import type` when only the type should cross the boundary.
 
 ```ts
 // Reported only if the bundler keeps the import (verbatimModuleSyntax).
@@ -122,7 +122,7 @@ A marker is a statement of its file, so it holds wherever the file is and whoeve
 
 - It is honoured in every package: your app, a workspace package, an installed package (`excludeFiles` skips file-name rules only).
 - It denies the file to every importer that `exclude` or `ignoreImporters` does not exempt and [`allowImport`](#the-allowimport-callback) does not allow, including a module outside `srcDirectory` and a module of an installed package. A package module the compiler does not compile (a barrel that re-exports the marked file, say) is reported at its import of the file, and a build with the `error` behavior fails. File names (`*.server.*`) keep their scope: see [Limitations](#limitations).
-- A bare import of a marked file (`import './secrets'`) says that its code runs: it is a violation wherever its importer runs, even in a package that declares `"sideEffects": false`. A marked barrel that only re-exports is judged by what the client uses of it.
+- A bare import of a marked file (`import './secrets'`) says that its code runs: it is a violation wherever its importer runs, even if your app declares `"sideEffects": false`. In a package that declares the file free of side effects, the bundler drops the import as it would the real file, and nothing is reported. A marked barrel that only re-exports is judged by what the client uses of it.
 - A `?raw` import of a marked file is denied like any other import of it.
 
 To take a marked file of a package as it is, list the package's module that imports it in `ignoreImporters`, or allow the file in `allowImport` (asked about the file itself, see [The `allowImport` Callback](#the-allowimport-callback)). In dev, a package barrel that re-exports a marked file is served with the file's mock and one warning, even when a build would drop the re-export: the dev server does not tree-shake, as for your own barrels ([Mixed Barrels](#mixed-barrels-and-split-entry-points)).
@@ -613,13 +613,11 @@ If you see an import-protection violation for a file you expected to be "compile
 
 ## False Positives: Dev vs Build
 
-In **build mode**, import protection defers violation checks until after tree-shaking, and decides on the mock: a denied import is replaced by its mock, and it is a violation when the bundle uses what the mock stands in for. What the denied module itself would do does not count: it never ships. A bare import (`import './secrets.server'`, `import {} from`, `export {} from`) is a violation wherever the build keeps its importer, since it is written for the module's side effects: whoever wrote it (your code, a package, another plugin's transform) and whatever your tree-shaking options say. So is an `import()` or `require()` the build keeps, whatever it reads; one in a branch the build drops (`if (import.meta.env.SSR)`) is not. An importer the build drops reports nothing, such as an unused module of a package that declares `"sideEffects": false`.
-
-If tree-shaking removes every use of a denied import, no violation is reported and the build does not fail. The build prints one warning per denied module instead, naming the module and one importer with its import chain: the import was mocked and nothing of the module shipped. If the import only runs on the server (behind `import.meta.env.SSR`, as recommended for `@tanstack/react-start/server`), there is nothing to do; otherwise move it out of client code. An import TypeScript erased because it was used only as a type gets the same warning, suggesting `import type`. There is no warning when another import of the module was allowed or an exempt importer got it as it is, since then the module did ship.
+In **build mode**, import protection reports only what is in the final client bundle. A denied import is replaced by its mock, and it is a violation when the mock is in one of the bundle's chunks; a mock the bundler dropped reports nothing, and the build does not fail. What the denied module itself would do does not count: it never ships. A named import's mock is kept where the bundle uses what it stands in for. A bare import (`import './secrets.server'`, `import {} from`, `export {} from`) runs the module, so its mock is kept wherever the build keeps its importer, whatever your tree-shaking options say. So is an `import()` or `require()` the build keeps, whatever it reads; one in a branch the build drops (`if (import.meta.env.SSR)`) is not. A denied file imported by code the compiler does not read (a package module, another plugin's import) is mocked as a whole: an import of it there, used or not, is a violation where the build keeps that code, unless the package declares the file free of side effects.
 
 In **dev mode**, tree-shaking may be incomplete or unavailable, so import protection can report false positives for imports that would later be compiled away.
 
-If dev reports a violation where the build only warns that the mocked import was dropped, the unsafe edge existed before tree-shaking but did not survive the final bundle. Even so, prefer changing the import structure so that edge does not exist in the first place.
+If dev reports a violation that the build does not, the unsafe edge existed before tree-shaking but did not survive the final bundle. Even so, prefer changing the import structure so that edge does not exist in the first place.
 
 ## Mixed Barrels and Split Entry Points
 
@@ -664,9 +662,9 @@ import { fetchUsers } from '../lib'
 import { getDb } from '../lib/server'
 ```
 
-The same applies to marker-protected files (`import '@tanstack/react-start/server-only'`). If a marked file is re-exported through a mixed barrel but never consumed by client code, a build reports no violation after tree-shaking, only the warning that the mocked import was dropped, but the better fix is still to avoid exposing that server-only edge to client-reachable code at all.
+The same applies to marker-protected files (`import '@tanstack/react-start/server-only'`). If a marked file is re-exported through a mixed barrel but never consumed by client code, a build reports nothing after tree-shaking, but the better fix is still to avoid exposing that server-only edge to client-reachable code at all.
 
-A re-export that nothing uses never fails the build, whatever the denied file runs at its top level: the client gets the mock, and the build warns about the dropped import. Split the barrel as above to silence it.
+A re-export that nothing uses in your code never fails the build, whatever the denied file runs at its top level: the client gets the mock, which the bundler drops.
 
 ## The `onViolation` Callback
 

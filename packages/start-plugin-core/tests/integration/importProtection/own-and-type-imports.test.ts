@@ -5,14 +5,10 @@
  * `verbatimModuleSyntax` keeps is one in a module that keeps nothing else
  * (a module of types, one whose export is inlined) (SPEC J6.4). Each case
  * built with protection on and off (off: the initializer ships), Vite and
- * Rsbuild. Beside a value import of the same file, an import of type
- * specifiers only does not silence the value import's dropped-import
- * warning.
+ * Rsbuild.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../../build-harness'
-import { reportedViolations } from '../../importProtection/start-apps'
-import { warningsNaming } from './dropped-imports-apps'
+import { startBundlers } from '../../build-harness'
 import { db, outcome, timeout } from './kept-importer-cases'
 import type { KeptCase } from './kept-importer-cases'
 import type { StartBundler } from '../../build-harness'
@@ -82,35 +78,6 @@ describe.each(startBundlers)('%s build', (bundler) => {
         },
         off: { failedAt: null, shipped: c.off?.[bundler] ?? true },
       })
-    },
-    timeout,
-  )
-  test.each([
-    { name: 'on: one warning, at the importer', enabled: true },
-    { name: 'off (control): none', enabled: false },
-  ])(
-    'an import of type specifiers only beside an unused value import of the same file, protection $name',
-    async ({ enabled }) => {
-      const build = await buildStart({
-        bundler,
-        files: {
-          'src/lib/users.server.ts': `export interface User {\n  name: string\n}\nexport const listUsers = () => 'MARK_SECRET'\n`,
-          'src/entry.ts': `import { type User } from './lib/users.server'
-import { listUsers } from './lib/users.server'
-export const read = (u: User) => u.name
-`,
-        },
-        entry: 'src/entry.ts',
-        start: {
-          importProtection: enabled
-            ? { behavior: 'error' }
-            : { enabled: false },
-        },
-      })
-      expect(reportedViolations(build)).toEqual([])
-      expect(warningsNaming(build, 'src/entry.ts')).toHaveLength(
-        enabled ? 1 : 0,
-      )
     },
     timeout,
   )

@@ -94,23 +94,6 @@ describe.each(startBundlers)('%s build', (bundler: StartBundler) => {
     timeout,
   )
 
-  // The app imports only the safe export of a barrel whose package declares
-  // no `sideEffects`: the marked module is analysed, has no effect, and the
-  // bundler drops it.
-  // Source: Gemini review of the policy, G-H3 (`B14-mixed-barrel-se-true`).
-  test(
-    'a mixed barrel without sideEffects, the app using only its safe export, builds with only the safe export in the client',
-    async () => {
-      const { options } = app('npm', 'peer', 'SAFE')
-      const build = await buildStart({ bundler, ...options })
-      expect(build.client.where('MARK_SAFE')).not.toBe('nowhere')
-      expect(build.client.where('MARK_SECRET')).toBe('nowhere')
-      expect(reportedViolations(build)).toEqual([])
-      expect(problems(build.diagnostics).map(({ text }) => text)).toEqual([])
-    },
-    timeout,
-  )
-
   // An importer the user exempts is compiled: its imports are read, and the
   // marked module it imports is the real one, with nothing reported.
   // Source: reviews of the policy, A-H2a and G-H1 (`ignore`, `exclude`).

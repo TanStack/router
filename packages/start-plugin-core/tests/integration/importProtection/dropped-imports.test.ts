@@ -1,14 +1,13 @@
 /**
- * A build decides a violation on the mock alone (SPEC J6.4): an import is a
- * violation when its mock survives tree-shaking, whatever the denied module
- * itself would do; a bare import (`import './x.server'`) is one wherever its
- * importer is evaluated. A denied module the client graph imports whose mocks
- * all were dropped is no violation (no `onViolation`, no failure under
- * `behavior: 'error'`): the build warns once per denied module, naming it and
- * an importer, and nothing of it ships. Dev reports every mock it serves, so
- * it reports such an import once, as a violation. Vite and Rsbuild builds,
- * Vite dev. The shapes the removed effect model judged wrong:
- * `dropped-imports-shapes.test.ts`.
+ * A build reports only what is in its final client bundle (SPEC J6.4): an
+ * import is a violation when its mock is in a chunk, whatever the denied
+ * module itself would do; a bare import (`import './x.server'`) is one
+ * wherever its importer is evaluated. A mock the bundler dropped reports
+ * nothing (no `onViolation`, no failure under `behavior: 'error'`, no
+ * warning), and nothing of the module ships. Dev reports every mock it
+ * serves, so it reports such an import once, as a violation. Vite and
+ * Rsbuild builds, Vite dev. The shapes the removed effect model judged
+ * wrong: `dropped-imports-shapes.test.ts`.
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
@@ -17,17 +16,11 @@ import {
   reportedViolations,
   startProtectedDevServer,
 } from '../../importProtection/start-apps'
-import {
-  barrelApp,
-  effectful,
-  outcome,
-  timeout,
-  warningsNaming,
-} from './dropped-imports-apps'
+import { barrelApp, effectful, outcome, timeout } from './dropped-imports-apps'
 
 describe.each(startBundlers)('%s build', (bundler) => {
   test(
-    'an unused re-export of a denied module with a top-level effect builds under behavior "error", warns once naming the module, and ships nothing of it',
+    'an unused re-export of a denied module with a top-level effect builds under behavior "error", with no report, and ships nothing of it',
     async () => {
       const build = await buildStart({
         bundler,
@@ -48,7 +41,6 @@ export const read = () => [label(), title(), (globalThis as Record<string, unkno
         shipped: [],
         read: 'client|admin|none',
       })
-      expect(warningsNaming(build, 'src/lib/users.server.ts')).toHaveLength(1)
     },
     timeout,
   )
@@ -97,7 +89,6 @@ export const read = () => [label(), listUsers()].join('|')
           importer: expect.stringMatching(/^src\/entry\.ts/),
         },
       ])
-      expect(warningsNaming(build, 'src/lib/index.ts')).toEqual([])
     },
     timeout,
   )

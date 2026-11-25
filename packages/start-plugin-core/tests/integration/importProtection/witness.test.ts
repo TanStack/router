@@ -6,9 +6,9 @@
  * through `references` (a solution-style root, the stock Vite template) and
  * `extends`, unless `oxc.typescript.onlyRemoveTypeImports` overrides it;
  * Rsbuild's SWC never reads tsconfig (`tools.swc` decides). A dev server
- * reports exactly the imports its bundler keeps; a build decides on the mock
- * (SPEC J6.4): nothing reads it, so the import is no violation, kept or
- * erased, and the build warns that the mocked import was dropped. The client
+ * reports exactly the imports its bundler keeps; a build reports what its
+ * client bundle holds (SPEC J6.4): nothing reads the mock, so no chunk holds
+ * it and the import is no violation, kept or erased. The client
  * never loads the denied file either way. Client environment, mock mode, Vite and Rsbuild,
  * builds and dev servers.
  */
@@ -165,23 +165,11 @@ const expected = (layout: Layout, kept: boolean) => ({
   reported: kept ? [layout.importer] : [],
 })
 
-/** A build, whether the bundler kept the import or not: no violation, a warning naming the importer. */
-const expectedBuild = (layout: Layout) => ({
+/** A build, whether the bundler kept the import or not: no violation (nothing reads the mock: no chunk holds it). */
+const expectedBuild = (_layout: Layout) => ({
   typesLoaded: null,
   reported: [],
-  warned: [layout.importer],
 })
-
-/** The importers of `layouts` a build's warnings name. */
-const warnedImporters = (build: { diagnostics: unknown; root: string }) =>
-  [...new Set(layouts.map((l) => l.importer))].filter(
-    (importer) =>
-      findDiagnostics(build.diagnostics, {
-        severity: 'warning',
-        file: importer,
-        root: build.root,
-      }).length > 0,
-  )
 
 async function viteBuild(
   files: Record<string, string>,
@@ -200,7 +188,6 @@ async function viteBuild(
   return {
     typesLoaded: result,
     reported: importersIn(build, 'client'),
-    warned: warnedImporters(build),
   }
 }
 
@@ -221,7 +208,6 @@ async function rsbuildBuild(
   return {
     typesLoaded: result,
     reported: importersIn(build, 'client'),
-    warned: warnedImporters(build),
   }
 }
 

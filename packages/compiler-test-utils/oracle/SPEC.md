@@ -901,33 +901,22 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   sets `mockAccess: 'off'`. Rsbuild: a module a child compiler builds (a worker or service-worker plugin's) gets
   no mock: its violation fails the build at the import, whatever the behaviour, and `allowImport` is not asked
   (ruling of review round 3, F1).
-- **J6.4 Only surviving edges are reported.** Build: violations are decided after compilation and tree-shaking, on
-  the mock alone: an import is a violation when its mock survives (the bundle uses a binding of it), whatever the
-  denied module itself would do; nothing predicts the real module's effects. A bare import (`import './x.server'`,
-  `import {} from`, `export {} from`; not of an asset query) is a violation wherever the output keeps its importer,
-  read as the bundler's graph holds it: whatever the compiler read of the importer (a package module it does not
-  compile, an import another plugin added, an import bare only after TypeScript, such as an import of type
-  specifiers only under `verbatimModuleSyntax`), whatever the tree-shaking options say. The mock keeps its importer
-  evaluated as the real module would (a bare import, an import or re-export of type names only, a module that is
-  its own violation; under the package's own `sideEffects`), so an importer the build drops (an unused module of a
-  `sideEffects: false` package, a package only a dead `import()` loads) reports nothing, and one that keeps nothing
-  else is still evaluated. A bare import in a kept module of a `sideEffects: false` package is one too, though the
-  bundler drops its target (Rspack never builds that target: it is read from the importer's code). A surviving
-  `import()` or `require()` is one whatever it reads, whoever wrote it, in a chunk of its own or folded into its
-  importer's; one tree-shaking drops is not. A client entry's own marker
-  is one whatever its form or what the host's TypeScript makes of it. A denied module the environment's importers
-  import (an importer reached from an entry) whose mocks all were dropped, or that the importer's TypeScript
-  transform erased, nothing of which shipped (no import of it allowed, no exempt importer given it), is no violation
-  (no `onViolation`, no failure under `error`): the build warns once per denied module and build, naming it and one
-  importer with its chain (the same importer whatever the compile order; wording free, J6.12). An import whose
-  every specifier is a type (`import { type T }`) gets none (J6.2); beside a value import of the same file it does
-  not silence that one's. The warning is not exhaustive: not for a package module's import (not the app's to
-  change), nor for a pattern import (J6.7). Limit: an eager `import.meta.glob` written as a statement is, as Vite's
-  own transform writes it, a namespace import, judged by its use. Dev: an edge the Start compiler itself removed
-  from the importer's output (handler-only, `.server()`-only, server-only-fn-only imports) is not a violation and is
-  neither reported nor mocked, whatever the request order, warm-up, pre-transform, lookup requests or full-bundle
-  mode; edges that only bundler tree-shaking would remove may still be reported in dev: dev reports each mock it
-  serves as a violation, once, and has no dropped-import warning.
+- **J6.4 Only what the client bundle holds is reported.** Build: a violation is a mock in the final bundle (in a
+  chunk of the bundler's own lists: Rolldown's `chunk.modules` with rendered code, Rspack's chunk graph with the
+  inner modules of a concatenated module); a mock in no chunk reports nothing (no warning). Nothing predicts the
+  real module's effects: the mock decides. A named, default or namespace import's mock is pure (kept where a binding
+  of it survives). One that runs, kept wherever the import runs, whatever the tree-shaking options: a bare import
+  (`import './x.server'`, `import {} from`, `export {} from`; not of an asset query), an `import()` or `require()`
+  (one tree-shaking drops loads nothing), an import or re-export of type names only (kept as an import by a host's
+  `verbatimModuleSyntax`), a marker. A client entry's own marker is one whatever its form or what the host's
+  TypeScript makes of it. A denied file mocked under its own id (its importers are code the compiler does not read:
+  a package module, an import another plugin added, a pattern import) runs under its package's own `sideEffects`:
+  an unused import of it in a module the build keeps is a violation, as on main; one the bundler drops (a bare
+  import of a file a `sideEffects: false` package declares, which Rspack does not even build) is not. Dev: an edge
+  the Start compiler itself removed from the importer's output (handler-only, `.server()`-only,
+  server-only-fn-only imports) is not a violation and is neither reported nor mocked, whatever the request order,
+  warm-up, pre-transform, lookup requests or full-bundle mode; edges that only bundler tree-shaking would remove
+  may still be reported in dev: dev reports each mock it serves as a violation, once.
 - **J6.5 Report content.** Environment type, the matching rule, the importer's `file:line:col` in the _original_
   source (through source maps, also for non-JS sources and other plugins' rewrites) where the location is
   source-derived, the raw specifier, the resolved path and the import chain from an entry (cut at `maxTraceDepth`)

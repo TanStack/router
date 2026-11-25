@@ -11,7 +11,6 @@ import {
   identify,
   invariantDiagnostic,
   invariantViolated,
-  isAssetId,
   normalizePath,
 } from '@tanstack/router-utils/compiler'
 import { NODE_MODULES_RE } from '../compiler/scope'
@@ -26,7 +25,6 @@ import {
 import {
   EdgeIndex,
   IdsByFile,
-  evaluationSpecifiers,
   groundedGraph,
   nodeKey,
   readSourceFile,
@@ -41,7 +39,7 @@ import {
 } from './pattern-imports'
 import { matchesAny } from './matchers'
 import { DevReporter, devViolationError } from './report'
-import { fileOrMarkerRule, importerInScope, markerViolates } from './rules'
+import { fileOrMarkerRule, importerInScope } from './rules'
 import { normalizeFilePath, relativizePath } from './utils'
 import {
   IMPORT_EDGES_PLANNER,
@@ -55,9 +53,8 @@ import {
   violationInfo,
   violationsOf,
 } from './violations'
-import { witnessLookup } from './witness'
+import { mockLookup } from './witness'
 import {
-  formatDroppedImport,
   formatServedConflict,
   formatServedMismatch,
   formatUncheckedImporters,
@@ -88,7 +85,7 @@ import type {
   EdgeViolation,
   RspackImportProtectionBuildInfo,
 } from './violations'
-import type { WitnessLookup } from './witness'
+import type { MockLookup } from './witness'
 import type { ReportContext, ViolationInfo } from './trace'
 import type { ImportProtectionOptions } from '../schema'
 import type { CompileStartFrameworkOptions } from '../types'
@@ -707,15 +704,6 @@ export class ImportProtection {
   }
 }
 
-/** Whether code may hold a bare import (`import 'x'`, `import {} from`, `export {} from`): the cheap test before a parse. */
-const MAY_IMPORT_BARE =
-  /\bimport\s*['"]|\bimport\s*\{\s*\}\s*from|\bexport\s*\{\s*\}\s*from/
-
-/** A violation's denied module, as the dropped-import warning counts it: its path, or the specifier when it did not resolve. */
-function deniedPathOf(v: EdgeViolation): string {
-  return v.resolved ? normalizePath(identify(v.resolved).path) : v.specifier
-}
-
 /** An edge module nothing registered (a stale importer after a restart): a mock with a default export only. */
 function unknownEdgeLoad(
   env: string,
@@ -878,15 +866,13 @@ const NO_TRACE: Trace = { steps: [], fromEntry: false }
 class ImportProtectionEnv {
   /** Resolved edges of every judged importer (trace steps). */
   readonly edges: EdgeIndex
-  /** The bundler's graph (dev: the dev server's module graphs; build: the compilation's, set per pass by the witness reader). */
+  /** The bundler's graph (dev: the dev server's module graphs; build: the compilation's, set per pass by `surviving`). */
   graph: NodeGraph | null = null
   /** The modules (canonical ids) that are client references here (`ImportEdgesFacts.clientReferences`). @internal */
   readonly clientReferences = new Set<string>()
   /** Dev report queue (`useDevReporter`). */
   reporter: DevReporter | null = null
   private readonly modules = new Map<string, RegisteredModule>()
-  /** Build: the denied modules (paths, or specifiers) the dropped-import warning named (`dropped`), until the next build (`beginBuild`). */
-  private readonly warnedDropped = new Set<string>()
   /** The edge modules of each importer's last compile, by importer id. */
   private readonly byImporter = new Map<
     string,
@@ -2187,27 +2173,30 @@ class ImportProtectionEnv {
     }
   }
 
+  /** Whether this environment registered a mock (an edge module, a module that is its own violation): a build with none reads no chunk. */
+  hasMocks(): boolean {
+    return this.modules.size > 0
+  }
+
   /**
-   * The witness readers' view of this environment's edge modules and of the
-   * modules that are their own violation, as the ledger says they were
-   * served: one served real (an allowed edge, a file with real demand) is no
-   * violation.
+   * The chunk readers' view of this environment's mocks: its edge modules
+   * and the modules that are their own violation, as the ledger says they
+   * were served (one served real, an allowed edge, a file with real demand,
+   * is no mock).
    */
-  witness(): WitnessLookup {
-    const mockOf = (key: string) => {
-      const m = this.modules.get(key)
-      return m && this.served.get(key)?.verdict !== 'real'
-        ? m.content.runs === true
-        : null
-    }
-    const edges = witnessLookup(this.ip.ids, this.name, mockOf)
+  mocks(): MockLookup {
+    const edges = mockLookup(
+      this.ip.ids,
+      this.name,
+      (key) =>
+        this.modules.has(key) && this.served.get(key)?.verdict !== 'real',
+    )
     return (id) => {
       const served = this.served.get(normalizePath(id))
       if (served?.self && served.verdict === 'mock') {
         const key = served.self.module.key
-        const m = this.modules.get(key)
-        if (m) {
-          return { key, runs: m.content.runs === true }
+        if (this.modules.has(key)) {
+          return key
         }
       }
       return edges(id)
@@ -2321,123 +2310,18 @@ class ImportProtectionEnv {
     return fresh
   }
 
-  /**
-   * The denied modules this build's importers import through a mocked edge
-   * whose mocks all were dropped by tree-shaking (none of `liveKeys`), or
-   * that the importer's TypeScript transform erased, nothing of which
-   * shipped (no import of it was allowed, no exempt importer got it as it
-   * is), and that no other report of the build names (`reported`): one
-   * violation of each, by an importer reached from an entry, with its trace,
-   * once per build (`warnedDropped`, across a build's outputs). An import of
-   * type specifiers only is none (J6.2). Not exhaustive: a denied module
-   * with no such importer is left out.
-   */
-  private async dropped(
-    liveKeys: ReadonlyArray<string>,
-    graph: NodeGraph,
-    resolve:
-      | ((specifier: string, importer: string) => Promise<string | null>)
-      | undefined,
-    reported: ReadonlyArray<EdgeViolation>,
-  ): Promise<Array<{ v: EdgeViolation; trace: Trace }>> {
-    const survived = new Set(liveKeys)
-    const seen = new Set(reported.map(deniedPathOf))
-    for (const [key, m] of this.modules) {
-      if (this.served.get(key)?.verdict === 'real' && m.content.resolved) {
-        seen.add(normalizePath(identify(m.content.resolved).path))
-      }
-    }
-    for (const [id, entry] of this.served) {
-      if (entry.self && entry.verdict === 'real') {
-        seen.add(normalizePath(identify(id).path))
-      }
-    }
-    // by denied module, its violations by importer: the importer a warning
-    // names does not depend on the order the bundler compiled them in
-    const candidates = new Map<string, Array<EdgeViolation>>()
-    for (const [key, m] of this.modules) {
-      if (survived.has(key) || this.served.get(key)?.verdict === 'real') {
-        continue
-      }
-      for (const v of m.violations.values()) {
-        const denied = deniedPathOf(v)
-        if (
-          v.handoff ||
-          v.typeSpecifiers ||
-          seen.has(denied) ||
-          this.warnedDropped.has(denied)
-        ) {
-          continue
-        }
-        let list = candidates.get(denied)
-        if (!list) {
-          list = []
-          candidates.set(denied, list)
-        }
-        list.push(v)
-      }
-    }
-    const byImporter = (
-      a: { importerId: string },
-      b: { importerId: string },
-    ) =>
-      a.importerId < b.importerId ? -1 : a.importerId > b.importerId ? 1 : 0
-    const out: Array<{ v: EdgeViolation; trace: Trace }> = []
-    for (const denied of [...candidates.keys()].sort()) {
-      found: for (const v of candidates.get(denied)!.sort(byImporter)) {
-        if (!v.self) {
-          const trace = this.trace(v.importerId, graph)
-          if (trace.fromEntry) {
-            out.push({ v, trace })
-            break
-          }
-          continue
-        }
-        if (this.served.get(normalizePath(v.importerId))?.verdict !== 'mock') {
-          continue
-        }
-        // a module that is its own violation, by an app importer the
-        // compiler does not read (an import another plugin added); not when
-        // an importer needs it as it is, nor of a package module (not the
-        // app's to change), nor of a pattern import
-        const incoming = this.incoming(v, graph)
-        if (incoming.exempt.size > 0 || incoming.allowed.size > 0) {
-          continue
-        }
-        for (const c of [...incoming.checked].sort(byImporter)) {
-          // (a pattern import has no report of its own, J6.7)
-          if (
-            NODE_MODULES_RE.test(c.importer) ||
-            this.patternImportOf(c.importer, v.resolved!).pattern !== null
-          ) {
-            continue
-          }
-          const owner = this.ip.liveEnv(c.env) ?? this
-          const trace = c.handoff ? null : owner.trace(c.importerId, graph)
-          if (trace?.fromEntry) {
-            out.push({ v: await owner.importOf(v, c, resolve), trace })
-            break found
-          }
-        }
-      }
-    }
-    for (const { v } of out) {
-      this.warnedDropped.add(deniedPathOf(v))
-    }
-    return out
-  }
-
   /** A rebuild of `build --watch`: `onViolation` hears about what survives it again. */
   beginBuild(): void {
     if (this.ip.config.mode === 'build') {
       this.ip.notifiedOf(this.publicName).clear()
-      this.warnedDropped.clear()
     }
   }
 
   /**
-   * A build output's verdict: the surviving edge modules (`liveKeys`, from
-   * `readRolldownWitness`/`readRspackWitness`) tell which violations stayed;
+   * A build output's verdict: the edge modules in its chunks (`liveKeys`,
+   * from `rolldownMocksInChunks`/`rspackMocksInChunks`: what the final
+   * client bundle holds) tell which violations stayed; a mock in no chunk is
+   * no report;
    * `onViolation` hears about each with its trace in `graph`, and the reports
    * are returned, formatted (`error` behaviour: the build fails with them;
    * `mock`: warnings). `holds`: the module ids of the build, from a host that
@@ -2462,8 +2346,6 @@ class ImportProtectionEnv {
      * name, an export map).
      */
     resolve?: (specifier: string, importer: string) => Promise<string | null>,
-    /** A file's marker, from its raw text (Rspack: a module it pruned, never built). */
-    marker?: (path: string) => Promise<MarkerKind | 'conflict' | null>,
   ): Promise<
     Array<{
       severity: 'error' | 'warning'
@@ -2519,6 +2401,7 @@ class ImportProtectionEnv {
     // the file when it compiles it), so no report accounts for it (design 4,
     // I5)
     const unaccounted: Array<EdgeViolation> = []
+    const host = graph.built ?? graph
     /** The violations to report, each with the environment it is of. */
     const live = new Map<
       string,
@@ -2537,7 +2420,7 @@ class ImportProtectionEnv {
           continue
         }
         const id = normalizePath(v.importerId)
-        // (the witness finds a served mock; the key may stand for other ids too)
+        // (the chunk reader finds a served mock; the key may stand for other ids too)
         if (
           this.served.get(id)?.verdict !== 'mock' ||
           unsettled.has(id) ||
@@ -2546,9 +2429,17 @@ class ImportProtectionEnv {
           continue
         }
         // one report per checked import that reaches it: a denied handoff
-        // as recorded, an import the compiler does not read by its importer
+        // as recorded, an import the compiler does not read by its importer;
+        // those of the importers the output has, else every one (a barrel
+        // that only re-exports it leaves no module of its own in a chunk)
         const incoming = this.incoming(v, graph)
-        for (const c of incoming.checked) {
+        const inChunks = incoming.checked.filter(
+          (c) =>
+            c.handoff ||
+            !host.kept ||
+            host.kept({ env: c.env, id: c.importerId }),
+        )
+        for (const c of inChunks.length > 0 ? inChunks : incoming.checked) {
           const owner = this.ip.liveEnv(c.env) ?? this
           add(c.handoff ?? (await owner.importOf(v, c, resolve)), owner)
         }
@@ -2563,145 +2454,20 @@ class ImportProtectionEnv {
         }
       }
     }
-    // bare imports, as the bundler's own graph holds them: an importer the
-    // output evaluates whose code imports the module for its evaluation
-    // alone, whatever the compiler read of that importer (a package module
-    // it does not compile, an import another plugin added, an import that is
-    // bare only after TypeScript) and whatever the tree-shaking settings
-    const host = graph.built ?? graph
-    const evaluationImports = new Map<string, Array<string>>()
-    const importsBare = async (
-      node: GraphNode,
-      evaluated: boolean,
-      target: (specifier: string) => boolean | Promise<boolean>,
-    ): Promise<boolean> => {
-      if (!evaluated) {
-        return false
-      }
-      let specifiers = evaluationImports.get(nodeKey(node))
-      if (!specifiers) {
-        const code = host.code?.(node) ?? null
-        specifiers = code === null ? [] : evaluationSpecifiers(code)
-        evaluationImports.set(nodeKey(node), specifiers)
-      }
-      for (const specifier of specifiers) {
-        if (await target(specifier)) {
-          return true
-        }
-      }
-      return false
-    }
+    // an entry's own marker: the entry runs, whatever the form of its marker
+    // import or what the host's TypeScript makes of it (SWC drops
+    // `export {} from`: its mock is never imported)
     const survived = new Set(liveKeys)
     for (const [key, m] of host.kept ? this.modules : []) {
       if (survived.has(key) || this.served.get(key)?.verdict === 'real') {
         continue
       }
       for (const v of m.violations.values()) {
-        // (an asset query of a file, its text or URL, runs nothing of it)
-        if (v.handoff || (v.resolved !== null && isAssetId(v.resolved))) {
-          continue
-        }
-        // an entry's own marker: whatever its form, or what the host's
-        // TypeScript makes of it (SWC drops `export {} from`), the entry runs
         if (v.ownMarker && host.kept!({ env: this.name, id: v.importerId })) {
           add(v)
-          continue
-        }
-        if (!v.self) {
-          if (
-            await importsBare(
-              { env: this.name, id: v.importerId },
-              host.kept!({ env: this.name, id: v.importerId }),
-              (specifier) => {
-                const ref = this.ip.ids.parse(specifier)
-                return ref?.kind === 'edge' && ref.key === key
-              },
-            )
-          ) {
-            add(v)
-          }
-          continue
-        }
-        const id = normalizePath(v.importerId)
-        if (
-          this.served.get(id)?.verdict !== 'mock' ||
-          unsettled.has(id) ||
-          conflicts.has(id)
-        ) {
-          continue
-        }
-        const file = deniedPathOf(v)
-        for (const c of this.incoming(v, graph).checked) {
-          const node = { env: c.env, id: c.importerId }
-          const owner = this.ip.liveEnv(c.env) ?? this
-          if (
-            !c.handoff &&
-            (await importsBare(node, host.kept!(node), async (specifier) => {
-              const r = (await resolve?.(specifier, c.importer)) ?? null
-              return (
-                r !== null &&
-                !isAssetId(r) &&
-                normalizePath(identify(r).path) === file
-              )
-            }))
-          ) {
-            add(await owner.importOf(v, c, resolve), owner)
-          }
         }
       }
     }
-    // Rspack does not build a module a `sideEffects: false` package imports
-    // bare (it prunes it while it makes the graph): a marked one is read
-    // from the kept importer's code (Rolldown builds it: the paths above)
-    if (host.keptNodes && host.sideEffectFree && marker && resolve) {
-      for (const node of host.keptNodes()) {
-        const code =
-          node.env === this.name && host.sideEffectFree(node)
-            ? (host.code?.(node) ?? null)
-            : null
-        const importer = traceFile(node.id)
-        if (
-          code === null ||
-          !MAY_IMPORT_BARE.test(code) ||
-          this.ip.exempt(importer)
-        ) {
-          continue
-        }
-        for (const specifier of evaluationSpecifiers(code)) {
-          const r = await resolve(specifier, importer)
-          if (
-            r === null ||
-            isAssetId(r) ||
-            host.holds?.({ env: this.name, id: r }) ||
-            !markerViolates(this.type, await marker(identify(r).path))
-          ) {
-            continue
-          }
-          const self = selfViolationOf(
-            this.ip.config,
-            this,
-            r,
-            { type: 'marker' },
-            { names: [], hasDefault: true },
-          )
-          const v = await this.importOf(
-            self,
-            { importer, importerId: node.id, env: node.env },
-            resolve,
-          )
-          if (!(await this.allows(v))) {
-            add(v)
-          }
-        }
-      }
-    }
-    const dropped = await this.dropped(liveKeys, graph, resolve, [
-      ...[...live.values()].map(({ v }) => v),
-      ...[...demanded.values()].map((c) => c.self),
-      ...[...unsettled.values()].map((u) => u.self),
-      ...[...unchecked.values()].map(([v]) => v),
-      ...unaccounted,
-    ])
     const reports = []
     // not violations (no `onViolation`), and errors under both behaviors
     for (const c of conflicts.values()) {
@@ -2748,15 +2514,6 @@ class ImportProtectionEnv {
           NO_TRACE,
           this.publicName,
         ) as ViolationInfo,
-      })
-    }
-    // not violations (no `onViolation`, no failure): mocked, nothing shipped
-    for (const { v, trace } of dropped) {
-      const info = violationInfo(v, this.ip.config, trace, this.publicName)
-      reports.push({
-        severity: 'warning' as const,
-        message: formatDroppedImport(v, info, this.ip.report),
-        info: info as ViolationInfo,
       })
     }
     // not violations either, but the build shipped what no importer asked for

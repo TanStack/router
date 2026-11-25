@@ -375,7 +375,7 @@ export const cases: Array<WitnessCase> = [
   },
   {
     // Unused binding, effectful target: the mock alone decides, and nothing
-    // reads it (the build warns that the mocked import was dropped).
+    // reads it: the bundler drops it, nothing is reported.
     name: 'an unused binding of an effectful module (JavaScript)',
     entry: 'src/entry.js',
     files: {
