@@ -618,7 +618,7 @@ export class OutputBuilder {
     // (an LF after a CR the previous write ended with is that CR's line end)
     const skip = this.endsCR && t.charCodeAt(0) === 10 ? 1 : 0
     this.endsCR = this.src.ecma && t.charCodeAt(t.length - 1) === 13
-    if (!this.withMap) {
+    if (!this.withMap || skip === t.length) {
       return
     }
     if (mapTo !== undefined) {
@@ -790,9 +790,15 @@ export class OutputBuilder {
             buf[p++] = SEMI
             pgc = 0
             has = false
-            line++
-            lineStart = i + 1
-            base = -lineStart
+            // (an output line; the source's ends at the LF of its CRLF
+            // when the run ends between the two)
+            if (k === CR && code.charCodeAt(i + 1) === 10) {
+              base = -(i + 1)
+            } else {
+              line++
+              lineStart = i + 1
+              base = -lineStart
+            }
             prev = SPACE
             continue
           }

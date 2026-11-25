@@ -314,4 +314,29 @@ describe('OutputBuilder', () => {
       }),
     ).toMatchObject({ line: 3, column: 6 })
   })
+
+  // A source CRLF a write ends inside: the output keeps one line end, and
+  // the source's line still ends at its LF (the map points into the line
+  // the source has, never past it). Source: emit review re-check (Astra 2,
+  // Gemini 3)
+  it.each([
+    ['two copies', (b: OutputBuilder) => (b.copy(0, 2), b.copy(2, 9))],
+    [
+      'a copy, the LF as text, a copy',
+      (b: OutputBuilder) => (b.copy(0, 2), b.text('\n'), b.copy(3, 9)),
+    ],
+  ])(
+    'maps the line after a source CRLF split by %s to its own line',
+    (_, write) => {
+      const code = 'x\r\nmarker'
+      const b = new OutputBuilder(new SourceText(code), '/m.ts')
+      write(b)
+      const { code: out, map } = b.finish()
+      expect(out).toBe(code)
+      expect(map!.mappings.split(';').length).toBe(2)
+      expect(
+        originalPositionFor(new TraceMap(map as never), { line: 2, column: 0 }),
+      ).toMatchObject({ line: 2, column: 0 })
+    },
+  )
 })

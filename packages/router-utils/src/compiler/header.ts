@@ -31,7 +31,9 @@ export interface Header {
   latePragmas: Array<Range>
 }
 
-const PRAGMA_RE = /@(jsxImportSource|jsxRuntime|jsxFrag|jsx)\s+(\S+)/g
+/** A JSX pragma and its value, on one line (a line break after the name leaves it without one: no pragma to the JSX transforms). */
+const PRAGMA_RE =
+  /@(jsxImportSource|jsxRuntime|jsxFrag|jsx)[^\S\r\n\u2028\u2029]+(\S+)/g
 
 export function isLicenseComment(c: Comment): boolean {
   return (
@@ -42,16 +44,17 @@ export function isLicenseComment(c: Comment): boolean {
 
 /**
  * The pragmas of a comment alone (a license comment's, which other outputs
- * need without the notice), as a line comment: read from the comment's
- * value, never its delimiters; a line comment holds any pragma value (one
- * ending with a block comment's closing delimiter included).
+ * need without the notice), as a comment of the source comment's kind (SWC
+ * and TypeScript read JSX pragmas in block comments only), read from its
+ * value: a block comment's value holds no closing delimiter.
  */
 export function pragmaComment(code: string, range: Range): string {
-  const value = code.slice(
-    range.start + 2,
-    code.startsWith('/*', range.start) ? range.end - 2 : range.end,
-  )
-  return `// ${[...value.matchAll(PRAGMA_RE)].map((m) => m[0]).join(' ')}`
+  const block = code.startsWith('/*', range.start)
+  const value = code.slice(range.start + 2, block ? range.end - 2 : range.end)
+  const pragmas = [...value.matchAll(PRAGMA_RE)]
+    .map((m) => `@${m[1]} ${m[2]}`)
+    .join(' ')
+  return block ? `/* ${pragmas} */` : `// ${pragmas}`
 }
 
 export function pragmasOf(c: Comment): Array<Pragma> {

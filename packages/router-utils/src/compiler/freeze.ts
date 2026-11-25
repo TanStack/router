@@ -1540,7 +1540,7 @@ class Renderer {
       const seg = segs[i]!
       if (seg.k === 'text') {
         if (tokenStart(seg.text) < seg.text.length) {
-          if (SELF_CHECKS && /['"];?\s*$/.test(seg.text)) {
+          if (SELF_CHECKS && GENERATED_STRING_STATEMENT.test(seg.text)) {
             // (special case: generated text is never taken for a directive)
             throw internalError(
               `generated text ending with a string precedes a string statement of the source: a directive prologue the statement rule cannot read (${JSON.stringify(seg.text.slice(-40))})`,
@@ -1700,6 +1700,14 @@ function calleeText(t: string): string {
     ? `(0, ${t})`
     : t
 }
+
+/**
+ * A text ending with a string statement (`SELF_CHECKS`, `lastTokenBefore`):
+ * a string literal at a statement's start, ended by `;` or a line end in the
+ * same text (a specifier literal, an expression's string are none).
+ */
+const GENERATED_STRING_STATEMENT =
+  /(?:^|[;{}]|[\r\n\u2028\u2029])\s*(?:'(?:[^'\\\r\n]|\\[\s\S])*'|"(?:[^"\\\r\n]|\\[\s\S])*")\s*?(?:;|[\r\n\u2028\u2029])\s*$/
 
 /** The comment holding offset `p` (comments in source order). */
 function commentAt(

@@ -863,6 +863,22 @@ export function typed() {
   ).toEqual([false, true, 'undefined', 'ReferenceError'])
 })
 
+// The same string statement after a removed import, with the server fn's
+// RPC import the compiler writes before it: a specifier literal ends that
+// glue, and it is no directive prologue (under the self-checks our test runs
+// enable, `TSR_COMPILER_VERIFY=1`, the compile must not fail on it).
+// Source: emit review re-check (Fable R2, Gemini 2)
+test('client: a string statement after a removed import and a generated import stays an expression', async () => {
+  const served = await serveCase(await host(), {
+    'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
+'str'
+import { createServerFn } from '@tanstack/react-start'
+const secret = createServerOnlyFn(() => 1)
+export const sf = createServerFn().handler(async () => secret())`,
+  })
+  expect(await inPage(served, 'return typeof module.sf')).toBe('function')
+})
+
 // Parenthesized JSX keeps working.
 test('client: keeps parenthesized JSX working', async () => {
   const served = await serveCase(await host(), {

@@ -133,6 +133,27 @@ describe('split modules keep file-level JSX pragmas', () => {
   // Impact: with Vite 8, a `css` prop that the untouched route ignored is
   // styled once the component is split (or the reverse once the user
   // relies on the unsplit behaviour): the route renders differently split.
+  // A pragma name whose value is on the next line is no pragma to the
+  // project's transform: the untouched file uses the default runtime, and
+  // so does the split component (the license notice stays in the route
+  // module). Source: emit review re-check (Astra 1, Gemini 1)
+  it.each([
+    [
+      'its value on the next line',
+      `/**\n * @license MIT\n * @jsxImportSource\n * @emotion/react\n */\n${head}`,
+    ],
+    [
+      'no value on its line',
+      `/**\n * @license MIT\n * Note @jsx\n * Copyright\n */\n${head}`,
+    ],
+  ])(
+    'keeps a pragma name in a license comment with %s as ineffective as in the untouched file',
+    async (_, header) => {
+      const rendered = await expectRendersLikeUntouched(styledRoute(header))
+      expect(emotionStyled(rendered)).toBe(false)
+    },
+  )
+
   it('keeps a @jsxImportSource written after the imports as ineffective as in the untouched file (leading-pragma project)', async () => {
     const rendered = await expectRendersLikeUntouched(
       styledRoute(`${head}/** @jsxImportSource @emotion/react */\n`),
