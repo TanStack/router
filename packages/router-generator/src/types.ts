@@ -148,9 +148,9 @@ export type GetRoutesByFileMapResultValue = {
 }
 /**
  * The route files of the tree (scanned and real paths) and their route ids:
- * a snapshot. The generator replaces it (a new object) only when a
- * generation changed the tree's routes; the same object again is the same
- * registry, which is how the plugins dedupe publications. Never mutated.
+ * a snapshot. The generator replaces it (a new object) only when an entry
+ * changed; the same object again is the same registry, which is how the
+ * plugins dedupe publications. Never mutated.
  */
 export type GetRoutesByFileMapResult = ReadonlyMap<
   string,

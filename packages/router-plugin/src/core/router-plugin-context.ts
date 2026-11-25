@@ -42,8 +42,8 @@ export function createRouterPluginContext(): RouterPluginContext {
     },
     set routesByFile(next: GetRoutesByFileMapResult) {
       const previous = routesByFile
-      // the generator replaces its registry when a route changed: the same
-      // one again (after an event that changed no route) is no change
+      // the generator replaces its registry when an entry changed: the same
+      // one again (after a run that changed no entry) is no change
       if (next === previous) {
         return
       }

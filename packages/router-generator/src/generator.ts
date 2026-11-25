@@ -109,6 +109,83 @@ interface FileState {
   readonly unparsable?: string
 }
 
+/** A route of the registry: a scanned route file the tree's generation included. */
+interface RegistryRoute {
+  readonly file: string
+  readonly routeId: string
+  readonly kind: GetRoutesByFileMapResultValue['kind']
+}
+
+/**
+ * What the generator publishes, all of it from one batch: the route tree of
+ * its last generation and what readers ask of it. A batch builds the next
+ * one once its writes are done, then installs it in one assignment, then
+ * tells the plugins (a failed batch too: the routes and tree stay those of
+ * the last generation, with what their files say now).
+ */
+interface Generation {
+  /** The tree model of the last generation; undefined before the first. */
+  readonly model: TreeModel | undefined
+  /**
+   * The route tree as that generation published it, to tell an external
+   * change of it (`printed`: the text Prettier formatted into `content`,
+   * when it did).
+   */
+  readonly tree:
+    | {
+        readonly content: string
+        readonly digest: string
+        readonly mtimeMs: number
+        readonly size: number
+        readonly printed?: string
+      }
+    | undefined
+  /** The registry's routes: those of the scan the model was built from. */
+  readonly routes: ReadonlyArray<RegistryRoute>
+  readonly routesByFile: GetRoutesByFileMapResult
+  /** The digest of each file the tree imports (`sourceDigest`), by its path and by its real path. */
+  readonly digests: ReadonlyMap<string, string>
+  /** The batch failed: the next one scans again and rebuilds the tree. */
+  readonly failure: { readonly error: unknown } | undefined
+}
+
+/**
+ * Adds each linked file's entry under its real path too (the module id
+ * bundlers give it): a real path that is the path of an entry is that
+ * entry's, else the first link's.
+ */
+function withRealPaths<T>(
+  map: Map<string, T>,
+  links: Array<readonly [realPath: string, value: T]>,
+): Map<string, T> {
+  for (const [realPath, value] of links) {
+    if (!map.has(realPath)) {
+      map.set(realPath, value)
+    }
+  }
+  return map
+}
+
+function sameRegistry(
+  a: GetRoutesByFileMapResult,
+  b: GetRoutesByFileMapResult,
+) {
+  if (a.size !== b.size) {
+    return false
+  }
+  for (const [file, value] of a) {
+    const other = b.get(file)
+    if (
+      other?.routeId !== value.routeId ||
+      other.kind !== value.kind ||
+      other.routerConstructor !== value.routerConstructor
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
 /** What the analysis of a file's content records (`pending`: the text its upkeep writes over it). */
 type ContentFacts = Pick<FileState, 'facts' | 'unparsable'> & {
   readonly pending?: string
@@ -227,31 +304,14 @@ export class Generator {
   /** The route files of the last scan (a file a failed read left out of `files` is still known). */
   private scanned = new Set<string>()
   private readonly files = new Map<string, FileState>()
-  private model: TreeModel | undefined
-  /**
-   * The route tree as last published, to tell an external change of it
-   * (`printed`: the text Prettier formatted into `content`, when it did).
-   */
-  private published:
-    | {
-        content: string
-        digest: string
-        mtimeMs: number
-        size: number
-        printed?: string
-      }
-    | undefined
-  /**
-   * Derived from the published model and the files' real paths, once when
-   * first asked after they changed (`sourceDigest`): the files the tree
-   * imports, and each linked one of them by its real path.
-   */
-  private lookups:
-    | { imported: Set<string>; byRealPath: Map<string, string> }
-    | undefined
-  /** A batch failed: the next one scans again and rebuilds the tree. */
-  private stale = false
-  private routesByFile: GetRoutesByFileMapResult = new Map()
+  private generation: Generation = {
+    model: undefined,
+    tree: undefined,
+    routes: [],
+    routesByFile: new Map(),
+    digests: new Map(),
+    failure: undefined,
+  }
 
   private queue: Array<GeneratorEvent> = []
   /** The runs waiting for the drain; a `build` one makes each batch until it settles a build. */
@@ -316,7 +376,7 @@ export class Generator {
         return {
           files: g.files.size,
           pendingBytes,
-          routesByFile: g.routesByFile.size,
+          routesByFile: g.generation.routesByFile.size,
           queue: g.queue.length,
           waiters: g.waiters.length,
         }
@@ -361,9 +421,17 @@ export class Generator {
     this.retired = true
   }
 
-  /** The route files of the tree and their route ids (`GetRoutesByFileMapResult`: a new snapshot per publishing batch; the plugin context dedupes an unchanged one). */
+  /** The route files of the tree and their route ids (`GetRoutesByFileMapResult`: the same object until an entry changes). */
   public getRoutesByFileMap(): GetRoutesByFileMapResult {
-    return this.routesByFile
+    return this.generation.routesByFile
+  }
+
+  /**
+   * The error of the last batch, when it failed (no root route, conflicting
+   * routes, a failed write); undefined when it succeeded or before any.
+   */
+  public lastFailure(): unknown {
+    return this.generation.failure?.error
   }
 
   /**
@@ -382,45 +450,23 @@ export class Generator {
    * does not import, such as a `__root.lazy.tsx`, or no route file).
    */
   public sourceDigest(file: string): string | undefined {
-    const key = normalize(file)
-    this.lookups ??= this.deriveLookups()
-    const scanned = this.files.has(key) ? key : this.lookups.byRealPath.get(key)
-    if (scanned === undefined || !this.lookups.imported.has(scanned)) {
-      return undefined
-    }
-    const state = this.files.get(scanned)
-    if (!state || (scanned !== key && state.realPath !== key)) {
-      return undefined
-    }
-    return state.digest === '' ? undefined : state.digest
+    return this.generation.digests.get(normalize(file))
   }
 
   /** The digest (`contentDigest`) of the route tree the generator published last; undefined before the first. */
   public treeDigest(): string | undefined {
-    return this.published?.digest
-  }
-
-  private deriveLookups() {
-    const imported = this.model ? importedFiles(this.model) : new Set<string>()
-    const byRealPath = new Map<string, string>()
-    for (const file of imported) {
-      const realPath = this.files.get(file)?.realPath
-      if (realPath !== undefined && !byRealPath.has(realPath)) {
-        byRealPath.set(realPath, file)
-      }
-    }
-    return { imported, byRealPath }
+    return this.generation.tree?.digest
   }
 
   /** Whether a run has generated the route tree (and its registry) yet. */
   public hasGenerated(): boolean {
-    return this.model !== undefined
+    return this.generation.model !== undefined
   }
 
   /** The tree model of the last generation, after the queued events. */
   public async getTreeModel(): Promise<TreeModel | undefined> {
     await this.draining
-    return this.model
+    return this.generation.model
   }
 
   /**
@@ -519,7 +565,7 @@ export class Generator {
    * is), any file under the routes directory or a mount of the last scan.
    */
   private mayFind(file: string) {
-    const lenient = !this.scan || this.stale
+    const lenient = !this.scan || this.generation.failure !== undefined
     const listedUnder = (dir: string) =>
       isUnder(file, dir) &&
       (lenient ||
@@ -544,7 +590,6 @@ export class Generator {
     this.draining = (async () => {
       // Events reported together (a rename's delete and create) join one batch
       await Promise.resolve()
-      let failure: { error: unknown } | undefined
       while (this.queue.length && !this.retired) {
         const batch = this.queue.splice(0)
         try {
@@ -552,19 +597,21 @@ export class Generator {
             batch,
             this.waiters.some((w) => w.build),
           )
-          failure = undefined
         } catch (error) {
-          failure = { error }
-          // what this batch read reaches the tree with the next one
-          this.stale = true
-          this.keepRegistryFactsCurrent()
+          // No tree: the last generation's routes and tree stay, with what
+          // the files say now (a consumer answers `Route` from the registry
+          // instead of reading the file, so it can't wait for a tree that
+          // may not come); what this batch read reaches the tree with the
+          // next one, which scans again
+          const { model, tree, routes } = this.generation
+          this.install({ model, tree, routes, failure: { error } })
         }
       }
+      // (retired: another generator answers for these files, a failure of
+      // this one's last run is no one's, and what is queued is dropped)
+      const failure = this.retired ? undefined : this.generation.failure
       if (this.retired) {
-        // (another generator answers for these files: a failure of this
-        // one's last run is no one's, and what is queued is dropped)
         this.queue.length = 0
-        failure = undefined
       }
       const waiters = this.waiters.splice(0)
       this.draining = undefined
@@ -579,38 +626,53 @@ export class Generator {
   }
 
   /**
-   * A failed batch publishes no tree, and the registry keeps its routes. What
-   * it read of a route's constructor still holds: a consumer answers `Route`
-   * from the registry instead of reading the file, so it can't wait for a tree
-   * that may not come (a route that does not parse fails every later batch).
+   * Installs the generation a batch ends with: its registry and digests are
+   * derived here, from what the files say once the batch's writes are done.
+   * The registry stays the same object while no entry changes.
    */
-  private keepRegistryFactsCurrent() {
-    let next: Map<string, GetRoutesByFileMapResultValue> | undefined
-    for (const [file, state] of this.files) {
-      const entry = this.routesByFile.get(file)
-      if (
-        entry &&
-        state.facts.included &&
-        entry.routerConstructor !== state.facts.routerConstructor
-      ) {
-        const value = {
-          ...entry,
-          routerConstructor: state.facts.routerConstructor,
-        }
-        next ??= new Map(this.routesByFile)
-        next.set(file, value)
-        if (state.realPath) {
-          next.set(state.realPath, value)
+  private install(
+    next: Pick<Generation, 'model' | 'tree' | 'routes' | 'failure'>,
+  ) {
+    const routesByFile = new Map<string, GetRoutesByFileMapResultValue>()
+    const routeLinks: Array<[string, GetRoutesByFileMapResultValue]> = []
+    for (const { file, routeId, kind } of next.routes) {
+      const state = this.files.get(file)
+      const value = {
+        routeId,
+        kind,
+        routerConstructor:
+          state?.facts.included === true && state.facts.routerConstructor,
+      }
+      routesByFile.set(file, value)
+      if (state?.realPath !== undefined) {
+        routeLinks.push([state.realPath, value])
+      }
+    }
+    const digests = new Map<string, string>()
+    const digestLinks: Array<[string, string]> = []
+    for (const file of next.model ? importedFiles(next.model) : []) {
+      const state = this.files.get(file)
+      if (state && state.digest !== '') {
+        digests.set(file, state.digest)
+        if (state.realPath !== undefined) {
+          digestLinks.push([state.realPath, state.digest])
         }
       }
     }
-    if (next) {
-      this.routesByFile = next
+    withRealPaths(routesByFile, routeLinks)
+    withRealPaths(digests, digestLinks)
+    const previous = this.generation.routesByFile
+    this.generation = {
+      ...next,
+      routesByFile: sameRegistry(previous, routesByFile)
+        ? previous
+        : routesByFile,
+      digests,
     }
   }
 
   private async processBatch(batch: Array<GeneratorEvent>, build: boolean) {
-    let structural = !this.scan || this.stale
+    let structural = !this.scan || this.generation.failure !== undefined
     const changed = new Set<string>()
     /** The files the batch's events name: read whatever their stamps say. */
     const named = new Set<string>()
@@ -647,23 +709,17 @@ export class Generator {
 
     // What the re-read files changed: the tree's routes, or only the
     // recorded options of some
-    const changes = { routes: false, props: false, registry: false }
+    const changes = { routes: false, props: false }
     const consider = (key: string, before: FileState | undefined) => {
       const after = this.files.get(key)
       if (after?.facts.included !== before?.facts.included) {
         changes.routes = true
-      } else if (after?.facts.included && before?.facts.included) {
-        if (!sameProps(after.facts.props, before.facts.props)) {
-          changes.props = true
-        }
-        if (
-          after.facts.routerConstructor !== before.facts.routerConstructor ||
-          // a symlinked route file pointed at another file: its real path is
-          // a registry key
-          after.realPath !== before.realPath
-        ) {
-          changes.registry = true
-        }
+      } else if (
+        after?.facts.included &&
+        before?.facts.included &&
+        !sameProps(after.facts.props, before.facts.props)
+      ) {
+        changes.props = true
       }
     }
 
@@ -717,30 +773,24 @@ export class Generator {
       )
     }
 
-    // The tree's routes are as before: no tree rebuild, no print
-    if (!changes.routes) {
-      if (changes.props) {
-        this.model = this.buildModel()
-        this.lookups = undefined
-        this.notifyPlugins()
-      }
-      if (changes.registry) {
-        // the tree is as before, but what the registry says of a file is not
-        this.routesByFile = this.computeRoutesByFile()
-        this.lookups = undefined
-      }
-      await this.writePending(this.model!)
+    const published = this.generation
+    if (!changes.routes && !changes.props) {
+      // The tree is as before; the registry and digests follow the files
+      await this.writePending(published.model!)
+      this.install({ ...published, failure: undefined })
       return
     }
-
-    // (until published, the model stays the published one)
+    // (until installed, the model stays the published one)
     const model = this.buildModel()
     await this.writePending(model)
-    await this.publishTree(model)
-    this.model = model
-    this.routesByFile = this.computeRoutesByFile()
-    this.lookups = undefined
-    this.stale = false
+    this.install({
+      model,
+      // (the tree's routes as before, only some recorded options changed:
+      // no print)
+      tree: changes.routes ? await this.publishTree(model) : published.tree,
+      routes: changes.routes ? this.routesOfScan() : published.routes,
+      failure: undefined,
+    })
     this.notifyPlugins()
   }
 
@@ -802,7 +852,10 @@ export class Generator {
       return
     }
     for (const plugin of this.plugins) {
-      plugin.onRouteTreeChanged?.({ model: this.model!, generator: this })
+      plugin.onRouteTreeChanged?.({
+        model: this.generation.model!,
+        generator: this,
+      })
     }
   }
 
@@ -876,22 +929,24 @@ export class Generator {
     }
   }
 
-  private async publishTree(model: TreeModel) {
+  /** Writes the route tree of `model` unless the file holds it; returns it as published. */
+  private async publishTree(model: TreeModel): Promise<Generation['tree']> {
+    const published = this.generation.tree
     const printed = this.printRouteTree(model)
     const formatting = this.config.enableRouteTreeFormatting === true
     // (an unchanged print is not formatted again)
     const content = !formatting
       ? printed
-      : this.published?.printed === printed
-        ? this.published.content
+      : published?.printed === printed
+        ? published.content
         : await formatWithPrettier(printed, this.style)
     // Compared with the disk, not with what was written last: a deleted or
     // edited tree is written again (unchanged since published: no read).
     const onDisk = (await this.treeOnDiskIsPublished())
-      ? this.published!.content
+      ? published!.content
       : await readIfExists(this.treeFile)
     if (this.retired) {
-      return
+      return published
     }
     if (onDisk !== content) {
       // A file of its own, as on main: its imports are relative to where it
@@ -899,7 +954,7 @@ export class Generator {
       await this.publisher.write(this.treeFile, content, undefined, true)
     }
     const stat = await fsp.stat(this.treeFile)
-    this.published = {
+    return {
       content,
       digest: digestOf(content),
       mtimeMs: stat.mtimeMs,
@@ -909,14 +964,15 @@ export class Generator {
   }
 
   private async treeOnDiskIsPublished() {
-    if (!this.published) {
+    const published = this.generation.tree
+    if (!published) {
       return false
     }
     const stat = await fsp.stat(this.treeFile).catch(() => null)
     return (
       stat !== null &&
-      stat.mtimeMs === this.published.mtimeMs &&
-      stat.size === this.published.size
+      stat.mtimeMs === published.mtimeMs &&
+      stat.size === published.size
     )
   }
 
@@ -1152,35 +1208,24 @@ export class Generator {
     this.logger.warn(message)
   }
 
-  private computeRoutesByFile(): GetRoutesByFileMapResult {
-    const map = new Map<string, GetRoutesByFileMapResultValue>()
-    const real: Array<[string, GetRoutesByFileMapResultValue]> = []
-    for (const node of filesOf(this.scan!)) {
-      const state = this.files.get(node.fullPath)
-      if (!state?.facts.included) {
-        continue
-      }
-      const value: GetRoutesByFileMapResultValue = {
-        routeId: node.routePath ?? `/${rootPathId}`,
-        kind:
-          node === this.scan!.rootRouteNode
-            ? 'root'
-            : node._fsRouteType === 'lazy'
-              ? 'lazy'
-              : 'file',
-        routerConstructor: state.facts.routerConstructor,
-      }
-      map.set(node.fullPath, value)
-      if (state.realPath) {
-        real.push([state.realPath, value])
-      }
-    }
-    // a real path that is another scanned route file is that file's
-    for (const [file, value] of real) {
-      if (!map.has(file)) {
-        map.set(file, value)
-      }
-    }
-    return map
+  /** The registry's routes of the last scan: its route files the facts include. */
+  private routesOfScan(): Array<RegistryRoute> {
+    const scan = this.scan!
+    return filesOf(scan).flatMap((node) =>
+      this.files.get(node.fullPath)?.facts.included
+        ? [
+            {
+              file: node.fullPath,
+              routeId: node.routePath ?? `/${rootPathId}`,
+              kind:
+                node === scan.rootRouteNode
+                  ? 'root'
+                  : node._fsRouteType === 'lazy'
+                    ? 'lazy'
+                    : 'file',
+            },
+          ]
+        : [],
+    )
   }
 }

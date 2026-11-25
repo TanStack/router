@@ -477,3 +477,68 @@ test('a session closed before its watcher is ready ends its watch() without a ru
   })
   await session.close()
 })
+
+// A host replaces its generator when its config changes, and the session
+// reads the current one. The session's watcher kept the generator it was
+// started with: once that one was retired, an edit was not repaired and a
+// created route was not listed until the host watched again.
+// Source: whole-PR review R2-30, VERIFY-router V-66.
+test('after the host replaces the generator, the watcher hands each event to the current one', async () => {
+  const root = await createApp(app)
+  const config = configOf(root)
+  let generator = new Generator({ config, root })
+  const reported: Array<string> = []
+  let routes: GetRoutesByFileMapResult = new Map()
+  const session = createGeneratorSession({
+    generator: () => generator,
+    publish: (routesByFile) => {
+      routes = routesByFile
+    },
+    report: (error) => reported.push(String(error)),
+  })
+  onTestFinished(() => session.close())
+  await session.watch()
+  generator.retire()
+  generator = new Generator({ config, root })
+  await session.run()
+
+  const created = await save(root, 'src/routes/new.tsx', fileRoute('/new'))
+  await waitForOutcome({
+    applied: () => routes.has(replaceBackslash(created)),
+    problems: () => reported,
+    timeout: 10_000,
+    describe: () => `routes handed over: ${[...routes.keys()].join(', ')}`,
+  })
+  expect(generator.getRoutesByFileMap().has(replaceBackslash(created))).toBe(
+    true,
+  )
+})
+
+// The session handed a replacement generator's registry over with the error
+// of the generator it replaced: the planners then failed every route module
+// with that error until the new generator's first run.
+// Source: whole-PR review R2-05 (Fable R2 #5, Astra R2 #13).
+test('a generator that replaces a failed one is handed over without its failure', async () => {
+  const root = await createApp({
+    'src/routes/__root.tsx': rootRoute(),
+    'src/routes/a.tsx': 'export const Route = createFileRoute(\n',
+  })
+  const config = configOf(root)
+  let generator = new Generator({ config, root })
+  const failures: Array<unknown> = []
+  const session = createGeneratorSession({
+    generator: () => generator,
+    publish: (_, failure) => failures.push(failure),
+    report: () => {},
+  })
+  await session.run()
+  expect(failures).toEqual([expect.any(Error)])
+
+  const a = await save(root, 'src/routes/a.tsx', fileRoute('/a'))
+  // (the host replaces the generator while a run of the retired one settles)
+  const settling = session.run({ type: 'update', path: a })
+  generator.retire()
+  generator = new Generator({ config, root })
+  await settling
+  expect(failures.at(-1)).toBeUndefined()
+})

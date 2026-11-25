@@ -34,19 +34,20 @@ export interface GeneratorSession {
     modified: Iterable<string>,
     removed: Iterable<string>,
   ) => Promise<void>
-  /** Stops watching; `watch` starts again with the current generator. */
+  /** Stops watching; `watch` starts again. */
   close: () => Promise<void>
 }
 
 /**
- * One generator session of a bundler plugin or the CLI: when the generator
- * runs and what it hands over. A run's failure and an error of the watcher
- * are reported (`report`, default `console.error`); `publish` gets the
- * registry after every run (its routes change only when a batch published
- * its route tree: a failed one leaves the previous routes, with the
- * constructor facts it read), and, while no run has generated the routes,
- * the last run's error: the empty registry then lists no route because none
- * is known yet.
+ * One generator session of a bundler plugin or the CLI: when the current
+ * generator runs and what it hands over (the watcher hands each event to the
+ * current generator too). A run's failure and an error of the watcher are
+ * reported (`report`, default `console.error`); `publish` gets the current
+ * generator's registry after every run (its routes change only when a batch
+ * published its route tree: a failed one leaves the previous routes, with
+ * what their files say now), and, while that generator has generated no
+ * routes, the error of its last batch: the empty registry then lists no
+ * route because none is known yet.
  */
 export function createGeneratorSession(opts: {
   /** The current generator (a host replaces it when its config file changes). */
@@ -57,14 +58,12 @@ export function createGeneratorSession(opts: {
   const report = opts.report ?? ((error: unknown) => console.error(error))
   let watcher: Promise<RouteFileWatcher> | undefined
   let watching: Promise<void> | undefined
-  /** The error of the last run that failed. */
-  let failure: unknown
 
   const publish = () => {
     const generator = opts.generator()
     opts.publish?.(
       generator.getRoutesByFileMap(),
-      generator.hasGenerated() ? undefined : failure,
+      generator.hasGenerated() ? undefined : generator.lastFailure(),
     )
   }
 
@@ -73,7 +72,6 @@ export function createGeneratorSession(opts: {
     try {
       await run
     } catch (error) {
-      failure = error
       report(error)
     }
     if (watcher) {
@@ -87,9 +85,6 @@ export function createGeneratorSession(opts: {
     async build() {
       try {
         await opts.generator().run({ type: 'build' })
-      } catch (error) {
-        failure = error
-        throw error
       } finally {
         publish()
       }
@@ -97,7 +92,7 @@ export function createGeneratorSession(opts: {
     watch() {
       watching ??= (async () => {
         const started = watchRouteFiles(
-          opts.generator(),
+          opts.generator,
           (run) => void settle(run),
           report,
         )
