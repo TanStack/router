@@ -110,7 +110,8 @@ export const isVirtualId = (canonicalId: string): boolean =>
 
 /**
  * How the summaries parse a module (null: not at all): a virtual module
- * without an extension is JavaScript, a file without a language is not.
+ * without an extension parses as TypeScript without JSX (which reads any
+ * JavaScript but JSX), a file without a language is not parsed.
  */
 export function summaryParse(canonicalId: string): ParseModuleOptions | null {
   const id = identify(canonicalId)
