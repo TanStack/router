@@ -168,3 +168,121 @@ describe('real channels', () => {
     })
   })
 })
+
+// Controls of the file and position matcher: a diagnostic meets an
+// expectation only with the expected file's own path and its own position.
+describe('file and position', () => {
+  const warning = (text: string) => [
+    { severity: 'warning' as const, text, raw: text },
+  ]
+
+  test('a position belongs to the file it follows, not to a later file', () => {
+    const nested = warning(
+      'src/route.ts:2:9: cannot split\n  imported from src/barrel.ts:11:6',
+    )
+    const route = { file: 'src/route.ts', root: '/app' }
+    expectDiagnostic(nested, { ...route, position: { line: 2, column: 9 } })
+    expect(
+      findDiagnostics(nested, { ...route, position: { line: 11, column: 6 } }),
+    ).toEqual([])
+    expectDiagnostic(nested, {
+      file: 'src/barrel.ts',
+      root: '/app',
+      position: { line: 11, column: 6 },
+    })
+    expect(
+      findDiagnostics(nested, {
+        file: 'src/barrel.ts',
+        root: '/app',
+        position: { line: 2, column: 9 },
+      }),
+    ).toEqual([])
+  })
+
+  test('an absolute path names its file only as a whole path', () => {
+    const at = { file: '/app/src/route.ts', position: { line: 1, column: 1 } }
+    for (const other of [
+      '/app/src/route.tsx:1:1',
+      '/other/app/src/route.ts:1:1',
+      '/app/src/route.ts.map:1:1',
+    ]) {
+      expect(findDiagnostics(warning(`failed: ${other}`), at)).toEqual([])
+    }
+    for (const same of [
+      'failed: /app/src/route.ts:1:1',
+      '    at load (/app/src/route.ts:1:1)',
+      'failed: file:///app/src/route.ts:1:1',
+      '╭─[/app/src/route.ts:1:1]',
+      'failed in /app/src/route.ts.\n1:1',
+    ]) {
+      expectDiagnostic(warning(same), { ...at, times: 1 })
+    }
+  })
+
+  test('route groups and parameters are part of the path', () => {
+    const login = {
+      file: '/app/src/routes/(auth)/login.tsx',
+      position: { line: 1, column: 1 },
+    }
+    const page = { file: '/app/src/routes/[slug]/page.tsx' }
+    for (const [text, expected] of [
+      ['error in src/routes/(other)/login.tsx:1:1', login],
+      ['error in /app/src/routes/(other)/login.tsx:1:1', login],
+      ['error in src/routes/[id]/page.tsx:1:1', page],
+    ] as const) {
+      expect(findDiagnostics(warning(text), expected)).toEqual([])
+    }
+    for (const [text, expected] of [
+      ['error in src/routes/(auth)/login.tsx:1:1', login],
+      ['    at load (/app/src/routes/(auth)/login.tsx:1:1)', login],
+      ['error in (auth)/login.tsx:1:1', login],
+      ['error in src/routes/[slug]/page.tsx', page],
+    ] as const) {
+      expectDiagnostic(warning(text), { ...expected, times: 1 })
+    }
+    expect(
+      findDiagnostics(warning('error in src/routes/(other)/login.tsx'), {
+        file: 'src/routes/(auth)/login.tsx',
+        root: '/app',
+      }),
+    ).toEqual([])
+    expect(
+      findDiagnostics(warning('error in src/routes/[id]/page.tsx'), {
+        file: 'routes/[slug]/page.tsx',
+      }),
+    ).toEqual([])
+  })
+
+  test('output of unknown owner names its file only by its absolute path', () => {
+    const shared = (text: string) => [
+      { severity: 'warning' as const, text, raw: text, shared: true as const },
+    ]
+    const expected = {
+      file: 'src/routes/index.tsx',
+      root: '/tmp/apps/b',
+      position: { line: 3, column: 1 },
+    }
+    expect(
+      findDiagnostics(
+        shared('[plugin] src/routes/index.tsx:3:1 split'),
+        expected,
+      ),
+    ).toEqual([])
+    expect(() =>
+      expectDiagnostic(shared('[plugin] src/routes/index.tsx:3:1'), expected),
+    ).toThrow(/unknown owner/)
+    expect(
+      findDiagnostics(shared('[plugin] warned'), { severity: 'warning' }),
+    ).toEqual([])
+    expectDiagnostic(
+      shared('[plugin] /tmp/apps/b/src/routes/index.tsx:3:1 split'),
+      { ...expected, times: 1 },
+    )
+    expect(
+      findDiagnostics(
+        shared('[plugin] /tmp/apps/a/src/routes/index.tsx:3:1 split'),
+        expected,
+      ),
+    ).toEqual([])
+  })
+})
