@@ -413,25 +413,71 @@ test(
   timeout,
 )
 
-// webpack and Rspack run each module of a lazy chunk in a factory function
-// of the chunk (the values of an object of module ids, or the elements of an
-// array with natural ids): its body is the module's top level, so a read
-// there that no module's code holds, of a name only a function of a module
-// binds, is dangling too. Loading the chunk throws `ReferenceError`; the
-// same chunk without the read loads.
+// Whatever wraps a bundle-level read (here an object of functions keyed by
+// identifiers, as a minifier writes hashed ids), it runs: only a module's
+// top-level binding can explain it.
+test(
+  'vite: a bundle-level read in a function of an object is dangling with a parameter of the same name in a module',
+  async () => {
+    const error = await bundleAppIn({
+      dir: testsDir,
+      registerCleanup: onTestFinished,
+      bundler: 'vite',
+      env: 'client',
+      minify: false,
+      files: {
+        'entry.ts': `export function label(productLabel: string) {
+  return productLabel.toUpperCase()
+}
+`,
+      },
+      plugins: {
+        vite: () => [
+          {
+            name: 'append-footer',
+            renderChunk: (code: string) =>
+              `${code}\nconst modules = { a1b2: (e, t, r) => console.log(productLabel) }\nmodules.a1b2()\n`,
+          },
+        ],
+      },
+    }).then(
+      () => undefined,
+      (thrown: unknown) => thrown,
+    )
+    expect(error).toBeInstanceOf(DanglingNameError)
+    expect(Object.values((error as DanglingNameError).names).flat()).toEqual([
+      'productLabel',
+    ])
+  },
+  timeout,
+)
+
+// webpack and Rspack run each module of a lazy chunk in a wrapper of the
+// chunk (a factory of an object or array of module ids, whatever the ids;
+// the async function of a module with top-level await): a read there that no
+// module's code holds, of a name only a function of a module binds, is
+// dangling, whatever the wrapper. Loading the chunk throws `ReferenceError`;
+// the same chunk without the read loads.
 test.each([
-  ['webpack', 'deterministic', 'productLabel', true],
-  ['webpack', 'deterministic', 'text', true],
-  ['webpack', 'natural', 'productLabel', true],
-  ['webpack', 'natural', 'text', true],
-  ['webpack', 'natural', 'productLabel', false],
-  ['rspack', 'deterministic', 'productLabel', true],
-  ['rspack', 'deterministic', 'text', true],
-  ['rspack', 'natural', 'productLabel', true],
-  ['rspack', 'natural', 'productLabel', false],
+  ['webpack', 'deterministic', 'productLabel', true, false],
+  ['webpack', 'deterministic', 'text', true, false],
+  ['webpack', 'natural', 'productLabel', true, false],
+  ['webpack', 'natural', 'text', true, false],
+  ['webpack', 'natural', 'productLabel', false, false],
+  ['webpack', 'hashed', 'productLabel', true, false],
+  ['webpack', 'hashed', 'productLabel', false, false],
+  ['webpack', 'deterministic', 'productLabel', true, true],
+  ['webpack', 'natural', 'productLabel', true, true],
+  ['webpack', 'deterministic', 'productLabel', false, true],
+  ['rspack', 'deterministic', 'productLabel', true, false],
+  ['rspack', 'deterministic', 'text', true, false],
+  ['rspack', 'natural', 'productLabel', true, false],
+  ['rspack', 'natural', 'productLabel', false, false],
+  ['rspack', 'deterministic', 'productLabel', true, true],
+  ['rspack', 'deterministic', 'productLabel', false, true],
 ] as const)(
-  '%s, %s ids: a read added to a module factory is dangling with a parameter %s in the module (read added: %s)',
-  async (bundler, moduleIds, parameter, read) => {
+  '%s, %s ids: a read added to a module is dangling with a parameter %s in the module (read added: %s, top-level await: %s)',
+  async (bundler, moduleIds, parameter, read, topLevelAwait) => {
     const outcome = await bundleAppIn({
       dir: testsDir,
       registerCleanup: onTestFinished,
@@ -443,7 +489,7 @@ test.each([
       files: {
         // (a lazy chunk's module, run by its factory)
         'entry.ts': `export const load = () => import('./lazy')\n`,
-        'lazy.ts': `export function label(${parameter}: string) {
+        'lazy.ts': `${topLevelAwait ? 'await Promise.resolve()\n' : ''}export function label(${parameter}: string) {
   return ${parameter}.toUpperCase()
 }
 console.log('MARK_FACTORY')

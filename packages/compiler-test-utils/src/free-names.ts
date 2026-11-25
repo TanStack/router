@@ -6,7 +6,12 @@
  * anywhere is not free: the module reads it knowing it may not exist (e.g.
  * `typeof process !== 'undefined' && process.env` in client code). The
  * rule is the module's: code of several modules (a chunk) is read with
- * `keepProbed`, and each module decides for itself.
+ * `keepProbed`, and each module decides for itself. A read in code that
+ * never runs (after an unconditional `return`, `throw`, `break` or
+ * `continue` of its block; in the branch of a constant test, `if (false)`,
+ * `!0 || …`) is no read: a minifier drops a function's unused declarations
+ * there and may keep their reads (Vue's dev-only `initCustomFormatter` after
+ * its `return` in a production build).
  */
 import { parse } from 'yuku'
 import type { Node, Scope, SourceFile } from 'yuku'
@@ -24,11 +29,6 @@ export interface ModuleNames {
    * places in the chunk's scope.
    */
   topLevel: Set<string>
-  /**
-   * Names of `free` with a read the code runs when it loads: outside every
-   * function, but for the functions run then (`deferred`).
-   */
-  freeAtTop: Set<string>
   /** Names the module probes with `typeof` (not in `free`, without `keepProbed`). */
   probed: Set<string>
 }
@@ -52,7 +52,6 @@ export function readNames(
   const free = new Set<string>()
   const bound = new Set<string>()
   const topLevel = new Set<string>()
-  const freeAtTop = new Set<string>()
   /** Names the module probes with `typeof`: it reads them knowing they may not exist. */
   const probed = new Set<string>()
   for (const reference of file.references) {
@@ -66,6 +65,9 @@ export function readNames(
       }
       continue
     }
+    if (unreachable(reference.node, file)) {
+      continue
+    }
     const parent = file.parentOf(reference.node)
     if (parent?.type === 'UnaryExpression' && parent.operator === 'typeof') {
       probed.add(reference.name)
@@ -73,16 +75,10 @@ export function readNames(
       !(reference.name === 'arguments' && inArgumentsScope(reference.scope))
     ) {
       free.add(reference.name)
-      if (!deferred(reference.scope, file)) {
-        freeAtTop.add(reference.name)
-      }
     }
   }
   if (!options.keepProbed) {
-    probed.forEach((name) => {
-      free.delete(name)
-      freeAtTop.delete(name)
-    })
+    probed.forEach((name) => free.delete(name))
   }
   return {
     errors: file.diagnostics
@@ -91,67 +87,129 @@ export function readNames(
     free,
     bound,
     topLevel,
-    freeAtTop,
     probed,
   }
 }
 
-/**
- * Whether code of `scope` runs only when a function it is in is called
- * later: not when the code loads. Run then: a class's static blocks, a
- * function called where it is written (`(() => {…})()`, `!function () {…}()`,
- * `(function () {…}).call(this)`), and the module factories of a webpack or
- * Rspack chunk (the function values of an object whose keys are all module
- * ids, number or string literals, or the functions of an array of nothing
- * else, with holes, as natural ids lay them out: each runs its module's top
- * level).
- */
-function deferred(scope: Scope, file: SourceFile) {
-  for (const ancestor of scope.ancestors()) {
-    if (ancestor.kind === 'function' && !runsAtLoad(ancestor.node, file)) {
+/** The statements of a node that holds a list of them. */
+function statementsOf(node: Node): ReadonlyArray<Node> | undefined {
+  switch (node.type) {
+    case 'Program':
+    case 'BlockStatement':
+    case 'StaticBlock':
+      return node.body as ReadonlyArray<Node>
+    case 'SwitchCase':
+      return node.consequent as ReadonlyArray<Node>
+    default:
+      return undefined
+  }
+}
+
+/** The truth of a constant test (`false`, `0`, `!0`, `void 0`), if it is one. */
+function constantTruth(node: Node): boolean | undefined {
+  if (node.type === 'Literal') {
+    return Boolean((node as { value: unknown }).value) || 'regex' in node
+  }
+  if (node.type === 'UnaryExpression') {
+    if (node.operator === 'void') {
+      return false
+    }
+    if (node.operator === '!') {
+      const truth = constantTruth(node.argument)
+      return truth === undefined ? undefined : !truth
+    }
+  }
+  return undefined
+}
+
+/** Whether a statement always leaves its block (`return`, `throw`, …). */
+function exits(node: Node): boolean {
+  switch (node.type) {
+    case 'ReturnStatement':
+    case 'ThrowStatement':
+    case 'BreakStatement':
+    case 'ContinueStatement':
       return true
+    case 'BlockStatement':
+      return node.body.some(exits)
+    case 'IfStatement': {
+      const truth = constantTruth(node.test)
+      return truth === true
+        ? exits(node.consequent)
+        : truth === false
+          ? node.alternate !== null && exits(node.alternate)
+          : exits(node.consequent) &&
+            node.alternate !== null &&
+            exits(node.alternate)
+    }
+    default:
+      return false
+  }
+}
+
+/**
+ * Whether `node` is in code that never runs: after a statement that always
+ * leaves its block (but in a function declared there that code before it
+ * calls: declarations are hoisted), or in the branch a constant test never
+ * takes.
+ */
+function unreachable(node: Node, file: SourceFile) {
+  let child = node
+  for (
+    let parent = file.parentOf(child);
+    parent;
+    child = parent, parent = file.parentOf(parent)
+  ) {
+    const statements = statementsOf(parent)
+    if (statements) {
+      const exit = statements.slice(0, statements.indexOf(child)).find(exits)
+      if (
+        exit &&
+        !(
+          child.type === 'FunctionDeclaration' &&
+          calledBefore(child, exit, file)
+        )
+      ) {
+        return true
+      }
+    } else if (
+      parent.type === 'IfStatement' ||
+      parent.type === 'ConditionalExpression'
+    ) {
+      const truth = constantTruth(parent.test)
+      if (
+        (child === parent.consequent && truth === false) ||
+        (child === parent.alternate && truth === true)
+      ) {
+        return true
+      }
+    } else if (parent.type === 'LogicalExpression' && child === parent.right) {
+      const truth = constantTruth(parent.left)
+      if (
+        (parent.operator === '&&' && truth === false) ||
+        (parent.operator === '||' && truth === true)
+      ) {
+        return true
+      }
     }
   }
   return false
 }
 
-const functionTypes = new Set(['FunctionExpression', 'ArrowFunctionExpression'])
-
-function runsAtLoad(fn: Node, file: SourceFile) {
-  const parent = file.parentOf(fn)
-  if (parent?.type === 'CallExpression') {
-    return parent.callee === fn
-  }
-  if (
-    parent?.type === 'MemberExpression' &&
-    parent.object === fn &&
-    parent.property.type === 'Identifier' &&
-    (parent.property.name === 'call' || parent.property.name === 'apply')
-  ) {
-    const call = file.parentOf(parent)
-    return call?.type === 'CallExpression' && call.callee === parent
-  }
-  if (parent?.type === 'ArrayExpression') {
-    return parent.elements.every(
-      (element) => element === null || functionTypes.has(element.type),
-    )
-  }
-  if (parent?.type === 'Property' && parent.value === fn) {
-    const object = file.parentOf(parent)
-    return (
-      object?.type === 'ObjectExpression' &&
-      object.properties.every(
-        (property) =>
-          property.type === 'Property' &&
-          !property.computed &&
-          property.key.type === 'Literal' &&
-          (typeof property.key.value === 'number' ||
-            typeof property.key.value === 'string') &&
-          functionTypes.has(property.value.type),
-      )
-    )
-  }
-  return false
+/**
+ * Whether a function declared after `exit` is used elsewhere than after it
+ * or in itself: hoisted, it runs when that code calls it.
+ */
+function calledBefore(fn: Node, exit: Node, file: SourceFile) {
+  const id = (fn as { id: Node | null }).id
+  const binding = id && file.bindingOf(id)
+  return (
+    binding?.references.some(
+      ({ node }) =>
+        node.start < exit.end &&
+        !(fn.start <= node.start && node.end <= fn.end),
+    ) ?? true
+  )
 }
 
 /**
