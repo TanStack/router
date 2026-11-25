@@ -883,6 +883,10 @@ export class PlanCache {
     }
     r.entry = entry
     r.restored = null
+    // the compile is no longer in flight once it published: an event from
+    // now on checks its plan as any published one (`revalidate`), and does
+    // not restart a compile whose answer is taken
+    r.flight = null
     return true
   }
 

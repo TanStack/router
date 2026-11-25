@@ -47,7 +47,9 @@ export function composeLoaderMap(
   inputMap: unknown,
   recordMapText: RecordMapText | null,
 ): unknown {
-  if (!map) {
+  // (a map that maps nothing, the empty module's: no map, so that the
+  // file's text never rides on a module whose code does not change with it)
+  if (!map || map.mappings === '') {
     return undefined
   }
   const ours = { ...map, sources: [resourcePath] }
