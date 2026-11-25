@@ -186,6 +186,13 @@ function info not found` when one of them calls it, and the build says nothing, 
 
 ## Accepted limits
 
+- **A dependency module whose edited text stops naming a Start API keeps what its last compile registered until a
+  restart** (settlement design §8, decision 1, settled 2026-11-25: no machinery). Vite hands a `node_modules` module
+  to the compiler only when its text names what the compiler recognises (the dependency text filter): an edit that
+  removes the last such name never reaches the session, so the module's server functions, import-protection records
+  and warnings stay as its last compiled text left them. App files are always compiled and are not affected; a
+  restart (or the module naming a Start API again) settles it. Vite dev only: Rsbuild hands every module to its
+  loader. No test (an edit under `node_modules` is not seen by the harness's watcher).
 - **`export { X }` of a name that is a type and a value keeps what only the type names on the client**
   (`const sv = getServerVal(); type X = typeof sv; const X = 1; export { X }`): the specifier exports the value, so it
   is no type export, and the alias it also names is not read as erased text; `sv` and its import stay, as on `main`
