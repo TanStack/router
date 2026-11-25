@@ -73,6 +73,8 @@ export interface Diagnostic {
     column?: number
     printed: string
     own?: true
+    /** Its file is a webpack or Rspack request (`loader!./src/a.ts`). */
+    request?: true
   }>
   /**
    * Printed outside any async scope (a bundler's native callback) by work
@@ -159,12 +161,13 @@ function locationsOf(
   record: Record<string, unknown>,
   depth = 0,
 ): NonNullable<Diagnostic['locations']> {
-  const { file, line, column, printed } = locationOf(record)
+  const { file, line, column, printed, request } = locationOf(record)
   return [
     ...(file !== undefined
       ? [
           {
             file,
+            ...(request && { request }),
             ...(line !== undefined && { line }),
             ...(column !== undefined && { column }),
             printed,
@@ -209,6 +212,8 @@ function locationOf(record: Record<string, unknown>): {
   line?: number
   column?: number
   printed: string
+  /** The file is a webpack or Rspack request (`moduleName`: loaders, `!`). */
+  request?: true
 } {
   const loc = (record.loc ?? record.location) as
     | {
@@ -233,6 +238,24 @@ function locationOf(record: Record<string, unknown>): {
     (candidate): candidate is string =>
       typeof candidate === 'string' && candidate !== '',
   )
+  const request = file !== undefined && file === record.moduleName
+  const located = locationParts(loc, file)
+  return request ? { ...located, request } : located
+}
+
+/** `locationOf` of a tool's `loc` field and the file it is in. */
+function locationParts(
+  loc:
+    | {
+        file?: unknown
+        line?: unknown
+        column?: unknown
+        start?: { line?: unknown; column?: unknown }
+      }
+    | string
+    | undefined,
+  file: string | undefined,
+): { file?: string; line?: number; column?: number; printed: string } {
   if (typeof loc === 'object' && typeof loc.line === 'number') {
     const column = typeof loc.column === 'number' ? loc.column + 1 : undefined
     return {
@@ -399,7 +422,7 @@ function contentMismatches(
       : pathReader(expected.file, { ...expected, tail: true })
   const locations = diagnostic.locations ?? []
   const located = reader
-    ? locations.filter(({ file }) => fieldNames(file, reader))
+    ? locations.filter(({ file, request }) => fieldNames(file, reader, request))
     : []
   const { line, column } = expected.position ?? {}
   const atPosition = located.some(
@@ -731,24 +754,32 @@ function pathReader(file: string, options: { root?: string; tail?: boolean }) {
 /**
  * Whether a tool's field holding a file names the one `reader` reads, read
  * as a path of the text is (`pathReader`), whole: without a virtual id's
- * `\0` and prefixes (`virtual:split:`), a loader chain (`x-loader!`), a
- * query, webpack's `+ 2 modules` of a concatenated module, and a fragment
- * (`#x`; but `a.ts#copy.ts`, a file name, is the file's).
+ * `\0` and prefixes (`virtual:split:`) and its query; a webpack or Rspack
+ * request (`request`) from its resource on (after its loaders' `!`, the
+ * `+ 2 modules` of a concatenated module aside). In a URL (`file:`,
+ * `webpack:`), `#` starts a fragment; in a plain path, it is part of the
+ * name (`C# project #2/`, `a.ts#copy.ts`).
+ *
+ * Limit: webpack's `module.resource` of a request with a fragment
+ * (`./a.ts#x`) is a plain path whose `#x` reads as part of the name.
  */
-function fieldNames(field: string, reader: ReturnType<typeof pathReader>) {
-  let spelled = posix(field)
-    .replace(/^\0/, '')
-    .replace(/^.*!/, '')
-    .replace(/ \+ \d+ modules?$/, '')
-    .replace(/\?.*$/, '')
-  if (!/#[^/]*\.[A-Za-z]\w*$/.test(spelled)) {
-    spelled = spelled.replace(/#.*$/, '')
+function fieldNames(
+  field: string,
+  reader: ReturnType<typeof pathReader>,
+  request?: boolean,
+) {
+  let spelled = posix(field).replace(/^\0/, '')
+  if (request) {
+    spelled = spelled.replace(/^.*!/, '').replace(/ \+ \d+ modules?$/, '')
   }
+  spelled = spelled.replace(/\?.*$/, '')
   const scheme = /^([A-Za-z][\w+.-]*):(?=\/\/)/.exec(spelled)?.[1]
   if (scheme !== undefined) {
     return (
-      reader.names(spelled.slice(scheme.length + 1), scheme.toLowerCase()) !==
-      undefined
+      reader.names(
+        spelled.slice(scheme.length + 1).replace(/#.*$/, ''),
+        scheme.toLowerCase(),
+      ) !== undefined
     )
   }
   return (
@@ -853,8 +884,12 @@ function fileMentions(
       at = prose.indexOf(needle, at + 1)
     ) {
       const end = at + needle.length
-      if (endsPath(prose, end)) {
-        const start = pathStart(at)
+      const start = pathStart(at)
+      // (in a plain path, `#` is part of the name; in a URL, a fragment)
+      if (
+        endsPath(prose, end) &&
+        (prose[end] !== '#' || schemeAt(start) !== undefined)
+      ) {
         record(start, end, prose.slice(start, end))
       }
     }
@@ -870,20 +905,27 @@ function fileMentions(
   const others: Array<number> = [...boundaries]
   for (const match of prose.matchAll(/[\w.@$~+%#/()[\]-]+/g)) {
     const start = pathStart(match.index)
-    let token = prose.slice(start, match.index) + match[0]
-    // (a file name ends at a fragment or a `(line,column)`)
-    token = /^.*?\.[A-Za-z]\w*(?=[#(])/.exec(token)?.[0] ?? token
-    token = token.replace(/[.]+$/, '')
-    while (
-      (token.endsWith(')') && count(token, ')') > count(token, '(')) ||
-      (token.endsWith(']') && count(token, ']') > count(token, '['))
-    ) {
-      token = token.slice(0, -1)
+    const trimmed = (spelled: string) => {
+      let token = spelled.replace(/[.]+$/, '')
+      while (
+        (token.endsWith(')') && count(token, ')') > count(token, '(')) ||
+        (token.endsWith(']') && count(token, ']') > count(token, '['))
+      ) {
+        token = token.slice(0, -1)
+      }
+      return token
     }
-    const end = start + token.length
-    if (within(start) || record(start, end, token)) {
+    const whole = trimmed(prose.slice(start, match.index) + match[0])
+    // The file's naming: in a URL, up to its fragment; in a plain path, all
+    const naming =
+      schemeAt(start) === undefined ? whole : whole.replace(/#.*$/, '')
+    if (within(start) || record(start, start + naming.length, naming)) {
       continue
     }
+    // Another file's naming, read strictly: a file name ends at a `#` or
+    // a `(line,column)` (it ends the file's part sooner)
+    const token = trimmed(/^.*?\.[A-Za-z]\w*(?=[#(])/.exec(whole)?.[0] ?? whole)
+    const end = start + token.length
     const scheme = schemeAt(start)
     const normalized = normalizedPath(token, scheme) ?? ''
     if (normalized === '' || normalized === '.' || normalized === '/') {

@@ -786,12 +786,6 @@ describe('fields and the text', () => {
       true,
     ],
     [
-      'a field with a fragment',
-      { message: 'bad', id: '/app/src/a.ts#x', loc: { line: 8, column: 0 } },
-      at(8, 1),
-      true,
-    ],
-    [
       'a file-only field of a sibling whose name continues past the file’s',
       { message: 'bad', id: '/app/src/a.ts#copy.ts' },
       a,
@@ -807,6 +801,102 @@ describe('fields and the text', () => {
     expect(findDiagnostics(diagnosticsOf(record), expected)).toHaveLength(
       names ? 1 : 0,
     )
+  })
+
+  test.each([
+    [
+      'a directory with # in its name',
+      {
+        message: 'bad',
+        id: '/tmp/C# project #2/app/src/a.ts',
+        loc: { line: 8, column: 0 },
+      },
+      {
+        file: '/tmp/C# project #2/app/src/a.ts',
+        position: { line: 8, column: 1 },
+      },
+      true,
+    ],
+    [
+      'a directory named #internal',
+      {
+        message: 'bad',
+        id: '/app/src/#internal/a.ts',
+        loc: { line: 8, column: 0 },
+      },
+      { file: 'src/#internal/a.ts', root, position: { line: 8, column: 1 } },
+      true,
+    ],
+    [
+      'a plain path’s # as part of its name: #L3',
+      { message: 'bad', id: '/app/src/a.ts#L3', loc: { line: 8, column: 0 } },
+      at(8, 1),
+      false,
+    ],
+    [
+      'a plain path’s # as part of its name: #./x.js',
+      {
+        message: 'bad',
+        id: '/app/src/a.ts#./x.js',
+        loc: { line: 8, column: 0 },
+      },
+      at(8, 1),
+      false,
+    ],
+    [
+      'a file URL’s fragment',
+      {
+        message: 'bad',
+        loc: { file: 'file:///app/src/a.ts#b.ts', line: 8, column: 0 },
+      },
+      at(8, 1),
+      true,
+    ],
+    [
+      'a webpack URL’s fragment',
+      {
+        message: 'bad',
+        loc: { file: 'webpack://lib/./src/a.ts#frag', line: 8, column: 0 },
+      },
+      at(8, 1),
+      true,
+    ],
+    [
+      'a ! in a query',
+      {
+        message: 'bad',
+        loc: { file: '/app/src/b.ts?from=!/app/src/a.ts', line: 8, column: 0 },
+      },
+      at(8, 1),
+      false,
+    ],
+    [
+      'a loader chain with options',
+      {
+        message: 'bad',
+        moduleName: 'builtin:swc-loader??ruleSet[1].rules[2].use[0]!./src/a.ts',
+        loc: '8:0-4',
+      },
+      at(8, 1),
+      true,
+    ],
+  ] as const)('a field: %s', (_, record, expected, names) => {
+    expect(findDiagnostics(diagnosticsOf(record), expected)).toHaveLength(
+      names ? 1 : 0,
+    )
+  })
+
+  test.each([
+    [
+      'a plain path’s # is part of its name',
+      'in /app/src/a.ts#copy.ts:8:1',
+      false,
+    ],
+    ['a file URL’s # starts a fragment', 'in file:///app/src/a.ts#L3', true],
+  ] as const)('the text: %s', (_, text, names) => {
+    expect(
+      findDiagnostics([{ severity: 'warning', text, raw: text }], a),
+    ).toHaveLength(names ? 1 : 0)
   })
 
   test.each([
