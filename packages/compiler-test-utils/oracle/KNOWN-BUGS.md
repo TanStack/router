@@ -158,9 +158,9 @@ function info not found` when one of them calls it, and the build says nothing, 
   rendering), and the server's document still names the previous client files. A hand-ordered server build after a
   failed client rebuild (S4-02) answers "Server function info not found" for the call of the client build on disk, and
   a fixed custom server fn id whose definition moves to another module is not found after the watch rebuild.
-  `start-plugin-core/tests/integration/start-build-settlement.test.ts`: "another plugin's generateBundle fails: the
-  document names no client file", "the call of the id answers the function at its new place", "S4-02: the server
-  answers the call of the last written client build". Fix: the client-build record follows the output on disk
+  `start-plugin-core/tests/integration/start-build-settlement-generate.test.ts`: "another plugin's generateBundle
+  fails: the document names no client file"; `start-build-settlement-ids.test.ts`: "the call of the id answers the
+  function at its new place", "S4-02: the server answers the call of the last written client build". Fix: the client-build record follows the output on disk
   (withdrawn at `renderStart`, committed at `writeBundle`), the resolver reads its descriptors (step 7).
 
 ## Known incorrect rejections (accepted, R89)
