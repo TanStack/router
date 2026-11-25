@@ -1329,6 +1329,12 @@ async function checkDanglingNames(
         let read: ModuleNames | undefined
         try {
           read = readNames(source)
+          // A source the parser rejects (a syntax error, or nesting past its
+          // depth limit, where the tree comes back empty) gives no evidence:
+          // never read it as a module that reads nothing
+          if (read.errors.length > 0) {
+            read = undefined
+          }
         } catch {
           // A source the parser rejects gives no evidence
           read = undefined
