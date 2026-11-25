@@ -359,13 +359,14 @@ export function createRouterCompilerVitePlugin(
           return null
         }
         const file = normalizePath(identity.path)
-        const entry = compiler.routeEntry(file)
-        if (!entry) {
-          // a derived id of a file of ours that is no longer a route module
-          // (J2.13); another instance's route is that instance's to compile
-          return identity.derived && compiler.owns(file)
-            ? { code: 'export {}\n', map: { mappings: '' } }
-            : null
+        // a derived id of a file of ours that is no longer a route module
+        // (J2.13) compiles too: the core settles it as the empty module.
+        // Another instance's route is that instance's to compile
+        if (
+          !compiler.routeEntry(file) &&
+          !(identity.derived && compiler.owns(file))
+        ) {
+          return null
         }
         const environment = this.environment
         const envType = environment.config.consumer
