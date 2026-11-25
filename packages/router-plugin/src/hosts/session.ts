@@ -58,7 +58,7 @@ interface RouterCompilerOptions {
   /**
    * The routes directory, absolute, as the instance's generator resolves
    * it: a derived id of a file there that is no route (any more) is this
-   * instance's (`owns`).
+   * instance's (`transform` serves it the empty module).
    */
   routesDirectory: string
   bundler: Bundler
@@ -295,7 +295,7 @@ export class RouterCompiler {
     }
   }
 
-  async compile(req: CompileRequest): Promise<CompileOutput | null> {
+  private async compile(req: CompileRequest): Promise<CompileOutput | null> {
     return compileModule(
       {
         id: req.id,

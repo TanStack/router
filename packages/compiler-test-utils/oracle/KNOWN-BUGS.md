@@ -212,6 +212,12 @@ function info not found` when one of them calls it, and the build says nothing, 
   module without that comment above it compiles with the default one. Oxc (Vite) and TypeScript read leading
   comments only and agree (the C5-03 rows run there). Write the pragma at the file's top. SPEC J2.16. No test (the
   outcome is the limit).
+- **A route file read as text by a loader rule (`raw-loader`) still gets the router's output** (settlement step 5
+  review, Fable). webpack and Rspack: a rule that makes the module JS (`use: 'raw-loader'` on `?raw`, no `type`) runs
+  after the router plugin's `enforce: 'pre'` loader, so the text it exports is the compiled route module. The host
+  tells the compiler the module's type only, and an `asset/*` type is not compiled (R1-20,
+  `build-asset-source-route.test.ts`); a JS-typed module looks like any other import of the route. Use `asset/source`
+  (webpack 5's replacement for `raw-loader`). No test (the outcome is the limit).
 - **A JSX pragma comment on a directive's own line is read by SWC in a derived module, not in the route file**
   (emit review re-check, Fable S1). `'use client'; /** @jsxImportSource x */` (or the comment inside the directive's
   statement): SWC (Rsbuild) ignores a pragma that does not start its line, so the route file compiles with the default

@@ -25,18 +25,27 @@ const files = {
   'routes/index.tsx': index,
   'payload.ts': `export const payload = 'MARK_PAYLOAD'\n`,
   'entry.ts': `export { routeTree } from './routeTree.gen'
+export { Route } from './routes/index'
 // @ts-expect-error (a text module)
 export { default as text } from './routes/index.tsx?source'
 `,
 }
 
-/** The app's rule: `?source` imports are their text (`asset/source`). */
+/**
+ * The app's rule: `?source` imports are their text (`asset/source`), which
+ * the app's own TypeScript and JSX rules leave alone (applied before the
+ * router plugin, so its rule is not among them).
+ */
 const assetSourceRule = {
   apply(compiler: {
     options: { module: { rules: Array<Record<string, unknown>> } }
   }) {
+    const source = /^\?source$/
+    for (const rule of compiler.options.module.rules) {
+      rule.resourceQuery = { not: [source] }
+    }
     compiler.options.module.rules.push({
-      resourceQuery: /^\?source$/,
+      resourceQuery: source,
       type: 'asset/source',
     })
   },
@@ -44,24 +53,24 @@ const assetSourceRule = {
 
 describe.each(['webpack', 'rspack'] as const)('%s', (bundler) => {
   test(
-    "a route file imported as its text (asset/source) is not the router's output",
+    "a route file imported as its text (asset/source) is the file's text, and the route still splits",
     async () => {
       const { tanstackRouter } = await import(`../../src/${bundler}`)
       const app = await build({
         bundler,
         env: 'client',
         files,
-        routerPlugins: (config) => [tanstackRouter(config), assetSourceRule],
+        routerPlugins: (config) => [assetSourceRule, tanstackRouter(config)],
       })
-      const { result } = await app.run('return entry.text')
-      // (the app's own TypeScript and JSX rule still reads the file: the
-      // text is not compared byte for byte, but nothing of the split is in
-      // it and its options stay where the file has them)
-      const text = String(result)
-      expect(text).not.toContain('lazyRouteComponent')
-      expect(text).not.toContain('tsr-split')
-      expect(text).toMatch(/import \{ payload \} from ["']\.\.\/payload["']/)
-      expect(text).toMatch(/loader: \(\) ?=> ?payload/)
+      const { result } = await app.run(
+        `const { component, loader } = entry.Route.options
+const split = typeof component.preload
+await component.preload?.()
+return [entry.text, split, loader()]`,
+      )
+      // the text is the file's, and the route module beside it still splits
+      // (its component is lazy; a resolved client component drops `preload`)
+      expect(result).toEqual([index, 'function', 'MARK_PAYLOAD'])
     },
     timeout,
   )
