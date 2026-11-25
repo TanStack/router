@@ -375,6 +375,144 @@ test.each([
   timeout,
 )
 
+// A class's static block runs when the class is evaluated: a read there is
+// as much a read at load as one outside every function.
+test(
+  'vite: a bundle-level read in a class static block is dangling with a parameter of the same name in a module',
+  async () => {
+    const error = await bundleAppIn({
+      dir: testsDir,
+      registerCleanup: onTestFinished,
+      bundler: 'vite',
+      env: 'client',
+      minify: false,
+      files: {
+        'entry.ts': `export function label(productLabel: string) {
+  return productLabel.toUpperCase()
+}
+`,
+      },
+      plugins: {
+        vite: () => [
+          {
+            name: 'append-footer',
+            renderChunk: (code: string) =>
+              `${code}\nclass Footer { static { console.log(productLabel) } }\n`,
+          },
+        ],
+      },
+    }).then(
+      () => undefined,
+      (thrown: unknown) => thrown,
+    )
+    expect(error).toBeInstanceOf(DanglingNameError)
+    expect(Object.values((error as DanglingNameError).names).flat()).toEqual([
+      'productLabel',
+    ])
+  },
+  timeout,
+)
+
+// webpack and Rspack run each module of a lazy chunk in a factory function
+// of the chunk: its body is the module's top level, so a read there that no module's code
+// holds, of a name only a function of a module binds, is dangling too.
+test.each([
+  ['webpack', 'productLabel'],
+  ['webpack', 'text'],
+  ['rspack', 'productLabel'],
+  ['rspack', 'text'],
+] as const)(
+  '%s: a read added to a module factory is dangling with a parameter %s in the module',
+  async (bundler, parameter) => {
+    const error = await bundleAppIn({
+      dir: testsDir,
+      registerCleanup: onTestFinished,
+      bundler,
+      env: 'client',
+      files: {
+        // (a lazy chunk's module, run by its factory)
+        'entry.ts': `export const load = () => import('./lazy')\n`,
+        'lazy.ts': `export function label(${parameter}: string) {
+  return ${parameter}.toUpperCase()
+}
+console.log('MARK_FACTORY')
+`,
+      },
+      plugins: {
+        // After minification: the module's statement reads a name now
+        [bundler]: () => ({
+          apply(compiler: {
+            webpack: {
+              Compilation: { PROCESS_ASSETS_STAGE_REPORT: number }
+              sources: { RawSource: new (code: string) => unknown }
+            }
+            hooks: {
+              thisCompilation: {
+                tap: (name: string, run: (compilation: never) => void) => void
+              }
+            }
+          }) {
+            const { Compilation, sources } = compiler.webpack
+            compiler.hooks.thisCompilation.tap(
+              'read-in-factory',
+              (compilation: {
+                hooks: {
+                  processAssets: {
+                    tap: (
+                      options: { name: string; stage: number },
+                      run: (assets: Record<string, unknown>) => void,
+                    ) => void
+                  }
+                }
+                getAsset: (name: string) => {
+                  source: { source: () => unknown }
+                }
+                updateAsset: (name: string, source: unknown) => void
+              }) => {
+                compilation.hooks.processAssets.tap(
+                  {
+                    name: 'read-in-factory',
+                    stage: Compilation.PROCESS_ASSETS_STAGE_REPORT,
+                  },
+                  (assets) => {
+                    for (const name of Object.keys(assets)) {
+                      const code = String(
+                        compilation.getAsset(name).source.source(),
+                      )
+                      if (
+                        /\.[cm]?js$/.test(name) &&
+                        code.includes('MARK_FACTORY')
+                      ) {
+                        compilation.updateAsset(
+                          name,
+                          new sources.RawSource(
+                            code.replace(
+                              /(["'])MARK_FACTORY\1/,
+                              '$&,productLabel',
+                            ),
+                          ),
+                        )
+                      }
+                    }
+                  },
+                )
+              },
+            )
+          },
+        }),
+      },
+    }).then(
+      () => undefined,
+      (thrown: unknown) => thrown,
+    )
+    expect(error).toBeInstanceOf(DanglingNameError)
+    expect(Object.values((error as DanglingNameError).names).flat()).toEqual([
+      'productLabel',
+    ])
+  },
+  timeout,
+)
+
 test('NODE_ENV is the mode during a build, or unset with nodeEnv: null', async () => {
   const seen: Record<string, string | undefined> = {}
   for (const nodeEnv of [undefined, null] as const) {

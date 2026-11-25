@@ -1289,7 +1289,10 @@ export async function describeBuild(
  * the import bindings the kept unused code of a concatenated module reads,
  * or a minifier the unused `const`s of a function whose unreachable code
  * it kept: out of scope), where the chunk reads it: a read outside every
- * function of the chunk only by a binding of a module's top level (a
+ * function of the chunk, or in one run as the chunk loads (a class static
+ * block, a function called where it is written, a webpack or Rspack module
+ * factory),
+ * only by a binding of a module's top level (a
  * parameter of the same name elsewhere excuses nothing), and a module's own guarded read when a module probes it
  * with `typeof` (e.g. seroval's `typeof Buffer`); when no module binds or
  * probes it either, code outside the modules
@@ -1338,7 +1341,7 @@ async function checkDanglingNames(
   const dangling: Record<string, Array<string>> = {}
   /**
    * Whether each name counts (one decision per build, and per where the
-   * chunk reads it: outside every function, or only inside functions).
+   * chunk reads it: when the chunk loads, or only in functions called later).
    */
   const decided = new Map<string, Promise<boolean>>()
   for (const chunk of chunks) {
@@ -1374,7 +1377,7 @@ async function checkDanglingNames(
 /**
  * Whether a name a chunk reads free is a defect (see `checkDanglingNames`):
  * attributed to the modules whose code after the build's transforms reads
- * it free. `atTop`: the chunk reads it outside every function.
+ * it free. `atTop`: the chunk reads it when it loads (`freeAtTop`).
  */
 async function nameCounts(name: string, atTop: boolean, scope: ScopeEvidence) {
   const parsed = scope.parsedModules
@@ -1400,7 +1403,7 @@ async function nameCounts(name: string, atTop: boolean, scope: ScopeEvidence) {
       readers.push(resource)
     }
     // (a module that probes the name with `typeof` reads it knowingly; a
-    // read outside every function of the chunk can only have lost a
+    // read the chunk runs when it loads can only have lost a
     // binding the bundler places in the chunk's scope, a module's top-level
     // one: a minifier that drops a function's unused `const` keeps the
     // function's reads in unreachable code of it)

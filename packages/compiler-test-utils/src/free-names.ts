@@ -9,7 +9,7 @@
  * `keepProbed`, and each module decides for itself.
  */
 import { parse } from 'yuku'
-import type { Scope } from 'yuku'
+import type { Node, Scope, SourceFile } from 'yuku'
 
 export interface ModuleNames {
   /** The parser's errors, with the early errors that need scopes (a redeclaration, an export of an undeclared name). */
@@ -24,7 +24,10 @@ export interface ModuleNames {
    * places in the chunk's scope.
    */
   topLevel: Set<string>
-  /** Names of `free` with a read outside every function of the module. */
+  /**
+   * Names of `free` with a read the code runs when it loads: outside every
+   * function, but for the functions run then (`deferred`).
+   */
   freeAtTop: Set<string>
   /** Names the module probes with `typeof` (not in `free`, without `keepProbed`). */
   probed: Set<string>
@@ -70,7 +73,7 @@ export function readNames(
       !(reference.name === 'arguments' && inArgumentsScope(reference.scope))
     ) {
       free.add(reference.name)
-      if (!inFunction(reference.scope)) {
+      if (!deferred(reference.scope, file)) {
         freeAtTop.add(reference.name)
       }
     }
@@ -93,12 +96,53 @@ export function readNames(
   }
 }
 
-/** Whether code of `scope` runs inside a function (or a class static block). */
-function inFunction(scope: Scope) {
+/**
+ * Whether code of `scope` runs only when a function it is in is called
+ * later: not when the code loads. Run then: a class's static blocks, a
+ * function called where it is written (`(() => {…})()`, `!function () {…}()`,
+ * `(function () {…}).call(this)`), and the module factories of a webpack or
+ * Rspack chunk (the function values of an object whose keys are all module
+ * ids, number or string literals: each runs its module's top level).
+ */
+function deferred(scope: Scope, file: SourceFile) {
   for (const ancestor of scope.ancestors()) {
-    if (ancestor.kind === 'function' || ancestor.kind === 'staticBlock') {
+    if (ancestor.kind === 'function' && !runsAtLoad(ancestor.node, file)) {
       return true
     }
+  }
+  return false
+}
+
+const functionTypes = new Set(['FunctionExpression', 'ArrowFunctionExpression'])
+
+function runsAtLoad(fn: Node, file: SourceFile) {
+  const parent = file.parentOf(fn)
+  if (parent?.type === 'CallExpression') {
+    return parent.callee === fn
+  }
+  if (
+    parent?.type === 'MemberExpression' &&
+    parent.object === fn &&
+    parent.property.type === 'Identifier' &&
+    (parent.property.name === 'call' || parent.property.name === 'apply')
+  ) {
+    const call = file.parentOf(parent)
+    return call?.type === 'CallExpression' && call.callee === parent
+  }
+  if (parent?.type === 'Property' && parent.value === fn) {
+    const object = file.parentOf(parent)
+    return (
+      object?.type === 'ObjectExpression' &&
+      object.properties.every(
+        (property) =>
+          property.type === 'Property' &&
+          !property.computed &&
+          property.key.type === 'Literal' &&
+          (typeof property.key.value === 'number' ||
+            typeof property.key.value === 'string') &&
+          functionTypes.has(property.value.type),
+      )
+    )
   }
   return false
 }
