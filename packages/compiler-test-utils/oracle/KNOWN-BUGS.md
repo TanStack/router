@@ -426,7 +426,8 @@ declaration table of 11-23). Rows: `start-plugin-core/tests/start-compiler-remov
   (`.handler(withLogging(h))`, `.handler(impls.h)`); a binding the module exports or any other code reads (the client
   keeps it anyway, as on `main`), which turns the refusal off also where that read serves only server code or
   nothing: a guard in a statement of its own before the write (`if (h) return; h = …`,
-  `const missing = !h; if (missing) { h = … }`), the previous value kept in an alias
+  `const missing = !h; if (missing) { h = … }`), a guard that uses the binding rather than checking its presence or
+  type (`if (h?.stale) { h = … }`: a member read; the handler-only rule refused it), the previous value kept in an alias
   (`const original = h; h = (c) => original(c)`, the realistic one),
   `typeof h` in a statement, a helper only a handler calls (`const helper = () => h()`), a function nothing calls
   (the first, handler-only rule of 2026-11-24 refused the last four); a reassigned `let` of a Vue `<script setup>` block

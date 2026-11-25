@@ -153,7 +153,8 @@ interface Guard {
  * statement, or the head clause of a loop or `if` it is in: a `for` init,
  * test or update, a `for…in`/`for…of` target or object, a condition), and
  * the tests of every control statement around it but that clause (`if`
- * tests, loop conditions, a `switch`'s discriminant and case tests), never
+ * tests, loop conditions, a `switch`'s discriminant; its case tests are
+ * ordinary reads), never
  * their bodies and never past the function or class around it.
  */
 function assignmentText(
@@ -193,10 +194,11 @@ function assignmentText(
 
 /**
  * Whether the read at `at` is a presence or type check of the binding in a
- * guard's test: the binding itself, compared to `null` or `undefined`, or
- * its `typeof` compared to a string (or as the `switch` discriminant), under
- * `!`, `&&`, `||`, `??` and parentheses. Any other read (a call, a member,
- * an argument, an assigned value) is a use, as anywhere else.
+ * guard's test: the binding itself, compared to `null` or `undefined` (the
+ * global), or its `typeof` compared to a string, under `!`, `&&`, `||`, `??`
+ * and parentheses; a `switch` discriminant only as its `typeof`. Any other
+ * read (a call, a member, an argument, an assigned value, a bare
+ * discriminant) is a use, as anywhere else.
  */
 function checksPresence(ctx: PlanContext, at: Range, guard: Guard): boolean {
   const file = ctx.analysis.file
@@ -207,11 +209,19 @@ function checksPresence(ctx: PlanContext, at: Range, guard: Guard): boolean {
       return false
     }
     if (p.type === 'UnaryExpression' && p.operator === 'typeof') {
-      const q = file.parentOf(p)
-      if (guard.discriminant && sameNode(p, guard.test)) {
-        return true
+      let typeOf: Node = p
+      let q = file.parentOf(p)
+      while (
+        q?.type === 'ParenthesizedExpression' &&
+        !sameNode(typeOf, guard.test)
+      ) {
+        typeOf = q
+        q = file.parentOf(q)
       }
-      if (q === null || !isEquality(q) || !isString(otherSide(q, p))) {
+      if (sameNode(typeOf, guard.test)) {
+        return guard.discriminant
+      }
+      if (q === null || !isEquality(q) || !isString(otherSide(q, typeOf))) {
         return false
       }
       n = q
@@ -221,13 +231,13 @@ function checksPresence(ctx: PlanContext, at: Range, guard: Guard): boolean {
       p.type === 'ParenthesizedExpression' ||
       p.type === 'LogicalExpression' ||
       (p.type === 'UnaryExpression' && p.operator === '!') ||
-      (isEquality(p) && isNullish(otherSide(p, n)))
+      (isEquality(p) && isNullish(ctx, otherSide(p, n)))
     if (!passes) {
       return false
     }
     n = p
   }
-  return n !== null
+  return n !== null && !guard.discriminant
 }
 
 function isEquality(n: Node): n is Extract<Node, { type: 'BinaryExpression' }> {
@@ -248,11 +258,14 @@ function otherSide(
   return sameNode(n.left, side) ? n.right : n.left
 }
 
-function isNullish(n: Node): boolean {
+function isNullish(ctx: PlanContext, n: Node): boolean {
   const v = unwrapExpression(n)
   return (
     (v.type === 'Literal' && v.value === null && v.raw === 'null') ||
-    (v.type === 'Identifier' && v.name === 'undefined') ||
+    (v.type === 'Identifier' &&
+      v.name === 'undefined' &&
+      // (the global: no binding of the module's)
+      !ctx.t1.refs.refsIn(v).some((r) => r.range.start === v.start)) ||
     (v.type === 'UnaryExpression' && v.operator === 'void')
   )
 }
@@ -296,10 +309,7 @@ function testsOf(n: Node): Array<Node> {
     case 'ForStatement':
       return n.test ? [n.test] : []
     case 'SwitchStatement':
-      return [
-        n.discriminant,
-        ...n.cases.flatMap((c) => (c.test ? [c.test] : [])),
-      ]
+      return [n.discriminant]
     default:
       return []
   }

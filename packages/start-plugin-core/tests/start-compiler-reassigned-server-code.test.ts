@@ -102,6 +102,25 @@ export const fn = createServerFn().handler(h)
 `,
   ],
   [
+    'a write a parenthesised type check holds',
+    `let h: undefined | (() => Promise<string>)
+if ((typeof h) === 'undefined') {
+  h = async () => db.x()
+}
+export const fn = createServerFn().handler(h)
+`,
+  ],
+  [
+    'a write a switch on the parenthesised type holds',
+    `let h: undefined | (() => Promise<string>)
+switch ((typeof h)) {
+  case 'undefined':
+    h = async () => db.x()
+}
+export const fn = createServerFn().handler(h)
+`,
+  ],
+  [
     'a write a switch on the binding holds',
     `let h = async () => db.y()
 switch (typeof h) {
@@ -554,6 +573,49 @@ export function preview(input: string, fallbacks: Array<Validator>) {
     validate = fallbacks[i++]!
   ) {}
   return normalized
+}
+export const fn = createServerFn().validator(validate).handler(async () => 'ok')
+`,
+    ],
+    [
+      'a validator a later case compares',
+      `type Validator = (input: string) => string
+let validate: Validator = (input) => input.trim()
+export function select(action: Validator | 'reset', next: Validator) {
+  switch (action) {
+    case 'reset':
+      validate = next
+      return false
+    case validate:
+      return true
+    default:
+      return false
+  }
+}
+export const fn = createServerFn().validator(validate).handler(async () => 'ok')
+`,
+    ],
+    [
+      'a validator a switch on it compares with another value',
+      `type Validator = (input: string) => string
+let validate: Validator = (input) => input.trim()
+export function swap(other: Validator, next: Validator) {
+  switch (validate) {
+    case other:
+      validate = next
+  }
+}
+export const fn = createServerFn().validator(validate).handler(async () => 'ok')
+`,
+    ],
+    [
+      'a validator compared with a parameter named undefined',
+      `type Validator = (input: string) => string
+let validate: Validator = (input) => input.trim()
+export function configure(undefined: Validator, next: Validator) {
+  if (validate === undefined) {
+    validate = next
+  }
 }
 export const fn = createServerFn().validator(validate).handler(async () => 'ok')
 `,
