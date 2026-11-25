@@ -28,6 +28,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createAppDirectory } from './app-directory'
 import { openDiagnosticChannel } from './diagnostic-channel'
+import { withNodeEnv } from './node-env'
 import { runDirectoryVariable } from './run-directory'
 import { runNodeProgram, runNodeStep } from './run-node'
 import { savingDirectory } from './save-file'
@@ -1865,24 +1866,25 @@ function swcOptions(development: boolean, lang: 'ts' | 'tsx' | 'jsx') {
 /**
  * Runs a build the way a build command does (`NODE_ENV` set to the mode by
  * default, which decides e.g. the JSX runtime and the `development` export
- * condition; `null` unsets it) and records in `messages` the warnings and
+ * condition; `null` unsets it; for the build alone: `./node-env`) and records in `messages` the warnings and
  * errors of the merged console/stream channel for this build’s async work,
  * with their severity. An error no one handles while the build runs fails the build: a
  * bundler that loses a plugin's error (e.g. a throw in a hook Rspack calls
  * without catching it) would otherwise never finish the build, and the test
  * would wait for its timeout.
  */
-export async function withBuildEnvironment<T>(
+export function withBuildEnvironment<T>(
   buildNodeEnv: string | null,
   messages: Array<ChannelDiagnostic>,
   run: (channel: DiagnosticChannel) => Promise<T>,
 ): Promise<T> {
-  const nodeEnv = process.env.NODE_ENV
-  if (buildNodeEnv === null) {
-    delete process.env.NODE_ENV
-  } else {
-    process.env.NODE_ENV = buildNodeEnv
-  }
+  return withNodeEnv(buildNodeEnv, () => withBuildChannel(messages, run))
+}
+
+async function withBuildChannel<T>(
+  messages: Array<ChannelDiagnostic>,
+  run: (channel: DiagnosticChannel) => Promise<T>,
+): Promise<T> {
   const channel = openDiagnosticChannel()
   channel.onDiagnostic((diagnostic) => {
     if (diagnostic.severity === 'warning' || diagnostic.severity === 'error') {
@@ -1908,11 +1910,6 @@ export async function withBuildEnvironment<T>(
     process.off('unhandledRejection', onUnhandled)
     process.off('uncaughtException', onUnhandled)
     channel.close()
-    if (nodeEnv === undefined) {
-      delete process.env.NODE_ENV
-    } else {
-      process.env.NODE_ENV = nodeEnv
-    }
   }
 }
 

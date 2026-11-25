@@ -36,6 +36,7 @@ import { createApp } from './build-harness'
 import { scopeMethods } from './console-hook'
 import { openDiagnosticChannel } from './diagnostic-channel'
 import { runAsDevCommand } from './dev-command'
+import { withNodeEnv } from './node-env'
 import { saveAppFile } from './save-file'
 import type { App, AppOptions } from './build-harness'
 import type { ChannelDiagnostic, DiagnosticChannel } from './diagnostic-channel'
@@ -248,7 +249,10 @@ async function openServer(
   runAsDevCommand()
   const channel = openDiagnosticChannel()
   try {
-    return await channel.run(() => startServer(options, channel, app))
+    // (not while a build of the process runs under another value)
+    return await withNodeEnv('development', () =>
+      channel.run(() => startServer(options, channel, app)),
+    )
   } catch (error) {
     channel.close()
     throw error

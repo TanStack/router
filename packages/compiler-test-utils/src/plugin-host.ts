@@ -38,6 +38,7 @@ import {
   recordViteModules,
 } from './build-harness'
 import { createDevServer } from './dev-server'
+import { withNodeEnv } from './node-env'
 import { openDiagnosticChannel } from './diagnostic-channel'
 import type { PageRun } from './browser'
 import type {
@@ -366,77 +367,83 @@ export async function createPluginHost(
       const clientModules = parsedModules()
       const channel = openDiagnosticChannel()
       channel.claim(buildRoot)
-      return channel.run(async () => {
-        try {
-          const builder = await createBuilder(
-            mergeConfig(
+      // As `vite build` runs: under the production `NODE_ENV`, whatever the
+      // worker's (`./node-env`)
+      return withNodeEnv('production', () =>
+        channel.run(async (): Promise<HostBuild> => {
+          try {
+            const builder = await createBuilder(
               mergeConfig(
-                {
-                  root: buildRoot,
-                  configFile: false,
-                  envDir: false,
-                  publicDir: false,
-                  mode,
-                  clearScreen: false,
-                  customLogger: channel.viteLogger(),
-                  plugins: [
-                    ...pluginsFor('build', buildRoot),
-                    outputRecorder(outputs),
-                    // The evidence of the client's dangling-name check
-                    recordViteModules(clientModules, { environment: 'client' }),
-                  ],
-                } satisfies InlineConfig,
-                config,
+                mergeConfig(
+                  {
+                    root: buildRoot,
+                    configFile: false,
+                    envDir: false,
+                    publicDir: false,
+                    mode,
+                    clearScreen: false,
+                    customLogger: channel.viteLogger(),
+                    plugins: [
+                      ...pluginsFor('build', buildRoot),
+                      outputRecorder(outputs),
+                      // The evidence of the client's dangling-name check
+                      recordViteModules(clientModules, {
+                        environment: 'client',
+                      }),
+                    ],
+                  } satisfies InlineConfig,
+                  config,
+                ),
+                buildOptions.config ?? {},
               ),
-              buildOptions.config ?? {},
-            ),
-            // As the CLI: every environment when a plugin configures the app
-            // builder, else the client
-            null,
-          )
-          await builder.buildApp()
-        } catch (error) {
+              // As the CLI: every environment when a plugin configures the app
+              // builder, else the client
+              null,
+            )
+            await builder.buildApp()
+          } catch (error) {
+            channel.close()
+            throw new HostBuildError(error, [...channel.diagnostics])
+          }
           channel.close()
-          throw new HostBuildError(error, [...channel.diagnostics])
-        }
-        channel.close()
-        const diagnostics = [...channel.diagnostics]
-        return {
-          environments: outputs,
-          diagnostics,
-          describe: async (name) => {
-            const environment = outputs[name]
-            if (!environment) {
-              throw new Error(
-                `no "${name}" environment was built (built: ${Object.keys(outputs).join(', ') || 'none'})`,
-              )
-            }
-            const chunks = environment.chunks
-            return describeBuild({
-              bundler: 'vite',
-              env: name === 'client' ? 'client' : 'ssr',
-              mode,
-              root: buildRoot,
-              outDir: environment.outDir,
-              chunks: chunks.map(
-                ({ fileName, isEntry, imports, dynamicImports }) => ({
-                  fileName,
-                  isEntry,
-                  imports,
-                  dynamicImports,
-                }),
-              ),
-              sourcemap: chunks.some((chunk) => chunk.map !== undefined),
-              ...(name === 'client' && { parsedModules: clientModules }),
-              warnings: diagnostics.filter(
-                (diagnostic) => diagnostic.severity === 'warning',
-              ),
-              consoleMessages: [],
-              dispose: async () => {},
-            })
-          },
-        }
-      })
+          const diagnostics = [...channel.diagnostics]
+          return {
+            environments: outputs,
+            diagnostics,
+            describe: async (name) => {
+              const environment = outputs[name]
+              if (!environment) {
+                throw new Error(
+                  `no "${name}" environment was built (built: ${Object.keys(outputs).join(', ') || 'none'})`,
+                )
+              }
+              const chunks = environment.chunks
+              return describeBuild({
+                bundler: 'vite',
+                env: name === 'client' ? 'client' : 'ssr',
+                mode,
+                root: buildRoot,
+                outDir: environment.outDir,
+                chunks: chunks.map(
+                  ({ fileName, isEntry, imports, dynamicImports }) => ({
+                    fileName,
+                    isEntry,
+                    imports,
+                    dynamicImports,
+                  }),
+                ),
+                sourcemap: chunks.some((chunk) => chunk.map !== undefined),
+                ...(name === 'client' && { parsedModules: clientModules }),
+                warnings: diagnostics.filter(
+                  (diagnostic) => diagnostic.severity === 'warning',
+                ),
+                consoleMessages: [],
+                dispose: async () => {},
+              })
+            },
+          }
+        }),
+      )
     },
     close,
   }

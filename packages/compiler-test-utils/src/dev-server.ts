@@ -62,6 +62,7 @@ import { createApp, stripAnsi } from './build-harness'
 import { scopeMethods } from './console-hook'
 import { openDiagnosticChannel } from './diagnostic-channel'
 import { runAsDevCommand } from './dev-command'
+import { withNodeEnv } from './node-env'
 import { saveAppFile } from './save-file'
 import type { AppOptions } from './build-harness'
 import type { ChannelDiagnostic, DiagnosticChannel } from './diagnostic-channel'
@@ -284,7 +285,9 @@ interface ReportedEvent {
  * Writes an app (`createApp`: it stands in for `options.dir`) and starts a Vite
  * dev server on it with its file watcher, and resolves once the watcher
  * watches the app. `close()`, which `registerCleanup` also receives, closes
- * the server and removes the directory.
+ * the server and removes the directory. The server starts under
+ * `NODE_ENV=development` (`./node-env`: not while a build of the process
+ * runs under another value), and its client code keeps that value.
  */
 export async function createDevServer(
   options: DevServerOptions,
@@ -292,7 +295,9 @@ export async function createDevServer(
   runAsDevCommand()
   const channel = openDiagnosticChannel()
   try {
-    return await channel.run(() => startServer(options, channel))
+    return await withNodeEnv('development', () =>
+      channel.run(() => startServer(options, channel)),
+    )
   } catch (error) {
     channel.close()
     throw error
@@ -656,7 +661,19 @@ async function startServer(
     vite = await createServer(
       mergeConfig(
         {
-          ...bundledDevConfig,
+          ...mergeConfig(bundledDevConfig, {
+            // The `NODE_ENV` the server started under, for its client code
+            // from then on: Vite reads the process's at each client
+            // transform, and a build of the process runs under its own
+            // (`./node-env`)
+            environments: {
+              client: {
+                define: {
+                  'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
+                },
+              },
+            },
+          }),
           root,
           configFile: false,
           envDir: false,

@@ -8,7 +8,8 @@
 import { appendFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { expect, onTestFinished, test } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
+import { withBuildEnvironment } from '../../src/build-harness'
 import { expectDiagnostic } from '../../src/diagnostics'
 import { HostBuildError, createPluginHost } from '../../src/plugin-host'
 import type { Plugin } from 'vite'
@@ -157,6 +158,64 @@ test(
     })
     const described = await build.describe('client')
     expect(described.where('MARKED')).toBe('eager')
+  },
+  timeout,
+)
+
+test(
+  'vite build builds for production, whatever NODE_ENV the worker runs under',
+  async () => {
+    const app = await createPluginHost({
+      dir: testsDir,
+      registerCleanup: onTestFinished,
+      files: {
+        'src/env.ts': `export const env = [process.env.NODE_ENV, import.meta.env.PROD, import.meta.env.DEV]\n`,
+      },
+      plugins: [],
+      serve: false,
+    })
+    onTestFinished(() => {
+      vi.unstubAllEnvs()
+    })
+    for (const worker of ['test', 'development']) {
+      vi.stubEnv('NODE_ENV', worker)
+      const build = await app.build({
+        config: {
+          build: {
+            rollupOptions: {
+              input: path.join(app.root, 'src/env.ts'),
+              preserveEntrySignatures: 'exports-only',
+            },
+          },
+        },
+      })
+      const { result } = await (
+        await build.describe('client')
+      ).run('return entry.env')
+      expect(result, `NODE_ENV=${worker}`).toEqual(['production', true, false])
+      expect(process.env.NODE_ENV).toBe(worker)
+    }
+  },
+  timeout,
+)
+
+test(
+  'a dev server’s client code keeps its NODE_ENV while a build of the worker runs',
+  async () => {
+    const app = await createPluginHost({
+      dir: testsDir,
+      registerCleanup: onTestFinished,
+      files: {
+        'src/env.ts': `export const env = process.env.NODE_ENV\n`,
+      },
+      plugins: [],
+      client: true,
+    })
+    // The module's first transform comes while the build runs
+    const served = await withBuildEnvironment('production', [], () =>
+      app.runClient('/src/env.ts', 'return module.env'),
+    )
+    expect(served.result).toBe('development')
   },
   timeout,
 )
