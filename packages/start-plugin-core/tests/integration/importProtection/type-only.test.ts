@@ -11,7 +11,7 @@
  */
 import {
   captureConsole,
-  findDiagnostics,
+  expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, afterEach, describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
@@ -175,9 +175,7 @@ describe('rsbuild dev', () => {
         start: { importProtection: recorder.importProtection },
       })
       // Nothing fails, on any channel
-      expect(
-        findDiagnostics(server.diagnostics, { severity: 'error' }),
-      ).toEqual([])
+      expectNoDiagnostic(server.diagnostics, { severity: 'error' })
       const { result } = await captureConsole(() =>
         runInClient(server, outcomeScript('globalThis.readMixed')),
       )

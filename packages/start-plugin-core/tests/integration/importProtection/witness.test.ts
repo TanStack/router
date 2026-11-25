@@ -12,7 +12,7 @@
  */
 import {
   captureConsole,
-  findDiagnostics,
+  expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, test } from 'vitest'
 import { buildStart } from '../../build-harness'
@@ -259,7 +259,7 @@ async function rsbuildDev(
     config,
     start: { importProtection: recorder.importProtection },
   })
-  expect(findDiagnostics(server.diagnostics, { severity: 'error' })).toEqual([])
+  expectNoDiagnostic(server.diagnostics, { severity: 'error' })
   const { result } = await captureConsole(() =>
     runInClient(server, 'return globalThis.typesLoaded ?? null'),
   )

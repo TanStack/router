@@ -6,7 +6,7 @@
  * The generator decides what a route is; the compilers read its registry.
  */
 import { expect, test } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { useStartHost } from './regression-helpers'
 
 const host = useStartHost({
@@ -33,11 +33,9 @@ test('a route file the generator does not list is served as written, with nothin
   // the component stays in the module, `server` stays too
   expect(served).toContain('MARK_W_PAGE')
   expect(served).toContain('MARK_W_SERVER')
-  expect(
-    findDiagnostics(diagnostics, {
-      severity: ['warning', 'error'],
-      file: 'src/widgets/w.tsx',
-      root,
-    }),
-  ).toEqual([])
+  expectNoDiagnostic(diagnostics, {
+    severity: ['warning', 'error'],
+    file: 'src/widgets/w.tsx',
+    root,
+  })
 })

@@ -2,6 +2,7 @@ import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
   diagnosticsOf,
+  expectNoDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import {
@@ -301,13 +302,11 @@ console.log(secret())
         violation!,
         severityOf[reportedAs],
       )
-      expect(
-        findDiagnostics(server.diagnostics, {
-          severity: severityOf[other],
-          file: 'src/entry.ts',
-          root: server.root,
-        }),
-      ).toEqual([])
+      expectNoDiagnostic(server.diagnostics, {
+        severity: severityOf[other],
+        file: 'src/entry.ts',
+        root: server.root,
+      })
     },
     timeout,
   )

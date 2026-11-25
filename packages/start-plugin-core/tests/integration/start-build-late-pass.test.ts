@@ -14,7 +14,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
   diagnosticPosition,
   expectDiagnostic,
-  findDiagnostics,
+  expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   StartBuildError,
@@ -175,15 +175,16 @@ export const fn = base.handler(async () => 'MARK_MDX_FINISHED')
       // line 1 is the heading)
       for (let other = 2; other <= 12; other++) {
         if (other !== position.line) {
-          expect(
-            findDiagnostics(error.diagnostics, {
+          expectNoDiagnostic(
+            error.diagnostics,
+            {
               severity: 'error',
               file: 'src/page.mdx',
               root: error.root,
               position: { line: other },
-            }),
+            },
             `a diagnostic at line ${other}`,
-          ).toEqual([])
+          )
         }
       }
     },
@@ -412,12 +413,10 @@ export const value: string = createMemoryHistory({
         entry: 'src/entry.ts',
         ...asTypeScript,
       })
-      expect(
-        findDiagnostics(build.diagnostics, {
-          file: 'src/page.foo',
-          root: build.root,
-        }),
-      ).toEqual([])
+      expectNoDiagnostic(build.diagnostics, {
+        file: 'src/page.foo',
+        root: build.root,
+      })
       expect((await build.client.run('return entry.value')).result).toBe(
         '/MARK_FOO_TYPED',
       )
@@ -455,12 +454,10 @@ To link: \`import { Link } from '@tanstack/react-router'\`.
           ],
         },
       })
-      expect(
-        findDiagnostics(build.diagnostics, {
-          file: 'src/readme.md',
-          root: build.root,
-        }),
-      ).toEqual([])
+      expectNoDiagnostic(build.diagnostics, {
+        file: 'src/readme.md',
+        root: build.root,
+      })
       expect((await build.client.run('return entry.text')).result).toContain(
         '# Usage',
       )
@@ -482,12 +479,10 @@ export const value = label
         entry: 'src/entry.ts',
         ...asTypeScript,
       })
-      expect(
-        findDiagnostics(build.diagnostics, {
-          file: 'src/page.foo',
-          root: build.root,
-        }),
-      ).toEqual([])
+      expectNoDiagnostic(build.diagnostics, {
+        file: 'src/page.foo',
+        root: build.root,
+      })
       expect((await build.client.run('return entry.value')).result).toBe(
         'MARK_FOO_VALUE',
       )

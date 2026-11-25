@@ -26,7 +26,7 @@ import {
   onTestFinished,
   test,
 } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../build-harness'
 import { probeRoutePath } from '../request-probe'
 import {
@@ -208,12 +208,10 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
 
   test('the client build neither bundles nor warns about the builtin only a deleted handler reads', () => {
     expect(build.client.where('node:buffer')).toBe('nowhere')
-    expect(
-      findDiagnostics(build.client.warnings, {
-        file: 'src/routes/admin/users.tsx',
-        root: build.root,
-      }),
-    ).toEqual([])
+    expectNoDiagnostic(build.client.warnings, {
+      file: 'src/routes/admin/users.tsx',
+      root: build.root,
+    })
   })
 
   test('the generated route tree types every route', async () => {

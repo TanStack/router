@@ -19,7 +19,7 @@ import {
   diagnosticPosition,
   diagnosticsOf,
   expectDiagnostic,
-  findDiagnostics,
+  expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { StartBuildError, buildStart } from '../build-harness'
 import { clientPage, startRsbuildStartDevServer } from '../rsbuild-dev-server'
@@ -206,15 +206,16 @@ function expectAtRefusal(
     position: { line, column },
   })
   for (const other of [line - 1, line + 1]) {
-    expect(
-      findDiagnostics(diagnostics, {
+    expectNoDiagnostic(
+      diagnostics,
+      {
         severity: 'error',
         file,
         root,
         position: { line: other },
-      }),
+      },
       `a diagnostic at line ${other}`,
-    ).toEqual([])
+    )
   }
 }
 
@@ -295,14 +296,12 @@ describe.each([
           root: error.root,
         })
         const template = diagnosticPosition(text, statement).line
-        expect(
-          findDiagnostics(error.diagnostics, {
-            severity: 'error',
-            file: 'src/Page.vue',
-            root: error.root,
-            position: { line: template },
-          }),
-        ).toEqual([])
+        expectNoDiagnostic(error.diagnostics, {
+          severity: 'error',
+          file: 'src/Page.vue',
+          root: error.root,
+          position: { line: template },
+        })
       },
       timeout,
     )
@@ -441,13 +440,11 @@ globalThis.__refused = () => [${[...refused, ...refusedInDev].map((_, i) => `imp
         )
       }
       for (const [i] of fixes.entries()) {
-        expect(
-          findDiagnostics(server.diagnostics, {
-            severity: 'error',
-            file: `src/Fix${i}.vue`,
-            root: server.root,
-          }),
-        ).toEqual([])
+        expectNoDiagnostic(server.diagnostics, {
+          severity: 'error',
+          file: `src/Fix${i}.vue`,
+          root: server.root,
+        })
       }
     },
     timeout,

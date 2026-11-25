@@ -10,6 +10,7 @@
 import { describe, expect, test } from 'vitest'
 import {
   expectDiagnostic,
+  expectNoDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import {
@@ -162,12 +163,10 @@ describe.each([
     })
     // (no report names the module: the server build provides what the
     // client calls)
-    expect(
-      findDiagnostics(server.messages, {
-        file: 'src/label-fns.ts',
-        root: server.root,
-      }),
-    ).toEqual([])
+    expectNoDiagnostic(server.messages, {
+      file: 'src/label-fns.ts',
+      root: server.root,
+    })
   }, 60_000)
 
   test('custom ids the browser calls reach their handlers; a deprecated one warns', async () => {

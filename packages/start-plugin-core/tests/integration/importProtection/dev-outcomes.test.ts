@@ -8,7 +8,10 @@
  * mock`), and a violation by what `onViolation` receives.
  */
 import { createRequire } from 'node:module'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  expectNoDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
@@ -144,9 +147,7 @@ describe('Rsbuild dev', () => {
         },
       })
       // Nothing fails, on any channel
-      expect(
-        findDiagnostics(server.diagnostics, { severity: 'error' }),
-      ).toEqual([])
+      expectNoDiagnostic(server.diagnostics, { severity: 'error' })
       expect(
         (await runRsbuildClient(server)).filter((text) =>
           text.includes('MARK_'),

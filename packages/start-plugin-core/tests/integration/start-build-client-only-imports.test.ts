@@ -10,7 +10,7 @@
  * imports it, and reports nothing about it (G16).
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../build-harness'
 import { reportedViolations } from '../importProtection/start-apps'
 import type { StartBuild } from '../build-harness'
@@ -94,12 +94,10 @@ describe.each(startBundlers)('%s build', (bundler) => {
       build.ssr.where('MARK_BROWSER_LIB'),
     ]).toEqual(['nowhere', 'nowhere', 'nowhere'])
     // (nothing about the module that imports them either)
-    expect(
-      findDiagnostics(build.ssr.warnings, {
-        file: 'src/entry.ts',
-        root: build.root,
-      }),
-    ).toEqual([])
+    expectNoDiagnostic(build.ssr.warnings, {
+      file: 'src/entry.ts',
+      root: build.root,
+    })
   })
 
   test('each environment runs its implementation', async () => {

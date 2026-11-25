@@ -21,7 +21,10 @@
  * client build failed the compiler's self-checks.
  */
 import { describe, expect, test } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  expectNoDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import {
   buildStart,
   callByIdExports,
@@ -273,13 +276,14 @@ export const Route = createFileRoute('/two-chunks')({
           'routes/copied-fn',
           'panel',
         ]) {
-          expect(
-            findDiagnostics(build.client.warnings, {
+          expectNoDiagnostic(
+            build.client.warnings,
+            {
               file: `src/${path}.tsx`,
               root: build.root,
-            }),
+            },
             path,
-          ).toEqual([])
+          )
         }
       },
       timeout,

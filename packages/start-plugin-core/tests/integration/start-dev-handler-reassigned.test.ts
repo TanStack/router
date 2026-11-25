@@ -18,7 +18,7 @@ import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import {
   expectDiagnostic,
-  findDiagnostics,
+  expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { startDevServer } from '../dev-server'
@@ -159,13 +159,11 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
         ran,
         answer: await page.text('[data-testid=probe]'),
       }).toEqual({ holding: [], ran: false, answer: 'got=MARK_DB_X' })
-      expect(
-        findDiagnostics(server.diagnostics, {
-          severity: 'error',
-          file: 'src/fns.ts',
-          root: server.root,
-        }),
-      ).toEqual([])
+      expectNoDiagnostic(server.diagnostics, {
+        severity: 'error',
+        file: 'src/fns.ts',
+        root: server.root,
+      })
     },
     timeout,
   )

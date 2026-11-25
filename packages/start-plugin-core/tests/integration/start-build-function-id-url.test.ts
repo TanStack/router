@@ -17,6 +17,7 @@ import { createHash } from 'node:crypto'
 import { describe, expect, test } from 'vitest'
 import {
   expectDiagnostic,
+  expectNoDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import {
@@ -115,10 +116,11 @@ describe.each(startBundlers)('%s build', (bundler) => {
         if (file in refused) {
           expectDiagnostic(diagnostics, { severity: 'error', file, root })
         } else {
-          expect(
-            findDiagnostics(diagnostics, { severity: 'error', file, root }),
+          expectNoDiagnostic(
+            diagnostics,
+            { severity: 'error', file, root },
             `errors naming ${file}`,
-          ).toEqual([])
+          )
         }
       }
     },

@@ -4,7 +4,7 @@
  * reported.
  */
 import { describe, expect, test } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../build-harness'
 
 const timeout = 120_000
@@ -121,20 +121,16 @@ describe.each(startBundlers)(
         for (const path of ['direct']) {
           expect(build.client.where(`MARK_API_${path}`), path).toBe('lazy')
           expect(build.client.where(`MARK_CONFETTI_${path}`), path).toBe('lazy')
-          expect(
-            findDiagnostics(reported, {
-              file: `src/routes/${path}.tsx`,
-              root: build.root,
-            }),
-          ).toEqual([])
+          expectNoDiagnostic(reported, {
+            file: `src/routes/${path}.tsx`,
+            root: build.root,
+          })
         }
         expect(build.client.where('MARK_MEMO')).toBe('lazy')
-        expect(
-          findDiagnostics(reported, {
-            file: 'src/routes/memo.tsx',
-            root: build.root,
-          }),
-        ).toEqual([])
+        expectNoDiagnostic(reported, {
+          file: 'src/routes/memo.tsx',
+          root: build.root,
+        })
       },
       timeout,
     )

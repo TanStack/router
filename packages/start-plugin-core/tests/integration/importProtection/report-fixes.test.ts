@@ -26,7 +26,7 @@ import { describe, expect, test } from 'vitest'
 import {
   diagnosticPosition,
   expectDiagnostic,
-  findDiagnostics,
+  expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
@@ -609,12 +609,10 @@ export const options = { errorComponent: ${errorComponent} }
         position: diagnosticPosition(initial, needle),
       })
       expectDiagnostic(error.diagnostics, at(initial.lastIndexOf('Widget')))
-      expect(
-        findDiagnostics(
-          error.diagnostics,
-          at(initial.indexOf('Widget', initial.indexOf('<'))),
-        ),
-      ).toEqual([])
+      expectNoDiagnostic(
+        error.diagnostics,
+        at(initial.indexOf('Widget', initial.indexOf('<'))),
+      )
       const build = await buildStart({
         bundler,
         files: {

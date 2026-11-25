@@ -9,7 +9,7 @@
  */
 import { pluginReact } from '@rsbuild/plugin-react'
 import { describe, expect, onTestFinished, test } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import {
   buildStart,
@@ -93,9 +93,7 @@ ${callByIdExports}`,
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
       })
       for (const file of barrels) {
-        expect(
-          findDiagnostics(build.diagnostics, { file, root: build.root }),
-        ).toEqual([])
+        expectNoDiagnostic(build.diagnostics, { file, root: build.root })
       }
       // The URL each server fn's client call requests.
       const urls = (
@@ -177,9 +175,7 @@ export const Route = createFileRoute('/')({ component: () => null })`,
       })
       expect(server.errors).toEqual([])
       for (const file of barrels) {
-        expect(
-          findDiagnostics(server.diagnostics, { file, root: server.root }),
-        ).toEqual([])
+        expectNoDiagnostic(server.diagnostics, { file, root: server.root })
       }
       const page = await openPage(server.url!, {
         registerCleanup: onTestFinished,

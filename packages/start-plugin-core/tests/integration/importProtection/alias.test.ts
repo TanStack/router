@@ -19,7 +19,7 @@ import tsconfigPaths from 'vite-tsconfig-paths'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import {
   captureConsole,
-  findDiagnostics,
+  expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterEach, describe, expect, onTestFinished, test } from 'vitest'
 import { buildStart, startRuntimeLinks } from '../../build-harness'
@@ -272,9 +272,7 @@ describe('rsbuild: tsconfig paths', () => {
         start: { importProtection: recorder.importProtection },
       })
       // Nothing fails, on any channel
-      expect(
-        findDiagnostics(server.diagnostics, { severity: 'error' }),
-      ).toEqual([])
+      expectNoDiagnostic(server.diagnostics, { severity: 'error' })
       // The probe of `expectSafeMock`, run where the mock lives.
       const { result } = await captureConsole(() =>
         runInClient(

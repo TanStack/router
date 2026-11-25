@@ -6,7 +6,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { loadedModulesExpression } from '@tanstack/compiler-test-utils/importers'
 import {
   buildStart,
@@ -262,12 +262,10 @@ return requestsOf((options) => (typeof loader === 'function' ? loader : loader.h
       const { result, id } = await callServerFnLoader(built)
       expect(result).toBe('MARK_LOADER_FN')
       expect(built.client.where(id)).toBe('lazy')
-      expect(
-        findDiagnostics(problems(built.diagnostics), {
-          file: 'src/routes/index.tsx',
-          root: built.root,
-        }),
-      ).toEqual([])
+      expectNoDiagnostic(problems(built.diagnostics), {
+        file: 'src/routes/index.tsx',
+        root: built.root,
+      })
     },
     timeout,
   )

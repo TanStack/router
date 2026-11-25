@@ -11,6 +11,7 @@ import {
   captureThrow,
   diagnosticsOf,
   expectDiagnostic,
+  expectNoDiagnostic,
   findDiagnostics,
 } from '../src/diagnostics'
 
@@ -169,13 +170,231 @@ describe('real channels', () => {
   })
 })
 
+/** A warning whose text is `text`. */
+const warning = (text: string) => [
+  { severity: 'warning' as const, text, raw: text },
+]
+
+// The spellings tools print (Vite, Rolldown, webpack and Rspack, browsers,
+// Node), each read as naming `/app/src/a.ts` or not, and positions read as
+// that file's or another's. Source: the X1 review probes (Fable's spelling
+// table, Astra's boundaries).
+describe('spellings', () => {
+  const root = '/app'
+  const a = { file: 'src/a.ts', root }
+  const at = (line: number, column?: number) => ({
+    ...a,
+    position: column === undefined ? { line } : { line, column },
+  })
+  test.each([
+    ['relative', 'warning in src/a.ts:3:5 bad', a, true],
+    ['dot-relative', 'warning in ./src/a.ts:3:5 bad', a, true],
+    ['absolute', 'warning in /app/src/a.ts:3:5 bad', a, true],
+    ['Vite /@fs/ path', 'Failed to load /@fs/app/src/a.ts:3:5', a, true],
+    [
+      'browser URL of /@fs/',
+      'at http://localhost:5173/@fs/app/src/a.ts:3:5',
+      a,
+      true,
+    ],
+    [
+      'webpack-internal',
+      'at eval (webpack-internal:///./src/a.ts:3:5)',
+      a,
+      true,
+    ],
+    ['webpack:// source', 'webpack://app/./src/a.ts:3:5', a, true],
+    [
+      'loader chain',
+      'builtin:swc-loader??ruleSet[1].rules[2].use[0]!./src/a.ts 3:5-9',
+      a,
+      true,
+    ],
+    ['Rspack box', ' × bad\n  ╭─[src/a.ts:3:5]\n 3 │ x', a, true],
+    [
+      'Rspack box, absolute',
+      ' × bad\n  ╭─[/app/src/a.ts:3:5]\n 3 │ x',
+      a,
+      true,
+    ],
+    ['stack frame', 'Error: x\n    at f (/app/src/a.ts:3:5)', a, true],
+    ['file URL', 'Error: x\n    at f (file:///app/src/a.ts:3:5)', a, true],
+    ['TypeScript style', 'src/a.ts(3,5): error TS1', a, true],
+    ['quoted', 'Cannot split "src/a.ts".', a, true],
+    ['backticks', 'Cannot split `/app/src/a.ts`', a, true],
+    ['query', 'in /app/src/a.ts?tsr-split=component:3:5', a, true],
+    ['./ inside an absolute path', 'in /app/./src/a.ts', a, true],
+    [
+      'Windows',
+      'in C:\\app\\src\\a.ts:3:5',
+      { file: 'src/a.ts', root: 'C:/app' },
+      true,
+    ],
+    ['virtual prefix', 'in \0virtual:/app/src/a.ts', a, true],
+    ['id=', 'id=/app/src/a.ts', a, true],
+    ['tool prefix', 'vite:oxc:/app/src/a.ts:3:5', a, true],
+    ['sentence', 'Fix src/a.ts.', a, true],
+    ['ellipsis', 'Fix src/a.ts...', a, true],
+    ['comma list', 'files: src/a.ts,src/b.ts', a, true],
+    ['arrow list', 'src/b.ts->src/a.ts', a, true],
+    [
+      'a space in the name',
+      'in src/routes/my route.ts:8:1',
+      {
+        file: 'src/routes/my route.ts',
+        root,
+        position: { line: 8, column: 1 },
+      },
+      true,
+    ],
+    [
+      'a space in a directory',
+      'in /app/my dir/a.ts:8:1',
+      { file: '/app/my dir/a.ts', position: { line: 8, column: 1 } },
+      true,
+    ],
+    [
+      'a space, relative to an absolute file',
+      'in src/my dir/a.ts:8:1',
+      { file: '/app/src/my dir/a.ts', position: { line: 8, column: 1 } },
+      true,
+    ],
+    ['~ alias', 'in ~/src/a.ts', a, false],
+    ['joined by +', 'src/b.ts+src/a.ts', a, false],
+    ['under another root', 'in /other/app/src/a.ts', a, false],
+    [
+      'under another group',
+      'in /other/(group)/app/src/a.ts',
+      { file: '/app/src/a.ts' },
+      false,
+    ],
+    ['.tsx', 'in src/a.tsx', a, false],
+    ['.map', 'in src/a.ts.map', a, false],
+    [
+      'another group',
+      'in src/routes/(other)/login.tsx',
+      { file: 'src/routes/(auth)/login.tsx', root },
+      false,
+    ],
+    ['another directory', 'in lib/src/a.ts', a, false],
+    [
+      'group route',
+      'in src/routes/(auth)/login.tsx:3:5',
+      { file: 'src/routes/(auth)/login.tsx', root },
+      true,
+    ],
+    [
+      'param route',
+      'in src/routes/[id]/a.tsx:3:5',
+      { file: 'src/routes/[id]/a.tsx', root },
+      true,
+    ],
+    [
+      '$param in parentheses',
+      'bad (src/routes/$id.tsx:3:5)',
+      { file: 'src/routes/$id.tsx', root },
+      true,
+    ],
+    [
+      'group in parentheses',
+      'bad (src/routes/(auth)/login.tsx:3:5)',
+      { file: 'src/routes/(auth)/login.tsx', root },
+      true,
+    ],
+    [
+      'group in brackets',
+      '╭─[src/routes/(auth)/login.tsx:3:5]',
+      { file: 'src/routes/(auth)/login.tsx', root },
+      true,
+    ],
+    ['its position', 'src/a.ts:3:5', at(3, 5), true],
+    [
+      'a later file’s position',
+      'src/a.ts imports src/b.ts:3:5',
+      at(3, 5),
+      false,
+    ],
+    [
+      'a later bare file’s position',
+      'src/a.ts imports b.ts:3:5',
+      at(3, 5),
+      false,
+    ],
+    [
+      'a later bare file’s position, on its line',
+      'src/a.ts:2:2\nimported from index.ts:8:1',
+      at(8, 1),
+      false,
+    ],
+    [
+      'a package file’s position',
+      'src/a.ts imports react (node_modules/react/index.js:3:5)',
+      at(3, 5),
+      false,
+    ],
+    [
+      'a later file’s position, no extension',
+      'src/a.ts: see src/routes/__root:3:5',
+      at(3, 5),
+      false,
+    ],
+    [
+      'its position after another file’s',
+      'src/a.ts\n  trace: src/b.ts:9:9\n  at src/a.ts:3:5',
+      at(3, 5),
+      true,
+    ],
+    [
+      'its position, another file’s frame after',
+      'src/a.ts:3:5\n> 9 | x\n at src/b.ts:9:1',
+      at(3, 5),
+      true,
+    ],
+    [
+      'another file’s code frame',
+      'src/a.ts imports src/b.ts\n> 3 | bad',
+      at(3),
+      false,
+    ],
+    [
+      'its code frame before its location',
+      'Unexpected token\n> 3 | bad\n/app/src/a.ts:3',
+      at(3),
+      true,
+    ],
+    ['a version between', 'src/a.ts (vite v8.3.8) 3:5', at(3, 5), true],
+    [
+      'a URL between',
+      'src/a.ts see https://tanstack.com/router/docs.html 3:5',
+      at(3, 5),
+      true,
+    ],
+  ] as const)('%s', (_, text, expected, names) => {
+    expect(findDiagnostics(warning(text), expected)).toHaveLength(names ? 1 : 0)
+  })
+
+  test('output of unknown owner: a presence check needs its absolute path, an absence check sees it named any way', () => {
+    const shared = (text: string) => [
+      { severity: 'warning' as const, text, raw: text, shared: true as const },
+    ]
+    expect(findDiagnostics(shared('warning in src/a.ts:3:5'), a)).toEqual([])
+    expect(() =>
+      expectNoDiagnostic(shared('warning in src/a.ts:3:5'), a),
+    ).toThrow(/unknown owner/)
+    expect(() => expectNoDiagnostic(shared('warning'), {})).toThrow(
+      /unknown owner/,
+    )
+    expectDiagnostic(shared('warning in /app/src/a.ts:3:5'), a)
+    expectNoDiagnostic(warning('warning in src/b.ts:3:5'), a)
+    expect(() => expectNoDiagnostic(warning('in src/a.ts'), a)).toThrow(
+      /src\/a\.ts/,
+    )
+  })
+})
+
 // Controls of the file and position matcher: a diagnostic meets an
 // expectation only with the expected file's own path and its own position.
 describe('file and position', () => {
-  const warning = (text: string) => [
-    { severity: 'warning' as const, text, raw: text },
-  ]
-
   test('a position belongs to the file it follows, not to a later file', () => {
     const nested = warning(
       'src/route.ts:2:9: cannot split\n  imported from src/barrel.ts:11:6',

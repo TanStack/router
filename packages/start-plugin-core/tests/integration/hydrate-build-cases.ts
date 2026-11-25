@@ -17,7 +17,7 @@ import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import {
   diagnosticPosition,
   expectDiagnostic,
-  findDiagnostics,
+  expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { StartBuildError, buildStart } from '../build-harness'
 import { typeCheck } from './start-compose-app'
@@ -619,12 +619,10 @@ export { PostBadge as badge } from './routes/badge'
       'an exported let the children of a split={false} boundary assign stays live',
       async () => {
         const build = await sharedApp()
-        expect(
-          findDiagnostics(problems(build.diagnostics), {
-            file: 'src/pages/module-write-split-false.tsx',
-            root: build.root,
-          }),
-        ).toEqual([])
+        expectNoDiagnostic(problems(build.diagnostics), {
+          file: 'src/pages/module-write-split-false.tsx',
+          root: build.root,
+        })
         expect(build.client.where('moduleWriteSplitFalse-marker')).toBe('eager')
         expect(
           await hydrateShared(
@@ -651,12 +649,10 @@ export { PostBadge as badge } from './routes/badge'
       'the ref the refusal of a reassigned let suggests builds, hydrates and type-checks',
       async () => {
         const build = await sharedApp()
-        expect(
-          findDiagnostics(problems(build.diagnostics), {
-            file: 'src/pages/timer-ref.tsx',
-            root: build.root,
-          }),
-        ).toEqual([])
+        expectNoDiagnostic(problems(build.diagnostics), {
+          file: 'src/pages/timer-ref.tsx',
+          root: build.root,
+        })
         expect(
           await hydrateShared(
             'timerRef',

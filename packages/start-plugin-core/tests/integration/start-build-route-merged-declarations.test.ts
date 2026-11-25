@@ -5,7 +5,7 @@
  * outside the route tree that exports a `Route` is nobody's route.
  */
 import { describe, expect, test } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../build-harness'
 
 const timeout = 60_000
@@ -84,12 +84,10 @@ export { Route as Helper, usesRouter } from './helper'
         },
         entry: 'src/entry.ts',
       })
-      expect(
-        findDiagnostics(
-          [...build.client.warnings, ...build.client.consoleMessages],
-          { file: 'src/helper.tsx', root: build.client.root },
-        ),
-      ).toEqual([])
+      expectNoDiagnostic(
+        [...build.client.warnings, ...build.client.consoleMessages],
+        { file: 'src/helper.tsx', root: build.client.root },
+      )
     },
     timeout,
   )

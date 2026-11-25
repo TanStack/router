@@ -17,7 +17,7 @@ import {
   diagnosticPosition,
   diagnosticsOf,
   expectDiagnostic,
-  findDiagnostics,
+  expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   captureDiagnostics,
@@ -1195,13 +1195,11 @@ export const createFileRoute = (id: any) =>
 
     expect(error).toBeUndefined()
     expect(written).toBe(source)
-    expect(
-      findDiagnostics(diagnostics, {
-        severity: ['warning', 'error'],
-        file,
-        root,
-      }),
-    ).toEqual([])
+    expectNoDiagnostic(diagnostics, {
+      severity: ['warning', 'error'],
+      file,
+      root,
+    })
   })
 
   // A malformed route call (a never-fail-silently control, not a supported
