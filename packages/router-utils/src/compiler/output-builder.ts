@@ -278,14 +278,10 @@ export function tokenStart(text: string, start = 0, end = text.length): number {
 
 /** Whether `text` holds a line terminator other than LF (CR, U+2028, U+2029). */
 export function breaksNotLf(text: string): boolean {
-  for (let i = 0; i < text.length; i++) {
-    const c = text.charCodeAt(i)
-    if (c === 13 || c === 0x2028 || c === 0x2029) {
-      return true
-    }
-  }
-  return false
+  return NOT_LF_BREAK.test(text)
 }
+
+const NOT_LF_BREAK = /[\r\u2028\u2029]/
 
 /**
  * The segments of one output as freeze renders them (`freeze.ts`), and the
