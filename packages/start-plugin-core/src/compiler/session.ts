@@ -13,7 +13,6 @@ import {
   SourceText,
   WarningLedger,
   collectionSizes,
-  compileModule,
   createCompilerCaches,
   digestOf,
   displayPath,
@@ -24,6 +23,7 @@ import {
   registerCompilerStats,
   releaseEnvironment,
   reportCompileDiagnostics,
+  settleModule,
 } from '@tanstack/router-utils/compiler'
 import {
   ROUTER_PLANNER,
@@ -432,18 +432,24 @@ export class StartCompilerSession {
   }
 
   /**
-   * Compiles one id (env or derived) of a module of an environment; the
-   * server functions the compile reports (none included) replace the
-   * module's in the registry, unless a newer text of the module arrived
-   * meanwhile (`superseded`): its compile registers that text's.
+   * Settles one id (env or derived) of a module of an environment and runs
+   * `use` with its output (null: untouched) while the request is open
+   * (`settleModule`): `current()` says no newer answer of the module exists.
+   * The server functions a current answer reports (none included) replace
+   * the module's in the registry; an answer a newer one overtook registers
+   * nothing (the newer answer's facts stand).
    */
-  async compile(
+  async settle<T>(
     input: StartCompileInput,
     host: HostServices,
-  ): Promise<CompileOutput | null> {
+    use: (settled: {
+      output: CompileOutput | null
+      current: () => boolean
+    }) => T | Promise<T>,
+  ): Promise<T> {
     const { env, late } = input
     const config = this.configFor(env)
-    const out = await compileModule(
+    return settleModule(
       {
         id: input.id,
         code: input.code,
@@ -469,15 +475,26 @@ export class StartCompilerSession {
       },
       host,
       this.caches,
+      (settlement) => {
+        const output = settlement.kind === 'compiled' ? settlement.output : null
+        if (settlement.current() && !this.opts.serverFnsAtSettlement) {
+          this.registry.set(
+            env,
+            identify(input.id).canonicalId,
+            output && serverFnFactsOf(output),
+          )
+        }
+        return use({ output, current: settlement.current })
+      },
     )
-    if (!out?.superseded && !this.opts.serverFnsAtSettlement) {
-      this.registry.set(
-        env,
-        identify(input.id).canonicalId,
-        out && serverFnFactsOf(out),
-      )
-    }
-    return out
+  }
+
+  /** Compiles one id (env or derived) of a module of an environment (`settle`'s output). */
+  compile(
+    input: StartCompileInput,
+    host: HostServices,
+  ): Promise<CompileOutput | null> {
+    return this.settle(input, host, ({ output }) => output)
   }
 
   /**

@@ -142,11 +142,11 @@ interface ModuleOutcome {
   /** Import protection's record of the module (`ImportProtectionEnv.buildInfo`). */
   ip?: { key: string; value: unknown } | null
   /**
-   * The compile was overtaken by a newer one of the same id (the module is
-   * stale and built again): it may finish after the newer one, so it takes
-   * nothing out of the session's index of records.
+   * A newer answer of the module overtook this one (`current()`, read at the
+   * record): it may finish after the newer one, so it takes nothing out of
+   * the session's index of records.
    */
-  superseded?: boolean
+  overtaken?: boolean
 }
 
 /** What a module that is not compiled gives import protection: no edge, no violation (its earlier records are retired). */
@@ -668,7 +668,7 @@ export class StartRsbuildCompilerSession {
     const index = (set: Set<string>, holds: boolean) => {
       if (holds) {
         set.add(key)
-      } else if (!outcome.superseded) {
+      } else if (!outcome.overtaken) {
         set.delete(key)
       }
     }
@@ -1248,7 +1248,10 @@ export class StartRsbuildCompilerSession {
       }
       return parsedInputMap
     }
-    const out = await this.start.compile(
+    // the module's request stays open until its record is written: a
+    // record of an answer a newer one overtook takes nothing out of the
+    // session's index (the newer compile may have finished first)
+    return this.start.settle(
       {
         id,
         code: source,
@@ -1260,56 +1263,60 @@ export class StartRsbuildCompilerSession {
         late,
       },
       this.hostFor(env),
+      async ({ output: out, current }) => {
+        if (!out) {
+          return notCompiled()
+        }
+        const diagnosed = this.diagnose(
+          out,
+          identity.path,
+          source,
+          env.type,
+          late || isVueSfc(identity.path) ? readInputMap : undefined,
+        )
+        if (diagnosed.errors.length > 0) {
+          // the module fails: its errors, and nothing its previous build left
+          this.record(ctx, key.key, key.child, { errors: diagnosed.errors })
+          const error = new Error(
+            diagnosed.errors.map((e) => e.message).join('\n'),
+          )
+          error.name = LOCATED_DIAGNOSTICS.errorName
+          throw error
+        }
+        const served = await this.protect(ctx, env, id, out, key)
+        // (a module served as its mock declares nothing in this environment)
+        const facts = served.mock ? null : serverFnFactsOf(out)
+        this.record(ctx, key.key, key.child, {
+          plan:
+            env.compiler.persistsModules && out.persisted
+              ? out.persisted
+              : undefined,
+          fns: facts
+            ? { version: 4, canonicalId: identity.canonicalId, facts }
+            : none,
+          found: diagnosed.found,
+          packageUse: diagnosed.packageUse,
+          ip: served.ip,
+          overtaken: !current(),
+        })
+        if (served.mock) {
+          return served.mock
+        }
+        if (identity.derived === null && out.code === source) {
+          return passthrough
+        }
+        return {
+          code: out.code,
+          map: composeLoaderMap(
+            out.map,
+            ctx.resourcePath,
+            source,
+            inputMap,
+            env.compiler.recordMapText,
+          ),
+        }
+      },
     )
-    if (!out) {
-      return notCompiled()
-    }
-    const diagnosed = this.diagnose(
-      out,
-      identity.path,
-      source,
-      env.type,
-      late || isVueSfc(identity.path) ? readInputMap : undefined,
-    )
-    if (diagnosed.errors.length > 0) {
-      // the module fails: its errors, and nothing its previous build left
-      this.record(ctx, key.key, key.child, { errors: diagnosed.errors })
-      const error = new Error(diagnosed.errors.map((e) => e.message).join('\n'))
-      error.name = LOCATED_DIAGNOSTICS.errorName
-      throw error
-    }
-    const served = await this.protect(ctx, env, id, out, key)
-    // (a module served as its mock declares nothing in this environment)
-    const facts = served.mock ? null : serverFnFactsOf(out)
-    this.record(ctx, key.key, key.child, {
-      plan:
-        env.compiler.persistsModules && out.persisted
-          ? out.persisted
-          : undefined,
-      fns: facts
-        ? { version: 4, canonicalId: identity.canonicalId, facts }
-        : none,
-      found: diagnosed.found,
-      packageUse: diagnosed.packageUse,
-      ip: served.ip,
-      superseded: out.superseded === true,
-    })
-    if (served.mock) {
-      return served.mock
-    }
-    if (identity.derived === null && out.code === source) {
-      return passthrough
-    }
-    return {
-      code: out.code,
-      map: composeLoaderMap(
-        out.map,
-        ctx.resourcePath,
-        source,
-        inputMap,
-        env.compiler.recordMapText,
-      ),
-    }
   }
 
   /** The key of a module's record: its compile environment and resource; a child compiler's module apart. */

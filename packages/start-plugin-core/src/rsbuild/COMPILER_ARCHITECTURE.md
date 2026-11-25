@@ -71,8 +71,8 @@ what a watch-written cache restored.
    and edge passes write through it too. A provider module (`?tss-serverfn-handler`, `?tss-serverfn-split`) always
    records what it provides, also nothing: an empty provider and one not built yet are different facts. One index
    (`recorded`) says which modules hold a record, with three sub-indexes for its readers (`fnModules`, `warned`,
-   `packageUses`), pruned with the plans (`retain`). A compile overtaken by a newer one of the same id takes nothing
-   out of the index.
+   `packageUses`), pruned with the plans (`retain`). A compile overtaken by a newer one of the same id (not
+   `current()` when its record is written: the module's request stays open until then) takes nothing out of the index.
 2. **The registry is derived at settlement from the modules the compilation holds, by one writer**
    (`deriveServerFns`; the session's `serverFnsAtSettlement`: on this host a compile registers nothing, Vite is
    unchanged). It runs at `finishMake` stage −20, after the drain, and in a closure round that follows builds (the last
