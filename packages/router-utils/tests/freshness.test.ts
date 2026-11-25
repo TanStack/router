@@ -501,87 +501,113 @@ describe('a dependency saved while a compile checks its snapshot', () => {
   const atMost = (waited: Promise<void>, ms = 2_000) =>
     Promise.race([waited, new Promise<void>((r) => setTimeout(r, ms))])
 
+  /**
+   * The compile of `a.ts` while `b.ts` is saved as `saved` in the timeline
+   * above; its answer, a cold compile's of the final files, and how many
+   * attempts the compile took.
+   */
+  async function duringSave(saved: string) {
+    const files = {
+      '/app/a.ts': "import { make } from './b'\nexport const x = make\n",
+      '/app/b.ts': 'export const make = 1\n',
+    }
+    // each hold waits once, from when it is armed
+    let holdEventRead = false
+    let holdCheck = false
+    let holdPrefetch = true
+    let attempts = 0
+    const eventRead = gate()
+    const eventReading = gate()
+    const checkResolve = gate()
+    const checkResolving = gate()
+    const read = gate()
+    const proceed = gate()
+    const host = new MemoryHost({
+      files,
+      recognizer: RECOGNIZER,
+      // (the event's read of the saved file)
+      onRead: async (path) => {
+        if (path === '/app/b.ts' && holdEventRead) {
+          holdEventRead = false
+          eventReading.open()
+          await eventRead.opened
+        }
+      },
+      // (the compile's next resolution after its first read: its check's)
+      onResolve: async () => {
+        if (holdCheck) {
+          holdCheck = false
+          checkResolving.open()
+          await checkResolve.opened
+        }
+      },
+    })
+    const planner = (): Planner => ({
+      name: 'toy',
+      tier: 1,
+      gate: () => true,
+      async prefetch(_t0, ctx) {
+        attempts++
+        const target = await ctx.resolve('./b')
+        const found = await ctx.resolver.resolve(target!, 'make')
+        if (holdPrefetch) {
+          holdPrefetch = false
+          read.open()
+          await proceed.opened
+        }
+        ctx.set(found.k === 'found' ? found.value : found.k)
+      },
+      plan(ctx) {
+        ctx.setFacts('toy', ctx.prefetched.get('toy') ?? null)
+      },
+    })
+    const compiling = host.compile('/app/a.ts', [planner()])
+    await read.opened
+    host.write('/app/b.ts', saved)
+    holdEventRead = true
+    const event = invalidate(
+      host.caches,
+      { path: '/app/b.ts', kind: 'change' },
+      host,
+    )
+    await atMost(eventReading.opened)
+    holdCheck = true
+    proceed.open()
+    await atMost(checkResolving.opened)
+    holdCheck = false
+    eventRead.open()
+    await event
+    checkResolve.open()
+    const out = await compiling
+    const tried = attempts
+    const cold = await new MemoryHost({
+      files: host.files,
+      recognizer: RECOGNIZER,
+    }).compile('/app/a.ts', [planner()])
+    return { out, cold, attempts: tried }
+  }
+
   it.for([
     ['a change of the export', 'export function make() {}\n'],
     ['a comment-only edit', '// a note\nexport const make = 1\n'],
   ] as const)(
     '%s: the compile answers the saved dependency',
     async ([, saved]) => {
-      const files = {
-        '/app/a.ts': "import { make } from './b'\nexport const x = make\n",
-        '/app/b.ts': 'export const make = 1\n',
-      }
-      // each hold waits once, from when it is armed
-      let holdEventRead = false
-      let holdCheck = false
-      let holdPrefetch = true
-      const eventRead = gate()
-      const eventReading = gate()
-      const checkResolve = gate()
-      const checkResolving = gate()
-      const read = gate()
-      const proceed = gate()
-      const host = new MemoryHost({
-        files,
-        recognizer: RECOGNIZER,
-        // (the event's read of the saved file)
-        onRead: async (path) => {
-          if (path === '/app/b.ts' && holdEventRead) {
-            holdEventRead = false
-            eventReading.open()
-            await eventRead.opened
-          }
-        },
-        // (the compile's next resolution after its first read: its check's)
-        onResolve: async () => {
-          if (holdCheck) {
-            holdCheck = false
-            checkResolving.open()
-            await checkResolve.opened
-          }
-        },
-      })
-      const planner = (): Planner => ({
-        name: 'toy',
-        tier: 1,
-        gate: () => true,
-        async prefetch(_t0, ctx) {
-          const target = await ctx.resolve('./b')
-          const found = await ctx.resolver.resolve(target!, 'make')
-          if (holdPrefetch) {
-            holdPrefetch = false
-            read.open()
-            await proceed.opened
-          }
-          ctx.set(found.k === 'found' ? found.value : found.k)
-        },
-        plan(ctx) {
-          ctx.setFacts('toy', ctx.prefetched.get('toy') ?? null)
-        },
-      })
-      const compiling = host.compile('/app/a.ts', [planner()])
-      await read.opened
-      host.write('/app/b.ts', saved)
-      holdEventRead = true
-      const event = invalidate(
-        host.caches,
-        { path: '/app/b.ts', kind: 'change' },
-        host,
-      )
-      await atMost(eventReading.opened)
-      holdCheck = true
-      proceed.open()
-      await atMost(checkResolving.opened)
-      holdCheck = false
-      eventRead.open()
-      await event
-      checkResolve.open()
-      const out = await compiling
-      const cold = await new MemoryHost({
-        files: host.files,
-        recognizer: RECOGNIZER,
-      }).compile('/app/a.ts', [planner()])
+      const { out, cold } = await duringSave(saved)
       expect(out!.facts.planners).toEqual(cold!.facts.planners)
+    },
+  )
+
+  // The control's cost: the comment changes no fact the compile read, so its
+  // attempt stands (one attempt). On head the `asked` rows restart it.
+  // Source: Astra's re-check of settlement step 0 (round 3), finding 7.
+  it.fails(
+    'a comment-only edit: the compile is not attempted again',
+    async () => {
+      const { attempts } = await duringSave(
+        '// a note\nexport const make = 1\n',
+      )
+      expect(attempts).toBe(1)
     },
   )
 })
@@ -654,5 +680,61 @@ describe('a compile whose attempts were all overtaken, and the rebuild of its te
     host.write('/app/b.ts', 'export const make = 2\n')
     await invalidate(host.caches, { path: '/app/b.ts', kind: 'change' }, host)
     expect(host.caches.stale.take(CLIENT.name)).toEqual(['/app/a.ts'])
+  })
+})
+
+// The cache knobs (`TSR_COMPILER_NO_CACHE`) change how much is reused, never
+// what an event reaches: a dependency saved broken (it stops parsing: its
+// importers' decisions stand), with other exports, or with a comment only,
+// stales the same importers under every knob. The knobs are read when the
+// caches are created.
+// Source: Fable's re-check of settlement step 0 (round 3), finding 2
+// (`getTarget` built past the entry with `targets` off).
+describe('a cache knob and what a dependency save reaches', () => {
+  const reader = (): Planner => ({
+    name: 'reads-target',
+    tier: 0,
+    gate: (t0) => t0.hasImportOrExport,
+    plan() {},
+    async policy(_plan, output, edges, ctx) {
+      for (const e of edges[output] ?? []) {
+        const target = await ctx.resolve(e.specifier)
+        if (target !== null) {
+          await ctx.targetFacts(target)
+        }
+      }
+    },
+  })
+  it.for(
+    ['', 'plans', 'facts', 'targets', 'registry', 'all'].flatMap((knob) =>
+      (
+        [
+          ['broken', 'export const make = \n', []],
+          ['with other exports', 'export const other = 1\n', ['/app/a.ts']],
+          ['with a comment only', '// note\nexport const make = 1\n', []],
+        ] as const
+      ).map(([name, saved, stale]) => [knob, name, saved, stale] as const),
+    ),
+  )('knob "%s": the dependency saved %s', async ([knob, , saved, stale]) => {
+    const before = process.env.TSR_COMPILER_NO_CACHE
+    process.env.TSR_COMPILER_NO_CACHE = knob
+    try {
+      const host = new MemoryHost({
+        files: {
+          '/app/a.ts': "import { make } from './b'\nexport const x = make\n",
+          '/app/b.ts': 'export const make = 1\n',
+        },
+      })
+      await host.compile('/app/a.ts', [reader()])
+      host.write('/app/b.ts', saved)
+      await invalidate(host.caches, { path: '/app/b.ts', kind: 'change' }, host)
+      expect(host.caches.stale.take(CLIENT.name)).toEqual(stale)
+    } finally {
+      if (before === undefined) {
+        delete process.env.TSR_COMPILER_NO_CACHE
+      } else {
+        process.env.TSR_COMPILER_NO_CACHE = before
+      }
+    }
   })
 })
