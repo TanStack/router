@@ -14,6 +14,10 @@ const config = defineConfig({
     // the compiler's self-checks (`src/compiler/self-checks.ts`) are on for
     // every compile of the tests: outputs verified, invariants throw
     env: { TSR_COMPILER_VERIFY: process.env.TSR_COMPILER_VERIFY ?? '1' },
+    // known-bug pins (`.fails`): one fails when anything but its assertions
+    // fails, and `COMPILER_TESTS_PINS=run` runs them as ordinary tests. By
+    // path: the harness package depends on this one
+    setupFiles: ['../compiler-test-utils/src/pins-setup.ts'],
   },
 })
 

@@ -4,10 +4,14 @@
  * makes a failed import resolve, or a file removed and created again within
  * one change lands; an older text's request answered after the newer text's
  * compile. Each sequence ends with the outputs a cold compile of the final
- * files gives, and the caches keep nothing of files gone.
+ * files gives, and the caches keep nothing of files gone. Added for the
+ * settlement design's step 0 (2026-11-25): a check (hit, attempt, restore)
+ * whose read waits while an event lands, and the facts version moving during
+ * an attempt's check (pins of oracle/KNOWN-BUGS.md "A check that waits while
+ * an event lands accepts what it read before").
  */
 import { describe, expect, it } from 'vitest'
-import { invalidate } from '../src/compiler'
+import { invalidate, restorePlans } from '../src/compiler'
 import {
   MemoryHost,
   dedent,
@@ -281,4 +285,288 @@ describe('a request of an older text', () => {
       factsOf(await memoryHost(host.files).compile('/app/a.ts', planners())),
     )
   })
+})
+
+/** A promise and the function that settles it. */
+function gate() {
+  let open!: () => void
+  const opened = new Promise<void>((r) => (open = r))
+  return { opened, open }
+}
+
+// Settlement design, step 0 (design-settlement.md §4, §6): a plan reused or
+// published after a check that waited on the resolver (or a read) while an
+// event changed what the check reads. Each row ends with what a cold compile
+// of the final files gives. The `.fails` rows are pins: step 6a (one
+// `stable(snapshot)` accepted in the caller's turn, the generation rule)
+// turns them green.
+describe('a check that waits while an event lands', () => {
+  const PAGE = '/app/page.ts'
+  const files = {
+    [PAGE]: "import { make } from './w'\nexport const use = make\n",
+    '/app/a.ts': SERVER_ONLY,
+    '/app/b.ts': 'export const make = 1\n',
+    '/app/tsconfig.json': '{}\n',
+  }
+  const factsOf = (out: CompileOutput | null) => out?.facts.planners
+
+  /**
+   * A host whose `./w` resolves to `target.id` (a tsconfig `paths` alias),
+   * and whose next `./w` resolution, once `arm`ed, answers what it read
+   * only after `release`: a resolver that read the files before an event
+   * and answers after it.
+   */
+  function aliasHost(target: { id: string }) {
+    const host = new MemoryHost({
+      files,
+      recognizer: RECOGNIZER,
+      resolve: (specifier) => (specifier === './w' ? target.id : null),
+    })
+    const resolve = host.resolve.bind(host)
+    let armed: { reached: () => void; release: Promise<void> } | null = null
+    host.resolve = async (specifier, importer) => {
+      const answer = await resolve(specifier, importer)
+      if (armed && specifier === './w') {
+        const held = armed
+        armed = null
+        held.reached()
+        await held.release
+      }
+      return answer
+    }
+    const release = gate()
+    const arm = () =>
+      new Promise<void>((reached) => {
+        armed = { reached, release: release.opened }
+      })
+    return { host, arm, release: release.open }
+  }
+
+  /** The alias now names `b.ts`: the tsconfig's change, applied. */
+  async function retarget(host: MemoryHost, target: { id: string }) {
+    target.id = '/app/b.ts'
+    host.write(
+      '/app/tsconfig.json',
+      '{ "compilerOptions": { "paths": { "./w": ["./b.ts"] } } }\n',
+    )
+    await invalidate(
+      host.caches,
+      { path: '/app/tsconfig.json', kind: 'change' },
+      host,
+    )
+  }
+
+  const cold = async () =>
+    factsOf(await aliasHost({ id: '/app/b.ts' }).host.compile(PAGE, planners()))
+
+  // C6-01 (hit). The plan asks its resolution again (an add moved the file
+  // set); the resolver read the alias before the tsconfig's change and
+  // answers after it applied. Source: whole-PR review C6-01 (Astra's
+  // restore probe, the hit half).
+  it.fails(
+    'C6-01: a plan hit whose resolution was read before a tsconfig change answers the new target',
+    async () => {
+      const target = { id: '/app/a.ts' }
+      const { host, arm, release } = aliasHost(target)
+      await host.compile(PAGE, planners())
+      host.write('/app/c.ts', 'export const c = 1\n')
+      await invalidate(host.caches, { path: '/app/c.ts', kind: 'add' }, host)
+      const reached = arm()
+      const hit = host.compile(PAGE, planners())
+      await reached
+      await retarget(host, target)
+      release()
+      expect(factsOf(await hit)).toEqual(await cold())
+    },
+  )
+
+  // C6-01 (attempt), the control: a compile's resolution read before the
+  // change; the attempt's own check asks it again and compiles again.
+  it('C6-01: a compile whose resolution was read before a tsconfig change answers the new target', async () => {
+    const target = { id: '/app/a.ts' }
+    const { host, arm, release } = aliasHost(target)
+    const reached = arm()
+    const compiling = host.compile(PAGE, planners())
+    await reached
+    await retarget(host, target)
+    release()
+    expect(factsOf(await compiling)).toEqual(await cold())
+  })
+
+  // C6-01 (restore). A persisted plan's check reads the resolution before
+  // the change and answers after it: the plan is reported stale (its
+  // bundler builds the module again), not restored.
+  // Source: whole-PR review C6-01 (Astra's restore probe).
+  it.fails(
+    'C6-01: a restored plan whose resolution was read before a tsconfig change is reported stale',
+    async () => {
+      const first = aliasHost({ id: '/app/a.ts' }).host
+      const persisted = (await first.compile(PAGE, planners()))!.persisted!
+      const target = { id: '/app/a.ts' }
+      const { host, arm, release } = aliasHost(target)
+      const reached = arm()
+      const restoring = restorePlans(host.caches, [persisted], host)
+      await reached
+      await retarget(host, target)
+      release()
+      expect(await restoring).toEqual([persisted.key])
+    },
+  )
+
+  // C6-03. An upstream plugin prepends a banner to the file's text; the
+  // file's change event (its own save, read without the banner) lands
+  // while the compile of that save waits on a resolution. No newer request
+  // exists: the compile's plan is published, or its file is stale (the
+  // bundler builds it again).
+  // Source: whole-PR review C6-03 (Astra's current-input probe).
+  it.fails(
+    "C6-03: the event of a file's own save does not discard the only compile of its transformed text",
+    async () => {
+      const { host, arm, release } = aliasHost({ id: '/app/b.ts' })
+      const reached = arm()
+      const compiling = host.compile(PAGE, planners(), {
+        code: `/* a plugin's banner */\n${files[PAGE]}`,
+      })
+      await reached
+      await invalidate(host.caches, { path: PAGE, kind: 'change' }, host)
+      release()
+      await compiling
+      const published = host.caches.plans
+        .get(CLIENT.name)!
+        .keys()
+        .some((key) => key.canonicalId === PAGE)
+      const stale = host.caches.stale.take(CLIENT.name)
+      expect(published || stale.includes(PAGE)).toBe(true)
+    },
+  )
+
+  // A route-registry digest the plan read changes while the hit's check
+  // waits on the resolver: a watch build publishes the generator's view
+  // with no file event the caches see.
+  // Source: Astra's review of the settlement design, change 1
+  // (`registry-during-hit.mjs`).
+  it.fails(
+    'a plan hit whose route-registry digest changed during its check answers the new digest',
+    async () => {
+      let digest = 'first'
+      const routePlanner = (): Planner => ({
+        name: 'toy-route',
+        tier: 1,
+        gate: () => true,
+        async prefetch(_t0, ctx) {
+          // (as the router planner reads a route file's entry)
+          ctx.ledger.record({ kind: 'route-registry', path: PAGE, digest })
+          const value = digest
+          await ctx.resolve('./w')
+          ctx.set(value)
+        },
+        plan(ctx) {
+          ctx.setFacts('toy-route', ctx.prefetched.get('toy-route') ?? null)
+        },
+      })
+      const withRoutes = (host: MemoryHost) =>
+        Object.assign(host, {
+          routes: { lookup: () => null, digestFor: () => digest },
+        })
+      const { host, arm, release } = aliasHost({ id: '/app/b.ts' })
+      withRoutes(host)
+      await host.compile(PAGE, [routePlanner()])
+      host.write('/app/c.ts', 'export const c = 1\n')
+      await invalidate(host.caches, { path: '/app/c.ts', kind: 'add' }, host)
+      const reached = arm()
+      const hit = host.compile(PAGE, [routePlanner()])
+      await reached
+      digest = 'second'
+      release()
+      const fresh = withRoutes(aliasHost({ id: '/app/b.ts' }).host)
+      expect(factsOf(await hit)).toEqual(
+        factsOf(await fresh.compile(PAGE, [routePlanner()])),
+      )
+    },
+  )
+})
+
+// The facts version moving during a check (design-settlement.md §4, p1),
+// green on head through the `asked` rows; step 6b removes them, and these
+// rows decide whether the snapshot alone keeps them green. `a.ts` read
+// `b.ts`'s export; `b.ts` is saved, and its event (the file set moved)
+// waits on its read of `b.ts`; the attempt reaches its check, which asks
+// `./b` again and waits; the event applies; the resolver answers.
+// Source: Fable's settlement design probe `p1-facts-move-during-check.mjs`;
+// the comment-only edit is its control.
+describe('a dependency saved while a compile checks its snapshot', () => {
+  it.for([
+    ['a change of the export', 'export function make() {}\n'],
+    ['a comment-only edit', '// a note\nexport const make = 1\n'],
+  ] as const)(
+    '%s: the compile answers the saved dependency',
+    async ([, saved]) => {
+      const files = {
+        '/app/a.ts': "import { make } from './b'\nexport const x = make\n",
+        '/app/b.ts': 'export const make = 1\n',
+      }
+      let bReads = 0
+      let resolves = 0
+      const eventRead = gate()
+      const eventReading = gate()
+      const checkResolve = gate()
+      const checkResolving = gate()
+      const read = gate()
+      const proceed = gate()
+      const host = new MemoryHost({
+        files,
+        recognizer: RECOGNIZER,
+        onRead: async (path) => {
+          if (path === '/app/b.ts' && ++bReads === 2) {
+            eventReading.open()
+            await eventRead.opened
+          }
+        },
+        onResolve: async () => {
+          if (++resolves === 2) {
+            checkResolving.open()
+            await checkResolve.opened
+          }
+        },
+      })
+      let prefetches = 0
+      const planner = (): Planner => ({
+        name: 'toy',
+        tier: 1,
+        gate: () => true,
+        async prefetch(_t0, ctx) {
+          const target = await ctx.resolve('./b')
+          const found = await ctx.resolver.resolve(target!, 'make')
+          if (++prefetches === 1) {
+            read.open()
+            await proceed.opened
+          }
+          ctx.set(found.k === 'found' ? found.value : found.k)
+        },
+        plan(ctx) {
+          ctx.setFacts('toy', ctx.prefetched.get('toy') ?? null)
+        },
+      })
+      const compiling = host.compile('/app/a.ts', [planner()])
+      await read.opened
+      host.write('/app/b.ts', saved)
+      const event = invalidate(
+        host.caches,
+        { path: '/app/b.ts', kind: 'change' },
+        host,
+      )
+      await eventReading.opened
+      proceed.open()
+      await checkResolving.opened
+      eventRead.open()
+      await event
+      checkResolve.open()
+      const out = await compiling
+      const cold = await new MemoryHost({
+        files: host.files,
+        recognizer: RECOGNIZER,
+      }).compile('/app/a.ts', [planner()])
+      expect(out!.facts.planners).toEqual(cold!.facts.planners)
+    },
+  )
 })
