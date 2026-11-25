@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-devtools-core",
-  "version": "1.168.3",
+  "version": "1.168.4",
   "description": "Modern and scalable routing for Web applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -62,15 +62,13 @@
   "engines": {
     "node": ">=20.19"
   },
-  "dependencies": {
-    "clsx": "^2.1.1",
-    "goober": "^2.1.16"
-  },
   "devDependencies": {
     "@testing-library/jest-dom": "catalog:",
-    "solid-js": "catalog:",
+    "esbuild": "^0.27.4",
+    "@solidjs/web": "^2.0.0",
+    "solid-js": "^2.0.0",
     "vite": "*",
-    "vite-plugin-solid": "catalog:",
+    "@solidjs/vite-plugin": "^3.0.1",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "jsdom": "catalog:",

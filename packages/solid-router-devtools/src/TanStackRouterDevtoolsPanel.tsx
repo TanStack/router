@@ -33,6 +33,12 @@ export interface TanStackRouterDevtoolsPanelOptions {
    * Use this to attach the devtool's styles to specific element in the DOM.
    */
   shadowDOMTarget?: ShadowRoot
+  /**
+   * The Trusted Types policy the devtools use to create their HTML templates.
+   * Pass one when your page enforces `require-trusted-types-for 'script'`.
+   * The devtools only pass it their own markup.
+   */
+  trustedTypesPolicy?: { createHTML: (html: string) => unknown }
 }
 
 export const TanStackRouterDevtoolsPanel: Component<

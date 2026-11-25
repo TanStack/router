@@ -94,7 +94,10 @@ describe('cached matches', () => {
       '[aria-label="Open match details for cached-match"]',
     ) as HTMLElement
     cachedMatch.click()
-    expect(container.textContent).toContain('old data')
+    // Solid applies the selection in a microtask.
+    await vi.waitFor(() => {
+      expect(container.textContent).toContain('old data')
+    })
 
     cache.set('cached-match', createCachedMatch('new data'))
     await vi.advanceTimersByTimeAsync(500)

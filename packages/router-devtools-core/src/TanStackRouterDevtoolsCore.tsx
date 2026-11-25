@@ -1,6 +1,5 @@
-import { createSignal, lazy } from 'solid-js'
-import { render } from 'solid-js/web'
-import { ShadowDomTargetContext } from './context'
+import { Loading, createSignal, lazy } from 'solid-js'
+import { render, setTrustedTypesPolicy } from '@solidjs/web'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { Signal } from 'solid-js'
 
@@ -47,6 +46,12 @@ export interface TanStackRouterDevtoolsCoreOptions {
    * Use this to attach the devtool's styles to specific element in the DOM.
    */
   shadowDOMTarget?: ShadowRoot
+  /**
+   * The Trusted Types policy the devtools use to create their HTML templates.
+   * Pass one when your page enforces `require-trusted-types-for 'script'`.
+   * The devtools only pass it their own markup.
+   */
+  trustedTypesPolicy?: { createHTML: (html: string) => unknown }
 }
 
 export class TanStackRouterDevtoolsCore {
@@ -55,6 +60,7 @@ export class TanStackRouterDevtoolsCore {
   #position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
   #initialIsOpen: boolean
   #shadowDOMTarget?: ShadowRoot
+  #trustedTypesPolicy?: { createHTML: (html: string) => unknown }
 
   #panelProps: any
   #closeButtonProps: any
@@ -71,6 +77,7 @@ export class TanStackRouterDevtoolsCore {
     this.#position = config.position ?? 'bottom-left'
     this.#initialIsOpen = config.initialIsOpen ?? false
     this.#shadowDOMTarget = config.shadowDOMTarget
+    this.#trustedTypesPolicy = config.trustedTypesPolicy
 
     this.#panelProps = config.panelProps
     this.#closeButtonProps = config.closeButtonProps
@@ -83,6 +90,11 @@ export class TanStackRouterDevtoolsCore {
       throw new Error('Devtools is already mounted')
     }
 
+    // Solid creates each template once, so set the policy before rendering.
+    // It is shared by every devtools instance, so never reset it.
+    if (this.#trustedTypesPolicy) {
+      setTrustedTypesPolicy(this.#trustedTypesPolicy)
+    }
     const dispose = render(() => {
       const [router] = this.#router
       const [routerState] = this.#routerState
@@ -105,19 +117,20 @@ export class TanStackRouterDevtoolsCore {
       }
 
       return (
-        <ShadowDomTargetContext.Provider value={shadowDOMTarget}>
+        <Loading>
           <Devtools
             position={position}
             initialIsOpen={initialIsOpen}
             router={router}
             routerState={routerState}
+            mountElement={el}
             shadowDOMTarget={shadowDOMTarget}
             panelProps={panelProps}
             closeButtonProps={closeButtonProps}
             toggleButtonProps={toggleButtonProps}
             containerElement={containerElement}
           />
-        </ShadowDomTargetContext.Provider>
+        </Loading>
       )
     }, el)
 
