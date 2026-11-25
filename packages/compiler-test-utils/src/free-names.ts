@@ -107,6 +107,34 @@ function statementsOf(node: Node): ReadonlyArray<Node> | undefined {
   }
 }
 
+const statementLists = new WeakMap<
+  Node,
+  { index: Map<Node, number>; firstExit: number } | null
+>()
+
+/**
+ * The statements of a node that holds a list of them, by node, and the
+ * index of the first that always leaves the list (`Infinity`: none), once
+ * per list.
+ */
+function statementListOf(node: Node) {
+  let list = statementLists.get(node)
+  if (list === undefined) {
+    const statements = statementsOf(node)
+    list = statements
+      ? {
+          index: new Map(statements.map((statement, at) => [statement, at])),
+          firstExit: (() => {
+            const at = statements.findIndex(exits)
+            return at === -1 ? Infinity : at
+          })(),
+        }
+      : null
+    statementLists.set(node, list)
+  }
+  return list
+}
+
 /** The truth of a constant test (`false`, `0`, `!0`, `void 0`), if it is one. */
 function constantTruth(node: Node): boolean | undefined {
   if (node.type === 'Literal') {
@@ -169,24 +197,27 @@ function exits(node: Node): boolean {
  * (`l: function f() {}`, sloppy scripts only) is not seen as one.
  */
 function unreachable(node: Node, file: SourceFile) {
-  return deadAt(node, file, liveDeclarations(file))
+  return deadAt(node, file, () => liveDeclarations(file))
 }
 
-/** `unreachable`, with the functions declared in dead code that run (`live`). */
-function deadAt(node: Node, file: SourceFile, live: ReadonlySet<Node>) {
+/**
+ * `unreachable`, with the functions declared in dead code that run
+ * (`live`, asked only for a function declared after an exit).
+ */
+function deadAt(node: Node, file: SourceFile, live: () => ReadonlySet<Node>) {
   let child = node
   for (
     let parent = file.parentOf(child);
     parent;
     child = parent, parent = file.parentOf(parent)
   ) {
-    const statements = statementsOf(parent)
+    const list = statementListOf(parent)
     // (a child outside the statements, a `case` test, runs before them)
-    const index = statements ? statements.indexOf(child) : -1
-    if (statements && index !== -1) {
+    const index = list?.index.get(child)
+    if (list && index !== undefined) {
       if (
-        statements.slice(0, index).some(exits) &&
-        !(child.type === 'FunctionDeclaration' && live.has(child))
+        index > list.firstExit &&
+        !(child.type === 'FunctionDeclaration' && live().has(child))
       ) {
         return true
       }
@@ -218,11 +249,13 @@ const liveOf = new WeakMap<SourceFile, ReadonlySet<Node>>()
 
 /**
  * The functions declared in code that never runs that run all the same,
- * once per module: a function is live when a reference to it outside
- * itself is in code that runs (with the live ones so far), until no more
- * become live (a cycle of such functions none of them reaches stays dead).
- * A direct `eval` may call any function its code sees: every function
- * declared in a scope around it is live.
+ * once per module (built when a read is after an exit in a function's
+ * declaration): a function is live when a reference to it outside itself is
+ * in code that runs (with the live ones so far), until no more become live
+ * (a cycle of such functions none of them reaches stays dead). Each
+ * declaration of a name counts (a second one, one beside a parameter). A
+ * direct `eval` in code that runs may call any function its code sees:
+ * every function declared in a scope around it is live.
  */
 function liveDeclarations(file: SourceFile): ReadonlySet<Node> {
   const known = liveOf.get(file)
@@ -231,41 +264,64 @@ function liveDeclarations(file: SourceFile): ReadonlySet<Node> {
   }
   const live = new Set<Node>()
   liveOf.set(file, live)
-  const declared = file.bindings.flatMap((binding) => {
-    const fn = binding.declarations
-      .map((name) => file.parentOf(name))
-      .find((node) => node?.type === 'FunctionDeclaration')
-    return fn ? [{ fn, binding }] : []
-  })
-  const dead = declared.filter(({ fn }) => deadAt(fn, file, live))
+  const sofar = () => live
+  // The functions declared after an exit of their statement list (one
+  // inside such a function is dead or not with it: `deadAt` climbs)
+  const dead = file.bindings.flatMap((binding) =>
+    binding.declarations.flatMap((name) => {
+      const fn = file.parentOf(name)
+      if (
+        fn?.type !== 'FunctionDeclaration' ||
+        (fn as { id?: Node | null }).id !== name
+      ) {
+        return []
+      }
+      const list = statementListOf(file.parentOf(fn)!)
+      const index = list?.index.get(fn)
+      return list && index !== undefined && index > list.firstExit
+        ? [{ fn, binding }]
+        : []
+    }),
+  )
   if (dead.length === 0) {
     return live
   }
-  for (const reference of file.references) {
+  /** The direct `eval` calls, with the scopes around each. */
+  const evals = file.references.flatMap((reference) => {
+    if (reference.name !== 'eval' || reference.binding) {
+      return []
+    }
     const parent = file.parentOf(reference.node)
-    if (
-      reference.name === 'eval' &&
-      !reference.binding &&
-      parent?.type === 'CallExpression' &&
-      parent.callee === reference.node
-    ) {
-      const around = new Set([...reference.scope.ancestors()])
-      for (const { fn, binding } of dead) {
-        if (around.has(binding.scope)) {
-          live.add(fn)
+    return parent?.type === 'CallExpression' && parent.callee === reference.node
+      ? [
+          {
+            node: reference.node,
+            around: new Set([...reference.scope.ancestors()]),
+          },
+        ]
+      : []
+  })
+  const applied = new Set<Node>()
+  for (let grew = true; grew; ) {
+    grew = false
+    for (const call of evals) {
+      if (!applied.has(call.node) && !deadAt(call.node, file, sofar)) {
+        applied.add(call.node)
+        for (const { fn, binding } of dead) {
+          if (!live.has(fn) && call.around.has(binding.scope)) {
+            live.add(fn)
+            grew = true
+          }
         }
       }
     }
-  }
-  for (let grew = true; grew; ) {
-    grew = false
     for (const { fn, binding } of dead) {
       if (
         !live.has(fn) &&
         binding.references.some(
           ({ node }) =>
             !(fn.start <= node.start && node.end <= fn.end) &&
-            !deadAt(node, file, live),
+            !deadAt(node, file, sofar),
         )
       ) {
         live.add(fn)

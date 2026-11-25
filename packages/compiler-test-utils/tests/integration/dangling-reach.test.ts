@@ -209,6 +209,11 @@ test.each(
         'dangling',
       ],
       [
+        'nowhere: a direct eval only a function nothing calls holds',
+        'return 42\n  function never() { return eval("first()") }\n  function first() { return productLabel }',
+        42,
+      ],
+      [
         'nowhere: the same functions read a literal',
         'return first()\n  function first() { return second() }\n  function second() { return 42 }',
         42,

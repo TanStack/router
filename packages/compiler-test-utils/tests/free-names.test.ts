@@ -101,3 +101,36 @@ ${names
   )
   expect(performance.now() - started).toBeLessThan(1_000)
 }, 60_000)
+
+test.each([
+  [
+    'a direct eval in a function nothing calls makes nothing live',
+    'function f() { return 42; function never() { return eval("first()") } function first() { return x } }',
+    false,
+  ],
+  [
+    'a function declared twice: the second is the one called',
+    'function f() { return g(); function g() {} function g() { return x } }',
+    true,
+  ],
+  [
+    'a function named like a parameter: the declaration is the one called',
+    'function f(g) { return g(); function g() { return x } }',
+    true,
+  ],
+] as const)('%s', (_, code, counts) => {
+  expect(readNames(code, 'chunk.js', { keepProbed: true }).free.has('x')).toBe(
+    counts,
+  )
+})
+
+// Every module with a free read once built its live set (a search of each
+// function's statement list): 20,000 functions took 3.2 s at f5fe192e0a.
+test('many functions and no code after an exit are read at once', () => {
+  const code = `${Array.from({ length: 20_000 }, (_, index) => `function f${index}() { return ${index} }`).join('\n')}\nx\n`
+  const started = performance.now()
+  expect(readNames(code, 'chunk.js', { keepProbed: true }).free.has('x')).toBe(
+    true,
+  )
+  expect(performance.now() - started).toBeLessThan(400)
+}, 60_000)
