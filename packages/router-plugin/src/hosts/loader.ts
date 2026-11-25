@@ -10,11 +10,8 @@
  */
 import {
   composeLoaderMap,
-  emptyModuleOutput,
-  identify,
   loaderText,
   locatedDiagnostic,
-  normalizePath,
   webpackResourceId,
 } from '@tanstack/router-utils/compiler'
 import type { RouterCompiler } from './session'
@@ -32,7 +29,7 @@ export interface LoaderContextLike {
   addDependency: (file: string) => void
   emitWarning: (error: Error) => void
   emitError: (error: Error) => void
-  _module?: { buildInfo?: Record<string, unknown> }
+  _module?: { buildInfo?: Record<string, unknown>; type?: string }
 }
 
 export interface LoaderResult {
@@ -96,31 +93,27 @@ export function createLoaderImpl(
 ): LoaderImpl {
   return async (ctx, bytes, inputMap) => {
     const id = webpackResourceId(ctx.resource)
-    const identity = identify(id)
-    if (identity.lang === null || !compiler.wants(id)) {
-      return { code: bytes, map: inputMap }
-    }
-    const file = normalizePath(identity.path)
-    if (!compiler.routeEntry(file)) {
-      // a derived id of a file of ours that is no longer a route module
-      // (J2.13) is the core's empty module (no map); another instance's
-      // route is that instance's to compile
-      return identity.derived && compiler.owns(file)
-        ? { code: emptyModuleOutput(identity.path, false).code, map: undefined }
-        : { code: bytes, map: inputMap }
-    }
-    const source = loaderText(bytes)
-    const out = await compiler.compile({
+    let source: string | undefined
+    const result = await compiler.transform({
       id,
-      code: source,
+      code: () => (source ??= loaderText(bytes)),
       env,
       wantMap: ctx.sourceMap !== false,
       // webpack-sources counts the map's lines at LF only
       lines: 'lf',
+      // (a route file imported as its text, `asset/source`, stays its text)
+      moduleType: () =>
+        ctx._module?.type?.startsWith('asset') ? 'asset' : 'js',
     })
-    if (!out) {
+    if (result.kind === 'pass') {
       return { code: bytes, map: inputMap }
     }
+    if (result.kind === 'empty') {
+      // (a map that maps nothing: none)
+      return { code: result.code, map: undefined }
+    }
+    const { output: out, file } = result
+    const text = source!
     const buildInfo = ctx._module?.buildInfo
     if (persisted) {
       persisted.compiled.add(ctx.resource)
@@ -142,8 +135,8 @@ export function createLoaderImpl(
     // that compile's diagnostics: the route module, whose output imports the
     // chunk, reports them; an error emitted there does not stop the chunk's
     // build)
-    if (identity.derived === null) {
-      compiler.report(out, file, source, {
+    if (!result.derived) {
+      compiler.report(out, file, text, {
         error: (d, at) =>
           ctx.emitError(locate(locatedDiagnostic('error', d.message, at))),
         warn: (d, at) =>
@@ -153,7 +146,7 @@ export function createLoaderImpl(
     if (located.length > 0 && buildInfo) {
       buildInfo[LOCATED_DIAGNOSTICS.field] = located
     }
-    if (identity.derived === null && out.code === source) {
+    if (result.unchanged) {
       return { code: bytes, map: inputMap }
     }
     return {
@@ -161,7 +154,7 @@ export function createLoaderImpl(
       map: composeLoaderMap(
         out.map,
         ctx.resourcePath,
-        source,
+        text,
         inputMap,
         recordMapText,
       ),

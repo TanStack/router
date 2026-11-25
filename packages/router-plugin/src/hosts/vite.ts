@@ -17,7 +17,6 @@ import {
   SCRIPT_ASSET_QUERY_RE,
   ViteRunSessions,
   displayPath,
-  emptyModuleOutput,
   identify,
   isFinalBuild,
   loadDerivedSource,
@@ -350,53 +349,34 @@ export function createRouterCompilerVitePlugin(
         },
       },
       async handler(code, id) {
-        const s = sessions.of(this.environment)
-        const { compiler } = s
-        if (!compiler.wants(id)) {
-          return null
-        }
-        const identity = identify(id)
-        if (identity.lang === null) {
-          return null
-        }
-        const file = normalizePath(identity.path)
-        if (!compiler.routeEntry(file)) {
-          // a derived id of a file of ours that is no longer a route module
-          // (J2.13) is the core's empty module, whatever the environment and
-          // whether or not the file still parses (a map that maps nothing);
-          // another instance's route is that instance's to compile
-          return identity.derived && compiler.owns(file)
-            ? emptyModuleOutput(identity.path, true)
-            : null
-        }
+        const { compiler } = sessions.of(this.environment)
         const environment = this.environment
-        const envType = environment.config.consumer
-        if (!compiler.appliesTo(envType)) {
-          return null
-        }
-        const wantMap =
-          compiler.mode === 'dev' ||
-          environment.config.build.sourcemap !== false
-        const out = await compiler.compile({
+        const result = await compiler.transform({
           id,
           code,
-          env: { name: environment.name, type: envType },
-          wantMap,
+          env: { name: environment.name, type: environment.config.consumer },
+          wantMap:
+            compiler.mode === 'dev' ||
+            environment.config.build.sourcemap !== false,
         })
-        if (!out) {
+        if (result.kind === 'pass') {
           return null
         }
+        if (result.kind === 'empty') {
+          return { code: result.code, map: result.map }
+        }
+        const { output: out, file, path } = result
         watchDependencies(this, out, file)
-        const name = displayPath(identity.path, ROOT)
+        const name = displayPath(path, ROOT)
         // Vite's dev transform context maps `loc`; bundled dev's (Rolldown's) does not
         const dev = compiler.mode === 'dev' && !bundledDev
         compiler.report(out, file, code, {
           error: (d, at) =>
-            this.error(viteLog(d.message, at, code, name, identity.path, dev)),
+            this.error(viteLog(d.message, at, code, name, path, dev)),
           warn: (d, at) =>
-            this.warn(viteLog(d.message, at, code, name, identity.path, dev)),
+            this.warn(viteLog(d.message, at, code, name, path, dev)),
         })
-        if (identity.derived === null && out.code === code) {
+        if (result.unchanged) {
           return null
         }
         return { code: out.code, map: out.map }

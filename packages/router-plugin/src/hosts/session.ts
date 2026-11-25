@@ -14,6 +14,7 @@ import {
   createCompilerCaches,
   digestOf,
   displayPath,
+  emptyModuleOutput,
   fileModifiedAt,
   identify,
   invalidate,
@@ -73,6 +74,47 @@ interface CompileRequest {
   /** How the map's consumer counts lines (`CompileInput.lines`). */
   lines?: 'ecma' | 'lf'
 }
+
+/** A module the host hands the compiler (`RouterCompiler.transform`). */
+export interface TransformRequest extends Omit<CompileRequest, 'code'> {
+  /** The module's text, or how to read it (a loader decodes its bytes only for a module it compiles). */
+  code: string | (() => string)
+  /**
+   * The module's type as the host resolved it: an asset (webpack's and
+   * Rspack's `asset/source`, a route file imported as its text) is never
+   * compiled. Default `js`. Read only for a module the compiler would take
+   * (a host's read can cost: Rspack's `_module.type` is a binding call).
+   */
+  moduleType?: () => 'js' | 'asset'
+}
+
+/**
+ * What the host serves for a module (`RouterCompiler.transform`): the module
+ * as it is (`pass`), the core's empty module (a derived id of a file of this
+ * instance that is no route any more, J2.13), or the compile's output
+ * (`unchanged`: the env module's code is the input's, so the host passes the
+ * module through with its upstream map).
+ */
+export type TransformResult =
+  | { kind: 'pass' }
+  | {
+      kind: 'empty'
+      code: string
+      map: ReturnType<typeof emptyModuleOutput>['map']
+    }
+  | {
+      kind: 'compiled'
+      output: CompileOutput
+      /** The module's file, normalised (what its diagnostics and dependencies name). */
+      file: string
+      /** The module's path as its id spells it (what messages show). */
+      path: string
+      /** The id is a derived output (`?tsr-split=`). */
+      derived: boolean
+      unchanged: boolean
+    }
+
+const PASS: TransformResult = { kind: 'pass' }
 
 /** JS module ids the compiler may transform (query allowed). */
 export const JS_ID_RE = /\.[cm]?[jt]sx?(\?|$)/
@@ -175,29 +217,64 @@ export class RouterCompiler {
     return this.registry.lookup(path)
   }
 
-  /**
-   * Whether a file is this instance's: a route of its registry, or a file
-   * under its routes directory (a derived id of one that is no route any
-   * more gets an empty module here). Another instance's route is not: an
-   * app may run one plugin instance per route tree, and each instance
-   * leaves the others' modules as they are.
-   */
-  owns(path: string): boolean {
-    return (
-      this.registry.lookup(path) !== null ||
-      path.startsWith(this.routesDirectory + '/')
-    )
-  }
-
-  /** Whether the host should transform an id at all. */
-  wants(id: string): boolean {
+  /** Whether the host should transform an id at all (`identity`: the id's, when the caller has it). */
+  wants(
+    id: string,
+    identity: ReturnType<typeof identify> = identify(id),
+  ): boolean {
     if (!JS_ID_RE.test(id) || DEPENDENCY_ID_RE.test(id)) {
       return false
     }
     // a derived id another compiler owns (Start's `?tss-hydrate=`, server fn
     // providers) is that compiler's output: not a module of this session
-    const derived = identify(id).derived
+    const derived = identity.derived
     return derived === null || ROUTER_DERIVED_KINDS.has(derived.kind)
+  }
+
+  /**
+   * The one per-module ladder of the hosts: whether the compiler takes the
+   * module (a JS module of this session, not an asset, of a language it
+   * parses), the empty module of a derived id of a file under this
+   * instance's routes directory that is no route (J2.13: whatever the
+   * environment and whether or not the file still parses; another
+   * instance's route is that instance's to compile, and each instance
+   * leaves the others' modules as they are), whether the router planner
+   * applies in the environment, and the compile. The host keeps only what is
+   * its own: its result shape, maps, reports, dependencies, `buildInfo`.
+   */
+  async transform(req: TransformRequest): Promise<TransformResult> {
+    const identity = identify(req.id)
+    if (identity.lang === null || !this.wants(req.id, identity)) {
+      return PASS
+    }
+    const file = normalizePath(identity.path)
+    const route = this.routeEntry(file) !== null
+    if (
+      (!route &&
+        !(identity.derived && file.startsWith(this.routesDirectory + '/'))) ||
+      req.moduleType?.() === 'asset'
+    ) {
+      return PASS
+    }
+    if (!route) {
+      return { kind: 'empty', ...emptyModuleOutput(identity.path, req.wantMap) }
+    }
+    if (!this.appliesTo(req.env.type)) {
+      return PASS
+    }
+    const code = typeof req.code === 'string' ? req.code : req.code()
+    const output = await this.compile({ ...req, code })
+    if (!output) {
+      return PASS
+    }
+    return {
+      kind: 'compiled',
+      output,
+      file,
+      path: identity.path,
+      derived: identity.derived !== null,
+      unchanged: identity.derived === null && output.code === code,
+    }
   }
 
   /** The digest of the compile configuration of an env type (a persisted plan's `key.configKey`). */
