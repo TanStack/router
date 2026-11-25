@@ -204,6 +204,11 @@ test.each(
         1,
       ],
       [
+        'through a direct eval',
+        'return eval("first()")\n  function first() { return productLabel }',
+        'dangling',
+      ],
+      [
         'nowhere: the same functions read a literal',
         'return first()\n  function first() { return second() }\n  function second() { return 42 }',
         42,

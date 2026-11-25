@@ -161,15 +161,19 @@ function exits(node: Node): boolean {
  * Whether `node` is in code that never runs: after a statement that always
  * leaves its block, or in the branch a constant test never takes. A function
  * declared there runs when code that runs calls it (declarations are
- * hoisted): it is live when a reference to it outside itself is in code that
- * runs, through as many such functions as it takes (`asking`: the
- * functions whose use is being decided, a cycle reaching none of them).
+ * hoisted): see `liveDeclarations`.
+ *
+ * Limits: a hoisted function that code replaces before calling it
+ * (`f = other; f()`) still counts as called (a false red in unminified
+ * output, which keeps the declaration); a labeled function declaration
+ * (`l: function f() {}`, sloppy scripts only) is not seen as one.
  */
-function unreachable(
-  node: Node,
-  file: SourceFile,
-  asking = new Set<Node>(),
-): boolean {
+function unreachable(node: Node, file: SourceFile) {
+  return deadAt(node, file, liveDeclarations(file))
+}
+
+/** `unreachable`, with the functions declared in dead code that run (`live`). */
+function deadAt(node: Node, file: SourceFile, live: ReadonlySet<Node>) {
   let child = node
   for (
     let parent = file.parentOf(child);
@@ -180,10 +184,9 @@ function unreachable(
     // (a child outside the statements, a `case` test, runs before them)
     const index = statements ? statements.indexOf(child) : -1
     if (statements && index !== -1) {
-      const exit = statements.slice(0, index).find(exits)
       if (
-        exit &&
-        !(child.type === 'FunctionDeclaration' && used(child, file, asking))
+        statements.slice(0, index).some(exits) &&
+        !(child.type === 'FunctionDeclaration' && live.has(child))
       ) {
         return true
       }
@@ -211,26 +214,65 @@ function unreachable(
   return false
 }
 
+const liveOf = new WeakMap<SourceFile, ReadonlySet<Node>>()
+
 /**
- * Whether a function declared in code that never runs is used by code that
- * runs, outside itself (see `unreachable`).
+ * The functions declared in code that never runs that run all the same,
+ * once per module: a function is live when a reference to it outside
+ * itself is in code that runs (with the live ones so far), until no more
+ * become live (a cycle of such functions none of them reaches stays dead).
+ * A direct `eval` may call any function its code sees: every function
+ * declared in a scope around it is live.
  */
-function used(fn: Node, file: SourceFile, asking: Set<Node>): boolean {
-  if (asking.has(fn)) {
-    return false
+function liveDeclarations(file: SourceFile): ReadonlySet<Node> {
+  const known = liveOf.get(file)
+  if (known) {
+    return known
   }
-  const id = (fn as { id: Node | null }).id
-  const binding = id && file.bindingOf(id)
-  if (!binding) {
-    return true
+  const live = new Set<Node>()
+  liveOf.set(file, live)
+  const declared = file.bindings.flatMap((binding) => {
+    const fn = binding.declarations
+      .map((name) => file.parentOf(name))
+      .find((node) => node?.type === 'FunctionDeclaration')
+    return fn ? [{ fn, binding }] : []
+  })
+  const dead = declared.filter(({ fn }) => deadAt(fn, file, live))
+  if (dead.length === 0) {
+    return live
   }
-  asking.add(fn)
-  const live = binding.references.some(
-    ({ node }) =>
-      !(fn.start <= node.start && node.end <= fn.end) &&
-      !unreachable(node, file, asking),
-  )
-  asking.delete(fn)
+  for (const reference of file.references) {
+    const parent = file.parentOf(reference.node)
+    if (
+      reference.name === 'eval' &&
+      !reference.binding &&
+      parent?.type === 'CallExpression' &&
+      parent.callee === reference.node
+    ) {
+      const around = new Set([...reference.scope.ancestors()])
+      for (const { fn, binding } of dead) {
+        if (around.has(binding.scope)) {
+          live.add(fn)
+        }
+      }
+    }
+  }
+  for (let grew = true; grew; ) {
+    grew = false
+    for (const { fn, binding } of dead) {
+      if (
+        !live.has(fn) &&
+        binding.references.some(
+          ({ node }) =>
+            !(fn.start <= node.start && node.end <= fn.end) &&
+            !deadAt(node, file, live),
+        )
+      ) {
+        live.add(fn)
+        grew = true
+      }
+    }
+  }
   return live
 }
 

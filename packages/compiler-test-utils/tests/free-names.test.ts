@@ -66,3 +66,38 @@ test.each([
     counts,
   )
 })
+
+test('a read in a function code reaches through a direct eval counts', () => {
+  expect(
+    readNames(
+      'function f() { return eval("first()"); function first() { return x } }',
+      'chunk.js',
+      { keepProbed: true },
+    ).free.has('x'),
+  ).toBe(true)
+})
+
+// Functions after a return that call one another, none of them used: the
+// reachability is decided once per module, not per read and path (ten took
+// 2.9 s for one read at fb43990168).
+test('many functions after a return that call one another are read at once', () => {
+  const names = Array.from({ length: 10 }, (_, index) => `f${index}`)
+  const code = `function g() {
+  return 0
+${names
+  .map(
+    (name, index) =>
+      `  function ${name}() { return ${names
+        .filter((other) => other !== name)
+        .map((other) => `${other}()`)
+        .join(' + ')}${index === 0 ? ' + x' : ''} }`,
+  )
+  .join('\n')}
+}
+`
+  const started = performance.now()
+  expect(readNames(code, 'chunk.js', { keepProbed: true }).free.has('x')).toBe(
+    false,
+  )
+  expect(performance.now() - started).toBeLessThan(1_000)
+}, 60_000)
