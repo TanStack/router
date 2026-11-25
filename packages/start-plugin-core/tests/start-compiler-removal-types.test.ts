@@ -199,6 +199,91 @@ export const run = () => 1
       gone: true,
     },
     {
+      // whole-PR review of the declarations lane: `export default` of a
+      // type alias
+      name: 'an export default of a type alias',
+      code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+type LocalAlias = typeof sv
+export default LocalAlias
+export const f = createServerOnlyFn(() => 1)
+export const run = () => 1
+`,
+      expected: { value: 1 },
+      gone: true,
+    },
+    {
+      name: 'an export default of an interface',
+      code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+interface Shape { v: typeof sv }
+export default Shape
+export const f = createServerOnlyFn(() => 1)
+export const run = () => 1
+`,
+      expected: { value: 1 },
+      gone: true,
+    },
+    {
+      // the import leaves with the server-only body that read its value
+      name: 'an export default of an inline type import',
+      code: `${SO}import { getServerVal, type Secret } from './db.server'
+export const f = createServerOnlyFn(() => getServerVal())
+export default Secret
+export const run = () => 1
+`,
+      expected: { value: 1 },
+      gone: true,
+    },
+    {
+      name: 'an export default of a type-only import',
+      code: `${SO}import type { Secret } from './db.server'
+export default Secret
+export const f = createServerOnlyFn(() => 1)
+export const run = () => 1
+`,
+      expected: { value: 1 },
+      gone: true,
+    },
+    {
+      // the control: an export default of the value itself
+      name: 'an export default of the value stays',
+      code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+type LocalAlias = typeof sv
+export default sv
+export const f = createServerOnlyFn((): LocalAlias => sv)
+export const run = () => 1
+`,
+      expected: { value: 1 },
+    },
+    {
+      // an overload signature is TypeScript's text: what only it names was
+      // used by the source
+      name: 'an exported overload signature',
+      code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+export function pick(x: typeof sv): number
+export function pick(x: unknown) { return 1 }
+export const f = createServerOnlyFn(() => 1)
+export const run = () => pick(null)
+`,
+      expected: { value: 1 },
+      gone: true,
+    },
+    {
+      name: 'a default-exported overload signature',
+      code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+export default function pick(x: typeof sv): number
+export default function pick(x: unknown) { return 1 }
+export const f = createServerOnlyFn(() => 1)
+export const run = () => pick(null)
+`,
+      expected: { value: 1 },
+      gone: true,
+    },
+    {
       // C4-01's control: both spellings beside a read of the value
       name: 'a value kept code reads stays beside both spellings',
       code: `${SO}import { getServerVal } from './db.server'

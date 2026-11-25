@@ -162,13 +162,14 @@ export function classify(
  * `export type * from`, an `export { … }` whose specifiers all are), or what
  * it exports: a declaration the table erases (`export interface X`,
  * `export default interface X`, `export declare const x`, a namespace of
- * types), or for the specifier of a local name (`export { X }`), a binding
- * with no runtime value (a type-only import, an interface, an alias).
+ * types), or for the specifier of a local name (`export { X }`) and for
+ * `export default X`, a binding with no runtime value (a type-only import,
+ * an interface, an alias).
  */
 export function isTypeOnlyExport(
   file: SourceFile,
   node: Node,
-  /** A declaration's binding (`classify`); a local specifier's: the binding it exports. */
+  /** A declaration's binding (`classify`); a local specifier's and `export default X`'s: the binding it exports. */
   binding?: Binding | null,
 ): boolean {
   switch (node.type) {
@@ -182,7 +183,9 @@ export function isTypeOnlyExport(
             node.specifiers.every((spec) => spec.exportKind === 'type'))
       )
     case 'ExportDefaultDeclaration':
-      return classify(file, node.declaration)?.kind === 'erased'
+      return node.declaration.type === 'Identifier'
+        ? binding != null && !hasRuntimeValue(binding)
+        : classify(file, node.declaration)?.kind === 'erased'
     case 'ExportAllDeclaration':
       return node.exportKind === 'type'
     case 'ExportSpecifier':

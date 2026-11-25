@@ -372,6 +372,12 @@ export class ModuleAnalysis {
         exportLocals.set(record.node.start, local.id as SymbolId)
       }
     }
+    // (what an export is, a type or a value, is the table's: it reads the
+    // binding an export names)
+    const bindingAt = (at: number) => {
+      const local = exportLocals.get(at)
+      return local === undefined ? null : file.bindings[local]!
+    }
     const body = file.program.body
     for (let i = this.header.directiveCount; i < body.length; i++) {
       const stmt = body[i]!
@@ -470,11 +476,6 @@ export class ModuleAnalysis {
           break
         }
         case 'ExportNamedDeclaration': {
-          // (what the export is, a type or a value, is the table's)
-          const bindingAt = (at: number) => {
-            const local = exportLocals.get(at)
-            return local === undefined ? null : file.bindings[local]!
-          }
           if (stmt.source !== null) {
             const typeOnly = isTypeOnlyExport(file, stmt)
             if (!typeOnly) {
@@ -539,6 +540,7 @@ export class ModuleAnalysis {
           const d = stmt.declaration
           if (
             (d.type === 'FunctionDeclaration' ||
+              d.type === 'TSDeclareFunction' ||
               d.type === 'ClassDeclaration') &&
             d.id !== null
           ) {
@@ -549,8 +551,8 @@ export class ModuleAnalysis {
               typeOnly: false,
               range: { start: stmt.start, end: stmt.end },
             })
-          } else if (isTypeOnlyExport(file, stmt)) {
-            // `export default interface X {}`
+          } else if (isTypeOnlyExport(file, stmt, bindingAt(stmt.start))) {
+            // `export default interface X {}`, `export default X` of a type
             exportEntries.push({
               kind: 'local',
               name: 'default',

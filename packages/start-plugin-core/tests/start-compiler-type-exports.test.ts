@@ -60,6 +60,15 @@ const cases = [
     label: null,
   },
   {
+    // whole-PR review of the declarations lane
+    name: '`export default X` of an inline type import',
+    code: module(
+      `import { readRows, type Row } from './rows'`,
+      'export default Row',
+    ),
+    label: null,
+  },
+  {
     name: '`export { type X, y }` of an inline type import (y stays)',
     code: module(
       `import { readRows, type Row } from './rows'

@@ -95,8 +95,9 @@ export interface Unit {
   stripped: boolean
   /**
    * For a type unit: a type export of this module's own names (an exported
-   * declaration TypeScript erases, a type-only `export { … }` or specifier
-   * of a local name). It renders in no output's JavaScript, and for
+   * declaration TypeScript erases, a type-only `export { … }`, specifier of
+   * a local name or `export default X`); for a declaration unit: an
+   * exported overload signature (TypeScript's text of its function). It renders in no output's JavaScript, and for
    * provenance its text is erased text (`removal/closure.ts`); a re-export
    * reads nothing of the module.
    */
@@ -406,6 +407,22 @@ export function buildUnits(
           }
           break
         }
+        if (
+          isTypeOnlyExport(
+            file,
+            node,
+            d.type === 'Identifier'
+              ? (file.referenceOf(d)?.binding ?? null)
+              : null,
+          )
+        ) {
+          // `export default X` of a name with no value: as `export { X as
+          // default }` of it
+          const u = add(item, base(node, 'type', itemRange))
+          u.stripped = true
+          u.typeExport = true
+          break
+        }
         const u = base(node, 'export-default', itemRange)
         u.declares.push(symbols.declare('default', 'synthetic'))
         u.exported.push('default')
@@ -472,8 +489,12 @@ export function buildUnits(
       )
       u.spaces = row!.spaces
       u.definition = row!.kind === 'definition'
-      // (an exported declaration TypeScript erases: a type export)
-      u.typeExport = u.kind === 'type' && item.exportKeyword !== null
+      // (an exported declaration TypeScript erases, or an exported overload
+      // signature, which is TypeScript's text of its function: a type
+      // export)
+      u.typeExport =
+        item.exportKeyword !== null &&
+        (u.kind === 'type' || node.type === 'TSDeclareFunction')
       return u
     }
     switch (decl.type) {
