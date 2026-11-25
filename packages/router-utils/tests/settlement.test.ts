@@ -161,6 +161,135 @@ describe('a settlement while its request is open', () => {
   })
 })
 
+describe('a settlement while its request is open: the generation it was taken at', () => {
+  // The older request's compile waits on a resolution while a request of
+  // another text arrives and is answered: the older answer is of a text that
+  // is no longer the latest (the old `superseded` case).
+  // Source: Fable's review of settlement step 1, P4.
+  it('an answer of a text a newer request arrived for while it compiled is not current', async () => {
+    let hold: (() => void) | null = null
+    const holding = gate()
+    const host = new MemoryHost({
+      files: {
+        '/app/a.ts': A,
+        '/app/b.ts': 'export const make = 1\n',
+        '/app/c.ts': 'export const make = 2\n',
+      },
+      recognizer: RECOGNIZER,
+      onResolve: (specifier) => {
+        if (specifier === './b' && hold === null) {
+          return new Promise<void>((r) => {
+            hold = r
+            holding.open()
+          })
+        }
+        return undefined
+      },
+    })
+    const older = host.settle('/app/a.ts', planners(), (s) => s.current())
+    await holding.opened
+    expect(await currentNow(host, '/app/a.ts', B)).toBe(true)
+    hold!()
+    expect(await older).toBe(false)
+  })
+
+  // A derived id's request waits on the file's modification time (the
+  // check that its text differs from the published plan's) while a request
+  // of another text arrives and is answered; the derived request then settles
+  // untouched: of a text that is no longer the latest.
+  // Source: Fable's review of settlement step 1, P4 (a wait before the
+  // answer is taken).
+  it('an answer taken after a newer text arrived during its wait is not current', async () => {
+    const host = memoryHost({
+      '/app/a.ts': A,
+      '/app/b.ts': 'export const make = 1\n',
+      '/app/c.ts': 'export const make = 2\n',
+    })
+    await host.compile('/app/a.ts', planners())
+    const waiting = gate()
+    const release = gate()
+    Object.assign(host, {
+      modifiedAt: async () => {
+        waiting.open()
+        await release.opened
+        return 0
+      },
+    })
+    const older = host.settle(
+      '/app/a.ts?tsr-split=component',
+      planners(),
+      (s) => s.current(),
+      { code: PLAIN },
+    )
+    await waiting.opened
+    Object.assign(host, { modifiedAt: undefined })
+    expect(await currentNow(host, '/app/a.ts', B)).toBe(true)
+    release.open()
+    expect(await older).toBe(false)
+  })
+
+  // A dependency's save changes no fact the open request read (a comment):
+  // its plan stays published, nothing is stale, no newer answer is coming.
+  // Source: Fable's review of settlement step 1, P1.
+  it('an answer stays current across a comment-only save of a dependency', async () => {
+    const host = memoryHost({
+      '/app/a.ts': A,
+      '/app/b.ts': 'export const make = 1\n',
+    })
+    const older = held(host, '/app/a.ts')
+    await older.settled
+    host.write('/app/b.ts', '// a note\nexport const make = 1\n')
+    await invalidate(host.caches, { path: '/app/b.ts', kind: 'change' }, host)
+    expect(host.caches.stale.take('client')).toEqual([])
+    expect(await older.close()).toBe(true)
+  })
+
+  // Two requests share one compile; the first's host, acting on the answer,
+  // applies a change that evicts the plan (a route-registry change). The second request's answer is
+  // the same pre-eviction answer: not current.
+  // Source: Astra's review of settlement step 1, finding 1.
+  it('a request sharing a compile whose plan an earlier sharer saw evicted is not current', async () => {
+    let hold: (() => void) | null = null
+    const holding = gate()
+    const host = new MemoryHost({
+      files: {
+        '/app/a.ts': A,
+        '/app/b.ts': 'export const make = 1\n',
+      },
+      recognizer: RECOGNIZER,
+      onResolve: (specifier) => {
+        if (specifier === './b' && hold === null) {
+          return new Promise<void>((r) => {
+            hold = r
+            holding.open()
+          })
+        }
+        return undefined
+      },
+    })
+    const evicted = gate()
+    const first = host.settle('/app/a.ts', planners(), async (s) => {
+      const current = s.current()
+      // (a registry change of the file evicts its plan in the turn it is told)
+      const event = invalidate(
+        host.caches,
+        { path: '/app/a.ts', kind: 'registry' },
+        host,
+      )
+      evicted.open()
+      await event
+      return current
+    })
+    await holding.opened
+    const second = host.settle('/app/a.ts', planners(), async (s) => {
+      await evicted.opened
+      return s.current()
+    })
+    hold!()
+    expect(await Promise.all([first, second])).toEqual([true, false])
+  })
+})
+
 describe('outputs of one text', () => {
   const ROUTE = '/app/route.tsx'
   const route = dedent(`
@@ -188,6 +317,25 @@ describe('outputs of one text', () => {
     ])
   })
 
+  // A sibling request arrives while the first one's host still acts on its
+  // answer: of a published plan (the sibling is a plan hit), of an untouched
+  // text, of a text that does not parse. Both are current.
+  // Source: Fable's review of settlement step 1, P2.
+  it.for([
+    ['a published plan (a plan hit)', A],
+    ['an untouched text', PLAIN],
+    ['a text that does not parse', 'export const = ;\n'],
+  ] as const)('a late sibling of %s: both are current', async ([, code]) => {
+    const host = memoryHost({
+      '/app/a.ts': code,
+      '/app/b.ts': 'export const make = 1\n',
+    })
+    const first = held(host, '/app/a.ts')
+    await first.settled
+    expect(await currentNow(host, '/app/a.ts')).toBe(true)
+    expect(await first.close()).toBe(true)
+  })
+
   // C6-19: a derived id of a module the planners leave untouched is the
   // empty module, not the module's text.
   it('a derived id of an untouched module settles as the empty module', async () => {
@@ -199,4 +347,92 @@ describe('outputs of one text', () => {
     )
     expect(out).toBe('export {}\n')
   })
+})
+
+// The same-text rule of the settlement design (§2 rev 3, §8.2), decided by
+// a run in step 1 and not built: a request whose every attempt was
+// overtaken (a dependency saved during each) answers unpublished, and its
+// host still acts on it while the stale-set rebuild of the same text
+// publishes with the current facts. Both answers read current, with
+// different facts. The rule that would end the first (moving the generation
+// at publication) also ends an unpublished env-module answer when a split
+// sibling of the text publishes first, which writes no server functions:
+// worse than this case (KNOWN-BUGS, accepted limits). A pin of the outcome
+// the rule gave.
+// Source: Fable's and Gemini's reviews of settlement step 1, question 3.
+describe('an answer every attempt of which was overtaken', () => {
+  /** Reads `./b`'s `make`; holds the first `holds` attempts after the read. */
+  function holdingPlanner(state: {
+    holds: number
+    held: Array<() => void>
+  }): Planner {
+    return {
+      name: 'toy-dep',
+      tier: 1,
+      gate: () => true,
+      async prefetch(_t0, ctx) {
+        const target = await ctx.resolve('./b')
+        const found = target ? await ctx.resolver.resolve(target, 'make') : null
+        if (state.holds > 0) {
+          state.holds--
+          await new Promise<void>((r) => state.held.push(r))
+        }
+        ctx.set(found?.k === 'found' ? JSON.stringify(found.value) : 'none')
+      },
+      plan(ctx) {
+        ctx.setFacts('toy-dep', ctx.prefetched.get('toy-dep') ?? null)
+      },
+    }
+  }
+
+  it.fails(
+    'is not current once the rebuild of its text publishes',
+    async () => {
+      const state = { holds: 3, held: [] as Array<() => void> }
+      const own = () => [holdingPlanner(state)]
+      const host = memoryHost({
+        '/app/a.ts': A,
+        '/app/b.ts': 'export const make = 1\n',
+      })
+      const closing = gate()
+      const taken = gate()
+      const first = host.settle('/app/a.ts', own(), async (s) => {
+        taken.open()
+        await closing.opened
+        return s.current()
+      })
+      for (let save = 1; save <= 3; save++) {
+        for (let n = 0; state.held.length === 0; n++) {
+          if (n > 2_000) {
+            throw new Error('test: no attempt read the dependency')
+          }
+          await new Promise((r) => setTimeout(r, 1))
+        }
+        host.write(
+          '/app/b.ts',
+          save % 2 === 1
+            ? 'export function make() {}\n'
+            : 'export const make = 1\n',
+        )
+        await invalidate(
+          host.caches,
+          { path: '/app/b.ts', kind: 'change' },
+          host,
+        )
+        state.held.shift()!()
+      }
+      await taken.opened
+      // (exhausted: the host is told to build the file again, and does)
+      const stale = host.caches.stale.take('client')
+      if (stale.join() !== '/app/a.ts') {
+        throw new Error(`test: the attempts were not exhausted: ${stale}`)
+      }
+      const rebuilt = await host.settle('/app/a.ts', own(), (s) => s.current())
+      closing.open()
+      expect({ rebuilt, first: await first }).toEqual({
+        rebuilt: true,
+        first: false,
+      })
+    },
+  )
 })

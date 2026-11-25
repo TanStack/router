@@ -134,7 +134,12 @@ export type {
   PrefetchContext,
   RouteRegistry,
 } from './host'
-export { compileModule, createCompilerCaches, settleModule } from './pipeline'
+export {
+  compileModule,
+  createCompilerCaches,
+  emptyModuleOutput,
+  settleModule,
+} from './pipeline'
 export type { Settlement } from './pipeline'
 export type { ServerOnlyText } from './server-code'
 export { invariantDiagnostic, invariantViolated } from './self-checks'

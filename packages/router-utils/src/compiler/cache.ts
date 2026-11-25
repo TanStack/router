@@ -626,10 +626,20 @@ export type Settled =
   /** (unpublished when every attempt was overtaken: the last plan answers) */
   | { kind: 'plan'; entry: CacheEntry }
 
+/**
+ * What a compile settled on, and the key's generation when it did: the
+ * generation an answer taken from it is current at (`settleModule`), the
+ * same for every request that shares the compile.
+ */
+export interface SettledAt {
+  settled: Settled
+  generation: number
+}
+
 /** The compile of a key at one revision, from its first attempt until it settled. */
 export interface InFlight {
   revision: string
-  settled: Promise<Settled>
+  settled: Promise<SettledAt>
 }
 
 /**

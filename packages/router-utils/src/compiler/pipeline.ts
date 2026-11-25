@@ -44,7 +44,8 @@ import {
 } from './self-checks'
 import { verifyPlan } from './verify'
 import { checkServerCode } from './server-code'
-import type { CacheEntry, Settled } from './cache'
+import type { CacheEntry, Settled, SettledAt } from './cache'
+import type { RawSourceMap } from './output-builder'
 import type { Diagnostic } from './diagnostics'
 import type { Range } from './header'
 import type {
@@ -170,9 +171,9 @@ export async function settleModule<T>(
   // generation stay known)
   cache.begin(key, rev)
   try {
-    let out: CompileOutput | null
+    let answered: { out: CompileOutput | null; generation: number }
     try {
-      out = await answer(
+      answered = await answer(
         input,
         identity,
         tier0Only,
@@ -190,7 +191,7 @@ export async function settleModule<T>(
         displayPath(identity.path, host.root),
       )
     }
-    const generation = cache.generation(key)
+    const { out, generation } = answered
     const current = () =>
       cache.latestRevision(key) === rev && cache.generation(key) === generation
     if (out) {
@@ -199,7 +200,7 @@ export async function settleModule<T>(
     if (identity.derived) {
       return await use({
         kind: 'compiled',
-        output: emptyModule(requested),
+        output: emptyModule(identity, input, requested),
         current,
       })
     }
@@ -209,11 +210,32 @@ export async function settleModule<T>(
   }
 }
 
-/** The empty module, a derived id's output when its module has none. */
-function emptyModule(requested: OutputId): CompileOutput {
+/**
+ * The empty module, the code and map of a derived id whose module has no
+ * such output (an untouched module, a plan without it, a file that is no
+ * longer a route module). Its map maps nothing (`wantMap`): a map upstream
+ * of the compiler does not reach the module through it.
+ */
+export function emptyModuleOutput(
+  path: string,
+  wantMap: boolean,
+): { code: string; map: RawSourceMap | null } {
   return {
     code: 'export {}\n',
-    map: null,
+    map: wantMap
+      ? { version: 3, sources: [path], names: [], mappings: '' }
+      : null,
+  }
+}
+
+/** A derived id's output when its module has none (`emptyModuleOutput`). */
+function emptyModule(
+  identity: SourceIdentity,
+  input: CompileInput,
+  requested: OutputId,
+): CompileOutput {
+  return {
+    ...emptyModuleOutput(identity.path, input.wantMap),
     facts: { marker: null, planners: {} },
     diagnostics: [],
     dependencies: [],
@@ -235,7 +257,11 @@ export function compileModule(
   )
 }
 
-/** The output of a request of `key` at revision `rev`, from a validated plan hit, a compile in flight or its own compile. */
+/**
+ * The output of a request of `key` at revision `rev`, from a validated plan
+ * hit, a compile in flight or its own compile, and the key's generation when
+ * the core took it (the hit's accepting turn, the compile's settling turn).
+ */
 async function answer(
   input: CompileInput,
   identity: SourceIdentity,
@@ -245,7 +271,7 @@ async function answer(
   key: PlanKey,
   rev: string,
   requested: OutputId,
-): Promise<CompileOutput | null> {
+): Promise<{ out: CompileOutput | null; generation: number }> {
   const env = input.env
   const cache = planCacheFor(caches, env.name)
   const note = await textDiffers(
@@ -275,7 +301,10 @@ async function answer(
           hit.resolvedAt = fileSetVersion
           hit.factsAt = factsVersion
           cache.counters.planHits++
-          return noted(emitFrom(hit, requested, input, caches))
+          return {
+            out: noted(emitFrom(hit, requested, input, caches)),
+            generation: cache.generation(key),
+          }
         }
         cache.delete(key)
         cache.bump(key)
@@ -301,9 +330,12 @@ async function answer(
     const flight = cache.flight(key)
     if (flight && flight.revision === rev) {
       // another request of this text is compiling it: its outcome answers this request too
-      const settled = await flight.settled.catch(() => null)
-      if (settled) {
-        return noted(emitSettled(settled, requested, input, caches))
+      const shared = await flight.settled.catch(() => null)
+      if (shared) {
+        return {
+          out: noted(emitSettled(shared.settled, requested, input, caches)),
+          generation: shared.generation,
+        }
       }
       // it threw: its request reports the error, this one compiles on its own
       continue
@@ -314,7 +346,11 @@ async function answer(
     }
     cache.fly(key, record)
     try {
-      return noted(emitSettled(await record.settled, requested, input, caches))
+      const own = await record.settled
+      return {
+        out: noted(emitSettled(own.settled, requested, input, caches)),
+        generation: own.generation,
+      }
     } finally {
       cache.land(key, record)
     }
@@ -384,7 +420,7 @@ async function settle(
   caches: CompilerCaches,
   key: PlanKey,
   rev: string,
-): Promise<Settled> {
+): Promise<SettledAt> {
   const cache = planCacheFor(caches, key.env)
   // (the request that started it keeps the key live: `compileModule`)
   let overtaken!: CacheEntry
@@ -413,7 +449,7 @@ async function settle(
           cache.delete(key)
         }
       }
-      return result
+      return { settled: result, generation: cache.generation(key) }
     }
     const entry: CacheEntry = {
       key,
@@ -448,11 +484,11 @@ async function settle(
       if (cache.set(entry)) {
         ledger.publish()
       }
-      return { kind: 'plan', entry }
+      return { settled: { kind: 'plan', entry }, generation: entry.generation }
     }
     if (cache.latestRevision(key) !== rev) {
       // superseded (a newer save, the file removed): this text is stale; never publish, but answer its requests
-      return { kind: 'plan', entry }
+      return { settled: { kind: 'plan', entry }, generation: entry.generation }
     }
     overtaken = entry
   }
@@ -462,7 +498,10 @@ async function settle(
   // host has its modules built again (Rsbuild and webpack at once, Vite
   // with the next file event's hot update)
   caches.stale.add(key.env, identity.path)
-  return { kind: 'plan', entry: overtaken }
+  return {
+    settled: { kind: 'plan', entry: overtaken },
+    generation: cache.generation(key),
+  }
 }
 
 /** A request's output from what the compile of its text settled on. */
@@ -508,7 +547,7 @@ function emitFrom(
           new SourceText(input.code, { lines: input.lines }),
           input.wantMap,
         )
-    : { code: 'export {}\n', map: null }
+    : emptyModuleOutput(identify(input.id).path, input.wantMap)
   return {
     code: emitted.code,
     map: emitted.map,

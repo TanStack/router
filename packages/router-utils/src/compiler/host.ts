@@ -633,10 +633,17 @@ async function applyChange(
         continue
       }
       seen.add(ks)
-      if (entry.asked && indexKey !== UNRESOLVED_DEPENDENCY) {
+      if (
+        entry.asked &&
+        indexKey !== UNRESOLVED_DEPENDENCY &&
+        cache.flight(entry.key)
+      ) {
         // a compile running now asked for what changed: it starts again. A
         // failed resolution it met is its own to ask again (the file set
-        // moved since: its snapshot asks it), so the event leaves it running
+        // moved since: its snapshot asks it), so the event leaves it running.
+        // A request whose compile settled (its host acts on the answer) keeps
+        // its asks until it ends, and nothing of it starts again: its plan is
+        // checked below like any published one
         cache.bump(entry.key)
       }
       if (!entry.published) {
