@@ -63,6 +63,11 @@ export interface TopLevelItem {
    * included).
    */
   exportKeyword: Range | null
+  /**
+   * The license comments between the declarators of a list (G12): the
+   * declarators recipe keeps them when it joins the kept declarators anew.
+   */
+  licenses: Array<Range> | null
   /** Ephemeral: the statement node (phase B only). */
   node: Node
 }
@@ -185,11 +190,24 @@ export function buildItems(
         decl = d
       }
     }
+    let licenses: Array<Range> | null = null
     if (
       decl.type === 'VariableDeclaration' &&
       classify(file, decl)!.kind !== 'erased'
     ) {
       shape = 'declarators'
+      const list = decl.declarations
+      for (
+        let j = firstComment;
+        j < comments.length &&
+        comments[j]!.start < list[list.length - 1]!.start;
+        j++
+      ) {
+        const c = comments[j]!
+        if (c.start >= list[0]!.end && isLicenseComment(c)) {
+          ;(licenses ??= []).push({ start: c.start, end: c.end })
+        }
+      }
     } else if (
       node.type === 'ImportDeclaration' &&
       node.specifiers.length > 0
@@ -204,6 +222,7 @@ export function buildItems(
       shape,
       units: [],
       exportKeyword,
+      licenses,
       node,
     })
     prevEnd = end
@@ -727,6 +746,21 @@ export function statementRecipe(
         }
         out.push(slice(units[u]!.range.start, units[u]!.range.end))
       })
+      // (the license comments between the declarators, which the new
+      // joins leave out: after the list, a line comment on its own line)
+      for (const l of item.licenses ?? []) {
+        if (
+          !kept.some(
+            (u) =>
+              units[u]!.range.start <= l.start && l.end <= units[u]!.range.end,
+          )
+        ) {
+          out.push(text(' '), slice(l.start, l.end))
+          if (code.startsWith('//', l.start)) {
+            out.push(text('\n'))
+          }
+        }
+      }
       out.push(slice(lastOfAll.range.end, item.range.end))
       return out
     }

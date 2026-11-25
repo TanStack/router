@@ -232,6 +232,20 @@ export const Route = createFileRoute('/')({
 `,
       deleteNodes: ['ssr' as const],
     },
+    // C2-05 (whole-PR review)
+    ...[
+      '/*! Example Corp. | MIT License */',
+      '// @license Example Corp. | MIT License',
+    ].map((legal) => ({
+      name: `between the declarators of a list the splitter splits (${legal.slice(0, 2)})`,
+      legal,
+      route: (legal: string) => `${head}const version = 1, ${legal}
+  Page = () => <p>page</p>
+export { version }
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      deleteNodes: undefined,
+    })),
     // a license comment ending the line of a moved declaration is written
     // for the code after it
     ...[
