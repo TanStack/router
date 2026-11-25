@@ -100,6 +100,108 @@ describe('the registry', () => {
       { routeId: '/new', kind: 'file', routerConstructor: true },
     )
   })
+
+  // V-64a under a linked routes directory: the replaced file, made a file of
+  // its own, still has a real path (the directory's link resolves), which is
+  // the module id a bundler gives it. The registry dropped it.
+  // Source: review of the generation record (Astra 1).
+  test('a route file made a file of its own under a linked routes directory keeps its real path', async () => {
+    const root = await createApp({
+      'actual/__root.tsx': rootRoute(),
+      'actual/a.tsx': fileRoute('/a'),
+      'src/shared/page.tsx': fileRoute('/b'),
+    })
+    await symlink(path.join(root, 'actual'), path.join(root, 'src/routes'))
+    const shared = path.join(root, 'src/shared/page.tsx')
+    await symlink(shared, path.join(root, 'actual/b.tsx'))
+    const config = configOf(root)
+    const generator = new Generator({ config, root })
+    await generator.run()
+
+    const a = path.join(root, 'src/routes/a.tsx')
+    await rm(a)
+    await symlink(shared, a)
+    await generator.run({ type: 'update', path: a })
+
+    const real = replaceBackslash(path.join(root, 'actual/a.tsx'))
+    expect(generator.getRoutesByFileMap().get(real)?.routeId).toBe('/a')
+    expect(generator.sourceDigest(real)).toBe(
+      contentDigest(await readFile(real, 'utf8')),
+    )
+    const fresh = new Generator({ config, root })
+    await fresh.run()
+    expect(entriesOf(generator.getRoutesByFileMap())).toEqual(
+      entriesOf(fresh.getRoutesByFileMap()),
+    )
+  })
+
+  // An `onWrite` observer that throws fails the run, but the write it was
+  // told of is done: the registry and the digests follow the file on disk.
+  // The run published the facts from before the write (the shared file
+  // under `/a`, the old digest of `a.tsx`).
+  // Source: review of the generation record (Astra 2).
+  test('a write an onWrite observer throws on is published as written', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/a.tsx': fileRoute('/a'),
+    })
+    await linked(
+      root,
+      'src/routes/b.tsx',
+      'src/shared/page.tsx',
+      fileRoute('/b'),
+    )
+    const a = path.join(root, 'src/routes/a.tsx')
+    let armed = false
+    const generator = new Generator({
+      config: configOf(root),
+      root,
+      onWrite: ({ destination }) => {
+        if (armed && destination === replaceBackslash(a)) {
+          throw new Error('observer failed')
+        }
+      },
+    })
+    await generator.run()
+
+    await rm(a)
+    await symlink(path.join(root, 'src/shared/page.tsx'), a)
+    armed = true
+    await expect(generator.run({ type: 'update', path: a })).rejects.toThrow(
+      'observer failed',
+    )
+
+    const shared = replaceBackslash(path.join(root, 'src/shared/page.tsx'))
+    expect(generator.getRoutesByFileMap().get(shared)?.routeId).toBe('/b')
+    expect(generator.sourceDigest(replaceBackslash(a))).toBe(
+      contentDigest(await readFile(a, 'utf8')),
+    )
+  })
+
+  // A generator retired during its run (the host replaced it) publishes
+  // nothing more: it installed the model of that run beside the tree it
+  // did not write.
+  // Source: review of the generation record (Gemini).
+  test('a generator retired during its run publishes nothing from it', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/a.tsx': fileRoute('/wrong'),
+    })
+    const config = configOf(root)
+    const generator: Generator = new Generator({
+      config,
+      root,
+      // (told of the route file's upkeep, written before the tree)
+      onWrite: () => generator.retire(),
+    })
+    await generator.run()
+    expect(await readFile(path.join(root, 'src/routes/a.tsx'), 'utf8')).toBe(
+      fileRoute('/a'),
+    )
+    expect(generator.hasGenerated()).toBe(false)
+    expect(generator.treeDigest()).toBeUndefined()
+    expect(generator.getRoutesByFileMap().size).toBe(0)
+  })
 })
 
 describe('a batch that fails', () => {
@@ -142,6 +244,43 @@ describe('a batch that fails', () => {
       kind: 'file',
       routerConstructor: false,
     })
+  })
+
+  // V-64a while batches fail: `a.tsx` replaced by a link to the file `b.tsx`
+  // links to. Its upkeep (a file of its own) waits for a batch that
+  // succeeds, so the shared file is still `/b`'s, as its text says; the
+  // registry gave it to `/a`, the first link.
+  // Source: review of the generation record (Fable F1), head only.
+  test('a route file replaced by a link to the file of another route leaves that file to the other route', async () => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      'src/routes/a.tsx': fileRoute('/a'),
+      'src/routes/c.tsx': fileRoute('/c'),
+    })
+    await linked(
+      root,
+      'src/routes/b.tsx',
+      'src/shared/page.tsx',
+      fileRoute('/b'),
+    )
+    const generator = new Generator({ config: configOf(root), root })
+    await generator.run()
+    const conflict = await save(
+      root,
+      'src/routes/(g)/c.tsx',
+      fileRoute('/(g)/c'),
+    )
+    await expect(
+      generator.run({ type: 'create', path: conflict }),
+    ).rejects.toThrow()
+
+    const a = path.join(root, 'src/routes/a.tsx')
+    await rm(a)
+    await symlink(path.join(root, 'src/shared/page.tsx'), a)
+    await expect(generator.run({ type: 'update', path: a })).rejects.toThrow()
+
+    const shared = replaceBackslash(path.join(root, 'src/shared/page.tsx'))
+    expect(generator.getRoutesByFileMap().get(shared)?.routeId).toBe('/b')
   })
 
   // A route file linked out of the routes directory, pointed at another

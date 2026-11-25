@@ -36,6 +36,7 @@ import type {
   TreeModel,
 } from './types'
 import type { Config } from './config'
+import type { WrittenFile } from './publish/atomic'
 import type { Logger } from './logger'
 
 export type FileEventType = 'create' | 'update' | 'delete'
@@ -227,6 +228,15 @@ async function stampOf(file: string): Promise<FileStamp | null> {
   }
 }
 
+/**
+ * A file's real path when it is not the file's own path (a symlinked file,
+ * or one under a linked directory): the module id bundlers give it.
+ */
+async function linkedRealPath(file: string): Promise<string | undefined> {
+  const real = replaceBackslash(await fsp.realpath(file).catch(() => file))
+  return real === file ? undefined : real
+}
+
 const pieceTypes: ReadonlyArray<FsRouteType> = routeOptionPieces
 
 const routeFileExtension = /\.(tsx|ts|jsx|js|vue)$/
@@ -299,6 +309,7 @@ export class Generator {
   /** Whether a physical scan lists an entry of this name (the ignore rules). */
   private readonly listed: (name: string) => boolean
   private readonly publisher: AtomicPublisher
+  private readonly onWrite: ((written: WrittenFile) => void) | undefined
 
   private scan: ScanResult | undefined
   /** The route files of the last scan (a file a failed read left out of `files` is still known). */
@@ -359,7 +370,8 @@ export class Generator {
         ? normalize(path.resolve(this.root, this.config.virtualRouteConfig))
         : undefined
     this.listed = listsEntryNamed(this.config)
-    this.publisher = new AtomicPublisher(this.config.tmpDir, opts.onWrite)
+    this.publisher = new AtomicPublisher(this.config.tmpDir)
+    this.onWrite = opts.onWrite
     this.plugins = [...(this.config.plugins ?? [])]
     for (const plugin of this.plugins) {
       plugin.init?.({ generator: this })
@@ -435,9 +447,11 @@ export class Generator {
   }
 
   /**
-   * The real path of a scanned file of the last generation that is a
-   * symlink (or sits under a linked directory): the path bundlers resolve its
-   * modules to; undefined for any other file.
+   * The real path of a scanned file that is a symlink (or sits under a
+   * linked directory), as the generator last read or wrote it: the path
+   * bundlers resolve its modules to; undefined for any other file. During a
+   * run, it can be newer than the published generation (inside
+   * `onRouteTreeChanged`, it is that generation's).
    */
   public realPathOf(file: string): string | undefined {
     return this.files.get(file)?.realPath
@@ -633,8 +647,14 @@ export class Generator {
   private install(
     next: Pick<Generation, 'model' | 'tree' | 'routes' | 'failure'>,
   ) {
+    if (this.retired) {
+      // (another generator answers for these files)
+      return
+    }
     const routesByFile = new Map<string, GetRoutesByFileMapResultValue>()
     const routeLinks: Array<[string, GetRoutesByFileMapResultValue]> = []
+    /** Links whose upkeep is unwritten (a failed batch): such a link becomes a file of its own, so another link claims its real path first. */
+    const unwritten: typeof routeLinks = []
     for (const { file, routeId, kind } of next.routes) {
       const state = this.files.get(file)
       const value = {
@@ -645,9 +665,13 @@ export class Generator {
       }
       routesByFile.set(file, value)
       if (state?.realPath !== undefined) {
-        routeLinks.push([state.realPath, value])
+        ;(state.pending === undefined ? routeLinks : unwritten).push([
+          state.realPath,
+          value,
+        ])
       }
     }
+    routeLinks.push(...unwritten)
     const digests = new Map<string, string>()
     const digestLinks: Array<[string, string]> = []
     for (const file of next.model ? importedFiles(next.model) : []) {
@@ -898,8 +922,9 @@ export class Generator {
         if (this.retired) {
           return
         }
+        let written: WrittenFile
         try {
-          await this.publisher.write(
+          written = await this.publisher.write(
             file,
             pending.content,
             pending.over,
@@ -919,8 +944,12 @@ export class Generator {
           pending: undefined,
           // (the stamp of what it wrote)
           stamp: (await stampOf(file)) ?? undefined,
-          realPath: ownFile ? undefined : state.realPath,
+          // (a file of its own under a linked directory keeps a real path)
+          realPath: ownFile ? await linkedRealPath(file) : state.realPath,
         })
+        // (told once the write is recorded: an observer that throws fails
+        // the run, and the generation is the one written)
+        this.onWrite?.(written)
       }),
     )
     const failed = writes.find((write) => write.status === 'rejected')
@@ -951,7 +980,13 @@ export class Generator {
     if (onDisk !== content) {
       // A file of its own, as on main: its imports are relative to where it
       // is configured, and a link elsewhere would resolve them from there
-      await this.publisher.write(this.treeFile, content, undefined, true)
+      const written = await this.publisher.write(
+        this.treeFile,
+        content,
+        undefined,
+        true,
+      )
+      this.onWrite?.(written)
     }
     const stat = await fsp.stat(this.treeFile)
     return {
@@ -1024,8 +1059,7 @@ export class Generator {
       })
       return
     }
-    const real = replaceBackslash(await fsp.realpath(file).catch(() => file))
-    const realPath = real === file ? undefined : real
+    const realPath = await linkedRealPath(file)
     const digest = digestOf(content)
     if (previous && previous.digest === digest) {
       this.files.set(key, { ...previous, stamp: stamp!, realPath })

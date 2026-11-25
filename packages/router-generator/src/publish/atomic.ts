@@ -2,6 +2,12 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import * as fsp from 'node:fs/promises'
 
+/** A file `AtomicPublisher.write` replaced. */
+export interface WrittenFile {
+  readonly destination: string
+  readonly file: string
+}
+
 /** A route file changed on disk between our read and our write. */
 export class ConcurrentEditError extends Error {
   constructor(readonly file: string) {
@@ -74,35 +80,26 @@ export class AtomicPublisher {
   /** Destination directories whose renames from `tmpDir` cross devices. */
   private readonly besideDestination = new Set<string>()
 
-  /**
-   * `onWrite`: told of each file replaced (`destination` as the caller
-   * named it, `file` the path renamed over: its real path when a link was
-   * kept), once the replacement is done.
-   */
-  constructor(
-    private readonly tmpDir: string,
-    private readonly onWrite?: (written: {
-      destination: string
-      file: string
-    }) => void,
-  ) {}
+  constructor(private readonly tmpDir: string) {}
 
   /**
    * Replaces `destination` with `content`. With `expected`, the file must still
    * hold exactly that (null: must not exist) right before the rename, or a
    * `ConcurrentEditError` is thrown and nothing changes. With `ownFile`, a
-   * link at `destination` is replaced by a file of its own instead.
+   * link at `destination` is replaced by a file of its own instead. Returns
+   * the file replaced: `destination` as the caller named it, `file` the path
+   * renamed over (its real path when a link was kept).
    */
   async write(
     destination: string,
     content: string,
     expected?: string | null,
     ownFile = false,
-  ): Promise<void> {
+  ): Promise<WrittenFile> {
     await fsp.mkdir(path.dirname(destination), { recursive: true })
     const file = ownFile ? destination : await realPathOf(destination)
     await this.replace(file, content, expected)
-    this.onWrite?.({ destination, file })
+    return { destination, file }
   }
 
   private async replace(

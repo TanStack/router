@@ -482,24 +482,31 @@ test('a session closed before its watcher is ready ends its watch() without a ru
 // reads the current one. The session's watcher kept the generator it was
 // started with: once that one was retired, an edit was not repaired and a
 // created route was not listed until the host watched again.
-// Source: whole-PR review R2-30, VERIFY-router V-66.
+// The host's getter may be a method of its own (`generator()` reading
+// `this`): the session calls it on the options object.
+// Source: whole-PR review R2-30, VERIFY-router V-66; review of the generation
+// record (Astra 3: the method form lost `this`).
 test('after the host replaces the generator, the watcher hands each event to the current one', async () => {
   const root = await createApp(app)
   const config = configOf(root)
-  let generator = new Generator({ config, root })
   const reported: Array<string> = []
   let routes: GetRoutesByFileMapResult = new Map()
-  const session = createGeneratorSession({
-    generator: () => generator,
-    publish: (routesByFile) => {
+  const host = {
+    current: new Generator({ config, root }),
+    generator() {
+      return this.current
+    },
+    publish: (routesByFile: GetRoutesByFileMapResult) => {
       routes = routesByFile
     },
-    report: (error) => reported.push(String(error)),
-  })
+    report: (error: unknown) => reported.push(String(error)),
+  }
+  const session = createGeneratorSession(host)
   onTestFinished(() => session.close())
   await session.watch()
-  generator.retire()
-  generator = new Generator({ config, root })
+  host.current.retire()
+  host.current = new Generator({ config, root })
+  const generator = host.current
   await session.run()
 
   const created = await save(root, 'src/routes/new.tsx', fileRoute('/new'))

@@ -92,7 +92,7 @@ export function createGeneratorSession(opts: {
     watch() {
       watching ??= (async () => {
         const started = watchRouteFiles(
-          opts.generator,
+          () => opts.generator(),
           (run) => void settle(run),
           report,
         )
