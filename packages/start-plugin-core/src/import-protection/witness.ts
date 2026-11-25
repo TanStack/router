@@ -3,8 +3,8 @@
  * the bundler after linking, and the bundler's graph for traces. An edge module
  * survives when it owns a used export (`renderedExports` on Rolldown, used
  * exports on Rspack), when it stands for an `import()` or `require()` and is
- * in a chunk at all (`EdgeModuleContent.runs`), or, on Rolldown, when it is
- * the module a dynamic entry chunk loads (an `import()` of it survived).
+ * in a chunk at all (`EdgeModuleContent.runs`), or, on Rolldown, when a
+ * chunk loads it through a surviving `import()` (`readRolldownWitness`).
  * Bare imports are read in the bundler's graph (`ImportProtectionEnv.surviving`).
  *
  * Structural types only: the readers take what Vite's `generateBundle` and
@@ -49,10 +49,10 @@ interface RolldownRenderedModule {
 
 interface RolldownOutputChunk {
   type: 'chunk'
+  fileName: string
   modules: Record<string, RolldownRenderedModule>
-  /** An `import()` of `facadeModuleId` survived: the chunk loads it. */
-  isDynamicEntry?: boolean
-  facadeModuleId?: string | null
+  /** The chunks this one loads with `import()` (itself, for a module folded into it). */
+  dynamicImports: ReadonlyArray<string>
 }
 
 type RolldownOutputBundle = Record<
@@ -60,31 +60,50 @@ type RolldownOutputBundle = Record<
   RolldownOutputChunk | { type: 'asset' }
 >
 
-/** The keys of the edge modules that survived a Rolldown build (`generateBundle`), sorted. */
+/**
+ * The keys of the edge modules that survived a Rolldown build
+ * (`generateBundle`), sorted. `dynamicImporters`: a module's dynamic
+ * importers (`this.getModuleInfo`): a mock that a chunk of the output loads
+ * through a surviving `import()` of a module of that chunk survived,
+ * whatever it reads of it and whoever wrote the import (a package module,
+ * another plugin), in a chunk of its own or folded into its importer's (the
+ * chunk then lists itself in `dynamicImports`): the import evaluates it. An
+ * `import()` tree-shaking removed loads no chunk.
+ */
 export function readRolldownWitness(
   bundle: RolldownOutputBundle,
   lookup: WitnessLookup,
+  dynamicImporters: (id: string) => ReadonlyArray<string> = () => [],
 ): Array<string> {
   const live = new Set<string>()
+  /** The chunk of each module of the output. */
+  const chunkOf = new Map<string, RolldownOutputChunk>()
+  const present: Array<[string, WitnessModule]> = []
   for (const out of Object.values(bundle)) {
     if (out.type !== 'chunk') {
       continue
     }
     for (const [id, m] of Object.entries(out.modules)) {
+      chunkOf.set(id, out)
       const edge = lookup(id)
-      if (edge && (m.renderedExports.length > 0 || edge.runs)) {
+      if (!edge) {
+        continue
+      }
+      if (m.renderedExports.length > 0 || edge.runs) {
         live.add(edge.key)
+      } else {
+        present.push([id, edge])
       }
     }
-    // a surviving `import()` of a mock that reads nothing of it loads its
-    // chunk all the same, whoever wrote it (a package module, another
-    // plugin): the import evaluates the module
-    const dynamic =
-      out.isDynamicEntry && out.facadeModuleId
-        ? lookup(out.facadeModuleId)
-        : null
-    if (dynamic) {
-      live.add(dynamic.key)
+  }
+  for (const [id, edge] of present) {
+    const file = chunkOf.get(id)!.fileName
+    if (
+      dynamicImporters(id).some((importer) =>
+        chunkOf.get(importer)?.dynamicImports.includes(file),
+      )
+    ) {
+      live.add(edge.key)
     }
   }
   return [...live].sort()
@@ -153,6 +172,8 @@ export interface RspackModuleLike {
   resource?: string
   /** The module's code after its loaders. */
   originalSource?: () => { source: () => string | Buffer } | null
+  /** Its package's `sideEffects` declaration, as Rspack read it. */
+  factoryMeta?: { sideEffectFree?: boolean }
   buildInfo?: Record<string, unknown>
   /** Inner modules of a ConcatenatedModule. */
   modules?: Iterable<RspackModuleLike>
@@ -461,8 +482,27 @@ export function rspackNodeGraph(
   let byEnv: Map<string, Map<string, Entry>> | null = null
   /** The environment of each concatenated inner module of the index (from its holder). */
   const envs = new Map<RspackModuleLike, string>()
-  /** The nodes of the compilation's chunks (`kept`), read on the first ask. */
-  let keptNodes: Set<string> | null = null
+  /** The nodes of the compilation's chunks (`kept`), by key, read on the first ask. */
+  let keptNodes: Map<string, GraphNode> | null = null
+  const keptIndex = (): Map<string, GraphNode> => {
+    if (!keptNodes) {
+      keptNodes = new Map()
+      for (const chunk of compilation.chunks) {
+        for (const m of compilation.chunkGraph.getChunkModules(chunk)) {
+          for (const inner of m.modules ?? [m]) {
+            if (inner.resource) {
+              const node = {
+                env: envOf(inner, m),
+                id: idOf(inner.resource),
+              }
+              keptNodes.set(key(node.env, node.id), node)
+            }
+          }
+        }
+      }
+    }
+    return keptNodes
+  }
   const key = (env: string, id: string) => `${env}\0${id}`
   const entryOf = (node: GraphNode): Entry | undefined => {
     if (!byEnv) {
@@ -595,21 +635,12 @@ export function rspackNodeGraph(
       return entry.byItself
     },
     holds: (node) => entryOf(node) !== undefined,
-    kept(node) {
-      if (!keptNodes) {
-        keptNodes = new Set()
-        for (const chunk of compilation.chunks) {
-          for (const m of compilation.chunkGraph.getChunkModules(chunk)) {
-            for (const inner of m.modules ?? [m]) {
-              if (inner.resource) {
-                keptNodes.add(key(envOf(inner, m), idOf(inner.resource)))
-              }
-            }
-          }
-        }
-      }
-      return keptNodes.has(key(node.env, node.id))
-    },
+    kept: (node) => keptIndex().has(key(node.env, node.id)),
+    keptNodes: () => keptIndex().values(),
+    sideEffectFree: (node) =>
+      (entryOf(node)?.own ?? []).some(
+        (m) => m.factoryMeta?.sideEffectFree === true,
+      ),
     code(node) {
       for (const module of entryOf(node)?.own ?? []) {
         const source = module.originalSource?.()?.source()

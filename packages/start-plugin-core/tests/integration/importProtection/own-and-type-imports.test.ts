@@ -15,8 +15,27 @@ import { reportedViolations } from '../../importProtection/start-apps'
 import { warningsNaming } from './dropped-imports-apps'
 import { db, outcome, timeout } from './kept-importer-cases'
 import type { KeptCase } from './kept-importer-cases'
+import type { StartBundler } from '../../build-harness'
 
-const cases: Array<KeptCase & { on: Array<string> }> = [
+const cases: Array<
+  KeptCase & {
+    on: Array<string> | null | Record<StartBundler, Array<string> | null>
+    off?: Record<StartBundler, boolean>
+  }
+> = [
+  {
+    // (Oxc drops it whatever verbatimModuleSyntax says; SWC keeps
+    // `export {} from`)
+    name: 'a re-export of type names only kept by verbatimModuleSyntax in a module whose export is inlined',
+    files: {
+      ...db,
+      'src/types.ts': `export { type User } from './db.server'\nexport const label = 'l'\n`,
+      'src/entry.ts': `import { label } from './types'\nexport const read = () => label\n`,
+    },
+    verbatim: true,
+    on: { vite: null, rsbuild: ['src/types.ts'] },
+    off: { vite: false, rsbuild: true },
+  },
   {
     name: 'a client entry marked by `export {} from` the server-only marker',
     files: {
@@ -57,8 +76,11 @@ describe.each(startBundlers)('%s build', (bundler) => {
         on: await outcome(bundler, c, true),
         off: await outcome(bundler, c, false),
       }).toEqual({
-        on: { failedAt: c.on, shipped: false },
-        off: { failedAt: null, shipped: true },
+        on: {
+          failedAt: c.on === null || Array.isArray(c.on) ? c.on : c.on[bundler],
+          shipped: false,
+        },
+        off: { failedAt: null, shipped: c.off?.[bundler] ?? true },
       })
     },
     timeout,

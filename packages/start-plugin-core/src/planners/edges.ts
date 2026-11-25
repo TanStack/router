@@ -558,13 +558,27 @@ export function importEdgesPlanner(
               ),
             )
           : []
+        // (and a re-export of type names only, `export { type T } from`:
+        // TypeScript erases it, or keeps it as `export {} from`)
+        const reexports =
+          typescript && j.edge.form === 'reexport'
+            ? ctx.analysis.reexports.filter((r) =>
+                j.edge.locations.some(
+                  (l) => l.range.start === r.specifierRange.start,
+                ),
+              )
+            : []
         const typeSpecifiers =
-          imports.length > 0 &&
-          imports.every(
-            (i) =>
-              i.specifiers.length > 0 &&
-              i.specifiers.every((spec) => spec.typeOnly),
-          )
+          (imports.length > 0 &&
+            imports.every(
+              (i) =>
+                i.specifiers.length > 0 &&
+                i.specifiers.every((spec) => spec.typeOnly),
+            )) ||
+          (reexports.length > 0 &&
+            reexports.every(
+              (r) => r.kind === 'named' && !r.typeOnly && r.names.length === 0,
+            ))
         // a server rendering client-only code: whether it renders it as a component
         const ownStatic = envType === 'server' && j.offset !== undefined
         const offsets = j.edge.locations.map((l) => l.range.start)

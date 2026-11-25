@@ -224,8 +224,9 @@ export interface EdgeModuleContent {
   /**
    * The mock keeps the `__fx` call, so its importer is evaluated as it would
    * be with the real module: a bare import (not of an asset query), an
-   * import of type specifiers only (bare once TypeScript keeps it), a marked
-   * file that is its own violation (its importers are package modules).
+   * import or re-export of type specifiers only (bare once TypeScript keeps
+   * it), a module that is its own violation (its importers' imports are not
+   * read by the compiler: package modules, another plugin's).
    */
   evaluated?: true
   /** The rule that denied it: `allowImport` is told, even for an importer a persistent cache restored whose record is not read yet. */

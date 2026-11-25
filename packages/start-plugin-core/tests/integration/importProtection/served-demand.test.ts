@@ -44,7 +44,7 @@ import {
   timeout,
   uses,
 } from './served-verdict-app'
-import { settledAcrossTurn } from './hosts'
+import { importersIn, settledAcrossTurn } from './hosts'
 import type { Plugin } from 'vite'
 
 afterEach(() => {
@@ -442,37 +442,45 @@ export const getRouter = () => undefined
 
 describe('reports', () => {
   // Finding 4: an exempt importer needs the file as it is, but nothing of
-  // it ships (its use is unused, the pattern import too)
+  // it ships (its use is unused, the pattern import too). The file's mock is
+  // evaluated (it keeps its importers evaluated as the real file would), so
+  // its stub stays in the chunk of the exempt importer, which the pattern
+  // import also reaches: Rolldown's own INEFFECTIVE_DYNAMIC_IMPORT notice is
+  // the bundler's, not a report
   test(
     'vite build: the file compiled as its mock first, nothing of it shipped: nothing reported',
     async () => {
-      expect(
-        await outcomeOf(() =>
-          buildStart({
-            bundler: 'vite',
-            files: {
-              ...app({ bundler: 'vite', glob: 'generated', first: 'pattern' }),
-              'src/generated/reg.ts': `import { secret } from '../lib/db.server'
+      const build = await buildStart({
+        bundler: 'vite',
+        files: {
+          ...app({ bundler: 'vite', glob: 'generated', first: 'pattern' }),
+          'src/generated/reg.ts': `import { secret } from '../lib/db.server'
 export const viaPlain = () => 'none'
 export const unused = () => secret()
 `,
-              'src/generated/glob.ts': `const modules = import.meta.glob('../lib/*.server.ts')
+          'src/generated/glob.ts': `const modules = import.meta.glob('../lib/*.server.ts')
 export const viaGlob = async () => ['none']
 export const unusedGlob = () => modules
 `,
-            },
-            entry: 'src/entry.ts',
-            viteConfig: {
-              plugins: holdUntilCompiled('/src/generated/reg.ts', denied),
-            },
-            start: { importProtection: options('error') },
-          }),
-        ),
-      ).toEqual({
-        failed: false,
+        },
+        entry: 'src/entry.ts',
+        viteConfig: {
+          plugins: holdUntilCompiled('/src/generated/reg.ts', denied),
+        },
+        start: { importProtection: options('error') },
+      })
+      expect({
+        uses: await uses(build),
+        reported: importersIn(build, 'client'),
+        problems: problems(build.diagnostics)
+          .filter(({ text }) => !text.includes('[INEFFECTIVE_DYNAMIC_IMPORT]'))
+          .map(named),
+        shipped: build.client.where('MARK_SECRET') !== 'nowhere',
+      }).toEqual({
         uses: { plain: 'none', glob: ['none'] },
         reported: [],
         problems: [],
+        shipped: false,
       })
     },
     timeout,

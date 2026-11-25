@@ -41,7 +41,7 @@ import {
 } from './pattern-imports'
 import { matchesAny } from './matchers'
 import { DevReporter, devViolationError } from './report'
-import { fileOrMarkerRule, importerInScope } from './rules'
+import { fileOrMarkerRule, importerInScope, markerViolates } from './rules'
 import { normalizeFilePath, relativizePath } from './utils'
 import {
   IMPORT_EDGES_PLANNER,
@@ -706,6 +706,10 @@ export class ImportProtection {
     }
   }
 }
+
+/** Whether code may hold a bare import (`import 'x'`, `import {} from`, `export {} from`): the cheap test before a parse. */
+const MAY_IMPORT_BARE =
+  /\bimport\s*['"]|\bimport\s*\{\s*\}\s*from|\bexport\s*\{\s*\}\s*from/
 
 /** A violation's denied module, as the dropped-import warning counts it: its path, or the specifier when it did not resolve. */
 function deniedPathOf(v: EdgeViolation): string {
@@ -2458,6 +2462,8 @@ class ImportProtectionEnv {
      * name, an export map).
      */
     resolve?: (specifier: string, importer: string) => Promise<string | null>,
+    /** A file's marker, from its raw text (Rspack: a module it pruned, never built). */
+    marker?: (path: string) => Promise<MarkerKind | 'conflict' | null>,
   ): Promise<
     Array<{
       severity: 'error' | 'warning'
@@ -2640,6 +2646,51 @@ class ImportProtectionEnv {
             }))
           ) {
             add(await owner.importOf(v, c, resolve), owner)
+          }
+        }
+      }
+    }
+    // Rspack does not build a module a `sideEffects: false` package imports
+    // bare (it prunes it while it makes the graph): a marked one is read
+    // from the kept importer's code (Rolldown builds it: the paths above)
+    if (host.keptNodes && host.sideEffectFree && marker && resolve) {
+      for (const node of host.keptNodes()) {
+        const code =
+          node.env === this.name && host.sideEffectFree(node)
+            ? (host.code?.(node) ?? null)
+            : null
+        const importer = traceFile(node.id)
+        if (
+          code === null ||
+          !MAY_IMPORT_BARE.test(code) ||
+          this.ip.exempt(importer)
+        ) {
+          continue
+        }
+        for (const specifier of evaluationSpecifiers(code)) {
+          const r = await resolve(specifier, importer)
+          if (
+            r === null ||
+            isAssetId(r) ||
+            host.holds?.({ env: this.name, id: r }) ||
+            !markerViolates(this.type, await marker(identify(r).path))
+          ) {
+            continue
+          }
+          const self = selfViolationOf(
+            this.ip.config,
+            this,
+            r,
+            { type: 'marker' },
+            { names: [], hasDefault: true },
+          )
+          const v = await this.importOf(
+            self,
+            { importer, importerId: node.id, env: node.env },
+            resolve,
+          )
+          if (!(await this.allows(v))) {
+            add(v)
           }
         }
       }

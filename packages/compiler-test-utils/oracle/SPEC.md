@@ -908,10 +908,13 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   read as the bundler's graph holds it: whatever the compiler read of the importer (a package module it does not
   compile, an import another plugin added, an import bare only after TypeScript, such as an import of type
   specifiers only under `verbatimModuleSyntax`), whatever the tree-shaking options say. The mock keeps its importer
-  evaluated as the real module would (a bare import, an import of type specifiers only, a marked file a package
-  module imports; under that package's own `sideEffects`), so an importer the build drops (an unused module of a
-  `sideEffects: false` package, a package only a dead `import()` loads) reports nothing. A surviving `import()` or
-  `require()` is one whatever it reads, whoever wrote it; one tree-shaking drops is not. A client entry's own marker
+  evaluated as the real module would (a bare import, an import or re-export of type names only, a module that is
+  its own violation; under the package's own `sideEffects`), so an importer the build drops (an unused module of a
+  `sideEffects: false` package, a package only a dead `import()` loads) reports nothing, and one that keeps nothing
+  else is still evaluated. A bare import in a kept module of a `sideEffects: false` package is one too, though the
+  bundler drops its target (Rspack never builds that target: it is read from the importer's code). A surviving
+  `import()` or `require()` is one whatever it reads, whoever wrote it, in a chunk of its own or folded into its
+  importer's; one tree-shaking drops is not. A client entry's own marker
   is one whatever its form or what the host's TypeScript makes of it. A denied module the environment's importers
   import (an importer reached from an entry) whose mocks all were dropped, or that the importer's TypeScript
   transform erased, nothing of which shipped (no import of it allowed, no exempt importer given it), is no violation

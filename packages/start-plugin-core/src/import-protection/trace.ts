@@ -850,6 +850,13 @@ function suggestionsOf(
   if (clientComponent) {
     return clientComponentSuggestions(info, ctx)
   }
+  // (every specifier a type: the import is there only because the
+  // bundler's TypeScript keeps it, `verbatimModuleSyntax`)
+  if (v.typeSpecifiers) {
+    return [
+      `Every name this ${v.reexport ? 'export' : 'import'} takes is a type, but verbatimModuleSyntax keeps it as ${v.reexport ? 'an export' : 'an import'} of the module, which runs it: write it as \`${v.reexport ? 'export type' : 'import type'} { … } from '${info.specifier}'\``,
+    ]
+  }
   // (a package's module imports a marked file: the app cannot edit it)
   if (
     site?.cause === 'imported' &&

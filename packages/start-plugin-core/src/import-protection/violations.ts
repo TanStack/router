@@ -142,10 +142,10 @@ export function selfViolationOf(
     resolved: id,
     hasDefault: target.hasDefault,
     bare: false,
-    // (a marked file: its importers are package modules the compiler does
-    // not compile; its mock keeps them evaluated as the real file would,
-    // under the package's own `sideEffects`)
-    ...(rule.type === 'marker' && { evaluated: true }),
+    // (its importers are imports the compiler does not read: a package
+    // module, another plugin's; its mock keeps them evaluated as the real
+    // file would, under the package's own `sideEffects`)
+    evaluated: true,
     rule,
   }
   return {

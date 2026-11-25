@@ -972,6 +972,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                               specifier,
                               undefined,
                             )),
+                        (file) => session.start.rawFacts.marker(file, env.name),
                       )
                       for (const report of reports) {
                         ;(report.severity === 'error'

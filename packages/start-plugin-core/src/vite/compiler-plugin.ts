@@ -528,7 +528,11 @@ function envCompilerPlugins(
         return
       }
       const ipEnv = s.start.ip.env(env.name)
-      const live = readRolldownWitness(bundle as never, ipEnv.witness())
+      const live = readRolldownWitness(
+        bundle as never,
+        ipEnv.witness(),
+        (id) => this.getModuleInfo(id)?.dynamicImporters ?? [],
+      )
       const reports = await ipEnv.surviving(
         live,
         rolldownNodeGraph(

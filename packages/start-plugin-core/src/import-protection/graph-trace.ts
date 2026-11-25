@@ -58,6 +58,16 @@ export interface NodeGraph {
   kept?: (node: GraphNode) => boolean
   /** Build: `node`'s code as the bundler holds it, after every transform; null when unknown. */
   code?: (node: GraphNode) => string | null
+  /**
+   * Build, Rspack: the nodes of the output's chunks (`kept`), and whether a
+   * node's package declares it free of side effects: Rspack does not build
+   * a module such a module imports bare (it prunes it while it makes the
+   * graph), so the import is read from the kept importer's code.
+   */
+  keptNodes?: () => Iterable<GraphNode>
+  sideEffectFree?: (node: GraphNode) => boolean
+  /** Whether the compilation built a module of `node` (Rspack). */
+  holds?: (node: GraphNode) => boolean
 }
 
 /**
