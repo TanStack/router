@@ -2,10 +2,11 @@
  * Vitest `setupFiles` entry of the compiler test projects, for known-bug
  * pins (`./pins`).
  *
- * A pin passes only when one of its assertions failed: Vitest turns any
- * failure of a `fails` test into a pass, a timeout or an error of the
- * harness too, which would then read as the bug. So a pin whose failures
- * hold no assertion error is reported as the failure it is.
+ * A pin passes only when its assertions failed and nothing else did: Vitest
+ * turns any failure of a `fails` test into a pass, a timeout or an error of
+ * the harness too (also one besides the failed assertion, e.g. a cleanup
+ * that throws), which would then read as the bug. So a pin whose failures
+ * hold an error that is no assertion's is reported as the failure it is.
  *
  * With `COMPILER_TESTS_PINS=run`, every pin runs as an ordinary test.
  *
@@ -30,10 +31,7 @@ beforeEach(({ task, onTestFinished }) => {
   }
   onTestFinished(() => {
     const errors = task.result?.errors ?? []
-    if (
-      errors.length > 0 &&
-      !errors.some((error) => error.name === 'AssertionError')
-    ) {
+    if (errors.some((error) => error.name !== 'AssertionError')) {
       test.fails = false
     }
   })

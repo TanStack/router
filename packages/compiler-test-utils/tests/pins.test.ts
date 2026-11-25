@@ -1,7 +1,8 @@
 /**
  * Controls of the known-bug pins (pins-setup.ts): a pin passes when one of
- * its assertions fails, and fails when it fails otherwise (a timeout, an
- * error of the harness), which would else pass as the bug. Pins run in a
+ * its assertions fails and nothing else does, and fails when it fails
+ * otherwise (a timeout, an error of the harness, also besides a failed
+ * assertion), which would else pass as the bug. Pins run in a
  * Vitest of their own, in a child Node process, with the setup file of the
  * compiler test projects.
  */
@@ -62,6 +63,13 @@ test.fails('an assertion fails, then a cleanup throws', () => {
   })
   expect(1).toBe(2)
 })
+test.fails('an assertion fails, then an async cleanup rejects', () => {
+  onTestFinished(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    throw new TypeError('page.close: Target closed')
+  })
+  expect('bug').toBe('fixed')
+})
 test.fails('the harness throws', () => {
   throw new Error('harness')
 })
@@ -79,7 +87,9 @@ test('a pin passes only when an assertion of it fails', async () => {
     'an assertion fails': 'pass',
     'a polled assertion fails': 'pass',
     'a soft assertion fails': 'pass',
-    'an assertion fails, then a cleanup throws': 'pass',
+    // (the cleanup's error is independent of the bug: it is reported)
+    'an assertion fails, then a cleanup throws': 'fail',
+    'an assertion fails, then an async cleanup rejects': 'fail',
     'the harness throws': 'fail',
     'a cleanup throws': 'fail',
     'the test times out': 'fail',
