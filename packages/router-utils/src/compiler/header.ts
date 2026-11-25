@@ -16,7 +16,7 @@ interface Pragma {
 
 export interface Header {
   pragmas: Array<Pragma>
-  /** License comments: stay in the env module, never copied into derived outputs (G12). */
+  /** License comments: stay in the env module (G12); one holding a JSX pragma's name is also a pragma, copied whole into derived outputs. */
   license: Array<Range>
   directives: Array<{ value: string; range: Range }>
   /** End of the header block; generated imports are inserted here. */

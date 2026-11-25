@@ -625,17 +625,20 @@ function renderDerived(
   }
   // header: the comments holding pragmas, as written (a license notice
   // with them: the host reads a copy as it reads the source), and the
-  // directives (leadingness preserved)
+  // directives, in the source's order (a pragma after a directive is no
+  // pragma to TypeScript, before one it is)
   const header = analysis.header
-  for (const p of header.pragmas) {
-    renderer.renderSpan(root, p.range.start, p.range.end, null, null)
-    out.push({ k: 'text', text: '\n' })
-  }
-  for (const d of header.directives) {
-    if (decl.header?.dropDirectives?.includes(d.value)) {
-      continue
-    }
-    renderer.renderSpan(root, d.range.start, d.range.end, null, null)
+  const kept = header.directives.filter(
+    (d) => !decl.header?.dropDirectives?.includes(d.value),
+  )
+  for (let pi = 0, di = 0; pi < header.pragmas.length || di < kept.length; ) {
+    const p = header.pragmas[pi]
+    const d = kept[di]
+    const range =
+      p !== undefined && (d === undefined || p.range.start < d.range.start)
+        ? header.pragmas[pi++]!.range
+        : kept[di++]!.range
+    renderer.renderSpan(root, range.start, range.end, null, null)
     out.push({ k: 'text', text: '\n' })
   }
   if (decl.header?.addDirective) {

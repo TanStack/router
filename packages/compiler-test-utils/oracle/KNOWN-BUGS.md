@@ -204,6 +204,19 @@ function info not found` when one of them calls it, and the build says nothing, 
   and warnings stay as its last compiled text left them. App files are always compiled and are not affected; a
   restart (or the module naming a Start API again) settles it. Vite dev only: Rsbuild hands every module to its
   loader. No test (an edit under `node_modules` is not seen by the harness's watcher).
+- **A JSX pragma comment in the middle of a route file reaches a derived module only with the statement it precedes**
+  (emit review re-check, Fable P1). Derived modules copy the comments holding a JSX pragma of the file's header, as
+  written and in source order with its directives, and the host decides as in the source. A pragma comment after
+  the imports is not header: SWC (Rsbuild) reads one above any top-level statement and esbuild one anywhere, so
+  the file compiles with the pragma's runtime and a split component, an error component or a server-fn handler
+  module without that comment above it compiles with the default one. Oxc (Vite) and TypeScript read leading
+  comments only and agree (the C5-03 rows run there). Write the pragma at the file's top. SPEC J2.16. No test (the
+  outcome is the limit).
+- **TypeScript reads a JSX pragma's name in any letter case; the compiler copies a comment holding the name as
+  written only** (emit review re-check, Fable P3). `/** @jsximportsource @emotion/react */` is a pragma to
+  TypeScript, not to Oxc, SWC or esbuild; a derived module gets no copy of it, so with TypeScript as the JSX transform
+  the file and its split modules disagree. Write the name as documented (`@jsxImportSource`). SPEC J2.16. No test
+  (the outcome is the limit).
 - **`export { X }` of a name that is a type and a value keeps what only the type names on the client**
   (`const sv = getServerVal(); type X = typeof sv; const X = 1; export { X }`): the specifier exports the value, so it
   is no type export, and the alias it also names is not read as erased text; `sv` and its import stay, as on `main`

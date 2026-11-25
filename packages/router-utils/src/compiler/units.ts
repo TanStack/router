@@ -144,8 +144,9 @@ export function buildItems(
       firstComment++
     }
     // license comments before a statement belong to no item: they stay in
-    // the env module and never travel into a derived output (G12); those
-    // between the declarators of a list are the item's (`licenses`)
+    // the env module (G12), a header one holding a JSX pragma copied into
+    // derived outputs as a pragma (`freeze.ts`); those between the
+    // declarators of a list are the item's (`licenses`)
     for (let j = firstComment; j < comments.length; j++) {
       const c = comments[j]!
       if (c.start < start) {
