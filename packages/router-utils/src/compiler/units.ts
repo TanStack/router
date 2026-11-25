@@ -65,7 +65,9 @@ export interface TopLevelItem {
   exportKeyword: Range | null
   /**
    * The license comments between the declarators of a list (G12): the
-   * declarators recipe keeps them when it joins the kept declarators anew.
+   * declarators recipe keeps them when it joins the kept declarators anew
+   * (a derived output copying some declarators gets them too), and the env
+   * module keeps them when it keeps none.
    */
   licenses: Array<Range> | null
   /** Ephemeral: the statement node (phase B only). */
@@ -141,8 +143,9 @@ export function buildItems(
     ) {
       firstComment++
     }
-    // license comments belong to no item: they stay in the env module and
-    // never travel into a derived output (G12)
+    // license comments before a statement belong to no item: they stay in
+    // the env module and never travel into a derived output (G12); those
+    // between the declarators of a list are the item's (`licenses`)
     for (let j = firstComment; j < comments.length; j++) {
       const c = comments[j]!
       if (c.start < start) {
@@ -689,7 +692,14 @@ export function statementRecipe(
 ): StatementRecipe {
   const kept = item.units.filter((u) => retained.has(u))
   if (kept.length === 0) {
-    return 'drop'
+    // (only the env module renders a statement it keeps nothing of: the
+    // license comments between its declarators stay there, G12)
+    return item.licenses === null
+      ? 'drop'
+      : item.licenses.flatMap((l) => [
+          { k: 'slice', range: { start: l.start, end: l.end } },
+          { k: 'text', parts: ['\n'] },
+        ])
   }
   const all = kept.length === item.units.length
   const dropExport = !keepExport && item.exportKeyword !== null

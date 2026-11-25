@@ -246,6 +246,16 @@ export const Route = createFileRoute('/')({ component: Page })
 `,
       deleteNodes: undefined,
     })),
+    {
+      // the whole list moves (whole-PR review of the declarations lane)
+      name: 'between the declarators of a list the splitter moves whole',
+      legal: '/*! Example Corp. | MIT License */',
+      route: (legal: string) => `${head}const label = 'page', ${legal}
+  Page = () => <p>{label}</p>
+export const Route = createFileRoute('/')({ component: Page })
+`,
+      deleteNodes: undefined,
+    },
     // a license comment ending the line of a moved declaration is written
     // for the code after it
     ...[
